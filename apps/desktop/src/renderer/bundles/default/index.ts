@@ -2,6 +2,7 @@ import type { Bundle } from '../types';
 import Standings from './standings/Standings';
 import Relative from './relative/Relative';
 import './styles.css';
+import './animations.css';
 
 const bundle: Bundle = {
   id: 'default',

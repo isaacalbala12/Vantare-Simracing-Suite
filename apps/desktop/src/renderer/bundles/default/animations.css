@@ -1,0 +1,74 @@
+/* ── CSS Animation System (F-024) ───────────────────────────────────────────
+ * Theme-aware animations. All keyframes use CSS vars for color tokens.
+ * prefers-reduced-motion fallback shortens all animations to 0.01ms.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --hf-accent: #fbbf24;
+  --hf-glow-color: rgba(251, 191, 36, 0.5);
+  --hf-fade-duration: 200ms;
+  --hf-slide-duration: 300ms;
+  --hf-pulse-duration: 1000ms;
+  --hf-scale-duration: 200ms;
+}
+
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+
+@keyframes hf-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hf-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes hf-slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes hf-slide-down {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes hf-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes hf-glow {
+  0%, 100% { box-shadow: 0 0 5px var(--hf-glow-color); }
+  50% { box-shadow: 0 0 20px var(--hf-glow-color); }
+}
+
+@keyframes hf-scale-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ── Utility classes ──────────────────────────────────────────────────────── */
+
+.hf-fade-in { animation: hf-fade-in var(--hf-fade-duration) ease forwards; }
+.hf-fade-out { animation: hf-fade-out var(--hf-fade-duration) ease forwards; }
+.hf-slide-up { animation: hf-slide-up var(--hf-slide-duration) ease forwards; }
+.hf-slide-down { animation: hf-slide-down var(--hf-slide-duration) ease forwards; }
+.hf-pulse { animation: hf-pulse var(--hf-pulse-duration) ease-in-out infinite; }
+.hf-glow { animation: hf-glow 1500ms ease-in-out infinite; }
+.hf-scale-in { animation: hf-scale-in var(--hf-scale-duration) ease forwards; }
+
+/* ── prefers-reduced-motion fallback ───────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-fade-in,
+  .hf-fade-out,
+  .hf-slide-up,
+  .hf-slide-down,
+  .hf-pulse,
+  .hf-glow,
+  .hf-scale-in {
+    animation-duration: 0.01ms !important;
+  }
+}

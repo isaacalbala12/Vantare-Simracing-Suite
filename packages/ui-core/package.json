@@ -1,0 +1,47 @@
+{
+  "name": "@vantare/ui-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vantare shared React components, hooks, and utilities",
+  "type": "module",
+  "main": "./dist/ui-core/src/index.js",
+  "module": "./dist/ui-core/src/index.js",
+  "types": "./dist/ui-core/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/ui-core/src/index.d.ts",
+      "import": "./dist/ui-core/src/index.js"
+    },
+    "./components": {
+      "types": "./dist/ui-core/src/components/index.d.ts",
+      "import": "./dist/ui-core/src/components/index.js"
+    },
+    "./hooks": {
+      "types": "./dist/ui-core/src/hooks/index.d.ts",
+      "import": "./dist/ui-core/src/hooks/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/ --ext .ts,.tsx",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@vantare/sim-core": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

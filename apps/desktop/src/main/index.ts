@@ -1,0 +1,95 @@
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
+import path from 'path';
+import { registerIpcHandlers, setSimManager, setOverlayManager } from './ipc/handlers';
+import { OverlayManager } from './windows/overlay-manager';
+import { HttpServer } from './server/http-server';
+import { SimManager } from './sim/sim-manager';
+import { AuthService } from './auth/license';
+import { AutoUpdater } from './updates/auto-updater';
+
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let overlayManager: OverlayManager;
+let httpServer: HttpServer;
+let simManager: SimManager;
+let authService: AuthService;
+let autoUpdater: AutoUpdater;
+
+let isQuitting = false;
+const isDev = !app.isPackaged;
+
+function createMainWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    show: false,
+    frame: true,
+    titleBarStyle: 'default',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  }
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+  });
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+}
+
+function createTray(): void {
+  const trayIcon = nativeImage.createEmpty();
+  tray = new Tray(trayIcon);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Show Vantare', click: () => mainWindow?.show() },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
+  ]);
+  tray.setToolTip('Vantare Overlays');
+  tray.setContextMenu(contextMenu);
+  tray.on('double-click', () => mainWindow?.show());
+}
+
+app.whenReady().then(async () => {
+  registerIpcHandlers();
+  overlayManager = new OverlayManager();
+  httpServer = new HttpServer();
+  authService = new AuthService();
+  autoUpdater = new AutoUpdater();
+
+  await httpServer.start();
+  await authService.init();
+
+  createMainWindow();
+  createTray();
+
+  simManager = new SimManager(mainWindow!);
+
+  // Wire telemetry pipeline: SimManager → HttpServer → SSE clients
+  httpServer.setSimManager(simManager);
+  simManager.setBroadcastTelemetryFn((data) => httpServer.broadcastTelemetry(data));
+
+  simManager.start();
+  setOverlayManager(overlayManager);
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

@@ -11,7 +11,7 @@ function getOverlayId(): OverlayId {
   return '';
 }
 
-function loadOverlayComponent(id: OverlayId): React.LazyExoticComponent<React.ComponentType<unknown>> | null {
+function loadOverlayComponent(id: OverlayId): React.LazyExoticComponent<React.ComponentType<any>> | null {
   if (!id) return null;
   try {
     switch (id) {
@@ -29,7 +29,7 @@ function loadOverlayComponent(id: OverlayId): React.LazyExoticComponent<React.Co
 
 export default function OverlayShell() {
   const [overlayId, setOverlayId] = useState<OverlayId>(() => getOverlayId());
-  const [LazyComponent, setLazyComponent] = useState<React.LazyExoticComponent<React.ComponentType<unknown>> | null>(() =>
+  const [LazyComponent, setLazyComponent] = useState<React.LazyExoticComponent<React.ComponentType<any>> | null>(() =>
     loadOverlayComponent(overlayId),
   );
 

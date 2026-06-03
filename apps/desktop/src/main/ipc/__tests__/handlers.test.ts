@@ -51,7 +51,6 @@ vi.mock("@vantare/sim-core", () => ({
 }));
 
 import { ipcMain } from "electron";
-import { ipcMain } from "electron";
 import { registerIpcHandlers, setSimManager, setOverlayManager } from "../handlers";
 
 describe("overlay IPC handlers", () => {

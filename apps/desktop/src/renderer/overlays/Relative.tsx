@@ -107,34 +107,6 @@ export default function Relative({ telemetry }: RelativeProps) {
   return (
     <GlassPanel className="relative-overlay" data-testid="relative-table">
       <style>{`
-        .relative-overlay {
-          max-height: 100%;
-          overflow: hidden;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        .relative-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.6875rem;
-          line-height: 1.3;
-        }
-        .relative-table th {
-          text-align: left;
-          padding: 0.375rem 0.5rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: rgba(255, 255, 255, 0.5);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          white-space: nowrap;
-          font-size: 0.625rem;
-        }
-        .relative-table td {
-          padding: 0.3125rem 0.5rem;
-          white-space: nowrap;
-          vertical-align: middle;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
         .relative-row {
           transition: all 0.3s ease;
         }
@@ -184,32 +156,6 @@ export default function Relative({ telemetry }: RelativeProps) {
         }
         .gap-cell-zero {
           color: rgba(255, 255, 255, 0.4);
-        }
-        .class-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.0625rem 0.375rem;
-          border-radius: 3px;
-          font-size: 0.5625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-        .class-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          display: inline-block;
-          flex-shrink: 0;
-        }
-        .driver-name-cell {
-          max-width: 140px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          display: inline-block;
-          vertical-align: middle;
         }
       `}</style>
       <table className="relative-table">

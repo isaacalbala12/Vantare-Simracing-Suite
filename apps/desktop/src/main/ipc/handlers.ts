@@ -124,15 +124,9 @@ export function registerIpcHandlers(): void {
     };
   });
 
-  ipcMain.handle('sim:override-mock', (_, _opts: Record<string, unknown>) => {
-    if (!simManagerRef) return { success: false };
-    return { success: true };
-  });
-
   ipcMain.handle('system:open-external', (_, url: string) => {
     import('electron').then(({ shell }) => shell.openExternal(url));
   });
-  ipcMain.handle('system:toggle-visibility', () => { /* placeholder */ });
   ipcMain.handle('system:minimize-to-tray', () => {
     BrowserWindow.getAllWindows().forEach((w) => w.hide());
   });

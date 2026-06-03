@@ -1,11 +1,10 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron';
 import path from 'path';
-import { registerIpcHandlers, setSimManager, setOverlayManager } from './ipc/handlers';
+import { registerIpcHandlers, setOverlayManager } from './ipc/handlers';
 import { OverlayManager } from './windows/overlay-manager';
 import { HttpServer } from './server/http-server';
 import { SimManager } from './sim/sim-manager';
 import { AuthService } from './auth/license';
-import { AutoUpdater } from './updates/auto-updater';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -13,7 +12,6 @@ let overlayManager: OverlayManager;
 let httpServer: HttpServer;
 let simManager: SimManager;
 let authService: AuthService;
-let autoUpdater: AutoUpdater;
 
 let isQuitting = false;
 const isDev = !app.isPackaged;
@@ -70,7 +68,6 @@ app.whenReady().then(async () => {
   overlayManager = new OverlayManager();
   httpServer = new HttpServer();
   authService = new AuthService();
-  autoUpdater = new AutoUpdater();
 
   await httpServer.start();
   await authService.init();

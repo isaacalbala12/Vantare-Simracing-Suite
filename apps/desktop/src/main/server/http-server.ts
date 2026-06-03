@@ -79,7 +79,6 @@ export class HttpServer {
 
     return new Promise((resolve) => {
       this.server?.listen(this.port, this.host, () => {
-        console.log(`HTTP Server running on ${this.host}:${this.port}`);
         resolve();
       });
     });

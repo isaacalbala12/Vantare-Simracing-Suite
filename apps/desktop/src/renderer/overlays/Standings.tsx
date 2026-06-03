@@ -75,35 +75,6 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
   return (
     <GlassPanel className="standings-overlay" data-testid="standings-table">
       <style>{`
-        .standings-overlay {
-          max-height: 100%;
-          overflow: hidden;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        .standings-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.6875rem;
-          line-height: 1.3;
-        }
-        .standings-table th {
-          text-align: left;
-          padding: 0.375rem 0.5rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: rgba(255, 255, 255, 0.5);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          white-space: nowrap;
-          font-size: 0.625rem;
-        }
-        .standings-table td {
-          padding: 0.3125rem 0.5rem;
-          white-space: nowrap;
-          vertical-align: middle;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-          transition: background-color 0.2s ease;
-        }
         .standings-table tr:last-child td {
           border-bottom: none;
         }
@@ -124,32 +95,6 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
         .standings-row-class-gte {
           background: rgba(0, 210, 190, 0.06);
         }
-        .class-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.0625rem 0.375rem;
-          border-radius: 3px;
-          font-size: 0.5625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-        .class-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          display: inline-block;
-          flex-shrink: 0;
-        }
-        .driver-name {
-          max-width: 140px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          display: inline-block;
-          vertical-align: middle;
-        }
         .text-leader {
           color: #fbbf24;
           font-weight: 600;
@@ -162,6 +107,14 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
         }
         .text-interval-zero {
           color: rgba(255, 255, 255, 0.4);
+        }
+        .driver-name {
+          max-width: 140px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          display: inline-block;
+          vertical-align: middle;
         }
       `}</style>
       <table className="standings-table">

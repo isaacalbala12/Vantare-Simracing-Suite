@@ -1,4 +1,6 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Standings from './Standings';
+import Relative from './Relative';
 import './overlay.css';
 
 type OverlayId = 'standings' | 'relative' | '';
@@ -11,25 +13,23 @@ function getOverlayId(): OverlayId {
   return '';
 }
 
-function loadOverlayComponent(id: OverlayId): React.LazyExoticComponent<React.ComponentType<any>> | null {
+type OverlayComponent = React.ComponentType;
+
+function loadOverlayComponent(id: OverlayId): OverlayComponent | null {
   if (!id) return null;
-  try {
-    switch (id) {
-      case 'standings':
-        return React.lazy(() => import('./Standings'));
-      case 'relative':
-        return React.lazy(() => import('./Relative'));
-      default:
-        return null;
-    }
-  } catch {
-    return null;
+  switch (id) {
+    case 'standings':
+      return Standings as OverlayComponent;
+    case 'relative':
+      return Relative as OverlayComponent;
+    default:
+      return null;
   }
 }
 
 export default function OverlayShell() {
   const [overlayId, setOverlayId] = useState<OverlayId>(() => getOverlayId());
-  const [LazyComponent, setLazyComponent] = useState<React.LazyExoticComponent<React.ComponentType<any>> | null>(() =>
+  const [OverlayComponent, setOverlayComponent] = useState<OverlayComponent | null>(() =>
     loadOverlayComponent(overlayId),
   );
 
@@ -37,7 +37,7 @@ export default function OverlayShell() {
     const handlePopState = () => {
       const nextId = getOverlayId();
       setOverlayId(nextId);
-      setLazyComponent(loadOverlayComponent(nextId));
+      setOverlayComponent(loadOverlayComponent(nextId));
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -55,15 +55,13 @@ export default function OverlayShell() {
     };
   }, [overlayId]);
 
-  if (!overlayId || !LazyComponent) {
+  if (!overlayId || !OverlayComponent) {
     return null;
   }
 
   return (
     <div data-testid="overlay-shell" className="overlay-mode">
-      <Suspense fallback={<div className="p-4 text-white/50 text-sm">Loading overlay...</div>}>
-        <LazyComponent />
-      </Suspense>
+      <OverlayComponent />
     </div>
   );
 }

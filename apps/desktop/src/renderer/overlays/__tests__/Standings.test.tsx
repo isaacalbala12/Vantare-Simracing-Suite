@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, rerender } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import Standings from '../Standings';
 import { SeedData } from '../../../main/sim/mock-telemetry-seeder';
@@ -183,5 +184,217 @@ describe('Standings', () => {
   it('renders empty state message text', () => {
     const html = renderToString(<Standings telemetry={null} />);
     expect(html).toContain('No telemetry data');
+  });
+});
+
+// ── Auto-scroll ───────────────────────────────────────────────────────────────
+
+describe('Standings auto-scroll', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.getBoundingClientRect = vi.fn(function (this: Element) {
+      if (this.classList.contains('standings-container')) {
+        // Container shows ~20 rows (500px)
+        return {
+          top: 0,
+          left: 0,
+          right: 100,
+          bottom: 500,
+          width: 100,
+          height: 500,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        };
+      }
+
+      const testId = this.getAttribute('data-testid');
+      if (testId === 'player-highlight') {
+        // Parse position from row text (first number is the position)
+        const text = this.textContent || '';
+        const posMatch = text.match(/^(\d+)/);
+        const pos = posMatch ? parseInt(posMatch[1]) : 1;
+        const rowTop = (pos - 1) * 25; // 25px per row
+        return {
+          top: rowTop,
+          left: 0,
+          right: 100,
+          bottom: rowTop + 25,
+          width: 100,
+          height: 25,
+          x: 0,
+          y: rowTop,
+          toJSON: () => ({}),
+        };
+      }
+
+      // Default for other elements
+      return {
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: 100,
+        width: 100,
+        height: 100,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      };
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function createTelemetry(playerPosition: number, totalVehicles = 30): Telemetry {
+    const vehicles: VehicleData[] = [];
+    for (let i = 1; i <= totalVehicles; i++) {
+      vehicles.push({
+        id: 1000 + i,
+        driverName: `Driver ${i}`,
+        carNumber: `#${i}`,
+        teamName: 'Team',
+        position: i,
+        classPosition: i,
+        gap: i === playerPosition ? 0 : (i - playerPosition) * 0.5,
+        gapType: 'seconds',
+        lastLaptime: 105_000,
+        bestLaptime: 102_000,
+        sectorTimes: [28_000, 30_000, 28_000],
+        speed: 200,
+        isPlayer: i === playerPosition,
+        isPitting: false,
+        tyreCompound: 'Medium',
+        fuelRemaining: 80,
+        color: i <= totalVehicles / 2 ? '#e10600' : '#00d2be',
+      });
+    }
+
+    return {
+      sim: 'iracing',
+      timestamp: Date.now(),
+      isConnected: true,
+      player: {
+        speed: 200,
+        rpm: 5000,
+        gear: 4,
+        isOnTrack: true,
+        isInPit: false,
+        isPitting: false,
+        position: playerPosition,
+        classPosition: playerPosition,
+        lapDistance: 1000,
+        lapCount: 10,
+        driverName: `Driver ${playerPosition}`,
+        carNumber: `#${playerPosition}`,
+        teamName: 'Team',
+      },
+      engine: {
+        rpm: 5000,
+        maxRpm: 9500,
+        fuelLevel: 100,
+        fuelCapacity: 100,
+        fuelPressure: 0,
+        waterTemp: 0,
+        oilTemp: 0,
+        oilPressure: 0,
+        engineWarnings: 0,
+      },
+      tyres: {
+        fl: { temp: 0, pressure: 0, wear: 0 },
+        fr: { temp: 0, pressure: 0, wear: 0 },
+        rl: { temp: 0, pressure: 0, wear: 0 },
+        rr: { temp: 0, pressure: 0, wear: 0 },
+      },
+      lap: {
+        currentLap: 0,
+        totalLaps: 0,
+        lastLaptime: 105_000,
+        bestLaptime: 102_000,
+        sector: 1,
+        sector1: 0,
+        sector2: 0,
+        sector3: 0,
+        estimatedLaptime: 0,
+        delta: 0,
+        isPersonalBest: false,
+        isSessionBest: false,
+      },
+      session: {
+        type: 'Race',
+        state: 'running',
+        timeRemaining: 1200,
+        timeElapsed: 1800,
+        totalLaps: 25,
+        flags: [{ type: 'green', active: true }],
+        trackName: 'Spa',
+        trackLength: 7002,
+        weather: {
+          airTemp: 22,
+          trackTemp: 28,
+          humidity: 45,
+          precipitation: 0,
+          windSpeed: 5,
+          windDirection: 180,
+        },
+      },
+      vehicles,
+      track: {
+        name: 'Spa',
+        length: 7002,
+        sectors: [0, 0],
+      },
+      inputs: {
+        throttle: 0,
+        brake: 0,
+        clutch: 0,
+        steering: 0,
+      },
+      weather: {
+        airTemp: 22,
+        trackTemp: 28,
+        humidity: 45,
+        precipitation: 0,
+        windSpeed: 5,
+        windDirection: 180,
+      },
+    };
+  }
+
+  it('calls scrollIntoView on initial render when player position is 25', () => {
+    const { container } = render(
+      <Standings telemetry={createTelemetry(25)} maxRows={30} />,
+    );
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
+    });
+  });
+
+  it('calls scrollIntoView when player position changes from 3 to 25', () => {
+    const { rerender } = render(
+      <Standings telemetry={createTelemetry(3)} maxRows={30} />,
+    );
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(<Standings telemetry={createTelemetry(25)} maxRows={30} />);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
+    });
+  });
+
+  it('does NOT call scrollIntoView when player position changes from 3 to 5', () => {
+    const { rerender } = render(
+      <Standings telemetry={createTelemetry(3)} maxRows={30} />,
+    );
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(<Standings telemetry={createTelemetry(5)} maxRows={30} />);
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 });

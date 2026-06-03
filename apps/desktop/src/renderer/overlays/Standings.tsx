@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { GlassPanel, TimeDisplay, PositionBadge } from '@vantare/ui-core';
 import type { Telemetry, VehicleData } from '@vantare/sim-core';
 
@@ -35,6 +35,11 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
     );
   }
 
+  // ── Refs for auto-scroll ──────────────────────────────────────────────
+  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRowRef = useRef<HTMLTableRowElement>(null);
+  const prevPositionRef = useRef<number | null>(null);
+
   // ── Sort vehicles by position (ascending) ──────────────────────────────
   const sorted = [...telemetry.vehicles].sort((a, b) => a.position - b.position);
 
@@ -65,6 +70,39 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
     });
   }
 
+  // ── Player position for auto-scroll ───────────────────────────────────
+  const playerPosition = playerIdx >= 0 ? enriched[playerIdx].position : null;
+
+  // ── Auto-scroll effect ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!playerPosition || !playerRowRef.current) return;
+
+    const prev = prevPositionRef.current;
+    prevPositionRef.current = playerPosition;
+
+    // Initial render: scroll if player is beyond default viewport (top 20)
+    if (prev === null && playerPosition > 20) {
+      playerRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // Position change: scroll only if out of current viewport
+    if (prev !== null && prev !== playerPosition && containerRef.current) {
+      const container = containerRef.current;
+      const row = playerRowRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+
+      const isInViewport =
+        rowRect.top >= containerRect.top &&
+        rowRect.bottom <= containerRect.bottom;
+
+      if (!isInViewport) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [playerPosition]);
+
   // ── Detect classes from color ──────────────────────────────────────────
   const classColors = [...new Set(sorted.map((v) => v.color))].filter(Boolean);
 
@@ -73,7 +111,8 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <GlassPanel className="standings-overlay" data-testid="standings-table">
+    <div ref={containerRef} className="standings-container">
+      <GlassPanel className="standings-overlay" data-testid="standings-table">
       <style>{`
         .standings-table tr:last-child td {
           border-bottom: none;
@@ -156,6 +195,7 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
                 key={vehicle.id}
                 data-testid={vehicle.isPlayer ? 'player-highlight' : undefined}
                 className={rowClass}
+                ref={vehicle.isPlayer ? playerRowRef : undefined}
               >
                 <td>
                   <PositionBadge position={vehicle.position} />
@@ -202,6 +242,7 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
           })}
         </tbody>
       </table>
-    </GlassPanel>
+      </GlassPanel>
+    </div>
   );
 }

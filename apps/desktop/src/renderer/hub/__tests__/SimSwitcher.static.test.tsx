@@ -40,7 +40,7 @@ function setupVantareMock() {
     hideOverlay: () => Promise.resolve(),
     setOverlayPosition: () => Promise.resolve(),
     setOverlaySize: () => Promise.resolve(),
-    getAvailableSims: () => Promise.resolve(['iracing', 'ac']),
+    getAvailableSims: () => Promise.resolve(['iracing', 'lmu', 'ac']),
     getActiveSim: () => Promise.resolve('iracing' as SimType),
     setActiveSim: vi.fn(),
     onSimListChanged: vi.fn(() => (() => {})),
@@ -93,7 +93,9 @@ describe('SimSwitcher — static render QA', () => {
     const dropdown = await screen.findByTestId('sim-switcher-dropdown');
     expect(dropdown).not.toBeNull();
     expect(dropdown.textContent).toContain('iRacing');
+    expect(dropdown.textContent).toContain('Le Mans Ultimate');
     expect(dropdown.textContent).toContain('Assetto Corsa');
+    expect(screen.getByTestId('sim-option-lmu')).toBeTruthy();
   });
 
   it('calls setActiveSim on unlocked option click', async () => {

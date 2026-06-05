@@ -19,3 +19,7 @@ Thumbs.db
 coverage
 test-results
 playwright-report
+
+# LMU live dumps (local only — T17 skips when absent)
+test-data/lmu-fixture.bin
+test-data/lmu-fixture.json

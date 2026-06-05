@@ -11,10 +11,9 @@ import mmap
 import os
 import sys
 
-sys.path.insert(0, os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    '..', 'Vantare-Ingeniero', 'shared-telemetry'
-))
+from ingeniero_path import add_shared_telemetry_to_path
+
+add_shared_telemetry_to_path()
 
 try:
     from shared_telemetry.pyLMUSharedMemory import lmu_data

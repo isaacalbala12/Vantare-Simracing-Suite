@@ -69,11 +69,11 @@ Replace the skeleton LMU adapter (guessed offsets, wrong buffer size) with a str
 - `test-data/lmu-fixture.bin` + `test-data/lmu-fixture.json` — Real LMU dump + expected values
 
 ### Definition of Done
-- [ ] `pnpm test` passes (all existing 248 tests + 25+ new LMU tests)
-- [ ] `pnpm typecheck` passes
-- [ ] lmu-adapter-v2.ts can parse a real LMU_Data buffer dump and produce correct Record<string, unknown>
-- [ ] REST client polls 3 endpoints with correct JSON parsing and error handling
-- [ ] All vehicle scoring parsed (driver names, positions, gaps, pit state, DRS state)
+- [x] `pnpm test` passes (all existing 248 tests + 25+ new LMU tests)
+- [x] `pnpm typecheck` passes
+- [x] lmu-adapter-v2.ts can parse a real LMU_Data buffer dump and produce correct Record<string, unknown>
+- [x] REST client polls 3 endpoints with correct JSON parsing and error handling
+- [x] All vehicle scoring parsed (driver names, positions, gaps, pit state, DRS state)
 
 ### Must Have
 - Buffer size = ctypes.sizeof(LMUObjectOut) from Python generator (~324,820 bytes)
@@ -181,7 +181,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
 
 ## TODOs
 
-- [ ] 1. **Python offset generator** — `tools/generate-lmu-offsets.py`
+- [x] 1. **Python offset generator** — `tools/generate-lmu-offsets.py`
 
   **What to do**:
   - Read `Vantare-Ingeniero/shared-telemetry/shared_telemetry/pyLMUSharedMemory/lmu_data.py`
@@ -263,7 +263,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(tools): add LMU offset generator and dump script`
   - Files: `tools/generate-lmu-offsets.py`
 
-- [ ] 2. **Python memory dump tool** — `tools/dump-lmu-memory.py`
+- [x] 2. **Python memory dump tool** — `tools/dump-lmu-memory.py`
 
   **What to do**:
   - Create `tools/dump-lmu-memory.py` that uses `mmap.mmap(-1, ctypes.sizeof(LMUObjectOut), "LMU_Data")`
@@ -317,7 +317,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Commit**: YES (with T1)
   - Files: `tools/dump-lmu-memory.py`
 
-- [ ] 3. **Generated offset constants** — `packages/sim-core/src/lmu-offsets.ts`
+- [x] 3. **Generated offset constants** — `packages/sim-core/src/lmu-offsets.ts`
 
   **What to do**:
   - Run `python tools/generate-lmu-offsets.py --output packages/sim-core/src/lmu-offsets.ts`
@@ -364,7 +364,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Commit**: YES (with T1, T2)
   - Files: `packages/sim-core/src/lmu-offsets.ts`
 
-- [ ] 4. **Synthetic buffer constructor** — `packages/sim-core/src/lmu-parser.ts` + test infrastructure
+- [x] 4. **Synthetic buffer constructor** — `packages/sim-core/src/lmu-parser.ts` + test infrastructure
 
   **What to do**:
   - Create a utility to construct a synthetic LMU buffer as `ArrayBuffer` for testing:
@@ -414,7 +414,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(sim-core): add LMU synthetic buffer constructor and parser skeleton`
   - Files: `packages/sim-core/src/lmu-parser.ts`
 
-- [ ] 5. **LMUGeneric + LMUPathData parser** — TDD
+- [x] 5. **LMUGeneric + LMUPathData parser** — TDD
 
   **What to do**:
   - Implement parser for LMUGeneric (events, gameVersion, FFBTorque, appInfo):
@@ -463,7 +463,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(sim-core): add LMU generic and path data parser`
   - Files: `packages/sim-core/src/lmu-parser.ts`, `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 6. **LMUScoringInfo parser (session)** — TDD
+- [x] 6. **LMUScoringInfo parser (session)** — TDD
 
   **What to do**:
   - Implement parser for LMUScoringInfo (scoring.scoringInfo):
@@ -543,7 +543,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(sim-core): add LMU scoring info parser (session + weather)`
   - Files: `packages/sim-core/src/lmu-parser.ts`, `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 7. **LMUVehicleScoring parser (all vehicles)** — TDD
+- [x] 7. **LMUVehicleScoring parser (all vehicles)** — TDD
 
   **What to do**:
   - Implement parser for `scoring.vehScoringInfo[0..numVehicles-1]`:
@@ -628,7 +628,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(sim-core): add LMU vehicle scoring parser`
   - Files: `packages/sim-core/src/lmu-parser.ts`, `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 8. **classPosition computation** — TDD
+- [x] 8. **classPosition computation** — TDD
 
   **What to do**:
   - After vehicle scoring is parsed, compute classPosition for each vehicle:
@@ -676,7 +676,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Commit**: YES (with T7)
   - Files: `packages/sim-core/src/lmu-parser.ts`, `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 9. **LMUVehicleTelemetry parser (player)** — TDD
+- [x] 9. **LMUVehicleTelemetry parser (player)** — TDD
 
   **What to do**:
   - Implement parser for `telemetry.telemInfo[playerIdx]`:
@@ -754,7 +754,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(sim-core): add LMU vehicle telemetry parser (player)`
   - Files: `packages/sim-core/src/lmu-parser.ts`, `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 10. **LMUWheel parser (4 wheels)** — TDD
+- [x] 10. **LMUWheel parser (4 wheels)** — TDD
 
   **What to do**:
   - Implement parser for `telemInfo[playerIdx].mWheels[0..3]`:
@@ -811,7 +811,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Commit**: YES (with T9)
   - Files: `packages/sim-core/src/lmu-parser.ts`, `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 11. **High-level LMUObjectOut parser** — `parseLMUObjectOut()`
+- [x] 11. **High-level LMUObjectOut parser** — `parseLMUObjectOut()`
 
   **What to do**:
   - Create the top-level `parseLMUObjectOut(buf: Buffer): LMUParsedData | null` function
@@ -871,7 +871,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(sim-core): add top-level LMUObjectOut parser`
   - Files: `packages/sim-core/src/lmu-parser.ts`
 
-- [ ] 12. **LMU adapter v2** — `apps/desktop/src/main/sim/adapters/lmu-adapter-v2.ts`
+- [x] 12. **LMU adapter v2** — `apps/desktop/src/main/sim/adapters/lmu-adapter-v2.ts`
 
   **What to do**:
   - Create new `LMUAdapterV2` class implementing `SimAdapter`, alongside the old skeleton
@@ -937,7 +937,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(desktop): add LMU adapter v2 with real shared memory parser`
   - Files: `apps/desktop/src/main/sim/adapters/lmu-adapter-v2.ts`
 
-- [ ] 13. **REST API client** — `apps/desktop/src/main/sim/lmu-rest-client.ts`
+- [x] 13. **REST API client** — `apps/desktop/src/main/sim/lmu-rest-client.ts`
 
   **What to do**:
   - Create `LMURestClient` class that polls 3 endpoints:
@@ -1017,7 +1017,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `feat(desktop): add LMU REST API client (brake wear, weather, strategy)`
   - Files: `apps/desktop/src/main/sim/lmu-rest-client.ts`
 
-- [ ] 14. **REST client data integration into adapter**
+- [x] 14. **REST client data integration into adapter**
 
   **What to do**:
   - Wire LMURestClient into LMUAdapterV2:
@@ -1068,7 +1068,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Commit**: YES (with T12)
   - Files: `apps/desktop/src/main/sim/adapters/lmu-adapter-v2.ts`
 
-- [ ] 15. **Update createAdapter() factory** — `apps/desktop/src/main/sim/adapters/index.ts`
+- [x] 15. **Update createAdapter() factory** — `apps/desktop/src/main/sim/adapters/index.ts`
 
   **What to do**:
   - After LMUAdapterV2 is fully tested, update `createAdapter()`:
@@ -1111,7 +1111,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `refactor(desktop): rename LMU adapter v2 as primary, archive skeleton v1`
   - Files: `apps/desktop/src/main/sim/adapters/index.ts`, `apps/desktop/src/main/sim/adapters/lmu-adapter.ts`, `apps/desktop/src/main/sim/adapters/lmu-adapter-v1-skeleton.ts`
 
-- [ ] 16. **Integration test: synthetic buffer round-trip**
+- [x] 16. **Integration test: synthetic buffer round-trip**
 
   **What to do**:
   - Create integration test that:
@@ -1154,7 +1154,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `test(sim-core): add LMU parser integration tests`
   - Files: `packages/sim-core/src/__tests__/lmu-integration.test.ts`
 
-- [ ] 17. **Integration test: real LMU fixture**
+- [x] 17. **Integration test: real LMU fixture**
 
   **What to do**:
   - If `test-data/lmu-fixture.bin` exists (from T2), create test that:
@@ -1184,9 +1184,9 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Blocks**: Nothing
 
   **Acceptance Criteria**:
-  - [ ] Conditional test passes when fixture exists
-  - [ ] Key field assertions match JSON sidecar
-  - [ ] Skipped in CI (no fixture)
+  - [x] Conditional test passes when fixture exists
+  - [x] Key field assertions match JSON sidecar
+  - [x] Skipped in CI (no fixture)
 
   **QA Scenarios**:
   ```
@@ -1199,7 +1199,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   **Commit**: YES (with T16)
   - Files: `packages/sim-core/src/__tests__/lmu-integration.test.ts`
 
-- [ ] 18. **Edge case tests**
+- [x] 18. **Edge case tests**
 
   **What to do**:
   - Write tests for all edge cases:
@@ -1246,7 +1246,7 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
   - Message: `test(sim-core): add LMU parser edge case tests (15+ cases)`
   - Files: `packages/sim-core/src/__tests__/lmu-parser.test.ts`
 
-- [ ] 19. **Performance benchmark test**
+- [x] 19. **Performance benchmark test**
 
   **What to do**:
   - Write benchmark test that:
@@ -1290,19 +1290,19 @@ Critical Path: T1 → T3 → T4 → T5-T10 → T11+T13 → T12+T14 → T15 → T
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Present consolidated results to user and get explicit "okay" before completing.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Read the plan end-to-end. For each "Must Have": verify implementation exists (read file, run parse, check output). For each "Must NOT Have": search codebase for forbidden patterns — reject with file:line if found. Check evidence files exist in .omo/evidence/. Compare deliverables against plan.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `tsc --noEmit` + linter + `bun test`. Review all changed files for: `as any`/`@ts-ignore`, empty catches, console.log in prod, commented-out code, unused imports. Check AI slop: excessive comments, over-abstraction, generic names. Verify lmu-offsets.ts has no manual edits.
   Output: `Build [PASS/FAIL] | Lint [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high`
+- [x] F3. **Real Manual QA** — `unspecified-high`
   From clean state: run every QA scenario from every task (or verify evidence). Test cross-task integration: full buffer → adapter → normalizer. Test edge cases: truncated buffer, zero vehicles, REST server down. Test performance benchmark.
   Output: `Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   For each task: read "What to do", read actual diff (git log/diff). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no creep). Check "Must NOT do" compliance. Detect cross-task contamination: LMU task touching iRacing/AC files. Flag unaccounted changes.
   Output: `Tasks [N/N compliant] | Contamination [CLEAN/N issues] | Unaccounted [CLEAN/N files] | VERDICT`
 
@@ -1342,12 +1342,13 @@ bun test packages/sim-core/src/__tests__/lmu-benchmark.test.ts
 ```
 
 ### Final Checklist
-- [ ] All 19 implementation tasks completed
-- [ ] All 4 Final Wave verifications PASS
-- [ ] `bun test` passes (248 old + 25+ new = 273+ tests)
-- [ ] `pnpm typecheck` passes
-- [ ] LMU adapter v2 parses shared memory with correct struct offsets
-- [ ] REST API client polls 3 endpoints without crashing
-- [ ] Old skeleton archived, new adapter registered in createAdapter()
-- [ ] Evidence saved to `.omo/evidence/sprint5b/`
-- [ ] User explicitly approves before marking complete
+- [x] All 19 implementation tasks completed
+- [x] All 4 Final Wave verifications PASS
+- [x] `bun test` passes (248 old + 25+ new = 273+ tests)
+- [x] `pnpm typecheck` passes
+- [x] LMU adapter v2 parses shared memory with correct struct offsets
+- [x] REST API client polls 3 endpoints without crashing
+- [x] Old skeleton archived, new adapter registered in createAdapter()
+- [x] Evidence saved to `.omo/evidence/sprint5b/`
+- [x] User explicitly approves before marking complete
+

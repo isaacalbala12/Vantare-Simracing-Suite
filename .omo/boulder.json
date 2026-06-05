@@ -1,12 +1,12 @@
 {
-  "active_plan": "C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\.omo\\plans\\sprint5b-lmu-adapter.md",
-  "started_at": "2026-06-05T14:05:00+02:00",
+  "active_plan": null,
+  "started_at": null,
   "session_ids": [],
-  "plan_name": "sprint5b-lmu-adapter",
+  "plan_name": null,
   "session_origins": {},
   "task_sessions": {},
   "schema_version": 2,
-  "active_work_id": "sprint5b-lmu-adapter",
+  "active_work_id": null,
   "works": {
     "sprint5a-multi-sim": {
       "work_id": "sprint5a-multi-sim",
@@ -17,9 +17,9 @@
     "sprint5b-lmu-adapter": {
       "work_id": "sprint5b-lmu-adapter",
       "plan_name": "sprint5b-lmu-adapter",
-      "status": "in_progress",
+      "status": "completed",
       "started_at": "2026-06-05T12:20:54.0455401+02:00",
-      "resumed_at": "2026-06-05T14:05:00+02:00"
+      "ended_at": "2026-06-05T15:00:00+02:00"
     },
     "sprint6-themes-auth": {
       "work_id": "sprint6-themes-auth",
@@ -30,6 +30,6 @@
     }
   },
   "agent": "atlas",
-  "updated_at": "2026-06-05T14:05:00+02:00",
-  "status": "in_progress"
+  "updated_at": "2026-06-05T15:00:00+02:00",
+  "status": "idle"
 }

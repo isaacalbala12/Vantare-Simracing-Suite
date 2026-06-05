@@ -1,7 +1,9 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 import Store from 'electron-store';
-import { AuthService } from '@vantare/auth';
+import { AuthService, type LicenseCache } from '@vantare/auth';
+import { builtInThemes } from '@vantare/ui-core/themes';
 import type { Profile, Theme, Settings } from '@shared/types';
+import { setupAuth } from '../auth/setup';
 import type { SimManager } from '../sim/sim-manager';
 import type { OverlayManager } from '../windows/overlay-manager';
 import { MockSimFactory } from '@vantare/sim-core';
@@ -15,6 +17,7 @@ interface StoreSchema {
   activeProfileId: string | null;
   themes: Theme[];
   activeThemeId: string;
+  licenseCache: LicenseCache | null;
 }
 
 const store = new Store<StoreSchema>({
@@ -38,8 +41,16 @@ const store = new Store<StoreSchema>({
     activeProfileId: null,
     themes: [],
     activeThemeId: 'dark',
+    licenseCache: null,
   },
 });
+
+function getAllThemes(): Theme[] {
+  const custom = store.get('themes');
+  const builtInIds = new Set(builtInThemes.map((theme) => theme.id));
+  const customThemes = custom.filter((theme) => !builtInIds.has(theme.id));
+  return [...builtInThemes, ...customThemes];
+}
 
 let simManagerRef: SimManager | null = null;
 export function setSimManager(mgr: SimManager | null): void {
@@ -52,6 +63,12 @@ export function setOverlayManager(mgr: OverlayManager | null): void {
 }
 
 export function registerIpcHandlers(): void {
+  setupAuth({
+    get: async () => store.get('licenseCache'),
+    set: async (cache) => store.set('licenseCache', cache),
+    clear: async () => store.set('licenseCache', null),
+  });
+
   ipcMain.handle('settings:get', () => store.get('settings'));
   ipcMain.handle('settings:save', (_, settings: Partial<Settings>) => {
     store.set('settings', { ...store.get('settings'), ...settings });
@@ -162,11 +179,10 @@ export function registerIpcHandlers(): void {
     BrowserWindow.getAllWindows().forEach((w) => w.hide());
   });
 
-  ipcMain.handle('themes:get', () => store.get('themes'));
+  ipcMain.handle('themes:get', () => getAllThemes());
   ipcMain.handle('themes:get-active', () => {
-    const themes = store.get('themes');
     const activeId = store.get('activeThemeId');
-    return themes.find((t) => t.id === activeId) || null;
+    return getAllThemes().find((t) => t.id === activeId) ?? builtInThemes.find((t) => t.id === 'dark') ?? null;
   });
   ipcMain.handle('themes:save', (_, theme: Theme) => {
     const themes = [...store.get('themes')];

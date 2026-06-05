@@ -4,15 +4,13 @@ import { registerIpcHandlers, setOverlayManager } from './ipc/handlers';
 import { OverlayManager } from './windows/overlay-manager';
 import { HttpServer } from './server/http-server';
 import { SimManager } from './sim/sim-manager';
-import { AuthService } from './auth/license';
+import { loadEnv, setupSecureStorage, setupMachineId } from './auth/setup';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let overlayManager: OverlayManager;
 let httpServer: HttpServer;
 let simManager: SimManager;
-let authService: AuthService;
-
 let isQuitting = false;
 const isDev = !app.isPackaged;
 
@@ -64,13 +62,13 @@ function createTray(): void {
 }
 
 app.whenReady().then(async () => {
+  loadEnv();
+  setupSecureStorage();
+  setupMachineId();
   registerIpcHandlers();
   overlayManager = new OverlayManager();
   httpServer = new HttpServer();
-  authService = new AuthService();
-
   await httpServer.start();
-  await authService.init();
 
   createMainWindow();
   createTray();

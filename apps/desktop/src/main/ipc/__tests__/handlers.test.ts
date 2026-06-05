@@ -36,7 +36,13 @@ vi.mock("@vantare/auth", () => ({
     logout: vi.fn(),
     getSession: vi.fn(),
     getLicenseStatus: vi.fn(),
+    enableMockMode: vi.fn(),
+    configure: vi.fn(),
   },
+}));
+
+vi.mock("../../auth/setup", () => ({
+  setupAuth: vi.fn(),
 }));
 
 vi.mock("electron-store", () => {

@@ -3,6 +3,7 @@ import { AuthService } from '../index.ts';
 
 describe('AuthService', () => {
   beforeEach(async () => {
+    AuthService.enableMockMode();
     await AuthService.logout();
   });
 

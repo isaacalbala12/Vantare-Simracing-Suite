@@ -47,3 +47,19 @@ export {
   type LegacyTheme,
   type LegacyFlatTokens,
 } from './legacy-mapper';
+
+export {
+  themeToCssVariables,
+  applyThemeToDOM,
+  getLuminance,
+  isDarkColor,
+  mergeThemes,
+  mergeThemeTokens,
+  validateThemeContrast,
+  type ContrastReport,
+  type ContrastPairReport,
+} from './theme-utils';
+
+export { ThemeProvider, ThemeContext, type ThemeContextValue } from './ThemeProvider';
+export { useTheme } from './useTheme';
+export { useOverlayTheme } from './useOverlayTheme';

@@ -5,6 +5,7 @@ import DashboardPage from '../pages/DashboardPage';
 import { useProfileStore } from '../../shared/stores/profile-store';
 import { useSettingsStore } from '../../shared/stores/settings-store';
 import { useAppStore } from '../../shared/stores/app-store';
+import { dark, midnight } from '@vantare/ui-core/themes';
 import { setupMockVantare } from './mock-vantare';
 
 function DashboardPageWrapper() {
@@ -39,15 +40,7 @@ type Story = StoryObj<typeof DashboardPage>;
 export const Connected: Story = {
   beforeEach: () => {
     setupMockVantare({
-      getActiveTheme: () =>
-        Promise.resolve({
-          id: 'midnight',
-          name: 'Midnight',
-          description: '',
-          author: '',
-          version: '1.0',
-          tokens: {},
-        }),
+      getActiveTheme: () => Promise.resolve(midnight),
       onSimState: (callback: (state: any) => void) => {
         callback({ connected: true, name: 'iRacing' });
         return () => {};
@@ -87,15 +80,7 @@ export const Connected: Story = {
 export const Disconnected: Story = {
   beforeEach: () => {
     setupMockVantare({
-      getActiveTheme: () =>
-        Promise.resolve({
-          id: 'dark',
-          name: 'Dark',
-          description: '',
-          author: '',
-          version: '1.0',
-          tokens: {},
-        }),
+      getActiveTheme: () => Promise.resolve(dark),
       onSimState: (callback: (state: any) => void) => {
         callback({ connected: false, name: null });
         return () => {};

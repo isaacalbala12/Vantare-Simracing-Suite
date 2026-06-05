@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import HubLayout from '../HubLayout';
 import { useProfileStore } from '../../shared/stores/profile-store';
+import { dark } from '@vantare/ui-core/themes';
 import { setupMockVantare } from './mock-vantare';
 
 /**
@@ -45,15 +46,7 @@ type Story = StoryObj<typeof HubLayout>;
 export const WithActiveProfile: Story = {
   beforeEach: () => {
     setupMockVantare({
-      getActiveTheme: () =>
-        Promise.resolve({
-          id: 'dark',
-          name: 'Dark',
-          description: 'Default dark theme',
-          author: 'Vantare',
-          version: '1.0',
-          tokens: {},
-        }),
+      getActiveTheme: () => Promise.resolve(dark),
     });
     useProfileStore.setState({
       activeProfile: {

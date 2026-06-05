@@ -1,3 +1,5 @@
+import { dark, builtInThemes } from '@vantare/ui-core/themes';
+
 /**
  * Shared mock for window.vantare IPC bridge.
  * Each story can override specific methods by calling setupMockVantare() then
@@ -50,8 +52,8 @@ export function setupMockVantare(overrides?: Partial<Window['vantare']>) {
     onRecordingStateChanged: () => (() => {}),
     getInspectorData: () => Promise.resolve(null),
     onInspectorData: () => (() => {}),
-    getThemes: () => Promise.resolve([]),
-    getActiveTheme: () => Promise.resolve({ id: 'dark', name: 'Dark', description: 'Default dark theme', author: 'Vantare', version: '1.0', tokens: {} }),
+    getThemes: () => Promise.resolve([...builtInThemes]),
+    getActiveTheme: () => Promise.resolve(dark),
     saveTheme: () => Promise.resolve(),
     setActiveTheme: () => Promise.resolve(),
     deleteTheme: () => Promise.resolve(),

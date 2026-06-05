@@ -51,7 +51,7 @@ function setupVantareMock() {
     getInspectorData: () => Promise.resolve(null),
     onInspectorData: () => (() => {}),
     getThemes: () => Promise.resolve([]),
-    getActiveTheme: () => Promise.resolve({ id: 'dark', name: 'Dark', description: '', author: '', version: '1.0', tokens: {} }),
+    getActiveTheme: async () => (await import('@vantare/ui-core/themes')).dark,
     saveTheme: () => Promise.resolve(),
     setActiveTheme: () => Promise.resolve(),
     deleteTheme: () => Promise.resolve(),

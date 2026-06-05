@@ -23,6 +23,10 @@
     "./schemas": {
       "types": "./dist/ui-core/src/schemas/index.d.ts",
       "import": "./dist/ui-core/src/schemas/index.js"
+    },
+    "./themes": {
+      "types": "./dist/ui-core/src/themes/index.d.ts",
+      "import": "./dist/ui-core/src/themes/index.js"
     }
   },
   "scripts": {

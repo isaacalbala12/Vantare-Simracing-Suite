@@ -1,9 +1,14 @@
-﻿export interface Theme {
-  id: string;
-  name: string;
-  description: string;
-  author: string;
-  version: string;
-  tokens: Record<string, string>;
-  overlayOverrides?: Record<string, Record<string, string>>;
-}
+﻿export type {
+  Theme,
+  ThemeTokens,
+  ThemeTokenMap,
+  ThemeOverlayOverride,
+  ColorTokens,
+  FontTokens,
+  SpacingTokens,
+  RadiusTokens,
+  ShadowTokens,
+  AnimationTokens,
+  GlassTokens,
+  ZIndexTokens,
+} from '@vantare/ui-core/themes';

@@ -3,6 +3,7 @@ import { BrowserWindow } from 'electron';
 import { MockSimFactory, SimNormalizer } from '@vantare/sim-core';
 import type { MockProvider, Telemetry, SimType, SimAdapter } from '@vantare/sim-core';
 import { createAdapter } from './adapters';
+import { TelemetryRecorder } from './telemetry-recorder';
 
 export type TelemetryCallback = (data: Telemetry) => void;
 
@@ -19,6 +20,7 @@ export class SimManager {
   private connected: boolean = false;
   private mainWindow: BrowserWindow | null = null;
   public isMockActive: boolean = false;
+  private recorder = new TelemetryRecorder();
 
   constructor(mainWindow?: BrowserWindow) {
     this.mainWindow = mainWindow || null;
@@ -35,6 +37,31 @@ export class SimManager {
 
   setMainWindow(win: BrowserWindow): void {
     this.mainWindow = win;
+  }
+
+  startRecording(): string | null {
+    if (!this.currentSim) return null;
+    const path = this.recorder.startRecording(this.currentSim);
+
+    // Broadcast recording state to all windows
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send('recording-state-changed', true);
+    }
+    return path;
+  }
+
+  stopRecording(): string | null {
+    const path = this.recorder.stopRecording();
+
+    // Broadcast recording state to all windows
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send('recording-state-changed', false);
+    }
+    return path;
+  }
+
+  isRecording(): boolean {
+    return this.recorder.isRecording;
   }
 
   start(): void {
@@ -83,8 +110,15 @@ export class SimManager {
     }
   }
 
+  private stopRecordingIfActive(): void {
+    if (this.recorder.isRecording) {
+      this.recorder.stopRecording();
+    }
+  }
+
   private activateMock(): void {
     if (this.isMockActive) return;
+    this.stopRecordingIfActive();
     this.isMockActive = true;
     this.connected = true;
     this.currentSim = 'iracing';
@@ -100,6 +134,7 @@ export class SimManager {
     // Don't re-activate if already on this sim with a live adapter
     if (this.currentSim === simName && this.activeAdapter && this.connected) return;
 
+    this.stopRecordingIfActive();
     this.isMockActive = false;
     this.currentSim = simName;
     this.connected = true;
@@ -148,6 +183,10 @@ export class SimManager {
     }
     if (this.broadcastTelemetryFn) {
       this.broadcastTelemetryFn(data);
+    }
+    // Pipe to recorder if recording
+    if (this.recorder.isRecording) {
+      this.recorder.writeFrame(data);
     }
   }
 

@@ -150,5 +150,47 @@ describe('ReplayReader', () => {
 
       unlinkSync(filePath);
     });
+
+    it('should return empty array for completely empty file (0 bytes)', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'replay-test-'));
+      const filePath = join(dir, 'completely-empty.ndjson');
+
+      writeFileSync(filePath, '');
+
+      const result = await ReplayReader.open(filePath);
+
+      expect(result).toEqual([]);
+
+      unlinkSync(filePath);
+    });
+
+    it('should return empty array for file with only blank lines', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'replay-test-'));
+      const filePath = join(dir, 'only-blanks.ndjson');
+
+      writeFileSync(filePath, '\n\n\n\n');
+
+      const result = await ReplayReader.open(filePath);
+
+      expect(result).toEqual([]);
+
+      unlinkSync(filePath);
+    });
+
+    it('should skip lines with only whitespace', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'replay-test-'));
+      const filePath = join(dir, 'whitespace.ndjson');
+
+      const header = JSON.stringify({ version: 1, sim: 'iracing', startedAt: Date.now() });
+      const content = header + '\n   \n\t\n' + JSON.stringify(makeTelemetry({ timestamp: 777 })) + '\n  ';
+      writeFileSync(filePath, content);
+
+      const result = await ReplayReader.open(filePath);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].timestamp).toBe(777);
+
+      unlinkSync(filePath);
+    });
   });
 });

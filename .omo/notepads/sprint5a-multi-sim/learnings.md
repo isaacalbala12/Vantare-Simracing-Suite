@@ -186,3 +186,56 @@ The `IRacingAdapter.FIELD_MAP` maps iRacing telemetry variable names → `extrac
 - `koffi` was imported but missing from package.json dependencies — had to add it
 - The `extractIRacing()` normalizer expects `windVel` (not `windSpeed`) and `windDir` — matches iRacing SDK var names directly
 - Tire data (LF/RF/LR/RR with temp/pressure/wear) is complex structured data not directly available as simple telemetry vars; normalizer fills in defaults
+
+## T8 — Telemetry Inspector (Hub page + standalone overlay)
+
+### Files created
+
+- `apps/desktop/src/renderer/hub/components/TelemetryInspector.tsx` — Shared component
+  - Props: `data: Telemetry | null`, `compact?: boolean`
+  - Renders all 70+ telemetry fields organized in 7 category sections: Player, Engine, Inputs, Lap, Session, Weather, Tyres
+  - Each section is a separate `React.memo` component receiving atomic primitive field values (not whole objects)
+  - This achieves the "atomic selectors" requirement: each section only re-renders when its specific primitive values change
+  - Dark theme consistent with Hub (glass-panel, white/ opacity scale)
+  - Compact mode: single column, smaller font, reduced spacing
+  - Full mode: multi-column responsive grid (1→2→3→4 columns)
+  - Helper functions: formatTime, formatTemp, formatPressure, formatWear, formatPercent, formatSpeed, formatDelta
+  - No external UI dependencies
+
+- `apps/desktop/src/renderer/hub/pages/TelemetryInspectorPage.tsx` — Hub page
+  - Connects to bridge: `window.vantare.getInspectorData()` for initial load, `window.vantare.onInspectorData()` for live updates
+  - Rate-limited to max 16Hz using `setTimeout` with 62ms throttle
+  - Uses refs to avoid stale closures: `latestDataRef` for latest telemetry, `rafIdRef` for pending timeout
+  - Shows connection status indicator (green/yellow dot) + sim name + timestamp
+  - Uses the shared TelemetryInspector component
+  - Route: `/inspector`
+
+- `apps/desktop/src/renderer/InspectorOverlayStandalone.tsx` — Standalone overlay wrapper
+  - Renders TelemetryInspector in compact mode when `?overlay=inspector` query param is present
+  - Same rate-limited bridge connection pattern
+  - Transparent background for overlay usage
+  - Minimal title bar with sim name
+
+- `apps/desktop/src/main/inspector-window.ts` — Electron main process overlay window
+  - `createInspectorWindow(parentWindow?)`: creates transparent, frameless, always-on-top BrowserWindow
+  - 320×600 default size
+  - Loads renderer with `?overlay=inspector` query param
+  - Internal broadcast loop at ~16Hz (62ms interval) pushes telemetry from SimManager to the window
+  - `closeInspectorWindow()`, `toggleInspectorWindow()`, `setInspectorSimManager()` exported for integration
+
+### Files modified
+
+- `apps/desktop/src/renderer/App.tsx` — Added `AppRouter` component that checks `?overlay=` param
+  - `?overlay=inspector` → renders InspectorOverlayStandalone
+  - Normal → renders <Routes> with new `/inspector` route
+  - Imported TelemetryInspectorPage and InspectorOverlayStandalone
+
+- `apps/desktop/src/renderer/hub/HubLayout.tsx` — Added nav item: `{ label: 'Inspector', to: '/inspector' }`
+
+### Architecture decisions
+
+- **TelemetryInspector receives `data` as prop** (not reading from a store directly) so it can be used by both Hub page and standalone overlay without coupling to a specific store
+- **Atomic selectors via React.memo on section components**: Each section (PlayerSection, EngineSection, etc.) receives individual primitive values as props. React.memo shallow-compares these primitives, so sections only re-render when their specific fields change — no full-object re-renders
+- **Rate-limiting via refs + setTimeout**: Using refs to store the latest telemetry and a pending timer ID prevents stale closures and avoids excessive re-renders. 62ms = ~16Hz
+- **Standalone overlay uses same bridge channels** as the Hub page, so it receives the same `inspector-data` IPC events
+- **Bridging the gap**: The `onInspectorData` IPC channel was already wired in preload/T7. The inspector-window broadcasts directly via `webContents.send('inspector-data', ...)` from the main process, which the preload bridge picks up

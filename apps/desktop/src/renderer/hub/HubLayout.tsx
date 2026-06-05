@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useProfileStore } from '../shared/stores/profile-store';
+import SimSwitcher from './components/SimSwitcher';
 import type { Theme } from '@vantare/types';
 
 interface NavItem {
@@ -13,12 +14,14 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', testId: 'sidebar-dashboard' },
   { label: 'Overlays', to: '/overlays', testId: 'sidebar-overlays' },
   { label: 'Profiles', to: '/profiles', testId: 'sidebar-profiles' },
+  { label: 'Inspector', to: '/inspector', testId: 'sidebar-inspector' },
   { label: 'Settings', to: '/settings', testId: 'sidebar-settings' },
 ];
 
 export default function HubLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
+  const [recording, setRecording] = useState(false);
   const activeProfile = useProfileStore((s) => s.activeProfile);
   const navigate = useNavigate();
 
@@ -29,6 +32,14 @@ export default function HubLayout() {
     }).catch(() => {
       // Graceful degradation — keep null
     });
+  }, []);
+
+  // Subscribe to recording state changes
+  useEffect(() => {
+    const unsub = window.vantare.onRecordingStateChanged((rec) => {
+      setRecording(rec);
+    });
+    return unsub;
   }, []);
 
   return (
@@ -54,24 +65,29 @@ export default function HubLayout() {
         `}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-white/10">
-          <span className="text-sm font-semibold text-white/70 tracking-wide uppercase">
-            Vantare
-          </span>
-          {activeTheme && (
-            <span data-testid="hub-theme-display" className="text-[10px] text-white/30 ml-2">
-              Theme: {activeTheme.name}
+        <div className="flex items-center justify-between px-3 h-14 border-b border-white/10 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-white/70 tracking-wide uppercase shrink-0">
+              Vantare
             </span>
-          )}
-          <button
-            className="lg:hidden p-1 text-white/50 hover:text-white"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            <SimSwitcher />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {activeTheme && (
+              <span data-testid="hub-theme-display" className="text-[10px] text-white/30 hidden lg:inline">
+                {activeTheme.name}
+              </span>
+            )}
+            <button
+              className="lg:hidden p-1 text-white/50 hover:text-white"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}

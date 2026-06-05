@@ -71,6 +71,58 @@
       "status": "completed",
       "ended_at": "2026-06-05T08:57:45.215Z",
       "elapsed_ms": 14254
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "Recording trigger — Wire the telemetry recorder into SimManager and add IPC controls",
+      "session_id": "opencode:ses_168fb8eeaffetqbuFuF6piM3OG",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-05T09:14:51.650Z",
+      "started_at": "2026-06-05T09:07:14.447Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:14:51.650Z",
+      "elapsed_ms": 457203
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Telemetry Inspector (Hub page + standalone overlay) — Build the F-023 Telemetry Inspector",
+      "session_id": "opencode:ses_168fb9464ffeihugVUZD3BdjSS",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-06-05T09:14:51.604Z",
+      "started_at": "2026-06-05T09:11:43.480Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:14:51.604Z",
+      "elapsed_ms": 188124
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "Integration tests with recorded real data — End-to-end tests for all Sprint 5a components",
+      "session_id": "opencode:ses_168fb8ee1ffeo1jaE23CBsQdbf",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-05T09:14:51.669Z",
+      "started_at": "2026-06-05T09:12:09.619Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:14:51.669Z",
+      "elapsed_ms": 162050
+    },
+    "todo:9": {
+      "task_key": "todo:9",
+      "task_label": "9",
+      "task_title": "Sim switching UI in Hub sidebar — Build a sim selector dropdown in the Hub sidebar",
+      "session_id": "opencode:ses_168fb9124ffeTlxDAZCRrOujWP",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-06-05T09:14:51.622Z",
+      "started_at": "2026-06-05T09:14:30.074Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:14:51.622Z",
+      "elapsed_ms": 21548
     }
   },
   "schema_version": 2,
@@ -150,14 +202,66 @@
           "status": "completed",
           "ended_at": "2026-06-05T08:57:45.215Z",
           "elapsed_ms": 14254
+        },
+        "todo:10": {
+          "task_key": "todo:10",
+          "task_label": "10",
+          "task_title": "Recording trigger — Wire the telemetry recorder into SimManager and add IPC controls",
+          "session_id": "opencode:ses_168fb8eeaffetqbuFuF6piM3OG",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-05T09:14:51.650Z",
+          "started_at": "2026-06-05T09:07:14.447Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:14:51.650Z",
+          "elapsed_ms": 457203
+        },
+        "todo:8": {
+          "task_key": "todo:8",
+          "task_label": "8",
+          "task_title": "Telemetry Inspector (Hub page + standalone overlay) — Build the F-023 Telemetry Inspector",
+          "session_id": "opencode:ses_168fb9464ffeihugVUZD3BdjSS",
+          "agent": "Sisyphus-Junior",
+          "category": "visual-engineering",
+          "updated_at": "2026-06-05T09:14:51.604Z",
+          "started_at": "2026-06-05T09:11:43.480Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:14:51.604Z",
+          "elapsed_ms": 188124
+        },
+        "todo:11": {
+          "task_key": "todo:11",
+          "task_label": "11",
+          "task_title": "Integration tests with recorded real data — End-to-end tests for all Sprint 5a components",
+          "session_id": "opencode:ses_168fb8ee1ffeo1jaE23CBsQdbf",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-05T09:14:51.669Z",
+          "started_at": "2026-06-05T09:12:09.619Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:14:51.669Z",
+          "elapsed_ms": 162050
+        },
+        "todo:9": {
+          "task_key": "todo:9",
+          "task_label": "9",
+          "task_title": "Sim switching UI in Hub sidebar — Build a sim selector dropdown in the Hub sidebar",
+          "session_id": "opencode:ses_168fb9124ffeTlxDAZCRrOujWP",
+          "agent": "Sisyphus-Junior",
+          "category": "visual-engineering",
+          "updated_at": "2026-06-05T09:14:51.622Z",
+          "started_at": "2026-06-05T09:14:30.074Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:14:51.622Z",
+          "elapsed_ms": 21548
         }
       },
       "status": "active",
       "session_origins": {},
-      "updated_at": "2026-06-05T08:57:45.215Z"
+      "updated_at": "2026-06-05T09:14:51.669Z"
     }
   },
   "agent": "atlas",
-  "updated_at": "2026-06-05T08:57:45.215Z",
+  "updated_at": "2026-06-05T09:14:51.669Z",
   "status": "active"
 }

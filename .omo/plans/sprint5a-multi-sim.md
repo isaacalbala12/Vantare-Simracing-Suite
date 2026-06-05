@@ -764,7 +764,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `shared/types/bridge.ts`, `apps/desktop/src/main/ipc/handlers.ts`, `apps/desktop/src/preload/index.ts`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=desktop`
 
-- [ ] 8. Telemetry Inspector (Hub page + standalone overlay)
+- [x] 8. Telemetry Inspector (Hub page + standalone overlay)
 
   **What to do**:
   - Create Hub page component: `apps/desktop/src/renderer/hub/pages/TelemetryInspectorPage.tsx`
@@ -860,7 +860,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `apps/desktop/src/renderer/hub/pages/TelemetryInspectorPage.tsx`, `apps/desktop/src/main/inspector-window.ts`, `apps/desktop/src/renderer/hub/components/TelemetryInspector.tsx`, `apps/desktop/src/renderer/hub/HubLayout.tsx`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=desktop`
 
-- [ ] 9. Sim switching UI in Hub sidebar
+- [x] 9. Sim switching UI in Hub sidebar
 
   **What to do**:
   - Create `apps/desktop/src/renderer/hub/components/SimSwitcher.tsx`:
@@ -936,7 +936,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `apps/desktop/src/renderer/hub/components/SimSwitcher.tsx`, `apps/desktop/src/renderer/hub/HubLayout.tsx`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=desktop`
 
-- [ ] 10. Recording trigger
+- [x] 10. Recording trigger
 
   **What to do**:
   - Add recording control to SimManager or as a separate module:
@@ -1011,7 +1011,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `apps/desktop/src/main/sim/sim-manager.ts`, `apps/desktop/src/main/sim/telemetry-recorder.ts`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=desktop`
 
-- [ ] 11. Integration tests with recorded real data
+- [x] 11. Integration tests with recorded real data
 
   **What to do**:
   - Create test data flow:

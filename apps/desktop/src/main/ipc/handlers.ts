@@ -51,8 +51,6 @@ export function setOverlayManager(mgr: OverlayManager | null): void {
   overlayManagerRef = mgr;
 }
 
-let recordingState = false;
-
 export function registerIpcHandlers(): void {
   ipcMain.handle('settings:get', () => store.get('settings'));
   ipcMain.handle('settings:save', (_, settings: Partial<Settings>) => {
@@ -128,24 +126,19 @@ export function registerIpcHandlers(): void {
   });
 
   // Recording
-  ipcMain.handle('startRecording', () => {
-    recordingState = true;
-    const wins = BrowserWindow.getAllWindows();
-    for (const win of wins) {
-      if (!win.isDestroyed()) win.webContents.send('recording-state-changed', true);
-    }
+  ipcMain.handle('startRecording', (): string | null => {
+    const mgr = simManagerRef;
+    return mgr?.startRecording() ?? null;
   });
 
   ipcMain.handle('stopRecording', (): string | null => {
-    recordingState = false;
-    const wins = BrowserWindow.getAllWindows();
-    for (const win of wins) {
-      if (!win.isDestroyed()) win.webContents.send('recording-state-changed', false);
-    }
-    return null;
+    const mgr = simManagerRef;
+    return mgr?.stopRecording() ?? null;
   });
 
-  ipcMain.handle('isRecording', (): boolean => recordingState);
+  ipcMain.handle('isRecording', (): boolean => {
+    return simManagerRef?.isRecording() ?? false;
+  });
 
   // Inspector
   ipcMain.handle('getInspectorData', (): Telemetry | null => {

@@ -63,19 +63,19 @@ const FieldRow = memo(function FieldRow({ label, value, compact, highlight }: Fi
     ? 'text-green-400'
     : highlight === 'bad'
       ? 'text-red-400'
-      : 'text-white/90';
+      : 'text-[var(--color-text)]';
 
   if (compact) {
     return (
       <div className="flex items-center justify-between gap-1">
-        <span className="text-white/50 text-[10px] uppercase tracking-wider">{label}</span>
+        <span className="text-[var(--color-text-muted)] text-[10px] uppercase tracking-wider">{label}</span>
         <span className={`text-[11px] font-mono tabular-nums ${colorClass}`}>{value}</span>
       </div>
     );
   }
   return (
-    <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded hover:bg-white/5">
-      <span className="text-white/40 text-xs uppercase tracking-wider">{label}</span>
+    <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded hover:bg-[var(--color-surface-elevated)]">
+      <span className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider">{label}</span>
       <span className={`text-sm font-mono tabular-nums ${colorClass}`}>{value}</span>
     </div>
   );
@@ -93,7 +93,7 @@ const Section = memo(function Section({ title, compact, children }: SectionProps
   if (compact) {
     return (
       <div className="space-y-0.5">
-        <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1 pb-0.5 border-b border-white/10">
+        <div className="text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1 pb-0.5 border-b border-[var(--color-border)]">
           {title}
         </div>
         {children}
@@ -102,7 +102,7 @@ const Section = memo(function Section({ title, compact, children }: SectionProps
   }
   return (
     <div className="glass-panel p-3 space-y-1">
-      <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 pb-1 border-b border-white/10">
+      <div className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 pb-1 border-b border-[var(--color-border)]">
         {title}
       </div>
       {children}
@@ -260,21 +260,21 @@ interface TyreCornerProps {
 
 const TyreCorner = memo(function TyreCorner({ label, data, compact }: TyreCornerProps) {
   return (
-    <div className={compact ? '' : 'px-2 py-1 rounded hover:bg-white/5'}>
-      <div className={`font-semibold text-white/50 ${compact ? 'text-[10px]' : 'text-xs'} uppercase tracking-wider mb-0.5`}>
+    <div className={compact ? '' : 'px-2 py-1 rounded hover:bg-[var(--color-surface-elevated)]'}>
+      <div className={`font-semibold text-[var(--color-text-muted)] ${compact ? 'text-[10px]' : 'text-xs'} uppercase tracking-wider mb-0.5`}>
         {label}
       </div>
-      <div className={`space-y-0.5 ${compact ? 'text-[10px]' : 'text-xs'} font-mono tabular-nums text-white/80`}>
+      <div className={`space-y-0.5 ${compact ? 'text-[10px]' : 'text-xs'} font-mono tabular-nums text-[var(--color-text)]`}>
         <div className="flex justify-between gap-1">
-          <span className="text-white/40">Temp</span>
+          <span className="text-[var(--color-text-muted)]">Temp</span>
           <span>{formatTemp(data.temp)}</span>
         </div>
         <div className="flex justify-between gap-1">
-          <span className="text-white/40">Pressure</span>
+          <span className="text-[var(--color-text-muted)]">Pressure</span>
           <span>{formatPressure(data.pressure)}</span>
         </div>
         <div className="flex justify-between gap-1">
-          <span className="text-white/40">Wear</span>
+          <span className="text-[var(--color-text-muted)]">Wear</span>
           <span>{formatWear(data.wear)}</span>
         </div>
       </div>
@@ -317,20 +317,20 @@ const TyresSection = memo(function TyresSection({ data, compact }: TyresSectionP
 function NoData({ compact }: { compact?: boolean }) {
   if (compact) {
     return (
-      <div className="text-[10px] text-white/30 font-mono text-center py-2">
+      <div className="text-[10px] text-[var(--color-text-muted)] font-mono text-center py-2">
         No telemetry data
       </div>
     );
   }
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2 p-8">
-      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-        <svg className="w-5 h-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="w-10 h-10 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center">
+        <svg className="w-5 h-5 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       </div>
-      <p className="text-sm text-white/40 font-mono">Awaiting telemetry data...</p>
-      <p className="text-xs text-white/20">Connect to a simulator to begin</p>
+      <p className="text-sm text-[var(--color-text-muted)] font-mono">Awaiting telemetry data...</p>
+      <p className="text-xs text-[var(--color-text-muted)]">Connect to a simulator to begin</p>
     </div>
   );
 }
@@ -343,8 +343,8 @@ export function TelemetryInspector({ data, compact }: TelemetryInspectorProps) {
   }
 
   const containerClass = compact
-    ? 'font-sans text-white bg-[#0a0a0a]/90 p-2 space-y-1.5 min-h-0'
-    : 'font-sans text-white bg-transparent';
+    ? 'font-sans text-[var(--color-text)] bg-[var(--color-surface)]/90 p-2 space-y-1.5 min-h-0'
+    : 'font-sans text-[var(--color-text)] bg-transparent';
 
   const contentClass = compact
     ? 'space-y-1.5'

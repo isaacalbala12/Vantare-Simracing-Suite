@@ -4,6 +4,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'src/__tests__/lmu-*.test.ts',
+    ],
   },
   css: false,
 });

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { LicenseTier } from '@vantare/auth';
 
 interface UpgradePromptProps {
@@ -13,6 +14,8 @@ const TIER_LABELS: Record<LicenseTier, string> = {
 };
 
 export default function UpgradePrompt({ feature, requiredTier, onDismiss }: UpgradePromptProps) {
+  const navigate = useNavigate();
+
   return (
     <div
       data-testid="upgrade-prompt"
@@ -41,9 +44,10 @@ export default function UpgradePrompt({ feature, requiredTier, onDismiss }: Upgr
       <button
         type="button"
         data-testid="upgrade-prompt-cta"
+        onClick={() => navigate('/account')}
         className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-500 text-black hover:bg-amber-400 transition-colors"
       >
-        View plans
+        View account &amp; plans
       </button>
     </div>
   );

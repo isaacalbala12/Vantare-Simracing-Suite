@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useProfileStore } from '../shared/stores/profile-store';
+import { useAuthStore } from '../shared/stores/auth-store';
 import SimSwitcher from './components/SimSwitcher';
 import type { Theme } from '@vantare/types';
 
@@ -25,7 +26,12 @@ export default function HubLayout() {
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
   const [recording, setRecording] = useState(false);
   const activeProfile = useProfileStore((s) => s.activeProfile);
+  const loadSession = useAuthStore((s) => s.loadSession);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    void loadSession();
+  }, [loadSession]);
 
   // Fetch the active theme from IPC on mount (graceful degradation if IPC fails)
   useEffect(() => {
@@ -155,8 +161,8 @@ function EmptyState({ onCreateProfile }: { onCreateProfile: () => void }) {
       className="flex flex-col items-center justify-center h-full px-4"
     >
       <div className="glass-panel p-8 max-w-md text-center space-y-4">
-        <div className="w-12 h-12 mx-auto rounded-full bg-white/5 flex items-center justify-center">
-          <svg className="w-6 h-6 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="w-12 h-12 mx-auto rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center">
+          <svg className="w-6 h-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>

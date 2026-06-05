@@ -41,7 +41,7 @@ describe('theme hooks', () => {
     act(() => {
       result.current.standings.applyOverride({
         color: { primary: '#ff0000' },
-      });
+      } as Parameters<typeof result.current.standings.applyOverride>[0]);
     });
 
     expect(result.current.standings.tokens.color.primary).toBe('#ff0000');

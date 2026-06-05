@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -111,14 +111,12 @@ describe('SimManager + TelemetryRecorder integration', () => {
     capturedFilePath = null;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     recorder?.stopRecording();
     simManager?.stop();
+    vi.runOnlyPendingTimers();
     vi.useRealTimers();
-  });
-
-  afterAll(() => {
-    rmSync(tempDir, { recursive: true, force: true });
+    await new Promise<void>((resolve) => setImmediate(resolve));
   });
 
   it('records frames through SimManager callback flow', () => {

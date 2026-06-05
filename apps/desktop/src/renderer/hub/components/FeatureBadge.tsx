@@ -5,9 +5,9 @@ interface FeatureBadgeProps {
 }
 
 const TIER_STYLES: Record<LicenseTier, string> = {
-  free: 'bg-white/10 text-white/60',
-  pro: 'bg-blue-500/20 text-blue-300',
-  ultimate: 'bg-purple-500/20 text-purple-300',
+  free: 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]',
+  pro: 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]',
+  ultimate: 'bg-[var(--color-secondary)]/20 text-[var(--color-secondary)]',
 };
 
 export default function FeatureBadge({ requiredTier }: FeatureBadgeProps) {

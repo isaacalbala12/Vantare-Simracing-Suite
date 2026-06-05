@@ -58,10 +58,10 @@ export default function TelemetryInspectorPage() {
   return (
     <div className="p-6 h-full flex flex-col" data-testid="telemetry-inspector-page">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--color-border)]">
         <div>
-          <h1 className="text-lg font-semibold text-white/90">Telemetry Inspector</h1>
-          <p className="text-sm text-white/50 mt-0.5">
+          <h1 className="text-lg font-semibold text-[var(--color-text)]">Telemetry Inspector</h1>
+          <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
             Real-time telemetry data from the active simulator
           </p>
         </div>
@@ -75,13 +75,13 @@ export default function TelemetryInspectorPage() {
                   : 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]'
               }`}
             />
-            <span className="text-xs text-white/40 font-mono">
+            <span className="text-xs text-[var(--color-text-muted)] font-mono">
               {data?.isConnected ? (data.sim ?? 'Connected') : 'Disconnected'}
             </span>
           </div>
           {/* Sim name badge */}
           {data && (
-            <span className="text-[10px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-mono text-[var(--color-text-muted)] bg-[var(--color-glass)] px-2 py-0.5 rounded">
               @ {data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : '—'}
             </span>
           )}

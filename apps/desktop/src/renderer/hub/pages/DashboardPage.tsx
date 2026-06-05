@@ -28,107 +28,94 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Section title */}
-      <h1 className="text-lg font-semibold text-white/80">Dashboard</h1>
+      <h1 className="text-lg font-semibold text-[var(--color-text)]">Dashboard</h1>
 
-      {/* Card grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Sim Status */}
         <div
           data-testid="dashboard-sim-status"
           className="glass-panel p-4 space-y-2"
         >
-          <h2 className="text-sm font-medium text-white/50 uppercase tracking-wide">
+          <h2 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
             Sim Status
           </h2>
           <div className="flex items-center gap-2">
             <StatusIndicator status={simStatus} />
-            <span className="text-sm text-white/70">
-              {simConnected && simName
-                ? simName
-                : 'No sim detected'}
+            <span className="text-sm text-[var(--color-text-muted)]">
+              {simConnected && simName ? simName : 'No sim detected'}
             </span>
           </div>
         </div>
 
-        {/* Quick Settings */}
         <div
           data-testid="dashboard-quick-settings"
           className="glass-panel p-4 space-y-2"
         >
-          <h2 className="text-sm font-medium text-white/50 uppercase tracking-wide">
+          <h2 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
             Quick Settings
           </h2>
           <div className="space-y-3">
-            {/* Demo Mode Toggle */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white/70">Demo Mode</span>
+              <span className="text-sm text-[var(--color-text-muted)]">Demo Mode</span>
               <button
                 data-testid="demo-mode-toggle"
                 onClick={() => setDemoMode(!demoMode)}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  demoMode ? 'bg-blue-600' : 'bg-white/20'
+                  demoMode ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-surface-elevated)]'
                 }`}
               >
                 <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-[var(--color-text)] transition-transform ${
                     demoMode ? 'translate-x-[18px]' : 'translate-x-[2px]'
                   }`}
                 />
               </button>
             </div>
 
-            {/* HTTP Server Port */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white/70">HTTP Server Port</span>
-              <span className="text-sm text-white/90 font-mono">
+              <span className="text-sm text-[var(--color-text-muted)]">HTTP Server Port</span>
+              <span className="text-sm text-[var(--color-text)] font-mono">
                 {settings?.httpServerPort ?? '—'}
               </span>
             </div>
 
-            {/* Overlay Visibility Key */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white/70">
-                Overlay Visibility Key
-              </span>
-              <span className="text-sm text-white/90 font-mono">
+              <span className="text-sm text-[var(--color-text-muted)]">Overlay Visibility Key</span>
+              <span className="text-sm text-[var(--color-text)] font-mono">
                 {settings?.overlayVisibilityKey ?? '—'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Active Profile */}
         <div
           data-testid="dashboard-active-profile"
           className="glass-panel p-4 space-y-2"
         >
-          <h2 className="text-sm font-medium text-white/50 uppercase tracking-wide">
+          <h2 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
             Active Profile
           </h2>
-          <p className="text-sm text-white/90">
+          <p className="text-sm text-[var(--color-text)]">
             {activeProfile?.name ?? 'No profile selected'}
           </p>
           {activeProfile && (
             <Link
               to="/profiles"
-              className="inline-block text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              className="inline-block text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
             >
               Manage
             </Link>
           )}
         </div>
 
-        {/* Active Theme */}
         <div
           data-testid="dashboard-active-theme"
           className="glass-panel p-4 space-y-2"
         >
-          <h2 className="text-sm font-medium text-white/50 uppercase tracking-wide">
+          <h2 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
             Active Theme
           </h2>
-          <p className="text-sm text-white/90">{themeName}</p>
-          <p className="text-xs text-white/40">Read-only</p>
+          <p className="text-sm text-[var(--color-text)]">{themeName}</p>
+          <p className="text-xs text-[var(--color-text-muted)]">Read-only</p>
         </div>
       </div>
     </div>

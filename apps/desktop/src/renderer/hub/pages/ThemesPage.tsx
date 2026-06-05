@@ -1,6 +1,5 @@
 import { useRef } from 'react';
-import { exportTheme, importTheme } from '@vantare/ui-core/themes';
-import { useTheme } from '@vantare/ui-core/themes';
+import { exportTheme, importTheme, useTheme, validateTheme } from '@vantare/ui-core/themes';
 import { Feature } from '@vantare/auth';
 import ThemeSelector from '../components/ThemeSelector';
 import ThemeEditor from '../components/ThemeEditor';
@@ -28,6 +27,18 @@ export default function ThemesPage() {
     const imported = importTheme(text);
     await window.vantare.saveTheme(imported);
     setTheme(imported.id);
+  };
+
+  const handleDuplicate = async () => {
+    const customTheme = validateTheme({
+      ...theme,
+      id: `custom-${crypto.randomUUID().slice(0, 8)}`,
+      name: `${theme.name} (Custom)`,
+      parent: theme.id,
+      author: 'user',
+    });
+    await window.vantare.saveTheme(customTheme);
+    setTheme(customTheme.id);
   };
 
   return (
@@ -78,7 +89,19 @@ export default function ThemesPage() {
 
       <section>
         <FeatureGate feature={Feature.CUSTOM_THEMES} label="Theme editor">
-          <ThemeEditor />
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="theme-duplicate-btn"
+                onClick={() => void handleDuplicate()}
+                className="px-3 py-1.5 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)]"
+              >
+                Duplicate as custom theme
+              </button>
+            </div>
+            <ThemeEditor />
+          </div>
         </FeatureGate>
       </section>
     </div>

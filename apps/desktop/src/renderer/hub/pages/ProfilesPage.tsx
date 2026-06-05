@@ -105,26 +105,26 @@ export default function ProfilesPage() {
   if (!isLoading && profiles.length === 0) {
     return (
       <div className="p-6 space-y-6">
-        <h1 className="text-lg font-semibold text-white/80">Profiles</h1>
+        <h1 className="text-lg font-semibold text-[var(--color-text)]">Profiles</h1>
         <div
           data-testid="profile-empty-state"
           className="flex flex-col items-center justify-center py-16"
         >
           <div className="glass-panel p-8 max-w-md text-center space-y-4">
-            <div className="w-12 h-12 mx-auto rounded-full bg-white/5 flex items-center justify-center">
-              <svg className="w-6 h-6 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-12 h-12 mx-auto rounded-full bg-[var(--color-glass)] flex items-center justify-center">
+              <svg className="w-6 h-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-white/80">No Profiles Yet</h2>
-            <p className="text-sm text-white/50 leading-relaxed">
+            <h2 className="text-lg font-semibold text-[var(--color-text)]">No Profiles Yet</h2>
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
               Create your first profile to configure overlays, themes, and alerts.
               Profiles let you quickly switch between different setups.
             </p>
             <button
               data-testid="profile-create"
               onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] transition-colors"
             >
               Create profile
             </button>
@@ -134,7 +134,7 @@ export default function ProfilesPage() {
         {/* Create form (empty state) */}
         {showCreateForm && (
           <div className="glass-panel p-4 max-w-md mx-auto space-y-3">
-            <label className="block text-sm font-medium text-white/70">Profile Name</label>
+            <label className="block text-sm font-medium text-[var(--color-text-muted)]">Profile Name</label>
             <input
               data-testid="profile-create-name"
               type="text"
@@ -142,20 +142,20 @@ export default function ProfilesPage() {
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="My Profile"
-              className="w-full px-3 py-2 text-sm rounded-md bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-glass)] border border-[var(--color-border)] text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
               autoFocus
             />
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim()}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Create
               </button>
               <button
                 onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
               >
                 Cancel
               </button>
@@ -170,19 +170,19 @@ export default function ProfilesPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-white/80">Profiles</h1>
+        <h1 className="text-lg font-semibold text-[var(--color-text)]">Profiles</h1>
         <div className="flex gap-2">
           <button
             data-testid="profile-create"
             onClick={() => setShowCreateForm(true)}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] transition-colors"
           >
             Create
           </button>
           <button
             data-testid="profile-import-btn"
             onClick={() => setShowImport(true)}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] border border-[var(--color-border)] transition-colors"
           >
             Import
           </button>
@@ -192,7 +192,7 @@ export default function ProfilesPage() {
       {/* Create form */}
       {showCreateForm && (
         <div className="glass-panel p-4 space-y-3">
-          <label className="block text-sm font-medium text-white/70">Profile Name</label>
+          <label className="block text-sm font-medium text-[var(--color-text-muted)]">Profile Name</label>
           <input
             data-testid="profile-create-name"
             type="text"
@@ -200,14 +200,14 @@ export default function ProfilesPage() {
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             placeholder="My Profile"
-            className="w-full px-3 py-2 text-sm rounded-md bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-glass)] border border-[var(--color-border)] text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
             autoFocus
           />
           <div className="flex gap-2">
             <button
               onClick={handleCreate}
               disabled={!newName.trim()}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Create
             </button>
@@ -216,7 +216,7 @@ export default function ProfilesPage() {
                 setShowCreateForm(false);
                 setNewName('');
               }}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
             >
               Cancel
             </button>
@@ -227,7 +227,7 @@ export default function ProfilesPage() {
       {/* Import form */}
       {showImport && (
         <div className="glass-panel p-4 space-y-3">
-          <label className="block text-sm font-medium text-white/70">
+          <label className="block text-sm font-medium text-[var(--color-text-muted)]">
             Paste Profile JSON
           </label>
           <textarea
@@ -239,7 +239,7 @@ export default function ProfilesPage() {
             }}
             placeholder="Paste profile JSON here..."
             rows={6}
-            className="w-full px-3 py-2 text-sm rounded-md bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors font-mono resize-none"
+            className="w-full px-3 py-2 text-sm rounded-md bg-[var(--color-glass)] border border-[var(--color-border)] text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors font-mono resize-none"
           />
           {importError && (
             <p className="text-xs text-red-400">{importError}</p>
@@ -249,7 +249,7 @@ export default function ProfilesPage() {
               data-testid="profile-import-submit"
               onClick={handleImport}
               disabled={!importJson.trim()}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Import
             </button>
@@ -259,7 +259,7 @@ export default function ProfilesPage() {
                 setImportJson('');
                 setImportError(null);
               }}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
             >
               Cancel
             </button>
@@ -271,26 +271,26 @@ export default function ProfilesPage() {
       {exportData !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="glass-panel p-6 max-w-lg w-full mx-4 space-y-4">
-            <h2 className="text-sm font-semibold text-white/80">Profile Export</h2>
+            <h2 className="text-sm font-semibold text-[var(--color-text)]">Profile Export</h2>
             <textarea
               data-testid="profile-export-content"
               readOnly
               value={exportData}
               rows={12}
-              className="w-full px-3 py-2 text-xs rounded-md bg-white/5 border border-white/10 text-white font-mono resize-none"
+              className="w-full px-3 py-2 text-xs rounded-md bg-[var(--color-glass)] border border-[var(--color-border)] text-[var(--color-text)] font-mono resize-none"
             />
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(exportData);
                 }}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] transition-colors"
               >
                 Copy to Clipboard
               </button>
               <button
                 onClick={() => setExportData(null)}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
               >
                 Close
               </button>
@@ -302,7 +302,7 @@ export default function ProfilesPage() {
       {/* Loading state */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <span className="text-sm text-white/50">Loading profiles...</span>
+          <span className="text-sm text-[var(--color-text-muted)]">Loading profiles...</span>
         </div>
       )}
 
@@ -318,7 +318,7 @@ export default function ProfilesPage() {
                 key={profile.id}
                 data-testid={`profile-card-${profile.id}`}
                 className={`glass-panel p-4 space-y-3 transition-all ${
-                  isActive ? 'ring-1 ring-blue-500/50' : ''
+                  isActive ? 'ring-1 ring-[var(--color-primary-muted)]' : ''
                 }`}
               >
                 {/* Header: name + active badge */}
@@ -333,23 +333,23 @@ export default function ProfilesPage() {
                         if (e.key === 'Enter') handleSaveEdit(profile.id);
                         if (e.key === 'Escape') handleCancelEdit();
                       }}
-                      className="flex-1 px-2 py-1 text-sm rounded-md bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                      className="flex-1 px-2 py-1 text-sm rounded-md bg-[var(--color-glass)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
                       autoFocus
                     />
                   ) : (
-                    <h3 className="text-sm font-semibold text-white/90 truncate">
+                    <h3 className="text-sm font-semibold text-[var(--color-text)] truncate">
                       {profile.name}
                     </h3>
                   )}
                   {isActive && (
-                    <span className="shrink-0 px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    <span className="shrink-0 px-2 py-0.5 text-[10px] font-medium rounded-full bg-[var(--color-primary-muted)] text-[var(--color-primary)] border border-[var(--color-primary-muted)]">
                       Active
                     </span>
                   )}
                 </div>
 
                 {/* Details */}
-                <div className="space-y-1 text-xs text-white/50">
+                <div className="space-y-1 text-xs text-[var(--color-text-muted)]">
                   <p>
                     Created:{' '}
                     {new Date(profile.createdAt).toLocaleDateString(undefined, {
@@ -360,7 +360,7 @@ export default function ProfilesPage() {
                   </p>
                   <p>
                     Theme:{' '}
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-white/5 text-white/60 font-mono text-[10px]">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-[var(--color-glass)] text-[var(--color-text-muted)] font-mono text-[10px]">
                       {profile.themeId || 'none'}
                     </span>
                   </p>
@@ -372,7 +372,7 @@ export default function ProfilesPage() {
                     <button
                       data-testid={`profile-activate-${profile.id}`}
                       onClick={() => setActiveProfile(profile.id)}
-                      className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-blue-600/80 text-white hover:bg-blue-600 transition-colors"
+                      className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] transition-colors"
                     >
                       Activate
                     </button>
@@ -384,13 +384,13 @@ export default function ProfilesPage() {
                         data-testid={`profile-edit-save-${profile.id}`}
                         onClick={() => handleSaveEdit(profile.id)}
                         disabled={!editName.trim()}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-green-600/80 text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-green-600/80 text-[var(--color-text)] hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Save
                       </button>
                       <button
                         onClick={handleCancelEdit}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
                       >
                         Cancel
                       </button>
@@ -399,7 +399,7 @@ export default function ProfilesPage() {
                     <button
                       data-testid={`profile-edit-btn-${profile.id}`}
                       onClick={() => handleStartEdit(profile)}
-                      className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                      className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
                     >
                       Edit Name
                     </button>
@@ -408,7 +408,7 @@ export default function ProfilesPage() {
                   <button
                     data-testid={`profile-export-${profile.id}`}
                     onClick={() => handleExport(profile.id)}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--color-glass)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
                   >
                     Export
                   </button>

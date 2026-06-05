@@ -32,8 +32,8 @@ export default function FeatureGate({
   }
 
   return (
-    <div data-testid={`feature-gate-${feature}`} className="space-y-2 opacity-60 pointer-events-none">
-      <div className="flex items-center gap-2">
+    <div data-testid={`feature-gate-${feature}`} className="space-y-2">
+      <div className="flex items-center gap-2 opacity-60 pointer-events-none select-none">
         <span className="text-sm text-[var(--color-text-muted)]">{displayName}</span>
         {showBadge && <FeatureBadge requiredTier={requiredTier(feature)} />}
       </div>

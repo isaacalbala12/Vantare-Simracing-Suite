@@ -116,10 +116,10 @@ export default function SimSwitcher() {
         data-testid="sim-switcher-trigger"
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-2 py-1 text-xs rounded
-                   bg-white/5 hover:bg-white/10 transition-colors min-w-0 max-w-[140px]"
+                   bg-[var(--color-glass)] hover:bg-[var(--color-surface-elevated)] transition-colors min-w-0 max-w-[140px]"
       >
         {sims.length === 0 ? (
-          <span className="text-white/40 truncate">No sim detected</span>
+          <span className="text-[var(--color-text-muted)] truncate">No sim detected</span>
         ) : (
           <>
             <span
@@ -129,7 +129,7 @@ export default function SimSwitcher() {
                   : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]'
               }`}
             />
-            <span className="text-white/80 truncate">
+            <span className="text-[var(--color-text)] truncate">
               {activeSim?.name ?? 'Select sim'}
             </span>
             {isMock && (
@@ -138,7 +138,7 @@ export default function SimSwitcher() {
               </span>
             )}
             <svg
-              className={`w-3 h-3 text-white/40 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 text-[var(--color-text-muted)] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -154,10 +154,10 @@ export default function SimSwitcher() {
         <div
           data-testid="sim-switcher-dropdown"
           className="absolute left-0 top-full mt-1 w-48 z-50
-                     bg-[#2a2a2a] border border-white/10 rounded-md shadow-xl overflow-hidden"
+                     bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-md shadow-xl overflow-hidden"
         >
           {sims.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-white/40">No sim detected</div>
+            <div className="px-3 py-2 text-xs text-[var(--color-text-muted)]">No sim detected</div>
           ) : (
             sims.map((sim) => {
               const isActive = sim.id === activeSimId;
@@ -171,7 +171,7 @@ export default function SimSwitcher() {
                   disabled={locked}
                   className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left transition-colors
                     ${locked ? 'opacity-50 cursor-not-allowed' : ''}
-                    ${isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/80'}`}
+                    ${isActive ? 'bg-[var(--color-glass)] text-[var(--color-text)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-glass)] hover:text-[var(--color-text)]'}`}
                 >
                   <span
                     className={`inline-block w-2 h-2 rounded-full shrink-0 ${
@@ -188,7 +188,7 @@ export default function SimSwitcher() {
                     </span>
                   )}
                   {isActive && (
-                    <svg className="w-3 h-3 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3 h-3 text-[var(--color-primary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   )}

@@ -27,7 +27,14 @@
       "types": "./dist/calculations/*.d.ts",
       "import": "./dist/calculations/*.js"
     },
-    "./replay": {
+        "./lmu-offsets": {
+      "types": "./dist/lmu-offsets.d.ts",
+      "import": "./dist/lmu-offsets.js"
+    },
+    "./lmu-parser": {
+      "types": "./dist/lmu-parser.d.ts",
+      "import": "./dist/lmu-parser.js"
+    },    "./replay": {
       "types": "./dist/replay/index.d.ts",
       "import": "./dist/replay/index.js"
     }
@@ -51,3 +58,4 @@
   },
   "type": "module"
 }
+

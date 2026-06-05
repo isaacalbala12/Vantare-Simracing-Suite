@@ -41,6 +41,9 @@ importers:
       electron-log:
         specifier: ^5.2.0
         version: 5.4.4
+      electron-safe-storage:
+        specifier: ^1.0.6
+        version: 1.0.6
       electron-store:
         specifier: ^10.0.0
         version: 10.1.0
@@ -50,6 +53,9 @@ importers:
       koffi:
         specifier: ^3.0.2
         version: 3.0.2
+      machine-id:
+        specifier: ^1.0.0
+        version: 1.0.0
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -132,6 +138,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.45.0
         version: 2.106.2
+      electron-safe-storage:
+        specifier: ^1.0.6
+        version: 1.0.6
+      machine-id:
+        specifier: ^1.0.0
+        version: 1.0.0
       zod:
         specifier: ^3.23.0
         version: 3.25.76
@@ -2139,6 +2151,10 @@ packages:
   electron-publish@25.1.7:
     resolution: {integrity: sha512-+jbTkR9m39eDBMP4gfbqglDd6UvBC7RLh5Y0MhFSsc6UkGHj9Vj9TWobxevHYMMqmoujL11ZLjfPpMX+Pt6YEg==}
 
+  electron-safe-storage@1.0.6:
+    resolution: {integrity: sha512-bKeqUIIJkQXESRKyBeUfLglreJtJa/oIjd7ITQya9ECCuv4LhWu6ujIwfJypkh1vwFNXVW8fIJfYtsYAGPWfuQ==}
+    engines: {node: '16'}
+
   electron-store@10.1.0:
     resolution: {integrity: sha512-oL8bRy7pVCLpwhmXy05Rh/L6O93+k9t6dqSw0+MckIc3OmCTZm6Mp04Q4f/J0rtu84Ky6ywkR8ivtGOmrq+16w==}
     engines: {node: '>=20'}
@@ -2933,6 +2949,10 @@ packages:
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
+
+  machine-id@1.0.0:
+    resolution: {integrity: sha512-UiNnJwYyYdGjpYcdfnyV+TUx2kWjngdpx5kAt23fNvLtFTOV2DulV5nAYHiQysS7sPbZMvHxRGsg4s8YDqXf/g==}
+    engines: {node: '>= 0.10.0'}
 
   magic-string@0.27.0:
     resolution: {integrity: sha512-8UnnX2PeRAPZuN12svgR9j7M1uWMovg/CEnIwIG0LFkXSJJe4PdfUGiTGl8V9bsBHFUtfVINcSyYxd7q+kx9fA==}
@@ -6095,6 +6115,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  electron-safe-storage@1.0.6: {}
+
   electron-store@10.1.0:
     dependencies:
       conf: 14.0.0
@@ -6979,6 +7001,8 @@ snapshots:
   lru-cache@7.18.3: {}
 
   lz-string@1.5.0: {}
+
+  machine-id@1.0.0: {}
 
   magic-string@0.27.0:
     dependencies:

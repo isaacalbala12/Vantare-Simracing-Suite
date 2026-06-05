@@ -67,7 +67,20 @@ Usuario → Electron App → Supabase Auth → JWT → License Validation → Fe
 
 ### 3.2 Variables de Entorno
 
-Crea un archivo `.env` en la raíz del proyecto Electron:
+El repositorio incluye plantillas **sin valores reales**:
+
+| Archivo | Uso |
+|---|---|
+| `.env.example` (raíz del monorepo) | Referencia para todo el proyecto |
+| `apps/desktop/.env.example` | Referencia específica de la app Electron |
+
+**Configuración local (desarrollo)**
+
+1. Copia la plantilla: `cp .env.example .env` (o en Windows: copia manual del archivo).
+2. Rellena los valores desde **Supabase Dashboard → Project Settings → API**:
+   - `SUPABASE_URL` — Project URL
+   - `SUPABASE_ANON_KEY` — `anon` / public key
+   - `SUPABASE_SERVICE_ROLE_KEY` — `service_role` key (solo main process / edge functions)
 
 ```env
 SUPABASE_URL=https://tu-proyecto.supabase.co
@@ -75,13 +88,52 @@ SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-> **IMPORTANTE**: Nunca expongas `SUPABASE_SERVICE_ROLE_KEY` en el renderer process. Solo debe usarse en el main process de Electron.
+**Reglas de seguridad**
+
+| Variable | ¿Dónde puede usarse? |
+|---|---|
+| `SUPABASE_URL` | Main process, edge functions |
+| `SUPABASE_ANON_KEY` | Main process (el renderer **nunca** llama a Supabase directamente) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Solo** main process de Electron y edge functions |
+
+> **IMPORTANTE**: Nunca expongas `SUPABASE_SERVICE_ROLE_KEY` en el renderer process ni la incluyas en el bundle de Vite. Los archivos `.env` y `.env.local` están en `.gitignore` — no los subas al repositorio.
+
+**Registro de usuarios (Sprint 6)**
+
+El registro usa `supabase.auth.signUp()` desde el main process. Al crear un usuario, un **trigger de PostgreSQL** inserta automáticamente una licencia `free` (no se usa edge function `register-user`).
 
 ### 3.3 Instalación de Dependencias
 
+Dependencias ya declaradas en el monorepo (`pnpm`):
+
 ```bash
-npm install @supabase/supabase-js electron-safe-storage
+# Desde la raíz del repositorio
+pnpm install
 ```
+
+Paquetes relevantes:
+
+| Paquete | Ubicación | Propósito |
+|---|---|---|
+| `@supabase/supabase-js` | `packages/auth` | Cliente Supabase |
+| `electron-safe-storage` | `packages/auth`, `apps/desktop` | Cifrado de JWT en main process |
+| `machine-id` | `packages/auth`, `apps/desktop` | Huella digital del PC (HWID) |
+
+### 3.3.1 Supabase CLI (opcional, Wave 2+)
+
+Para aplicar migraciones y desplegar edge functions localmente:
+
+```bash
+# Windows (scoop) o ver https://supabase.com/docs/guides/cli
+scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+scoop install supabase
+
+# Vincular proyecto remoto
+supabase login
+supabase link --project-ref <tu-project-ref>
+```
+
+Las migraciones SQL viven en `supabase/migrations/` (Sprint 6, tarea 7).
 
 ### 3.4 Configuración de CORS
 

@@ -184,7 +184,7 @@ export function ThemeProvider({ children, initialThemeId }: ThemeProviderProps) 
             },
             glass: { ...previous.glass, ...override.glass },
             z: { ...previous.z, ...override.z },
-          },
+          } as Partial<ThemeTokens>,
         };
       });
     },

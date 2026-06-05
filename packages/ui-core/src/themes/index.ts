@@ -63,3 +63,10 @@ export {
 export { ThemeProvider, ThemeContext, type ThemeContextValue } from './ThemeProvider';
 export { useTheme } from './useTheme';
 export { useOverlayTheme } from './useOverlayTheme';
+
+export {
+  THEME_EXPORT_VERSION,
+  exportTheme,
+  importTheme,
+  type ThemeExportPayload,
+} from './export-import';

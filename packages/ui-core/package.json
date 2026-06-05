@@ -27,6 +27,10 @@
     "./themes": {
       "types": "./dist/ui-core/src/themes/index.d.ts",
       "import": "./dist/ui-core/src/themes/index.js"
+    },
+    "./themes/export-import": {
+      "types": "./dist/ui-core/src/themes/export-import.d.ts",
+      "import": "./dist/ui-core/src/themes/export-import.js"
     }
   },
   "scripts": {

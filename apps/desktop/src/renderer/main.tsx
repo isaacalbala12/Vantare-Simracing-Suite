@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ThemeProvider } from '@vantare/ui-core/themes';
 import App from './App';
 import { TelemetryBridge } from './TelemetryBridge';
 import OverlayShell from './overlays/OverlayShell';
@@ -13,7 +14,13 @@ function hasOverlayParam(): boolean {
 
 const root = document.getElementById('root');
 if (root) {
-  const content = hasOverlayParam() ? <OverlayShell /> : <App />;
+  const content = hasOverlayParam() ? (
+    <ThemeProvider>
+      <OverlayShell />
+    </ThemeProvider>
+  ) : (
+    <App />
+  );
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <TelemetryBridge />

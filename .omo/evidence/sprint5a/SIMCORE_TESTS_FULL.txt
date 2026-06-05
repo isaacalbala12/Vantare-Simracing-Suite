@@ -1,0 +1,216 @@
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/isaac/Desktop/Vantare-Overlays/packages/sim-core[39m
+
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mshould have configs for all 6 scenarios
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpractice[2m > [22mshould have speed range 100-250 km/h
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpractice[2m > [22mshould have fuel near full
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpractice[2m > [22mshould have null position (N/A)
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpractice[2m > [22mshould have traffic
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpractice[2m > [22mshould have green flags
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mqualifying[2m > [22mshould have speed range 150-320 km/h
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mqualifying[2m > [22mshould have low fuel (qualifying run)
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mqualifying[2m > [22mshould have position range 1-5
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mqualifying[2m > [22mshould have no traffic
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mrace[2m > [22mshould have speed range 120-300 km/h
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mrace[2m > [22mshould have decreasing fuel
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mrace[2m > [22mshould have position range 1-20
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mrace[2m > [22mshould have traffic
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mrace[2m > [22mshould have max vehicle count (25)
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpit-stop[2m > [22mshould have low speed range 0-60 km/h
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpit-stop[2m > [22mshould have increasing fuel (being refilled)
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpit-stop[2m > [22mshould be in pit
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mpit-stop[2m > [22mshould not be on track
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mcrash[2m > [22mshould have 0 speed
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mcrash[2m > [22mshould have yellow and debris flags
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mcrash[2m > [22mshould not be on track
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mformation-lap[2m > [22mshould have speed range 60-120 km/h
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mformation-lap[2m > [22mshould have full fuel
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mformation-lap[2m > [22mshould have no passing (no traffic)
+ [32mΓ£ô[39m src/mock/__tests__/scenarios.test.ts[2m > [22mScenarioConfigs[2m > [22mformation-lap[2m > [22mshould have yellow flags
+[90mstdout[2m | __tests__/debug-normalizer.test.ts[2m > [22m[2mLMU normalizer debug[2m > [22m[2mcheck driverName through normalizer
+[22m[39mdriverName: ""
+carNumber: ""
+teamName: ""
+
+ [32mΓ£ô[39m __tests__/debug-normalizer.test.ts[2m > [22mLMU normalizer debug[2m > [22mcheck driverName through normalizer
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mshould have correct name and simType
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mshould return available sims
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould return correct sim type
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have player data
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have engine data
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have tyre data
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have vehicles array
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have input data
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mscenarios[2m > [22mpractice: speed 100-250 km/h
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mscenarios[2m > [22mqualifying: speed 150-320
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mscenarios[2m > [22mrace: speed 120-300
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mscenarios[2m > [22mcrash: speed 0
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mstate advancement[2m > [22mshould advance timestamp
+ [32mΓ£ô[39m src/mock/__tests__/ac-mock.test.ts[2m > [22mACMock[2m > [22mstate advancement[2m > [22mshould decrease fuel during race
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mshould have correct name and simType
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mshould return available sims
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould return valid Telemetry structure
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have player data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have engine data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have tyre data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have lap data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have session data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have vehicles array
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have vehicle data with required fields
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have track data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have input data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mgetData() - default (practice)[2m > [22mshould have weather data
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mscenario ranges[2m > [22mpractice: speed 100-250 km/h
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mscenario ranges[2m > [22mqualifying: speed 150-320 km/h, position 1-5
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mscenario ranges[2m > [22mrace: speed 120-300 km/h, position 1-20
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mscenario ranges[2m > [22mpit-stop: speed 0-60, in pit
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mscenario ranges[2m > [22mcrash: speed 0, yellow flag
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mscenario ranges[2m > [22mformation-lap: speed 60-120, green flag
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mstate advancement[2m > [22mshould advance state on multiple getData() calls
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mstate advancement[2m > [22mshould decrease fuel during race
+ [32mΓ£ô[39m src/mock/__tests__/iracing-mock.test.ts[2m > [22mIRacingMock[2m > [22mstate advancement[2m > [22mshould increase vehicles position over lap count
+ [32mΓ£ô[39m src/__tests__/smoke.test.ts[2m > [22msmoke[2m > [22mtest infrastructure works
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mshould have correct name and simType
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mshould return available sims
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould return correct sim type
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have player speed within LMU ranges
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have engine data
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have tyre data for all 4 corners
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have vehicles array
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mgetData() - valid Telemetry[2m > [22mshould have track and weather data
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mscenarios[2m > [22mpractice: speed 100-250 km/h
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mscenarios[2m > [22mqualifying: speed 150-320
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mscenarios[2m > [22mrace: speed 120-300
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mscenarios[2m > [22mcrash: speed 0
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mscenarios[2m > [22mformation-lap: speed 60-120
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mscenarios[2m > [22mpit-stop: in pit
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mstate advancement[2m > [22mshould decrease fuel during race
+ [32mΓ£ô[39m src/mock/__tests__/lmu-mock.test.ts[2m > [22mLMUMock[2m > [22mstate advancement[2m > [22mshould increase fuel during pit-stop
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould create iRacing provider
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould create LMU provider
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould create AC provider
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould create with specific scenario
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould return available sims
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould create provider that supports setScenario
+ [32mΓ£ô[39m src/mock/__tests__/mock-factory.test.ts[2m > [22mMockSimFactory[2m > [22mshould generate unique data on each call
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould normalize valid iRacing-like data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould normalize valid LMU-like data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould normalize valid AC-like data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould handle null/undefined/empty data with defaults
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould handle incomplete data gracefully
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould clamp invalid values to safe defaults
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould populate tyre data with defaults when missing
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould preserve iRacing tyre data when provided
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould set correct timestamp
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould populate session data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould populate lap data with defaults
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould map LMU lap data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalize[2m > [22mshould map AC session data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalizeVehicles[2m > [22mshould normalize an array of vehicle data
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalizeVehicles[2m > [22mshould return empty array for empty/null/undefined input
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalizeVehicles[2m > [22mshould fill defaults for missing vehicle fields
+ [32mΓ£ô[39m src/__tests__/normalizer.test.ts[2m > [22mSimNormalizer[2m > [22mnormalizeVehicles[2m > [22mshould handle bad vehicle data without crashing
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapSeconds[2m > [22mcalculates gap in seconds from distance
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapSeconds[2m > [22mreturns 0 when at same distance
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapSeconds[2m > [22mhandles player ahead (negative gap)
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapSeconds[2m > [22mhandles zero speed
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapSeconds[2m > [22mhandles NaN distances
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapLaps[2m > [22mcalculates lap gap when behind
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapLaps[2m > [22mreturns 0 when on same lap
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapLaps[2m > [22mreturns negative when ahead
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapLaps[2m > [22mhandles zero laps
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateGapLaps[2m > [22mhandles negative values
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateClassGap[2m > [22mreturns 0 for class leader
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateClassGap[2m > [22mcalculates proportional gap for mid-pack
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateClassGap[2m > [22mreturns gap for last position
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateClassGap[2m > [22mhandles single car class
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mcalculateClassGap[2m > [22mhandles zero class leader gap
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mformatGap[2m > [22mformats positive seconds gap
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mformatGap[2m > [22mformats negative seconds gap
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mformatGap[2m > [22mformats zero gap
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mformatGap[2m > [22mformats large gap as laps
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mformatGap[2m > [22mhandles threshold boundary
+ [32mΓ£ô[39m src/calculations/__tests__/gap.test.ts[2m > [22mformatGap[2m > [22mformats negative large gap as laps
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToBest[2m > [22mreturns positive delta when slower than best
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToBest[2m > [22mreturns negative delta when faster than best
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToBest[2m > [22mreturns 0 when equal to best
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToBest[2m > [22mhandles extreme values
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToBest[2m > [22mhandles NaN lapTime
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToLeader[2m > [22mcalculates delta when on same lap
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToLeader[2m > [22maccounts for laps down
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToLeader[2m > [22mreturns negative when faster than leader on same lap
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToLeader[2m > [22mhandles zero leader lap time
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToLeader[2m > [22mhandles NaN inputs
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToCar[2m > [22mreturns positive when slower than other car
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToCar[2m > [22mreturns negative when faster than other car
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToCar[2m > [22mreturns 0 when equal
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaToCar[2m > [22mhandles NaN
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaSector[2m > [22mreturns positive delta when slower than best sector
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaSector[2m > [22mreturns negative delta when faster than best
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaSector[2m > [22mreturns 0 when equal to best
+ [32mΓ£ô[39m src/calculations/__tests__/delta.test.ts[2m > [22mcalculateDeltaSector[2m > [22mhandles zero values
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mreturns sector 1 at start of lap
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mreturns sector 2 at one-third distance
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mreturns sector 3 at two-thirds distance
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mclamps to last sector at full lap distance
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mhandles zero track length
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mhandles negative lap distance
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mgetCurrentSector[2m > [22mhandles 2 sector configuration
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateSectorDelta[2m > [22mreturns positive when slower than best
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateSectorDelta[2m > [22mreturns negative when faster than best
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateSectorDelta[2m > [22mreturns 0 when equal
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateSectorDelta[2m > [22mhandles zero values
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateBestSectors[2m > [22mfinds best sectors across multiple laps
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateBestSectors[2m > [22mhandles single lap
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateBestSectors[2m > [22mhandles empty array
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateBestSectors[2m > [22mhandles zero sector times
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateEstimatedLaptime[2m > [22mreturns last lap time on first sector
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateEstimatedLaptime[2m > [22mestimates based on completed sectors
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateEstimatedLaptime[2m > [22mestimates with only sector 1 completed
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateEstimatedLaptime[2m > [22mreturns last lap time with no completed sectors but currentSector > 1
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateEstimatedLaptime[2m > [22mhandles zero last lap time
+ [32mΓ£ô[39m src/calculations/__tests__/sector.test.ts[2m > [22mcalculateEstimatedLaptime[2m > [22mhandles zero current sector
+[90mstdout[2m | __tests__/debug-normalizer2.test.ts[2m > [22m[2mLMU normalizer debug[2m > [22m[2mtrace driverName through normalize
+[22m[39mresult.player.driverName: ""
+result.player.carNumber: "42"
+result.player.teamName: ""
+result.inputs.throttle: [33m1[39m
+result.inputs.brake: [33m0[39m
+
+ [32mΓ£ô[39m __tests__/debug-normalizer2.test.ts[2m > [22mLMU normalizer debug[2m > [22mtrace driverName through normalize
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould round-trip telemetry frames (write ΓåÆ read ΓåÆ deep equal)
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould handle truncated last line gracefully (no crash, 3 frames)
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould return empty array for file with only metadata header
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould skip empty lines in the file
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould return empty array for completely empty file (0 bytes)
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould return empty array for file with only blank lines
+ [32mΓ£ô[39m src/replay/__tests__/replay-reader.test.ts[2m > [22mReplayReader[2m > [22mopen[2m > [22mshould skip lines with only whitespace
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelPerLap[2m > [22mcalculates average fuel consumption per lap
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelPerLap[2m > [22mreturns 0 when no laps completed
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelPerLap[2m > [22mhandles fractional consumption
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelPerLap[2m > [22mhandles negative fuel used as zero
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelPerLap[2m > [22mreturns NaN for NaN inputs
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateLapsRemaining[2m > [22mcalculates laps with current fuel
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateLapsRemaining[2m > [22mreturns 0 when fuel per lap is 0
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateLapsRemaining[2m > [22mhandles insufficient fuel
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateLapsRemaining[2m > [22mhandles zero fuel
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateLapsRemaining[2m > [22mhandles negative fuel level as zero
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelToEnd[2m > [22mcalculates fuel needed to finish
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelToEnd[2m > [22mreturns 0 when enough fuel
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelToEnd[2m > [22mhandles zero laps remaining
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateFuelToEnd[2m > [22mhandles zero fuel per lap
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateRecommendedFuelSave[2m > [22mreturns negative when fuel save needed
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateRecommendedFuelSave[2m > [22mreturns positive when fuel surplus
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateRecommendedFuelSave[2m > [22mreturns 0 when fuel is exactly enough
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateRecommendedFuelSave[2m > [22mhandles zero laps remaining
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateRecommendedFuelSave[2m > [22mhandles zero fuel level
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateStintLength[2m > [22mcalculates max stint laps
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateStintLength[2m > [22mreturns 0 when fuel per lap is 0
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateStintLength[2m > [22mhandles zero fuel capacity
+ [32mΓ£ô[39m src/calculations/__tests__/fuel.test.ts[2m > [22mcalculateStintLength[2m > [22mhandles fractional result
+
+[2m Test Files [22m [1m[32m14 passed[39m[22m[90m (14)[39m
+[2m      Tests [22m [1m[32m195 passed[39m[22m[90m (195)[39m
+[2m   Start at [22m 11:23:33
+[2m   Duration [22m 2.58s[2m (transform 7.88s, setup 0ms, collect 8.47s, tests 326ms, environment 9ms, prepare 5.61s)[22m
+

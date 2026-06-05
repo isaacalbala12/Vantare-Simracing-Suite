@@ -123,6 +123,58 @@
       "status": "completed",
       "ended_at": "2026-06-05T09:14:51.622Z",
       "elapsed_ms": 21548
+    },
+    "final-wave:f4": {
+      "task_key": "final-wave:f4",
+      "task_label": "F4",
+      "task_title": "Scope Fidelity Check — Verify every delivered file matches the plan spec, no scope creep",
+      "session_id": "opencode:ses_168ef2296ffe8U6GBJMfzK9I7K",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-06-05T09:24:57.047Z",
+      "started_at": "2026-06-05T09:18:51.584Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:24:57.047Z",
+      "elapsed_ms": 365463
+    },
+    "final-wave:f2": {
+      "task_key": "final-wave:f2",
+      "task_label": "F2",
+      "task_title": "Code Quality Review — Run automated checks and review all changed Sprint 5a files",
+      "session_id": "opencode:ses_168ef253affe9sG8a0oHlH66pS",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-05T09:24:57.029Z",
+      "started_at": "2026-06-05T09:23:05.344Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:24:57.029Z",
+      "elapsed_ms": 111685
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "Plan Compliance Audit — Verify Sprint 5a implementation against the plan at `.omo/plans/sprint5a-multi-sim.md`",
+      "session_id": "opencode:ses_168ef2929ffec6XtEh7G59Yl5u",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-06-05T09:24:57.020Z",
+      "started_at": "2026-06-05T09:23:56.072Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:24:57.020Z",
+      "elapsed_ms": 60948
+    },
+    "final-wave:f3": {
+      "task_key": "final-wave:f3",
+      "task_label": "F3",
+      "task_title": "Real Manual QA — Execute QA scenarios for Sprint 5a components",
+      "session_id": "opencode:ses_168ef229dffe0FDRkJcGVsoiOu",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-05T09:24:57.038Z",
+      "started_at": "2026-06-05T09:24:44.259Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T09:24:57.038Z",
+      "elapsed_ms": 12779
     }
   },
   "schema_version": 2,
@@ -254,14 +306,66 @@
           "status": "completed",
           "ended_at": "2026-06-05T09:14:51.622Z",
           "elapsed_ms": 21548
+        },
+        "final-wave:f4": {
+          "task_key": "final-wave:f4",
+          "task_label": "F4",
+          "task_title": "Scope Fidelity Check — Verify every delivered file matches the plan spec, no scope creep",
+          "session_id": "opencode:ses_168ef2296ffe8U6GBJMfzK9I7K",
+          "agent": "Sisyphus-Junior",
+          "category": "deep",
+          "updated_at": "2026-06-05T09:24:57.047Z",
+          "started_at": "2026-06-05T09:18:51.584Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:24:57.047Z",
+          "elapsed_ms": 365463
+        },
+        "final-wave:f2": {
+          "task_key": "final-wave:f2",
+          "task_label": "F2",
+          "task_title": "Code Quality Review — Run automated checks and review all changed Sprint 5a files",
+          "session_id": "opencode:ses_168ef253affe9sG8a0oHlH66pS",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-05T09:24:57.029Z",
+          "started_at": "2026-06-05T09:23:05.344Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:24:57.029Z",
+          "elapsed_ms": 111685
+        },
+        "final-wave:f1": {
+          "task_key": "final-wave:f1",
+          "task_label": "F1",
+          "task_title": "Plan Compliance Audit — Verify Sprint 5a implementation against the plan at `.omo/plans/sprint5a-multi-sim.md`",
+          "session_id": "opencode:ses_168ef2929ffec6XtEh7G59Yl5u",
+          "agent": "Sisyphus-Junior",
+          "category": "deep",
+          "updated_at": "2026-06-05T09:24:57.020Z",
+          "started_at": "2026-06-05T09:23:56.072Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:24:57.020Z",
+          "elapsed_ms": 60948
+        },
+        "final-wave:f3": {
+          "task_key": "final-wave:f3",
+          "task_label": "F3",
+          "task_title": "Real Manual QA — Execute QA scenarios for Sprint 5a components",
+          "session_id": "opencode:ses_168ef229dffe0FDRkJcGVsoiOu",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-05T09:24:57.038Z",
+          "started_at": "2026-06-05T09:24:44.259Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T09:24:57.038Z",
+          "elapsed_ms": 12779
         }
       },
       "status": "active",
       "session_origins": {},
-      "updated_at": "2026-06-05T09:14:51.669Z"
+      "updated_at": "2026-06-05T09:24:57.047Z"
     }
   },
   "agent": "atlas",
-  "updated_at": "2026-06-05T09:14:51.669Z",
+  "updated_at": "2026-06-05T09:24:57.047Z",
   "status": "active"
 }

@@ -1,0 +1,588 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/isaac/Desktop/Vantare-Overlays/apps/desktop[39m
+
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hub-stores.test.ts[2m > [22msettings-store[2m > [22mloadSettings populates settings from mocked IPC
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mbinds the HTTP server to 127.0.0.1 (not 0.0.0.0)
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mwires SimManager telemetry into the broadcast callback used by index.ts
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mdelivers the hello frame to a fresh SSE client using SimManager.getTelemetry()
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mSimManager tick ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE event received within 2s
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hub-stores.test.ts[2m > [22mprofile-store[2m > [22mload profiles
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hub-stores.test.ts[2m > [22mprofile-store[2m > [22mcreate and delete profile
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mbroadcasts a fresh tick payload to ALL connected SSE clients
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hub-stores.test.ts[2m > [22moverlay-config-store[2m > [22mload overlay config
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hub-stores.test.ts[2m > [22moverlay-config-store[2m > [22msave overlay config
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hub-stores.test.ts[2m > [22moverlay-config-store[2m > [22mdiscard changes reverts draft
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mpayload from broadcast contains all expected Telemetry fields
+ [32mΓ£ô[39m src/main/__tests__/pipeline.test.ts[2m > [22mTelemetry pipeline (SimManager ΓåÆ HttpServer.broadcastTelemetry ΓåÆ SSE)[2m > [22mstops broadcasting after server.stop() ΓÇö no events arrive on a late client
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22mregisters overlays:get-windows handler
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:get-windows returns overlayManager.getAll() when ref is set
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:get-windows returns empty array when ref is null
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22mregisters overlays:show handler
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:show calls overlayManager.show with id
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:show does nothing when ref is null
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22mregisters overlays:hide handler
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:hide calls overlayManager.hide with id
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:hide does nothing when ref is null
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22mregisters overlays:set-position handler
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:set-position calls overlayManager.setPosition with id, x, y
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:set-position does nothing when ref is null
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22mregisters overlays:set-size handler
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:set-size calls overlayManager.setSize with id, w, h
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22moverlay IPC handlers[2m > [22moverlays:set-size does nothing when ref is null
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22mprofiles IPC handlers[2m > [22mregisters profiles:save handler
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22mprofiles IPC handlers[2m > [22mprofiles:save stores a valid profile
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22mprofiles IPC handlers[2m > [22mprofiles:save updates existing profile by id
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22mprofiles IPC handlers[2m > [22mprofiles:save rejects profile with missing name
+ [32mΓ£ô[39m src/main/ipc/__tests__/handlers.test.ts[2m > [22mprofiles IPC handlers[2m > [22mprofiles:save rejects profile with invalid overlay config
+ [32mΓ£ô[39m src/main/sim/__tests__/ac-integration.test.ts[2m > [22mACAdapter ΓÇô parseACPacket integration[2m > [22mparses a valid 328-byte RT_CAR_INFO packet returns correct field values
+ [32mΓ£ô[39m src/main/sim/__tests__/ac-integration.test.ts[2m > [22mACAdapter ΓÇô parseACPacket integration[2m > [22mhandles a car that is in the pit lane
+ [32mΓ£ô[39m src/main/sim/__tests__/ac-integration.test.ts[2m > [22mACAdapter ΓÇô parseACPacket integration[2m > [22mparses full-throttle, zero-brake scenario
+ [32mΓ£ô[39m src/main/sim/__tests__/ac-integration.test.ts[2m > [22mACAdapter ΓÇô parseACPacket integration[2m > [22mreturns null for too-short buffer
+ [32mΓ£ô[39m src/main/sim/__tests__/ac-integration.test.ts[2m > [22mACAdapter ΓÇô parseACPacket integration[2m > [22mreturns null for a buffer that is exactly 79 bytes
+ [32mΓ£ô[39m src/main/sim/__tests__/ac-integration.test.ts[2m > [22mACAdapter ΓÇô parseACPacket integration[2m > [22mreads fuel when packet is large enough (ΓëÑ 88 bytes)
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mrenders empty state when telemetry is null
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mrenders empty state when telemetry has 0 vehicles
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mrenders exactly 7 rows for mid-field player
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mplayer row has data-testid="player-highlight"
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows 3 cars ahead of player and 3 behind
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows correct ordering: ahead cars first, then player, then behind
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mhas player row centered in the 4th position (index 3)
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows 0 ahead + 6 behind when player is at P1
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows 6 ahead + 0 behind when player is at P20
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows gap values for cars around player
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mapplies red background tint for cars ahead of player
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mapplies green background tint for cars behind player
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mdisplays driver name for each row
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mdisplays car number for each row
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mdisplays class info for each row when multi-class
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows what exists in 3/3 pattern when only 10 cars total
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mhas CSS transition for smooth gap interpolation
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mdoes not crash when only the player is in the session
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mhandles a tiny field (3 cars, player mid) without crashing
+ [32mΓ£ô[39m src/renderer/bundles/default/relative/__tests__/Relative.test.tsx[2m > [22mRelative[2m > [22mshows DNF indicator "OUT" for retired vehicles in the window
+ [32mΓ£ô[39m src/renderer/hub/__tests__/SimSwitcher.static.test.tsx[2m > [22mSimSwitcher ΓÇö static render QA[2m > [22mrenders trigger button with iRacing label when sims loaded
+ [32mΓ£ô[39m src/renderer/hub/__tests__/SimSwitcher.static.test.tsx[2m > [22mSimSwitcher ΓÇö static render QA[2m > [22mopens dropdown on trigger click showing sim options
+ [32mΓ£ô[39m src/main/sim/__tests__/iracing-integration.test.ts[2m > [22mIRacingAdapter ΓÇô parseSharedMemory integration[2m > [22mparses a valid synthetic buffer and returns expected field names & values
+ [32mΓ£ô[39m src/main/sim/__tests__/iracing-integration.test.ts[2m > [22mIRacingAdapter ΓÇô parseSharedMemory integration[2m > [22mreturns null for an empty/invalid buffer (< 112 bytes)
+ [32mΓ£ô[39m src/main/sim/__tests__/iracing-integration.test.ts[2m > [22mIRacingAdapter ΓÇô parseSharedMemory integration[2m > [22mreturns null when the version field (ver) does not match IRSDK_VER
+ [32mΓ£ô[39m src/main/sim/__tests__/iracing-integration.test.ts[2m > [22mIRacingAdapter ΓÇô parseSharedMemory integration[2m > [22mreturns null when status bit 0 (connected) is not set
+ [32mΓ£ô[39m src/main/sim/__tests__/iracing-integration.test.ts[2m > [22mIRacingAdapter ΓÇô parseSharedMemory integration[2m > [22mhandles PlayerTrackSurface = 1 (pit road) correctly
+ [32mΓ£ô[39m src/main/sim/__tests__/iracing-integration.test.ts[2m > [22mIRacingAdapter ΓÇô parseSharedMemory integration[2m > [22mfills defaults for missing fields
+ [32mΓ£ô[39m src/renderer/hub/__tests__/SimSwitcher.static.test.tsx[2m > [22mSimSwitcher ΓÇö static render QA[2m > [22mcalls setActiveSim on option click
+ [32mΓ£ô[39m src/renderer/hub/__tests__/SimSwitcher.static.test.tsx[2m > [22mSimSwitcher ΓÇö static render QA[2m > [22mshows status indicator dot in trigger
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22mhealth endpoint[2m > [22mGET /healthz returns 200 with {"status":"ok"}
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22mSSE /events[2m > [22mresponds with text/event-stream and proper cache headers
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22mSSE /events[2m > [22msends a hello event with current telemetry data on connect (within 2s)
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22moverlay pages[2m > [22mGET /overlays/:id returns HTML with inline SSE script (no bundle.js)
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22moverlay pages[2m > [22msets overlay ID in URL search params via replaceState
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22munknown routes[2m > [22mGET /unknown returns 404
+ [32mΓ£ô[39m src/main/server/__tests__/http-server.test.ts[2m > [22mHttpServer[2m > [22munknown routes[2m > [22mGET / returns 404
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > renders Standings component for ?overlay=standings
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mrenders NoData state when data is null
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mrenders NoData state when isConnected is false (null telemetry)
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mrenders all sections with provided telemetry data
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mrenders in compact mode
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mhandles zero engine values without crashing
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mformats lap time correctly via formatTime helper
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mhandles connected but zero/empty values without crashing
+ [32mΓ£ô[39m src/renderer/hub/__tests__/TelemetryInspector.static.test.tsx[2m > [22mTelemetryInspector ΓÇö static render QA[2m > [22mhandles reverse gear display
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > renders Relative component for ?overlay=relative
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > renders Delta Bar component for ?overlay=delta
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > renders Stream Alerts component for ?overlay=stream-alerts
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > returns null when no overlay param is present
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > returns null for unknown overlay id
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > applies overlay-mode class to body when overlay param is present
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/renderer/bundles/__tests__/OverlayShell.test.tsx > OverlayShell > removes overlay-mode class from body when no overlay param
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mrenders Standings component for ?overlay=standings
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mrenders Relative component for ?overlay=relative
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mrenders Delta Bar component for ?overlay=delta
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mrenders Stream Alerts component for ?overlay=stream-alerts
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mreturns null when no overlay param is present
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mreturns null for unknown overlay id
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mapplies overlay-mode class to body when overlay param is present
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/OverlayShell.test.tsx[2m > [22mOverlayShell[2m > [22mremoves overlay-mode class from body when no overlay param
+ [32mΓ£ô[39m src/renderer/shared/hooks/__tests__/useAlertDetector.test.tsx[2m > [22museAlertDetector[2m > [22mdetects overtake when player position decreases (player moves up)
+ [32mΓ£ô[39m src/renderer/shared/hooks/__tests__/useAlertDetector.test.tsx[2m > [22museAlertDetector[2m > [22mdetects pole when session is Qualifying and player reaches P1
+ [32mΓ£ô[39m src/renderer/shared/hooks/__tests__/useAlertDetector.test.tsx[2m > [22museAlertDetector[2m > [22mdetects fastest lap when lap.isSessionBest becomes true
+ [32mΓ£ô[39m src/renderer/shared/hooks/__tests__/useAlertDetector.test.tsx[2m > [22museAlertDetector[2m > [22mcaps queue at 5 alerts (drops oldest on 6th)
+ [32mΓ£ô[39m src/renderer/shared/hooks/__tests__/useAlertDetector.test.tsx[2m > [22museAlertDetector[2m > [22mdrains queue on telemetry disconnect via clearQueue
+ [31m├ù[39m src/renderer/hub/__tests__/profile-roundtrip.test.tsx[2m > [22mProfile round-trip[2m > [22mempty state ΓåÆ create profile ΓåÆ overlays ΓåÆ change settings ΓåÆ profiles ΓåÆ export ΓåÆ second profile ΓåÆ activate ΓåÆ persist
+[31m   ΓåÆ [39m
+ [31m├ù[39m src/renderer/hub/__tests__/profile-roundtrip.test.tsx[2m > [22mProfile round-trip[2m > [22mpersists overlay config (rowCount) through the profile round-trip
+[31m   ΓåÆ [39m
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders empty state when telemetry is null
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders empty state when telemetry has 0 vehicles
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders correct number of rows with midRaceState (20 cars)
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mplayer row has data-testid="player-highlight"
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22msorts all rows by position ascending
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mP1 shows "LEADER" in gap column when telemetry has leader
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders all rows when player is at back
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders all column headers
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mshows class column when multiple classes are present
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders time values in Best Lap and Last Lap columns
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mshows car number column values
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mtruncates long driver names with ellipsis
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mshows all columns for each row
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings[2m > [22mrenders empty state message text
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings auto-scroll[2m > [22mcalls scrollIntoView on initial render when player position is 25
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings auto-scroll[2m > [22mcalls scrollIntoView when player position changes from 3 to 25
+ [32mΓ£ô[39m src/renderer/bundles/default/standings/__tests__/Standings.test.tsx[2m > [22mStandings auto-scroll[2m > [22mdoes NOT call scrollIntoView when player position changes from 3 to 5
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas valid Theme structure
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas at least 30 tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mcontains all required tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas non-empty token values
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas valid color hex values for color tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas valid CSS size values for spacing tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas valid CSS duration values for animation tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mdark[2m > [22mhas valid version format
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas valid Theme structure
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas at least 30 tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mcontains all required tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas non-empty token values
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas valid color hex values for color tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas valid CSS size values for spacing tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas valid CSS duration values for animation tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mblood[2m > [22mhas valid version format
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas valid Theme structure
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas at least 30 tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mcontains all required tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas non-empty token values
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas valid color hex values for color tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas valid CSS size values for spacing tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas valid CSS duration values for animation tokens
+ [32mΓ£ô[39m src/renderer/themes/__tests__/themes.test.ts[2m > [22mBuilt-in Themes[2m > [22mmidnight[2m > [22mhas valid version format
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mOverlayContainer[2m > [22mrenders with children
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mOverlayContainer[2m > [22maccepts className and style props
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mLoadingSpinner[2m > [22mrenders with default medium size
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mLoadingSpinner[2m > [22mrenders with all sizes
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mLoadingSpinner[2m > [22mrenders an SVG with role="status"
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mLoadingSpinner[2m > [22muses provided aria-label
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mErrorMessage[2m > [22mdisplays the error message
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mErrorMessage[2m > [22mrenders with retry button handler when onRetry is provided
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mErrorMessage[2m > [22mrenders with error code when provided
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mErrorMessage[2m > [22mhas role="alert" for accessibility
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mStatusIndicator[2m > [22mrenders with connected status
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mStatusIndicator[2m > [22mrenders with disconnected status
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mStatusIndicator[2m > [22mrenders with error status
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mStatusIndicator[2m > [22mrenders with label text
+ [32mΓ£ô[39m src/renderer/shared/__tests__/components.test.tsx[2m > [22mStatusIndicator[2m > [22msets aria-label for accessibility
+ [32mΓ£ô[39m src/renderer/__fixtures__/__tests__/mock-telemetry-seeder.test.ts[2m > [22mmock-telemetry-seeder[2m > [22memptyState returns Telemetry with no vehicles and no active player
+ [32mΓ£ô[39m src/renderer/__fixtures__/__tests__/mock-telemetry-seeder.test.ts[2m > [22mmock-telemetry-seeder[2m > [22mmidRaceState returns 20 vehicles with player around mid-field and at least 2 classes
+ [32mΓ£ô[39m src/renderer/__fixtures__/__tests__/mock-telemetry-seeder.test.ts[2m > [22mmock-telemetry-seeder[2m > [22mendRaceState returns spread gaps with 20 vehicles and player at position 10
+ [32mΓ£ô[39m src/renderer/__fixtures__/__tests__/mock-telemetry-seeder.test.ts[2m > [22mmock-telemetry-seeder[2m > [22mplayerAtFront sets player at position 1 with gap to P2 around 2.5s
+ [32mΓ£ô[39m src/renderer/__fixtures__/__tests__/mock-telemetry-seeder.test.ts[2m > [22mmock-telemetry-seeder[2m > [22mplayerAtBack sets player at last position with gap from P19 around 5s
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mdefines all 7 keyframes
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mdefines prefers-reduced-motion fallback
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22muses CSS variables (not hardcoded colors) in hf-glow
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mdefines CSS custom properties for theme tokens
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-fade-in className to element
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-slide-up className to element
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-pulse className to element
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-glow className to element
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-scale-in className to element
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-fade-out className to element
+ [32mΓ£ô[39m src/renderer/bundles/default/__tests__/animations.test.tsx[2m > [22mCSS Animation System (F-024)[2m > [22mapplies hf-slide-down className to element
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hooks.test.tsx[2m > [22museConnectionStatus[2m > [22mreturns initial disconnected state with no sim and no error
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hooks.test.tsx[2m > [22museConnectionStatus[2m > [22mis a function that takes no arguments
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hooks.test.tsx[2m > [22museOverlayConfig[2m > [22mis a function that takes an overlayId argument
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hooks.test.tsx[2m > [22museOverlayConfig[2m > [22mreturns null initially (sync render before async effect)
+ [32mΓ£ô[39m src/renderer/shared/__tests__/hooks.test.tsx[2m > [22museOverlayConfig[2m > [22mreturns null for invalid overlay IDs
+ [32mΓ£ô[39m src/renderer/bundles/default/delta/__tests__/DeltaBar.test.tsx[2m > [22mDeltaBar[2m > [22mrenders positive delta with red direction when lastLaptime > bestLaptime
+ [32mΓ£ô[39m src/renderer/bundles/default/delta/__tests__/DeltaBar.test.tsx[2m > [22mDeltaBar[2m > [22mrenders negative delta with green direction when lastLaptime < bestLaptime
+ [32mΓ£ô[39m src/renderer/bundles/default/delta/__tests__/DeltaBar.test.tsx[2m > [22mDeltaBar[2m > [22mshows em-dash when bestLaptime is 0 (empty state)
+ [32mΓ£ô[39m src/renderer/bundles/default/delta/__tests__/DeltaBar.test.tsx[2m > [22mDeltaBar[2m > [22mshows em-dash when lastLaptime is 0 (session start)
+ [32mΓ£ô[39m src/renderer/bundles/default/delta/__tests__/DeltaBar.test.tsx[2m > [22mDeltaBar[2m > [22mshows em-dash when telemetry is null
+ [32mΓ£ô[39m src/renderer/bundles/default/delta/__tests__/DeltaBar.test.tsx[2m > [22mDeltaBar[2m > [22muses calculateDeltaToBest from sim-core (not local implementation)
+ [32mΓ£ô[39m src/renderer/__tests__/DebugOverlay.test.tsx[2m > [22mDebugOverlay[2m > [22mrenders all 4 metric labels when visible via ?debug=true
+ [32mΓ£ô[39m src/renderer/__tests__/DebugOverlay.test.tsx[2m > [22mDebugOverlay[2m > [22mis hidden by default without ?debug=true
+ [32mΓ£ô[39m src/renderer/__tests__/DebugOverlay.test.tsx[2m > [22mDebugOverlay[2m > [22mrenders nothing in production
+ [32mΓ£ô[39m src/renderer/__tests__/TelemetryBridge.test.tsx[2m > [22mTelemetryBridge[2m > [22mhas no DOM output
+ [32mΓ£ô[39m src/renderer/__tests__/TelemetryBridge.test.tsx[2m > [22mTelemetryBridge[2m > [22mdoes not crash when rendered
+ [32mΓ£ô[39m src/renderer/__tests__/TelemetryBridge.test.tsx[2m > [22mTelemetryBridge[2m > [22mrenders null (zero DOM)
+ [32mΓ£ô[39m src/renderer/__tests__/PreviewOverlay.test.tsx[2m > [22mPreviewOverlay[2m > [22mrenders metrics in dev mode
+ [32mΓ£ô[39m src/renderer/__tests__/PreviewOverlay.test.tsx[2m > [22mPreviewOverlay[2m > [22mshows initial numeric metric values
+ [32mΓ£ô[39m src/renderer/__tests__/PreviewOverlay.test.tsx[2m > [22mPreviewOverlay[2m > [22mrenders nothing in production mode
+ [32mΓ£ô[39m src/renderer/__tests__/PreviewOverlay.test.tsx[2m > [22mPreviewOverlay[2m > [22mhas data-testid attribute
+ [32mΓ£ô[39m src/renderer/bundles/default/stream-alerts/__tests__/StreamAlerts.test.tsx[2m > [22mStreamAlerts[2m > [22mrenders nothing when no alert in store
+ [32mΓ£ô[39m src/renderer/bundles/default/stream-alerts/__tests__/StreamAlerts.test.tsx[2m > [22mStreamAlerts[2m > [22mrenders current alert with hf-fade-in class
+ [32mΓ£ô[39m src/renderer/bundles/default/stream-alerts/__tests__/StreamAlerts.test.tsx[2m > [22mStreamAlerts[2m > [22mauto-dismisses after 5 seconds
+ [32mΓ£ô[39m src/renderer/bundles/default/stream-alerts/__tests__/StreamAlerts.test.tsx[2m > [22mStreamAlerts[2m > [22mclick dismisses alert immediately
+ [32mΓ£ô[39m src/renderer/bundles/default/stream-alerts/__tests__/StreamAlerts.test.tsx[2m > [22mStreamAlerts[2m > [22mshows next queued alert after current dismissed
+ [32mΓ£ô[39m src/renderer/bundles/default/stream-alerts/__tests__/StreamAlerts.test.tsx[2m > [22mStreamAlerts[2m > [22mrenders different message per alert type
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager-integration.test.ts[2m > [22mSimManager + TelemetryRecorder integration[2m > [22mrecords frames through SimManager callback flow[33m 2962[2mms[22m[39m
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager-integration.test.ts[2m > [22mSimManager + TelemetryRecorder integration[2m > [22mproduces valid NDJSON content via writeFileSync
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager-integration.test.ts[2m > [22mSimManager + TelemetryRecorder integration[2m > [22misRecording state transitions correctly
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/registry.test.ts[2m > [22mbundle registry[2m > [22mloads the default bundle
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/registry.test.ts[2m > [22mbundle registry[2m > [22mdedupes in-flight loads
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/registry.test.ts[2m > [22mbundle registry[2m > [22mfalls back to default for missing theme
+ [32mΓ£ô[39m src/renderer/bundles/__tests__/registry.test.ts[2m > [22mbundle registry[2m > [22mexposes available bundles
+ [32mΓ£ô[39m src/renderer/shared/__tests__/store.test.ts[2m > [22mapp-store[2m > [22minitializes with demoMode = false
+ [32mΓ£ô[39m src/renderer/shared/__tests__/store.test.ts[2m > [22mapp-store[2m > [22minitializes with isLoading = true
+ [32mΓ£ô[39m src/renderer/shared/__tests__/store.test.ts[2m > [22mapp-store[2m > [22msetDemoMode updates demoMode correctly
+ [32mΓ£ô[39m src/renderer/shared/__tests__/store.test.ts[2m > [22mapp-store[2m > [22msetIsLoading updates isLoading correctly
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager.test.ts[2m > [22mSimManager[2m > [22mactivates mock mode when no sim is running[33m 2671[2mms[22m[39m
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager.test.ts[2m > [22mSimManager[2m > [22memits sim-state event after mock activation[33m 574[2mms[22m[39m
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager.test.ts[2m > [22mSimManager[2m > [22mgetTelemetry returns null when not started
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager.test.ts[2m > [22mSimManager[2m > [22mgetTelemetry normalizes mock data through SimNormalizer[33m 501[2mms[22m[39m
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager.test.ts[2m > [22mSimManager[2m > [22mgetTelemetry returns null when mock is not active
+ [32mΓ£ô[39m src/main/sim/__tests__/sim-manager.test.ts[2m > [22mSimManager[2m > [22mstop() clears the poll interval and provider[33m 400[2mms[22m[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 2 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/renderer/hub/__tests__/profile-roundtrip.test.tsx > Profile round-trip > empty state ΓåÆ create profile ΓåÆ overlays ΓåÆ change settings ΓåÆ profiles ΓåÆ export ΓåÆ second profile ΓåÆ activate ΓåÆ persist
+{
+  stack: 'AggregateError: \n' +
+    '    at aggregateErrors (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:551:11)\n' +
+    '    at process.env.NODE_ENV.exports.act (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:897:24)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\act-compat.js:46:25\n' +
+    '    at renderRoot (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:189:26)\n' +
+    '    at Proxy.render (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:291:10)\n' +
+    '    at renderAppAt (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:30:10)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:151:5\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n' +
+    '    at runWithTimeout (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)',
+  errors: [
+    {
+      stack: 'TypeError: window.vantare.onSimListChanged is not a function\n' +
+        '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\components\\SimSwitcher.tsx:54:38\n' +
+        '    at Object.react_stack_bottom_frame (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:25989:20)\n' +
+        '    at runWithFiberInDEV (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:874:13)\n' +
+        '    at commitHookEffectListMount (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13249:29)\n' +
+        '    at commitHookPassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13336:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15484:13)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15718:11)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15718:11)',
+      message: 'window.vantare.onSimListChanged is not a function',
+      constructor: 'Function<TypeError>',
+      name: 'TypeError',
+      toString: 'Function<toString>'
+    },
+    {
+      stack: 'TypeError: window.vantare.onRecordingStateChanged is not a function\n' +
+        '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\HubLayout.tsx:39:34\n' +
+        '    at Object.react_stack_bottom_frame (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:25989:20)\n' +
+        '    at runWithFiberInDEV (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:874:13)\n' +
+        '    at commitHookEffectListMount (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13249:29)\n' +
+        '    at commitHookPassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13336:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15484:13)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15718:11)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15476:11)',
+      message: 'window.vantare.onRecordingStateChanged is not a function',
+      constructor: 'Function<TypeError>',
+      name: 'TypeError',
+      toString: 'Function<toString>'
+    }
+  ],
+  stackStr: 'AggregateError: \n' +
+    '    at aggregateErrors (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:551:11)\n' +
+    '    at process.env.NODE_ENV.exports.act (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:897:24)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\act-compat.js:46:25\n' +
+    '    at renderRoot (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:189:26)\n' +
+    '    at Proxy.render (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:291:10)\n' +
+    '    at renderAppAt (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:30:10)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:151:5\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n' +
+    '    at runWithTimeout (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)',
+  nameStr: 'AggregateError',
+  expected: 'undefined',
+  actual: 'undefined',
+  message: '',
+  constructor: 'Function<AggregateError>',
+  name: 'AggregateError',
+  toString: 'Function<toString>',
+  stacks: [
+    {
+      method: 'aggregateErrors',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js',
+      line: 551,
+      column: 11
+    },
+    {
+      method: 'process.env.NODE_ENV.exports.act',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js',
+      line: 897,
+      column: 24
+    },
+    {
+      method: '',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/act-compat.js',
+      line: 46,
+      column: 25
+    },
+    {
+      method: 'renderRoot',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js',
+      line: 189,
+      column: 26
+    },
+    {
+      method: 'Proxy.render',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js',
+      line: 291,
+      column: 10
+    },
+    {
+      method: 'renderAppAt',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/apps/desktop/src/renderer/hub/__tests__/profile-roundtrip.test.tsx',
+      line: 30,
+      column: 10
+    },
+    {
+      method: '',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/apps/desktop/src/renderer/hub/__tests__/profile-roundtrip.test.tsx',
+      line: 151,
+      column: 5
+    }
+  ]
+}
+ Γ¥» aggregateErrors ../../node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js:551:11
+ Γ¥» process.env.NODE_ENV.exports.act ../../node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js:897:24
+ Γ¥» ../../node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/act-compat.js:46:25
+ Γ¥» renderRoot ../../node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js:189:26
+ Γ¥» Proxy.render ../../node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js:291:10
+ Γ¥» renderAppAt src/renderer/hub/__tests__/profile-roundtrip.test.tsx:30:10
+     28| 
+     29| function renderAppAt(path = '/') {
+     30|   return render(
+       |          ^
+     31|     <MemoryRouter initialEntries={[path]}>
+     32|       <Routes>
+ Γ¥» src/renderer/hub/__tests__/profile-roundtrip.test.tsx:151:5
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Serialized Error: { errors: [ { stack: 'TypeError: window.vantare.onSimListChanged is not a function\n    at C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\renderer\hub\components\SimSwitcher.tsx:54:38\n    at Object.react_stack_bottom_frame (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:25989:20)\n    at runWithFiberInDEV (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)\n    at commitHookEffectListMount (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13249:29)\n    at commitHookPassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13336:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15484:13)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15718:11)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15718:11)', message: 'window.vantare.onSimListChanged is not a function', constructor: 'Function<TypeError>', name: 'TypeError', toString: 'Function<toString>' }, { stack: 'TypeError: window.vantare.onRecordingStateChanged is not a function\n    at C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\renderer\hub\HubLayout.tsx:39:34\n    at Object.react_stack_bottom_frame (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:25989:20)\n    at runWithFiberInDEV (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)\n    at commitHookEffectListMount (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13249:29)\n    at commitHookPassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13336:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15484:13)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15718:11)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15476:11)', message: 'window.vantare.onRecordingStateChanged is not a function', constructor: 'Function<TypeError>', name: 'TypeError', toString: 'Function<toString>' } ] }
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/2]ΓÄ»
+
+ FAIL  src/renderer/hub/__tests__/profile-roundtrip.test.tsx > Profile round-trip > persists overlay config (rowCount) through the profile round-trip
+{
+  stack: 'AggregateError: \n' +
+    '    at aggregateErrors (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:551:11)\n' +
+    '    at process.env.NODE_ENV.exports.act (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:897:24)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\act-compat.js:46:25\n' +
+    '    at renderRoot (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:189:26)\n' +
+    '    at Proxy.render (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:291:10)\n' +
+    '    at renderAppAt (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:30:10)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:331:5\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n' +
+    '    at runWithTimeout (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)',
+  errors: [
+    {
+      stack: 'TypeError: window.vantare.onSimListChanged is not a function\n' +
+        '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\components\\SimSwitcher.tsx:54:38\n' +
+        '    at Object.react_stack_bottom_frame (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:25989:20)\n' +
+        '    at runWithFiberInDEV (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:874:13)\n' +
+        '    at commitHookEffectListMount (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13249:29)\n' +
+        '    at commitHookPassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13336:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15484:13)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15718:11)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15718:11)',
+      message: 'window.vantare.onSimListChanged is not a function',
+      constructor: 'Function<TypeError>',
+      name: 'TypeError',
+      toString: 'Function<toString>'
+    },
+    {
+      stack: 'TypeError: window.vantare.onRecordingStateChanged is not a function\n' +
+        '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\HubLayout.tsx:39:34\n' +
+        '    at Object.react_stack_bottom_frame (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:25989:20)\n' +
+        '    at runWithFiberInDEV (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:874:13)\n' +
+        '    at commitHookEffectListMount (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13249:29)\n' +
+        '    at commitHookPassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:13336:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15484:13)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15718:11)\n' +
+        '    at recursivelyTraversePassiveMountEffects (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15439:11)\n' +
+        '    at commitPassiveMountOnFiber (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react-dom@19.2.7_react@19.2.7\\node_modules\\react-dom\\cjs\\react-dom-client.development.js:15476:11)',
+      message: 'window.vantare.onRecordingStateChanged is not a function',
+      constructor: 'Function<TypeError>',
+      name: 'TypeError',
+      toString: 'Function<toString>'
+    }
+  ],
+  stackStr: 'AggregateError: \n' +
+    '    at aggregateErrors (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:551:11)\n' +
+    '    at process.env.NODE_ENV.exports.act (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\react@19.2.7\\node_modules\\react\\cjs\\react.development.js:897:24)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\act-compat.js:46:25\n' +
+    '    at renderRoot (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:189:26)\n' +
+    '    at Proxy.render (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\node_modules\\.pnpm\\@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue\\node_modules\\@testing-library\\react\\dist\\pure.js:291:10)\n' +
+    '    at renderAppAt (C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:30:10)\n' +
+    '    at C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\apps\\desktop\\src\\renderer\\hub\\__tests__\\profile-roundtrip.test.tsx:331:5\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n' +
+    '    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n' +
+    '    at runWithTimeout (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)',
+  nameStr: 'AggregateError',
+  expected: 'undefined',
+  actual: 'undefined',
+  message: '',
+  constructor: 'Function<AggregateError>',
+  name: 'AggregateError',
+  toString: 'Function<toString>',
+  stacks: [
+    {
+      method: 'aggregateErrors',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js',
+      line: 551,
+      column: 11
+    },
+    {
+      method: 'process.env.NODE_ENV.exports.act',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js',
+      line: 897,
+      column: 24
+    },
+    {
+      method: '',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/act-compat.js',
+      line: 46,
+      column: 25
+    },
+    {
+      method: 'renderRoot',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js',
+      line: 189,
+      column: 26
+    },
+    {
+      method: 'Proxy.render',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js',
+      line: 291,
+      column: 10
+    },
+    {
+      method: 'renderAppAt',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/apps/desktop/src/renderer/hub/__tests__/profile-roundtrip.test.tsx',
+      line: 30,
+      column: 10
+    },
+    {
+      method: '',
+      file: 'C:/Users/isaac/Desktop/Vantare-Overlays/apps/desktop/src/renderer/hub/__tests__/profile-roundtrip.test.tsx',
+      line: 331,
+      column: 5
+    }
+  ]
+}
+ Γ¥» aggregateErrors ../../node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js:551:11
+ Γ¥» process.env.NODE_ENV.exports.act ../../node_modules/.pnpm/react@19.2.7/node_modules/react/cjs/react.development.js:897:24
+ Γ¥» ../../node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/act-compat.js:46:25
+ Γ¥» renderRoot ../../node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js:189:26
+ Γ¥» Proxy.render ../../node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@types+reac_p35lvsk4erv6vketm6y55clsue/node_modules/@testing-library/react/dist/pure.js:291:10
+ Γ¥» renderAppAt src/renderer/hub/__tests__/profile-roundtrip.test.tsx:30:10
+     28| 
+     29| function renderAppAt(path = '/') {
+     30|   return render(
+       |          ^
+     31|     <MemoryRouter initialEntries={[path]}>
+     32|       <Routes>
+ Γ¥» src/renderer/hub/__tests__/profile-roundtrip.test.tsx:331:5
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Serialized Error: { errors: [ { stack: 'TypeError: window.vantare.onSimListChanged is not a function\n    at C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\renderer\hub\components\SimSwitcher.tsx:54:38\n    at Object.react_stack_bottom_frame (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:25989:20)\n    at runWithFiberInDEV (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)\n    at commitHookEffectListMount (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13249:29)\n    at commitHookPassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13336:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15484:13)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15718:11)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15718:11)', message: 'window.vantare.onSimListChanged is not a function', constructor: 'Function<TypeError>', name: 'TypeError', toString: 'Function<toString>' }, { stack: 'TypeError: window.vantare.onRecordingStateChanged is not a function\n    at C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\renderer\hub\HubLayout.tsx:39:34\n    at Object.react_stack_bottom_frame (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:25989:20)\n    at runWithFiberInDEV (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)\n    at commitHookEffectListMount (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13249:29)\n    at commitHookPassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:13336:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15484:13)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15718:11)\n    at recursivelyTraversePassiveMountEffects (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15439:11)\n    at commitPassiveMountOnFiber (C:\Users\isaac\Desktop\Vantare-Overlays\node_modules\.pnpm\react-dom@19.2.7_react@19.2.7\node_modules\react-dom\cjs\react-dom-client.development.js:15476:11)', message: 'window.vantare.onRecordingStateChanged is not a function', constructor: 'Function<TypeError>', name: 'TypeError', toString: 'Function<toString>' } ] }
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/2]ΓÄ»
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Unhandled Errors [27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[31m[1m
+Vitest caught 4 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.[22m[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Rejection ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+TypeError: window.vantare.getAvailableSims is not a function
+ Γ¥» init src/renderer/hub/components/SimSwitcher.tsx:39:24
+     37|     const init = async () => {
+     38|       const [ids, activeSim] = await Promise.all([
+     39|         window.vantare.getAvailableSims(),
+       |                        ^
+     40|         window.vantare.getActiveSim(),
+     41|       ]);
+ Γ¥» src/renderer/hub/components/SimSwitcher.tsx:52:5
+ Γ¥» Object.react_stack_bottom_frame ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20
+ Γ¥» runWithFiberInDEV ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ Γ¥» commitHookEffectListMount ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29
+ Γ¥» commitHookPassiveMountEffects ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:13336:11
+ Γ¥» commitPassiveMountOnFiber ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15484:13
+ Γ¥» recursivelyTraversePassiveMountEffects ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15439:11
+ Γ¥» commitPassiveMountOnFiber ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15718:11
+ Γ¥» recursivelyTraversePassiveMountEffects ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15439:11
+
+This error originated in "src/renderer/hub/__tests__/profile-roundtrip.test.tsx" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "src/renderer/hub/__tests__/profile-roundtrip.test.tsx". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Rejection ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+TypeError: window.vantare.getAvailableSims is not a function
+ Γ¥» init src/renderer/hub/components/SimSwitcher.tsx:39:24
+     37|     const init = async () => {
+     38|       const [ids, activeSim] = await Promise.all([
+     39|         window.vantare.getAvailableSims(),
+       |                        ^
+     40|         window.vantare.getActiveSim(),
+     41|       ]);
+ Γ¥» src/renderer/hub/components/SimSwitcher.tsx:52:5
+ Γ¥» Object.react_stack_bottom_frame ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20
+ Γ¥» runWithFiberInDEV ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ Γ¥» commitHookEffectListMount ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29
+ Γ¥» commitHookPassiveMountEffects ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:13336:11
+ Γ¥» commitPassiveMountOnFiber ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15484:13
+ Γ¥» recursivelyTraversePassiveMountEffects ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15439:11
+ Γ¥» commitPassiveMountOnFiber ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15718:11
+ Γ¥» recursivelyTraversePassiveMountEffects ../../node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/cjs/react-dom-client.development.js:15439:11
+
+This error originated in "src/renderer/hub/__tests__/profile-roundtrip.test.tsx" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "src/renderer/hub/__tests__/profile-roundtrip.test.tsx". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Uncaught Exception ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: ENOENT: no such file or directory, open 'C:\Users\isaac\AppData\Local\Temp\sim-mgr-int-FjMFwK\recordings\iracing-2026-06-05T09-23-37-644Z.ndjson'
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Serialized Error: { errno: -4058, code: 'ENOENT', syscall: 'open', path: 'C:\Users\isaac\AppData\Local\Temp\sim-mgr-int-FjMFwK\recordings\iracing-2026-06-05T09-23-37-644Z.ndjson' }
+This error originated in "src/main/sim/__tests__/sim-manager-integration.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Uncaught Exception ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: ENOENT: no such file or directory, open 'C:\Users\isaac\AppData\Local\Temp\sim-mgr-int-FjMFwK\recordings\ac-2026-06-05T09-23-40-612Z.ndjson'
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Serialized Error: { errno: -4058, code: 'ENOENT', syscall: 'open', path: 'C:\Users\isaac\AppData\Local\Temp\sim-mgr-int-FjMFwK\recordings\ac-2026-06-05T09-23-40-612Z.ndjson' }
+This error originated in "src/main/sim/__tests__/sim-manager-integration.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m26 passed[39m[22m[90m (27)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m213 passed[39m[22m[90m (215)[39m
+[2m     Errors [22m [1m[31m4 errors[39m[22m
+[2m   Start at [22m 11:23:33
+[2m   Duration [22m 8.34s[2m (transform 2.98s, setup 0ms, collect 7.57s, tests 9.83s, environment 66.12s, prepare 6.07s)[22m
+

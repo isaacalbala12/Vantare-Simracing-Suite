@@ -1,4 +1,4 @@
-﻿import type { Telemetry, Session, SimState, SimType, SimInfo } from '@vantare/sim-core';
+﻿import type { Telemetry, Session, SimState, SimType } from '@vantare/sim-core';
 import type { Settings } from './settings';
 import type { Profile } from './profile';
 import type { Theme } from './theme';
@@ -38,8 +38,20 @@ export interface VantareBridge {
   setOverlaySize(overlayId: string, w: number, h: number): Promise<void>;
 
   // Sim
-  getAvailableSims(): Promise<SimInfo[]>;
+  getAvailableSims(): Promise<string[]>;
   getActiveSim(): Promise<SimType | null>;
+  setActiveSim(simId: string): Promise<void>;
+  onSimListChanged(callback: (sims: string[]) => void): () => void;
+
+  // Recording
+  startRecording(): Promise<void>;
+  stopRecording(): Promise<string | null>;
+  isRecording(): Promise<boolean>;
+  onRecordingStateChanged(callback: (recording: boolean) => void): () => void;
+
+  // Inspector
+  getInspectorData(): Promise<Telemetry | null>;
+  onInspectorData(callback: (data: Telemetry) => void): () => void;
 
   // Themes
   getThemes(): Promise<Theme[]>;

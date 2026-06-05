@@ -5,7 +5,7 @@ import type { Profile, Theme, Settings } from '@shared/types';
 import type { SimManager } from '../sim/sim-manager';
 import type { OverlayManager } from '../windows/overlay-manager';
 import { MockSimFactory } from '@vantare/sim-core';
-import type { SimInfo, SimType } from '@vantare/sim-core';
+import type { SimInfo, SimType, Telemetry } from '@vantare/sim-core';
 import { ProfileSchema } from '@vantare/ui-core/schemas';
 
 interface StoreSchema {
@@ -50,6 +50,8 @@ let overlayManagerRef: OverlayManager | null = null;
 export function setOverlayManager(mgr: OverlayManager | null): void {
   overlayManagerRef = mgr;
 }
+
+let recordingState = false;
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('settings:get', () => store.get('settings'));
@@ -114,6 +116,40 @@ export function registerIpcHandlers(): void {
     const mgr = simManagerRef;
     if (!mgr) return null;
     return mgr.currentSim as SimType | null;
+  });
+
+  // Sim switching
+  ipcMain.handle('setActiveSim', (_, simId: string) => {
+    simManagerRef?.activateSim(simId);
+  });
+
+  ipcMain.handle('getAvailableSims', (): string[] => {
+    return ['iracing', 'lmu', 'ac'];
+  });
+
+  // Recording
+  ipcMain.handle('startRecording', () => {
+    recordingState = true;
+    const wins = BrowserWindow.getAllWindows();
+    for (const win of wins) {
+      if (!win.isDestroyed()) win.webContents.send('recording-state-changed', true);
+    }
+  });
+
+  ipcMain.handle('stopRecording', (): string | null => {
+    recordingState = false;
+    const wins = BrowserWindow.getAllWindows();
+    for (const win of wins) {
+      if (!win.isDestroyed()) win.webContents.send('recording-state-changed', false);
+    }
+    return null;
+  });
+
+  ipcMain.handle('isRecording', (): boolean => recordingState);
+
+  // Inspector
+  ipcMain.handle('getInspectorData', (): Telemetry | null => {
+    return simManagerRef?.getTelemetry() ?? null;
   });
 
   // Mock mode handlers

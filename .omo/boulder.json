@@ -19,6 +19,58 @@
       "updated_at": "2026-06-05T08:47:45.140Z",
       "ended_at": "2026-06-05T08:47:45.140Z",
       "elapsed_ms": 614092
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "NDJSON streaming recorder + replay reader — Create telemetry recording and replay infrastructure",
+      "session_id": "opencode:ses_1690767b3ffe8Kolf1lmX55Lsa",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-05T08:57:45.207Z",
+      "started_at": "2026-06-05T08:54:45.623Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T08:57:45.207Z",
+      "elapsed_ms": 179584
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "AC UDP handshaker protocol — Add handshaker protocol to `apps/desktop/src/main/sim/adapters/ac-adapter.ts`",
+      "session_id": "opencode:ses_169076aa0ffefd516LB1Z7O7bi",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-05T08:57:45.198Z",
+      "started_at": "2026-06-05T08:55:18.651Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T08:57:45.198Z",
+      "elapsed_ms": 146547
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "iRacing varHeader shared memory reader (koffi/FFI) — rewrite parseSharedMemory() in `apps/desktop/src/main/sim/adapters/iracing-adapter.ts` to use varHeader lookup by name instead of hardcoded offsets.",
+      "session_id": "opencode:ses_169076f33ffe2k6v59bIO5ptmm",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-06-05T08:57:45.189Z",
+      "started_at": "2026-06-05T08:56:51.378Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T08:57:45.189Z",
+      "elapsed_ms": 53811
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Bridge IPC channels for new features — Add IPC channels for sim switching, recording, and inspector to the bridge",
+      "session_id": "opencode:ses_1690767a5ffeI19tGgPQQbQLg3",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-06-05T08:57:45.215Z",
+      "started_at": "2026-06-05T08:57:30.961Z",
+      "status": "completed",
+      "ended_at": "2026-06-05T08:57:45.215Z",
+      "elapsed_ms": 14254
     }
   },
   "schema_version": 2,
@@ -46,14 +98,66 @@
           "updated_at": "2026-06-05T08:47:45.140Z",
           "ended_at": "2026-06-05T08:47:45.140Z",
           "elapsed_ms": 614092
+        },
+        "todo:6": {
+          "task_key": "todo:6",
+          "task_label": "6",
+          "task_title": "NDJSON streaming recorder + replay reader — Create telemetry recording and replay infrastructure",
+          "session_id": "opencode:ses_1690767b3ffe8Kolf1lmX55Lsa",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-05T08:57:45.207Z",
+          "started_at": "2026-06-05T08:54:45.623Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T08:57:45.207Z",
+          "elapsed_ms": 179584
+        },
+        "todo:5": {
+          "task_key": "todo:5",
+          "task_label": "5",
+          "task_title": "AC UDP handshaker protocol — Add handshaker protocol to `apps/desktop/src/main/sim/adapters/ac-adapter.ts`",
+          "session_id": "opencode:ses_169076aa0ffefd516LB1Z7O7bi",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-05T08:57:45.198Z",
+          "started_at": "2026-06-05T08:55:18.651Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T08:57:45.198Z",
+          "elapsed_ms": 146547
+        },
+        "todo:4": {
+          "task_key": "todo:4",
+          "task_label": "4",
+          "task_title": "iRacing varHeader shared memory reader (koffi/FFI) — rewrite parseSharedMemory() in `apps/desktop/src/main/sim/adapters/iracing-adapter.ts` to use varHeader lookup by name instead of hardcoded offsets.",
+          "session_id": "opencode:ses_169076f33ffe2k6v59bIO5ptmm",
+          "agent": "Sisyphus-Junior",
+          "category": "deep",
+          "updated_at": "2026-06-05T08:57:45.189Z",
+          "started_at": "2026-06-05T08:56:51.378Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T08:57:45.189Z",
+          "elapsed_ms": 53811
+        },
+        "todo:7": {
+          "task_key": "todo:7",
+          "task_label": "7",
+          "task_title": "Bridge IPC channels for new features — Add IPC channels for sim switching, recording, and inspector to the bridge",
+          "session_id": "opencode:ses_1690767a5ffeI19tGgPQQbQLg3",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-06-05T08:57:45.215Z",
+          "started_at": "2026-06-05T08:57:30.961Z",
+          "status": "completed",
+          "ended_at": "2026-06-05T08:57:45.215Z",
+          "elapsed_ms": 14254
         }
       },
       "status": "active",
       "session_origins": {},
-      "updated_at": "2026-06-05T08:47:45.140Z"
+      "updated_at": "2026-06-05T08:57:45.215Z"
     }
   },
   "agent": "atlas",
-  "updated_at": "2026-06-05T08:47:45.140Z",
+  "updated_at": "2026-06-05T08:57:45.215Z",
   "status": "active"
 }

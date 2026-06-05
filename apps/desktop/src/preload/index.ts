@@ -1,4 +1,5 @@
 ﻿import { contextBridge, ipcRenderer } from 'electron';
+import type { Telemetry } from '@vantare/sim-core';
 
 contextBridge.exposeInMainWorld('vantare', {
   onTelemetry: (callback: (data: unknown) => void) => {
@@ -37,8 +38,28 @@ contextBridge.exposeInMainWorld('vantare', {
     ipcRenderer.invoke('overlays:set-position', overlayId, x, y),
   setOverlaySize: (overlayId: string, w: number, h: number) =>
     ipcRenderer.invoke('overlays:set-size', overlayId, w, h),
-  getAvailableSims: () => ipcRenderer.invoke('sim:available'),
+  setActiveSim: (simId: string) => ipcRenderer.invoke('setActiveSim', simId),
+  getAvailableSims: () => ipcRenderer.invoke('getAvailableSims'),
   getActiveSim: () => ipcRenderer.invoke('sim:active'),
+  onSimListChanged: (callback: (sims: string[]) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, sims: string[]) => callback(sims);
+    ipcRenderer.on('sim-list-changed', handler);
+    return () => ipcRenderer.removeListener('sim-list-changed', handler);
+  },
+  startRecording: () => ipcRenderer.invoke('startRecording'),
+  stopRecording: () => ipcRenderer.invoke('stopRecording'),
+  isRecording: () => ipcRenderer.invoke('isRecording'),
+  onRecordingStateChanged: (callback: (recording: boolean) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, recording: boolean) => callback(recording);
+    ipcRenderer.on('recording-state-changed', handler);
+    return () => ipcRenderer.removeListener('recording-state-changed', handler);
+  },
+  getInspectorData: () => ipcRenderer.invoke('getInspectorData'),
+  onInspectorData: (callback: (data: Telemetry) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: Telemetry) => callback(data);
+    ipcRenderer.on('inspector-data', handler);
+    return () => ipcRenderer.removeListener('inspector-data', handler);
+  },
   getThemes: () => ipcRenderer.invoke('themes:get'),
   getActiveTheme: () => ipcRenderer.invoke('themes:get-active'),
   saveTheme: (theme: unknown) => ipcRenderer.invoke('themes:save', theme),

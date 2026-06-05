@@ -26,6 +26,10 @@
     "./calculations/*": {
       "types": "./dist/calculations/*.d.ts",
       "import": "./dist/calculations/*.js"
+    },
+    "./replay": {
+      "types": "./dist/replay/index.d.ts",
+      "import": "./dist/replay/index.js"
     }
   },
   "scripts": {

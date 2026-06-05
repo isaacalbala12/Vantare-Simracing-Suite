@@ -418,7 +418,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `packages/sim-core/src/adapters/` (deletions), `apps/desktop/src/main/sim/adapters/index.ts`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=@vantare/sim-core`
 
-- [ ] 4. iRacing varHeader shared memory reader (koffi/FFI)
+- [x] 4. iRacing varHeader shared memory reader (koffi/FFI)
 
   **What to do**:
   - Rewrite `parseSharedMemory()` in `apps/desktop/src/main/sim/adapters/iracing-adapter.ts` to use **varHeader lookup by name** (not hardcoded offsets)
@@ -515,7 +515,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `apps/desktop/src/main/sim/adapters/iracing-adapter.ts`, `apps/desktop/src/main/sim/adapters/__tests__/iracing-adapter.test.ts`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=desktop`
 
-- [ ] 5. AC UDP handshaker protocol
+- [x] 5. AC UDP handshaker protocol
 
   **What to do**:
   - Add handshaker protocol to `apps/desktop/src/main/sim/adapters/ac-adapter.ts`:
@@ -607,7 +607,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `apps/desktop/src/main/sim/adapters/ac-adapter.ts`, `apps/desktop/src/main/sim/adapters/__tests__/ac-adapter.test.ts`
   - Pre-commit: `pnpm typecheck && pnpm test --filter=desktop`
 
-- [ ] 6. NDJSON streaming recorder + replay reader
+- [x] 6. NDJSON streaming recorder + replay reader
 
   **What to do**:
   - Create `apps/desktop/src/main/sim/telemetry-recorder.ts`:
@@ -685,7 +685,7 @@ Wave FINAL (After ALL tasks — 4 parallel reviews):
   - Files: `apps/desktop/src/main/sim/telemetry-recorder.ts`, `packages/sim-core/src/replay/`
   - Pre-commit: `pnpm typecheck && pnpm test`
 
-- [ ] 7. Bridge IPC channels for new features
+- [x] 7. Bridge IPC channels for new features
 
   **What to do**:
   - Add new IPC channels to `shared/types/bridge.ts`:

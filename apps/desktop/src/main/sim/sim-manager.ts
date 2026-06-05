@@ -96,7 +96,7 @@ export class SimManager {
     this.emitSimState();
   }
 
-  private activateSim(simName: string): void {
+  activateSim(simName: string): void {
     // Don't re-activate if already on this sim with a live adapter
     if (this.currentSim === simName && this.activeAdapter && this.connected) return;
 

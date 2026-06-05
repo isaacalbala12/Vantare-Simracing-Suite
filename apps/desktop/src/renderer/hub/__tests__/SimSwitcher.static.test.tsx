@@ -96,17 +96,17 @@ describe('SimSwitcher — static render QA', () => {
     expect(dropdown.textContent).toContain('Assetto Corsa');
   });
 
-  it('calls setActiveSim on option click', async () => {
+  it('calls setActiveSim on unlocked option click', async () => {
     const SimSwitcher = (await import('../components/SimSwitcher')).default;
     render(<SimSwitcher />);
 
     const trigger = await screen.findByTestId('sim-switcher-trigger');
     fireEvent.click(trigger);
 
-    const acOption = await screen.findByTestId('sim-option-ac');
-    fireEvent.click(acOption);
+    const iracingOption = await screen.findByTestId('sim-option-iracing');
+    fireEvent.click(iracingOption);
 
-    expect(window.vantare.setActiveSim).toHaveBeenCalledWith('ac');
+    expect(window.vantare.setActiveSim).toHaveBeenCalledWith('iracing');
   });
 
   it('shows status indicator dot in trigger', async () => {

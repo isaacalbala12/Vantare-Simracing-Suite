@@ -74,6 +74,16 @@ function mockReloadBackend() {
     onTelemetry: vi.fn().mockReturnValue(vi.fn()),
     onSessionData: vi.fn().mockReturnValue(vi.fn()),
     onSimState: vi.fn().mockReturnValue(vi.fn()),
+    getAvailableSims: vi.fn().mockResolvedValue(['iracing']),
+    getActiveSim: vi.fn().mockResolvedValue('iracing'),
+    setActiveSim: vi.fn().mockResolvedValue(undefined),
+    onSimListChanged: vi.fn().mockReturnValue(vi.fn()),
+    onRecordingStateChanged: vi.fn().mockReturnValue(vi.fn()),
+    login: vi.fn().mockResolvedValue({ success: false, user: null }),
+    register: vi.fn().mockResolvedValue({ success: false, user: null }),
+    logout: vi.fn().mockResolvedValue(undefined),
+    getSession: vi.fn().mockResolvedValue(null),
+    getLicenseStatus: vi.fn().mockResolvedValue({ tier: 'free', isValid: true }),
   } as unknown as VantareBridge;
 }
 
@@ -127,6 +137,16 @@ function createMockBackend() {
     onTelemetry: vi.fn().mockReturnValue(vi.fn()),
     onSessionData: vi.fn().mockReturnValue(vi.fn()),
     onSimState: vi.fn().mockReturnValue(vi.fn()),
+    getAvailableSims: vi.fn().mockResolvedValue(['iracing']),
+    getActiveSim: vi.fn().mockResolvedValue('iracing'),
+    setActiveSim: vi.fn().mockResolvedValue(undefined),
+    onSimListChanged: vi.fn().mockReturnValue(vi.fn()),
+    onRecordingStateChanged: vi.fn().mockReturnValue(vi.fn()),
+    login: vi.fn().mockResolvedValue({ success: false, user: null }),
+    register: vi.fn().mockResolvedValue({ success: false, user: null }),
+    logout: vi.fn().mockResolvedValue(undefined),
+    getSession: vi.fn().mockResolvedValue(null),
+    getLicenseStatus: vi.fn().mockResolvedValue({ tier: 'free', isValid: true }),
   };
 
   window.vantare = mock as VantareBridge;
@@ -378,6 +398,16 @@ describe('Profile round-trip', () => {
       onTelemetry: vi.fn().mockReturnValue(vi.fn()),
       onSessionData: vi.fn().mockReturnValue(vi.fn()),
       onSimState: vi.fn().mockReturnValue(vi.fn()),
+      getAvailableSims: vi.fn().mockResolvedValue(['iracing']),
+      getActiveSim: vi.fn().mockResolvedValue('iracing'),
+      setActiveSim: vi.fn().mockResolvedValue(undefined),
+      onSimListChanged: vi.fn().mockReturnValue(vi.fn()),
+      onRecordingStateChanged: vi.fn().mockReturnValue(vi.fn()),
+      login: vi.fn().mockResolvedValue({ success: false, user: null }),
+      register: vi.fn().mockResolvedValue({ success: false, user: null }),
+      logout: vi.fn().mockResolvedValue(undefined),
+      getSession: vi.fn().mockResolvedValue(null),
+      getLicenseStatus: vi.fn().mockResolvedValue({ tier: 'free', isValid: true }),
     } as unknown as VantareBridge;
 
     useProfileStore.setState({

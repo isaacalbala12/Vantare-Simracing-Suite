@@ -11,6 +11,7 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../../shared'),
       '@vantare/sim-core': path.resolve(__dirname, '../../packages/sim-core/src'),
       '@vantare/ui-core': path.resolve(__dirname, '../../packages/ui-core/src'),
+      '@vantare/auth': path.resolve(__dirname, '../../packages/auth/src'),
     },
   },
 });

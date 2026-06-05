@@ -1,7 +1,9 @@
 import { useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { SettingsForm } from '@vantare/ui-core';
+import { Feature } from '@vantare/auth';
 import { useSettingsStore } from '../../shared/stores/settings-store';
+import { useLicense } from '../../shared/hooks/useLicense';
 
 // ──────────────────────────────────────────────
 // Zod schema mirroring the Settings interface
@@ -29,6 +31,7 @@ export type SettingsFormValues = z.infer<typeof SettingsSchema>;
 // ──────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { canAccess } = useLicense();
   const settings = useSettingsStore((s) => s.settings);
   const isLoading = useSettingsStore((s) => s.isLoading);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
@@ -42,9 +45,11 @@ export default function SettingsPage() {
   // Persist settings when the form emits changes
   const handleChange = useCallback(
     (partial: Partial<SettingsFormValues>) => {
+      if (partial.preferredSim === 'LMU' && !canAccess(Feature.LMU)) return;
+      if (partial.preferredSim === 'Assetto Corsa' && !canAccess(Feature.AC)) return;
       saveSettings(partial);
     },
-    [saveSettings],
+    [saveSettings, canAccess],
   );
 
   if (isLoading || !settings) {

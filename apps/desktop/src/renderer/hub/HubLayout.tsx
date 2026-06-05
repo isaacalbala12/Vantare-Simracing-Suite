@@ -14,7 +14,9 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', testId: 'sidebar-dashboard' },
   { label: 'Overlays', to: '/overlays', testId: 'sidebar-overlays' },
   { label: 'Profiles', to: '/profiles', testId: 'sidebar-profiles' },
+  { label: 'Themes', to: '/themes', testId: 'sidebar-themes' },
   { label: 'Inspector', to: '/inspector', testId: 'sidebar-inspector' },
+  { label: 'Account', to: '/account', testId: 'sidebar-account' },
   { label: 'Settings', to: '/settings', testId: 'sidebar-settings' },
 ];
 
@@ -43,7 +45,7 @@ export default function HubLayout() {
   }, []);
 
   return (
-    <div className="flex w-screen h-screen bg-[#0a0a0a] text-white overflow-hidden">
+    <div className="flex w-screen h-screen bg-[var(--color-surface)] text-[var(--color-text)] overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -58,28 +60,28 @@ export default function HubLayout() {
         className={`
           fixed inset-y-0 left-0 z-50 w-64
           flex flex-col
-          bg-[#1e1e1e] border-r border-white/10
+          bg-[var(--color-surface-alt)] border-r border-[var(--color-border)]
           transform transition-transform duration-200
           lg:relative lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between px-3 h-14 border-b border-white/10 gap-2">
+        <div className="flex items-center justify-between px-3 h-14 border-b border-[var(--color-border)] gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-semibold text-white/70 tracking-wide uppercase shrink-0">
+            <span className="text-sm font-semibold text-[var(--color-text-muted)] tracking-wide uppercase shrink-0">
               Vantare
             </span>
             <SimSwitcher />
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {activeTheme && (
-              <span data-testid="hub-theme-display" className="text-[10px] text-white/30 hidden lg:inline">
+              <span data-testid="hub-theme-display" className="text-[10px] text-[var(--color-text-muted)] hidden lg:inline">
                 {activeTheme.name}
               </span>
             )}
             <button
-              className="lg:hidden p-1 text-white/50 hover:text-white"
+              className="lg:hidden p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
               onClick={() => setSidebarOpen(false)}
               aria-label="Close sidebar"
             >
@@ -102,8 +104,8 @@ export default function HubLayout() {
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                    ? 'bg-[var(--color-glass)] text-[var(--color-text)]'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-glass)]'
                 }`
               }
             >
@@ -113,17 +115,17 @@ export default function HubLayout() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="px-4 py-3 border-t border-white/10">
-          <span className="text-xs text-white/30">Vantare Overlays v0.1.0</span>
+        <div className="px-4 py-3 border-t border-[var(--color-border)]">
+          <span className="text-xs text-[var(--color-text-muted)]">Vantare Overlays v0.1.0</span>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Top bar (mobile hamburger) */}
-        <div className="flex items-center h-14 px-4 border-b border-white/10 lg:hidden bg-[#1e1e1e]">
+        <div className="flex items-center h-14 px-4 border-b border-[var(--color-border)] lg:hidden bg-[var(--color-surface-alt)]">
           <button
-            className="p-1 text-white/50 hover:text-white"
+            className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open sidebar"
           >
@@ -158,14 +160,14 @@ function EmptyState({ onCreateProfile }: { onCreateProfile: () => void }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-white/80">No Profile Selected</h2>
-        <p className="text-sm text-white/50 leading-relaxed">
+        <h2 className="text-lg font-semibold text-[var(--color-text)]">No Profile Selected</h2>
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
           Create a profile to configure your overlays, themes, and alerts.
           Profiles let you quickly switch between different setups.
         </p>
         <button
           onClick={onCreateProfile}
-          className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+          className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] transition-colors"
         >
           Create profile
         </button>

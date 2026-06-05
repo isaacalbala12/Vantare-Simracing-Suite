@@ -1,4 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { Feature } from '@vantare/auth';
+import { useLicense } from '../../shared/hooks/useLicense';
+import FeatureBadge from './FeatureBadge';
 
 interface SimItem {
   id: string;
@@ -13,7 +16,14 @@ const SIM_LABELS: Record<string, string> = {
   ac: 'Assetto Corsa',
 };
 
+const SIM_FEATURES: Record<string, Feature> = {
+  iracing: Feature.IRACING,
+  lmu: Feature.LMU,
+  ac: Feature.AC,
+};
+
 export default function SimSwitcher() {
+  const { canAccess, requiredTier } = useLicense();
   const [sims, setSims] = useState<SimItem[]>([]);
   const [activeSimId, setActiveSimId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -91,6 +101,8 @@ export default function SimSwitcher() {
   }, []);
 
   const handleSelect = (simId: string) => {
+    const feature = SIM_FEATURES[simId];
+    if (feature && !canAccess(feature)) return;
     window.vantare.setActiveSim(simId);
     setOpen(false);
   };
@@ -149,12 +161,16 @@ export default function SimSwitcher() {
           ) : (
             sims.map((sim) => {
               const isActive = sim.id === activeSimId;
+              const feature = SIM_FEATURES[sim.id];
+              const locked = feature ? !canAccess(feature) : false;
               return (
                 <button
                   key={sim.id}
                   data-testid={`sim-option-${sim.id}`}
                   onClick={() => handleSelect(sim.id)}
+                  disabled={locked}
                   className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left transition-colors
+                    ${locked ? 'opacity-50 cursor-not-allowed' : ''}
                     ${isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/80'}`}
                 >
                   <span
@@ -165,6 +181,7 @@ export default function SimSwitcher() {
                     }`}
                   />
                   <span className="truncate flex-1">{sim.name}</span>
+                  {locked && feature && <FeatureBadge requiredTier={requiredTier(feature)} />}
                   {sim.isMock && (
                     <span className="px-1 py-0.5 text-[9px] font-medium leading-none rounded bg-yellow-500/20 text-yellow-400 uppercase">
                       Mock

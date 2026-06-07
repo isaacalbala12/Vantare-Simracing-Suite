@@ -301,7 +301,7 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
 
 ### Wave 2 — E2E Tests
 
-- [ ] 5. **E2E overlay rendering tests** — `apps/desktop/e2e/sprint8-overlays.spec.ts`
+- [x] 5. **E2E overlay rendering tests** — `apps/desktop/e2e/sprint8-overlays.spec.ts`
 
   **What to do**:
   - Crear ~4 tests E2E con Playwright Electron:
@@ -328,7 +328,7 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
   - [ ] Tests usan mock telemetry data
   - [ ] `pnpm test:e2e --list` muestra los specs
 
-- [ ] 6. **E2E IPC state/mutation tests** — `apps/desktop/e2e/sprint8-ipc.spec.ts`
+- [x] 6. **E2E IPC state/mutation tests** — `apps/desktop/e2e/sprint8-ipc.spec.ts`
 
   **What to do**:
   - Crear ~4 tests E2E con Playwright Electron:
@@ -353,7 +353,7 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
   - [ ] 4 tests creados
   - [ ] Tests verifican estado antes/después de mutaciones
 
-- [ ] 7. **E2E auth + license gating tests** — `apps/desktop/e2e/sprint8-auth.spec.ts`
+- [x] 7. **E2E auth + license gating tests** — `apps/desktop/e2e/sprint8-auth.spec.ts`
 
   **What to do**:
   - Crear ~4 tests E2E con Playwright Electron:

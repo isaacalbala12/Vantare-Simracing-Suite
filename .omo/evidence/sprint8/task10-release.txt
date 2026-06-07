@@ -1,0 +1,46 @@
+Task 10: GitHub Release v1.0.0 + final .exe build
+====================================================
+Date: 2026-06-07
+
+STATUS: ✅ COMPLETE
+
+Steps executed:
+1. ✅ Version verification
+   - Root package.json: 1.0.0
+   - Desktop package.json: 1.0.0
+
+2. ✅ pnpm build (apps/desktop)
+   - vite build passed (renderer + main + preload)
+   - 124/126/1 modules transformed across 3 builds
+   - Output: dist/renderer/, dist/main/, dist/preload/
+
+3. ✅ pnpm package (apps/desktop)
+   - electron-builder v25.1.8
+   - Electron v33.4.11
+   - Target: portable .exe (win32 x64)
+   - Output: release/Vantare Overlays 1.0.0.exe (74,637,803 bytes)
+   - Signing skipped (expected - not configured)
+
+4. ✅ GitHub Release draft created
+   - Command: gh release create v1.0.0 --title "Vantare Overlays v1.0.0" --notes-file docs/CHANGELOG.md --draft
+   - URL: https://github.com/isaacalbala12/Vantare-Overlays/releases/tag/untagged-be356fdd9314e52f8312
+   - Tag: v1.0.0
+   - Title: "Vantare Overlays v1.0.0"
+   - Draft: true (NOT published)
+   - Changelog source: docs/CHANGELOG.md
+
+5. ✅ .exe asset uploaded
+   - File: Vantare.Overlays.1.0.0.exe (74,637,803 bytes)
+   - Content-Type: application/x-msdownload
+   - SHA256: 3d9907a80cdd23bf4ddaea69d2004a32b03a072f565ef9fc3a68dcad66999931
+   - State: uploaded
+   - Downloads: 0 (draft only)
+
+Additional actions taken:
+- Created GitHub repo: isaacalbala12/Vantare-Overlays (private)
+- Added git remote origin
+- Pushed master branch
+
+NOT done (per instructions):
+- ❌ Release NOT published (draft only)
+- ❌ .exe NOT signed

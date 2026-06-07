@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vantare Overlays — Overlays profesionales de simracing</title>
+  <meta name="description" content="Overlays profesionales de simracing para streaming y configuraciones multi-monitor. Compatible con iRacing, Le Mans Ultimate y Assetto Corsa." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ====== NAVIGATION ====== -->
+  <nav class="nav" role="navigation" aria-label="Navegación principal">
+    <div class="nav__inner">
+      <a href="#" class="nav__brand">
+        <span class="nav__brand-dot"></span>
+        Vantare
+      </a>
+      <ul class="nav__links">
+        <li><a href="#features" class="nav__link">Características</a></li>
+        <li><a href="#overlays" class="nav__link">Overlays</a></li>
+        <li><a href="#screenshots" class="nav__link">Capturas</a></li>
+        <li><a href="#download" class="nav__link">Descargar</a></li>
+        <li><a href="#discord" class="nav__link">Discord</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ====== HERO ====== -->
+  <section class="hero" id="hero">
+    <div class="hero__bg">
+      <div class="hero__grid"></div>
+      <div class="hero__gradient hero__gradient--1"></div>
+      <div class="hero__gradient hero__gradient--2"></div>
+      <div class="hero__gradient hero__gradient--3"></div>
+    </div>
+
+    <div class="hero__content">
+      <div class="hero__badge">
+        <span class="hero__badge-dot"></span>
+        Ahora con Stream Alerts
+      </div>
+
+      <h1 class="hero__title">
+        <span class="hero__title-highlight">Vantare</span> Overlays
+      </h1>
+
+      <p class="hero__tagline">
+        Overlays profesionales de simracing para streaming y configuraciones multi-monitor.
+        Un competidor moderno y multi-sim de RaceLabs con soporte para iRacing,
+        Le Mans Ultimate y Assetto Corsa.
+      </p>
+
+      <div class="hero__actions">
+        <a href="#download" class="btn btn--primary btn--lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar Ahora
+        </a>
+        <a href="#features" class="btn btn--secondary btn--lg">
+          Ver Características
+        </a>
+      </div>
+
+      <div class="hero__stats">
+        <div>
+          <div class="hero__stat-value">3</div>
+          <div class="hero__stat-label">Simuladores</div>
+        </div>
+        <div>
+          <div class="hero__stat-value">4</div>
+          <div class="hero__stat-label">Overlays</div>
+        </div>
+        <div>
+          <div class="hero__stat-value">3</div>
+          <div class="hero__stat-label">Temas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__scroll-indicator" aria-hidden="true">
+      SCROLL
+      <div class="hero__scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ====== FEATURES ====== -->
+  <section class="features" id="features">
+    <div class="features__header">
+      <span class="section-badge">Características</span>
+      <h2 class="section-title">Todo lo que necesitas para tu stream</h2>
+      <p class="section-subtitle" style="margin: 0 auto;">
+        Desde telemetría en tiempo real hasta alertas automáticas de adelantamiento.
+        Vantare Overlays cubre cada aspecto de tu transmisión de simracing.
+      </p>
+    </div>
+
+    <div class="features__grid">
+      <!-- Multi-sim -->
+      <article class="feature-card">
+        <div class="feature-card__icon feature-card__icon--blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="2" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+        <h3 class="feature-card__title">Multi-sim Nativo</h3>
+        <p class="feature-card__desc">
+          Soporte completo para los principales simuladores con telemetría
+          normalizada en un formato unificado. Cambia de sim sin cambiar de overlay.
+        </p>
+        <div class="feature-platforms">
+          <span class="feature-platform">iRacing</span>
+          <span class="feature-platform">LMU</span>
+          <span class="feature-platform">Assetto Corsa</span>
+          <span class="feature-platform">AC Evo 🔜</span>
+        </div>
+      </article>
+
+      <!-- OBS + Multi-monitor -->
+      <article class="feature-card">
+        <div class="feature-card__icon feature-card__icon--purple">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="feature-card__title">OBS + Multi-monitor</h3>
+        <p class="feature-card__desc">
+          Los overlays funcionan como Browser Sources en OBS Studio con transparencia total,
+          o como ventanas Electron independientes en monitores secundarios.
+        </p>
+        <ul class="feature-card__list">
+          <li>Transparencia nativa en OBS</li>
+          <li>Ventanas independientes por overlay</li>
+          <li>Resolución adaptable automática</li>
+        </ul>
+      </article>
+
+      <!-- Full Theme System -->
+      <article class="feature-card">
+        <div class="feature-card__icon feature-card__icon--pink">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </div>
+        <h3 class="feature-card__title">Sistema de Temas</h3>
+        <p class="feature-card__desc">
+          Personaliza cada aspecto visual con temas predefinidos o crea el tuyo propio.
+          Cambio en tiempo real sin reiniciar la aplicación.
+        </p>
+        <ul class="feature-card__list">
+          <li>Dark, Blood, Midnight y Midnight Ocean</li>
+          <li>Temas personalizados con tokens CSS</li>
+          <li>Cambio en caliente sin recargar</li>
+          <li>Exportación e importación de temas</li>
+        </ul>
+      </article>
+
+      <!-- Auth + Licensing -->
+      <article class="feature-card">
+        <div class="feature-card__icon feature-card__icon--teal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3 class="feature-card__title">Licenciamiento Freemium</h3>
+        <p class="feature-card__desc">
+          Modelo escalonado que se adapta a tus necesidades. Desde el plan gratuito
+          con 2 overlays hasta el plan Ultimate con todos los overlays y temas personalizados.
+        </p>
+        <ul class="feature-card__list">
+          <li>Free: 2 overlays, 1 tema</li>
+          <li>Pro: Todos los overlays + alerts</li>
+          <li>Ultimate: Temas personalizados incluidos</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ====== OVERLAYS SHOWCASE ====== -->
+  <section class="overlays" id="overlays">
+    <div class="overlays__header">
+      <span class="section-badge">Overlays v1</span>
+      <h2 class="section-title">Cuatro overlays profesionales</h2>
+      <p class="section-subtitle">
+        Cada overlay está diseñado para proporcionar información crítica de carrera
+        con un estilo visual limpio y personalizable.
+      </p>
+    </div>
+
+    <div class="overlays__grid">
+      <!-- Standings -->
+      <article class="overlay-card">
+        <div class="overlay-card__preview overlay-card__preview--standings">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary); opacity: 0.3;">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="10" x2="20" y2="10"/>
+            <line x1="4" y1="14" x2="20" y2="14"/>
+            <line x1="4" y1="18" x2="14" y2="18"/>
+            <rect x="2" y="2" width="8" height="4" rx="1" fill="currentColor" opacity="0.3"/>
+            <rect x="12" y="2" width="8" height="4" rx="1" fill="currentColor" opacity="0.15"/>
+          </svg>
+          <span>Preview</span>
+        </div>
+        <div class="overlay-card__body">
+          <h3 class="overlay-card__title">Standings</h3>
+          <p class="overlay-card__desc">
+            Clasificación completa de carrera con posiciones, gaps, estado de boxes,
+            iRating, nombres de equipo y banderas de nacionalidad.
+          </p>
+        </div>
+      </article>
+
+      <!-- Relative -->
+      <article class="overlay-card">
+        <div class="overlay-card__preview overlay-card__preview--relative">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-positive); opacity: 0.3;">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span>Preview</span>
+        </div>
+        <div class="overlay-card__body">
+          <h3 class="overlay-card__title">Relative</h3>
+          <p class="overlay-card__desc">
+            Coches cercanos al piloto actual con tiempos de diferencia interpolados.
+            Color coding intuitivo: verde por delante, rojo por detrás.
+          </p>
+        </div>
+      </article>
+
+      <!-- Delta Bar -->
+      <article class="overlay-card">
+        <div class="overlay-card__preview overlay-card__preview--delta">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent-pink); opacity: 0.3;">
+            <line x1="12" y1="20" x2="12" y2="10"/>
+            <line x1="18" y1="20" x2="18" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="16"/>
+          </svg>
+          <span>Preview</span>
+        </div>
+        <div class="overlay-card__body">
+          <h3 class="overlay-card__title">Delta Bar</h3>
+          <p class="overlay-card__desc">
+            Barra de delta en tiempo real comparando tu vuelta actual con tu mejor tiempo.
+            Incluye predicción, segmentos de trazado e historial de vueltas.
+          </p>
+        </div>
+      </article>
+
+      <!-- Stream Alerts -->
+      <article class="overlay-card">
+        <div class="overlay-card__preview overlay-card__preview--alerts">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-warning); opacity: 0.3;">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span>Preview</span>
+        </div>
+        <div class="overlay-card__body">
+          <h3 class="overlay-card__title">Stream Alerts</h3>
+          <p class="overlay-card__desc">
+            Alertas automáticas de adelantamiento, pole position y vuelta más rápida.
+            Totalmente personalizables con sonidos y posicionamiento configurables.
+          </p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ====== SCREENSHOTS ====== -->
+  <section class="screenshots" id="screenshots">
+    <div class="screenshots__header">
+      <span class="section-badge">Capturas</span>
+      <h2 class="section-title">Vista previa de los overlays</h2>
+      <p class="section-subtitle">
+        Capturas de pantalla de los overlays en acción durante sesiones reales de carrera.
+      </p>
+    </div>
+
+    <div class="screenshots__grid">
+      <figure class="screenshot-card">
+        <div class="screenshot-card__img screenshot-card__img--standings">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="10" x2="20" y2="10"/>
+            <line x1="4" y1="14" x2="20" y2="14"/>
+            <line x1="4" y1="18" x2="14" y2="18"/>
+          </svg>
+          Standings
+        </div>
+        <figcaption class="screenshot-card__label">Standings en modo carrera</figcaption>
+      </figure>
+
+      <figure class="screenshot-card">
+        <div class="screenshot-card__img screenshot-card__img--relative">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Relative
+        </div>
+        <figcaption class="screenshot-card__label">Relative con gaps en tiempo real</figcaption>
+      </figure>
+
+      <figure class="screenshot-card">
+        <div class="screenshot-card__img screenshot-card__img--delta">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="20" x2="12" y2="10"/>
+            <line x1="18" y1="20" x2="18" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="16"/>
+          </svg>
+          Delta Bar
+        </div>
+        <figcaption class="screenshot-card__label">Delta Bar durante una vuelta</figcaption>
+      </figure>
+
+      <figure class="screenshot-card">
+        <div class="screenshot-card__img screenshot-card__img--alerts">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          Stream Alerts
+        </div>
+        <figcaption class="screenshot-card__label">Alerta de adelantamiento</figcaption>
+      </figure>
+
+      <figure class="screenshot-card">
+        <div class="screenshot-card__img screenshot-card__img--themes">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Temas
+        </div>
+        <figcaption class="screenshot-card__label">Selector de temas en acción</figcaption>
+      </figure>
+
+      <figure class="screenshot-card">
+        <div class="screenshot-card__img screenshot-card__img--multi">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          Multi-monitor
+        </div>
+        <figcaption class="screenshot-card__label">Configuración multi-monitor</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ====== DOWNLOAD CTA ====== -->
+  <section class="download" id="download">
+    <div class="download__bg">
+      <div class="download__gradient download__gradient--1"></div>
+      <div class="download__gradient download__gradient--2"></div>
+    </div>
+
+    <div class="download__content">
+      <span class="section-badge">Descargar</span>
+      <h2 class="download__title">¿Listo para mejorar tu stream?</h2>
+      <p class="download__desc">
+        Descarga la última versión de Vantare Overlays gratuita.
+        Compatible con Windows 10 y 11. No requiere registro.
+      </p>
+      <div class="download__actions">
+        <a
+          href="https://github.com/vantare/overlays/releases"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn--primary btn--lg"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar para Windows
+        </a>
+        <a href="https://github.com/vantare/overlays" target="_blank" rel="noopener noreferrer" class="btn btn--secondary btn--lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          Ver en GitHub
+        </a>
+      </div>
+      <p class="download__note">
+        Versión 1.0.0 — Gratis. Requiere Windows 10 u 11.
+      </p>
+    </div>
+  </section>
+
+  <!-- ====== DISCORD ====== -->
+  <section class="discord" id="discord">
+    <div class="discord__inner">
+      <div class="discord__icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+        </svg>
+      </div>
+      <h2 class="discord__title">Únete a nuestra comunidad</h2>
+      <p class="discord__desc">
+        Conéctate con otros simracers, comparte configuraciones, reporta bugs,
+        sugiere funcionalidades y obtén soporte directo del equipo de desarrollo.
+      </p>
+      <a
+        href="https://discord.gg/vantare"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn--discord btn--lg"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+        </svg>
+        Unirse a Discord
+      </a>
+      <div class="discord__stats">
+        <div class="discord__stat">
+          <div class="discord__stat-value">+500</div>
+          <div class="discord__stat-label">Miembros</div>
+        </div>
+        <div class="discord__stat">
+          <div class="discord__stat-value">24/7</div>
+          <div class="discord__stat-label">Soporte</div>
+        </div>
+        <div class="discord__stat">
+          <div class="discord__stat-value">Alpha</div>
+          <div class="discord__stat-label">Acceso anticipado</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== FOOTER ====== -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="footer__brand-dot"></span>
+        Vantare
+      </div>
+      <p class="footer__copy">&copy; 2026 Vantare. All rights reserved.</p>
+      <ul class="footer__links">
+        <li><a href="https://github.com/vantare/overlays" target="_blank" rel="noopener noreferrer" class="footer__link">GitHub</a></li>
+        <li><a href="https://discord.gg/vantare" target="_blank" rel="noopener noreferrer" class="footer__link">Discord</a></li>
+        <li><a href="https://github.com/vantare/overlays/releases" target="_blank" rel="noopener noreferrer" class="footer__link">Releases</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

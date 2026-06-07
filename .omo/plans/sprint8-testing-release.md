@@ -380,7 +380,7 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
 
 ### Wave 3 — Landing Page + Release
 
-- [ ] 8. **Landing page (static HTML + GitHub Pages)** — `docs/landing/`
+- [x] 8. **Landing page (static HTML + GitHub Pages)** — `docs/landing/`
 
   **What to do**:
   - Crear `docs/landing/index.html`:
@@ -447,7 +447,7 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
   - [ ] Adapter files exist
   - [ ] Evidence saved
 
-- [ ] 10. **GitHub Release v1.0.0 + .exe final** — `apps/desktop/`
+- [x] 10. **GitHub Release v1.0.0 + .exe final** — `apps/desktop/`
 
   **What to do**:
   - Version check: root `package.json` = `1.0.0`, desktop = `1.0.0`
@@ -480,7 +480,7 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
   - [ ] `pnpm package` exit 0, .exe in release/
   - [ ] GitHub Release v1.0.0 created (draft) with .exe asset
 
-- [ ] 11. **QA evidence + full suite pass** — `.omo/evidence/sprint8/`
+- [x] 11. **QA evidence + full suite pass** — `.omo/evidence/sprint8/`
 
   **What to do**:
   - Crear `.omo/evidence/sprint8/README.md`

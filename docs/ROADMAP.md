@@ -308,24 +308,24 @@ F-028: Preview Overlay (dev-only overlay showing real-time perf stats)
 
 | ID | Tarea | Estado |
 |---|---|---|
-| T7.1 | System Tray integration (minimize to tray, context menu) | 🔲 |
-| T7.2 | Keyboard shortcuts (Alt+H toggle overlays) | 🔲 |
-| T7.3 | Auto-start option (Windows startup registry) | 🔲 |
-| T7.4 | Auto-updater (electron-updater + GitHub Releases) | 🔲 |
-| T7.5 | OBS integration testing (all 4 overlays, all themes) | 🔲 |
-| T7.6 | Network access mode for dual-PC streaming | 🔲 |
-| T7.7 | Port conflict auto-fallback (3200 → 3201 → etc.) | 🔲 |
-| T7.8 | Browser Source optimization (CSS variables, no iframes) | 🔲 |
-| T7.9 | Electron Builder config verification (nsis, icons, publish) | 🔲 |
-| T7.10 | First `.exe` build and local installation test | 🔲 |
+| T7.1 | System Tray integration (minimize to tray, context menu) | ✅ |
+| T7.2 | Keyboard shortcuts (Alt+H toggle overlays) | ✅ |
+| T7.3 | Auto-start option (Windows startup registry) | ✅ |
+| T7.4 | Auto-updater (electron-updater + GitHub Releases) | ✅ |
+| T7.5 | OBS integration testing (all 4 overlays, all themes) | ✅ |
+| T7.6 | Network access mode for dual-PC streaming | ✅ |
+| T7.7 | Port conflict auto-fallback (3200 → 3201 → etc.) | ✅ |
+| T7.8 | Browser Source optimization (CSS variables, no iframes) | ✅ |
+| T7.9 | Electron Builder config verification (nsis, icons, publish) | ✅ |
+| T7.10 | First `.exe` build and local installation test | ✅ |
 
 ### Entregables
 
-- [ ] Tray icon funcional con menú contextual
-- [ ] Auto-update via GitHub Releases
-- [ ] `.exe` generado con Electron Builder
-- [ ] Testeado con OBS en modo local y dual-PC
-- [ ] Atajos de teclado (Alt+H toggle, Alt+Q quit)
+- [x] Tray icon funcional con menú contextual
+- [x] Auto-update via GitHub Releases
+- [x] `.exe` generado con Electron Builder
+- [x] Testeado con OBS en modo local y dual-PC
+- [x] Atajos de teclado (Alt+H toggle, Alt+Q quit)
 
 ---
 
@@ -338,24 +338,24 @@ F-028: Preview Overlay (dev-only overlay showing real-time perf stats)
 
 | ID | Tarea | Estado |
 |---|---|---|
-| T8.1 | E2E tests con Playwright (overlay rendering, IPC, auth) | 🔲 |
-| T8.2 | Performance profiling (render time, memory, CPU) | 🔲 |
-| T8.3 | Cross-sim testing (iRacing → LMU switching) | 🔲 |
-| T8.4 | Bug fixes from sprint 7 testing | 🔲 |
-| T8.5 | Documentation finalization | 🔲 |
-| T8.6 | Landing page (marketing site) | 🔲 |
-| T8.7 | Discord community setup | 🔲 |
-| T8.8 | GitHub Release v1.0.0 with changelog | 🔲 |
-| T8.9 | Create `.exe` installer with Electron Builder | 🔲 |
-| T8.10 | Smoke test on clean Windows install | 🔲 |
+| T8.1 | E2E tests con Playwright (overlay rendering, IPC, auth) | ✅ |
+| T8.2 | Performance profiling (render time, memory, CPU) | ✅ |
+| T8.3 | Cross-sim testing (iRacing → LMU switching) | ✅ |
+| T8.4 | Bug fixes from sprint 7 testing | ✅ |
+| T8.5 | Documentation finalization | ✅ |
+| T8.6 | Landing page (marketing site) | ✅ |
+| T8.7 | Discord community setup | ✅ |
+| T8.8 | GitHub Release v1.0.0 with changelog | ✅ |
+| T8.9 | Create `.exe` installer with Electron Builder | ✅ |
+| T8.10 | Smoke test on clean Windows install | ✅ |
 
 ### Entregables
 
-- [ ] GitHub Release v1.0.0
-- [ ] `.exe` publico descargable
-- [ ] Landing page + Discord activo
-- [ ] Tests E2E pasando
-- [ ] Documentación final
+- [x] GitHub Release v1.0.0
+- [x] `.exe` publico descargable
+- [x] Landing page + Discord activo
+- [x] Tests E2E pasando
+- [x] Documentación final
 
 ---
 

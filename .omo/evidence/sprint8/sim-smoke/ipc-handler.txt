@@ -1,0 +1,19 @@
+=== IPC Handler — getAvailableSims ===
+File: apps/desktop/src/main/ipc/handlers.ts
+
+Line 137-139:
+  ipcMain.handle('getAvailableSims', (): string[] => {
+    return ['iracing', 'lmu', 'ac'];
+  });
+
+Handler returns all 3 sims: iracing, lmu, ac ✅
+
+Also verified createAdapter() factory in adapters/index.ts (lines 9-29)
+maps all 3 sim names to their respective adapter implementations:
+
+  'iracing' -> IRacingAdapter (lazy require)
+  'lmu'     -> LMUAdapterV2   (lazy require)
+  'ac'      -> ACAdapter      (lazy require)
+  default   -> throws Error
+
+All 3 sims wired correctly ✅

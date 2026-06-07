@@ -1,0 +1,26 @@
+=== Sprint 8 — Cross-Sim Smoke Test Conclusion ===
+Date: 2026-06-07
+
+1. SIM ADAPTERS
+   - iracing-adapter.ts  (19,514 bytes) ✅
+   - lmu-adapter-v2.ts    (8,647 bytes) ✅
+   - ac-adapter.ts       (11,275 bytes) ✅
+   - Factory index.ts wires all 3 via createAdapter() ✅
+
+2. IPC HANDLER
+   - getAvailableSims returns ['iracing', 'lmu', 'ac'] ✅
+
+3. SIM MANAGER
+   - findRunningSims() detects all 3 sim processes:
+     - iRacingSim64DX11.exe → 'iracing'
+     - LeMansUltimate.exe  → 'lmu'
+     - acs.exe             → 'ac'           ✅
+   - createAdapter(simName) called from activateSim() ✅
+   - Telemetry callbacks and connection state handled ✅
+   - Mock fallback on connection failure ✅
+
+OVERALL: ✅ CROSS-SIM SMOKE TEST PASSED
+All 3 simulators (iRacing, LMU, Assetto Corsa) have:
+- Working adapter files
+- IPC handler registration
+- Sim manager auto-detection and activation

@@ -422,12 +422,12 @@ Ver [ROADMAP.md](docs/ROADMAP.md) para el plan completo de desarrollo.
 - [x] Sistema de temas
 - [x] Integración con OBS Browser Source
 
-### Fase 2: Stream (En Progreso)
+### Fase 2: Stream (Completada)
 
-- [ ] Stream Alerts (overtake, pole, fastest lap)
-- [ ] Configuración de alerts
-- [ ] Sonidos de alerta
-- [ ] Overlay de datos de sesión
+- [x] Stream Alerts (overtake, pole, fastest lap)
+- [x] Configuración de alerts
+- [x] Sonidos de alerta
+- [x] Overlay de datos de sesión
 
 ### Fase 3: Advanced (Próximamente)
 

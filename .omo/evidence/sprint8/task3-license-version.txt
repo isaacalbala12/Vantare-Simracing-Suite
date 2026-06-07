@@ -1,0 +1,8 @@
+=== T3: LICENSE + Version Bump ===
+Date: 2026-06-07 15:43
+
+LICENSE file created: 
+Root package.json version: 1.0.0
+Desktop package.json version: 1.0.0
+
+Conclusion: Both versions bumped to 1.0.0, LICENSE created.

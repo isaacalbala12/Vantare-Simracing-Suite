@@ -1,0 +1,18 @@
+=== Sim Adapter Files — Smoke Test ===
+Date: 2026-06-07
+
+Adapter Directory: apps/desktop/src/main/sim/adapters/
+
+File                              Size (bytes)   Status
+----                              ------------   ------
+iracing-adapter.ts                19,514         ✅ EXISTS
+lmu-adapter-v2.ts                  8,647         ✅ EXISTS
+ac-adapter.ts                     11,275         ✅ EXISTS
+index.ts                           1,061         ✅ EXISTS (factory for all 3)
+lmu-rest-client.ts                 2,843         ✅ EXISTS (LMU rest client)
+base.ts                               63         ✅ EXISTS
+
+Adapter sub-folders: __tests__/, iracing/, lmu/
+
+Conclusion: All 3 sim adapters (iracing, lmu, ac) are present with
+substantial implementation files.

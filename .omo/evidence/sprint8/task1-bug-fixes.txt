@@ -1,0 +1,9 @@
+=== T1: Bug Fixes ===
+Date: 2026-06-07 15:43
+Status: No bugs found
+
+Test Suite: 31 files, 204 tests — ALL PASS
+Console errors: None from test failures (OverlayShell output is react testing library, not errors)
+NSIS dead config: Noted as pre-existing, non-blocking
+
+Conclusion: No Sprint 7 regressions found. No bugs to fix.

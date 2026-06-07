@@ -1,0 +1,13 @@
+=== T3: AutoUpdater + Cleanup verification ===
+
+AutoUpdater status: File exists with AutoUpdater class present
+
+=== Cleanup in before-quit ===
+C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\main\index.ts:96:          simManager?.stopRecording(); C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\main\index.ts:201:  globalShortcut.unregisterAll(); C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\main\index.ts:202:  httpServer?.stop(); C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\main\index.ts:203:  simManager?.stop(); C:\Users\isaac\Desktop\Vantare-Overlays\apps\desktop\src\main\index.ts:206:    tray = null;
+
+=== Index features ===
+
+
+=== System Tray verification ===
+Tray createTray(): FOUND at line 65 FOUND at line 184
+Menu items:   let isQuitting = false;   const settings = getStore().get('settings');   if (settings.startMinimized) {   if (!isQuitting) {   const recordingLabel = simManager?.isRecording() ? 'Stop Recording' : 'Start Recording';   { label: 'Show Vantare', click: () => mainWindow?.show() },   { label: 'Hide Vantare', click: () => mainWindow?.hide() },   label: 'Toggle Overlays',   label: 'Settings',   mainWindow?.webContents.send('navigate', '/settings');   { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },   const settings = getStore().get('settings');   const shortcutKey = settings?.overlayVisibilityKey || 'Alt+H';   function applyAutoStartSettings(): void {   const settings = getStore().get('settings');   app.setLoginItemSettings({   openAtLogin: settings.autostart,   app.setLoginItemSettings({   applyAutoStartSettings();   app.on('before-quit', () => {   isQuitting = true;   app.quit();

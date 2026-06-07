@@ -1,0 +1,8 @@
+=== T2: IPC handlers verification ===
+✗ Only 0/3 found
+
+Missing handlers!
+
+Updates check handler: MISSING
+Updates install handler: MISSING
+Toggle visibility handler: MISSING

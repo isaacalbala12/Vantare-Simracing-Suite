@@ -2,6 +2,7 @@ import http from 'http';
 import { app } from 'electron';
 import type { SimManager } from '../sim/sim-manager';
 import type { Telemetry } from '@vantare/sim-core';
+import { getStore } from '../store';
 
 export class HttpServer {
   private server: http.Server | null = null;
@@ -14,7 +15,18 @@ export class HttpServer {
     this.simManager = simManager;
   }
 
+  private loadConfig(): void {
+    try {
+      const settings = getStore().get('settings');
+      this.port = settings.httpServerPort || 3200;
+      this.host = settings.networkAccess ? '0.0.0.0' : '127.0.0.1';
+    } catch {
+      // Store not ready yet, keep defaults
+    }
+  }
+
   async start(port?: number): Promise<void> {
+    this.loadConfig();
     if (port !== undefined) this.port = port;
     this.server = http.createServer((req, res) => {
       const url = new URL(req.url || '/', `http://${this.host}:${this.port}`);
@@ -65,6 +77,8 @@ export class HttpServer {
       res.end('Not found');
     });
 
+    let rejectStart: ((err: Error) => void) | null = null;
+
     // Swallow ECONNRESET from SSE client disconnections
     this.server.on('connection', (socket) => {
       socket.on('error', (err: NodeJS.ErrnoException) => {
@@ -74,10 +88,17 @@ export class HttpServer {
     });
     this.server.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ECONNRESET') return;
+      if (err.code === 'EADDRINUSE') {
+        console.error(`HTTP Server: port ${this.port} in use, disabling`);
+        this.server = null;
+        rejectStart?.(err);
+        return;
+      }
       console.error('HTTP server error:', err);
     });
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      rejectStart = reject;
       this.server?.listen(this.port, this.host, () => {
         resolve();
       });
@@ -144,6 +165,14 @@ export class HttpServer {
       } else {
         resolve();
       }
+    });
+  }
+
+  async restart(): Promise<void> {
+    await this.stop().catch(() => {});
+    this.loadConfig();
+    await this.start().catch((err) => {
+      console.warn('HTTP Server restart failed:', err.message);
     });
   }
 }

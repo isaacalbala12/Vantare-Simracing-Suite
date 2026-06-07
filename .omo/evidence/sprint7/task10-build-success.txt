@@ -1,0 +1,4 @@
+=== T10: Build verification ===
+pnpm build: PASSED (exit 0)
+dist/ created: False (main), False (preload), False (renderer)
+Version: 1.0.0-beta.1

@@ -1,6 +1,6 @@
 {
   "name": "@vantare/desktop",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "private": true,
   "description": "Vantare Overlays - Electron desktop app",
   "main": "dist/main/index.js",
@@ -51,6 +51,7 @@
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
     "postcss": "^8.4.0",
+    "sharp": "^0.34.5",
     "storybook": "^8.6.18",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",

@@ -1,11 +1,12 @@
-import { app, ipcMain, BrowserWindow } from 'electron';
+import { app, ipcMain, BrowserWindow, globalShortcut } from 'electron';
 import { AuthService } from '@vantare/auth';
 import { builtInThemes } from '@vantare/ui-core/themes';
-import type { Profile, Theme, Settings } from '@shared/types';
+import type { Profile, Theme, Settings, UpdateInfo } from '@shared/types';
 import { setupAuth } from '../auth/setup';
 import { getStore } from '../store';
 import type { SimManager } from '../sim/sim-manager';
 import type { OverlayManager } from '../windows/overlay-manager';
+import type { HttpServer } from '../server/http-server';
 import { MockSimFactory } from '@vantare/sim-core';
 import type { SimInfo, SimType, Telemetry } from '@vantare/sim-core';
 import { ProfileSchema } from '@vantare/ui-core/schemas';
@@ -28,6 +29,11 @@ export function setOverlayManager(mgr: OverlayManager | null): void {
   overlayManagerRef = mgr;
 }
 
+let httpServerRef: HttpServer | null = null;
+export function setHttpServerRef(server: HttpServer | null): void {
+  httpServerRef = server;
+}
+
 export function registerIpcHandlers(): void {
   const store = getStore();
   setupAuth({
@@ -38,7 +44,30 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:get', () => store.get('settings'));
   ipcMain.handle('settings:save', (_, settings: Partial<Settings>) => {
-    store.set('settings', { ...store.get('settings'), ...settings });
+    const current = store.get('settings');
+    const merged = { ...current, ...settings };
+    store.set('settings', merged);
+
+    // Propagate relevant settings changes
+    if ('autostart' in settings) {
+      app.setLoginItemSettings({
+        openAtLogin: settings.autostart,
+        path: app.getPath('exe'),
+      });
+    }
+    if ('overlayVisibilityKey' in settings && settings.overlayVisibilityKey) {
+      const oldKey = current.overlayVisibilityKey;
+      if (oldKey) globalShortcut.unregister(oldKey);
+      globalShortcut.register(settings.overlayVisibilityKey, () => {
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (win.isVisible()) win.hide();
+          else win.show();
+        });
+      });
+    }
+    if ('httpServerPort' in settings || 'networkAccess' in settings) {
+      httpServerRef?.restart();
+    }
   });
 
   ipcMain.handle('profiles:get', () => store.get('profiles'));
@@ -144,6 +173,31 @@ export function registerIpcHandlers(): void {
   });
   ipcMain.handle('system:minimize-to-tray', () => {
     BrowserWindow.getAllWindows().forEach((w) => w.hide());
+  });
+
+  // Updates
+  ipcMain.handle('updates:check', async (): Promise<UpdateInfo | null> => {
+    const updater = new (require('../updates/auto-updater').AutoUpdater)();
+    return updater.checkForUpdates();
+  });
+  ipcMain.handle('updates:install', () => {
+    const updater = new (require('../updates/auto-updater').AutoUpdater)();
+    updater.installUpdate();
+  });
+
+  // System - toggle overlay visibility
+  ipcMain.handle('system:toggle-visibility', (): boolean => {
+    const windows = BrowserWindow.getAllWindows();
+    const mainWindow = windows[0];
+    const overlayWindows = windows.slice(1);
+    const anyOverlayVisible = overlayWindows.some((w) => w.isVisible());
+    if (anyOverlayVisible) {
+      overlayWindows.forEach((w) => w.hide());
+      return false;
+    } else {
+      mainWindow?.show();
+      return true;
+    }
   });
 
   ipcMain.handle('themes:get', () => getAllThemes());

@@ -1,4 +1,11 @@
-﻿appId: com.vantare.overlays
+=== T1: Icon files verification ===
+icon.ico: True
+icon.png: True
+icon.svg: True
+build/ directory: True
+
+=== electron-builder.yml config ===
+appId: com.vantare.overlays
 productName: Vantare Overlays
 copyright: Copyright 2026 Vantare
 directories:
@@ -25,5 +32,10 @@ publish:
     owner: vantare
     repo: overlays
     releaseType: release
+    draft: true
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
+
+
+=== package.json version ===
+Version: 1.0.0-beta.1

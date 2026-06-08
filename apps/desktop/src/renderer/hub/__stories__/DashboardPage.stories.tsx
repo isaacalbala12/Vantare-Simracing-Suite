@@ -1,118 +1,104 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../pages/DashboardPage';
-import { useProfileStore } from '../../shared/stores/profile-store';
-import { useSettingsStore } from '../../shared/stores/settings-store';
-import { useAppStore } from '../../shared/stores/app-store';
-import { dark, midnight } from '@vantare/ui-core/themes';
 import { setupMockVantare } from './mock-vantare';
-
-function DashboardPageWrapper() {
-  useEffect(() => {
-    useAppStore.setState({ demoMode: false });
-  }, []);
-
-  return <DashboardPage />;
-}
+import { ThemeProvider } from '@vantare/ui-core/themes';
 
 const meta: Meta<typeof DashboardPage> = {
   title: 'Hub/DashboardPage',
   component: DashboardPage,
   decorators: [
     (Story) => (
-      <MemoryRouter>
-        <div className="bg-[#0a0a0a] min-h-screen">
-          <Story />
-        </div>
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter>
+          <div className="w-screen h-screen bg-[var(--color-surface)]">
+            <Story />
+          </div>
+        </MemoryRouter>
+      </ThemeProvider>
     ),
   ],
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
   },
 };
 
 export default meta;
 type Story = StoryObj<typeof DashboardPage>;
 
-export const Connected: Story = {
+export const Default: Story = {
+  name: 'Dashboard',
+  parameters: {
+    docs: {
+      description: {
+        story: 'Dashboard principal con 5 paneles glassmorphism en layout asimetrico. Muestra SIM Status, Overlays, Themes, Account y Settings con animaciones de entrada.',
+      },
+    },
+  },
+  beforeEach: () => {
+    setupMockVantare();
+  },
+};
+
+export const ConnectedSim: Story = {
+  name: 'Connected Sim',
+  parameters: {
+    docs: {
+      description: {
+        story: 'Dashboard con simulador conectado. El panel SIM Status muestra "LIVE" con el nombre del simulador.',
+      },
+    },
+  },
   beforeEach: () => {
     setupMockVantare({
-      getActiveTheme: () => Promise.resolve(midnight),
-      onSimState: (callback: (state: any) => void) => {
-        callback({ connected: true, name: 'iRacing' });
-        return () => {};
-      },
-    });
-    useProfileStore.setState({
-      activeProfile: {
-        id: 'profile-1',
-        name: 'My Racing Profile',
-        createdAt: '2025-01-15T10:00:00Z',
-        updatedAt: '2025-06-01T08:30:00Z',
-        overlays: {},
-        themeId: 'midnight',
-      },
-    });
-    useSettingsStore.setState({
-      settings: {
-        language: 'en',
-        autostart: false,
-        minimizeToTray: true,
-        startMinimized: false,
-        overlayVisibilityKey: 'F9',
-        preferredSim: 'auto',
-        alertVolume: 0.8,
-        alertEnabled: true,
-        autoUpdate: true,
-        updateChannel: 'stable',
-        httpServerPort: 2546,
-        networkAccess: true,
-      },
-      isLoading: false,
-      error: null,
+      getOverlayWindows: () => Promise.resolve([{ id: 'standings' }, { id: 'relative' }]),
+      getThemes: () => Promise.resolve([]),
     });
   },
 };
 
-export const Disconnected: Story = {
+export const LoggedIn: Story = {
+  name: 'Logged In',
+  parameters: {
+    docs: {
+      description: {
+        story: 'Dashboard con usuario autenticado. El panel Account muestra email, plan y estado de licencia.',
+      },
+    },
+  },
   beforeEach: () => {
     setupMockVantare({
-      getActiveTheme: () => Promise.resolve(dark),
-      onSimState: (callback: (state: any) => void) => {
-        callback({ connected: false, name: null });
-        return () => {};
-      },
+      getSession: () => Promise.resolve({
+        id: 'user_123',
+        email: 'driver@example.com',
+        tier: 'pro',
+      }),
+      getLicenseStatus: () => Promise.resolve({
+        tier: 'pro',
+        active: true,
+        isValid: true,
+      }),
     });
-    useProfileStore.setState({
-      activeProfile: {
-        id: 'profile-2',
-        name: 'Streaming Setup',
-        createdAt: '2025-03-20T14:00:00Z',
-        updatedAt: '2025-05-28T16:00:00Z',
-        overlays: {},
-        themeId: 'dark',
+  },
+};
+
+export const AllOverlaysActive: Story = {
+  name: 'All Overlays Active',
+  parameters: {
+    docs: {
+      description: {
+        story: 'Dashboard con todos los overlays abiertos. El panel Overlays muestra "X / X active" y "Open All" esta deshabilitado.',
       },
-    });
-    useSettingsStore.setState({
-      settings: {
-        language: 'en',
-        autostart: false,
-        minimizeToTray: true,
-        startMinimized: false,
-        overlayVisibilityKey: 'F9',
-        preferredSim: 'auto',
-        alertVolume: 0.8,
-        alertEnabled: true,
-        autoUpdate: true,
-        updateChannel: 'stable',
-        httpServerPort: 2546,
-        networkAccess: true,
-      },
-      isLoading: false,
-      error: null,
+    },
+  },
+  beforeEach: () => {
+    setupMockVantare({
+      getActiveProfile: () => Promise.resolve({
+        id: 'profile_1',
+        name: 'Default',
+        overlays: { standings: {}, relative: {}, delta: {}, alerts: {} },
+      }),
+      getOverlayWindows: () => Promise.resolve([{ id: 'standings' }, { id: 'relative' }, { id: 'delta' }, { id: 'alerts' }]),
     });
   },
 };

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { GlassPanel, TimeDisplay, PositionBadge } from '@vantare/ui-core';
+import { GlassPanel, TimeDisplay, PositionBadge, TelemetryBar, WaveBars, useTheme } from '@vantare/ui-core';
 import type { Telemetry, VehicleData } from '@vantare/sim-core';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -34,6 +34,10 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
       </div>
     );
   }
+
+  // ── Theme detection ────────────────────────────────────────────────────
+  const { themeId } = useTheme();
+  const isF1 = themeId === 'f1';
 
   // ── Refs for auto-scroll ──────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,14 +116,26 @@ export default function Standings({ telemetry, maxRows = 20 }: StandingsProps) {
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div ref={containerRef} className="standings-container">
-      <GlassPanel className="standings-overlay" data-testid="standings-table">
+      {isF1 && (
+        <>
+          <TelemetryBar
+            items={[
+              { label: 'Vuelta', value: String(telemetry.lap?.currentLap ?? '—') },
+              { label: 'Pos', value: `P${playerPosition ?? '?'}`, accent: true },
+              { label: 'Gap', value: playerIdx > 0 ? `+${(enriched[0]?.cumulativeGap ?? 0).toFixed(1)}s` : '—' },
+            ]}
+          />
+          <WaveBars barCount={12} />
+        </>
+      )}
+      <GlassPanel className={`standings-overlay${isF1 ? ' f1' : ''}`} data-testid="standings-table">
       <style>{`
         .standings-table tr:last-child td {
           border-bottom: none;
         }
         .standings-row-player {
-          background: rgba(139, 0, 0, 0.2);
-          border-left: 3px solid #DC143C;
+          background: rgba(196, 32, 64, 0.12);
+          border-left: 3px solid #c42040;
           position: relative;
         }
         .standings-row-player td:first-child {

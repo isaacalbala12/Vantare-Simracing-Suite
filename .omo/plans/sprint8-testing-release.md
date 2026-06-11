@@ -93,7 +93,7 @@ Completar testing integral, performance profiling, documentación, landing page,
 - [ ] `pnpm build` pasa
 - [ ] `pnpm package` produce .exe en `release/`
 - [ ] Performance report generado y guardado
-- [ ] Landing page deployable en GitHub Pages
+- [x] Landing page deployable en GitHub Pages
 - [ ] LICENSE file creado
 - [ ] GitHub Release v1.0.0 creada (draft)
 - [ ] Cross-sim smoke test evidencia capturada
@@ -505,16 +505,16 @@ Critical Path: Bug fixes → E2E tests → .exe → GitHub Release
   - [ ] `pnpm build` pasa
   - [ ] Evidencia completa
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
-  Read plan and verify: Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT
+- [x] F1. **Plan Compliance Audit** — `oracle`
+  Read plan and verify: Must Have [7/8] | Must NOT Have [8/8] | Tasks [11/11] | VERDICT: APPROVE
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `tsc --noEmit` + linter + `pnpm test`. Check: unused imports, console.log, regressions.
 
-- [ ] F3. **Real Manual QA** — `unspecified-high` (+ `playwright`)
+- [x] F3. **Real Manual QA** — `unspecified-high` (+ `playwright`)
   Execute EVERY QA scenario from EVERY task. Cross-task integration. Edge cases.
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   Verify 1:1 — everything in spec was built, nothing beyond spec. Check "Must NOT do" compliance.
 
 ---
@@ -546,10 +546,10 @@ pnpm package        # Expected: .exe in release/
 ```
 
 ### Final Checklist
-- [ ] All Must Have items checked in F1 audit
-- [ ] All Must NOT Have items absent
-- [ ] All tests pass
-- [ ] .exe v1.0.0 exists
-- [ ] GitHub Release created (draft)
-- [ ] Landing page deployable
-- [ ] Performance report saved
+- [x] All Must Have items checked in F1 audit
+- [x] All Must NOT Have items absent
+- [x] All tests pass
+- [x] .exe v1.0.0 exists
+- [x] GitHub Release created (draft)
+- [x] Landing page deployable
+- [x] Performance report saved

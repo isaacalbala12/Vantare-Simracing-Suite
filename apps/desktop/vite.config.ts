@@ -24,7 +24,7 @@ export default defineConfig({
       {
         entry: path.resolve(__dirname, "src/main/index.ts"),
         onstart(args) {
-          args.startup();
+          args.startup([".", "--no-sandbox"], { cwd: __dirname });
         },
         vite: {
           resolve: { alias: workspaceAliases },

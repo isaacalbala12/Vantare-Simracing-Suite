@@ -1,35 +1,14 @@
 {
-  "active_plan": null,
-  "started_at": null,
-  "session_ids": [],
-  "plan_name": null,
-  "session_origins": {},
-  "task_sessions": {},
-  "schema_version": 2,
-  "active_work_id": null,
-  "works": {
-    "sprint5a-multi-sim": {
-      "work_id": "sprint5a-multi-sim",
-      "plan_name": "sprint5a-multi-sim",
-      "status": "completed",
-      "ended_at": "2026-06-05T13:30:00Z"
-    },
-    "sprint5b-lmu-adapter": {
-      "work_id": "sprint5b-lmu-adapter",
-      "plan_name": "sprint5b-lmu-adapter",
-      "status": "completed",
-      "started_at": "2026-06-05T12:20:54.0455401+02:00",
-      "ended_at": "2026-06-05T15:00:00+02:00"
-    },
-    "sprint6-themes-auth": {
-      "work_id": "sprint6-themes-auth",
-      "plan_name": "sprint6-themes-auth",
-      "status": "completed",
-      "started_at": "2026-06-05T14:00:00+02:00",
-      "ended_at": "2026-06-05T14:05:00+02:00"
-    }
+  "active_plan": "C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\.omo\\plans\\dashboard-redesign.md",
+  "started_at": "2026-06-08T08:36:00.000Z",
+  "completed_at": "2026-06-08T08:46:00.000Z",
+  "session_ids": [
+    "opencode:ses_159b49b5fffehK57ZL97sw6hj1"
+  ],
+  "plan_name": "dashboard-redesign",
+  "status": "completed",
+  "session_origins": {
+    "opencode:ses_159b49b5fffehK57ZL97sw6hj1": "direct"
   },
-  "agent": "atlas",
-  "updated_at": "2026-06-05T15:00:00+02:00",
-  "status": "idle"
+  "task_sessions": {}
 }

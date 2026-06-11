@@ -201,6 +201,20 @@ Descarga la última versión desde la página de [Releases](https://github.com/v
 
 Para desarrolladores que quieran contribuir o ejecutar la aplicación en modo desarrollo:
 
+### v2 (Go — reinicio activo)
+
+El scaffold v2 vive en [`vantare-v2/`](vantare-v2/). Requiere [Go 1.22+](https://go.dev/dl/).
+
+```bash
+cd vantare-v2
+go test ./...
+go run ./cmd/lmu-debug -mock -once
+```
+
+Ver [`vantare-v2/README.md`](vantare-v2/README.md) y [`docs/V2-STACK-AND-PERFORMANCE.md`](docs/V2-STACK-AND-PERFORMANCE.md).
+
+### v1 (Electron — legado)
+
 ```bash
 # Clonar el repositorio
 git clone https://github.com/vantare/overlays.git
@@ -452,7 +466,8 @@ La documentación completa del proyecto está disponible en la carpeta `docs/`:
 
 | Documento | Descripción |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Arquitectura general del sistema y decisiones de diseño |
+| [**V2 Stack & Performance**](docs/V2-STACK-AND-PERFORMANCE.md) | **Stack confirmado v2 (Go+Wails+React), arquitectura y optimizaciones** |
+| [Architecture](docs/ARCHITECTURE.md) | Arquitectura general del sistema y decisiones de diseño (v1 Electron) |
 | [Technical Decisions](docs/TECH-DECISIONS.md) | Decisiones técnicas y justificaciones |
 | [Overlay Development Guide](docs/OVERLAY-DEV-GUIDE.md) | Guía para desarrollar nuevos overlays |
 | [Sim Adapter Guide](docs/SIM-ADAPTER-GUIDE.md) | Guía para crear adaptadores de telemetría |

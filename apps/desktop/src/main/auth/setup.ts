@@ -45,6 +45,13 @@ export function setupMachineId(): void {
 }
 
 export function setupAuth(licenseCacheStore: LicenseCacheStore): void {
+  // Force mock mode in E2E tests and dev mode to avoid Supabase WebSocket crash
+  // (Electron 33 bundles Node.js 20 without native WebSocket support)
+  if (process.env.E2E_TEST === '1' || !app.isPackaged) {
+    AuthService.enableMockMode();
+    return;
+  }
+
   const url = process.env.SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY;
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTelemetryStore } from '@vantare/ui-core';
 import { loadBundle } from '../bundles/registry';
 import type { Bundle } from '../bundles/types';
 import type { OverlayId } from '../bundles/types';
@@ -25,6 +26,7 @@ export default function OverlayShell() {
   const [overlayId, setOverlayId] = useState<OverlayId | ''>(() => getOverlayId());
   const [themeId, setThemeId] = useState('default');
   const [bundle, setBundle] = useState<Bundle | null>(null);
+  const telemetry = useTelemetryStore((s) => s.telemetry);
 
   // Fetch the active theme from IPC on mount
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function OverlayShell() {
 
   return (
     <div data-testid="overlay-shell" className="overlay-mode">
-      <OverlayComponent />
+      <OverlayComponent telemetry={telemetry} />
     </div>
   );
 }

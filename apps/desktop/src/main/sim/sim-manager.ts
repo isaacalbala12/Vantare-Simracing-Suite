@@ -76,9 +76,12 @@ export class SimManager {
       const data = this.getTelemetry();
       if (!data) return;
 
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.webContents.send('telemetry', data);
-      }
+      // Broadcast telemetry to ALL BrowserWindows (main window + overlay windows)
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send('telemetry', data);
+        }
+      });
       if (this.onTelemetryCallback) {
         this.onTelemetryCallback(data);
       }

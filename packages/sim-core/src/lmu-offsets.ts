@@ -126,6 +126,7 @@ export const LMU = {
     LAP_NUMBER: 20,
     VEHICLE_NAME: 32,
     TRACK_NAME: 96,
+    LOCAL_VEL: { OFFSET: 184, SIZE: 24 },
     GEAR: 352,
     ENGINE_RPM: 356,
     ENGINE_WATER_TEMP: 364,

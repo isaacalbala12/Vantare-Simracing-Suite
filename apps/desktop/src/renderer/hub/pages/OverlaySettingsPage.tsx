@@ -84,6 +84,23 @@ export default function OverlaySettingsPage() {
         })}
       </nav>
 
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => window.vantare.showOverlay(selectedOverlay)}
+          data-testid={`show-overlay-${selectedOverlay}`}
+          className="flex items-center gap-2 rounded bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] transition-colors"
+        >
+          ▶ Show {currentTab.label}
+        </button>
+        <button
+          onClick={() => window.vantare.hideOverlay(selectedOverlay)}
+          data-testid={`hide-overlay-${selectedOverlay}`}
+          className="flex items-center gap-2 rounded bg-[var(--color-glass)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] transition-colors"
+        >
+          ■ Hide
+        </button>
+      </div>
+
       <div data-testid="overlay-settings-form" className="flex-1 overflow-auto">
         {selectedLocked ? (
           <UpgradePrompt feature={currentTab.label} requiredTier={requiredTier(currentTab.feature)} />

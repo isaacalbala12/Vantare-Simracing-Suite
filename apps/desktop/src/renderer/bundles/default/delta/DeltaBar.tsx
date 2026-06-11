@@ -1,5 +1,5 @@
 import React from 'react';
-import { GlassPanel } from '@vantare/ui-core';
+import { GlassPanel, useTheme } from '@vantare/ui-core';
 import { calculateDeltaToBest } from '@vantare/sim-core/calculations/delta';
 import type { Telemetry } from '@vantare/sim-core';
 
@@ -69,6 +69,8 @@ export default function DeltaBar({ telemetry }: DeltaBarProps) {
   const sign = delta > 0 ? '+' : '';
   const formatted = `${sign}${(delta / 1000).toFixed(3)}s`;
 
+  const { themeId } = useTheme();
+  const isF1 = themeId === 'f1';
   // ── Visual bar: width proportional to |delta|, capped at 100% ──────
   const barWidth = Math.min(Math.abs(delta) / MAX_DELTA_SECONDS, 1) * 100;
   // Positive delta fills from the center going right; negative fills going left
@@ -81,7 +83,7 @@ export default function DeltaBar({ telemetry }: DeltaBarProps) {
 
   return (
     <div data-testid="delta-bar" data-direction={direction} className="delta-bar">
-      <GlassPanel className="delta-overlay">
+      <GlassPanel className={`delta-overlay${isF1 ? ' f1' : ''}`}>
         <div className="delta-track">
           <div
             className={`delta-fill delta-fill--${direction}`}

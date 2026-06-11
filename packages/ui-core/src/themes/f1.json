@@ -1,0 +1,97 @@
+{
+  "id": "f1",
+  "name": "F1",
+  "description": "Racing telemetry aesthetic with red-crimson accents",
+  "author": "Vantare",
+  "version": "1.0.0",
+  "tokens": {
+    "color": {
+      "surface": "#09090b",
+      "surfaceAlt": "rgba(18,18,22,0.94)",
+      "surfaceElevated": "rgba(24,24,28,0.96)",
+      "border": "rgba(237,237,240,0.05)",
+      "borderSubtle": "rgba(237,237,240,0.03)",
+      "primary": "#c42040",
+      "primaryHover": "#d43050",
+      "primaryMuted": "rgba(196,32,64,0.15)",
+      "secondary": "#9b1b32",
+      "secondaryHover": "#b02040",
+      "text": "#f4f4f5",
+      "textMuted": "rgba(244,244,245,0.45)",
+      "textInverse": "#09090b",
+      "positive": "#22c55e",
+      "negative": "#e63950",
+      "warning": "#fbbf24",
+      "danger": "#e63950",
+      "glass": "rgba(18,18,22,0.94)",
+      "glassBorder": "rgba(237,237,240,0.05)",
+      "overlay": "#00000080"
+    },
+    "font": {
+      "heading": "'Space Grotesk', sans-serif",
+      "body": "'Inter', sans-serif",
+      "mono": "'JetBrains Mono', monospace",
+      "size": {
+        "xs": "0.75rem",
+        "sm": "0.875rem",
+        "base": "1rem",
+        "lg": "1.25rem",
+        "xl": "1.5rem",
+        "2xl": "2rem"
+      },
+      "weight": {
+        "normal": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      }
+    },
+    "spacing": {
+      "xs": "0.25rem",
+      "sm": "0.5rem",
+      "md": "1rem",
+      "lg": "1.5rem",
+      "xl": "2rem",
+      "2xl": "3rem"
+    },
+    "radius": {
+      "sm": "0.1875rem",
+      "md": "0.3125rem",
+      "lg": "0.5rem",
+      "xl": "0.75rem",
+      "full": "9999px"
+    },
+    "shadow": {
+      "sm": "0 1px 2px rgba(0,0,0,0.4)",
+      "md": "0 4px 12px rgba(0,0,0,0.45)",
+      "lg": "0 10px 36px rgba(0,0,0,0.45)",
+      "glow": "0 0 20px rgba(196,32,64,0.25)"
+    },
+    "animation": {
+      "duration": {
+        "fast": "150ms",
+        "normal": "300ms",
+        "slow": "500ms",
+        "slowest": "800ms"
+      },
+      "easing": {
+        "default": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "bounce": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "sharp": "cubic-bezier(0.4, 0, 0.6, 1)"
+      }
+    },
+    "glass": {
+      "blur": "12px",
+      "opacity": 0.94,
+      "saturation": "180%"
+    },
+    "z": {
+      "base": 1,
+      "overlay": 10,
+      "dropdown": 20,
+      "modal": 50,
+      "toast": 100,
+      "tooltip": 200
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { GlassPanel } from '@vantare/ui-core';
+import { GlassPanel, useTheme, LiveDot } from '@vantare/ui-core';
 import { useAlertsStore } from '../../../shared/stores/alerts-store';
 import type { Alert, AlertType } from '../../../shared/types/alerts';
 
@@ -44,6 +44,8 @@ function getAlertLabel(type: AlertType): string {
 export default function StreamAlerts() {
   const currentAlert = useAlertsStore((s) => s.currentAlert);
   const dismissCurrent = useAlertsStore((s) => s.dismissCurrent);
+  const { themeId } = useTheme();
+  const isF1 = themeId === 'f1';
 
   useEffect(() => {
     if (!currentAlert) return;
@@ -69,10 +71,11 @@ export default function StreamAlerts() {
       role="button"
       tabIndex={0}
     >
-      <GlassPanel className="stream-alert">
+      <GlassPanel className={`stream-alert${isF1 ? ' f1' : ''}`}>
         <div className="stream-alert-content">
           <span className="stream-alert-label">{getAlertLabel(alert.type)}</span>
           <span className="stream-alert-message">{alert.message}</span>
+          {isF1 && <LiveDot />}
         </div>
       </GlassPanel>
     </div>

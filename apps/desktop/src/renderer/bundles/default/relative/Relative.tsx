@@ -1,5 +1,5 @@
 import React from 'react';
-import { GlassPanel, PositionBadge } from '@vantare/ui-core';
+import { GlassPanel, PositionBadge, TelemetryBar, useTheme } from '@vantare/ui-core';
 import type { Telemetry, VehicleData } from '@vantare/sim-core';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -103,9 +103,22 @@ export default function Relative({ telemetry }: RelativeProps) {
     );
   }
 
+  // ── Theme detection ────────────────────────────────────────────────────
+  const { themeId } = useTheme();
+  const isF1 = themeId === 'f1';
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <GlassPanel className="relative-overlay" data-testid="relative-table">
+    <>
+      {isF1 && (
+        <TelemetryBar
+          items={[
+            { label: 'Pos', value: `P${rows.find(r => r.isPlayer)?.vehicle.position ?? '?'}`, accent: true },
+            { label: 'Coches', value: `${rows.length} en ventana` },
+          ]}
+        />
+      )}
+      <GlassPanel className={`relative-overlay${isF1 ? ' f1' : ''}`} data-testid="relative-table">
       <style>{`
         .relative-row {
           transition: all 0.3s ease;
@@ -123,8 +136,8 @@ export default function Relative({ telemetry }: RelativeProps) {
           background: rgba(34, 197, 94, 0.04);
         }
         .relative-row-player {
-          background: rgba(139, 0, 0, 0.2);
-          border-left: 3px solid #DC143C;
+          background: rgba(196, 32, 64, 0.12);
+          border-left: 3px solid #c42040;
         }
         .relative-row-player td:first-child {
           padding-left: calc(0.5rem - 3px);
@@ -249,5 +262,6 @@ export default function Relative({ telemetry }: RelativeProps) {
         </tbody>
       </table>
     </GlassPanel>
+    </>
   );
 }

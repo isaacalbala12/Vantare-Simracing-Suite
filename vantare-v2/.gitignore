@@ -1,0 +1,15 @@
+# Binaries
+/bin/
+*.exe
+*.dll
+
+# Go
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+
+# Test fixtures (large binaries — regenerate with dump-lmu-memory.py)
+/testdata/*.bin
+!/testdata/lmu-fixture.bin

@@ -15,6 +15,7 @@ type BundleLoader = () => Promise<{ default: Bundle }>;
  */
 const bundleLoaders: Record<string, BundleLoader> = {
   default: () => import('./default'),
+  f1: () => import('./default'),
 };
 
 /**

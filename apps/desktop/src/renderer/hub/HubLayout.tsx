@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useProfileStore } from '../shared/stores/profile-store';
 import { useAuthStore } from '../shared/stores/auth-store';
 import SimSwitcher from './components/SimSwitcher';
+import { useTheme } from '@vantare/ui-core';
 import type { Theme } from '@vantare/types';
 
 interface NavItem {
@@ -22,6 +23,8 @@ const navItems: NavItem[] = [
 ];
 
 export default function HubLayout() {
+  const { themeId } = useTheme();
+  const isF1 = themeId === 'f1';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
   const [recording, setRecording] = useState(false);
@@ -29,6 +32,7 @@ export default function HubLayout() {
   const loadProfiles = useProfileStore((s) => s.loadProfiles);
   const loadSession = useAuthStore((s) => s.loadSession);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     void loadProfiles();
@@ -72,12 +76,13 @@ export default function HubLayout() {
           transform transition-transform duration-200
           lg:relative lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isF1 ? 'f1-hub-panel' : ''}
         `}
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between px-3 h-14 border-b border-[var(--color-border)] gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-semibold text-[var(--color-text-muted)] tracking-wide uppercase shrink-0">
+            <span className={`text-sm font-semibold tracking-wide uppercase shrink-0 ${isF1 ? 'f1-name' : 'text-[var(--color-text-muted)]'}`}>
               Vantare
             </span>
             <SimSwitcher />
@@ -112,7 +117,7 @@ export default function HubLayout() {
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-[var(--color-glass)] text-[var(--color-text)]'
+                    ? `bg-[var(--color-glass)] text-[var(--color-text)]${isF1 ? ' f1-sidebar-accent active' : ''}`
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-glass)]'
                 }`
               }
@@ -124,7 +129,7 @@ export default function HubLayout() {
 
         {/* Sidebar Footer */}
         <div className="px-4 py-3 border-t border-[var(--color-border)]">
-          <span className="text-xs text-[var(--color-text-muted)]">Vantare Overlays v0.1.0</span>
+          <span className={`text-xs text-[var(--color-text-muted)] ${isF1 ? 'f1-source' : ''}`}>Vantare Overlays v0.1.0</span>
         </div>
       </aside>
 
@@ -145,7 +150,7 @@ export default function HubLayout() {
 
         {/* Content area */}
         <div className="flex-1 overflow-auto">
-          {activeProfile ? (
+          {activeProfile || location.pathname === '/profiles' ? (
             <Outlet />
           ) : (
             <EmptyState onCreateProfile={() => navigate('/profiles')} />

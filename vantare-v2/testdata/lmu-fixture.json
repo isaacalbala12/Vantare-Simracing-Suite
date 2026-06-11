@@ -1,0 +1,548 @@
+{
+  "generic": {
+    "gameVersion": 13000,
+    "ffbTorque": -0.007992036640644073
+  },
+  "session": {
+    "trackName": "Circuit de Barcelona",
+    "sessionType": 1,
+    "currentET": 112.60000000000001,
+    "maxLaps": 2147483647,
+    "lapDist": 4655.10986328125,
+    "numVehicles": 44,
+    "gamePhase": 5,
+    "playerName": "Isaac Albala",
+    "ambientTemp": 16.0,
+    "trackTemp": 23.299214394865544,
+    "raining": 0.0,
+    "avgPathWetness": 0.0,
+    "sessionTimeRemaining": 3492.39990234375
+  },
+  "telemetry": {
+    "activeVehicles": 44,
+    "playerVehicleIdx": 43,
+    "playerHasVehicle": true
+  },
+  "vehicles": [
+    {
+      "id": 1,
+      "driverName": "Laurents Horr",
+      "totalLaps": 0,
+      "place": 23,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 2,
+      "driverName": "Matteo Cairoli",
+      "totalLaps": 0,
+      "place": 29,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 3,
+      "driverName": "Ryan Cullen",
+      "totalLaps": 0,
+      "place": 14,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 4,
+      "driverName": "Jamie Chadwick",
+      "totalLaps": 0,
+      "place": 37,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 5,
+      "driverName": "Olli Caldwell",
+      "totalLaps": 0,
+      "place": 19,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 6,
+      "driverName": "Oliver Jarvis",
+      "totalLaps": 0,
+      "place": 41,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 7,
+      "driverName": "Ben Hanley",
+      "totalLaps": 0,
+      "place": 2,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 8,
+      "driverName": "Filipe Albuquerque",
+      "totalLaps": 0,
+      "place": 43,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 9,
+      "driverName": "Lorenzo Fluxa",
+      "totalLaps": 0,
+      "place": 18,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 10,
+      "driverName": "James Allen",
+      "totalLaps": 0,
+      "place": 44,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 11,
+      "driverName": "Paul-Loup Chatin",
+      "totalLaps": 0,
+      "place": 38,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 12,
+      "driverName": "Mathias Beche",
+      "totalLaps": 0,
+      "place": 1,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 13,
+      "driverName": "Reshad de Gerus",
+      "totalLaps": 0,
+      "place": 4,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 14,
+      "driverName": "Luca Ghiotto",
+      "totalLaps": 0,
+      "place": 34,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 15,
+      "driverName": "Tom Blomqvist",
+      "totalLaps": 0,
+      "place": 25,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 16,
+      "driverName": "Tom Dillmann",
+      "totalLaps": 0,
+      "place": 7,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 17,
+      "driverName": "Pipo Derani",
+      "totalLaps": 0,
+      "place": 26,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 18,
+      "driverName": "Oliver Gray",
+      "totalLaps": 0,
+      "place": 20,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 19,
+      "driverName": "Rene Binder",
+      "totalLaps": 0,
+      "place": 3,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 20,
+      "driverName": "Francois Perrodo",
+      "totalLaps": 0,
+      "place": 32,
+      "vehicleClass": "LMP2_ELMS",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 21,
+      "driverName": "Michael Birch",
+      "totalLaps": 0,
+      "place": 42,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 22,
+      "driverName": "Riccardo Agostini",
+      "totalLaps": 0,
+      "place": 40,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 23,
+      "driverName": "Conrad Laursen",
+      "totalLaps": 0,
+      "place": 5,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 24,
+      "driverName": "Duncan Cameron",
+      "totalLaps": 0,
+      "place": 39,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 25,
+      "driverName": "Takeshi Kimura",
+      "totalLaps": 0,
+      "place": 8,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 26,
+      "driverName": "Erwan Bastard",
+      "totalLaps": 0,
+      "place": 36,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 27,
+      "driverName": "Matteo Cressoni",
+      "totalLaps": 0,
+      "place": 31,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 28,
+      "driverName": "Martin Berry",
+      "totalLaps": 0,
+      "place": 28,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 29,
+      "driverName": "Gianmaria Bruni",
+      "totalLaps": 0,
+      "place": 22,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 30,
+      "driverName": "Andrew Gilbert",
+      "totalLaps": 0,
+      "place": 10,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 31,
+      "driverName": "Rui Andrade",
+      "totalLaps": 0,
+      "place": 11,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 32,
+      "driverName": "Sarah Bovy",
+      "totalLaps": 0,
+      "place": 30,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 33,
+      "driverName": "Tom Fleming",
+      "totalLaps": 0,
+      "place": 16,
+      "vehicleClass": "GT3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 34,
+      "driverName": "Wyatt Brichacek",
+      "totalLaps": 0,
+      "place": 24,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 35,
+      "driverName": "Rik Koen",
+      "totalLaps": 0,
+      "place": 6,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 36,
+      "driverName": "Ian Aguilera",
+      "totalLaps": 0,
+      "place": 21,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 37,
+      "driverName": "Torsten Kratz",
+      "totalLaps": 0,
+      "place": 12,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 38,
+      "driverName": "Nick Adcock",
+      "totalLaps": 0,
+      "place": 17,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 39,
+      "driverName": "Adrien Closmenil",
+      "totalLaps": 0,
+      "place": 13,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 40,
+      "driverName": "Marius Fossard",
+      "totalLaps": 0,
+      "place": 27,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 41,
+      "driverName": "Jean-Baptiste Lahaye",
+      "totalLaps": 0,
+      "place": 35,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 42,
+      "driverName": "Quentin Antonel",
+      "totalLaps": 0,
+      "place": 33,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 43,
+      "driverName": "Tim Creswick",
+      "totalLaps": 0,
+      "place": 15,
+      "vehicleClass": "LMP3",
+      "isPlayer": false,
+      "pitState": 5,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    },
+    {
+      "id": 0,
+      "driverName": "Isaac Albala",
+      "totalLaps": 0,
+      "place": 9,
+      "vehicleClass": "LMP3",
+      "isPlayer": true,
+      "pitState": 0,
+      "bestLapTime": -1.0,
+      "lastLapTime": 0.0
+    }
+  ],
+  "playerTelemetry": {
+    "id": 0,
+    "lapNumber": 0,
+    "gear": 1,
+    "engineRPM": 3395.991911935684,
+    "speed": 15.592212870045874,
+    "throttle": 0.0,
+    "brake": 0.0,
+    "fuel": 99.58657327772369
+  },
+  "wheels": [
+    {
+      "brakeTemp": 419.60848103445625,
+      "pressure": 178.62111679541886,
+      "wear": 0.9996036887168884,
+      "compoundType": 1
+    },
+    {
+      "brakeTemp": 420.56084903811643,
+      "pressure": 178.86635036710592,
+      "wear": 0.9995575547218323,
+      "compoundType": 1
+    },
+    {
+      "brakeTemp": 415.0931591458863,
+      "pressure": 157.97968867916043,
+      "wear": 0.9975708723068237,
+      "compoundType": 1
+    },
+    {
+      "brakeTemp": 417.4903851537445,
+      "pressure": 158.0998363518951,
+      "wear": 0.9979310631752014,
+      "compoundType": 1
+    }
+  ]
+}

@@ -28,7 +28,8 @@
   padding: 0.375rem 0.5rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-family: 'Space Grotesk', sans-serif;
   color: rgba(255, 255, 255, 0.5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
@@ -105,7 +106,7 @@
 }
 
 .delta-fill--positive {
-  background: var(--hf-delta-slow, #ef4444);
+  background: var(--hf-delta-slow, #e63950);
   left: 50%;
 }
 
@@ -133,9 +134,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.delta-value--positive { color: var(--hf-delta-slow, #ef4444); }
+.delta-value--positive { color: var(--hf-delta-slow, #e63950); }
 .delta-value--negative { color: var(--hf-delta-fast, #22c55e); }
-.delta-value--neutral { color: rgba(255, 255, 255, 0.5); }
+.delta-value--neutral { color: rgba(244, 244, 245, 0.5); }
 
 /* ── Stream Alerts ─────────────────────────────────────────────────────────── */
 
@@ -158,6 +159,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-family: 'Space Grotesk', sans-serif;
   color: var(--hf-accent, #fbbf24);
 }
 

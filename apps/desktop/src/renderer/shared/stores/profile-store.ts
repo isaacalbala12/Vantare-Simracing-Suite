@@ -64,6 +64,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         themeId: '',
       };
       await window.vantare.saveProfile(profile);
+      await window.vantare.setActiveProfile(profile.id);
       await reload(set);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create profile';

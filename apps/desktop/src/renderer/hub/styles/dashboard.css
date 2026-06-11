@@ -183,3 +183,25 @@
     box-shadow: none;
   }
 }
+
+/* ── F1 Dashboard Panel ──────────────────────────────────────────────── */
+
+.f1 .dashboard-panel {
+  background: rgba(18, 18, 22, 0.94);
+  border-radius: 5px;
+  border-color: rgba(237, 237, 240, 0.04);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+}
+
+.f1 .dashboard-panel::before {
+  background: linear-gradient(135deg, rgba(196, 32, 64, 0.3), transparent 50%);
+}
+
+.f1 .dashboard-panel-title {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c42040;
+}

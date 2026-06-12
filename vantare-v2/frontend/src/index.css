@@ -55,6 +55,10 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+body.desktop-overlay {
+  background: transparent;
+}
+
 body.hub {
   overflow-y: auto;
 }

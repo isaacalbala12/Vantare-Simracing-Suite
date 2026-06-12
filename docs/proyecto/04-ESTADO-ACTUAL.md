@@ -15,8 +15,9 @@
 | 3 | Wails overlay mínimo | ✅ | Ventana transparente, bridge telemetría |
 | 4 | Layout + modos | ✅ | JSON perfil, racing/edit, 3 widgets, SaveLayout |
 | 5 | Hub React | ✅ | Dashboard v5 + CRUD perfiles + segunda ventana |
+| 6 | OBS / SSE | ✅ técnico | HTTP localhost, `/overlay`, `/api/profile`, SSE; pendiente validación visual OBS real |
 
-**Siguiente fase recomendada:** **Fase 6 — OBS / SSE** (HTTP embebido, modo streaming).
+**Siguiente fase recomendada:** **Fase 7 — Optimización UI** (FPS por widget, DOM directo/canvas donde aplique), tras validar F6 en OBS real.
 
 ---
 
@@ -27,6 +28,7 @@
 - Perfil JSON carga widgets delta, relative, standings.
 - Modo **racing**: ventana shrink-wrap, click-through.
 - Modo **edit** (`-edit` o `displayMode: "edit"`): fullscreen, arrastrar, guardar a JSON.
+- Modo **streaming**: ventana overlay desktop se mueve off-screen 1×1; OBS usa Browser Source HTTP.
 - Telemetría mock por defecto; `-live` con LMU en pista.
 
 ### Hub (`/#/hub`)
@@ -38,7 +40,17 @@
 ### Perfiles
 
 - Ejemplo: `configs/example-racing.json` — id `default-racing`, archivo `example-racing.json`.
+- Ejemplo OBS: `configs/example-streaming.json` — id `default-streaming`, archivo `example-streaming.json`.
 - Activar desde hub emite `profile:loaded` al overlay.
+
+### OBS / HTTP (Fase 6)
+
+- Servidor embebido por defecto: `http://127.0.0.1:39261`.
+- Healthcheck: `GET /health`.
+- Overlay OBS: `GET /overlay?profile=example-streaming.json`.
+- Perfil OBS: `GET /api/profile?profile=example-streaming.json` o por id JSON (`default-streaming`).
+- Telemetría SSE: `GET /telemetry/stream`.
+- Assets Vite (`/assets/...`) servidos desde `frontend/dist`.
 
 ---
 
@@ -66,7 +78,7 @@ Tests añadidos: `hub_service_test.go` (activate by id, save path, traversal, du
 | Hero hub con telemetría live | 5+ | Media |
 | Rename perfil desde UI | 5+ | Baja |
 | Páginas Telemetría / Setup (nav stub) | 5+ | Media |
-| OBS HTTP + SSE | 6 | Alta |
+| Validación visual en OBS real | 6 | Alta |
 | FPS por widget optimizado | 7 | Media |
 | Temas runtime + Lite mode | 8 | Media |
 | iRacing / AC adapters | 9 | Media |
@@ -81,6 +93,7 @@ Tests añadidos: `hub_service_test.go` (activate by id, save path, traversal, du
 |------|----------|-----------|
 | F4 | `docs/superpowers/plans/2026-06-11-v2-f4-composite-layout.md` | tests + manual |
 | F5 | `docs/superpowers/plans/2026-06-11-v2-f5-hub-dashboard.md` | `.omo/evidence/v2-f5-hub.txt` |
+| F6 | `.omo/plans/v2-f6-obs-sse.md` | `.omo/evidence/v2-f6-obs-sse.txt` |
 | F4 closeout | `docs/superpowers/plans/2026-06-11-v2-f4-closeout.md` | — |
 
 ---

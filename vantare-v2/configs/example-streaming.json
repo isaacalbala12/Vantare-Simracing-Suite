@@ -1,0 +1,31 @@
+{
+  "id": "default-streaming",
+  "name": "Default Streaming",
+  "displayMode": "streaming",
+  "monitorIndex": 0,
+  "widgets": [
+    {
+      "id": "delta",
+      "type": "delta",
+      "enabled": true,
+      "updateHz": 30,
+      "position": { "x": 760, "y": 40, "w": 400, "h": 48 }
+    },
+    {
+      "id": "relative",
+      "type": "relative",
+      "enabled": true,
+      "updateHz": 15,
+      "position": { "x": 40, "y": 600, "w": 320, "h": 280 },
+      "props": { "rangeAhead": 3, "rangeBehind": 3 }
+    },
+    {
+      "id": "standings",
+      "type": "standings",
+      "enabled": true,
+      "updateHz": 15,
+      "position": { "x": 1560, "y": 40, "w": 340, "h": 420 },
+      "props": { "maxRows": 12 }
+    }
+  ]
+}

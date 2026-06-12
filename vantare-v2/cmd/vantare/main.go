@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -50,6 +51,7 @@ func main() {
 	live := flag.Bool("live", false, "use LMU shared memory (fallback mock)")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
+	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
 	flag.Parse()
 
 	distFS, err := app.FrontendDistFS()
@@ -210,6 +212,31 @@ func main() {
 		emitter.Emit("hub:profile-activated", map[string]any{"ok": true})
 	})
 
+	wailsApp.Event.On("profile:set-mode", func(event *application.CustomEvent) {
+		var data struct {
+			Mode config.DisplayMode `json:"mode"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				json.Unmarshal(raw, &data)
+			}
+		}
+		switch data.Mode {
+		case config.ModeRacing, config.ModeEdit, config.ModeStreaming:
+			if err := profileSvc.SetDisplayMode(data.Mode); err != nil {
+				log.Printf("profile:set-mode error: %v", err)
+				return
+			}
+			profileSvc.EmitLoaded()
+		default:
+			log.Printf("profile:set-mode invalid mode: %q", data.Mode)
+		}
+	})
+
+	wailsApp.Event.On("profile:request", func(event *application.CustomEvent) {
+		profileSvc.EmitLoaded()
+	})
+
 	// Start telemetry
 	bridge := app.NewTelemetryBridge(vapp.Telemetry, emitter)
 	vapp.StartTelemetry(ctx)
@@ -219,6 +246,17 @@ func main() {
 
 	// Apply profile to window (racing: shrink-wrap, edit: fullscreen)
 	profileSvc.ApplyToWindow(false)
+
+	// --- OBS / SSE HTTP server ---
+	httpSrv := server.New(server.ServerConfig{
+		Addr:   *httpAddr,
+		DistFS: distFS,
+		CfgDir: cfgDir,
+		Svc:    vapp.Telemetry,
+	})
+	httpSrv.Start()
+	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
+	defer httpSrv.Stop()
 
 	// Emit profile:loaded event for frontend
 	profileSvc.EmitLoaded()

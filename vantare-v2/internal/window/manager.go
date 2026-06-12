@@ -30,6 +30,7 @@ func NewManager(win WindowHandle, pad int) *Manager {
 // ApplyProfile applies the profile's display mode to the window.
 // skipRefresh=true (skipWindowRefresh): resize bounds only — no mode toggles
 // (avoids fullscreen flash / redundant WebView2 state changes on layout save).
+// For ModeStreaming, the window is minimised/hidden since OBS provides the display.
 func (m *Manager) ApplyProfile(p *config.ProfileConfig, skipRefresh bool) {
 	switch p.DisplayMode {
 	case config.ModeEdit:
@@ -37,7 +38,22 @@ func (m *Manager) ApplyProfile(p *config.ProfileConfig, skipRefresh bool) {
 			m.win.SetIgnoreMouseEvents(false)
 			m.win.SetResizable(true)
 			m.win.Fullscreen()
+			// Apply after Fullscreen as well: transparent layered windows on
+			// Windows can retain click-through state across geometry changes.
+			m.win.SetIgnoreMouseEvents(false)
 		}
+	case config.ModeStreaming:
+		// In streaming mode the overlay window should not be visible on desktop.
+		// Wails v3 does not support conditional window creation, so we minimise
+		// and move it off-screen to avoid obstructing the sim. OBS serves as the
+		// display via a Browser Source pointing at the embedded HTTP server.
+		if !skipRefresh {
+			m.win.UnFullscreen()
+			m.win.SetIgnoreMouseEvents(true)
+			m.win.SetResizable(false)
+		}
+		m.win.SetPosition(-9999, -9999)
+		m.win.SetSize(1, 1)
 	default: // racing
 		if !skipRefresh {
 			m.win.UnFullscreen()

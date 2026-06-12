@@ -14,8 +14,8 @@
 | 3 | Wails mínimo | 1 ventana overlay | ✅ |
 | 4 | Layout | JSON + racing/edit + 3 widgets | ✅ |
 | 5 | Hub | Dashboard v5 + CRUD perfiles | ✅ |
-| 6 | OBS / SSE | HTTP localhost + Browser Source | ⬜ **SIGUIENTE** |
-| 7 | Optimización UI | FPS por widget, DOM directo | ⬜ |
+| 6 | OBS / SSE | HTTP localhost + Browser Source | ✅ técnico |
+| 7 | Optimización UI | FPS por widget, DOM directo | ⬜ **SIGUIENTE** |
 | 8 | Temas | CSS variables, Lite mode | ⬜ |
 | 9 | Ops + multi-sim | CPU/RAM widget, iRacing/AC | ⬜ |
 
@@ -40,11 +40,13 @@
 | Tarea | Validación |
 |-------|------------|
 | Servidor embebido Go `localhost` | `GET /health` |
-| SSE `/telemetry` con diff payload | OBS recibe updates |
+| SSE `/telemetry/stream` con diff payload | `curl.exe -N`, OBS Browser Source |
 | Servir página overlay estática | Mismo layout JSON |
-| Toggle racing vs streaming en perfil | Sin WebView overlay en streaming |
+| Toggle racing vs streaming en perfil | Ventana desktop off-screen 1×1 en streaming |
 
-**Miniplan a crear:** `v2-f6-obs-sse.md` en `.omo/plans/` o `docs/superpowers/plans/`
+**Miniplan:** `.omo/plans/v2-f6-obs-sse.md`
+
+**Nota:** validado con tests automatizados y endpoints HTTP. Queda como chequeo manual recomendado abrir la URL en OBS real antes de dar por cerrada la experiencia de usuario.
 
 ---
 

@@ -32,7 +32,7 @@
 | **3** | Wails overlay mínimo | 1 ventana compuesta shrink-wrap, 1 widget | < 80 MB RAM, bounds OK | ✅ MVP |
 | **4** | Layout + modos | JSON layout, racing/edit, 3 widgets | Persistencia, skipWindowRefresh | ✅ Hecho |
 | **5** | Hub React | Dashboard shadcn, config sin editar JSON | CRUD perfil desde UI | ✅ Hecho |
-| **6** | OBS / SSE | HTTP embebido, modo streaming-only | Browser source sin ventana Wails | ⬜ Pendiente |
+| **6** | OBS / SSE | HTTP embebido, modo streaming-only | Browser source + SSE localhost | ✅ Técnico |
 | **7** | Optimización UI | FPS por widget + diff payload | Standings 15 Hz, delta 30 Hz | ⬜ Pendiente |
 | **8** | Temas | CSS variables + Lite mode | Swap tema en runtime | ⬜ Pendiente |
 | **9** | Ops + multi-sim | System Performance widget, iRacing/AC | Usuario ve CPU/RAM; 2º sim | ⬜ Pendiente |
@@ -169,7 +169,9 @@
 | 6.3 | Página overlay estática servida por Go | Mismo layout JSON |
 | 6.4 | Toggle perfil `streaming` vs `racing` | Sin WebView overlay en streaming |
 
-**Miniplan sugerido:** `v2-f6-obs-sse.md`
+**Miniplan:** [`.omo/plans/v2-f6-obs-sse.md`](../.omo/plans/v2-f6-obs-sse.md)
+
+**Estado 2026-06-11:** implementación técnica completada: `/health`, `/overlay`, `/api/profile`, `/telemetry/stream`, assets Vite, perfil `example-streaming.json`, resolución por filename o id JSON y modo streaming off-screen 1×1. Pendiente recomendada: validación visual en OBS real.
 
 ---
 
@@ -306,3 +308,4 @@ vantare-v2/
 |-------|--------|
 | 2026-06-11 | Plan maestro creado; Fase 0 ✅; Fase 1 🟡 |
 | 2026-06-11 | Fase 4 ✅ · Fase 5 ✅ — Hub dashboard, tokens v5, CRUD perfiles, segunda ventana Wails |
+| 2026-06-11 | Fase 6 ✅ técnico — HTTP/SSE para OBS, perfil streaming, assets estáticos y tests verdes |

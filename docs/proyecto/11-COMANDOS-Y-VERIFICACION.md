@@ -69,11 +69,51 @@ go run ./cmd/vantare -profile configs/example-racing.json -edit
 
 # Live + edit
 go run ./cmd/vantare -live -profile configs/example-edit.json -edit
+
+# OBS / streaming (Fase 6)
+go run ./cmd/vantare -profile configs/example-streaming.json
+
+# OBS / streaming en otro puerto
+go run ./cmd/vantare -profile configs/example-streaming.json -http 127.0.0.1:4000
 ```
 
 Abre **dos ventanas**: overlay transparente + hub 1280×800.
 
 Hub URL interna: `/#/hub`
+
+---
+
+## OBS / HTTP / SSE (Fase 6)
+
+Con la app corriendo:
+
+```powershell
+cd C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+
+# Healthcheck del servidor embebido
+Invoke-WebRequest http://127.0.0.1:39261/health
+
+# Perfil usado por OBS
+Invoke-WebRequest "http://127.0.0.1:39261/api/profile?profile=example-streaming.json"
+
+# También funciona por id JSON
+Invoke-WebRequest "http://127.0.0.1:39261/api/profile?profile=default-streaming"
+
+# Stream de telemetría SSE
+curl.exe -N http://127.0.0.1:39261/telemetry/stream
+```
+
+OBS Browser Source:
+
+```text
+URL: http://127.0.0.1:39261/overlay?profile=example-streaming.json
+Width: 1920
+Height: 1080
+Shutdown source when not visible: enabled
+Refresh browser when scene becomes active: enabled
+```
+
+En modo `displayMode: "streaming"`, la ventana overlay desktop se mueve off-screen a 1×1 para no interferir con el simulador; OBS muestra el overlay vía HTTP.
 
 ---
 
@@ -148,6 +188,8 @@ pnpm dev
 | Problema | Solución |
 |----------|----------|
 | `frontend/dist not found` | `pnpm --dir frontend build` |
+| OBS queda en blanco | Verificar que `/assets/...` responde 200 y que la URL sea `/overlay?profile=example-streaming.json` |
+| `/api/profile` devuelve 404 | Usar filename (`example-streaming.json`) o id JSON (`default-streaming`) |
 | Hub sin perfiles | Verificar `configs/` existe; log warning configsDir |
 | Activate perfil falla | Usar `file` del listado; ver 08-PERFILES |
 | Live sin datos | LMU en pista, no solo menú |

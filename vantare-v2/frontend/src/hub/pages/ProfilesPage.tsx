@@ -85,11 +85,27 @@ export function ProfilesPage() {
     Events.Emit("hub:activate", { id: profile.id, file: profile.file });
   }, []);
 
+  const handleExitEdit = useCallback(() => {
+    setError(null);
+    Events.Emit("profile:set-mode", { mode: "racing" });
+  }, []);
+
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8">
       <div className="mb-8">
-        <h1 className="font-display font-bold text-3xl text-white mb-2">Overlays</h1>
-        <p className="text-vantare-textMuted text-sm">Gestiona tus perfiles de overlay. Crea, activa o elimina configuraciones.</p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="font-display font-bold text-3xl text-white mb-2">Overlays</h1>
+            <p className="text-vantare-textMuted text-sm">Gestiona tus perfiles de overlay. Crea, activa o elimina configuraciones.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleExitEdit}
+            className="btn-secondary px-4 py-2 rounded-lg text-xs font-bold text-white hover:text-vantare-red-300 whitespace-nowrap"
+          >
+            Salir de edición
+          </button>
+        </div>
       </div>
 
       {/* Create new profile */}

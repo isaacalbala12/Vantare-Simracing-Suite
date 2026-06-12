@@ -9,11 +9,12 @@ import (
 
 // fakeWindow implements WindowHandle for testing without Wails.
 type fakeWindow struct {
-	lastBounds    window.WailsRect
-	ignoreMouse   bool
-	resizable     bool
-	fullscreen    bool
+	lastBounds     window.WailsRect
+	ignoreMouse    bool
+	resizable      bool
+	fullscreen     bool
 	setBoundsCalls int
+	ignoreCalls    []bool
 }
 
 func (f *fakeWindow) SetBounds(bounds window.WailsRect) {
@@ -28,7 +29,10 @@ func (f *fakeWindow) SetPosition(x, y int) {
 	f.lastBounds.X = x
 	f.lastBounds.Y = y
 }
-func (f *fakeWindow) SetIgnoreMouseEvents(ignore bool) { f.ignoreMouse = ignore }
+func (f *fakeWindow) SetIgnoreMouseEvents(ignore bool) {
+	f.ignoreMouse = ignore
+	f.ignoreCalls = append(f.ignoreCalls, ignore)
+}
 func (f *fakeWindow) SetResizable(b bool)              { f.resizable = b }
 func (f *fakeWindow) Fullscreen()                      { f.fullscreen = true }
 func (f *fakeWindow) UnFullscreen()                    { f.fullscreen = false }
@@ -83,6 +87,9 @@ func TestApplyEditMode(t *testing.T) {
 	}
 	if !fw.fullscreen {
 		t.Fatal("edit mode should fullscreen")
+	}
+	if len(fw.ignoreCalls) != 2 || fw.ignoreCalls[0] || fw.ignoreCalls[1] {
+		t.Fatalf("edit mode should disable click-through before and after fullscreen, calls=%v", fw.ignoreCalls)
 	}
 }
 
@@ -147,6 +154,51 @@ func TestManagerLayoutOrigin(t *testing.T) {
 	origin := mgr.LayoutOrigin(p)
 	if origin.X != 92 || origin.Y != 192 {
 		t.Fatalf("origin=(%d,%d), want (92,192)", origin.X, origin.Y)
+	}
+}
+
+func TestApplyStreamingMode(t *testing.T) {
+	fw := &fakeWindow{}
+	mgr := window.NewManager(fw, 8)
+	p := &config.ProfileConfig{
+		DisplayMode: config.ModeStreaming,
+		Widgets: []config.WidgetConfig{
+			{Enabled: true, Position: config.Rect{X: 100, Y: 200, W: 400, H: 48}},
+		},
+	}
+	mgr.ApplyProfile(p, false)
+
+	if fw.ignoreMouse != true {
+		t.Fatal("streaming mode should set ignoreMouseEvents=true")
+	}
+	if fw.resizable {
+		t.Fatal("streaming mode should set resizable=false")
+	}
+	if fw.fullscreen {
+		t.Fatal("streaming mode should NOT fullscreen")
+	}
+	// Window should be moved off-screen and minimised
+	if fw.lastBounds.Width != 1 || fw.lastBounds.Height != 1 {
+		t.Fatalf("streaming window size=%dx%d, want 1x1", fw.lastBounds.Width, fw.lastBounds.Height)
+	}
+	if fw.lastBounds.X != -9999 || fw.lastBounds.Y != -9999 {
+		t.Fatalf("streaming window pos=(%d,%d), want (-9999,-9999)", fw.lastBounds.X, fw.lastBounds.Y)
+	}
+}
+
+func TestApplyStreamingModeExitsFullscreen(t *testing.T) {
+	fw := &fakeWindow{fullscreen: true}
+	mgr := window.NewManager(fw, 8)
+	p := &config.ProfileConfig{
+		DisplayMode: config.ModeStreaming,
+		Widgets: []config.WidgetConfig{
+			{Enabled: true, Position: config.Rect{X: 100, Y: 200, W: 400, H: 48}},
+		},
+	}
+	mgr.ApplyProfile(p, false)
+
+	if fw.fullscreen {
+		t.Fatal("streaming mode should call UnFullscreen when switching from edit")
 	}
 }
 

@@ -18,11 +18,15 @@ import (
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
+
+// version is the current application version.
+var version = "v0.1.4-prealpha"
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -219,6 +223,75 @@ func main() {
 	// Create hub service for profile CRUD using the resolved directory
 	hubSvc := app.NewHubService(cfgDir, profileSvc, emitter, overlayController)
 	wailsApp.RegisterService(application.NewService(hubSvc))
+	// Updater service
+	settingsPath := filepath.Join(cfgDir, "updater-settings.json")
+	updaterSvc := app.NewUpdaterService(version, settingsPath, emitter)
+	wailsApp.RegisterService(application.NewService(updaterSvc))
+
+	emitUpdaterError := func(message string) {
+		emitter.Emit("updater:error", map[string]any{"message": message})
+	}
+
+	wailsApp.Event.On("updater:settings:get", func(event *application.CustomEvent) {
+		settings, err := updaterSvc.GetSettings()
+		if err != nil {
+			log.Printf("updater:settings:get error: %v", err)
+			emitUpdaterError(err.Error())
+			return
+		}
+		emitter.Emit("updater:settings", map[string]any{"settings": settings})
+	})
+
+	wailsApp.Event.On("updater:settings:save", func(event *application.CustomEvent) {
+		var settings updater.Settings
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				json.Unmarshal(raw, &settings)
+			}
+		}
+		if err := updaterSvc.SaveSettings(&settings); err != nil {
+			log.Printf("updater:settings:save error: %v", err)
+			emitUpdaterError(err.Error())
+			return
+		}
+		emitter.Emit("updater:settings-saved", map[string]any{"ok": true})
+	})
+
+	wailsApp.Event.On("updater:check", func(event *application.CustomEvent) {
+		info, err := updaterSvc.CheckUpdates()
+		if err != nil {
+			log.Printf("updater:check error: %v", err)
+			emitUpdaterError(err.Error())
+			return
+		}
+		emitter.Emit("updater:available", map[string]any{"info": info})
+	})
+
+	wailsApp.Event.On("updater:install", func(event *application.CustomEvent) {
+		var data struct {
+			Tag         string `json:"tag"`
+			DownloadURL string `json:"downloadURL"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				json.Unmarshal(raw, &data)
+			}
+		}
+		if data.Tag == "" || data.DownloadURL == "" {
+			emitUpdaterError("tag and downloadURL are required")
+			return
+		}
+		emitter.Emit("updater:progress", map[string]any{"percent": 0})
+		go func() {
+			if err := updaterSvc.InstallVersion(data.Tag, data.DownloadURL); err != nil {
+				log.Printf("updater:install error: %v", err)
+				emitUpdaterError(err.Error())
+				return
+			}
+			emitter.Emit("updater:installed", map[string]any{"ok": true})
+		}()
+	})
+
 
 	emitHubError := func(message string) {
 		emitter.Emit("hub:error", map[string]any{"message": message})

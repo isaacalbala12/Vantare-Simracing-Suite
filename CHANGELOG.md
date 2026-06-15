@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.4-prealpha - 2026-06-15
+
+Pre-alpha con sistema de actualizaciones integrado desde GitHub.
+
+### Incluido
+
+- **Updater integrado**:
+  - Nuevo `internal/updater` para consultar releases de GitHub, filtrar por canal (stable/prerelease) y descargar/instalar la versión seleccionada.
+  - Nuevo `UpdaterService` Wails con eventos `updater:settings:get`, `updater:settings:save`, `updater:check` e `updater:install`.
+  - Nueva página **Ajustes** en el Hub (sección *Setup*) con selector de canal, listado de versiones, indicador de versión actual e instalación por versión.
+  - Progreso de descarga vía `updater:progress` y confirmación con `updater:installed`/`updater:error`.
+
+### Cambiado
+
+- Versión de la app y del instalador NSIS actualizada a `0.1.4`.
+
 ## v0.1.3-prealpha - 2026-06-15
 
 Pre-alpha de robustecimiento del streaming SSE/OBS y del pipeline de telemetría live.

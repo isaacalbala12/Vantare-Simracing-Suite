@@ -138,6 +138,7 @@ export type TelemetryRefState = {
   throttle: number;
   brake: number;
   clutch: number;
+  timeRemaining?: number;
   vehicles: VehicleScoring[];
 };
 
@@ -159,6 +160,7 @@ const state: TelemetryRefState = {
   throttle: 0,
   brake: 0,
   clutch: 0,
+  timeRemaining: 0,
   vehicles: [],
 };
 
@@ -215,6 +217,7 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
     if (s.trackName != null) state.trackName = s.trackName;
     if (s.sessionType != null) state.sessionType = s.sessionType;
     if (s.sessionName != null) state.sessionName = s.sessionName;
+    if (s.timeRemainingInGamePhase != null) state.timeRemaining = s.timeRemainingInGamePhase;
   }
 
   if (payload.snapshot?.vehicles) {
@@ -242,13 +245,13 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
     if (pd.brake != null) state.brake = normalizeInputToPercent(pd.brake);
       if (pd.clutch != null) state.clutch = normalizeInputToPercent(pd.clutch);
     }
-    const sd = d.session as SessionDiff | undefined;
+    const sd = d.session as Record<string, any> | undefined;
     if (sd) {
       if (sd.trackName != null) state.trackName = sd.trackName;
       if (sd.sessionType != null) state.sessionType = sd.sessionType;
       if (sd.sessionName != null) state.sessionName = sd.sessionName;
+      if (sd.timeRemainingInGamePhase != null) state.timeRemaining = sd.timeRemainingInGamePhase;
     }
-    if (typeof d.playerHasVehicle === "boolean") state.playerHasVehicle = d.playerHasVehicle;
     if (d.vehicles && Array.isArray(d.vehicles)) {
       state.vehicles = d.vehicles as VehicleScoring[];
     }

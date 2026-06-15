@@ -41,6 +41,18 @@ function formatLapTime(seconds: number | undefined): string {
   return `${m}:${s}`;
 }
 
+export function formatRemainingTime(seconds: number | undefined): string {
+  if (seconds == null || seconds < 0 || !Number.isFinite(seconds)) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (h > 0) {
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+  return `${pad(m)}:${pad(s)}`;
+}
+
 export function formatStandingsGapForMode(
   mode: SessionMode,
   v: Partial<VehicleScoring>
@@ -49,10 +61,6 @@ export function formatStandingsGapForMode(
     return v.place === 1 ? formatLapTime(v.bestLapTime) : formatLapTime(v.bestLapTime);
   }
   return formatStandingsGap(v);
-}
-
-function isInPits(v: Partial<VehicleScoring>): boolean {
-  return !!v.inGarageStall || !!v.pitting || !!v.inPits || (!!v.pitState && v.pitState !== "NONE");
 }
 
 function tireBadgeHtml(compound: string | undefined, tireSoft: string, tireMedium: string, tireHard: string): string {
@@ -72,6 +80,8 @@ function brandInitial(name: string | undefined): string {
 
 export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 }: StandingsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const timeRef = useRef<HTMLDivElement>(null);
+  const classRef = useRef<HTMLDivElement>(null);
   const maxRows = (props?.maxRows as number) ?? 12;
   const lastFingerprintRef = useRef("");
 
@@ -83,16 +93,29 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
       const container = containerRef.current;
       if (!container) return;
 
-      const allVehicles = [...t.vehicles].sort((x, y) => (x.place ?? 99) - (y.place ?? 99));
+      const player = t.vehicles.find((v) => v.isPlayer);
+      const activeClass = player?.vehicleClass || t.vehicles[0]?.vehicleClass || "HYPERCAR";
+      const classVehicles = t.vehicles.filter(
+        (v) => (v.vehicleClass ?? "").toUpperCase() === activeClass.toUpperCase()
+      );
+
+      const allVehicles = [...classVehicles].sort((x, y) => (x.place ?? 99) - (y.place ?? 99));
       const sorted = allVehicles.slice(0, Math.min(maxRows, allVehicles.length));
 
       const mode = resolveSessionMode(t.sessionType, t.sessionName);
 
-      const fingerprint = mode + "|" + sorted.map(v =>
+      const fingerprint = mode + "|" + activeClass + "|" + (t.timeRemaining ?? 0).toFixed(0) + "|" + sorted.map(v =>
         `${v.id}:${v.place}:${v.inPits}:${v.pitState}:${v.pitting}:${v.inGarageStall}:${v.fastestLap}:${v.bestLapTime?.toFixed(1)}:${v.timeBehindLeader?.toFixed(3)}:${v.lapsBehindLeader}:${v.tireCompound}`
       ).join("|");
       if (fingerprint === lastFingerprintRef.current) return;
       lastFingerprintRef.current = fingerprint;
+
+      if (timeRef.current) {
+        setHTMLIfChanged(timeRef.current, formatRemainingTime(t.timeRemaining));
+      }
+      if (classRef.current) {
+        setHTMLIfChanged(classRef.current, activeClass.toUpperCase());
+      }
 
       const rowHeight = Math.max(18, Math.floor((container.clientHeight - 8) / Math.max(1, sorted.length)));
 
@@ -100,7 +123,7 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
         const bgRow = i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
         const isLeader = v.place === 1;
         const pitLabel = formatStandingsPit(v);
-        const pitting = isInPits(v);
+        const pitting = pitLabel !== "";
         const gapText = mode === "race" && v.fastestLap ? "FASTEST" : formatStandingsGapForMode(mode, v);
         const gapColor = isLeader ? a.posLeaderColor : "";
         const posColor = isLeader ? a.posLeaderColor : (v.place && v.place <= 3 ? ON_TRACK_COLOR : ON_TRACK_COLOR);
@@ -151,6 +174,11 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
     });
   }, [maxRows, updateHz, editMode, telemetryMode, props]);
 
+  const t = (telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef();
+  const player = t.vehicles.find((v) => v.isPlayer);
+  const activeClass = player?.vehicleClass || t.vehicles[0]?.vehicleClass || "HYPERCAR";
+  const timeStr = formatRemainingTime(t.timeRemaining);
+
   return (
     <div
       data-testid="standings-panel"
@@ -167,13 +195,14 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
         style={{ background: BAKED_HEADER_BG, borderBottom: "2px solid #1a0104" }}
       >
         <div className="text-3xl font-black italic tracking-widest mb-1 text-white font-display">VANTARE</div>
-        <div className="text-[11px] font-mono font-bold text-white tracking-widest">00:08:48</div>
+        <div ref={timeRef} className="text-[11px] font-mono font-bold text-white tracking-widest">{timeStr}</div>
       </div>
       <div
+        ref={classRef}
         className="text-center text-[11px] py-1 font-bold tracking-widest text-white relative"
         style={{ background: BAKED_CLASS_BG, borderBottom: "1px solid #000" }}
       >
-        HYPERCAR
+        {activeClass.toUpperCase()}
       </div>
       <div ref={containerRef} className="flex-1 overflow-hidden mt-1 px-1" />
       <div className="mt-1 py-1 text-center text-[8px] tracking-widest text-white/50 font-bold border-t border-black" style={{ background: "#1a0104" }}>

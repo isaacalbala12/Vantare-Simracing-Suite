@@ -10,6 +10,7 @@ export function getMockTelemetry(): TelemetryRefState {
     sessionEpoch: 1,
     sessionKey: "mock|Circuit de Barcelona|race",
     sessionState: "session",
+    timeRemaining: 5328,
     speed: 245,
     gear: 4,
     rpm: 8750,

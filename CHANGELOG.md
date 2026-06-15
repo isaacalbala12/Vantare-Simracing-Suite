@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.6-prealpha - 2026-06-15
+
+Pre-alpha de pulido del instalador: cierre graceful de la app y rollback automático.
+
+### Incluido
+
+- **Cierre graceful en NSIS**: antes de instalar, el instalador intenta cerrar Vantare mediante `CloseMainWindow()`, espera 3 segundos y solo usa `taskkill /F` como último recurso. Evita perder perfiles o layouts no guardados.
+- **Rollback automático del ejecutable**: el instalador guarda una copia de seguridad de `vantare.exe` antes de reemplazarlo; si la extracción de archivos falla, restaura el backup y aborta la instalación.
+
+### Cambiado
+
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.1.6`.
+
 ## v0.1.5-prealpha - 2026-06-15
 
 Pre-alpha de robustecimiento del updater, instalador y UI antes de las features principales.
@@ -26,6 +39,7 @@ Pre-alpha de robustecimiento del updater, instalador y UI antes de las features 
 - Versión de la app y del instalador actualizada a `0.1.5` en `cmd/vantare/main.go`, `build/config.yml` y `build/windows/nsis/project.nsi`.
 
 ## v0.1.4-prealpha - 2026-06-15
+
 Pre-alpha con sistema de actualizaciones integrado desde GitHub.
 
 ### Incluido

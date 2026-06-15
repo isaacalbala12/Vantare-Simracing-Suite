@@ -22,7 +22,7 @@ Unicode true
 !define INFO_PROJECTNAME    "vantare"
 !define INFO_COMPANYNAME    "Vantare"
 !define INFO_PRODUCTNAME    "Vantare Overlays"
-!define INFO_PRODUCTVERSION "0.1.5"
+!define INFO_PRODUCTVERSION "0.1.6"
 !define INFO_COPYRIGHT      "© 2026 Vantare"
 !define PRODUCT_EXECUTABLE  "vantare.exe"
 ###
@@ -85,24 +85,54 @@ Function .onInit
    !insertmacro wails.checkArchitecture
 FunctionEnd
 
+Function CloseVantareGracefully
+    DetailPrint "Cerrando Vantare..."
+    # First try a graceful WM_CLOSE (no /F). Wait 3 seconds for the app to close.
+    nsExec::Exec 'taskkill /IM vantare.exe'
+    Sleep 3000
+    # If it is still running, force kill.
+    nsExec::Exec 'taskkill /F /IM vantare.exe'
+FunctionEnd
+
+Function RestoreBackupIfNeeded
+    IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" 0 restore_done
+    DetailPrint "Restaurando copia de seguridad..."
+    Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    Rename "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    restore_done:
+FunctionEnd
+
 Section
     !insertmacro wails.setShellContext
 
-    # Close any running instances of the app to prevent file locking
-    DetailPrint "Cerrando Vantare..."
-    nsExec::Exec 'taskkill /F /IM vantare.exe'
+    Call CloseVantareGracefully
 
     !insertmacro wails.webview2runtime
 
     SetOutPath $INSTDIR
-    
+
+    # Backup existing executable for rollback if something goes wrong
+    IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 install_files
+    DetailPrint "Creando copia de seguridad del ejecutable actual..."
+    Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+    Rename "$INSTDIR\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+
+    install_files:
     !insertmacro wails.files
+
+    IfErrors 0 install_success
+    Call RestoreBackupIfNeeded
+    Abort "La instalacion fallo. Se ha restaurado la version anterior."
+
+    install_success:
+    Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols
-    
+
     !insertmacro wails.writeUninstaller
 SectionEnd
 

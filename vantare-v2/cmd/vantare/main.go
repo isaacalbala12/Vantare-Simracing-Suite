@@ -12,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
@@ -85,10 +86,7 @@ func main() {
 		log.Printf("warning: -edit is deprecated in Hub Preview flow; start Hub and use Preview instead")
 	}
 
-	distFS, err := app.FrontendDistFS()
-	if err != nil {
-		log.Fatalf("frontend/dist not found (run: pnpm --dir frontend build): %v", err)
-	}
+	distFS := frontend.DistFS()
 
 	vapp := app.New(*live)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

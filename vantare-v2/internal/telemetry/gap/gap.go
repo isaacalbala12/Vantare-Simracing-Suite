@@ -38,7 +38,7 @@ func ComputeTimeGaps(t *models.Telemetry) {
 			v.TimeGapToPlayer = 0
 			continue
 		}
-		if v.LapDistance <= 0 {
+		if v.LapDistance < 0 {
 			continue
 		}
 

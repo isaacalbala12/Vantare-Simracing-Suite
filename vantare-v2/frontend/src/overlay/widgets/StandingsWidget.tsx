@@ -19,11 +19,12 @@ const BAKED_PANEL_BG = "linear-gradient(180deg, #3a050a 0%, #0d0102 100%)";
 const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #9b2226 0%, #e63946 50%, #9b2226 100%)";
 
+
 export function formatStandingsGap(v: Partial<VehicleScoring>): string {
-  if (v.place === 1) return "Leader";
-  if ((v.lapsBehindLeader ?? 0) > 0) return `+${v.lapsBehindLeader}L`;
-  if ((v.timeBehindLeader ?? 0) > 0) return `+${v.timeBehindLeader!.toFixed(3)}s`;
-  return "--";
+	if (v.place === 1) return "Leader";
+	if ((v.lapsBehindLeader ?? 0) > 0) return `+${v.lapsBehindLeader}L`;
+	if ((v.timeBehindLeader ?? 0) > 0) return `+${v.timeBehindLeader!.toFixed(3)}s`;
+	return "—";
 }
 
 export function formatStandingsPit(v: Partial<VehicleScoring>): string {
@@ -84,12 +85,11 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
 
       const mode = resolveSessionMode(t.sessionType, t.sessionName);
 
-      // Fingerprint check — skip HTML rebuild if no rendering state changed
-      const fingerprint = mode + "|" + sorted.map(v =>
-        `${v.id}:${v.place}:${v.inPits}:${v.pitState}:${v.pitting}:${v.inGarageStall}:${v.fastestLap}:${v.bestLapTime?.toFixed(1)}:${v.timeBehindLeader?.toFixed(3)}:${v.timeBehindNext?.toFixed(3)}:${v.lapsBehindLeader}:${v.driverNumber}:${v.driverName}:${v.teamBrandColor}:${v.tireCompound}:${v.vehicleClass}`
-      ).join("|");
-      if (fingerprint === lastFingerprintRef.current) return;
-      lastFingerprintRef.current = fingerprint;
+		const fingerprint = mode + "|" + sorted.map(v =>
+			`${v.id}:${v.place}:${v.inPits}:${v.pitState}:${v.pitting}:${v.inGarageStall}:${v.fastestLap}:${v.bestLapTime?.toFixed(1)}:${v.timeBehindLeader?.toFixed(3)}:${v.lapsBehindLeader}:${v.tireCompound}`
+		).join("|");
+		if (fingerprint === lastFingerprintRef.current) return;
+		lastFingerprintRef.current = fingerprint;
 
       const rows = sorted.map((v, i) => {
         const bgRow = i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/diff"
+	"github.com/vantare/overlays/v2/internal/telemetry/gap"
 	"github.com/vantare/overlays/v2/internal/telemetry/normalizer"
 	"github.com/vantare/overlays/v2/internal/telemetry/pipeline"
-	"github.com/vantare/overlays/v2/internal/telemetry/gap"
 	"github.com/vantare/overlays/v2/pkg/models"
 )
 
@@ -129,6 +129,9 @@ func (s *Service) processRead() {
 	} else {
 		buf := s.cfg.Source.Read()
 		raw = s.normalizer.FromBuffer(buf)
+	}
+	if raw == nil {
+		return
 	}
 	gap.ComputeTimeGaps(raw)
 

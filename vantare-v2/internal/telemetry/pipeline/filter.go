@@ -169,13 +169,13 @@ func (f *Filter) vehiclesChanged(prev, next *models.Telemetry) bool {
 			old.LapsBehindClassLeader != v.LapsBehindClassLeader || old.LapsBehindNext != v.LapsBehindNext {
 			return true
 		}
-		if core.ShouldEmit(old.TimeBehindNext, v.TimeBehindNext, core.ThresholdGap) ||
+		if core.ShouldEmit(old.TimeBehindNext, v.TimeBehindNext, 0.01) ||
 			core.ShouldEmit(old.LapDistance, v.LapDistance, 1.0) ||
 			core.ShouldEmit(old.TimeIntoLap, v.TimeIntoLap, 0.1) ||
 			core.ShouldEmit(old.EstimatedLapTime, v.EstimatedLapTime, 0.1) {
 			return true
 		}
-		if core.ShouldEmit(old.TimeBehindLeader, v.TimeBehindLeader, core.ThresholdGap) {
+		if core.ShouldEmit(old.TimeBehindLeader, v.TimeBehindLeader, 0.01) {
 			return true
 		}
 	}

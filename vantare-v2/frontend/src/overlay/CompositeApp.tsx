@@ -10,6 +10,7 @@ import { toWindowLocal } from "../lib/profile";
 import {
   applyTelemetryUpdate,
   parseTelemetryPayload,
+  resetTelemetryRef,
 } from "../lib/telemetry-ref";
 import { WidgetHost } from "./WidgetHost";
 import { DeltaWidget } from "./widgets/DeltaWidget";
@@ -63,6 +64,7 @@ export function CompositeApp() {
           layoutOrigin: LayoutOrigin;
           windowMode: DisplayMode;
         };
+        resetTelemetryRef(); // avoid stale telemetry from previous profile/session
         setProfile(data.profile);
         setLayoutOrigin(data.layoutOrigin);
         setWidgets(data.profile.widgets.filter((w) => w.enabled));

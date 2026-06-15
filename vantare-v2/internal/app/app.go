@@ -70,10 +70,6 @@ func (a *App) StopTelemetry() {
 	if closer, ok := a.source.(interface{ Close() error }); ok {
 		_ = closer.Close()
 	}
-	if a.lmuSource != nil {
-		_ = a.lmuSource.Close()
-		a.lmuSource = nil
-	}
 }
 
 // LMUSource returns the live source when -live was used (for tests).

@@ -148,7 +148,7 @@ const state: TelemetryRefState = {
   playerHasVehicle: false,
   sessionEpoch: 0,
   sessionKey: "",
-  sessionState: "",
+  sessionState: "offline",
   sessionType: undefined,
   sessionName: "",
   speed: 0,
@@ -179,40 +179,49 @@ export function parseTelemetryPayload(data: unknown): TelemetryPayload {
 }
 
 export function applyTelemetryUpdate(payload: TelemetryPayload) {
-  const nextEpoch = payload.snapshot.sessionEpoch ?? state.sessionEpoch;
+  const snapshot = payload.snapshot;
+  if (!snapshot) {
+    // Defensive: malformed update with no snapshot. Treat as disconnected.
+    state.connected = false;
+    state.sessionState = "offline";
+    clearRuntimeTelemetry();
+    return;
+  }
+
+  const nextEpoch = snapshot.sessionEpoch ?? state.sessionEpoch;
   const epochChanged = state.sessionEpoch !== 0 && nextEpoch !== state.sessionEpoch;
   if (epochChanged) {
     clearRuntimeTelemetry();
   }
 
   state.seq = payload.seq;
-  state.connected = payload.snapshot.connected;
-  state.playerHasVehicle = payload.snapshot.playerHasVehicle ?? state.playerHasVehicle;
+  state.connected = snapshot.connected;
+  state.playerHasVehicle = snapshot.playerHasVehicle ?? state.playerHasVehicle;
   state.sessionEpoch = nextEpoch;
-  state.sessionKey = payload.snapshot.sessionKey ?? state.sessionKey;
-  state.sessionState = payload.snapshot.sessionState ?? state.sessionState;
+  state.sessionKey = snapshot.sessionKey ?? state.sessionKey;
+  state.sessionState = snapshot.sessionState ?? state.sessionState;
 
   if (!state.connected) {
     clearRuntimeTelemetry();
     state.connected = false;
     state.sessionEpoch = nextEpoch;
-    state.sessionKey = payload.snapshot.sessionKey ?? state.sessionKey;
-    state.sessionState = payload.snapshot.sessionState ?? "offline";
+    state.sessionKey = snapshot.sessionKey ?? state.sessionKey;
+    state.sessionState = snapshot.sessionState ?? "offline";
   }
 
-  const p = payload.snapshot?.player;
+  const p = snapshot.player;
   if (p) {
     state.speed = p.speed;
     state.gear = p.gear;
     state.rpm = p.engineRPM;
     if (p.fuel != null) state.fuel = p.fuel;
     if (p.deltaBest != null) state.deltaBest = p.deltaBest;
-  if (p.throttle != null) state.throttle = normalizeInputToPercent(p.throttle);
-  if (p.brake != null) state.brake = normalizeInputToPercent(p.brake);
+    if (p.throttle != null) state.throttle = normalizeInputToPercent(p.throttle);
+    if (p.brake != null) state.brake = normalizeInputToPercent(p.brake);
     if (p.clutch != null) state.clutch = normalizeInputToPercent(p.clutch);
   }
 
-  const s = payload.snapshot?.session;
+  const s = snapshot.session;
   if (s) {
     if (s.trackName != null) state.trackName = s.trackName;
     if (s.sessionType != null) state.sessionType = s.sessionType;
@@ -220,9 +229,10 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
     if (s.timeRemainingInGamePhase != null) state.timeRemaining = s.timeRemainingInGamePhase;
   }
 
-  if (payload.snapshot?.vehicles) {
-    state.vehicles = payload.snapshot.vehicles;
+  if (snapshot.vehicles) {
+    state.vehicles = snapshot.vehicles;
   }
+
 
   // Apply diff overrides (vehicles are full replacement, not merged)
   const d = payload.diff?.d;
@@ -258,14 +268,13 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
   }
 }
 
-/** @internal test helper */
-export function resetTelemetryRefForTests() {
+export function resetTelemetryRef() {
   state.seq = 0;
   state.connected = false;
   state.playerHasVehicle = false;
   state.sessionEpoch = 0;
   state.sessionKey = "";
-  state.sessionState = "";
+  state.sessionState = "offline";
   clearRuntimeTelemetry();
 }
 
@@ -279,6 +288,11 @@ function clearRuntimeTelemetry() {
   state.throttle = 0;
   state.brake = 0;
   state.clutch = 0;
+  state.timeRemaining = 0;
+  state.sessionType = undefined;
+  state.sessionName = "";
+  state.sessionKey = "";
+  state.playerHasVehicle = false;
   state.vehicles = [];
 }
 

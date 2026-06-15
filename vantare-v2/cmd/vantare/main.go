@@ -111,7 +111,7 @@ func main() {
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
-	live := flag.Bool("live", false, "use LMU shared memory (fallback mock)")
+	live := flag.Bool("live", true, "use LMU shared memory (use -live=false for mock telemetry)")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")

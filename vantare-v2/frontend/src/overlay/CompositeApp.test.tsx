@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompositeApp } from "./CompositeApp";
-import { resetTelemetryRefForTests } from "../lib/telemetry-ref";
+import { resetTelemetryRef } from "../lib/telemetry-ref";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -42,7 +42,7 @@ describe("CompositeApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
     runtimeMock.emit.mockClear();
-    resetTelemetryRefForTests();
+    resetTelemetryRef();
     vi.useFakeTimers();
   });
 

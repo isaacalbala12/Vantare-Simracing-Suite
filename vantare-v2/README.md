@@ -67,8 +67,8 @@ track=Spa | speed=54.0 km/h | gear=4 | rpm=7200 | fuel=45.2 L | lap=0
 pnpm --dir frontend install
 pnpm --dir frontend test           # vitest: wire format + diff merge
 pnpm --dir frontend build
-go run ./cmd/vantare -profile configs/example-racing.json              # mock telemetry
-go run ./cmd/vantare -live -profile configs/example-racing.json        # LMU debe estar abierto/en sesión
+go run ./cmd/vantare -profile configs/example-racing.json                     # live LMU (por defecto)
+go run ./cmd/vantare -live=false -profile configs/example-racing.json        # mock telemetry
 ```
 
 ## Hub + Preview Workbench
@@ -92,11 +92,11 @@ go test ./...                     # Go tests
 pnpm --dir frontend test          # Frontend tests
 pnpm --dir frontend build         # Build frontend
 
-# Modo mock
+# Live con LMU (por defecto)
 go run ./cmd/vantare -profile configs/example-racing.json
 
-# Live con LMU
-go run ./cmd/vantare -live -profile configs/example-racing.json
+# Modo mock
+go run ./cmd/vantare -live=false -profile configs/example-racing.json
 ```
 
 ### Perfil JSON

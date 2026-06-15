@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.2-prealpha - 2026-06-15
+
+Pre-alpha de robustecimiento del pipeline de telemetría live y limpieza de recursos.
+
+### Corregido
+
+- **LMU live por defecto**: el flag `-live` ahora defaulta a `true` en `cmd/vantare/main.go`, por lo que el ejecutable instalado intenta conectar a LMU sin necesidad de argumentos. Usar `-live=false` fuerza el modo mock.
+- **Limpieza del singleton de telemetría** (`frontend/src/lib/telemetry-ref.ts`):
+  - `clearRuntimeTelemetry` ahora resetea `timeRemaining`, `sessionType`, `sessionName`, `sessionKey` y `playerHasVehicle`.
+  - El estado inicial de `sessionState` pasa de `""` a `"offline"`.
+  - `applyTelemetryUpdate` valida que exista `payload.snapshot` antes de acceder a él.
+- **Reset al cargar perfil**: `CompositeApp` llama a `resetTelemetryRef` al recibir `profile:loaded`, evitando que widgets muestren datos de una sesión/perfil anterior.
+- **Fuga de handle de memoria compartida**: `enrichedLMUSource.Close()` ahora cierra el mmap subyacente (`LMUSource`), no solo la caché REST.
+- **Doble cierre de fuente LMU**: `App.StopTelemetry()` ya no cierra `lmuSource` por separado; delega el cierre en `a.source`.
+
 ## v0.1.1-prealpha - 2026-06-15
 
 Pre-alpha de correcciones y refinamientos para Relative y Standings.
@@ -19,6 +34,10 @@ Pre-alpha de correcciones y refinamientos para Relative y Standings.
 - **Infraestructura**:
   - Añadidas cabeceras e instrucciones HTML de anti-caché en `index.html` para evitar que los navegadores sirvan JS antiguos al recompilar.
   - Exclusión de vueltas netas en la lógica del backend para obtener gaps físicos estables y coherentes.
+
+### Corregido
+
+- **Conexión LMU por defecto**: el ejecutable instalado (`vantare.exe`) ahora inicia en modo live intentando conectar a la memoria compartida `LMU_Data` y a la API REST local de Le Mans Ultimate. Antes arrancaba en modo mock porque el flag `-live` defaultaba a `false`, por lo que los widgets de standings/relative no mostraban datos reales al abrir la app desde el instalador. Para forzar mock se puede usar `vantare.exe -live=false`.
 
 ## v0.1.0-alpha.1 - 2026-06-15
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"io"
 	"sync"
 	"time"
 
@@ -54,6 +55,9 @@ func (s *enrichedLMUSource) Info() service.SourceInfo {
 func (s *enrichedLMUSource) Close() error {
 	if s.cache != nil {
 		s.cache.Close()
+	}
+	if closer, ok := s.mmap.(io.Closer); ok {
+		return closer.Close()
 	}
 	return nil
 }

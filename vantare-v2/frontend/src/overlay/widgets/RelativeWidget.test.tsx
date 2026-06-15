@@ -2,11 +2,8 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RelativeWidget,
-  formatRelativeGap,
   formatSignedGap,
-  relativeGapColor,
   resolveClassColor,
-  selectRelativeRows,
   selectRelativeRowsByGap,
 } from "./RelativeWidget";
 
@@ -28,10 +25,10 @@ describe("RelativeWidget helpers", () => {
   });
 
   it("formats signed gaps", () => {
-    expect(formatSignedGap(0.5)).toBe("+0.5");
-    expect(formatSignedGap(-1.2)).toBe("-1.2");
-    expect(formatSignedGap(0)).toBe("—");
     expect(formatSignedGap(undefined)).toBe("—");
+    expect(formatSignedGap(0)).toBe("—");
+    expect(formatSignedGap(1.234)).toBe("+1.2");
+    expect(formatSignedGap(-2.5)).toBe("-2.5");
   });
 
   it("selects 3 ahead and 3 behind by time gap", () => {
@@ -75,29 +72,21 @@ describe("RelativeWidget", () => {
     expect(screen.getByText("TOYOTA GAZOO")).toBeTruthy();
   });
 
-  it("orders relative rows by lap distance around the player", () => {
-    const vehicles = [
-      { id: 1, driverName: "Ahead", lapDistance: 220, place: 8 },
-      { id: 2, driverName: "Player", lapDistance: 200, place: 9, isPlayer: true },
-      { id: 3, driverName: "Behind", lapDistance: 180, place: 10 },
-      { id: 4, driverName: "Far", lapDistance: 900, place: 1 },
-    ];
-    const rows = selectRelativeRows(vehicles, 1, 1);
-    expect(rows.map((v) => v.driverName)).toEqual(["Ahead", "Player", "Behind"]);
+  it("displays signed time gaps to the player", () => {
+    render(
+      <RelativeWidget editMode={true} updateHz={15} />,
+    );
+    tick(100);
+    expect(screen.getByText("+2.4")).toBeTruthy();
+    expect(screen.getByText("-1.0")).toBeTruthy();
   });
 
-  it("formats relative gap from lap distance instead of classification gap", () => {
-    const player = { id: 2, driverName: "Player", lapDistance: 200, place: 9, isPlayer: true };
-    const ahead = { id: 1, driverName: "Ahead", lapDistance: 220, place: 8, timeBehindNext: 99 };
-    expect(formatRelativeGap(ahead, player)).toBe("20m");
-  });
-
-  it("uses ahead color for cars ahead on track", () => {
-    const player = { id: 2, lapDistance: 200, place: 9, isPlayer: true };
-    const ahead = { id: 1, lapDistance: 220, place: 8 };
-    const behind = { id: 3, lapDistance: 180, place: 10 };
-    expect(relativeGapColor(ahead, player, "#ahead", "#behind", "#player")).toBe("#ahead");
-    expect(relativeGapColor(behind, player, "#ahead", "#behind", "#player")).toBe("#behind");
-    expect(relativeGapColor(player, player, "#ahead", "#behind", "#player")).toBe("#player");
-  });
+	it("uses ahead color for cars ahead on track", () => {
+		render(
+			<RelativeWidget editMode={true} updateHz={15} props={{ appearance: { gapAheadColor: "#ff0000" } }} />,
+		);
+		tick(100);
+		const redSpan = screen.getByText("+2.4");
+		expect(redSpan.style.color).toBe("#ff0000");
+	});
 });

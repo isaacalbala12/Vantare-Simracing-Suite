@@ -20,33 +20,6 @@ const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #111 0%, #222 50%, #111 100%)";
 const BAKED_PLAYER_BG = "linear-gradient(90deg, rgba(230,57,70,0.2) 0%, rgba(155,34,38,0.4) 100%)";
 
-export function selectRelativeRows(vehicles: Partial<VehicleScoring>[], rangeAhead: number, rangeBehind: number): Partial<VehicleScoring>[] {
-  const player = vehicles.find((v) => v.isPlayer);
-  if (!player || player.lapDistance == null) {
-    const sortedByPlace = [...vehicles].sort((x, y) => (x.place ?? 99) - (y.place ?? 99));
-    const idx = sortedByPlace.findIndex((v) => v.isPlayer);
-    if (idx < 0) return [];
-    return sortedByPlace.slice(Math.max(0, idx - rangeAhead), Math.min(sortedByPlace.length, idx + rangeBehind + 1));
-  }
-  const playerDistance = player.lapDistance;
-  const withDelta = vehicles.map((v) => ({
-    vehicle: v,
-    delta: (v.lapDistance ?? playerDistance) - playerDistance,
-  }));
-  const ahead = withDelta
-    .filter((x) => x.delta > 0 && !x.vehicle.isPlayer)
-    .sort((a, b) => a.delta - b.delta)
-    .slice(0, rangeAhead)
-    .map((x) => x.vehicle)
-    .reverse();
-  const behind = withDelta
-    .filter((x) => x.delta < 0 && !x.vehicle.isPlayer)
-    .sort((a, b) => b.delta - a.delta)
-    .slice(0, rangeBehind)
-    .map((x) => x.vehicle);
-  return [...ahead, player, ...behind];
-}
-
 export function resolveClassColor(
   vehicleClass: string | undefined,
   a: Record<string, unknown>
@@ -78,53 +51,24 @@ export function selectRelativeRowsByGap(
     .filter((v) => !v.isPlayer && v.timeGapToPlayer != null && Number.isFinite(v.timeGapToPlayer))
     .map((v) => ({ vehicle: v, gap: v.timeGapToPlayer! }));
 
-	const ahead = withGap
-		.filter((x) => x.gap > 0)
-		.sort((a, b) => a.gap - b.gap)
-		.slice(0, rangeAhead)
-		.map((x) => x.vehicle);
+  const ahead = withGap
+    .filter((x) => x.gap > 0)
+    .sort((a, b) => a.gap - b.gap)
+    .slice(0, rangeAhead)
+    .map((x) => x.vehicle);
 
-	const behind = withGap
-		.filter((x) => x.gap < 0)
-		.sort((a, b) => b.gap - a.gap)
-		.slice(0, rangeBehind)
-		.map((x) => x.vehicle);
+  const behind = withGap
+    .filter((x) => x.gap < 0)
+    .sort((a, b) => b.gap - a.gap)
+    .slice(0, rangeBehind)
+    .map((x) => x.vehicle);
 
-	return [...ahead, player, ...behind];
+  return [...ahead, player, ...behind];
 }
 
 function truncate(name: string, max: number): string {
   if (name.length <= max) return name;
   return name.slice(0, max - 1) + "…";
-}
-
-function isAheadOfPlayer(v: Partial<VehicleScoring>, player: Partial<VehicleScoring>): boolean {
-  if (v.lapDistance != null && player.lapDistance != null) {
-    return v.lapDistance > player.lapDistance;
-  }
-  return (v.place ?? 99) < (player.place ?? 99);
-}
-
-export function formatRelativeGap(v: Partial<VehicleScoring>, player: Partial<VehicleScoring>): string {
-  if (v.isPlayer) return "—";
-  if (v.lapDistance != null && player.lapDistance != null) {
-    return `${Math.round(Math.abs(v.lapDistance - player.lapDistance))}m`;
-  }
-  if (v.timeBehindNext != null && v.timeBehindNext > 0) {
-    return `${v.timeBehindNext.toFixed(1)}s`;
-  }
-  return "—";
-}
-
-export function relativeGapColor(
-  v: Partial<VehicleScoring>,
-  player: Partial<VehicleScoring>,
-  gapAheadColor: string,
-  gapBehindColor: string,
-  playerColor: string,
-): string {
-  if (v.isPlayer) return playerColor;
-  return isAheadOfPlayer(v, player) ? gapAheadColor : gapBehindColor;
 }
 
 export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }: RelativeProps) {
@@ -140,12 +84,7 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
       const container = containerRef.current;
       if (!container) return;
 
-      // Use timeGapToPlayer-based selection when available, fall back to legacy
-      const hasTimeGaps = t.vehicles.some((v) => v.timeGapToPlayer != null && Number.isFinite(v.timeGapToPlayer));
-      const visible = hasTimeGaps
-        ? selectRelativeRowsByGap(t.vehicles, rangeAhead, rangeBehind)
-        : selectRelativeRows(t.vehicles, rangeAhead, rangeBehind);
-
+      const visible = selectRelativeRowsByGap(t.vehicles, rangeAhead, rangeBehind);
       const player = visible.find((v) => v.isPlayer);
 
       if (!player) {
@@ -153,57 +92,57 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
         return;
       }
 
-      // Fingerprint check — skip HTML rebuild if no vehicle state changed
       const fingerprint = visible.map(v =>
         `${v.id}:${v.place}:${v.timeGapToPlayer?.toFixed(2)}:${v.inPits}:${v.vehicleClass}:${v.driverNumber}:${v.driverName}:${v.teamBrandColor}:${v.isPlayer}`
       ).join("|");
       if (fingerprint === lastFingerprintRef.current) return;
       lastFingerprintRef.current = fingerprint;
-		const rowHeight = Math.max(20, Math.floor((container.clientHeight - 8) / Math.max(1, visible.length)));
 
-		const rows = visible.map((v, idx) => {
-			const isP = v.isPlayer;
-			const bgRow = idx % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
+      const rowHeight = Math.max(20, Math.floor((container.clientHeight - 8) / Math.max(1, visible.length)));
 
-			let gapDisplay: string;
-			let gapColor: string;
-			if (isP) {
-				gapDisplay = "—";
-				gapColor = a.textColor;
-			} else if (hasTimeGaps && v.timeGapToPlayer != null) {
-				gapDisplay = formatSignedGap(v.timeGapToPlayer);
-				gapColor = v.timeGapToPlayer > 0 ? a.gapAheadColor : a.gapBehindColor;
-			} else {
-				gapDisplay = formatRelativeGap(v, player);
-				gapColor = relativeGapColor(v, player, a.gapAheadColor, a.gapBehindColor, a.textColor);
-			}
+      const rows = visible.map((v, idx) => {
+        const isP = v.isPlayer;
+        const bgRow = idx % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
 
-			const hasBrand = !!v.teamBrandColor;
-			const teamBg = v.teamBrandColor || "transparent";
-			const tc = hasBrand ? brandTextColor(teamBg) : "#9CA3AF";
+        let gapDisplay: string;
+        let gapColor: string;
+        if (isP) {
+          gapDisplay = "—";
+          gapColor = a.textColor;
+        } else if (v.timeGapToPlayer != null) {
+          gapDisplay = formatSignedGap(v.timeGapToPlayer);
+          gapColor = v.timeGapToPlayer > 0 ? a.gapAheadColor : a.gapBehindColor;
+        } else {
+          gapDisplay = "—";
+          gapColor = a.textColor;
+        }
 
-			const leftInset = isP ? `box-shadow: inset 3px 0 0 0 ${a.accentColor}` : "";
+        const hasBrand = !!v.teamBrandColor;
+        const teamBg = v.teamBrandColor || "transparent";
+        const tc = hasBrand ? brandTextColor(teamBg) : "#9CA3AF";
 
-			const numberCell = v.driverNumber
-				? `<div class="w-7 flex items-center justify-center py-[2px] px-[2px] ml-1 shrink-0" style="height:${rowHeight}px">
-						<div class="w-full h-full flex items-center justify-center" style="background:${teamBg}">
-							<span class="font-black text-[11px]" style="color:${tc}">${escapeHTML(v.driverNumber)}</span>
-						</div>
-					</div>`
-				: "";
+        const leftInset = isP ? `box-shadow: inset 3px 0 0 0 ${a.accentColor}` : "";
 
-			return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="height:${rowHeight}px;background:${isP ? BAKED_PLAYER_BG : bgRow};${leftInset}">
-				<div class="w-6 text-center shrink-0" style="color:#9CA3AF">${v.place ?? ""}</div>
-				<div class="w-1.5 h-full shrink-0" style="background:${resolveClassColor(v.vehicleClass, a)}"></div>
-				${numberCell}
-				<div class="flex-1 px-2 tracking-wide truncate" style="color:${isP ? "#FFFFFF" : "#E5E7EB"}">${escapeHTML(truncate(v.driverName ?? "?", 18))}</div>
-				<div class="px-2 flex items-center justify-end font-mono text-[10px] shrink-0">
-					<span style="color:${gapColor}">${gapDisplay}</span>
-				</div>
-			</div>`;
-		});
+        const numberCell = v.driverNumber
+          ? `<div class="w-7 flex items-center justify-center py-[2px] px-[2px] ml-1 shrink-0" style="height:${rowHeight}px">
+              <div class="w-full h-full flex items-center justify-center" style="background:${teamBg}">
+                <span class="font-black text-[11px]" style="color:${tc}">${escapeHTML(v.driverNumber)}</span>
+              </div>
+            </div>`
+          : "";
 
-		setHTMLIfChanged(container, rows.join(""));
+        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="height:${rowHeight}px;background:${isP ? BAKED_PLAYER_BG : bgRow};${leftInset}">
+          <div class="w-6 text-center shrink-0" style="color:#9CA3AF">${v.place ?? ""}</div>
+          <div class="w-1.5 h-full shrink-0" style="background:${resolveClassColor(v.vehicleClass, a)}"></div>
+          ${numberCell}
+          <div class="flex-1 px-2 tracking-wide truncate" style="color:${isP ? "#FFFFFF" : "#E5E7EB"}">${escapeHTML(truncate(v.driverName ?? "?", 18))}</div>
+          <div class="px-2 flex items-center justify-end font-mono text-[10px] shrink-0">
+            <span style="color:${gapColor}">${gapDisplay}</span>
+          </div>
+        </div>`;
+      });
+
+      setHTMLIfChanged(container, rows.join(""));
     });
   }, [rangeAhead, rangeBehind, updateHz, editMode, telemetryMode, props]);
 

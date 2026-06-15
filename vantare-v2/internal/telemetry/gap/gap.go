@@ -4,6 +4,9 @@ import "github.com/vantare/overlays/v2/pkg/models"
 
 // ComputeTimeGaps fills TimeGapToPlayer for every vehicle relative to the player.
 // Positive value means the vehicle is ahead on track; negative means behind.
+// The gap is physical: only the wrapped distance within one lap is used,
+// so a car one lap ahead but immediately behind the player shows a small
+// negative gap, not the full extra lap.
 func ComputeTimeGaps(t *models.Telemetry) {
 	if t == nil || t.Player == nil || len(t.Vehicles) == 0 {
 		return
@@ -11,12 +14,10 @@ func ComputeTimeGaps(t *models.Telemetry) {
 
 	playerIdx := -1
 	playerLapDistance := 0.0
-	playerTotalLaps := int16(0)
 	for i, v := range t.Vehicles {
 		if v.IsPlayer {
 			playerIdx = i
 			playerLapDistance = v.LapDistance
-			playerTotalLaps = v.TotalLaps
 			break
 		}
 	}
@@ -29,7 +30,6 @@ func ComputeTimeGaps(t *models.Telemetry) {
 		return
 	}
 
-	playerSpeed := t.Player.Speed
 	playerRefLap := estimateLapTime(t.Vehicles[playerIdx])
 
 	for i := range t.Vehicles {
@@ -48,21 +48,21 @@ func ComputeTimeGaps(t *models.Telemetry) {
 		} else if lapDelta < -trackLength/2 {
 			lapDelta += trackLength
 		}
-		delta := lapDelta + float64(v.TotalLaps-playerTotalLaps)*trackLength
 		refLap := playerRefLap
 		if refLap <= 0 {
-			refLap = estimateLapTime(*v) // fallback to target car's lap time
+			refLap = estimateLapTime(*v)
 		}
-		if refLap <= 0 {
-			// ultimate fallback: instant speed, only when no lap time data exists
-			if playerSpeed > 1.0 {
-				v.TimeGapToPlayer = delta / playerSpeed
-				continue
+		var speed float64
+		if refLap > 0 {
+			speed = trackLength / refLap
+		}
+		if speed <= 0 {
+			if t.Player.Speed > 1 {
+				speed = t.Player.Speed
 			}
 		}
-		if refLap > 0 {
-			avgSpeed := trackLength / refLap
-			v.TimeGapToPlayer = delta / avgSpeed
+		if speed > 0 {
+			v.TimeGapToPlayer = lapDelta / speed
 		}
 	}
 }

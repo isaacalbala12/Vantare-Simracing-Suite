@@ -33,10 +33,10 @@ export function formatStandingsPit(v: Partial<VehicleScoring>): string {
 }
 
 function formatLapTime(seconds: number | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "—";
-  const mins = Math.floor(seconds / 60);
-  const rem = seconds % 60;
-  return `${mins}:${rem.toFixed(3).padStart(6, "0")}`;
+  if (seconds == null || seconds <= 0) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = (seconds % 60).toFixed(3).padStart(6, "0");
+  return `${m}:${s}`;
 }
 
 export function formatStandingsGapForMode(
@@ -44,25 +44,24 @@ export function formatStandingsGapForMode(
   v: Partial<VehicleScoring>
 ): string {
   if (mode === "practice" || mode === "qualifying") {
-    return formatLapTime(v.bestLapTime);
+    return v.place === 1 ? formatLapTime(v.bestLapTime) : formatLapTime(v.bestLapTime);
   }
-  // Race mode
-  if (v.place === 1) return "Leader";
-  if ((v.lapsBehindLeader ?? 0) > 0) return `+${v.lapsBehindLeader}L`;
-  if ((v.timeBehindLeader ?? 0) > 0) return `+${v.timeBehindLeader!.toFixed(3)}s`;
-  return "—";
+  return formatStandingsGap(v);
 }
 
 function tireBadgeHtml(compound: string | undefined, tireSoft: string, tireMedium: string, tireHard: string): string {
   if (!compound) return "";
-  const colorMap: Record<string, string> = { S: tireSoft, M: tireMedium, H: tireHard };
-  const color = colorMap[compound] ?? "#FFFFFF";
-  return `<span class="font-sans font-bold text-[8px] px-[3px] py-[1px] rounded-sm border leading-none" style="border-color:${color};color:${color}">${escapeHTML(compound)}</span>`;
+  const c = compound.toUpperCase();
+  let color = "#9CA3AF";
+  if (c === "S") color = tireSoft;
+  else if (c === "M") color = tireMedium;
+  else if (c === "H") color = tireHard;
+  return `<span class="inline-flex items-center justify-center w-4 h-4 text-[8px] font-black rounded-sm" style="background:${color};color:#000">${c}</span>`;
 }
 
 function brandInitial(name: string | undefined): string {
-  if (!name) return "?";
-  return name.charAt(0);
+  const n = name ?? "";
+  return n.split(/[\s-]/).map((p) => p[0] ?? "").slice(0, 2).join("").toUpperCase();
 }
 
 export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 }: StandingsProps) {
@@ -103,8 +102,8 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
         const bi = hasBrand ? brandInitial(v.driverName) : "";
         const teamBg = v.teamBrandColor || "transparent";
         const tc = hasBrand ? brandTextColor(teamBg) : "#9CA3AF";
-        const numTc = pitLabel ? a.pitColor : (hasBrand ? brandTextColor(v.teamBrandColor!) : "#9CA3AF");
-        const numBg = pitLabel ? "#000" : (v.teamBrandColor || "transparent");
+        const numColor = pitLabel ? "#000000" : (hasBrand ? brandTextColor(v.teamBrandColor!) : "#FFFFFF");
+        const numBg = pitLabel ? a.pitColor : (v.teamBrandColor || "transparent");
         const teamColor = isLeader ? a.posLeaderColor : (v.place && v.place <= 3 ? "#FFFFFF" : "#D1D5DB");
 
         const leaderShadow = isLeader ? `box-shadow: inset 2px 0 0 0 ${a.posLeaderColor}` : "";
@@ -118,12 +117,13 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
             </div>
           </div>`
           : "";
+
         const numberCell = v.driverNumber
-          ? `<div class="w-7 flex items-center justify-center py-[2px] pr-[2px] shrink-0 relative" style="height:${rowHeight}px">
-            <div class="w-full h-full flex items-center justify-center" style="background:${numBg};${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
-              <span class="font-black text-[11px]" style="color:${numTc}">${escapeHTML(v.driverNumber)}</span>
+          ? `<div class="w-7 flex items-center justify-center py-[2px] pr-[2px] shrink-0" style="height:${rowHeight}px">
+            <div class="w-5 h-[18px] flex items-center justify-center relative" style="background:${numBg};${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
+              <span class="font-black text-[11px]" style="color:${numColor}">${escapeHTML(v.driverNumber)}</span>
+              ${pitLabel ? `<div class="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[6px] px-0.5 rounded-sm leading-none whitespace-nowrap font-black" style="background:${a.pitColor};color:#000">PIT</div>` : ""}
             </div>
-            ${pitLabel ? `<div class="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[6px] px-0.5 rounded-sm leading-none whitespace-nowrap" style="background:${a.pitColor};color:#000">PIT</div>` : ""}
           </div>`
           : "";
 

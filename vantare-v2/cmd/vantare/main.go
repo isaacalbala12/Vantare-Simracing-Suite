@@ -105,6 +105,12 @@ func (w *wailsEmitter) Emit(name string, data any) {
 }
 
 func main() {
+	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
+	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
+		udf := filepath.Join(appData, "Vantare", "webview_v0.1.1")
+		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
+	}
+
 	live := flag.Bool("live", false, "use LMU shared memory (fallback mock)")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")

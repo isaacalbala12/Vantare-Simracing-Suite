@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StandingsWidget } from "./StandingsWidget";
+import { StandingsWidget, formatStandingsGap, formatStandingsGapForMode, formatStandingsPit } from "./StandingsWidget";
 
 describe("StandingsWidget", () => {
   beforeEach(() => {
@@ -48,6 +48,31 @@ describe("StandingsWidget", () => {
       <StandingsWidget editMode={true} updateHz={15} />,
     );
     tick(100);
-    expect(screen.getByText("IN PIT")).toBeTruthy();
+    expect(screen.getByText("PIT")).toBeTruthy();
+  });
+
+  it("formatStandingsGap renders leader, laps behind and time gaps", () => {
+    expect(formatStandingsGap({ place: 1 })).toBe("Leader");
+    expect(formatStandingsGap({ place: 5, lapsBehindLeader: 2 })).toBe("+2L");
+    expect(formatStandingsGap({ place: 6, timeBehindLeader: 14.028 })).toBe("+14.028s");
+  });
+
+  it("formatStandingsPit renders garage and pit labels", () => {
+    expect(formatStandingsPit({ inGarageStall: true })).toBe("GARAGE");
+    expect(formatStandingsPit({ pitState: "EXITING" })).toBe("PIT");
+    expect(formatStandingsPit({ pitting: true, inPits: false, inGarageStall: false, pitState: "NONE" })).toBe("PIT");
+    expect(formatStandingsPit({ pitting: false, inPits: false, inGarageStall: false, pitState: "" })).toBe("");
+  });
+
+  it("formatStandingsGapForMode shows best lap in practice and qualifying", () => {
+    expect(formatStandingsGapForMode("practice", { bestLapTime: 83.456 })).toBe("1:23.456");
+    expect(formatStandingsGapForMode("qualifying", { bestLapTime: 90.123 })).toBe("1:30.123");
+    expect(formatStandingsGapForMode("practice", { bestLapTime: 0 })).toBe("—");
+  });
+
+  it("formatStandingsGapForMode keeps race gaps unchanged", () => {
+    expect(formatStandingsGapForMode("race", { place: 1 })).toBe("Leader");
+    expect(formatStandingsGapForMode("race", { place: 5, lapsBehindLeader: 2 })).toBe("+2L");
+    expect(formatStandingsGapForMode("race", { place: 6, timeBehindLeader: 14.028 })).toBe("+14.028s");
   });
 });

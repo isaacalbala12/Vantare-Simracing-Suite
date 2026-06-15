@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
-import { getTelemetryRef } from "../../lib/telemetry-ref";
+import { getTelemetryRef, resolveSessionMode, type SessionMode, type VehicleScoring } from "../../lib/telemetry-ref";
 import { getMockTelemetry } from "./mock-telemetry";
+import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
 import { setHTMLIfChanged } from "../../lib/dom-write";
 import { escapeHTML } from "../../lib/html-escape";
@@ -9,6 +10,7 @@ import { startFrameBudgetLoop } from "../../lib/frame-budget";
 
 type StandingsProps = {
   editMode: boolean;
+  telemetryMode?: WidgetTelemetryMode;
   updateHz?: number;
   props?: Record<string, unknown>;
 };
@@ -17,9 +19,38 @@ const BAKED_PANEL_BG = "linear-gradient(180deg, #3a050a 0%, #0d0102 100%)";
 const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #9b2226 0%, #e63946 50%, #9b2226 100%)";
 
-function formatGap(timeBehind: number): string {
-  if (timeBehind <= 0) return "Leader";
-  return `+${timeBehind.toFixed(3)}s`;
+export function formatStandingsGap(v: Partial<VehicleScoring>): string {
+  if (v.place === 1) return "Leader";
+  if ((v.lapsBehindLeader ?? 0) > 0) return `+${v.lapsBehindLeader}L`;
+  if ((v.timeBehindLeader ?? 0) > 0) return `+${v.timeBehindLeader!.toFixed(3)}s`;
+  return "--";
+}
+
+export function formatStandingsPit(v: Partial<VehicleScoring>): string {
+  if (v.inGarageStall) return "GARAGE";
+  if (v.pitting || v.inPits || (v.pitState && v.pitState !== "NONE")) return "PIT";
+  return "";
+}
+
+function formatLapTime(seconds: number | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "—";
+  const mins = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  return `${mins}:${rem.toFixed(3).padStart(6, "0")}`;
+}
+
+export function formatStandingsGapForMode(
+  mode: SessionMode,
+  v: Partial<VehicleScoring>
+): string {
+  if (mode === "practice" || mode === "qualifying") {
+    return formatLapTime(v.bestLapTime);
+  }
+  // Race mode
+  if (v.place === 1) return "Leader";
+  if ((v.lapsBehindLeader ?? 0) > 0) return `+${v.lapsBehindLeader}L`;
+  if ((v.timeBehindLeader ?? 0) > 0) return `+${v.timeBehindLeader!.toFixed(3)}s`;
+  return "—";
 }
 
 function tireBadgeHtml(compound: string | undefined, tireSoft: string, tireMedium: string, tireHard: string): string {
@@ -34,7 +65,7 @@ function brandInitial(name: string | undefined): string {
   return name.charAt(0);
 }
 
-export function StandingsWidget({ editMode, props, updateHz = 15 }: StandingsProps) {
+export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 }: StandingsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const maxRows = (props?.maxRows as number) ?? 12;
 
@@ -42,7 +73,7 @@ export function StandingsWidget({ editMode, props, updateHz = 15 }: StandingsPro
 
   useEffect(() => {
     return startFrameBudgetLoop(updateHz, () => {
-      const t = editMode ? getMockTelemetry() : getTelemetryRef();
+      const t = (telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef();
       const a = resolveWidgetAppearance("standings", props).appearance;
       const container = containerRef.current;
       if (!container) return;
@@ -51,20 +82,22 @@ export function StandingsWidget({ editMode, props, updateHz = 15 }: StandingsPro
         .sort((x, y) => (x.place ?? 99) - (y.place ?? 99))
         .slice(0, maxRows);
 
+      const mode = resolveSessionMode(t.sessionType, t.sessionName);
+
       const rows = sorted.map((v, i) => {
         const bgRow = i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
         const isLeader = v.place === 1;
-        const isPit = v.inPits;
-        const gapText = v.fastestLap ? "FASTEST" : (isPit ? "IN PIT" : formatGap(v.timeBehindLeader ?? 0));
-        const gapColor = isLeader || isPit ? a.pitColor : "";
+        const pitLabel = formatStandingsPit(v);
+        const gapText = pitLabel || (mode === "race" && v.fastestLap ? "FASTEST" : formatStandingsGapForMode(mode, v));
+        const gapColor = pitLabel ? a.pitColor : (isLeader ? a.posLeaderColor : "");
         const posColor = isLeader ? a.posLeaderColor : (v.place && v.place <= 3 ? "#FFFFFF" : "#9CA3AF");
 
         const hasBrand = !!v.teamBrandColor;
         const bi = hasBrand ? brandInitial(v.driverName) : "";
         const teamBg = v.teamBrandColor || "transparent";
         const tc = hasBrand ? brandTextColor(teamBg) : "#9CA3AF";
-        const numTc = isPit ? a.pitColor : (hasBrand ? brandTextColor(v.teamBrandColor!) : "#9CA3AF");
-        const numBg = isPit ? "#000" : (v.teamBrandColor || "transparent");
+        const numTc = pitLabel ? a.pitColor : (hasBrand ? brandTextColor(v.teamBrandColor!) : "#9CA3AF");
+        const numBg = pitLabel ? "#000" : (v.teamBrandColor || "transparent");
         const teamColor = isLeader ? a.posLeaderColor : (v.place && v.place <= 3 ? "#FFFFFF" : "#D1D5DB");
 
         const leaderShadow = isLeader ? `box-shadow: inset 2px 0 0 0 ${a.posLeaderColor}` : "";
@@ -80,7 +113,7 @@ export function StandingsWidget({ editMode, props, updateHz = 15 }: StandingsPro
           : "";
         const numberCell = v.driverNumber
           ? `<div class="w-7 h-full flex items-center justify-center py-[2px] pr-[2px] shrink-0">
-            <div class="w-full h-full flex items-center justify-center" style="background:${numBg};${isPit ? `border:1px solid ${a.pitColor}` : ""}">
+            <div class="w-full h-full flex items-center justify-center" style="background:${numBg};${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
               <span class="font-black text-[11px]" style="color:${numTc}">${escapeHTML(v.driverNumber)}</span>
             </div>
           </div>`
@@ -100,7 +133,7 @@ export function StandingsWidget({ editMode, props, updateHz = 15 }: StandingsPro
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [maxRows, updateHz, editMode, props]);
+  }, [maxRows, updateHz, editMode, telemetryMode, props]);
 
   return (
     <div

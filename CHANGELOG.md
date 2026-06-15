@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.1.1-prealpha - 2026-06-15
+
+Pre-alpha de correcciones y refinamientos para Relative y Standings.
+
+### Incluido
+
+- **Relative Widget**:
+  - Corrección en el orden visual de los coches de delante: el 3º más lejano va arriba y el 1º más cercano queda justo encima del jugador.
+  - Gaps de tiempo basados en distancia física circular en pista (wrap-around) en segundos.
+- **Standings Widget**:
+  - Filtro dinámico por clase: expone únicamente a los pilotos de la categoría del jugador (p. ej. LMP3).
+  - Muestra la posición del piloto dentro de su categoría (`1º` a `Nº`) en lugar de la general.
+  - Mapeado el tiempo restante de sesión (`timeRemainingInGamePhase`) y la clase activa en tiempo real al encabezado del panel.
+  - Gaps de carrera calculados respecto al líder de la categoría.
+  - Colores unificados por estado: texto blanco para coches en pista, gris (`#9CA3AF`) para coches en pit/box.
+  - Badge de PIT más pequeño y adaptativo sobre el número del coche sin cortarse.
+- **Infraestructura**:
+  - Añadidas cabeceras e instrucciones HTML de anti-caché en `index.html` para evitar que los navegadores sirvan JS antiguos al recompilar.
+  - Exclusión de vueltas netas en la lógica del backend para obtener gaps físicos estables y coherentes.
+
 ## v0.1.0-alpha.1 - 2026-06-15
 
 Primera alpha pública de Vantare Overlays v2.

@@ -1,8 +1,8 @@
 # Vantare Overlays v2
 
-Alpha `v0.1.0-alpha.1` del reinicio del proyecto con **Go + Wails + React**.
+Pre-alpha `v0.1.1-prealpha` del reinicio del proyecto con **Go + Wails + React**.
 
-Estado actual: Hub principal + Preview Workbench + overlay desktop fullscreen transparente bajo demanda + telemetría live de Le Mans Ultimate. `apps/desktop/` es v1 legado y no forma parte de esta alpha.
+Estado actual: Hub principal + Preview Workbench + overlay desktop fullscreen transparente bajo demanda + telemetría live de Le Mans Ultimate. `apps/desktop/` es v1 legado y no forma parte de esta pre-alpha.
 
 Documentación: [`../docs/V2-STACK-AND-PERFORMANCE.md`](../docs/V2-STACK-AND-PERFORMANCE.md) · Plan maestro: [`../docs/V2-MASTER-PLAN.md`](../docs/V2-MASTER-PLAN.md) · **Guía completa:** [`../docs/proyecto/README.md`](../docs/proyecto/README.md)
 

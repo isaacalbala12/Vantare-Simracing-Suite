@@ -31,6 +31,11 @@ export type WidgetAppearance = {
   tireHardColor?: string;
   gapAheadColor?: string;
   gapBehindColor?: string;
+  classHypercarColor?: string;
+  classLmp2Color?: string;
+  classLmp3Color?: string;
+  classGt3Color?: string;
+  classUnknownColor?: string;
 };
 
 export type WidgetPropsMap = Record<string, unknown> & {
@@ -96,3 +101,4 @@ export function toWindowLocal(
     h: widgetPos.h,
   };
 }
+

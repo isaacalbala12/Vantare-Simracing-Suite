@@ -34,6 +34,11 @@ export function resolveWidgetAppearance(
       tireHardColor: overrides.tireHardColor ?? defaults.tireHardColor ?? "#ffffff",
       gapAheadColor: overrides.gapAheadColor ?? defaults.gapAheadColor ?? "#f87171",
       gapBehindColor: overrides.gapBehindColor ?? defaults.gapBehindColor ?? "#4ade80",
+      classHypercarColor: overrides.classHypercarColor ?? defaults.classHypercarColor ?? "#c1121f",
+      classLmp2Color: overrides.classLmp2Color ?? defaults.classLmp2Color ?? "#0055A4",
+      classLmp3Color: overrides.classLmp3Color ?? defaults.classLmp3Color ?? "#f59e0b",
+      classGt3Color: overrides.classGt3Color ?? defaults.classGt3Color ?? "#2ecc71",
+      classUnknownColor: overrides.classUnknownColor ?? defaults.classUnknownColor ?? "#6b7280",
     },
   };
 }

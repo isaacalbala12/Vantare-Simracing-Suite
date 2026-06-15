@@ -123,7 +123,7 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
         setHTMLIfChanged(classRef.current, activeClass.toUpperCase());
       }
 
-      const rowHeight = Math.max(18, Math.floor((container.clientHeight - 8) / Math.max(1, sorted.length)));
+      const rowHeight = 24;
       const classLeader = sorted[0];
 
       const rows = sorted.map((v, i) => {
@@ -190,7 +190,7 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
   return (
     <div
       data-testid="standings-panel"
-      className="w-full h-full flex flex-col overflow-hidden rounded-lg"
+      className="w-full h-fit flex flex-col overflow-hidden rounded-lg"
       style={{
         background: BAKED_PANEL_BG,
         border: `1px solid ${a.borderColor}`,
@@ -212,7 +212,7 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
       >
         {activeClass.toUpperCase()}
       </div>
-      <div ref={containerRef} className="flex-1 overflow-hidden mt-1 px-1" />
+      <div ref={containerRef} className="mt-1 px-1" />
       <div className="mt-1 py-1 text-center text-[8px] tracking-widest text-white/50 font-bold border-t border-black" style={{ background: "#1a0104" }}>
         LE MANS ULTIMATE
       </div>

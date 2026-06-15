@@ -30,8 +30,7 @@ func ComputeTimeGaps(t *models.Telemetry) {
 	}
 
 	playerSpeed := t.Player.Speed
-	useSpeed := playerSpeed > 1.0
-	playerEstimatedLap := estimateLapTime(t.Vehicles[playerIdx])
+	playerRefLap := estimateLapTime(t.Vehicles[playerIdx])
 
 	for i := range t.Vehicles {
 		v := &t.Vehicles[i]
@@ -50,17 +49,20 @@ func ComputeTimeGaps(t *models.Telemetry) {
 			lapDelta += trackLength
 		}
 		delta := lapDelta + float64(v.TotalLaps-playerTotalLaps)*trackLength
-
-		if useSpeed {
-			v.TimeGapToPlayer = delta / playerSpeed
-		} else {
-			refLap := estimateLapTime(*v)
-			if refLap <= 0 {
-				refLap = playerEstimatedLap
+		refLap := playerRefLap
+		if refLap <= 0 {
+			refLap = estimateLapTime(*v) // fallback to target car's lap time
+		}
+		if refLap <= 0 {
+			// ultimate fallback: instant speed, only when no lap time data exists
+			if playerSpeed > 1.0 {
+				v.TimeGapToPlayer = delta / playerSpeed
+				continue
 			}
-			if refLap > 0 {
-				v.TimeGapToPlayer = delta * (refLap / trackLength)
-			}
+		}
+		if refLap > 0 {
+			avgSpeed := trackLength / refLap
+			v.TimeGapToPlayer = delta / avgSpeed
 		}
 	}
 }

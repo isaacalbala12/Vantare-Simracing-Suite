@@ -2,6 +2,7 @@ package app
 
 import (
 	"io"
+	"log"
 	"sync"
 	"time"
 
@@ -82,6 +83,8 @@ type lmuRESTCache struct {
 	stop           chan struct{}
 	done           chan struct{}
 	closeOnce      sync.Once
+	lastErr        error
+	lastErrAt      time.Time
 }
 
 func newLMURESTCache(api *lmuapi.Client, pollEvery, ttl time.Duration) *lmuRESTCache {
@@ -127,6 +130,8 @@ func (c *lmuRESTCache) poll() {
 		c.rows = append([]lmuapi.StandingRow(nil), rows...)
 		c.rowsUpdated = now
 		c.mu.Unlock()
+	} else {
+		c.logErr("standings", err, now)
 	}
 	if info, err := c.api.SessionInfo(); err == nil {
 		c.mu.Lock()
@@ -134,6 +139,8 @@ func (c *lmuRESTCache) poll() {
 		c.session = &copied
 		c.sessionUpdated = now
 		c.mu.Unlock()
+	} else {
+		c.logErr("sessionInfo", err, now)
 	}
 	c.expire(now)
 }
@@ -147,6 +154,18 @@ func (c *lmuRESTCache) expire(now time.Time) {
 	if !c.sessionUpdated.IsZero() && now.Sub(c.sessionUpdated) > c.ttl {
 		c.session = nil
 	}
+}
+
+func (c *lmuRESTCache) logErr(endpoint string, err error, now time.Time) {
+	const quietPeriod = 5 * time.Second
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.lastErr != nil && c.lastErr.Error() == err.Error() && now.Sub(c.lastErrAt) < quietPeriod {
+		return
+	}
+	c.lastErr = err
+	c.lastErrAt = now
+	log.Printf("LMU REST %s error: %v", endpoint, err)
 }
 
 func (c *lmuRESTCache) Snapshot() ([]lmuapi.StandingRow, *lmuapi.SessionInfo) {

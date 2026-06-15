@@ -8,6 +8,7 @@ import { toWindowLocal } from "../lib/profile";
 import {
   applyTelemetryUpdate,
   parseTelemetryPayload,
+  resetTelemetryRef,
 } from "../lib/telemetry-ref";
 import { WidgetHost } from "./WidgetHost";
 import { DeltaWidget } from "./widgets/DeltaWidget";
@@ -49,7 +50,7 @@ export function ObsOverlayApp() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const profileName = params.get("profile") || "example-streaming.json";
-    let cleanup: (() => void) | null = null;
+    let es: EventSource | null = null;
     let disposed = false;
 
     fetch(`/api/profile?profile=${encodeURIComponent(profileName)}`)
@@ -58,11 +59,13 @@ export function ObsOverlayApp() {
         return res.json();
       })
       .then((data: { profile: ProfileConfig; layoutOrigin: LayoutOrigin }) => {
+        if (disposed) return;
+        resetTelemetryRef(); // avoid stale telemetry from previous OBS source load
         setProfile(data.profile);
         setLayoutOrigin(data.layoutOrigin);
         setWidgets(data.profile.widgets.filter((w) => w.enabled));
 
-        const es = new EventSource("/telemetry/stream");
+        es = new EventSource("/telemetry/stream");
         es.addEventListener("telemetry", (event: MessageEvent) => {
           try {
             applyTelemetryUpdate(parseTelemetryPayload(event.data));
@@ -73,21 +76,23 @@ export function ObsOverlayApp() {
         es.onerror = () => {
           console.warn("SSE connection error");
         };
+        es.onopen = () => {
+          setError(null);
+        };
         if (disposed) {
           es.close();
+          es = null;
         }
-        return es;
-      })
-      .then((es) => {
-        cleanup = () => es.close();
       })
       .catch((err: Error) => {
+        if (disposed) return;
         setError(`Failed to load profile: ${err.message}`);
       });
 
     return () => {
       disposed = true;
-      cleanup?.();
+      es?.close();
+      es = null;
     };
   }, []);
 

@@ -174,8 +174,11 @@ func (s *Service) flushEmit() {
 	}
 
 	s.subsMu.Lock()
-	defer s.subsMu.Unlock()
-	for _, sub := range s.subs {
+	subs := make([]*subscriber, len(s.subs))
+	copy(subs, s.subs)
+	s.subsMu.Unlock()
+
+	for _, sub := range subs {
 		select {
 		case sub.ch <- upd:
 		default:

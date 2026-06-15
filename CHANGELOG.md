@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.3-prealpha - 2026-06-15
+
+Pre-alpha de robustecimiento del streaming SSE/OBS y del pipeline de telemetría live.
+
+### Corregido
+
+- **Ciclo de vida del EventSource en OBS** (`frontend/src/overlay/ObsOverlayApp.tsx`): se crea el `EventSource` directamente en una variable accesible desde el cleanup, se cancela si el componente se desmonta durante el fetch y se limpia telemetry-ref al cargar un nuevo perfil.
+- **`flushEmit` no bloquea suscripciones** (`internal/telemetry/service/service.go`): ahora copia la lista de suscriptores bajo lock, libera `subsMu` y luego envía, evitando que clientes lentos retrasen nuevas suscripciones.
+- **Logging de errores REST de LMU** (`internal/app/lmu_enriched_source.go`): `lmuRESTCache.poll()` ahora loguea errores de `Standings` y `SessionInfo` con rate limiting de 5s para evitar spam.
+- **Keep-alive SSE y compatibilidad con proxies** (`internal/server/sse.go`): se añade cabecera `X-Accel-Buffering: no` y se envían comentarios keep-alive cada 15 segundos para mantener la conexión activa detrás de proxies y evitar cortes por inactividad.
+
 ## v0.1.2-prealpha - 2026-06-15
 
 Pre-alpha de robustecimiento del pipeline de telemetría live y limpieza de recursos.

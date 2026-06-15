@@ -75,4 +75,14 @@ describe("StandingsWidget", () => {
     expect(formatStandingsGapForMode("race", { place: 5, lapsBehindLeader: 2 })).toBe("+2L");
     expect(formatStandingsGapForMode("race", { place: 6, timeBehindLeader: 14.028 })).toBe("+14.028s");
   });
+
+  it("does not replace gap text with PIT label", () => {
+    const v = { place: 5, inPits: true, bestLapTime: 95.5 };
+    expect(formatStandingsGapForMode("practice", v)).toBe("1:35.500");
+  });
+
+  it("formatStandingsPit still detects pit state", () => {
+    expect(formatStandingsPit({ inPits: true })).toBe("PIT");
+    expect(formatStandingsPit({ inPits: false })).toBe("");
+  });
 });

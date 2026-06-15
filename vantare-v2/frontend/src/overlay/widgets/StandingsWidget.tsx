@@ -88,8 +88,8 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
         const bgRow = i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
         const isLeader = v.place === 1;
         const pitLabel = formatStandingsPit(v);
-        const gapText = pitLabel || (mode === "race" && v.fastestLap ? "FASTEST" : formatStandingsGapForMode(mode, v));
-        const gapColor = pitLabel ? a.pitColor : (isLeader ? a.posLeaderColor : "");
+        const gapText = mode === "race" && v.fastestLap ? "FASTEST" : formatStandingsGapForMode(mode, v);
+        const gapColor = isLeader ? a.posLeaderColor : "";
         const posColor = isLeader ? a.posLeaderColor : (v.place && v.place <= 3 ? "#FFFFFF" : "#9CA3AF");
 
         const hasBrand = !!v.teamBrandColor;
@@ -112,10 +112,11 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
           </div>`
           : "";
         const numberCell = v.driverNumber
-          ? `<div class="w-7 h-full flex items-center justify-center py-[2px] pr-[2px] shrink-0">
+          ? `<div class="w-7 h-full flex items-center justify-center py-[2px] pr-[2px] shrink-0 relative">
             <div class="w-full h-full flex items-center justify-center" style="background:${numBg};${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
               <span class="font-black text-[11px]" style="color:${numTc}">${escapeHTML(v.driverNumber)}</span>
             </div>
+            ${pitLabel ? `<div class="absolute -top-1 -left-0 text-[7px] px-1 rounded" style="background:${a.pitColor};color:#000">PIT</div>` : ""}
           </div>`
           : "";
 

@@ -81,14 +81,14 @@ func BuildSyntheticBuffer() []byte {
 	binary.LittleEndian.PutUint32(buf[scoringNumVehicles:], uint32(numVehicles))
 
 	vehicles := []vehicleSpec{
+		{id: 11, name: "TestDriver", vehicleClass: "HYPERCAR", place: 4, isPlayer: 1,
+			lapDistance: 5000, bestLapTime: 105.5, estLapTime: 106.0, totalLaps: 5},
 		{id: 1, name: "Niek S.", vehicleClass: "HYPERCAR", place: 1,
 			lapDistance: 5200, bestLapTime: 103.5, estLapTime: 104.0, totalLaps: 6},
 		{id: 2, name: "Cedric M.", vehicleClass: "HYPERCAR", place: 2,
 			lapDistance: 5100, bestLapTime: 104.2, estLapTime: 104.5, totalLaps: 5},
 		{id: 3, name: "Oleg N.", vehicleClass: "LMP2", place: 3,
 			lapDistance: 5050, bestLapTime: 108.8, estLapTime: 109.0, totalLaps: 5},
-		{id: 11, name: "TestDriver", vehicleClass: "HYPERCAR", place: 4, isPlayer: 1,
-			lapDistance: 5000, bestLapTime: 105.5, estLapTime: 106.0, totalLaps: 5},
 		{id: 4, name: "Rene A.", vehicleClass: "HYPERCAR", place: 5,
 			lapDistance: 4800, bestLapTime: 106.1, estLapTime: 106.5, totalLaps: 5},
 		{id: 5, name: "Marco S.", vehicleClass: "LMP3", place: 6,
@@ -108,10 +108,10 @@ func BuildSyntheticBuffer() []byte {
 		writeVehicle(buf, v)
 	}
 
-	buf[telemetryPlayerVehicleIdx] = 3
+	buf[telemetryPlayerVehicleIdx] = 0
 	buf[telemetryPlayerHasVehicle] = 1
 
-	setPlayerSpeedMPS(buf, po, 50)
+	setPlayerSpeedMPS(buf, po, 15)
 	binary.LittleEndian.PutUint32(buf[po+vehicleTelemetryGear:], 4)
 	writeFloat64(buf, po+vehicleTelemetryEngineRPM, 7200)
 	writeFloat64(buf, po+vehicleTelemetryFuel, 45.2)

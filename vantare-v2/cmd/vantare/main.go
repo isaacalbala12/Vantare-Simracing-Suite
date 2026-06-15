@@ -46,46 +46,53 @@ func reorderArgs() {
 	os.Args = append(positional, flags...)
 }
 
-// ConfigsDir returns the absolute path to the configs directory.
 func configsDir() string {
-	candidates := []string{
-		"configs",
-		"vantare-v2/configs",
-	}
-	if exe, err := os.Executable(); err == nil {
-		dir := filepath.Dir(exe)
-		candidates = append(candidates,
-			filepath.Join(dir, "configs"),
-			filepath.Join(dir, "..", "configs"),
-		)
-	}
-	for _, dir := range candidates {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			abs, _ := filepath.Abs(dir)
-			return abs
-		}
-	}
-
-	// Fallback: create next to exe
+	// 1. Check if there is a configs folder next to the executable (portable mode)
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		configsPath := filepath.Join(dir, "configs")
-		if err := os.MkdirAll(configsPath, 0755); err == nil {
-			files := []string{"custom-hfg.json", "example-edit.json", "example-racing.json", "example-streaming.json"}
-			for _, f := range files {
-				content, err := configs.ConfigsFS.ReadFile(f)
-				if err == nil {
-					dest := filepath.Join(configsPath, f)
-					if _, err := os.Stat(dest); os.IsNotExist(err) {
-						_ = os.WriteFile(dest, content, 0644)
-					}
-				}
-			}
+		if info, err := os.Stat(configsPath); err == nil && info.IsDir() {
 			if abs, err := filepath.Abs(configsPath); err == nil {
 				return abs
 			}
 		}
 	}
+
+	// 2. Check if there is a configs folder in CWD (development mode)
+	candidates := []string{
+		"configs",
+		"vantare-v2/configs",
+	}
+	for _, dir := range candidates {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			if abs, err := filepath.Abs(dir); err == nil {
+				return abs
+			}
+		}
+	}
+
+	// 3. Installed mode: use user's standard config directory (AppData/Roaming/Vantare/configs)
+	// This is always writeable without administrator privileges.
+	configDir, err := os.UserConfigDir()
+	if err == nil {
+		vantareConfigPath := filepath.Join(configDir, "Vantare", "configs")
+		if err := os.MkdirAll(vantareConfigPath, 0755); err == nil {
+			files := []string{"custom-hfg.json", "example-edit.json", "example-racing.json", "example-streaming.json"}
+			for _, f := range files {
+				content, err := configs.ConfigsFS.ReadFile(f)
+				if err == nil {
+					dest := filepath.Join(vantareConfigPath, f)
+					if _, err := os.Stat(dest); os.IsNotExist(err) {
+						_ = os.WriteFile(dest, content, 0644)
+					}
+				}
+			}
+			if abs, err := filepath.Abs(vantareConfigPath); err == nil {
+				return abs
+			}
+		}
+	}
+
 	return ""
 }
 

@@ -28,6 +28,15 @@ func Compute(prev, next *models.Telemetry) *Payload {
 	if prev == nil || prev.PlayerHasVehicle != next.PlayerHasVehicle {
 		d["playerHasVehicle"] = next.PlayerHasVehicle
 	}
+	if prev == nil || prev.SessionEpoch != next.SessionEpoch {
+		d["sessionEpoch"] = next.SessionEpoch
+	}
+	if prev == nil || prev.SessionState != next.SessionState {
+		d["sessionState"] = next.SessionState
+	}
+	if prev == nil || prev.SessionKey != next.SessionKey {
+		d["sessionKey"] = next.SessionKey
+	}
 
 	diffPlayer(d, playerOf(prev), next.Player)
 	diffSession(d, sessionOf(prev), next.Session)
@@ -109,15 +118,54 @@ func diffSession(d map[string]any, prev, next *models.SessionInfo) {
 	if prev == nil || prev.GamePhase != next.GamePhase {
 		sd["gamePhase"] = next.GamePhase
 	}
+	if prev == nil || prev.SessionType != next.SessionType {
+		sd["sessionType"] = next.SessionType
+	}
 	if prev == nil || prev.NumVehicles != next.NumVehicles {
 		sd["numVehicles"] = next.NumVehicles
 	}
 	if prev == nil || core.ShouldEmit(prev.SessionTime, next.SessionTime, 0.01) {
 		sd["sessionTime"] = next.SessionTime
 	}
+	if prev == nil || prev.SessionName != next.SessionName {
+		sd["sessionName"] = next.SessionName
+	}
+	if prev == nil || core.ShouldEmit(prev.TimeRemainingInGamePhase, next.TimeRemainingInGamePhase, 0.1) {
+		sd["timeRemainingInGamePhase"] = next.TimeRemainingInGamePhase
+	}
+	if prev == nil || prev.PlayerName != next.PlayerName {
+		sd["playerName"] = next.PlayerName
+	}
+	if prev == nil || core.ShouldEmit(prev.AmbientTemp, next.AmbientTemp, 0.1) {
+		sd["ambientTemp"] = next.AmbientTemp
+	}
+	if prev == nil || core.ShouldEmit(prev.TrackTemp, next.TrackTemp, 0.1) {
+		sd["trackTemp"] = next.TrackTemp
+	}
+	if prev == nil || prev.YellowFlagState != next.YellowFlagState {
+		sd["yellowFlagState"] = next.YellowFlagState
+	}
+	if sectorFlagsChanged(prev, next) {
+		sd["sectorFlags"] = next.SectorFlags
+	}
 	if len(sd) > 0 {
 		d["session"] = sd
 	}
+}
+
+func sectorFlagsChanged(prev, next *models.SessionInfo) bool {
+	if prev == nil {
+		return len(next.SectorFlags) > 0
+	}
+	if len(prev.SectorFlags) != len(next.SectorFlags) {
+		return true
+	}
+	for i, f := range prev.SectorFlags {
+		if f != next.SectorFlags[i] {
+			return true
+		}
+	}
+	return false
 }
 
 func vehiclesChanged(prev, next *models.Telemetry) bool {
@@ -144,7 +192,23 @@ func vehiclesChanged(prev, next *models.Telemetry) bool {
 		if old.DriverName != v.DriverName || old.VehicleClass != v.VehicleClass {
 			return true
 		}
+		if old.DriverNumber != v.DriverNumber || old.TeamName != v.TeamName ||
+			old.VehicleName != v.VehicleName || old.PitState != v.PitState ||
+			old.Pitting != v.Pitting || old.InGarageStall != v.InGarageStall ||
+			old.Sector != v.Sector || old.LapsBehindLeader != v.LapsBehindLeader ||
+			old.LapsBehindClassLeader != v.LapsBehindClassLeader || old.LapsBehindNext != v.LapsBehindNext {
+			return true
+		}
+		if core.ShouldEmit(old.TimeBehindNext, v.TimeBehindNext, core.ThresholdGap) ||
+			core.ShouldEmit(old.LapDistance, v.LapDistance, 1.0) ||
+			core.ShouldEmit(old.TimeIntoLap, v.TimeIntoLap, 0.1) ||
+			core.ShouldEmit(old.EstimatedLapTime, v.EstimatedLapTime, 0.1) {
+			return true
+		}
 		if core.ShouldEmit(old.TimeBehindLeader, v.TimeBehindLeader, core.ThresholdGap) {
+			return true
+		}
+		if core.ShouldEmit(old.TimeGapToPlayer, v.TimeGapToPlayer, core.ThresholdGap) {
 			return true
 		}
 	}

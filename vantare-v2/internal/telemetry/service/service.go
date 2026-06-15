@@ -8,6 +8,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/diff"
 	"github.com/vantare/overlays/v2/internal/telemetry/normalizer"
 	"github.com/vantare/overlays/v2/internal/telemetry/pipeline"
+	"github.com/vantare/overlays/v2/internal/telemetry/gap"
 	"github.com/vantare/overlays/v2/pkg/models"
 )
 
@@ -122,8 +123,16 @@ func (s *Service) processRead() {
 	if s.cfg.Source == nil {
 		return
 	}
-	buf := s.cfg.Source.Read()
-	snap, ok := s.filter.ShouldPublish(s.normalizer.FromBuffer(buf))
+	var raw *models.Telemetry
+	if direct, ok := s.cfg.Source.(TelemetrySource); ok {
+		raw = direct.ReadTelemetry()
+	} else {
+		buf := s.cfg.Source.Read()
+		raw = s.normalizer.FromBuffer(buf)
+	}
+	gap.ComputeTimeGaps(raw)
+
+	snap, ok := s.filter.ShouldPublish(raw)
 	if !ok {
 		return
 	}
@@ -131,6 +140,10 @@ func (s *Service) processRead() {
 	s.latest = snap
 	s.dirty = true
 	s.latestMu.Unlock()
+}
+
+func (s *Service) ProcessReadForTest() {
+	s.processRead()
 }
 
 func (s *Service) flushEmit() {
@@ -147,11 +160,12 @@ func (s *Service) flushEmit() {
 		s.dirty = false
 		s.lastEmit = snap
 	}
+	s.seq++
+	seq := s.seq
 	s.latestMu.Unlock()
 
-	s.seq++
 	upd := Update{
-		Seq:      s.seq,
+		Seq:      seq,
 		Snapshot: snap,
 		Diff:     diff.Compute(prevEmit, snap),
 	}

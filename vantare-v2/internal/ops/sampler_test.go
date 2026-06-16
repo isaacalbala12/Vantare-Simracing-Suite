@@ -57,3 +57,39 @@ func TestMetricsSnapshotDoesNotExposeFakeSystemMetrics(t *testing.T) {
 		t.Fatal("did not expect system metrics until real system memory is measured")
 	}
 }
+func TestSamplerCPUDisabledReturnsNil(t *testing.T) {
+	s := NewRuntimeSampler(service.SourceInfo{
+		Kind:      service.SimulatorMock,
+		Name:      "Mock telemetry",
+		Available: true,
+	})
+	snapshot := s.Sample()
+	if snapshot.App.CPUPercent != nil {
+		t.Fatal("expected nil CPUPercent when CPU sampling disabled")
+	}
+}
+
+func TestSamplerCPUEnabledDoesNotPanic(t *testing.T) {
+	s := NewRuntimeSampler(service.SourceInfo{
+		Kind:      service.SimulatorMock,
+		Name:      "Mock telemetry",
+		Available: true,
+	})
+	// Enable — starts a background goroutine with a 2s ticker.
+	// We can't guarantee the value in a short test, but we verify no panic
+	// and that the goroutine starts cleanly.
+	s.SetCPUEnabled(true)
+
+	// Give goroutine time to start and establish baseline with Percent(0)
+	time.Sleep(50 * time.Millisecond)
+
+	snapshot := s.Sample()
+	// CPUPercent may still be nil if the ticker hasn't fired yet — that's OK.
+	// The test simply verifies no crash, no deadlock.
+	if snapshot.App.MemoryMB <= 0 {
+		t.Fatal("expected memory to still be reported")
+	}
+
+	// Clean up
+	s.SetCPUEnabled(false)
+}

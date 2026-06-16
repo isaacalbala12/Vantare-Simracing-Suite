@@ -44,7 +44,7 @@ export function Topbar({ activeSection, onNavigate, version }: TopbarProps) {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/5">
+    <nav className="sticky top-0 z-50 glass-panel border-b border-white/5">
       <div className="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">

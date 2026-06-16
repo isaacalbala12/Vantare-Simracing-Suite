@@ -30,10 +30,10 @@ export function HubApp() {
   }, []);
 
   return (
-    <div className="min-h-screen premium-bg relative overflow-y-auto">
+    <div className="h-screen premium-bg relative flex flex-col">
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} />
       <UpdateBanner />
-      <main className="pt-14 min-h-screen">
+      <main className="flex-1 overflow-y-auto pt-0">
         {section === "dashboard" && <DashboardPage />}
         {section === "profiles" && <ProfilesPage onOpenPreview={() => setSection("preview")} />}
         {section === "preview" && <PreviewPage />}

@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.2.4-alpha.1 - 2026-06-16
+
+Mejora del scroll global en todas las páginas del Hub.
+
+### Corregido
+
+- **Scroll elegante en todo el Hub**: el layout ahora usa una columna de altura de ventana (`h-screen`) con `Topbar` sticky y `main` scrollable (`flex-1 overflow-y-auto`). Esto elimina las barras de scroll duplicadas y permite desplazarse suavemente por Dashboard, Overlays, Preview y Ajustes sin cortes.
+- **Eliminado `overflow: hidden` global para el Hub**: las reglas CSS del root ahora permiten scroll cuando `body.hub` está activo, sin afectar el modo overlay transparente.
+
+### Cambiado
+
+- `Topbar` pasa de `fixed` a `sticky`, eliminando la necesidad de `pt-14` en el contenido.
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.2.4`.
+
 ## v0.2.3-alpha.1 - 2026-06-16
 
 Hotfix del cierre de la app.

@@ -72,17 +72,24 @@
 }
 
 html, body, #root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+}
+
+html.hub, html.hub body, html.hub #root,
+body.hub, body.hub #root {
+	overflow: visible;
+	height: auto;
+	min-height: 100%;
 }
 
 body {
-  background: var(--v-bg);
-  color: var(--v-text);
-  font-family: var(--v-font-sans);
+	background: var(--v-bg);
+	color: var(--v-text);
+	font-family: var(--v-font-sans);
 }
 
 html.desktop-overlay,
@@ -90,19 +97,26 @@ html.desktop-overlay body,
 html.desktop-overlay #root,
 body.desktop-overlay,
 #root.desktop-overlay {
-  background: transparent !important;
-  background-color: transparent !important;
+	background: transparent !important;
+	background-color: transparent !important;
 }
 
-body.hub {
-  overflow-y: auto;
+html.hub.desktop-overlay,
+html.hub.desktop-overlay body,
+html.hub.desktop-overlay #root,
+body.hub.desktop-overlay,
+body.hub.desktop-overlay #root {
+	background: transparent !important;
+	background-color: transparent !important;
 }
 
 .premium-bg {
-  background-color: var(--v-bg);
-  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
+	background-color: var(--v-bg);
+	background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+	background-size: 32px 32px;
+	min-height: 100vh;
 }
+
 
 /* Streaming hint: OBS Browser Source renders without body.hub, so force transparent everywhere */
 body:not(.hub) {

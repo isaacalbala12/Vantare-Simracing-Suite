@@ -265,7 +265,7 @@ export function PreviewPage() {
   const selectedWidget = profile?.widgets.find((widget) => widget.id === selectedWidgetId) ?? null;
 
   return (
-    <div className="max-w-[1600px] mx-auto px-6 py-8 overflow-y-auto max-h-[calc(100vh-3.5rem)]">
+    <div className="max-w-[1600px] mx-auto px-6 py-8">
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>

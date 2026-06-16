@@ -6,9 +6,10 @@ import { UpdateBanner } from './components/UpdateBanner';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilesPage } from './pages/ProfilesPage';
 import { PreviewPage } from './pages/PreviewPage';
+import { WidgetsPage } from './pages/WidgetsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
-type Section = 'dashboard' | 'profiles' | 'preview' | 'telemetry' | 'setup';
+type Section = 'dashboard' | 'profiles' | 'preview' | 'widgets' | 'telemetry' | 'setup';
 
 export function HubApp() {
   const [section, setSection] = useState<Section>('dashboard');
@@ -38,6 +39,7 @@ export function HubApp() {
         {section === "dashboard" && <DashboardPage />}
         {section === "profiles" && <ProfilesPage onOpenPreview={() => setSection("preview")} />}
         {section === "preview" && <PreviewPage />}
+        {section === "widgets" && <WidgetsPage />}
         {section === "setup" && <SettingsPage />}
         {section === "telemetry" && (
           <div className="flex items-center justify-center h-[60vh] text-vantare-textMuted text-sm font-mono">

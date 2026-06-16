@@ -622,6 +622,19 @@ wailsApp.Event.On("hub:activate", func(event *application.CustomEvent) {
 		profileSvc.EmitLoaded()
 	})
 
+	wailsApp.Event.On("hub:profile:get", func(event *application.CustomEvent) {
+		p := profileSvc.GetProfile()
+		wailsApp.Event.Emit("hub:profile", map[string]any{"profile": p})
+	})
+
+	wailsApp.Event.On("profile:save", func(event *application.CustomEvent) {
+		log.Printf("profile:save received (persistence in Plan C)")
+	})
+
+	wailsApp.Event.On("profile:widget:update", func(event *application.CustomEvent) {
+		log.Printf("profile:widget:update received (persistence in Plan C)")
+	})
+
 	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v", vapp.SourceInfo().Kind, vapp.SourceInfo().Name, vapp.SourceInfo().Live, vapp.SourceInfo().Available)
 
 	// Start telemetry

@@ -10,6 +10,7 @@ import {
   parseTelemetryPayload,
   resetTelemetryRef,
 } from "../lib/telemetry-ref";
+import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
 import { WidgetHost } from "./WidgetHost";
 import { DeltaWidget } from "./widgets/DeltaWidget";
 import { RelativeWidget } from "./widgets/RelativeWidget";
@@ -42,6 +43,7 @@ export function ObsOverlayApp() {
   const [layoutOrigin, setLayoutOrigin] = useState<LayoutOrigin>({ x: 0, y: 0 });
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [telemetryKey, setTelemetryKey] = useState(0);
 
   useEffect(() => {
     return applyOverlayDocumentMode();
@@ -69,6 +71,7 @@ export function ObsOverlayApp() {
         es.addEventListener("telemetry", (event: MessageEvent) => {
           try {
             applyTelemetryUpdate(parseTelemetryPayload(event.data));
+            setTelemetryKey((k) => k + 1);
           } catch (err) {
             console.error("SSE parse error", err);
           }
@@ -96,6 +99,12 @@ export function ObsOverlayApp() {
     };
   }, []);
 
+  // telemetryKey is read during render to recompute visibility on telemetry ticks
+  const telemetryState = telemetryKey >= 0 ? getCurrentTelemetryState() : undefined;
+  const visibleWidgets = telemetryState
+    ? widgets.filter((w) => isWidgetVisible(w, telemetryState))
+    : widgets;
+
   if (error) {
     return (
       <div className="flex items-center justify-center w-full h-full text-red-400 text-sm font-mono">
@@ -114,7 +123,7 @@ export function ObsOverlayApp() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
-      {widgets.map((w) => {
+      {visibleWidgets.map((w) => {
         const Component = WIDGETS[w.type];
         if (!Component) {
           return null;

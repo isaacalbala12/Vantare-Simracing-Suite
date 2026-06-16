@@ -1,4 +1,4 @@
-import type { ProfileConfig, Rect, WidgetAppearance } from "../../lib/profile";
+import type { ProfileConfig, Rect, WidgetAppearance, VisibleWhen } from "../../lib/profile";
 
 function clampInt(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -63,6 +63,32 @@ export function setWidgetEnabled(profile: ProfileConfig, widgetId: string, enabl
     ...profile,
     widgets: profile.widgets.map((widget) =>
       widget.id === widgetId ? { ...widget, enabled } : widget,
+    ),
+  };
+}
+
+export function setWidgetVisibleWhen(
+  profile: ProfileConfig,
+  widgetId: string,
+  visibleWhen: VisibleWhen | undefined,
+): ProfileConfig {
+  if (visibleWhen === undefined) {
+    // Remove the visibleWhen key entirely
+    return {
+      ...profile,
+      widgets: profile.widgets.map((widget) => {
+        if (widget.id !== widgetId) return widget;
+        const { visibleWhen: _, ...rest } = widget;
+        return rest;
+      }),
+    };
+  }
+  return {
+    ...profile,
+    widgets: profile.widgets.map((widget) =>
+      widget.id === widgetId
+        ? { ...widget, visibleWhen }
+        : widget,
     ),
   };
 }

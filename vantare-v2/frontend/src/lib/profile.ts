@@ -43,12 +43,19 @@ export type WidgetPropsMap = Record<string, unknown> & {
   style?: string;
 };
 
+export type VisibleWhen = {
+  inPit?: boolean;
+  sessionType?: ("practice" | "qual" | "race" | "warmup")[];
+};
+
 export type WidgetConfig = {
   id: string;
   type: string;
+  name?: string;
   style?: string;
   enabled: boolean;
   updateHz?: number;
+  visibleWhen?: VisibleWhen;
   position: Rect;
   props?: WidgetPropsMap;
 };

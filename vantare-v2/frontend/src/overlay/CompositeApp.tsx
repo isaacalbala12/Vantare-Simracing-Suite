@@ -12,6 +12,7 @@ import {
   parseTelemetryPayload,
   resetTelemetryRef,
 } from "../lib/telemetry-ref";
+import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
 import { WidgetHost } from "./WidgetHost";
 import { DeltaWidget } from "./widgets/DeltaWidget";
 import { RelativeWidget } from "./widgets/RelativeWidget";
@@ -23,7 +24,6 @@ import { applyOverlayDocumentMode } from "./overlay-document";
 import type { ComponentType } from "react";
 import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
 
-// Widget registry — maps widget type to component
 const WIDGETS: Record<string, ComponentType<{ editMode: boolean; telemetryMode?: WidgetTelemetryMode; updateHz?: number; props?: Record<string, unknown> }>> = {
   delta: DeltaWidget,
   relative: RelativeWidget,
@@ -37,6 +37,7 @@ export function CompositeApp() {
   const [profile, setProfile] = useState<ProfileConfig | null>(null);
   const [layoutOrigin, setLayoutOrigin] = useState<LayoutOrigin>({ x: 0, y: 0 });
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
+  const [telemetryKey, setTelemetryKey] = useState(0);
 
   useEffect(() => {
     return applyOverlayDocumentMode();
@@ -46,6 +47,7 @@ export function CompositeApp() {
     const unsubscribe = Events.On("telemetry:update", (event: { data: unknown }) => {
       try {
         applyTelemetryUpdate(parseTelemetryPayload(event.data));
+        setTelemetryKey((k) => k + 1);
       } catch (err) {
         console.error("telemetry:update parse failed", err);
       }
@@ -85,6 +87,9 @@ export function CompositeApp() {
     };
   }, []);
 
+  // telemetryKey is read during render to recompute visibility on telemetry ticks
+  const telemetryState = telemetryKey >= 0 ? getCurrentTelemetryState() : undefined;
+
   if (!profile) {
     return (
       <div className="flex items-center justify-center w-full h-full text-white/40 text-sm font-mono">
@@ -95,7 +100,7 @@ export function CompositeApp() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
-      {widgets.map((w) => {
+      {(telemetryState ? widgets.filter((w) => isWidgetVisible(w, telemetryState)) : widgets).map((w) => {
         const Component = WIDGETS[w.type];
         if (!Component) {
           console.warn(`unknown widget type: ${w.type}`);

@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.2.8-alpha.1 - 2026-06-16
+
+Reescritura del drag y resize del Preview Workbench.
+
+### Corregido
+
+- **Proporciones de widgets restauradas**: el resize ahora es libre desde la esquina inferior-derecha; ya no fuerza ratios incorrectos como `relative = 0.5` que hacía los widgets achatados.
+- **Estela al arrastrar widgets**: el drag mueve el elemento DOM directamente sin re-renderizar el padre. El perfil se commitea solo en `mouseup`.
+- **Resize brusco**: `PreviewWidgetFrame` mantiene su propio estado local durante el resize y usa el rectángulo original como base, evitando acumulación de deltas.
+- **App que "salta" / se mueve**: eliminado el estado intermedio `previewRects` del padre, que provocaba re-renders masivos de toda la página.
+- **Tests actualizados**: `PreviewWidgetFrame.test.tsx` ahora pasa `scale` requerido.
+
+### Cambiado
+
+- `PreviewCanvas` mueve el widget afectado vía DOM directo durante el drag.
+- `PreviewWidgetFrame` gestiona su propio estado visual de resize y commit final.
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.2.8`.
+
 ## v0.2.7-alpha.1 - 2026-06-16
 
 Arreglo definitivo del drag y resize en Preview Workbench.

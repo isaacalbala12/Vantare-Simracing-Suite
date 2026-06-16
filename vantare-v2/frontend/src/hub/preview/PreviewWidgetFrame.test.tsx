@@ -24,6 +24,7 @@ describe("PreviewWidgetFrame resize handle", () => {
       <PreviewWidgetFrame
         widget={makeWidget()}
         selected={true}
+        scale={0.5}
         onSelect={vi.fn()}
       />,
     );
@@ -35,6 +36,7 @@ describe("PreviewWidgetFrame resize handle", () => {
       <PreviewWidgetFrame
         widget={makeWidget()}
         selected={false}
+        scale={0.5}
         onSelect={vi.fn()}
       />,
     );
@@ -46,6 +48,7 @@ describe("PreviewWidgetFrame resize handle", () => {
       <PreviewWidgetFrame
         widget={makeWidget()}
         selected={true}
+        scale={0.5}
         onSelect={vi.fn()}
         disabled={true}
       />,

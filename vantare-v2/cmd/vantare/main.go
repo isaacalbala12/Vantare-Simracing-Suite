@@ -29,7 +29,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.2.7-alpha.1"
+var version = "v0.2.8-alpha.1"
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.

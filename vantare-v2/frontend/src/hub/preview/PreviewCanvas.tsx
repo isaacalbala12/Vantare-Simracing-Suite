@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { clampPosition, clampSize, resizeWithRatio, snap, WIDGET_MIN_SIZE } from "../../lib/canvas-math";
+import { clampPosition, snap } from "../../lib/canvas-math";
 import type { ProfileConfig, Rect } from "../../lib/profile";
 import { updateWidgetPosition } from "./profile-editor";
 import { PreviewWidgetFrame } from "./PreviewWidgetFrame";
@@ -23,22 +23,16 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId);
   const scale = canvasWidth / LOGICAL_WIDTH;
 
-  // Local preview positions for smooth drag/resize without re-rendering the whole profile.
-  const [previewRects, setPreviewRects] = useState<Record<string, Rect> | null>(null);
-  const previewRectsRef = useRef(previewRects);
-  previewRectsRef.current = previewRects;
-
-  const profileRef = useRef(profile);
-  profileRef.current = profile;
-
   const dragRef = useRef<{
-    mode: "drag" | "resize";
     widgetId: string;
     startMouseX: number;
     startMouseY: number;
-    startRect: Rect;
+    startPos: { x: number; y: number };
     moved: boolean;
   } | null>(null);
+
+  const commitRef = useRef(onChangeProfile);
+  commitRef.current = onChangeProfile;
 
   useEffect(() => {
     const node = shellRef.current;
@@ -70,52 +64,6 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
     };
   }
 
-  const setLocalRect = useCallback((widgetId: string, rect: Rect) => {
-    setPreviewRects((prev) => {
-      const base = prev ?? Object.fromEntries(profileRef.current.widgets.map((w) => [w.id, w.position]));
-      return { ...base, [widgetId]: rect };
-    });
-  }, []);
-
-  const commitRect = useCallback((widgetId: string, rect: Rect) => {
-    setPreviewRects(null);
-    onChangeProfile(updateWidgetPosition(profileRef.current, widgetId, rect));
-  }, [onChangeProfile]);
-
-  function onMouseDown(event: React.MouseEvent, widgetId: string) {
-    if (disabled) return;
-    if ((event.target as HTMLElement).dataset.testid?.startsWith("resize-handle-")) return;
-    event.preventDefault();
-    const widget = profile.widgets.find((w) => w.id === widgetId);
-    if (!widget) return;
-    onSelectWidget(widgetId);
-    const point = toCanvasPoint(event.clientX, event.clientY);
-    dragRef.current = {
-      mode: "drag",
-      widgetId,
-      startMouseX: point.x,
-      startMouseY: point.y,
-      startRect: { ...widget.position },
-      moved: false,
-    };
-    attachMouseListeners();
-  }
-
-  function onResizeStart(event: React.MouseEvent, widgetId: string, startRect: Rect) {
-    if (disabled) return;
-    event.preventDefault();
-    onSelectWidget(widgetId);
-    dragRef.current = {
-      mode: "resize",
-      widgetId,
-      startMouseX: event.clientX,
-      startMouseY: event.clientY,
-      startRect,
-      moved: false,
-    };
-    attachMouseListeners();
-  }
-
   function attachMouseListeners() {
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp, { once: true });
@@ -126,61 +74,68 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
     window.removeEventListener("mouseup", onMouseUp);
   }
 
+  const onMouseDown = useCallback((event: React.MouseEvent, widgetId: string) => {
+    if (disabled) return;
+    if ((event.target as HTMLElement).dataset.testid?.startsWith("resize-handle-")) return;
+    event.preventDefault();
+    const widget = profile.widgets.find((w) => w.id === widgetId);
+    if (!widget) return;
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    dragRef.current = {
+      widgetId,
+      startMouseX: point.x,
+      startMouseY: point.y,
+      startPos: { x: widget.position.x, y: widget.position.y },
+      moved: false,
+    };
+    attachMouseListeners();
+  }, [disabled, profile.widgets]);
+
   const onMouseMove = useCallback((event: MouseEvent) => {
     const drag = dragRef.current;
     if (!drag) return;
 
-    if (drag.mode === "drag") {
-      const point = toCanvasPoint(event.clientX, event.clientY);
-      const dxRaw = (point.x - drag.startMouseX) / scale;
-      const dyRaw = (point.y - drag.startMouseY) / scale;
-      if (Math.abs(dxRaw) < 1 && Math.abs(dyRaw) < 1 && !drag.moved) {
-        return;
-      }
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const dxRaw = (point.x - drag.startMouseX) / scale;
+    const dyRaw = (point.y - drag.startMouseY) / scale;
 
-      const rawX = Math.round(drag.startRect.x + dxRaw);
-      const rawY = Math.round(drag.startRect.y + dyRaw);
-      const snappedX = snap(rawX);
-      const snappedY = snap(rawY);
-      const { x, y } = clampPosition(snappedX, snappedY, drag.startRect.w, drag.startRect.h);
-      const nextPos = { ...drag.startRect, x, y };
-
-      setLocalRect(drag.widgetId, nextPos);
-      drag.moved = true;
+    // Require at least 1 logical pixel of movement before treating it as a real drag.
+    if (Math.abs(dxRaw) < 1 && Math.abs(dyRaw) < 1 && !drag.moved) {
       return;
     }
 
-    // resize mode
-    const deltaX = (event.clientX - drag.startMouseX) / scale;
-    const deltaY = (event.clientY - drag.startMouseY) / scale;
-    if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1 && !drag.moved) {
-      return;
+    const rawX = Math.round(drag.startPos.x + dxRaw);
+    const rawY = Math.round(drag.startPos.y + dyRaw);
+    const snappedX = snap(rawX);
+    const snappedY = snap(rawY);
+    const { x, y } = clampPosition(snappedX, snappedY, profile.widgets.find((w) => w.id === drag.widgetId)?.position.w ?? 0, profile.widgets.find((w) => w.id === drag.widgetId)?.position.h ?? 0);
+    const nextPos = { x, y };
+
+    // Move the DOM element directly to avoid parent re-renders.
+    const frame = document.querySelector(`[data-testid="preview-widget-frame-${drag.widgetId}"]`) as HTMLElement | null;
+    if (frame) {
+      frame.style.left = `${nextPos.x}px`;
+      frame.style.top = `${nextPos.y}px`;
     }
 
-    const widget = profileRef.current.widgets.find((w) => w.id === drag.widgetId);
-    const type = widget?.type ?? "standings";
-    const { w, h } = resizeWithRatio(type, drag.startRect.w, drag.startRect.h, deltaX, deltaY);
-    const clamped = clampSize(w, h, drag.startRect.x, drag.startRect.y);
-    const snapped = { ...clamped, w: snap(clamped.w), h: snap(clamped.h) };
-    const bounded = {
-      ...snapped,
-      w: Math.max(snapped.w, WIDGET_MIN_SIZE.w),
-      h: Math.max(snapped.h, WIDGET_MIN_SIZE.h),
-    };
-
-    setLocalRect(drag.widgetId, bounded);
     drag.moved = true;
-  }, [scale, setLocalRect]);
+  }, [scale, profile.widgets]);
 
   const onMouseUp = useCallback(() => {
     const drag = dragRef.current;
     dragRef.current = null;
     detachMouseListeners();
-    if (!drag) return;
+    if (!drag || !drag.moved) return;
 
-    const rect = previewRectsRef.current?.[drag.widgetId] ?? drag.startRect;
-    commitRect(drag.widgetId, rect);
-  }, [commitRect]);
+    const widget = profile.widgets.find((w) => w.id === drag.widgetId);
+    if (!widget) return;
+
+    const frame = document.querySelector(`[data-testid="preview-widget-frame-${drag.widgetId}"]`) as HTMLElement | null;
+    const finalX = frame ? parseInt(frame.style.left || `${widget.position.x}`, 10) : widget.position.x;
+    const finalY = frame ? parseInt(frame.style.top || `${widget.position.y}`, 10) : widget.position.y;
+
+    commitRef.current(updateWidgetPosition(profile, drag.widgetId, { ...widget.position, x: finalX, y: finalY }));
+  }, [profile]);
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (disabled || !selectedWidget) return;
@@ -213,7 +168,9 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
     onChangeProfile(updateWidgetPosition(profile, selectedWidget.id, { ...selectedWidget.position, x, y }));
   }
 
-  const currentRects = previewRects ?? Object.fromEntries(profile.widgets.map((w) => [w.id, w.position]));
+  function handleChangePosition(widgetId: string, position: Rect) {
+    onChangeProfile(updateWidgetPosition(profile, widgetId, position));
+  }
 
   return (
     <div ref={shellRef} className="glass-panel rounded-xl p-4 overflow-hidden">
@@ -252,10 +209,10 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
               key={widget.id}
               widget={widget}
               selected={widget.id === selectedWidgetId}
+              scale={scale}
               onSelect={onSelectWidget}
               onDragStart={onMouseDown}
-              onResizeStart={onResizeStart}
-              previewPosition={currentRects[widget.id]}
+              onChangePosition={handleChangePosition}
               disabled={disabled}
             />
           ))}

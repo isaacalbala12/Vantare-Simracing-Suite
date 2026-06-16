@@ -4,6 +4,7 @@ import type { ProfileConfig, LayoutOrigin, DisplayMode } from "../../lib/profile
 import { PreviewCanvas } from "../preview/PreviewCanvas";
 import { PreviewInspector } from "../preview/PreviewInspector";
 import { WidgetList } from "../preview/WidgetList";
+import { useDemoMode } from "../../lib/useDemoMode";
 import {
   isRunningProfile,
   profileLabel,
@@ -32,6 +33,8 @@ export function PreviewPage() {
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);
   const [overlayRunning, setOverlayRunning] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoInPit, setDemoInPit] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
   const selectedProfileRunning = selectedEntry
@@ -111,6 +114,17 @@ export function PreviewPage() {
       unsubProfiles();
     };
   }, []);
+
+  useDemoMode(demoMode, 20, demoInPit);
+
+  // Disable demo mode when live telemetry arrives
+  useEffect(() => {
+    if (!demoMode) return;
+    const unsubDemo = Events.On("telemetry:update", () => {
+      setDemoMode(false);
+    });
+    return () => unsubDemo();
+  }, [demoMode]);
 
   function activateProfile(entry: ProfileEntry) {
     if (overlayStatus?.running) return;
@@ -210,6 +224,27 @@ export function PreviewPage() {
                 className="btn-primary px-5 py-2 rounded-lg text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Abrir overlay
+              </button>
+            )}
+            <div className="w-px h-6 bg-white/10" />
+            <button
+              type="button"
+              onClick={() => setDemoMode(!demoMode)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
+                demoMode
+                  ? "bg-vantare-red-500 text-white"
+                  : "border border-white/10 text-vantare-textMuted hover:text-white"
+              }`}
+            >
+              Demo {demoMode ? "ON" : "OFF"}
+            </button>
+            {demoMode && (
+              <button
+                type="button"
+                onClick={() => setDemoInPit(!demoInPit)}
+                className="border border-white/10 px-3 py-2 rounded-lg text-xs font-bold text-vantare-textMuted hover:text-white transition-colors"
+              >
+                {demoInPit ? "In Pit" : "On Track"}
               </button>
             )}
           </div>

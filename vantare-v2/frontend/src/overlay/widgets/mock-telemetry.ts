@@ -1,4 +1,4 @@
-import type { TelemetryRefState } from "../../lib/telemetry-ref";
+import type { TelemetryPayload, TelemetryRefState, VehicleScoring } from "../../lib/telemetry-ref";
 
 export function getMockTelemetry(): TelemetryRefState {
   return {
@@ -38,5 +38,54 @@ export function getMockTelemetry(): TelemetryRefState {
       { id: 14, driverName: "LIGIER JSP320", driverNumber: "7", place: 15, isPlayer: false, inPits: false, timeBehindLeader: 62.0, totalLaps: 33, vehicleClass: "LMP3", teamBrandColor: "#f59e0b", tireCompound: "H", fastestLap: false, bestLapTime: 102.5, timeGapToPlayer: -18.7 },
       { id: 15, driverName: "GR RACING", driverNumber: "86", place: 16, isPlayer: false, inPits: false, timeBehindLeader: 75.0, totalLaps: 33, vehicleClass: "LMGT3", teamBrandColor: "#2ecc71", tireCompound: "S", fastestLap: false, bestLapTime: 108.2, timeGapToPlayer: -25.4 },
     ],
+  };
+}
+
+export function generateAnimatedTelemetry(elapsedMs: number, inPit = false): TelemetryPayload {
+  const t = elapsedMs / 1000;
+  const vehicles: VehicleScoring[] = Array.from({ length: 6 }, (_, i) => ({
+    id: i + 1,
+    driverName: `Driver ${i + 1}`,
+    driverNumber: `${10 + i}`,
+    vehicleClass: i < 3 ? "LMP3" : "GT3",
+    place: i + 1,
+    timeGapToPlayer: (i - 2) * 1.2 + Math.sin(t + i) * 0.3,
+    totalLaps: 3 + Math.floor(t / 90),
+    inPits: i === 0 && inPit,
+    lapDistance: 1000 + (i + 1) * 500 + Math.sin(t * 0.5 + i * 2) * 200,
+    timeIntoLap: 20 + (i + 1) * 5 + Math.sin(t * 0.5 + i * 2) * 3,
+    bestLapTime: 85 + i * 5,
+    lastLapTime: 86 + i * 5,
+    estimatedLapTime: 85 + i * 5 + Math.sin(t + i) * 2,
+    fastestLap: i === 1,
+    teamBrandColor: i % 2 === 0 ? "#e32636" : "#0055A4",
+    tireCompound: "M",
+  }));
+
+  return {
+    seq: Math.floor(t * 10),
+    snapshot: {
+      connected: true,
+      sessionState: "session",
+      sessionType: 3,
+      playerHasVehicle: true,
+      player: {
+        speed: 180 + Math.sin(t) * 40,
+        gear: 4,
+        engineRPM: 8750 + Math.sin(t * 2) * 500,
+        fuel: 68 - t * 0.01,
+        deltaBest: Math.sin(t) * 1.5,
+        throttle: 70 + Math.sin(t * 2) * 20,
+        brake: Math.max(0, Math.sin(t * 3) * 30),
+        clutch: 5 + Math.sin(t * 1.5) * 3,
+      },
+      session: {
+        trackName: "Circuit de Barcelona",
+        sessionType: 3,
+        sessionName: "RACE",
+        timeRemainingInGamePhase: 3600 - (t % 3600),
+      },
+      vehicles,
+    },
   };
 }

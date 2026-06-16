@@ -278,7 +278,7 @@ export function resetTelemetryRef() {
   clearRuntimeTelemetry();
 }
 
-function clearRuntimeTelemetry() {
+export function clearRuntimeTelemetry() {
   state.speed = 0;
   state.gear = 0;
   state.rpm = 0;

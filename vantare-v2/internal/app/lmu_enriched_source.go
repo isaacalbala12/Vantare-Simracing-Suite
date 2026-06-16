@@ -19,8 +19,11 @@ import (
 // LMU REST local API data. Shared memory wins for fast inputs; REST wins for
 // standings, relative, lap timing and pit state.
 type enrichedLMUSource struct {
-	mmap  service.Source
-	cache *lmuRESTCache
+	mmap       service.Source
+	cache      *lmuRESTCache
+	deltaStore *delta.Store
+	prevLaps   map[int]int16  // vehicleID -> previous LapsCompleted
+	trackLen   map[int]float64 // vehicleID -> estimated track length per vehicle
 }
 
 func (s *enrichedLMUSource) Read() []byte {
@@ -34,11 +37,101 @@ func (s *enrichedLMUSource) ReadTelemetry() *models.Telemetry {
 	if s.cache != nil {
 		rows, session = s.cache.Snapshot()
 	}
-	d, ok := delta.AlphaDelta(rows)
-	if !ok {
-		d = 0
-	}
+
+	d := computeDeltaFromEngine(s, rows, session)
 	return fusion.Merge(base, rows, session, d)
+}
+
+// computeDeltaFromEngine uses the distance-based delta engine with self/session/global
+// reference laps. Falls back to AlphaDelta when distance data is insufficient.
+func computeDeltaFromEngine(s *enrichedLMUSource, rows []lmuapi.StandingRow, session *lmuapi.SessionInfo) float64 {
+	if s.deltaStore == nil {
+		// Fall back to AlphaDelta
+		d, ok := delta.AlphaDelta(rows)
+		if ok {
+			return d
+		}
+		return 0
+	}
+
+	if len(rows) == 0 {
+		return 0
+	}
+
+	// Find the player vehicle
+	var playerRow *lmuapi.StandingRow
+	var vehicleID int
+	for i, r := range rows {
+		if r.Player {
+			playerRow = &rows[i]
+			vehicleID = int(r.SlotIDOrPositionID())
+			break
+		}
+	}
+	if playerRow == nil {
+		return 0
+	}
+
+	// Track name from session or player row
+	trackName := ""
+	if session != nil {
+		trackName = session.TrackName
+	}
+	if trackName == "" {
+		trackName = playerRow.VehicleName
+	}
+
+	carClass := playerRow.CarClass
+	if carClass == "" {
+		carClass = "unknown"
+	}
+
+	// Record current lap point
+	s.deltaStore.RecordPoint(vehicleID, trackName, carClass, playerRow.LapDistance, playerRow.TimeIntoLap)
+
+	// Track max LapDistance seen for this vehicle to estimate track length
+	curMax := s.trackLen[vehicleID]
+	if playerRow.LapDistance > curMax {
+		s.trackLen[vehicleID] = playerRow.LapDistance
+	}
+
+	// Detect lap completion: LapsCompleted increased
+	prevLaps := s.prevLaps[vehicleID]
+	currentLaps := playerRow.LapsCompleted
+	if currentLaps > prevLaps && prevLaps >= 0 {
+		// Lap just completed — promote the buffer
+		bestLapTime := playerRow.LastLapTime
+		if bestLapTime <= 0 {
+			bestLapTime = playerRow.BestLapTime
+		}
+		s.deltaStore.CompleteLap(vehicleID, trackName, carClass, bestLapTime, delta.ModeSelf)
+
+		// Estimate track length from max distance seen during the just-completed lap
+		if s.trackLen[vehicleID] > 0 {
+			// For session/global modes, create synthetic references from best laps
+			// when we have a track length estimate
+			if bestLapTime > 0 {
+				synthetic := delta.SyntheticReference(bestLapTime, s.trackLen[vehicleID], 20)
+				if synthetic != nil {
+					synthetic.TrackName = trackName
+					synthetic.CarClass = carClass
+					// Store in session lap slot if it's the best
+					s.deltaStore.CompleteLap(vehicleID, trackName, carClass, bestLapTime, delta.ModeSession)
+				}
+			}
+		}
+	}
+	s.prevLaps[vehicleID] = currentLaps
+
+	// Get reference and compute delta
+	trackLength := s.trackLen[vehicleID]
+	ref := s.deltaStore.GetReference(delta.ModeSelf, vehicleID, trackName, carClass, trackLength, playerRow.BestLapTime)
+	current := delta.LapPoint{Distance: playerRow.LapDistance, TimeIntoLap: playerRow.TimeIntoLap}
+	d, ok := delta.ComputeDelta(ref, current)
+	if !ok {
+		return 0
+	}
+	return d
 }
 
 func (s *enrichedLMUSource) Info() service.SourceInfo {
@@ -66,8 +159,11 @@ func (s *enrichedLMUSource) Close() error {
 func wrapLMUSourceWithREST(mmap service.Source) service.Source {
 	api := lmuapi.NewClient("http://localhost:6397", 750*time.Millisecond)
 	return &enrichedLMUSource{
-		mmap:  mmap,
-		cache: newLMURESTCache(api, 250*time.Millisecond, 2*time.Second),
+		mmap:       mmap,
+		cache:      newLMURESTCache(api, 250*time.Millisecond, 2*time.Second),
+		deltaStore: delta.NewStore(),
+		prevLaps:   make(map[int]int16),
+		trackLen:   make(map[int]float64),
 	}
 }
 

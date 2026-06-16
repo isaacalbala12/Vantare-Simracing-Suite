@@ -8,6 +8,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
+	"github.com/stretchr/testify/require"
 )
 
 // fakeWindow implements window.WindowHandle for testing.
@@ -256,4 +257,30 @@ func TestProfileServiceSaveLayoutRestoresWidgetsOnDiskError(t *testing.T) {
 	if svc.GetProfile().Widgets[0].Position.X != 10 {
 		t.Fatalf("in-memory X=%d, want 10 after failed save", svc.GetProfile().Widgets[0].Position.X)
 	}
+}
+
+func TestProfileServiceSaveProfile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.json")
+	initial := &config.ProfileConfig{
+		ID:          "test",
+		DisplayMode: config.ModeRacing,
+		Widgets:     []config.WidgetConfig{{ID: "w1", Type: "delta", Enabled: true, Position: config.Rect{W: 100, H: 40}}},
+	}
+	require.NoError(t, config.SaveFile(path, initial))
+
+	s := app.NewProfileService(path, nil, nil)
+	require.NoError(t, s.Load())
+
+	updated := &config.ProfileConfig{
+		ID:          "test",
+		DisplayMode: config.ModeRacing,
+		Widgets:     []config.WidgetConfig{{ID: "w1", Type: "delta", Enabled: false, Position: config.Rect{W: 200, H: 80}}},
+	}
+	require.NoError(t, s.SaveProfile(updated))
+
+	loaded, err := config.LoadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, 200, loaded.Widgets[0].Position.W)
+	require.False(t, loaded.Widgets[0].Enabled)
 }

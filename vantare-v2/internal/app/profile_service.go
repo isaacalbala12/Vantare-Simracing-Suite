@@ -55,6 +55,21 @@ func (s *ProfileService) GetProfile() *config.ProfileConfig {
 	return s.profile
 }
 
+// SaveProfile persists the given profile to the configured profile path.
+func (s *ProfileService) SaveProfile(p *config.ProfileConfig) error {
+	if s.path == "" {
+		return fmt.Errorf("profile path not configured")
+	}
+	if err := config.SaveFile(s.path, p); err != nil {
+		return fmt.Errorf("save profile: %w", err)
+	}
+	s.profile = p
+	s.EmitLoaded()
+	if s.emitter != nil {
+		s.emitter.Emit("hub:profile", map[string]any{"profile": p})
+	}
+	return nil
+}
 // SaveLayout updates widget positions and persists to disk.
 // Uses skipWindowRefresh (bounds-only resize) and re-emits profile:loaded for layoutOrigin sync.
 func (s *ProfileService) SaveLayout(widgets []config.WidgetConfig) error {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
+import { ObsSetup } from '../components/ObsSetup';
 
 export type Channel = 'stable' | 'prerelease';
 
@@ -49,6 +50,33 @@ function findInstallerAsset(release: Release): Asset | undefined {
 function findChecksumAsset(release: Release): Asset | undefined {
   return release.assets.find((a) => a.name === 'vantare-amd64-installer.exe.sha256');
 }
+export type AppSettings = {
+  deltaMode: string;
+  cpuSampling: boolean;
+  hotkeys: Record<string, string>;
+};
+
+const DEFAULT_APP_SETTINGS: AppSettings = {
+  deltaMode: 'self',
+  cpuSampling: true,
+  hotkeys: {
+    toggleOverlay: 'ctrl+shift+v',
+    nextProfile: 'ctrl+shift+right',
+    prevProfile: 'ctrl+shift+left',
+  },
+};
+
+const DELTA_MODES = [
+  { value: 'self', label: 'Personal (mejor vuelta propia)' },
+  { value: 'session', label: 'Sesion (mejor vuelta de la sesion)' },
+  { value: 'global', label: 'Global (mejor vuelta global)' },
+] as const;
+
+const HOTKEY_NAMES: Record<string, string> = {
+  toggleOverlay: 'Toggle overlay',
+  nextProfile: 'Siguiente perfil',
+  prevProfile: 'Perfil anterior',
+};
 
 export function SettingsPage() {
   const [settings, setSettings] = useState<UpdaterSettings>({ channel: 'stable' });
@@ -59,6 +87,8 @@ export function SettingsPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDowngrade, setConfirmDowngrade] = useState<Release | null>(null);
+  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,6 +150,24 @@ export function SettingsPage() {
     });
     handlers.push(unsubError);
 
+    const unsubAppSettings = Events.On(
+      'settings',
+      (event: { data: AppSettings }) => {
+        if (event.data && event.data.deltaMode) {
+          setAppSettings(event.data);
+        }
+      },
+    );
+    handlers.push(unsubAppSettings);
+
+    const unsubAppSettingsSaved = Events.On('settings-saved', () => {
+      setSettingsStatus('Ajustes guardados.');
+      setTimeout(() => setSettingsStatus(null), 3000);
+    });
+    handlers.push(unsubAppSettingsSaved);
+
+    Events.Emit('settings:get');
+
     Events.Emit('updater:settings:get');
     Events.Emit('updater:check');
     setLoading(true);
@@ -167,6 +215,30 @@ export function SettingsPage() {
     Events.Emit('updater:check');
   }
 
+  function handleDeltaModeChange(deltaMode: string) {
+    const next = { ...appSettings, deltaMode };
+    setAppSettings(next);
+    setSettingsStatus('Guardando...');
+    Events.Emit('settings:save', next);
+  }
+
+  function handleCpuToggle() {
+    const next = { ...appSettings, cpuSampling: !appSettings.cpuSampling };
+    setAppSettings(next);
+    setSettingsStatus('Guardando...');
+    Events.Emit('settings:save', next);
+  }
+
+  function handleHotkeyChange(name: string, value: string) {
+    const next = { ...appSettings, hotkeys: { ...appSettings.hotkeys, [name]: value } };
+    setAppSettings(next);
+  }
+
+  function handleSaveHotkeys() {
+    setSettingsStatus('Guardando...');
+    Events.Emit('settings:save', appSettings);
+  }
+
   function isDowngrade(current: string, target: string): boolean {
     // Simple semver comparison: strip leading v and compare numeric parts.
     const parse = (v: string) =>
@@ -190,12 +262,93 @@ export function SettingsPage() {
       <div className="mb-6">
         <h1 className="font-display font-bold text-3xl text-white mb-2">Ajustes</h1>
         <p className="text-sm text-vantare-textMuted">
-          Actualizaciones y preferencias del updater.
+          Configuración global, atajos de teclado, OBS y actualizaciones.
         </p>
       </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
         <div className="xl:col-span-8 flex flex-col gap-6">
+          {/* Delta Mode */}
+          <div className="glass-panel rounded-xl p-6 border border-white/5">
+            <h2 className="font-display font-semibold text-lg text-white mb-4">
+              Modo delta
+            </h2>
+            <div className="space-y-2">
+              {DELTA_MODES.map((mode) => (
+                <label
+                  key={mode.value}
+                  className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="deltaMode"
+                    value={mode.value}
+                    checked={appSettings.deltaMode === mode.value}
+                    onChange={() => handleDeltaModeChange(mode.value)}
+                    className="accent-vantare-red-500"
+                  />
+                  {mode.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* CPU Sampling */}
+          <div className="glass-panel rounded-xl p-6 border border-white/5">
+            <h2 className="font-display font-semibold text-lg text-white mb-4">
+              Rendimiento
+            </h2>
+            <label className="flex items-center gap-3 text-sm text-vantare-textMuted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={appSettings.cpuSampling}
+                onChange={handleCpuToggle}
+                className="accent-vantare-red-500 w-4 h-4"
+              />
+              <span>Monitorizar uso de CPU</span>
+            </label>
+          </div>
+
+          {/* Hotkeys */}
+          <div className="glass-panel rounded-xl p-6 border border-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-semibold text-lg text-white">
+                Atajos de teclado globales
+              </h2>
+              <button
+                type="button"
+                onClick={handleSaveHotkeys}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
+              >
+                Guardar atajos
+              </button>
+            </div>
+            <div className="space-y-3">
+              {Object.entries(HOTKEY_NAMES).map(([key, label]) => (
+                <div key={key} className="flex items-center gap-3">
+                  <span className="text-sm text-vantare-textMuted w-36">{label}</span>
+                  <input
+                    type="text"
+                    value={appSettings.hotkeys[key] ?? ''}
+                    onChange={(e) => handleHotkeyChange(key, e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-sm text-white font-mono"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* OBS Setup */}
+          <div className="glass-panel rounded-xl p-6 border border-white/5">
+            <h2 className="font-display font-semibold text-lg text-white mb-4">
+              OBS Browser Source
+            </h2>
+            <ObsSetup url={window.location.origin + '/overlay?profile=' + (info?.currentVersion ?? 'actual')} />
+          </div>
+
+          {settingsStatus && (
+            <div className="text-xs text-vantare-textMuted font-mono">{settingsStatus}</div>
+          )}
           <div className="glass-panel rounded-xl p-6 border border-white/5">
             <h2 className="font-display font-semibold text-lg text-white mb-4">
               Canal de actualizaciones

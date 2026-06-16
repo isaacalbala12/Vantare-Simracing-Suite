@@ -153,6 +153,9 @@ func main() {
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
+	var rtSampler *ops.RuntimeSampler
+	var overlayRunning bool
+	var hkMgr *app.HotkeyManager
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			if overlayController != nil {
@@ -168,6 +171,9 @@ func main() {
 			}
 			if bridge != nil {
 				bridge.Stop()
+			}
+			if hkMgr != nil {
+				hkMgr.Stop()
 			}
 			vapp.StopTelemetry()
 		})
@@ -236,6 +242,60 @@ func main() {
 	settingsPath := filepath.Join(cfgDir, "updater-settings.json")
 	updaterSvc := app.NewUpdaterService(version, settingsPath, emitter)
 	wailsApp.RegisterService(application.NewService(updaterSvc))
+
+	// App settings service (delta mode, hotkeys, cpu sampling toggle)
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
+
+	// Set profiles directory for profile cycling
+	profileSvc.SetProfilesDir(cfgDir)
+
+	// Hotkey manager
+	hkMgr = app.NewHotkeyManager()
+	_ = overlayRunning // silence unused warning — used in closures
+
+	// Register default hotkey actions
+	hkMgr.Register("toggleOverlay", settingsSvc.Settings().Hotkeys["toggleOverlay"], func() {
+		if overlayController == nil {
+			return
+		}
+		status := overlayController.Status()
+		if status.Running {
+			overlayController.Stop()
+			overlayRunning = false
+		} else {
+			// Start with current profile
+			profile := profileSvc.Profile()
+			if profile != nil {
+				if _, err := overlayController.Start(profile); err != nil {
+					log.Printf("hotkey toggle overlay error: %v", err)
+					return
+				}
+				overlayRunning = true
+			}
+		}
+	})
+
+	hkMgr.Register("nextProfile", settingsSvc.Settings().Hotkeys["nextProfile"], func() {
+		if !overlayRunning {
+			return
+		}
+		if err := profileSvc.NextProfile(); err != nil {
+			log.Printf("hotkey next profile error: %v", err)
+		}
+	})
+
+	hkMgr.Register("prevProfile", settingsSvc.Settings().Hotkeys["prevProfile"], func() {
+		if !overlayRunning {
+			return
+		}
+		if err := profileSvc.PreviousProfile(); err != nil {
+			log.Printf("hotkey prev profile error: %v", err)
+		}
+	})
 
 	// Silent update check on startup (after a short delay so the UI is ready).
 	go func() {
@@ -365,6 +425,79 @@ func main() {
 		}()
 	})
 
+	// App settings event handlers
+	emitSettingsError := func(message string) {
+		emitter.Emit("settings:error", map[string]any{"message": message})
+	}
+
+	// Keep a helper to rebuild hotkey registrations when settings change.
+	rebuildHotkeys := func() {
+		// Build action map from current hotkey actions
+		actionMap := map[string]func(){
+			"toggleOverlay": func() {
+				if overlayController == nil {
+					return
+				}
+				status := overlayController.Status()
+				if status.Running {
+					overlayController.Stop()
+					overlayRunning = false
+				} else {
+					profile := profileSvc.Profile()
+					if profile != nil {
+						if _, err := overlayController.Start(profile); err != nil {
+							log.Printf("hotkey toggle overlay error: %v", err)
+							return
+						}
+						overlayRunning = true
+					}
+				}
+			},
+			"nextProfile": func() {
+				if !overlayRunning {
+					return
+				}
+				if err := profileSvc.NextProfile(); err != nil {
+					log.Printf("hotkey next profile error: %v", err)
+				}
+			},
+			"prevProfile": func() {
+				if !overlayRunning {
+					return
+				}
+				if err := profileSvc.PreviousProfile(); err != nil {
+					log.Printf("hotkey prev profile error: %v", err)
+				}
+			},
+		}
+		hkMgr.UpdateFromSettings(settingsSvc.Settings(), actionMap)
+	}
+
+	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
+		emitter.Emit("settings", settingsSvc.Settings())
+	})
+
+	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {
+		var s app.AppSettings
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				json.Unmarshal(raw, &s)
+			}
+		}
+		if err := settingsSvc.Save(&s); err != nil {
+			log.Printf("settings:save error: %v", err)
+			emitSettingsError(err.Error())
+			return
+		}
+		// Apply CPU sampling toggle if runtime sampler exists
+		if rtSampler != nil {
+			rtSampler.SetCPUEnabled(s.CpuSampling)
+		}
+		// Rebuild hotkeys with new combos
+		rebuildHotkeys()
+		emitter.Emit("settings-saved", map[string]any{"ok": true})
+	})
+
 	emitHubError := func(message string) {
 		emitter.Emit("hub:error", map[string]any{"message": message})
 	}
@@ -417,20 +550,20 @@ func main() {
 			log.Printf("hub:delete error: %v", err)
 			emitHubError(err.Error())
 			return
-		}
-		emitter.Emit("hub:profile-deleted", map[string]any{"ok": true})
-	})
+	}
+	emitter.Emit("hub:profile-deleted", map[string]any{"ok": true})
+})
 
-	wailsApp.Event.On("hub:activate", func(event *application.CustomEvent) {
-		target := readProfileTarget(event)
-		if err := hubSvc.ActivateProfile(target); err != nil {
-			log.Printf("hub:activate error: %v", err)
-			emitHubError(err.Error())
-			return
-		}
-		profileSvc.EmitLoaded()
-		emitter.Emit("hub:profile-activated", map[string]any{"ok": true})
-	})
+wailsApp.Event.On("hub:activate", func(event *application.CustomEvent) {
+	target := readProfileTarget(event)
+	if err := hubSvc.ActivateProfile(target); err != nil {
+		log.Printf("hub:activate error: %v", err)
+		emitHubError(err.Error())
+		return
+	}
+	profileSvc.EmitLoaded()
+	emitter.Emit("hub:profile-activated", map[string]any{"ok": true})
+})
 
 	wailsApp.Event.On("overlay:start", func(event *application.CustomEvent) {
 		target := readProfileTarget(event)
@@ -477,11 +610,17 @@ func main() {
 	bridge = app.NewTelemetryBridge(vapp.Telemetry, emitter)
 	vapp.StartTelemetry(ctx)
 	bridge.Start()
-
-	// Start low-frequency ops metrics bridge
 	sourceInfo := service.InfoForSource(vapp.TelemetrySource())
-	opsBridge = app.NewOpsBridge(ops.NewRuntimeSampler(sourceInfo), emitter, ops.DefaultInterval)
+	rtSampler = ops.NewRuntimeSampler(sourceInfo)
+	opsBridge = app.NewOpsBridge(rtSampler, emitter, ops.DefaultInterval)
 	opsBridge.Start()
+
+	// Start global hotkey manager
+	if err := hkMgr.Start(); err != nil {
+		log.Printf("warning: hotkey manager start error: %v", err)
+	} else {
+		log.Printf("global hotkeys active (%d registered)", len(settingsSvc.Settings().Hotkeys))
+	}
 
 	// --- OBS / SSE HTTP server ---
 	httpSrv = server.New(server.ServerConfig{

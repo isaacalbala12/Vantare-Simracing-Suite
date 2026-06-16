@@ -140,6 +140,11 @@ func computeDeltaFromEngine(s *EnrichedLMUSource, rows []lmuapi.StandingRow, ses
 	return d
 }
 
+// SetDeltaMode updates the reference mode used for delta calculations.
+func (s *EnrichedLMUSource) SetDeltaMode(mode delta.ReferenceMode) {
+	s.deltaMode.Store(mode)
+}
+
 func (s *EnrichedLMUSource) Info() service.SourceInfo {
 	if withInfo, ok := s.mmap.(service.SourceWithInfo); ok {
 		return withInfo.Info()
@@ -162,10 +167,6 @@ func (s *EnrichedLMUSource) Close() error {
 	return nil
 }
 
-// SetDeltaMode updates the reference mode used for delta calculations.
-func (s *EnrichedLMUSource) SetDeltaMode(mode delta.ReferenceMode) {
-	s.deltaMode.Store(mode)
-}
 
 func wrapLMUSourceWithREST(mmap service.Source) *EnrichedLMUSource {
 	api := lmuapi.NewClient("http://localhost:6397", 750*time.Millisecond)

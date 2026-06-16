@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/delta"
@@ -18,19 +19,20 @@ import (
 // enrichedLMUSource combines high-frequency shared memory with low-frequency
 // LMU REST local API data. Shared memory wins for fast inputs; REST wins for
 // standings, relative, lap timing and pit state.
-type enrichedLMUSource struct {
+type EnrichedLMUSource struct {
 	mmap       service.Source
 	cache      *lmuRESTCache
 	deltaStore *delta.Store
-	prevLaps   map[int]int16  // vehicleID -> previous LapsCompleted
+	prevLaps   map[int]int16   // vehicleID -> previous LapsCompleted
 	trackLen   map[int]float64 // vehicleID -> estimated track length per vehicle
+	deltaMode  atomic.Value    // stores delta.ReferenceMode
 }
 
-func (s *enrichedLMUSource) Read() []byte {
+func (s *EnrichedLMUSource) Read() []byte {
 	return s.mmap.Read()
 }
 
-func (s *enrichedLMUSource) ReadTelemetry() *models.Telemetry {
+func (s *EnrichedLMUSource) ReadTelemetry() *models.Telemetry {
 	base := normalizer.New().FromBuffer(s.mmap.Read())
 	var rows []lmuapi.StandingRow
 	var session *lmuapi.SessionInfo
@@ -44,7 +46,7 @@ func (s *enrichedLMUSource) ReadTelemetry() *models.Telemetry {
 
 // computeDeltaFromEngine uses the distance-based delta engine with self/session/global
 // reference laps. Falls back to AlphaDelta when distance data is insufficient.
-func computeDeltaFromEngine(s *enrichedLMUSource, rows []lmuapi.StandingRow, session *lmuapi.SessionInfo) float64 {
+func computeDeltaFromEngine(s *EnrichedLMUSource, rows []lmuapi.StandingRow, session *lmuapi.SessionInfo) float64 {
 	if s.deltaStore == nil {
 		// Fall back to AlphaDelta
 		d, ok := delta.AlphaDelta(rows)
@@ -123,9 +125,13 @@ func computeDeltaFromEngine(s *enrichedLMUSource, rows []lmuapi.StandingRow, ses
 	}
 	s.prevLaps[vehicleID] = currentLaps
 
-	// Get reference and compute delta
+	// Get reference and compute delta using configured mode
+	mode := s.deltaMode.Load()
+	if mode == nil {
+		mode = delta.ModeSelf
+	}
 	trackLength := s.trackLen[vehicleID]
-	ref := s.deltaStore.GetReference(delta.ModeSelf, vehicleID, trackName, carClass, trackLength, playerRow.BestLapTime)
+	ref := s.deltaStore.GetReference(mode.(delta.ReferenceMode), vehicleID, trackName, carClass, trackLength, playerRow.BestLapTime)
 	current := delta.LapPoint{Distance: playerRow.LapDistance, TimeIntoLap: playerRow.TimeIntoLap}
 	d, ok := delta.ComputeDelta(ref, current)
 	if !ok {
@@ -134,7 +140,7 @@ func computeDeltaFromEngine(s *enrichedLMUSource, rows []lmuapi.StandingRow, ses
 	return d
 }
 
-func (s *enrichedLMUSource) Info() service.SourceInfo {
+func (s *EnrichedLMUSource) Info() service.SourceInfo {
 	if withInfo, ok := s.mmap.(service.SourceWithInfo); ok {
 		return withInfo.Info()
 	}
@@ -146,7 +152,7 @@ func (s *enrichedLMUSource) Info() service.SourceInfo {
 	}
 }
 
-func (s *enrichedLMUSource) Close() error {
+func (s *EnrichedLMUSource) Close() error {
 	if s.cache != nil {
 		s.cache.Close()
 	}
@@ -156,16 +162,25 @@ func (s *enrichedLMUSource) Close() error {
 	return nil
 }
 
-func wrapLMUSourceWithREST(mmap service.Source) service.Source {
+// SetDeltaMode updates the reference mode used for delta calculations.
+func (s *EnrichedLMUSource) SetDeltaMode(mode delta.ReferenceMode) {
+	s.deltaMode.Store(mode)
+}
+
+func wrapLMUSourceWithREST(mmap service.Source) *EnrichedLMUSource {
 	api := lmuapi.NewClient("http://localhost:6397", 750*time.Millisecond)
-	return &enrichedLMUSource{
+	src := &EnrichedLMUSource{
 		mmap:       mmap,
 		cache:      newLMURESTCache(api, 250*time.Millisecond, 2*time.Second),
 		deltaStore: delta.NewStore(),
 		prevLaps:   make(map[int]int16),
 		trackLen:   make(map[int]float64),
 	}
+	src.SetDeltaMode(delta.ModeSelf)
+	return src
 }
+
+
 
 type lmuRESTCache struct {
 	api            *lmuapi.Client

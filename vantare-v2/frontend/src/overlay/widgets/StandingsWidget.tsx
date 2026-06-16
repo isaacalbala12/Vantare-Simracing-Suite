@@ -63,7 +63,7 @@ export function formatStandingsGapForMode(
   v: Partial<VehicleScoring>,
   classLeader: Partial<VehicleScoring> | undefined
 ): string {
-  if (mode === "practice" || mode === "qualifying") {
+  if (mode === "practice" || mode === "qual") {
     return formatLapTime(v.bestLapTime);
   }
   return formatStandingsGap(v, classLeader);

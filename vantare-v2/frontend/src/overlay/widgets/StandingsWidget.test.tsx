@@ -65,10 +65,10 @@ describe("StandingsWidget", () => {
     expect(formatStandingsPit({ pitting: false, inPits: false, inGarageStall: false, pitState: "" })).toBe("");
   });
 
-  it("formatStandingsGapForMode shows best lap in practice and qualifying", () => {
+  it("formatStandingsGapForMode shows best lap in practice and qual", () => {
     const leader = { id: 1 };
     expect(formatStandingsGapForMode("practice", { bestLapTime: 83.456 }, leader)).toBe("1:23.456");
-    expect(formatStandingsGapForMode("qualifying", { bestLapTime: 90.123 }, leader)).toBe("1:30.123");
+    expect(formatStandingsGapForMode("qual", { bestLapTime: 90.123 }, leader)).toBe("1:30.123");
     expect(formatStandingsGapForMode("practice", { bestLapTime: 0 }, leader)).toBe("—");
   });
 

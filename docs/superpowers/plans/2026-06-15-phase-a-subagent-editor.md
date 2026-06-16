@@ -2,11 +2,17 @@
 
 # Subagent Plan — EditorAgent
 
-**Goal:** Complete the visual editor for the Preview Workbench: snap drag, canvas boundaries, fixed-ratio resize, improved inspector, save flow, undo/redo, and auto-save.
+**Goal:** Complete the visual editor for the Preview Workbench: snap drag, resize, inspector, save flow, undo/redo, and auto-save.
 
 **Context:** This is part of Fase A in `docs/superpowers/plans/2026-06-15-phase-a-lmu-alpha-master.md`. Implement only Tasks 1–4 from the master plan.
 
 **Tech Stack:** React 19, TypeScript, Tailwind CSS, Vitest, Wails v3 runtime events.
+
+**Definition of done for this subagent:**
+1. All steps below are checked off.
+2. Frontend tests pass.
+3. Frontend build passes (no TS errors).
+4. Code is left in a state ready for the Main agent to review with the code-review-and-quality skill before any release.
 
 ---
 

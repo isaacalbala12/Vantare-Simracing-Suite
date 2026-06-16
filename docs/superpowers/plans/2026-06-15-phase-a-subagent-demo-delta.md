@@ -8,6 +8,12 @@
 
 **Tech Stack:** React 19 + TypeScript (demo mode); Go 1.23 (delta engine).
 
+**Definition of done for this subagent:**
+1. All steps below are checked off.
+2. Go tests pass.
+3. Frontend tests pass.
+4. Code is left ready for Main agent code review before release.
+
 ---
 
 ## Task 5: Demo Mode

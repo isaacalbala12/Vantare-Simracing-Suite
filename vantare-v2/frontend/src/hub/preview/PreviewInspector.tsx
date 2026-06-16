@@ -60,8 +60,6 @@ export function PreviewInspector({ profile, widget, onChangeProfile, onDuplicate
     onChangeProfile(updateWidgetAppearance(profile, selectedWidget.id, next));
   }
 
-
-
   function numericProps(
     value: number,
     onChange: (v: number) => void,

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"runtime"
 	"log"
 	"strings"
 	"sync"
@@ -69,6 +70,7 @@ var (
 	procRegisterHotKey   = user32.NewProc("RegisterHotKey")
 	procUnregisterHotKey = user32.NewProc("UnregisterHotKey")
 	procGetMessageW      = user32.NewProc("GetMessageW")
+	procPeekMessageW     = user32.NewProc("PeekMessageW")
 	procDispatchMessageW = user32.NewProc("DispatchMessageW")
 	procPostQuitMessage  = user32.NewProc("PostQuitMessage")
 )
@@ -159,6 +161,8 @@ func (m *HotkeyManager) UnregisterAll() {
 }
 
 // Start begins processing hotkey events in a background goroutine.
+// All Windows API calls (RegisterHotKey, GetMessage, UnregisterHotKey)
+// happen on the same OS thread that owns the message queue.
 func (m *HotkeyManager) Start() error {
 	m.mu.Lock()
 	if m.started {
@@ -166,30 +170,25 @@ func (m *HotkeyManager) Start() error {
 		return nil
 	}
 	m.started = true
-	entries := make([]hotkeyEntry, len(m.entries))
-	copy(entries, m.entries)
 	m.mu.Unlock()
-
-	// Register all entries with Windows.
-	for _, e := range entries {
-		m.registerOne(e)
-	}
 
 	go m.messageLoop()
 	return nil
 }
 
-// Stop terminates the hotkey message loop.
+// Stop terminates the hotkey message loop and unregisters all hotkeys.
 func (m *HotkeyManager) Stop() {
 	if m.stop.Load() {
 		return
 	}
 	m.stop.Store(true)
+	m.UnregisterAll()
 	procPostQuitMessage.Call(0)
 	<-m.done
 }
 
 func (m *HotkeyManager) messageLoop() {
+	runtime.LockOSThread()
 	defer close(m.done)
 
 	var msg struct {
@@ -199,6 +198,18 @@ func (m *HotkeyManager) messageLoop() {
 		lParam  uintptr
 		time    uint32
 		pt      struct{ x, y int32 }
+	}
+
+	// Ensure this thread has a message queue before registering.
+	_, _, _ = procPeekMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0, 0)
+
+	// Register all queued entries on this same thread.
+	m.mu.Lock()
+	entries := make([]hotkeyEntry, len(m.entries))
+	copy(entries, m.entries)
+	m.mu.Unlock()
+	for _, e := range entries {
+		m.registerOne(e)
 	}
 
 	for !m.stop.Load() {

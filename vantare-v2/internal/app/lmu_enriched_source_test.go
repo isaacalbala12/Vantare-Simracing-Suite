@@ -28,7 +28,7 @@ func TestEnrichedLMUSourceReadTelemetryDoesNotBlockOnREST(t *testing.T) {
 
 	cache := newLMURESTCache(lmuapi.NewClient(srv.URL, 750*time.Millisecond), time.Hour, time.Second)
 	defer cache.Close()
-	src := &enrichedLMUSource{
+	src := &EnrichedLMUSource{
 		mmap:  service.FuncSource{ReadFunc: func() []byte { return lmu.BuildSyntheticBuffer() }},
 		cache: cache,
 	}

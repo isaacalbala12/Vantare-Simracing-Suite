@@ -57,28 +57,29 @@ export type SessionDiff = {
 
 export type SessionState = "offline" | "menu" | "garage" | "session" | "";
 
-export type SessionMode = "practice" | "qualifying" | "race";
+export type SessionMode = "practice" | "qual" | "race" | "warmup";
 
 export function resolveSessionMode(sessionType?: number, sessionName?: string): SessionMode {
-  const name = (sessionName ?? "").toUpperCase();
-  if (name.startsWith("PRACTICE") || name.startsWith("TEST")) return "practice";
-  if (name.startsWith("QUALIFY")) return "qualifying";
-  if (name.startsWith("RACE") || name.startsWith("WARMUP")) return "race";
+	const name = (sessionName ?? "").toUpperCase();
+	if (name.startsWith("PRACTICE") || name.startsWith("TEST")) return "practice";
+	if (name.startsWith("QUALIFY")) return "qual";
+	if (name.startsWith("RACE")) return "race";
+	if (name.startsWith("WARMUP")) return "warmup";
 
-  switch (sessionType) {
-    case 1:
-    case 10:
-      return "practice";
-    case 2:
-      return "qualifying";
-    case 3:
-    case 11:
-      return "race";
-    case 4:
-      return "race";
-    default:
-      return "race";
-  }
+	switch (sessionType) {
+	case 1:
+	case 10:
+		return "practice";
+	case 2:
+		return "qual";
+	case 3:
+	case 11:
+		return "race";
+	case 4:
+		return "warmup";
+	default:
+		return "race";
+	}
 }
 
 export type TelemetryPayload = {

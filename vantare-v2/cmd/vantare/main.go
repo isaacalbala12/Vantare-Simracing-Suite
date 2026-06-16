@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
+	"github.com/vantare/overlays/v2/internal/telemetry/delta"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
@@ -150,11 +152,11 @@ func main() {
 	emitter := &wailsEmitter{wailsApp: wailsApp}
 	var cleanup sync.Once
 	var bridge *app.TelemetryBridge
-	var opsBridge *app.OpsBridge
+		var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
 	var rtSampler *ops.RuntimeSampler
-	var overlayRunning bool
+	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -250,6 +252,15 @@ func main() {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
 
+	// Apply current delta mode to telemetry source if it supports it.
+	if enriched, ok := vapp.TelemetrySource().(*app.EnrichedLMUSource); ok {
+		mode := delta.ReferenceMode(settingsSvc.Settings().DeltaMode)
+		if mode == "" {
+			mode = delta.ModeSelf
+		}
+		enriched.SetDeltaMode(mode)
+	}
+
 	// Set profiles directory for profile cycling
 	profileSvc.SetProfilesDir(cfgDir)
 
@@ -265,7 +276,7 @@ func main() {
 		status := overlayController.Status()
 		if status.Running {
 			overlayController.Stop()
-			overlayRunning = false
+			overlayRunning.Store(false)
 		} else {
 			// Start with current profile
 			profile := profileSvc.Profile()
@@ -274,13 +285,13 @@ func main() {
 					log.Printf("hotkey toggle overlay error: %v", err)
 					return
 				}
-				overlayRunning = true
+				overlayRunning.Store(true)
 			}
 		}
 	})
 
 	hkMgr.Register("nextProfile", settingsSvc.Settings().Hotkeys["nextProfile"], func() {
-		if !overlayRunning {
+		if !overlayRunning.Load() {
 			return
 		}
 		if err := profileSvc.NextProfile(); err != nil {
@@ -289,7 +300,7 @@ func main() {
 	})
 
 	hkMgr.Register("prevProfile", settingsSvc.Settings().Hotkeys["prevProfile"], func() {
-		if !overlayRunning {
+		if !overlayRunning.Load() {
 			return
 		}
 		if err := profileSvc.PreviousProfile(); err != nil {
@@ -441,7 +452,7 @@ func main() {
 				status := overlayController.Status()
 				if status.Running {
 					overlayController.Stop()
-					overlayRunning = false
+					overlayRunning.Store(false)
 				} else {
 					profile := profileSvc.Profile()
 					if profile != nil {
@@ -449,12 +460,12 @@ func main() {
 							log.Printf("hotkey toggle overlay error: %v", err)
 							return
 						}
-						overlayRunning = true
+						overlayRunning.Store(true)
 					}
 				}
 			},
 			"nextProfile": func() {
-				if !overlayRunning {
+				if !overlayRunning.Load() {
 					return
 				}
 				if err := profileSvc.NextProfile(); err != nil {
@@ -462,7 +473,7 @@ func main() {
 				}
 			},
 			"prevProfile": func() {
-				if !overlayRunning {
+				if !overlayRunning.Load() {
 					return
 				}
 				if err := profileSvc.PreviousProfile(); err != nil {
@@ -492,6 +503,13 @@ func main() {
 		// Apply CPU sampling toggle if runtime sampler exists
 		if rtSampler != nil {
 			rtSampler.SetCPUEnabled(s.CpuSampling)
+		}
+		if enriched, ok := vapp.TelemetrySource().(*app.EnrichedLMUSource); ok {
+			mode := delta.ReferenceMode(s.DeltaMode)
+			if mode == "" {
+				mode = delta.ModeSelf
+			}
+			enriched.SetDeltaMode(mode)
 		}
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()

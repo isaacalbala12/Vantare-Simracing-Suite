@@ -8,6 +8,12 @@
 
 **Tech Stack:** Go 1.23 + Wails v3 events (settings + hotkeys); React 19 + TypeScript (Settings UI).
 
+**Definition of done for this subagent:**
+1. All steps below are checked off.
+2. Go tests pass.
+3. Frontend tests pass.
+4. Hotkey logic is verified to compile; actual Windows hotkeys must be smoke-tested by Main before release.
+
 ---
 
 ## Task 7: Settings Service + Settings Page Extensions

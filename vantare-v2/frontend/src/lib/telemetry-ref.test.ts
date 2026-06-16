@@ -7,7 +7,7 @@ describe("resolveSessionMode", () => {
     expect(resolveSessionMode(1, "PRACTICE2")).toBe("practice");
   });
   it("detects qualifying from sessionName", () => {
-    expect(resolveSessionMode(2, "QUALIFY1")).toBe("qualifying");
+    expect(resolveSessionMode(2, "QUALIFY1")).toBe("qual");
   });
   it("detects race from sessionName", () => {
     expect(resolveSessionMode(11, "RACE")).toBe("race");
@@ -15,7 +15,7 @@ describe("resolveSessionMode", () => {
   });
   it("falls back to sessionType", () => {
     expect(resolveSessionMode(1, "")).toBe("practice");
-    expect(resolveSessionMode(2, "")).toBe("qualifying");
+    expect(resolveSessionMode(2, "")).toBe("qual");
     expect(resolveSessionMode(3, "")).toBe("race");
   });
   it("defaults to race for unknown values", () => {

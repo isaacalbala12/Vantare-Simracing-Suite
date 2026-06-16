@@ -8,8 +8,12 @@
 
 **Tech Stack:** Go 1.23+, Wails v3 alpha, React 19, TypeScript, Tailwind CSS, Vitest, `github.com/micropkg/go-hotkeys`.
 
----
+**Release gate:** No tag or release may be created until:
+1. The code-review-and-quality skill has been applied to all changed files.
+2. A manual smoke-test checklist has been completed (or documented as impossible in the current environment).
+3. `go test ./...`, `pnpm --dir vantare-v2/frontend test`, and `pnpm --dir vantare-v2/frontend build` all pass.
 
+---
 ## File Structure
 
 | File | Responsibility |

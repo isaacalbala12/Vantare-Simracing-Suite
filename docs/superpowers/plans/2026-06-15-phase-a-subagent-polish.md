@@ -8,6 +8,12 @@
 
 **Tech Stack:** Go 1.23 + gopsutil (CPU); React 19 + TypeScript (visibility rules).
 
+**Definition of done for this subagent:**
+1. All steps below are checked off.
+2. Go tests pass.
+3. Frontend tests pass.
+4. Visibility rules must be smoke-tested by Main before release.
+
 ---
 
 ## Task 9: Ops Panel CPU

@@ -67,7 +67,6 @@ export function generateAnimatedTelemetry(elapsedMs: number, inPit = false): Tel
     snapshot: {
       connected: true,
       sessionState: "session",
-      playerHasVehicle: true,
       player: {
         speed: 180 + Math.sin(t) * 40,
         gear: 4,

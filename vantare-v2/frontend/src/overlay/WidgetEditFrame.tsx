@@ -1,9 +1,25 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Rect, WidgetConfig } from "../lib/profile";
 import { getWidgetStyle } from "../lib/profile";
 import { WIDGET_COMPONENTS } from "./shared-widget-map";
 
 const MIN_SIZE = { w: 80, h: 40 };
+
+function getScreenBounds(): { width: number; height: number } {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+}
+
+function clampRect(rect: Rect): Rect {
+  const bounds = getScreenBounds();
+  const w = Math.max(MIN_SIZE.w, Math.min(rect.w, bounds.width));
+  const h = Math.max(MIN_SIZE.h, Math.min(rect.h, bounds.height));
+  const x = Math.max(0, Math.min(rect.x, bounds.width - w));
+  const y = Math.max(0, Math.min(rect.y, bounds.height - h));
+  return { x, y, w, h };
+}
 
 type WidgetEditFrameProps = {
   widget: WidgetConfig;
@@ -15,7 +31,30 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
   const [previewRect, setPreviewRect] = useState<Rect | null>(null);
   const visualRect = previewRect ?? widget.position;
   const committedRef = useRef(onChange);
-  committedRef.current = onChange;
+  const frameRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    committedRef.current = onChange;
+  }, [onChange]);
+  useEffect(() => {
+    function handleResize() {
+      // If the window is resized while a widget is outside the new bounds,
+      // commit a clamped version so it remains reachable.
+      const current = previewRect ?? widget.position;
+      const clamped = clampRect(current);
+      if (
+        clamped.x !== current.x ||
+        clamped.y !== current.y ||
+        clamped.w !== current.w ||
+        clamped.h !== current.h
+      ) {
+        setPreviewRect(clamped);
+        committedRef.current(widget.id, clamped);
+      }
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [widget.id, widget.position, previewRect]);
 
   function handleDragStart(e: React.MouseEvent) {
     if ((e.target as HTMLElement).dataset.testid?.startsWith("resize-handle-")) return;
@@ -28,12 +67,12 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
     function onMouseMove(ev: MouseEvent) {
       const dx = ev.clientX - startMouseX;
       const dy = ev.clientY - startMouseY;
-      lastRect = {
-        x: Math.max(0, Math.round(startRect.x + dx)),
-        y: Math.max(0, Math.round(startRect.y + dy)),
+      lastRect = clampRect({
+        x: Math.round(startRect.x + dx),
+        y: Math.round(startRect.y + dy),
         w: startRect.w,
         h: startRect.h,
-      };
+      });
       setPreviewRect(lastRect);
     }
 
@@ -59,11 +98,11 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
     function onMouseMove(ev: MouseEvent) {
       const dw = ev.clientX - startMouseX;
       const dh = ev.clientY - startMouseY;
-      lastRect = {
+      lastRect = clampRect({
         ...startRect,
-        w: Math.max(MIN_SIZE.w, Math.round(startRect.w + dw)),
-        h: Math.max(MIN_SIZE.h, Math.round(startRect.h + dh)),
-      };
+        w: Math.round(startRect.w + dw),
+        h: Math.round(startRect.h + dh),
+      });
       setPreviewRect(lastRect);
     }
 
@@ -82,6 +121,7 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
 
   return (
     <div
+      ref={frameRef}
       data-testid={`edit-frame-${widget.id}`}
       onMouseDown={handleDragStart}
       className="absolute border border-vantare-red-400/70 hover:border-vantare-red-400 cursor-move"

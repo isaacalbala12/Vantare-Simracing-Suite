@@ -3,9 +3,7 @@ import { Events } from "@wailsio/runtime";
 import { profileLabel, type ProfileEntry } from "../state/overlay-workbench";
 import type { ProfileConfig } from "../../lib/profile";
 
-type ProfilesPageProps = Record<string, never>;
-
-export function ProfilesPage(_props: ProfilesPageProps) {
+export function ProfilesPage() {
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +86,19 @@ export function ProfilesPage(_props: ProfilesPageProps) {
 
   const handleSelect = useCallback((profile: ProfileEntry) => {
     setError(null);
-    Events.Emit("overlay:start", { id: profile.id, file: profile.file });
+    Events.Emit("overlay:stop");
+    // Give the existing overlay a tick to close before starting the new one.
+    window.setTimeout(() => {
+      Events.Emit("overlay:start", { id: profile.id, file: profile.file });
+    }, 50);
+  }, []);
+
+  const handleEditPosition = useCallback((profile: ProfileEntry) => {
+    setError(null);
+    Events.Emit("overlay:stop");
+    window.setTimeout(() => {
+      Events.Emit("overlay:edit:start", { id: profile.id, file: profile.file });
+    }, 50);
   }, []);
 
   const handleToggleWidget = useCallback((widgetId: string, enabled: boolean) => {
@@ -170,7 +180,7 @@ export function ProfilesPage(_props: ProfilesPageProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => Events.Emit("overlay:edit:start", { id: p.id, file: p.file })}
+                  onClick={() => handleEditPosition(p)}
                   className="btn-secondary px-4 py-2 rounded-lg text-xs font-medium text-white whitespace-nowrap"
                 >
                   Editar posición

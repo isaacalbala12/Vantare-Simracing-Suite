@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.2.13-alpha.1 - 2026-06-16
+
+Correcciones de UX del modo edición del overlay y del guardado de widgets.
+
+### Incluido
+
+- **Botón "Cerrar edición"**: el overlay de edición ahora muestra una barra flotante en la esquina superior derecha con el estado de guardado y un botón para cerrar la ventana (`overlay:stop`).
+- **Límites de pantalla en drag/resize**: `WidgetEditFrame` ya no permite mover o redimensionar widgets fuera de la pantalla; al cambiar el tamaño de ventana se re-ajustan automáticamente.
+- **Feedback de guardado en WidgetsPage**: reemplazado el booleano `saving` por una máquina de estados (`idle | saving | saved | error`). Se muestra "Guardado", "Error al guardar" y un banner con el mensaje de error si el backend falla.
+- **Cierre defensivo de overlay anterior**: `ProfilesPage`, `HubService.StartOverlay` y `HubService.StartEditOverlay` cierran la ventana de overlay existente antes de abrir una nueva, evitando ventanas fantasma.
+- **Ack explícito `profile:saved`**: `ProfileService.SaveProfile`, `ProfileService.SaveLayout` y el handler de `profile:save` en `main.go` emiten `profile:saved` en caso de éxito y `hub:error` en caso de error, permitiendo que el frontend distinga éxito de fallo.
+
+### Cambiado
+
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.2.13`.
+
 ## v0.2.12-alpha.1 - 2026-06-16
 
 Hotfix de corrección de bugs del editor rewrite.

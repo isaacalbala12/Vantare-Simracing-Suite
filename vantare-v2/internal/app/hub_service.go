@@ -153,6 +153,8 @@ func (s *HubService) StartOverlay(idOrFile string) (OverlayStatus, error) {
 		return OverlayStatus{}, fmt.Errorf("overlay runtime not configured")
 	}
 	profile := s.profileSvc.GetProfile()
+	// Close any previous window to avoid ghost overlays when switching profiles.
+	s.overlay.Stop()
 	status, err := s.overlay.Start(profile)
 	if s.emitter != nil {
 		s.emitter.Emit("overlay:status", status)
@@ -176,6 +178,7 @@ func (s *HubService) StopOverlay() OverlayStatus {
 }
 
 // StartEditOverlay opens the desktop overlay in edit mode for the active profile.
+// It closes any running overlay window first to avoid ghost windows or racing renderers.
 func (s *HubService) StartEditOverlay(idOrFile string) (OverlayStatus, error) {
 	if err := s.ActivateProfile(idOrFile); err != nil {
 		return OverlayStatus{}, err
@@ -186,6 +189,10 @@ func (s *HubService) StartEditOverlay(idOrFile string) (OverlayStatus, error) {
 	}
 	editProfile := *profile
 	editProfile.DisplayMode = config.ModeEdit
+	// Make sure the previous overlay is gone before opening edit mode.
+	if s.overlay != nil {
+		s.overlay.Stop()
+	}
 	return s.overlay.Start(&editProfile)
 }
 

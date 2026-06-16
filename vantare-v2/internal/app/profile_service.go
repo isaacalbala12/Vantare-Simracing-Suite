@@ -67,6 +67,7 @@ func (s *ProfileService) SaveProfile(p *config.ProfileConfig) error {
 	s.EmitLoaded()
 	if s.emitter != nil {
 		s.emitter.Emit("hub:profile", map[string]any{"profile": p})
+		s.emitter.Emit("profile:saved", map[string]any{"ok": true})
 	}
 	return nil
 }
@@ -94,6 +95,7 @@ func (s *ProfileService) SaveLayout(widgets []config.WidgetConfig) error {
 			"ok":      true,
 			"profile": s.profile,
 		})
+		s.emitter.Emit("profile:saved", map[string]any{"ok": true})
 		s.EmitLoaded()
 	}
 	return nil

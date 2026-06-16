@@ -29,7 +29,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.2.11-alpha.1"
+var version = "v0.2.13-alpha.1"
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -631,26 +631,34 @@ wailsApp.Event.On("hub:activate", func(event *application.CustomEvent) {
 		data, ok := eventPayload(event)
 		if !ok {
 			log.Printf("profile:save: invalid event payload")
+			emitHubError("invalid event payload")
 			return
 		}
 		profileMap, ok := data["profile"].(map[string]any)
 		if !ok {
 			log.Printf("profile:save: missing profile payload")
+			emitHubError("missing profile payload")
 			return
 		}
 		b, err := json.Marshal(profileMap)
 		if err != nil {
 			log.Printf("profile:save marshal failed: %v", err)
+			emitHubError(err.Error())
 			return
 		}
 		var profile config.ProfileConfig
 		if err := json.Unmarshal(b, &profile); err != nil {
 			log.Printf("profile:save unmarshal failed: %v", err)
+			emitHubError(err.Error())
 			return
 		}
 		if err := hubSvc.SaveProfile(&profile); err != nil {
 			log.Printf("profile:save failed: %v", err)
+			emitHubError(err.Error())
+			return
 		}
+		// Success ack lets WidgetsPage clear transient error state.
+		emitter.Emit("profile:saved", map[string]any{"ok": true})
 	})
 	wailsApp.Event.On("profile:widget:update", func(event *application.CustomEvent) {
 		data, ok := eventPayload(event)

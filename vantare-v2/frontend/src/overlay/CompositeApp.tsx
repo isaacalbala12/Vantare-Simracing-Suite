@@ -14,24 +14,9 @@ import {
 } from "../lib/telemetry-ref";
 import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
 import { WidgetHost } from "./WidgetHost";
-import { DeltaWidget } from "./widgets/DeltaWidget";
-import { RelativeWidget } from "./widgets/RelativeWidget";
-import { StandingsWidget } from "./widgets/StandingsWidget";
-import { TelemetryWidget } from "./widgets/TelemetryWidget";
-import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
-import { PedalsWidget } from "./widgets/PedalsWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
-import type { ComponentType } from "react";
-import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
+import { WIDGET_COMPONENTS } from "./shared-widget-map";
 
-const WIDGETS: Record<string, ComponentType<{ editMode: boolean; telemetryMode?: WidgetTelemetryMode; updateHz?: number; props?: Record<string, unknown> }>> = {
-  delta: DeltaWidget,
-  relative: RelativeWidget,
-  standings: StandingsWidget,
-  telemetry: TelemetryWidget,
-  "telemetry-vertical": TelemetryVerticalWidget,
-  pedals: PedalsWidget,
-};
 
 export function CompositeApp() {
   const [profile, setProfile] = useState<ProfileConfig | null>(null);
@@ -101,7 +86,7 @@ export function CompositeApp() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {(telemetryState ? widgets.filter((w) => isWidgetVisible(w, telemetryState)) : widgets).map((w) => {
-        const Component = WIDGETS[w.type];
+        const Component = WIDGET_COMPONENTS[w.type];
         if (!Component) {
           console.warn(`unknown widget type: ${w.type}`);
           return null;

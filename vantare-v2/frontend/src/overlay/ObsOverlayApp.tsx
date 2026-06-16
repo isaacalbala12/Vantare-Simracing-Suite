@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState } from "react";
 import type {
   ProfileConfig,
   LayoutOrigin,
@@ -12,29 +12,9 @@ import {
 } from "../lib/telemetry-ref";
 import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
 import { WidgetHost } from "./WidgetHost";
-import { DeltaWidget } from "./widgets/DeltaWidget";
-import { RelativeWidget } from "./widgets/RelativeWidget";
-import { StandingsWidget } from "./widgets/StandingsWidget";
-import { TelemetryWidget } from "./widgets/TelemetryWidget";
-import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
-import { PedalsWidget } from "./widgets/PedalsWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
-import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
+import { WIDGET_COMPONENTS } from "./shared-widget-map";
 
-type WidgetProps = {
-  editMode: boolean;
-  telemetryMode?: WidgetTelemetryMode;
-  updateHz?: number;
-  props?: Record<string, unknown>;
-};
-const WIDGETS: Record<string, ComponentType<WidgetProps>> = {
-  delta: DeltaWidget,
-  relative: RelativeWidget,
-  standings: StandingsWidget,
-  telemetry: TelemetryWidget,
-  "telemetry-vertical": TelemetryVerticalWidget,
-  pedals: PedalsWidget,
-};
 
 const STREAMING_MODE_HINT = "obs-streaming";
 
@@ -124,7 +104,7 @@ export function ObsOverlayApp() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
       {visibleWidgets.map((w) => {
-        const Component = WIDGETS[w.type];
+        const Component = WIDGET_COMPONENTS[w.type];
         if (!Component) {
           return null;
         }

@@ -628,11 +628,67 @@ wailsApp.Event.On("hub:activate", func(event *application.CustomEvent) {
 	})
 
 	wailsApp.Event.On("profile:save", func(event *application.CustomEvent) {
-		log.Printf("profile:save received (persistence in Plan C)")
+		data, ok := eventPayload(event)
+		if !ok {
+			log.Printf("profile:save: invalid event payload")
+			return
+		}
+		profileMap, ok := data["profile"].(map[string]any)
+		if !ok {
+			log.Printf("profile:save: missing profile payload")
+			return
+		}
+		b, err := json.Marshal(profileMap)
+		if err != nil {
+			log.Printf("profile:save marshal failed: %v", err)
+			return
+		}
+		var profile config.ProfileConfig
+		if err := json.Unmarshal(b, &profile); err != nil {
+			log.Printf("profile:save unmarshal failed: %v", err)
+			return
+		}
+		if err := hubSvc.SaveProfile(&profile); err != nil {
+			log.Printf("profile:save failed: %v", err)
+		}
+	})
+	wailsApp.Event.On("profile:widget:update", func(event *application.CustomEvent) {
+		data, ok := eventPayload(event)
+		if !ok {
+			return
+		}
+		widgetID, _ := data["widgetId"].(string)
+		enabled, _ := data["enabled"].(bool)
+		if widgetID == "" {
+			return
+		}
+		if err := hubSvc.SetWidgetEnabled(widgetID, enabled); err != nil {
+			log.Printf("profile:widget:update failed: %v", err)
+		}
 	})
 
-	wailsApp.Event.On("profile:widget:update", func(event *application.CustomEvent) {
-		log.Printf("profile:widget:update received (persistence in Plan C)")
+	wailsApp.Event.On("overlay:edit:start", func(event *application.CustomEvent) {
+		data, ok := eventPayload(event)
+		if !ok {
+			log.Printf("overlay:edit:start: invalid event payload")
+			return
+		}
+		id, _ := data["id"].(string)
+		file, _ := data["file"].(string)
+		if id == "" && file == "" {
+			log.Printf("overlay:edit:start: missing id/file")
+			return
+		}
+		target := id
+		if target == "" {
+			target = file
+		}
+		status, err := hubSvc.StartEditOverlay(target)
+		if err != nil {
+			log.Printf("overlay:edit:start failed: %v", err)
+			return
+		}
+		wailsApp.Event.Emit("overlay:status", status)
 	})
 
 	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v", vapp.SourceInfo().Kind, vapp.SourceInfo().Name, vapp.SourceInfo().Live, vapp.SourceInfo().Available)
@@ -753,12 +809,7 @@ func (h *wailsWindowHandle) ensureTransparent() {
 })()`)
 }
 
-// wailsOverlayFactory creates a fresh Wails overlay window for each Start call.
-type wailsOverlayFactory struct {
-	app         *application.App
-	stopOverlay func()
-}
-
+// wailsOverlayWindow adapts *application.WebviewWindow to app.OverlayWindow.
 type wailsOverlayWindow struct {
 	w *application.WebviewWindow
 }
@@ -767,6 +818,20 @@ func (o *wailsOverlayWindow) Close() {
 	o.w.Close()
 }
 
+// wailsOverlayFactory creates a fresh Wails overlay window for each Start call.
+type wailsOverlayFactory struct {
+	app         *application.App
+	stopOverlay func()
+}
+
+// eventPayload safely extracts a map[string]any from a Wails custom event.
+func eventPayload(event *application.CustomEvent) (map[string]any, bool) {
+	if event == nil {
+		return nil, false
+	}
+	v, ok := event.Data.(map[string]any)
+	return v, ok
+}
 func (f *wailsOverlayFactory) NewOverlayWindow(profile *config.ProfileConfig, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	w := f.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:             "Vantare Overlay",
@@ -814,3 +879,4 @@ func readProfileTarget(event *application.CustomEvent) string {
 	}
 	return data.ID
 }
+

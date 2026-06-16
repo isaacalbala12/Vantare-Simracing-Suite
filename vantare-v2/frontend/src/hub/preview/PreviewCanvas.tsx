@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { clampPosition, snap } from "../../lib/canvas-math";
 import type { ProfileConfig, Rect } from "../../lib/profile";
 import { updateWidgetPosition } from "./profile-editor";
 import { PreviewWidgetFrame } from "./PreviewWidgetFrame";
@@ -91,11 +92,12 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
     const widget = profile.widgets.find((w) => w.id === dragState.widgetId);
     if (!widget) return;
 
-    const nextPos = {
-      ...widget.position,
-      x: Math.round(dragState.startPos.x + dxRaw),
-      y: Math.round(dragState.startPos.y + dyRaw),
-    };
+    const rawX = Math.round(dragState.startPos.x + dxRaw);
+    const rawY = Math.round(dragState.startPos.y + dyRaw);
+    const snappedX = snap(rawX);
+    const snappedY = snap(rawY);
+    const { x, y } = clampPosition(snappedX, snappedY, widget.position.w, widget.position.h);
+    const nextPos = { ...widget.position, x, y };
 
     onChangeProfile(updateWidgetPosition(profile, widget.id, nextPos));
     setDragState((prev) => (prev ? { ...prev, moved: true } : null));

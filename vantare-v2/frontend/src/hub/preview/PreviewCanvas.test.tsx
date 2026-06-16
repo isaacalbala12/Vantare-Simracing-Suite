@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreviewCanvas } from "./PreviewCanvas";
 import type { ProfileConfig } from "../../lib/profile";
 
@@ -44,5 +44,88 @@ describe("PreviewCanvas", () => {
     expect(frame.style.top).toBe("820px");
     expect(frame.style.width).toBe("400px");
     expect(frame.style.height).toBe("160px");
+  });
+});
+
+describe("snap and clamp behavior", () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
+
+  it("snaps dragged position to 8px grid via onMouseMove", () => {
+    const onChangeProfile = vi.fn();
+    const dragTarget = { x: 0, y: 0, w: 100, h: 100 };
+    const snapProfile: ProfileConfig = {
+      id: "snap-test",
+      name: "Snap Test",
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [
+        { id: "snap", type: "delta", enabled: true, position: { ...dragTarget }, props: {} },
+      ],
+    };
+
+    render(
+      <PreviewCanvas
+        profile={snapProfile}
+        selectedWidgetId="snap"
+        onSelectWidget={() => {}}
+        onChangeProfile={onChangeProfile}
+      />,
+    );
+
+    // Simulate mousedown on widget at viewport origin
+    const frame = screen.getByTestId("preview-widget-frame-snap");
+    fireEvent.mouseDown(frame, { clientX: 0, clientY: 0 });
+
+    // Drag to viewport position (8, 12) which maps to logical (16, 24)
+    const viewport = screen.getByTestId("preview-viewport");
+    fireEvent.mouseMove(viewport, { clientX: 8, clientY: 12 });
+
+    // The final snapped position should be 16, 24
+    expect(onChangeProfile).toHaveBeenCalled();
+    const lastCall = onChangeProfile.mock.lastCall?.[0];
+    const moved = lastCall?.widgets?.find((w: { id: string }) => w.id === "snap");
+    expect(moved?.position?.x).toBe(16);
+    expect(moved?.position?.y).toBe(24);
+  });
+
+  it("clamps widget inside canvas bounds (1920x1080)", () => {
+    const onChangeProfile = vi.fn();
+    const clampProfile: ProfileConfig = {
+      id: "clamp-test",
+      name: "Clamp Test",
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [
+        { id: "clamp", type: "delta", enabled: true, position: { x: 0, y: 0, w: 100, h: 100 }, props: {} },
+      ],
+    };
+
+    render(
+      <PreviewCanvas
+        profile={clampProfile}
+        selectedWidgetId="clamp"
+        onSelectWidget={() => {}}
+        onChangeProfile={onChangeProfile}
+      />,
+    );
+
+    // Simulate mousedown at viewport origin
+    const frame = screen.getByTestId("preview-widget-frame-clamp");
+    fireEvent.mouseDown(frame, { clientX: 0, clientY: 0 });
+
+    // Drag far beyond bottom-right canvas bounds
+    // 1920 - 100 = 1820 max x, 1080 - 100 = 980 max y
+    // At scale 0.5: viewport threshold = 1820 * 0.5 = 910, 980 * 0.5 = 490
+    const viewport = screen.getByTestId("preview-viewport");
+    fireEvent.mouseMove(viewport, { clientX: 920, clientY: 500 });
+
+    expect(onChangeProfile).toHaveBeenCalled();
+    const lastCall = onChangeProfile.mock.lastCall?.[0];
+    const moved = lastCall?.widgets?.find((w: { id: string }) => w.id === "clamp");
+    expect(moved?.position?.x).toBe(1820);
+    expect(moved?.position?.y).toBe(980);
   });
 });

@@ -67,6 +67,7 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
 
   function onMouseDown(event: React.MouseEvent, widgetId: string) {
     if (disabled) return;
+    if ((event.target as HTMLElement).dataset.testid?.startsWith("resize-handle-")) return;
     event.preventDefault();
     const widget = profile.widgets.find((w) => w.id === widgetId);
     if (!widget) return;

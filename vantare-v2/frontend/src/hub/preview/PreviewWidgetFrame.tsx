@@ -46,6 +46,8 @@ export function PreviewWidgetFrame({ widget, selected, onSelect, onDragStart, on
   function handleResizeMouseDown(e: React.MouseEvent) {
     if (disabled) return;
     e.stopPropagation();
+    e.preventDefault();
+
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
     const startW = widget.position.w;

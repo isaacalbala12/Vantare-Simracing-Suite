@@ -30,15 +30,15 @@ export function HubApp() {
   }, []);
 
   return (
-    <div className="min-h-screen premium-bg relative">
+    <div className="min-h-screen premium-bg relative overflow-y-auto">
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} />
       <UpdateBanner />
-      <main className="pt-14">
-        {section === 'dashboard' && <DashboardPage />}
-        {section === 'profiles' && <ProfilesPage onOpenPreview={() => setSection('preview')} />}
-        {section === 'preview' && <PreviewPage />}
-        {section === 'setup' && <SettingsPage />}
-        {section === 'telemetry' && (
+      <main className="pt-14 min-h-screen">
+        {section === "dashboard" && <DashboardPage />}
+        {section === "profiles" && <ProfilesPage onOpenPreview={() => setSection("preview")} />}
+        {section === "preview" && <PreviewPage />}
+        {section === "setup" && <SettingsPage />}
+        {section === "telemetry" && (
           <div className="flex items-center justify-center h-[60vh] text-vantare-textMuted text-sm font-mono">
             Telemetría — próxima actualización
           </div>

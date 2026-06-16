@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.2.2-alpha.1 - 2026-06-16
+
+Hotfix de UX del editor y scroll.
+
+### Corregido
+
+- **Scroll global**: la app ahora permite hacer scroll vertical en el Hub y en Preview Workbench, evitando que elementos queden fuera de la pantalla.
+- **Bug de resize**: al hacer clic en el handle de resize ya no se dispara el drag del widget. El resize ahora funciona correctamente sin que el widget "salte" a una posición incorrecta.
+
+### Cambiado
+
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.2.2`.
+
 ## v0.2.1-alpha.1 - 2026-06-16
 
 Hotfix del updater e instalador.

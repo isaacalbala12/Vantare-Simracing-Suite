@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.0-alpha.1 - 2026-06-16
+
+Hub refactor: per-widget WYSIWYG preview, Profiles widget toggles, and removal of the old Preview Workbench.
+
+### Incluido
+
+- **WidgetsPage**: nueva página de previsualización individual de widgets con el componente real escalado, lista lateral de widgets, inspector para editar apariencia y posición, dirty state con indicador visual y botón "Deshacer" de un nivel, y botón "Guardar" que emite `profile:save`.
+- **ProfilesPage mejorada**: suscripción al perfil activo vía `hub:profile`, panel expandible por perfil con lista de checkboxes para habilitar/deshabilitar widgets individualmente. Cada toggle emite `profile:widget:update`.
+- **WidgetPreview**: componente que renderiza cada widget overlay real escalado (`scale=0.5`) dentro de un contenedor con `overflow-hidden`, usando el registry compartido de componentes.
+- **Shared widget component registry**: extraído a `shared-widget-map.ts`, reutilizado por `CompositeApp`, `ObsOverlayApp` y `WidgetPreview`.
+
+### Eliminado
+
+- **Preview Workbench antiguo**: eliminados `PreviewPage`, `PreviewCanvas`, `PreviewCanvas.test`, `PreviewWidgetFrame`, `PreviewWidgetFrame.test` y `WidgetList`. La ruta `preview` desaparece del Hub.
+- **Topbar**: eliminada la entrada "Overlays" (preview) y la rama muerta `'live'`.
+- **`Section` type**: finalizado a `'dashboard' | 'profiles' | 'widgets' | 'telemetry' | 'setup'`.
+
+### Cambiado
+
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.3.0`.
+
 ## v0.2.9-alpha.1 - 2026-06-16
 
 Hotfix de vibración de la app.

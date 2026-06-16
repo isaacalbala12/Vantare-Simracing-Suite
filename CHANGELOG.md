@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.2.6-alpha.1 - 2026-06-16
+
+Scrollbar auto-hide en el Hub.
+
+### Corregido
+
+- **Scrollbar invisible hasta que se hace scroll**: ahora la barra de scroll está oculta por defecto y solo aparece (fina y translúcida) durante el scroll. Tras 1 segundo de inactividad vuelve a desaparecer.
+- **Impacto visual mínimo**: ancho reducido a 4 px, opacidad baja (`rgba(255,255,255,0.12)`), sin track. Se funde con el fondo oscuro del Hub.
+- **Firefox compatible**: se usa `scrollbar-width: none` en reposo y `thin` durante el scroll.
+
+### Cambiado
+
+- Nuevo componente `ScrollableMain` que gestiona la clase `scrollable-active` y el timer de auto-hide.
+- CSS de scrollbar movido a `.scrollable-main` / `.scrollable-active` en lugar de `html.hub *`.
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.2.6`.
+
 ## v0.2.5-alpha.1 - 2026-06-16
 
 Scrollbars elegantes en el Hub.

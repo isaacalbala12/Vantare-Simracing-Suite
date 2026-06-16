@@ -118,38 +118,62 @@ body.hub.desktop-overlay #root {
 }
 
 
-/* Elegant scrollbar for the Hub only */
-html.hub * {
+/* Auto-hide scrollbar for the Hub main scroll area */
+.scrollable-main {
+	overflow-y: auto;
+	scrollbar-width: none;
+}
+
+.scrollable-active {
 	scrollbar-width: thin;
 	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
-html.hub ::-webkit-scrollbar {
-	width: 6px;
-	height: 6px;
-}
-
-html.hub ::-webkit-scrollbar-track {
+.scrollable-main::-webkit-scrollbar {
+	width: 4px;
+	height: 4px;
 	background: transparent;
 }
 
-html.hub ::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.15);
+.scrollable-main::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.scrollable-main::-webkit-scrollbar-thumb {
+	background: transparent;
 	border-radius: 9999px;
 }
 
-html.hub ::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.3);
+.scrollable-active::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.12);
 }
 
-html.hub ::-webkit-scrollbar-corner {
+.scrollable-active::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.25);
+}
+
+.scrollable-main::-webkit-scrollbar-corner {
 	background: transparent;
+}
+
+/* Firefox: only show thin scrollbar while actively scrolling */
+@supports (scrollbar-width: none) {
+	.scrollable-main {
+		scrollbar-width: none;
+	}
+	.scrollable-active {
+		scrollbar-width: thin;
+	}
 }
 
 /* Streaming hint: OBS Browser Source renders without body.hub, so force transparent everywhere */
 body:not(.hub) {
   background: transparent !important;
   background-color: transparent !important;
+}
+
+body:not(.hub)::-webkit-scrollbar {
+  display: none;
 }
 
 body:not(.hub) #root {

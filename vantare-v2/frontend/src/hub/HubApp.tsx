@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Events } from '@wailsio/runtime';
+import { ScrollableMain } from './components/ScrollableMain';
 import { Topbar } from './components/Topbar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { DashboardPage } from './pages/DashboardPage';
@@ -33,7 +34,7 @@ export function HubApp() {
     <div className="h-screen premium-bg relative flex flex-col">
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} />
       <UpdateBanner />
-      <main className="flex-1 overflow-y-auto pt-0">
+      <ScrollableMain className="flex-1 pt-0">
         {section === "dashboard" && <DashboardPage />}
         {section === "profiles" && <ProfilesPage onOpenPreview={() => setSection("preview")} />}
         {section === "preview" && <PreviewPage />}
@@ -43,7 +44,7 @@ export function HubApp() {
             Telemetría — próxima actualización
           </div>
         )}
-      </main>
+      </ScrollableMain>
     </div>
   );
 }

@@ -56,5 +56,6 @@ Buffer recomendado: +20% por imprevistos, bugfixing, testing y releases.
 - Fase D — detalle: `./v2-phase-d-personalization.md`
 - Fase E — detalle: `./v2-phase-e-community.md`
 - Fase F — detalle: `./v2-phase-f-acevo-analysis.md`
+- Deuda técnica: `./v2-technical-debt.md`
 - Features canónicas: `C:/Users/isaac/Desktop/trabajo/Proyectos/Overlays/Features por desarrollar.md`
 - Roadmap original día a día: `C:/Users/isaac/Desktop/trabajo/Proyectos/Overlays/Roadmap Dia a Dia - Vantare Overlays.md`

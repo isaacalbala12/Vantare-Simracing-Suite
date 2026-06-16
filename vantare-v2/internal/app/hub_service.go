@@ -175,6 +175,35 @@ func (s *HubService) StopOverlay() OverlayStatus {
 	return status
 }
 
+// SaveProfile persists the provided profile to disk via the profile service.
+func (s *HubService) SaveProfile(profile *config.ProfileConfig) error {
+	return s.profileSvc.SaveProfile(profile)
+}
+
+// SetWidgetEnabled toggles a widget's enabled state in the active profile.
+func (s *HubService) SetWidgetEnabled(widgetID string, enabled bool) error {
+	current := s.profileSvc.GetProfile()
+	if current == nil {
+		return fmt.Errorf("no active profile")
+	}
+	// Clone to avoid mutating the service's internal pointer.
+	profile := *current
+	found := false
+	profile.Widgets = make([]config.WidgetConfig, len(current.Widgets))
+	copy(profile.Widgets, current.Widgets)
+	for i := range profile.Widgets {
+		if profile.Widgets[i].ID == widgetID {
+			profile.Widgets[i].Enabled = enabled
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("widget not found: %s", widgetID)
+	}
+	return s.SaveProfile(&profile)
+}
+
 // findProfilePath resolves id or file basename to an absolute profile path.
 func (s *HubService) findProfilePath(idOrFile string) (string, error) {
 	if s.profilesDir == "" {

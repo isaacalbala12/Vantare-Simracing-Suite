@@ -8,6 +8,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHubServiceCreateAndList(t *testing.T) {
@@ -381,4 +382,17 @@ func TestHubServiceStartOverlayEmitsStatusWhenActivateProfileFails(t *testing.T)
 	if emitted.Running {
 		t.Fatal("emitted status should report stopped")
 	}
+}
+
+func TestHubServiceSetWidgetEnabled(t *testing.T) {
+	dir := t.TempDir()
+	ps := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	h := app.NewHubService(dir, ps, nil, nil)
+	require.NoError(t, h.CreateProfile("test"))
+	require.NoError(t, h.ActivateProfile("custom-test"))
+
+	require.NoError(t, h.SetWidgetEnabled("delta", false))
+	p := ps.GetProfile()
+	require.NotNil(t, p)
+	require.False(t, p.Widgets[0].Enabled)
 }

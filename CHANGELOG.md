@@ -1,7 +1,29 @@
 # Changelog
 
-## v0.1.6-prealpha - 2026-06-15
+## v0.2.0-alpha.1 - 2026-06-16
 
+Primera alpha completa para Le Mans Ultimate.
+
+### Incluido
+
+- **Editor visual del Preview Workbench**:
+  - Drag & drop con snap a 8px y límites estrictos del canvas (1920x1080).
+  - Resize con handle inferior-derecho; ratio fijo por tipo de widget excepto standings.
+  - Inspector mejorado: nombre, updateHz, duplicar, reset, eliminar con confirmación.
+  - Guardado manual + auto-save debounced + Ctrl+S + undo/redo básico.
+- **Demo mode** en Preview Workbench: telemetría animada para diseñar sin sim; se detiene automáticamente si llega telemetría live.
+- **Delta Best fiable**: nuevo engine por distancia en pista con modos self/session/global.
+- **Ajustes globales**: selector de modo delta, hotkeys configurables, toggle de muestreo de CPU y sección OBS.
+- **Hotkeys globales Windows**: toggle overlay y cambio de perfil siguiente/anterior.
+- **OBS setup facilitado**: URL del overlay e instrucciones, tanto en Preview como en Settings.
+- **Ops panel**: CPU del proceso real via gopsutil, con toggle de activación.
+- **Visibilidad condicional básica**: mostrar/ocultar widgets según inPit y sessionType.
+
+### Cambiado
+
+- Versión de la app, `build/config.yml` e instalador NSIS actualizada a `0.2.0`.
+
+## v0.1.6-prealpha - 2026-06-15
 Pre-alpha de pulido del instalador: cierre graceful de la app y rollback automático.
 
 ### Incluido

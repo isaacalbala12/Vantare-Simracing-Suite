@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+
+import type { WidgetConfig } from "../../lib/profile";
 import { PreviewWidgetFrame } from "./PreviewWidgetFrame";
-import type { Rect, WidgetConfig } from "../../lib/profile";
 
 function makeWidget(overrides: Partial<WidgetConfig> = {}): WidgetConfig {
   return {

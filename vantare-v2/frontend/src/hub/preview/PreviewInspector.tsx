@@ -60,10 +60,7 @@ export function PreviewInspector({ profile, widget, onChangeProfile, onDuplicate
     onChangeProfile(updateWidgetAppearance(profile, selectedWidget.id, next));
   }
 
-  function handleNudge(key: string, currentValue: number): number {
-    const step = key === "ArrowUp" ? 8 : key === "ArrowDown" ? -8 : 0;
-    return currentValue + step;
-  }
+
 
   function numericProps(
     value: number,

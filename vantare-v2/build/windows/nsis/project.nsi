@@ -22,7 +22,7 @@ Unicode true
 !define INFO_PROJECTNAME    "vantare"
 !define INFO_COMPANYNAME    "Vantare"
 !define INFO_PRODUCTNAME    "Vantare Overlays"
-!define INFO_PRODUCTVERSION "0.1.6"
+!define INFO_PRODUCTVERSION "0.2.0"
 !define INFO_COPYRIGHT      "© 2026 Vantare"
 !define PRODUCT_EXECUTABLE  "vantare.exe"
 ###

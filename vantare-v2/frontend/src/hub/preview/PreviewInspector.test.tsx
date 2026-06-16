@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PreviewInspector } from "./PreviewInspector";
-import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
+import type { ProfileConfig } from "../../lib/profile";
 
 const profile: ProfileConfig = {
   id: "test",

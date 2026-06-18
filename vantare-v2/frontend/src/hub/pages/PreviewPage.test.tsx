@@ -62,7 +62,7 @@ describe("PreviewPage", () => {
     render(<PreviewPage />);
     dispatch("profile:loaded", { profile });
 
-    fireEvent.change(screen.getByLabelText("X"), { target: { value: "42" } });
+    fireEvent.change(screen.getByLabelText("X (px)"), { target: { value: "42" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
     expect(screen.getByText("Guardando...")).toBeTruthy();
@@ -78,7 +78,7 @@ describe("PreviewPage", () => {
     dispatch("profile:loaded", { profile });
     dispatch("overlay:status", { running: true, profileId: "default-racing" });
 
-    const input = screen.getByLabelText("X") as HTMLInputElement;
+    const input = screen.getByLabelText("X (px)") as HTMLInputElement;
     expect(input.disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Guardar" }).hasAttribute("disabled")).toBe(true);
   });
@@ -156,7 +156,7 @@ describe("PreviewPage", () => {
     render(<PreviewPage />);
     dispatch("profile:loaded", { profile });
 
-    fireEvent.change(screen.getByLabelText("X"), { target: { value: "42" } });
+    fireEvent.change(screen.getByLabelText("X (px)"), { target: { value: "42" } });
 
     const startButton = screen.getByRole("button", { name: "Abrir overlay" });
     expect(startButton.hasAttribute("disabled")).toBe(true);
@@ -175,7 +175,7 @@ describe("PreviewPage", () => {
     render(<PreviewPage />);
     dispatch("profile:loaded", { profile });
 
-    fireEvent.change(screen.getByLabelText("X"), { target: { value: "42" } });
+    fireEvent.change(screen.getByLabelText("X (px)"), { target: { value: "42" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
     dispatch("hub:error", { message: "No se pudo escribir el perfil" });
@@ -201,7 +201,7 @@ describe("undo / redo / auto-save", () => {
     render(<PreviewPage />);
     dispatch("profile:loaded", { profile });
 
-    const xInput = screen.getByLabelText("X") as HTMLInputElement;
+    const xInput = screen.getByLabelText("X (px)") as HTMLInputElement;
     expect(xInput.value).toBe("10");
 
     fireEvent.change(xInput, { target: { value: "42" } });
@@ -216,7 +216,7 @@ describe("undo / redo / auto-save", () => {
     render(<PreviewPage />);
     dispatch("profile:loaded", { profile });
 
-    const xInput = screen.getByLabelText("X") as HTMLInputElement;
+    const xInput = screen.getByLabelText("X (px)") as HTMLInputElement;
     expect(xInput.value).toBe("10");
 
     fireEvent.change(xInput, { target: { value: "42" } });
@@ -235,7 +235,7 @@ describe("undo / redo / auto-save", () => {
     render(<PreviewPage />);
     dispatch("profile:loaded", { profile });
 
-    fireEvent.change(screen.getByLabelText("X"), { target: { value: "42" } });
+    fireEvent.change(screen.getByLabelText("X (px)"), { target: { value: "42" } });
 
     // Before debounce fires
     expect(runtimeMock.emit).not.toHaveBeenCalledWith("layout:save", expect.anything());

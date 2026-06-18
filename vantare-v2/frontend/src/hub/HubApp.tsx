@@ -4,11 +4,10 @@ import { ScrollableMain } from './components/ScrollableMain';
 import { Topbar } from './components/Topbar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { DashboardPage } from './pages/DashboardPage';
-import { ProfilesPage } from './pages/ProfilesPage';
-import { PreviewPage } from './pages/PreviewPage';
+import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
 import { SettingsPage } from './pages/SettingsPage';
 
-type Section = 'dashboard' | 'profiles' | 'preview' | 'telemetry' | 'setup';
+type Section = 'dashboard' | 'profiles' | 'telemetry' | 'setup';
 
 export function HubApp() {
   const [section, setSection] = useState<Section>('dashboard');
@@ -36,8 +35,7 @@ export function HubApp() {
       <UpdateBanner />
       <ScrollableMain className="flex-1 pt-0">
         {section === "dashboard" && <DashboardPage />}
-        {section === "profiles" && <ProfilesPage onOpenPreview={() => setSection("preview")} />}
-        {section === "preview" && <PreviewPage />}
+        {section === "profiles" && <OverlaysStudioPage />}
         {section === "setup" && <SettingsPage />}
         {section === "telemetry" && (
           <div className="flex items-center justify-center h-[60vh] text-vantare-textMuted text-sm font-mono">

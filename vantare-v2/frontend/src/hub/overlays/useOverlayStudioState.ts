@@ -43,6 +43,10 @@ export function useOverlayStudioState() {
       setProfiles(data.profiles ?? []);
     });
 
+    const unsubCreated = Events.On("hub:profile-created", () => {
+      Events.Emit("hub:list");
+    });
+
     const unsubLoaded = Events.On("profile:loaded", (event: ProfileLoadedEvent) => {
       loadProfile(event.data.profile);
     });
@@ -64,6 +68,7 @@ export function useOverlayStudioState() {
 
     return () => {
       unsubProfiles();
+      unsubCreated();
       unsubLoaded();
       unsubSaved();
       unsubError();

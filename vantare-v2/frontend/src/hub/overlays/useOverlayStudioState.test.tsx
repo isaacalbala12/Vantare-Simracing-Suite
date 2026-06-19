@@ -40,6 +40,17 @@ describe("useOverlayStudioState", () => {
     expect(Events.Emit).toHaveBeenCalledWith("profile:request");
   });
 
+  it("refreshes profile list after creating a profile", () => {
+    renderHook(() => useOverlayStudioState());
+    vi.clearAllMocks();
+
+    act(() => {
+      listeners.get("hub:profile-created")?.({ data: { ok: true } });
+    });
+
+    expect(Events.Emit).toHaveBeenCalledWith("hub:list");
+  });
+
   it("loads profile and selects the first widget", () => {
     const { result } = renderHook(() => useOverlayStudioState());
 
@@ -77,6 +88,31 @@ describe("useOverlayStudioState", () => {
         { ...profile.widgets[0], name: "Delta Edited" },
         profile.widgets[1],
       ],
+    });
+  });
+
+  it("emits layout:save when saving a dirty profile via updateDraft", () => {
+    const { result } = renderHook(() => useOverlayStudioState());
+
+    act(() => {
+      listeners.get("profile:loaded")?.({ data: { profile } });
+    });
+
+    act(() => {
+      result.current.updateDraft({
+        ...profile,
+        widgets: [{ ...profile.widgets[0], position: { x: 10, y: 0, w: 400, h: 48 } }],
+      });
+    });
+
+    expect(result.current.dirty).toBe(true);
+
+    act(() => {
+      result.current.saveProfile();
+    });
+
+    expect(Events.Emit).toHaveBeenCalledWith("layout:save", {
+      widgets: [{ ...profile.widgets[0], position: { x: 10, y: 0, w: 400, h: 48 } }],
     });
   });
 

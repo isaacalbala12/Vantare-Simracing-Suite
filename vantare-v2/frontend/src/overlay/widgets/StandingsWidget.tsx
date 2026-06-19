@@ -21,6 +21,7 @@ const BAKED_CLASS_BG = "linear-gradient(90deg, #9b2226 0%, #e63946 50%, #9b2226 
 const ON_TRACK_COLOR = "#FFFFFF";
 const PIT_COLOR = "#9CA3AF";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatStandingsGap(
   v: Partial<VehicleScoring>,
   classLeader: Partial<VehicleScoring> | undefined
@@ -33,6 +34,7 @@ export function formatStandingsGap(
   return "—";
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatStandingsPit(v: Partial<VehicleScoring>): string {
   if (v.inGarageStall) return "GARAGE";
   if (v.pitting || v.inPits || (v.pitState && v.pitState !== "NONE")) return "PIT";
@@ -46,6 +48,7 @@ function formatLapTime(seconds: number | undefined): string {
   return `${m}:${s}`;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatRemainingTime(seconds: number | undefined): string {
   if (seconds == null || seconds < 0 || !Number.isFinite(seconds)) return "—";
   const h = Math.floor(seconds / 3600);
@@ -58,6 +61,7 @@ export function formatRemainingTime(seconds: number | undefined): string {
   return `${pad(m)}:${pad(s)}`;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatStandingsGapForMode(
   mode: SessionMode,
   v: Partial<VehicleScoring>,
@@ -180,7 +184,7 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [maxRows, updateHz, editMode, telemetryMode, props]);
+  }, [maxRows, updateHz, editMode, telemetryMode, props, a]);
 
   const t = (telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef();
   const player = t.vehicles.find((v) => v.isPlayer);

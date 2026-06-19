@@ -20,6 +20,7 @@ const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #111 0%, #222 50%, #111 100%)";
 const BAKED_PLAYER_BG = "linear-gradient(90deg, rgba(230,57,70,0.2) 0%, rgba(155,34,38,0.4) 100%)";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function resolveClassColor(
   vehicleClass: string | undefined,
   a: Record<string, unknown>
@@ -32,6 +33,7 @@ export function resolveClassColor(
   return a.classUnknownColor as string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatSignedGap(seconds: number | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return "—";
   if (seconds === 0) return "—";
@@ -39,6 +41,7 @@ export function formatSignedGap(seconds: number | undefined): string {
   return `${sign}${seconds.toFixed(1)}`;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function selectRelativeRowsByGap(
   vehicles: Partial<VehicleScoring>[],
   rangeAhead: number,
@@ -145,7 +148,7 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [rangeAhead, rangeBehind, updateHz, editMode, telemetryMode, props]);
+  }, [rangeAhead, rangeBehind, updateHz, editMode, telemetryMode, props, a]);
 
   return (
     <div

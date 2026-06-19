@@ -32,7 +32,9 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
   } | null>(null);
 
   const commitRef = useRef(onChangeProfile);
-  commitRef.current = onChangeProfile;
+  useEffect(() => {
+    commitRef.current = onChangeProfile;
+  }, [onChangeProfile]);
 
   useEffect(() => {
     const node = shellRef.current;
@@ -64,15 +66,18 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
     };
   }
 
-  function attachMouseListeners() {
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp, { once: true });
-  }
+  const handleMouseMove = useCallback((e: MouseEvent) => onMouseMoveRef.current?.(e), []);
+  const handleMouseUp = useCallback(() => onMouseUpRef.current?.(), []);
 
-  function detachMouseListeners() {
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
-  }
+  const attachMouseListeners = useCallback(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp, { once: true });
+  }, [handleMouseMove, handleMouseUp]);
+
+  const detachMouseListeners = useCallback(() => {
+    window.removeEventListener("mousemove", handleMouseMove);
+    window.removeEventListener("mouseup", handleMouseUp);
+  }, [handleMouseMove, handleMouseUp]);
 
   const onMouseDown = useCallback((event: React.MouseEvent, widgetId: string) => {
     if (disabled) return;
@@ -89,7 +94,7 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
       moved: false,
     };
     attachMouseListeners();
-  }, [disabled, profile.widgets]);
+  }, [disabled, profile.widgets, attachMouseListeners]);
 
   const onMouseMove = useCallback((event: MouseEvent) => {
     const drag = dragRef.current;
@@ -135,7 +140,16 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
     const finalY = frame ? parseInt(frame.style.top || `${widget.position.y}`, 10) : widget.position.y;
 
     commitRef.current(updateWidgetPosition(profile, drag.widgetId, { ...widget.position, x: finalX, y: finalY }));
-  }, [profile]);
+  }, [profile, detachMouseListeners]);
+
+  const onMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
+  const onMouseUpRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
+    onMouseMoveRef.current = onMouseMove;
+    // eslint-disable-next-line react-hooks/immutability
+    onMouseUpRef.current = onMouseUp;
+  }, [onMouseMove, onMouseUp]);
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (disabled || !selectedWidget) return;

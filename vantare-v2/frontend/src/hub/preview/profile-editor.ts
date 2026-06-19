@@ -78,7 +78,8 @@ export function setWidgetVisibleWhen(
       ...profile,
       widgets: profile.widgets.map((widget) => {
         if (widget.id !== widgetId) return widget;
-        const { visibleWhen: _, ...rest } = widget;
+        const rest = { ...widget };
+        delete rest.visibleWhen;
         return rest;
       }),
     };

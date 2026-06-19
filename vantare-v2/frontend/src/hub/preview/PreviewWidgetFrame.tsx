@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Rect, WidgetConfig } from "../../lib/profile";
 import { getWidgetStyle } from "../../lib/profile";
 import { DeltaWidget } from "../../overlay/widgets/DeltaWidget";
@@ -65,7 +65,9 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
   const visualRect = previewRect ?? widget.position;
 
   const committedRef = useRef(onChangePosition);
-  committedRef.current = onChangePosition;
+  useEffect(() => {
+    committedRef.current = onChangePosition;
+  }, [onChangePosition]);
 
   function handleMouseDown(e: React.MouseEvent) {
     if (disabled) return;
@@ -125,6 +127,8 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
         top: visualRect.y,
         width: visualRect.w,
         height: visualRect.h,
+        transform: "translateZ(0)",
+        willChange: "left, top, width, height",
       }}
     >
       {Component ? (

@@ -3,7 +3,7 @@ import { applyTelemetryUpdate, clearRuntimeTelemetry } from "./telemetry-ref";
 import { generateAnimatedTelemetry } from "../overlay/widgets/mock-telemetry";
 
 export function useDemoMode(enabled: boolean, hz: number, inPit = false) {
-	const startRef = useRef(Date.now());
+	const startRef = useRef(0);
 	const wasEnabledRef = useRef(false);
 
 	useEffect(() => {

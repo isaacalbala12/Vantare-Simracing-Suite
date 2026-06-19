@@ -167,6 +167,7 @@ export function PreviewPage() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyIndex, history, profile, dirty]);
 
   // Auto-save after 800ms of inactivity when dirty
@@ -174,6 +175,7 @@ export function PreviewPage() {
     if (!dirty) return;
     const id = setTimeout(() => saveProfile(), 800);
     return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, dirty]);
 
   // ---- Widget handlers ----

@@ -41,11 +41,12 @@ var invalidProfileNameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 // ProfileEntry is a lightweight profile descriptor for hub listing.
 type ProfileEntry struct {
-	ID          string             `json:"id"`
-	File        string             `json:"file"` // basename on disk (e.g. example-racing.json)
-	Name        string             `json:"name,omitempty"`
-	DisplayMode config.DisplayMode `json:"displayMode"`
-	Widgets     int                `json:"widgets"`
+	ID          string                `json:"id"`
+	File        string                `json:"file"` // basename on disk (e.g. example-racing.json)
+	Name        string                `json:"name,omitempty"`
+	DisplayMode config.DisplayMode    `json:"displayMode"`
+	Widgets     int                   `json:"widgets"`
+	Profile     *config.ProfileConfig `json:"profile,omitempty"`
 }
 
 // OverlayRuntime is the interface HubService uses to start/stop the desktop overlay.
@@ -103,6 +104,7 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 			Name:        p.Name,
 			DisplayMode: p.DisplayMode,
 			Widgets:     len(p.Widgets),
+			Profile:     p,
 		})
 	}
 	return profiles, nil

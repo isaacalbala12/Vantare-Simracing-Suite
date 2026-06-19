@@ -131,4 +131,10 @@ describe("PreviewInspector", () => {
 
     window.confirm = originalConfirm;
   });
+
+  it("hides appearance controls when showAppearanceControls is false", () => {
+    render(<PreviewInspector profile={profile} widget={profile.widgets[0]} onChangeProfile={vi.fn()} showAppearanceControls={false} />);
+    expect(screen.queryByText("APARIENCIA")).toBeNull();
+    expect(screen.getByText("POSICIÓN Y TAMAÑO")).toBeTruthy();
+  });
 });

@@ -16,6 +16,7 @@ type DeltaProps = {
   props?: Record<string, unknown>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatDelta(delta: number): string {
   if (!Number.isFinite(delta)) return "—";
   if (delta === 0) return "—";

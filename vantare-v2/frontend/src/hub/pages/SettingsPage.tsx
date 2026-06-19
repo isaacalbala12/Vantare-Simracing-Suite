@@ -81,7 +81,7 @@ const HOTKEY_NAMES: Record<string, string> = {
 export function SettingsPage() {
   const [settings, setSettings] = useState<UpdaterSettings>({ channel: 'stable' });
   const [info, setInfo] = useState<UpdateInfo | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [installingTag, setInstallingTag] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -170,7 +170,6 @@ export function SettingsPage() {
 
     Events.Emit('updater:settings:get');
     Events.Emit('updater:check');
-    setLoading(true);
 
     return () => {
       handlers.forEach((h) => h?.());

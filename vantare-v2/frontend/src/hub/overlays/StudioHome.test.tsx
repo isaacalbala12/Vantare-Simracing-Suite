@@ -6,61 +6,52 @@ afterEach(() => {
   cleanup();
 });
 
-const profiles = [
-  { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 3 },
-];
-
 describe("StudioHome", () => {
-  it("shows own profiles, widget studio entry, recommended profiles, and community placeholder", () => {
+  it("renders professional clickable panels instead of inline profile lists", () => {
     render(
       <StudioHome
-        profiles={profiles}
+        profileCount={2}
+        recommendedCount={3}
         onOpenWidgetStudio={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onSaveRecommended={vi.fn()}
+        onOpenOwnProfiles={vi.fn()}
+        onOpenRecommended={vi.fn()}
+        onOpenCommunity={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("Widgets")).toBeTruthy();
-    expect(screen.getByText("Perfiles específicos")).toBeTruthy();
-    expect(screen.getByText("Default Racing")).toBeTruthy();
-    expect(screen.getByText("Recomendados por Vantare")).toBeTruthy();
-    expect(screen.getByText("Comunidad")).toBeTruthy();
-    expect(screen.getByText("Próximamente")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Abrir Widgets/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Abrir Mis perfiles/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Abrir Recomendados por Vantare/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Abrir Comunidad/i })).toBeTruthy();
+
+    expect(screen.queryByText("Perfiles específicos")).toBeNull();
   });
 
-  it("opens widget studio when Widgets is clicked", () => {
+  it("opens each section when its whole panel is clicked", () => {
     const onOpenWidgetStudio = vi.fn();
+    const onOpenOwnProfiles = vi.fn();
+    const onOpenRecommended = vi.fn();
+    const onOpenCommunity = vi.fn();
 
     render(
       <StudioHome
-        profiles={profiles}
+        profileCount={2}
+        recommendedCount={3}
         onOpenWidgetStudio={onOpenWidgetStudio}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onSaveRecommended={vi.fn()}
+        onOpenOwnProfiles={onOpenOwnProfiles}
+        onOpenRecommended={onOpenRecommended}
+        onOpenCommunity={onOpenCommunity}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Abrir widgets/i }));
-    expect(onOpenWidgetStudio).toHaveBeenCalled();
-  });
+    fireEvent.click(screen.getByRole("button", { name: /Abrir Widgets/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Abrir Recomendados por Vantare/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Abrir Comunidad/i }));
 
-  it("opens a specific profile when clicking its edit action", () => {
-    const onOpenProfile = vi.fn();
-
-    render(
-      <StudioHome
-        profiles={profiles}
-        onOpenWidgetStudio={vi.fn()}
-        onOpenProfile={onOpenProfile}
-        onCreateProfile={vi.fn()}
-        onSaveRecommended={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Editar Default Racing/i }));
-    expect(onOpenProfile).toHaveBeenCalledWith(profiles[0]);
+    expect(onOpenWidgetStudio).toHaveBeenCalledTimes(1);
+    expect(onOpenOwnProfiles).toHaveBeenCalledTimes(1);
+    expect(onOpenRecommended).toHaveBeenCalledTimes(1);
+    expect(onOpenCommunity).toHaveBeenCalledTimes(1);
   });
 });

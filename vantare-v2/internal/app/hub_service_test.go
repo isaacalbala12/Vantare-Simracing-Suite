@@ -176,6 +176,40 @@ func TestHubServiceActivateByIDWhenFilenameDiffers(t *testing.T) {
 	}
 }
 
+func TestHubServiceListProfilesIncludesProfileConfig(t *testing.T) {
+	dir := t.TempDir()
+	profile := &config.ProfileConfig{
+		ID:           "preview-profile",
+		Name:         "Preview Profile",
+		DisplayMode:  config.ModeRacing,
+		MonitorIndex: 0,
+		Widgets: []config.WidgetConfig{
+			{ID: "delta", Type: "delta", Enabled: true, UpdateHz: 30, Position: config.Rect{X: 760, Y: 40, W: 400, H: 48}},
+		},
+	}
+	if err := config.SaveFile(filepath.Join(dir, "preview-profile.json"), profile); err != nil {
+		t.Fatalf("save profile: %v", err)
+	}
+
+	service := app.NewHubService(dir, nil, nil, nil)
+	got, err := service.ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles() error = %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("profiles len=%d, want 1", len(got))
+	}
+	if got[0].Profile == nil {
+		t.Fatal("Profile is nil, want full profile config for previews")
+	}
+	if got[0].Profile.ID != "preview-profile" {
+		t.Fatalf("Profile.ID=%q, want preview-profile", got[0].Profile.ID)
+	}
+	if len(got[0].Profile.Widgets) != 1 {
+		t.Fatalf("Profile.Widgets len=%d, want 1", len(got[0].Profile.Widgets))
+	}
+}
+
 func TestHubServiceCreateDuplicate(t *testing.T) {
 	dir := t.TempDir()
 	fw := &fakeWindow{}
@@ -266,7 +300,6 @@ func TestProfileServiceLoadActiveProfileUpdatesSavePath(t *testing.T) {
 		t.Fatalf("saved to wrong file: X=%d", reloaded.Widgets[0].Position.X)
 	}
 }
-
 
 type fakeOverlayRuntime struct {
 	started int

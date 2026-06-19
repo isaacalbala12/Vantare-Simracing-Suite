@@ -3,16 +3,26 @@ import { Events } from "@wailsio/runtime";
 import { StudioHome } from "../overlays/StudioHome";
 import { WidgetStudio } from "../overlays/WidgetStudio";
 import { LayoutStudio } from "../overlays/LayoutStudio";
+import { OwnProfilesView } from "../overlays/OwnProfilesView";
+import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
+import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
 import { useOverlayStudioState } from "../overlays/useOverlayStudioState";
-import { cloneRecommendedProfile, type RecommendedProfile } from "../overlays/recommended-profiles";
+import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile } from "../overlays/recommended-profiles";
 import type { ProfileEntry } from "../state/overlay-workbench";
 
-type StudioMode = "home" | "widgets" | "layout";
+type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout";
 
 export function OverlaysStudioPage() {
   const studio = useOverlayStudioState();
   const [mode, setMode] = useState<StudioMode>("home");
   const [notice, setNotice] = useState<string | null>(null);
+  const [layoutTarget, setLayoutTarget] = useState<string | null>(null);
+
+  function goHome() {
+    setNotice(null);
+    setLayoutTarget(null);
+    setMode("home");
+  }
 
   function createProfile() {
     const name = window.prompt("Nombre del nuevo perfil");
@@ -22,10 +32,12 @@ export function OverlaysStudioPage() {
 
   function openWidgetStudio() {
     setNotice(null);
+    setLayoutTarget(null);
     setMode("widgets");
   }
 
   function openProfile(_profile: ProfileEntry) {
+    setLayoutTarget(_profile.id);
     Events.Emit("hub:activate", { file: _profile.file });
     setNotice(null);
     setMode("layout");
@@ -44,7 +56,7 @@ export function OverlaysStudioPage() {
           <button
             type="button"
             className="mb-4 w-fit text-xs font-bold uppercase tracking-wider text-vantare-textMuted hover:text-white cursor-pointer"
-            onClick={() => setMode("home")}
+            onClick={goHome}
           >
             ← Volver a Overlays Studio
           </button>
@@ -64,19 +76,19 @@ export function OverlaysStudioPage() {
         onSelectWidget={studio.setSelectedWidgetId}
         onChangeProfile={studio.updateDraft}
         onSave={studio.saveProfile}
-        onBack={() => setMode("home")}
+        onBack={goHome}
       />
     );
   }
 
   if (mode === "layout") {
-    if (!studio.profile) {
+    if (!studio.profile || studio.profile.id !== layoutTarget) {
       return (
         <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8">
           <button
             type="button"
             className="mb-4 w-fit text-xs font-bold uppercase tracking-wider text-vantare-textMuted hover:text-white cursor-pointer"
-            onClick={() => setMode("home")}
+            onClick={goHome}
           >
             ← Volver a Overlays Studio
           </button>
@@ -96,9 +108,34 @@ export function OverlaysStudioPage() {
         onSelectWidget={studio.setSelectedWidgetId}
         onChangeProfile={studio.updateDraft}
         onSave={studio.saveProfile}
-        onBack={() => setMode("home")}
+        onBack={goHome}
       />
     );
+  }
+
+  if (mode === "ownProfiles") {
+    return (
+      <OwnProfilesView
+        profiles={studio.profiles}
+        onOpenProfile={openProfile}
+        onCreateProfile={createProfile}
+        onBack={goHome}
+      />
+    );
+  }
+
+  if (mode === "recommended") {
+    return (
+      <RecommendedProfilesView
+        profiles={RECOMMENDED_PROFILES}
+        onSaveRecommended={saveRecommended}
+        onBack={goHome}
+      />
+    );
+  }
+
+  if (mode === "community") {
+    return <CommunityComingSoonView onBack={goHome} />;
   }
 
   return (
@@ -112,11 +149,12 @@ export function OverlaysStudioPage() {
       )}
 
       <StudioHome
-        profiles={studio.profiles}
+        profileCount={studio.profiles.length}
+        recommendedCount={RECOMMENDED_PROFILES.length}
         onOpenWidgetStudio={openWidgetStudio}
-        onOpenProfile={openProfile}
-        onCreateProfile={createProfile}
-        onSaveRecommended={saveRecommended}
+        onOpenOwnProfiles={() => setMode("ownProfiles")}
+        onOpenRecommended={() => setMode("recommended")}
+        onOpenCommunity={() => setMode("community")}
       />
     </>
   );

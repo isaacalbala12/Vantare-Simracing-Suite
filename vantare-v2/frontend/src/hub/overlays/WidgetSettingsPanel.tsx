@@ -14,6 +14,8 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       widget={widget}
       onChangeProfile={onChangeProfile}
       disabled={false}
+      showPositionControls={false}
+      showDangerActions={false}
     />
   );
 }

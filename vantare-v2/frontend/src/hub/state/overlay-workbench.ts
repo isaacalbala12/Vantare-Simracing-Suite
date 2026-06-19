@@ -1,9 +1,12 @@
+import type { ProfileConfig } from "../../lib/profile";
+
 export type ProfileEntry = {
   id: string;
   file: string;
   name?: string;
   displayMode: string;
   widgets: number;
+  profile?: ProfileConfig;
 };
 
 export type ProfileTarget = {

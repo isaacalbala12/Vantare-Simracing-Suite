@@ -36,7 +36,6 @@ describe("WidgetStudio", () => {
     expect(screen.getAllByRole("heading", { name: "Widgets" }).length).toBeGreaterThan(0);
     expect(screen.getByText("Estos cambios se guardan en el perfil activo.")).toBeTruthy();
     expect(screen.getAllByText("delta").length).toBeGreaterThan(0);
-    expect(screen.getByText("Tipo: delta")).toBeTruthy();
   });
 
   it("calls onBack from the back button", () => {
@@ -77,5 +76,24 @@ describe("WidgetStudio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
     expect(onSave).toHaveBeenCalled();
+  });
+
+  it("does not expose profile placement controls in Widget Studio", () => {
+    render(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="delta"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
+    expect(screen.queryByLabelText("X (px)")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull();
   });
 });

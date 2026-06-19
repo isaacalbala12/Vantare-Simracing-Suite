@@ -256,12 +256,12 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
     if (pd.brake != null) state.brake = normalizeInputToPercent(pd.brake);
       if (pd.clutch != null) state.clutch = normalizeInputToPercent(pd.clutch);
     }
-    const sd = d.session as Record<string, any> | undefined;
+    const sd = d.session as Record<string, unknown> | undefined;
     if (sd) {
-      if (sd.trackName != null) state.trackName = sd.trackName;
-      if (sd.sessionType != null) state.sessionType = sd.sessionType;
-      if (sd.sessionName != null) state.sessionName = sd.sessionName;
-      if (sd.timeRemainingInGamePhase != null) state.timeRemaining = sd.timeRemainingInGamePhase;
+      if (typeof sd.trackName === "string") state.trackName = sd.trackName;
+      if (typeof sd.sessionType === "number") state.sessionType = sd.sessionType;
+      if (typeof sd.sessionName === "string") state.sessionName = sd.sessionName;
+      if (typeof sd.timeRemainingInGamePhase === "number") state.timeRemaining = sd.timeRemainingInGamePhase;
     }
     if (d.vehicles && Array.isArray(d.vehicles)) {
       state.vehicles = d.vehicles as VehicleScoring[];

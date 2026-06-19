@@ -1,3 +1,5 @@
+// Legacy fallback for the pre-Overlays-Studio preview flow. Do not route to this
+// page from HubApp; remove after Overlays Studio has passed manual validation.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import type { ProfileConfig, LayoutOrigin, DisplayMode, WidgetConfig } from "../../lib/profile";

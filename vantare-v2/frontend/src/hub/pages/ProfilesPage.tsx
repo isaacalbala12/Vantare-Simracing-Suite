@@ -1,3 +1,5 @@
+// Legacy fallback for the pre-Overlays-Studio profile list. Do not route to this
+// page from HubApp; remove after Overlays Studio has passed manual validation.
 import { useState, useEffect, useCallback } from "react";
 import { Events } from "@wailsio/runtime";
 import { profileLabel, type ProfileEntry } from "../state/overlay-workbench";

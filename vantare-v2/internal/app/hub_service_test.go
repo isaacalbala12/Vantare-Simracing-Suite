@@ -191,6 +191,32 @@ func TestHubServiceCreateDuplicate(t *testing.T) {
 	}
 }
 
+func TestHubServiceSaveProfileAsOwnCopy(t *testing.T) {
+	dir := t.TempDir()
+	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
+
+	p := &config.ProfileConfig{
+		ID:          "custom-recommended-copy",
+		Name:        "Recommended Copy",
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{
+			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 1, Y: 2, W: 3, H: 4}},
+		},
+	}
+
+	if err := hubSvc.SaveProfileAsOwnCopy(p); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := config.LoadFile(filepath.Join(dir, "custom-recommended-copy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Name != "Recommended Copy" {
+		t.Fatalf("name=%q", loaded.Name)
+	}
+}
+
 func TestHubServiceRejectPathTraversal(t *testing.T) {
 	dir := t.TempDir()
 	fw := &fakeWindow{}

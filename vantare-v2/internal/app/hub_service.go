@@ -10,6 +10,33 @@ import (
 	"github.com/vantare/overlays/v2/pkg/config"
 )
 
+// SaveProfileAsOwnCopy persists an imported/read-only preset as a normal user profile.
+func (s *HubService) SaveProfileAsOwnCopy(profile *config.ProfileConfig) error {
+	if s.profilesDir == "" {
+		return fmt.Errorf("profiles directory not configured")
+	}
+	if profile == nil {
+		return fmt.Errorf("profile is required")
+	}
+	id := strings.TrimSpace(profile.ID)
+	if id == "" {
+		return fmt.Errorf("profile id is required")
+	}
+	basename := filepath.Base(id)
+	if basename != id || strings.Contains(basename, "..") {
+		return fmt.Errorf("invalid profile id")
+	}
+	if !strings.HasPrefix(id, "custom-") {
+		id = "custom-" + id
+		profile.ID = id
+	}
+	path := filepath.Join(s.profilesDir, id+".json")
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("profile already exists: %s", id)
+	}
+	return config.SaveFile(path, profile)
+}
+
 var invalidProfileNameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 // ProfileEntry is a lightweight profile descriptor for hub listing.

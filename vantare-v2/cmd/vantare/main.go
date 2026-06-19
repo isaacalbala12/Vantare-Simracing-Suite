@@ -533,6 +533,23 @@ func main() {
 		})
 	})
 
+	wailsApp.Event.On("hub:save-own-copy", func(event *application.CustomEvent) {
+		var data struct {
+			Profile config.ProfileConfig `json:"profile"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &data)
+			}
+		}
+		if err := hubSvc.SaveProfileAsOwnCopy(&data.Profile); err != nil {
+			log.Printf("hub:save-own-copy error: %v", err)
+			emitHubError(err.Error())
+			return
+		}
+		emitter.Emit("hub:profile-created", map[string]any{"ok": true})
+	})
+
 	wailsApp.Event.On("hub:create", func(event *application.CustomEvent) {
 		var data struct {
 			Name string `json:"name"`

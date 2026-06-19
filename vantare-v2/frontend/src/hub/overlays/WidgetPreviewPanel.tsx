@@ -1,55 +1,84 @@
+import { useEffect, useRef, useState } from "react";
 import type { WidgetConfig } from "../../lib/profile";
-import { getWidgetStyle } from "../../lib/profile";
+import { PreviewWidgetFrame } from "../preview/PreviewWidgetFrame";
 
 type WidgetPreviewPanelProps = {
-  widget: WidgetConfig | null;
+  activeWidget: WidgetConfig | null;
 };
 
-export function WidgetPreviewPanel({ widget }: WidgetPreviewPanelProps) {
-  if (!widget) {
+export function WidgetPreviewPanel({ activeWidget }: WidgetPreviewPanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  // Auto-fit calculation
+  useEffect(() => {
+    if (!activeWidget || !containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width: containerW, height: containerH } = entry.contentRect;
+        // Leave a 60px padding safety margin
+        const safeW = Math.max(1, containerW - 60);
+        const safeH = Math.max(1, containerH - 60);
+        
+        const scaleW = safeW / Math.max(1, activeWidget.position.w);
+        const scaleH = safeH / Math.max(1, activeWidget.position.h);
+        
+        // Use the smallest scale to fit, but cap it at 3x to avoid gigantic widgets
+        const fitScale = Math.min(scaleW, scaleH, 3);
+        setScale(fitScale);
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [activeWidget]);
+
+  if (!activeWidget) {
     return (
-      <section className="card-sleek flex min-h-[420px] items-center justify-center rounded-xl p-6">
-        <p className="text-sm text-vantare-textMuted">Selecciona un widget</p>
-      </section>
+      <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/40">
+        <span className="text-sm font-medium text-vantare-textMuted">
+          Selecciona un widget para editar su apariencia
+        </span>
+      </div>
     );
   }
 
-  return (
-    <section className="card-sleek flex min-h-[420px] flex-col rounded-xl p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-display text-3xl font-bold text-white">{widget.id}</h2>
-          <p className="mt-1 font-mono text-xs text-vantare-textMuted">Tipo: {widget.type}</p>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-          widget.enabled ? "bg-emerald-500/10 text-emerald-400" : "bg-white/5 text-vantare-textDim"
-        }`}>
-          {widget.enabled ? "Activo" : "Oculto"}
-        </span>
-      </div>
+  // Checkerboard pattern for high contrast against white/black widgets
+  const bgStyle = {
+    backgroundImage: "linear-gradient(45deg, #18181b 25%, transparent 25%), linear-gradient(-45deg, #18181b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #18181b 75%), linear-gradient(-45deg, transparent 75%, #18181b 75%)",
+    backgroundSize: "20px 20px",
+    backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
+    backgroundColor: "#09090b"
+  };
 
-      <div className="flex flex-1 items-center justify-center rounded-xl border border-white/10 bg-black/40 p-8">
-        <div className="w-full max-w-lg rounded-xl border border-white/10 bg-black/60 p-6 text-center shadow-2xl">
-          <p className="font-display text-2xl font-bold text-white">{widget.name || widget.id}</p>
-          <p className="mt-2 text-sm text-vantare-textMuted">
-            Preview compacto de configuración. La colocación se editará en Perfiles específicos.
-          </p>
-          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-              <p className="font-mono text-[10px] uppercase text-vantare-textDim">Hz</p>
-              <p className="font-display text-lg font-bold text-white">{widget.updateHz ?? 30} Hz</p>
-            </div>
-            <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-              <p className="font-mono text-[10px] uppercase text-vantare-textDim">Style</p>
-              <p className="truncate font-mono text-xs text-white">{getWidgetStyle(widget)}</p>
-            </div>
-            <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-              <p className="font-mono text-[10px] uppercase text-vantare-textDim">Tamaño</p>
-              <p className="font-mono text-xs text-white">{widget.position.w}×{widget.position.h}</p>
-            </div>
-          </div>
+  return (
+    <div 
+      ref={containerRef}
+      data-testid="widget-preview-container"
+      className="relative flex h-full items-center justify-center overflow-hidden rounded-xl border border-white/10"
+      style={bgStyle}
+    >
+      <div 
+        className="relative transition-transform duration-100 ease-out"
+        style={{
+          width: activeWidget.position.w,
+          height: activeWidget.position.h,
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
+        }}
+      >
+        {/* We reuse the PreviewWidgetFrame but suppress its absolute positioning via wrapper isolation */}
+        <div className="absolute inset-0 [&>div]:!relative [&>div]:!top-0 [&>div]:!left-0 [&>div]:!border-0">
+          <PreviewWidgetFrame
+            widget={activeWidget}
+            selected={false}
+            scale={1}
+            disabled={true}
+            onSelect={() => {}}
+          />
         </div>
       </div>
-    </section>
+    </div>
   );
 }

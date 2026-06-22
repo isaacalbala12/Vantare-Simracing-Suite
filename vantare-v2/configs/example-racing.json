@@ -28,6 +28,7 @@
     {
       "id": "relative",
       "type": "relative",
+      "variantId": "variant-relative-default",
       "enabled": true,
       "updateHz": 15,
       "position": {
@@ -153,6 +154,99 @@
           "textColor": "#FFFFFF"
         },
         "style": "vantare-racing"
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant-relative-default",
+      "widgetType": "relative",
+      "templateId": "relative-vantare-default",
+      "themeId": "vantare-racing",
+      "name": "Relative Default",
+      "columns": [
+        {
+          "id": "position",
+          "metricId": "position",
+          "enabled": true,
+          "width": 24,
+          "style": {
+            "align": "center"
+          }
+        },
+        {
+          "id": "class",
+          "metricId": "class",
+          "enabled": true,
+          "width": 6,
+          "style": {
+            "align": "center"
+          }
+        },
+        {
+          "id": "carNumber",
+          "metricId": "carNumber",
+          "enabled": true,
+          "width": 28,
+          "style": {
+            "align": "center"
+          }
+        },
+        {
+          "id": "driverName",
+          "metricId": "driverName",
+          "enabled": true,
+          "width": 120,
+          "format": {
+            "maxChars": 16,
+            "mode": "full"
+          },
+          "style": {
+            "align": "left"
+          }
+        },
+        {
+          "id": "gap",
+          "metricId": "gap",
+          "enabled": true,
+          "width": 48,
+          "style": {
+            "align": "right"
+          }
+        },
+        {
+          "id": "bestLap",
+          "metricId": "bestLap",
+          "enabled": true,
+          "width": 62,
+          "format": {
+            "decimals": 3,
+            "display": "full"
+          },
+          "style": {
+            "align": "center"
+          }
+        },
+        {
+          "id": "lastLap",
+          "metricId": "lastLap",
+          "enabled": true,
+          "width": 62,
+          "format": {
+            "decimals": 3,
+            "display": "full"
+          },
+          "style": {
+            "align": "center"
+          }
+        }
+      ],
+      "filters": {
+        "classScope": "all",
+        "includePlayer": true,
+        "rangeAhead": 3,
+        "rangeBehind": 4,
+        "rowHeightMode": "compact"
       }
     }
   ]

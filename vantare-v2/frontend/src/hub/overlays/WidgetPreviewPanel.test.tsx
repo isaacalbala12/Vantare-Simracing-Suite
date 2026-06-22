@@ -1,7 +1,7 @@
-import { render, screen, cleanup } from "@testing-library/react";
-import { describe, expect, it, afterEach, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WidgetPreviewPanel } from "./WidgetPreviewPanel";
-import type { WidgetConfig } from "../../lib/profile";
+import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
 
 afterEach(() => {
   cleanup();
@@ -15,38 +15,61 @@ const mockWidget: WidgetConfig = {
   position: { x: 0, y: 0, w: 400, h: 100 },
 };
 
-const mockProfile = {
-  displayMode: "racing" as const,
+const mockProfile: ProfileConfig = {
+  displayMode: "racing",
   monitorIndex: 0,
   widgets: [mockWidget],
 };
 
 describe("WidgetPreviewPanel", () => {
-  it("renders a real widget frame with mock telemetry and checkerboard background", () => {
-    render(<WidgetPreviewPanel profile={mockProfile} activeWidget={mockWidget} />);
+  it("renders an empty state when no widget is selected", () => {
+    render(<WidgetPreviewPanel profile={mockProfile} activeWidget={null} />);
 
-    // Check that the preview frame is rendered (using the testid from PreviewWidgetFrame)
-    expect(screen.getByTestId("preview-widget-frame-test-widget")).toBeTruthy();
-
-    // Check that the old placeholder text is gone
-    expect(screen.queryByText(/Preview compacto de configuración/i)).toBeNull();
-    
-    // Check that checkerboard background class is applied
-    const container = screen.getByTestId("widget-preview-container");
-    expect(container.style.backgroundImage).toContain("linear-gradient");
+    expect(screen.getByTestId("widget-sandbox-preview-empty")).toBeTruthy();
+    expect(screen.queryByTestId("widget-sandbox-preview")).toBeNull();
   });
 
-  it("renders when ResizeObserver is unavailable", () => {
+  it("renders the sandbox preview for the active widget without PreviewWidgetFrame", () => {
+    render(<WidgetPreviewPanel profile={mockProfile} activeWidget={mockWidget} />);
+
+    expect(screen.getByTestId("widget-sandbox-preview")).toBeTruthy();
+    expect(screen.getByTestId("widget-sandbox-renderer")).toBeTruthy();
+    expect(screen.queryByTestId("preview-widget-frame-test-widget")).toBeNull();
+  });
+
+  it("renders the sandbox when ResizeObserver is unavailable", () => {
     const originalResizeObserver = window.ResizeObserver;
     vi.stubGlobal("ResizeObserver", undefined);
 
     try {
       render(<WidgetPreviewPanel profile={mockProfile} activeWidget={mockWidget} />);
 
-      expect(screen.getByTestId("widget-preview-container")).toBeTruthy();
-      expect(screen.getByTestId("preview-widget-frame-test-widget")).toBeTruthy();
+      expect(screen.getByTestId("widget-sandbox-preview")).toBeTruthy();
+      expect(screen.getByTestId("widget-sandbox-renderer")).toBeTruthy();
     } finally {
       vi.stubGlobal("ResizeObserver", originalResizeObserver);
     }
+  });
+
+  it("ignores widget.position.x/y in the sandbox preview", () => {
+    const profile: ProfileConfig = {
+      ...mockProfile,
+      widgets: [
+        {
+          id: "delta-large",
+          type: "delta",
+          enabled: true,
+          updateHz: 15,
+          position: { x: 760, y: 40, w: 400, h: 48 },
+        },
+      ],
+    };
+    const widget = profile.widgets[0];
+
+    render(<WidgetPreviewPanel profile={profile} activeWidget={widget} />);
+
+    const sandbox = screen.getByTestId("widget-sandbox-preview");
+    expect(sandbox.style.backgroundImage).toContain("linear-gradient");
+    expect(widget.position).toEqual({ x: 760, y: 40, w: 400, h: 48 });
   });
 });

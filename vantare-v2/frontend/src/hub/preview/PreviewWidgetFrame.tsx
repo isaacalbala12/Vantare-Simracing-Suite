@@ -1,31 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProfileConfig, Rect, WidgetConfig } from "../../lib/profile";
-import { enrichWidgetPropsWithVariant } from "../../lib/widget-variants";
-import { DeltaWidget } from "../../overlay/widgets/DeltaWidget";
-import { RelativeWidget } from "../../overlay/widgets/RelativeWidget";
-import { StandingsWidget } from "../../overlay/widgets/StandingsWidget";
-import { TelemetryWidget } from "../../overlay/widgets/TelemetryWidget";
-import { TelemetryVerticalWidget } from "../../overlay/widgets/TelemetryVerticalWidget";
-import { PedalsWidget } from "../../overlay/widgets/PedalsWidget";
-import type { ComponentType } from "react";
-import type { WidgetTelemetryMode } from "../../overlay/widgets/use-widget-telemetry";
 import { clampSize, snap } from "../../lib/canvas-math";
-
-type WidgetProps = {
-  editMode: boolean;
-  telemetryMode?: WidgetTelemetryMode;
-  updateHz?: number;
-  props?: Record<string, unknown>;
-};
-
-const WIDGETS: Record<string, ComponentType<WidgetProps>> = {
-  delta: DeltaWidget,
-  relative: RelativeWidget,
-  standings: StandingsWidget,
-  telemetry: TelemetryWidget,
-  "telemetry-vertical": TelemetryVerticalWidget,
-  pedals: PedalsWidget,
-};
+import { WidgetRenderer } from "./WidgetRenderer";
 
 const MIN_SIZE = { w: 80, h: 40 };
 
@@ -59,8 +35,6 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
   disabled = false,
   profile,
 }: PreviewWidgetFrameProps) {
-  const Component = WIDGETS[widget.type];
-
   // Local visual position during drag/resize to avoid parent re-renders.
   const [previewRect, setPreviewRect] = useState<Rect | null>(null);
   const visualRect = previewRect ?? widget.position ?? { x: 0, y: 0, w: 200, h: 200 };
@@ -132,18 +106,19 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
         willChange: "left, top, width, height",
       }}
     >
-      {Component ? (
-        <div
-          className={`w-full h-full overflow-hidden ${widget.enabled ? "" : "opacity-45 grayscale"}`}
-          style={{ pointerEvents: "none" }}
-        >
-          <Component editMode={true} telemetryMode="mock" updateHz={widget.updateHz} props={enrichWidgetPropsWithVariant(profile, widget)} />
-        </div>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-white/30 text-xs font-mono">
-          {widget.type}
-        </div>
-      )}
+      <div
+        className={`w-full h-full overflow-hidden ${widget.enabled ? "" : "opacity-45 grayscale"}`}
+        style={{ pointerEvents: "none" }}
+      >
+        <WidgetRenderer
+          profile={profile}
+          widget={widget}
+          editMode
+          telemetryMode="mock"
+          updateHz={widget.updateHz}
+          disabled
+        />
+      </div>
       {!widget.enabled && (
         <div className="absolute inset-0 bg-black/30 pointer-events-none" />
       )}

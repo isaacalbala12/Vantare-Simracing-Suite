@@ -10,7 +10,7 @@ type WidgetSettingsPanelProps = {
 
 export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: WidgetSettingsPanelProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-y-auto">
       <div className="min-h-0 flex-1">
         <PreviewInspector
           profile={profile}

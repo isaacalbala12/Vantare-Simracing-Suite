@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getTelemetryRef, type VehicleScoring } from "../../lib/telemetry-ref";
+import { getTelemetryRef } from "../../lib/telemetry-ref";
 import { getMockTelemetry } from "./mock-telemetry";
 import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
@@ -9,6 +9,18 @@ import { brandTextColor } from "../../lib/color-utils";
 import { startFrameBudgetLoop } from "../../lib/frame-budget";
 import type { ColumnConfig } from "../../lib/profile";
 import { createDefaultRelativeColumns } from "./relative-catalog";
+import { getRelativeFilters, selectRelativeRows } from "./relative-filters";
+import {
+  formatRelativeDriverName,
+  formatRelativeLapTime,
+  DEFAULT_RELATIVE_COLUMN_WIDTHS,
+  getRelativeColumnAlign,
+  getRelativeColumnColor,
+  getRelativeColumnWidth,
+  getRelativeIntrinsicWidth,
+  getRelativeJustifyClass,
+} from "./relative-format";
+import { formatSignedGap, resolveClassColor } from "./relative-widget-helpers";
 
 type RelativeProps = {
   editMode: boolean;
@@ -19,7 +31,12 @@ type RelativeProps = {
 
 type RelativeRenderVariant = {
   columns?: ColumnConfig[];
+  filters?: Record<string, unknown>;
 };
+
+function getRelativeColumnFallbackWidth(column: ColumnConfig): number {
+  return DEFAULT_RELATIVE_COLUMN_WIDTHS[column.id] ?? 0;
+}
 
 function getActiveRelativeColumns(props?: Record<string, unknown>): ColumnConfig[] {
   const variant = props?.variant as RelativeRenderVariant | undefined;
@@ -27,77 +44,19 @@ function getActiveRelativeColumns(props?: Record<string, unknown>): ColumnConfig
   return sourceColumns.filter((column) => column.enabled);
 }
 
-export function formatLapTime(seconds: number | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "-";
-  const minutes = Math.floor(seconds / 60);
-  const remaining = seconds - minutes * 60;
-  return `${minutes}:${remaining.toFixed(3).padStart(6, "0")}`;
-}
-
 const BAKED_PANEL_BG = "linear-gradient(180deg, #3a050a 0%, #0d0102 100%)";
 const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #111 0%, #222 50%, #111 100%)";
 const BAKED_PLAYER_BG = "linear-gradient(90deg, rgba(230,57,70,0.2) 0%, rgba(155,34,38,0.4) 100%)";
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function resolveClassColor(
-  vehicleClass: string | undefined,
-  a: Record<string, unknown>
-): string {
-  const cls = (vehicleClass ?? "").toUpperCase();
-  if (cls === "HYPERCAR") return a.classHypercarColor as string;
-  if (cls === "LMP2") return a.classLmp2Color as string;
-  if (cls === "LMP3") return a.classLmp3Color as string;
-  if (cls === "GT3" || cls === "LMGT3") return a.classGt3Color as string;
-  return a.classUnknownColor as string;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function formatSignedGap(seconds: number | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds)) return "—";
-  if (seconds === 0) return "—";
-  const sign = seconds > 0 ? "+" : "";
-  return `${sign}${seconds.toFixed(1)}`;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function selectRelativeRowsByGap(
-  vehicles: Partial<VehicleScoring>[],
-  rangeAhead: number,
-  rangeBehind: number
-): Partial<VehicleScoring>[] {
-  const player = vehicles.find((v) => v.isPlayer);
-  if (!player) return [];
-
-  const withGap = vehicles
-    .filter((v) => !v.isPlayer && v.timeGapToPlayer != null && Number.isFinite(v.timeGapToPlayer))
-    .map((v) => ({ vehicle: v, gap: v.timeGapToPlayer! }));
-
-	const ahead = withGap
-		.filter((x) => x.gap > 0)
-		.sort((a, b) => a.gap - b.gap)
-		.slice(0, rangeAhead)
-		.map((x) => x.vehicle)
-		.reverse();
-
-  const behind = withGap
-    .filter((x) => x.gap < 0)
-    .sort((a, b) => b.gap - a.gap)
-    .slice(0, rangeBehind)
-    .map((x) => x.vehicle);
-
-  return [...ahead, player, ...behind];
-}
-
-function truncate(name: string, max: number): string {
-  if (name.length <= max) return name;
-  return name.slice(0, max - 1) + "…";
-}
+const COMPACT_ROW_HEIGHT = 31;
 
 export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }: RelativeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const rangeAhead = (props?.rangeAhead as number) ?? 3;
-  const rangeBehind = (props?.rangeBehind as number) ?? 3;
+  const variant = props?.variant as RelativeRenderVariant | undefined;
+  const filters = getRelativeFilters(variant?.filters, props);
+  const { rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode } = filters;
+  const activeColumns = getActiveRelativeColumns(props);
+  const intrinsicWidth = getRelativeIntrinsicWidth(activeColumns);
   const lastFingerprintRef = useRef("");
   const { appearance: a } = resolveWidgetAppearance("relative", props);
 
@@ -107,23 +66,27 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
       const container = containerRef.current;
       if (!container) return;
 
-      const visible = selectRelativeRowsByGap(t.vehicles, rangeAhead, rangeBehind);
-      const player = visible.find((v) => v.isPlayer);
+      const currentFilters = { rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode };
+      const visible = selectRelativeRows(t.vehicles, currentFilters);
+      const player = t.vehicles.find((v) => v.isPlayer);
 
       if (!player) {
         setHTMLIfChanged(container, `<div class="text-xs font-mono p-2" style="color:color-mix(in srgb, ${a.textColor} 30%, transparent)">No player</div>`);
         return;
       }
 
-      const activeColumns = getActiveRelativeColumns(props);
-      const columnFingerprint = activeColumns.map((column) => `${column.id}:${column.metricId}:${column.enabled}`).join(",");
-      const fingerprint = `${columnFingerprint}|${visible.map(v =>
+      const columnFingerprint = activeColumns
+        .map((column) => `${column.id}:${column.metricId}:${column.enabled}:${column.width ?? ""}:${JSON.stringify(column.format ?? {})}:${JSON.stringify(column.style ?? {})}`)
+        .join(",");
+      const fingerprint = `${rowHeightMode}|${columnFingerprint}|${visible.map(v =>
         `${v.id}:${v.place}:${v.timeGapToPlayer?.toFixed(2)}:${v.inPits}:${v.vehicleClass}:${v.driverNumber}:${v.driverName}:${v.teamBrandColor}:${v.bestLapTime}:${v.lastLapTime}:${v.isPlayer}`
       ).join("|")}`;
       if (fingerprint === lastFingerprintRef.current) return;
       lastFingerprintRef.current = fingerprint;
 
-      const rowHeight = Math.max(20, Math.floor((container.clientHeight - 8) / Math.max(1, visible.length)));
+      const rowHeight = rowHeightMode === "compact"
+        ? COMPACT_ROW_HEIGHT
+        : Math.max(20, Math.floor((container.clientHeight - 8) / Math.max(1, visible.length)));
 
       const rows = visible.map((v, idx) => {
         const isP = v.isPlayer;
@@ -148,55 +111,66 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
 
         const leftInset = isP ? `box-shadow: inset 3px 0 0 0 ${a.accentColor}` : "";
 
-        const numberCell = v.driverNumber
-          ? `<div class="w-7 flex items-center justify-center py-[2px] px-[2px] ml-1 shrink-0" style="height:${rowHeight}px">
-              <div class="w-full h-full flex items-center justify-center" style="background:${teamBg}">
-                <span class="font-black text-[11px]" style="color:${tc}">${escapeHTML(v.driverNumber)}</span>
-              </div>
-            </div>`
-          : "";
-
         const cells = activeColumns.map((column) => {
+          const width = getRelativeColumnWidth(column, getRelativeColumnFallbackWidth(column));
           switch (column.id) {
           case "position":
-            return `<div class="w-6 text-center shrink-0" style="color:#9CA3AF">${v.place ?? ""}</div>`;
+            return `<div class="text-center shrink-0" style="width:${width}px;color:#9CA3AF">${v.place ?? ""}</div>`;
           case "class":
-            return `<div class="w-1.5 h-full shrink-0" style="background:${resolveClassColor(v.vehicleClass, a)}"></div>`;
+            return `<div class="h-full shrink-0" style="width:${width}px;background:${resolveClassColor(v.vehicleClass, a)}"></div>`;
           case "carNumber":
-            return numberCell;
-          case "driverName":
-            return `<div class="flex-1 px-2 tracking-wide truncate" style="color:${isP ? "#FFFFFF" : "#E5E7EB"}">${escapeHTML(truncate(v.driverName ?? "?", 18))}</div>`;
+            return `<div class="flex items-center justify-center py-[2px] px-[2px] shrink-0" style="width:${width}px;height:${rowHeight}px">
+              ${v.driverNumber ? `<div class="w-full h-full flex items-center justify-center" style="background:${teamBg}">
+                <span class="font-black text-[11px]" style="color:${tc}">${escapeHTML(v.driverNumber)}</span>
+              </div>` : ""}
+            </div>`;
+          case "driverName": {
+            const color = getRelativeColumnColor(column, isP ? "#FFFFFF" : "#E5E7EB");
+            const align = getRelativeColumnAlign(column, "left");
+            return `<div class="px-2 tracking-wide shrink-0 whitespace-nowrap overflow-visible ${getRelativeJustifyClass(align)}" style="width:${width}px;color:${color}">
+              ${escapeHTML(formatRelativeDriverName(v.driverName, column))}
+            </div>`;
+          }
           case "gap":
-            return `<div class="px-2 flex items-center justify-end font-mono text-[10px] shrink-0">
+            return `<div class="px-2 flex items-center justify-end font-mono text-[10px] shrink-0" style="width:${width}px">
               <span style="color:${gapColor}">${gapDisplay}</span>
             </div>`;
-          case "bestLap":
-            return `<div class="px-2 w-[62px] flex items-center justify-end font-mono text-[10px] shrink-0" style="color:${a.textColor}">
-              ${escapeHTML(formatLapTime(v.bestLapTime))}
+          case "bestLap": {
+            const color = getRelativeColumnColor(column, a.textColor);
+            const align = getRelativeColumnAlign(column, "right");
+            return `<div class="px-2 flex items-center font-mono text-[10px] shrink-0 ${getRelativeJustifyClass(align)}" style="width:${width}px">
+              <span style="color:${color}">${escapeHTML(formatRelativeLapTime(v.bestLapTime, column))}</span>
             </div>`;
-          case "lastLap":
-            return `<div class="px-2 w-[62px] flex items-center justify-end font-mono text-[10px] shrink-0" style="color:${a.textColor}">
-              ${escapeHTML(formatLapTime(v.lastLapTime))}
+          }
+          case "lastLap": {
+            const color = getRelativeColumnColor(column, a.textColor);
+            const align = getRelativeColumnAlign(column, "right");
+            return `<div class="px-2 flex items-center font-mono text-[10px] shrink-0 ${getRelativeJustifyClass(align)}" style="width:${width}px">
+              <span style="color:${color}">${escapeHTML(formatRelativeLapTime(v.lastLapTime, column))}</span>
             </div>`;
+          }
           default:
             return "";
           }
         }).join("");
 
-        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="height:${rowHeight}px;background:${isP ? BAKED_PLAYER_BG : bgRow};${leftInset}">
+        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="min-width:${intrinsicWidth}px;width:max(100%, ${intrinsicWidth}px);height:${rowHeight}px;background:${isP ? BAKED_PLAYER_BG : bgRow};${leftInset}">
           ${cells}
         </div>`;
       });
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [rangeAhead, rangeBehind, updateHz, editMode, telemetryMode, props, a]);
+  }, [rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode, updateHz, editMode, telemetryMode, props, a, activeColumns, intrinsicWidth]);
+
+  const compactRows = rowHeightMode === "compact";
 
   return (
     <div
       data-testid="relative-panel"
-      className="w-full h-full flex flex-col overflow-hidden rounded-lg font-display"
+      className={`${compactRows ? "inline-flex" : "flex w-full h-full"} flex-col overflow-hidden rounded-lg font-display`}
       style={{
+        width: compactRows ? `${intrinsicWidth}px` : undefined,
         background: BAKED_PANEL_BG,
         border: `1px solid ${a.borderColor}`,
         color: a.textColor,
@@ -216,7 +190,7 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
       >
         RELATIVE
       </div>
-      <div ref={containerRef} className="flex-1 overflow-hidden mt-1 px-1" />
+      <div ref={containerRef} className={`${compactRows ? "" : "flex-1"} overflow-hidden mt-1 px-1`} />
     </div>
   );
 }

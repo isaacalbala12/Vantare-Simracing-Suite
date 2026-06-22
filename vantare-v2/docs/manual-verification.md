@@ -46,6 +46,31 @@ Usa `-live=false` para no depender de LMU.
    - boton `Eliminar`.
 6. Cambia una propiedad simple y revisa que el estado de guardado responde.
 
+## Overlays Studio - Relative configurable
+
+1. Entra en `Overlays Studio`.
+2. Pulsa `Widgets`.
+3. Selecciona `relative`.
+4. Activa `Mostrar mejor vuelta` y `Mostrar ultima vuelta`.
+5. En `Altura de filas`, prueba:
+   - `Rellenar altura del widget`,
+   - `Reducir altura visual`.
+6. En modo compacto (`Reducir altura visual`), comprueba:
+   - el bloque queda centrado en el checkerboard;
+   - no hay espacio vacio grande a la derecha;
+   - las columnas siguen alineadas por fila;
+   - no hay clipping de nombre, gap o vueltas;
+   - al cambiar formato/ancho de columnas, el bloque crece o encoge alrededor del centro.
+7. En modo fill, comprueba que el widget respeta la caja guardada del layout.
+8. Cambia filtros:
+   - `Coches delante`,
+   - `Coches detras`,
+   - `Filtro de clase`,
+   - `Mostrar coche del jugador`.
+9. Verifica que los cambios se guardan y se mantienen al recargar.
+
+Si la preview aislada vuelve a mostrar offsets, clipping o cajas invisibles, revisar `widget-preview-bug-log.md` antes de aplicar fixes visuales.
+
 ## Overlays Studio - Mis perfiles y layout
 
 1. Entra en `Overlays Studio`.

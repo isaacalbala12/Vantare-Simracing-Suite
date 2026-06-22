@@ -6,11 +6,19 @@ Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 
 - `../AGENTS.md`: reglas obligatorias para cualquier agente.
 - `current-plan.md`: estado actual, alcance vivo y proximas tareas.
+- `master-feature-plan.md`: plan maestro de features y orden de desarrollo.
+- `roadmap-execution-board.md`: tablero ejecutable/orquestable de minifases y workers.
+- `versioning-and-release-gates.md`: versionado `X.X.X.X` y gates de salida por fase.
+- `feature-architecture-map.md`: limites de arquitectura por feature.
+- `product-decisions.md`: decisiones cerradas y pendientes.
+- `release-checklists.md`: checklists de alpha, beta, pago y release.
 - `superpowers/plans/`: planes detallados ya aprobados para Overlays Studio.
 - `architecture.md`: separacion entre Go, TypeScript, dominio, adaptadores y UI.
 - `domain-model.md`: nombres canonicos del producto.
 - `testing-strategy.md`: comandos y reglas de testing.
 - `manual-verification.md`: pasos manuales para validar sin leer codigo.
+- `widget-preview-bug-log.md`: bugs, causas raiz y reglas para no romper la preview aislada de WidgetStudio.
+- `alpha-beta-roadmap.md`: resumen de estrategia alpha/beta; la fuente operativa es `master-feature-plan.md`.
 - `agent-workflow.md`: flujo orquestador -> worker -> reviewer.
 - `operations.md`: comandos basicos del repo.
 - `go-review-checklist.md`: checklist para revisar Go.
@@ -59,4 +67,4 @@ El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, e
 
 ## Estado de roadmap
 
-La documentacion viva actual deja constancia de que Fase A, Fase A2, Fase B y la restauracion de controles live estan implementadas. Todavia no hay un roadmap de lanzamiento alpha/beta cerrado dentro del repo: el siguiente paso recomendado es una comprobacion manual completa y, con esa evidencia, un roadmap corto de 7-10 dias.
+La documentacion viva actual deja constancia de que Fase A, Fase A2, Fase B de preview/widgets y la restauracion de controles live estan implementadas. La estabilizacion de la preview aislada queda documentada en `widget-preview-bug-log.md`. El plan maestro operativo vive en `master-feature-plan.md`; `alpha-beta-roadmap.md` queda como resumen de estrategia.

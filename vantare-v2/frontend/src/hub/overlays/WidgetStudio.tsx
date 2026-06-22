@@ -28,7 +28,7 @@ export function WidgetStudio({
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile.widgets[0] ?? null;
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <button
@@ -65,7 +65,10 @@ export function WidgetStudio({
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-[280px_1fr_340px] lg:overflow-hidden">
+      <div
+        data-testid="widget-studio-grid"
+        className="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-[280px_1fr_340px] lg:grid-rows-[1fr] lg:overflow-hidden"
+      >
         <StudioWidgetList
           widgets={profile.widgets}
           selectedWidgetId={selectedWidget?.id ?? null}

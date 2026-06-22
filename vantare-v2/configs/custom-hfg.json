@@ -19,6 +19,7 @@
     {
       "id": "relative",
       "type": "relative",
+      "variantId": "variant-relative-default",
       "enabled": true,
       "updateHz": 15,
       "position": {
@@ -39,6 +40,59 @@
         "w": 340,
         "h": 420
       }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant-relative-default",
+      "widgetType": "relative",
+      "templateId": "relative-vantare-default",
+      "themeId": "vantare-racing",
+      "name": "Relative Default",
+      "columns": [
+        {
+          "id": "position",
+          "metricId": "position",
+          "enabled": true,
+          "width": 24
+        },
+        {
+          "id": "class",
+          "metricId": "class",
+          "enabled": true,
+          "width": 6
+        },
+        {
+          "id": "carNumber",
+          "metricId": "carNumber",
+          "enabled": true,
+          "width": 28
+        },
+        {
+          "id": "driverName",
+          "metricId": "driverName",
+          "enabled": true,
+          "width": 120
+        },
+        {
+          "id": "gap",
+          "metricId": "gap",
+          "enabled": true,
+          "width": 48
+        },
+        {
+          "id": "bestLap",
+          "metricId": "bestLap",
+          "enabled": true,
+          "width": 62
+        },
+        {
+          "id": "lastLap",
+          "metricId": "lastLap",
+          "enabled": true,
+          "width": 62
+        }
+      ]
     }
   ]
 }

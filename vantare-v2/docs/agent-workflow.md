@@ -6,7 +6,26 @@
 
 Define objetivo, alcance, riesgos, prompt para worker, prompt para reviewer y checklist para el usuario.
 
-No implementa codigo salvo peticion explicita.
+No implementa codigo salvo peticion explicita o necesidad estricta para desbloquear el trabajo.
+
+En este proyecto, el orquestador principal debe evitar editar codigo por defecto para ahorrar contexto y mantener el hilo centrado en decisiones, prompts, reviews y verificacion. La implementacion normal se delega a workers.
+
+Puede editar directamente:
+
+- documentacion viva;
+- planes;
+- prompts;
+- cambios de codigo triviales si crear un worker costaria mas contexto que resolverlo;
+- fixes urgentes aprobados por el usuario.
+
+No debe editar directamente:
+
+- features completas;
+- refactors;
+- persistencia/schema;
+- UI compleja;
+- backend delicado;
+- cambios que puedan ser ejecutados por un worker con miniplan claro.
 
 ## Worker
 
@@ -40,14 +59,34 @@ Debe buscar:
 ## Flujo normal
 
 1. Usuario debate con orquestador.
-2. Orquestador crea plan pequeno.
-3. Orquestador crea prompt worker.
-4. Worker implementa.
-5. Worker reporta evidencia.
-6. Reviewer audita sin editar.
-7. Orquestador recomienda aceptar, corregir, dividir o revertir.
-8. Si se acepta, se hace commit pequeno.
-9. Se actualiza `docs/current-plan.md`.
+2. Orquestador consulta `docs/roadmap-execution-board.md`.
+3. Orquestador crea miniplan pequeno.
+4. Orquestador crea prompt worker.
+5. Worker implementa.
+6. Worker reporta evidencia.
+7. Reviewer audita sin editar.
+8. Orquestador recomienda aceptar, corregir, dividir o revertir.
+9. Si se acepta, se hace commit pequeno cuando el usuario lo pida.
+10. Se actualiza `docs/current-plan.md` y `docs/roadmap-execution-board.md`.
+
+## Documentos ejecutables y orquestables
+
+Todo documento operativo debe permitir que otro modelo pueda continuar el trabajo.
+
+Debe indicar:
+
+- objetivo;
+- fase/version;
+- orden de ejecucion;
+- dependencias;
+- modelo recomendado si aplica;
+- que leer antes de trabajar;
+- que no tocar;
+- checks esperados;
+- verificacion manual;
+- criterio de cierre.
+
+Si un documento solo describe ideas y no permite ejecutar u orquestar, debe marcarse como conceptual o moverse fuera del flujo operativo.
 
 ## Tipos de tarea
 

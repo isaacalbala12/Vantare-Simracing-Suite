@@ -82,4 +82,21 @@ describe("relative catalog", () => {
       "lastLap",
     ]);
   });
+
+  it("creates default formats for driver name and lap columns", () => {
+    const columns = createDefaultRelativeColumns();
+
+    expect(columns.find((column) => column.id === "driverName")?.format).toEqual({
+      mode: "full",
+      maxChars: 18,
+    });
+    expect(columns.find((column) => column.id === "bestLap")?.format).toEqual({
+      display: "full",
+      decimals: 3,
+    });
+    expect(columns.find((column) => column.id === "lastLap")?.format).toEqual({
+      display: "full",
+      decimals: 3,
+    });
+  });
 });

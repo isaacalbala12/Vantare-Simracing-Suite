@@ -69,6 +69,14 @@ pnpm --dir frontend test -- LayoutStudio.test.tsx
 pnpm --dir frontend test -- OverlaysStudioPage.test.tsx
 ```
 
+Preview aislada de WidgetStudio:
+
+```powershell
+pnpm --dir frontend test -- PreviewScaler WidgetSandboxPreview WidgetPreviewPanel RelativeWidget relative-format WidgetRenderer
+```
+
+Usar este bloque cuando se toque centrado, escala, medicion DOM, Relative compacto/fill o `WidgetPreviewPanel`.
+
 ## Reglas
 
 - Bug arreglado: anadir test de regresion si es viable.

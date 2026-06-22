@@ -181,4 +181,42 @@ describe("WidgetStudio", () => {
     expect(screen.getByLabelText("Mostrar última vuelta")).toBeTruthy();
     expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
   });
+
+  it("constrains the desktop grid row so tall settings do not inflate the preview area", () => {
+    render(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="relative"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    const grid = screen.getByTestId("widget-studio-grid");
+    expect(grid.className).toContain("lg:grid-rows-[1fr]");
+  });
+
+  it("uses a fixed viewport-height shell so preview centering matches the visible area", () => {
+    render(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="relative"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    const grid = screen.getByTestId("widget-studio-grid");
+    const shell = grid.parentElement;
+    expect(shell?.className).toContain("h-[calc(100vh-3.5rem)]");
+    expect(shell?.className).not.toContain("min-h-[calc(100vh-3.5rem)]");
+  });
 });

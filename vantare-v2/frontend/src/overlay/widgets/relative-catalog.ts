@@ -164,10 +164,20 @@ export function getRelativeTemplate(id: string): RelativeTemplateDefinition {
 }
 
 export function createDefaultRelativeColumns(): ColumnConfig[] {
-  return RELATIVE_COLUMNS.map((column) => ({
-    id: column.id,
-    metricId: column.metricId,
-    enabled: column.defaultEnabled,
-    width: column.defaultWidth,
-  }));
+  return RELATIVE_COLUMNS.map((column) => {
+    const config: ColumnConfig = {
+      id: column.id,
+      metricId: column.metricId,
+      enabled: column.defaultEnabled,
+      width: column.defaultWidth,
+      style: { align: column.align },
+    };
+    if (column.id === "driverName") {
+      config.format = { mode: "full", maxChars: 18 };
+    }
+    if (column.id === "bestLap" || column.id === "lastLap") {
+      config.format = { display: "full", decimals: 3 };
+    }
+    return config;
+  });
 }

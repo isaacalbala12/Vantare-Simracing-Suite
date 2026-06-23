@@ -223,4 +223,29 @@ describe("StandingsWidget", () => {
     expect(panel.style.top).toBe("");
     expect(panel.style.width).toBe("");
   });
+
+  it("uses race mock scenario when provided", () => {
+    render(<StandingsWidget editMode={true} updateHz={15} mockSessionScenario="race" />);
+    tick(100);
+
+    const panel = screen.getByTestId("standings-panel");
+    expect(panel.textContent).toContain("Leader");
+    expect(panel.textContent).toContain("+1.430s");
+  });
+
+  it("uses practice mock scenario when provided", () => {
+    render(<StandingsWidget editMode={true} updateHz={15} mockSessionScenario="practice" />);
+    tick(100);
+
+    const panel = screen.getByTestId("standings-panel");
+    expect(panel.textContent).toContain("1:29.823");
+  });
+
+  it("uses qualifying mock scenario when provided", () => {
+    render(<StandingsWidget editMode={true} updateHz={15} mockSessionScenario="qual" />);
+    tick(100);
+
+    const panel = screen.getByTestId("standings-panel");
+    expect(panel.textContent).toContain("1:29.823");
+  });
 });

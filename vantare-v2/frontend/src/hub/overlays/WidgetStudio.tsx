@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { ProfileConfig } from "../../lib/profile";
+import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
 import type { SaveState } from "./useOverlayStudioState";
 import { StudioWidgetList } from "./StudioWidgetList";
 import { WidgetPreviewPanel } from "./WidgetPreviewPanel";
@@ -26,6 +28,7 @@ export function WidgetStudio({
   onBack,
 }: WidgetStudioProps) {
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile.widgets[0] ?? null;
+  const [mockSessionScenario, setMockSessionScenario] = useState<MockSessionScenario>("race");
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
@@ -74,7 +77,33 @@ export function WidgetStudio({
           selectedWidgetId={selectedWidget?.id ?? null}
           onSelectWidget={onSelectWidget}
         />
-        <WidgetPreviewPanel profile={profile} activeWidget={selectedWidget} />
+        <div className="flex min-h-0 flex-col gap-2">
+          {selectedWidget?.type === "standings" ? (
+            <div className="flex items-center gap-2 text-xs text-neutral-400" data-testid="mock-session-selector">
+              <span className="uppercase tracking-wide text-neutral-500">Mock</span>
+              {[
+                ["practice", "Práctica"],
+                ["qual", "Qualy"],
+                ["race", "Carrera"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  data-testid={`mock-session-${value}`}
+                  className={
+                    value === mockSessionScenario
+                      ? "rounded bg-neutral-700 px-2 py-1 font-bold text-white"
+                      : "rounded px-2 py-1 text-neutral-400 hover:bg-neutral-800 hover:text-white cursor-pointer"
+                  }
+                  onClick={() => setMockSessionScenario(value as MockSessionScenario)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <WidgetPreviewPanel profile={profile} activeWidget={selectedWidget} mockSessionScenario={mockSessionScenario} />
+        </div>
         <WidgetSettingsPanel
           profile={profile}
           widget={selectedWidget}

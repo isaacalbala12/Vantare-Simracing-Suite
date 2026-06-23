@@ -14,7 +14,12 @@ const getPayload = <T,>(event: { data: unknown }): T => {
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
-export function useOverlayStudioState() {
+type UseOverlayStudioStateOptions = {
+  autosave?: boolean;
+};
+
+export function useOverlayStudioState(options: UseOverlayStudioStateOptions = {}) {
+  const { autosave = true } = options;
   const [profile, setProfile] = useState<ProfileConfig | null>(null);
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
@@ -132,10 +137,10 @@ export function useOverlayStudioState() {
   }, [history, historyIndex]);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!autosave || !dirty) return;
     const id = window.setTimeout(() => saveProfile(), 800);
     return () => window.clearTimeout(id);
-  }, [dirty, profile, saveProfile]);
+  }, [autosave, dirty, profile, saveProfile]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

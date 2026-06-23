@@ -13,8 +13,8 @@ import { isRunningProfile, profileTarget, type OverlayStatus, type ProfileEntry 
 type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout";
 
 export function OverlaysStudioPage() {
-  const studio = useOverlayStudioState();
   const [mode, setMode] = useState<StudioMode>("home");
+  const studio = useOverlayStudioState({ autosave: mode !== "widgets" });
   const [notice, setNotice] = useState<string | null>(null);
   const [layoutTarget, setLayoutTarget] = useState<string | null>(null);
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);

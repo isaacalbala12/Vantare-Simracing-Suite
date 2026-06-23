@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WidgetPreviewPanel } from "./WidgetPreviewPanel";
 import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
@@ -71,5 +71,28 @@ describe("WidgetPreviewPanel", () => {
     const sandbox = screen.getByTestId("widget-sandbox-preview");
     expect(sandbox.style.backgroundImage).toContain("linear-gradient");
     expect(widget.position).toEqual({ x: 760, y: 40, w: 400, h: 48 });
+  });
+
+  it("propagates mock session scenario to the standings preview", async () => {
+    const profile: ProfileConfig = {
+      ...mockProfile,
+      widgets: [
+        {
+          id: "standings",
+          type: "standings",
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
+      ],
+    };
+    const widget = profile.widgets[0];
+
+    render(<WidgetPreviewPanel profile={profile} activeWidget={widget} mockSessionScenario="race" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Leader")).toBeTruthy();
+    });
+    expect(screen.getByTestId("widget-sandbox-preview")).toBeTruthy();
   });
 });

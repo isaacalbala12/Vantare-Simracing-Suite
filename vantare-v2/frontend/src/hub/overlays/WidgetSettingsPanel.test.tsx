@@ -48,4 +48,40 @@ describe("WidgetSettingsPanel", () => {
     expect(screen.getByText("COLUMNAS RELATIVE")).toBeTruthy();
     expect(screen.getByText("Filtros")).toBeTruthy();
   });
+
+  it("keeps standings controls accessible inside a scrolling settings panel", () => {
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        {
+          id: "standings",
+          type: "standings",
+          variantId: "variant-standings-default",
+          enabled: true,
+          updateHz: 15,
+          position: { x: 40, y: 80, w: 360, h: 300 },
+        },
+      ],
+      variants: [
+        {
+          id: "variant-standings-default",
+          widgetType: "standings",
+          templateId: "standings-vantare-default",
+        },
+      ],
+    };
+
+    render(
+      <WidgetSettingsPanel
+        profile={standingsProfile}
+        widget={standingsProfile.widgets[0]}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    const panel = screen.getByTestId("widget-settings-panel");
+    expect(panel.className).toContain("overflow-y-auto");
+    expect(screen.getByText("COLUMNAS STANDINGS")).toBeTruthy();
+    expect(screen.getByLabelText("Mostrar mejor vuelta standings")).toBeTruthy();
+  });
 });

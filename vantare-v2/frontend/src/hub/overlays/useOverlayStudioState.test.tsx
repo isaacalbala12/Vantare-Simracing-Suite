@@ -206,4 +206,70 @@ describe("useOverlayStudioState", () => {
 
     expect(result.current.selectedWidget?.name).toBe("Delta Edited");
   });
+
+  it("auto-saves dirty profiles by default after debounce", async () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() => useOverlayStudioState());
+
+    act(() => {
+      listeners.get("profile:loaded")?.({ data: { profile } });
+    });
+
+    act(() => {
+      result.current.updateDraft({
+        ...result.current.profile!,
+        widgets: [
+          {
+            ...result.current.profile!.widgets[0],
+            name: "changed",
+          },
+        ],
+      });
+    });
+
+    expect(Events.Emit).not.toHaveBeenCalledWith("layout:save", expect.anything());
+
+    await act(async () => {
+      vi.advanceTimersByTime(900);
+    });
+
+    expect(Events.Emit).toHaveBeenCalledWith("layout:save", expect.anything());
+    vi.useRealTimers();
+  });
+
+  it("does not auto-save when autosave is disabled", async () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() => useOverlayStudioState({ autosave: false }));
+
+    act(() => {
+      listeners.get("profile:loaded")?.({ data: { profile } });
+    });
+
+    act(() => {
+      result.current.updateDraft({
+        ...result.current.profile!,
+        widgets: [
+          {
+            ...result.current.profile!.widgets[0],
+            name: "changed",
+          },
+        ],
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+    });
+
+    expect(Events.Emit).not.toHaveBeenCalledWith("layout:save", expect.anything());
+
+    act(() => {
+      result.current.saveProfile();
+    });
+
+    expect(Events.Emit).toHaveBeenCalledWith("layout:save", expect.anything());
+    vi.useRealTimers();
+  });
 });

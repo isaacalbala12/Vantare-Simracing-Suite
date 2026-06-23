@@ -83,4 +83,29 @@ describe("WidgetRenderer", () => {
 
     expect(screen.getByTestId("renderer").textContent).toContain("unknown-widget");
   });
+
+  it("accepts a mock session scenario prop for standings preview", () => {
+    const widget: WidgetConfig = {
+      id: "standings",
+      type: "standings",
+      enabled: true,
+      updateHz: 15,
+      position: { x: 0, y: 0, w: 360, h: 300 },
+      props: {},
+    };
+
+    render(
+      <WidgetRenderer
+        profile={profileWith(widget)}
+        widget={widget}
+        editMode={true}
+        telemetryMode="mock"
+        mockSessionScenario="race"
+        testId="renderer"
+      />,
+    );
+
+    expect(screen.getByTestId("renderer")).toBeTruthy();
+    expect(screen.getByTestId("standings-panel")).toBeTruthy();
+  });
 });

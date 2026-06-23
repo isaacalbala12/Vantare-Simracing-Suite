@@ -41,6 +41,39 @@ export function getMockTelemetry(): TelemetryRefState {
   };
 }
 
+export type MockSessionScenario = "practice" | "qual" | "race";
+
+export function getMockTelemetryForSession(scenario: MockSessionScenario): TelemetryRefState {
+  const telemetry = getMockTelemetry();
+
+  if (scenario === "practice") {
+    return {
+      ...telemetry,
+      sessionType: 10,
+      sessionName: "PRACTICE1",
+      sessionKey: "mock|Circuit de Barcelona|practice",
+    };
+  }
+
+  if (scenario === "qual") {
+    return {
+      ...telemetry,
+      sessionType: 11,
+      sessionName: "QUALIFY",
+      sessionKey: "mock|Circuit de Barcelona|qual",
+      timeRemaining: 900,
+    };
+  }
+
+  return {
+    ...telemetry,
+    sessionType: 3,
+    sessionName: "RACE",
+    sessionKey: "mock|Circuit de Barcelona|race",
+    timeRemaining: 3600,
+  };
+}
+
 export function generateAnimatedTelemetry(elapsedMs: number, inPit = false): TelemetryPayload {
   const t = elapsedMs / 1000;
   const vehicles: VehicleScoring[] = Array.from({ length: 6 }, (_, i) => ({

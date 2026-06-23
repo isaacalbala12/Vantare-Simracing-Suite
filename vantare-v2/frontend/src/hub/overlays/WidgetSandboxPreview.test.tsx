@@ -263,4 +263,20 @@ describe("WidgetSandboxPreview", () => {
       }
     }
   });
+
+  it("propagates mock session scenario to the standings widget", async () => {
+    const widget: WidgetConfig = {
+      id: "standings",
+      type: "standings",
+      enabled: true,
+      updateHz: 15,
+      position: { x: 0, y: 0, w: 360, h: 300 },
+    };
+
+    render(<WidgetSandboxPreview profile={profileWith(widget)} activeWidget={widget} mockSessionScenario="race" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Leader")).toBeTruthy();
+    });
+  });
 });

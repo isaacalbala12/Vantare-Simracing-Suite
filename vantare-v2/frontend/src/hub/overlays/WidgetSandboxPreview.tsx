@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
 import { enrichWidgetPropsWithVariant } from "../../lib/widget-variants";
 import { getRelativeFilters } from "../../overlay/widgets/relative-filters";
+import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
 import { PreviewScaler } from "../preview/PreviewScaler";
 import { WidgetRenderer } from "../preview/WidgetRenderer";
 import { resolveWidgetPreviewBaseSize } from "../preview/widget-preview-size";
@@ -17,6 +18,7 @@ const checkerboardStyle = {
 type WidgetSandboxPreviewProps = {
   profile: ProfileConfig;
   activeWidget: WidgetConfig | null;
+  mockSessionScenario?: MockSessionScenario;
 };
 
 type LogicalSizeState = {
@@ -27,7 +29,7 @@ type LogicalSizeState = {
   height: number;
 };
 
-export function WidgetSandboxPreview({ profile, activeWidget }: WidgetSandboxPreviewProps) {
+export function WidgetSandboxPreview({ profile, activeWidget, mockSessionScenario }: WidgetSandboxPreviewProps) {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const rendererProps = useMemo(() => {
     if (!activeWidget) return null;
@@ -132,6 +134,7 @@ export function WidgetSandboxPreview({ profile, activeWidget }: WidgetSandboxPre
             widget={activeWidget}
             editMode
             telemetryMode="mock"
+            mockSessionScenario={mockSessionScenario}
             updateHz={activeWidget.updateHz}
             disabled
             fillHost={!compactRelative}

@@ -1,6 +1,7 @@
 import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
 import { PreviewInspector } from "../preview/PreviewInspector";
 import { RelativeSettingsSection } from "./RelativeSettingsSection";
+import { StandingsSettingsSection } from "./StandingsSettingsSection";
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -24,6 +25,11 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       {widget && (
         <div className="shrink-0">
           <RelativeSettingsSection
+            profile={profile}
+            widget={widget}
+            onChangeProfile={onChangeProfile}
+          />
+          <StandingsSettingsSection
             profile={profile}
             widget={widget}
             onChangeProfile={onChangeProfile}

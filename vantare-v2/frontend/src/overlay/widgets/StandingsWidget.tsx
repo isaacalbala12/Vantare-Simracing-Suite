@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { getTelemetryRef, resolveSessionMode, type SessionMode, type VehicleScoring } from "../../lib/telemetry-ref";
-import { getMockTelemetry } from "./mock-telemetry";
+import { getMockTelemetry, getMockTelemetryForSession, type MockSessionScenario } from "./mock-telemetry";
 import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
 import { setHTMLIfChanged } from "../../lib/dom-write";
@@ -22,6 +22,7 @@ import {
 type StandingsProps = {
   editMode: boolean;
   telemetryMode?: WidgetTelemetryMode;
+  mockSessionScenario?: MockSessionScenario;
   updateHz?: number;
   props?: Record<string, unknown>;
 };
@@ -109,7 +110,7 @@ function brandInitial(name: string | undefined): string {
   return n.split(/[\s-]/).map((p) => p[0] ?? "").slice(0, 2).join("").toUpperCase();
 }
 
-export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 }: StandingsProps) {
+export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, props, updateHz = 15 }: StandingsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLDivElement>(null);
   const classRef = useRef<HTMLDivElement>(null);
@@ -120,9 +121,19 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
   const activeColumns = getActiveStandingsColumns(props);
   const intrinsicWidth = getStandingsIntrinsicWidth(activeColumns);
 
+  const readTelemetry = useCallback(
+    () =>
+      (telemetryMode ?? (editMode ? "mock" : "live")) === "mock"
+        ? mockSessionScenario
+          ? getMockTelemetryForSession(mockSessionScenario)
+          : getMockTelemetry()
+        : getTelemetryRef(),
+    [editMode, mockSessionScenario, telemetryMode],
+  );
+
   useEffect(() => {
     return startFrameBudgetLoop(updateHz, () => {
-      const t = (telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef();
+      const t = readTelemetry();
       const container = containerRef.current;
       if (!container) return;
 
@@ -277,9 +288,9 @@ export function StandingsWidget({ editMode, telemetryMode, props, updateHz = 15 
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [maxRows, updateHz, editMode, telemetryMode, props, a, activeColumns, intrinsicWidth]);
+  }, [maxRows, updateHz, editMode, telemetryMode, mockSessionScenario, props, a, activeColumns, intrinsicWidth, readTelemetry]);
 
-  const t = (telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef();
+  const t = readTelemetry();
   const player = t.vehicles.find((v) => v.isPlayer);
   const activeClass = player?.vehicleClass || t.vehicles[0]?.vehicleClass || "HYPERCAR";
   const timeStr = formatRemainingTime(t.timeRemaining);

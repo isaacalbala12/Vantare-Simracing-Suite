@@ -8,10 +8,12 @@ import { TelemetryWidget } from "../../overlay/widgets/TelemetryWidget";
 import { TelemetryVerticalWidget } from "../../overlay/widgets/TelemetryVerticalWidget";
 import { PedalsWidget } from "../../overlay/widgets/PedalsWidget";
 import type { WidgetTelemetryMode } from "../../overlay/widgets/use-widget-telemetry";
+import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
 
 type InnerWidgetProps = {
   editMode: boolean;
   telemetryMode?: WidgetTelemetryMode;
+  mockSessionScenario?: MockSessionScenario;
   updateHz?: number;
   props?: Record<string, unknown>;
 };
@@ -32,6 +34,7 @@ export type WidgetRendererProps = {
   widget: WidgetConfig;
   editMode?: boolean;
   telemetryMode?: WidgetTelemetryMode;
+  mockSessionScenario?: MockSessionScenario;
   updateHz?: number;
   disabled?: boolean;
   fillHost?: boolean;
@@ -45,6 +48,7 @@ export function WidgetRenderer({
   widget,
   editMode = false,
   telemetryMode = "mock",
+  mockSessionScenario,
   updateHz,
   disabled = false,
   fillHost = true,
@@ -65,6 +69,7 @@ export function WidgetRenderer({
         <Component
           editMode={editMode}
           telemetryMode={telemetryMode}
+          mockSessionScenario={mockSessionScenario}
           updateHz={updateHz ?? widget.updateHz}
           props={props}
         />

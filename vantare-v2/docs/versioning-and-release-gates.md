@@ -34,6 +34,15 @@ v0.4.0.0
 v1.0.0.0
 ```
 
+## Version actual
+
+`v0.3.6.1` marca el cierre del primer corte configurable de `Standings`:
+
+- S4.5 mock scenarios `Práctica` / `Qualy` / `Carrera` en preview.
+- S4.6 guardado explicito en `WidgetStudio` sin autosave.
+- S5 UI de `Standings` en `WidgetStudio`.
+- S6 verificacion completa y documentacion.
+
 ## Rango de versiones
 
 | Rango | Nombre | Estado |

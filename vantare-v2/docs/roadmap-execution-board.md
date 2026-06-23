@@ -80,7 +80,7 @@ La implementacion normal debe ir a workers.
 | S4.5 | 0.3.4.X | Mock scenarios practica/qualy/carrera para preview | Done | Kimi K2.7 | GLM | S4 | Si |
 | S4.6 | 0.3.4.X | Guardado explicito en WidgetStudio sin autosave | Done | Kimi K2.7 | GLM | S4.5 | Si |
 | S5 | 0.3.5.X | Standings UI en WidgetStudio | Done | Minimax M3 | GLM | S4.6 | Si |
-| S6 | 0.3.6.X | Standings verificacion completa y docs | Done | Deepseek V4 Flash | GLM | S5 | Si |
+| S6 | 0.3.6.1 | Standings verificacion completa y docs | Done | Deepseek V4 Flash | GLM | S5 | Si |
 | UI1 | 0.3.7.X | Leer HTML referencia y extraer decisiones visuales | Next | Minimax M3 | Codex | A1 | No |
 | UI2 | 0.3.8.X | Miniplan rework UI Overlays Studio | Ready | Minimax M3 | Codex | UI1 | No |
 | UI3 | 0.3.9.X | Implementar rework UI en cortes pequenos | Ready | Minimax M3 | Codex | UI2, S6 | Si |

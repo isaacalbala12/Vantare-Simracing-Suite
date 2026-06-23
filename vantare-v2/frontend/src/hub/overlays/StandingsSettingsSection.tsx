@@ -1,6 +1,7 @@
 import type { ColumnConfig, ProfileConfig, WidgetConfig } from "../../lib/profile";
 import { getStandingsColumn } from "../../overlay/widgets/standings-catalog";
 import { findWidgetVariant, toggleStandingsColumn, withDefaultWidgetVariants } from "../../lib/widget-variants";
+import { StudioSectionHeader, StudioSettingRow, StudioSubsectionLabel } from "./studio-controls";
 
 const MIN_NAME_MAX_CHARS = 2;
 const MAX_NAME_MAX_CHARS = 64;
@@ -77,12 +78,12 @@ function DriverNameControls({
   const maxChars = readNumberDefault(driverColumn?.format?.maxChars, (def?.format?.maxChars as number | undefined) ?? 16);
 
   return (
-    <div className="space-y-3">
-      <label className="block text-[11px] text-vantare-textMuted">
-        Formato de nombre
+    <div className="space-y-1.5">
+      <StudioSettingRow label="Formato de nombre" htmlFor="standings-driver-mode">
         <select
+          id="standings-driver-mode"
           aria-label="Formato de nombre standings"
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={mode}
           onChange={(event) =>
             onChangeProfile(
@@ -96,15 +97,15 @@ function DriverNameControls({
           <option value="full">Nombre completo</option>
           <option value="truncate">Recortar</option>
         </select>
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        Máximo caracteres nombre
+      </StudioSettingRow>
+      <StudioSettingRow label="Máximo caracteres nombre" htmlFor="standings-driver-max">
         <input
+          id="standings-driver-max"
           aria-label="Máximo caracteres nombre standings"
           type="number"
           min={MIN_NAME_MAX_CHARS}
           max={MAX_NAME_MAX_CHARS}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={maxChars}
           onChange={(event) =>
             onChangeProfile(
@@ -115,7 +116,7 @@ function DriverNameControls({
             )
           }
         />
-      </label>
+      </StudioSettingRow>
     </div>
   );
 }
@@ -155,25 +156,25 @@ function LapColumnControls({
   const ariaBase = `${labelPrefix.toLowerCase()} standings`;
 
   return (
-    <div className="space-y-3 border-t border-white/5 pt-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-vantare-textMuted">{labelPrefix}</p>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Formato ${labelPrefix.toLowerCase()}`}
+    <div className="space-y-1.5 border-t border-white/5 pt-2">
+      <StudioSubsectionLabel>{labelPrefix}</StudioSubsectionLabel>
+      <StudioSettingRow label={`Formato ${labelPrefix.toLowerCase()}`} htmlFor={`standings-${columnId}-display`}>
         <select
+          id={`standings-${columnId}-display`}
           aria-label={`Formato ${ariaBase}`}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={display}
           onChange={(event) => setFormat("display", event.target.value)}
         >
           <option value="full">Completo (m:ss.mmm)</option>
           <option value="compact">Compacto (ss.mmm)</option>
         </select>
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Decimales ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Decimales ${labelPrefix.toLowerCase()}`} htmlFor={`standings-${columnId}-decimals`}>
         <select
+          id={`standings-${columnId}-decimals`}
           aria-label={`Decimales ${ariaBase}`}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={decimals}
           onChange={(event) => setFormat("decimals", Number(event.target.value))}
         >
@@ -182,15 +183,15 @@ function LapColumnControls({
           <option value="2">2</option>
           <option value="3">3</option>
         </select>
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Ancho ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Ancho ${labelPrefix.toLowerCase()}`} htmlFor={`standings-${columnId}-width`}>
         <input
+          id={`standings-${columnId}-width`}
           aria-label={`Ancho ${ariaBase}`}
           type="number"
           min={MIN_LAP_WIDTH}
           max={MAX_LAP_WIDTH}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={width}
           onChange={(event) =>
             onChangeProfile(
@@ -201,13 +202,13 @@ function LapColumnControls({
             )
           }
         />
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Color ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Color ${labelPrefix.toLowerCase()}`} htmlFor={`standings-${columnId}-color`}>
         <input
+          id={`standings-${columnId}-color`}
           aria-label={`Color ${ariaBase}`}
           type="color"
-          className="mt-1 h-8 w-full rounded-md border border-white/10 bg-black/40 px-1 py-0.5 text-xs text-white"
+          className="h-7 w-full rounded-md border border-white/10 bg-black/40 px-1 py-0.5 focus:border-vantare-borderHover focus:outline-none"
           value={color}
           onChange={(event) =>
             onChangeProfile(
@@ -218,12 +219,12 @@ function LapColumnControls({
             )
           }
         />
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Alineación ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Alineación ${labelPrefix.toLowerCase()}`} htmlFor={`standings-${columnId}-align`}>
         <select
+          id={`standings-${columnId}-align`}
           aria-label={`Alineación ${ariaBase}`}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={align}
           onChange={(event) =>
             onChangeProfile(
@@ -238,7 +239,7 @@ function LapColumnControls({
           <option value="center">Centro</option>
           <option value="right">Derecha</option>
         </select>
-      </label>
+      </StudioSettingRow>
     </div>
   );
 }
@@ -263,21 +264,21 @@ function ColumnSwitch({
       aria-checked={enabled}
       aria-label={ariaLabel}
       onClick={onToggle}
-      className="flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left text-sm text-white transition-colors hover:border-white/15 hover:bg-black/30"
+      className="flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-md border border-white/5 bg-black/30 px-2.5 py-1.5 text-left text-white transition-colors hover:border-white/15 hover:bg-black/40"
     >
-      <span>
-        <span className="block text-xs font-medium">{label}</span>
-        <span className="block text-[10px] text-vantare-textMuted">{description}</span>
+      <span className="min-w-0">
+        <span className="block truncate font-mono text-[11px] font-bold uppercase tracking-wide">{label}</span>
+        <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-vantare-textDim">{description}</span>
       </span>
       <span
         aria-hidden="true"
-        className={`h-5 w-9 rounded-full border p-0.5 transition-colors ${
-          enabled ? "border-vantare-red-500 bg-vantare-red-600" : "border-white/15 bg-black/40"
+        className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full border transition-colors ${
+          enabled ? "border-vantare-red-500 bg-vantare-red-600" : "border-white/15 bg-black/50"
         }`}
       >
         <span
-          className={`block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-            enabled ? "translate-x-4" : "translate-x-0"
+          className={`inline-block h-2.5 w-2.5 rounded-full bg-white transition-transform ${
+            enabled ? "translate-x-3.5" : "translate-x-0.5"
           }`}
         />
       </span>
@@ -299,9 +300,10 @@ export function StandingsSettingsSection({ profile, widget, onChangeProfile }: S
   };
 
   return (
-    <section className="border-t border-white/5 bg-vantare-panel px-5 py-4">
-      <h3 className="mb-3 text-xs font-semibold tracking-wide text-vantare-text">COLUMNAS STANDINGS</h3>
-      <div className="space-y-3">
+    <section className="border-t border-white/5 bg-vantare-panel/60 px-4 py-3">
+      <StudioSectionHeader title="Columnas standings" hint="Columnas opcionales y formato" />
+
+      <div className="mt-3 space-y-1.5">
         <ColumnSwitch
           label="Mostrar clase"
           description="Añade `vehicleClass` como columna opcional."
@@ -339,7 +341,7 @@ export function StandingsSettingsSection({ profile, widget, onChangeProfile }: S
         />
       </div>
 
-      <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+      <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
         <DriverNameControls
           profile={normalized}
           widget={widget}

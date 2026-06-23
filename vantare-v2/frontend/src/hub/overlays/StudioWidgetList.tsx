@@ -25,18 +25,21 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget }: 
   }, [filter, query, widgets]);
 
   return (
-    <aside className="card-sleek flex min-h-0 flex-col rounded-xl">
-      <div className="border-b border-white/5 p-4">
+    <aside className="flex min-h-0 flex-col rounded-lg border border-white/5 bg-vantare-panel/70">
+      <div className="border-b border-white/5 p-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">Widgets</h2>
+          <h2 className="font-display text-[11px] font-bold uppercase tracking-widest text-white">
+            Widgets
+          </h2>
           <span className="font-mono text-[10px] text-vantare-textDim">{widgets.length}</span>
         </div>
 
-        <div className="mt-3 flex gap-2 rounded-lg border border-white/5 bg-black/30 p-1">
+        <div className="mt-2 flex gap-1 rounded-md border border-white/5 bg-black/40 p-0.5">
           <button
             type="button"
             onClick={() => setFilter("all")}
-            className={`flex-1 rounded-md py-1 text-[10px] font-bold uppercase cursor-pointer ${
+            aria-pressed={filter === "all"}
+            className={`flex-1 rounded py-1 font-mono text-[10px] font-bold uppercase tracking-widest cursor-pointer ${
               filter === "all" ? "bg-white/10 text-white" : "text-vantare-textMuted hover:text-white"
             }`}
           >
@@ -45,7 +48,8 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget }: 
           <button
             type="button"
             onClick={() => setFilter("active")}
-            className={`flex-1 rounded-md py-1 text-[10px] font-bold uppercase cursor-pointer ${
+            aria-pressed={filter === "active"}
+            className={`flex-1 rounded py-1 font-mono text-[10px] font-bold uppercase tracking-widest cursor-pointer ${
               filter === "active" ? "bg-white/10 text-white" : "text-vantare-textMuted hover:text-white"
             }`}
           >
@@ -53,15 +57,31 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget }: 
           </button>
         </div>
 
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar widget..."
-          className="mt-3 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none placeholder:text-vantare-textDim focus:border-vantare-red-500/50"
-        />
+        <div className="relative mt-2">
+          <svg
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-vantare-textDim"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar widget..."
+            className="w-full rounded-md border border-white/10 bg-black/40 py-1.5 pl-7 pr-3 font-mono text-[11px] text-white outline-none placeholder:text-vantare-textDim focus:border-vantare-borderHover"
+          />
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-1.5">
         {filteredWidgets.map((widget) => {
           const selected = selectedWidgetId === widget.id;
           return (
@@ -69,17 +89,36 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget }: 
               key={widget.id}
               type="button"
               onClick={() => onSelectWidget(widget.id)}
-              className={`mb-2 flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left transition-colors cursor-pointer ${
+              aria-pressed={selected}
+              className={`mb-1 flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
                 selected
-                  ? "border-vantare-red-500/50 bg-vantare-red-950/30 text-white"
-                  : "border-white/5 bg-black/25 text-vantare-textMuted hover:text-white"
+                  ? "border-vantare-red-500/40 bg-vantare-red-950/30 text-white"
+                  : "border-transparent text-vantare-textMuted hover:bg-white/[0.04] hover:text-white"
               }`}
             >
-              <span>
-                <span className="block font-mono text-xs font-bold">{widget.id}</span>
-                <span className="block font-mono text-[10px] text-vantare-textDim">{widget.type}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    selected
+                      ? "bg-vantare-red-500 shadow-[0_0_6px_var(--v-red-500)]"
+                      : "bg-transparent"
+                  }`}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate font-mono text-[11px] font-bold">
+                    {widget.name || widget.id}
+                  </span>
+                  <span className="block font-mono text-[9px] uppercase tracking-widest text-vantare-textDim">
+                    {widget.type}
+                  </span>
+                </span>
               </span>
-              <span className={`text-[10px] font-bold ${widget.enabled ? "text-emerald-400" : "text-vantare-textDim"}`}>
+              <span
+                className={`shrink-0 font-mono text-[9px] font-bold uppercase tracking-widest ${
+                  widget.enabled ? "text-emerald-400" : "text-vantare-textDim"
+                }`}
+              >
                 {widget.enabled ? "Activo" : "Oculto"}
               </span>
             </button>
@@ -87,7 +126,7 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget }: 
         })}
 
         {filteredWidgets.length === 0 && (
-          <p className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-center text-xs text-vantare-textDim">
+          <p className="rounded-md border border-white/5 bg-black/30 px-2 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-vantare-textDim">
             Sin widgets
           </p>
         )}

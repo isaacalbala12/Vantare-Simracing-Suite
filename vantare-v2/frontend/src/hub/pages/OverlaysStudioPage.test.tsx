@@ -88,7 +88,7 @@ describe("OverlaysStudioPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Abrir Widgets/i }));
 
     expect(await screen.findAllByRole("heading", { name: "Widgets" })).toBeTruthy();
-    expect(screen.getByText("Estos cambios se guardan en el perfil activo.")).toBeTruthy();
+    expect(screen.getByText("Sin cambios")).toBeTruthy();
   });
 
   it("shows loading while switching from profile A to profile B in layout studio", async () => {

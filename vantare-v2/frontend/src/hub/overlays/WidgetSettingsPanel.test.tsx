@@ -45,7 +45,7 @@ describe("WidgetSettingsPanel", () => {
 
     const panel = screen.getByTestId("widget-settings-panel");
     expect(panel.className).toContain("overflow-y-auto");
-    expect(screen.getByText("COLUMNAS RELATIVE")).toBeTruthy();
+    expect(screen.getByText("Columnas relative")).toBeTruthy();
     expect(screen.getByText("Filtros")).toBeTruthy();
   });
 
@@ -81,7 +81,34 @@ describe("WidgetSettingsPanel", () => {
 
     const panel = screen.getByTestId("widget-settings-panel");
     expect(panel.className).toContain("overflow-y-auto");
-    expect(screen.getByText("COLUMNAS STANDINGS")).toBeTruthy();
+    expect(screen.getByText("Columnas standings")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar mejor vuelta standings")).toBeTruthy();
+  });
+
+  it("renders a sticky widget header with name, type and enabled status", () => {
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={profile.widgets[0]}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    const header = screen.getByTestId("widget-settings-header");
+    expect(header.className).toContain("sticky");
+    expect(header.textContent).toContain("relative");
+    expect(header.textContent).toContain("Activo");
+  });
+
+  it("does not render a sticky widget header when no widget is selected", () => {
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={null}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("widget-settings-header")).toBeNull();
   });
 });

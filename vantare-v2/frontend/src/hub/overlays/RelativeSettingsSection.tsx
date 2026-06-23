@@ -6,6 +6,7 @@ import {
   getRelativeFilters,
 } from "../../overlay/widgets/relative-filters";
 import { findWidgetVariant, toggleRelativeColumn, withDefaultWidgetVariants } from "../../lib/widget-variants";
+import { StudioSectionHeader, StudioSettingRow, StudioSubsectionLabel } from "./studio-controls";
 
 type RelativeSettingsSectionProps = {
   profile: ProfileConfig;
@@ -43,6 +44,48 @@ const RANGE_OPTIONS = Array.from(
   { length: RELATIVE_RANGE_MAX - RELATIVE_RANGE_MIN + 1 },
   (_, index) => RELATIVE_RANGE_MIN + index,
 );
+
+function ColumnSwitch({
+  label,
+  description,
+  enabled,
+  ariaLabel,
+  onToggle,
+}: {
+  label: string;
+  description: string;
+  enabled: boolean;
+  ariaLabel: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={ariaLabel}
+      onClick={onToggle}
+      className="flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-md border border-white/5 bg-black/30 px-2.5 py-1.5 text-left text-white transition-colors hover:border-white/15 hover:bg-black/40"
+    >
+      <span className="min-w-0">
+        <span className="block truncate font-mono text-[11px] font-bold uppercase tracking-wide">{label}</span>
+        <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-vantare-textDim">{description}</span>
+      </span>
+      <span
+        aria-hidden="true"
+        className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full border transition-colors ${
+          enabled ? "border-vantare-red-500 bg-vantare-red-600" : "border-white/15 bg-black/50"
+        }`}
+      >
+        <span
+          className={`inline-block h-2.5 w-2.5 rounded-full bg-white transition-transform ${
+            enabled ? "translate-x-3.5" : "translate-x-0.5"
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
 
 function clampRangeInput(raw: string): number {
   const n = Number(raw);
@@ -87,11 +130,11 @@ function DriverNameControls({
   const maxChars = (driverColumn?.format?.maxChars as number | undefined) ?? 18;
 
   return (
-    <div className="space-y-3">
-      <label className="block text-[11px] text-vantare-textMuted">
-        Formato de nombre
+    <div className="space-y-1.5">
+      <StudioSettingRow label="Formato de nombre" htmlFor="relative-driver-mode">
         <select
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          id="relative-driver-mode"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={mode}
           onChange={(event) =>
             onChangeProfile(
@@ -105,14 +148,14 @@ function DriverNameControls({
           <option value="full">Nombre completo</option>
           <option value="truncate">Recortar</option>
         </select>
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        Máximo caracteres nombre
+      </StudioSettingRow>
+      <StudioSettingRow label="Máximo caracteres nombre" htmlFor="relative-driver-max">
         <input
+          id="relative-driver-max"
           type="number"
           min={2}
           max={64}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={maxChars}
           onChange={(event) =>
             onChangeProfile(
@@ -123,7 +166,7 @@ function DriverNameControls({
             )
           }
         />
-      </label>
+      </StudioSettingRow>
     </div>
   );
 }
@@ -160,23 +203,25 @@ function LapColumnControls({
     );
 
   return (
-    <div className="space-y-3 border-t border-white/5 pt-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-vantare-textMuted">{labelPrefix}</p>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Formato ${labelPrefix.toLowerCase()}`}
+    <div className="space-y-1.5 border-t border-white/5 pt-2">
+      <StudioSubsectionLabel>{labelPrefix}</StudioSubsectionLabel>
+      <StudioSettingRow label={`Formato ${labelPrefix.toLowerCase()}`} htmlFor={`relative-${columnId}-display`}>
         <select
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          id={`relative-${columnId}-display`}
+          aria-label={`Formato ${labelPrefix.toLowerCase()}`}
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={display}
           onChange={(event) => setFormat("display", event.target.value)}
         >
           <option value="full">Completo (m:ss.mmm)</option>
           <option value="compact">Compacto (ss.mmm)</option>
         </select>
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Decimales ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Decimales ${labelPrefix.toLowerCase()}`} htmlFor={`relative-${columnId}-decimals`}>
         <select
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          id={`relative-${columnId}-decimals`}
+          aria-label={`Decimales ${labelPrefix.toLowerCase()}`}
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={decimals}
           onChange={(event) => setFormat("decimals", Number(event.target.value))}
         >
@@ -185,14 +230,15 @@ function LapColumnControls({
           <option value="2">2</option>
           <option value="3">3</option>
         </select>
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Ancho ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Ancho ${labelPrefix.toLowerCase()}`} htmlFor={`relative-${columnId}-width`}>
         <input
+          id={`relative-${columnId}-width`}
+          aria-label={`Ancho ${labelPrefix.toLowerCase()}`}
           type="number"
           min={36}
           max={160}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={width}
           onChange={(event) =>
             onChangeProfile(
@@ -203,12 +249,13 @@ function LapColumnControls({
             )
           }
         />
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Color ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Color ${labelPrefix.toLowerCase()}`} htmlFor={`relative-${columnId}-color`}>
         <input
+          id={`relative-${columnId}-color`}
+          aria-label={`Color ${labelPrefix.toLowerCase()}`}
           type="color"
-          className="mt-1 h-8 w-full rounded-md border border-white/10 bg-black/40 px-1 py-0.5 text-xs text-white"
+          className="h-7 w-full rounded-md border border-white/10 bg-black/40 px-1 py-0.5 focus:border-vantare-borderHover focus:outline-none"
           value={color}
           onChange={(event) =>
             onChangeProfile(
@@ -219,11 +266,12 @@ function LapColumnControls({
             )
           }
         />
-      </label>
-      <label className="block text-[11px] text-vantare-textMuted">
-        {`Alineación ${labelPrefix.toLowerCase()}`}
+      </StudioSettingRow>
+      <StudioSettingRow label={`Alineación ${labelPrefix.toLowerCase()}`} htmlFor={`relative-${columnId}-align`}>
         <select
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+          id={`relative-${columnId}-align`}
+          aria-label={`Alineación ${labelPrefix.toLowerCase()}`}
+          className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
           value={align}
           onChange={(event) =>
             onChangeProfile(
@@ -238,7 +286,7 @@ function LapColumnControls({
           <option value="center">Centro</option>
           <option value="right">Derecha</option>
         </select>
-      </label>
+      </StudioSettingRow>
     </div>
   );
 }
@@ -262,149 +310,112 @@ export function RelativeSettingsSection({ profile, widget, onChangeProfile }: Re
   };
 
   return (
-    <section className="border-t border-white/5 bg-vantare-panel px-5 py-4">
-      <h3 className="mb-3 text-xs font-semibold tracking-wide text-vantare-text">COLUMNAS RELATIVE</h3>
-      <div className="space-y-3">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={bestLapEnabled}
-          aria-label="Mostrar mejor vuelta"
-          onClick={() => updateColumn("bestLap", !bestLapEnabled)}
-          className="flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left text-sm text-white transition-colors hover:border-white/15 hover:bg-black/30"
-        >
-          <span>
-            <span className="block text-xs font-medium">Mostrar mejor vuelta</span>
-            <span className="block text-[10px] text-vantare-textMuted">Añade `bestLap` como columna opcional.</span>
-          </span>
-          <span
-            aria-hidden="true"
-            className={`h-5 w-9 rounded-full border p-0.5 transition-colors ${
-              bestLapEnabled ? "border-vantare-red-500 bg-vantare-red-600" : "border-white/15 bg-black/40"
-            }`}
-          >
-            <span
-              className={`block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                bestLapEnabled ? "translate-x-4" : "translate-x-0"
-              }`}
-            />
-          </span>
-        </button>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={lastLapEnabled}
-          aria-label="Mostrar última vuelta"
-          onClick={() => updateColumn("lastLap", !lastLapEnabled)}
-          className="flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left text-sm text-white transition-colors hover:border-white/15 hover:bg-black/30"
-        >
-          <span>
-            <span className="block text-xs font-medium">Mostrar última vuelta</span>
-            <span className="block text-[10px] text-vantare-textMuted">Añade `lastLap` como columna opcional.</span>
-          </span>
-          <span
-            aria-hidden="true"
-            className={`h-5 w-9 rounded-full border p-0.5 transition-colors ${
-              lastLapEnabled ? "border-vantare-red-500 bg-vantare-red-600" : "border-white/15 bg-black/40"
-            }`}
-          >
-            <span
-              className={`block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                lastLapEnabled ? "translate-x-4" : "translate-x-0"
-              }`}
-            />
-          </span>
-        </button>
+    <section className="border-t border-white/5 bg-vantare-panel/60 px-4 py-3">
+      <StudioSectionHeader title="Columnas relative" hint="Columnas opcionales y visibilidad del jugador" />
+
+      <div className="mt-3 space-y-1.5">
+        <ColumnSwitch
+          label="Mostrar mejor vuelta"
+          description="Añade `bestLap` como columna opcional."
+          enabled={bestLapEnabled}
+          ariaLabel="Mostrar mejor vuelta"
+          onToggle={() => updateColumn("bestLap", !bestLapEnabled)}
+        />
+        <ColumnSwitch
+          label="Mostrar última vuelta"
+          description="Añade `lastLap` como columna opcional."
+          enabled={lastLapEnabled}
+          ariaLabel="Mostrar última vuelta"
+          onToggle={() => updateColumn("lastLap", !lastLapEnabled)}
+        />
       </div>
 
-      <div className="mt-4 space-y-3 border-t border-white/5 pt-4" data-testid="relative-filters">
-        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-vantare-textMuted">Filtros</h4>
-        <label className="block text-[11px] text-vantare-textMuted">
-          Coches delante
-          <select
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
-            value={rangeAhead}
-            onChange={(event) =>
-              onChangeProfile(
-                updateRelativeFilters(normalized, widget.id, (current) => ({
-                  ...current,
-                  rangeAhead: clampRangeInput(event.target.value),
-                })),
-              )
-            }
-          >
-            {RANGE_OPTIONS.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-[11px] text-vantare-textMuted">
-          Coches detrás
-          <select
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
-            value={rangeBehind}
-            onChange={(event) =>
-              onChangeProfile(
-                updateRelativeFilters(normalized, widget.id, (current) => ({
-                  ...current,
-                  rangeBehind: clampRangeInput(event.target.value),
-                })),
-              )
-            }
-          >
-            {RANGE_OPTIONS.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-[11px] text-vantare-textMuted">
-          Filtro de clase
-          <select
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
-            value={classScope}
-            onChange={(event) =>
-              onChangeProfile(
-                updateRelativeFilters(normalized, widget.id, (current) => ({
-                  ...current,
-                  classScope: event.target.value === "sameClass" ? "sameClass" : "all",
-                })),
-              )
-            }
-          >
-            <option value="all">Todas las clases</option>
-            <option value="sameClass">Misma clase</option>
-          </select>
-        </label>
-        <p className="text-[10px] text-vantare-textMuted">
-          Limita las filas a la clase del jugador o muestra todas.
-        </p>
-        <label className="block text-[11px] text-vantare-textMuted">
-          Altura de filas
-          <select
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
-            value={rowHeightMode}
-            onChange={(event) =>
-              onChangeProfile(
-                updateRelativeFilters(normalized, widget.id, (current) => ({
-                  ...current,
-                  rowHeightMode: event.target.value === "compact" ? "compact" : "fill",
-                })),
-              )
-            }
-          >
-            <option value="fill">Rellenar altura del widget</option>
-            <option value="compact">Reducir altura visual</option>
-          </select>
-        </label>
-        <p className="text-[10px] text-vantare-textMuted">
-          Decide si pocas filas se estiran o si el relative se dibuja más bajo.
-        </p>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={includePlayer}
-          aria-label="Mostrar coche del jugador"
-          onClick={() =>
+      <div className="mt-3 space-y-1.5 border-t border-white/5 pt-3" data-testid="relative-filters">
+        <StudioSectionHeader title="Filtros" hint="Rango, clase y altura de filas" />
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <StudioSettingRow label="Coches delante" htmlFor="relative-range-ahead">
+            <select
+              id="relative-range-ahead"
+              className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
+              value={rangeAhead}
+              onChange={(event) =>
+                onChangeProfile(
+                  updateRelativeFilters(normalized, widget.id, (current) => ({
+                    ...current,
+                    rangeAhead: clampRangeInput(event.target.value),
+                  })),
+                )
+              }
+            >
+              {RANGE_OPTIONS.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </StudioSettingRow>
+          <StudioSettingRow label="Coches detrás" htmlFor="relative-range-behind">
+            <select
+              id="relative-range-behind"
+              className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
+              value={rangeBehind}
+              onChange={(event) =>
+                onChangeProfile(
+                  updateRelativeFilters(normalized, widget.id, (current) => ({
+                    ...current,
+                    rangeBehind: clampRangeInput(event.target.value),
+                  })),
+                )
+              }
+            >
+              {RANGE_OPTIONS.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </StudioSettingRow>
+        </div>
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <StudioSettingRow label="Filtro de clase" htmlFor="relative-class-scope">
+            <select
+              id="relative-class-scope"
+              className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
+              value={classScope}
+              onChange={(event) =>
+                onChangeProfile(
+                  updateRelativeFilters(normalized, widget.id, (current) => ({
+                    ...current,
+                    classScope: event.target.value === "sameClass" ? "sameClass" : "all",
+                  })),
+                )
+              }
+            >
+              <option value="all">Todas las clases</option>
+              <option value="sameClass">Misma clase</option>
+            </select>
+          </StudioSettingRow>
+          <StudioSettingRow label="Altura de filas" htmlFor="relative-row-height">
+            <select
+              id="relative-row-height"
+              className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white focus:border-vantare-borderHover focus:outline-none"
+              value={rowHeightMode}
+              onChange={(event) =>
+                onChangeProfile(
+                  updateRelativeFilters(normalized, widget.id, (current) => ({
+                    ...current,
+                    rowHeightMode: event.target.value === "compact" ? "compact" : "fill",
+                  })),
+                )
+              }
+            >
+              <option value="fill">Rellenar</option>
+              <option value="compact">Compacto</option>
+            </select>
+          </StudioSettingRow>
+        </div>
+        <ColumnSwitch
+          label="Mostrar coche del jugador"
+          description="Incluye la fila central del piloto en la tabla."
+          enabled={includePlayer}
+          ariaLabel="Mostrar coche del jugador"
+          onToggle={() =>
             onChangeProfile(
               updateRelativeFilters(normalized, widget.id, (current) => ({
                 ...current,
@@ -412,28 +423,10 @@ export function RelativeSettingsSection({ profile, widget, onChangeProfile }: Re
               })),
             )
           }
-          className="flex w-full cursor-pointer select-none items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left text-sm text-white transition-colors hover:border-white/15 hover:bg-black/30"
-        >
-          <span>
-            <span className="block text-xs font-medium">Mostrar coche del jugador</span>
-            <span className="block text-[10px] text-vantare-textMuted">Incluye la fila central del piloto en la tabla.</span>
-          </span>
-          <span
-            aria-hidden="true"
-            className={`h-5 w-9 rounded-full border p-0.5 transition-colors ${
-              includePlayer ? "border-vantare-red-500 bg-vantare-red-600" : "border-white/15 bg-black/40"
-            }`}
-          >
-            <span
-              className={`block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                includePlayer ? "translate-x-4" : "translate-x-0"
-              }`}
-            />
-          </span>
-        </button>
+        />
       </div>
 
-      <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+      <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
         <DriverNameControls
           profile={normalized}
           widget={widget}

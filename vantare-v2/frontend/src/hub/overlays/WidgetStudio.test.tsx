@@ -34,7 +34,7 @@ describe("WidgetStudio", () => {
     );
 
     expect(screen.getAllByRole("heading", { name: "Widgets" }).length).toBeGreaterThan(0);
-    expect(screen.getByText("Estos cambios se guardan en el perfil activo.")).toBeTruthy();
+    expect(screen.getByText("Sin cambios")).toBeTruthy();
     expect(screen.getAllByText("delta").length).toBeGreaterThan(0);
   });
 
@@ -53,7 +53,7 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Volver a Overlays Studio/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Overlays Studio/i }));
 
     expect(onBack).toHaveBeenCalled();
   });
@@ -176,7 +176,7 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByText("COLUMNAS RELATIVE")).toBeTruthy();
+    expect(screen.getByText("Columnas relative")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar mejor vuelta")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar última vuelta")).toBeTruthy();
     expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
@@ -268,7 +268,7 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("mock-session-race").className).toContain("bg-neutral-700");
+    expect(screen.getByTestId("mock-session-race").className).toContain("bg-white/10");
     await waitFor(() => {
       expect(screen.getByText("Leader")).toBeTruthy();
     });
@@ -297,7 +297,7 @@ describe("WidgetStudio", () => {
 
     fireEvent.click(screen.getByTestId("mock-session-practice"));
 
-    expect(screen.getByTestId("mock-session-practice").className).toContain("bg-neutral-700");
+    expect(screen.getByTestId("mock-session-practice").className).toContain("bg-white/10");
     await waitFor(() => {
       expect(screen.getByText("1:29.823")).toBeTruthy();
     });
@@ -390,7 +390,7 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByText("COLUMNAS STANDINGS")).toBeTruthy();
+    expect(screen.getByText("Columnas standings")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar mejor vuelta standings")).toBeTruthy();
     expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
   });
@@ -437,5 +437,41 @@ describe("WidgetStudio", () => {
     const next = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     expect(next.widgets[0].position).toEqual(standingsProfile.widgets[0].position);
     expect(next.variants?.[0].columns?.find((column) => column.id === "bestLap")?.enabled).toBe(true);
+  });
+
+  it("shows a dirty save state with red accent and disables Save when not dirty", () => {
+    const { rerender } = render(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="delta"
+        dirty
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    const dirtyState = screen.getByTestId("widget-studio-save-state");
+    expect(dirtyState.textContent).toContain("Cambios sin guardar");
+    expect(dirtyState.className).toContain("text-vantare-red-400");
+    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(false);
+
+    rerender(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="delta"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
+    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

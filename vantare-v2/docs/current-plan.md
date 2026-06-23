@@ -1,6 +1,6 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-22.
+Ultima actualizacion: 2026-06-23.
 
 ## Estado actual
 
@@ -59,8 +59,10 @@ Render configurable de `Standings` en preview/desktop/OBS preparado (S4, aprobad
 - Brand cell standalone restaurado como decoracion (no columna): la marca de equipo es visible aunque `driverNumber` este deshabilitado.
 - Fingerprint actualizado para incluir config de columnas (re-renderiza al cambiar variant).
 - Tests: 36 nuevos/ajustados (standings-format + StandingsWidget); suite completa 293/293; tsc, build, lint y git diff --check OK.
-- Line endings normalizados a LF via `.gitattributes` (elimina warnings CRLF).
+- `.gitattributes` preparado para normalizar line endings al pasar por git; `git diff --check` no reporta errores bloqueantes, aunque pueden aparecer warnings CRLF en archivos ya modificados en working copy.
 - No se toco UI (`hub/**`), `WidgetRenderer`, `PreviewScaler`, `WidgetSandboxPreview`, `PreviewWidgetFrame`, backend, schema ni configs.
+- Validacion manual detecto una ambiguedad visual: en practice/qualy, la columna default `gap` muestra tiempos de vuelta por comportamiento legacy y puede parecer `bestLap`.
+- S4.5 fue aprobada por GLM con P3: la preview de `Standings` permite elegir escenarios mock `Practica`, `Qualy` y `Carrera`, default `Carrera`, sin persistir en perfil/layout/config.
 
 La Fase A de `Overlays Studio` se encuentra completada:
 - La navegacion visible unifica `Overlays` y `Preview` bajo `Overlays Studio`.
@@ -104,9 +106,9 @@ El inventario S1 de `Standings` fue aprobado con veredicto `READY FOR S2`; no re
 
 El siguiente paso recomendado es:
 
-1. ejecutar `S5 - Standings UI en WidgetStudio`,
-2. exponer toggles de columnas de Standings usando `toggleStandingsColumn` (S3) y el contrato renderer (S4),
-3. preparar `S6 - Standings verificacion completa y docs`.
+1. avanzar a `UI1 - Leer HTML referencia y extraer decisiones visuales`,
+2. extraer decisiones visuales sin tocar codigo de producto,
+3. preparar el miniplan del rework visual de `Overlays Studio` solo despues de cerrar UI1.
 
 Ultimo miniplan completado y aprobado por GLM:
 - `docs/superpowers/plans/2026-06-22-s4-standings-render-configurable.md`
@@ -127,6 +129,20 @@ Miniplan implementado tecnicamente:
   - Validacion manual aprobada: Relative compacto queda centrado, sin espacio vacio derecho y con columnas alineadas.
   - Bug log: `docs/widget-preview-bug-log.md`.
 
+UI de `Standings` en `WidgetStudio` preparada (S5):
+- Controles de columnas opcionales y formatos conectados a variantes schema v2.
+- Defaults de UI leidos desde el catalogo de `Standings`.
+- Inputs numericos con clamp en UI.
+- Sin controles de posicion/tamano/eliminar.
+- Checks reportados por worker: suite frontend completa, TypeScript, build, lint y `git diff --check` en verde.
+- P3 iniciales revisados y corregidos salvo refactors compartidos fuera de alcance.
+
+S6 - Standings verificacion completa y docs ejecutada (2026-06-23):
+- Worker: Deepseek V4 Flash.
+- Todos los checks automaticos pasaron (322 tests frontend, tsc, build, lint, Go tests, `git diff --check` sin errores; warnings CRLF no bloqueantes en working copy).
+- Checklist manual creada en `docs/standings-manual-verification.md`.
+- Review GLM: `ACCEPT WITH P3`; se corrigieron los P2 documentales antes de avanzar a UI1.
+
 ### Reconexión live-first aprobada para overlays
 
 - Al pulsar `Abrir overlay`, la app intenta reconectar con LMU antes de abrir la ventana.
@@ -136,10 +152,10 @@ Miniplan implementado tecnicamente:
 
 ## Proximas tareas pequenas
 
-1. Crear miniplan `S5 - Standings UI en WidgetStudio`.
-2. Ejecutar S5 con worker (Minimax M3).
-3. Exponer toggles de columnas de Standings con `toggleStandingsColumn` respetando separacion WidgetStudio/LayoutStudio.
-4. Preparar `S6 - Standings verificacion completa y docs`.
+1. Ejecutar `UI1 - Leer HTML referencia y extraer decisiones visuales` con worker Minimax M3.
+2. Revisar UI1 en este hilo como decision de producto/diseno, no como implementacion.
+3. Crear miniplan `UI2 - Rework UI Overlays Studio`.
+4. Mantener manual checkpoint antes de cerrar la fase 0.3.X.X.
 
 ## Riesgos actuales
 
@@ -155,6 +171,10 @@ Miniplan implementado tecnicamente:
   2. `enrichWidgetPropsWithVariant` normaliza variantes en cada render/tick (impacto menor de rendimiento).
   3. Densidad visual si se activan `bestLap` y `lastLap` en widgets muy pequeños (parcialmente mitigado al usar ancho intrínseco y recorte de nombre explícito).
   4. Queda pendiente crear un harness visual/browser con Playwright para detectar regresiones visuales que JSDOM no cubre.
+  5. P3 S4.5: un test usa clase CSS para comprobar estado activo del selector mock; preferir `aria-pressed` en un futuro rework.
+  6. P3 S4.5: el selector mock usa paleta neutral; conviene alinearlo con el rework UI/S5.
+  7. P3 S4.5: `mockSessionScenario` se propaga a todos los widgets aunque solo `Standings` lo consume; sin impacto funcional.
+  8. P3 S4.6: falta test de regresion para Ctrl+S con `autosave:false`; el handler no cambio y GLM no lo considera bloqueante.
 
 ## Decisiones pendientes
 

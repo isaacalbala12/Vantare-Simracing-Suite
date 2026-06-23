@@ -31,13 +31,17 @@ Widgets:
 - [ ] `Relative` permite configurar todas sus opciones aprobadas.
 - [ ] `Standings` permite configurar todas sus opciones aprobadas excepto multiclase.
 - [ ] Preview aislada centra y escala correctamente.
+- [ ] Preview aislada de `Relative` no conserva espacio vacio derecho en fill ni compact.
+- [ ] Preview aislada de `Standings` usa ancho intrinseco y no recorta columnas opcionales.
+- [ ] `LayoutStudio` y overlay runtime siguen usando `position.w/h`.
 
 UI:
 
-- [ ] Rework visual de Overlays Studio aplicado.
+- [ ] Rework visual acotado de `WidgetStudio` aplicado.
 - [ ] Paneles son legibles.
 - [ ] No hay secciones importantes ocultas por scroll roto.
 - [ ] El flujo no parece un prototipo tecnico.
+- [ ] No ejecutar nuevos reworks visuales completos hasta cerrar la mayoria de features core.
 
 Checks:
 

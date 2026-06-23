@@ -18,6 +18,7 @@ Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 - `testing-strategy.md`: comandos y reglas de testing.
 - `manual-verification.md`: pasos manuales para validar sin leer codigo.
 - `widget-preview-bug-log.md`: bugs, causas raiz y reglas para no romper la preview aislada de WidgetStudio.
+- `resolved-bugs.md`: indice de bugs importantes ya solucionados y reglas para no reabrirlos.
 - `alpha-beta-roadmap.md`: resumen de estrategia alpha/beta; la fuente operativa es `master-feature-plan.md`.
 - `agent-workflow.md`: flujo orquestador -> worker -> reviewer.
 - `operations.md`: comandos basicos del repo.
@@ -67,4 +68,4 @@ El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, e
 
 ## Estado de roadmap
 
-La documentacion viva actual deja constancia de que Fase A, Fase A2, Fase B de preview/widgets y la restauracion de controles live estan implementadas. La estabilizacion de la preview aislada queda documentada en `widget-preview-bug-log.md`. El plan maestro operativo vive en `master-feature-plan.md`; `alpha-beta-roadmap.md` queda como resumen de estrategia.
+La documentacion viva actual deja constancia de que Fase A, Fase A2, Fase B de preview/widgets, la restauracion de controles live, `Standings` configurable y el rework visual acotado de `WidgetStudio` estan implementados. La estabilizacion de la preview aislada queda documentada en `widget-preview-bug-log.md` y los bugs cerrados en `resolved-bugs.md`. El plan maestro operativo vive en `master-feature-plan.md`; `alpha-beta-roadmap.md` queda como resumen de estrategia.

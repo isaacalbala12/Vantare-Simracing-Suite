@@ -36,6 +36,15 @@ v1.0.0.0
 
 ## Version actual
 
+`v0.3.9.0` marca el cierre del rework visual acotado de `WidgetStudio` y PREVIEW2:
+
+- UI2 visual rework de `WidgetStudio`.
+- PREVIEW2 intrinsic width para `Relative` y `Standings` en la preview aislada.
+- Version runtime/build actualizada.
+- Validacion manual aprobada por el usuario.
+
+Version previa relevante:
+
 `v0.3.6.1` marca el cierre del primer corte configurable de `Standings`:
 
 - S4.5 mock scenarios `Práctica` / `Qualy` / `Carrera` en preview.
@@ -60,6 +69,7 @@ Las tareas puramente documentales, analisis, planes y reviews no crean version/t
 | Version | Tipo | Alcance |
 |---|---|---|
 | `v0.3.6.1` | Runtime/build | Cierre de Standings configurable S4.5-S6 |
+| `v0.3.9.0` | Runtime/build | UI2 WidgetStudio visual rework + PREVIEW2 intrinsic width |
 
 ## Rango de versiones
 
@@ -94,7 +104,8 @@ Puede publicarse como alpha privada completa si:
 
 - `Relative` configurable esta cerrado;
 - `Standings` configurable esta cerrado excepto multiclase;
-- rework UI de `Overlays Studio` esta aplicado;
+- rework UI acotado de `WidgetStudio` esta aplicado;
+- no hay regresiones criticas de preview aislada;
 - tester cercano puede completar un flujo real sin asistencia tecnica fuerte.
 
 ## Gate 0.4.X.X

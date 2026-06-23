@@ -4,9 +4,11 @@ Registro de bugs y decisiones tomadas durante la estabilizacion de la preview ai
 
 ## Estado
 
-Ultima actualizacion: 2026-06-22.
+Ultima actualizacion: 2026-06-23.
 
-Estado actual: corregido tecnicamente y validado manualmente por el usuario en `Relative` compacto con columnas `bestLap` y `lastLap` activas.
+Estado actual: corregido tecnicamente y validado manualmente por el usuario en `Relative` y `Standings`, tanto con ancho intrinseco como con columnas opcionales.
+
+Indice consolidado de bugs cerrados: `docs/resolved-bugs.md`.
 
 ## Contexto
 

@@ -111,16 +111,18 @@ Controles live restaurados dentro de Overlays Studio:
 
 ## Objetivo actual
 
-La validacion manual del primer corte configurable de `Relative` ya fue aprobada por el usuario en app real.
+Checkpoint funcional `v0.3.9.0` cerrado:
 
-La verificacion A1 de separacion `WidgetStudio`/`LayoutStudio` fue aprobada con veredicto `PASS`.
-El inventario S1 de `Standings` fue aprobado con veredicto `READY FOR S2`; no requiere backend/schema para el primer corte.
+- `WidgetStudio` visual rework validado manualmente.
+- PREVIEW2 validado manualmente: `Relative` y `Standings` se ajustan al ancho intrinseco en la preview aislada sin espacio vacio a la derecha.
+- Version runtime/build actualizada y tag `v0.3.9.0` publicado.
+- No se haran mas reworks visuales completos hasta cerrar la mayoria de features core.
 
-El siguiente paso recomendado es:
+El siguiente paso recomendado es volver al roadmap de features:
 
-1. revisar y aprobar `UI2 - WidgetStudio Visual Rework`,
-2. usar `docs/overlays-studio-visual-analysis-ui1.md` y `docs/superpowers/plans/2026-06-23-ui2-widgetstudio-visual-rework.md` como fuentes,
-3. no tocar codigo de producto hasta que UI2 este aprobado.
+1. ejecutar `A2 - Inventario LayoutStudio drag/resize/save`;
+2. si A2 detecta huecos, crear miniplan `A3` para corregirlos;
+3. despues continuar con recomendados editables, mock/live/demo y checklist alpha.
 
 Ultimo miniplan completado y aprobado por GLM:
 - `docs/superpowers/plans/2026-06-22-s4-standings-render-configurable.md`
@@ -154,7 +156,7 @@ S6 - Standings verificacion completa y docs ejecutada (2026-06-23):
 - Todos los checks automaticos pasaron (322 tests frontend, tsc, build, lint, Go tests, `git diff --check` sin errores; warnings CRLF no bloqueantes en working copy).
 - Checklist manual creada en `docs/standings-manual-verification.md`.
 - Review GLM: `ACCEPT WITH P3`; se corrigieron los P2 documentales antes de avanzar a UI1.
-- Release/tag objetivo: `v0.3.6.1`.
+- Release/tag publicado: `v0.3.6.1`.
 
 UI1 - Analisis visual de `WidgetStudio` completado (2026-06-23):
 - Worker: Minimax M3.
@@ -186,7 +188,7 @@ PREVIEW2 - `WidgetStudio Intrinsic Width` completado (2026-06-23):
 UI2 - Miniplan `WidgetStudio Visual Rework` creado (2026-06-23):
 - Documento: `docs/superpowers/plans/2026-06-23-ui2-widgetstudio-visual-rework.md`.
 - Alcance: rework visual de `WidgetStudio` con densidad alta tipo RaceLabs y margen creativo para el worker UI/UX.
-- Estado: pendiente de revision/aprobacion antes de ejecutar UI3.
+- Estado: ejecutado y validado como parte de `v0.3.9.0`.
 
 ### Reconexión live-first aprobada para overlays
 
@@ -197,10 +199,11 @@ UI2 - Miniplan `WidgetStudio Visual Rework` creado (2026-06-23):
 
 ## Proximas tareas pequenas
 
-1. Hacer commit/push/tag de `v0.3.9.0`.
-2. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core.
-3. Continuar con minifases de feature del roadmap, empezando por A2/A3 si el objetivo inmediato es cerrar alpha privada.
-4. Ejecutar REL1 despues de UI3, cuando se reactive el polish visual final.
+1. Crear prompt para `A2 - Inventario LayoutStudio drag/resize/save`.
+2. Ejecutar A2 con worker barato (`Deepseek V4 Flash`) y review ligera.
+3. Si A2 detecta bugs de layout, preparar A3 con worker Kimi/Minimax y review GLM si toca contratos.
+4. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core.
+5. Ejecutar REL1 despues de UI3, cuando se reactive el polish visual final.
 
 ## Riesgos actuales
 
@@ -210,6 +213,7 @@ UI2 - Miniplan `WidgetStudio Visual Rework` creado (2026-06-23):
 - Los agentes pueden confundir `Widgets` con `LayoutStudio`; mantener separacion estricta.
 - Modificar `PreviewWidgetFrame` puede impactar a los mini-previews de perfiles creados en la Fase A2 si no se maneja bien la propiedad de "aislamiento" o "escala".
 - La preview aislada de `WidgetStudio` ya esta separada de `PreviewWidgetFrame`; mantener esta separacion y consultar `docs/widget-preview-bug-log.md` antes de tocarla.
+- Bugs importantes ya cerrados viven en `docs/resolved-bugs.md`; consultarlo antes de reabrir trabajo de preview, guardado o variantes legacy.
 - La app ya tiene el flujo principal de edicion, el plan maestro vive en `docs/master-feature-plan.md` y el tablero orquestable vive en `docs/roadmap-execution-board.md`.
 - Hallazgos P3 pendientes de resolver (documentados para follow-up):
   1. `columns: []` se normaliza a defaults, lo cual es ambiguo para futuros cortes.

@@ -35,6 +35,7 @@ La politica completa vive en `docs/versioning-and-release-gates.md`.
 - Trabajar la primera feature `Next` de la fase activa salvo decision explicita.
 - No saltar a multisimulador antes de cerrar LMU.
 - No ampliar configuracion profunda de otros widgets antes de cerrar producto usable.
+- No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core; los proximos cambios visuales deben ser polish acotado o fixes.
 - Cada feature grande debe pasar por inventario, miniplan, implementacion, review y verificacion manual.
 - El agente principal debe actuar como orquestador/reviewer por defecto y delegar codigo a workers salvo necesidad estricta.
 - Mantener la separacion:
@@ -191,7 +192,7 @@ Post-release:
 
 ### 0.1.X.X - Pre-alpha/foundation
 
-Estado: `In progress`.
+Estado: `Done`.
 
 Objetivo:
 
@@ -211,11 +212,11 @@ Ya conseguido:
 - overlay desktop funcional;
 - controles live restaurados en flujos permitidos.
 
-Pendiente antes de abandonar 0.1:
+Resultado:
 
-- ordenar documentacion viva;
-- confirmar que no quedan regresiones criticas de preview;
-- decidir primer corte de `Standings`.
+- foundation tecnica cerrada para continuar con features de alpha;
+- preview aislada estabilizada;
+- primer corte de `Standings` decidido e implementado en 0.3.
 
 ### 0.2.X.X - Alpha privada: producto usable
 
@@ -240,7 +241,7 @@ Gate de salida:
 
 ### 0.3.X.X - Alpha privada: UI y widgets core
 
-Estado: `Planned`.
+Estado: `In progress`.
 
 Objetivo:
 
@@ -248,10 +249,10 @@ Cerrar la experiencia de `Overlays Studio` y los dos widgets core.
 
 Features:
 
-1. Rework visual/UX de `Overlays Studio`.
+1. Rework visual/UX acotado de `WidgetStudio`.
    - Fuente visual: HTML de referencia del usuario.
    - Ruta de referencia actual: `C:\Users\isaac\Desktop\Vantare-Overlays\overlays_mockup.html`.
-   - Alcance: diseno, jerarquia, legibilidad y flujo.
+   - Alcance cerrado en `v0.3.9.0`: editor de widgets, densidad, jerarquia, panel derecho y controles de `Relative`/`Standings`.
    - No cambiar responsabilidades ni arquitectura sin plan separado.
 2. `Relative` cierre final.
    - Toda la personalizacion definida para `Relative`.
@@ -266,6 +267,19 @@ Features:
    - Guardado real.
    - Preview correcta.
 4. Verificacion manual de alpha privada.
+
+Ya conseguido:
+
+- `Standings` configurable excepto multiclase.
+- Escenarios mock practica/qualy/carrera para preview.
+- Guardado explicito en `WidgetStudio`.
+- UI2 visual rework de `WidgetStudio`.
+- PREVIEW2 intrinsic width de `Relative` y `Standings`.
+
+Decision actual:
+
+- No hacer mas reworks visuales completos hasta cerrar la mayoria de features core.
+- Continuar con A2/A3 (`LayoutStudio` drag/resize/save) para cerrar producto usable.
 
 Gate de salida:
 
@@ -440,22 +454,18 @@ Incluye:
 
 Orden operativo desde hoy:
 
-1. `A1`: verificar separacion `WidgetStudio`/`LayoutStudio`.
-2. `A2`: inventario tecnico de `Standings`.
-3. `A3`: `Standings` catalogo/schema/variantes.
-4. `A4`: `Standings` render configurable.
-5. `A5`: `Standings` UI en `WidgetStudio`.
-6. `A6`: `Standings` persistencia/verificacion.
-7. `A7`: revisar `LayoutStudio` drag/resize y cerrar blockers.
-8. `A8`: recomendado -> copia editable.
-9. `A9`: mock/live/demo UX.
-10. `A10`: rework UI `Overlays Studio`.
-11. `A11`: checklist alpha privada.
-12. `B1`: build testers.
-13. `B2`: OBS setup local.
-14. `B3`: hotkeys.
-15. `B4`: delta best live.
-16. `B5`: `Pedals` beta v1.
+1. `A2`: inventario `LayoutStudio` drag/resize/save.
+2. `A3`: implementar/fijar `LayoutStudio` si A2 detecta huecos.
+3. `A4`: recomendado -> copia editable: inventario.
+4. `A5`: recomendado -> copia editable: implementacion/fixes.
+5. `A6`: mock/live/demo UX: inventario.
+6. `A7`: mock/live/demo UX: implementacion/fixes.
+7. `A8`: checklist alpha privada.
+8. `B1`: build testers.
+9. `B2`: OBS setup local.
+10. `B3`: hotkeys.
+11. `B4`: delta best live.
+12. `B5`: `Pedals` beta v1.
 
 El estado operativo detallado vive en `docs/roadmap-execution-board.md`.
 

@@ -66,13 +66,16 @@ Versiones previas relevantes:
 
 Toda version funcional confirmada debe quedar trazada con:
 
-1. commit Git con scope claro;
-2. push de la rama activa;
-3. tag Git `vX.X.X.X` pusheado al remoto.
+1. entrada publica en `docs/changelog.md`;
+2. commit Git con scope claro;
+3. push de la rama activa;
+4. tag Git `vX.X.X.X` pusheado al remoto.
 
 Si la version confirma una build/runtime usable, tambien se actualiza la version visible de la app (`cmd/vantare/main.go` y `build/config.yml`).
 
 Las tareas puramente documentales, analisis, planes y reviews no crean version/tag por si solas. Se commitean con scope documental y se agrupan bajo la siguiente version funcional cuando corresponda.
+
+Al pushear un tag `v*`, `.github/workflows/discord-release.yml` lee la entrada de `docs/changelog.md` para ese tag y la publica en Discord usando el secret `DISCORD_WEBHOOK_URL`.
 
 ## Checkpoints confirmados
 

@@ -53,6 +53,14 @@ go test ./pkg/config ./internal/app
 git diff --check
 ```
 
+Release/Discord:
+
+- [ ] `docs/changelog.md` tiene entrada para la version que se va a taggear.
+- [ ] La entrada usa secciones cortas: Nuevo, Mejorado, Corregido, Para testers.
+- [ ] El tag Git `vX.X.X.X` coincide exactamente con el heading del changelog.
+- [ ] El secret de GitHub `DISCORD_WEBHOOK_URL` esta configurado en el repo oficial.
+- [ ] Al pushear el tag `v*`, GitHub Actions publica el changelog en Discord.
+
 ## Beta testers checklist
 
 Producto:

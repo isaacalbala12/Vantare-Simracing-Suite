@@ -24,9 +24,9 @@ jobs:
           import os
 
           tag = os.environ["GITHUB_REF_NAME"]
-          path = Path("docs/changelog.md")
+          path = Path("vantare-v2/docs/changelog.md")
           if not path.exists():
-              raise SystemExit("docs/changelog.md does not exist")
+              raise SystemExit("vantare-v2/docs/changelog.md does not exist")
 
           lines = path.read_text(encoding="utf-8").splitlines()
           headings = {f"## {tag}", f"## [{tag}]"}

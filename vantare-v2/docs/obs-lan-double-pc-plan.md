@@ -103,3 +103,13 @@ Podemos verificar la estabilidad de red y el comportamiento LAN usando un único
     *   Abrir OBS Studio en la misma máquina.
     *   Crear una fuente de Navegador apuntando a la IP de la interfaz local (`http://192.168.1.15:39261/...`) en lugar de `127.0.0.1`.
     *   Comprobar las herramientas de desarrollo de OBS (clic derecho en la fuente > Interactuar > F12 si está configurado) y verificar que las conexiones de red no sufren bloqueos de seguridad y que el stream de eventos SSE fluye de forma constante.
+
+---
+
+## 7. Seguridad Crítica y Aprobación de Arquitectura (Review GLM 5.2)
+
+> [!CAUTION]
+> **Bloqueo Preventivo de Implementación**
+> Toda la investigación técnica de doble PC / LAN se mantiene **estrictamente como documentación de diseño**. Queda estrictamente prohibido realizar cualquier modificación en el backend de Go para abrir puertos a la LAN (`0.0.0.0`), inyectar CORS `*` o alterar el servidor web sin pasar primero por una **revisión y aprobación formal del modelo GLM 5.2**.
+>
+> Esto asegura que se implementen los mecanismos correctos de mitigación frente a ataques de DNS Rebinding/CSRF, tokens de seguridad dinámicos e IP binding selectivo antes de comprometer la red local del usuario.

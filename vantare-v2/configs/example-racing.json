@@ -141,16 +141,16 @@
       "position": {
         "x": 690,
         "y": 980,
-        "w": 530,
-        "h": 80
+        "w": 90,
+        "h": 100
       },
       "props": {
         "appearance": {
           "accentColor": "#9b2226",
-          "backgroundColor": "#1a0104",
-          "pedalBrakeColor": "#e74c3c",
-          "pedalClutchColor": "#3498db",
-          "pedalThrottleColor": "#2ecc71",
+          "backgroundColor": "transparent",
+          "pedalBrakeColor": "#e63946",
+          "pedalClutchColor": "#3aa6c8",
+          "pedalThrottleColor": "#34d399",
           "textColor": "#FFFFFF"
         },
         "style": "vantare-racing"

@@ -91,6 +91,9 @@ export function SettingsPage() {
   const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagCopied, setDiagCopied] = useState(false);
+  const [diagError, setDiagError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -184,6 +187,38 @@ export function SettingsPage() {
     handlers.push(unsubProfile);
     Events.Emit('profile:request');
 
+    const unsubDiagnostics = Events.On(
+      'diagnostics',
+      (event: { data: unknown }) => {
+        setDiagLoading(false);
+        try {
+          const payload = JSON.stringify(event.data, null, 2);
+          navigator.clipboard.writeText(payload)
+            .then(() => {
+              setDiagCopied(true);
+              setDiagError(null);
+              setTimeout(() => setDiagCopied(false), 3000);
+            })
+            .catch((err) => {
+              console.error('Error al copiar al portapapeles:', err);
+              setDiagError('Error al copiar al portapapeles. Por favor copia manualmente.');
+            });
+        } catch {
+          setDiagError('Error al procesar el paquete de diagnóstico.');
+        }
+      },
+    );
+    handlers.push(unsubDiagnostics);
+
+    const unsubDiagError = Events.On(
+      'diagnostics:error',
+      (event: { data?: { message?: string } }) => {
+        setDiagLoading(false);
+        setDiagError(event.data?.message ?? 'Error al generar los diagnósticos');
+      },
+    );
+    handlers.push(unsubDiagError);
+
 
     return () => {
       handlers.forEach((h) => h?.());
@@ -250,6 +285,12 @@ export function SettingsPage() {
   function handleSaveHotkeys() {
     setSettingsStatus('Guardando...');
     Events.Emit('settings:save', appSettings);
+  }
+
+  function handleCopyDiagnostics() {
+    setDiagLoading(true);
+    setDiagError(null);
+    Events.Emit('diagnostics:get');
   }
 
   function isDowngrade(current: string, target: string): boolean {
@@ -357,8 +398,30 @@ export function SettingsPage() {
               OBS Browser Source
             </h2>
             <ObsSetup url={window.location.origin + '/overlay?profile=' + encodeURIComponent(activeProfileId ?? 'example-racing.json')} />
+          </div>
 
-
+          {/* Soporte Técnico y Diagnósticos */}
+          <div className="glass-panel rounded-xl p-6 border border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+            <h2 className="font-display font-semibold text-lg text-white mb-2">
+              Soporte Técnico y Diagnósticos
+            </h2>
+            <p className="text-sm text-vantare-textMuted mb-4">
+              Si experimentas un error, puedes copiar un paquete de diagnóstico seguro con la configuración actual
+              de la aplicación para compartirlo en el canal de soporte. Las rutas personales de tu equipo se sanitizan automáticamente.
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyDiagnostics}
+              disabled={diagLoading}
+              className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {diagLoading ? 'Generando...' : diagCopied ? '✓ ¡Copiado al Portapapeles!' : 'Copiar paquete de diagnóstico'}
+            </button>
+            {diagError && (
+              <div className="mt-3 text-xs text-red-400 font-mono">
+                {diagError}
+              </div>
+            )}
           </div>
 
           {settingsStatus && (

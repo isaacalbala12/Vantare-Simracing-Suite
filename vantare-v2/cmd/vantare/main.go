@@ -272,6 +272,10 @@ func main() {
 	}
 	vapp.SetDeltaMode(mode)
 
+	// Diagnostics service
+	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, vapp)
+	wailsApp.RegisterService(application.NewService(diagSvc))
+
 	// Set profiles directory for profile cycling
 	profileSvc.SetProfilesDir(cfgDir)
 
@@ -500,6 +504,16 @@ func main() {
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
 		emitter.Emit("settings", settingsSvc.Settings())
+	})
+
+	wailsApp.Event.On("diagnostics:get", func(event *application.CustomEvent) {
+		diag, err := diagSvc.GetDiagnostics()
+		if err != nil {
+			log.Printf("diagnostics:get error: %v", err)
+			emitter.Emit("diagnostics:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("diagnostics", diag)
 	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {

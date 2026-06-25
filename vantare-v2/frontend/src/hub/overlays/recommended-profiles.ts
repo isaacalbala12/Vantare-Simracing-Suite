@@ -59,7 +59,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
       monitorIndex: 0,
       widgets: [
         { id: "telemetry-vertical", type: "telemetry-vertical", enabled: true, updateHz: 30, position: { x: 40, y: 380, w: 140, h: 360 } },
-        { id: "pedals", type: "pedals", enabled: true, updateHz: 30, position: { x: 40, y: 760, w: 180, h: 220 } },
+        { id: "pedals", type: "pedals", enabled: true, updateHz: 30, position: { x: 40, y: 760, w: 90, h: 100 } },
       ],
     },
   },

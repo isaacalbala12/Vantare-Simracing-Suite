@@ -157,4 +157,46 @@ describe('SettingsPage', () => {
     expect(inputAfter!.value).not.toContain('profile=example-racing.json');
     expect(inputAfter!.value).not.toContain('profile=default-racing');
   });
+
+  it('renders technical support section and diagnostics button', () => {
+    render(<SettingsPage />);
+    expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' })).toBeDefined();
+  });
+
+  it('emits diagnostics:get when diagnostics button is clicked and shows success feedback on success', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<SettingsPage />);
+
+    const button = screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' });
+    fireEvent.click(button);
+
+    expect(runtimeMock.emit).toHaveBeenCalledWith('diagnostics:get');
+
+    act(() => {
+      dispatch('diagnostics', { appVersion: 'v0.3.10.0', os: 'windows' });
+    });
+
+    expect(writeTextMock).toHaveBeenCalledWith(JSON.stringify({ appVersion: 'v0.3.10.0', os: 'windows' }, null, 2));
+    expect(await screen.findByText('✓ ¡Copiado al Portapapeles!')).toBeDefined();
+  });
+
+  it('shows error feedback when diagnostics request fails', () => {
+    render(<SettingsPage />);
+
+    const button = screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' });
+    fireEvent.click(button);
+
+    act(() => {
+      dispatch('diagnostics:error', { message: 'Failed to retrieve diagnostics' });
+    });
+
+    expect(screen.getByText('Failed to retrieve diagnostics')).toBeDefined();
+  });
 });

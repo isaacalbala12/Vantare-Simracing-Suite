@@ -13,6 +13,16 @@ Vantare v2 se documenta desde ahora como una suite local para sim racing, no sol
 
 Documento base: `docs/vantare-suite-architecture.md`.
 
+P3 - Pedals compact render completado (2026-06-25):
+- Implementado el nuevo `PedalsWidget` compacto basado en el diseño aprobado por GLM: Mock V4 broadcast minimal.
+- Rediseñado a 3 barras verticales (`CLT`, `BRK`, `THR`), fondo transparente por defecto y track de barra `#0a0a0a` fijo.
+- Eliminados del widget pedals heredado: marcha, velocidad, volante animado ficticio, canvas de historial gráfico, `BAKED_PANEL_BG`, `HISTORY_SIZE`.
+- Creado helper puro `pedals-format.ts` para clamping estricto en el rango `0..100` y fallbacks seguros ante valores negativos, `NaN`, `Infinity`, `undefined` y nulos (con tests table-driven).
+- Modificados los defaults del style catalog a la paleta de Mock V4: embrague `#3aa6c8`, freno `#e63946`, acelerador `#34d399` y fondo `transparent`.
+- Actualizado el widget pedals en perfiles default y recomendados (`example-racing.json` y `recommended-profiles.ts`) al tamaño base recomendado de `90x100`.
+- No se modificó `widget-base-size.ts`, schema, backend en Go, ni otros widgets (`Relative`/`Standings`/`Delta`/`Engineer`).
+- Cobertura total de tests y checks pasados con éxito: 445 tests frontend, build, lint y `git diff --check` OK.
+
 EN3-EN5 - UI Ingeniero + Bus de notificaciones + Widget de overlays completado:
 - Creada la nueva sección de `Ingeniero` en el Hub para gestionar el estado, spotter, sensibilidad, y ver el historial de mensajes de forma reactiva.
 - Implementado el bus de notificaciones de Ingeniero que alimenta en tiempo real a Wails (Hub/Desktop) y a OBS a través de un nuevo stream SSE (`/engineer/stream`).
@@ -170,7 +180,7 @@ Checkpoint funcional `v0.3.10.0` preparado para cierre:
 - Ingeniero queda integrado como modulo de suite, con EN6 live LMU aparcado hasta validacion real.
 - Queda pendiente verificacion manual prolongada de Delta live con LMU.
 
-El siguiente paso recomendado tras cerrar `v0.3.10.0` es continuar con `P1 - Pedals inventario datos/diseño actual`:
+Trabajo posterior al checkpoint `v0.3.10.0`:
 
 1. `A8 - Checklist alpha privada` completado con PASS;
 2. `B1 - Build compartible e instrucciones` completado con la guía del tester;
@@ -182,7 +192,9 @@ El siguiente paso recomendado tras cerrar `v0.3.10.0` es continuar con `P1 - Ped
 8. mantener EN6 aparcado hasta poder validar LMU live;
 9. no iniciar nuevos reworks visuales completos hasta cerrar mas features core.
 10. `P1 - Pedals inventario datos/diseño actual` completado.
-11. Siguiente operativo: `P2 - Pedals nuevo diseño pequeño`.
+11. `P2 - Pedals nuevo diseño pequeño` completado como plan visual aprobado.
+12. `P3 - Pedals compact render` completado con el nuevo render compacto `CLT`/`BRK`/`THR`.
+13. Siguiente operativo: `P4 - Pedals configuracion visual basica`.
 
 
 
@@ -291,8 +303,9 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 9. mantener EN6 aparcado hasta poder validar LMU live.
 10. No iniciar mas reworks visuales completos hasta cerrar la mayoria de features core.
 11. `P1 - Pedals inventario datos/diseño actual` completado.
-12. Siguiente operativo: `P2 - Pedals nuevo diseño pequeño`.
-13. Ejecutar REL1/Discord release al pushear el tag funcional.
+12. `P3 - Pedals compact render` completado.
+13. Siguiente operativo: `P4 - Pedals configuracion visual basica`.
+14. Ejecutar REL1/Discord release al pushear el tag funcional.
 
 
 

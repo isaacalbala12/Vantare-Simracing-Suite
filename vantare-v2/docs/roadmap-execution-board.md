@@ -130,9 +130,9 @@ Nota operativa: EN6 queda aparcado mientras no se pueda probar live. Se puede co
 | ID | Version | Minifase | Estado | Modelo worker | Reviewer | Depende de | Manual |
 |---|---:|---|---|---|---|---|---|
 | P1 | 0.5.1.X | Pedals inventario datos/diseño actual | Done | Gemini 3.5 Flash | Codex | B6 | No |
-| P2 | 0.5.2.X | Pedals nuevo diseño pequeño | Next | Minimax M3 | Codex | P1 | Si |
-| P3 | 0.5.3.X | Pedals throttle/brake/clutch render | Later | Kimi K2.7 | Codex | P2 | Si |
-| P4 | 0.5.4.X | Pedals configuracion visual basica | Later | Minimax M3 | Codex | P3 | Si |
+| P2 | 0.5.2.X | Pedals nuevo diseño pequeño | Done | Minimax M3 | Codex | P1 | Si |
+| P3 | 0.5.3.X | Pedals throttle/brake/clutch render | Done | Kimi K2.7 | Codex | P2 | Si |
+| P4 | 0.5.4.X | Pedals configuracion visual basica | Next | Minimax M3 | Codex | P3 | Si |
 | P5 | 0.5.5.X | Recomendados beta pulidos | Later | Minimax M3 | Codex | P4 | Si |
 | P6 | 0.5.6.X | Smoke test beta privada | Later | Usuario + Codex | Codex | P5 | Si |
 
@@ -290,7 +290,7 @@ Objetivo: preparar un flujo sencillo para que cada version funcional confirmada 
 
 Alcance:
 
-- Crear o consolidar `docs/changelog.md` como changelog publico orientado a testers/usuarios.
+- Crear o consolidar `docs/changelog.md` como changelog publico orientado a testers/usuarios, y seguir el [Runbook de Operaciones de Release/Beta](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/release-beta-operations-runbook.md) para el despliegue.
 - Definir formato corto para Discord: nuevo, mejorado, corregido, notas para testers.
 - Anadir checklist de release: actualizar changelog antes de commit/tag de version funcional.
 - Preparar plan para webhook de Discord usando secreto externo, por ejemplo `DISCORD_WEBHOOK_URL`.
@@ -306,9 +306,9 @@ No alcance:
 
 ## Proxima accion
 
-Checkpoint funcional `v0.3.10.0` listo para cierre con commit unico, push y tag tras checks completos. B6 queda completado automaticamente: fusión de deltas negativos corregida, Shared Memory de LMU priorizada para `DeltaBest`, `DeltaWidget` con labels live y documentación de testers actualizada.
+Checkpoint funcional `v0.3.10.0` ya cerró la base de beta privada B1-B6. Después de ese checkpoint se completaron `P1`, `P2` y `P3` de Pedals: inventario, plan de diseño pequeño y render compacto `CLT/BRK/THR`.
 
-El próximo paso operativo tras el tag es `P1 - Pedals inventario datos/diseño actual`.
+El próximo paso operativo es `P4 - Pedals configuracion visual basica`, salvo que se priorice antes una review GLM final de cierre del lote de workers.
 
 Checklist manual pendiente para Isaac antes de distribuir:
 1. Smoke manual (ver `docs/alpha-private-checklist.md` seccion Smoke test manual recomendado).

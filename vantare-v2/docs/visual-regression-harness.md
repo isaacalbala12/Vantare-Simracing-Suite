@@ -155,11 +155,26 @@ test("Relative widget compact mode alignment", async ({ page }) => {
 
 ---
 
-## 6. Siguientes Pasos Recomendados
+## 6. Siguientes Pasos y Aprobación Requerida (Plan-Only)
 
-Una vez aprobado este plan:
-1. Crear la carpeta `frontend/e2e` para alojar los archivos de prueba.
-2. Crear `frontend/playwright.config.ts` en la raíz del frontend.
-3. Escribir los primeros tests de regresión visual para `RelativeWidget` y `StandingsWidget`.
-4. Añadir un script en `frontend/package.json`: `"test:visual": "playwright test"`.
-5. Ejecutar localmente y confirmar la generación de las imágenes de referencia en `frontend/e2e/visual-regression.spec.ts-snapshots/`.
+Este arnés de pruebas se mantiene actualmente como una **propuesta de diseño técnico (Plan-Only)** y no se ha implementado en código para proteger el espacio de dependencias del proyecto.
+
+> [!IMPORTANT]
+> **Aprobación de Dependencias y Descargas de Red**
+> Para proceder con la implementación activa de este arnés visual en el futuro, se requiere la aprobación explícita del usuario para realizar las siguientes acciones:
+> 1. **Instalar `@playwright/test`**: Añadir este paquete como dependencia de desarrollo (`devDependencies`) en `frontend/package.json`.
+> 2. **Descargar Chromium**: Ejecutar `npx playwright install chromium`, lo cual descargará aproximadamente ~120MB de binarios de navegador de internet.
+
+Una vez aprobada y realizada la instalación, el flujo de ejecución local de los tests será:
+```bash
+# 1. Agregar test-runner al frontend
+pnpm --dir frontend add -D @playwright/test
+
+# 2. Descargar navegadores
+npx playwright install chromium
+
+# 3. Ejecutar las pruebas visuales reales en el navegador
+pnpm --dir frontend test:visual
+```
+
+El archivo de especificación de pruebas propuesto (`frontend/e2e/preview-regression.spec.ts`) verificará de manera robusta la geometría del sandbox, el centrado de los widgets y la ausencia de controles de edición de posición en `WidgetStudio`.

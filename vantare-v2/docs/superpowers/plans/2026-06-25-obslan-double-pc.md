@@ -5,21 +5,32 @@ Este documento define el plan de implementación técnica para soportar de maner
 ## User Review Required
 
 > [!IMPORTANT]
-> **Seguridad de Red Local (Escucha en 0.0.0.0)**
+> **Seguridad de Red Local (Escucha en 0.0.0.0) e IP Binding**
 > Para permitir la conexión desde un PC secundario, el servidor HTTP debe escuchar en `0.0.0.0` en lugar de `127.0.0.1`. Esto expone los datos de telemetría en tiempo real y el perfil activo a cualquier dispositivo en la misma subred.
-> *   *Decisión tomada*: Mantener el valor predeterminado en `127.0.0.1:39261` para máxima seguridad local, y permitir al usuario activar la escucha en red local (`0.0.0.0`) de forma explícita mediante un nuevo ajuste en `app-settings.json` o mediante un control en el Hub, además del flag de consola `-http` ya existente.
+> *   *Decisión tomada*: Mantener el valor predeterminado en `127.0.0.1:39261` para máxima seguridad local. El usuario podrá activar la escucha en red local (`0.0.0.0`) de forma explícita mediante un nuevo ajuste en `app-settings.json` o mediante un control en el Hub, además del flag de consola `-http` ya existente.
 
 > [!WARNING]
-> **Exclusión del Firewall de Windows**
-> El instalador de la app o el primer arranque en modo red local requerirá que el usuario acepte la advertencia del Firewall de Windows Defender. Se agregará un aviso visual destacado en la interfaz del Hub para guiar al usuario en caso de problemas de conexión.
+> **Riesgo de CORS Wildcard (`*`) y DNS Rebinding**
+> Habilitar `Access-Control-Allow-Origin: *` de forma irrestricta cuando el servidor escucha en `0.0.0.0` introduce un riesgo de seguridad de red: una pestaña de navegador maliciosa abierta por el usuario en internet podría interactuar con el servidor local y extraer telemetría o configuraciones.
+> *   *Mitigación recomendada*: **No usar CORS `*` por defecto**. OBS Studio no lo requiere, ya que al cargar la página directamente desde la dirección IP del PC de juego (`http://192.168.1.XX:39261/overlay`), se considera un origen idéntico (Same-Origin). Si se requiere CORS para integraciones de desarrolladores, debe habilitarse como una opción explícita y restringirse a los orígenes autorizados, o bien exigir un token local.
+
+> [!CAUTION]
+> **Exclusión del Firewall de Windows y Redes Públicas**
+> El primer arranque en modo red local requerirá que el usuario acepte la advertencia del Firewall de Windows Defender. Se agregará un aviso visual destacado en la interfaz del Hub para guiar al usuario a no activar esto en redes públicas (Wi-Fi de hoteles o cafeterías) y usar exclusivamente el perfil de **"Red Privada"** en Windows.
+
+> [!CAUTION]
+> **Revisión Obligatoria de Arquitectura (Review GLM 5.2)**
+> **CUALQUIER cambio de código** en el backend o en el enrutamiento HTTP relacionado con la integración de doble PC / LAN (incluyendo la escucha en `0.0.0.0`, CORS o tokens de seguridad) **requiere una revisión y aprobación previa y explícita del modelo GLM 5.2** antes de tocar una sola línea de código, garantizando que el diseño de red sea 100% hermético y libre de regresiones de seguridad.
 
 ---
 
 ## Open Questions
 
 > [!NOTE]
-> **¿Debemos añadir soporte CORS completo (`*`) por defecto?**
-> Habilitar CORS `*` en los endpoints de telemetría y perfiles facilita enormemente que desarrolladores e integradores conecten widgets personalizados alojados en servidores locales o archivos `file:///` remotos. Dado que los datos de telemetría de juego no contienen información sensible ni personal, proponemos activar cabeceras CORS en todas las rutas del servidor HTTP.
+> **¿Debemos añadir un Token de Seguridad (Read-Token) en la URL?**
+> Para evitar que cualquier dispositivo conectado a la misma red local acceda a la telemetría (o que scripts maliciosos en la LAN espíen la sesión), proponemos que las URLs de red local incluyan un token de acceso aleatorio autogenerado al arrancar la aplicación (ej. `/overlay?profile=racing.json&token=a8b3d9`).
+> *   *Recomendación*: Implementar este token en Fase 1 como un mecanismo transparente: el Hub genera las URLs copiables incluyendo este token, y el servidor HTTP valida que coincida.
+> *   *Rate Limiting*: Proponemos añadir un rate-limiter básico por IP en el backend para evitar inundaciones accidentales de peticiones en los endpoints de telemetría y perfiles.
 
 ---
 

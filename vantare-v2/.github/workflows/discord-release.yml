@@ -1,0 +1,85 @@
+name: Publish release to Discord
+
+on:
+  release:
+    types: [published, prereleased]
+
+permissions:
+  contents: read
+
+jobs:
+  discord:
+    name: Discord release announcement
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog entry
+        id: changelog
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          import os
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          path = Path("docs/changelog.md")
+          if not path.exists():
+              raise SystemExit("docs/changelog.md does not exist")
+
+          lines = path.read_text(encoding="utf-8").splitlines()
+          headings = {f"## {tag}", f"## [{tag}]"}
+          start = None
+          for idx, line in enumerate(lines):
+              if line.strip() in headings:
+                  start = idx + 1
+                  break
+
+          if start is None:
+              raise SystemExit(f"No changelog entry found for {tag}")
+
+          body = []
+          for line in lines[start:]:
+              if line.startswith("## "):
+                  break
+              body.append(line)
+
+          text = "\n".join(body).strip()
+          if not text:
+              raise SystemExit(f"Changelog entry for {tag} is empty")
+
+          message = f"## Vantare Overlays {tag}\n\n{text}\n\nRelease: https://github.com/${{ github.repository }}/releases/tag/{tag}"
+          delimiter = "VANTARE_CHANGELOG_EOF"
+          print(f"message<<{delimiter}")
+          print(message)
+          print(delimiter)
+          PY
+
+      - name: Publish to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MESSAGE: ${{ steps.changelog.outputs.message }}
+        shell: bash
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not configured. Release announcement was not sent."
+            exit 0
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          payload = json.dumps({"content": os.environ["MESSAGE"]}).encode("utf-8")
+          req = urllib.request.Request(
+              os.environ["DISCORD_WEBHOOK_URL"],
+              data=payload,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              if response.status >= 300:
+                  raise SystemExit(f"Discord webhook returned HTTP {response.status}")
+          PY

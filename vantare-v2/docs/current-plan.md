@@ -181,6 +181,8 @@ El siguiente paso recomendado tras cerrar `v0.3.10.0` es continuar con `P1 - Ped
 7. `B6 - Delta best live implementacion` completado a nivel automatico y pendiente de prueba live prolongada;
 8. mantener EN6 aparcado hasta poder validar LMU live;
 9. no iniciar nuevos reworks visuales completos hasta cerrar mas features core.
+10. `P1 - Pedals inventario datos/diseño actual` completado.
+11. Siguiente operativo: `P2 - Pedals nuevo diseño pequeño`.
 
 
 
@@ -285,11 +287,12 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 5. `B3 - OBS setup local sencillo`: completado.
 6. `B4 - Hotkeys basicas`: Fase B4.1 (Hardening de atajos, stubs multiplataforma y documentación para testers) completada y validada mediante tests. Listo para siguientes fases de UX.
 7. `B5 - Delta best live inventario`: completado. Viabilidad YES, detectado bug crítico de fusión de Go.
-8. `B6 - Delta best live implementacion`: completado automaticamente. Backend y frontend listos; queda smoke manual live con LMU para recopilar feedback real.
+8. `B6 - Delta best live implementacion`: completado. Backend y frontend listos; queda smoke manual live con LMU para recopilar feedback real.
 9. mantener EN6 aparcado hasta poder validar LMU live.
 10. No iniciar mas reworks visuales completos hasta cerrar la mayoria de features core.
-11. Siguiente operativo tras `v0.3.10.0`: `P1 - Pedals inventario datos/diseño actual`.
-12. Ejecutar REL1/Discord release al pushear el tag funcional.
+11. `P1 - Pedals inventario datos/diseño actual` completado.
+12. Siguiente operativo: `P2 - Pedals nuevo diseño pequeño`.
+13. Ejecutar REL1/Discord release al pushear el tag funcional.
 
 
 

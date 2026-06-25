@@ -129,8 +129,8 @@ Nota operativa: EN6 queda aparcado mientras no se pueda probar live. Se puede co
 
 | ID | Version | Minifase | Estado | Modelo worker | Reviewer | Depende de | Manual |
 |---|---:|---|---|---|---|---|---|
-| P1 | 0.5.1.X | Pedals inventario datos/diseño actual | Next | Deepseek V4 Flash | Codex | B6 | No |
-| P2 | 0.5.2.X | Pedals nuevo diseño pequeño | Later | Minimax M3 | Codex | P1 | Si |
+| P1 | 0.5.1.X | Pedals inventario datos/diseño actual | Done | Gemini 3.5 Flash | Codex | B6 | No |
+| P2 | 0.5.2.X | Pedals nuevo diseño pequeño | Next | Minimax M3 | Codex | P1 | Si |
 | P3 | 0.5.3.X | Pedals throttle/brake/clutch render | Later | Kimi K2.7 | Codex | P2 | Si |
 | P4 | 0.5.4.X | Pedals configuracion visual basica | Later | Minimax M3 | Codex | P3 | Si |
 | P5 | 0.5.5.X | Recomendados beta pulidos | Later | Minimax M3 | Codex | P4 | Si |

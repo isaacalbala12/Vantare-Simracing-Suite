@@ -1,15 +1,10 @@
-name: Discord release announcement
+name: Discord known issues
 
 on:
   push:
-    tags:
-      - "v*"
+    paths:
+      - "vantare-v2/docs/tester-known-issues.md"
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag to announce, for example v0.3.10.0"
-        required: true
-        type: string
 
 jobs:
   announce:
@@ -18,12 +13,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Publish changelog section to Discord
+      - name: Publish known issues to Discord
         env:
-          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          INPUT_TAG: ${{ inputs.tag }}
-          REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA_VALUE: ${{ github.sha }}
           GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
           GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
@@ -36,46 +29,50 @@ jobs:
           import textwrap
           import urllib.request
 
-          webhook = (os.environ.get("DISCORD_RELEASE_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
+          webhook = (os.environ.get("DISCORD_KNOWN_ISSUES_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
           if not webhook:
-              print("Neither DISCORD_RELEASE_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
+              print("Neither DISCORD_KNOWN_ISSUES_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
               sys.exit(1)
 
-          tag = (os.environ.get("INPUT_TAG") or os.environ.get("REF_NAME") or "").strip()
-          if not tag:
-              print("No tag provided by workflow_dispatch or github.ref_name", file=sys.stderr)
+          known_issues_path = "vantare-v2/docs/tester-known-issues.md"
+          if not os.path.exists(known_issues_path):
+              print(f"Error: {known_issues_path} does not exist", file=sys.stderr)
               sys.exit(1)
 
-          changelog_path = "vantare-v2/docs/changelog.md"
-          with open(changelog_path, "r", encoding="utf-8") as fh:
-              changelog = fh.read()
+          with open(known_issues_path, "r", encoding="utf-8") as fh:
+              content = fh.read()
 
-          pattern = re.compile(
-              rf"^##\s+{re.escape(tag)}\s*$([\s\S]*?)(?=^##\s+v|\Z)",
-              re.MULTILINE,
-          )
-          match = pattern.search(changelog)
-          if not match:
-              print(f"Could not find changelog section for {tag}", file=sys.stderr)
-              sys.exit(1)
+          # Extraer versión del documento
+          version_match = re.search(r"en la versión\s+\*\*([^\*]+)\*\*", content)
+          version_doc = version_match.group(1).strip() if version_match else "Desconocida"
 
-          section = match.group(1).strip()
-          if not section:
-              print(f"Changelog section for {tag} is empty", file=sys.stderr)
-              sys.exit(1)
+          # Extraer bloqueantes
+          bloqueantes_match = re.search(r"###\s+🔴\s+Bloqueantes\s*\n+([\s\S]*?)(?=\n###|\n##|\Z)", content)
+          bloqueantes = bloqueantes_match.group(1).strip() if bloqueantes_match else "Ninguno detectado"
+
+          # Extraer importantes
+          importantes_match = re.search(r"###\s+🟡\s+Importantes\s*\n+([\s\S]*?)(?=\n###|\n##|\Z)", content)
+          importantes = importantes_match.group(1).strip() if importantes_match else "Ninguno detectado"
 
           repo_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{os.environ['GITHUB_REPOSITORY_VALUE']}"
-          tag_url = f"{repo_url}/releases/tag/{tag}"
           sha = os.environ.get("GITHUB_SHA_VALUE", "")[:7]
+          doc_url = f"{repo_url}/blob/main/vantare-v2/docs/tester-known-issues.md"
 
-          header = f"**Vantare {tag}**\n{tag_url}\nCommit: `{sha}`\n\n"
-          content = header + section
+          message = (
+              "**Vantare known issues updated**\n\n"
+              f"Version: `{version_doc}`\n\n"
+              "**🔴 Bloqueantes**\n"
+              f"{bloqueantes}\n\n"
+              "**🟡 Importantes**\n"
+              f"{importantes}\n\n"
+              f"Documento completo: {doc_url}\n"
+              f"Commit: [`{sha}`]({repo_url}/commit/{sha})"
+          )
 
-          # Discord message content limit is 2000 chars. Split on paragraph
-          # boundaries so long changelogs still publish instead of failing.
+          # Dividir si excede 1900 caracteres
           chunks = []
           current = ""
-          for paragraph in content.split("\n\n"):
+          for paragraph in message.split("\n\n"):
               candidate = paragraph if not current else current + "\n\n" + paragraph
               if len(candidate) <= 1900:
                   current = candidate
@@ -106,5 +103,5 @@ jobs:
                   if resp.status >= 300:
                       raise RuntimeError(f"Discord webhook failed with status {resp.status}")
 
-          print(f"Published changelog for {tag} to Discord")
+          print("Published known issues to Discord")
           PY

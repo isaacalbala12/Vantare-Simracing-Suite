@@ -1,0 +1,119 @@
+name: Discord build available
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión de la build, ejemplo v0.3.10.0"
+        required: true
+        type: string
+      download_url:
+        description: "Enlace de descarga directa de la build"
+        required: true
+        type: string
+      notes:
+        description: "Notas de la build o mensaje especial (opcional)"
+        required: false
+        type: string
+      sha256:
+        description: "Hash SHA-256 de la build para verificación (opcional)"
+        required: false
+        type: string
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish build availability to Discord
+        env:
+          DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_DOWNLOAD_URL: ${{ inputs.download_url }}
+          INPUT_NOTES: ${{ inputs.notes }}
+          INPUT_SHA256: ${{ inputs.sha256 }}
+          GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
+          GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import textwrap
+          import urllib.request
+
+          webhook = (os.environ.get("DISCORD_BUILD_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
+          if not webhook:
+              print("Neither DISCORD_BUILD_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
+              sys.exit(1)
+
+          version = os.environ.get("INPUT_VERSION", "").strip()
+          download_url = os.environ.get("INPUT_DOWNLOAD_URL", "").strip()
+          notes = os.environ.get("INPUT_NOTES", "").strip()
+          sha256 = os.environ.get("INPUT_SHA256", "").strip()
+
+          if not version or not download_url:
+              print("Error: version and download_url inputs are required", file=sys.stderr)
+              sys.exit(1)
+
+          repo_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{os.environ['GITHUB_REPOSITORY_VALUE']}"
+          known_issues_url = f"{repo_url}/blob/main/vantare-v2/docs/tester-known-issues.md"
+
+          message = (
+              "**Vantare build available**\n\n"
+              f"Version: `{version}`\n"
+              f"Download Link: {download_url}\n"
+          )
+
+          if notes:
+              message += f"\n**Notes**\n{notes}\n"
+
+          if sha256:
+              message += f"\n**SHA-256 Hash**\n`{sha256}`\n"
+
+          message += (
+              f"\n**Tester Resources**\n"
+              f"Known Issues: {known_issues_url}\n\n"
+              "**Reminder**: Since alpha/beta builds are not commercially signed, Windows SmartScreen may show a warning. "
+              "Click 'More info' and then 'Run anyway' to start the application."
+          )
+
+          # Split if it exceeds 1900 chars
+          chunks = []
+          current = ""
+          for paragraph in message.split("\n\n"):
+              candidate = paragraph if not current else current + "\n\n" + paragraph
+              if len(candidate) <= 1900:
+                  current = candidate
+                  continue
+              if current:
+                  chunks.append(current)
+              if len(paragraph) <= 1900:
+                  current = paragraph
+              else:
+                  chunks.extend(textwrap.wrap(paragraph, 1900, replace_whitespace=False))
+                  current = ""
+          if current:
+              chunks.append(current)
+
+          for index, chunk in enumerate(chunks, start=1):
+              suffix = f"\n\n({index}/{len(chunks)})" if len(chunks) > 1 else ""
+              payload = json.dumps({"content": chunk + suffix}).encode("utf-8")
+              req = urllib.request.Request(
+                  webhook,
+                  data=payload,
+                  headers={
+                      "Content-Type": "application/json",
+                      "User-Agent": "GitHub-Actions-Discord-Announcer",
+                  },
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=20) as resp:
+                  if resp.status >= 300:
+                      raise RuntimeError(f"Discord webhook failed with status {resp.status}")
+
+          print("Published build availability to Discord")
+          PY

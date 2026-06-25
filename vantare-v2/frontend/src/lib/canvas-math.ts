@@ -22,12 +22,14 @@ export const WIDGET_MIN_SIZE = { w: 80, h: 40 };
 
 export const WIDGET_RATIOS: Record<string, number | null> = {
   standings: null,
-  relative: 0.5,
+  relative: null,
   delta: 4,
   telemetry: 2,
   "telemetry-vertical": 0.5,
   pedals: 2,
 };
+
+const PROPORTIONAL_TYPES = new Set(["relative", "standings"]);
 
 export function resizeWithRatio(
   type: string,
@@ -35,17 +37,26 @@ export function resizeWithRatio(
   startH: number,
   deltaX: number,
   deltaY: number,
+  baseAspect?: number,
 ): { w: number; h: number } {
   const ratio = WIDGET_RATIOS[type] ?? null;
-  if (ratio == null) {
-    return {
-      w: Math.max(WIDGET_MIN_SIZE.w, startW + deltaX),
-      h: Math.max(WIDGET_MIN_SIZE.h, startH + deltaY),
-    };
+  if (ratio != null) {
+    const h = Math.max(WIDGET_MIN_SIZE.h, startH + deltaY);
+    const w = Math.max(WIDGET_MIN_SIZE.w, Math.round(h * ratio));
+    return { w, h };
   }
-  const h = Math.max(WIDGET_MIN_SIZE.h, startH + deltaY);
-  const w = Math.max(WIDGET_MIN_SIZE.w, Math.round(h * ratio));
-  return { w, h };
+  if (PROPORTIONAL_TYPES.has(type)) {
+    const aspect = baseAspect ?? (startH > 0 ? startW / startH : 1);
+    const dominant = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+    const sign = Math.sign(deltaX) !== 0 ? Math.sign(deltaX) : Math.sign(deltaY);
+    const h = Math.max(WIDGET_MIN_SIZE.h, startH + sign * dominant);
+    const w = Math.max(WIDGET_MIN_SIZE.w, Math.round(h * aspect));
+    return { w, h };
+  }
+  return {
+    w: Math.max(WIDGET_MIN_SIZE.w, startW + deltaX),
+    h: Math.max(WIDGET_MIN_SIZE.h, startH + deltaY),
+  };
 }
 
 export function clampSize(

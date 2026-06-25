@@ -36,6 +36,28 @@ describe("LayoutStudio", () => {
     expect(screen.getByText("POSICIÓN Y TAMAÑO")).toBeTruthy();
   });
 
+  it("hides danger actions while no callbacks are wired", () => {
+    render(
+      <LayoutStudio
+        profile={profile}
+        selectedWidgetId="delta"
+        dirty={false}
+        saveState="idle"
+        overlayRunning={false}
+        onStartOverlay={vi.fn()}
+        onStopOverlay={vi.fn()}
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText("Duplicar")).toBeNull();
+    expect(screen.queryByText("Reset posicion")).toBeNull();
+    expect(screen.queryByText("Eliminar")).toBeNull();
+  });
+
   it("starts overlay from layout studio when there are no unsaved changes", () => {
     const onStartOverlay = vi.fn();
 

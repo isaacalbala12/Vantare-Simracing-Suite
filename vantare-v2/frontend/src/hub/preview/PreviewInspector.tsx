@@ -213,24 +213,30 @@ export function PreviewInspector({
                   </label>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onDuplicate?.(widget)}
-                    className="flex-1 rounded-lg border border-white/10 bg-black/25 py-2 text-xs text-white hover:border-white/20 disabled:opacity-40 transition-colors"
-                  >
-                    Duplicar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onReset?.(widget)}
-                    className="flex-1 rounded-lg border border-white/10 bg-black/25 py-2 text-xs text-white hover:border-white/20 disabled:opacity-40 transition-colors"
-                  >
-                    Reset posicion
-                  </button>
-                </div>
+                {(onDuplicate || onReset) && (
+                  <div className="flex gap-2 pt-2">
+                    {onDuplicate && (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => onDuplicate(widget)}
+                        className="flex-1 rounded-lg border border-white/10 bg-black/25 py-2 text-xs text-white hover:border-white/20 disabled:opacity-40 transition-colors"
+                      >
+                        Duplicar
+                      </button>
+                    )}
+                    {onReset && (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => onReset(widget)}
+                        className="flex-1 rounded-lg border border-white/10 bg-black/25 py-2 text-xs text-white hover:border-white/20 disabled:opacity-40 transition-colors"
+                      >
+                        Reset posicion
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>

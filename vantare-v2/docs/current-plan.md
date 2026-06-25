@@ -1,6 +1,6 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-23.
+Ultima actualizacion: 2026-06-25.
 
 ## Estado actual
 
@@ -15,7 +15,7 @@ PREVIEW2 - WidgetStudio intrinsic width contract:
 
 Vantare v2 es una app local de overlays para sim racing construida con Go/Wails y React/TypeScript.
 
-Version estable actual de runtime/build: `v0.3.9.0`.
+Version estable actual de runtime/build: `v0.3.9.1`.
 Ultimo checkpoint de roadmap confirmado: UI1 documental, sin tag/version propia.
 
 Base de schema v2 para perfiles preparada:
@@ -111,18 +111,23 @@ Controles live restaurados dentro de Overlays Studio:
 
 ## Objetivo actual
 
-Checkpoint funcional `v0.3.9.0` cerrado:
+Checkpoint funcional `v0.3.9.1` cerrado:
 
 - `WidgetStudio` visual rework validado manualmente.
 - PREVIEW2 validado manualmente: `Relative` y `Standings` se ajustan al ancho intrinseco en la preview aislada sin espacio vacio a la derecha.
-- Version runtime/build actualizada y tag `v0.3.9.0` publicado.
+- `LayoutStudio` drag/resize/save estabilizado.
+- `Relative` y `Standings` redimensionan proporcionalmente en `LayoutStudio`, runtime desktop y OBS.
+- Los frames visuales se normalizan desde el primer render para perfiles legacy deformados, sin mutar ni guardar automaticamente.
+- Recomendados de Vantare pueden guardarse como copia propia editable.
+- `SaveProfileAsOwnCopy` genera IDs unicos, convierte a schema v2 y no muta el perfil de entrada.
+- Version runtime/build actualizada a `v0.3.9.1`.
 - No se haran mas reworks visuales completos hasta cerrar la mayoria de features core.
 
 El siguiente paso recomendado es volver al roadmap de features:
 
-1. ejecutar `A2 - Inventario LayoutStudio drag/resize/save`;
-2. si A2 detecta huecos, crear miniplan `A3` para corregirlos;
-3. despues continuar con recomendados editables, mock/live/demo y checklist alpha.
+1. ejecutar `A6+A7 - Mock/live/demo UX` como lote rapido;
+2. review posterior de GLM si toca backend/estado live;
+3. despues ejecutar `A8 - Checklist alpha privada`.
 
 Ultimo miniplan completado y aprobado por GLM:
 - `docs/superpowers/plans/2026-06-22-s4-standings-render-configurable.md`
@@ -190,6 +195,16 @@ UI2 - Miniplan `WidgetStudio Visual Rework` creado (2026-06-23):
 - Alcance: rework visual de `WidgetStudio` con densidad alta tipo RaceLabs y margen creativo para el worker UI/UX.
 - Estado: ejecutado y validado como parte de `v0.3.9.0`.
 
+A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
+- Inventario: el flujo `OverlaysStudioPage` ya emitía `hub:save-own-copy`; `HubService.SaveProfileAsOwnCopy` persistía copias pero fallaba con duplicados y no convertía a schema v2.
+- Cambios:
+  - `frontend/src/hub/overlays/recommended-profiles.ts`: `cloneRecommendedProfile` guarda metadata `source` (`kind: recommended`, `profileId` y `name` originales) y elimina cualquier identidad de solo lectura.
+  - `frontend/src/hub/pages/OverlaysStudioPage.tsx`: el prompt de copia usa `${nombre} (copia)` por defecto para diferenciar la copia.
+  - `internal/app/hub_service.go`: `SaveProfileAsOwnCopy` genera un id de archivo único ante colisiones, convierte el perfil a schema v2 si aplica (layouts/variants) y persiste el perfil completo.
+- Tests añadidos/ajustados en `recommended-profiles.test.ts`, `OverlaysStudioPage.test.tsx` e `internal/app/hub_service_test.go` (copia, id único, conversión v2, preservación de layouts/variants, error paths).
+- Checks pasados: 358 tests frontend, `tsc -b`, `pnpm build`, `pnpm lint`, `go test ./pkg/config ./internal/app`, `git diff --check` sin errores bloqueantes (warnings CRLF conocidos).
+- Review y verificacion manual aprobadas; A5 queda cerrado en `v0.3.9.1`.
+
 ### Reconexión live-first aprobada para overlays
 
 - Al pulsar `Abrir overlay`, la app intenta reconectar con LMU antes de abrir la ventana.
@@ -199,9 +214,9 @@ UI2 - Miniplan `WidgetStudio Visual Rework` creado (2026-06-23):
 
 ## Proximas tareas pequenas
 
-1. Crear prompt para `A2 - Inventario LayoutStudio drag/resize/save`.
-2. Ejecutar A2 con worker barato (`Deepseek V4 Flash`) y review ligera.
-3. Si A2 detecta bugs de layout, preparar A3 con worker Kimi/Minimax y review GLM si toca contratos.
+1. `A6 - Mock/live/demo UX: inventario`: siguiente tarea activa.
+2. `A7 - Mock/live/demo UX: implementacion/fixes`: ejecutar junto a A6 si el inventario confirma fixes pequenos y claros.
+3. `A8 - Checklist alpha privada`: ejecutar tras A6/A7.
 4. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core.
 5. Ejecutar REL1 despues de UI3, cuando se reactive el polish visual final.
 
@@ -228,9 +243,8 @@ UI2 - Miniplan `WidgetStudio Visual Rework` creado (2026-06-23):
 ## Decisiones pendientes
 
 - Si los planes externos deben copiarse, moverse o archivarse dentro de `vantare-v2/docs`.
-- Cuando convertir `Perfiles recomendados por Vantare` en perfiles propios editables.
 - Si la antigua ruta/pagina `Preview` debe eliminarse definitivamente o mantenerse como compatibilidad interna.
-- Que decision ejecutar primero del plan maestro: separar/verificar responsabilidades, inventario de `Standings`, `LayoutStudio` drag/resize, recomendado -> copia editable, mock/live/demo o rework UI.
+- Que decision ejecutar primero del plan maestro: separar/verificar responsabilidades, inventario de `Standings`, `LayoutStudio` drag/resize, mock/live/demo o rework UI.
 - Cuando crear un harness visual/browser para previews con Playwright tras estabilizar `WidgetSandboxPreview`.
 
 ## No cambiar sin aprobacion

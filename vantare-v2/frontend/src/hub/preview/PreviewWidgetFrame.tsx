@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProfileConfig, Rect, WidgetConfig } from "../../lib/profile";
-import { clampSize, snap } from "../../lib/canvas-math";
+import { clampSize, resizeWithRatio, snap } from "../../lib/canvas-math";
 import { WidgetRenderer } from "./WidgetRenderer";
+import { getWidgetBaseSize, normalizeWidgetVisualRect } from "../../overlay/widgets/widget-base-size";
 
 const MIN_SIZE = { w: 80, h: 40 };
 
@@ -37,7 +38,10 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
 }: PreviewWidgetFrameProps) {
   // Local visual position during drag/resize to avoid parent re-renders.
   const [previewRect, setPreviewRect] = useState<Rect | null>(null);
-  const visualRect = previewRect ?? widget.position ?? { x: 0, y: 0, w: 200, h: 200 };
+  const rawPosition = widget.position ?? { x: 0, y: 0, w: 200, h: 200 };
+  const baseSize = getWidgetBaseSize(widget.type, widget, profile);
+  const normalizedPosition = normalizeWidgetVisualRect(rawPosition, baseSize);
+  const visualRect = previewRect ?? normalizedPosition;
 
   const committedRef = useRef(onChangePosition);
   useEffect(() => {
@@ -58,6 +62,8 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
     const startRect = { ...widget.position };
+    const baseSize = profile ? getWidgetBaseSize(widget.type, widget, profile) : null;
+    const baseAspect = baseSize ? baseSize.width / baseSize.height : undefined;
 
     let lastRect: Rect = startRect;
 
@@ -65,9 +71,8 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
       const deltaX = (ev.clientX - startMouseX) / scale;
       const deltaY = (ev.clientY - startMouseY) / scale;
 
-      const w = Math.max(MIN_SIZE.w, startRect.w + deltaX);
-      const h = Math.max(MIN_SIZE.h, startRect.h + deltaY);
-      const clamped = clampSize(w, h, startRect.x, startRect.y);
+      const sized = resizeWithRatio(widget.type, startRect.w, startRect.h, deltaX, deltaY, baseAspect);
+      const clamped = clampSize(sized.w, sized.h, startRect.x, startRect.y);
       lastRect = {
         x: startRect.x,
         y: startRect.y,
@@ -110,14 +115,42 @@ export const PreviewWidgetFrame = function PreviewWidgetFrame({
         className={`w-full h-full overflow-hidden ${widget.enabled ? "" : "opacity-45 grayscale"}`}
         style={{ pointerEvents: "none" }}
       >
-        <WidgetRenderer
-          profile={profile}
-          widget={widget}
-          editMode
-          telemetryMode="mock"
-          updateHz={widget.updateHz}
-          disabled
-        />
+        {(() => {
+          if (!baseSize) {
+            return (
+              <WidgetRenderer
+                profile={profile}
+                widget={widget}
+                editMode
+                telemetryMode="mock"
+                updateHz={widget.updateHz}
+                disabled
+              />
+            );
+          }
+          const scale = Math.min(visualRect.w / baseSize.width, visualRect.h / baseSize.height);
+          return (
+            <div
+              data-testid={`widget-scaler-${widget.id}`}
+              style={{
+                width: baseSize.width,
+                height: baseSize.height,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+              }}
+            >
+              <WidgetRenderer
+                profile={profile}
+                widget={widget}
+                editMode
+                telemetryMode="mock"
+                updateHz={widget.updateHz}
+                disabled
+                fillHost={false}
+              />
+            </div>
+          );
+        })()}
       </div>
       {!widget.enabled && (
         <div className="absolute inset-0 bg-black/30 pointer-events-none" />

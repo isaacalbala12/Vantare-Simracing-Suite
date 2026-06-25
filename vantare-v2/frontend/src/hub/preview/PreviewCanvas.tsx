@@ -222,6 +222,7 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
             <PreviewWidgetFrame
               key={widget.id}
               widget={widget}
+              profile={profile}
               selected={widget.id === selectedWidgetId}
               scale={scale}
               onSelect={onSelectWidget}

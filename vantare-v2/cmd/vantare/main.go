@@ -29,7 +29,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.3.9.0"
+var version = "v0.3.9.1"
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -122,7 +122,7 @@ func installerURL(release updater.Release) string {
 func main() {
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
-		udf := filepath.Join(appData, "Vantare", "webview_v0.3.9.0")
+		udf := filepath.Join(appData, "Vantare", "webview_v0.3.9.1")
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 

@@ -104,7 +104,7 @@ export function LayoutStudio({
           onChangeProfile={onChangeProfile}
           showAppearanceControls={false}
           showPositionControls={true}
-          showDangerActions={true}
+          showDangerActions={false}
         />
       </div>
     </div>

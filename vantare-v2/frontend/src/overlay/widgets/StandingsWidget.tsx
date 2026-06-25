@@ -314,7 +314,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       }}
     >
       <div
-        className="flex flex-col items-center pt-4 pb-2"
+        className={`flex flex-col items-center pt-4 pb-2 ${!intrinsicOnly ? "w-full" : ""}`}
         style={{ background: BAKED_HEADER_BG, borderBottom: "2px solid #1a0104" }}
       >
         <div className="text-3xl font-black italic tracking-widest mb-1 text-white font-display">VANTARE</div>
@@ -322,13 +322,13 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       </div>
       <div
         ref={classRef}
-        className="text-center text-[11px] py-1 font-bold tracking-widest text-white relative"
+        className={`text-center text-[11px] py-1 font-bold tracking-widest text-white relative ${!intrinsicOnly ? "w-full" : ""}`}
         style={{ background: BAKED_CLASS_BG, borderBottom: "1px solid #000" }}
       >
         {activeClass.toUpperCase()}
       </div>
-      <div ref={containerRef} className="mt-1 px-1" />
-      <div className="mt-1 py-1 text-center text-[8px] tracking-widest text-white/50 font-bold border-t border-black" style={{ background: "#1a0104" }}>
+      <div ref={containerRef} className={`mt-1 px-1 ${!intrinsicOnly ? "w-full" : ""}`} />
+      <div className={`mt-1 py-1 text-center text-[8px] tracking-widest text-white/50 font-bold border-t border-black ${!intrinsicOnly ? "w-full" : ""}`} style={{ background: "#1a0104" }}>
         LE MANS ULTIMATE
       </div>
     </div>

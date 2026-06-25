@@ -62,11 +62,11 @@ La implementacion normal debe ir a workers.
 | ID | Version | Minifase | Estado | Modelo worker | Reviewer | Depende de | Manual |
 |---|---:|---|---|---|---|---|---|
 | A1 | 0.2.1.X | Verificar separacion WidgetStudio/LayoutStudio | Done | Deepseek V4 Flash | Kimi o Codex | 0.1.3 | Si |
-| A2 | 0.2.2.X | Inventario LayoutStudio drag/resize/save | Next | Deepseek V4 Flash | Kimi o Codex | A1 | Si |
-| A3 | 0.2.3.X | Implementar/fijar LayoutStudio drag/resize si falta | Ready | Minimax M3 o Kimi | GLM o Codex | A2 | Si |
-| A4 | 0.2.4.X | Recomendado -> copia editable: inventario | Ready | Deepseek V4 Flash | Codex | A1 | Si |
-| A5 | 0.2.5.X | Recomendado -> copia editable: implementacion/fixes | Ready | Kimi K2.7 | GLM o Codex | A4 | Si |
-| A6 | 0.2.6.X | Mock/live/demo UX: inventario | Ready | Deepseek V4 Flash | Codex | A1 | Si |
+| A2 | 0.2.2.X | Inventario LayoutStudio drag/resize/save | Done | Deepseek V4 Flash | Kimi o Codex | A1 | Si |
+| A3 | 0.2.3.X | Implementar/fijar LayoutStudio drag/resize si falta | Done | Kimi K2.7 | GLM o Codex | A2 | Si |
+| A4 | 0.2.4.X | Recomendado -> copia editable: inventario | Done | Deepseek V4 Flash | Codex | A1 | Si |
+| A5 | 0.2.5.X | Recomendado -> copia editable: implementacion/fixes | Done | Kimi K2.7 | GLM o Codex | A4 | Si |
+| A6 | 0.2.6.X | Mock/live/demo UX: inventario | Next | Deepseek V4 Flash | Codex | A1 | Si |
 | A7 | 0.2.7.X | Mock/live/demo UX: implementacion/fixes | Ready | Minimax M3 o Kimi | Codex | A6 | Si |
 | A8 | 0.2.8.X | Checklist alpha privada | Ready | Deepseek V4 Flash | Codex | A3, A5, A7 | Si |
 
@@ -275,4 +275,4 @@ No alcance:
 
 ## Proxima accion
 
-UI2 y PREVIEW2 validados manualmente. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core. Proximo paso recomendado: continuar con minifases de feature, empezando por A2/A3 si el objetivo es cerrar alpha privada.
+`v0.3.9.1` cierra el lote de producto usable: A3 LayoutStudio drag/resize/save, A5 recomendado -> copia editable y resize proporcional de `Relative`/`Standings` en LayoutStudio/runtime. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core. Proximo paso recomendado: A6+A7 mock/live/demo UX como lote rapido con review posterior.

@@ -36,14 +36,24 @@ v1.0.0.0
 
 ## Version actual
 
+`v0.3.9.1` marca el cierre del lote de producto usable posterior a PREVIEW2:
+
+- `LayoutStudio` drag/resize/save estabilizado.
+- `Relative` y `Standings` redimensionan proporcionalmente en `LayoutStudio`, runtime desktop y OBS.
+- Los frames visuales se normalizan desde el primer render para perfiles legacy deformados, sin mutar ni guardar automaticamente.
+- Recomendados de Vantare pueden guardarse como copia propia editable.
+- `SaveProfileAsOwnCopy` genera IDs unicos, convierte a schema v2 y no muta el perfil de entrada.
+- Version runtime/build actualizada.
+- Validacion manual aprobada por el usuario.
+
+Versiones previas relevantes:
+
 `v0.3.9.0` marca el cierre del rework visual acotado de `WidgetStudio` y PREVIEW2:
 
 - UI2 visual rework de `WidgetStudio`.
 - PREVIEW2 intrinsic width para `Relative` y `Standings` en la preview aislada.
 - Version runtime/build actualizada.
 - Validacion manual aprobada por el usuario.
-
-Version previa relevante:
 
 `v0.3.6.1` marca el cierre del primer corte configurable de `Standings`:
 
@@ -70,6 +80,7 @@ Las tareas puramente documentales, analisis, planes y reviews no crean version/t
 |---|---|---|
 | `v0.3.6.1` | Runtime/build | Cierre de Standings configurable S4.5-S6 |
 | `v0.3.9.0` | Runtime/build | UI2 WidgetStudio visual rework + PREVIEW2 intrinsic width |
+| `v0.3.9.1` | Runtime/build | LayoutStudio resize proporcional + recomendados editables |
 
 ## Rango de versiones
 

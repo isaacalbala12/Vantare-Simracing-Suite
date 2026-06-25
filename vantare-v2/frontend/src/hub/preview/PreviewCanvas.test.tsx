@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreviewCanvas } from "./PreviewCanvas";
 import type { ProfileConfig } from "../../lib/profile";
+import { getWidgetBaseSize } from "../../overlay/widgets/widget-base-size";
 
 const profile: ProfileConfig = {
   id: "preview-test",
@@ -131,7 +132,7 @@ describe("snap and clamp behavior", () => {
     expect(moved?.position?.y).toBe(980);
   });
 
-  it("commits resize on mouseup", () => {
+  it("commits resize using baseAspect when profile provides base size", () => {
     const onChangeProfile = vi.fn();
     const resizeProfile: ProfileConfig = {
       id: "resize-test",
@@ -142,6 +143,10 @@ describe("snap and clamp behavior", () => {
         { id: "resize", type: "standings", enabled: true, position: { x: 0, y: 0, w: 400, h: 200 }, props: {} },
       ],
     };
+    const widget = resizeProfile.widgets[0];
+    const baseSize = getWidgetBaseSize("standings", widget, resizeProfile);
+    expect(baseSize).not.toBeNull();
+    const baseAspect = baseSize!.width / baseSize!.height;
 
     render(
       <PreviewCanvas
@@ -160,7 +165,9 @@ describe("snap and clamp behavior", () => {
     expect(onChangeProfile).toHaveBeenCalled();
     const lastCall = onChangeProfile.mock.lastCall?.[0];
     const resized = lastCall?.widgets?.find((w: { id: string }) => w.id === "resize");
-    expect(resized?.position?.w).toBeGreaterThan(400);
     expect(resized?.position?.h).toBeGreaterThan(200);
+    expect(resized?.position?.w).toBeGreaterThan(0);
+    // aspect debe usar baseAspect (no startW/startH)
+    expect(resized?.position?.w / resized?.position?.h).toBeCloseTo(baseAspect, 1);
   });
 });

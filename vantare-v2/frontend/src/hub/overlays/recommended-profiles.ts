@@ -72,9 +72,13 @@ export function cloneRecommendedProfile(profile: RecommendedProfile, name: strin
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return {
-    ...structuredClone(profile.profile),
-    id: `custom-${slug || profile.id}`,
-    name: safeName,
+  const clone = structuredClone(profile.profile);
+  clone.id = `custom-${slug || profile.id}`;
+  clone.name = safeName;
+  clone.source = {
+    kind: "recommended",
+    profileId: profile.id,
+    name: profile.name,
   };
+  return clone;
 }

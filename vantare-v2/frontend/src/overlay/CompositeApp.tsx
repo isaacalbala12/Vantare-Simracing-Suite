@@ -109,7 +109,7 @@ export function CompositeApp() {
         }
         const localPos = toWindowLocal(w.position, layoutOrigin);
         return (
-          <WidgetHost key={w.id} id={w.id} position={localPos}>
+          <WidgetHost key={w.id} id={w.id} position={localPos} widget={w} profile={profile}>
             <Component editMode={false} telemetryMode="live" updateHz={w.updateHz} props={enrichWidgetPropsWithVariant(profile, w)} />
           </WidgetHost>
         );

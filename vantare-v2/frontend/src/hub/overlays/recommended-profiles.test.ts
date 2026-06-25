@@ -24,4 +24,35 @@ describe("recommended-profiles", () => {
     expect(clone.widgets.length).toBe(RECOMMENDED_PROFILES[0].profile.widgets.length);
     expect(clone).not.toBe(RECOMMENDED_PROFILES[0].profile);
   });
+
+  it("records the recommended preset origin without keeping read-only identity", () => {
+    const original = RECOMMENDED_PROFILES[0];
+    const clone = cloneRecommendedProfile(original, "My Copy");
+
+    expect(clone.source).toEqual({
+      kind: "recommended",
+      profileId: original.id,
+      name: original.name,
+    });
+    expect((clone as unknown as { readOnly?: boolean }).readOnly).toBeUndefined();
+  });
+
+  it("deep clones widgets so the original preset is not mutated", () => {
+    const original = RECOMMENDED_PROFILES[0];
+    const clone = cloneRecommendedProfile(original, "Mutate Test");
+
+    clone.widgets[0].enabled = !clone.widgets[0].enabled;
+    clone.widgets[0].position.x += 100;
+
+    expect(original.profile.widgets[0].enabled).not.toBe(clone.widgets[0].enabled);
+    expect(original.profile.widgets[0].position.x).not.toBe(clone.widgets[0].position.x);
+  });
+
+  it("falls back to a copy name when an empty name is provided", () => {
+    const original = RECOMMENDED_PROFILES[0];
+    const clone = cloneRecommendedProfile(original, "   ");
+
+    expect(clone.name).toBe(`${original.name} Copy`);
+    expect(clone.id?.startsWith("custom-")).toBe(true);
+  });
 });

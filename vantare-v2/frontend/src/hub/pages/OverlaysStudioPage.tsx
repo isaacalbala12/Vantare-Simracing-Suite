@@ -54,7 +54,8 @@ export function OverlaysStudioPage() {
   }
 
   function saveRecommended(profile: RecommendedProfile) {
-    const name = window.prompt("Nombre del perfil propio", profile.name);
+    const defaultName = `${profile.name} (copia)`;
+    const name = window.prompt("Nombre del perfil propio", defaultName);
     if (!name?.trim()) return;
     Events.Emit("hub:save-own-copy", { profile: cloneRecommendedProfile(profile, name.trim()) });
   }

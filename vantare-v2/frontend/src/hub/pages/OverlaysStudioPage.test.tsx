@@ -187,6 +187,41 @@ describe("OverlaysStudioPage", () => {
     expect(screen.getByText("Próximamente")).toBeTruthy();
   });
 
+  it("saves a recommended profile as an own copy with source metadata", async () => {
+    const originalPrompt = window.prompt;
+    window.prompt = vi.fn().mockReturnValue("Mi copia") as unknown as typeof window.prompt;
+
+    render(<OverlaysStudioPage />);
+
+    listeners.get("hub:profiles")?.({
+      data: {
+        profiles: [
+          { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+        ],
+      },
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Abrir Recomendados por Vantare/i }));
+    expect(await screen.findByRole("heading", { name: "Recomendados por Vantare" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Racing Básico como perfil propio/i }));
+
+    expect(Events.Emit).toHaveBeenCalledWith("hub:save-own-copy", expect.anything());
+    const emittedPayload = (Events.Emit as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call) => call[0] === "hub:save-own-copy",
+    )?.[1] as { profile: { id: string; name: string; source?: { kind: string; profileId: string } } } | undefined;
+
+    expect(emittedPayload?.profile.name).toBe("Mi copia");
+    expect(emittedPayload?.profile.id).toMatch(/^custom-/);
+    expect(emittedPayload?.profile.source).toEqual({
+      kind: "recommended",
+      profileId: "vantare-racing-basic",
+      name: "Racing Básico",
+    });
+
+    window.prompt = originalPrompt;
+  });
+
   it("starts overlay from own profiles using the selected profile target", async () => {
     render(<OverlaysStudioPage />);
 

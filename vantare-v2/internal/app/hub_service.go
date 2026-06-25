@@ -11,6 +11,8 @@ import (
 )
 
 // SaveProfileAsOwnCopy persists an imported/read-only preset as a normal user profile.
+// The profile is converted to schema v2 if needed and assigned a unique file id so
+// copying the same preset multiple times never overwrites an existing profile.
 func (s *HubService) SaveProfileAsOwnCopy(profile *config.ProfileConfig) error {
 	if s.profilesDir == "" {
 		return fmt.Errorf("profiles directory not configured")
@@ -28,13 +30,53 @@ func (s *HubService) SaveProfileAsOwnCopy(profile *config.ProfileConfig) error {
 	}
 	if !strings.HasPrefix(id, "custom-") {
 		id = "custom-" + id
-		profile.ID = id
 	}
-	path := filepath.Join(s.profilesDir, id+".json")
-	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("profile already exists: %s", id)
+	if id == "custom-" {
+		return fmt.Errorf("invalid profile id")
 	}
-	return config.SaveFile(path, profile)
+
+	uniqueID, err := uniqueProfileFileID(s.profilesDir, id)
+	if err != nil {
+		return fmt.Errorf("resolving unique profile id: %w", err)
+	}
+
+	profileCopy := *profile
+	profileCopy.ID = uniqueID
+
+	// Editable copies must have schema v2 layouts and variants so WidgetStudio
+	// can save column/filter changes without silent data loss.
+	profileToSave := config.ConvertProfileToV2(&profileCopy)
+
+	path := filepath.Join(s.profilesDir, uniqueID+".json")
+	return config.SaveFile(path, profileToSave)
+}
+
+// uniqueProfileFileID returns a profile id whose JSON file does not yet exist,
+// appending an incrementing numeric suffix when the base id is taken.
+// Any os.Stat error other than os.ErrNotExist is propagated so the caller does
+// not loop forever on unreadable directories.
+func uniqueProfileFileID(profilesDir, baseID string) (string, error) {
+	candidate := baseID
+	_, err := os.Stat(filepath.Join(profilesDir, candidate+".json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return candidate, nil
+		}
+		return "", fmt.Errorf("stat profile %s: %w", candidate, err)
+	}
+
+	suffix := 1
+	for {
+		candidate = fmt.Sprintf("%s-%d", baseID, suffix)
+		_, err := os.Stat(filepath.Join(profilesDir, candidate+".json"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				return candidate, nil
+			}
+			return "", fmt.Errorf("stat profile %s: %w", candidate, err)
+		}
+		suffix++
+	}
 }
 
 var invalidProfileNameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)

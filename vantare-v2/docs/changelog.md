@@ -4,6 +4,28 @@ Changelog publico para testers y Discord.
 
 Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
+## v0.3.9.2
+
+**Nuevo**
+
+- Flujo inicial de changelog publico y publicacion automatica en Discord al crear tags `v*`.
+- Documento de UX mock/live/demo para alpha testers.
+
+**Mejorado**
+
+- El indicador global de fuente de telemetria en la barra superior ahora incluye `title` y `aria-label`.
+- Los tests del selector mock de `Standings` usan `aria-pressed` en lugar de clases visuales.
+
+**Corregido**
+
+- Menor riesgo de regresion visual en el selector `Práctica` / `Qualy` / `Carrera`.
+
+**Para testers**
+
+- Sin LMU abierto, comprobad que la fuente se entiende como `Mock` o fallback.
+- En `Widgets` -> `Standings`, cambiad `Práctica` / `Qualy` / `Carrera` y confirmad que no activa `Guardar`.
+- En una release taggeada, Discord deberia recibir automaticamente esta entrada del changelog.
+
 ## v0.3.9.1
 
 **Nuevo**

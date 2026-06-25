@@ -66,9 +66,9 @@ La implementacion normal debe ir a workers.
 | A3 | 0.2.3.X | Implementar/fijar LayoutStudio drag/resize si falta | Done | Kimi K2.7 | GLM o Codex | A2 | Si |
 | A4 | 0.2.4.X | Recomendado -> copia editable: inventario | Done | Deepseek V4 Flash | Codex | A1 | Si |
 | A5 | 0.2.5.X | Recomendado -> copia editable: implementacion/fixes | Done | Kimi K2.7 | GLM o Codex | A4 | Si |
-| A6 | 0.2.6.X | Mock/live/demo UX: inventario | Next | Deepseek V4 Flash | Codex | A1 | Si |
-| A7 | 0.2.7.X | Mock/live/demo UX: implementacion/fixes | Ready | Minimax M3 o Kimi | Codex | A6 | Si |
-| A8 | 0.2.8.X | Checklist alpha privada | Ready | Deepseek V4 Flash | Codex | A3, A5, A7 | Si |
+| A6 | 0.2.6.X | Mock/live/demo UX: inventario | Done | Deepseek V4 Flash | Codex | A1 | Si |
+| A7 | 0.2.7.X | Mock/live/demo UX: implementacion/fixes | Done | Deepseek V4 Flash | Codex | A6 | Si |
+| A8 | 0.2.8.X | Checklist alpha privada | Next | Deepseek V4 Flash | Codex | A3, A5, A7 | Si |
 
 ## Fase 0.3.X.X - Alpha privada: UI y widgets core
 

@@ -101,7 +101,11 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
                 {version}
               </span>
             )}
-            <span className={`hidden sm:inline text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/5 ${sourceColor}`}>
+            <span
+              className={`hidden sm:inline text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/5 ${sourceColor}`}
+              title={sourceStatus?.name ?? "Fuente pendiente"}
+              aria-label={`Fuente de telemetría: ${sourceLabel}`}
+            >
               {sourceLabel}
             </span>
           </div>

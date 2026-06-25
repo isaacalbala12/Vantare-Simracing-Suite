@@ -15,7 +15,7 @@ PREVIEW2 - WidgetStudio intrinsic width contract:
 
 Vantare v2 es una app local de overlays para sim racing construida con Go/Wails y React/TypeScript.
 
-Version estable actual de runtime/build: `v0.3.9.1`.
+Version estable actual de runtime/build: `v0.3.9.2`.
 Ultimo checkpoint de roadmap confirmado: UI1 documental, sin tag/version propia.
 
 Base de schema v2 para perfiles preparada:
@@ -123,11 +123,20 @@ Checkpoint funcional `v0.3.9.1` cerrado:
 - Version runtime/build actualizada a `v0.3.9.1`.
 - No se haran mas reworks visuales completos hasta cerrar la mayoria de features core.
 
+Checkpoint funcional `v0.3.9.2` cerrado:
+
+- A6+A7 mock/live/demo UX ejecutado como lote rapido.
+- El flujo source-state queda documentado en `docs/mock-live-demo-ux.md`.
+- El chip global de fuente de telemetria en Topbar tiene `title` y `aria-label`.
+- El selector mock de `Standings` se valida por `aria-pressed`.
+- Changelog publico y publicacion automatica a Discord por tags `v*` preparados.
+- Version runtime/build actualizada a `v0.3.9.2`.
+
 El siguiente paso recomendado es volver al roadmap de features:
 
-1. ejecutar `A6+A7 - Mock/live/demo UX` como lote rapido;
-2. review posterior de GLM si toca backend/estado live;
-3. despues ejecutar `A8 - Checklist alpha privada`.
+1. `A6+A7 - Mock/live/demo UX` ejecutado como lote rapido;
+2. review posterior de GLM si toca backend/estado live (no fue necesario);
+3. ejecutar ahora `A8 - Checklist alpha privada`.
 
 Ultimo miniplan completado y aprobado por GLM:
 - `docs/superpowers/plans/2026-06-22-s4-standings-render-configurable.md`
@@ -214,11 +223,18 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 
 ## Proximas tareas pequenas
 
-1. `A6 - Mock/live/demo UX: inventario`: siguiente tarea activa.
-2. `A7 - Mock/live/demo UX: implementacion/fixes`: ejecutar junto a A6 si el inventario confirma fixes pequenos y claros.
-3. `A8 - Checklist alpha privada`: ejecutar tras A6/A7.
-4. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core.
-5. Ejecutar REL1 despues de UI3, cuando se reactive el polish visual final.
+1. `A6+A7 - Mock/live/demo UX: inventario + fixes`: ejecutado (2026-06-25).
+   - Inventario: flujo source-state correcto; Topbar muestra `LMU conectado` / `Esperando LMU` / `Mock` / `Fuente pendiente`.
+   - WidgetStudio mock scenario selector es preview-only y no marca dirty (verificado por test existente).
+   - Fixes aplicados:
+     - Topbar source chip: añadidos `title` y `aria-label`.
+     - Creado `Topbar.test.tsx` con 7 tests de source status.
+     - Tests de mock scenario: cambiados de className a `aria-pressed`.
+   - Documento de hallazgos: `docs/mock-live-demo-ux.md`.
+   - No se tocó telemetría, preview/layout, schema, backend Go ni configs.
+2. `A8 - Checklist alpha privada`: siguiente tarea activa.
+3. No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core.
+4. Ejecutar REL1 despues de UI3, cuando se reactive el polish visual final.
 
 ## Riesgos actuales
 

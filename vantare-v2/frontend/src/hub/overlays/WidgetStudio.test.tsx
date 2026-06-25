@@ -268,7 +268,7 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("mock-session-race").className).toContain("bg-white/10");
+    expect(screen.getByTestId("mock-session-race").getAttribute("aria-pressed")).toBe("true");
     await waitFor(() => {
       expect(screen.getByText("Leader")).toBeTruthy();
     });
@@ -297,7 +297,7 @@ describe("WidgetStudio", () => {
 
     fireEvent.click(screen.getByTestId("mock-session-practice"));
 
-    expect(screen.getByTestId("mock-session-practice").className).toContain("bg-white/10");
+    expect(screen.getByTestId("mock-session-practice").getAttribute("aria-pressed")).toBe("true");
     await waitFor(() => {
       expect(screen.getByText("1:29.823")).toBeTruthy();
     });

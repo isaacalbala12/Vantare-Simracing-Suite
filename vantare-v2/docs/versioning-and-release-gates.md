@@ -36,6 +36,16 @@ v1.0.0.0
 
 ## Version actual
 
+`v0.3.9.2` marca el cierre de mock/live/demo UX y automatizacion Discord:
+
+- Inventario mock/live/demo documentado.
+- Indicador global de fuente de telemetria con accesibilidad basica.
+- Selector mock de `Standings` verificado como preview-only.
+- Changelog publico y GitHub Action para publicar tags `v*` en Discord.
+- Version runtime/build actualizada.
+
+Versiones previas relevantes:
+
 `v0.3.9.1` marca el cierre del lote de producto usable posterior a PREVIEW2:
 
 - `LayoutStudio` drag/resize/save estabilizado.
@@ -45,8 +55,6 @@ v1.0.0.0
 - `SaveProfileAsOwnCopy` genera IDs unicos, convierte a schema v2 y no muta el perfil de entrada.
 - Version runtime/build actualizada.
 - Validacion manual aprobada por el usuario.
-
-Versiones previas relevantes:
 
 `v0.3.9.0` marca el cierre del rework visual acotado de `WidgetStudio` y PREVIEW2:
 
@@ -84,6 +92,7 @@ Al pushear un tag `v*`, `.github/workflows/discord-release.yml` lee la entrada d
 | `v0.3.6.1` | Runtime/build | Cierre de Standings configurable S4.5-S6 |
 | `v0.3.9.0` | Runtime/build | UI2 WidgetStudio visual rework + PREVIEW2 intrinsic width |
 | `v0.3.9.1` | Runtime/build | LayoutStudio resize proporcional + recomendados editables |
+| `v0.3.9.2` | Runtime/build | Mock/live/demo UX + Discord release automation |
 
 ## Rango de versiones
 

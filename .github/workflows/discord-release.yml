@@ -1,88 +1,106 @@
-name: Publish release to Discord
+name: Discord release announcement
 
 on:
-  release:
-    types: [published, prereleased]
-
-permissions:
-  contents: read
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to announce, for example v0.3.10.0"
+        required: true
+        type: string
 
 jobs:
-  discord:
-    name: Discord release announcement
+  announce:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract changelog entry
-        id: changelog
-        shell: bash
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          from pathlib import Path
-          import os
-
-          tag = os.environ["GITHUB_REF_NAME"]
-          path = Path("vantare-v2/docs/changelog.md")
-          if not path.exists():
-              raise SystemExit("vantare-v2/docs/changelog.md does not exist")
-
-          lines = path.read_text(encoding="utf-8").splitlines()
-          headings = {f"## {tag}", f"## [{tag}]"}
-          start = None
-          for idx, line in enumerate(lines):
-              if line.strip() in headings:
-                  start = idx + 1
-                  break
-
-          if start is None:
-              raise SystemExit(f"No changelog entry found for {tag}")
-
-          body = []
-          for line in lines[start:]:
-              if line.startswith("## "):
-                  break
-              body.append(line)
-
-          text = "\n".join(body).strip()
-          if not text:
-              raise SystemExit(f"Changelog entry for {tag} is empty")
-
-          message = f"## Vantare Overlays {tag}\n\n{text}\n\nRelease: https://github.com/${{ github.repository }}/releases/tag/{tag}"
-          delimiter = "VANTARE_CHANGELOG_EOF"
-          print(f"message<<{delimiter}")
-          print(message)
-          print(delimiter)
-          PY
-
-      - name: Publish to Discord
+      - name: Publish changelog section to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          MESSAGE: ${{ steps.changelog.outputs.message }}
-        shell: bash
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+          GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
+          GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
         run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "DISCORD_WEBHOOK_URL is not configured. Release announcement was not sent."
-            exit 0
-          fi
-
           python - <<'PY'
           import json
           import os
+          import re
+          import sys
+          import textwrap
           import urllib.request
 
-          payload = json.dumps({"content": os.environ["MESSAGE"]}).encode("utf-8")
-          req = urllib.request.Request(
-              os.environ["DISCORD_WEBHOOK_URL"],
-              data=payload,
-              headers={
-                  "Content-Type": "application/json",
-                  "User-Agent": "GitHub-Actions-Discord-Announcer"
-              },
-              method="POST",
+          webhook = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+          if not webhook:
+              print("DISCORD_WEBHOOK_URL secret is not configured", file=sys.stderr)
+              sys.exit(1)
+
+          tag = (os.environ.get("INPUT_TAG") or os.environ.get("REF_NAME") or "").strip()
+          if not tag:
+              print("No tag provided by workflow_dispatch or github.ref_name", file=sys.stderr)
+              sys.exit(1)
+
+          changelog_path = "vantare-v2/docs/changelog.md"
+          with open(changelog_path, "r", encoding="utf-8") as fh:
+              changelog = fh.read()
+
+          pattern = re.compile(
+              rf"^##\s+{re.escape(tag)}\s*$([\s\S]*?)(?=^##\s+v|\Z)",
+              re.MULTILINE,
           )
-          with urllib.request.urlopen(req, timeout=20) as response:
-              if response.status >= 300:
-                  raise SystemExit(f"Discord webhook returned HTTP {response.status}")
+          match = pattern.search(changelog)
+          if not match:
+              print(f"Could not find changelog section for {tag}", file=sys.stderr)
+              sys.exit(1)
+
+          section = match.group(1).strip()
+          if not section:
+              print(f"Changelog section for {tag} is empty", file=sys.stderr)
+              sys.exit(1)
+
+          repo_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{os.environ['GITHUB_REPOSITORY_VALUE']}"
+          tag_url = f"{repo_url}/releases/tag/{tag}"
+          sha = os.environ.get("GITHUB_SHA_VALUE", "")[:7]
+
+          header = f"**Vantare {tag}**\n{tag_url}\nCommit: `{sha}`\n\n"
+          content = header + section
+
+          # Discord message content limit is 2000 chars. Split on paragraph
+          # boundaries so long changelogs still publish instead of failing.
+          chunks = []
+          current = ""
+          for paragraph in content.split("\n\n"):
+              candidate = paragraph if not current else current + "\n\n" + paragraph
+              if len(candidate) <= 1900:
+                  current = candidate
+                  continue
+              if current:
+                  chunks.append(current)
+              if len(paragraph) <= 1900:
+                  current = paragraph
+              else:
+                  chunks.extend(textwrap.wrap(paragraph, 1900, replace_whitespace=False))
+                  current = ""
+          if current:
+              chunks.append(current)
+
+          for index, chunk in enumerate(chunks, start=1):
+              suffix = f"\n\n({index}/{len(chunks)})" if len(chunks) > 1 else ""
+              payload = json.dumps({"content": chunk + suffix}).encode("utf-8")
+              req = urllib.request.Request(
+                  webhook,
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=20) as resp:
+                  if resp.status >= 300:
+                      raise RuntimeError(f"Discord webhook failed with status {resp.status}")
+
+          print(f"Published changelog for {tag} to Discord")
           PY

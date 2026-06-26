@@ -254,7 +254,20 @@ Release 01 - Task 1 (Recommended profiles audit + rename) completado (2026-06-26
 - Review adversarial GLM (2 ciclos): NEEDS FIXES → ACCEPT WITH P3. P1 (positions sin autorizar, diff mezclado no reportado) y P2 (tests débiles, test P5 en diff, schema inconsistente) resueltos. P3 no bloqueantes documentados (custom-1.json huérfano, pedals enabled:false, id≠filename).
 - Checks: 480 tests frontend OK, build OK, lint OK, `go test ./pkg/config ./internal/app` OK, `git diff --check` OK.
 - Verificación manual pendiente: abrir app, confirmar 2 perfiles en Recomendados, guardar copias, abrir en LayoutStudio.
-- Siguiente operativo: Release 01 Task 2 (verificación visual QA) o Task 3 (Widget preset model inventory) según decisión de Isaac.
+
+Release 01 - Task 4 (Widget Preset Implementation) completado (2026-06-26):
+- Creado `PresetService` en Go para persistir presets a `{cfgDir}/widget-presets.json`.
+- Implementado generador nativo de UUID v4 con `crypto/rand` sin dependencias adicionales.
+- Registrado `PresetService` en Wails y conectado su ciclo de vida y handlers en `main.go`.
+- Creado helper puro `widget-presets.ts` para extraer y aplicar configuraciones estéticas e internas de un widget sin tocar propiedades de diseño ni runtime.
+- Creado `widget-presets-store.ts` para conectar reactivamente la UI con los eventos de Wails.
+- Creado componente UI `WidgetPresetSection.tsx` en `WidgetSettingsPanel` con controles oscuros densos para guardar, aplicar, renombrar y eliminar presets.
+- Corregidos 75/75 archivos de pruebas unitarias de frontend e integración (incluyendo mocks de Wails para JSDOM).
+- Review GLM fixes P1: resueltos los 4 P1 (race condition en `listPresets` vía correlation ID, errores silenciosos del backend, variantes huérfanas al aplicar preset, aliasing por referencia compartida).
+- Minifix P3 del orquestador: añadido timeout de 10s en `listPresets` con reject controlado; handlers Go ahora emiten error también con payload `nil`; tests añadidos.
+- Review GLM minifix: ACCEPT (ningún P0/P1/P2 nuevo; 3 P3 residuales menores documentados).
+- Checks: Go tests OK, frontend tests OK (504 tests), frontend build y lint OK, git diff check OK (salvo warning CRLF en `pnpm-workspace.yaml` de otro agente).
+- Siguiente operativo: commit de Release 01 Task 4 o smoke manual, según decisión de Isaac.
 
 
 

@@ -3,6 +3,7 @@ import { PreviewInspector } from "../preview/PreviewInspector";
 import { RelativeSettingsSection } from "./RelativeSettingsSection";
 import { StandingsSettingsSection } from "./StandingsSettingsSection";
 import { PedalsSettingsSection } from "./PedalsSettingsSection";
+import { WidgetPresetSection } from "./WidgetPresetSection";
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -68,6 +69,11 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
             onChangeProfile={onChangeProfile}
           />
           <PedalsSettingsSection
+            profile={profile}
+            widget={widget}
+            onChangeProfile={onChangeProfile}
+          />
+          <WidgetPresetSection
             profile={profile}
             widget={widget}
             onChangeProfile={onChangeProfile}

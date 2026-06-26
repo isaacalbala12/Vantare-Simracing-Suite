@@ -245,6 +245,15 @@ func main() {
 	// Create hub service for profile CRUD using the resolved directory
 	hubSvc := app.NewHubService(cfgDir, profileSvc, emitter, overlayController)
 	wailsApp.RegisterService(application.NewService(hubSvc))
+
+	// Preset service for widget presets (WidgetStudio only)
+	presetSvc := app.NewPresetService(cfgDir, emitter)
+	if err := presetSvc.Load(); err != nil {
+		log.Printf("warning: could not load presets: %v (using empty)", err)
+	}
+	wailsApp.RegisterService(application.NewService(presetSvc))
+	presetSvc.RegisterHandlers(wailsApp)
+
 	// Updater service
 	settingsPath := filepath.Join(cfgDir, "updater-settings.json")
 	updaterSvc := app.NewUpdaterService(version, settingsPath, emitter)

@@ -3,6 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WidgetStudio } from "./WidgetStudio";
 import type { ProfileConfig } from "../../lib/profile";
 
+vi.mock("@wailsio/runtime", () => ({
+  Events: {
+    Emit: vi.fn(),
+    On: vi.fn().mockReturnValue(() => {}),
+  },
+}));
+
 afterEach(() => {
   cleanup();
 });
@@ -73,7 +80,7 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    fireEvent.click(screen.getByTestId("widget-studio-save-btn"));
 
     expect(onSave).toHaveBeenCalled();
   });
@@ -456,7 +463,7 @@ describe("WidgetStudio", () => {
     const dirtyState = screen.getByTestId("widget-studio-save-state");
     expect(dirtyState.textContent).toContain("Cambios sin guardar");
     expect(dirtyState.className).toContain("text-vantare-red-400");
-    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTestId("widget-studio-save-btn") as HTMLButtonElement).disabled).toBe(false);
 
     rerender(
       <WidgetStudio
@@ -472,6 +479,6 @@ describe("WidgetStudio", () => {
     );
 
     expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
-    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("widget-studio-save-btn") as HTMLButtonElement).disabled).toBe(true);
   });
 });

@@ -3,6 +3,13 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import type { ProfileConfig } from "../../lib/profile";
 import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
 
+vi.mock("@wailsio/runtime", () => ({
+  Events: {
+    Emit: vi.fn(),
+    On: vi.fn().mockReturnValue(() => {}),
+  },
+}));
+
 afterEach(() => {
   cleanup();
 });

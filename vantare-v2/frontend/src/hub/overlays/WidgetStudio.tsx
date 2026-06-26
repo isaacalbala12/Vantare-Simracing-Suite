@@ -85,6 +85,7 @@ export function WidgetStudio({
             type="button"
             onClick={onSave}
             disabled={!dirty || saveState === "saving"}
+            data-testid="widget-studio-save-btn"
             className="btn-secondary rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
             Guardar

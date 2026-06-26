@@ -1,6 +1,37 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-25.
+Ultima actualizacion: 2026-06-26.
+
+## Estado operativo principal
+
+La app actual se considera base de beta publica para testers. A partir de ahora, el desarrollo planificado apunta al release oficial.
+
+Fuente operativa principal:
+
+- `docs/release-roadmap-execution-index.md`
+- `docs/superpowers/plans/2026-06-26-release-*.md`
+
+Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution-board.md`) se mantienen como contexto/historial, pero no deben contradecir el indice de release.
+
+Siguiente trabajo recomendado:
+
+1. `Release 01 - Beta baseline, recomendados y presets`.
+2. `Release 02 - Stripe, Supabase, auth y licencias`.
+3. `Release 03 - Autoupdater y distribucion`.
+4. `Release 04 - Preview avanzada y LayoutStudio profesional`.
+
+Regla de orquestacion: el agente principal no edita codigo salvo necesidad estricta; genera prompts, revisa reportes y actualiza documentacion. Workers implementan. GLM revisa P0/P1/P2 y cualquier cambio de Go debe exigir las skills de Go indicadas en `docs/release-roadmap-execution-index.md`.
+
+Decisiones de release ya cerradas:
+
+- Stripe directo + Supabase + login obligatorio.
+- Licencia online con gracia de 24h y 1 PC activo.
+- Assetto Corsa e iRacing entran en release como simuladores.
+- Assetto Corsa Lua/CSP Overlay Pack es producto separado.
+- Autoupdater entra en release.
+- OBS LAN/doble PC entra en release.
+- Track Map e Input Telemetry/Trace entran en release con estado `stable`/`tester`/`experimental` segun datos.
+- Community layouts/marketplace, cloud sync completo, companion app y plugin system quedan post-release.
 
 ## Estado actual
 
@@ -22,6 +53,22 @@ P3 - Pedals compact render completado (2026-06-25):
 - Actualizado el widget pedals en perfiles default y recomendados (`example-racing.json` y `recommended-profiles.ts`) al tamaño base recomendado de `90x100`.
 - No se modificó `widget-base-size.ts`, schema, backend en Go, ni otros widgets (`Relative`/`Standings`/`Delta`/`Engineer`).
 - Cobertura total de tests y checks pasados con éxito: 445 tests frontend, build, lint y `git diff --check` OK.
+
+P4 - Pedals configuración visual básica completado (2026-06-26):
+- Creado helper puro `pedals-settings.ts` para leer y normalizar la apariencia de pedals con defaults seguros, incluyendo tests table-driven y test de sincronía con style-catalog.
+- Creada sección dedicada `PedalsSettingsSection` en Overlays Studio para editar visualmente el color de acelerador (throttle), freno (brake) y embrague (clutch).
+- Implementado toggle de "Fondo transparente" que guarda `"transparent"` en `backgroundColor`, y un color picker de fondo personalizado visible solo cuando el toggle está desactivado.
+- Integrada la sección en `WidgetSettingsPanel` de forma segura (retorna null para otros widgets), preservando la separación de responsabilidades y la inmutabilidad de los perfiles.
+- Cobertura total de tests para el helper, la sección de UI, y test de integración en el panel de ajustes pasados con éxito.
+
+P5 - Adición de widgets en LayoutStudio completado (2026-06-26):
+- Creado helper puro `widget-factory.ts` con todos los tipos de widgets soportados, Hz e intervalos óptimos de refresco y dimensiones recomendadas (incluyendo pedals en `90x100` y `30` Hz, standings en `340x420` y `15` Hz, etc.).
+- El helper genera IDs únicos de forma determinista ante colisiones en el perfil (ej. `pedals`, `pedals-2`, `pedals-3`).
+- Extendido el hook moderno `useOverlayStudioState.ts` con la función `addWidget(type)` que añade el widget a `profile.widgets`, lo selecciona automáticamente, lo marca como dirty y mantiene sincronizado de forma reactiva `layouts.general.widgets` (schema v2) si está definido.
+- Modificado `StudioWidgetList.tsx` para admitir de forma opcional la prop `onAddWidget`. Si se suministra, muestra un botón "+ Añadir widget" con un formulario denso, oscuro y mono tipo UI2; si no se suministra (como en `WidgetStudio.tsx`), se oculta protegiendo la separación de responsabilidades.
+- Conectado el flujo de adición de widgets en `LayoutStudio.tsx` y `OverlaysStudioPage.tsx`.
+- Cobertura total de tests automatizados agregados (para el factory, el hook de estado, la lista de widgets y el lienzo de edición); suite completa de frontend de 476 tests en verde.
+- Tipo, lint, build y checks de git en verde al 100%.
 
 EN3-EN5 - UI Ingeniero + Bus de notificaciones + Widget de overlays completado:
 - Creada la nueva sección de `Ingeniero` en el Hub para gestionar el estado, spotter, sensibilidad, y ver el historial de mensajes de forma reactiva.
@@ -194,7 +241,20 @@ Trabajo posterior al checkpoint `v0.3.10.0`:
 10. `P1 - Pedals inventario datos/diseño actual` completado.
 11. `P2 - Pedals nuevo diseño pequeño` completado como plan visual aprobado.
 12. `P3 - Pedals compact render` completado con el nuevo render compacto `CLT`/`BRK`/`THR`.
-13. Siguiente operativo: `P4 - Pedals configuracion visual basica`.
+13. `P4 - Pedals configuracion visual basica` completado con la sección dedicada en WidgetStudio y color pickers.
+14. `P5 - Adición de widgets en LayoutStudio` completado y commiteado (commit `3db203a`): widget-factory, addWidget en useOverlayStudioState, botón `+ Añadir widget` en StudioWidgetList, PedalsSettingsSection y pedals-settings helper.
+15. Aprobado para beta testers: `P6 - Widget Preset Gallery` (Galería de presets de widgets), planificada justo después de `P5` y antes del smoke test de la fase (ahora `P7`).
+
+Release 01 - Task 1 (Recommended profiles audit + rename) completado (2026-06-26, commit `3db203a`):
+- Reemplazados los 3 perfiles recomendados antiguos (Racing Básico, Streamer Clean, Minimal Telemetry) por 2 oficiales: `Clean Overlay` y `Le Mans Ultimate - Basic`.
+- `configs/custom-hfg.json`: renombrados id/name a `vantare-clean-overlay`/`Clean Overlay`. Filename físico conservado para no romper `embed.go`/`main.go`. Positions originales preservadas.
+- `configs/custom-1.json`: nuevo config (no embebido), renombrados id/name a `vantare-lmu-basic`/`Le Mans Ultimate - Basic`.
+- `recommended-profiles.ts`: ambos perfiles en schema v2 con `layouts.general.widgets`. Clean Overlay conserva `variant-relative-default`; LMU Basic incluye pedals deshabilitado.
+- Tests reales añadidos: ids/nombres exactos, widgets por perfil, schemaVersion 2, layouts.general, variantId, inmutabilidad del clone.
+- Review adversarial GLM (2 ciclos): NEEDS FIXES → ACCEPT WITH P3. P1 (positions sin autorizar, diff mezclado no reportado) y P2 (tests débiles, test P5 en diff, schema inconsistente) resueltos. P3 no bloqueantes documentados (custom-1.json huérfano, pedals enabled:false, id≠filename).
+- Checks: 480 tests frontend OK, build OK, lint OK, `go test ./pkg/config ./internal/app` OK, `git diff --check` OK.
+- Verificación manual pendiente: abrir app, confirmar 2 perfiles en Recomendados, guardar copias, abrir en LayoutStudio.
+- Siguiente operativo: Release 01 Task 2 (verificación visual QA) o Task 3 (Widget preset model inventory) según decisión de Isaac.
 
 
 
@@ -304,8 +364,10 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 10. No iniciar mas reworks visuales completos hasta cerrar la mayoria de features core.
 11. `P1 - Pedals inventario datos/diseño actual` completado.
 12. `P3 - Pedals compact render` completado.
-13. Siguiente operativo: `P4 - Pedals configuracion visual basica`.
-14. Ejecutar REL1/Discord release al pushear el tag funcional.
+13. `P4 - Pedals configuracion visual basica` completado.
+14. Siguiente operativo: `P5 - Recomendados beta pulidos`.
+15. Aprobado para beta testers: `P6 - Widget Preset Gallery` (Galería de presets de widgets), programada antes del smoke test (ahora `P7`).
+16. Ejecutar REL1/Discord release al pushear el tag funcional.
 
 
 

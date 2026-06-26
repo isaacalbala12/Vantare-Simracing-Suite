@@ -194,7 +194,7 @@ Controles live restaurados dentro de Overlays Studio:
 
 ## Objetivo actual
 
-Release 02 Mini-Plan A: cerrar la arquitectura de auth, Supabase schema y Stripe integration plan, y obtener review GLM antes de escribir codigo de producción.
+Release 02 Mini-Plan B completado: Go LicenseService con cache local y Supabase Edge Function webhook estructurado. Pendiente Mini-Plan C (UI auth/license) y el mapeo completo de entitlements en el webhook.
 
 Checkpoint funcional `v0.3.9.1` cerrado:
 

@@ -18,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/telemetry/delta"
@@ -245,6 +246,18 @@ func main() {
 	// Create hub service for profile CRUD using the resolved directory
 	hubSvc := app.NewHubService(cfgDir, profileSvc, emitter, overlayController)
 	wailsApp.RegisterService(application.NewService(hubSvc))
+
+	// License service for online entitlement validation (Release 02 Mini-Plan B).
+	licenseCachePath := filepath.Join(cfgDir, "license-cache.json")
+	licenseSvc := license.NewService(license.Config{
+		GracePeriod: 24 * time.Hour,
+		CachePath:   licenseCachePath,
+	}, license.MachineFingerprint)
+	licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
+	if err := licenseSvc.LoadCache(); err != nil {
+		log.Printf("warning: could not load license cache: %v", err)
+	}
+	wailsApp.RegisterService(application.NewService(licenseSvc))
 
 	// Preset service for widget presets (WidgetStudio only)
 	presetSvc := app.NewPresetService(cfgDir, emitter)

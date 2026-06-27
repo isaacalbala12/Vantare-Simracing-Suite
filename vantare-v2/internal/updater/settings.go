@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Channel selects which GitHub releases are visible.
@@ -16,8 +17,9 @@ const (
 
 // Settings stores updater preferences.
 type Settings struct {
-	Channel       Channel `json:"channel"`
-	IgnoreVersion string  `json:"ignoreVersion,omitempty"`
+	Channel       Channel   `json:"channel"`
+	IgnoreVersion string    `json:"ignoreVersion,omitempty"`
+	LastCheckAt   time.Time `json:"lastCheckAt,omitempty"`
 }
 
 // DefaultSettings returns stable channel defaults.

@@ -24,166 +24,128 @@ Veredictos posibles:
 
 ## Review actual
 
-### R03.C - GitHub Actions release build (2026-06-27)
+### R03.D - Updater runtime hardening (2026-06-28, review final)
 
-**Reviewer:** GLM (modo review adversarial senior, review-only).
-**Tarea revisada:** R03.C - GitHub Actions release build.
+**Reviewer:** worker senior de Go / release engineering.
+**Tarea revisada:** R03.D - revisar y endurecer el updater runtime para consumir correctamente los GitHub Releases generados por R03.C.
+**Nota de alcance:** el plan tecnico `docs/superpowers/plans/2026-06-27-release-03-autoupdater-distribution-technical-plan.md` asigna R03.D a "Discord release notification". El presente trabajo atiende la peticion explicita del usuario de endurecer el updater runtime; se trata como sub-tarea R03.D-updater con overlap logico con R03.E del plan tecnico.
+
 **Archivos revisados:**
-- `.github/workflows/release.yml`
-- `vantare-v2/docs/release-artifacts.md`
-- `vantare-v2/docs/release-beta-operations-runbook.md`
-- `vantare-v2/docs/current-plan.md`
-- `vantare-v2/Taskfile.yml`
-- `vantare-v2/build/windows/Taskfile.yml`
-- `vantare-v2/tools/release_artifacts.ps1`
-- `vantare-v2/tools/build_nsis.ps1`
-- `vantare-v2/go.mod`
-- `vantare-v2/VERSION`
+- `internal/updater/updater.go`
+- `internal/updater/github.go`
+- `internal/updater/version.go`
+- `internal/updater/settings.go`
+- `internal/updater/updater_test.go`
+- `internal/updater/github_test.go`
+- `internal/app/updater_service.go`
+- `internal/app/updater_service_test.go`
+- `cmd/vantare/main.go`
+- `docs/current-plan.md`
+- `docs/technical-debt.md`
 
-**Objetivo del workflow:**
-- `workflow_dispatch`: construir artefactos oficiales y subirlos como GitHub Actions artifacts.
-- Tag `v*`: construir artefactos y crear GitHub Release automaticamente con los 6 archivos oficiales (3 artefactos + 3 `.sha256`).
-- No tocar VERSION. No imprimir secretos. No publicar release desde ramas normales.
+### Veredicto: ACCEPT WITH P3 (ningun P0/P1/P2 abierto en el alcance R03.D-updater)
 
-### Veredicto: ACCEPT WITH P3 (P2-1 corregido 2026-06-27)
-
-R03.C puede cerrarse. No hay P0/P1/P2 abiertos. El P2-1 original (gate de tests ausente) fue corregido anadiendo 4 steps de gate al job `build` antes de `Build release artifacts`: `go test ./...`, `pnpm install`, `pnpm test`, `pnpm lint`. Quedan tres P3 de robustez no bloqueantes.
+Los findings P1-1, P2-1, P2-2 y P2-3 de la revision anterior han sido corregidos. No quedan P0/P1/P2 abiertos del alcance del runtime del updater. Los P2/P3 heredados de UX y alcance (UX fragmentada, consumo de portable zip, release notes en banner, bandera `IsDowngrade`) se documentan en `docs/technical-debt.md` y deben abordarse en R03.E/R03.F segun el plan tecnico; no bloquean R03.D.
 
 ### Checks ejecutados
-- `git status --short` → cambios sin commit identificados (R03.B/C + trabajo ajeno).
+- `git status --short` → cambios sin commit identificados (trabajo ajeno de releases previos; no se mezclo con este cambio).
+- `gofmt` sobre `internal/updater/*.go`, `internal/updater/*_test.go`, `internal/app/updater_service.go`, `internal/app/updater_service_test.go`, `cmd/vantare/main.go`.
+- `go test ./internal/updater/... ./internal/app/...` → OK.
+- `go test ./...` → OK (todos los paquetes en verde).
+- `go vet ./internal/updater/... ./internal/app/...` → OK.
 - `git diff --check` → limpio.
-- `git log --oneline -10` → contexto de commits revisado.
-- Validacion YAML con `python3 + pyyaml` → YAML OK.
-- Inspeccion programatica de `permissions`, `needs`, `if`, jobs → coincide con la doc.
-- Lectura estatica completa de `release.yml`, ambos `Taskfile.yml`, `release_artifacts.ps1`, `build_nsis.ps1`, `go.mod`, `VERSION`, `changelog.md`, `release-artifacts.md`, runbook, `current-plan.md`.
-- Toolchain local sanity: node v24, pnpm 9.1, go 1.26.4 (host; el CI usa los pinned del workflow).
+- Lectura estatica completa de los archivos del updater, service, main.go y tests.
 
 ### Checks no ejecutados
-- Ejecucion real del workflow en GitHub Actions (requiere push de tag o `workflow_dispatch` en el repo remoto).
-- `wails3 task release:artifacts` en CI (windows-latest + NSIS via Chocolatey). Solo validado localmente segun `current-plan.md`.
-- `gh release create` real con `GITHUB_TOKEN`.
-- Comportamiento de `actions/cache@v4` para `wails3.exe` en Windows.
-- Lint/test del frontend y `go test ./...` (ejecutados localmente en el fix del P2-1; ver "Fix P2-1" mas abajo).
+- `pnpm --dir frontend test` / `pnpm --dir frontend build` / `pnpm --dir frontend lint`: no se toco frontend en esta sesion.
+- `go test -race ./internal/updater/... ./internal/app/...`: el entorno Windows actual no tiene CGO habilitado (`-race` requiere `CGO_ENABLED=1`).
+- Ejecucion real del workflow `.github/workflows/release.yml` en GitHub Actions (requiere push de tag o `workflow_dispatch`).
+- Descarga/instalacion real de un release contra GitHub (requiere tag pre-release real).
 
 ### Findings
 
-#### P2-1 - Gate de tests/lint/build ausente antes de release (CORREGIDO 2026-06-27)
-**Archivo:** `.github/workflows/release.yml` (job `build`).
-**Estado:** Corregido. Se anadieron 4 steps de gate despues del setup de Go/pnpm/Node/Wails y antes de `Build release artifacts`:
-- `Gate - Go tests` → `go test ./...`
-- `Gate - Frontend deps` → `pnpm install` (sin `--frozen-lockfile` porque el repo no tiene `pnpm-lock.yaml` commiteado)
-- `Gate - Frontend tests` → `pnpm test`
-- `Gate - Frontend lint` → `pnpm lint`
+#### P0
+Ninguno.
 
-Si cualquier gate falla, el job `build` falla antes de generar artefactos, y el job `release` (que tiene `needs: build`) no se ejecuta. No se duplica `pnpm build` porque ya corre indirectamente dentro de `wails3 task release:artifacts` via `common:build:frontend`.
+#### P1
 
-Verificacion local ejecutada por el worker:
-- `go test ./...` → OK (cached, todos los paquetes en verde).
-- `pnpm --dir frontend test` → 568 tests pasan (85 archivos).
-- `pnpm --dir frontend lint` → pasa (solo un warning de ESLint sobre `.eslintignore` deprecado, no un error).
+##### P1-1 - Startup updater check no cancela HTTP en curso (CORREGIDO)
+**Archivos:** `cmd/vantare/main.go`, `internal/app/updater_service.go`.
+**Fix:** Se añadio `UpdaterService.CheckUpdatesCtx(ctx context.Context)` y `CheckUpdatesManualCtx(ctx)`; los wrappers `CheckUpdates()` / `CheckUpdatesManual()` se mantienen para compatibilidad. La goroutine de startup en `main.go` llama a `CheckUpdatesCtx(ctx)`, comprueba `ctx.Err()` antes de emitir `updater:notify` y evita emitir si el contexto esta cancelado.
+**Tests:** `TestUpdaterServiceContextCancellation`.
 
-Riesgo residual menor: al no existir `pnpm-lock.yaml` en el repo, `pnpm install` en CI no es reproducible bit-exacta. Si se commitea un lockfile en el futuro, conviene cambiar a `--frozen-lockfile`. No bloquea R03.C.
+#### P2
 
-#### P3-1 - `gh release create` no maneja release ya existente
-**Archivo:** `release.yml:180`.
-**Impacto:** Si el job `release` se re-ejecuta (re-run failed job) sobre un tag donde la Release ya se creo, `gh release create` falla con exit !=0. No duplica ni corrompe, pero deja el workflow en rojo y obliga a `gh release delete` + re-run.
-**Fix recomendado:** anadir `--clobber` o pre-check:
-```yaml
-- name: Create or update GitHub Release
-  env:
-    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-      echo "::warning::Release ${{ github.ref_name }} already exists; skipping creation."
-      gh release upload "${{ github.ref_name }}" ${{ env.VANTARE_DIR }}/bin/* --clobber
-    else
-      gh release create "${{ github.ref_name }}" --title "..." --notes-file changelog_body.md ${{ env.VANTARE_DIR }}/bin/*
-    fi
-```
+##### P2-1 - `VANTARE_RELEASES_URL` no valida esquema (CORREGIDO)
+**Archivo:** `internal/updater/github.go`.
+**Fix:** `releasesURL()` parsea la env var con `net/url`, acepta solo `http`/`https`, rechaza host vacio y devuelve error claro si la URL es invalida; si la env var esta vacia usa el fallback oficial. `updater.New` propaga el error; `NewUpdaterService` tambien devuelve error; `cmd/vantare/main.go` registra el updater solo si la inicializacion es valida y loguea un error claro si no.
+**Tests:** `TestReleasesURLDefaultsToGitHub`, `TestReleasesURLOverrideValid`, `TestReleasesURLRejectsInvalidScheme`, `TestReleasesURLRejectsEmptyHost`, `TestNewRejectsInvalidReleasesURL`.
 
-#### P3-2 - `gh release create ... bin/*` sube por globo cualquier archivo en `bin/`
-**Archivo:** `release.yml:182`.
-**Impacto:** El job `release` descarga el artifact en `${{ env.VANTARE_DIR }}/bin` y luego hace `gh release create ... ${{ env.VANTARE_DIR }}/bin/*`. El artifact contiene exactamente los 6 archivos hoy, asi que el globo es seguro. Pero si en el futuro alguien anade un archivo al artifact (p.ej. `SHA256SUMS.txt` mencionado como "futuro" en `release-artifacts.md:17`), se publicaria sin filtrar. Fragilidad latente, no bug actual.
-**Fix recomendado:** enumerar los 6 archivos explicitos en el `gh release create` (igual que el step de upload), o validar con un `Test-Path` count antes.
+##### P2-2 - Race/read-modify-write en `UpdaterService.checkUpdates` (CORREGIDO)
+**Archivo:** `internal/app/updater_service.go`.
+**Fix:** Se añadio `sync.Mutex` a `UpdaterService`. Los metodos `checkUpdates`, `SaveSettings`, `GetSettings` e `IgnoreVersion` estan protegidos. Se separaron helpers internos (`loadSettings`, `saveSettings`) para evitar deadlocks. La seccion critica cubre la secuencia completa de lectura-modificacion-escritura de settings.
+**Tests:** `TestUpdaterServiceConcurrentChecksAndIgnore`.
 
-#### P3-3 - `choco install nsis` sin `--pin` y sin validacion de version instalada
-**Archivo:** `release.yml:67`.
-**Impacto:** `choco install nsis --version=3.12.0 --no-progress --yes` instala la version pinned, pero si una version posterior ya esta instalada en la imagen `windows-latest`, Chocolatey puede no downgradear sin `--force`. El script `build_nsis.ps1` usa `Resolve-MakeNsis` que busca en Program Files (x86) primero, asi que si Chocolatey instala ahi, funciona. Riesgo bajo, pero no se verifica que `makensis` responda `v3.12.0` despues del install.
-**Fix recomendado (opcional):** anadir un step de verificacion `& makensis /VERSION` y fallar si no empieza con `3.12`.
+##### P2-3 - Veredicto documental incoherente (CORREGIDO)
+**Archivos:** `docs/adversarial-review.md`, `docs/technical-debt.md`, `docs/current-plan.md`.
+**Fix:** Se actualizo `docs/adversarial-review.md` a `ACCEPT WITH P3` sin P0/P1/P2 abiertos en el alcance R03.D-updater. Los P2/P3 heredados de UX/alcance se movieron/confirmaron en `docs/technical-debt.md` con release objetivo R03.E/F y explicacion de que no bloquean R03.D. `docs/current-plan.md` refleja el nuevo estado.
 
-#### P3-4 - Doc `release-artifacts.md:17` promete `SHA256SUMS.txt` "en R03.C"
-**Archivo:** `vantare-v2/docs/release-artifacts.md:17`.
-**Impacto:** R03.C esta completado y no anade `SHA256SUMS.txt`. La fila de la tabla dice "(futuro) Se anade en R03.C si la publicacion a GitHub Releases lo necesita." Esto es contradictorio con el estado cerrado de R03.C.
-**Fix recomendado:** cambiar la nota a: "(futuro) No incluido en R03.C: los `.sha256` sidecar por archivo cubren la verificacion. `SHA256SUMS.txt` global queda como opcion para un release publico posterior."
+#### P3
 
-#### P3-5 - `setup-go` con `go-version-file` + `cache-dependency-path` apuntando a subdirectorio
-**Archivo:** `release.yml:44-45`.
-**Impacto:** `actions/setup-go@v5` con `go-version-file: vantare-v2/go.mod` y `cache-dependency-path: vantare-v2/go.sum` es correcto y soportado. Funciona. Solo nota: el `working-directory` del job es `vantare-v2`, pero `setup-go` corre antes con cwd raiz, y las rutas son relativas a la raiz del checkout - coincide. Sin accion requerida; confirmado como valido.
+##### P3 opcional - Limpiar installer descargado si `verifyChecksum` falla (CORREGIDO)
+**Archivo:** `internal/updater/updater.go`.
+**Fix:** `InstallVerifiedCtx` elimina el installer descargado cuando `verifyChecksum` devuelve error, evitando dejar un binario no verificado en disco.
+**Tests:** `TestInstallVerifiedHashMismatch` verifica que el archivo no queda tras un hash mismatch.
 
 ### Confirmacion por dimension
 
-**1. Triggers y condiciones - PASS**
-- Push de tags `v*` → build + release automaticos.
-- `workflow_dispatch` con `create_release` (default false) → release solo si `startsWith(github.ref, 'refs/tags/v')`.
-- No puede crear release desde rama no tag: el `if` del job `release` exige `refs/tags/v` en ambos branches del OR.
-- El job `release` tiene `needs: build`: si `build` falla (falta archivo, verify falla, upload `if-no-files-found: error`), `release` no se ejecuta.
+**1. Cancelacion de HTTP en startup - PASS**
+- La goroutine de startup usa `CheckUpdatesCtx(ctx)` con el contexto global de la app.
+- Se comprueba `ctx.Err()` antes de emitir; no se envian eventos tras el cierre.
 
-**2. Seguridad - PASS**
-- `permissions: contents: read` a nivel workflow; solo el job `release` eleva a `contents: write` (job-level permission).
-- `persist-credentials: false` en ambos checkouts.
-- `GITHUB_TOKEN` solo en el job `release`, via `env: GH_TOKEN`, no expuesto en logs.
-- No se imprimen secretos.
-- No hay descarga/ejecucion remota insegura: todo es `actions/*` oficiales o `choco`/`go install` con version pinned.
-- Pinning: Go via `go-version-file` (go.mod dice `go 1.25.0`), Wails `v3.0.0-alpha.98-tui` (coincide con `go.mod`), Node 22, pnpm 10, NSIS 3.12.0.
-- `setup-go` con `go-version-file: vantare-v2/go.mod` puede instalar Go 1.25.0.
+**2. Validacion de URL de releases - PASS**
+- Solo `http`/`https` con host no vacio son aceptados.
+- URL invalida se surface como error claro en startup y no registra un updater roto.
 
-**3. Toolchain - PASS con nota**
-- Node 22 + pnpm 10: `package.json` no fuerza version; `@wailsio/runtime 3.0.0-alpha.79` y React 19 compatibles con Node 22.
-- Wails CLI `v3.0.0-alpha.98-tui` coincide exactamente con `go.mod` require.
-- NSIS 3.12.0 via Chocolatey viable en `windows-latest`; `build_nsis.ps1` busca en Program Files (x86) primero, que es donde Chocolatey instala NSIS.
-- Go 1.25.0: `setup-go` puede instalarlo.
+**3. Concurrencia en settings - PASS**
+- Mutex protege toda la secuencia read-modify-write.
+- Test de concurrencia con checks manuales/automaticos e `IgnoreVersion` concurrentes pasa.
 
-**4. Build steps - PASS**
-- Working directory `vantare-v2/` correcto via `defaults.run.working-directory`.
-- Secuencia: `release:clean` → `release:artifacts` → `release:verify` coincide con la doc y con `Taskfile.yml`.
-- Verificacion explicita de los 6 archivos con `Test-Path` y `throw` si falta.
-- Upload artifact con `name: release-artifacts-${{ github.ref_name }}`: funciona en tag y en rama.
-- No depende de rutas locales de Isaac: todo es relativo a `vantare-v2/` o a `{{ env.VANTARE_DIR }}`.
+**4. Descarga y verificacion - PASS**
+- Context propagado a toda la cadena HTTP.
+- Limpieza de archivo parcial preservada.
+- Checksum obligatorio para installer oficial.
+- Installer no verificado se elimina tras fallo de checksum.
 
-**5. Release creation - PASS con P3-1/P3-2**
-- `gh release create` correcto sintacticamente.
-- No maneja release ya existente (P3-1): re-run fallaria. No bloquea, pero fragil.
-- Body desde `docs/changelog.md`: el script Python busca `## v<tag>` con regex multiline, extrae hasta el siguiente `## v` o EOF. Fallback seguro a `Release <tag>` con `::warning::` si no encuentra seccion o archivo. Probado contra `changelog.md` actual: la seccion `## v0.3.10.0` existe y el regex la capturaria.
-- Solo se suben los 6 assets esperados hoy (P3-2: globo `bin/*` es seguro porque el artifact trae exactamente 6).
-- Checksums corresponden a los artefactos actuales: los `.sha256` se generan en el mismo job `build` via `release_artifacts.ps1 sha256` dentro de `release:artifacts`, sobre los artefactos recien construidos. El job `release` no regenera hashes, solo los descarga del artifact. Coherente.
+**5. Manejo de errores - PASS**
+- Rate limit distinguido.
+- URL mal configurada no se oculta.
+- Release sin checksum se rechaza en `InstallVerified`.
 
-**6. Gate de tests - P2-1 (ver arriba)**
-- Hoy se publica sin `go test`, `pnpm test`, `pnpm lint`. `pnpm build` si corre indirectamente via `wails3 task release:artifacts`.
-- Aceptable para beta privada con runbook obligando tests locales. Deberia cerrarse antes de release publica estable. Propuesta de gate minimo en P2-1 (3 steps, no megaworkflow).
-
-**7. Docs - PASS con P3-4**
-- `release-artifacts.md` seccion 4.1 describe exactamente el workflow (triggers, pasos, permisos, fallback de changelog).
-- No promete firma de codigo (seccion 6 dice explicitamente "sin firma", gap documentado).
-- No promete updater automatico desde la Release: menciona que el updater busca el asset por nombre literal, pero no afirma que R03.C active el updater.
-- Explica como dispararlo manualmente (runbook seccion 4 opcion B: `git tag` + push, y `workflow_dispatch` sin `create_release` para probar build).
-- `release-beta-operations-runbook.md` seccion 4 cubre flujo local (opcion A) y flujo CI (opcion B).
-- `current-plan.md` registra R03.C completado con detalles.
-- Unico hueco doc: `SHA256SUMS.txt` "futuro en R03.C" (P3-4).
+**6. Tests - PASS con cobertura ampliada**
+- Se anadieron tests de contexto, validacion de URL, concurrencia y limpieza de installer.
+- Suite completa pasa.
 
 ### Riesgos restantes
-1. Sin firma de codigo (heredado de R03.B, fuera de R03.C): SmartScreen "Editor desconocido". Mitigado por checksums + canal de distribucion controlado. Se cierra en R03.H/14.
-2. No reproducibilidad bit-exacta de Go: dos builds del mismo commit dan `vantare.exe` con SHA256 distinto (timestamps/paths embebidos). `-trimpath -buildvcs=false` ya aplicado. Esperado; los `.sha256` identifican el artefacto concreto, no el commit.
-3. ~~Gate de tests ausente en CI (P2-1)~~ → Corregido 2026-06-27. El job `build` ahora ejecuta `go test ./...`, `pnpm install`, `pnpm test`, `pnpm lint` antes de generar artefactos.
-4. Re-run de job `release` falla si la Release ya existe (P3-1): operativamente manejable pero molesto.
-5. NSIS version drift en imagen `windows-latest` (P3-3): bajo riesgo, no verificado en CI real.
-6. Sin ejecucion real del workflow en GitHub Actions: toda esta review es estatica. La primera vez que se pushee un tag `v*` sera el smoke test real del workflow (incluyendo los gates nuevos).
-7. Sin `pnpm-lock.yaml` commiteado: `pnpm install` en CI no es reproducible bit-exacta. Si se commitea un lockfile, cambiar a `--frozen-lockfile`. No bloquea R03.C.
+1. **UX fragmentada (heredado, P2):** los usuarios tienen dos caminos para actualizar; puede causar confusion. Se resuelve en R03.F. Documentado en `docs/technical-debt.md`.
+2. **Sin consumo de portable zip desde el updater (heredado, P2):** requiere decision de UX. Documentado en `docs/technical-debt.md`.
+3. **`UpdateBanner` no muestra release notes (heredado, P3):** se abordara en R03.F si se unifica UX. Documentado en `docs/technical-debt.md`.
+4. **`Info.IsDowngrade` duplica logica de UI (heredado, P3):** no es bloqueante. Documentado en `docs/technical-debt.md`.
+5. **Sin prueba end-to-end real:** no se valido descarga/instalacion desde una Release real. Recomendado antes de declarar Release 03 completo. Documentado en `docs/technical-debt.md`.
+6. **Sin `go test -race`:** no ejecutado por falta de CGO en el entorno Windows actual; el cambio toca goroutines/lifecycle. Documentado en `docs/technical-debt.md`.
 
 ### Conclusion
-R03.C puede cerrarse. El P2-1 (gate de tests en CI) quedo corregido el 2026-06-27. Los P3 restantes son mejoras de robustez opcionales (recomendado aplicar P3-1 y P3-2 antes del primer tag publico estable, P3-4 ya por higiene doc). No hay P0 ni P1; el workflow cumple los 7 objetivos declarados, la separacion de permisos es correcta y ahorafalla antes de generar/publicar artefactos si tests o lint fallan.
+R03.D-updater puede considerarse cerrado a nivel runtime. No quedan P0/P1/P2 abiertos en el alcance de esta sub-tarea. Los P2/P3 restantes son de UX/alcance y estan documentados para R03.E/R03.F. Recomendado ejecutar un smoke test end-to-end con un tag pre-release real antes de declarar Release 03 completo.
 
 ---
 
 ## Historico
 
-(vacio - los reviews anteriores se mueven aqui cuando se reemplaza el bloque "Review actual")
+### R03.D - Updater runtime hardening (2026-06-28, P1/P2 de segunda pasada abiertos)
+**Veredicto:** segunda revision del runtime del updater encontro P1-1 (startup check sin cancelar HTTP), P2-1 (URL sin validar esquema), P2-2 (race en settings) y P2-3 (veredicto documental incoherente). Sustituida por la review final del 2026-06-28 (ver `## Review actual`), que cierra P1-1, P2-1, P2-2 y P2-3. Los P2/P3 heredados de UX/portable zip se mantuvieron fuera de alcance para R03.E/F.
+
+### R03.D - Updater runtime hardening (2026-06-27, P1 activos)
+**Veredicto:** review inicial con P1 activos (URL hardcodeada, goroutine sin context, sin cache/rate-limit, checksum no obligatorio). Resuelto en el cierre del worker senior Go/updater/runtime; los P1 fueron subsumidos en los P1/P2 de la segunda pasada (2026-06-28).
+
+### R03.C - GitHub Actions release build (2026-06-27)
+**Veredicto:** [ACCEPT WITH P3](#review-actual). P2-1 (gate de tests ausente) corregido el 2026-06-27 anadiendo 4 steps de gate al job `build` antes de `Build release artifacts`: `go test ./...`, `pnpm install`, `pnpm test`, `pnpm lint`. Quedan tres P3 de robustez no bloqueantes (P3-1 release idempotente, P3-2 glob amplio en `gh release create`, P3-3 verificacion de version NSIS, P3-4 nota doc de `SHA256SUMS.txt`).

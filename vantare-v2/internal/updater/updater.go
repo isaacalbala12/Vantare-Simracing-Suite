@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -14,6 +15,9 @@ import (
 	"time"
 )
 
+// checkCooldown is the minimum time between automatic update checks.
+const checkCooldown = 15 * time.Minute
+
 // Updater checks, downloads and installs Vantare releases from GitHub.
 type Updater struct {
 	httpClient     *http.Client
@@ -23,13 +27,17 @@ type Updater struct {
 }
 
 // New creates an Updater for the given current version and settings path.
-func New(currentVersion, settingsPath string) *Updater {
+func New(currentVersion, settingsPath string) (*Updater, error) {
+	releasesURL, err := releasesURL()
+	if err != nil {
+		return nil, err
+	}
 	return &Updater{
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 		settingsPath:   settingsPath,
 		currentVersion: currentVersion,
-		releasesURL:    githubReleasesURL,
-	}
+		releasesURL:    releasesURL,
+	}, nil
 }
 
 // CurrentVersion returns the running version.
@@ -46,7 +54,12 @@ func (u *Updater) SettingsPath() string { return u.settingsPath }
 
 // ListAvailable returns releases matching the user's channel that have an installer.
 func (u *Updater) ListAvailable(settings *Settings) ([]Release, error) {
-	releases, err := listReleasesURL(u.httpClient, u.releasesURL)
+	return u.ListAvailableCtx(context.Background(), settings)
+}
+
+// ListAvailableCtx returns releases matching the user's channel that have an installer.
+func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]Release, error) {
+	releases, err := listReleasesURL(ctx, u.httpClient, u.releasesURL)
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +85,44 @@ type UpdateInfo struct {
 	IsDowngrade    bool      `json:"isDowngrade"`
 	Releases       []Release `json:"releases,omitempty"`
 	IgnoredVersion string    `json:"ignoredVersion,omitempty"`
+	Throttled      bool      `json:"throttled"`
 }
 
 // Check fetches available releases and compares with the current version.
+// Automatic checks respect the configured cooldown; use CheckManual to force a check.
 func (u *Updater) Check(settings *Settings) (*UpdateInfo, error) {
-	releases, err := u.ListAvailable(settings)
+	return u.checkInternal(context.Background(), settings, false)
+}
+
+// CheckCtx is like Check but accepts a context.
+func (u *Updater) CheckCtx(ctx context.Context, settings *Settings) (*UpdateInfo, error) {
+	return u.checkInternal(ctx, settings, false)
+}
+
+// CheckManual forces an update check, ignoring the cooldown.
+func (u *Updater) CheckManual(settings *Settings) (*UpdateInfo, error) {
+	return u.checkInternal(context.Background(), settings, true)
+}
+
+// CheckManualCtx is like CheckManual but accepts a context.
+func (u *Updater) CheckManualCtx(ctx context.Context, settings *Settings) (*UpdateInfo, error) {
+	return u.checkInternal(ctx, settings, true)
+}
+
+func (u *Updater) checkInternal(ctx context.Context, settings *Settings, manual bool) (*UpdateInfo, error) {
+	if !manual && !settings.LastCheckAt.IsZero() && time.Since(settings.LastCheckAt) < checkCooldown {
+		return &UpdateInfo{
+			CurrentVersion: u.currentVersion,
+			IgnoredVersion: settings.IgnoreVersion,
+			Throttled:      true,
+		}, nil
+	}
+
+	releases, err := u.ListAvailableCtx(ctx, settings)
 	if err != nil {
 		return nil, err
 	}
+	settings.LastCheckAt = time.Now().UTC()
 	if len(releases) == 0 {
 		return &UpdateInfo{
 			CurrentVersion: u.currentVersion,
@@ -89,10 +132,14 @@ func (u *Updater) Check(settings *Settings) (*UpdateInfo, error) {
 	latest := releases[0]
 	current := ParseVersion(u.currentVersion)
 	selected := ParseVersion(latest.TagName)
-	isDowngrade := selected.Compare(current) < 0
-	hasUpdate := latest.TagName != u.currentVersion && !isDowngrade
-	if settings.IgnoreVersion != "" && latest.TagName == settings.IgnoreVersion {
-		hasUpdate = false
+	cmp := selected.Compare(current)
+	isDowngrade := cmp < 0
+	hasUpdate := cmp > 0
+	if settings.IgnoreVersion != "" {
+		ignored := ParseVersion(settings.IgnoreVersion)
+		if selected.Compare(ignored) == 0 {
+			hasUpdate = false
+		}
 	}
 	return &UpdateInfo{
 		CurrentVersion: u.currentVersion,
@@ -108,6 +155,11 @@ func (u *Updater) Check(settings *Settings) (*UpdateInfo, error) {
 // Install downloads the installer for the given release and runs it.
 // The installer is responsible for closing the running app.
 func (u *Updater) Install(tag, downloadURL string, progress func(percent int)) error {
+	return u.InstallCtx(context.Background(), tag, downloadURL, progress)
+}
+
+// InstallCtx is like Install but accepts a context.
+func (u *Updater) InstallCtx(ctx context.Context, tag, downloadURL string, progress func(percent int)) error {
 	if runtime.GOOS != "windows" {
 		return fmt.Errorf("auto-install only supported on windows")
 	}
@@ -130,7 +182,7 @@ func (u *Updater) Install(tag, downloadURL string, progress func(percent int)) e
 	if progress != nil {
 		progress(0)
 	}
-	if err := u.downloadFile(downloadURL, installerPath, progress); err != nil {
+	if err := u.downloadFile(ctx, downloadURL, installerPath, progress); err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 
@@ -144,9 +196,19 @@ func (u *Updater) Install(tag, downloadURL string, progress func(percent int)) e
 // InstallVerified downloads the installer and its SHA256 checksum when available,
 // verifies the hash, and then runs the installer.
 func (u *Updater) InstallVerified(release Release, progress func(percent int)) error {
+	return u.InstallVerifiedCtx(context.Background(), release, progress)
+}
+
+// InstallVerifiedCtx is like InstallVerified but accepts a context.
+func (u *Updater) InstallVerifiedCtx(ctx context.Context, release Release, progress func(percent int)) error {
 	installer := FindInstaller(release)
 	if installer == nil {
 		return fmt.Errorf("release %s has no installer asset", release.TagName)
+	}
+
+	checksum := FindChecksumAsset(release)
+	if checksum == nil {
+		return fmt.Errorf("release %s has no checksum asset; refusing to install", release.TagName)
 	}
 
 	// Persist installer in a known location so it is not deleted while running.
@@ -165,14 +227,13 @@ func (u *Updater) InstallVerified(release Release, progress func(percent int)) e
 	if progress != nil {
 		progress(0)
 	}
-	if err := u.downloadFile(installer.DownloadURL, installerPath, progress); err != nil {
+	if err := u.downloadFile(ctx, installer.DownloadURL, installerPath, progress); err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 
-	if checksum := FindChecksumAsset(release); checksum != nil {
-		if err := u.verifyChecksum(installerPath, checksum.DownloadURL); err != nil {
-			return fmt.Errorf("checksum verification failed: %w", err)
-		}
+	if err := u.verifyChecksum(ctx, installerPath, checksum.DownloadURL); err != nil {
+		_ = os.Remove(installerPath)
+		return fmt.Errorf("checksum verification failed: %w", err)
 	}
 
 	cmd := exec.Command(installerPath)
@@ -184,8 +245,8 @@ func (u *Updater) InstallVerified(release Release, progress func(percent int)) e
 	return nil
 }
 
-func (u *Updater) verifyChecksum(filePath, checksumURL string) error {
-	expected, err := u.fetchChecksum(checksumURL)
+func (u *Updater) verifyChecksum(ctx context.Context, filePath, checksumURL string) error {
+	expected, err := u.fetchChecksum(ctx, checksumURL)
 	if err != nil {
 		return err
 	}
@@ -205,8 +266,12 @@ func (u *Updater) verifyChecksum(filePath, checksumURL string) error {
 	return nil
 }
 
-func (u *Updater) fetchChecksum(url string) (string, error) {
-	resp, err := u.httpClient.Get(url)
+func (u *Updater) fetchChecksum(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := u.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -222,11 +287,19 @@ func (u *Updater) fetchChecksum(url string) (string, error) {
 	if len(parts) == 0 {
 		return "", fmt.Errorf("empty checksum file")
 	}
-	return parts[0], nil
+	hash := parts[0]
+	if len(hash) != 64 {
+		return "", fmt.Errorf("invalid checksum length: got %d, want 64", len(hash))
+	}
+	return hash, nil
 }
 
-func (u *Updater) downloadFile(url, dest string, progress func(int)) error {
-	resp, err := u.httpClient.Get(url)
+func (u *Updater) downloadFile(ctx context.Context, url, dest string, progress func(int)) (err error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := u.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -240,7 +313,15 @@ func (u *Updater) downloadFile(url, dest string, progress func(int)) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		closeErr := f.Close()
+		if err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			_ = os.Remove(dest)
+		}
+	}()
 
 	total := resp.ContentLength
 	var written int64

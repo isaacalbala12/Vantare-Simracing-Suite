@@ -1,9 +1,12 @@
 package updater
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 )
 
@@ -26,16 +29,38 @@ type Asset struct {
 	Size        int    `json:"size"`
 	DownloadURL string `json:"browser_download_url"`
 }
-// ListReleases fetches public releases from the GitHub API.
-func ListReleases(client *http.Client) ([]Release, error) {
-	return listReleasesURL(client, githubReleasesURL)
+
+// releasesURL returns the configured releases endpoint.
+// It uses VANTARE_RELEASES_URL when set, otherwise the official GitHub Releases API.
+// Only http and https schemes are accepted and the host must not be empty.
+func releasesURL() (string, error) {
+	override := os.Getenv("VANTARE_RELEASES_URL")
+	if override == "" {
+		return githubReleasesURL, nil
+	}
+	u, err := url.Parse(override)
+	if err != nil {
+		return "", fmt.Errorf("invalid VANTARE_RELEASES_URL %q: %w", override, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("invalid VANTARE_RELEASES_URL %q: scheme %q not allowed (only http/https)", override, u.Scheme)
+	}
+	if u.Host == "" {
+		return "", fmt.Errorf("invalid VANTARE_RELEASES_URL %q: host is required", override)
+	}
+	return u.String(), nil
 }
 
-func listReleasesURL(client *http.Client, url string) ([]Release, error) {
+// ListReleases fetches public releases from the GitHub API.
+func ListReleases(ctx context.Context, client *http.Client) ([]Release, error) {
+	return listReleasesURL(ctx, client, githubReleasesURL)
+}
+
+func listReleasesURL(ctx context.Context, client *http.Client, url string) ([]Release, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +74,9 @@ func listReleasesURL(client *http.Client, url string) ([]Release, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+			return nil, fmt.Errorf("github api rate limit or access denied (%d)", resp.StatusCode)
+		}
 		return nil, fmt.Errorf("github api returned %d", resp.StatusCode)
 	}
 

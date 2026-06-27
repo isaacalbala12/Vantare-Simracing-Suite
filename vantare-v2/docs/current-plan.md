@@ -65,6 +65,19 @@ R03.C - GitHub Actions release build completado (2026-06-27):
 - Checks: `git diff --check` limpio; validacion YAML OK; `go test ./...` OK (cached); `pnpm --dir frontend test` 568 tests OK; `pnpm --dir frontend lint` OK (solo warning de `.eslintignore` deprecado, no error).
 - P3 restantes del review (no bloqueantes): P3-1 manejo de release ya existente, P3-2 globo `bin/*` en `gh release create`, P3-3 verificacion de version de NSIS instalada, P3-4 nota de `SHA256SUMS.txt` en `release-artifacts.md`. Recomendado aplicar P3-1/P3-2 antes de release publica estable.
 
+R03.D - Updater runtime hardening: correcciones de review R03.D aplicadas (2026-06-28):
+- Nota: el plan tecnico asigna R03.D a "Discord release notification"; el presente trabajo atiende la peticion de endurecer el updater runtime (overlap logico con R03.E del plan tecnico).
+- Findings corregidos:
+  - P1-1: `UpdaterService.CheckUpdatesCtx(ctx)` propaga el contexto real; la goroutine de startup en `cmd/vantare/main.go` usa `CheckUpdatesCtx(ctx)` y comprueba `ctx.Err()` antes de emitir `updater:notify`.
+  - P2-1: `VANTARE_RELEASES_URL` se valida con `net/url`; solo se aceptan esquemas `http`/`https` y host no vacio; `updater.New` devuelve error claro si la URL es invalida; `main.go` registra el updater solo si la inicializacion es valida.
+  - P2-2: `UpdaterService` protege lectura/escritura de settings con `sync.Mutex`, evitando condiciones de carrera en `checkUpdates`, `SaveSettings` e `IgnoreVersion`; anadido test de concurrencia.
+  - P2-3: `docs/adversarial-review.md` y `docs/technical-debt.md` actualizados con veredicto coherente `ACCEPT WITH P3` y P2/P3 heredados fuera de alcance documentados.
+  - P3 opcional: `InstallVerifiedCtx` elimina el installer descargado si `verifyChecksum` falla; test de regresion anadido.
+- Tests anadidos/actualizados: `TestReleasesURLDefaultsToGitHub`, `TestReleasesURLOverrideValid`, `TestReleasesURLRejectsInvalidScheme`, `TestReleasesURLRejectsEmptyHost`, `TestNewRejectsInvalidReleasesURL`, `TestUpdaterServiceContextCancellation`, `TestUpdaterServiceConcurrentChecksAndIgnore`, `TestInstallVerifiedHashMismatch` (verifica limpieza); tests existentes adaptados a `New` con error y a contexto en `downloadFile`/`verifyChecksum`.
+- Checks: `gofmt` OK; `go test ./internal/updater/... ./internal/app/...` OK; `go test ./...` OK; `go vet ./internal/updater/... ./internal/app/...` OK; `git diff --check` limpio.
+- Verificacion manual pendiente: smoke test end-to-end descargando un release real.
+- Riesgo residual: `go test -race` no ejecutado en este host porque requiere CGO_ENABLED=1 (no disponible en el entorno Windows actual).
+
 R03.B - P2 follow-ups completados (2026-06-27):
 - `tools/release_artifacts.ps1` `Test-ArtifactVersion`: reescrita la lectura con `[System.IO.File]::OpenRead` + `Stream.Read` acotado a 16 MiB (no `ReadAllBytes`). El handle se libera en `finally` aunque la lectura devuelva menos bytes de los pedidos. Logica UTF-8 / UTF-16 y mensajes de exito/mismatch intactos.
 - `tools/release_artifacts.ps1` `Invoke-CleanStale`: `$RepoRoot` y `$BinDir` se canonicalizan con `[System.IO.Path]::GetFullPath`. Se rechaza (throw) cualquier `$BinDir` que no sea `<RepoRoot>\bin` ni un subdirectorio de `<RepoRoot>\bin`. Confirmado en prueba negativa con `-BinDir configs` y prueba positiva con `-BinDir bin/subdir-test`. `release:clean` no puede borrar fuera de `bin/`.

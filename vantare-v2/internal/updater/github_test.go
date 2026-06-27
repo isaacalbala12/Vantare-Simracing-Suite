@@ -1,10 +1,12 @@
 package updater
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 )
 
 func TestListReleasesSuccess(t *testing.T) {
@@ -20,7 +22,7 @@ func TestListReleasesSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	releases, err := listReleasesURL(server.Client(), server.URL+"/releases")
+	releases, err := listReleasesURL(context.Background(), server.Client(), server.URL+"/releases")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -38,9 +40,12 @@ func TestListReleasesNonOK(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := listReleasesURL(server.Client(), server.URL+"/releases")
+	_, err := listReleasesURL(context.Background(), server.Client(), server.URL+"/releases")
 	if err == nil {
 		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "rate limit") {
+		t.Fatalf("expected rate limit hint, got %v", err)
 	}
 }
 
@@ -67,9 +72,65 @@ func TestFindInstallerMissing(t *testing.T) {
 	}
 }
 
-func TestReleaseTimeParsing(t *testing.T) {
-	r := Release{PublishedAt: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)}
-	if r.PublishedAt.Year() != 2026 {
-		t.Fatalf("year=%d, want 2026", r.PublishedAt.Year())
+func TestReleasesURLDefaultsToGitHub(t *testing.T) {
+	t.Setenv("VANTARE_RELEASES_URL", "")
+	url, err := releasesURL()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if url != githubReleasesURL {
+		t.Fatalf("url=%s, want %s", url, githubReleasesURL)
+	}
+}
+
+func TestReleasesURLOverrideValid(t *testing.T) {
+	override := "https://example.com/custom/releases"
+	t.Setenv("VANTARE_RELEASES_URL", override)
+	url, err := releasesURL()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if url != override {
+		t.Fatalf("url=%s, want %s", url, override)
+	}
+}
+
+func TestReleasesURLRejectsInvalidScheme(t *testing.T) {
+	tests := []string{
+		"file:///etc/passwd",
+		"gopher://example.com",
+		"ftp://example.com",
+		"relative/path/to/releases",
+	}
+	for _, tc := range tests {
+		t.Run(tc, func(t *testing.T) {
+			t.Setenv("VANTARE_RELEASES_URL", tc)
+			_, err := releasesURL()
+			if err == nil {
+				t.Fatal("expected error for invalid URL")
+			}
+			if !strings.Contains(err.Error(), "scheme") && !strings.Contains(err.Error(), "host") {
+				t.Fatalf("expected scheme/host error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestReleasesURLRejectsEmptyHost(t *testing.T) {
+	t.Setenv("VANTARE_RELEASES_URL", "https://")
+	_, err := releasesURL()
+	if err == nil {
+		t.Fatal("expected error for empty host")
+	}
+	if !strings.Contains(err.Error(), "host") {
+		t.Fatalf("expected host error, got %v", err)
+	}
+}
+
+func TestNewRejectsInvalidReleasesURL(t *testing.T) {
+	t.Setenv("VANTARE_RELEASES_URL", "file:///etc/passwd")
+	_, err := New("v0.1.0", filepath.Join(t.TempDir(), "settings.json"))
+	if err == nil {
+		t.Fatal("expected New to fail with invalid VANTARE_RELEASES_URL")
 	}
 }

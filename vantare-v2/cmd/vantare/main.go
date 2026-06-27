@@ -327,8 +327,12 @@ func main() {
 
 	// Updater service
 	settingsPath := filepath.Join(cfgDir, "updater-settings.json")
-	updaterSvc := app.NewUpdaterService(version, settingsPath, emitter)
-	wailsApp.RegisterService(application.NewService(updaterSvc))
+	updaterSvc, err := app.NewUpdaterService(version, settingsPath, emitter)
+	if err != nil {
+		log.Printf("updater service init error: %v", err)
+	} else {
+		wailsApp.RegisterService(application.NewService(updaterSvc))
+	}
 
 	// Create and start EngineerService (core & simulator/replay)
 	engSvc := engineerservice.NewEngineerService(emitter)
@@ -404,22 +408,31 @@ func main() {
 	})
 
 	// Silent update check on startup (after a short delay so the UI is ready).
-	go func() {
-		time.Sleep(5 * time.Second)
-		info, err := updaterSvc.CheckUpdates()
-		if err != nil {
-			log.Printf("startup update check error: %v", err)
-			return
-		}
-		if info.HasUpdate && info.LatestRelease.TagName != "" {
-			emitter.Emit("updater:notify", map[string]any{
-				"tag":         info.LatestRelease.TagName,
-				"name":        info.LatestRelease.Name,
-				"prerelease":  info.LatestRelease.Prerelease,
-				"downloadURL": installerURL(info.LatestRelease),
-			})
-		}
-	}()
+	if updaterSvc != nil {
+		go func() {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+			info, err := updaterSvc.CheckUpdatesCtx(ctx)
+			if err != nil {
+				log.Printf("startup update check error: %v", err)
+				return
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			if info.HasUpdate && info.LatestRelease.TagName != "" {
+				emitter.Emit("updater:notify", map[string]any{
+					"tag":         info.LatestRelease.TagName,
+					"name":        info.LatestRelease.Name,
+					"prerelease":  info.LatestRelease.Prerelease,
+					"downloadURL": installerURL(info.LatestRelease),
+				})
+			}
+		}()
+	}
 
 	// Version info broadcast for UI.
 	emitter.Emit("app:version", map[string]any{"version": version})
@@ -432,107 +445,109 @@ func main() {
 		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
 	})
 
-	emitUpdaterError := func(message string) {
-		emitter.Emit("updater:error", map[string]any{"message": message})
+	if updaterSvc != nil {
+		emitUpdaterError := func(message string) {
+			emitter.Emit("updater:error", map[string]any{"message": message})
+		}
+
+		wailsApp.Event.On("updater:settings:get", func(event *application.CustomEvent) {
+			settings, err := updaterSvc.GetSettings()
+			if err != nil {
+				log.Printf("updater:settings:get error: %v", err)
+				emitUpdaterError(err.Error())
+				return
+			}
+			emitter.Emit("updater:settings", map[string]any{"settings": settings})
+		})
+
+		wailsApp.Event.On("updater:settings:save", func(event *application.CustomEvent) {
+			var settings updater.Settings
+			if event.Data != nil {
+				if raw, err := json.Marshal(event.Data); err == nil {
+					json.Unmarshal(raw, &settings)
+				}
+			}
+			if err := updaterSvc.SaveSettings(&settings); err != nil {
+				log.Printf("updater:settings:save error: %v", err)
+				emitUpdaterError(err.Error())
+				return
+			}
+			emitter.Emit("updater:settings-saved", map[string]any{"ok": true})
+		})
+
+		wailsApp.Event.On("updater:check", func(event *application.CustomEvent) {
+			info, err := updaterSvc.CheckUpdatesManual()
+			if err != nil {
+				log.Printf("updater:check error: %v", err)
+				emitUpdaterError(err.Error())
+				return
+			}
+			emitter.Emit("updater:available", map[string]any{"info": info})
+		})
+
+		wailsApp.Event.On("updater:install", func(event *application.CustomEvent) {
+			var data struct {
+				Tag         string `json:"tag"`
+				DownloadURL string `json:"downloadURL"`
+			}
+			if event.Data != nil {
+				if raw, err := json.Marshal(event.Data); err == nil {
+					json.Unmarshal(raw, &data)
+				}
+			}
+			if data.Tag == "" || data.DownloadURL == "" {
+				emitUpdaterError("tag and downloadURL are required")
+				return
+			}
+			emitter.Emit("updater:progress", map[string]any{"percent": 0})
+			go func() {
+				if err := updaterSvc.InstallVersion(data.Tag, data.DownloadURL); err != nil {
+					log.Printf("updater:install error: %v", err)
+					emitUpdaterError(err.Error())
+					return
+				}
+				emitter.Emit("updater:installed", map[string]any{"ok": true})
+			}()
+		})
+
+		wailsApp.Event.On("updater:ignore", func(event *application.CustomEvent) {
+			var data struct {
+				Version string `json:"version"`
+			}
+			if event.Data != nil {
+				if raw, err := json.Marshal(event.Data); err == nil {
+					json.Unmarshal(raw, &data)
+				}
+			}
+			if err := updaterSvc.IgnoreVersion(data.Version); err != nil {
+				emitUpdaterError(err.Error())
+				return
+			}
+			emitter.Emit("updater:ignored", map[string]any{"version": data.Version})
+		})
+
+		wailsApp.Event.On("updater:install:verified", func(event *application.CustomEvent) {
+			var release updater.Release
+			if event.Data != nil {
+				if raw, err := json.Marshal(event.Data); err == nil {
+					json.Unmarshal(raw, &release)
+				}
+			}
+			if release.TagName == "" {
+				emitUpdaterError("release is required")
+				return
+			}
+			emitter.Emit("updater:progress", map[string]any{"percent": 0})
+			go func() {
+				if err := updaterSvc.InstallVerifiedVersion(release); err != nil {
+					log.Printf("updater:install:verified error: %v", err)
+					emitUpdaterError(err.Error())
+					return
+				}
+				emitter.Emit("updater:installed", map[string]any{"ok": true})
+			}()
+		})
 	}
-
-	wailsApp.Event.On("updater:settings:get", func(event *application.CustomEvent) {
-		settings, err := updaterSvc.GetSettings()
-		if err != nil {
-			log.Printf("updater:settings:get error: %v", err)
-			emitUpdaterError(err.Error())
-			return
-		}
-		emitter.Emit("updater:settings", map[string]any{"settings": settings})
-	})
-
-	wailsApp.Event.On("updater:settings:save", func(event *application.CustomEvent) {
-		var settings updater.Settings
-		if event.Data != nil {
-			if raw, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(raw, &settings)
-			}
-		}
-		if err := updaterSvc.SaveSettings(&settings); err != nil {
-			log.Printf("updater:settings:save error: %v", err)
-			emitUpdaterError(err.Error())
-			return
-		}
-		emitter.Emit("updater:settings-saved", map[string]any{"ok": true})
-	})
-
-	wailsApp.Event.On("updater:check", func(event *application.CustomEvent) {
-		info, err := updaterSvc.CheckUpdates()
-		if err != nil {
-			log.Printf("updater:check error: %v", err)
-			emitUpdaterError(err.Error())
-			return
-		}
-		emitter.Emit("updater:available", map[string]any{"info": info})
-	})
-
-	wailsApp.Event.On("updater:install", func(event *application.CustomEvent) {
-		var data struct {
-			Tag         string `json:"tag"`
-			DownloadURL string `json:"downloadURL"`
-		}
-		if event.Data != nil {
-			if raw, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(raw, &data)
-			}
-		}
-		if data.Tag == "" || data.DownloadURL == "" {
-			emitUpdaterError("tag and downloadURL are required")
-			return
-		}
-		emitter.Emit("updater:progress", map[string]any{"percent": 0})
-		go func() {
-			if err := updaterSvc.InstallVersion(data.Tag, data.DownloadURL); err != nil {
-				log.Printf("updater:install error: %v", err)
-				emitUpdaterError(err.Error())
-				return
-			}
-			emitter.Emit("updater:installed", map[string]any{"ok": true})
-		}()
-	})
-
-	wailsApp.Event.On("updater:ignore", func(event *application.CustomEvent) {
-		var data struct {
-			Version string `json:"version"`
-		}
-		if event.Data != nil {
-			if raw, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(raw, &data)
-			}
-		}
-		if err := updaterSvc.IgnoreVersion(data.Version); err != nil {
-			emitUpdaterError(err.Error())
-			return
-		}
-		emitter.Emit("updater:ignored", map[string]any{"version": data.Version})
-	})
-
-	wailsApp.Event.On("updater:install:verified", func(event *application.CustomEvent) {
-		var release updater.Release
-		if event.Data != nil {
-			if raw, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(raw, &release)
-			}
-		}
-		if release.TagName == "" {
-			emitUpdaterError("release is required")
-			return
-		}
-		emitter.Emit("updater:progress", map[string]any{"percent": 0})
-		go func() {
-			if err := updaterSvc.InstallVerifiedVersion(release); err != nil {
-				log.Printf("updater:install:verified error: %v", err)
-				emitUpdaterError(err.Error())
-				return
-			}
-			emitter.Emit("updater:installed", map[string]any{"ok": true})
-		}()
-	})
 
 	// App settings event handlers
 	emitSettingsError := func(message string) {

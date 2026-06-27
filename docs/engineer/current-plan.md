@@ -1,10 +1,13 @@
 # Plan Actual — Vantare Ingeniero Go
 
-> **Estado:** activo.
-> **Última revisión:** 2026-06-27 (pase editorial: § 11 reescrita como
-> regla general para tareas documentales; referencias a
-> `cmd/lmu-debug -jsonl` y paths de fixtures siguen marcadas como
-> NO_IMPLEMENTADO hasta que `cmd/spotter-debug` exista).
+> **Estado:** G0 (Prealpha) cerrada 2026-06-28 — gate automatizable verde
+> vía `vantare-v2/scripts/verify-prealpha.ps1`. Pendiente manual: captura
+> LMU real ≥1 min tráfico y validación ≥3 circuitos (requieren sesión de
+> Isaac con LMU abierto).
+>
+> **Próxima fase activa:** G1 (Alpha 1 — ingeniero determinista básico:
+> Flags, Penalties, Damage, Fuel, LapTimes, PitStops, PushNow, SessionEnd).
+>
 > **Worktree canónico:** `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2-engineer`.
 > **Submódulo de código:** `vantare-v2/` dentro del worktree.
 
@@ -157,95 +160,50 @@ recomendado, cada tarea con su mini-auditoría):
 - Dependencias nuevas sin aprobación.
 - Bindings Wails versionados (se regeneran).
 
-## 6. Próximas 5 tareas pequeñas (concreto)
+## 6. Estado de las tareas de G0 (Prealpha)
 
-> Cada tarea respeta el contrato del miniplan definido en
-> `agent-workflow.md` § 5. Para features CrewChief, mini-auditoría
-> específica en el prompt (ver `agent-workflow.md` § 4).
+G0 cerrada 2026-06-28. Las 5 tareas pequeñas priorizadas en este mismo
+apartado (versión previa) están todas completadas:
 
-### Tarea 1 — Crear `cmd/spotter-debug`
+| Tarea | Commit | Estado |
+|---|---|---|
+| `cmd/spotter-debug` con JSONL real | `ed1e8dc` | ✓ CONFIRMADO |
+| Gate `minSpotterSpeedMPS=10.0` | `8eeb0c4` | ✓ CONFIRMADO |
+| `ValidityRule` + `IsMessageStillValid` | `60d752d` | ✓ CONFIRMADO |
+| Fixtures replay persistentes | `1b7f3a7` | ✓ CONFIRMADO |
+| Integrar `Player.Play` en `queueLoop` | `6666654` | ✓ CONFIRMADO |
 
-- **Objetivo:** sustituir `cmd/lmu-debug -jsonl` por un binario que sí
-  existe y exporta JSONL spotter real.
-- **Alcance:**
-  - Nuevo `vantare-v2/cmd/spotter-debug/main.go`.
-  - Banderas: `-hz -out -mock -source={simulator,replay,lmu}`.
-  - Reutiliza `spotter.WriteDebugRecordsJSONL`.
-- **Archivos prohibidos:** cambiar `cmd/lmu-debug`, frontend, `go.mod`.
-- **Criterios de aceptación:**
-  - `go run ./cmd/spotter-debug -mock -out /tmp/out.jsonl` produce
-    ≥1 línea por frame con
-    `alignedX/alignedZ/side/inOverlap/rejectReason`.
-  - Tests `go test ./cmd/spotter-debug/... -v` verdes.
-- **Verificación:** `go run ./cmd/spotter-debug -mock -out out.jsonl` +
-  inspección manual.
-- **Rollback:** borrar `cmd/spotter-debug/` y restaurar docs.
+Complemento G0: `internal/tts/` (Engine + Cache + MockProvider) en
+`6de7cf2`, `verify-prealpha.ps1` en `acdcfbd`.
 
-### Tarea 2 — Gate `minSpotterSpeedMPS=10.0`
+### Pendiente para cerrar G0 (manual)
 
-- **Objetivo:** silenciar spotter si el jugador está parado.
-- **Alcance:**
-  - `vantare-v2/internal/engineer/spotter/geometry.go` (gate en
-    `Classify` y `ClassifyWithActiveSides`).
-  - `vantare-v2/internal/engineer/spotter/geometry_test.go` (test
-    nuevo).
-- **Mini-auditoría CrewChief:** `NoisyCartesianCoordinateSpotter.cs:56`
-  (`minSpeedForSpotterToOperate`, user setting `min_speed_for_spotter`).
-  Estado: `CONFIRMADO` para el gate; el valor exacto del default no
-  es verificable en este repo (default user setting no presente).
-- **Archivos prohibidos:** tipos exportados, defaults locked distintos
-  al 10.0 (cambio de default requiere evidencia live), audio.
-- **Criterios:** frame con `Player.Speed=0` → `[]Zone`; con
-  `Player.Speed>=10.0` → comportamiento normal.
-- **Verificación:** `go test ./internal/engineer/spotter -v`.
+Requiere sesión de Isaac con LMU abierto — no automatizable desde
+agente:
 
-### Tarea 3 — `ValidityRule` + `Runtime.IsMessageStillValid`
+- Captura side-by-side real LMU ≥1 min tráfico (gate `prealpha-gate.md`
+  § 1.2).
+- Validación en ≥3 circuitos (G0.10, gate § 1.6).
 
-- **Objetivo:** validar stale antes de `Enqueue`.
-- **Alcance:**
-  - `vantare-v2/internal/engineer/audio/message.go` (añadir
-    `ValidityRule string`, `ValidationData map[string]any`).
-  - `vantare-v2/internal/engineer/core/runtime.go` (nuevo
-    `IsMessageStillValid(msg, frame) bool`).
-  - `runtime_test.go` (test nuevo).
-- **Mini-auditoría:** `QueuedMessage.cs` + `AbstractEvent.cs` en CC;
-  método `isMessageStillValid(eventSubType, currentGameState,
-  validationData)`. Estado: `PARCIAL` (decisión de producto sobre
-  enum cerrado vs string libre; valores iniciales a confirmar).
-- **Archivos prohibidos:** parser LMU, frontend, `go.mod`.
-- **Criterios:** mensaje con `ValidityRule=ActiveLeft` se descarta
-  si `ActiveSides.Left=false` al momento del drain.
-- **Verificación:** `go test ./internal/engineer -v`.
+### Próxima fase: G1 (Alpha 1)
 
-### Tarea 4 — Fixtures replay persistentes
+Miniplanes concretos a derivar siguiendo `master-plan-go.md` § 4 G1 y la
+matriz LMU-01..48. Orden recomendado por dependencias (a confirmar
+cuando arranque G1):
 
-- **Objetivo:** mover JSONL validado a fixtures reproducibles.
-- **Alcance:**
-  - `vantare-v2/internal/engineer/replay/testdata/{left-basic,
-    right-basic, three-wide, all-clear}.jsonl` (nuevo).
-  - `replay_test.go` (cargar fixtures desde disco).
-- **Mini-auditoría:** N/A (no es feature CrewChief, es infra).
-- **Archivos prohibidos:** parser LMU, audio, frontend, `go.mod`.
-- **Criterios:** `go test ./internal/engineer/replay -v` carga y
-  reproduce los 4 fixtures sin mensajes stale.
-- **Verificación:** `go test ./internal/engineer/replay -v`.
+1. **FlagsMonitor** (LMU-15 FCY/flags) — alta prioridad, gate al spotter.
+2. **Penalties** (LMU-13) — `Penalties.cs` + `RF2GameStateMapper.cs:2140-2225`.
+3. **DamageReporting** (LMU-09, 5 componentes).
+4. **ConditionsMonitor** (LMU-30 rain/weather).
+5. **FrozenOrderMonitor** (LMU-07).
+6. **LapTimes** + **LapCounter** (LMU-21, 22, 08).
+7. **PushNow** (LMU-19).
+8. **SessionEndMessages** (LMU-28, gate 60s CC).
+9. **Fuel básico** (LMU-06, `mFuel`/`mFuelCapacity` ya leídos).
+10. **PitStops** read-only (LMU-16, 17).
 
-### Tarea 5 — Integrar `Player.Play` en `queueLoop`
-
-- **Objetivo:** que el audio queue no sea decorativo.
-- **Alcance:**
-  - `vantare-v2/internal/engineer/service/engineer_service.go`
-    (llamar a `audio.Player.Play(textKey → cache.mp3)`).
-  - O crear `audio.Scheduler` separado (decisión de producto).
-- **Mini-auditoría:** `AudioPlayer.cs:2055`
-  `InterruptCurrentlyPlayingSound` selectivo (no blanket kill).
-  Estado: `PARCIAL` — el Player ya interrumpe físicamente; falta
-  integración en queueLoop y selector "spotter vs chief".
-- **Archivos prohibidos:** parser LMU, frontend, `go.mod`, tipos
-  exportados.
-- **Criterios:** `queueLoop` reproduce audio; test con spy Player
-  verde.
-- **Verificación:** `go test ./internal/engineer/service -v`.
+Cada feature requiere mini-auditoría CC específica (regla CC reforzada,
+`agent-workflow.md` § 4) antes de implementar.
 
 ## 7. Riesgos actuales
 

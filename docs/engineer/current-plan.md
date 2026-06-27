@@ -191,13 +191,22 @@ Miniplanes concretos a derivar siguiendo `master-plan-go.md` § 4 G1 y la
 matriz LMU-01..48. Orden recomendado por dependencias (a confirmar
 cuando arranque G1):
 
-1. **FlagsMonitor** (LMU-15 FCY/flags) — alta prioridad, gate al spotter.
-2. **Penalties** (LMU-13) — `Penalties.cs` + `RF2GameStateMapper.cs:2140-2225`.
-3. **DamageReporting** (LMU-09, 5 componentes).
-4. **ConditionsMonitor** (LMU-30 rain/weather).
-5. **FrozenOrderMonitor** (LMU-07).
-6. **LapTimes** + **LapCounter** (LMU-21, 22, 08).
-7. **PushNow** (LMU-19).
+1. **FlagsMonitor** (LMU-15 FCY/flags) — alta prioridad, gate al spotter. ✓ commit `aaed5b2`
+2. **Penalties** (LMU-13) — `Penalties.cs` + `RF2GameStateMapper.cs:2140-2225`. ✓ commit `70b6430`
+3. **DamageReporting** (LMU-09, 5 componentes) — **GAP**: CC usa
+   `mDentSeverity[8]` + `mDetached` (RF2Data.cs:319-322) que NO están
+   en el parser público de Vantare. Requiere live capture LMU para
+   validar offsets antes de implementar. Documentado.
+4. **ConditionsMonitor** (LMU-30 rain/weather) — **GAP**: CC usa
+   `RainDensity` con umbrales (ConditionsMonitor.cs:447) que NO está
+   en el parser público de Vantare. `AmbientTemp`/`TrackTemp` ya se
+   leen pero no son suficiente para detectar rain level.
+5. **FrozenOrderMonitor** (LMU-07) — **GAP**: CC usa `FrozenOrderData`
+   específico de series con qualifying-style grid. LMU no expone este
+   bloque por defecto.
+6. **LapTimes** + **LapCounter** (LMU-21, 22, 08) — ✓ commit siguiente
+   (rising edge LapNumber + BestLapTime improving).
+7. **PushNow** (LMU-19) — ventanas por TrackLengthClass.
 8. **SessionEndMessages** (LMU-28, gate 60s CC).
 9. **Fuel básico** (LMU-06, `mFuel`/`mFuelCapacity` ya leídos).
 10. **PitStops** read-only (LMU-16, 17).

@@ -75,13 +75,21 @@ func (c *Cache) Put(key, srcPath string) (string, error) {
 		return "", errors.New("tts: empty cache key")
 	}
 	dst := c.Path(key)
-	// Atomic write: tmp file + rename to avoid readers seeing a partial file.
+	// Atomic write: write to a sibling temp file, fsync, then rename to dst.
+	// This avoids readers seeing a partial file mid-Put.
 	tmp, err := os.CreateTemp(c.root, "tmp-*.mp3")
 	if err != nil {
 		return "", fmt.Errorf("tts: create tmp: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // best-effort cleanup if rename fails
+	renamed := false
+	defer func() {
+		// Best-effort: clean up the temp file if the rename never happened
+		// (i.e. we exited before os.Rename succeeded).
+		if !renamed {
+			_ = os.Remove(tmpName)
+		}
+	}()
 
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
@@ -98,6 +106,7 @@ func (c *Cache) Put(key, srcPath string) (string, error) {
 	if err := os.Rename(tmpName, dst); err != nil {
 		return "", fmt.Errorf("tts: rename: %w", err)
 	}
+	renamed = true
 	return dst, nil
 }
 

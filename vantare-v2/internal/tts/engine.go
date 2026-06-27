@@ -6,7 +6,9 @@ import (
 )
 
 // Engine wires a Provider to a Cache and implements the cache-first lookup
-// pattern (SynthOrCache). A single Engine can serve any number of goroutines.
+// pattern (SynthOrCache). A single Engine can serve any number of goroutines;
+// mu serialises SynthOrCache so two concurrent misses for the same request
+// don't both call the provider and race to write the cache.
 type Engine struct {
 	mu       sync.Mutex
 	cache    *Cache
@@ -38,10 +40,16 @@ func (e *Engine) Cache() *Cache { return e.cache }
 //   - cache miss + no provider: return ErrProviderNotConfigured.
 //
 // Errors from the provider are propagated and nothing is cached.
+//
+// SynthOrCache holds e.mu for the whole call so two concurrent goroutines
+// asking for the same text don't both hit the provider and race on Put.
 func (e *Engine) SynthOrCache(req Request) (string, error) {
 	if req.Text == "" {
 		return "", errors.New("tts: empty text")
 	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	key := e.cache.Key(req.Language, req.Voice, req.Text)
 
 	if hit := e.cache.Get(key); hit != "" {

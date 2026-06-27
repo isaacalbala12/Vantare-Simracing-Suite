@@ -10,7 +10,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -44,13 +43,7 @@ func main() {
 	var closeSource func() error
 
 	switch {
-	case *mock:
-		frames := simulator.Build(simulator.ScenarioLeftBasic)
-		src := simulator.NewSource(frames)
-		readFrame = src.ReadFrame
-		closeSource = src.Close
-
-	case *source == "simulator":
+	case *mock || *source == "simulator":
 		frames := simulator.Build(simulator.ScenarioLeftBasic)
 		src := simulator.NewSource(frames)
 		readFrame = src.ReadFrame
@@ -96,11 +89,8 @@ func main() {
 		out = os.Stdout
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	ctx := make(chan os.Signal, 1)
+	signal.Notify(ctx, syscall.SIGINT, syscall.SIGTERM)
 
 	processFrame := func() {
 		frame := readFrame()
@@ -145,12 +135,8 @@ func main() {
 		select {
 		case <-ticker.C:
 			processFrame()
-		case <-sig:
+		case <-ctx:
 			fmt.Fprintln(os.Stderr, "\nstopped")
-			cancel()
-			_ = closeSource()
-			return
-		case <-ctx.Done():
 			_ = closeSource()
 			return
 		}

@@ -79,18 +79,19 @@ func requestKey(req Request) string {
 
 // buildMockMP3 returns ~256 bytes that look enough like an MP3 for a decoder
 // to attempt playback. Layout:
-//   [0..9]    ID3v2 header (ID3 + version 4.0.0 + flags 0 + size 0)
-//   [10]      0xFF (sync byte)
-//   [11]      0xFB (sync + MPEG1 Layer3 + 128kbps-ish)
-//   [12..]    padding bytes derived from request text
+//
+//	[0..9]    ID3v2 header (ID3 + version 4.0.0 + flags 0 + size 0)
+//	[10]      0xFF (sync byte)
+//	[11]      0xFB (sync + MPEG1 Layer3 + 128kbps-ish)
+//	[12..]    padding bytes derived from request text
 //
 // NOTE: this is a stub; real audio bytes are replaced by a real provider.
 func buildMockMP3(req Request, callCount int) []byte {
 	buf := make([]byte, 256)
-	copy(buf[0:3], "ID3")     // ID3v2 identifier
-	buf[3] = 4                  // major version
-	buf[4] = 0                  // revision
-	buf[5] = 0                  // flags
+	copy(buf[0:3], "ID3") // ID3v2 identifier
+	buf[3] = 4            // major version
+	buf[4] = 0            // revision
+	buf[5] = 0            // flags
 	// [6..9] size is sync-safe integer (each byte's high bit 0). Use 0.
 	copy(buf[10:12], []byte{0xFF, 0xFB})
 

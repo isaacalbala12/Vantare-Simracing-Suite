@@ -40,16 +40,22 @@ type Event struct {
 // Cooldowns (ms). Parity CC FlagsMonitor.cs:26-29:
 //   timeBetweenYellowFlagMessages=25s, others=15s.
 const (
-	fcyCooldownMS = 25_000 // 25s — yellow flag family (includes FCY)
+	fcyCooldownMS  = 25_000 // 25s — yellow flag family (includes FCY)
 	blueCooldownMS = 15_000 // 15s — blue flag
 )
+
+// fcyGamePhase is the value of SessionInfo.GamePhase that indicates
+// Full Course Yellow / Safety Car. Same as rF2GamePhase.FullCourseYellow=6
+// in CC RF2Data.cs:68. Defined locally so this package has no import on
+// spotter (separation: flags shouldn't depend on spotter).
+const fcyGamePhase uint8 = 6
 
 // Monitor tracks flag-phase transitions. Safe for single-goroutine use
 // from the runtime; the runtime calls Trigger once per frame.
 type Monitor struct {
-	lastFCYState    bool
-	lastFCYEmitMS   int64
-	lastBlueEmitMS  int64
+	lastFCYState   bool
+	lastFCYEmitMS  int64
+	lastBlueEmitMS int64
 }
 
 // NewMonitor creates a Monitor with default cooldowns.
@@ -64,8 +70,8 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 		return nil
 	}
 
-	currFCY := isFCY(curr)
-	prevFCY := prev != nil && isFCY(prev)
+	currFCY := IsFCY(curr)
+	prevFCY := prev != nil && IsFCY(prev)
 
 	var out []Event
 
@@ -106,14 +112,10 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 
 // IsFCY returns whether the given frame is currently under FCY / Safety Car.
 func IsFCY(frame *telemetry.Frame) bool {
-	return isFCY(frame)
-}
-
-func isFCY(frame *telemetry.Frame) bool {
 	if frame == nil || frame.Session == nil {
 		return false
 	}
-	return frame.Session.GamePhase == 6
+	return frame.Session.GamePhase == fcyGamePhase
 }
 
 // playerFlag returns the Flag string of the player vehicle in the frame, or

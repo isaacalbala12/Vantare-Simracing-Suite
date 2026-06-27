@@ -7,12 +7,6 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
 )
 
-// fcyGamePhase is the value of SessionInfo.GamePhase that indicates
-// Full Course Yellow / Safety Car. Same as rF2GamePhase.FullCourseYellow=6
-// in CC RF2Data.cs:68. Defined locally so this package has no import on
-// spotter (separation: flags shouldn't depend on spotter).
-const fcyGamePhase uint8 = 6
-
 func mkFrame(gamePhase uint8, playerFlag string) *telemetry.Frame {
 	return &telemetry.Frame{
 		Session: &telemetry.SessionInfo{GamePhase: gamePhase},

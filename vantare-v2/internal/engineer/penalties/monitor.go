@@ -60,7 +60,7 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 	if curr == nil {
 		return nil
 	}
-	player := playerVehicle(curr)
+	player := telemetry.FindPlayerVehicle(curr)
 	if player == nil {
 		return nil
 	}
@@ -71,7 +71,7 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 	// "already had penalty" and no event would fire.
 	if !m.initialized {
 		if prev != nil {
-			if p := playerVehicle(prev); p != nil {
+			if p := telemetry.FindPlayerVehicle(prev); p != nil {
 				m.lastPenalties = p.Penalties
 			}
 		}
@@ -89,27 +89,5 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 		return []Event{{Type: defaultEventType, ExpiresAt: nowMS + 5000}}
 	}
 	m.lastPenalties = player.Penalties
-	return nil
-}
-
-func playerVehicle(frame *telemetry.Frame) *telemetry.VehicleScoring {
-	if frame == nil {
-		return nil
-	}
-	for i := range frame.Vehicles {
-		if frame.Vehicles[i].IsPlayer {
-			return &frame.Vehicles[i]
-		}
-	}
-	if frame.Player != nil {
-		for i := range frame.Vehicles {
-			if frame.Vehicles[i].ID == frame.Player.ID {
-				return &frame.Vehicles[i]
-			}
-		}
-	}
-	if len(frame.Vehicles) == 1 {
-		return &frame.Vehicles[0]
-	}
 	return nil
 }

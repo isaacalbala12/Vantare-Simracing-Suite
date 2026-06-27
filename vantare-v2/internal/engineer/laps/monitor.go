@@ -56,7 +56,7 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 		return nil
 	}
 	playerLap := curr.Player.LapNumber
-	player := playerVehicle(curr)
+	player := telemetry.FindPlayerVehicle(curr)
 	if player == nil {
 		return nil
 	}
@@ -66,7 +66,7 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 			m.lastLapNumber = prev.Player.LapNumber
 		}
 		if prev != nil {
-			if p := playerVehicle(prev); p != nil {
+			if p := telemetry.FindPlayerVehicle(prev); p != nil {
 				m.lastBestLapTime = p.BestLapTime
 			}
 		}
@@ -101,26 +101,4 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 	m.lastLapNumber = playerLap
 	m.lastBestLapTime = player.BestLapTime
 	return out
-}
-
-func playerVehicle(frame *telemetry.Frame) *telemetry.VehicleScoring {
-	if frame == nil {
-		return nil
-	}
-	for i := range frame.Vehicles {
-		if frame.Vehicles[i].IsPlayer {
-			return &frame.Vehicles[i]
-		}
-	}
-	if frame.Player != nil {
-		for i := range frame.Vehicles {
-			if frame.Vehicles[i].ID == frame.Player.ID {
-				return &frame.Vehicles[i]
-			}
-		}
-	}
-	if len(frame.Vehicles) == 1 {
-		return &frame.Vehicles[0]
-	}
-	return nil
 }

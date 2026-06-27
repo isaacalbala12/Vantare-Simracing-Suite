@@ -7,6 +7,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/core"
 	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
+	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
 )
 
 func TestRuntime_SpotterFlow(t *testing.T) {
@@ -61,6 +62,148 @@ func TestRuntime_SpotterFlow(t *testing.T) {
 	}
 }
 
+func TestIsMessageStillValid(t *testing.T) {
+	leftFrames := simulator.Build(simulator.ScenarioLeftBasic)
+	rightFrames := simulator.Build(simulator.ScenarioRightBasic)
+	threeWide := simulator.Build(simulator.ScenarioThreeWide)
+	allClear := simulator.Build(simulator.ScenarioAllClear)
+
+	if len(leftFrames) < 2 || len(rightFrames) < 2 || len(threeWide) < 2 || len(allClear) < 1 {
+		t.Fatal("simulator scenarios returned fewer frames than expected")
+	}
+
+	tests := []struct {
+		name  string
+		rule  string
+		frame telemetry.Frame
+		want  bool
+	}{
+		{
+			name:  "NoRule_AlwaysValid",
+			rule:  "",
+			frame: leftFrames[0],
+			want:  true,
+		},
+		{
+			name:  "ActiveLeft_WithLeftZone",
+			rule:  "spotter.active_left",
+			frame: leftFrames[1],
+			want:  true,
+		},
+		{
+			name:  "ActiveLeft_NoLeftZone",
+			rule:  "spotter.active_left",
+			frame: leftFrames[0],
+			want:  false,
+		},
+		{
+			name:  "ActiveRight_WithRightZone",
+			rule:  "spotter.active_right",
+			frame: rightFrames[1],
+			want:  true,
+		},
+		{
+			name:  "ActiveRight_NoRightZone",
+			rule:  "spotter.active_right",
+			frame: rightFrames[0],
+			want:  false,
+		},
+		{
+			name:  "ClearLeft_NoLeftZone",
+			rule:  "spotter.clear_left",
+			frame: leftFrames[0],
+			want:  true,
+		},
+		{
+			name:  "ClearLeft_WithLeftZone",
+			rule:  "spotter.clear_left",
+			frame: leftFrames[1],
+			want:  false,
+		},
+		{
+			name:  "AllClear_NoZones",
+			rule:  "spotter.all_clear",
+			frame: allClear[0],
+			want:  true,
+		},
+		{
+			name:  "AllClear_WithZones",
+			rule:  "spotter.all_clear",
+			frame: threeWide[1],
+			want:  false,
+		},
+		{
+			name:  "UnknownRule_AlwaysValid",
+			rule:  "foo",
+			frame: leftFrames[1],
+			want:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			queue := audio.NewQueue()
+			rt := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+			msg := audio.Message{
+				ID:           "test",
+				TextKey:      "test",
+				Priority:     audio.PrioritySpotter,
+				ValidityRule: tt.rule,
+			}
+			got := rt.IsMessageStillValid(msg, &tt.frame)
+			if got != tt.want {
+				t.Errorf("IsMessageStillValid(%q) = %v, want %v", tt.rule, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProcessFrame_DropsStaleMessage(t *testing.T) {
+	frames := simulator.Build(simulator.ScenarioLeftBasic)
+	if len(frames) < 4 {
+		t.Fatalf("expected at least 4 frames, got %d", len(frames))
+	}
+
+	queue := audio.NewQueue()
+	rt := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+
+	// Frame at t=1000 with left opponent → car_left (validityRule: spotter.active_left)
+	rt.ProcessFrame(1000, &frames[1])
+
+	// Frame at t=5500 with no opponent → clear scheduled (not yet fired)
+	rt.ProcessFrame(5500, &frames[3])
+
+	// Frame at t=5650 (after clearDelay=150ms) with no opponent → clear_left fires
+	// validityRule: spotter.clear_left
+	rt.ProcessFrame(5650, &frames[3])
+
+	// Drain queue and verify rules.
+	found := make(map[string]string)
+	for {
+		msg, ok := queue.Next(0)
+		if !ok {
+			break
+		}
+		found[msg.TextKey] = msg.ValidityRule
+	}
+
+	if rule, ok := found["spotter.car_left"]; !ok {
+		t.Error("expected spotter.car_left to be enqueued")
+	} else if rule != "spotter.active_left" {
+		t.Errorf("spotter.car_left ValidityRule = %q, want %q", rule, "spotter.active_left")
+	}
+
+	if rule, ok := found["spotter.clear_left"]; !ok {
+		t.Error("expected spotter.clear_left to be enqueued")
+	} else if rule != "spotter.clear_left" {
+		t.Errorf("spotter.clear_left ValidityRule = %q, want %q", rule, "spotter.clear_left")
+	}
+
+	if rule := found["spotter.still_there"]; rule != "" {
+		t.Errorf("unexpected spotter.still_there enqueued with rule %q", rule)
+	}
+}
+
 func TestRuntime_Disabled(t *testing.T) {
 	frames := simulator.Build(simulator.ScenarioLeftBasic)
 	if len(frames) < 2 {
@@ -76,4 +219,3 @@ func TestRuntime_Disabled(t *testing.T) {
 		t.Errorf("expected queue to be empty when runtime is disabled, got %d messages", queue.Len())
 	}
 }
-

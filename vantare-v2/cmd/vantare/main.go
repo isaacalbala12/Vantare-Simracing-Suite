@@ -266,6 +266,8 @@ func main() {
 	licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
 	if supabaseURL != "" && supabaseAnonKey != "" {
 		licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURL, supabaseAnonKey))
+	} else {
+		log.Printf("license: supabase env vars missing, running in offline-grace mode")
 	}
 	if err := licenseSvc.LoadCache(); err != nil {
 		log.Printf("warning: could not load license cache: %v", err)
@@ -291,6 +293,28 @@ func main() {
 			return
 		}
 		licenseSvc.EmitChanged(res)
+	})
+
+	wailsApp.Event.On("license:reset-device", func(event *application.CustomEvent) {
+		var payload struct {
+			SessionToken string `json:"sessionToken"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		if payload.SessionToken == "" {
+			log.Printf("license:reset-device error: empty session token")
+			emitter.Emit("license:error", map[string]any{"message": "token de sesión requerido"})
+			return
+		}
+		err := licenseSvc.ResetDevice(context.Background(), payload.SessionToken)
+		if err != nil {
+			log.Printf("license:reset-device error: %v", err)
+			emitter.Emit("license:error", map[string]any{"message": err.Error()})
+			return
+		}
 	})
 
 	// Preset service for widget presets (WidgetStudio only)

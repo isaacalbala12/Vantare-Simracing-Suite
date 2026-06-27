@@ -1,11 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { PaywallScreen } from "./PaywallScreen";
 
 describe("PaywallScreen", () => {
   beforeEach(() => {
     cleanup();
-    vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   it("renders plan cards with prices", () => {
@@ -22,16 +21,13 @@ describe("PaywallScreen", () => {
     expect(screen.getByText(/isaac@example.com/)).toBeTruthy();
   });
 
-  it("logs the plan key when Suscribirse is clicked", () => {
-    const log = console.log as unknown as ReturnType<typeof vi.fn>;
+  it("shows a coming-soon message when Suscribirse is clicked", () => {
     render(<PaywallScreen email="u@example.com" />);
     const buttons = screen.getAllByRole("button", { name: /suscribirse/i });
     fireEvent.click(buttons[0]);
-    expect(log).toHaveBeenCalledWith(
-      "subscribe",
-      expect.stringContaining("beta_access"),
-      "u@example.com",
-    );
+    const banner = screen.getByTestId("paywall-coming-soon");
+    expect(banner.textContent).toMatch(/Pago en línea próximamente/);
+    expect(banner.textContent).toMatch(/beta_access/);
   });
 
   it("renders two distinct plans", () => {

@@ -241,6 +241,13 @@ func TestResetDeviceCallsClient(t *testing.T) {
 	}
 }
 
+func TestResetDeviceRequiresClient(t *testing.T) {
+	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
+	if err := svc.ResetDevice(context.Background(), "token"); !errors.Is(err, ErrValidationFailed) {
+		t.Fatalf("expected ErrValidationFailed, got %v", err)
+	}
+}
+
 func TestSaveCacheWithoutCache(t *testing.T) {
 	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
 	err := svc.SaveCache(StateActive, nil, nil)

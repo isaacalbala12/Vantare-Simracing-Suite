@@ -23,6 +23,24 @@ vi.mock('@wailsio/runtime', () => ({
   },
 }));
 
+vi.mock('../../lib/license', () => ({
+  useLicense: () => ({
+    result: {
+      email: 'test@example.com',
+      state: 'active',
+      entitlements: ['overlays', 'engineer'],
+    },
+    loading: false,
+    refresh: vi.fn(),
+  }),
+  LicenseProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('../../lib/supabase-auth', () => ({
+  signOut: vi.fn(),
+  getSession: vi.fn().mockResolvedValue(null),
+}));
+
 function dispatch(name: string, data: unknown) {
   act(() => {
     for (const handler of runtimeMock.handlers.get(name) ?? []) {
@@ -198,5 +216,10 @@ describe('SettingsPage', () => {
     });
 
     expect(screen.getByText('Failed to retrieve diagnostics')).toBeDefined();
+  });
+
+  it('renders AccountSettings inside the settings page', () => {
+    render(<SettingsPage />);
+    expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
   });
 });

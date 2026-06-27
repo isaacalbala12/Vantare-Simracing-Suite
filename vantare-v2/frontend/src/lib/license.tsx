@@ -27,7 +27,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const unsub = Events.On(
+    const unsubChanged = Events.On(
       "license:changed",
       (event: unknown) => {
         const data = (event as { data?: LicenseResult | null })?.data ?? null;
@@ -35,9 +35,16 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       },
     );
+    const unsubError = Events.On(
+      "license:error",
+      () => {
+        setLoading(false);
+      },
+    );
     refresh();
     return () => {
-      unsub?.();
+      unsubChanged?.();
+      unsubError?.();
     };
   }, [refresh]);
 

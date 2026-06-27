@@ -84,6 +84,19 @@ describe("license module", () => {
       expect(result.current.result).toEqual(next);
     });
 
+    it("updates loading state to false when license:error is received", () => {
+      const { result } = renderHook(() => useLicense(), {
+        wrapper: LicenseProvider,
+      });
+      expect(result.current.loading).toBe(true);
+      const cb = onListeners.get("license:error");
+      expect(cb).toBeDefined();
+      act(() => {
+        if (cb) cb({ message: "failed" });
+      });
+      expect(result.current.loading).toBe(false);
+    });
+
     it("refresh() re-emits license:validate", () => {
       const { result } = renderHook(() => useLicense(), {
         wrapper: LicenseProvider,

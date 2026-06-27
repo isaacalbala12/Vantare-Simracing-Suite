@@ -49,8 +49,9 @@ func NewService(cfg Config, emitter EventEmitter, fingerprint func() (string, er
 	}
 }
 
-// WithEmitter sets or replaces the event emitter after construction. Useful
-// when wiring up dependencies in main.go after the service is built.
+// WithEmitter sets or replaces the event emitter after construction.
+// Production wiring passes the emitter to NewService; this helper remains
+// available mainly for tests that need to swap emitters after construction.
 func (s *Service) WithEmitter(e EventEmitter) *Service {
 	s.emitter = e
 	return s
@@ -80,10 +81,6 @@ func (s *Service) EmitChanged(res *Result) {
 	s.emitter.Emit(LicenseChangedEvent, res.ToWire())
 }
 
-func (s *Service) emitChanged(res *Result) {
-	s.EmitChanged(res)
-}
-
 // Validate is the primary entry point. It returns a typed Result describing
 // the current license state. network errors never bubble up as Go errors; they
 // are reflected in Result.Error and folded into StateGrace/StateExpired so
@@ -93,7 +90,7 @@ func (s *Service) emitChanged(res *Result) {
 func (s *Service) Validate(ctx context.Context, sessionToken string) (*Result, error) {
 	res, err := s.validate(ctx, sessionToken)
 	if err == nil && res != nil {
-		s.emitChanged(res)
+		s.EmitChanged(res)
 	}
 	return res, err
 }
@@ -271,7 +268,7 @@ func (s *Service) ResetDevice(ctx context.Context, sessionToken string) error {
 	// the next frontend refresh will produce the canonical result.
 	res, verr := s.validate(ctx, sessionToken)
 	if verr == nil && res != nil {
-		s.emitChanged(res)
+		s.EmitChanged(res)
 	}
 	return nil
 }

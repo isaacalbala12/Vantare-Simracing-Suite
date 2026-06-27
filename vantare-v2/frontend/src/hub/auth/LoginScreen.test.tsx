@@ -38,7 +38,7 @@ describe("LoginScreen", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
     expect(signInWithEmail).toHaveBeenCalledWith("u@example.com", "secret");
-    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalled());
+    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalledWith("tok"));
   });
 
   it("shows error message when signInWithEmail rejects", async () => {

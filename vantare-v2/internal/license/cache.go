@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -19,6 +21,7 @@ type cachedLicense struct {
 // It is intentionally minimal and stores nothing user-identifying beyond what
 // is needed to gate the runtime during the offline grace window.
 type LicenseCache struct {
+	mu   sync.RWMutex
 	path string
 }
 
@@ -37,6 +40,9 @@ func (c *LicenseCache) Path() string {
 // Read returns the cached license data. Returns os.ErrNotExist wrapped if the
 // cache file is missing. Returns the parsed state, entitlements and expiration.
 func (c *LicenseCache) Read() (State, []Entitlement, *time.Time, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	data, err := os.ReadFile(c.path)
 	if err != nil {
 		return "", nil, nil, err
@@ -48,9 +54,12 @@ func (c *LicenseCache) Read() (State, []Entitlement, *time.Time, error) {
 	return cl.State, cl.Entitlements, cl.ExpiresAt, nil
 }
 
-// Write persists the license data to disk with 0600 permissions. The updated
-// timestamp is set internally to the current UTC time.
+// Write persists the license data to disk atomically with 0600 permissions.
+// The updated timestamp is set internally to the current UTC time.
 func (c *LicenseCache) Write(state State, entitlements []Entitlement, expiresAt *time.Time) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	cl := cachedLicense{
 		State:        state,
 		Entitlements: entitlements,
@@ -61,15 +70,55 @@ func (c *LicenseCache) Write(state State, entitlements []Entitlement, expiresAt 
 	if err != nil {
 		return fmt.Errorf("encoding cache: %w", err)
 	}
-	if err := os.WriteFile(c.path, data, 0600); err != nil {
-		return fmt.Errorf("writing cache: %w", err)
+
+	dir := filepath.Dir(c.path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating cache directory: %w", err)
 	}
+
+	tmpFile, err := os.CreateTemp(dir, "license-cache-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	defer func() {
+		if tmpPath != "" {
+			tmpFile.Close()
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if err := tmpFile.Chmod(0600); err != nil {
+		return fmt.Errorf("chmod temp file: %w", err)
+	}
+
+	if _, err := tmpFile.Write(data); err != nil {
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+
+	if err := tmpFile.Sync(); err != nil {
+		return fmt.Errorf("syncing temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, c.path); err != nil {
+		return fmt.Errorf("renaming temp file: %w", err)
+	}
+
+	tmpPath = ""
 	return nil
 }
 
 // UpdatedAt returns the time the cache was last written. Returns the zero time
 // if the cache file is missing or unreadable.
 func (c *LicenseCache) UpdatedAt() time.Time {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	data, err := os.ReadFile(c.path)
 	if err != nil {
 		return time.Time{}

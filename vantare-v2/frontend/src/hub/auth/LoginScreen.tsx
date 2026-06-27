@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { signInWithEmail, signInWithOAuth } from "../../lib/supabase-auth";
 
 type LoginScreenProps = {
-  onLoggedIn: () => void;
+  onLoggedIn: (accessToken?: string) => void;
 };
 
 export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
@@ -24,7 +24,7 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
         return;
       }
       if (session) {
-        onLoggedIn();
+        onLoggedIn(session.access_token);
       }
     },
     [email, password, onLoggedIn],

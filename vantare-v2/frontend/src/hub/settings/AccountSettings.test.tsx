@@ -1,18 +1,28 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { signOutMock, useLicenseMock, refreshMock } = vi.hoisted(() => ({
+const { signOutMock, getSessionMock, useLicenseMock, refreshMock, emitMock } = vi.hoisted(() => ({
   signOutMock: vi.fn(),
+  getSessionMock: vi.fn(),
   useLicenseMock: vi.fn(),
   refreshMock: vi.fn(),
+  emitMock: vi.fn(),
 }));
 
 vi.mock("../../lib/supabase-auth", () => ({
   signOut: signOutMock,
+  getSession: getSessionMock,
 }));
 
 vi.mock("../../lib/license", () => ({
   useLicense: useLicenseMock,
+}));
+
+vi.mock("@wailsio/runtime", () => ({
+  Events: {
+    Emit: emitMock,
+    On: vi.fn().mockReturnValue(() => {}),
+  },
 }));
 
 import { AccountSettings } from "./AccountSettings";
@@ -29,8 +39,10 @@ describe("AccountSettings", () => {
   beforeEach(() => {
     cleanup();
     signOutMock.mockReset();
+    getSessionMock.mockReset();
     useLicenseMock.mockReset();
     refreshMock.mockReset();
+    emitMock.mockReset();
   });
 
   it("renders account section with email and license state", () => {
@@ -67,6 +79,21 @@ describe("AccountSettings", () => {
     fireEvent.click(screen.getByRole("button", { name: /cerrar sesión/i }));
     await waitFor(() => expect(signOutMock).toHaveBeenCalled());
     expect(refreshMock).toHaveBeenCalled();
+  });
+
+  it("calls getSession and emits license:reset-device on reset click", async () => {
+    getSessionMock.mockResolvedValueOnce({ access_token: "mock-token" });
+    mockUseLicense({
+      state: "device-limit",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: false,
+    });
+    render(<AccountSettings />);
+    fireEvent.click(screen.getByRole("button", { name: /restablecer pc/i }));
+    await waitFor(() => expect(getSessionMock).toHaveBeenCalled());
+    expect(emitMock).toHaveBeenCalledWith("license:reset-device", { sessionToken: "mock-token" });
   });
 
   it("renders entitlements list", () => {

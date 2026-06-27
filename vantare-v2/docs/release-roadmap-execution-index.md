@@ -101,9 +101,10 @@ Ejecutar por orden salvo decision explicita:
 
 ### Release 02 — Mini-Plan tracking
 
-- Mini-Plan A (architecture + Supabase schema + Stripe plan): design-only, requires GLM review before Mini-Plan B.
-- Mini-Plan B (Go LicenseService + webhook backend): blocked until Mini-Plan A accepted.
-- Mini-Plan C (frontend auth/license UI): blocked until Mini-Plan B accepted.
+- Mini-Plan A (architecture + Supabase schema + Stripe plan): design-only, aceptado.
+- Mini-Plan B (Go LicenseService + webhook backend): implementado y aceptado con P3.
+- Mini-Plan C (frontend auth/license UI): implementado y aceptado con P1-P3. Correcciones P1-P3 del review aplicadas el 2026-06-27.
+- Webhook entitlement mapping implementado con tests. Pendiente: gate manual OAuth/Stripe real y validación real del flujo OAuth en builds empaquetadas.
 
 ## Paralelizacion segura
 

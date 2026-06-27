@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { PAYWALL_PLANS } from "./paywall-plans";
 
 type PaywallScreenProps = {
@@ -6,15 +6,15 @@ type PaywallScreenProps = {
 };
 
 export function PaywallScreen({ email }: PaywallScreenProps) {
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
+
   const handleSubscribe = useCallback(
     (planKey: string) => {
-      // Mini-Plan C v1 opens Stripe Checkout in external browser. The actual
-      // URL will be provided by backend/settings in the follow-up that wires
-      // the Stripe customer/portal flow. We log here so QA can verify the
-      // plan selection before the checkout integration lands.
-      console.log("subscribe", planKey, email);
+      // Mini-Plan C v1 does not yet open Stripe Checkout. We surface a clear
+      // "coming soon" message instead of silently logging PII to the console.
+      setPendingPlan(planKey);
     },
-    [email],
+    [],
   );
 
   return (
@@ -28,6 +28,15 @@ export function PaywallScreen({ email }: PaywallScreenProps) {
       <p className="mb-6 font-mono text-[10px] text-vantare-textDim">
         Sesión iniciada como <span className="text-white">{email}</span>
       </p>
+      {pendingPlan ? (
+        <p
+          data-testid="paywall-coming-soon"
+          className="mb-6 rounded border border-white/10 bg-[#111] px-4 py-2 font-mono text-[10px] text-vantare-textDim"
+        >
+          Pago en línea próximamente para el plan{" "}
+          <span className="text-white">{pendingPlan}</span>.
+        </p>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         {PAYWALL_PLANS.map((plan) => (
           <div

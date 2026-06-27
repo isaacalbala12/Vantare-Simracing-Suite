@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import { ObsSetup } from '../components/ObsSetup';
+import { AccountSettings } from '../settings/AccountSettings';
 
 export type Channel = 'stable' | 'prerelease';
 
@@ -594,7 +595,10 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="xl:col-span-4">
+        <div className="xl:col-span-4 flex flex-col gap-6">
+          <div className="glass-panel rounded-xl p-6 border border-white/5">
+            <AccountSettings />
+          </div>
           <div className="glass-panel rounded-xl p-6 border border-white/5">
             <h3 className="font-display font-semibold text-lg text-white mb-4">Información</h3>
             <p className="text-sm text-vantare-textMuted mb-4">

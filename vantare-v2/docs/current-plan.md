@@ -1,6 +1,6 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-26.
+Ultima actualizacion: 2026-06-27.
 
 ## Estado operativo principal
 
@@ -15,8 +15,8 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. `Release 01 - Beta baseline, recomendados y presets`.
-2. `Release 02 - Stripe, Supabase, auth y licencias`.
+1. `Release 01 - Beta baseline, recomendados y presets` — completado.
+2. `Release 02 - Stripe, Supabase, auth y licencias` — Mini-Plan C completado, correcciones P1-P3 del review implementadas. Webhook entitlement mapping (P2-4) implementado con tests. Pendiente gate manual y validación real del flujo OAuth en builds empaquetadas.
 3. `Release 03 - Autoupdater y distribucion`.
 4. `Release 04 - Preview avanzada y LayoutStudio profesional`.
 
@@ -192,9 +192,42 @@ Controles live restaurados dentro de Overlays Studio:
 - El inicio y parada reutilizan los eventos Wails existentes: `overlay:start`, `overlay:stop`, `overlay:status`.
 - `Abrir overlay` se deshabilita mientras el layout tiene cambios sin guardar o se está guardando.
 
+## Correcciones P1-P3 del review de auth/license (2026-06-27)
+
+Implementadas sobre el trabajo de Release 02 Mini-Plan C:
+
+- `frontend/src/lib/supabase-auth.ts`:
+  - Valida `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` al construir el cliente.
+  - Devuelve mensaje de error accionable cuando faltan las env vars en lugar de un reject opaco.
+  - Lee `VITE_OAUTH_REDIRECT_URL` para el `redirectTo` de OAuth (default `http://localhost:34115/#/auth/callback`).
+  - Expone `resetSupabaseClient()` solo para tests.
+- `frontend/src/main.tsx`:
+  - Añade ruta `/#/auth/callback` con `OAuthCallbackHandler` que extrae `access_token` y emite `license:validate`.
+- `frontend/src/hub/auth/LoginScreen.tsx` + `frontend/src/hub/pages/HubApp.tsx`:
+  - `onLoggedIn` ahora recibe el `access_token` y emite `license:validate` en lugar de hacer `window.location.reload()`.
+- `frontend/src/hub/auth/PaywallScreen.tsx`:
+  - Elimina `console.log` con PII; muestra mensaje "Pago en línea próximamente".
+- `internal/license/service.go`:
+  - Elimina el wrapper privado `emitChanged` trivial; usa `EmitChanged` directamente.
+  - Actualiza comentario de `WithEmitter` para reflejar que es helper de tests.
+- `cmd/vantare/main.go`:
+  - Loguea `license: supabase env vars missing, running in offline-grace mode` cuando faltan ambas env vars.
+- Tests:
+  - Actualizados `supabase-auth.test.ts`, `LoginScreen.test.tsx`, `PaywallScreen.test.tsx`.
+  - Añadido `HubApp.bridge.test.tsx` con happy path de `LicenseBridge`.
+  - Añadido `TestResetDeviceRequiresClient` en Go.
+- Riesgo residual documentado: el flujo OAuth requiere validación real en builds empaquetados (Wails) porque el redirect y el callback dependen de la URL configurada y del navegador/SO del usuario.
+
+Checks ejecutados y verdes: `go test ./...`, `pnpm --dir frontend test` (564 tests), `pnpm --dir frontend build`, `pnpm --dir frontend lint`, `git diff --check` (solo warning CRLF no bloqueante en `main.tsx`).
+
 ## Objetivo actual
 
-Release 02 Mini-Plan C completado: UI auth/license con login, paywall, banners, account settings, route gating y onboarding integration. Pendiente follow-up del webhook entitlement mapping y gate manual.
+Release 02 Mini-Plan C cerrado con correcciones P1-P3 del review. Webhook entitlement mapping (P2-4) implementado con mapping `price_id -> product_key[]`, manejo de cancelación/revocación, upserts idempotentes y tests. Queda pendiente el gate manual, además de validar el flujo OAuth en builds empaquetadas de Wails.
+
+Trabajo recomendado a continuación:
+
+1. Cerrar commit de las correcciones P1-P3.
+2. Continuar con el siguiente mini-plan operativo del indice de release (`docs/release-roadmap-execution-index.md`).
 
 Checkpoint funcional `v0.3.9.1` cerrado:
 
@@ -389,6 +422,7 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 
 ## Riesgos actuales
 
+- **Gate manual de OAuth en producción Wails**: El flujo de redirección OAuth de Supabase no se puede validar de forma automatizada sin un entorno Supabase real y un empaquetado de producción de Wails. Al compilar para producción, se debe asegurar que `VITE_OAUTH_REDIRECT_URL` esté configurado a una URL externa válida (o deep link registrado) que redirija la sesión de vuelta a la app local, ya que en builds empaquetadas Wails el protocolo `http://wails.localhost` o similar no puede recibir redirecciones OAuth directas desde navegadores externos sin mediación.
 - Hay cambios abiertos en git de otros agentes; no mezclar tareas nuevas con ellos sin revisar.
 - El README principal puede estar desactualizado respecto a `Overlays Studio`.
 - Parte de la documentacion historica vive fuera de `vantare-v2`.

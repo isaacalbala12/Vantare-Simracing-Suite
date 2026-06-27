@@ -37,7 +37,18 @@ function LicenseGate({ children }: { children: ReactNode }) {
     );
   }
   if (!result || result.state === "anonymous") {
-    return <LoginScreen onLoggedIn={() => window.location.reload()} />;
+    return (
+      <LoginScreen
+        onLoggedIn={(accessToken) => {
+          if (accessToken) {
+            Events.Emit("license:validate", { sessionToken: accessToken });
+          } else {
+            // Fallback for any caller that cannot provide a token.
+            Events.Emit("license:validate", {});
+          }
+        }}
+      />
+    );
   }
   if (
     result.state === "authenticated-no-entitlement" ||

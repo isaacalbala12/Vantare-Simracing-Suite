@@ -8,6 +8,7 @@ import { CompositeApp } from "./overlay/CompositeApp";
 import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
 import { EditOverlayApp } from "./overlay/EditOverlayApp";
 import { HubApp } from "./hub/HubApp";
+import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
@@ -25,6 +26,9 @@ export function App() {
     return <ObsOverlayApp />;
   }
   const hash = window.location.hash.slice(1) || "/";
+  if (hash.startsWith("/auth/callback")) {
+    return <OAuthCallbackHandler />;
+  }
   if (hash.startsWith("/hub")) {
     return <HubApp />;
   }

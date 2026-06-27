@@ -30,6 +30,7 @@ vi.mock("@supabase/supabase-js", () => ({
 
 import {
   getSupabaseClient,
+  resetSupabaseClient,
   signInWithEmail,
   signOut as authSignOut,
   getSession,
@@ -38,6 +39,9 @@ import {
 
 describe("supabase-auth", () => {
   beforeEach(() => {
+    resetSupabaseClient();
+    vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
     signInWithPassword.mockReset();
     signOutFn.mockReset();
     getSessionFn.mockReset();
@@ -51,6 +55,20 @@ describe("supabase-auth", () => {
       const b = getSupabaseClient();
       expect(a).toBe(b);
       expect(createClient).toHaveBeenCalledTimes(1);
+      expect(createClient).toHaveBeenCalledWith(
+        "https://test.supabase.co",
+        "test-anon-key",
+        expect.any(Object),
+      );
+    });
+
+    it("throws a clear error when env vars are missing", () => {
+      vi.stubEnv("VITE_SUPABASE_URL", "");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+      resetSupabaseClient();
+      expect(() => getSupabaseClient()).toThrow(
+        /Supabase no configurado: faltan VITE_SUPABASE_URL/,
+      );
     });
   });
 
@@ -80,6 +98,15 @@ describe("supabase-auth", () => {
       expect(result.session).toBeNull();
       expect(result.error).toBe("Invalid credentials");
     });
+
+    it("returns a clear config error when env vars are missing", async () => {
+      vi.stubEnv("VITE_SUPABASE_URL", "");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+      resetSupabaseClient();
+      const result = await signInWithEmail("u@example.com", "pass");
+      expect(result.session).toBeNull();
+      expect(result.error).toMatch(/Supabase no configurado/);
+    });
   });
 
   describe("signOut", () => {
@@ -94,6 +121,14 @@ describe("supabase-auth", () => {
       const result = await authSignOut();
       expect(result.error).toBe("boom");
     });
+
+    it("returns a clear config error when env vars are missing", async () => {
+      vi.stubEnv("VITE_SUPABASE_URL", "");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+      resetSupabaseClient();
+      const result = await authSignOut();
+      expect(result.error).toMatch(/Supabase no configurado/);
+    });
   });
 
   describe("getSession", () => {
@@ -107,6 +142,14 @@ describe("supabase-auth", () => {
 
     it("returns null when no session", async () => {
       getSessionFn.mockResolvedValueOnce({ data: { session: null } });
+      const result = await getSession();
+      expect(result).toBeNull();
+    });
+
+    it("returns null when env vars are missing", async () => {
+      vi.stubEnv("VITE_SUPABASE_URL", "");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+      resetSupabaseClient();
       const result = await getSession();
       expect(result).toBeNull();
     });
@@ -133,6 +176,49 @@ describe("supabase-auth", () => {
         provider: "discord",
         options: { redirectTo: "http://localhost:34115/#/auth/callback" },
       });
+    });
+
+    it("uses VITE_OAUTH_REDIRECT_URL when present", async () => {
+      vi.stubEnv(
+        "VITE_OAUTH_REDIRECT_URL",
+        "https://app.example.com/#/auth/callback",
+      );
+      signInWithOAuthFn.mockResolvedValueOnce({ error: null });
+      await signInWithOAuth("google");
+      expect(signInWithOAuthFn).toHaveBeenCalledWith({
+        provider: "google",
+        options: { redirectTo: "https://app.example.com/#/auth/callback" },
+      });
+    });
+
+    it("returns a clear config error when env vars are missing", async () => {
+      vi.stubEnv("VITE_SUPABASE_URL", "");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+      resetSupabaseClient();
+      const result = await signInWithOAuth("google");
+      expect(result.error).toMatch(/Supabase no configurado/);
+    });
+
+    it("falls back to window.location.origin if it is a localhost port other than 3000", async () => {
+      // Mock window.location.origin
+      const originalLocation = window.location;
+      // @ts-expect-error: delete read-only window.location to allow mocking in test
+      delete window.location;
+      // @ts-expect-error: assign mock URL object to window.location
+      window.location = new URL("http://localhost:12345");
+
+      vi.stubEnv("VITE_OAUTH_REDIRECT_URL", "");
+      signInWithOAuthFn.mockResolvedValueOnce({ error: null });
+      await signInWithOAuth("google");
+
+      expect(signInWithOAuthFn).toHaveBeenCalledWith({
+        provider: "google",
+        options: { redirectTo: "http://localhost:12345/#/auth/callback" },
+      });
+
+      // Restore
+      // @ts-expect-error: restore original window.location object after test
+      window.location = originalLocation;
     });
   });
 });

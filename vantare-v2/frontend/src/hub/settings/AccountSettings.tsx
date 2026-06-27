@@ -1,6 +1,7 @@
 import { useCallback } from "react";
-import { signOut } from "../../lib/supabase-auth";
+import { signOut, getSession } from "../../lib/supabase-auth";
 import { useLicense } from "../../lib/license";
+import { Events } from "@wailsio/runtime";
 
 export function AccountSettings() {
   const { result, refresh } = useLicense();
@@ -9,6 +10,16 @@ export function AccountSettings() {
     await signOut();
     refresh();
   }, [refresh]);
+
+  const handleResetDevice = useCallback(async () => {
+    try {
+      const session = await getSession();
+      const token = session?.access_token ?? "";
+      Events.Emit("license:reset-device", { sessionToken: token });
+    } catch (err) {
+      console.error("Error retrieving session for reset-device:", err);
+    }
+  }, []);
 
   return (
     <section className="space-y-4 text-white" aria-label="account-settings">
@@ -39,13 +50,22 @@ export function AccountSettings() {
           <p className="font-mono text-xs text-vantare-textDim">—</p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
-      >
-        Cerrar sesión
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleResetDevice}
+          className="rounded border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 font-mono text-[10px] uppercase text-red-400"
+        >
+          Restablecer PC
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </section>
   );
 }

@@ -1,15 +1,16 @@
 # Plan Actual — Vantare Ingeniero Go
 
-> **Estado:** G2 (Alpha 2) en curso 2026-06-28 — 2 features implementadas
-> (RaceTime, PearlsOfWisdom). Resto de G2 marcado como GAP: requieren
-> campos de telemetría LMU no expuestos en el parser del ingeniero
-> (tyre temp/wear, engine temp, battery, DRS, multiclass class, opponent
-> pitting, sector times, driver stint). Requieren live capture LMU o
-> ampliaciones del parser antes de implementar.
+> **Estado:** G2 (Alpha 2) cerrada 2026-06-28 con código review verde
+> — 2 features implementadas (RaceTime, PearlsOfWisdom). 8 features
+> marcadas como GAP: requieren campos de telemetría LMU no expuestos en
+> el parser del ingeniero (tyre temp/wear, engine temp, battery, DRS,
+> multiclass class, opponent pitting, sector times, driver stint).
+> Requieren live capture LMU o ampliaciones del parser antes de
+> implementar.
 >
-> **Próxima fase activa:** G3 (Alpha 3) — Pit Manager + PTT + installer.
-> (TyreMonitor/EngineMonitor etc. siguen en GAP hasta validar offsets
-> en pista.)
+> **Próxima fase activa:** G3 (Alpha 3) — Pit Manager LMU REST + PTT
+> command catalog ≥14 tools + grid side + FCY pause + duck_lmu + NSIS
+> installer.
 >
 > **Worktree canónico:** `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2-engineer`.
 > **Submódulo de código:** `vantare-v2/` dentro del worktree.

@@ -3,6 +3,7 @@ package simulator
 import (
 	"testing"
 
+	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
 )
 
@@ -102,6 +103,20 @@ func TestSimulatorSource(t *testing.T) {
 	}
 }
 
+func TestScenarioAllClear(t *testing.T) {
+	frames := Build(ScenarioAllClear)
+	if len(frames) < 4 {
+		t.Fatalf("expected all_clear scenario to have at least 4 frames, got %d", len(frames))
+	}
+
+	for i := range frames {
+		zones := spotter.Classify(&frames[i], spotter.SensitivityNormal)
+		if len(zones) != 0 {
+			t.Errorf("frame %d: expected 0 zones for all-clear, got %d zones: %+v", i, len(zones), zones)
+		}
+	}
+}
+
 func TestBuild_RightBasic(t *testing.T) {
 	frames := Build(ScenarioRightBasic)
 	if len(frames) < 4 {
@@ -141,4 +156,3 @@ func TestBuild_RightBasic(t *testing.T) {
 		}
 	}
 }
-

@@ -2,6 +2,8 @@
 
 Mapa de arquitectura para implementar features sin mezclar responsabilidades.
 
+> Actualizacion 2026-06-26: para el release oficial, este mapa debe leerse junto a `docs/release-roadmap-execution-index.md`. Pagos/licencias, autoupdater, iRacing, Assetto Corsa, Assetto Corsa Lua/CSP Pack, OBS LAN, calendario LMU, onboarding, i18n, Track Map e Input Telemetry/Trace son scope de release, no futuribles.
+
 ## Principio central
 
 La app separa configuracion interna de widgets y layout global.
@@ -57,6 +59,7 @@ Responsabilidad:
 - filtros;
 - formatos;
 - variantes;
+- presets de widget;
 - preview aislada.
 
 No puede:
@@ -71,6 +74,34 @@ Features previstas:
 - `Relative` configurable: cerrado funcionalmente.
 - `Standings` configurable: siguiente widget core.
 - `Pedals` beta v1: beta testers.
+- `Widget Preset Gallery`: beta privada de testers.
+
+## Widget Presets
+
+Responsabilidad:
+
+- Permitir guardar y reutilizar la configuración interna (apariencia y comportamiento) de un único tipo de widget de forma independiente.
+- Seleccionar y aplicar presets guardados a cualquier instancia del mismo tipo de widget dentro de cualquier perfil.
+
+Qué debe guardar un preset (apariencia/configuración interna):
+- Identificadores y metadatos: `id`, `name`, `widgetType` y descripción opcional.
+- Estilos y apariencia (`appearance`): colores, fuentes, opacidades, bordes y fondos (transparentes o personalizados).
+- Variantes y configuraciones específicas según el tipo de widget:
+  - Columnas habilitadas, su orden de visualización, anchos (`width`), alineación y estilos de celda.
+  - Filtros aplicados (ej. `rangeAhead`, `rangeBehind`, filtros de clase o visibilidad del jugador).
+  - Formatos de datos (nombres recortados/completos, formatos de tiempo, decimales).
+  - Props internas y comportamientos propios del widget.
+
+Qué NO debe guardar (Límites de layout/runtime):
+- Posición física del widget en el lienzo (`position.x`, `position.y`).
+- Tamaño físico externo del widget (`position.w`, `position.h`).
+- Estado de habilitación del widget (`enabled`).
+- Estructura del layout global ni perfiles de overlay completos.
+- Datos mock, telemetría o estado de ejecución en runtime.
+
+Relación con otros elementos:
+- **No reemplaza a los perfiles recomendados**: Un perfil recomendado es un overlay completo con múltiples widgets posicionados y preconfigurados. Un preset es atómico, específico de un único tipo de widget y reutilizable entre perfiles.
+- **Ámbito de control**: La creación, edición y selección de presets es responsabilidad exclusiva de `WidgetStudio` (gestión de la apariencia/datos). `LayoutStudio` no tiene conocimiento de presets, respetando la estricta separación de responsabilidades.
 
 ## LayoutStudio
 
@@ -264,34 +295,52 @@ Beta testers:
   - instrucciones.
 - `engineer-notifications` consume `/engineer/stream` para OBS.
 
-Futuro:
+Release:
 
 - OBS por LAN/doble PC;
+- preview/URL guiada tipo OBS;
+- hardening del servidor local y de streams SSE;
+- documentacion de setup local y LAN.
+
+Post-release:
+
 - companion app para PC de streaming.
 
 No mezclar companion app con beta testers.
 
 ## Payments
 
-Beta publica de pago:
+Release:
 
-- Stripe o checkout externo.
+- Stripe directo como proveedor de pago.
+- Supabase para auth/cuenta.
+- Login obligatorio.
+- Email/password, Google y Discord si es viable.
+- Licencia online obligatoria.
+- Gracia corta de 24h con aviso.
+- Un PC activo por licencia.
+- Reset de PC desde portal web si es viable; fallback desde app/backend.
+- Roles Discord automaticos por tier.
 
-No construir billing complejo antes de validar beta privada.
+No construir integraciones de pago sin plan de seguridad, manejo de errores, webhooks idempotentes y review GLM.
 
 Opciones de acceso:
 
-- licencia/key;
-- cuenta simple;
-- acceso por build controlado.
+- `Overlays`: 5 EUR/mes.
+- `Engineer`: 5 EUR/mes.
+- Bundle: 8.99 EUR/mes.
+- Assetto Corsa Lua/CSP Overlay Pack: 20 EUR pago unico.
+- Tiers beta inicial de 6 meses gestionados por Stripe y beneficios/roles.
 
-Decision pendiente para `0.6.X.X`.
+La web publica la gestiona Isaac, pero la app/backend deben tener contratos claros para login, licencia, entitlement, device binding y revocation.
 
 ## Multisimulador
 
 Estado:
 
-- futuro, no antes de cerrar LMU.
+- scope de release.
+- Assetto Corsa primero.
+- iRacing en paralelo cuando el adapter contract y la matriz de datos esten cerrados.
 
 Arquitectura prevista:
 
@@ -301,4 +350,20 @@ Arquitectura prevista:
 - Assetto Corsa adapter;
 - normalizacion de datos.
 
-No iniciar implementacion salvo investigacion aislada aprobada.
+Reglas:
+
+- todo campo debe mapearse a `stable`, `tester` o `experimental`;
+- no marcar un dato como `stable` sin fixture real o validacion live;
+- cada adapter debe incluir tests de parsing, normalizacion y fallback;
+- no duplicar readers si puede reutilizarse la fuente/buffer actual.
+
+## Assetto Corsa Lua/CSP Pack
+
+Producto separado:
+
+- pack nativo Lua/CSP comprable por pago unico;
+- puede incluirse como beneficio para Founder/Pro Founder/Visionary mientras sigan suscritos;
+- no depende del runtime principal de Vantare;
+- debe compartir lenguaje visual, nomenclatura y preset logic con Vantare Overlays Studio cuando sea viable.
+
+No mezclarlo con el adapter Assetto Corsa de la app principal: son dos vias de producto diferentes.

@@ -2,7 +2,11 @@
 
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
-Este documento es la fuente principal para decidir que feature se implementa despues. Si hay conflicto entre este documento y un roadmap antiguo, este documento gana salvo decision explicita del usuario.
+> Actualizacion 2026-06-26: este documento queda como mapa de producto y contexto historico. La fuente operativa principal para el release oficial es `docs/release-roadmap-execution-index.md` y sus planes `docs/superpowers/plans/2026-06-26-release-*.md`.
+>
+> Si hay conflicto, prevalecen: decisiones explicitas del chat, `docs/release-roadmap-execution-index.md`, planes `release-*`, y despues este documento.
+
+Este documento ayuda a entender el producto completo, pero no debe usarse para saltarse el indice de release.
 
 ## Fuentes
 
@@ -34,9 +38,10 @@ La politica completa vive en `docs/versioning-and-release-gates.md`.
 ## Reglas de ejecucion
 
 - Antes de crear un miniplan tecnico, leer este documento.
-- Consultar `docs/roadmap-execution-board.md` para saber el estado, modelo recomendado y dependencias de cada minifase.
-- Trabajar la primera feature `Next` de la fase activa salvo decision explicita.
-- No saltar a multisimulador antes de cerrar LMU.
+- Consultar primero `docs/release-roadmap-execution-index.md` para saber el orden oficial de release.
+- Consultar `docs/roadmap-execution-board.md` solo como tablero historico/operativo auxiliar.
+- Trabajar la primera release planificada salvo decision explicita.
+- No iniciar multisimulador sin inventario, matriz de datos y adapter contract; Assetto Corsa e iRacing son scope de release, no futuribles.
 - No ampliar configuracion profunda de otros widgets antes de cerrar producto usable.
 - No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core; los proximos cambios visuales deben ser polish acotado o fixes.
 - Vantare debe tratarse como suite local. Overlays Studio e Ingeniero son modulos internos del mismo producto, no apps separadas en runtime.
@@ -143,8 +148,9 @@ Validar monetizacion y soporte con un producto LMU-first vendible.
 Debe cerrar:
 
 - todo lo de beta privada;
-- Stripe o checkout externo;
-- mecanismo de acceso/licencia suficiente para beta;
+- Stripe directo;
+- Supabase auth;
+- licencia online obligatoria con gracia de 24h y 1 PC activo;
 - instalador o distribucion clara;
 - actualizaciones/versionado claro;
 - perfiles recomendados de calidad;
@@ -162,11 +168,11 @@ Puede entrar si esta listo:
 
 No debe prometer:
 
-- multisimulador completo;
+- cloud sync completo;
 - companion app;
 - community layouts;
 - marketplace;
-- calendario Discord.
+- telemetry uploads/replays de usuarios.
 
 ### Release
 
@@ -191,14 +197,14 @@ Debe cerrar:
 
 Post-release:
 
-- multisimulador completo;
 - community layouts;
-- cuenta/sync;
-- calendario Discord;
-- companion app;
+- sync cloud completo de layouts/perfiles;
+- companion app para PC de streaming;
 - plugin system publico.
 
 ## Roadmap versionado
+
+Las fases versionadas siguientes son historial operativo de la beta actual. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`. No usar los estados `Later` de esta seccion para excluir features ya decididas como scope de release.
 
 ### 0.1.X.X - Pre-alpha/foundation
 
@@ -342,13 +348,18 @@ Features:
    - valores numericos si encajan;
    - colores/opacidad basicos.
 2. Recomendados pulidos.
-3. UX final de tester.
-4. Smoke test completo.
-5. Preparacion de beta publica de pago.
+3. `Widget Preset Gallery` (Galería de presets de widgets).
+   - Permitir guardar configuraciones de apariencia/comportamiento interno de un widget desde `WidgetStudio` como un preset reutilizable (columnas, filtros, formatos, colores, alineaciones, anchos).
+   - Permitir seleccionar y aplicar presets compatibles en cualquier perfil para widgets del mismo tipo.
+   - Contrato estricto de separación: el preset solo altera la configuración interna del widget. Nunca guarda ni altera posición (`position.x/y`), tamaño (`position.w/h`), estado habilitado (`enabled`), telemetría o estado en runtime.
+4. UX final de tester.
+5. Smoke test completo.
+6. Preparacion de beta publica de pago.
 
 Gate de salida:
 
 - LMU tiene un set de widgets core usable: `Relative`, `Standings`, `Pedals`, y flujo de overlay estable.
+- Los beta testers pueden guardar y reutilizar presets de widgets core de manera consistente sin alterar la disposición en pantalla (layout).
 
 ### 0.6.X.X - Beta publica de pago: acceso y pago
 
@@ -360,12 +371,13 @@ Abrir beta de pago sin construir aun un sistema completo de cuentas/comunidad.
 
 Features:
 
-1. Stripe o checkout externo.
-2. Mecanismo de acceso/licencia para beta.
-3. Pagina/instrucciones de descarga.
-4. Versionado visible.
-5. Changelog minimo.
-6. Soporte/feedback organizado.
+1. Stripe directo.
+2. Supabase auth.
+3. Licencia online con gracia de 24h y 1 PC activo.
+4. Pagina/instrucciones de descarga.
+5. Versionado visible.
+6. Changelog minimo.
+7. Soporte/feedback organizado.
 
 Gate de salida:
 
@@ -481,8 +493,8 @@ El estado operativo detallado vive en `docs/roadmap-execution-board.md`.
 
 ## Antipatrones
 
-- Meter multisimulador antes de cerrar LMU.
-- Meter pagos antes de validar beta privada.
+- Implementar multisimulador sin matriz de datos, adapter contract y fixtures por simulador.
+- Implementar pagos/licencias sin Stripe directo, Supabase, periodo de gracia y revocation flow documentados.
 - Meter comunidad antes de pago/release.
 - Expandir widgets no core antes de cerrar producto usable.
 - Resolver doble PC antes de beta publica salvo necesidad comercial.
@@ -495,13 +507,9 @@ El estado operativo detallado vive en `docs/roadmap-execution-board.md`.
 
 ## Futuribles registrados
 
-- OBS LAN/doble PC.
 - Companion app para PC de streaming.
-- iRacing.
-- Assetto Corsa.
-- Track Map.
 - Community Layouts.
-- My Account.
-- Sync.
-- Discord calendar.
+- Sync cloud completo.
 - Plugin system.
+
+Ya no son futuribles: Stripe/Supabase/licencias, autoupdater, iRacing, Assetto Corsa como simulador, Assetto Corsa Lua/CSP pack, Track Map, Input Telemetry/Trace, calendario LMU por Discord, My Account minimo y OBS LAN/doble PC. Esos puntos estan dentro del release scope y viven en `docs/release-roadmap-execution-index.md`.

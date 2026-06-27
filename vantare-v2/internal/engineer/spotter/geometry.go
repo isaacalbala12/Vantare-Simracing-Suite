@@ -6,6 +6,19 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
 )
 
+// MinSpotterSpeedMPS es la velocidad mínima del jugador (m/s) para que el
+// spotter opere. Por debajo de este umbral Classify devuelve nil (silencia el
+// spotter en parado/pit lane lento/boxes).
+//
+// Paridad CC: NoisyCartesianCoordinateSpotter.cs:56 — `minSpeedForSpotterToOperate = UserSettings.GetUserSettings().getFloat("min_speed_for_spotter")`
+// y uso en línea 297: `playerVelocityData[0] > minSpeedForSpotterToOperate`
+// donde playerVelocityData[0] es currentPlayerSpeed (magnitud, m/s, ver RF2Spotter.cs:155-156).
+//
+// El default exacto del user setting CC NO está en el repo fuente (no hay JSON
+// de defaults); 10.0 m/s es decisión Vantare alineada con la intención del gate
+// (silenciar parado/coche lento).
+const MinSpotterSpeedMPS = 10.0
+
 func isZeroVec(v telemetry.Vec3) bool {
 	return v.X == 0 && v.Y == 0 && v.Z == 0
 }
@@ -82,6 +95,13 @@ func ClassifyWithActiveSides(frame *telemetry.Frame, sensitivity Sensitivity, ac
 		return nil
 	}
 
+	// Speed gate: silenciar spotter si el jugador va demasiado lento.
+	// Paridad CC: NoisyCartesianCoordinateSpotter.cs:297 (playerVelocityData[0] > minSpeedForSpotterToOperate).
+	// Si frame.Player es nil no aplicamos el gate (player viene de VehicleScoring fallback sin Speed).
+	if frame.Player != nil && frame.Player.Speed < MinSpotterSpeedMPS {
+		return nil
+	}
+
 	playerPos := player.Position
 	playerYaw := YawFromRF2Orientation(player.Orientation)
 
@@ -145,4 +165,3 @@ func ClassifyWithActiveSides(frame *telemetry.Frame, sensitivity Sensitivity, ac
 
 	return zones
 }
-

@@ -203,6 +203,7 @@ func TestClassify_FallbackToFramePlayer(t *testing.T) {
 				Row2: telemetry.Vec3{X: 1, Y: 0, Z: 0},
 			},
 			Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+			Speed:    MinSpotterSpeedMPS + 1.0, // en pista, no parado (gate de velocidad)
 		},
 		Vehicles: []telemetry.VehicleScoring{
 			{
@@ -236,6 +237,7 @@ func TestClassify_PrefersLivePlayerOrientationOverScoringOrientation(t *testing.
 		Player: &telemetry.PlayerTelemetry{
 			ID:       1,
 			Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+			Speed:    MinSpotterSpeedMPS + 1.0, // en pista (gate de velocidad)
 			Orientation: telemetry.Orientation{
 				Row0: telemetry.Vec3{X: 1, Y: 0, Z: 0},
 				Row1: telemetry.Vec3{X: 0, Y: 1, Z: 0},
@@ -606,3 +608,84 @@ func TestClassifyWithActiveSides_ExistingOverlapBothSides(t *testing.T) {
 	}
 }
 
+// Speed gate: Classify debe silenciar el spotter cuando el jugador va por
+// debajo de MinSpotterSpeedMPS (paridad CC NoisyCartesianCoordinateSpotter.cs:297).
+func TestClassify_PlayerBelowMinSpeed_NoZones(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS - 1.0, // por debajo del umbral
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}}, // oponente en overlap
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 0 {
+		t.Fatalf("expected 0 zones when player below min speed, got %d: %+v", len(zones), zones)
+	}
+}
+
+func TestClassify_PlayerAtMinSpeed_ZonesReturned(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS, // exactamente en el umbral -> debe pasar (gate usa <, no <=)
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone at exactly min speed, got %d", len(zones))
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+}
+
+func TestClassify_PlayerAboveMinSpeed_ZonesReturned(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 10.0,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone above min speed, got %d", len(zones))
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+}
+
+// Si frame.Player es nil (player resuelto solo por VehicleScoring fallback),
+// el gate de velocidad no aplica — comportamiento existente se mantiene.
+func TestClassify_PlayerNilSpeed_NoGateApplied(t *testing.T) {
+	frame := &telemetry.Frame{
+		// Player = nil intencionalmente
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone when Player is nil (gate not applied), got %d", len(zones))
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+}

@@ -95,6 +95,7 @@ func playerPos(p engineertelemetry.Vec3) *engineertelemetry.PlayerTelemetry {
 		ID:          11,
 		Position:    p,
 		Orientation: identityOrientation(),
+		Speed:       20.0, // m/s — jugador en pista (gate de velocidad spotter)
 	}
 }
 

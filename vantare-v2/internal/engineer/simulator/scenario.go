@@ -29,6 +29,7 @@ func Build(s Scenario) []telemetry.Frame {
 		Position:      telemetry.Vec3{X: 0, Y: 0, Z: 0},
 		LocalVelocity: telemetry.Vec3{X: 0, Y: 0, Z: 20},
 		Orientation:   identityOrientation,
+		Speed:         20.0, // m/s — jugador en pista, gate de velocidad activo
 	}
 
 	switch s {

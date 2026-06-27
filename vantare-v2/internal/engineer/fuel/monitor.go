@@ -12,6 +12,22 @@ package fuel
 
 import "github.com/vantare/overlays/v2/internal/engineer/telemetry"
 
+// Half-tank fires when fuel drops below this fraction of capacity (CC
+// Fuel.cs:121 playedHalfTankWarning). The 1-litre absolute threshold
+// is independent of fuel tank size.
+const (
+	defaultHalfTankFraction       = 0.5
+	defaultOneLitreAbsoluteLitres = 1.0
+)
+
+// Re-arm hysteresis: once a warning has fired, it must not refire
+// until fuel recovers by this factor. Prevents the "flapping" warning
+// when fuel hovers right at the threshold.
+const (
+	oneLitreReArmFactor   = 1.2
+	halfTankReArmFactor   = 1.1
+)
+
 // Event types emitted by Monitor.
 const (
 	EventLowFuelHalfTank = "fuel.low_half_tank"
@@ -25,33 +41,24 @@ type Event struct {
 	Payload   map[string]any
 }
 
-// Monitor tracks fuel level crossings.
+// Monitor tracks fuel level crossings. capacity is supplied externally
+// once known (typically the player's car class). playedHalfTank and
+// played1Litre implement the rising-edge-with-hysteresis state.
 type Monitor struct {
-	capacity              float64
-	playedHalfTank        bool
-	played1Litre          bool
-	halfTankFraction      float64
-	oneLitreAbsoluteLitres float64
+	capacity        float64
+	playedHalfTank  bool
+	played1Litre    bool
 }
 
-// NewMonitor creates a Monitor with default thresholds (half-tank at 50%
-// of capacity, 1-litre absolute).
+// NewMonitor creates a Monitor with default thresholds.
 func NewMonitor() *Monitor {
-	return &Monitor{
-		halfTankFraction:       0.5,
-		oneLitreAbsoluteLitres: 1.0,
-	}
+	return &Monitor{}
 }
 
-// NewMonitorWithCapacity creates a Monitor that needs the player's fuel
-// capacity to compute the half-tank threshold. Without it, only the
-// 1-litre absolute trigger is meaningful.
+// NewMonitorWithCapacity creates a Monitor with the player's fuel
+// capacity. Without it, only the 1-litre absolute trigger is meaningful.
 func NewMonitorWithCapacity(capacity float64) *Monitor {
-	return &Monitor{
-		capacity:               capacity,
-		halfTankFraction:       0.5,
-		oneLitreAbsoluteLitres: 1.0,
-	}
+	return &Monitor{capacity: capacity}
 }
 
 // SetCapacity allows the runtime to update the fuel capacity once it
@@ -62,7 +69,8 @@ func (m *Monitor) SetCapacity(capacity float64) {
 
 // Trigger inspects the player's current fuel and returns the events for
 // threshold crossings.
-func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
+func (m *Monitor) Trigger(nowMS int64, prev *telemetry.Frame, curr *telemetry.Frame) []Event {
+	_ = prev
 	if curr == nil || curr.Player == nil {
 		return nil
 	}
@@ -72,20 +80,20 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 
 	// 1-litre absolute warning. Rising edge: fire once when fuel drops
 	// below 1L, do not refire until fuel recovers above 1.2L.
-	if fuel > 0 && fuel < m.oneLitreAbsoluteLitres && !m.played1Litre {
+	if fuel > 0 && fuel < defaultOneLitreAbsoluteLitres && !m.played1Litre {
 		out = append(out, Event{
 			Type:      EventLowFuel1Litre,
 			ExpiresAt: nowMS + 10_000,
 			Payload:   map[string]any{"fuelLitres": fuel},
 		})
 		m.played1Litre = true
-	} else if fuel >= m.oneLitreAbsoluteLitres*1.2 {
+	} else if fuel >= defaultOneLitreAbsoluteLitres*oneLitreReArmFactor {
 		m.played1Litre = false
 	}
 
 	// Half-tank warning. Only meaningful if capacity is known.
 	if m.capacity > 0 && fuel > 0 {
-		half := m.capacity * m.halfTankFraction
+		half := m.capacity * defaultHalfTankFraction
 		if fuel < half && !m.playedHalfTank {
 			out = append(out, Event{
 				Type:      EventLowFuelHalfTank,
@@ -96,7 +104,7 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 				},
 			})
 			m.playedHalfTank = true
-		} else if fuel >= half*1.1 {
+		} else if fuel >= half*halfTankReArmFactor {
 			m.playedHalfTank = false
 		}
 	}

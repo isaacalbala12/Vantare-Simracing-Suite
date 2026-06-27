@@ -83,13 +83,14 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 	} else {
 		evType = EventPositionLost
 	}
+	prevPlace := m.lastPlace
 	m.lastPlace = player.Place
 	m.lastEmitMS = nowMS
 	return []Event{{
 		Type:      evType,
 		ExpiresAt: nowMS + 5000,
 		Payload: map[string]any{
-			"from": m.lastPlace, // post-update; loses the original pre-change value but OK for alpha 1
+			"from": prevPlace,
 			"to":   player.Place,
 		},
 	}}

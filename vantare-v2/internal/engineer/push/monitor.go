@@ -56,9 +56,11 @@ func NewMonitorWithThreshold(thresholdSec float64) *Monitor {
 }
 
 // Trigger inspects the current frame and returns push events. prev is
-// optional (used for hysteresis if needed in future). The player's
+// accepted for signature parity with other monitors but unused here
+// (gap detection is stateful via cooldown alone). The player's
 // VehicleScoring.TimeBehindNext is the field consulted.
-func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
+func (m *Monitor) Trigger(nowMS int64, prev *telemetry.Frame, curr *telemetry.Frame) []Event {
+	_ = prev
 	if curr == nil {
 		return nil
 	}

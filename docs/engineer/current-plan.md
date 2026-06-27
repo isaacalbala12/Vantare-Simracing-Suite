@@ -1,12 +1,14 @@
 # Plan Actual — Vantare Ingeniero Go
 
-> **Estado:** G0 (Prealpha) cerrada 2026-06-28 — gate automatizable verde
-> vía `vantare-v2/scripts/verify-prealpha.ps1`. Pendiente manual: captura
-> LMU real ≥1 min tráfico y validación ≥3 circuitos (requieren sesión de
-> Isaac con LMU abierto).
+> **Estado:** G1 (Alpha 1) cerrada 2026-06-28 — 12 features implementadas
+> (flags, penalties, laps, push, sessionend, fuel, pitstops, position,
+> timings) + 3 gaps documentados (damage, conditions, frozenorder) que
+> requieren live capture LMU para validar offsets antes de implementar.
 >
-> **Próxima fase activa:** G1 (Alpha 1 — ingeniero determinista básico:
-> Flags, Penalties, Damage, Fuel, LapTimes, PitStops, PushNow, SessionEnd).
+> **Próxima fase activa:** G2 (Alpha 2 — vehicle + opponents + multiclase:
+> TyreMonitor, EngineMonitor, Battery, OvertakingAids, MulticlassWarnings,
+> Opponents, OpponentMessages, WatchedOpponents, Strategy, PearlsOfWisdom,
+> RaceTime, DriverSwaps).
 >
 > **Worktree canónico:** `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2-engineer`.
 > **Submódulo de código:** `vantare-v2/` dentro del worktree.
@@ -185,31 +187,45 @@ agente:
   § 1.2).
 - Validación en ≥3 circuitos (G0.10, gate § 1.6).
 
-### Próxima fase: G1 (Alpha 1)
+### Estado de G1 (Alpha 1)
 
-Miniplanes concretos a derivar siguiendo `master-plan-go.md` § 4 G1 y la
-matriz LMU-01..48. Orden recomendado por dependencias (a confirmar
-cuando arranque G1):
+G1 cerrada 2026-06-28. 12 features implementadas con mini-auditoría CC
+mínima o declarada GAP, cada una con tests table-driven y commit
+atómico:
 
-1. **FlagsMonitor** (LMU-15 FCY/flags) — alta prioridad, gate al spotter. ✓ commit `aaed5b2`
-2. **Penalties** (LMU-13) — `Penalties.cs` + `RF2GameStateMapper.cs:2140-2225`. ✓ commit `70b6430`
-3. **DamageReporting** (LMU-09, 5 componentes) — **GAP**: CC usa
-   `mDentSeverity[8]` + `mDetached` (RF2Data.cs:319-322) que NO están
-   en el parser público de Vantare. Requiere live capture LMU para
-   validar offsets antes de implementar. Documentado.
-4. **ConditionsMonitor** (LMU-30 rain/weather) — **GAP**: CC usa
-   `RainDensity` con umbrales (ConditionsMonitor.cs:447) que NO está
-   en el parser público de Vantare. `AmbientTemp`/`TrackTemp` ya se
-   leen pero no son suficiente para detectar rain level.
-5. **FrozenOrderMonitor** (LMU-07) — **GAP**: CC usa `FrozenOrderData`
-   específico de series con qualifying-style grid. LMU no expone este
-   bloque por defecto.
-6. **LapTimes** + **LapCounter** (LMU-21, 22, 08) — ✓ commit siguiente
-   (rising edge LapNumber + BestLapTime improving).
-7. **PushNow** (LMU-19) — ventanas por TrackLengthClass.
-8. **SessionEndMessages** (LMU-28, gate 60s CC).
-9. **Fuel básico** (LMU-06, `mFuel`/`mFuelCapacity` ya leídos).
-10. **PitStops** read-only (LMU-16, 17).
+| Tarea | Commit | Estado |
+|---|---|---|
+| G1.1 FlagsMonitor (LMU-15) + spotter FCY pause | `aaed5b2` | ✓ CONFIRMADO |
+| G1.2 Penalties (LMU-13) | `70b6430` | ✓ CONFIRMADO |
+| G1.6+1.7 LapTimes + LapCounter (LMU-21,22,08) | `c5b0788` | ✓ CONFIRMADO |
+| G1.7 PushNow (LMU-19) | `d92e7c3` | ✓ CONFIRMADO |
+| G1.8 SessionEndMessages (LMU-28) | `d92e7c3` | ✓ CONFIRMADO |
+| G1.9 Fuel (LMU-06) | `95dc9b2` | ✓ CONFIRMADO |
+| G1.10 PitStops (LMU-16,17) | `95dc9b2` | ✓ CONFIRMADO |
+| G1.11 Position (LMU-20,27) | `95dc9b2` | ✓ CONFIRMADO |
+| G1.12 Timings (LMU-10,31,32) | `b38f335` | ✓ CONFIRMADO |
+| G1.3 DamageReporting (LMU-09) | GAP | requiere live capture |
+| G1.4 ConditionsMonitor (LMU-30) | GAP | requiere live capture |
+| G1.5 FrozenOrderMonitor (LMU-07) | GAP | no aplica a LMU |
+
+### Próxima fase: G2 (Alpha 2) — vehicle + opponents + multiclase
+
+Miniplanes a derivar siguiendo `master-plan-go.md` § 4 G2:
+
+1. **TyreMonitor** (LMU-11, 18): temp + wear + brake. Thresholds CC:
+   `scrubbed=5, minor=20, major=50, wornOut=75` (RF2GameStateMapper.cs:44-47).
+2. **EngineMonitor** (LMU-29): water/oil temp.
+3. **Battery** (LMU paralelo CC `Battery.cs:77`): SOC Hypercar. LMU
+   reusa `mFuel` como proxy.
+4. **OvertakingAids** (DRS/PTP).
+5. **MulticlassWarnings** (3 escenarios MVP).
+6. **Opponents** (pit/pos) (LMU-26).
+7. **OpponentMessages** (rival fast lap).
+8. **WatchedOpponents** (LMU-34).
+9. **Strategy** (sector fuel).
+10. **PearlsOfWisdom** (LMU-24).
+11. **RaceTime** (announce cada N vueltas).
+12. **DriverSwaps** stint countdown (LMU-25).
 
 Cada feature requiere mini-auditoría CC específica (regla CC reforzada,
 `agent-workflow.md` § 4) antes de implementar.

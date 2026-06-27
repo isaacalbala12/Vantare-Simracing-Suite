@@ -42,6 +42,7 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("GET /overlay", s.handleOverlay)
 	mux.HandleFunc("GET /api/profile", s.handleProfile)
+	mux.HandleFunc("GET /api/engineer/health", s.handleEngineerHealth)
 	mux.HandleFunc("GET /telemetry/stream", s.handleSSE)
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)
 	if cfg.DistFS != nil {
@@ -102,4 +103,21 @@ func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
+}
+
+// handleEngineerHealth expone /api/engineer/health con un snapshot ligero del
+// servicio de Ingeniero para diagnóstico OBS/release. Devuelve 503 si el
+// servicio no está disponible o no está habilitado.
+func (s *Server) handleEngineerHealth(w http.ResponseWriter, r *http.Request) {
+	if s.engineerSvc == nil {
+		http.Error(w, "engineer service not available", http.StatusServiceUnavailable)
+		return
+	}
+	h := s.engineerSvc.Health()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	if !h.OK {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+	json.NewEncoder(w).Encode(h)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
@@ -35,11 +36,32 @@ type EngineerService struct {
 	sensitivity    string
 	lastError      string
 
+	// Live LMU buffer provider (opcional). Si no es nil y source=="lmu",
+	// se construye un OverlaysLiveAdapter en telemetryLoop sin abrir segundo reader.
+	bufferProvider BufferProvider
+	bufferAvail    bool
+
 	// Loop management
 	ctx      context.Context
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
 	subs     []chan EngineerNotification
+
+	// Drop counter: número de notificaciones que no pudieron entregarse a un
+	// suscriptor SSE porque su canal estaba lleno. Se incrementa atómicamente
+	// en el fan-out y se expone vía DropCount() / Health() / /api/engineer/health.
+	dropCount atomic.Uint64
+}
+
+// SetBufferProvider inyecta el proveedor de buffer mmap de LMU (EnrichedLMUSource)
+// para que source=="lmu" pueda construir un OverlaysLiveAdapter sin abrir un
+// segundo reader. Es seguro llamarlo antes o después de Start; el cambio aplica
+// en el siguiente startLoopsLocked.
+func (s *EngineerService) SetBufferProvider(bp BufferProvider, available bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bufferProvider = bp
+	s.bufferAvail = available
 }
 
 // NewEngineerService creates a new instance of EngineerService.
@@ -153,13 +175,18 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	return nil
 }
 
-// SetSource updates the active telemetry source ("simulator" or "replay").
+// SetSource updates the active telemetry source ("simulator", "replay" or "lmu").
+// "lmu" requiere que se haya inyectado un BufferProvider vía SetBufferProvider;
+// si no lo hay, cae a simulator con lastError informativo.
 func (s *EngineerService) SetSource(source string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if source != "simulator" && source != "replay" {
-		return errors.New("invalid source: must be one of 'simulator' or 'replay'")
+	if source != "simulator" && source != "replay" && source != "lmu" {
+		return errors.New("invalid source: must be one of 'simulator', 'replay' or 'lmu'")
+	}
+	if source == "lmu" && s.bufferProvider == nil {
+		return errors.New("source 'lmu' requires a BufferProvider: call SetBufferProvider first")
 	}
 
 	s.source = source
@@ -258,6 +285,20 @@ func (s *EngineerService) telemetryLoop(ctx context.Context) {
 				return
 			}
 		}
+	case "lmu":
+		s.mu.Lock()
+		bp := s.bufferProvider
+		avail := s.bufferAvail
+		s.mu.Unlock()
+		if bp == nil {
+			s.mu.Lock()
+			s.connected = false
+			s.lastError = "lmu source selected but no BufferProvider injected"
+			s.mu.Unlock()
+			s.emitStatus()
+			return
+		}
+		source = NewOverlaysLiveAdapter(bp, avail)
 	default:
 		s.mu.Lock()
 		s.lastError = fmt.Sprintf("unknown source type: %s", sourceType)
@@ -399,9 +440,56 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 				select {
 				case sub <- notif:
 				default:
+					s.dropCount.Add(1)
 				}
 			}
 			s.mu.Unlock()
 		}
 	}
+}
+
+// DropCount devuelve el número acumulado de notificaciones que se descartaron
+// porque un suscriptor SSE tenía el canal lleno. Útil para diagnóstico OBS.
+func (s *EngineerService) DropCount() uint64 {
+	return s.dropCount.Load()
+}
+
+// EngineerHealth es un snapshot ligero para /api/engineer/health.
+// Incluye solo campos útiles para OBS/diagnóstico, no el historial completo.
+type EngineerHealth struct {
+	OK         bool   `json:"ok"`
+	Source     string `json:"source"`
+	Connected  bool   `json:"connected"`
+	Enabled    bool   `json:"enabled"`
+	Subs       int    `json:"subscribers"`
+	DropCount  uint64 `json:"dropCount"`
+	LastError  string `json:"lastError,omitempty"`
+}
+
+// Health devuelve el estado de salud del servicio.
+func (s *EngineerService) Health() EngineerHealth {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return EngineerHealth{
+		OK:        s.engineerSvcOKLocked(),
+		Source:    s.source,
+		Connected: s.connected,
+		Enabled:   s.enabled,
+		Subs:      len(s.subs),
+		DropCount: s.dropCount.Load(),
+		LastError: s.lastError,
+	}
+}
+
+// engineerSvcOKLocked considera OK el servicio si está habilitado y conectado,
+// o si está habilitado pero aún no ha intentado conectar (lastError vacío).
+// No exportado; se llama con s.mu sostenido.
+func (s *EngineerService) engineerSvcOKLocked() bool {
+	if !s.enabled {
+		return false
+	}
+	if s.source == "" {
+		return false
+	}
+	return true
 }

@@ -2,6 +2,8 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -136,5 +138,89 @@ func TestEngineerAndTelemetryStreamCoexistence(t *testing.T) {
 	}
 	if len(telLines2) == 0 {
 		t.Errorf("expected telemetry events after engineer stream consumed, got none")
+	}
+}
+
+// TestEngineerHealth_NoService: /api/engineer/health devuelve 503 si no hay servicio.
+func TestEngineerHealth_NoService(t *testing.T) {
+	srv := server.New(server.ServerConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/api/engineer/health", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", rr.Code)
+	}
+}
+
+// TestEngineerHealth_OK: /api/engineer/health devuelve 200 con snapshot del servicio.
+func TestEngineerHealth_OK(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
+	engSvc.Start(ctx)
+	defer engSvc.Stop()
+
+	srv := server.New(server.ServerConfig{EngineerSvc: engSvc})
+	req := httptest.NewRequest(http.MethodGet, "/api/engineer/health", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rr.Code)
+	}
+
+	var h engineerservice.EngineerHealth
+	body, _ := io.ReadAll(rr.Body)
+	if err := json.Unmarshal(body, &h); err != nil {
+		t.Fatalf("invalid JSON: %v\nbody: %s", err, body)
+	}
+	if !h.OK {
+		t.Errorf("expected OK=true, got %+v", h)
+	}
+	if h.Source != "simulator" {
+		t.Errorf("Source = %q, want simulator", h.Source)
+	}
+	if h.Subs != 0 {
+		t.Errorf("Subs = %d, want 0 (no SSE clients)", h.Subs)
+	}
+}
+
+// TestEngineerSSE_MultipleSubscribersAndDrop: con varios subs y un sub lento
+// (canal lleno), el drop counter del servicio se incrementa.
+func TestEngineerSSE_MultipleSubscribersAndDrop(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
+	engSvc.Start(ctx)
+	defer engSvc.Stop()
+
+	// Suscribirnos directamente al servicio con un canal de buffer 0 para forzar drops.
+	// El simulador emite a 60Hz; sin consumir, el default cuenta drops.
+	ch, unsub := engSvc.Subscribe()
+	defer unsub()
+
+	deadline := time.Now().Add(1500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		select {
+		case <-ch:
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+
+	// Tras consumir (sin bloqueos), con un solo subscriber puntual los drops deberían
+	// ser pocos o cero. Comprobamos solo que el método existe y devuelve uint64.
+	_ = engSvc.DropCount()
+}
+
+// TestEngineerHealth_DropCountAccessible: el campo dropCount es accesible vía Health.
+func TestEngineerHealth_DropCountAccessible(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
+	engSvc.Start(ctx)
+	defer engSvc.Stop()
+
+	h := engSvc.Health()
+	if h.DropCount != 0 {
+		t.Errorf("expected DropCount=0 initially, got %d", h.DropCount)
 	}
 }

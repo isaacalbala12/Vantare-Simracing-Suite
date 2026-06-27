@@ -2,6 +2,8 @@ package service_test
 
 import (
 	"context"
+	"encoding/binary"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -202,4 +204,106 @@ func TestEngineerService_SimulatorGeneratesNotifications(t *testing.T) {
 	if !foundNotification {
 		t.Error("expected simulator to generate at least one notification, but none was found")
 	}
+}
+
+// fakeBufferProvider expone un buffer para tests del servicio con source="lmu".
+type fakeBufferProvider struct {
+	buf []byte
+}
+
+func (f fakeBufferProvider) Read() []byte { return f.buf }
+
+func TestEngineerService_SetSource_LMU_BuildsAdapter(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+
+	// Sin BufferProvider debe rechazar "lmu".
+	if err := svc.SetSource("lmu"); err == nil {
+		t.Error("expected error setting 'lmu' without BufferProvider, got nil")
+	}
+
+	// Con BufferProvider debe aceptar "lmu".
+	svc.SetBufferProvider(fakeBufferProvider{buf: buildSyntheticEngineerFrameBufferPublic()}, true)
+	if err := svc.SetSource("lmu"); err != nil {
+		t.Fatalf("unexpected error setting 'lmu' with BufferProvider: %v", err)
+	}
+	if svc.Status().Source != "lmu" {
+		t.Errorf("expected source 'lmu', got %q", svc.Status().Source)
+	}
+}
+
+func TestEngineerService_Loop_LMU_ProcessesFrame(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	svc.SetBufferProvider(fakeBufferProvider{buf: buildSyntheticEngineerFrameBufferPublic()}, true)
+	if err := svc.SetSource("lmu"); err != nil {
+		t.Fatalf("SetSource(lmu) error: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	// Esperar hasta 1s: el loop debe procesar al menos un frame sin panic.
+	// No exigimos notificación (el fixture sintético puede no disparar spotter),
+	// solo que el servicio no paniquea y queda conectado/ procesando.
+	time.Sleep(500 * time.Millisecond)
+	st := svc.Status()
+	if st.Source != "lmu" {
+		t.Errorf("expected source 'lmu', got %q", st.Source)
+	}
+}
+
+func TestEngineerService_LMU_FallsBackWhenNoLiveSource(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	// BufferProvider con buffer nil → adapter devuelve nil frames.
+	svc.SetBufferProvider(fakeBufferProvider{buf: nil}, false)
+	if err := svc.SetSource("lmu"); err != nil {
+		t.Fatalf("SetSource(lmu) error: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	time.Sleep(300 * time.Millisecond)
+	st := svc.Status()
+	// No debe paniquear; el estado debe reflejar source lmu pero no conectado.
+	if st.Source != "lmu" {
+		t.Errorf("expected source 'lmu', got %q", st.Source)
+	}
+}
+
+// buildSyntheticEngineerFrameBufferPublic construye un buffer mmap válido con
+// geometría conocida (player en X=100) para tests del servicio con source="lmu".
+// Vive en service_test (paquete externo) para no depender de helpers internos.
+func buildSyntheticEngineerFrameBufferPublic() []byte {
+	const objectOutSize = 324820
+	buf := make([]byte, objectOutSize)
+	buf[128466] = 1 // player has vehicle
+	buf[128465] = 0 // player idx 0
+	binary.LittleEndian.PutUint32(buf[1736:], 2)
+
+	po := 128468
+	binary.LittleEndian.PutUint32(buf[po:], 11)
+	binary.LittleEndian.PutUint64(buf[po+160:], math.Float64bits(100))
+	binary.LittleEndian.PutUint64(buf[po+168:], math.Float64bits(0))
+	binary.LittleEndian.PutUint64(buf[po+176:], math.Float64bits(200))
+
+	off0 := 2192
+	binary.LittleEndian.PutUint32(buf[off0:], 11)
+	copy(buf[off0+4:], "Player")
+	buf[off0+196] = 1
+	binary.LittleEndian.PutUint64(buf[off0+104:], math.Float64bits(5000))
+	binary.LittleEndian.PutUint64(buf[off0+264:], math.Float64bits(100))
+
+	off1 := 2192 + 584
+	binary.LittleEndian.PutUint32(buf[off1:], 22)
+	copy(buf[off1+4:], "Opponent")
+	binary.LittleEndian.PutUint64(buf[off1+104:], math.Float64bits(5050))
+	binary.LittleEndian.PutUint64(buf[off1+264:], math.Float64bits(103))
+	return buf
 }

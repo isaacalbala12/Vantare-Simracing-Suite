@@ -30,6 +30,7 @@ const (
 	telemetryPlayerVehicleIdx = 128465
 	telemetryPlayerHasVehicle = 128466
 	scoringNumVehicles        = 1736
+	scoringGamePhase          = 1740
 )
 
 // Offsets de scoring ya leídos por el parser público (necesarios también aquí
@@ -178,6 +179,11 @@ func parseSessionEngineer(buf []byte) *engineertelemetry.SessionInfo {
 		TrackName:   readString(buf, 1632, 64),
 		NumVehicles: readInt32(buf, scoringNumVehicles),
 		TrackLength: readFloat64(buf, scoringTrackLength),
+		// GamePhase: 0=Garage, 1=WarmUp, 2=GridWalk, 3=Formation,
+		// 4=Countdown, 5=GreenFlag, 6=FullCourseYellow/SC, 7=SessionStopped,
+		// 8=SessionOver, 9=Paused. Same enum as CC rF2GamePhase (RF2Data.cs:68).
+		// Used by FlagsMonitor and the spotter FCY-pause gate.
+		GamePhase: readByte(buf, scoringGamePhase),
 	}
 }
 

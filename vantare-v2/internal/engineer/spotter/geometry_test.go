@@ -689,3 +689,67 @@ func TestClassify_PlayerNilSpeed_NoGateApplied(t *testing.T) {
 		t.Errorf("expected SideLeft, got %s", zones[0].Side)
 	}
 }
+
+// FCY gate: durante Full Course Yellow / Safety Car (GamePhase=6) el spotter
+// queda en silencio. Paridad CC: Spotter.cs:42-55 pause/unpause + RF2Data.cs:68
+// rF2GamePhase.FullCourseYellow=6.
+func TestClassify_FCYGamePhase_NoZones(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{
+			GamePhase: FCYGamePhase, // 6 = FullCourseYellow
+		},
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 5.0, // jugador en pista
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}}, // oponente en overlap
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 0 {
+		t.Fatalf("expected 0 zones during FCY (spotter paused), got %d: %+v", len(zones), zones)
+	}
+}
+
+func TestClassify_GreenFlagPhase_ZonesReturned(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{
+			GamePhase: 5, // GreenFlag
+		},
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 5.0,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone during GreenFlag, got %d", len(zones))
+	}
+}
+
+// Sin Session, el gate FCY no aplica (frame sin info de fase).
+func TestClassify_NilSession_NoFCYGate(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 5.0,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone when Session is nil (FCY gate not applied), got %d", len(zones))
+	}
+}

@@ -182,3 +182,32 @@ func TestParseEngineerFrame_DoesNotMutateBuffer(t *testing.T) {
 		}
 	}
 }
+
+// TestParseEngineerFrame_GamePhase: el parser debe leer mGamePhase (offset 1740
+// dentro de LMUScoringInfo) en el frame de ingeniero para alimentar el gate
+// FCY del spotter (LMU-15) y el FlagsMonitor (G1.1).
+// Paridad CC: RF2Data.cs:68 enum rF2GamePhase. GamePhase==6 = FullCourseYellow.
+func TestParseEngineerFrame_GamePhase(t *testing.T) {
+	cases := []struct {
+		name string
+		val  byte
+	}{
+		{"GreenFlag", 5},
+		{"FullCourseYellow", 6},
+		{"SessionStopped", 7},
+		{"Garage", 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := newSyntheticBuffer(0)
+			buf[scoringGamePhase] = tc.val
+			frame := ParseEngineerFrame(buf)
+			if frame == nil || frame.Session == nil {
+				t.Fatal("expected non-nil frame and session")
+			}
+			if frame.Session.GamePhase != tc.val {
+				t.Errorf("GamePhase = %d, want %d", frame.Session.GamePhase, tc.val)
+			}
+		})
+	}
+}

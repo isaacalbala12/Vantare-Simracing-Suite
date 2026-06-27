@@ -19,6 +19,12 @@ import (
 // (silenciar parado/coche lento).
 const MinSpotterSpeedMPS = 10.0
 
+// FCYGamePhase es el valor de engineer.SessionInfo.GamePhase que indica
+// Full Course Yellow / Safety Car. Igual a rF2GamePhase.FullCourseYellow=6
+// en CC RF2Data.cs:68. Cuando frame.Session.GamePhase==FCYGamePhase, el
+// spotter queda en silencio (gate en ClassifyWithActiveSides).
+const FCYGamePhase uint8 = 6
+
 func isZeroVec(v telemetry.Vec3) bool {
 	return v.X == 0 && v.Y == 0 && v.Z == 0
 }
@@ -92,6 +98,16 @@ func ClassifyWithActiveSides(frame *telemetry.Frame, sensitivity Sensitivity, ac
 		return nil
 	}
 	if player.InPits {
+		return nil
+	}
+
+	// FCY pause gate: silenciar el spotter cuando la sesión está bajo
+	// Full Course Yellow / Safety Car. GamePhase==6 según CC rF2GamePhase
+	// (RF2Data.cs:68). Paridad: el spotter CC queda en pause durante FCY
+	// (Spotter.cs:42-55 + CrewChief.cs:144-145 minTimeToWaitToTurnSpotterOffInFCY=10s).
+	// Aquí el gate es instantáneo: la pausa detallada con 10-30s random es
+	// follow-up de G1.4 (FlagsMonitor completo).
+	if frame.Session != nil && frame.Session.GamePhase == FCYGamePhase {
 		return nil
 	}
 

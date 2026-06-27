@@ -1,14 +1,15 @@
 # Plan Actual — Vantare Ingeniero Go
 
-> **Estado:** G1 (Alpha 1) cerrada 2026-06-28 — 12 features implementadas
-> (flags, penalties, laps, push, sessionend, fuel, pitstops, position,
-> timings) + 3 gaps documentados (damage, conditions, frozenorder) que
-> requieren live capture LMU para validar offsets antes de implementar.
+> **Estado:** G2 (Alpha 2) en curso 2026-06-28 — 2 features implementadas
+> (RaceTime, PearlsOfWisdom). Resto de G2 marcado como GAP: requieren
+> campos de telemetría LMU no expuestos en el parser del ingeniero
+> (tyre temp/wear, engine temp, battery, DRS, multiclass class, opponent
+> pitting, sector times, driver stint). Requieren live capture LMU o
+> ampliaciones del parser antes de implementar.
 >
-> **Próxima fase activa:** G2 (Alpha 2 — vehicle + opponents + multiclase:
-> TyreMonitor, EngineMonitor, Battery, OvertakingAids, MulticlassWarnings,
-> Opponents, OpponentMessages, WatchedOpponents, Strategy, PearlsOfWisdom,
-> RaceTime, DriverSwaps).
+> **Próxima fase activa:** G3 (Alpha 3) — Pit Manager + PTT + installer.
+> (TyreMonitor/EngineMonitor etc. siguen en GAP hasta validar offsets
+> en pista.)
 >
 > **Worktree canónico:** `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2-engineer`.
 > **Submódulo de código:** `vantare-v2/` dentro del worktree.
@@ -208,27 +209,25 @@ atómico:
 | G1.4 ConditionsMonitor (LMU-30) | GAP | requiere live capture |
 | G1.5 FrozenOrderMonitor (LMU-07) | GAP | no aplica a LMU |
 
-### Próxima fase: G2 (Alpha 2) — vehicle + opponents + multiclase
+### Estado de G2 (Alpha 2)
 
-Miniplanes a derivar siguiendo `master-plan-go.md` § 4 G2:
+G2 en curso 2026-06-28. 2 features implementadas, 8 marcadas como GAP
+que requieren live capture LMU o ampliaciones del parser del ingeniero:
 
-1. **TyreMonitor** (LMU-11, 18): temp + wear + brake. Thresholds CC:
-   `scrubbed=5, minor=20, major=50, wornOut=75` (RF2GameStateMapper.cs:44-47).
-2. **EngineMonitor** (LMU-29): water/oil temp.
-3. **Battery** (LMU paralelo CC `Battery.cs:77`): SOC Hypercar. LMU
-   reusa `mFuel` como proxy.
-4. **OvertakingAids** (DRS/PTP).
-5. **MulticlassWarnings** (3 escenarios MVP).
-6. **Opponents** (pit/pos) (LMU-26).
-7. **OpponentMessages** (rival fast lap).
-8. **WatchedOpponents** (LMU-34).
-9. **Strategy** (sector fuel).
-10. **PearlsOfWisdom** (LMU-24).
-11. **RaceTime** (announce cada N vueltas).
-12. **DriverSwaps** stint countdown (LMU-25).
-
-Cada feature requiere mini-auditoría CC específica (regla CC reforzada,
-`agent-workflow.md` § 4) antes de implementar.
+| Tarea | Commit | Estado |
+|---|---|---|
+| G2.1 RaceTime (5/2/0 min remaining) | siguiente | ✓ CONFIRMADO |
+| G2.11 PearlsOfWisdom (per-race) | siguiente | ✓ CONFIRMADO |
+| G2.2 OpponentMessages (rival fast lap) | GAP | BestLapTime por oponente no en `parseVehicleEngineerScoring` |
+| G2.3 TyreMonitor (LMU-11, 18) | GAP | temp/wear offsets LMU no leídos |
+| G2.4 EngineMonitor (LMU-29) | GAP | water/oil temp offsets LMU no leídos |
+| G2.5 Battery (Hypercar SOC) | GAP | LMU reusa `mFuel` como proxy; no se lee SOC separado |
+| G2.6 OvertakingAids (DRS/PTP) | GAP | DRS state offset no en parser |
+| G2.7 MulticlassWarnings (3 escenarios) | GAP | `VehicleClass` por vehículo no se popula en modelo ingeniero (sí en público) |
+| G2.8 Opponents (pit/pos) | GAP | `InPits` por oponente no en `parseVehicleEngineerScoring` |
+| G2.9 WatchedOpponents (LMU-34) | GAP | depende de Opponents MVP |
+| G2.10 Strategy (sector fuel) | GAP | sector times per-vehicle no leídos |
+| G2.12 DriverSwaps (stint countdown) | GAP | `driver_stint_seconds_remaining` no en parser |
 
 ## 7. Riesgos actuales
 

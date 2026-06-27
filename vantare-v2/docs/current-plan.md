@@ -35,8 +35,14 @@ Decisiones de release ya cerradas:
 
 ## Estado actual
 
-Vantare v2 se documenta desde ahora como una suite local para sim racing, no solo como una app de overlays. Los modulos internos actuales son:
+R03.A - Version source of truth completado (2026-06-27):
+- Creado archivo `VERSION` en la raíz como única fuente de verdad para la versión de la suite (`0.3.10.0`).
+- Creado script `build/sync_version.go` que lee de `VERSION` y sincroniza la versión de forma consistente en `cmd/vantare/main.go`, `build/config.yml`, `build/windows/info.json` y `build/windows/nsis/project.nsi`.
+- Modificada la tarea `build:native` de Windows y la raíz del `Taskfile.yml` para depender de la tarea de sincronización `version:sync` e inyectar la versión de compilación en Go mediante `-ldflags`.
+- Adaptado el parser de versión de `internal/updater/version.go` para admitir el formato de versión de 4 dígitos `X.X.X.X` (Major.Minor.Patch.Build) y mantener compatibilidad absoluta con versiones legacy de 3 dígitos, respaldado por una batería de pruebas table-driven.
+- Corregida la plantilla NSIS `project.nsi` para remover el `.0` redundante en `VIProductVersion`/`VIFileVersion` y permitir un versionado nativo de 4 dígitos directo.
 
+Vantare v2 se documenta desde ahora como una suite local para sim racing, no solo como una app de overlays. Los modulos internos actuales son:
 - `Overlays Studio`: perfiles, widgets, layouts, overlay desktop y OBS.
 - `Ingeniero`: spotter/ingeniero determinista, historial y notificaciones.
 - `Telemetria`: fuente compartida live/mock/demo.

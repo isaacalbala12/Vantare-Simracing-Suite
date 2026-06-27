@@ -5,6 +5,8 @@ vars:
   BIN_DIR: "bin"
   PACKAGE_MANAGER: 'pnpm'
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  APP_VERSION:
+    sh: go run build/sync_version.go -print
 
 includes:
   common: ./build/Taskfile.yml
@@ -59,3 +61,8 @@ tasks:
     summary: Builds and runs the Docker image
     cmds:
       - task: common:run:docker
+
+  version:sync:
+    summary: Synchronizes the version from VERSION to all config and source files
+    cmds:
+      - task: common:version:sync

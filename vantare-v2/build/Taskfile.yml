@@ -353,3 +353,10 @@ tasks:
         xcrun devicectl device install app --device "{{.UDID}}" "$APP_PATH"
         echo "Launching: {{.BUNDLE_ID}}"
         xcrun devicectl device process launch --device "{{.UDID}}" --stderr console --stdout console "{{.BUNDLE_ID}}"
+
+  version:sync:
+    summary: Synchronizes the version from VERSION to all config and source files
+    internal: true
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - go run build/sync_version.go

@@ -6,13 +6,14 @@ import (
 	"strings"
 )
 
-var semverRE = regexp.MustCompile(`(?i)^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+.]?(.*))?`)
+var semverRE = regexp.MustCompile(`(?i)^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?(?:[-+.]?(.*))?`)
 
 // Version represents a parsed semantic-ish version tag.
 type Version struct {
 	Major  int
 	Minor  int
 	Patch  int
+	Build  int
 	Suffix string
 	Raw    string
 }
@@ -26,11 +27,13 @@ func ParseVersion(tag string) Version {
 	major, _ := strconv.Atoi(m[1])
 	minor, _ := strconv.Atoi(m[2])
 	patch, _ := strconv.Atoi(m[3])
+	build, _ := strconv.Atoi(m[4])
 	return Version{
 		Major:  major,
 		Minor:  minor,
 		Patch:  patch,
-		Suffix: m[4],
+		Build:  build,
+		Suffix: m[5],
 		Raw:    tag,
 	}
 }
@@ -54,6 +57,12 @@ func (v Version) Compare(other Version) int {
 	}
 	if v.Patch != other.Patch {
 		if v.Patch < other.Patch {
+			return -1
+		}
+		return 1
+	}
+	if v.Build != other.Build {
+		if v.Build < other.Build {
 			return -1
 		}
 		return 1

@@ -22,7 +22,7 @@ Unicode true
 !define INFO_PROJECTNAME    "vantare"
 !define INFO_COMPANYNAME    "Vantare"
 !define INFO_PRODUCTNAME    "Vantare Overlays"
-!define INFO_PRODUCTVERSION "0.2.12"
+!define INFO_PRODUCTVERSION "0.3.10.0"
 !define INFO_COPYRIGHT      "© 2026 Vantare"
 !define PRODUCT_EXECUTABLE  "vantare.exe"
 ###
@@ -37,8 +37,8 @@ Unicode true
 !include "wails_tools.nsh"
 
 # The version information for this two must consist of 4 parts
-VIProductVersion "${INFO_PRODUCTVERSION}.0"
-VIFileVersion    "${INFO_PRODUCTVERSION}.0"
+VIProductVersion "${INFO_PRODUCTVERSION}"
+VIFileVersion    "${INFO_PRODUCTVERSION}"
 
 VIAddVersionKey "CompanyName"     "${INFO_COMPANYNAME}"
 VIAddVersionKey "FileDescription" "${INFO_PRODUCTNAME} Installer"

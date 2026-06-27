@@ -24,43 +24,36 @@ Veredictos posibles:
 
 ## Review actual
 
-### R03.D - Updater runtime hardening (2026-06-28, review final)
+### R03.E - Discord release notification hardening (2026-06-28, review final)
 
-**Reviewer:** worker senior de Go / release engineering.
-**Tarea revisada:** R03.D - revisar y endurecer el updater runtime para consumir correctamente los GitHub Releases generados por R03.C.
-**Nota de alcance:** el plan tecnico `docs/superpowers/plans/2026-06-27-release-03-autoupdater-distribution-technical-plan.md` asigna R03.D a "Discord release notification". El presente trabajo atiende la peticion explicita del usuario de endurecer el updater runtime; se trata como sub-tarea R03.D-updater con overlap logico con R03.E del plan tecnico.
+**Reviewer:** worker senior de GitHub Actions, Discord webhooks y documentacion.
+**Tarea revisada:** R03.E — reparar y endurecer los workflows de notificacion a Discord sin crear workflows nuevos.
+**Nota de alcance:** no se toca `release.yml` (R03.C), updater runtime, frontend/backend app, `VERSION`, build scripts, Stripe/licensing.
 
 **Archivos revisados:**
-- `internal/updater/updater.go`
-- `internal/updater/github.go`
-- `internal/updater/version.go`
-- `internal/updater/settings.go`
-- `internal/updater/updater_test.go`
-- `internal/updater/github_test.go`
-- `internal/app/updater_service.go`
-- `internal/app/updater_service_test.go`
-- `cmd/vantare/main.go`
+- `.github/workflows/discord-release.yml`
+- `.github/workflows/discord-build-available.yml`
+- `.github/workflows/discord-beta-progress.yml`
+- `.github/workflows/discord-known-issues.yml`
+- `docs/release-beta-operations-runbook.md`
 - `docs/current-plan.md`
 - `docs/technical-debt.md`
 
-### Veredicto: ACCEPT WITH P3 (ningun P0/P1/P2 abierto en el alcance R03.D-updater)
+### Veredicto: ACCEPT WITH P3 (ningun P0/P1/P2 abierto en el alcance R03.E)
 
-Los findings P1-1, P2-1, P2-2 y P2-3 de la revision anterior han sido corregidos. No quedan P0/P1/P2 abiertos del alcance del runtime del updater. Los P2/P3 heredados de UX y alcance (UX fragmentada, consumo de portable zip, release notes en banner, bandera `IsDowngrade`) se documentan en `docs/technical-debt.md` y deben abordarse en R03.E/R03.F segun el plan tecnico; no bloquean R03.D.
+Los workflows de Discord existentes quedan endurecidos: idempotencia por `github.run_attempt`, manejo explicito de 403/429 con reintento en rate limit, validacion de payload JSON y extraccion automatica de URL/SHA256 desde GitHub Release en `discord-build-available.yml`. No se crearon workflows nuevos ni secretos nuevos. Quedan P3 documentados (no ejecutar workflows reales en este entorno, dependencia de `gh` CLI, idempotencia limitada a re-runs).
 
 ### Checks ejecutados
 - `git status --short` → cambios sin commit identificados (trabajo ajeno de releases previos; no se mezclo con este cambio).
-- `gofmt` sobre `internal/updater/*.go`, `internal/updater/*_test.go`, `internal/app/updater_service.go`, `internal/app/updater_service_test.go`, `cmd/vantare/main.go`.
-- `go test ./internal/updater/... ./internal/app/...` → OK.
-- `go test ./...` → OK (todos los paquetes en verde).
-- `go vet ./internal/updater/... ./internal/app/...` → OK.
 - `git diff --check` → limpio.
-- Lectura estatica completa de los archivos del updater, service, main.go y tests.
+- Validacion YAML de los 4 workflows modificados → OK.
+- Dry-run de la logica Python embebida → OK (funciones de envio probadas contra un servidor HTTP local sin tocar secretos reales).
+- Lectura estatica completa de los 4 workflows, runbook, current-plan y technical-debt.
 
 ### Checks no ejecutados
-- `pnpm --dir frontend test` / `pnpm --dir frontend build` / `pnpm --dir frontend lint`: no se toco frontend en esta sesion.
-- `go test -race ./internal/updater/... ./internal/app/...`: el entorno Windows actual no tiene CGO habilitado (`-race` requiere `CGO_ENABLED=1`).
-- Ejecucion real del workflow `.github/workflows/release.yml` en GitHub Actions (requiere push de tag o `workflow_dispatch`).
-- Descarga/instalacion real de un release contra GitHub (requiere tag pre-release real).
+- Ejecucion real de workflows en GitHub Actions (requiere push/tag o `workflow_dispatch` y webhooks de Discord configurados).
+- Envio real de webhook a Discord (requiere secretos que no se exponen en este entorno).
+- Pruebas end-to-end de descarga de assets desde GitHub Release.
 
 ### Findings
 
@@ -68,78 +61,76 @@ Los findings P1-1, P2-1, P2-2 y P2-3 de la revision anterior han sido corregidos
 Ninguno.
 
 #### P1
-
-##### P1-1 - Startup updater check no cancela HTTP en curso (CORREGIDO)
-**Archivos:** `cmd/vantare/main.go`, `internal/app/updater_service.go`.
-**Fix:** Se añadio `UpdaterService.CheckUpdatesCtx(ctx context.Context)` y `CheckUpdatesManualCtx(ctx)`; los wrappers `CheckUpdates()` / `CheckUpdatesManual()` se mantienen para compatibilidad. La goroutine de startup en `main.go` llama a `CheckUpdatesCtx(ctx)`, comprueba `ctx.Err()` antes de emitir `updater:notify` y evita emitir si el contexto esta cancelado.
-**Tests:** `TestUpdaterServiceContextCancellation`.
+Ninguno.
 
 #### P2
-
-##### P2-1 - `VANTARE_RELEASES_URL` no valida esquema (CORREGIDO)
-**Archivo:** `internal/updater/github.go`.
-**Fix:** `releasesURL()` parsea la env var con `net/url`, acepta solo `http`/`https`, rechaza host vacio y devuelve error claro si la URL es invalida; si la env var esta vacia usa el fallback oficial. `updater.New` propaga el error; `NewUpdaterService` tambien devuelve error; `cmd/vantare/main.go` registra el updater solo si la inicializacion es valida y loguea un error claro si no.
-**Tests:** `TestReleasesURLDefaultsToGitHub`, `TestReleasesURLOverrideValid`, `TestReleasesURLRejectsInvalidScheme`, `TestReleasesURLRejectsEmptyHost`, `TestNewRejectsInvalidReleasesURL`.
-
-##### P2-2 - Race/read-modify-write en `UpdaterService.checkUpdates` (CORREGIDO)
-**Archivo:** `internal/app/updater_service.go`.
-**Fix:** Se añadio `sync.Mutex` a `UpdaterService`. Los metodos `checkUpdates`, `SaveSettings`, `GetSettings` e `IgnoreVersion` estan protegidos. Se separaron helpers internos (`loadSettings`, `saveSettings`) para evitar deadlocks. La seccion critica cubre la secuencia completa de lectura-modificacion-escritura de settings.
-**Tests:** `TestUpdaterServiceConcurrentChecksAndIgnore`.
-
-##### P2-3 - Veredicto documental incoherente (CORREGIDO)
-**Archivos:** `docs/adversarial-review.md`, `docs/technical-debt.md`, `docs/current-plan.md`.
-**Fix:** Se actualizo `docs/adversarial-review.md` a `ACCEPT WITH P3` sin P0/P1/P2 abiertos en el alcance R03.D-updater. Los P2/P3 heredados de UX/alcance se movieron/confirmaron en `docs/technical-debt.md` con release objetivo R03.E/F y explicacion de que no bloquean R03.D. `docs/current-plan.md` refleja el nuevo estado.
+Ninguno.
 
 #### P3
 
-##### P3 opcional - Limpiar installer descargado si `verifyChecksum` falla (CORREGIDO)
-**Archivo:** `internal/updater/updater.go`.
-**Fix:** `InstallVerifiedCtx` elimina el installer descargado cuando `verifyChecksum` devuelve error, evitando dejar un binario no verificado en disco.
-**Tests:** `TestInstallVerifiedHashMismatch` verifica que el archivo no queda tras un hash mismatch.
+##### P3-1 - Idempotencia limitada a re-runs (ACEPTADO)
+**Archivo:** todos los workflows de Discord.
+**Razonamiento:** se usa `github.run_attempt > 1` para evitar duplicados en re-runs manuales. No evita duplicados si alguien dispara manualmente el mismo workflow con los mismos inputs desde cero, pero es suficiente para el riesgo principal documentado y no requiere un bot token de Discord ni persistencia adicional.
+
+##### P3-2 - Dependencia de `gh` CLI en `discord-build-available.yml` (ACEPTADO)
+**Archivo:** `.github/workflows/discord-build-available.yml`.
+**Razonamiento:** `gh release view` requiere que `gh` este disponible en `ubuntu-latest` (lo esta por defecto) y que `GITHUB_TOKEN` tenga permisos de lectura. Se anadio `permissions: contents: read` y `GH_TOKEN`. Si `gh` falla, el workflow muestra el error de `stderr` y falla con mensaje claro; el fallback manual sigue disponible.
+
+##### P3-3 - Validacion real de webhooks pendiente (ACEPTADO)
+**Archivo:** todos los workflows de Discord.
+**Razonamiento:** el manejo de 403/429 y la validacion de JSON se probaron en dry-run local, pero no se envio un webhook real a Discord ni se verifico un 429 real. Se recomienda validar en la primera ejecucion real.
+
+##### P3-4 - `roadmap-execution-board.md` puede estar stale respecto a `current-plan.md` (ACEPTADO)
+**Archivo:** `.github/workflows/discord-beta-progress.yml`.
+**Razonamiento:** este es un problema de contenido, no del workflow. El workflow mejoro en robustez (idempotencia, HTTP) pero sigue parseando `roadmap-execution-board.md`. Mantener la coherencia entre `current-plan.md` y `roadmap-execution-board.md` es responsabilidad del equipo/operador. Se documenta en el runbook.
 
 ### Confirmacion por dimension
 
-**1. Cancelacion de HTTP en startup - PASS**
-- La goroutine de startup usa `CheckUpdatesCtx(ctx)` con el contexto global de la app.
-- Se comprueba `ctx.Err()` antes de emitir; no se envian eventos tras el cierre.
+**1. Sin nuevos workflows ni secretos - PASS**
+- Solo se modificaron los 4 workflows existentes.
+- No se anadio ningun secreto nuevo.
+- No se hardcodeo ninguna URL de webhook.
 
-**2. Validacion de URL de releases - PASS**
-- Solo `http`/`https` con host no vacio son aceptados.
-- URL invalida se surface como error claro en startup y no registra un updater roto.
+**2. Idempotencia contra duplicados - PASS**
+- Todos los workflows saltan el envio cuando `github.run_attempt > 1`.
+- El mensaje de `::warning::` explica como re-disparar si es necesario.
 
-**3. Concurrencia en settings - PASS**
-- Mutex protege toda la secuencia read-modify-write.
-- Test de concurrencia con checks manuales/automaticos e `IgnoreVersion` concurrentes pasa.
+**3. Manejo de errores HTTP 403/429 - PASS**
+- 429: un reintento con backoff basado en `Retry-After` (o 5s por defecto).
+- 403: fallo inmediato con mensaje accionable.
+- Otros errores HTTP se propagan con status y razon.
 
-**4. Descarga y verificacion - PASS**
-- Context propagado a toda la cadena HTTP.
-- Limpieza de archivo parcial preservada.
-- Checksum obligatorio para installer oficial.
-- Installer no verificado se elimina tras fallo de checksum.
+**4. Extraccion automatica de URL/SHA256 - PASS**
+- `discord-build-available.yml` acepta `release_tag` opcional.
+- Usa `gh release view` para obtener assets.
+- Descarga el `.sha256` correspondiente y valida que tenga 64 caracteres hex.
+- Los inputs manuales pueden anular los valores automaticos.
 
-**5. Manejo de errores - PASS**
-- Rate limit distinguido.
-- URL mal configurada no se oculta.
-- Release sin checksum se rechaza en `InstallVerified`.
+**5. Documentacion - PASS**
+- Runbook actualizado con comandos `gh` para los 4 workflows, ejemplo `release_tag`, re-run seguro y troubleshooting.
+- `current-plan.md` refleja el estado R03.E.
+- `technical-debt.md` mantiene TD-003/TD-004/TD-005 abiertos (no se toco `release.yml`) y anade TD-024/025/026 para los P3 de R03.E.
 
-**6. Tests - PASS con cobertura ampliada**
-- Se anadieron tests de contexto, validacion de URL, concurrencia y limpieza de installer.
-- Suite completa pasa.
+**6. Seguridad - PASS**
+- Ningun workflow imprime la URL del webhook.
+- `permissions: contents: read` anadido a los 4 workflows.
+- Solo `discord-build-available.yml` usa `GITHUB_TOKEN` para leer releases.
 
 ### Riesgos restantes
-1. **UX fragmentada (heredado, P2):** los usuarios tienen dos caminos para actualizar; puede causar confusion. Se resuelve en R03.F. Documentado en `docs/technical-debt.md`.
-2. **Sin consumo de portable zip desde el updater (heredado, P2):** requiere decision de UX. Documentado en `docs/technical-debt.md`.
-3. **`UpdateBanner` no muestra release notes (heredado, P3):** se abordara en R03.F si se unifica UX. Documentado en `docs/technical-debt.md`.
-4. **`Info.IsDowngrade` duplica logica de UI (heredado, P3):** no es bloqueante. Documentado en `docs/technical-debt.md`.
-5. **Sin prueba end-to-end real:** no se valido descarga/instalacion desde una Release real. Recomendado antes de declarar Release 03 completo. Documentado en `docs/technical-debt.md`.
-6. **Sin `go test -race`:** no ejecutado por falta de CGO en el entorno Windows actual; el cambio toca goroutines/lifecycle. Documentado en `docs/technical-debt.md`.
+1. **Validacion real pendiente:** no se ejecutaron workflows reales en GitHub Actions ni se envio un webhook real a Discord. Recomendado hacer un smoke test con un tag de prueba antes de declarar R03 completo.
+2. **`gh` CLI no disponible o sin permisos:** si el runner no tiene `gh` o el token no puede leer releases, `discord-build-available.yml` con `release_tag` fallara. El fallback manual sigue funcionando.
+3. **Idempotencia no cubre dispatch repetido:** si un operador dispara el mismo workflow dos veces desde cero, se publicaran dos mensajes. Aceptado como P3.
+4. **Coherencia de roadmap:** `discord-beta-progress.yml` publica lo que haya en `roadmap-execution-board.md`; mantenerlo sincronizado con `current-plan.md` es responsabilidad del equipo.
 
 ### Conclusion
-R03.D-updater puede considerarse cerrado a nivel runtime. No quedan P0/P1/P2 abiertos en el alcance de esta sub-tarea. Los P2/P3 restantes son de UX/alcance y estan documentados para R03.E/R03.F. Recomendado ejecutar un smoke test end-to-end con un tag pre-release real antes de declarar Release 03 completo.
+R03.E puede considerarse cerrado a nivel de implementacion y documentacion. No quedan P0/P1/P2 abiertos. Se recomienda ejecutar un smoke test real en GitHub Actions con webhooks de Discord antes de declarar Release 03 completo.
 
 ---
 
 ## Historico
+
+### R03.D - Updater runtime hardening (2026-06-28, review final)
+**Veredicto:** ACCEPT WITH P3. P1-1, P2-1, P2-2 y P2-3 corregidos. Sin P0/P1/P2 abiertos en el alcance R03.D-updater. Los P2/P3 heredados de UX/portable zip se mantuvieron fuera de alcance para R03.E/F. Sustituido por la review de R03.E (ver `## Review actual`).
 
 ### R03.D - Updater runtime hardening (2026-06-28, P1/P2 de segunda pasada abiertos)
 **Veredicto:** segunda revision del runtime del updater encontro P1-1 (startup check sin cancelar HTTP), P2-1 (URL sin validar esquema), P2-2 (race en settings) y P2-3 (veredicto documental incoherente). Sustituida por la review final del 2026-06-28 (ver `## Review actual`), que cierra P1-1, P2-1, P2-2 y P2-3. Los P2/P3 heredados de UX/portable zip se mantuvieron fuera de alcance para R03.E/F.

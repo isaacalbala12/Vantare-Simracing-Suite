@@ -72,18 +72,46 @@ Vantare Suite cuenta con 4 workflows en `.github/workflows/` para notificar a lo
    ```bash
    gh workflow run "Discord release announcement" --ref master -f tag=v0.3.10.0
    ```
+   - Se dispara automáticamente al pushear un tag `v*`.
+   - Si repites la ejecución (`re-run`), el workflow se salta el envío para evitar duplicados.
 2. **Publicar Progreso de la Beta**:
    ```bash
    gh workflow run "Discord beta progress" --ref master
    ```
+   - Se dispara automáticamente al modificar `vantare-v2/docs/current-plan.md` o `vantare-v2/docs/roadmap-execution-board.md`.
 3. **Anunciar una Build Disponible (Descarga)**:
+
+   Opción A — automática a partir de una GitHub Release (recomendado):
    ```bash
-   gh workflow run "Discord build available" --ref master -f version=v0.3.10.0 -f download_url="https://github.com/usuario/repo/releases/download/v0.3.10.0/vantare-amd64-installer.exe" -f sha256="HASH_SHA256_AQUÍ" -f notes="Prueba de Delta live en pista real"
+   gh workflow run "Discord build available" --ref master \
+     -f version=v0.3.10.0 \
+     -f release_tag=v0.3.10.0 \
+     -f notes="Prueba de Delta live en pista real"
+   ```
+   - El workflow extrae `download_url` y `sha256` de los assets de la release.
+   - Si quieres anular algún valor automático, añade `-f download_url=...` o `-f sha256=...`.
+
+   Opción B — manual (fallback si no hay release o quieres un enlace externo):
+   ```bash
+   gh workflow run "Discord build available" --ref master \
+     -f version=v0.3.10.0 \
+     -f download_url="https://github.com/usuario/repo/releases/download/v0.3.10.0/vantare-amd64-installer.exe" \
+     -f sha256="HASH_SHA256_AQUÍ" \
+     -f notes="Prueba de Delta live en pista real"
    ```
 4. **Sincronizar Incidencias Conocidas**:
    ```bash
    gh workflow run "Discord known issues" --ref master
    ```
+   - Se dispara automáticamente al modificar `vantare-v2/docs/tester-known-issues.md`.
+
+### Re-run seguro
+
+Todos los workflows de Discord ahora detectan `github.run_attempt > 1` y se salta el envío con un `::warning::`. Si necesitas re-publicar un mensaje:
+
+- **Opción recomendada:** dispara un nuevo `workflow_dispatch` desde la UI de GitHub o con `gh workflow run`.
+- **Opción de emergencia:** ve a la ejecución anterior en GitHub Actions, ábrela y ejecuta `Re-run failed jobs`. El workflow advertirá que se salta el envío; no volverá a publicar.
+- Si realmente necesitas enviar el mismo mensaje de nuevo, cambia levemente el input (por ejemplo, añade una nota) o elimina la ejecución anterior para que `run_attempt` vuelva a ser 1.
 
 ---
 
@@ -174,6 +202,18 @@ Si algo sale mal durante el proceso de lanzamiento, mantén la calma y sigue est
 2. **Corrige el error**: Realiza el commit corrector en `master` (ej. `fix: resolver regresión en delta live`).
 3. **Incrementar parche (Patch bump)**: Haz un bump en la versión de la aplicación incrementando el último dígito del parche en `main.go` y `build/config.yml` (ej. de `v0.3.10.0` a `v0.3.10.1`).
 4. **Etiquetar y publicar de nuevo**: Crea el tag `v0.3.10.1`, haz push y publica la nueva build siguiendo el flujo ordinario. Añade una nota explicativa en el changelog del parche (ej. `## v0.3.10.1 - Corrige bug crítico en delta`).
+
+### D. Troubleshooting específico de Discord
+
+| Síntoma | Causa probable | Solución |
+| :--- | :--- | :--- |
+| `Neither DISCORD_*_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured` | No hay webhook configurado en GitHub Secrets. | Ve a `Settings → Secrets and variables → Actions` y añade el secreto correspondiente (o el fallback `DISCORD_WEBHOOK_URL`). |
+| `Discord webhook rejected the request (403)` | La URL del webhook es inválida, fue eliminada o el token cambió. | Verifica la URL en Discord Server Settings → Integrations → Webhooks y actualiza el secreto. Nunca pongas la URL en el código. |
+| `Discord rate limited (429). Retrying after Ns...` | Se enviaron demasiados mensajes seguidos. | El workflow reintenta automáticamente una vez. Si persiste, espera unos minutos y vuelve a disparar. |
+| `Could not fetch GitHub Release vX.Y.Z` | El tag no existe o `GITHUB_TOKEN` no tiene permisos. | Confirma el tag con `gh release view vX.Y.Z`. En forks privados, asegúrate de que `permissions: contents: read` esté presente. |
+| `Release vX.Y.Z does not contain asset vantare-amd64-installer.exe` | La release no tiene los artefactos esperados. | Revisa que `Release build` terminó correctamente y subió los 6 archivos oficiales. |
+| `Changelog section for vX.Y.Z is empty` | Existe el encabezado en `changelog.md` pero no tiene contenido. | Añade al menos una línea bajo el encabezado `## vX.Y.Z`. |
+| Mensaje duplicado en Discord | Se hizo `re-run` sin el mecanismo de idempotencia. | Los workflows actuales se saltan el envío en `run_attempt > 1`. Si ves un duplicado, revisa si el workflow es una versión antigua. |
 
 ---
 

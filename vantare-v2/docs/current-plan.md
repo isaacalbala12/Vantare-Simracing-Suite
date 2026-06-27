@@ -78,6 +78,18 @@ R03.D - Updater runtime hardening: correcciones de review R03.D aplicadas (2026-
 - Verificacion manual pendiente: smoke test end-to-end descargando un release real.
 - Riesgo residual: `go test -race` no ejecutado en este host porque requiere CGO_ENABLED=1 (no disponible en el entorno Windows actual).
 
+R03.E - Discord release notification hardening completado (2026-06-28):
+- Workflows modificados (sin crear nuevos): `.github/workflows/discord-release.yml`, `.github/workflows/discord-build-available.yml`, `.github/workflows/discord-beta-progress.yml`, `.github/workflows/discord-known-issues.yml`.
+- Idempotencia por re-run: todos los workflows detectan `github.run_attempt > 1` y se saltan el envio a Discord con `::warning::`, evitando mensajes duplicados en re-runs manuales.
+- Manejo de errores HTTP mejorado: distincion de 403 (fallo inmediato con mensaje claro) y 429 (un reintento con backoff basado en header `Retry-After` o 5s por defecto); validacion de payload JSON con roundtrip `json.dumps`/`json.loads` antes de enviar.
+- `discord-build-available.yml`: input opcional `release_tag` para extraer automaticamente `download_url` y `sha256` de la GitHub Release (asset `vantare-amd64-installer.exe` y su `.sha256`). Los inputs manuales (`download_url`, `sha256`) pasan a opcionales y pueden anular los valores extraidos.
+- Permisos minimos explicitados: `permissions: contents: read` en los cuatro workflows de Discord.
+- Runbook actualizado: `docs/release-beta-operations-runbook.md` seccion 3 con comandos `gh workflow run` para los 4 workflows, ejemplo de `release_tag` y procedimiento de re-run seguro; seccion 5.D con tabla de troubleshooting especifico de Discord.
+- Review adversarial en `docs/adversarial-review.md` con veredicto `ACCEPT WITH P3` y P3 documentados.
+- Deuda tecnica actualizada: TD-003 (release idempotente) sigue abierto porque no se modifico `release.yml`; TD-004 y TD-005 siguen abiertos porque no se tocaron en este alcance. Se anaden TD-024/025/026 para los P3 de R03.E.
+- Checks: `git diff --check` limpio; validacion YAML OK; dry-run de scripts Python embebidos OK (logica de envio a Discord probada contra servidor local sin secretos reales).
+- Verificacion manual pendiente: ejecutar los workflows reales en GitHub Actions con webhooks de Discord.
+
 R03.B - P2 follow-ups completados (2026-06-27):
 - `tools/release_artifacts.ps1` `Test-ArtifactVersion`: reescrita la lectura con `[System.IO.File]::OpenRead` + `Stream.Read` acotado a 16 MiB (no `ReadAllBytes`). El handle se libera en `finally` aunque la lectura devuelva menos bytes de los pedidos. Logica UTF-8 / UTF-16 y mensajes de exito/mismatch intactos.
 - `tools/release_artifacts.ps1` `Invoke-CleanStale`: `$RepoRoot` y `$BinDir` se canonicalizan con `[System.IO.Path]::GetFullPath`. Se rechaza (throw) cualquier `$BinDir` que no sea `<RepoRoot>\bin` ni un subdirectorio de `<RepoRoot>\bin`. Confirmado en prueba negativa con `-BinDir configs` y prueba positiva con `-BinDir bin/subdir-test`. `release:clean` no puede borrar fuera de `bin/`.

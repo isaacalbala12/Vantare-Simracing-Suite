@@ -269,6 +269,39 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Fix esperado: usar unica fuente de verdad para el flag de downgrade (backend o frontend, no ambos).
 - Riesgo si se ignora: inconsistencia menor si la logica diverge en el futuro.
 
+### TD-024 - Validacion real de workflows Discord en GitHub Actions
+
+- Severidad: P3
+- Area: ci/discord
+- Origen: cierre R03.E
+- Estado: abierto
+- Release objetivo: antes de declarar Release 03 completo
+- Motivo para diferir: el entorno local no permite ejecutar workflows reales de GitHub Actions ni enviar webhooks reales a Discord.
+- Fix esperado: ejecutar `discord-release.yml`, `discord-build-available.yml` (con `release_tag`), `discord-beta-progress.yml` y `discord-known-issues.yml` en GitHub Actions con webhooks de Discord configurados; verificar que no haya duplicados y que 403/429 se manejen correctamente.
+- Riesgo si se ignora: un error en la logica de envio o extraccion de assets solo se detectaria en produccion.
+
+### TD-025 - Dependencia de `gh` CLI en `discord-build-available.yml`
+
+- Severidad: P3
+- Area: ci/discord
+- Origen: cierre R03.E
+- Estado: abierto
+- Release objetivo: R03.E o R03.F
+- Motivo para diferir: `gh` viene pre-instalado en `ubuntu-latest` y el fallback manual (`download_url` + `sha256`) sigue funcionando si `gh` falla.
+- Fix esperado: opcionalmente reemplazar `gh release view` por llamadas directas a la API REST de GitHub con `curl` + `GITHUB_TOKEN` para reducir dependencias.
+- Riesgo si se ignora: si `gh` deja de estar disponible o cambia su salida JSON, el modo automatico de `release_tag` fallara.
+
+### TD-026 - Idempotencia de Discord no cubre dispatch repetido desde cero
+
+- Severidad: P3
+- Area: ci/discord
+- Origen: cierre R03.E
+- Estado: abierto
+- Release objetivo: post-release / auditoria global
+- Motivo para diferir: la idempotencia actual usa `github.run_attempt`, que solo cubre re-runs del mismo workflow run. No evita que un operador dispare el mismo workflow dos veces con los mismos inputs.
+- Fix esperado: anadir un mecanismo de deduplicacion basado en contenido (p. ej. buscar el mensaje reciente via Discord bot API o guardar un marker file/hash).
+- Riesgo si se ignora: mensajes duplicados si un operador dispara manualmente varias veces seguidas.
+
 ### TD-001 - Gate de tests en workflow de release
 
 - Cerrado: 2026-06-27

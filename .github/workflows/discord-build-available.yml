@@ -7,34 +7,151 @@ on:
         description: "Versión de la build, ejemplo v0.3.10.0"
         required: true
         type: string
+      release_tag:
+        description: "Tag de la GitHub Release (ej. v0.3.10.0). Si se indica, se extraen download_url y SHA256 automáticamente."
+        required: false
+        type: string
       download_url:
-        description: "Enlace de descarga directa de la build"
-        required: true
+        description: "Enlace de descarga directa de la build (obligatorio si no se usa release_tag; puede anular el URL extraído de la release)"
+        required: false
         type: string
       notes:
         description: "Notas de la build o mensaje especial (opcional)"
         required: false
         type: string
       sha256:
-        description: "Hash SHA-256 de la build para verificación (opcional)"
+        description: "Hash SHA-256 de la build para verificación (opcional; puede anular el hash extraído de la release)"
         required: false
         type: string
+
+permissions:
+  contents: read
 
 jobs:
   announce:
     runs-on: ubuntu-latest
     steps:
+      - name: Warn on rerun to avoid duplicate Discord messages
+        if: github.run_attempt > 1
+        run: |
+          echo "::warning::Skipping Discord build announcement because this is a rerun (run_attempt=${{ github.run_attempt }}). To re-announce, trigger a fresh workflow_dispatch."
+
       - name: Checkout repository
+        if: github.run_attempt == 1
         uses: actions/checkout@v4
 
+      - name: Resolve release metadata
+        if: github.run_attempt == 1
+        id: metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          INPUT_DOWNLOAD_URL: ${{ inputs.download_url }}
+          INPUT_SHA256: ${{ inputs.sha256 }}
+          GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
+          GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import urllib.request
+
+          release_tag = (os.environ.get("INPUT_RELEASE_TAG") or "").strip()
+          manual_url = (os.environ.get("INPUT_DOWNLOAD_URL") or "").strip()
+          manual_sha = (os.environ.get("INPUT_SHA256") or "").strip()
+
+          download_url = manual_url
+          sha256 = manual_sha
+          release_url = ""
+
+          if release_tag:
+              repo = os.environ["GITHUB_REPOSITORY_VALUE"]
+              try:
+                  result = subprocess.run(
+                      ["gh", "release", "view", release_tag, "--repo", repo, "--json", "assets"],
+                      capture_output=True,
+                      text=True,
+                      check=True,
+                  )
+                  release_data = json.loads(result.stdout)
+              except subprocess.CalledProcessError as e:
+                  print(f"Could not fetch GitHub Release {release_tag}: {e.stderr.strip()}", file=sys.stderr)
+                  sys.exit(1)
+              except json.JSONDecodeError as e:
+                  print(f"Invalid JSON from gh release view: {e}", file=sys.stderr)
+                  sys.exit(1)
+
+              release_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{repo}/releases/tag/{release_tag}"
+              assets = release_data.get("assets", [])
+
+              installer_name = "vantare-amd64-installer.exe"
+              checksum_name = f"{installer_name}.sha256"
+
+              installer_asset = next((a for a in assets if a.get("name") == installer_name), None)
+              checksum_asset = next((a for a in assets if a.get("name") == checksum_name), None)
+
+              if not installer_asset:
+                  print(f"Release {release_tag} does not contain asset {installer_name}", file=sys.stderr)
+                  sys.exit(1)
+              if not checksum_asset:
+                  print(f"Release {release_tag} does not contain asset {checksum_name}", file=sys.stderr)
+                  sys.exit(1)
+
+              if not download_url:
+                  download_url = installer_asset.get("browserDownloadUrl")
+              if not download_url:
+                  print(f"Could not determine download URL for {installer_name}", file=sys.stderr)
+                  sys.exit(1)
+
+              if not sha256:
+                  checksum_url = checksum_asset.get("browserDownloadUrl") or checksum_asset.get("url")
+                  try:
+                      with urllib.request.urlopen(checksum_url, timeout=30) as resp:
+                          checksum_content = resp.read().decode("utf-8").strip()
+                  except Exception as e:
+                      print(f"Could not download checksum file {checksum_name}: {e}", file=sys.stderr)
+                      sys.exit(1)
+
+                  # checksum files have format "<hash>  <filename>" or just "<hash>"
+                  parts = checksum_content.split()
+                  sha256 = parts[0] if parts else ""
+
+              sha256 = sha256.lower()
+              if not re.fullmatch(r'^[0-9a-fA-F]{64}$', sha256, re.IGNORECASE):
+                  print(f"Checksum file {checksum_name} did not contain a valid SHA256 hash", file=sys.stderr)
+                  sys.exit(1)
+
+              source = "manual" if manual_url else "release"
+              print(f"download_url resolved from {source}")
+              print(f"sha256 resolved from {'manual' if manual_sha else 'release'}")
+
+          if not download_url:
+              print("Error: either release_tag or download_url must be provided", file=sys.stderr)
+              sys.exit(1)
+
+          output_path = os.environ.get("GITHUB_OUTPUT", "/dev/null")
+          with open(output_path, "a", encoding="utf-8") as fh:
+              fh.write(f"release_url={release_url}\n")
+              fh.write(f"download_url={download_url}\n")
+              fh.write(f"sha256={sha256}\n")
+
+          print(f"download_url={'set' if download_url else 'missing'}")
+          print(f"sha256={'set' if sha256 else 'missing'}")
+          PY
+
       - name: Publish build availability to Discord
+        if: github.run_attempt == 1
         env:
           DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           INPUT_VERSION: ${{ inputs.version }}
-          INPUT_DOWNLOAD_URL: ${{ inputs.download_url }}
           INPUT_NOTES: ${{ inputs.notes }}
-          INPUT_SHA256: ${{ inputs.sha256 }}
+          RESOLVED_DOWNLOAD_URL: ${{ steps.metadata.outputs.download_url }}
+          RESOLVED_SHA256: ${{ steps.metadata.outputs.sha256 }}
+          RELEASE_URL: ${{ steps.metadata.outputs.release_url }}
           GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
           GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
         run: |
@@ -43,7 +160,48 @@ jobs:
           import os
           import sys
           import textwrap
+          import time
+          import urllib.error
           import urllib.request
+
+          def send_to_discord(webhook, payload_dict):
+              """Validate payload and POST to Discord with 429 retry and 403 handling."""
+              payload_str = json.dumps(payload_dict)
+              # Validate JSON roundtrip before sending
+              json.loads(payload_str)
+
+              data = payload_str.encode("utf-8")
+              req = urllib.request.Request(
+                  webhook,
+                  data=data,
+                  headers={
+                      "Content-Type": "application/json",
+                      "User-Agent": "GitHub-Actions-Discord-Announcer",
+                  },
+                  method="POST",
+              )
+
+              def do_request(attempt):
+                  try:
+                      with urllib.request.urlopen(req, timeout=20) as resp:
+                          if resp.status >= 300:
+                              raise RuntimeError(f"Discord webhook failed with status {resp.status}")
+                          return resp
+                  except urllib.error.HTTPError as e:
+                      if e.code == 429 and attempt == 1:
+                          retry_after = e.headers.get("Retry-After")
+                          wait = int(retry_after) if retry_after and retry_after.isdigit() else 5
+                          print(f"Discord rate limited (429). Retrying after {wait}s...", file=sys.stderr)
+                          time.sleep(wait)
+                          return do_request(attempt + 1)
+                      if e.code == 403:
+                          print("Discord webhook rejected the request (403). Verify the webhook URL secret is correct and the webhook has not been deleted.", file=sys.stderr)
+                          sys.exit(1)
+                      raise RuntimeError(f"Discord webhook failed with status {e.code}: {e.reason}")
+                  except urllib.error.URLError as e:
+                      raise RuntimeError(f"Discord webhook request failed: {e.reason}")
+
+              return do_request(1)
 
           webhook = (os.environ.get("DISCORD_BUILD_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
           if not webhook:
@@ -51,9 +209,10 @@ jobs:
               sys.exit(1)
 
           version = os.environ.get("INPUT_VERSION", "").strip()
-          download_url = os.environ.get("INPUT_DOWNLOAD_URL", "").strip()
+          download_url = os.environ.get("RESOLVED_DOWNLOAD_URL", "").strip()
           notes = os.environ.get("INPUT_NOTES", "").strip()
-          sha256 = os.environ.get("INPUT_SHA256", "").strip()
+          sha256 = os.environ.get("RESOLVED_SHA256", "").strip()
+          release_url = os.environ.get("RELEASE_URL", "").strip()
 
           if not version or not download_url:
               print("Error: version and download_url inputs are required", file=sys.stderr)
@@ -65,8 +224,10 @@ jobs:
           message = (
               "**Vantare build available**\n\n"
               f"Version: `{version}`\n"
-              f"Download Link: {download_url}\n"
           )
+          if release_url:
+              message += f"Release: {release_url}\n"
+          message += f"Download Link: {download_url}\n"
 
           if notes:
               message += f"\n**Notes**\n{notes}\n"
@@ -101,19 +262,7 @@ jobs:
 
           for index, chunk in enumerate(chunks, start=1):
               suffix = f"\n\n({index}/{len(chunks)})" if len(chunks) > 1 else ""
-              payload = json.dumps({"content": chunk + suffix}).encode("utf-8")
-              req = urllib.request.Request(
-                  webhook,
-                  data=payload,
-                  headers={
-                      "Content-Type": "application/json",
-                      "User-Agent": "GitHub-Actions-Discord-Announcer",
-                  },
-                  method="POST",
-              )
-              with urllib.request.urlopen(req, timeout=20) as resp:
-                  if resp.status >= 300:
-                      raise RuntimeError(f"Discord webhook failed with status {resp.status}")
+              send_to_discord(webhook, {"content": chunk + suffix})
 
           print("Published build availability to Discord")
           PY

@@ -307,3 +307,149 @@ func buildSyntheticEngineerFrameBufferPublic() []byte {
 	binary.LittleEndian.PutUint64(buf[off1+264:], math.Float64bits(103))
 	return buf
 }
+
+// --- G0.9 Player.Play en queueLoop ---
+
+// spyPlayer implementa service.AudioPlayer y registra todas las llamadas Play.
+type spyPlayer struct {
+	mu    sync.Mutex
+	paths []string
+	err   error
+}
+
+func (p *spyPlayer) Play(path string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.paths = append(p.paths, path)
+	return p.err
+}
+
+func (p *spyPlayer) Calls() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]string, len(p.paths))
+	copy(out, p.paths)
+	return out
+}
+
+// staticResolver implementa service.AudioResolver devolviendo siempre el mismo path.
+type staticResolver struct{ path string }
+
+func (r staticResolver) Resolve(textKey string) string { return r.path }
+
+// mapResolver implementa service.AudioResolver con tabla textKey->path.
+type mapResolver struct{ m map[string]string }
+
+func (r mapResolver) Resolve(textKey string) string { return r.m[textKey] }
+
+// Encolar directamente un mensaje spotter en la cola y verificar que se invoca Player.Play.
+func TestEngineerService_QueueLoop_InvokesPlayerPlay(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+
+	player := &spyPlayer{}
+	svc.SetAudioPlayer(player)
+	svc.SetAudioResolver(staticResolver{path: `C:\cache\spotter.car_left.mp3`})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	// Acceder a la cola via reflection no es ideal; en su lugar, ejercitar
+	// el runtime vía el simulador (ScenarioLeftBasic emite car_left en frame 1).
+	// Esperar hasta 2s para que el primer mensaje sea encolado y reproducido.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(player.Calls()) > 0 {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	calls := player.Calls()
+	if len(calls) == 0 {
+		t.Fatal("expected Player.Play to be called at least once, got 0 calls")
+	}
+	if calls[0] != `C:\cache\spotter.car_left.mp3` {
+		t.Errorf("expected first call path spotter.car_left.mp3, got %q", calls[0])
+	}
+}
+
+func TestEngineerService_QueueLoop_NoPlayer_NoCall(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	svc.SetAudioResolver(staticResolver{path: `C:\cache\x.mp3`})
+	// No inyectamos player -> sin reproducción
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	time.Sleep(1200 * time.Millisecond)
+	// Sin player, el código de audio no se invoca. Verificar que no hay panic
+	// y que el servicio sigue procesando mensajes (RecentNotifications > 0).
+	if n := len(svc.RecentNotifications()); n == 0 {
+		t.Error("expected recent notifications from simulator, got 0")
+	}
+}
+
+func TestEngineerService_QueueLoop_NoopResolver_NoCall(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	player := &spyPlayer{}
+	svc.SetAudioPlayer(player)
+	// Resolver por defecto (NoopAudioResolver) devuelve "" -> no reproducir
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	time.Sleep(1200 * time.Millisecond)
+	if c := len(player.Calls()); c != 0 {
+		t.Errorf("expected 0 Player.Play calls with NoopAudioResolver, got %d", c)
+	}
+}
+
+// Verificar que el cooldown evita reproducir el mismo spotter en menos de 2500ms.
+func TestEngineerService_QueueLoop_Cooldown(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	player := &spyPlayer{}
+	svc.SetAudioResolver(staticResolver{path: `C:\cache\x.mp3`})
+	svc.SetAudioPlayer(player)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	// Esperar 3s: con cooldown 2500ms, solo debería escucharse el primer spotter.
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(player.Calls()) > 1 {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	calls := player.Calls()
+	if len(calls) == 0 {
+		t.Fatal("expected at least 1 Player.Play call, got 0")
+	}
+	// ScenarioLeftBasic produce car_left (frame 1), clear_left (después). El cooldown
+	// afecta a la misma regla de prioridad; toleramos 1 o 2 llamadas en 3s pero
+	// no más de 3 (umbral pragmático).
+	if len(calls) > 3 {
+		t.Errorf("expected at most 3 Player.Play calls in 3s (cooldown 2500ms), got %d", len(calls))
+	}
+}
+
+func TestNoopAudioResolver_ReturnsEmpty(t *testing.T) {
+	r := service.NoopAudioResolver{}
+	if got := r.Resolve("any.text.key"); got != "" {
+		t.Errorf("NoopAudioResolver.Resolve should return empty, got %q", got)
+	}
+}

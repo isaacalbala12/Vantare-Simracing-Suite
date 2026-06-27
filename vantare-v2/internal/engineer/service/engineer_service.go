@@ -51,7 +51,45 @@ type EngineerService struct {
 	// suscriptor SSE porque su canal estaba lleno. Se incrementa atómicamente
 	// en el fan-out y se expone vía DropCount() / Health() / /api/engineer/health.
 	dropCount atomic.Uint64
+
+	// Audio playback (opcional). Si audioPlayer != nil y audioResolver devuelve
+	// un path, queueLoop invoca Player.Play tras desencolar mensajes spotter.
+	// Sin tts/ aún, el resolver por defecto devuelve "" y la reproducción se
+	// salta silenciosamente. Esto cablea el flujo de extremo a extremo y deja
+	// listo el cambio cuando internal/tts/ entre.
+	audioPlayer    AudioPlayer
+	audioResolver  AudioResolver
+	lastWasSpotter bool
+
+	// skipAudioUntilMS evita reproducir el mismo spotter de nuevo si llegó
+	// hace muy poco (evita spam audible).
+	skipAudioUntilMS int64
 }
+
+// AudioPlayer es la interfaz mínima que queueLoop necesita del reproductor.
+// *audio.Player (internal/engineer/audio) la implementa.
+type AudioPlayer interface {
+	Play(path string) error
+}
+
+// AudioResolver resuelve un textKey de spotter a un path de audio reproducible
+// en disco (típicamente .mp3 cacheado por internal/tts/). Devuelve "" si no hay
+// cache disponible (en cuyo caso el servicio omite la reproducción silenciosamente).
+//
+// Implementación por defecto: NoopAudioResolver (siempre devuelve "").
+// Implementación real: cuando internal/tts/ exista, un TTSResolver que consulte
+// el cache TTS y sintetice si no existe (de forma síncrona o asíncrona según TTL).
+type AudioResolver interface {
+	Resolve(textKey string) string
+}
+
+// NoopAudioResolver es el resolver por defecto: nunca encuentra audio.
+// El cableado de queueLoop queda listo; cuando internal/tts/ exista basta
+// inyectar el resolver real vía SetAudioResolver.
+type NoopAudioResolver struct{}
+
+// Resolve devuelve "" (sin audio). Implementa AudioResolver.
+func (NoopAudioResolver) Resolve(textKey string) string { return "" }
 
 // SetBufferProvider inyecta el proveedor de buffer mmap de LMU (EnrichedLMUSource)
 // para que source=="lmu" pueda construir un OverlaysLiveAdapter sin abrir un
@@ -62,6 +100,25 @@ func (s *EngineerService) SetBufferProvider(bp BufferProvider, available bool) {
 	defer s.mu.Unlock()
 	s.bufferProvider = bp
 	s.bufferAvail = available
+}
+
+// SetAudioPlayer inyecta el reproductor de audio. Si es nil, queueLoop no
+// intenta reproducir (modo silencioso).
+func (s *EngineerService) SetAudioPlayer(p AudioPlayer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audioPlayer = p
+}
+
+// SetAudioResolver inyecta el resolver textKey -> path de audio. Si es nil,
+// se usa NoopAudioResolver (siempre devuelve "" -> sin reproducción).
+func (s *EngineerService) SetAudioResolver(r AudioResolver) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if r == nil {
+		r = NoopAudioResolver{}
+	}
+	s.audioResolver = r
 }
 
 // NewEngineerService creates a new instance of EngineerService.
@@ -77,6 +134,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		source:         "simulator",
 		spotterEnabled: true,
 		sensitivity:    "normal",
+		audioResolver:  NoopAudioResolver{},
 	}
 	return s
 }
@@ -444,6 +502,32 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 				}
 			}
 			s.mu.Unlock()
+
+			// Reproducir audio si hay player y resolver configurados y el
+			// mensaje es de prioridad spotter. Skip silencioso si el resolver
+			// no encuentra cache (no hay internal/tts/ aún).
+			s.mu.Lock()
+			player := s.audioPlayer
+			resolver := s.audioResolver
+			skipUntil := s.skipAudioUntilMS
+			s.mu.Unlock()
+
+			if player != nil && resolver != nil && msg.Priority >= audio.PrioritySpotter && now >= skipUntil {
+				if path := resolver.Resolve(msg.TextKey); path != "" {
+					// No bloqueamos la cola esperando el play (Play puede tardar
+					// segundos). El Player internamente interrumpe lo previo.
+					go func(p string) { _ = player.Play(p) }(path)
+					s.mu.Lock()
+					s.lastWasSpotter = true
+					// Cooldown simple: no spamear el mismo spotter en <2500ms
+					s.skipAudioUntilMS = now + 2500
+					s.mu.Unlock()
+				}
+			} else if msg.Priority < audio.PrioritySpotter {
+				s.mu.Lock()
+				s.lastWasSpotter = false
+				s.mu.Unlock()
+			}
 		}
 	}
 }
@@ -457,13 +541,13 @@ func (s *EngineerService) DropCount() uint64 {
 // EngineerHealth es un snapshot ligero para /api/engineer/health.
 // Incluye solo campos útiles para OBS/diagnóstico, no el historial completo.
 type EngineerHealth struct {
-	OK         bool   `json:"ok"`
-	Source     string `json:"source"`
-	Connected  bool   `json:"connected"`
-	Enabled    bool   `json:"enabled"`
-	Subs       int    `json:"subscribers"`
-	DropCount  uint64 `json:"dropCount"`
-	LastError  string `json:"lastError,omitempty"`
+	OK        bool   `json:"ok"`
+	Source    string `json:"source"`
+	Connected bool   `json:"connected"`
+	Enabled   bool   `json:"enabled"`
+	Subs      int    `json:"subscribers"`
+	DropCount uint64 `json:"dropCount"`
+	LastError string `json:"lastError,omitempty"`
 }
 
 // Health devuelve el estado de salud del servicio.

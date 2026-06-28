@@ -1,10 +1,54 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-27.
+Ultima actualizacion: 2026-06-28.
 
 ## Estado operativo principal
 
-La app actual se considera base de beta publica para testers. A partir de ahora, el desarrollo planificado apunta al release oficial.
+La app se encuentra en **primera beta abierta de prueba** (`v0.3.10.0`). A partir de ahora, el desarrollo planificado apunta al release estable v1.0.
+
+### Que incluye esta beta
+
+- **Overlays Studio**: editor completo de widgets (Relative, Standings, Pedals, Delta, Ingeniero), perfiles recomendados, layout con drag/resize, preview aislada con ancho intrinseco.
+- **Ingeniero**: modulo integrado con historial, notificaciones y widget de overlay. Funciona en modo simulacion/replay; el adaptador live LMU queda para fase EN6.
+- **Telemetria live LMU**: fuente compartida live/mock/demo con fallback automatico a datos sinteticos si LMU no esta disponible.
+- **Widget Delta**: delta best live nativo de LMU conTarget/Lap.
+- **Hotkeys globales**: toggle overlay, perfiles anterior/siguiente. Personalizables desde Ajustes.
+- **Autoupdater**: descarga e instalacion verificada de nuevas versiones desde GitHub Releases.
+- **OBS local**: servidor interno en `http://127.0.0.1:39261/overlay?profile=...` con soporte SSE para telemetria e Ingeniero.
+- **Perfiles recomendados**: `Clean Overlay` y `Le Mans Ultimate - Basic` incluidos como punto de partida.
+- **Presets de widgets**: guardar, aplicar y compartir configuraciones visuales de widgets (widget-presets).
+- **Instalador NSIS y portable zip**: ambos con checksums SHA256 sidecar.
+
+### Que NO incluye (post-beta o fases posteriores)
+
+- Audio/voces TTS del Ingeniero (solo visual).
+- Widget Pedals completo con calibracion (maqueta estetica inicial).
+- Soporte multisimulador (iRacing, Assetto Corsa, rFactor 2). Solo LMU en esta beta.
+- Doble PC/LAN automatizado para OBS (configuracion manual posible).
+- Cuentas de usuario, login, suscripciones ni pagos (flujo OAuth pendiente de validacion real).
+- Community layouts, marketplace, cloud sync completo, companion app y plugin system.
+- Ingeniero live con LMU real (EN6 aparcado hasta validacion live).
+- Reordenacion de columnas en widgets (modo tester oculto disponible via secuencia `V A N T A R E`).
+- Firma de codigo Authenticode (ver Known Issues -> SmartScreen).
+
+### Estado de widgets
+
+| Widget | Estado | Notas |
+|--------|--------|-------|
+| Relative | `stable` | Columnas configurables, filtros, variantes schema v2 |
+| Standings | `stable` | Columnas configurables, filtros, variantes schema v2, selector mock |
+| Delta | `stable` | Delta best live nativo LMU, Target/Lap |
+| Pedals | `tester` | Maqueta compacta CLT/BRK/THR, colores editables desde WidgetStudio |
+| Ingeniero (notifications) | `tester` | Widget de notificaciones del spotter, funcionando en modo simulacion |
+| Track Map | `experimental` | En desarrollo, no disponible para testers |
+| Input Telemetry/Trace | `experimental` | En desarrollo, no disponible para testers |
+
+### Actualizaciones y distribucion
+
+- **No se crea una GitHub Release por cada commit.** Solo se publica cuando hay un tag `v*` que cumple el checklist del runbook.
+- **Autoupdater:** la app busca actualizaciones en GitHub Releases. Descarga el instalador, verifica SHA256 y lo ejecuta.
+- **Distribucion manual:** los testers pueden descargar installer o portable zip desde `#beta-downloads` en Discord, con checksums SHA256 publicados para verificacion.
+- **Updater:** el flujo `InstallVerifiedCtx` descarga el installer y verifica checksum contra el sidecar `.sha256`. Si el checksum no existe (releases historicas), cae a descarga sin verificacion (comportamiento documentado y aceptado).
 
 Fuente operativa principal:
 
@@ -510,6 +554,16 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 
 
 
+
+## Beta stabilization closure (2026-06-28)
+
+Bloque de estabilización previo a retag/release de la beta `v0.3.10.0`. Atiende los findings del review adversarial global sin añadir features.
+
+- **Remotion fuera de beta**: el proyecto Remotion (`frontend/src/remotion/`, `frontend/remotion.config.ts`, scripts `dev:video`/`render:video`/`still:video` en `frontend/package.json`, deps `@remotion/*` en `pnpm-lock.yaml`) es un trabajo paralelo del usuario, no parte de Vantare. Se stasheó con mensaje `pre-beta-remotion-work` (incluye tracked + untracked) para sacarlo del working tree de la beta. No se commitea nada de Remotion en esta tanda. Restaurar con `git stash pop` (o `git stash apply 'stash@{0}'`) cuando retomes ese proyecto.
+- **P1 updater ctx**: las goroutines lanzadas en los handlers `updater:install:verified` (y el legacy, ya desactivado) en `cmd/vantare/main.go` ahora propagan el `ctx` de `signal.NotifyContext` a `InstallVerifiedVersionCtx`. Si la app se cierra (SIGINT/SIGTERM) durante la descarga, el `http.Request` queda cancelado y la goroutine termina en lugar de quedarse viva escribiendo eventos en un emisor cerrado. Cobertura añadida en `TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation`.
+- **P2 handler legacy `updater:install`**: el handler Wails para `updater:install` se reemplaza por un rechazo explícito (`emitUpdaterError("legacy updater:install is disabled; use updater:install:verified")`). El frontend nunca emite el evento legacy (`UpdateBanner.test.tsx` y `SettingsPage.test.tsx` ya lo verificaban como test de regresión). El método Go `UpdaterService.InstallVersion` se elimina también, eliminando la posibilidad de bypass desde la UI hacia el servicio Wails registrado.
+- **Checks**: `go test ./cmd/... ./internal/... ./pkg/...` verde, `git diff --check` limpio, `gofmt` y `go vet` limpios sobre los archivos modificados.
+- **Riesgos restantes**: heredados del review adversarial global y ya documentados en `docs/technical-debt.md` (TD-019 `-race`, TD-024 workflows Discord reales, etc.). El P1-2 (hotkeys en thread incorrecto) y los P3 quedan fuera de alcance explícito de esta tanda.
 
 ## Riesgos actuales
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/internal/updater"
 )
 
 func TestUpdaterServiceContextCancellation(t *testing.T) {
@@ -82,5 +83,52 @@ func TestUpdaterServiceConcurrentChecksAndIgnore(t *testing.T) {
 	}
 	if settings.Channel != "stable" {
 		t.Fatalf("unexpected channel: %s", settings.Channel)
+	}
+}
+
+func TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-time.After(5 * time.Second):
+		}
+	}))
+	defer server.Close()
+
+	t.Setenv("VANTARE_RELEASES_URL", server.URL+"/releases")
+	settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
+	svc, err := app.NewUpdaterService("v0.1.0", settingsPath, &spyEmitter{})
+	if err != nil {
+		t.Fatalf("NewUpdaterService error: %v", err)
+	}
+
+	release := appUpdaterRelease(server.URL, "v0.2.0")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- svc.InstallVerifiedVersionCtx(ctx, release)
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected context cancellation error, got nil")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("InstallVerifiedVersionCtx did not return after context cancellation")
+	}
+}
+
+func appUpdaterRelease(baseURL, tag string) updater.Release {
+	return updater.Release{
+		TagName:    tag,
+		Prerelease: false,
+		Assets: []updater.Asset{
+			{Name: "vantare-amd64-installer.exe", DownloadURL: baseURL + "/installer.exe"},
+			{Name: "vantare-amd64-installer.exe.sha256", DownloadURL: baseURL + "/installer.exe.sha256"},
+		},
 	}
 }

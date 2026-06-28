@@ -110,14 +110,12 @@ func (s *UpdaterService) IgnoreVersion(version string) error {
 
 // InstallVerifiedVersion downloads and verifies the installer for the selected release.
 func (s *UpdaterService) InstallVerifiedVersion(release updater.Release) error {
-	return s.updater.InstallVerified(release, func(percent int) {
-		s.emitter.Emit("updater:progress", map[string]any{"percent": percent})
-	})
+	return s.InstallVerifiedVersionCtx(context.Background(), release)
 }
 
-// InstallVersion downloads and launches the installer for the selected release (legacy).
-func (s *UpdaterService) InstallVersion(tag, downloadURL string) error {
-	return s.updater.Install(tag, downloadURL, func(percent int) {
+// InstallVerifiedVersionCtx is like InstallVerifiedVersion but accepts a context for cancellation.
+func (s *UpdaterService) InstallVerifiedVersionCtx(ctx context.Context, release updater.Release) error {
+	return s.updater.InstallVerifiedCtx(ctx, release, func(percent int) {
 		s.emitter.Emit("updater:progress", map[string]any{"percent": percent})
 	})
 }

@@ -337,3 +337,45 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 
 - Cerrado: 2026-06-27
 - Cierre: corregido en R03.C antes del commit.
+
+### TD-029 - Goroutines de install sin cancelacion de contexto (P1 review beta)
+
+- Severidad: P1
+- Area: updater/go
+- Origen: review adversarial global "Beta Open Readiness" (2026-06-28)
+- Estado: cerrado (beta stabilization 2026-06-28)
+- Release objetivo: beta `v0.3.10.0`
+- Motivo para diferir: handlers `updater:install` y `updater:install:verified` lanzaban `go func()` con `context.Background()` implicito; la app podia cerrarse durante una descarga dejando la goroutine viva y escribiendo en un emisor Wails ya cerrado.
+- Fix aplicado:
+  - Nuevo `UpdaterService.InstallVerifiedVersionCtx(ctx, release)` en `internal/app/updater_service.go` que reenvia el contexto a `updater.InstallVerifiedCtx`.
+  - El handler `updater:install:verified` en `cmd/vantare/main.go` propaga el `ctx` de `signal.NotifyContext` y comprueba `ctx.Err()` antes de emitir el error.
+  - Test de regresion `TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation` cubre la cancelacion.
+- Cierre: 2026-06-28, sin commit todavia (bloque beta stabilization).
+
+### TD-030 - Handler legacy `updater:install` sin checksum accesible desde UI (P2 review beta)
+
+- Severidad: P2
+- Area: updater/security
+- Origen: review adversarial global "Beta Open Readiness" (2026-06-28)
+- Estado: cerrado (beta stabilization 2026-06-28)
+- Release objetivo: beta `v0.3.10.0`
+- Motivo para diferir: el handler Wails `updater:install` ejecutaba `Updater.Install` (legacy) sin verificar SHA256. El frontend nunca emite ese evento (tests `UpdateBanner.test.tsx` y `SettingsPage.test.tsx` lo verifican), pero quedaba accesible.
+- Fix aplicado:
+  - `cmd/vantare/main.go`: handler `updater:install` reemplazado por rechazo explicito (`emitUpdaterError("legacy updater:install is disabled; use updater:install:verified")`).
+  - `internal/app/updater_service.go`: metodos `InstallVersion` y `InstallVersionCtx` eliminados; ya no existe camino de instalacion sin verificacion desde el servicio Wails registrado.
+  - Solo el camino verificado (`updater:install:verified` -> `InstallVerifiedVersionCtx` -> `updater.InstallVerifiedCtx`) puede iniciar un instalador.
+- Cierre: 2026-06-28, sin commit todavia (bloque beta stabilization).
+
+### TD-031 - Trabajo Remotion mezclado en working tree de beta
+
+- Severidad: P0 (rompia build)
+- Area: frontend/build
+- Origen: review adversarial global "Beta Open Readiness" (2026-06-28)
+- Estado: cerrado (beta stabilization 2026-06-28)
+- Release objetivo: beta `v0.3.10.0`
+- Motivo para diferir: el usuario mantiene un proyecto paralelo Remotion dentro del mismo worktree; los archivos (`frontend/src/remotion/`, `frontend/remotion.config.ts`, scripts en `frontend/package.json`, deps en `pnpm-lock.yaml`) no forman parte de Vantare y provocaban 3 errores `TS6133` en `tsc -b`, rompiendo `pnpm build`, `wails3 task release:artifacts` y CI.
+- Fix aplicado:
+  - Stash con mensaje `pre-beta-remotion-work` (tracked + untracked) capturado en `git stash list` como `stash@{0}`. Contiene los 13 archivos de Remotion y los ~1900 lineas netas de `pnpm-lock.yaml`.
+  - No se commitea nada de Remotion en esta tanda.
+  - Para restaurar el trabajo Remotion del usuario: `git stash apply 'stash@{0}'`.
+- Cierre: 2026-06-28, sin commit todavia (bloque beta stabilization).

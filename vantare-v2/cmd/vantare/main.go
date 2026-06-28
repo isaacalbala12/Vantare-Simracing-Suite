@@ -486,28 +486,8 @@ func main() {
 		})
 
 		wailsApp.Event.On("updater:install", func(event *application.CustomEvent) {
-			var data struct {
-				Tag         string `json:"tag"`
-				DownloadURL string `json:"downloadURL"`
-			}
-			if event.Data != nil {
-				if raw, err := json.Marshal(event.Data); err == nil {
-					json.Unmarshal(raw, &data)
-				}
-			}
-			if data.Tag == "" || data.DownloadURL == "" {
-				emitUpdaterError("tag and downloadURL are required")
-				return
-			}
-			emitter.Emit("updater:progress", map[string]any{"percent": 0})
-			go func() {
-				if err := updaterSvc.InstallVersion(data.Tag, data.DownloadURL); err != nil {
-					log.Printf("updater:install error: %v", err)
-					emitUpdaterError(err.Error())
-					return
-				}
-				emitter.Emit("updater:installed", map[string]any{"ok": true})
-			}()
+			log.Printf("updater:install rejected: legacy handler is disabled; use updater:install:verified")
+			emitUpdaterError("legacy updater:install is disabled; use updater:install:verified")
 		})
 
 		wailsApp.Event.On("updater:ignore", func(event *application.CustomEvent) {
@@ -539,7 +519,11 @@ func main() {
 			}
 			emitter.Emit("updater:progress", map[string]any{"percent": 0})
 			go func() {
-				if err := updaterSvc.InstallVerifiedVersion(release); err != nil {
+				if err := updaterSvc.InstallVerifiedVersionCtx(ctx, release); err != nil {
+					if ctx.Err() != nil {
+						log.Printf("updater:install:verified aborted: %v", ctx.Err())
+						return
+					}
 					log.Printf("updater:install:verified error: %v", err)
 					emitUpdaterError(err.Error())
 					return

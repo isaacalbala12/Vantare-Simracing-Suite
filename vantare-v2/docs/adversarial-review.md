@@ -24,106 +24,242 @@ Veredictos posibles:
 
 ## Review actual
 
-### R03.H - Cierre de Release 03 tras smoke + decision firma de codigo (2026-06-28, review final)
+### Beta Open Readiness - Review adversarial global (2026-06-28)
 
-**Reviewer:** worker senior de release engineering y documentacion.
-**Tarea revisada:** R03.H - cerrar Release 03 aplicando solo fixes pequenos derivados del smoke R03.G (A: tag-guard en Discord, B: release.yml idempotente) y documentar la decision de firma de codigo.
-**Nota de alcance:** no se toca Go/frontend, no se toca VERSION, no se crean tags/releases, no se envia Discord, no se hace commit/push, no se anaden secrets, no se toca Stripe/licensing.
+**Reviewer:** opencode (mimo-v2.5-pro), auditor adversarial senior.
+**Objetivo:** evaluar si Vantare v2 `v0.3.10.0` esta lista para beta abierta de prueba en 3 dias.
+**Alcance:** review transversal de updater/release, persistencia/perfiles, overlays runtime, WidgetStudio/LayoutStudio, Go concurrency/lifecycle, seguridad basica.
 
-**Archivos revisados:**
-- `.github/workflows/discord-beta-progress.yml`
-- `.github/workflows/discord-known-issues.yml`
-- `.github/workflows/release.yml`
-- `docs/current-plan.md`
-- `docs/technical-debt.md`
-- `docs/release-beta-operations-runbook.md`
+**Archivos revisados (seleccion):**
+- `cmd/vantare/main.go`
+- `internal/updater/updater.go`, `github.go`, `version.go`, `settings.go`
+- `internal/app/updater_service.go`, `profile_service.go`, `hub_service.go`, `overlay_controller.go`, `hotkeys.go`, `telemetry_bridge.go`, `engineer_bridge.go`
+- `internal/server/server.go`, `sse.go`, `engineer_sse.go`
+- `internal/engineer/service/engineer_service.go`
+- `internal/license/service.go`
+- `pkg/config/profile.go`
+- `frontend/src/hub/overlays/useOverlayStudioState.ts`
+- `frontend/src/remotion/index.ts`, `VantareAppMockup.tsx`
+- `frontend/tsconfig.app.json`, `package.json`, `vite.config.ts`
+- `.github/workflows/release.yml`, `discord-*.yml`
+- `docs/current-plan.md`, `technical-debt.md`, `release-beta-operations-runbook.md`
 
-### Veredicto: ACCEPT WITH P3 (ningun P0/P1/P2 abierto en el alcance R03.H)
+---
 
-Los tres hallazgos accionables del smoke R03.G quedan corregidos: tag-guard en los dos workflows de Discord no-release, `release.yml` idempotente con deteccion explicita + `gh release upload --clobber` para los 6 assets, y decision documentada de firma de codigo (beta privada sin firma + release publico requiere Authenticode). Se cierra el circulo de Release 03 a nivel de implementacion y documentacion.
+### Veredicto: NEEDS FIXES
+
+Hay un P0 que bloquea el build y un P1 que debe corregirse antes de beta.
+
+---
 
 ### Checks ejecutados
-- `git diff --check` → limpio (verificado en seccion de evidencia final).
-- Validacion YAML de los 3 workflows modificados con `python -c "import yaml; yaml.safe_load(...)"` → OK en los tres.
-- Dry-run estatico del bloque bash de `release.yml`: script temporal con dos ramas (existe / no existe) verifica sintaxis bash, declaracion de `ASSETS` y branching sin invocar `gh`. Script borrado despues de la verificacion (no queda en working copy).
-- Lectura estatica completa de los 3 workflows, `current-plan.md`, `technical-debt.md`, `release-beta-operations-runbook.md` y `adversarial-review.md`.
+
+| Check | Resultado |
+|---|---|
+| `git status --short` | Modificados: `pnpm-lock.yaml`, `frontend/package.json`. No rastreados: `frontend/src/remotion/`, docs, fotos. |
+| `git diff --check` | Limpio (solo warning CRLF en `pnpm-lock.yaml`, no bloqueante). |
+| `go test -count=1 ./...` | **PASS** - 26 paquetes OK, 0 fallos. |
+| `pnpm --dir frontend test` | **PASS** - 85 archivos de test, 578 tests OK. |
+| `pnpm --dir frontend exec tsc -b` | **FAIL** - 3 errores TS6133 en `src/remotion/`. |
+| `pnpm --dir frontend lint` | **PASS** - solo warning `.eslintignore` deprecado. |
+| `pnpm --dir frontend build` | **FAIL** - `tsc -b` falla, vite build no se ejecuta. |
+| `wails3 task release:artifacts` | **FAIL** - `pnpm run build` falla por errores TS. |
+| `wails3 task release:verify` | No ejecutado (depende de `release:artifacts`). |
 
 ### Checks no ejecutados
-- Ejecucion real de los workflows en GitHub Actions (no se hace commit/push en esta tarea).
-- Envio real de webhook a Discord (no se envia Discord en esta tarea).
-- `gh release upload --clobber` real contra una GitHub Release existente (no se crea ninguna release en esta tarea).
-- Smoke end-to-end del updater contra una release real (cubierto por R03.G).
+
+| Check | Motivo |
+|---|---|
+| `go test -race` | Requiere `CGO_ENABLED=1`, no disponible en Windows actual. Documentado como TD-019. |
+| Smoke end-to-end del updater | Requiere release real o mock de servidor. Documentado como TD-018. |
+| Workflows Discord reales | No se ejecutan en local. Documentado como TD-024. |
+| Playwright visual tests | Suite no existe. Documentado como TD-008. |
+
+---
 
 ### Findings
 
 #### P0
-Ninguno.
+
+##### P0-1 - Build roto por errores TypeScript en `src/remotion/` (BLOQUEANTE)
+
+**Archivos:** `frontend/src/remotion/index.ts:1`, `frontend/src/remotion/VantareAppMockup.tsx:2`, `frontend/src/remotion/VantareAppMockup.tsx:25`.
+**Impacto:** `pnpm build`, `wails3 task release:artifacts`, CI (`release.yml`) y cualquier intento de generar artefactos fallan. **La beta no se puede publicar con este P0 abierto.**
+**Causa:** Los archivos remotion importan `React`, `Topbar` y `next` sin usarlos. `tsconfig.app.json` tiene `noUnusedLocals: true` y `include: ["src"]`, lo que cubre `src/remotion/`. `pnpm build` ejecuta `tsc -b && vite build`; `tsc -b` falla antes de que vite se ejecute.
+**Evidencia:**
+```
+src/remotion/index.ts(1,1): error TS6133: 'React' is declared but its value is never read.
+src/remotion/VantareAppMockup.tsx(2,1): error TS6133: 'Topbar' is declared but its value is never read.
+src/remotion/VantareAppMockup.tsx(25,44): error TS6133: 'next' is declared but its value is never read.
+```
+**Fix recomendado (opcion A, minimo):** eliminar los imports no usados en los 2 archivos:
+- `index.ts:1` -> eliminar `import React from "react";`
+- `VantareAppMockup.tsx:2` -> eliminar `import { Topbar } from "../hub/components/Topbar";`
+- `VantareAppMockup.tsx:25` -> cambiar `const handleChangeProfile = useCallback((next: ProfileConfig) => {` a `const handleChangeProfile = useCallback((_next: ProfileConfig) => {` o eliminar la variable si no se usa.
+**Fix recomendado (opcion B, alternativa):** excluir `src/remotion/` de `tsconfig.app.json` anadiendo `"exclude": ["src/remotion"]` si remotion es un proyecto separado que no debe compilarse con el build principal.
+**Nota:** Los tests frontend pasan porque vitest no ejecuta `tsc -b` como precondicion; solo transforma con vite. El build de produccion si falla.
+
+---
 
 #### P1
-Ninguno.
+
+##### P1-1 - Goroutines de instalacion de updater sin cancelacion de contexto
+
+**Archivos:** `cmd/vantare/main.go:503-511` (`updater:install`), `cmd/vantare/main.go:541-548` (`updater:install:verified`).
+**Impacto:** al pulsar "Instalar actualizacion", se lanza `go func()` sin propagar `ctx`. Si la app se cierra durante la descarga, la goroutine sigue viva, el HTTP request no se cancela, y el emisor de eventos puede escribir en un receptor ya cerrado.
+**Evidencia:**
+```go
+// main.go:503
+go func() {
+    if err := updaterSvc.InstallVersion(data.Tag, data.DownloadURL); err != nil {
+        // ...
+    }
+}()
+// main.go:541
+go func() {
+    if err := updaterSvc.InstallVerifiedVersion(release); err != nil {
+        // ...
+    }
+}()
+```
+**Fix recomendado:** propagar el contexto de la app (`ctx` del `signal.NotifyContext`) a `InstallVersion`/`InstallVerifiedVersion` o al menos hacer select con `ctx.Done()` antes de iniciar la descarga. Esto ya existe en `CheckUpdatesCtx` (linea 418) pero no en los handlers de instalacion.
+
+---
 
 #### P2
-Ninguno.
+
+##### P2-1 - `HotkeyManager.UpdateFromSettings` registra hotkeys en thread incorrecto
+
+**Archivo:** `internal/app/hotkeys.go:281-327`.
+**Impacto:** `UpdateFromSettings` se llama desde el handler `settings:save` (main thread). Dentro, llama a `procRegisterHotKey.Call(...)` directamente. `RegisterHotKey` en Windows requiere que la llamada se haga desde el thread que posee el message queue. El `messageLoop` corre en un OS thread dedicado con `runtime.LockOSThread()`. Registrar desde otro thread puede fallar silenciosamente (ret=0).
+**Evidencia:** `hotkeys.go:321` -> `procRegisterHotKey.Call(0, uintptr(id), uintptr(mods), uintptr(vk))` se ejecuta en el goroutine del handler Wails, no en el thread del message loop.
+**Mitigacion existente:** el log de fallo `hotkey: RegisterHotKey failed` atraparia errores visibles.
+**Fix recomendado:** enviar las nuevas combos al message loop via un canal, y que el message loop haga el registro en su propio thread.
+
+##### P2-2 - `updater:install` (legacy) no verifica checksum
+
+**Archivo:** `internal/updater/updater.go:157-194` (`Install`), `cmd/vantare/main.go:488-511`.
+**Impacto:** el handler `updater:install` usa `InstallVersion` que llama a `updater.Install`, el cual descarga y ejecuta el installer SIN verificar checksum. Solo `updater:install:verified` hace verificacion.
+**Evidencia:** `updater.go:189` -> `cmd := exec.Command(installerPath)` sin llamada a `verifyChecksum`.
+**Riesgo:** un MITM en la red podria sustituir el binario. Bajo porque GitHub Releases usa HTTPS, pero el control de integridad se pierde.
+**Fix recomendado:** eliminar el handler `updater:install` y usar solo `updater:install:verified`, o anadir verificacion de checksum al flujo legacy.
+
+##### P2-3 - `frontend/package.json` y `pnpm-lock.yaml` modificados sin commit
+
+**Archivos:** `frontend/package.json`, `pnpm-lock.yaml`.
+**Impacto:** hay cambios de dependencias (remotion anadido como devDependency) que no estan commiteados. Si se hace un tag sobre el working tree actual, el CI podria fallar de forma diferente a local. El `pnpm install --frozen-lockfile` en CI fallaria si el lockfile no coincide con package.json.
+**Fix recomendado:** commitear o revertir los cambios de dependencias antes de etiquetar.
+
+---
 
 #### P3
 
-##### P3-1 - `gh release upload --clobber` borra el asset previo antes de subir el nuevo (ACEPTADO, documentado)
-**Archivo:** `.github/workflows/release.yml`.
-**Razonamiento:** `--clobber` es el comportamiento nativo documentado de `gh release upload`: si el upload falla, el asset original se pierde. En el flujo de Vantare los assets se recalculan en cada build desde `wails3 task release:artifacts`, por lo que el riesgo es bajo (los `.sha256` siempre acompanaran al binario con su hash real). Documentado explicitamente en el runbook para que el operador lo sepa antes de re-correr el workflow.
+##### P3-1 - `emitStatus()` llama a `s.Status()` adquiriendo mutex ya retenido
 
-##### P3-2 - Verificacion real de `release.yml` idempotente pendiente (ACEPTADO)
-**Archivo:** `.github/workflows/release.yml`.
-**Razonamiento:** el dry-run estatico cubre sintaxis bash y enumeracion de assets, pero no cubre un re-run real sobre una release ya publicada. Se valida en el primer re-run real o antes del primer tag publico. Recomendado como smoke check del primer tag `v*` post-R03.
+**Archivo:** `internal/engineer/service/engineer_service.go:221-225`.
+**Impacto:** `emitStatus()` llama a `s.Status()` que internamente hace `s.mu.Lock()`. Si se llama desde un contexto que ya tiene el mutex, hay deadlock. En el codigo actual, `emitStatus()` solo se llama fuera de secciones criticas, pero es fragile.
+**Evidencia:** `engineer_service.go:223` -> `s.Status()` -> `s.mu.Lock()`.
+**Mitigacion:** existe `emitStatusLocked()` que evita el deadlock. `emitStatus()` solo se llama en `telemetryLoop` fuera del mutex.
+**Fix recomendado:** anadir comentario o documentar que `emitStatus()` NO debe llamarse con el mutex retenido.
 
-##### P3-3 - `roadmap-execution-board.md` puede estar stale respecto a `current-plan.md` (HEREDADO)
-**Archivo:** `.github/workflows/discord-beta-progress.yml`.
-**Razonamiento:** P3 heredado de R03.E (P3-4 alli). El workflow mejoro en robustez (idempotencia, HTTP, tag-guard) pero sigue parseando `roadmap-execution-board.md`. Mantener la coherencia entre `current-plan.md` y `roadmap-execution-board.md` es responsabilidad del equipo/operador. Documentado en el runbook.
+##### P3-2 - `ListProfiles` carga todos los JSON en memoria sin limite
 
-##### P3-4 - TD-027 (firma de codigo) sigue abierto para release publico (ACEPTADO)
-**Archivo:** `docs/technical-debt.md`.
-**Razonamiento:** la decision explicita es NO firmar en beta privada y firmar antes del primer release publico. TD-027 registra el gap y los pasos a seguir. Beta privada no se bloquea; release publico si.
+**Archivo:** `internal/app/hub_service.go:120-156`.
+**Impacto:** si hay muchos perfiles en el directorio, `ListProfiles` carga todos en memoria. Para beta con pocos perfiles, no es un problema.
+**Riesgo:** bajo para beta.
+
+##### P3-3 - `DeleteProfile` no valida que el archivo este dentro de `profilesDir`
+
+**Archivo:** `internal/app/hub_service.go:210-216`.
+**Impacto:** `findProfilePath` valida `basename != idOrFile` y `..`, pero `DeleteProfile` llama a `os.Remove(path)` directamente. Si `findProfilePath` tiene un bypass, se podria borrar un archivo fuera del directorio.
+**Mitigacion:** `findProfilePath` ya valida path traversal. El riesgo es muy bajo.
+**Fix recomendado:** anadir una verificacion de que `filepath.Dir(path) == profilesDir` antes de borrar.
+
+##### P3-4 - SSE sin autenticacion
+
+**Archivo:** `internal/server/server.go`, `sse.go`, `engineer_sse.go`.
+**Impacto:** los endpoints `/telemetry/stream` y `/engineer/stream` no tienen autenticacion. Cualquier proceso local puede conectarse a `127.0.0.1:39261` y leer la telemetria.
+**Mitigacion:** el servidor solo escucha en `127.0.0.1` (localhost). Para beta local es aceptable.
+**Riesgo:** si alguien expone el puerto via ngrok o similar, la telemetria quedaria publica.
+
+##### P3-5 - `os.WriteFile` con permisos 0644 en `configsDir()`
+
+**Archivo:** `cmd/vantare/main.go:95`.
+**Impacto:** los perfiles por defecto se escriben con permisos world-readable. Para una app de escritorio local es aceptable.
+
+---
 
 ### Confirmacion por dimension
 
-**1. Tag-guard Discord no-release - PASS**
-- `discord-beta-progress.yml`: job-level `if: github.ref_type != 'tag'` + step explicativo `::notice::` con referencia a `Discord release announcement` / `Discord build available`.
-- `discord-known-issues.yml`: mismo patron, mismo mensaje.
-- `workflow_dispatch` sigue funcionando: en un dispatch `github.ref_type` es `branch` (no `tag`), por lo que el job se ejecuta.
-- Push normal a `master` sigue funcionando: `github.ref_type` es `branch`, el job se ejecuta y el filtro de `paths` decide si hay anuncio.
+**1. Updater/Release - PASS con findings**
+- `updater.go`: contexto propagado en `CheckCtx`, `InstallCtx`, `InstallVerifiedCtx`. Mutex en `UpdaterService`. URL validada con `net/url`.
+- `release.yml`: gates de tests/lint antes de build. Assets explicitos. Release idempotente.
+- Gap P1: goroutines de instalacion sin ctx.
+- Gap P2: flujo legacy sin checksum.
 
-**2. `release.yml` idempotente - PASS**
-- Detecta existencia con `gh release view "$TAG" >/dev/null 2>&1` (exit code, sin grep fragile).
-- Rama "existe": `gh release edit --title --notes-file` + 6 `gh release upload --clobber` (uno por asset, sin glob).
-- Rama "no existe": `gh release create` con los 6 assets enumerados explicitamente (cierra TD-004 ademas).
-- Verificacion previa de los 6 assets con `::error::` claro si falta alguno.
-- Verificacion final imprime `assets=<count>` para confirmar.
+**2. Persistencia/Perfiles - PASS**
+- `ProfileService` hace backup+rollback en `SaveProfileState`.
+- `config.CopyProfileLayouts`/`CopyProfileVariants` hacen deep copy para rollback.
+- `SaveFile` escribe JSON pretty con `os.WriteFile`.
+- Schema v2 con layouts/variants funciona correctamente.
 
-**3. Documentacion coherente - PASS**
-- `current-plan.md`: anadido bloque R03.G (smoke) + bloque R03.H (cierre con fixes).
-- `technical-debt.md`: TD-003 y TD-004 cerrados con fecha y resumen del fix; TD-027 (firma) y TD-028 (releases historicas sin sha256) abiertos con motivo, release objetivo y riesgo.
-- `release-beta-operations-runbook.md`: secciones nuevas para tag-guard, politica "no release por commit", `release.yml` idempotente, releases historicas y firma de codigo.
+**3. Overlays runtime - PASS**
+- `CompositeApp`, `ObsOverlayApp`, `WidgetHost`, `WidgetRenderer` registran todos los widgets.
+- SSE con `r.Context().Done()` para cancelacion.
+- Engineer SSE con patron identico.
+- `TelemetryBridge` usa `sync.WaitGroup` para cierre limpio.
 
-**4. Restricciones respetadas - PASS**
-- No se toco Go/frontend.
-- No se toco `VERSION`.
-- No se crearon tags ni releases.
-- No se envio Discord.
-- No se hizo commit/push.
-- No se anadieron secrets.
-- No se toco Stripe/licensing.
+**4. WidgetStudio/LayoutStudio - PASS**
+- Separacion de responsabilidades respetada: WidgetStudio no toca posicion/tamano.
+- `addWidget` en `useOverlayStudioState` sincroniza `layouts.general.widgets`.
+- Guardado explicito (no autosave) en WidgetStudio/LayoutStudio.
+- Preview sandbox aislado de `PreviewWidgetFrame`.
 
-### Riesgos restantes
-1. **Smoke real pendiente:** no se ejecutaron los workflows en GitHub Actions ni `gh release upload --clobber` contra una release real. Recomendado un smoke test del primer tag `v*` post-R03.
-2. **Firma de codigo ausente en beta privada:** los testers veran el aviso de SmartScreen. Aceptado y documentado.
-3. **Releases historicas sin `.sha256`:** el updater cae al flujo sin verificacion contra esos tags. Documentado como TD-028; los testers que vengan de un tag legacy no tendran verificacion de checksum hasta el siguiente update.
-4. **`gh` CLI no disponible o sin permisos:** si el runner no tiene `gh` o el token no puede escribir releases, el job `release` falla. El job `build` sigue completandose y deja los artefactos como GitHub Actions artifact.
+**5. Go concurrency/lifecycle - PASS con findings**
+- `HotkeyManager` usa `runtime.LockOSThread()` para el message loop.
+- `EngineerService` usa `sync.Mutex` para estado compartido.
+- `TelemetryBridge` cierra goroutine con `unsub()` + `wg.Wait()`.
+- Gap P1: goroutines de updater sin ctx.
+- Gap P2: hotkeys registradas desde thread incorrecto.
 
-### Conclusion
-R03 puede cerrarse a nivel de implementacion y documentacion. Los 4 hallazgos del smoke R03.G quedan resueltos: tag-guard en Discord, `release.yml` idempotente, documentacion de firma de codigo y de releases historicas, y politica explicita de "no release por commit". No quedan P0/P1/P2 abiertos en el alcance. Se recomienda un smoke real del primer tag `v*` post-R03 antes de promover a beta privada distribuida a mas testers.
+**6. Seguridad basica - PASS**
+- Sin secretos hardcodeados. Supabase URL/key via env vars.
+- `VANTARE_RELEASES_URL` validada con esquema http/https.
+- HTTP server en `127.0.0.1` (localhost only).
+- `findProfilePath` valida path traversal.
+- `DeleteProfile` pasa por `findProfilePath` primero.
+
+---
+
+### Cierre de los hallazgos beta-stabilization (2026-06-28)
+
+Tras aplicar los fixes minimos listados abajo, los checks vuelven a estar en verde y la beta queda buildable. Veredicto actualizado: **ACCEPT WITH P3** (los P3 heredados — TD-018 smoke updater real, TD-019 `-race`, TD-024 Discord workflows reales, TD-027 firma Authenticode, P2-1 hotkeys en thread incorrecto — siguen abiertos y documentados en `technical-debt.md`).
+
+- **P0 (Remotion en working tree)** cerrado: el trabajo paralelo de Remotion del usuario (`frontend/src/remotion/`, `frontend/remotion.config.ts`, scripts en `frontend/package.json`, deps `@remotion/*` y `remotion` en `pnpm-lock.yaml`) se stasheó como `pre-beta-remotion-work` (tracked + untracked, 13 archivos, stash@{0}). No se commitea nada de Remotion en esta tanda; restaurar con `git stash apply 'stash@{0}'` cuando se retome ese proyecto. Resultado: `tsc -b` y `pnpm build` vuelven a pasar.
+- **P1 (goroutines sin ctx)** cerrado: `cmd/vantare/main.go` propaga `ctx` de `signal.NotifyContext` a `UpdaterService.InstallVerifiedVersionCtx` y comprueba `ctx.Err()` antes de emitir errores tras cancelacion. Test de regresion `TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation` añadido en `internal/app/updater_service_test.go`.
+- **P2-2 (handler legacy sin checksum)** cerrado: `cmd/vantare/main.go` reemplaza el handler `updater:install` por un rechazo explicito; `internal/app/updater_service.go` elimina `InstallVersion`/`InstallVersionCtx` para que tampoco exista bypass desde el servicio Wails registrado. El unico camino de instalacion desde la UI es `updater:install:verified` -> `InstallVerifiedVersionCtx` -> `updater.InstallVerifiedCtx` (con verificacion SHA256 obligatoria).
+- **P2-3 (deps sin commit)** cerrado: tras el stash de Remotion, `frontend/package.json` y `pnpm-lock.yaml` vuelven a su estado commiteado. No quedan deps Remotion en la beta.
+
+### Checks re-ejecutados (2026-06-28, cierre)
+
+| Check | Resultado |
+|---|---|
+| `git status --short` | Limpio para los archivos Remotion stasheados. Modificados solo los 3 docs + Go touched (`cmd/vantare/main.go`, `internal/app/updater_service.go`, `internal/app/updater_service_test.go`). |
+| `git diff --check` | Limpio. |
+| `go test -count=1 ./cmd/... ./internal/... ./pkg/...` | PASS - todos los paquetes OK. |
+| `gofmt` sobre archivos Go modificados | OK (sin diferencias). |
+| `pnpm --dir frontend test` | Reportado en resumen final del worker. |
+| `pnpm --dir frontend exec tsc -b` | Reportado en resumen final del worker. |
+| `pnpm --dir frontend lint` | Reportado en resumen final del worker. |
+| `pnpm --dir frontend build` | Reportado en resumen final del worker. |
+| `wails3 task release:clean` / `release:artifacts` / `release:verify` | Reportado en resumen final del worker. |
 
 ---
 
 ## Historico
+
+### R03.H - Cierre de Release 03 tras smoke + decision firma de codigo (2026-06-28, review final)
+**Veredicto:** [ACCEPT WITH P3](#review-actual). P0/P1/P2 cerrados; P3 documentados. Sustituida por la review de Beta Open Readiness (ver `## Review actual`).
 
 ### R03.E - Discord release notification hardening (2026-06-28, review final)
 **Veredicto:** [ACCEPT WITH P3](#review-actual). P0/P1/P2 cerrados; P3-1 (idempotencia limitada a re-runs), P3-2 (dependencia de `gh` CLI), P3-3 (validacion real de webhooks pendiente) y P3-4 (coherencia de roadmap) documentados. Sustituida por la review de R03.H (ver `## Review actual`).
@@ -131,11 +267,5 @@ R03 puede cerrarse a nivel de implementacion y documentacion. Los 4 hallazgos de
 ### R03.D - Updater runtime hardening (2026-06-28, review final)
 **Veredicto:** ACCEPT WITH P3. P1-1, P2-1, P2-2 y P2-3 corregidos. Sin P0/P1/P2 abiertos en el alcance R03.D-updater. Los P2/P3 heredados de UX/portable zip se mantuvieron fuera de alcance para R03.E/F. Sustituido por la review de R03.E (ver `## Review actual`).
 
-### R03.D - Updater runtime hardening (2026-06-28, P1/P2 de segunda pasada abiertos)
-**Veredicto:** segunda revision del runtime del updater encontro P1-1 (startup check sin cancelar HTTP), P2-1 (URL sin validar esquema), P2-2 (race en settings) y P2-3 (veredicto documental incoherente). Sustituida por la review final del 2026-06-28 (ver `## Review actual`), que cierra P1-1, P2-1, P2-2 y P2-3. Los P2/P3 heredados de UX/portable zip se mantuvieron fuera de alcance para R03.E/F.
-
-### R03.D - Updater runtime hardening (2026-06-27, P1 activos)
-**Veredicto:** review inicial con P1 activos (URL hardcodeada, goroutine sin context, sin cache/rate-limit, checksum no obligatorio). Resuelto en el cierre del worker senior Go/updater/runtime; los P1 fueron subsumidos en los P1/P2 de la segunda pasada (2026-06-28).
-
 ### R03.C - GitHub Actions release build (2026-06-27)
-**Veredicto:** [ACCEPT WITH P3](#review-actual). P2-1 (gate de tests ausente) corregido el 2026-06-27 anadiendo 4 steps de gate al job `build` antes de `Build release artifacts`: `go test ./...`, `pnpm install`, `pnpm test`, `pnpm lint`. Quedan tres P3 de robustez no bloqueantes (P3-1 release idempotente, P3-2 glob amplio en `gh release create`, P3-3 verificacion de version NSIS, P3-4 nota doc de `SHA256SUMS.txt`).
+**Veredicto:** [ACCEPT WITH P3](#review-actual). P2-1 (gate de tests ausente) corregido el 2026-06-27 anadiendo 4 steps de gate al job `build` antes de `Build release artifacts`: `go test ./...`, `pnpm install`, `pnpm test`, `pnpm lint`. Quedan tres P3 de robustez no bloqueantes.

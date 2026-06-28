@@ -173,6 +173,32 @@ Solucion:
 - `WidgetRenderer` propaga un contexto interno runtime `__previewFillHost` a los widgets; estos envuelven el contenido (filas + root) cuando es `false`.
 - Los overlays runtime y `LayoutStudio` siguen usando `position.w/h` porque `__previewFillHost` no llega fuera de `WidgetRenderer`.
 
+### 9. Overlay desktop shrink-wrap con origen cero
+
+Sintoma:
+
+- Al abrir el overlay desktop desde la app, los widgets aparecian dentro de una caja transparente pequena, recortada o desplazada sobre el Hub.
+- Visualmente parecia que el overlay ya no estaba a pantalla completa.
+
+Causa:
+
+- El refactor del modo de edicion in-place hizo que la factoria Wails aplicara `window.Manager.ApplyProfile(profile, false)` tambien al overlay desktop de carrera.
+- `ModeRacing` pasaba por el camino de shrink-wrap de `window.Manager`.
+- El frontend recibia `layoutOrigin={0,0}`, por lo que posiciones absolutas de perfil 1920x1080 se renderizaban dentro de una ventana shrink-wrap.
+
+Solucion:
+
+- El runtime desktop Wails en `ModeRacing` y `ModeEdit` debe ser fullscreen.
+- `ModeRacing` es fullscreen + click-through.
+- `ModeEdit` es fullscreen + interactivo.
+- `layoutOrigin` debe ser `{0,0}` en ambos modos desktop fullscreen.
+- `applyShrinkWrap` no debe usarse en el camino desktop racing/edit.
+
+Regla nueva:
+
+- No reutilizar logica de shrink-wrap para corregir o simplificar el overlay desktop. Shrink-wrap solo es valido si la superficie tambien propaga al frontend el origen real calculado.
+- Cualquier cambio en `internal/window/manager.go`, `ProfileService.EmitLoaded`, `OverlayController` o la factoria Wails debe comprobar que racing/edit siguen fullscreen.
+
 ## Reglas Para Futuros Workers
 
 - No corregir previews con offsets magicos (`translateX`, padding arbitrario, `center 40%`, etc.).
@@ -191,6 +217,7 @@ Solucion:
 - En compacto, el tamano visual puede ser intrinseco.
 - En fill, el alto visual respeta `position.h`; el ancho es intrinseco en `WidgetStudio`.
 - `__previewFillHost` es contexto runtime interno de `WidgetRenderer`; no persistirlo en schema ni variantes.
+- En el overlay desktop Wails, `ModeRacing` y `ModeEdit` son fullscreen con `layoutOrigin={0,0}`. No aplicar shrink-wrap ahi.
 
 ## Tests Que Protegen Este Flujo
 

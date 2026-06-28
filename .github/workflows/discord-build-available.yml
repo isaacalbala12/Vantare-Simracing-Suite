@@ -101,13 +101,20 @@ jobs:
                   sys.exit(1)
 
               if not download_url:
-                  download_url = installer_asset.get("browserDownloadUrl")
+                  download_url = installer_asset.get("browserDownloadUrl") or installer_asset.get("url")
               if not download_url:
                   print(f"Could not determine download URL for {installer_name}", file=sys.stderr)
+                  sys.exit(1)
+              expected_download_prefix = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{repo}/releases/download/{release_tag}/"
+              if not download_url.startswith(expected_download_prefix):
+                  print(f"Resolved download URL for {installer_name} is not a GitHub release download URL", file=sys.stderr)
                   sys.exit(1)
 
               if not sha256:
                   checksum_url = checksum_asset.get("browserDownloadUrl") or checksum_asset.get("url")
+                  if not checksum_url.startswith(expected_download_prefix):
+                      print(f"Resolved checksum URL for {checksum_name} is not a GitHub release download URL", file=sys.stderr)
+                      sys.exit(1)
                   try:
                       with urllib.request.urlopen(checksum_url, timeout=30) as resp:
                           checksum_content = resp.read().decode("utf-8").strip()

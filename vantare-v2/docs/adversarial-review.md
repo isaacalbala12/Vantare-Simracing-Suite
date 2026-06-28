@@ -1,3 +1,74 @@
+# Review adversarial actual: Perfil activo de overlay
+
+**Fecha:** 2026-06-28
+**Modo:** review + fix acotado del orquestador.
+**Alcance revisado:** seleccion de perfil activo para hotkeys y boton "Abrir overlay".
+
+---
+
+## Veredicto
+
+**ACCEPT WITH P3** tras correccion acotada.
+
+El worker implemento el flujo principal, pero la review detecto un bug funcional en el contrato `id` vs `file`: el frontend emitia `{ id, file }`, `readProfileTarget` priorizaba `file`, y `HubService.SetActiveProfile` persistia ese filename como `activeOverlayProfileId`. La UI compara contra `profile.id`, por lo que el badge `Activo` y el boton global `Abrir overlay` podian no aparecer tras activar un perfil.
+
+Fix aplicado: `HubService.SetActiveProfile(idOrFile)` acepta ID o filename, carga el perfil y persiste/emite siempre el `profile.ID` canonico. Se anadio regresion `TestHubServiceSetActiveProfileWithFilePersistsCanonicalID`.
+
+Tambien se retiro del diff funcional un cambio accidental en `configs/example-racing.json`; ese perfil no pertenece al alcance de la feature.
+
+---
+
+## Checks ejecutados
+
+| Check | Resultado |
+| --- | --- |
+| `go test -count=1 ./internal/app/... ./cmd/vantare/...` | OK |
+| `go test -count=1 ./...` | OK |
+| `pnpm --dir frontend test -- OwnProfilesView OverlaysStudioPage LayoutStudio SettingsPage` | 40/40 OK |
+| `pnpm --dir frontend test` | 590/590 OK |
+| `pnpm --dir frontend exec tsc -b` | OK |
+| `pnpm --dir frontend build` | OK |
+| `pnpm --dir frontend lint` | OK, warning conocido de `.eslintignore` |
+| `git diff --check` | OK |
+
+Nota: Vitest sigue imprimiendo logs `ECONNREFUSED :3000` despues del resumen con exit code 0. No bloquea, pero conviene registrarlo como deuda si se mantiene.
+
+---
+
+## Findings
+
+### P0
+
+Ninguno abierto.
+
+### P1
+
+**P1-1: `activeOverlayProfileId` podia persistir filename en vez de ID canonico — CORREGIDO.**
+
+Evidencia previa:
+- `OverlaysStudioPage` emitia `hub:set-active` con `{ id, file }`.
+- `readProfileTarget` prioriza `file` para preservar el flujo legacy de `overlay:start`.
+- `SetActiveProfile` persistia el valor recibido.
+- `OwnProfilesView` usa `profile.id === activeProfileId`.
+
+Fix:
+- `SetActiveProfile` carga el perfil y persiste/emite `profile.ID`.
+- Test de regresion con entrada `custom-alpha.json` esperando persistencia `custom-alpha`.
+
+### P2
+
+Ninguno abierto en el alcance.
+
+### P3
+
+- El test `TestHubServiceSetActiveProfileStopsRunningOverlay` conserva un nombre confuso: el servicio no auto-detiene overlay; el stop lo hace `cmd/vantare/main.go` antes de activar. No bloquea porque el runtime real queda cubierto por el handler, pero conviene renombrarlo o reforzarlo en limpieza futura.
+- `settings:save` sigue guardando el objeto completo recibido desde frontend. Si una pantalla antigua enviase settings sin `activeOverlayProfileId`, podria limpiar el valor. El flujo actual de `SettingsPage` carga settings antes de guardar, por lo que no bloquea beta.
+- Queda pendiente prueba manual Wails real: activar perfil, cerrar/abrir app, comprobar badge `Activo`, `Ctrl+Shift+V` y `Ctrl+Shift+E` sobre el perfil activo.
+
+---
+
+## Historico
+
 # Review adversarial: Overlay edit mode in-place por hotkey
 
 **Fecha:** 2026-06-28

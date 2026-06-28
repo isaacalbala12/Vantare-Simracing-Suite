@@ -10,6 +10,7 @@ type LayoutStudioProps = {
   dirty: boolean;
   saveState: SaveState;
   overlayRunning: boolean;
+  isActiveProfile: boolean;
   onStartOverlay: () => void;
   onStopOverlay: () => void;
   onSelectWidget: (id: string) => void;
@@ -25,6 +26,7 @@ export function LayoutStudio({
   dirty,
   saveState,
   overlayRunning,
+  isActiveProfile,
   onStartOverlay,
   onStopOverlay,
   onSelectWidget,
@@ -37,6 +39,11 @@ export function LayoutStudio({
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
+      {!isActiveProfile && (
+        <div className="mb-3 rounded-lg border border-yellow-900/30 bg-yellow-950/20 px-4 py-2 text-xs text-yellow-300">
+          Este perfil no es el activo. Los atajos globales y "Abrir overlay" usarán el perfil activo.
+        </div>
+      )}
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <button

@@ -176,6 +176,23 @@ describe('SettingsPage', () => {
     expect(inputAfter!.value).not.toContain('profile=default-racing');
   });
 
+  it('uses activeOverlayProfileId from settings for OBS URL when available', () => {
+    render(<SettingsPage />);
+
+    // Dispatch settings with activeOverlayProfileId
+    dispatch('settings', {
+      deltaMode: 'self',
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
+      activeOverlayProfileId: 'custom-from-settings',
+    });
+
+    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
+    const input = inputs.find((i) => i.readOnly || i.value.includes('/overlay'));
+    expect(input).toBeDefined();
+    expect(input!.value).toContain('custom-from-settings');
+  });
+
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
     expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();

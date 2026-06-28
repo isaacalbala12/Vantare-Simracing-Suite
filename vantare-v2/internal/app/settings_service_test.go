@@ -200,3 +200,55 @@ func TestSettingsServiceMergePersistedWithDefaults(t *testing.T) {
 		t.Errorf("expected default toggleOverlay, got %q", s.Hotkeys["toggleOverlay"])
 	}
 }
+
+func TestDefaultAppSettingsHasEmptyActiveOverlayProfileID(t *testing.T) {
+	s := app.DefaultAppSettings()
+	if s.ActiveOverlayProfileID != "" {
+		t.Errorf("expected empty ActiveOverlayProfileID, got %q", s.ActiveOverlayProfileID)
+	}
+}
+
+func TestSettingsServiceLoadSaveActiveOverlayProfileID(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+
+	emitter := &spyEmitter{}
+	svc := app.NewSettingsService(path, emitter)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	custom := app.DefaultAppSettings()
+	custom.ActiveOverlayProfileID = "custom-my-profile"
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	svc2 := app.NewSettingsService(path, emitter)
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("Load after save: %v", err)
+	}
+	if svc2.Settings().ActiveOverlayProfileID != "custom-my-profile" {
+		t.Errorf("expected ActiveOverlayProfileID=custom-my-profile, got %q", svc2.Settings().ActiveOverlayProfileID)
+	}
+}
+
+func TestSettingsServiceMergeKeepsActiveOverlayProfileID(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+
+	partial := `{"deltaMode":"self","cpuSampling":true,"activeOverlayProfileId":"custom-saved"}`
+	if err := os.WriteFile(path, []byte(partial), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	emitter := &spyEmitter{}
+	svc := app.NewSettingsService(path, emitter)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if svc.Settings().ActiveOverlayProfileID != "custom-saved" {
+		t.Errorf("expected ActiveOverlayProfileID=custom-saved, got %q", svc.Settings().ActiveOverlayProfileID)
+	}
+}

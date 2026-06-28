@@ -10,9 +10,10 @@ import (
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
-	DeltaMode   string            `json:"deltaMode"`
-	CpuSampling bool              `json:"cpuSampling"`
-	Hotkeys     map[string]string `json:"hotkeys"`
+	DeltaMode              string            `json:"deltaMode"`
+	CpuSampling            bool              `json:"cpuSampling"`
+	Hotkeys                map[string]string `json:"hotkeys"`
+	ActiveOverlayProfileID string            `json:"activeOverlayProfileId,omitempty"`
 }
 
 // DefaultAppSettings returns settings with sensible defaults.
@@ -81,6 +82,7 @@ func (s *SettingsService) Load() error {
 			merged.Hotkeys[k] = v
 		}
 	}
+	merged.ActiveOverlayProfileID = loaded.ActiveOverlayProfileID
 	s.settings = merged
 	return nil
 }

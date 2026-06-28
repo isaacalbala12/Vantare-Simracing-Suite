@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { OverlaysStudioPage } from "./OverlaysStudioPage";
 
-const listeners = new Map<string, (event: { data: unknown }) => void>();
+const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
 
 afterEach(() => {
   cleanup();
@@ -12,12 +12,20 @@ afterEach(() => {
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: vi.fn((name: string, cb: (event: { data: unknown }) => void) => {
-      listeners.set(name, cb);
+      const existing = listeners.get(name) ?? [];
+      existing.push(cb);
+      listeners.set(name, existing);
       return vi.fn();
     }),
     Emit: vi.fn(),
   },
 }));
+
+function dispatch(name: string, data: unknown) {
+  for (const handler of listeners.get(name) ?? []) {
+    handler({ data });
+  }
+}
 
 const loadedProfile = {
   id: "default-racing",
@@ -43,12 +51,10 @@ describe("OverlaysStudioPage", () => {
   it("renders the Overlays Studio panel menu after profiles load", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 3 },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 3 },
+      ],
     });
 
     expect(await screen.findByRole("heading", { name: "Overlays Studio" })).toBeTruthy();
@@ -62,26 +68,24 @@ describe("OverlaysStudioPage", () => {
   it("opens Widget Studio after profiles and active profile load", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+      ],
     });
 
-    listeners.get("profile:loaded")?.({
-      data: {
-        profile: {
-          id: "default-racing",
-          name: "Default Racing",
-          displayMode: "racing",
-          monitorIndex: 0,
-          widgets: [
-            { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
-            { id: "relative", type: "relative", enabled: false, updateHz: 15, position: { x: 40, y: 600, w: 320, h: 280 } },
-          ],
-        },
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
+
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-racing",
+        name: "Default Racing",
+        displayMode: "racing",
+        monitorIndex: 0,
+        widgets: [
+          { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
+          { id: "relative", type: "relative", enabled: false, updateHz: 15, position: { x: 40, y: 600, w: 320, h: 280 } },
+        ],
       },
     });
 
@@ -94,26 +98,24 @@ describe("OverlaysStudioPage", () => {
   it("shows loading while switching from profile A to profile B in layout studio", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 1 },
-          { id: "profile-b", file: "profile-b.json", name: "Profile B", displayMode: "racing", widgets: 2 },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 1 },
+        { id: "profile-b", file: "profile-b.json", name: "Profile B", displayMode: "racing", widgets: 2 },
+      ],
     });
 
-    listeners.get("profile:loaded")?.({
-      data: {
-        profile: {
-          id: "default-racing",
-          name: "Default Racing",
-          displayMode: "racing",
-          monitorIndex: 0,
-          widgets: [
-            { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
-          ],
-        },
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
+
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-racing",
+        name: "Default Racing",
+        displayMode: "racing",
+        monitorIndex: 0,
+        widgets: [
+          { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
+        ],
       },
     });
 
@@ -127,48 +129,45 @@ describe("OverlaysStudioPage", () => {
     expect(screen.queryByText("Perfiles Específicos")).toBeNull();
     expect(screen.getByText("Cargando perfil...")).toBeTruthy();
 
-    listeners.get("profile:loaded")?.({
-      data: {
-        profile: {
-          id: "profile-b",
-          name: "Profile B",
-          displayMode: "racing",
-          monitorIndex: 0,
-          widgets: [
-            { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 100, y: 100, w: 200, h: 50 } },
-            { id: "relative", type: "relative", enabled: true, updateHz: 15, position: { x: 40, y: 600, w: 320, h: 280 } },
-          ],
-        },
+    dispatch("profile:loaded", {
+      profile: {
+        id: "profile-b",
+        name: "Profile B",
+        displayMode: "racing",
+        monitorIndex: 0,
+        widgets: [
+          { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 100, y: 100, w: 200, h: 50 } },
+          { id: "relative", type: "relative", enabled: true, updateHz: 15, position: { x: 40, y: 600, w: 320, h: 280 } },
+        ],
       },
     });
 
     expect(await screen.findByText("Perfiles Específicos")).toBeTruthy();
     expect(screen.getByText("POSICIÓN Y TAMAÑO")).toBeTruthy();
     expect(screen.queryByText("Cargando perfil...")).toBeNull();
+    expect(screen.getByText(/Este perfil no es el activo/)).toBeTruthy();
   });
 
   it("opens own profiles, recommended profiles, and community subpages", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+      ],
     });
 
-    listeners.get("profile:loaded")?.({
-      data: {
-        profile: {
-          id: "default-racing",
-          name: "Default Racing",
-          displayMode: "racing",
-          monitorIndex: 0,
-          widgets: [
-            { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
-          ],
-        },
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
+
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-racing",
+        name: "Default Racing",
+        displayMode: "racing",
+        monitorIndex: 0,
+        widgets: [
+          { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
+        ],
       },
     });
 
@@ -193,12 +192,10 @@ describe("OverlaysStudioPage", () => {
 
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+      ],
     });
 
     fireEvent.click(await screen.findByRole("button", { name: /Abrir Recomendados por Vantare/i }));
@@ -222,85 +219,80 @@ describe("OverlaysStudioPage", () => {
     window.prompt = originalPrompt;
   });
 
-  it("starts overlay from own profiles using the selected profile target", async () => {
+  it("sets active profile and emits hub:set-active from own profiles", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          {
-            id: "default-racing",
-            file: "example-racing.json",
-            name: "Default Racing",
-            displayMode: "racing",
-            widgets: 1,
-            profile: loadedProfile,
-          },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        {
+          id: "default-racing",
+          file: "example-racing.json",
+          name: "Default Racing",
+          displayMode: "racing",
+          widgets: 1,
+          profile: loadedProfile,
+        },
+      ],
     });
 
     fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir overlay para Default Racing/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Activar Default Racing/i }));
 
-    expect(Events.Emit).toHaveBeenCalledWith("overlay:start", {
+    expect(Events.Emit).toHaveBeenCalledWith("hub:set-active", {
       id: "default-racing",
       file: "example-racing.json",
     });
   });
 
-  it("stops overlay from own profiles when selected profile is running", async () => {
+  it("opens active overlay from own profiles header button", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          {
-            id: "default-racing",
-            file: "example-racing.json",
-            name: "Default Racing",
-            displayMode: "racing",
-            widgets: 1,
-            profile: loadedProfile,
-          },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        {
+          id: "default-racing",
+          file: "example-racing.json",
+          name: "Default Racing",
+          displayMode: "racing",
+          widgets: 1,
+          profile: loadedProfile,
+        },
+      ],
     });
 
-    listeners.get("overlay:status")?.({
-      data: { running: true, profileId: "default-racing", mode: "racing" },
-    });
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
 
     fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /Detener overlay de Default Racing/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir overlay" }));
 
-    expect(Events.Emit).toHaveBeenCalledWith("overlay:stop");
+    expect(Events.Emit).toHaveBeenCalledWith("overlay:start-active");
   });
 
-  it("starts and stops overlay from layout studio for the loaded profile", async () => {
+  it("starts and stops overlay from layout studio for the active profile", async () => {
     const { container } = render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          {
-            id: "default-racing",
-            file: "example-racing.json",
-            name: "Default Racing",
-            displayMode: "racing",
-            widgets: 1,
-            profile: loadedProfile,
-          },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        {
+          id: "default-racing",
+          file: "example-racing.json",
+          name: "Default Racing",
+          displayMode: "racing",
+          widgets: 1,
+          profile: loadedProfile,
+        },
+      ],
     });
 
-    listeners.get("profile:loaded")?.({ data: { profile: loadedProfile } });
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
+
+    dispatch("profile:loaded", { profile: loadedProfile });
 
     fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /Editar Default Racing/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Editar Default Racing/i }));
 
-    // Target the specific header Abrir overlay button in LayoutStudio wrapper
+    await screen.findByText("Perfiles Específicos");
+
     const startBtn = container.querySelector(".flex.items-center.gap-3 button.btn-primary") as HTMLButtonElement;
     fireEvent.click(startBtn);
 
@@ -309,9 +301,7 @@ describe("OverlaysStudioPage", () => {
       file: "example-racing.json",
     });
 
-    listeners.get("overlay:status")?.({
-      data: { running: true, profileId: "default-racing", mode: "racing" },
-    });
+    dispatch("overlay:status", { running: true, profileId: "default-racing", mode: "racing" });
 
     const stopBtn = await screen.findByRole("button", { name: "Detener overlay" });
     fireEvent.click(stopBtn);
@@ -322,58 +312,50 @@ describe("OverlaysStudioPage", () => {
   it("no autosavea en modo layout tras modificar/añadir widget, y requiere guardado explícito", async () => {
     render(<OverlaysStudioPage />);
 
-    listeners.get("hub:profiles")?.({
-      data: {
-        profiles: [
-          {
-            id: "default-racing",
-            file: "example-racing.json",
-            name: "Default Racing",
-            displayMode: "racing",
-            widgets: 1,
-            profile: loadedProfile,
-          },
-        ],
-      },
+    dispatch("hub:profiles", {
+      profiles: [
+        {
+          id: "default-racing",
+          file: "example-racing.json",
+          name: "Default Racing",
+          displayMode: "racing",
+          widgets: 1,
+          profile: loadedProfile,
+        },
+      ],
     });
 
-    listeners.get("profile:loaded")?.({ data: { profile: loadedProfile } });
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
+
+    dispatch("profile:loaded", { profile: loadedProfile });
 
     fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /Editar Default Racing/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Editar Default Racing/i }));
 
-    // El lienzo y controles de LayoutStudio deben estar en pantalla
     expect(await screen.findByText("Perfiles Específicos")).toBeTruthy();
 
-    // Habilitar fake timers después de resolver todas las búsquedas asíncronas del DOM
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
-    // Simular adición de un widget (pedals) a través de la UI
     fireEvent.click(screen.getByTestId("studio-show-add-widget"));
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     fireEvent.change(select, { target: { value: "pedals" } });
 
-    // Limpiar mocks antes de la adición para verificar llamadas limpias
     vi.clearAllMocks();
 
     fireEvent.click(screen.getByTestId("studio-confirm-add-widget"));
 
-    // Avanzar timers 1200ms (el debounce de autosave es de 800ms)
     await act(async () => {
       vi.advanceTimersByTime(1200);
     });
 
-    // 1. Confirmar que NO se ha llamado a layout:save automáticamente
     const saveCalls = (Events.Emit as ReturnType<typeof vi.fn>).mock.calls.filter(
       (call) => call[0] === "layout:save"
     );
     expect(saveCalls.length).toBe(0);
 
-    // 2. Hacer clic en el botón "Guardar" de la cabecera
     const saveBtn = screen.getByRole("button", { name: "Guardar" });
     fireEvent.click(saveBtn);
 
-    // Confirmar que SÍ se ha llamado a layout:save de forma explícita
     expect(Events.Emit).toHaveBeenCalledWith("layout:save", expect.objectContaining({
       widgets: expect.arrayContaining([
         expect.objectContaining({ type: "delta" }),

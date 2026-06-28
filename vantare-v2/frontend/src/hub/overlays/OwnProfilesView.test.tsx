@@ -29,19 +29,22 @@ const profiles: ProfileEntry[] = [
   },
 ];
 
+const defaultProps = {
+  profiles,
+  overlayStatus: null as OverlayStatus | null,
+  activeProfileId: null as string | null,
+  onStartOverlay: vi.fn(),
+  onStopOverlay: vi.fn(),
+  onOpenProfile: vi.fn(),
+  onCreateProfile: vi.fn(),
+  onSetActiveProfile: vi.fn(),
+  onOpenActiveOverlay: vi.fn(),
+  onBack: vi.fn(),
+};
+
 describe("OwnProfilesView", () => {
   it("shows own profiles as cards with a real preview", () => {
-    render(
-      <OwnProfilesView
-        profiles={profiles}
-        overlayStatus={null}
-        onStartOverlay={vi.fn()}
-        onStopOverlay={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onBack={vi.fn()}
-      />,
-    );
+    render(<OwnProfilesView {...defaultProps} />);
 
     expect(screen.getByRole("heading", { name: "Mis perfiles" })).toBeTruthy();
     expect(screen.getByText("Default Racing")).toBeTruthy();
@@ -60,17 +63,7 @@ describe("OwnProfilesView", () => {
       },
     ];
 
-    render(
-      <OwnProfilesView
-        profiles={withoutProfile}
-        overlayStatus={null}
-        onStartOverlay={vi.fn()}
-        onStopOverlay={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onBack={vi.fn()}
-      />,
-    );
+    render(<OwnProfilesView {...defaultProps} profiles={withoutProfile} />);
 
     expect(screen.getByText("Sin Preview")).toBeTruthy();
     expect(screen.getByText("Preview no disponible")).toBeTruthy();
@@ -94,17 +87,7 @@ describe("OwnProfilesView", () => {
       },
     ];
 
-    render(
-      <OwnProfilesView
-        profiles={malformedProfile}
-        overlayStatus={null}
-        onStartOverlay={vi.fn()}
-        onStopOverlay={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onBack={vi.fn()}
-      />,
-    );
+    render(<OwnProfilesView {...defaultProps} profiles={malformedProfile} />);
 
     expect(screen.getByText("Preview no disponible")).toBeTruthy();
     expect(screen.queryByTestId("profile-preview")).toBeNull();
@@ -117,10 +100,7 @@ describe("OwnProfilesView", () => {
 
     render(
       <OwnProfilesView
-        profiles={profiles}
-        overlayStatus={null}
-        onStartOverlay={vi.fn()}
-        onStopOverlay={vi.fn()}
+        {...defaultProps}
         onOpenProfile={onOpenProfile}
         onCreateProfile={onCreateProfile}
         onBack={onBack}
@@ -136,18 +116,34 @@ describe("OwnProfilesView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("starts the selected profile overlay from a profile card", () => {
+  it("shows Activar button for inactive profiles and calls onSetActiveProfile", () => {
+    const onSetActiveProfile = vi.fn();
+
+    render(<OwnProfilesView {...defaultProps} onSetActiveProfile={onSetActiveProfile} />);
+
+    const activateBtn = screen.getByRole("button", { name: /Activar Default Racing/i });
+    expect(activateBtn).toBeTruthy();
+    fireEvent.click(activateBtn);
+
+    expect(onSetActiveProfile).toHaveBeenCalledWith(profiles[0]);
+  });
+
+  it("shows Activo badge and Abrir overlay for the active profile", () => {
+    render(<OwnProfilesView {...defaultProps} activeProfileId="default-racing" />);
+
+    expect(screen.getByText("Activo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Abrir overlay para Default Racing/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Activar/i })).toBeNull();
+  });
+
+  it("starts the active profile overlay from a profile card", () => {
     const onStartOverlay = vi.fn();
 
     render(
       <OwnProfilesView
-        profiles={profiles}
-        overlayStatus={null}
+        {...defaultProps}
+        activeProfileId="default-racing"
         onStartOverlay={onStartOverlay}
-        onStopOverlay={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onBack={vi.fn()}
       />,
     );
 
@@ -156,7 +152,24 @@ describe("OwnProfilesView", () => {
     expect(onStartOverlay).toHaveBeenCalledWith(profiles[0]);
   });
 
-  it("stops the running profile overlay from a profile card", () => {
+  it("shows global Abrir overlay button in header when active profile exists", () => {
+    const onOpenActiveOverlay = vi.fn();
+
+    render(
+      <OwnProfilesView
+        {...defaultProps}
+        activeProfileId="default-racing"
+        onOpenActiveOverlay={onOpenActiveOverlay}
+      />,
+    );
+
+    const headerBtn = screen.getByRole("button", { name: "Abrir overlay" });
+    fireEvent.click(headerBtn);
+
+    expect(onOpenActiveOverlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops the running active profile overlay from a profile card", () => {
     const onStopOverlay = vi.fn();
     const overlayStatus: OverlayStatus = {
       running: true,
@@ -166,13 +179,10 @@ describe("OwnProfilesView", () => {
 
     render(
       <OwnProfilesView
-        profiles={profiles}
+        {...defaultProps}
+        activeProfileId="default-racing"
         overlayStatus={overlayStatus}
-        onStartOverlay={vi.fn()}
         onStopOverlay={onStopOverlay}
-        onOpenProfile={vi.fn()}
-        onCreateProfile={vi.fn()}
-        onBack={vi.fn()}
       />,
     );
 

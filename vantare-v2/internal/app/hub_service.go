@@ -102,6 +102,7 @@ type OverlayRuntime interface {
 type HubService struct {
 	profilesDir string
 	profileSvc  *ProfileService
+	settingsSvc *SettingsService
 	emitter     EventEmitter
 	overlay     OverlayRuntime
 }
@@ -114,6 +115,12 @@ func NewHubService(profilesDir string, profileSvc *ProfileService, emitter Event
 		emitter:     emitter,
 		overlay:     overlay,
 	}
+}
+
+// SetSettingsService attaches a settings service for active profile persistence.
+// Call after construction; nil-safe (no-op if svc is nil).
+func (s *HubService) SetSettingsService(svc *SettingsService) {
+	s.settingsSvc = svc
 }
 
 // ListProfiles returns all profile JSON files in the configs directory.
@@ -207,11 +214,29 @@ func (s *HubService) CreateProfile(name string) error {
 }
 
 // DeleteProfile removes a profile JSON file (by id or file basename).
+// If the deleted profile is the active overlay profile, the active setting is cleared.
 func (s *HubService) DeleteProfile(idOrFile string) error {
 	path, err := s.findProfilePath(idOrFile)
 	if err != nil {
 		return err
 	}
+
+	// Resolve the profile ID to check if it matches the active setting.
+	resolvedID := idOrFile
+	if s.settingsSvc != nil && s.settingsSvc.Settings().ActiveOverlayProfileID != "" {
+		// Load the profile to get its real ID (may differ from filename).
+		if p, loadErr := config.LoadFile(path); loadErr == nil && p.ID != "" {
+			resolvedID = p.ID
+		}
+		activeID := s.settingsSvc.Settings().ActiveOverlayProfileID
+		if activeID == idOrFile || activeID == resolvedID {
+			s.settingsSvc.Settings().ActiveOverlayProfileID = ""
+			if saveErr := s.settingsSvc.Save(s.settingsSvc.Settings()); saveErr != nil {
+				return fmt.Errorf("clearing active profile setting: %w", saveErr)
+			}
+		}
+	}
+
 	return os.Remove(path)
 }
 
@@ -223,6 +248,44 @@ func (s *HubService) ActivateProfile(idOrFile string) error {
 		return err
 	}
 	return s.profileSvc.LoadActiveProfile(path)
+}
+
+// ResolveProfilePath resolves an id or file basename to an absolute profile path.
+// Returns an error if the profile is not found.
+func (s *HubService) ResolveProfilePath(idOrFile string) (string, error) {
+	return s.findProfilePath(idOrFile)
+}
+
+// SetActiveProfile persists the given profile as the active overlay profile.
+// It accepts either a profile ID or file name, loads the profile into
+// ProfileService, persists the canonical profile ID in SettingsService, and
+// emits profile:loaded + hub:profile-activated events.
+func (s *HubService) SetActiveProfile(idOrFile string) error {
+	if idOrFile == "" {
+		return fmt.Errorf("profile id or file is required")
+	}
+	path, err := s.findProfilePath(idOrFile)
+	if err != nil {
+		return err
+	}
+	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
+		return fmt.Errorf("loading active profile: %w", err)
+	}
+	profile := s.profileSvc.GetProfile()
+	if profile == nil || profile.ID == "" {
+		return fmt.Errorf("loaded profile has no id")
+	}
+	if s.settingsSvc != nil {
+		s.settingsSvc.Settings().ActiveOverlayProfileID = profile.ID
+		if err := s.settingsSvc.Save(s.settingsSvc.Settings()); err != nil {
+			return fmt.Errorf("persisting active profile id: %w", err)
+		}
+	}
+	if s.emitter != nil {
+		s.profileSvc.EmitLoaded()
+		s.emitter.Emit("hub:profile-activated", map[string]any{"ok": true, "activeProfileId": profile.ID})
+	}
+	return nil
 }
 
 // StartOverlay loads the profile and creates a fresh runtime overlay window.

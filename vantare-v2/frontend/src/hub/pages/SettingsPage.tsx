@@ -55,6 +55,7 @@ export type AppSettings = {
   deltaMode: string;
   cpuSampling: boolean;
   hotkeys: Record<string, string>;
+  activeOverlayProfileId?: string;
 };
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -398,7 +399,7 @@ export function SettingsPage() {
             <h2 className="font-display font-semibold text-lg text-white mb-4">
               OBS Browser Source
             </h2>
-            <ObsSetup url={window.location.origin + '/overlay?profile=' + encodeURIComponent(activeProfileId ?? 'example-racing.json')} />
+            <ObsSetup url={window.location.origin + '/overlay?profile=' + encodeURIComponent(appSettings.activeOverlayProfileId || activeProfileId || 'example-racing.json')} />
           </div>
 
           {/* Soporte Técnico y Diagnósticos */}

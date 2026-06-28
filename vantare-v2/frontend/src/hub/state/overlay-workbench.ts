@@ -34,3 +34,7 @@ export function profileTarget(profile: ProfileEntry): ProfileTarget {
 export function isRunningProfile(profile: ProfileEntry, status: OverlayStatus | null): boolean {
   return Boolean(status?.running && status.profileId === profile.id);
 }
+
+export function isActiveProfile(profile: ProfileEntry, activeProfileId: string | null): boolean {
+  return activeProfileId !== null && profile.id === activeProfileId;
+}

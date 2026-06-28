@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHubServiceCreateAndList(t *testing.T) {
@@ -832,4 +832,135 @@ func TestHubServiceSetWidgetEnabled(t *testing.T) {
 	p := ps.GetProfile()
 	require.NotNil(t, p)
 	require.False(t, p.Widgets[0].Enabled)
+}
+
+func TestHubServiceSetActiveProfilePersistsAndLoads(t *testing.T) {
+	dir := t.TempDir()
+	settingsPath := filepath.Join(dir, "app-settings.json")
+
+	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	settingsSvc := app.NewSettingsService(settingsPath, nil)
+	require.NoError(t, settingsSvc.Load())
+
+	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
+	hubSvc.SetSettingsService(settingsSvc)
+
+	require.NoError(t, hubSvc.CreateProfile("Alpha"))
+
+	require.NoError(t, hubSvc.SetActiveProfile("custom-alpha"))
+
+	p := profileSvc.GetProfile()
+	require.NotNil(t, p)
+	require.Equal(t, "custom-alpha", p.ID)
+	require.Equal(t, "custom-alpha", settingsSvc.Settings().ActiveOverlayProfileID)
+
+	// Reload settings from disk to verify persistence.
+	settingsSvc2 := app.NewSettingsService(settingsPath, nil)
+	require.NoError(t, settingsSvc2.Load())
+	require.Equal(t, "custom-alpha", settingsSvc2.Settings().ActiveOverlayProfileID)
+}
+
+func TestHubServiceSetActiveProfileWithFilePersistsCanonicalID(t *testing.T) {
+	dir := t.TempDir()
+	settingsPath := filepath.Join(dir, "app-settings.json")
+
+	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	settingsSvc := app.NewSettingsService(settingsPath, nil)
+	require.NoError(t, settingsSvc.Load())
+
+	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
+	hubSvc.SetSettingsService(settingsSvc)
+
+	require.NoError(t, hubSvc.CreateProfile("Alpha"))
+
+	require.NoError(t, hubSvc.SetActiveProfile("custom-alpha.json"))
+
+	require.Equal(t, "custom-alpha", profileSvc.GetProfile().ID)
+	require.Equal(t, "custom-alpha", settingsSvc.Settings().ActiveOverlayProfileID)
+}
+
+func TestHubServiceSetActiveProfileInvalidIDErrors(t *testing.T) {
+	dir := t.TempDir()
+	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	require.NoError(t, settingsSvc.Load())
+
+	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
+	hubSvc.SetSettingsService(settingsSvc)
+
+	require.Error(t, hubSvc.SetActiveProfile(""))
+	require.Error(t, hubSvc.SetActiveProfile("nonexistent-profile"))
+	require.Empty(t, settingsSvc.Settings().ActiveOverlayProfileID)
+}
+
+func TestHubServiceSetActiveProfileStopsRunningOverlay(t *testing.T) {
+	dir := t.TempDir()
+	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	require.NoError(t, settingsSvc.Load())
+
+	runtime := &fakeOverlayRuntime{}
+	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+	hubSvc.SetSettingsService(settingsSvc)
+
+	require.NoError(t, hubSvc.CreateProfile("A"))
+	require.NoError(t, hubSvc.CreateProfile("B"))
+
+	// Start overlay on profile A.
+	_, err := hubSvc.StartOverlay("custom-a")
+	require.NoError(t, err)
+	require.Equal(t, 1, runtime.started)
+
+	// Activate B: does not auto-stop overlay (user must stop manually).
+	require.NoError(t, hubSvc.SetActiveProfile("custom-b"))
+	require.Equal(t, "custom-b", profileSvc.GetProfile().ID)
+}
+
+func TestHubServiceStartActiveOverlayUsesActiveProfile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "example-racing.json")
+	err := config.SaveFile(path, &config.ProfileConfig{
+		ID:          "default-racing",
+		Name:        "Default Racing",
+		DisplayMode: config.ModeRacing,
+		Widgets:     []config.WidgetConfig{{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 0, Y: 0, W: 100, H: 50}}},
+	})
+	require.NoError(t, err)
+
+	profileSvc := app.NewProfileService(path, nil, nil)
+	require.NoError(t, profileSvc.Load())
+
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	require.NoError(t, settingsSvc.Load())
+
+	runtime := &fakeOverlayRuntime{}
+	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+	hubSvc.SetSettingsService(settingsSvc)
+
+	// Set active profile and then start overlay.
+	settingsSvc.Settings().ActiveOverlayProfileID = "default-racing"
+	_ = settingsSvc.Save(settingsSvc.Settings())
+
+	status, err := hubSvc.StartActiveOverlay()
+	require.NoError(t, err)
+	require.True(t, status.Running)
+	require.Equal(t, 1, runtime.started)
+}
+
+func TestHubServiceDeleteActiveProfileClearsSettings(t *testing.T) {
+	dir := t.TempDir()
+	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	require.NoError(t, settingsSvc.Load())
+
+	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
+	hubSvc.SetSettingsService(settingsSvc)
+
+	require.NoError(t, hubSvc.CreateProfile("To Delete"))
+
+	require.NoError(t, hubSvc.SetActiveProfile("custom-to-delete"))
+	require.Equal(t, "custom-to-delete", settingsSvc.Settings().ActiveOverlayProfileID)
+
+	require.NoError(t, hubSvc.DeleteProfile("custom-to-delete"))
+	require.Empty(t, settingsSvc.Settings().ActiveOverlayProfileID)
 }

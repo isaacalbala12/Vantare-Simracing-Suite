@@ -467,3 +467,36 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Motivo para diferir: el helper es inofensivo y ahora delega en `LayoutOrigin`, que devuelve origen cero para racing/edit. No bloquea el stream ni el fix fullscreen.
 - Fix esperado: buscar consumidores reales; si no existen, eliminarlo. Si se mantiene para un futuro modo shrink-wrap, documentar el contrato y anadir test que diferencie fullscreen vs shrink-wrap.
 - Riesgo si se ignora: superficie de API interna confusa y propensa a maluso en futuros cambios de coordenadas.
+
+### TD-040 - Test de perfil activo con nombre contrario al contrato real
+
+- Severidad: P3
+- Area: app/testing
+- Origen: review perfil activo de overlay (2026-06-28)
+- Estado: abierto
+- Release objetivo: cleanup beta / R04
+- Motivo para diferir: no bloquea el flujo real; `cmd/vantare/main.go` detiene el overlay antes de activar otro perfil. El problema esta en el test `TestHubServiceSetActiveProfileStopsRunningOverlay`, cuyo nombre sugiere que `HubService.SetActiveProfile` detiene el overlay, pero el test y el servicio no hacen eso.
+- Fix esperado: renombrar el test para reflejar que `SetActiveProfile` solo carga/persiste el perfil, y anadir/extraer un test del handler `hub:set-active` si se quiere cubrir explicitamente el stop del runtime.
+- Riesgo si se ignora: futuros workers pueden creer que el stop vive en `HubService` y duplicar o romper responsabilidades.
+
+### TD-041 - `settings:save` puede limpiar `activeOverlayProfileId` si recibe settings legacy incompletos
+
+- Severidad: P3
+- Area: app/settings
+- Origen: review perfil activo de overlay (2026-06-28)
+- Estado: abierto
+- Release objetivo: cleanup beta / R04
+- Motivo para diferir: el flujo actual de `SettingsPage` hace `settings:get` antes de permitir guardados normales, por lo que conserva `activeOverlayProfileId`. El riesgo queda limitado a pantallas legacy o eventos manuales que envien un objeto settings incompleto.
+- Fix esperado: hacer que `SettingsService.Save` preserve `ActiveOverlayProfileID` cuando el payload no lo incluya explicitamente, o dividir los comandos de guardado por dominio (`settings:save-hotkeys`, `settings:save-delta`, etc.).
+- Riesgo si se ignora: una pantalla antigua podria borrar el perfil activo y hacer que las hotkeys vuelvan al perfil cargado/fallback.
+
+### TD-042 - Vitest imprime `ECONNREFUSED :3000` con exit code 0
+
+- Severidad: P3
+- Area: frontend/testing
+- Origen: checks de perfil activo de overlay (2026-06-28)
+- Estado: abierto
+- Release objetivo: cleanup beta / R04
+- Motivo para diferir: la suite pasa (`590/590`) y el proceso termina con exit code 0, pero los logs muestran varios `AggregateError ECONNREFUSED ::1/127.0.0.1:3000` despues del resumen.
+- Fix esperado: localizar el test/componente que intenta conectar con `localhost:3000` sin mock adecuado y sustituirlo por mock del transporte/runtime.
+- Riesgo si se ignora: ruido en CI y posibilidad de ocultar errores reales de red en futuras regresiones.

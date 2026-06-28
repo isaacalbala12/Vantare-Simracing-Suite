@@ -365,6 +365,20 @@ func main() {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
 
+	// Wire settings service into hub service for active profile persistence.
+	hubSvc.SetSettingsService(settingsSvc)
+
+	// Load active profile from settings if present.
+	if activeID := settingsSvc.Settings().ActiveOverlayProfileID; activeID != "" {
+		if path, err := hubSvc.ResolveProfilePath(activeID); err == nil {
+			if err := profileSvc.LoadActiveProfile(path); err != nil {
+				log.Printf("warning: could not load active profile %s: %v", activeID, err)
+			}
+		} else {
+			log.Printf("warning: active profile %s not found: %v", activeID, err)
+		}
+	}
+
 	mode := delta.ReferenceMode(settingsSvc.Settings().DeltaMode)
 	if mode == "" {
 		mode = delta.ModeSelf
@@ -689,6 +703,21 @@ func main() {
 		emitter.Emit("hub:profile-activated", map[string]any{"ok": true})
 	})
 
+	wailsApp.Event.On("hub:set-active", func(event *application.CustomEvent) {
+		target := readProfileTarget(event)
+		// Stop overlay if running (no hot-swap).
+		if overlayRunning.Load() {
+			hubSvc.StopOverlay()
+			resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+			overlayRunning.Store(false)
+		}
+		if err := hubSvc.SetActiveProfile(target); err != nil {
+			log.Printf("hub:set-active error: %v", err)
+			emitHubError(err.Error())
+			return
+		}
+	})
+
 	wailsApp.Event.On("overlay:start", func(event *application.CustomEvent) {
 		target := readProfileTarget(event)
 		if err := vapp.EnsureLiveTelemetry(); err != nil {
@@ -719,6 +748,25 @@ func main() {
 		hubSvc.StopOverlay()
 		resetOverlayDisplayMode(overlayController, profileSvc, emitter)
 		overlayRunning.Store(false)
+	})
+
+	wailsApp.Event.On("overlay:start-active", func(event *application.CustomEvent) {
+		if err := vapp.EnsureLiveTelemetry(); err != nil {
+			log.Printf("overlay:start-active live telemetry unavailable, using fallback: %v", err)
+		}
+		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+
+		status, err := hubSvc.StartActiveOverlay()
+		if err != nil {
+			log.Printf("overlay:start-active error: %v", err)
+			emitHubError(err.Error())
+			if !status.Running {
+				overlayRunning.Store(false)
+			}
+			return
+		}
+		overlayRunning.Store(status.Running)
+		resetOverlayDisplayMode(overlayController, profileSvc, emitter)
 	})
 
 	wailsApp.Event.On("overlay:toggle-edit-mode", func(event *application.CustomEvent) {

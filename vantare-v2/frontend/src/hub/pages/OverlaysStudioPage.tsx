@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { StudioHome } from "../overlays/StudioHome";
 import { WidgetStudio } from "../overlays/WidgetStudio";
@@ -9,6 +9,7 @@ import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
 import { useOverlayStudioState } from "../overlays/useOverlayStudioState";
 import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile } from "../overlays/recommended-profiles";
 import { isRunningProfile, profileTarget, type OverlayStatus, type ProfileEntry } from "../state/overlay-workbench";
+import type { AppSettings } from "./SettingsPage";
 
 type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout";
 
@@ -18,13 +19,48 @@ export function OverlaysStudioPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [layoutTarget, setLayoutTarget] = useState<string | null>(null);
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const activeProfileIdRef = useRef<string | null>(null);
+
+  function updateActiveProfileId(id: string | null) {
+    activeProfileIdRef.current = id;
+    setActiveProfileId(id);
+  }
 
   useEffect(() => {
     const unsubOverlayStatus = Events.On("overlay:status", (event: { data: unknown }) => {
       setOverlayStatus(event.data as OverlayStatus);
     });
+
+    const unsubSettings = Events.On("settings", (event: { data: AppSettings }) => {
+      if (event.data?.activeOverlayProfileId) {
+        updateActiveProfileId(event.data.activeOverlayProfileId);
+      }
+    });
+
+    const unsubProfileActivated = Events.On("hub:profile-activated", (event: { data?: { activeProfileId?: string } }) => {
+      if (event.data?.activeProfileId) {
+        updateActiveProfileId(event.data.activeProfileId);
+      }
+    });
+
+    // Fallback: if no activeOverlayProfileId in settings yet, use profile:loaded
+    const unsubProfile = Events.On(
+      "profile:loaded",
+      (event: { data: { profile?: { id: string } } }) => {
+        if (event.data?.profile?.id && activeProfileIdRef.current === null) {
+          updateActiveProfileId(event.data.profile.id);
+        }
+      },
+    );
+
+    Events.Emit("settings:get");
+
     return () => {
       unsubOverlayStatus();
+      unsubSettings();
+      unsubProfileActivated();
+      unsubProfile();
     };
   }, []);
 
@@ -66,6 +102,14 @@ export function OverlaysStudioPage() {
 
   function stopOverlay() {
     Events.Emit("overlay:stop");
+  }
+
+  function setActiveProfile(profile: ProfileEntry) {
+    Events.Emit("hub:set-active", { id: profile.id, file: profile.file });
+  }
+
+  function openActiveOverlay() {
+    Events.Emit("overlay:start-active");
   }
 
   if (mode === "widgets") {
@@ -120,6 +164,7 @@ export function OverlaysStudioPage() {
 
     const activeEntry = studio.profiles.find((entry) => entry.id === studio.profile?.id) ?? null;
     const activeOverlayRunning = activeEntry ? isRunningProfile(activeEntry, overlayStatus) : Boolean(overlayStatus?.running);
+    const isActiveProfile = activeProfileId !== null && studio.profile?.id === activeProfileId;
 
     return (
       <LayoutStudio
@@ -128,6 +173,7 @@ export function OverlaysStudioPage() {
         dirty={studio.dirty}
         saveState={studio.saveState}
         overlayRunning={activeOverlayRunning}
+        isActiveProfile={isActiveProfile}
         onStartOverlay={() => {
           if (activeEntry) startOverlay(activeEntry);
         }}
@@ -146,10 +192,13 @@ export function OverlaysStudioPage() {
       <OwnProfilesView
         profiles={studio.profiles}
         overlayStatus={overlayStatus}
+        activeProfileId={activeProfileId}
         onStartOverlay={startOverlay}
         onStopOverlay={stopOverlay}
         onOpenProfile={openProfile}
         onCreateProfile={createProfile}
+        onSetActiveProfile={setActiveProfile}
+        onOpenActiveOverlay={openActiveOverlay}
         onBack={goHome}
       />
     );

@@ -111,8 +111,19 @@ Items adelantados:
 
 4. **Perfil activo de overlay** — adelantado desde UX futura de perfiles.
    - Motivo: las hotkeys (`Ctrl+Shift+V`, `Ctrl+Shift+E`) necesitan una fuente de verdad clara; hoy no hay boton visible para marcar que perfil usaran las macros.
-   - Estado: plan solicitado a worker en `docs/superpowers/plans/2026-06-28-active-overlay-profile.md` (pendiente de recibir/implementar).
+   - Estado: implementado (2026-06-28). Plan en `docs/superpowers/plans/2026-06-28-active-overlay-profile.md`.
    - Criterio de beta: `Mis perfiles` debe permitir `Activar` un perfil y mostrar badge `Activo`; hotkeys y `Abrir overlay` deben usar ese perfil activo.
+   - Cambios:
+     - `AppSettings.ActiveOverlayProfileID` (`omitempty`) persistido en `app-settings.json`.
+     - `HubService.SetActiveProfile(idOrFile)` resuelve path, carga perfil, persiste id, emite eventos.
+     - `HubService.ResolveProfilePath(idOrFile)` exportado para startup.
+     - `HubService.DeleteProfile` limpia `ActiveOverlayProfileID` si se borra el perfil activo.
+     - `main.go` carga perfil activo al arrancar; handler `hub:set-active` detiene overlay antes de cambiar; handler `overlay:start-active` abre el perfil activo.
+     - `OwnProfilesView`: badge "Activo", boton "Activar", boton global "Abrir overlay" en header.
+     - `LayoutStudio`: banner amarillo si el perfil editado no es el activo.
+     - `SettingsPage`: OBS URL usa `activeOverlayProfileId` de settings con fallback.
+   - Tests: 590 frontend OK; Go tests OK; tsc, build, lint, gofmt, git diff --check OK.
+   - Verificacion manual pendiente (checklist en plan).
 
 Fix P0 residual overlayRunning (Overlay Edit Mode) cerrado (2026-06-28):
 - Cierre externo de ventana (Alt+F4 / WindowClosing) limpia `overlayRunning=false` y resetea el perfil a racing mode mediante el closure `stopOverlay` en `cmd/vantare/main.go`, con guard para evitar doble reset cuando el path normal ya limpio el flag.

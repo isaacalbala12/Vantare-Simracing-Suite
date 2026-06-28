@@ -275,7 +275,7 @@ func TestNewOverlayWindowAppliesProfileMode(t *testing.T) {
 			mode:           config.ModeRacing,
 			wantIgnore:     true,
 			wantResizable:  false,
-			wantFullscreen: false,
+			wantFullscreen: true,
 		},
 		{
 			name:           "edit mode starts interactive",

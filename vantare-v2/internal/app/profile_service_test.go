@@ -99,13 +99,54 @@ func TestProfileServiceSaveLayout(t *testing.T) {
 		t.Fatalf("disk X=%d, want 50", reloaded.Widgets[0].Position.X)
 	}
 
-	// Verify window was resized (skipRefresh=true)
-	if fw.lastBounds.Width == 0 {
-		t.Fatal("expected SetBounds to be called")
+	// Verify window mode was refreshed (skipRefresh=true): for fullscreen racing
+	// this must not toggle any mode state, only bounds. The fake window starts
+	// with default zero values, so we just verify no fullscreen/UnFullscreen or
+	// ignoreMouse/resizable calls happened.
+	if fw.fullscreen {
+		t.Fatal("skipRefresh must not call Fullscreen")
+	}
+	if fw.ignoreMouse {
+		t.Fatal("skipRefresh must not call SetIgnoreMouseEvents")
+	}
+	if fw.resizable {
+		t.Fatal("skipRefresh must not call SetResizable")
 	}
 
 	if len(spy.events) != 3 || spy.events[0] != "layout:saved" || spy.events[1] != "profile:saved" || spy.events[2] != "profile:loaded" {
 		t.Fatalf("events=%v, want [layout:saved profile:saved profile:loaded]", spy.events)
+	}
+}
+
+func TestProfileServiceSaveLayoutShrinkWrapWhenNotFullscreen(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.json")
+
+	// Use a non-fullscreen mode to exercise the shrink-wrap path.
+	original := &config.ProfileConfig{
+		DisplayMode: config.DisplayMode("streaming"),
+		Widgets: []config.WidgetConfig{
+			{ID: "w1", Type: "delta", Enabled: true, Position: config.Rect{X: 10, Y: 20, W: 100, H: 50}},
+		},
+	}
+	config.SaveFile(path, original)
+
+	fw := &fakeWindow{}
+	mgr := window.NewManager(fw, 0)
+	spy := &spyEmitter{}
+	svc := app.NewProfileService(path, mgr, spy)
+	svc.Load()
+
+	newWidgets := []config.WidgetConfig{
+		{ID: "w1", Type: "delta", Enabled: true, Position: config.Rect{X: 50, Y: 60, W: 200, H: 80}},
+	}
+	if err := svc.SaveLayout(newWidgets); err != nil {
+		t.Fatal(err)
+	}
+
+	// Streaming/off-screen mode still updates bounds via SetPosition/SetSize.
+	if fw.lastBounds.Width == 0 {
+		t.Fatal("expected SetSize to be called for non-fullscreen mode")
 	}
 }
 
@@ -167,6 +208,47 @@ func TestProfileServiceEmitLoadedEditModeOriginZero(t *testing.T) {
 	}
 	if mode, ok := payload["windowMode"].(string); !ok || mode != string(config.ModeEdit) {
 		t.Fatalf("windowMode=%v, want %q", payload["windowMode"], config.ModeEdit)
+	}
+}
+
+func TestProfileServiceEmitLoadedRacingModeOriginZero(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.json")
+	if err := config.SaveFile(path, &config.ProfileConfig{
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{
+			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 760, Y: 40, W: 400, H: 48}},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	fw := &fakeWindow{}
+	mgr := window.NewManager(fw, 8)
+	spy := &spyEmitter{}
+	svc := app.NewProfileService(path, mgr, spy)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	svc.EmitLoaded()
+
+	if len(spy.events) != 1 || spy.events[0] != "profile:loaded" {
+		t.Fatalf("events=%v, want [profile:loaded]", spy.events)
+	}
+	payload, ok := spy.data[0].(map[string]any)
+	if !ok {
+		t.Fatalf("payload type=%T", spy.data[0])
+	}
+	origin, ok := payload["layoutOrigin"].(config.Rect)
+	if !ok {
+		t.Fatalf("layoutOrigin type=%T", payload["layoutOrigin"])
+	}
+	if origin.X != 0 || origin.Y != 0 {
+		t.Fatalf("racing mode origin=(%d,%d), want (0,0)", origin.X, origin.Y)
+	}
+	if mode, ok := payload["windowMode"].(string); !ok || mode != string(config.ModeRacing) {
+		t.Fatalf("windowMode=%v, want %q", payload["windowMode"], config.ModeRacing)
 	}
 }
 

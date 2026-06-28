@@ -33,9 +33,9 @@ func (f *fakeWindow) SetIgnoreMouseEvents(ignore bool) {
 	f.ignoreMouse = ignore
 	f.ignoreCalls = append(f.ignoreCalls, ignore)
 }
-func (f *fakeWindow) SetResizable(b bool)              { f.resizable = b }
-func (f *fakeWindow) Fullscreen()                      { f.fullscreen = true }
-func (f *fakeWindow) UnFullscreen()                    { f.fullscreen = false }
+func (f *fakeWindow) SetResizable(b bool) { f.resizable = b }
+func (f *fakeWindow) Fullscreen()         { f.fullscreen = true }
+func (f *fakeWindow) UnFullscreen()       { f.fullscreen = false }
 
 func TestApplyRacingMode(t *testing.T) {
 	fw := &fakeWindow{}
@@ -55,16 +55,16 @@ func TestApplyRacingMode(t *testing.T) {
 	if fw.resizable {
 		t.Fatal("racing mode should set resizable=false")
 	}
-	if fw.fullscreen {
-		t.Fatal("racing mode should NOT fullscreen")
+	if !fw.fullscreen {
+		t.Fatal("racing mode should fullscreen")
 	}
-	// Shrink-wrap: minX=40, minY=200, maxX=500, maxY=880
-	// Window: X=32, Y=192, W=476, H=696
-	if fw.lastBounds.X != 32 || fw.lastBounds.Y != 192 {
-		t.Fatalf("window pos=(%d,%d), want (32,192)", fw.lastBounds.X, fw.lastBounds.Y)
+	// Fullscreen racing must not shrink-wrap the window.
+	if fw.setBoundsCalls != 0 {
+		t.Fatalf("racing mode should not call SetBounds, got %d calls", fw.setBoundsCalls)
 	}
-	if fw.lastBounds.Width != 476 || fw.lastBounds.Height != 696 {
-		t.Fatalf("window size=%dx%d, want 476x696", fw.lastBounds.Width, fw.lastBounds.Height)
+	// SetIgnoreMouseEvents is applied before and after Fullscreen.
+	if len(fw.ignoreCalls) != 2 || fw.ignoreCalls[0] != true || fw.ignoreCalls[1] != true {
+		t.Fatalf("racing mode should enable click-through before and after fullscreen, calls=%v", fw.ignoreCalls)
 	}
 }
 
@@ -106,8 +106,8 @@ func TestApplyProfileSkipRefresh(t *testing.T) {
 	initialCalls := fw.setBoundsCalls
 
 	mgr.ApplyProfile(p, true)
-	if fw.setBoundsCalls != initialCalls+1 {
-		t.Fatalf("skipRefresh should still set bounds: calls=%d", fw.setBoundsCalls)
+	if fw.setBoundsCalls != initialCalls {
+		t.Fatalf("skipRefresh should not change SetBounds calls: got=%d want=%d", fw.setBoundsCalls, initialCalls)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestApplyProfileSkipRefreshSkipsModeToggle(t *testing.T) {
 	}
 }
 
-func TestRacingAfterEditUnFullscreen(t *testing.T) {
+func TestRacingAfterEditKeepsFullscreen(t *testing.T) {
 	fw := &fakeWindow{fullscreen: true}
 	mgr := window.NewManager(fw, 8)
 	p := &config.ProfileConfig{
@@ -140,20 +140,77 @@ func TestRacingAfterEditUnFullscreen(t *testing.T) {
 		},
 	}
 	mgr.ApplyProfile(p, false)
-	if fw.fullscreen {
-		t.Fatal("expected UnFullscreen to be called when switching from edit to racing")
+	if !fw.fullscreen {
+		t.Fatal("expected racing to stay fullscreen when switching from edit")
+	}
+	if !fw.ignoreMouse {
+		t.Fatal("expected click-through after switching to racing")
+	}
+	if fw.resizable {
+		t.Fatal("expected non-resizable in racing")
 	}
 }
 
-func TestManagerLayoutOrigin(t *testing.T) {
+func TestManagerLayoutOriginEditIsZero(t *testing.T) {
 	fw := &fakeWindow{}
 	mgr := window.NewManager(fw, 8)
-	p := &config.ProfileConfig{Widgets: []config.WidgetConfig{
-		{Enabled: true, Position: config.Rect{X: 100, Y: 200, W: 400, H: 48}},
-	}}
+	p := &config.ProfileConfig{
+		DisplayMode: config.ModeEdit,
+		Widgets: []config.WidgetConfig{
+			{Enabled: true, Position: config.Rect{X: 100, Y: 200, W: 400, H: 48}},
+		},
+	}
+	origin := mgr.LayoutOrigin(p)
+	if origin.X != 0 || origin.Y != 0 {
+		t.Fatalf("edit origin=(%d,%d), want (0,0)", origin.X, origin.Y)
+	}
+}
+
+func TestManagerLayoutOriginStreamingUsesShrinkWrap(t *testing.T) {
+	fw := &fakeWindow{}
+	mgr := window.NewManager(fw, 8)
+	p := &config.ProfileConfig{
+		DisplayMode: config.ModeStreaming,
+		Widgets: []config.WidgetConfig{
+			{Enabled: true, Position: config.Rect{X: 100, Y: 200, W: 400, H: 48}},
+		},
+	}
 	origin := mgr.LayoutOrigin(p)
 	if origin.X != 92 || origin.Y != 192 {
-		t.Fatalf("origin=(%d,%d), want (92,192)", origin.X, origin.Y)
+		t.Fatalf("streaming origin=(%d,%d), want (92,192)", origin.X, origin.Y)
+	}
+}
+
+func TestEditToRacingKeepsFullscreenAndClickThrough(t *testing.T) {
+	fw := &fakeWindow{}
+	mgr := window.NewManager(fw, 0)
+	editProfile := &config.ProfileConfig{
+		DisplayMode: config.ModeEdit,
+		Widgets: []config.WidgetConfig{
+			{Enabled: true, Position: config.Rect{X: 50, Y: 50, W: 200, H: 100}},
+		},
+	}
+	mgr.ApplyProfile(editProfile, false)
+	if !fw.fullscreen || fw.ignoreMouse {
+		t.Fatalf("edit setup failed: fullscreen=%v ignoreMouse=%v", fw.fullscreen, fw.ignoreMouse)
+	}
+
+	racingProfile := &config.ProfileConfig{
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{
+			{Enabled: true, Position: config.Rect{X: 50, Y: 50, W: 200, H: 100}},
+		},
+	}
+	mgr.ApplyProfile(racingProfile, false)
+
+	if !fw.fullscreen {
+		t.Fatal("racing should remain fullscreen after edit")
+	}
+	if !fw.ignoreMouse {
+		t.Fatal("racing should be click-through after edit")
+	}
+	if fw.resizable {
+		t.Fatal("racing should be non-resizable after edit")
 	}
 }
 

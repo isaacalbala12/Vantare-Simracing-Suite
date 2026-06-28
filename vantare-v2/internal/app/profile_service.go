@@ -139,9 +139,10 @@ func (s *ProfileService) EmitLoaded() {
 	}
 	var origin config.Rect
 	if s.mgr != nil {
-		// Edit mode uses a fullscreen window, so profile coordinates are already
-		// window-local and the shrink-wrap origin must be zero.
-		if s.profile.DisplayMode == config.ModeEdit {
+		// Desktop runtime overlay is always fullscreen for racing and edit modes,
+		// so profile coordinates are already window-local. Streaming keeps the
+		// shrink-wrap origin for any consumer that still needs it.
+		if s.profile.DisplayMode == config.ModeRacing || s.profile.DisplayMode == config.ModeEdit {
 			origin = config.Rect{}
 		} else {
 			origin = s.mgr.LayoutOrigin(s.profile)

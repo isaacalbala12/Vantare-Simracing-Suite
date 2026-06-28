@@ -55,12 +55,17 @@ func (m *Manager) ApplyProfile(p *config.ProfileConfig, skipRefresh bool) {
 		m.win.SetPosition(-9999, -9999)
 		m.win.SetSize(1, 1)
 	default: // racing
+		// Desktop racing overlay must stay fullscreen so widget positions are
+		// window-local coordinates. Shrink-wrap would clip widgets placed
+		// outside the computed bounds.
 		if !skipRefresh {
-			m.win.UnFullscreen()
 			m.win.SetIgnoreMouseEvents(true)
 			m.win.SetResizable(false)
+			m.win.Fullscreen()
+			// Apply after Fullscreen as well: transparent layered windows on
+			// Windows can retain click-through state across geometry changes.
+			m.win.SetIgnoreMouseEvents(true)
 		}
-		m.applyShrinkWrap(p)
 	}
 }
 
@@ -77,7 +82,13 @@ func (m *Manager) applyShrinkWrap(p *config.ProfileConfig) {
 }
 
 // LayoutOrigin returns the window-local origin for the given profile.
+// Fullscreen modes (racing and edit) use a {0,0} origin because widget
+// positions are already window-local coordinates. Other modes fall back to
+// the shrink-wrap origin for consumers that still need it.
 func (m *Manager) LayoutOrigin(p *config.ProfileConfig) config.Rect {
+	if p.DisplayMode == config.ModeRacing || p.DisplayMode == config.ModeEdit {
+		return config.Rect{}
+	}
 	_, origin := ShrinkWrap(p, m.pad)
 	return origin
 }

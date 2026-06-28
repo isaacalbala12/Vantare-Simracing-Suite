@@ -11,7 +11,7 @@ import (
 type DisplayMode string
 
 const (
-	ModeRacing    DisplayMode = "racing"    // shrink-wrap, click-through
+	ModeRacing    DisplayMode = "racing"    // fullscreen, click-through
 	ModeEdit      DisplayMode = "edit"      // fullscreen, draggable widgets
 	ModeStreaming DisplayMode = "streaming" // load-only in F4; no window in F6
 )

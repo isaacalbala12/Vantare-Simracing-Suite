@@ -1,6 +1,16 @@
-# Incidencias Conocidas (Known Issues) - Beta Privada
+# Incidencias Conocidas (Known Issues) - Beta Abierta
 
 Este documento contiene la lista oficial de problemas conocidos, limitaciones del alcance actual y comportamientos esperados en la versión **v0.3.10.0** de **Vantare Suite**. Por favor, revisa esta lista antes de reportar un fallo en Discord.
+
+---
+
+## 0. Widget states
+
+Los widgets tienen tres estados de madurez, documentados en la guia del tester:
+
+- ✅ **Stable**: Relative, Standings, Delta. Listos para uso general con datos live LMU.
+- 🟡 **Tester**: Pedals, Ingeniero notifications. Funcionales, pueden tener cambios.
+- 🔴 **Experimental**: Track Map, Input Telemetry/Trace. No disponibles.
 
 ---
 
@@ -37,6 +47,13 @@ Este documento contiene la lista oficial de problemas conocidos, limitaciones de
     *   *Síntoma*: El widget Delta ya usa el delta nativo de LMU cuando está disponible, pero esta build todavía necesita validación prolongada en pista con distintos estados de sesión.
     *   *Causa*: La corrección backend/frontend está implementada y testeada, pero la verificación automatizada no sustituye una sesión real con Shared Memory de LMU.
     *   *Solución*: Si pruebas LMU live, confirma que los valores negativos aparecen en verde al mejorar y los positivos en rojo al perder tiempo.
+*   **Autoupdater: releases sin checksum no instalables desde la app**:
+    *   *Síntoma*: Si una GitHub Release no incluye el sidecar `.sha256`, el updater rechaza la instalacion.
+    *   *Causa*: La beta exige verificacion SHA256 antes de ejecutar un instalador descargado por la app.
+    *   *Solución*: Usa releases que incluyan `.sha256`. Si una release historica no lo incluye, descarga manualmente desde Discord/GitHub y verifica el hash publicado con `certutil -hashfile`.
+*   **Autoupdater: smoke de integracion contra release real pendiente**:
+    *   *Síntoma*: El updater se ha probado en entorno controlado contra un prerelease real, pero no se ha ejecutado una validación completa desde un tester descargando e instalando una release pública.
+    *   *Solución*: Si encuentras errores al actualizar desde la app (botón de actualizar que no responde, descarga que falla, instalador que no se lanza), reportalo en `#beta-bug-reports`.
 
 ---
 
@@ -44,9 +61,11 @@ Este documento contiene la lista oficial de problemas conocidos, limitaciones de
 
 Los siguientes comportamientos son **decisiones de diseño intencionadas** o características planificadas para fases posteriores, por lo que **no deben reportarse como fallos**:
 
-1.  **Sin audio/voces en el Ingeniero**: El spotter no emite sonidos ni síntesis de voz (TTS). Las alertas y notificaciones son puramente visuales y textuales (en el historial del Hub y en el widget del overlay).
-2.  **Widgets incompletos (Pedals)**:
-    *   El widget de pedales actual es estético y su calibración completa se realizará en una fase posterior.
+1.  **Sin audio/voces en el Ingeniero**: El spotter no emite sonidos ni síntesis de voz (TTS). Las alertas y notificaciones son puramente visuales y textuales.
+2.  **Widgets incompletos (Pedals)**: El widget de pedales actual es estético y su calibración completa se realizará en una fase posterior.
 3.  **Exclusividad de Le Mans Ultimate**: La suite está optimizada únicamente para leer la memoria compartida de LMU. No hay soporte en esta fase para iRacing, Assetto Corsa, rFactor 2 u otros simuladores.
-4.  **OBS por LAN (Doble PC)**: La integración con OBS funciona de manera local en el mismo PC a través del servidor interno (`/overlay?profile=...`). La optimización de red para streaming en doble PC está programada para más adelante.
+4.  **OBS por LAN (Doble PC)**: La integración con OBS funciona de manera local en el mismo PC. La optimización de red para streaming en doble PC está programada para más adelante (configuración manual posible).
 5.  **Sin cuentas de usuario ni pagos**: No hay inicio de sesión, suscripciones ni pasarelas de pago activas en esta compilación.
+6.  **Sin firma de codigo Authenticode**: Los ejecutables no estan firmados digitalmente. Windows SmartScreen mostrara una advertencia. Es un trade-off aceptado para acelerar el feedback de la beta. La firma se implementara antes del release estable v1.0.
+7.  **Widget Track Map y Input Telemetry/Trace**: Son experimentales y no estan disponibles para testers en esta fase.
+8.  **No release por commit**: No se publica una GitHub Release por cada cambio. Solo versiones etiquetadas con tag `v*` y checklist del runbook completado.

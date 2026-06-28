@@ -123,9 +123,10 @@ Los workflows `Discord beta progress` y `Discord known issues` **no deben dispar
 
 ### Política: no crear GitHub Release por cada commit
 
+- **No se publica una release por cada commit a `master`.** Los commits se acumulan y el tag se publica cuando hay una versión coherente con `VERSION`, `changelog.md` y los gates locales (tests, lint, build, smoke manual).
 - Una GitHub Release solo se crea cuando hay un tag `v*` legítimo que cumple el checklist del runbook.
-- No se taggea por cada commit a `master`. Los commits se acumulan y el tag se publica cuando hay una versión coherente con `VERSION`, `changelog.md` y los gates locales (tests, lint, build, smoke manual).
 - `release.yml` se ejecuta solo en `push: tags: v*` (crea release) o en `workflow_dispatch` con `create_release: true` sobre un tag (re-crea/actualiza). Un `workflow_dispatch` sobre `master` solo genera los artefactos como GitHub Actions artifact y no toca GitHub Releases.
+- **Para el tester:** esto significa que las builds de desarrollo diarias no se distribuyen. Solo recibiran notificaciones cuando haya una version validada y etiquetada. Las actualizaciones frecuentes se entregan via autoupdater, no via commits individuales.
 
 ### `release.yml` idempotente (R03.H)
 
@@ -249,18 +250,20 @@ Si algo sale mal durante el proceso de lanzamiento, mantén la calma y sigue est
 
 ## 6. Plantillas Operativas
 
-### A. Mensaje Corto Recomendado para Discord (Canal `#alpha-announcements`)
+### A. Mensaje Corto Recomendado para Discord (Canal `#beta-announcements`)
 
 ```text
 📢 **¡Nueva Versión Disponible: Vantare v0.3.10.0!**
 
-Hola a todos. Acabamos de publicar la versión **v0.3.10.0** de Vantare Suite para testers de la Beta Privada.
+Hola a todos. Acabamos de publicar la versión **v0.3.10.0** de Vantare Suite para la Beta Abierta.
 
-Esta versión introduce la primera base del módulo **Ingeniero** integrado directamente en el Hub y como widget de overlays, endurece el soporte de atajos de teclado globales y añade soporte Delta live real con Le Mans Ultimate.
+Esta versión incluye Overlays Studio completo (Relative, Standings, Pedals configurables), el módulo Ingeniero con notificaciones en overlay, telemetría live con Le Mans Ultimate, hotkeys globales, autoupdater y soporte OBS local.
 
-Encontrará los enlaces de descarga y las instrucciones en el canal <#alpha-downloads>. Por favor, leed con atención la lista de <#alpha-known-issues> antes de comenzar a rodar.
+Encontrarás los enlaces de descarga y los checksums SHA256 en el canal <#beta-downloads>. Por favor, lee con atención la lista de <#beta-known-issues> antes de comenzar.
 
-¡Gracias por vuestro feedback! 🏁
+⚠️ **SmartScreen**: Los ejecutables no tienen firma digital. Haz clic en "Más información" → "Ejecutar de todas formas". Verifica el checksum SHA256 para asegurar la integridad de tu descarga.
+
+¡Gracias por vuestro feedback!
 ```
 
 ### B. Formato Estándar de Entrada de Changelog (`docs/changelog.md`)

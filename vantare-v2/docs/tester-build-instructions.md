@@ -1,6 +1,11 @@
-# Guía de Pruebas para Testers - Vantare Suite
+# Guía de Pruebas para Testers - Vantare Suite (Beta Abierta)
 
-Bienvenido a la versión Alpha/Beta privada de **Vantare Suite** (Overlays Studio + Ingeniero). Esta guía contiene las instrucciones para instalar, probar las funcionalidades clave y reportar fallos de manera efectiva.
+Bienvenido a la **Beta Abierta** de **Vantare Suite** — la suite local para sim racing con Overlays Studio, Ingeniero y telemetria live para Le Mans Ultimate.
+
+> [!IMPORTANT]
+> **Aviso de SmartScreen / Firma de codigo no disponible**
+> Los ejecutables de esta beta **no tienen firma digital (Authenticode)**. Windows SmartScreen mostrara una advertencia de "Editor desconocido" al ejecutar el instalador o el portable. Esto es normal y esperado. Haz clic en **"Mas informacion"** → **"Ejecutar de todas formas"**. La firma de codigo se implementara antes del release estable v1.0.
+> Los checksums SHA256 publicados junto a cada descarga permiten verificar la integridad del binario (ver seccion 6).
 
 ---
 
@@ -90,19 +95,64 @@ Vantare Suite incluye soporte para atajos de teclado globales nativos en Windows
 
 ---
 
-## 5. ¿Qué NO está soportado todavía? (Limitaciones de la Alpha)
+## 5. Widgets y su estado actual
 
-Por favor, no reportes como fallos las siguientes características que se encuentran planificadas para fases posteriores:
-*   **Ingeniero con LMU en vivo real (Fase EN6)**: La conexión del spotter con el buffer de memoria en vivo de LMU está en desarrollo. Actualmente, el Ingeniero funciona en modo simulación/replay.
-*   **Audio/Voces TTS reales del Ingeniero**: Los avisos del spotter son puramente visuales y textuales en esta fase (se muestran en el widget del overlay y en el historial del Hub).
-*   **Widget Pedales Completo**: El widget de pedales actual es una maqueta estética inicial. La lectura del pedal de embrague y ajustes profundos se completarán en la beta.
-*   **Widget Delta en Vivo**: El algoritmo de diferencia de tiempos (Delta Best) en tiempo real está pendiente de calibración.
-*   **Soporte Multisimulador**: Esta versión está optimizada exclusivamente para Le Mans Ultimate. El soporte para iRacing, Assetto Corsa, etc., se implementará tras la release estable v1.0.
-*   **Doble PC / LAN para OBS**: La visualización en OBS está soportada localmente a través de la URL de renderizado local `/overlay?profile=...`, pero la optimización de red para doble PC no forma parte del alcance actual.
+Cada widget tiene un estado que refleja su madurez para la beta:
+
+| Widget | Estado | Que puedes probar |
+|--------|--------|-------------------|
+| **Relative** | ✅ Stable | Columnas configurables, filtros de clase/rango, ancho intrinseco en preview. |
+| **Standings** | ✅ Stable | Columnas configurables, escenarios mock (Practica/Qualy/Carrera), variantes schema v2. |
+| **Delta** | ✅ Stable | Delta best live nativo LMU, muestra Target y Lap. Valores negativos en verde, positivos en rojo. |
+| **Pedals** | 🟡 Tester | Maqueta compacta CLT/BRK/THR. Colores editables desde WidgetStudio (throttle, brake, clutch). |
+| **Ingeniero (notifications)** | 🟡 Tester | Widget de notificaciones del spotter. Funciona en modo simulacion/replay. Historial visible en el Hub. |
+| **Track Map** | 🔴 Experimental | En desarrollo, no disponible. |
+| **Input Telemetry/Trace** | 🔴 Experimental | En desarrollo, no disponible. |
+
+> **Stable**: listo para uso general. **Tester**: funcional pero puede tener cambios o necesitar validacion adicional. **Experimental**: en desarrollo, no disponible para testers.
+
+## 6. ¿Qué NO está soportado todavía? (Limitaciones de la Beta)
+
+Por favor, no reportes como fallos las siguientes características planificadas para fases posteriores:
+*   **Ingeniero con LMU en vivo real (Fase EN6)**: La conexión del spotter con LMU live está en desarrollo. Actualmente funciona en modo simulación/replay.
+*   **Audio/Voces TTS del Ingeniero**: Los avisos son puramente visuales y textuales.
+*   **Widget Pedals Completo**: Es una maqueta estética inicial. Lectura de embrague y calibración profundas se completarán post-beta.
+*   **Soporte Multisimulador**: Exclusivo para Le Mans Ultimate. iRacing, Assetto Corsa, etc. tras release estable v1.0.
+*   **Doble PC / LAN para OBS**: La URL local funciona, pero la optimización de red para streaming remoto no forma parte del alcance actual. Configuracion manual posible (ver guia OBS).
+
+## 7. Autoupdater
+
+Vantare Suite incluye un sistema de actualizacion automatica:
+
+- Al iniciar la app, verifica si hay una nueva version en GitHub Releases.
+- Si hay una actualizacion, aparece un banner en el Hub. Puedes hacer clic para descargar e instalar.
+- El instalador descargado se verifica contra su checksum SHA256 antes de ejecutarse.
+- Si el checksum no esta disponible, la instalacion desde el updater se rechaza. En ese caso descarga el instalador manualmente desde Discord/GitHub y verifica el SHA256 publicado.
+- Tambien puedes ir a **Ajustes → Actualizaciones** para buscar actualizaciones manualmente.
+
+## 8. Verificacion de Checksums SHA256
+
+Cada descarga (installer, portable zip, binario) se publica con su archivo `.sha256` sidecar. Puedes verificar la integridad del archivo descargado:
+
+```powershell
+# Opcion A: PowerShell
+Get-FileHash .\vantare-amd64-installer.exe -Algorithm SHA256
+
+# Opcion B: certutil (Windows nativo, sin dependencias externas)
+certutil.exe -hashfile .\vantare-amd64-installer.exe SHA256
+```
+
+Compara el hash obtenido contra el publicado en `#beta-downloads` o en el archivo `.sha256` de la GitHub Release. Si coinciden, el archivo no ha sido alterado.
+
+## 9. Politica de versionado
+
+- **No se publica una release por cada commit.** Las versiones se acumulan y se publican mediante un tag `v*` cuando hay un conjunto de cambios coherente.
+- Las builds de desarrollo diarias no se distribuyen a testers.
+- Cada version publicada incluye entrada en el changelog y anuncio en Discord.
 
 ---
 
-## 5. Cómo Reportar Bugs
+## 10. Cómo Reportar Bugs
 
 Si encuentras un comportamiento inesperado, errores visuales o problemas de rendimiento:
 1. **Captura de pantalla o vídeo**: Toma una captura del problema (especialmente si es un fallo visual en el editor o en el overlay).
@@ -112,9 +162,8 @@ Si encuentras un comportamiento inesperado, errores visuales o problemas de rend
 
 ---
 
-## 6. Documentos Relacionados
+## 11. Documentos Relacionados
 
 *   Para conocer la lista completa de problemas identificados y limitaciones actuales, consulta la [Guía de Incidencias Conocidas (Known Issues)](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/tester-known-issues.md).
 *   Para saber cómo y dónde reportar fallos y compartir tus comentarios, revisa el [Protocolo de Feedback y Reporte de Bugs](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/tester-feedback-process.md).
 *   Para configurar los overlays en tu software de transmisión, consulta la [Guía de Configuración de OBS Studio (Local)](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/obs-local-setup.md).
-

@@ -1,4 +1,4 @@
-# Protocolo de Feedback y Reporte de Bugs - Beta Privada
+# Protocolo de Feedback y Reporte de Bugs - Beta Abierta
 
 ¡Gracias por ayudarnos a probar **Vantare Suite**! Para mantener el desarrollo ordenado y solucionar los problemas lo más rápido posible, hemos establecido este protocolo de comunicación a través de nuestro servidor de Discord.
 
@@ -6,13 +6,13 @@
 
 ## 1. Estructura de Canales en Discord
 
-Para las pruebas de la Beta Privada, utilizaremos los siguientes canales dedicados:
+Para las pruebas de la Beta Abierta, utilizaremos los siguientes canales dedicados:
 
-*   📢 **`#alpha-announcements`**: Comunicados oficiales de desarrollo y publicación de nuevas builds.
-*   💾 **`#alpha-downloads`**: Enlaces de descarga del instalador y binarios portables actualizados.
-*   📌 **`#alpha-known-issues`**: Lista viva de fallos conocidos bajo investigación (sincronizada con el documento de incidencias).
-*   🐛 **`#alpha-bug-reports`**: Canal exclusivo para reportar fallos utilizando la plantilla obligatoria.
-*   💡 **`#alpha-feedback`**: Canal libre para proponer sugerencias, ideas de diseño, mejoras visuales y debates generales.
+*   📢 **`#beta-announcements`**: Comunicados oficiales de desarrollo y publicación de nuevas builds.
+*   💾 **`#beta-downloads`**: Enlaces de descarga del instalador, binarios portables y checksums SHA256.
+*   📌 **`#beta-known-issues`**: Lista viva de fallos conocidos bajo investigación (sincronizada con el documento de incidencias).
+*   🐛 **`#beta-bug-reports`**: Canal exclusivo para reportar fallos utilizando la plantilla obligatoria.
+*   💡 **`#beta-feedback`**: Canal libre para proponer sugerencias, ideas de diseño, mejoras visuales y debates generales.
 
 ---
 
@@ -29,15 +29,17 @@ Para las pruebas de la Beta Privada, utilizaremos los siguientes canales dedicad
 ### ❌ NO debes reportar (Fuera de Scope)
 *   Ausencia de audio o voces de spotter en la sección de Ingeniero.
 *   Falta de datos en tiempo real del Ingeniero conduciendo en LMU (se simula mediante replay).
-*   Falta de telemetría precisa en los widgets de pedales o delta de tiempo.
+*   Falta de telemetría precisa en los widgets de pedales.
 *   Soporte para otros simuladores que no sean Le Mans Ultimate.
 *   Propuestas de reworks visuales completos de pantallas (el diseño actual de `WidgetStudio` está fijado para esta fase).
+*   Advertencia de SmartScreen al ejecutar la app (comportamiento esperado, ver Known Issues).
+*   Widget Track Map o Input Telemetry/Trace no disponibles (son experimentales, no incluidos).
 
 ---
 
 ## 3. Plantilla Obligatoria de Reporte de Bugs
 
-Cuando encuentres un fallo, por favor copia y rellena la siguiente plantilla en el canal **`#alpha-bug-reports`**:
+Cuando encuentres un fallo, por favor copia y rellena la siguiente plantilla en el canal **`#beta-bug-reports`**:
 
 ```text
 **[Bug] Nombre corto descriptivo del problema**
@@ -64,4 +66,7 @@ Cuando encuentres un fallo, por favor copia y rellena la siguiente plantilla en 
 
 **JSON de Perfil (Opcional pero recomendado):**
 [Si el fallo es con un perfil, adjunta el archivo JSON correspondiente de la carpeta `configs/`]
+
+**Checksum del instalador/portable (Opcional):**
+[Solo si el fallo es de instalacion, descarga o actualizacion. Adjunta el SHA256 de tu descarga para verificar integridad]
 ```

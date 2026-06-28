@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 
 type UpdateNotify = {
@@ -8,23 +8,110 @@ type UpdateNotify = {
   downloadURL: string;
 };
 
+type Asset = {
+  name: string;
+  browser_download_url: string;
+};
+
+type Release = {
+  tag_name: string;
+  name: string;
+  prerelease: boolean;
+  assets: Asset[];
+};
+
+type UpdateInfo = {
+  latestRelease?: Release;
+  releases?: Release[];
+};
+
 export function UpdateBanner() {
   const [notify, setNotify] = useState<UpdateNotify | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const pendingTagRef = useRef<string | null>(null);
+  const dismissedTagRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const unsub = Events.On('updater:notify', (event: { data: UpdateNotify }) => {
-      setNotify(event.data);
-      setDismissed(false);
-    });
-    return () => unsub?.();
+    const handlers: (() => void)[] = [];
+
+    handlers.push(
+      Events.On('updater:notify', (event: { data: UpdateNotify }) => {
+        setNotify(event.data);
+        setDismissed(false);
+        setInstalling(false);
+        setProgress(null);
+        setError(null);
+        dismissedTagRef.current = null;
+      }),
+    );
+
+    handlers.push(
+      Events.On('updater:available', (event: { data: { info?: UpdateInfo } }) => {
+        const tag = pendingTagRef.current;
+        if (!tag) return;
+        pendingTagRef.current = null;
+        if (dismissedTagRef.current === tag) return;
+
+        const info = event.data.info;
+        const allReleases = info?.releases ?? [];
+        const release = allReleases.find((r) => r.tag_name === tag);
+
+        if (!release) {
+          setInstalling(false);
+          setError('No se encontró la versión solicitada.');
+          return;
+        }
+
+        Events.Emit('updater:install:verified', release);
+      }),
+    );
+
+    handlers.push(
+      Events.On('updater:progress', (event: { data: { percent?: number } }) => {
+        setProgress(event.data.percent ?? null);
+      }),
+    );
+
+    handlers.push(
+      Events.On('updater:installed', () => {
+        setInstalling(false);
+        setProgress(null);
+      }),
+    );
+
+    handlers.push(
+      Events.On('updater:error', (event: { data: { message?: string } }) => {
+        setInstalling(false);
+        setProgress(null);
+        setError(event.data.message ?? 'Error desconocido');
+      }),
+    );
+
+    return () => handlers.forEach((h) => h?.());
   }, []);
 
   function handleDismiss() {
     setDismissed(true);
+    pendingTagRef.current = null;
+    setInstalling(false);
+    setProgress(null);
+    setError(null);
     if (notify) {
+      dismissedTagRef.current = notify.tag;
       Events.Emit('updater:ignore', { version: notify.tag });
     }
+  }
+
+  function handleInstall() {
+    if (!notify) return;
+    setInstalling(true);
+    setError(null);
+    setProgress(null);
+    pendingTagRef.current = notify.tag;
+    Events.Emit('updater:check');
   }
 
   if (!notify || dismissed) return null;
@@ -39,16 +126,26 @@ export function UpdateBanner() {
               Pre-release
             </span>
           )}
+          {progress !== null && (
+            <span className="ml-2 text-xs text-white/70">{progress}%</span>
+          )}
+          {error && (
+            <span className="ml-2 text-xs text-red-300">{error}</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href={notify.downloadURL}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1 rounded-lg text-xs font-semibold text-white bg-white/10 hover:bg-white/20 transition-colors"
+          <button
+            type="button"
+            onClick={handleInstall}
+            disabled={installing}
+            className="px-3 py-1 rounded-lg text-xs font-semibold text-white bg-white/10 hover:bg-white/20 disabled:opacity-50 transition-colors"
           >
-            Descargar
-          </a>
+            {installing
+              ? progress !== null
+                ? `${progress}%`
+                : 'Buscando...'
+              : 'Instalar actualización'}
+          </button>
           <button
             type="button"
             onClick={handleDismiss}

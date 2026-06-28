@@ -222,4 +222,23 @@ describe('SettingsPage', () => {
     render(<SettingsPage />);
     expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
   });
+
+  it('emits updater:install:verified (never legacy updater:install) when installing', () => {
+    render(<SettingsPage />);
+    dispatch('updater:available', {
+      info: {
+        currentVersion: 'v0.1.4-prealpha',
+        releases: [release],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instalar' }));
+
+    const legacyCalls = runtimeMock.emit.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'updater:install',
+    );
+    expect(legacyCalls).toHaveLength(0);
+
+    expect(runtimeMock.emit).toHaveBeenCalledWith('updater:install:verified', release);
+  });
 });

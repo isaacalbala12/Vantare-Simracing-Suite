@@ -8,13 +8,22 @@ import (
 )
 
 type fakeOverlayWindow struct {
-	closed      bool
-	boundsSet   bool
-	ignoreMouse bool
+	closed       bool
+	boundsSet    bool
+	ignoreMouse  bool
+	appliedModes []config.DisplayMode
 }
 
 func (f *fakeOverlayWindow) Close() {
 	f.closed = true
+}
+
+func (f *fakeOverlayWindow) ApplyProfileMode(profile *config.ProfileConfig) error {
+	if f.appliedModes == nil {
+		f.appliedModes = make([]config.DisplayMode, 0)
+	}
+	f.appliedModes = append(f.appliedModes, profile.DisplayMode)
+	return nil
 }
 
 type fakeOverlayFactory struct {

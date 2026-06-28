@@ -265,6 +265,28 @@ func (s *HubService) StopOverlay() OverlayStatus {
 	return status
 }
 
+// StartActiveOverlay starts the desktop overlay using the currently active profile.
+// It is used by the global toggle-edit-mode hotkey when no overlay window is running.
+func (s *HubService) StartActiveOverlay() (OverlayStatus, error) {
+	if s.overlay == nil {
+		return OverlayStatus{}, fmt.Errorf("overlay runtime not configured")
+	}
+	profile := s.profileSvc.GetProfile()
+	if profile == nil {
+		return OverlayStatus{}, fmt.Errorf("no active profile")
+	}
+	// Close any previous window to avoid ghost overlays when switching profiles.
+	s.overlay.Stop()
+	status, err := s.overlay.Start(profile)
+	if s.emitter != nil {
+		s.emitter.Emit("overlay:status", status)
+	}
+	if err != nil {
+		return status, err
+	}
+	return status, nil
+}
+
 // StartEditOverlay opens the desktop overlay in edit mode for the active profile.
 // It closes any running overlay window first to avoid ghost windows or racing renderers.
 func (s *HubService) StartEditOverlay(idOrFile string) (OverlayStatus, error) {

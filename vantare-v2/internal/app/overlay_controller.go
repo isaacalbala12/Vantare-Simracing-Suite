@@ -16,6 +16,7 @@ type OverlayStatus struct {
 // OverlayWindow is the minimal interface the controller needs from a desktop overlay window.
 type OverlayWindow interface {
 	Close()
+	ApplyProfileMode(profile *config.ProfileConfig) error
 }
 
 // OverlayWindowFactory creates a new desktop overlay window for a profile.
@@ -94,6 +95,13 @@ func (c *OverlayController) Stop() OverlayStatus {
 	}
 	c.status.Running = false
 	return c.status
+}
+
+// CurrentWindow returns the active overlay window, or nil if none is running.
+func (c *OverlayController) CurrentWindow() OverlayWindow {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.current
 }
 
 // Status returns the current overlay status.

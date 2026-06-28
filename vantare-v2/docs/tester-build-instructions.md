@@ -82,6 +82,7 @@ Vantare Suite incluye soporte para atajos de teclado globales nativos en Windows
 
 ### Hotkeys predeterminadas disponibles:
 *   `ctrl+shift+v`: **Toggle Overlay**. Alterna (muestra u oculta) de forma instantánea el overlay activo en tu pantalla.
+*   `ctrl+shift+e`: **Toggle Edit Mode**. Entra o sale del modo edición in-place sobre el overlay activo. En modo edición los widgets muestran un borde rojo, se pueden arrastrar y redimensionar, y al soltar se guarda la posición. Si el overlay no está abierto, `Ctrl+Shift+E` lo abre directamente en modo edición.
 *   `ctrl+shift+right`: **Siguiente perfil**. Cambia tu overlay activo al siguiente perfil en tu lista de perfiles (solo funciona si el overlay está en ejecución).
 *   `ctrl+shift+left`: **Perfil anterior**. Cambia tu overlay activo al perfil anterior en tu lista de perfiles (solo funciona si el overlay está en ejecución).
 

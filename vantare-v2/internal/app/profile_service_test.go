@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
-	"github.com/stretchr/testify/require"
 )
 
 // fakeWindow implements window.WindowHandle for testing.
@@ -126,6 +126,47 @@ func TestProfileServiceSetDisplayMode(t *testing.T) {
 	}
 	if fw.ignoreMouse {
 		t.Fatal("edit mode should not ignore mouse")
+	}
+}
+
+func TestProfileServiceEmitLoadedEditModeOriginZero(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.json")
+	if err := config.SaveFile(path, &config.ProfileConfig{
+		DisplayMode: config.ModeEdit,
+		Widgets: []config.WidgetConfig{
+			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 760, Y: 40, W: 400, H: 48}},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	fw := &fakeWindow{}
+	mgr := window.NewManager(fw, 8)
+	spy := &spyEmitter{}
+	svc := app.NewProfileService(path, mgr, spy)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	svc.EmitLoaded()
+
+	if len(spy.events) != 1 || spy.events[0] != "profile:loaded" {
+		t.Fatalf("events=%v, want [profile:loaded]", spy.events)
+	}
+	payload, ok := spy.data[0].(map[string]any)
+	if !ok {
+		t.Fatalf("payload type=%T", spy.data[0])
+	}
+	origin, ok := payload["layoutOrigin"].(config.Rect)
+	if !ok {
+		t.Fatalf("layoutOrigin type=%T", payload["layoutOrigin"])
+	}
+	if origin.X != 0 || origin.Y != 0 {
+		t.Fatalf("edit mode origin=(%d,%d), want (0,0)", origin.X, origin.Y)
+	}
+	if mode, ok := payload["windowMode"].(string); !ok || mode != string(config.ModeEdit) {
+		t.Fatalf("windowMode=%v, want %q", payload["windowMode"], config.ModeEdit)
 	}
 }
 

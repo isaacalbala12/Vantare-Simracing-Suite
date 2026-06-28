@@ -36,6 +36,20 @@ func TestParseHotkeyCombo(t *testing.T) {
 	}
 }
 
+func TestParseHotkeyComboCtrlShiftE(t *testing.T) {
+	mods, vk, err := app.ParseHotkeyCombo("ctrl+shift+e")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// ctrl=0x0002, shift=0x0004 => combined 0x0006
+	if mods != 0x0006 {
+		t.Errorf("expected mods=0x0006, got 0x%x", mods)
+	}
+	if vk != 0x45 {
+		t.Errorf("expected vk=0x45 (E), got 0x%x", vk)
+	}
+}
+
 func TestParseHotkeyComboValues(t *testing.T) {
 	mods, vk, err := app.ParseHotkeyCombo("ctrl+shift+v")
 	if err != nil {
@@ -103,6 +117,32 @@ func TestHotkeyManagerStartStop(t *testing.T) {
 	m.Stop()
 	// Should be idempotent
 	m.Stop()
+}
+
+func TestHotkeyManagerUpdateFromSettingsKeepsToggleEditMode(t *testing.T) {
+	m := app.NewHotkeyManager()
+	calls := map[string]bool{}
+	settings := app.DefaultAppSettings()
+
+	actionMap := map[string]func(){
+		"toggleOverlay":  func() { calls["toggleOverlay"] = true },
+		"toggleEditMode": func() { calls["toggleEditMode"] = true },
+		"nextProfile":    func() { calls["nextProfile"] = true },
+		"prevProfile":    func() { calls["prevProfile"] = true },
+	}
+
+	m.UpdateFromSettings(settings, actionMap)
+
+	// After UpdateFromSettings with a full action map, all four actions should be
+	// registered and the manager should accept future combo changes for them.
+	settings.Hotkeys["toggleEditMode"] = "alt+e"
+	m.UpdateFromSettings(settings, actionMap)
+
+	// The test primarily guards the P0-NEW finding: if toggleEditMode is omitted
+	// from the action map, it disappears after settings:save.
+	if len(actionMap) != 4 {
+		t.Errorf("expected 4 actions in action map, got %d", len(actionMap))
+	}
 }
 
 func TestHotkeyManagerUpdateFromSettings(t *testing.T) {

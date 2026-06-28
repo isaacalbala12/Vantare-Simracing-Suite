@@ -21,9 +21,10 @@ func DefaultAppSettings() *AppSettings {
 		DeltaMode:   "self",
 		CpuSampling: true,
 		Hotkeys: map[string]string{
-			"toggleOverlay": "ctrl+shift+v",
-			"nextProfile":   "ctrl+shift+right",
-			"prevProfile":   "ctrl+shift+left",
+			"toggleOverlay":  "ctrl+shift+v",
+			"toggleEditMode": "ctrl+shift+e",
+			"nextProfile":    "ctrl+shift+right",
+			"prevProfile":    "ctrl+shift+left",
 		},
 	}
 }

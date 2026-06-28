@@ -5,6 +5,7 @@ import type {
   LayoutOrigin,
   DisplayMode,
   WidgetConfig,
+  Rect,
 } from "../lib/profile";
 import { toWindowLocal } from "../lib/profile";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../lib/telemetry-ref";
 import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
 import { WidgetHost } from "./WidgetHost";
+import { WidgetEditFrame } from "./WidgetEditFrame";
 import { enrichWidgetPropsWithVariant } from "../lib/widget-variants";
 import { DeltaWidget } from "./widgets/DeltaWidget";
 import { RelativeWidget } from "./widgets/RelativeWidget";
@@ -41,6 +43,7 @@ export function CompositeApp() {
   const [layoutOrigin, setLayoutOrigin] = useState<LayoutOrigin>({ x: 0, y: 0 });
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [telemetryKey, setTelemetryKey] = useState(0);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     return applyOverlayDocumentMode();
@@ -73,22 +76,54 @@ export function CompositeApp() {
         setProfile(data.profile);
         setLayoutOrigin(data.layoutOrigin);
         setWidgets(data.profile.widgets.filter((w) => w.enabled));
+        setEditMode(data.windowMode === "edit");
       } catch (err) {
         console.error("profile:loaded parse failed", err);
       }
-    });
-
-    const unsubSaved = Events.On("layout:saved", () => {
-      Events.Emit("profile:request");
     });
 
     Events.Emit("profile:request");
 
     return () => {
       unsub?.();
-      unsubSaved?.();
     };
   }, []);
+
+  useEffect(() => {
+    // P1-NEW mitigation: while editing in-place, do not auto-refresh the whole
+    // overlay after every autosave. The edit chrome stays mounted and the user
+    // keeps the drag/resize context without a full flash/re-render.
+    const unsubSaved = Events.On("layout:saved", () => {
+      if (!editMode) {
+        Events.Emit("profile:request");
+      }
+    });
+
+    return () => {
+      unsubSaved?.();
+    };
+  }, [editMode]);
+
+  useEffect(() => {
+    const unsub = Events.On("overlay:edit-mode-changed", (event: { data: { mode?: string } }) => {
+      setEditMode(event.data?.mode === "edit");
+    });
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
+  function handleChange(widgetId: string, rect: Rect) {
+    if (!profile) return;
+    const next: ProfileConfig = {
+      ...profile,
+      widgets: profile.widgets.map((w) => (w.id === widgetId ? { ...w, position: rect } : w)),
+    };
+    setProfile(next);
+    setWidgets(next.widgets.filter((w) => w.enabled));
+    Events.Emit("layout:save", { widgets: next.widgets });
+  }
 
   // telemetryKey is read during render to recompute visibility on telemetry ticks
   const telemetryState = telemetryKey >= 0 ? getCurrentTelemetryState() : undefined;
@@ -103,19 +138,37 @@ export function CompositeApp() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
-      {(telemetryState ? widgets.filter((w) => isWidgetVisible(w, telemetryState)) : widgets).map((w) => {
-        const Component = WIDGETS[w.type];
-        if (!Component) {
-          console.warn(`unknown widget type: ${w.type}`);
-          return null;
-        }
-        const localPos = toWindowLocal(w.position, layoutOrigin);
-        return (
-          <WidgetHost key={w.id} id={w.id} position={localPos} widget={w} profile={profile}>
-            <Component editMode={false} telemetryMode="live" updateHz={w.updateHz} props={{ ...enrichWidgetPropsWithVariant(profile, w), __engineerTransport: "wails" as const }} />
-          </WidgetHost>
-        );
-      })}
+      {editMode
+        ? widgets.map((w) => {
+            const enrichedWidget = { ...w, props: { ...enrichWidgetPropsWithVariant(profile, w) } };
+            return <WidgetEditFrame key={w.id} widget={enrichedWidget} onChange={handleChange} />;
+          })
+        : (telemetryState ? widgets.filter((w) => isWidgetVisible(w, telemetryState)) : widgets).map((w) => {
+            const Component = WIDGETS[w.type];
+            if (!Component) {
+              console.warn(`unknown widget type: ${w.type}`);
+              return null;
+            }
+            const localPos = toWindowLocal(w.position, layoutOrigin);
+            return (
+              <WidgetHost key={w.id} id={w.id} position={localPos} widget={w} profile={profile}>
+                <Component editMode={false} telemetryMode="live" updateHz={w.updateHz} props={{ ...enrichWidgetPropsWithVariant(profile, w), __engineerTransport: "wails" as const }} />
+              </WidgetHost>
+            );
+          })}
+
+      {editMode && (
+        <>
+          <div className="fixed top-4 left-4 z-50 select-none" data-testid="edit-mode-chip">
+            <span className="text-[10px] font-mono text-vantare-red-400 bg-black/60 px-2 py-1 rounded border border-white/10">
+              EDIT MODE
+            </span>
+          </div>
+          <div className="fixed bottom-4 left-4 text-[10px] text-white/30 select-none" data-testid="edit-mode-hint">
+            Ctrl+Shift+E para salir · arrastra y redimensiona
+          </div>
+        </>
+      )}
     </div>
   );
 }

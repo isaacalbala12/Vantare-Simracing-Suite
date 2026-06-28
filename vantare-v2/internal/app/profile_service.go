@@ -71,6 +71,7 @@ func (s *ProfileService) SaveProfile(p *config.ProfileConfig) error {
 	}
 	return nil
 }
+
 // SaveLayout updates widget positions and persists to disk.
 // Uses skipWindowRefresh (bounds-only resize) and re-emits profile:loaded for layoutOrigin sync.
 func (s *ProfileService) SaveLayout(widgets []config.WidgetConfig) error {
@@ -138,7 +139,13 @@ func (s *ProfileService) EmitLoaded() {
 	}
 	var origin config.Rect
 	if s.mgr != nil {
-		origin = s.mgr.LayoutOrigin(s.profile)
+		// Edit mode uses a fullscreen window, so profile coordinates are already
+		// window-local and the shrink-wrap origin must be zero.
+		if s.profile.DisplayMode == config.ModeEdit {
+			origin = config.Rect{}
+		} else {
+			origin = s.mgr.LayoutOrigin(s.profile)
+		}
 	} else {
 		// The hub-owned runtime overlay is fullscreen, so profile coordinates
 		// are already window-local.

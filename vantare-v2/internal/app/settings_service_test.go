@@ -19,11 +19,28 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling=true")
 	}
-	if len(s.Hotkeys) != 3 {
-		t.Errorf("expected 3 hotkeys, got %d", len(s.Hotkeys))
+	if len(s.Hotkeys) != 4 {
+		t.Errorf("expected 4 hotkeys, got %d", len(s.Hotkeys))
 	}
 	if s.Hotkeys["toggleOverlay"] != "ctrl+shift+v" {
 		t.Errorf("unexpected toggleOverlay: %q", s.Hotkeys["toggleOverlay"])
+	}
+	if s.Hotkeys["toggleEditMode"] != "ctrl+shift+e" {
+		t.Errorf("unexpected toggleEditMode: %q", s.Hotkeys["toggleEditMode"])
+	}
+}
+
+func TestDefaultAppSettingsIncludesToggleEditMode(t *testing.T) {
+	s := app.DefaultAppSettings()
+	combo, ok := s.Hotkeys["toggleEditMode"]
+	if !ok {
+		t.Fatal("expected toggleEditMode in default hotkeys")
+	}
+	if combo != "ctrl+shift+e" {
+		t.Errorf("expected toggleEditMode=ctrl+shift+e, got %q", combo)
+	}
+	if err := app.ValidateHotkeyCombo(combo); err != nil {
+		t.Errorf("toggleEditMode combo invalid: %v", err)
 	}
 }
 

@@ -661,6 +661,52 @@ func (f *fakeOverlayRuntime) Status() app.OverlayStatus {
 	return app.OverlayStatus{Running: f.started > f.stopped, ProfileID: f.lastID, Mode: config.ModeRacing}
 }
 
+func TestHubServiceStartActiveOverlay(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "example-racing.json")
+	err := config.SaveFile(path, &config.ProfileConfig{
+		ID:          "default-racing",
+		Name:        "Default Racing",
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{
+			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 0, Y: 0, W: 100, H: 50}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	profileSvc := app.NewProfileService(path, nil, nil)
+	if err := profileSvc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &fakeOverlayRuntime{}
+	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+
+	status, err := hubSvc.StartActiveOverlay()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Running {
+		t.Fatal("overlay should be running")
+	}
+	if runtime.started != 1 {
+		t.Fatalf("expected runtime started once, got %d", runtime.started)
+	}
+}
+
+func TestHubServiceStartActiveOverlayRequiresProfile(t *testing.T) {
+	dir := t.TempDir()
+	profileSvc := app.NewProfileService(filepath.Join(dir, "missing.json"), nil, nil)
+	runtime := &fakeOverlayRuntime{}
+	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+
+	_, err := hubSvc.StartActiveOverlay()
+	if err == nil {
+		t.Fatal("expected error when no active profile is loaded")
+	}
+}
+
 func TestHubServiceStartOverlayLoadsProfileAndStartsRuntime(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "example-racing.json")

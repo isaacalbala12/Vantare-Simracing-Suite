@@ -84,6 +84,15 @@ Decisiones de release ya cerradas:
 
 ## Estado actual
 
+Fix P0 residual overlayRunning (Overlay Edit Mode) cerrado (2026-06-28):
+- Cierre externo de ventana (Alt+F4 / WindowClosing) limpia `overlayRunning=false` y resetea el perfil a racing mode mediante el closure `stopOverlay` en `cmd/vantare/main.go`, con guard para evitar doble reset cuando el path normal ya limpio el flag.
+- Errores de `StartOverlay` (handler `overlay:start`) y `StartActiveOverlay` (hotkey Ctrl+Shift+E / `handleToggleEditMode`) sincronizan `overlayRunning=false` cuando no queda ventana, evitando flag `true` colgante sin ventana.
+- `resetOverlayDisplayMode` no intenta aplicar modo sobre ventana inexistente: solo aplica al perfil y emite `overlay:edit-mode-changed` cuando `CurrentWindow() != nil`.
+- Si `ApplyProfileMode` falla, no se emite `overlay:edit-mode-changed` (evita que el frontend renderice chrome de edicion sobre una ventana que sigue click-through).
+- Tests anadidos en `cmd/vantare/main_test.go`: cierre externo limpia flag y resetea modo, guard evita doble reset, fallo de `StartActiveOverlay` sincroniza flag, fallo de `ApplyProfileMode` no emite evento, y `resetOverlayDisplayMode` sin ventana no toca referencia nil.
+- Checks: `gofmt` OK; `go test ./cmd/vantare/... ./internal/app/... ./internal/window/...` OK; `go test ./...` OK; `go vet` OK; `git diff --check` OK.
+- Veredicto final del review: `ACCEPT WITH P3` (P3 no bloqueantes documentados: profile queda en ModeEdit si ApplyProfileMode falla — se autocorrige en siguiente toggle/stop; sin test directo del handler `overlay:start` por estar inline en `main()`).
+
 R03.B - Build artifacts / release packaging completado (2026-06-27):
 - Documento operativo nuevo: `docs/release-artifacts.md` (artefactos oficiales, comandos, verificacion, gap de firma de codigo).
 - Nueva tarea canonica de pipeline: `wails3 task release:artifacts` (alias de `windows:package:all` y `package:all`). Encadena `version:sync` -> `windows:build` -> instalador NSIS -> portable zip -> SHA256 sidecars -> verify de version.
@@ -551,6 +560,7 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 14. Siguiente operativo: `P5 - Recomendados beta pulidos`.
 15. Aprobado para beta testers: `P6 - Widget Preset Gallery` (Galería de presets de widgets), programada antes del smoke test (ahora `P7`).
 16. Ejecutar REL1/Discord release al pushear el tag funcional.
+17. Plan creado / pendiente de review: `Overlay edit mode in-place por hotkey (Ctrl+Shift+E)` — ver `docs/superpowers/plans/2026-06-28-overlay-in-place-edit-mode-hotkey.md`. PLAN ONLY, sin tocar codigo de producto. Opcion recomendada B (modo in-place dentro de `CompositeApp` reutilizando `profile:set-mode` + `WidgetEditFrame`).
 
 
 
@@ -585,6 +595,49 @@ Bloque de estabilización previo a retag/release de la beta `v0.3.10.0`. Atiende
   6. P3 S4.5: el selector mock usa paleta neutral; conviene alinearlo con el rework UI/S5.
   7. P3 S4.5: `mockSessionScenario` se propaga a todos los widgets aunque solo `Standings` lo consume; sin impacto funcional.
   8. P3 S4.6: falta test de regresion para Ctrl+S con `autosave:false`; el handler no cambio y GLM no lo considera bloqueante.
+
+## Overlay edit mode in-place por hotkey (2026-06-28)
+
+Implementado el modo de edicion in-place activable con `Ctrl+Shift+E`:
+
+- Backend/Wails:
+  - Hotkey por defecto `toggleEditMode = ctrl+shift+e` en `DefaultAppSettings`.
+  - Handler `handleToggleEditMode` en `cmd/vantare/main.go`: togglea entre `ModeRacing` y `ModeEdit` sobre el overlay abierto; si no hay overlay abierto, abre el perfil activo y entra directamente en edit mode.
+  - Evento FE<->Go `overlay:toggle-edit-mode` y evento Go->FE `overlay:edit-mode-changed`.
+  - `rebuildHotkeys()` incluye `toggleEditMode` en el `actionMap` (cierre del finding P0-NEW del review adversarial).
+  - Reset a `ModeRacing` al detener/cerrar el overlay (`overlay:stop`) y al abrir un overlay nuevo (`overlay:start`).
+  - `ProfileService.EmitLoaded` retorna `layoutOrigin = {0,0}` en `ModeEdit` (fullscreen) para que las coordenadas de los widgets no se desplacen.
+  - **Fix P0 (mouse passthrough real):** `OverlayWindow` expone `ApplyProfileMode`; `wailsOverlayWindow` conserva su `window.Manager` y aplica `ModeRacing`/`ModeEdit` en la ventana Wails real. `handleToggleEditMode` y `resetOverlayDisplayMode` aplican el modo a la ventana actual tras mutar el perfil, garantizando passthrough ON en racing y OFF en edit mode.
+  - **Fix P1 (streaming/estado):** `handleToggleEditMode` usa `overlayRunning.Store(newStatus.Running)`; si `StartActiveOverlay` no crea ventana desktop (streaming), no entra en edit mode.
+  - **Fix P1 (arranque siempre en racing):** tanto `overlay:start`, `overlay:stop` como el hotkey `toggleOverlay` llaman `resetOverlayDisplayMode` tras detener o iniciar la ventana, evitando que un perfil persistido en `ModeEdit` arranque en edit mode.
+- Frontend:
+  - `CompositeApp` escucha `overlay:edit-mode-changed` y deriva `editMode` de `windowMode` en `profile:loaded`.
+  - En edit mode renderiza `WidgetEditFrame` (drag/resize) en lugar de `WidgetHost`.
+  - Mitigacion del finding P1-NEW: en edit mode `layout:saved` ya no emite `profile:request`, evitando el flash/re-render completo tras cada autosave.
+  - Indicadores visuales `EDIT MODE` y hint de salida.
+  - Autosave en `layout:save` al soltar drag/resize.
+  - **P2:** `WidgetEditFrame` recibe variantes del perfil via `enrichWidgetPropsWithVariant`, alineando el render en edit mode con el runtime.
+- Tests:
+  - Go: `TestDefaultAppSettingsIncludesToggleEditMode`, `TestParseHotkeyComboCtrlShiftE`, `TestHotkeyManagerUpdateFromSettingsKeepsToggleEditMode`, `TestProfileServiceEmitLoadedEditModeOriginZero`, `TestBuildHotkeyActionMapIncludesToggleEditMode`, `TestHandleToggleEditModeTogglesDisplayMode`, `TestHandleToggleEditModeOpensOverlayWhenNotRunning`, `TestHandleToggleEditModeRespectsRunningStatusForStreaming`, `TestResetOverlayDisplayModeResetsToRacing`, `TestNewOverlayWindowAppliesProfileMode`.
+  - Frontend: tests de CompositeApp para entrar/salir de edit mode, indicador, toggle por evento, no `profile:request` en `layout:saved` durante edit mode, y emision de `layout:save` tras drag.
+- Documentacion:
+  - `docs/tester-build-instructions.md` actualizado con la hotkey `Ctrl+Shift+E`.
+- Riesgos residuales:
+  - `WidgetEditFrame` no conserva ratio de aspecto al redimensionar (igual que el flujo legacy `/overlay/edit`); aceptado para demo pre-stream.
+  - El chrome de edicion es visible si se edita mientras se hace stream; aceptado para demo.
+  - Si `engineer-notifications` esta activo, en edit mode aparece como frame vacio porque `WIDGET_COMPONENTS` no lo incluye (heredado del flujo legacy).
+
+## Fix P0 residual overlayRunning (2026-06-28)
+
+Cierre del P0 residual detectado en el review final del fix P0 de Overlay Edit Mode (`overlayRunning` podia quedar `true` sin ventana):
+
+- **Fix A (cierre externo):** `wailsOverlayFactory.stopOverlay` (callback de `WindowClosing`) ahora, tras `overlayController.Stop()`, si `overlayRunning.Load()` es true, llama `resetOverlayDisplayMode` y hace `overlayRunning.Store(false)`. El guard evita doble reset cuando el stop ya fue procesado por la via normal.
+- **Fix B (error de `overlay:start`):** el handler `overlay:start` ahora usa `status.Running` (no `true` fijo) tras `hubSvc.StartOverlay` exitoso, y en error hace `overlayRunning.Store(false)` si `!status.Running`.
+- **Fix C (error de `StartActiveOverlay` desde edit hotkey):** `handleToggleEditMode` ahora, si `StartActiveOverlay` falla, hace `overlayRunning.Store(false)` cuando `!newStatus.Running` y no emite `overlay:edit-mode-changed`.
+- **Fix D (P3 log noise):** `resetOverlayDisplayMode` ahora solo aplica el modo a la ventana si `overlayController.CurrentWindow() != nil`. Sigue forzando el profile a racing aunque no haya ventana.
+- Tests Go anadidos en `cmd/vantare/main_test.go`: cierre externo limpia flag y resetea modo; cierre con flag ya false no emite eventos; fallo de `StartActiveOverlay` desde edit hotkey limpia flag y no emite edit-mode-changed; `ApplyProfileMode` fallido no emite edit-mode-changed; `resetOverlayDisplayMode` sin ventana no toca ventana y resetea modo.
+- P1 residual documentado (no bloqueante): race menor entre `CurrentWindow()` y `ApplyProfileMode` fuera del lock del controller; queda para un futuro `ApplyModeToCurrentWindow` bajo lock.
+- Checks: `gofmt`, `go test ./cmd/vantare/... ./internal/app/... ./internal/window/...`, `go test ./...`, `go vet ./cmd/vantare/... ./internal/app/... ./internal/window/...`, `git diff --check` — todos OK.
 
 ## Decisiones pendientes
 

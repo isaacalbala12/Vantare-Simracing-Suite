@@ -379,3 +379,58 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
   - No se commitea nada de Remotion en esta tanda.
   - Para restaurar el trabajo Remotion del usuario: `git stash apply 'stash@{0}'`.
 - Cierre: 2026-06-28, sin commit todavia (bloque beta stabilization).
+
+### TD-032 - Overlay edit mode: rollback si ApplyProfileMode falla
+
+- Severidad: P3
+- Area: overlay/go
+- Origen: review final overlay edit mode in-place (2026-06-28)
+- Estado: abierto
+- Release objetivo: auditoria global post-HUB1 / R04
+- Motivo para diferir: el flujo normal no deberia fallar porque `wailsOverlayWindow.ApplyProfileMode` solo falla con `mgr == nil` o `profile == nil`; el caso queda cubierto por tests como no-emision de `overlay:edit-mode-changed`.
+- Fix esperado: si `applyDisplayModeToWindow` falla despues de `SetDisplayMode(ModeEdit)`, restaurar el modo previo en memoria o mover la mutacion de `DisplayMode` despues de aplicar correctamente el modo a la ventana.
+- Riesgo si se ignora: inconsistencia temporal entre profile en `ModeEdit` y ventana aun en passthrough/racing si aparece un error inesperado al aplicar el modo.
+
+### TD-033 - Overlay edit mode: aplicar modo a ventana bajo lock del controller
+
+- Severidad: P3
+- Area: overlay/go/concurrency
+- Origen: review final overlay edit mode in-place (2026-06-28)
+- Estado: abierto
+- Release objetivo: auditoria global post-HUB1 / R04
+- Motivo para diferir: el riesgo es un TOCTOU menor entre `CurrentWindow()` y `ApplyProfileMode`; no se ha observado en flujo normal y resolverlo ahora implicaba refactorizar `OverlayController`.
+- Fix esperado: anadir un metodo tipo `ApplyModeToCurrentWindow(profile)` en `OverlayController` que obtenga la ventana y aplique el modo bajo una seccion critica controlada, evitando referencias stale tras `Stop()`.
+- Riesgo si se ignora: un cierre concurrente podria invalidar la ventana entre la consulta y la aplicacion de modo, produciendo errores no deterministas o logs espurios.
+
+### TD-034 - Overlay edit mode: test directo del handler inline `overlay:start`
+
+- Severidad: P3
+- Area: overlay/testing
+- Origen: review final overlay edit mode in-place (2026-06-28)
+- Estado: abierto
+- Release objetivo: auditoria global post-HUB1 / R04
+- Motivo para diferir: el handler esta registrado inline en `main.go`; la logica paralela de error en `handleToggleEditMode` si esta cubierta por tests.
+- Fix esperado: extraer la logica de `overlay:start` a un helper testeable o anadir un harness que pueda invocar el handler y verificar que errores de `StartOverlay` sincronizan `overlayRunning=false`.
+- Riesgo si se ignora: futuras modificaciones del handler podrian reintroducir `overlayRunning=true` sin ventana y no quedar cubiertas por tests unitarios.
+
+### TD-035 - Overlay edit mode: resize libre no conserva ratio en Relative/Standings
+
+- Severidad: P3
+- Area: overlay/frontend/ux
+- Origen: review overlay edit mode in-place (2026-06-28)
+- Estado: abierto
+- Release objetivo: R04 o post-beta polish
+- Motivo para diferir: el comportamiento ya existia en `WidgetEditFrame` legacy y es aceptable para la demo; no bloquea drag/resize ni guardado.
+- Fix esperado: reutilizar la logica proporcional de `canvas-math`/`widget-base-size` para widgets con base size (Relative/Standings) tambien dentro del edit mode in-place.
+- Riesgo si se ignora: usuarios pueden deformar el bbox de Relative/Standings desde el overlay real; el runtime normal lo escala, pero la caja puede quedar visualmente rara hasta otro ajuste.
+
+### TD-036 - Overlay edit mode: widgets no incluidos en shared-widget-map
+
+- Severidad: P3
+- Area: overlay/frontend/widgets
+- Origen: review overlay edit mode in-place (2026-06-28)
+- Estado: abierto
+- Release objetivo: R04 o auditoria global
+- Motivo para diferir: no rompe la app; el caso mas relevante es `engineer-notifications`, que puede aparecer como frame editable vacio en edit mode.
+- Fix esperado: unificar el mapa de componentes usado por `CompositeApp`, `WidgetEditFrame` y `WidgetRenderer`, o anadir `engineer-notifications` a `shared-widget-map` con transporte desactivado/seguro para edit mode.
+- Riesgo si se ignora: algunos widgets se pueden mover/redimensionar como caja, pero no se renderizan visualmente dentro del chrome de edicion.

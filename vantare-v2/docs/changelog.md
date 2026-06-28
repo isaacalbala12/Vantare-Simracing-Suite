@@ -4,7 +4,9 @@ Changelog publico para testers y Discord.
 
 Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
-## v0.3.10.0 — Primera beta abierta
+## v0.3.10.0
+
+Primera beta abierta.
 
 **Nuevo**
 

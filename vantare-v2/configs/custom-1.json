@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "vantare-lmu-basic",
   "name": "Le Mans Ultimate - Basic",
-  "displayMode": "edit",
+  "displayMode": "racing",
   "monitorIndex": 0,
   "widgets": [
     {
@@ -12,10 +12,10 @@
       "enabled": true,
       "updateHz": 30,
       "position": {
-        "x": 760,
-        "y": 40,
-        "w": 400,
-        "h": 48
+        "x": 720,
+        "y": 32,
+        "w": 480,
+        "h": 160
       }
     },
     {
@@ -27,8 +27,8 @@
       "position": {
         "x": 32,
         "y": 736,
-        "w": 320,
-        "h": 280
+        "w": 380,
+        "h": 320
       }
     },
     {
@@ -40,8 +40,8 @@
       "position": {
         "x": 32,
         "y": 72,
-        "w": 328,
-        "h": 456
+        "w": 380,
+        "h": 540
       }
     },
     {
@@ -50,8 +50,8 @@
       "enabled": false,
       "updateHz": 30,
       "position": {
-        "x": 1016,
-        "y": 728,
+        "x": 1798,
+        "y": 72,
         "w": 90,
         "h": 100
       }
@@ -68,10 +68,10 @@
           "enabled": true,
           "updateHz": 30,
           "position": {
-            "x": 760,
-            "y": 40,
-            "w": 400,
-            "h": 48
+            "x": 720,
+            "y": 32,
+            "w": 480,
+            "h": 160
           }
         },
         {
@@ -83,8 +83,8 @@
           "position": {
             "x": 32,
             "y": 736,
-            "w": 320,
-            "h": 280
+            "w": 380,
+            "h": 320
           }
         },
         {
@@ -96,8 +96,8 @@
           "position": {
             "x": 32,
             "y": 72,
-            "w": 328,
-            "h": 456
+            "w": 380,
+            "h": 540
           }
         },
         {
@@ -106,8 +106,8 @@
           "enabled": false,
           "updateHz": 30,
           "position": {
-            "x": 1016,
-            "y": 728,
+            "x": 1798,
+            "y": 72,
             "w": 90,
             "h": 100
           }

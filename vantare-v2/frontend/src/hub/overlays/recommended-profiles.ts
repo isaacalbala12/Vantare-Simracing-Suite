@@ -28,7 +28,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
           type: "delta",
           enabled: true,
           updateHz: 30,
-          position: { x: 760, y: 40, w: 400, h: 48 }
+          position: { x: 720, y: 32, w: 480, h: 160 }
         },
         {
           id: "relative",
@@ -36,14 +36,14 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
           variantId: "variant-relative-default",
           enabled: true,
           updateHz: 15,
-          position: { x: 40, y: 600, w: 320, h: 280 }
+          position: { x: 32, y: 600, w: 380, h: 320 }
         },
         {
           id: "standings",
           type: "standings",
           enabled: true,
           updateHz: 15,
-          position: { x: 1368, y: 176, w: 340, h: 420 }
+          position: { x: 1548, y: 80, w: 340, h: 520 }
         }
       ],
       layouts: {
@@ -55,7 +55,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
               type: "delta",
               enabled: true,
               updateHz: 30,
-              position: { x: 760, y: 40, w: 400, h: 48 }
+              position: { x: 720, y: 32, w: 480, h: 160 }
             },
             {
               id: "relative",
@@ -63,14 +63,14 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
               variantId: "variant-relative-default",
               enabled: true,
               updateHz: 15,
-              position: { x: 40, y: 600, w: 320, h: 280 }
+              position: { x: 32, y: 600, w: 380, h: 320 }
             },
             {
               id: "standings",
               type: "standings",
               enabled: true,
               updateHz: 15,
-              position: { x: 1368, y: 176, w: 340, h: 420 }
+              position: { x: 1548, y: 80, w: 340, h: 520 }
             }
           ]
         }
@@ -114,7 +114,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
           variantId: "variant-delta-default",
           enabled: true,
           updateHz: 30,
-          position: { x: 760, y: 40, w: 400, h: 48 }
+          position: { x: 720, y: 32, w: 480, h: 160 }
         },
         {
           id: "relative",
@@ -122,7 +122,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
           variantId: "variant-relative-default",
           enabled: true,
           updateHz: 15,
-          position: { x: 32, y: 736, w: 320, h: 280 }
+          position: { x: 32, y: 736, w: 380, h: 320 }
         },
         {
           id: "standings",
@@ -130,14 +130,14 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
           variantId: "variant-standings-default",
           enabled: true,
           updateHz: 15,
-          position: { x: 32, y: 72, w: 328, h: 456 }
+          position: { x: 32, y: 72, w: 380, h: 540 }
         },
         {
           id: "pedals",
           type: "pedals",
           enabled: false,
           updateHz: 30,
-          position: { x: 1016, y: 728, w: 90, h: 100 }
+          position: { x: 1798, y: 72, w: 90, h: 100 }
         }
       ],
       layouts: {
@@ -150,7 +150,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
               variantId: "variant-delta-default",
               enabled: true,
               updateHz: 30,
-              position: { x: 760, y: 40, w: 400, h: 48 }
+              position: { x: 720, y: 32, w: 480, h: 160 }
             },
             {
               id: "relative",
@@ -158,7 +158,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
               variantId: "variant-relative-default",
               enabled: true,
               updateHz: 15,
-              position: { x: 32, y: 736, w: 320, h: 280 }
+              position: { x: 32, y: 736, w: 380, h: 320 }
             },
             {
               id: "standings",
@@ -166,14 +166,14 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
               variantId: "variant-standings-default",
               enabled: true,
               updateHz: 15,
-              position: { x: 32, y: 72, w: 328, h: 456 }
+              position: { x: 32, y: 72, w: 380, h: 540 }
             },
             {
               id: "pedals",
               type: "pedals",
               enabled: false,
               updateHz: 30,
-              position: { x: 1016, y: 728, w: 90, h: 100 }
+              position: { x: 1798, y: 72, w: 90, h: 100 }
             }
           ]
         }

@@ -12,7 +12,10 @@ Vantare debe tratarse como suite local. Overlays Studio e Ingeniero son modulos 
 
 | ID | Version | Minifase | Estado | Modelo worker | Reviewer | Manual |
 |---|---:|---|---|---|---|---|
-| HOTFIX-01 | 0.1.0.1 | Supabase env vars en release build + login Google empaquetado | Next | Kimi K2.7 | GLM/Codex | Si |
+| HOTFIX-01 | 0.1.0.1 | Supabase env vars en release build + login Google empaquetado | Done | Kimi K2.7 | GLM/Codex | Si |
+| HOTFIX-02 | 0.1.0.2 | Supabase backend Go + Free plan desbloqueado + UnconfiguredScreen | Done | — | — | Si |
+| HUB-01 | 0.1.x | Hub beta honesto + BetaWelcome una sola vez | Done | Kimi/Codex | Codex | Si |
+| HUB-02 | 0.1.x | Acciones reales de overlay activo en Dashboard | In progress | Kimi/Codex | Codex | Si |
 | HOTFIX-* | 0.1.0.X | Hotfixes criticos de beta publica | Planned | Segun area | GLM/Codex | Si |
 | LINUX1 | 0.1.1.0 | Linux/Proton experimental | Planned | GLM/Kimi | GLM | Si |
 | SETUP1 | 0.1.2.0 | Vantare Setup Launcher v1 | Planned | GLM/Kimi | GLM | Si |
@@ -341,11 +344,8 @@ No alcance:
 
 ## Proxima accion
 
-Hotfix v0.1.0.1: Supabase env vars en release build + login Google empaquetado.
-Smoke manual de beta (login Google, overlays, OBS, updater).
-Discord publico solo después de smoke manual.
-
-Checklist manual pendiente:
-1. Smoke completo de la build empaquetada (login Google con Supabase env vars).
-2. Confirmar que `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` estan inyectadas en CI.
-3. Si el smoke es OK, publicar version en Discord.
+v0.1.0.2 publicado y verificado. HUB-01 cerrado y HUB-02 implementado con smoke manual correcto.
+Siguiente:
+- Commit selectivo de HUB-02 si la review final no detecta P0/P1/P2.
+- DISCORD-01: limpiar mensajes beta progress y referencias historicas.
+- Smoke manual completo de beta con build publicada y nuevo Hub.

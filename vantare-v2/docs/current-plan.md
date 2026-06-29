@@ -8,6 +8,12 @@ Nota post-release (2026-06-29):
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 - Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
+Nota HUB-01/HUB-02 (2026-06-30):
+- HUB-01 P0/P1 cerrado en `9a5cd6f`: dashboard beta sin datos fake, placeholders honestos y Topbar sin nombre hardcodeado.
+- HUB-01 P2 cerrado en `6b9b1b4`: BetaWelcome aparece una sola vez y persiste `betaWelcomeCompleted` sin borrar settings existentes.
+- HUB-02 implementado y smoke manual correcto: el Hub muestra el overlay activo, permite abrirlo, entrar/salir de edicion y guia a Overlays Studio si no hay perfil activo. Pendiente commit selectivo del lote de codigo.
+- P3 aceptado: no existe query inicial `overlay:status:get`; si el card monta despues de una emision antigua de `overlay:status`, puede no saber que el overlay ya esta abierto hasta el siguiente cambio de estado. Registrado en `docs/technical-debt.md`.
+
 ## P0 Free plan bloqueado tras Google OAuth — Fix A+B+C (2026-06-29)
 
 Causa raiz real: el binario Go de la release build no tenia `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` en runtime. CI solo inyectaba `VITE_SUPABASE_*` al frontend (Vite build time). Cuando llegaba el token OAuth, `LicenseService` no tenia client Supabase, cae a `fromCacheOnFailure` y devolvia `expired` (sin cache) → Paywall bloqueaba al usuario Free.
@@ -180,10 +186,11 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. HUB-01 — Pulir Hub/onboarding para beta: revisar primer recorrido de tester nuevo (login, Free, plan, perfil recomendado, abrir overlay, OBS, updater).
+1. Commit selectivo de HUB-02 (`ActiveOverlayCard` + integracion en `DashboardPage`) si la review final del lote no encuentra P0/P1/P2.
 2. DISCORD-01 — Limpiar mensajes beta progress y referencias historicas en Discord.
-3. Smoke manual de beta completo: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local y updater.
-4. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework, disenos oficiales adicionales, hardening de auth/licencias y revision global post-beta.
+3. Smoke manual de beta completo con build publicada: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local, updater y nuevo Hub.
+4. HUB-03 — acciones reales adicionales del Hub solo si salen del smoke: abrir perfil recomendado, copy-to-own y acceso OBS mas directo. No hacer rework visual todavia.
+5. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework visual, disenos oficiales adicionales, hardening de auth/licencias y revision global post-beta.
 
 Regla de orquestacion: el agente principal no edita codigo salvo necesidad estricta; genera prompts, revisa reportes y actualiza documentacion. Workers implementan. GLM revisa P0/P1/P2 y cualquier cambio de Go debe exigir las skills de Go indicadas en `docs/release-roadmap-execution-index.md`.
 

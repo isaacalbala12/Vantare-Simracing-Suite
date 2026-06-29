@@ -73,6 +73,17 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Fix esperado: añadir `if (result.state === "unconfigured") return <UnconfiguredScreen />` en `AuthStage` y en el check de `OnboardingSteps` (que actualmente lista `active/grace/authenticated-no-entitlement` para skip).
 - Riesgo si se ignora: si se usa `OnboardingFlow` en un build sin config Supabase, el usuario ve pantalla en blanco en vez de mensaje accionable.
 
+### TD-047 - Dashboard no puede consultar estado inicial del overlay activo
+
+- Severidad: P3
+- Area: frontend/hub
+- Origen: HUB-02 ActiveOverlayCard review (2026-06-30)
+- Estado: abierto
+- Release objetivo: `0.1.x` cleanup o auditoria global post-beta
+- Motivo para diferir: `ActiveOverlayCard` escucha `overlay:status`, pero no existe un evento/query tipo `overlay:status:get` para pedir el estado actual al montar. Si el card se monta despues de que el backend ya emitio el ultimo `overlay:status`, puede mostrar "Abrir overlay" aunque el overlay ya este abierto hasta que llegue otro cambio de estado. No bloquea porque `overlay:start-active` ya tiene defensas backend y el flujo principal sigue funcionando.
+- Fix esperado: anadir un handler Go `overlay:status:get` que emita el estado actual del `OverlayController`/perfil activo, o hacer que `HubService` exponga una consulta idempotente de estado. `ActiveOverlayCard` deberia emitir esa query al montar y cubrirlo con test.
+- Riesgo si se ignora: estado visual inicial potencialmente desincronizado en el Dashboard, especialmente si el usuario vuelve al Hub tras abrir/cerrar overlays desde otra pantalla.
+
 ### TD-009 - Inicio de sesión con Google OAuth bloqueado en WebView2
 
 - Severidad: P1

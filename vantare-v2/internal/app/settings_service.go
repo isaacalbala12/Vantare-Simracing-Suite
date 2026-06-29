@@ -14,6 +14,7 @@ type AppSettings struct {
 	CpuSampling            bool              `json:"cpuSampling"`
 	Hotkeys                map[string]string `json:"hotkeys"`
 	ActiveOverlayProfileID string            `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted   bool              `json:"betaWelcomeCompleted,omitempty"`
 }
 
 // DefaultAppSettings returns settings with sensible defaults.
@@ -83,6 +84,7 @@ func (s *SettingsService) Load() error {
 		}
 	}
 	merged.ActiveOverlayProfileID = loaded.ActiveOverlayProfileID
+	merged.BetaWelcomeCompleted = loaded.BetaWelcomeCompleted
 	s.settings = merged
 	return nil
 }

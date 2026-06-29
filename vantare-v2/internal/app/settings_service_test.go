@@ -252,3 +252,30 @@ func TestSettingsServiceMergeKeepsActiveOverlayProfileID(t *testing.T) {
 		t.Errorf("expected ActiveOverlayProfileID=custom-saved, got %q", svc.Settings().ActiveOverlayProfileID)
 	}
 }
+
+func TestDefaultAppSettingsBetaWelcomeCompleted(t *testing.T) {
+	s := app.DefaultAppSettings()
+	if s.BetaWelcomeCompleted {
+		t.Errorf("expected BetaWelcomeCompleted false by default, got true")
+	}
+}
+
+func TestSettingsServicePersistsBetaWelcomeCompleted(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil)
+
+	custom := app.DefaultAppSettings()
+	custom.BetaWelcomeCompleted = true
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	loaded := app.NewSettingsService(path, nil)
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !loaded.Settings().BetaWelcomeCompleted {
+		t.Errorf("expected BetaWelcomeCompleted true after load, got false")
+	}
+}

@@ -85,6 +85,16 @@ vi.mock("./auth/LicenseBanner", () => ({
   },
 }));
 
+vi.mock("./onboarding/BetaWelcome", () => ({
+  BetaWelcome: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="beta-welcome">
+      <button type="button" data-testid="beta-welcome-close" onClick={onClose}>
+        Empezar
+      </button>
+    </div>
+  ),
+}));
+
 import { HubApp } from "./HubApp";
 
 function setLicense(result: unknown, loading = false) {
@@ -287,5 +297,128 @@ describe("HubApp gate (production)", () => {
     eventsEmit.mockClear();
     screen.getByTestId("trigger-login-bare").click();
     expect(eventsEmit).not.toHaveBeenCalledWith("license:validate", expect.anything());
+  });
+
+  it("shows BetaWelcome when betaWelcomeCompleted is false", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: false } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.queryByTestId("beta-welcome")).toBeTruthy();
+    });
+  });
+
+  it("does not show BetaWelcome when betaWelcomeCompleted is true", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.queryByTestId("beta-welcome")).toBeNull();
+    });
+  });
+
+  it("emits settings:save with the full settings payload when welcome is closed", async () => {
+    const settings = {
+      deltaMode: "self",
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: "ctrl+shift+v", nextProfile: "ctrl+shift+n" },
+      activeOverlayProfileId: "profile-clean",
+      betaWelcomeCompleted: false,
+    };
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: settings }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.getByTestId("beta-welcome")).toBeTruthy();
+    });
+    eventsEmit.mockClear();
+    screen.getByTestId("beta-welcome-close").click();
+    await waitFor(() => {
+      expect(eventsEmit).toHaveBeenCalledWith(
+        "settings:save",
+        expect.objectContaining({
+          deltaMode: "self",
+          cpuSampling: true,
+          hotkeys: { toggleOverlay: "ctrl+shift+v", nextProfile: "ctrl+shift+n" },
+          activeOverlayProfileId: "profile-clean",
+          betaWelcomeCompleted: true,
+        }),
+      );
+    });
+  });
+
+  it("does not erase activeOverlayProfileId when closing BetaWelcome", async () => {
+    const settings = {
+      deltaMode: "session",
+      cpuSampling: false,
+      hotkeys: {},
+      activeOverlayProfileId: "profile-active-must-survive",
+      betaWelcomeCompleted: false,
+    };
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: settings }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.getByTestId("beta-welcome")).toBeTruthy();
+    });
+    eventsEmit.mockClear();
+    screen.getByTestId("beta-welcome-close").click();
+    await waitFor(() => {
+      expect(eventsEmit).toHaveBeenCalledWith(
+        "settings:save",
+        expect.objectContaining({
+          activeOverlayProfileId: "profile-active-must-survive",
+          betaWelcomeCompleted: true,
+        }),
+      );
+    });
+    const [, payload] = eventsEmit.mock.calls.find(
+      (call: unknown[]) => call[0] === "settings:save",
+    ) ?? [];
+    expect((payload as Record<string, unknown>).betaWelcomeCompleted).toBe(true);
   });
 });

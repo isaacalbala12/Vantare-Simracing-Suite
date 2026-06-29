@@ -56,6 +56,7 @@ export type AppSettings = {
   cpuSampling: boolean;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
+  betaWelcomeCompleted?: boolean;
 };
 
 const DEFAULT_APP_SETTINGS: AppSettings = {

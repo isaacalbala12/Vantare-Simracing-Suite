@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { ScrollableMain } from './components/ScrollableMain';
@@ -14,6 +14,7 @@ import { PaywallScreen } from './auth/PaywallScreen';
 import { LicenseBanner } from './auth/LicenseBanner';
 import { UnconfiguredScreen } from './auth/UnconfiguredScreen';
 import { getSession } from '../lib/supabase-auth';
+import { BetaWelcome } from './onboarding/BetaWelcome';
 
 type Section = 'dashboard' | 'profiles' | 'telemetry' | 'setup' | 'engineer';
 
@@ -109,6 +110,9 @@ function HubShell() {
   const [section, setSection] = useState<Section>('dashboard');
   const [version, setVersion] = useState<string | null>(null);
   const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
+  const [showBetaWelcome, setShowBetaWelcome] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const settingsRef = useRef<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     document.body.classList.add('hub');
@@ -118,12 +122,20 @@ function HubShell() {
     const unsubSource = Events.On('telemetry:source-status', (event: { data: SourceStatus }) => {
       setSourceStatus(event.data);
     });
+    const unsubSettings = Events.On('settings', (event: { data: Record<string, unknown> }) => {
+      settingsRef.current = event.data ?? null;
+      const completed = event.data?.betaWelcomeCompleted === true;
+      setShowBetaWelcome(!completed);
+      setSettingsLoaded(true);
+    });
     Events.Emit('app:version:get');
     Events.Emit('telemetry:source-status:get');
+    Events.Emit('settings:get');
     return () => {
       document.body.classList.remove('hub');
       unsub?.();
       unsubSource?.();
+      unsubSettings?.();
     };
   }, []);
 
@@ -131,8 +143,19 @@ function HubShell() {
     setSection(id as Section);
   }, []);
 
+  const handleBetaWelcomeClose = useCallback(() => {
+    setShowBetaWelcome(false);
+    const base = settingsRef.current;
+    if (base) {
+      Events.Emit('settings:save', { ...base, betaWelcomeCompleted: true });
+    }
+  }, []);
+
   return (
     <div className="h-screen premium-bg relative flex flex-col">
+      {settingsLoaded && showBetaWelcome && (
+        <BetaWelcome onClose={handleBetaWelcomeClose} />
+      )}
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
       <UpdateBanner />
       <ScrollableMain className="flex-1 pt-0">

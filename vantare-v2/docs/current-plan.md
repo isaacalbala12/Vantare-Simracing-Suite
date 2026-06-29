@@ -1,6 +1,11 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-29.
+Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
+
+Nota post-release (2026-06-29):
+- Para smoke local usar `bin\vantare.exe` generado por `release:artifacts` o el asset descargado desde GitHub Release.
+- No usar `vantare.exe` en raiz ni portables antiguos.
+- Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 
 ## P0 Free plan bloqueado tras Google OAuth — Fix A+B+C (2026-06-29)
 
@@ -77,13 +82,41 @@ Verificacion manual: Google login -> estado `authenticated-no-entitlement` -> en
 
 Riesgos restantes: el flujo real en build empaquetada Wails requiere smoke manual de OAuth -> Hub. No se agrego persistencia explicita de "plan Free elegido" porque Free es fallback automatico cuando no hay entitlements; no hay backend que setear.
 
+## P2 BetaWelcome — persistencia segura (2026-06-29)
+
+Causa: `frontend/src/hub/HubApp.tsx` `handleBetaWelcomeClose` emitia `Events.Emit('settings:save', { betaWelcomeCompleted: true })`. El handler `settings:save` de `cmd/vantare/main.go` decodifica el payload como `app.AppSettings` y llama a `settingsSvc.Save(&s)`. `Save()` valida `DeltaMode` (rechaza `""` con `invalid delta mode`) y, con un payload parcial, sobrescribiria `deltaMode`, `cpuSampling`, `hotkeys` y `activeOverlayProfileId` con sus zero values. Ademas de fallar validacion, pisaria ajustes existentes.
+
+Fix:
+- `frontend/src/hub/HubApp.tsx`: nuevo `settingsRef` que guarda el ultimo payload recibido en el evento `settings`. Al cerrar BetaWelcome se emite `settings:save` con `{ ...base, betaWelcomeCompleted: true }` (objeto completo) en vez del payload parcial. Guarda defensiva `if (base)` antes de emitir: si no hay settings cargados, no se hace la emision (BetaWelcome solo se muestra cuando `settingsLoaded` es true, asi que en practica siempre hay base completa).
+- Backend Go no se toco (no hay bug nuevo en `SettingsService`; el handler ya trabaja con `AppSettings` y eso es contrato).
+
+Tests en `frontend/src/hub/HubApp.test.tsx`:
+- "emits settings:save with the full settings payload when welcome is closed" — mock con `deltaMode`, `cpuSampling`, `hotkeys` y `activeOverlayProfileId`; verifica que el payload emitido conserva todos los campos y agrega `betaWelcomeCompleted: true`.
+- "does not erase activeOverlayProfileId when closing BetaWelcome" — caso explicito: `activeOverlayProfileId` no vacio (`"profile-active-must-survive"`) debe sobrevivir.
+- Mantenidos: `betaWelcomeCompleted=false` muestra BetaWelcome, `betaWelcomeCompleted=true` no lo muestra.
+
+Archivos:
+- `frontend/src/hub/HubApp.tsx` (settingsRef + payload completo al cerrar).
+- `frontend/src/hub/HubApp.test.tsx` (2 tests modificados/anadidos).
+
+Checks:
+- `pnpm --dir frontend test -- HubApp BetaWelcome`: 23/23 OK (3 files).
+- `pnpm --dir frontend test`: 729/729 OK (94 files, +2 tests vs baseline).
+- `pnpm --dir frontend exec tsc -b`: OK.
+- `pnpm --dir frontend build`: OK (warning preexistente de chunk size, no error).
+- `pnpm --dir frontend lint`: OK (warning preexistente de `.eslintignore`, no error).
+- `git diff --check`: OK (whitespace limpio en archivos tocados).
+- Go: no se toco (`internal/app/...`, `cmd/vantare/...` intactos); `gofmt`/`go test` no aplicaron.
+
+Riesgos restantes: ninguno nuevo. Verificacion manual recomendada: cerrar BetaWelcome con un perfil activo guardado, reabrir la app y confirmar que el perfil sigue activo y BetaWelcome no reaparece.
+
 ## Estado operativo principal
 
 La app se encuentra en la linea publica de beta **`v0.1.x`**.
 
 - `v0.1.0.0`: primera beta publica publicada en GitHub Releases.
 - `v0.1.0.1`: hotfix para compilar la build de release con variables de entorno de Supabase.
-- `v0.1.0.2`: hotfix P0/P1 para abrir Google/Discord OAuth en navegador externo del sistema (evitando bloqueo y pantalla blanca en WebView2) via Wails `Browser.OpenURL` y callback local HTTP, corrigiendo bucle de logout post-OAuth externo.
+- `v0.1.0.2`: hotfix P0/P1 — Supabase backend configurado en Go build (via `generate_supabase_config.ps1`), estado `UnconfiguredScreen` para builds mal configuradas, y plan Free desbloqueado tras Google OAuth (`authenticated-no-entitlement` → `free` en vez de `blocked`). Verificacion manual completa: login Google -> Hub Free, overlays recomendados, flujo basico correcto.
 
 Las builds `v0.3.*` quedan como historico interno no anunciado y no deben usarse en Discord, docs publicos ni nuevos tags de beta.
 
@@ -146,9 +179,9 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. `v0.1.0.x` — hotfix Supabase/login/licencias: asegurar configuración Supabase para frontend y backend Go en builds publicadas (via `generate_supabase_config.ps1` + env vars de CI), regenerar release y validar Google OAuth -> Free/Hub en build empaquetada.
-2. Smoke manual de beta: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local y updater.
-3. Discord publico: `build available`, `release announcement` y `known issues` solo despues de smoke manual.
+1. HUB-01 — Pulir Hub/onboarding para beta: revisar primer recorrido de tester nuevo (login, Free, plan, perfil recomendado, abrir overlay, OBS, updater).
+2. DISCORD-01 — Limpiar mensajes beta progress y referencias historicas en Discord.
+3. Smoke manual de beta completo: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local y updater.
 4. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework, disenos oficiales adicionales, hardening de auth/licencias y revision global post-beta.
 
 Regla de orquestacion: el agente principal no edita codigo salvo necesidad estricta; genera prompts, revisa reportes y actualiza documentacion. Workers implementan. GLM revisa P0/P1/P2 y cualquier cambio de Go debe exigir las skills de Go indicadas en `docs/release-roadmap-execution-index.md`.
@@ -458,8 +491,8 @@ PREVIEW2 - WidgetStudio intrinsic width contract:
 
 Vantare v2 es una suite local para sim racing construida con Go/Wails y React/TypeScript.
 
-Version publica actual de runtime/build: `v0.1.0.0`; hotfix `v0.1.0.1` en preparacion para corregir variables Supabase en la build publicada.
-Ultimo checkpoint de roadmap confirmado: beta publica inicial `v0.1.0.0`, con tag/release funcional y hotfix inmediato en curso.
+Version publica actual de runtime/build: `v0.1.0.2`.
+Ultimo checkpoint de roadmap confirmado: hotfix `v0.1.0.2` publicado y verificado: Google OAuth externo, Supabase backend configurado en Go build, despliegue CI completo, assets publicados (3/3 checksums OK), smoke PASS.
 
 Base de schema v2 para perfiles preparada:
 - `schemaVersion: 2` permite layouts por sesion y variantes de widgets.

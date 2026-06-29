@@ -49,4 +49,11 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.queryByText(/CARRERAS RECIENTES/i)).toBeNull();
     expect(screen.queryByText(/Ops/i)).toBeNull();
   });
+
+  it("renders the ActiveOverlayCard placeholder (loading) by default", () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId("active-overlay-card")).toBeTruthy();
+    expect(screen.getByText(/Cargando estado/i)).toBeTruthy();
+    expect(screen.queryByTestId("active-overlay-open")).toBeNull();
+  });
 });

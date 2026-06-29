@@ -1,3 +1,4 @@
+import { ActiveOverlayCard } from "../components/ActiveOverlayCard";
 import { PlanStatusCard } from "../components/PlanStatusCard";
 import { QuickActions } from "../components/QuickActions";
 import { EmptyActivity } from "../components/EmptyActivity";
@@ -16,6 +17,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-8 flex flex-col gap-6">
           <PlanStatusCard onNavigate={handleNavigate} />
+          <ActiveOverlayCard onNavigate={handleNavigate} />
           <QuickActions onNavigate={handleNavigate} />
           <EmptyActivity />
         </div>

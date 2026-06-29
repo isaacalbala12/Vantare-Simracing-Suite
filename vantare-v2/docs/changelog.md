@@ -2,6 +2,24 @@
 
 Changelog publico para testers y Discord. Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
+## v0.1.0.2
+
+Hotfix de beta para completar el flujo de login con Google OAuth externo y evitar bloqueos falsos de licencia Free.
+
+**Corregido**
+
+- Google OAuth abre el navegador externo del sistema y vuelve a la app mediante el callback local.
+- El backend de licencias ya recibe la configuracion publica de Supabase en la build publicada.
+- Los usuarios autenticados sin suscripcion entran como plan `free` en lugar de quedar bloqueados en Paywall.
+- La pantalla `Configuracion incompleta` queda reservada para builds realmente mal configuradas.
+- Se corrigio la confusion de smoke local causada por binarios antiguos/stale.
+
+**Para testers**
+
+- Descarga siempre los assets publicados en GitHub Release o desde `#beta-downloads`.
+- Si haces smoke local, usa el portable/installer publicado o `bin/vantare.exe` generado por el pipeline de release; no uses binarios antiguos de la raiz del repo.
+- Si ves `Configuracion incompleta`, reporta version exacta, ruta del `.exe` ejecutado y captura del mensaje.
+
 ## v0.1.0.0
 
 Primera **beta publica** abierta de Vantare Suite.

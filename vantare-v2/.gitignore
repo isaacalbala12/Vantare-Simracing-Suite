@@ -13,3 +13,7 @@
 # Test fixtures (large binaries — regenerate with dump-lmu-memory.py)
 /testdata/*.bin
 !/testdata/lmu-fixture.bin
+
+# Generated at build time from Supabase env vars.
+# Never commit — contains public anon key from CI secrets.
+cmd/vantare/supabase_build.go

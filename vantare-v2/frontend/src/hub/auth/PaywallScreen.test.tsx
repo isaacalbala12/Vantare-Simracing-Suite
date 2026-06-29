@@ -44,7 +44,8 @@ describe("PaywallScreen", () => {
     expect(screen.getByText(/isaac@example.com/)).toBeTruthy();
     const status = screen.getByTestId("paywall-status");
     expect(status.textContent).toMatch(/Free/);
-    expect(status.textContent).toMatch(/Bloqueado/);
+    expect(status.textContent).toMatch(/Sin suscripción/);
+    expect(screen.getByRole("button", { name: /continuar gratis/i })).toBeTruthy();
   });
 
   it("shows a coming-soon notice with no fake checkout when Suscribirse is clicked", () => {
@@ -56,19 +57,37 @@ describe("PaywallScreen", () => {
     expect(banner.textContent).toMatch(/portal externo/);
   });
 
-  it("Free plan button is disabled and shows Plan actual label", () => {
+  it("Free plan button is enabled and shows Continuar gratis label", () => {
     render(<PaywallScreen email="u@example.com" />);
-    const freeBtn = screen.getByRole("button", { name: /plan actual/i });
+    const freeBtn = screen.getByRole("button", { name: /continuar gratis/i });
     expect(freeBtn).toBeTruthy();
-    expect((freeBtn as HTMLButtonElement).disabled).toBe(true);
+    expect((freeBtn as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("lists four distinct Suscribirse buttons (Free is disabled and reads Plan actual)", () => {
+  it("lists three distinct Suscribirse buttons (Free now shows Continuar gratis)", () => {
     render(<PaywallScreen email="u@example.com" />);
     const subscribeButtons = screen.getAllByRole("button", {
       name: /suscribirse/i,
     });
     expect(subscribeButtons.length).toBe(3);
+  });
+
+  it("Free button is disabled when blocked (expired)", () => {
+    render(
+      <PaywallScreen
+        email="u@example.com"
+        result={{
+          state: "expired",
+          entitlements: [],
+          userId: "u",
+          email: "u@example.com",
+          deviceOK: true,
+        }}
+      />,
+    );
+    const freeBtn = screen.getByRole("button", { name: /plan actual/i });
+    expect(freeBtn).toBeTruthy();
+    expect((freeBtn as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("shows founder tiers under a disclosure", () => {

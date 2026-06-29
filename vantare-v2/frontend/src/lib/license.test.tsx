@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
 import { useState } from "react";
 
@@ -43,11 +43,16 @@ function emitValidate() {
 
 describe("license module", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     onListeners.clear();
     eventsOn.mockClear();
     eventsEmit.mockClear();
     eventsOff.mockClear();
     cleanup();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe("LicenseProvider", () => {
@@ -138,6 +143,50 @@ describe("license module", () => {
       act(() => emitValidate());
       // No assertion on state, just ensure no crash and refresh isn't called externally here.
       expect(eventsEmit).toHaveBeenCalled();
+    });
+
+    it("resolves loading when timeout fires (no backend response)", () => {
+      const { result } = renderHook(() => useLicense(), {
+        wrapper: LicenseProvider,
+      });
+      expect(result.current.loading).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(8000);
+      });
+      expect(result.current.loading).toBe(false);
+      expect(result.current.result).toBeNull();
+    });
+
+    it("retries license:validate when timeout fires", () => {
+      renderHook(() => useLicense(), { wrapper: LicenseProvider });
+      eventsEmit.mockClear();
+      act(() => {
+        vi.advanceTimersByTime(8000);
+      });
+      // refresh() emits license:validate {} as retry
+      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
+    });
+
+    it("timeout cancelled when license:changed arrives early", () => {
+      const { result } = renderHook(() => useLicense(), {
+        wrapper: LicenseProvider,
+      });
+      act(() =>
+        emitChanged({
+          state: "active",
+          entitlements: ["overlays"],
+          userId: "u1",
+          email: "u@example.com",
+          deviceOK: true,
+        }),
+      );
+      expect(result.current.loading).toBe(false);
+      // Advance past the timeout — should not change state
+      act(() => {
+        vi.advanceTimersByTime(8000);
+      });
+      expect(result.current.loading).toBe(false);
+      expect(result.current.result?.state).toBe("active");
     });
   });
 

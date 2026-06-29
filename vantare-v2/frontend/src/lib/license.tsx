@@ -27,24 +27,54 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const unsubChanged = Events.On(
       "license:changed",
       (event: unknown) => {
+        if (cancelled) return;
         const data = (event as { data?: LicenseResult | null })?.data ?? null;
-        setResult(data);
+        // Never regress from an authenticated state to anonymous. This
+        // prevents the LicenseBridge/initial-mount empty-token refresh from
+        // overwriting a successful OAuth callback result. Once the user is
+        // authenticated (active, grace, authenticated-no-entitlement,
+        // expired, device-limit or unconfigured), an anonymous event is
+        // treated as stale and ignored.
+        setResult((prev) => {
+          if (
+            prev &&
+            prev.state !== "anonymous" &&
+            data?.state === "anonymous"
+          ) {
+            return prev;
+          }
+          return data;
+        });
         setLoading(false);
       },
     );
     const unsubError = Events.On(
       "license:error",
       () => {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       },
     );
     refresh();
+
+    // Safety timeout: prevent infinite loading if the Wails IPC bridge
+    // wasn't ready or the backend never responded. Resolves to anonymous
+    // state (LoginScreen) with one automatic retry.
+    const timeoutId = setTimeout(() => {
+      if (cancelled) return;
+      setLoading(false);
+      refresh();
+    }, 8000);
+
     return () => {
+      cancelled = true;
       unsubChanged?.();
       unsubError?.();
+      clearTimeout(timeoutId);
     };
   }, [refresh]);
 

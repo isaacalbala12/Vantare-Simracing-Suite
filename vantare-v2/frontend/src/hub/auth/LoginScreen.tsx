@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { signInWithEmail, signInWithOAuth } from "../../lib/supabase-auth";
+import { Browser, Events } from "@wailsio/runtime";
 
 type LoginScreenProps = {
   onLoggedIn: (accessToken?: string) => void;
@@ -14,6 +15,32 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
   const [oauthPending, setOauthPending] = useState<"google" | "discord" | null>(
     null,
   );
+  // "waiting" means the external browser is open and we're waiting for the
+  // OAuth callback to arrive via the local HTTP server.
+  const [waitingExternal, setWaitingExternal] = useState(false);
+
+  // Listen for license:changed events — when the external OAuth callback
+  // arrives, the Go server emits license:validate, which triggers
+  // license:changed. We pick it up and complete login.
+  useEffect(() => {
+    if (!waitingExternal) return;
+    const unsub = Events.On(
+      "license:changed",
+      (event: { data: { state?: string; accessToken?: string } }) => {
+        const state = event.data?.state;
+        if (state && state !== "anonymous") {
+          setWaitingExternal(false);
+          setOauthPending(null);
+          if (event.data?.accessToken) {
+            onLoggedIn(event.data.accessToken);
+          }
+        }
+      },
+    );
+    return () => {
+      unsub?.();
+    };
+  }, [waitingExternal, onLoggedIn]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -37,14 +64,67 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
     async (provider: "google" | "discord") => {
       setError(null);
       setOauthPending(provider);
-      const { error: msg } = await signInWithOAuth(provider);
-      setOauthPending(null);
+      const { url, error: msg } = await signInWithOAuth(provider);
       if (msg) {
+        setOauthPending(null);
         setError(msg);
+        return;
+      }
+      if (url) {
+        try {
+          await Browser.OpenURL(url);
+          setWaitingExternal(true);
+        } catch {
+          setOauthPending(null);
+          setError(
+            "No se pudo abrir el navegador. Intenta de nuevo o usa email/contraseña.",
+          );
+        }
+      } else {
+        setOauthPending(null);
+        setError("No se obtuvo URL de autenticación.");
       }
     },
     [],
   );
+
+  const handleCancelWaiting = useCallback(() => {
+    setWaitingExternal(false);
+    setOauthPending(null);
+  }, []);
+
+  // When waiting for external OAuth, show a clear waiting state
+  if (waitingExternal) {
+    return (
+      <div
+        data-testid="login-screen"
+        className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white"
+      >
+        <div className="w-full max-w-sm space-y-4 rounded-lg border border-white/10 bg-[#111] p-6 text-center">
+          <h1 className="font-mono text-sm uppercase tracking-widest">
+            Esperando inicio de sesión
+          </h1>
+          <p
+            data-testid="login-waiting-message"
+            className="font-mono text-[10px] text-vantare-textDim"
+          >
+            Completa el inicio de sesión con{" "}
+            <span className="text-white capitalize">{oauthPending}</span> en tu
+            navegador.
+          </p>
+          <div className="mx-auto h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          <button
+            type="button"
+            data-testid="login-cancel-waiting"
+            onClick={handleCancelWaiting}
+            className="w-full rounded border border-white/10 py-2 font-mono text-[10px] uppercase hover:bg-white/5"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

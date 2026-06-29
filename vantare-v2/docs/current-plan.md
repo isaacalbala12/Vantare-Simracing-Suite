@@ -1,10 +1,91 @@
 # Plan actual
 
-Ultima actualizacion: 2026-06-28.
+Ultima actualizacion: 2026-06-29.
+
+## P0 Free plan bloqueado tras Google OAuth — Fix A+B+C (2026-06-29)
+
+Causa raiz real: el binario Go de la release build no tenia `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` en runtime. CI solo inyectaba `VITE_SUPABASE_*` al frontend (Vite build time). Cuando llegaba el token OAuth, `LicenseService` no tenia client Supabase, cae a `fromCacheOnFailure` y devolvia `expired` (sin cache) → Paywall bloqueaba al usuario Free.
+
+Fix aplicado (3 partes):
+
+**Fix A — Defensa (Go + Frontend):**
+- Nuevo estado `StateUnconfigured` en `internal/license/types.go` y `errors.go` (`ErrUnconfigured`).
+- `service.go`: cuando no hay client Supabase y no hay cache usable, devuelve `StateUnconfigured` (no `StateExpired`). `fromCacheOnFailure` ahora recibe flag `unconfigured` para distinguir "Supabase caído" (expired) de "Supabase no configurado" (unconfigured).
+- `plan.go`: `ClassifyStatus` mapea `StateUnconfigured` → `PlanStatusUnconfigured`. `BuildSummary` no lo trata como `blocked`.
+- Frontend `license-types.ts`: nuevo estado `"unconfigured"` en `LicenseState`.
+- Frontend `plan.ts`: nuevo `PlanStatus` `"unconfigured"`, `classifyStatus` y `buildSummary` actualizados.
+- Frontend `HubApp.tsx` (activo y `pages/`): `LicenseGate` muestra `UnconfiguredScreen` (mensaje accionable, no Paywall) cuando `state === "unconfigured"`.
+- Nuevo componente `frontend/src/hub/auth/UnconfiguredScreen.tsx`.
+- `LicenseBanner.tsx`: acepta `unconfigured` en `getMessage`.
+- Anti-regresion en `frontend/src/lib/license.tsx`: `LicenseProvider` nunca sobrescribe un estado autenticado con `anonymous` (previene race condition donde `LicenseBridge` pisaba el resultado del OAuth callback).
+- `LicenseBridge` en `HubApp.tsx` (activo y `pages/`): ya no llama `refresh()` cuando no hay sesion en el WebView (evita pisar el resultado del OAuth callback con `anonymous`).
+
+**Fix B — Raiz (Build + CI):**
+- `cmd/vantare/main.go`: nuevas vars `supabaseURL`/`supabaseAnonKey` que se inyectan en tiempo de compilación mediante `tools/generate_supabase_config.ps1`. Ese script lee `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` del entorno de build, las codifica en base64 y genera temporalmente `cmd/vantare/supabase_build.go` con un `init()` que asigna las vars. Si las env vars no existen, el script no genera el archivo y el binario arranca sin config Supabase (modo offline-grace). Las env vars runtime (`VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY`) siguen teniendo precedencia para dev/overrides. Nota: los comentarios en `main.go` mencionan ldflags como mecanismo alternativo, pero el build actual usa code generation.
+- `build/windows/Taskfile.yml`: `build:native` ejecuta `tools/generate_supabase_config.ps1` antes de `go build`, generando `cmd/vantare/supabase_build.go` con las vars Supabase en base64 si las env vars están presentes. El archivo se elimina después del build. `BUILD_FLAGS` inyecta solo `version` via ldflags.
+- `Taskfile.yml` (raiz): expone `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` como vars del task (default vacio para dev local).
+- `.github/workflows/release.yml`: mapea `secrets.VITE_SUPABASE_URL` → `VANTARE_SUPABASE_URL` y `secrets.VITE_SUPABASE_ANON_KEY` → `VANTARE_SUPABASE_ANON_KEY` como env vars del job `build`, para que `generate_supabase_config.ps1` las reciba y genere `supabase_build.go`.
+
+**Fix C — Limpieza:**
+- `cmd/vantare/main.go`: eliminada la doble emision de `license:changed` en el handler `license:validate` (`Validate()` ya emite internamente via `EmitChanged`).
+
+Archivos modificados (16):
+- `internal/license/types.go`, `internal/license/errors.go`, `internal/license/service.go`, `internal/license/plan.go`, `internal/license/plan_test.go`, `internal/license/service_test.go`
+- `cmd/vantare/main.go`
+- `frontend/src/lib/license-types.ts`, `frontend/src/lib/license.tsx`, `frontend/src/lib/plan.ts`, `frontend/src/lib/plan.test.ts`
+- `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`, `frontend/src/hub/pages/HubApp.tsx`
+- `frontend/src/hub/auth/UnconfiguredScreen.tsx` (nuevo), `frontend/src/hub/auth/LicenseBanner.tsx`
+- `build/windows/Taskfile.yml`, `Taskfile.yml`
+- `.github/workflows/release.yml`
+
+Tests:
+- Go: `./internal/license/...` y `./cmd/vantare/...` ok.
+- Frontend: 89 files, 699 tests pasados.
+- `tsc -b`, `vite build`, `eslint`, `git diff --check`: ok.
+
+Verificacion manual pendiente: ejecutar `bin/vantare.exe` generado con `supabase_build.go` embebido (via `generate_supabase_config.ps1`) → Google OAuth → entra al Hub como Free. Usuario `expired`/`device-limit` sigue bloqueado. Usuario sin config Supabase ve `UnconfiguredScreen` (no Paywall).
+
+Riesgos restantes: smoke manual en build empaquetada Wails con OAuth real. La anon key de Supabase es publica pero se inyecta via env vars de CI que alimentan `generate_supabase_config.ps1` (no hardcodeada en codigo). Binarios stale en el repo pueden confundir el smoke local; usar siempre `bin/vantare.exe` generado por `release:artifacts`.
+
+Nota operativa (2026-06-29): binarios `vantare.exe` fuera de `bin/` (raiz del repo, `release-package/portable-*`) pueden estar stale y producir `UnconfiguredScreen` al ejecutarse por error. Siempre usar `bin/vantare.exe` para smoke local. Los binarios stale deben renombrarse a `.exe.stale` para evitar confusión.
+
+## P0 onboarding/paywall v0.1.0.2 — Free deja de bloquear (2026-06-29)
+
+Causa raiz: tras Google OAuth, un usuario sin suscripcion llegaba al frontend con estado `authenticated-no-entitlement` (definido en `internal/license/service.go` `fromSupabase`). Ese estado se mapeaba a `blocked` en `classifyStatus` (frontend `plan.ts` y backend `plan.go`), y `LicenseGate` en `HubApp.tsx`/`pages/HubApp.tsx`/`OnboardingFlow.tsx` lo mandaba a `PaywallScreen`. Resultado: el usuario logueado veia `FREE · BLOQUEADO` y no podia entrar al Hub aunque la beta publica debe permitir plan gratuito.
+
+Comportamiento nuevo:
+- `authenticated-no-entitlement` ahora se mapea a `free` (no `blocked`) en `classifyStatus` (frontend y Go).
+- `LicenseGate` solo bloquea con PaywallScreen si `expired` o `device-limit`. El estado `authenticated-no-entitlement` cae al Hub con banner.
+- `OnboardingFlow`: un usuario Free avanza al step recommended en vez de quedarse en paywall.
+- `PaywallScreen`: nueva prop opcional `onContinueFree`. La tarjeta Free muestra boton habilitado "Continuar gratis" cuando el status es `free`; sigue mostrando "Plan actual" deshabilitado cuando el status es `blocked` (expired/device-limit). Bajo el estado, cuando es Free, aparece "Acceso básico activo" (`data-testid="paywall-free-note"`).
+- Solo bloquean: licencia `expired`/`banned` (device-limit), sin sesion (`anonymous`), error real de validacion, o feature premium especifica.
+
+Archivos modificados (12):
+- `frontend/src/lib/plan.ts`, `frontend/src/lib/plan.test.ts`
+- `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`
+- `frontend/src/hub/pages/HubApp.tsx`, `frontend/src/hub/pages/HubPage.test.tsx`
+- `frontend/src/hub/onboarding/OnboardingFlow.tsx`, `frontend/src/hub/onboarding/OnboardingFlow.test.tsx`
+- `frontend/src/hub/auth/PaywallScreen.tsx`, `frontend/src/hub/auth/PaywallScreen.test.tsx`
+- `internal/license/plan.go`, `internal/license/plan_test.go`
+
+Tests:
+- Frontend: 89 files, 694 tests pasados.
+- Go `./internal/license/...` y `./cmd/vantare/...`: ok.
+- `tsc -b`, `vite build`, `eslint`, `git diff --check`: ok (warning preexistente de chunk size y `.eslintignore`).
+
+Verificacion manual: Google login -> estado `authenticated-no-entitlement` -> entra al Hub con banner de Free. En Ajustes/Cuenta el plan muestra "Free" y estado "Sin suscripcion". Si se abre PaywallScreen (p. ej. desde un flujo futuro de upgrade), la tarjeta Free muestra "Continuar gratis".
+
+Riesgos restantes: el flujo real en build empaquetada Wails requiere smoke manual de OAuth -> Hub. No se agrego persistencia explicita de "plan Free elegido" porque Free es fallback automatico cuando no hay entitlements; no hay backend que setear.
 
 ## Estado operativo principal
 
-La app se encuentra en **primera beta abierta de prueba** (`v0.3.10.0`). A partir de ahora, el desarrollo planificado apunta al release estable v1.0.
+La app se encuentra en la linea publica de beta **`v0.1.x`**.
+
+- `v0.1.0.0`: primera beta publica publicada en GitHub Releases.
+- `v0.1.0.1`: hotfix para compilar la build de release con variables de entorno de Supabase.
+- `v0.1.0.2`: hotfix P0/P1 para abrir Google/Discord OAuth en navegador externo del sistema (evitando bloqueo y pantalla blanca en WebView2) via Wails `Browser.OpenURL` y callback local HTTP, corrigiendo bucle de logout post-OAuth externo.
+
+Las builds `v0.3.*` quedan como historico interno no anunciado y no deben usarse en Discord, docs publicos ni nuevos tags de beta.
 
 ### Que incluye esta beta
 
@@ -12,24 +93,29 @@ La app se encuentra en **primera beta abierta de prueba** (`v0.3.10.0`). A parti
 - **Ingeniero**: modulo integrado con historial, notificaciones y widget de overlay. Funciona en modo simulacion/replay; el adaptador live LMU queda para fase EN6.
 - **Telemetria live LMU**: fuente compartida live/mock/demo con fallback automatico a datos sinteticos si LMU no esta disponible.
 - **Widget Delta**: delta best live nativo de LMU conTarget/Lap.
-- **Hotkeys globales**: toggle overlay, perfiles anterior/siguiente. Personalizables desde Ajustes.
+- **Login obligatorio**: acceso bloqueado por cuenta, con Google OAuth como minimo para la beta publica.
+- **Licencias basicas online**: gating free / paid / suite, con gracia offline corta.
+- **Hotkeys globales**: toggle overlay, perfiles anterior/siguiente y modo edicion in-place (`Ctrl+Shift+E`). Personalizables desde Ajustes.
 - **Autoupdater**: descarga e instalacion verificada de nuevas versiones desde GitHub Releases.
 - **OBS local**: servidor interno en `http://127.0.0.1:39261/overlay?profile=...` con soporte SSE para telemetria e Ingeniero.
 - **Perfiles recomendados**: `Clean Overlay` y `Le Mans Ultimate - Basic` incluidos como punto de partida.
 - **Presets de widgets**: guardar, aplicar y compartir configuraciones visuales de widgets (widget-presets).
+- **Galeria de disenos oficiales de widgets**: disenos oficiales aplicables desde WidgetStudio sin modificar posicion/tamano.
 - **Instalador NSIS y portable zip**: ambos con checksums SHA256 sidecar.
 
 ### Que NO incluye (post-beta o fases posteriores)
 
 - Audio/voces TTS del Ingeniero (solo visual).
 - Widget Pedals completo con calibracion (maqueta estetica inicial).
-- Soporte multisimulador (iRacing, Assetto Corsa, rFactor 2). Solo LMU en esta beta.
+- Soporte multisimulador estable (iRacing, Assetto Corsa, rFactor 2). Solo LMU en Windows es soporte principal en esta beta.
+- Linux/Proton estable. Entra en la serie `0.1.x` como investigacion experimental.
 - Doble PC/LAN automatizado para OBS (configuracion manual posible).
-- Cuentas de usuario, login, suscripciones ni pagos (flujo OAuth pendiente de validacion real).
+- Portal completo de usuario, gestion avanzada de pagos, facturas y self-service de licencias. El login/gating basico si entra.
 - Community layouts, marketplace, cloud sync completo, companion app y plugin system.
 - Ingeniero live con LMU real (EN6 aparcado hasta validacion live).
 - Reordenacion de columnas en widgets (modo tester oculto disponible via secuencia `V A N T A R E`).
 - Firma de codigo Authenticode (ver Known Issues -> SmartScreen).
+- Instalador propio completo. Entra en `0.1.x` como **Vantare Setup Launcher** que orquesta NSIS, no como sustituto total inicial.
 
 ### Estado de widgets
 
@@ -49,6 +135,7 @@ La app se encuentra en **primera beta abierta de prueba** (`v0.3.10.0`). A parti
 - **Autoupdater:** la app busca actualizaciones en GitHub Releases. Descarga el instalador, verifica SHA256 y lo ejecuta.
 - **Distribucion manual:** los testers pueden descargar installer o portable zip desde `#beta-downloads` en Discord, con checksums SHA256 publicados para verificacion.
 - **Updater:** el flujo `InstallVerifiedCtx` descarga el installer y verifica checksum contra el sidecar `.sha256`. Si el checksum no existe (releases historicas), cae a descarga sin verificacion (comportamiento documentado y aceptado).
+- **Supabase en release builds:** `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY` deben existir como GitHub Actions secrets y estar disponibles como env vars durante el build. El script `tools/generate_supabase_config.ps1` las lee y genera temporalmente `cmd/vantare/supabase_build.go` con `init()` base64, que se compila en el binario y se elimina después. Si faltan, el binario arranca sin config Supabase (modo offline-grace, pantalla `UnconfiguredScreen`).
 
 Fuente operativa principal:
 
@@ -59,10 +146,10 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. `Release 01 - Beta baseline, recomendados y presets` — completado.
-2. `Release 02 - Stripe, Supabase, auth y licencias` — Mini-Plan C completado, correcciones P1-P3 del review implementadas. Webhook entitlement mapping (P2-4) implementado con tests. Pendiente gate manual y validación real del flujo OAuth en builds empaquetadas.
-3. `Release 03 - Autoupdater y distribucion`.
-4. `Release 04 - Preview avanzada y LayoutStudio profesional`.
+1. `v0.1.0.x` — hotfix Supabase/login/licencias: asegurar configuración Supabase para frontend y backend Go en builds publicadas (via `generate_supabase_config.ps1` + env vars de CI), regenerar release y validar Google OAuth -> Free/Hub en build empaquetada.
+2. Smoke manual de beta: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local y updater.
+3. Discord publico: `build available`, `release announcement` y `known issues` solo despues de smoke manual.
+4. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework, disenos oficiales adicionales, hardening de auth/licencias y revision global post-beta.
 
 Regla de orquestacion: el agente principal no edita codigo salvo necesidad estricta; genera prompts, revisa reportes y actualiza documentacion. Workers implementan. GLM revisa P0/P1/P2 y cualquier cambio de Go debe exigir las skills de Go indicadas en `docs/release-roadmap-execution-index.md`.
 
@@ -81,6 +168,94 @@ Decisiones de release ya cerradas:
 - OBS LAN/doble PC entra en release.
 - Track Map e Input Telemetry/Trace entran en release con estado `stable`/`tester`/`experimental` segun datos.
 - Community layouts/marketplace, cloud sync completo, companion app y plugin system quedan post-release.
+
+## Roadmap operativo de la serie 0.1.x
+
+La serie `0.1.x` no es solo hotfixes: es la linea de beta publica temprana. El cuarto segmento sigue reservado para hotfixes (`0.1.0.1`, `0.1.0.2`). El tercer segmento agrupa mejoras visibles (`0.1.1.0`, `0.1.2.0`).
+
+| Version objetivo | Estado | Alcance |
+|------------------|--------|---------|
+| `0.1.0.x` | Activo | Hotfixes criticos de login, Supabase backend/frontend, licencias, updater, overlay fullscreen, crash o bloqueo de uso. |
+| `0.1.x` | Por planear | Linux/Proton experimental. |
+| `0.1.x` | Por planear | Vantare Setup Launcher v1: instalador propio ligero que verifica SHA256 y lanza NSIS por debajo. |
+| `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador con avisos de tiempo restante. |
+| `0.1.x` | Por planear | Launcher de simuladores: abrir LMU desde Vantare y agrupar apps asociadas por simulador (overlays, Ingeniero, calendario, presets, configuracion). |
+| `0.1.x` | Por planear | Nuevos overlays publicos, mejoras de Hub, mas disenos oficiales, pulido de OBS, hardening de licencias y primeras correcciones de rendimiento. |
+
+Regla: salvo hotfixes de `0.1.0.x`, todo lo anterior queda **por planear**. No se implementa ni se promete como version concreta sin miniplan, review y smoke manual.
+
+### Vantare Setup Launcher v1
+
+Estado: por planear en `0.1.x`. Mejora la experiencia de testers y reduce confusion con SmartScreen/descargas, pero no se implementa hasta cerrar el hotfix actual de login/licencias y crear miniplan propio.
+
+Scope inicial:
+- Windows only.
+- UI propia de Vantare.
+- Verifica SHA256 antes de ejecutar el instalador.
+- Lanza NSIS por debajo; no sustituye todavia su instalacion/desinstalacion/rollback.
+- Muestra version, canal, notas breves, aviso SmartScreen y enlaces a known issues.
+- Puede ofrecer descarga de portable zip, pero no necesita gestionar updates complejos.
+
+No scope inicial:
+- No firma Authenticode.
+- No instalacion por componentes.
+- No login/licencia dentro del instalador, salvo que se planifique explicitamente despues.
+- No reemplazar todo NSIS desde cero.
+
+### Linux/Proton experimental
+
+Estado: por planear en `0.1.x`, como soporte experimental. No se implementa hasta cerrar el hotfix actual de login/licencias y crear miniplan propio.
+
+Caminos a validar:
+1. Ejecutar `vantare.exe` via Proton junto a LMU via Proton.
+2. Crear build Linux nativa y comprobar UI/overlays.
+3. Investigar si la shared memory/telemetria de LMU expuesta dentro de Proton es accesible desde app Linux nativa o si requiere proxy/bridge.
+
+Contrato publico: "experimental". No prometer soporte estable hasta verificar:
+- app arranca;
+- overlay transparente/click-through funciona en X11/Wayland o se documenta la limitacion;
+- LMU live entrega datos reales;
+- updater/distribucion Linux tiene formato claro.
+
+### LMU race countdown beta
+
+Estado: por planear en `0.1.x`. Aporta valor inmediato a pilotos y streamers, pero no se implementa hasta cerrar el hotfix actual de login/licencias y crear miniplan propio.
+
+Scope inicial:
+- Import manual/asistido por IA del calendario semanal de LMU publicado en Discord.
+- Formato local estructurado con eventos, serie, circuito, hora de carrera, hora de practica si aplica, duracion y zona horaria.
+- Validacion basica de formato y zona horaria antes de guardar.
+- Notificacion overlay por encima del simulador con avisos configurables: por ejemplo 30, 15, 10, 5 y 2 minutos antes de carrera.
+- Estado claro en UI: proxima carrera, fuente del calendario, ultima actualizacion y eventos de la semana.
+- Overlay click-through salvo interacciones de configuracion dentro de la app.
+
+No scope inicial:
+- No scraping automatico de Discord.
+- No bot de Discord ni permisos del servidor LMU.
+- No sincronizacion cloud del calendario.
+- No prometer exactitud oficial si el calendario fue importado manualmente.
+- No mezclarlo con el widget Ingeniero hasta que el flujo de countdown sea estable.
+
+Contrato publico: "experimental/beta". El flujo recomendado para beta es copiar el mensaje semanal de Discord, transformarlo con un modelo a JSON validado e importarlo en la app.
+
+### Launcher de simuladores
+
+Estado: por planear en `0.1.x`.
+
+Idea: Vantare puede evolucionar hacia un mini launcher de simuladores y aplicaciones asociadas. El primer corte seria LMU-only:
+- detectar/guardar ruta de LMU o lanzarlo via Steam URI;
+- abrir el simulador desde el Hub;
+- asociar acciones por simulador: abrir overlay activo, abrir Ingeniero, abrir calendario LMU, abrir OBS setup, aplicar perfiles recomendados;
+- mostrar estado simple: instalado/no configurado, ultima ruta usada y acciones rapidas.
+
+No scope inicial:
+- No reemplazar Steam.
+- No gestionar mods.
+- No automatizar login de simuladores.
+- No lanzar multiples simuladores hasta tener adapter contract.
+- No mezclarlo con el hotfix actual de login/licencias.
+
+Contrato: por planear. Requiere inventario de lanzamiento LMU/Steam, UX del Hub y riesgos de permisos antes de implementacion.
 
 ## Estado actual
 
@@ -283,8 +458,8 @@ PREVIEW2 - WidgetStudio intrinsic width contract:
 
 Vantare v2 es una suite local para sim racing construida con Go/Wails y React/TypeScript.
 
-Version estable actual de runtime/build: `v0.3.10.0`.
-Ultimo checkpoint de roadmap confirmado: beta privada inicial B1-B6, con tag/version funcional.
+Version publica actual de runtime/build: `v0.1.0.0`; hotfix `v0.1.0.1` en preparacion para corregir variables Supabase en la build publicada.
+Ultimo checkpoint de roadmap confirmado: beta publica inicial `v0.1.0.0`, con tag/release funcional y hotfix inmediato en curso.
 
 Base de schema v2 para perfiles preparada:
 - `schemaVersion: 2` permite layouts por sesion y variantes de widgets.
@@ -608,7 +783,7 @@ A4+A5 - Recomendado -> copia editable implementado (2026-06-25):
 
 ## Beta stabilization closure (2026-06-28)
 
-Bloque de estabilización previo a retag/release de la beta `v0.3.10.0`. Atiende los findings del review adversarial global sin añadir features.
+Bloque de estabilizacion que desemboco en la beta publica `v0.1.0.0` tras abandonar la linea interna `v0.3.*`. Atiende los findings del review adversarial global sin añadir features fuera del alcance de beta.
 
 - **Remotion fuera de beta**: el proyecto Remotion (`frontend/src/remotion/`, `frontend/remotion.config.ts`, scripts `dev:video`/`render:video`/`still:video` en `frontend/package.json`, deps `@remotion/*` en `pnpm-lock.yaml`) es un trabajo paralelo del usuario, no parte de Vantare. Se stasheó con mensaje `pre-beta-remotion-work` (incluye tracked + untracked) para sacarlo del working tree de la beta. No se commitea nada de Remotion en esta tanda. Restaurar con `git stash pop` (o `git stash apply 'stash@{0}'`) cuando retomes ese proyecto.
 - **P1 updater ctx**: las goroutines lanzadas en los handlers `updater:install:verified` (y el legacy, ya desactivado) en `cmd/vantare/main.go` ahora propagan el `ctx` de `signal.NotifyContext` a `InstallVerifiedVersionCtx`. Si la app se cierra (SIGINT/SIGTERM) durante la descarga, el `http.Request` queda cancelado y la goroutine termina en lugar de quedarse viva escribiendo eventos en un emisor cerrado. Cobertura añadida en `TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation`.

@@ -6,7 +6,7 @@ type BannerMessage = {
 };
 
 function getMessage(
-  state: BannerMessage["state"] | "active" | "anonymous" | "authenticated-no-entitlement",
+  state: BannerMessage["state"] | "active" | "anonymous" | "authenticated-no-entitlement" | "unconfigured",
   graceEndsAt?: string,
 ): BannerMessage | null {
   if (state === "grace") {

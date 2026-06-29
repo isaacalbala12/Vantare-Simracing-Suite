@@ -46,8 +46,9 @@ func TestClassifyStatus(t *testing.T) {
 		{StateGrace, PlanStatusGrace},
 		{StateExpired, PlanStatusBlocked},
 		{StateDeviceLimit, PlanStatusBlocked},
-		{StateAuthenticatedNoEntitlement, PlanStatusBlocked},
+		{StateAuthenticatedNoEntitlement, PlanStatusFree},
 		{StateAnonymous, PlanStatusAnonymous},
+		{StateUnconfigured, PlanStatusUnconfigured},
 		{"other", PlanStatusFree},
 	}
 
@@ -91,6 +92,13 @@ func TestBuildSummary(t *testing.T) {
 			wantStatus:   PlanStatusBlocked,
 		},
 		{
+			name:         "authenticated-no-entitlement is free",
+			state:        StateAuthenticatedNoEntitlement,
+			entitlements: nil,
+			wantLabel:    PlanFree,
+			wantStatus:   PlanStatusFree,
+		},
+		{
 			name:         "blocked suite loses suite label",
 			state:        StateDeviceLimit,
 			entitlements: []Entitlement{EntitlementBundle},
@@ -110,6 +118,13 @@ func TestBuildSummary(t *testing.T) {
 			entitlements: []Entitlement{"mystery"},
 			wantLabel:    PlanFree,
 			wantStatus:   PlanStatusActive,
+		},
+		{
+			name:         "unconfigured is not blocked",
+			state:        StateUnconfigured,
+			entitlements: nil,
+			wantLabel:    PlanFree,
+			wantStatus:   PlanStatusUnconfigured,
 		},
 	}
 

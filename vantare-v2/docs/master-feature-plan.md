@@ -2,7 +2,7 @@
 
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
-> Actualizacion 2026-06-26: este documento queda como mapa de producto y contexto historico. La fuente operativa principal para el release oficial es `docs/release-roadmap-execution-index.md` y sus planes `docs/superpowers/plans/2026-06-26-release-*.md`.
+> Actualizacion 2026-06-29: este documento queda como mapa de producto y contexto historico. La linea publica se reinicio en `v0.1.x`; el estado operativo inmediato vive en `docs/current-plan.md` y la fuente de ejecucion hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.
 >
 > Si hay conflicto, prevalecen: decisiones explicitas del chat, `docs/release-roadmap-execution-index.md`, planes `release-*`, y despues este documento.
 
@@ -23,15 +23,18 @@ Este documento ayuda a entender el producto completo, pero no debe usarse para s
 
 ## Versionado
 
-El versionado operativo usa formato `X.X.X.X`, por ejemplo `0.4.2.0`.
+El versionado operativo usa formato `X.X.X.X`, por ejemplo `0.1.2.0`.
 
-Referencia:
+Referencia actual:
 
-- `0.1.X.X`: pre-alpha/foundation.
-- `0.2.X.X` a `0.3.X.X`: alpha privada.
-- `0.4.X.X` a `0.5.X.X`: beta privada de testers.
-- `0.6.X.X` a `0.9.X.X`: beta publica de pago.
+- `0.1.0.X`: beta publica inicial y hotfixes criticos. El cuarto segmento es hotfix (`0.1.0.1`, `0.1.0.2`).
+- `0.1.x`: backlog por planear tras cerrar hotfixes: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, overlays, Hub, disenos oficiales, hardening y rendimiento.
+- `0.2.X.X` a `0.9.X.X`: fases de beta/release posteriores segun avance real, no una promesa rigida.
 - `1.0.0.0`: release estable.
+
+Historico:
+
+- Las builds `v0.3.*` fueron builds internas/alpha y no deben anunciarse publicamente tras el reset a `v0.1.x`.
 
 La politica completa vive en `docs/versioning-and-release-gates.md`.
 
@@ -46,6 +49,9 @@ La politica completa vive en `docs/versioning-and-release-gates.md`.
 - No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core; los proximos cambios visuales deben ser polish acotado o fixes.
 - Vantare debe tratarse como suite local. Overlays Studio e Ingeniero son modulos internos del mismo producto, no apps separadas en runtime.
 - Ingeniero no sustituye el roadmap de Overlays. Si no puede probarse live, se aparca EN6 y se sigue desarrollando Overlays.
+- Linux/Proton queda por planear en la serie `0.1.x` como experimental. No prometer soporte estable hasta validar ejecucion, overlay transparente/click-through y telemetria LMU.
+- El instalador propio queda por planear en `0.1.x` como **Vantare Setup Launcher v1**: UI propia que verifica SHA256 y lanza NSIS por debajo. No reemplaza NSIS completo inicialmente.
+- El launcher de simuladores queda por planear en `0.1.x`: primer corte LMU-only, abrir simulador desde Vantare y agrupar acciones asociadas por simulador.
 - Cualquier prompt de worker que toque Go debe exigir las skills `golang-error-handling`, `golang-testing` y `golang-code-style`; si toca lifecycle, goroutines, SSE o cancelacion, tambien `golang-concurrency` y `golang-context`; si toca I/O/config/seguridad, tambien `golang-safety`.
 - Cada feature grande debe pasar por inventario, miniplan, implementacion, review y verificacion manual.
 - El agente principal debe actuar como orquestador/reviewer por defecto y delegar codigo a workers salvo necesidad estricta.
@@ -174,6 +180,13 @@ No debe prometer:
 - marketplace;
 - telemetry uploads/replays de usuarios.
 
+Estado 2026-06-29:
+
+- `v0.1.0.0` ya fue publicada como primera beta publica.
+- `v0.1.0.1` queda como hotfix P0 para corregir variables Supabase en build de release.
+- La galeria de disenos oficiales, login obligatorio y perfiles publicos quedan dentro de la beta.
+- Linux/Proton, Vantare Setup Launcher, LMU race countdown y launcher de simuladores quedan registrados como `0.1.x por planear`, no como implementacion inmediata.
+
 ### Release
 
 Usuarios:
@@ -204,7 +217,23 @@ Post-release:
 
 ## Roadmap versionado
 
-Las fases versionadas siguientes son historial operativo de la beta actual. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`. No usar los estados `Later` de esta seccion para excluir features ya decididas como scope de release.
+Las fases versionadas siguientes son historial operativo previo al reset publico. Para la linea publica actual, usar primero el bloque `Roadmap publico 0.1.x` de este documento y `docs/current-plan.md`. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`.
+
+### Roadmap publico 0.1.x
+
+| Version objetivo | Estado | Alcance |
+|------------------|--------|---------|
+| `0.1.0.0` | Publicada | Primera beta publica: login obligatorio, gating free/paid/suite, perfiles recomendados, galeria de disenos oficiales, overlay edit mode, updater verificado. |
+| `0.1.0.x` | Activo | Hotfixes criticos de login, Supabase frontend/backend, licencias, updater, overlay fullscreen, crashes, release pipeline o bloqueos de uso. |
+| `0.1.x` | Por planear | Linux/Proton experimental: build Linux, ejecucion de `vantare.exe` via Proton y viabilidad de telemetria LMU. |
+| `0.1.x` | Por planear | Vantare Setup Launcher v1: UI propia de instalacion, verificacion SHA256, lanzamiento de NSIS y enlace a portable/known issues. |
+| `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador con avisos de tiempo restante. |
+| `0.1.x` | Por planear | Launcher de simuladores: primer corte LMU-only para abrir simulador desde Vantare y agrupar acciones asociadas. |
+| `0.1.x` | Por planear | Nuevos overlays publicos, mejoras de Hub, disenos oficiales adicionales, hardening de licencias y primeras correcciones de rendimiento. |
+
+Regla: salvo hotfixes `0.1.0.x`, todo este bloque queda por planear. No anunciar Linux como estable, instalador propio completo, countdown ni launcher de simuladores hasta cerrar miniplan, implementacion, review y smoke real.
+
+Regla para calendario LMU: no implementar scraping automatico de Discord en la beta inicial. El flujo publico aceptado para `0.1.3.0` es import manual/asistido por IA, validacion local y avisos overlay. La automatizacion directa de Discord queda para una iteracion posterior si es viable.
 
 ### 0.1.X.X - Pre-alpha/foundation
 

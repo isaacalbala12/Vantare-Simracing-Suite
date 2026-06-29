@@ -27,6 +27,63 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 
 ## Abierto
 
+### TD-043 - Supabase RPC get_account_entitlements sin migracion SQL
+
+- Severidad: P3
+- Area: licensing/supabase
+- Origen: diagnostico P0 Free plan bloqueado (2026-06-29)
+- Estado: abierto
+- Release objetivo: `0.1.x` antes de activar pagos reales o antes de release publico (R15 o equivalente)
+- Motivo para diferir: el fix A+B+C aplicado hace que el binario Go reciba la config de Supabase via `generate_supabase_config.ps1` (genera `supabase_build.go` con `init()` base64) y que el estado `unconfigured` no bloquee al usuario. La función RPC `get_account_entitlements` debe existir en el proyecto Supabase para que la validación real funcione. Si no existe, `FetchAccount` devuelve error y, con `s.client != nil`, el estado cae a `authenticated-no-entitlement` (Free, NO `unconfigured`), lo cual es seguro y permite al usuario entrar al Hub. El estado `unconfigured` solo se devuelve cuando NO hay client Supabase configurado (`s.client == nil`).
+- Fix esperado: crear migracion SQL con `get_account_entitlements` y `reset_active_device` en el proyecto Supabase, o documentar los pasos manuales en el dashboard. La funcion debe devolver `{user_id, email, entitlements, active_device, expires_at}`.
+- Riesgo si se ignora: los usuarios Free entran al Hub (correcto, estado `authenticated-no-entitlement`), pero los usuarios pagados no reciben sus entitlements reales (siempre caen a `authenticated-no-entitlement` o a cache grace si existe cache válida).
+- Razon de severidad: no bloquea `v0.1.0.2` porque el objetivo inmediato es Google OAuth -> Free -> Hub. Con `s.client != nil`, el fallo RPC cae a Free (no bloqueo). Sube a P2 antes de activar cobros/entitlements reales.
+
+### TD-044 - Sesion Supabase no persiste en WebView tras OAuth externo
+
+- Severidad: P3
+- Area: auth/frontend
+- Origen: diagnostico P0 Free plan bloqueado (2026-06-29)
+- Estado: abierto
+- Release objetivo: `0.1.x` UX/auth hardening o auditoria global
+- Motivo para diferir: el OAuth ocurre en el navegador externo. Los tokens de Supabase se almacenan en el navegador, no en el WebView2 de Wails. En el proximo reinicio, `getSession()` devuelve null y el usuario debe reautenticarse. El fix anti-regresion en `LicenseProvider` previene el bloqueo inmediato, pero no resuelve la persistencia.
+- Fix esperado: tras el OAuth callback exitoso, llamar `supabase.auth.setSession({access_token, refresh_token})` en el WebView para persistir la sesion en localStorage del WebView2. Requiere que el callback HTTP envie tambien el `refresh_token` (no solo `access_token`).
+- Riesgo si se ignora: el usuario debe reautenticarse con Google en cada reinicio de la app. No bloquea el uso, pero es friccion UX.
+- Razon de severidad: no bloquea `v0.1.0.2` porque el login funciona durante la sesion actual. Sube a P2 si se decide exigir persistencia de sesion para testers antes de la siguiente publicacion.
+
+### TD-045 - Test gaps en UnconfiguredScreen, LicenseGate unconfigured y anti-regresion
+
+- Severidad: P3
+- Area: frontend/testing
+- Origen: review P0 Fix A+B+C (2026-06-29)
+- Estado: abierto
+- Release objetivo: R04 o auditoria global
+- Motivo para diferir: los tests existentes cubren el flujo observable primario (classifyStatus, buildSummary, LicenseBridge no refresh). Los gaps son: sin test de renderizado de `UnconfiguredScreen`, sin caso en `HubApp.test.tsx` para `unconfigured` → `UnconfiguredScreen`, sin test unitario del guard anti-regresion en `LicenseProvider`. El guard es una defensa belt-and-suspenders simple (un condicional en `setResult`); el fix principal es `LicenseBridge` no llamando `refresh()`.
+- Fix esperado: añadir test de renderizado de `UnconfiguredScreen`, caso en `HubApp.test.tsx` con estado `unconfigured`, y test del guard en `license.test.tsx` simulando eventos Wails.
+- Riesgo si se ignora: regresion futura en el guard anti-regresion o en la pantalla `UnconfiguredScreen` no detectada automaticamente.
+
+### TD-046 - OnboardingFlow.AuthStage no maneja unconfigured
+
+- Severidad: P3
+- Area: frontend/onboarding
+- Origen: review P0 Fix A+B+C (2026-06-29)
+- Estado: abierto
+- Release objetivo: R04 o auditoria global
+- Motivo para diferir: `OnboardingFlow` es un flujo secundario (no es el camino principal de la app; el primary flow es `HubApp.tsx` → `LicenseGate`). En `AuthStage`, el estado `unconfigured` cae a `return null`, dejando la pantalla en blanco en vez de mostrar `UnconfiguredScreen`.
+- Fix esperado: añadir `if (result.state === "unconfigured") return <UnconfiguredScreen />` en `AuthStage` y en el check de `OnboardingSteps` (que actualmente lista `active/grace/authenticated-no-entitlement` para skip).
+- Riesgo si se ignora: si se usa `OnboardingFlow` en un build sin config Supabase, el usuario ve pantalla en blanco en vez de mensaje accionable.
+
+### TD-009 - Inicio de sesión con Google OAuth bloqueado en WebView2
+
+- Severidad: P1
+- Area: frontend/licensing/auth
+- Origen: review manual visual Login/Auth v0.1.0.1
+- Estado: abierto
+- Release objetivo: R03.X / R04 (hotfix v0.1.0.2 necesario)
+- Motivo para diferir: Ninguno para beta pública, ya que bloquea el login con Google OAuth (obligatorio) debido a que Google bloquea la autenticación OAuth dentro de WebViews integrados y la app no abre el navegador externo para completarlo.
+- Fix esperado: Modificar `signInWithOAuth` en frontend para abrir la URL de autorización de Supabase en el navegador externo del sistema (mediante Wails `Browser.OpenURL`) e implementar Deep Linking en el backend de Go para redirigir la sesión de vuelta a la aplicación.
+- Riesgo si se ignora: Cualquier usuario final de la beta pública que intente registrarse o loguearse con Google quedará permanentemente bloqueado en una pantalla blanca.
+
 ### TD-002 - Verificacion de checksums sidecar
 
 - Severidad: P3

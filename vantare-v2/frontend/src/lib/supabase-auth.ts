@@ -12,25 +12,18 @@ function supabaseAnonKey(): string {
   return (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 }
 
-// OAuth redirect target. In Wails builds the frontend is served from a local
-// dev-server port during development; production packages should set the
-// correct redirect URL via VITE_OAUTH_REDIRECT_URL at build time.
+// OAuth redirect target for external browser flow. Points to the local HTTP
+// server's /auth/callback endpoint where a small HTML page reads the
+// access_token from the URL fragment and POSTs it back to the Go app.
 //
-// FALLBACK: If VITE_OAUTH_REDIRECT_URL is not set, we attempt to use the current
-// window.location.origin if it points to a local port (excluding the test port :3000),
-// falling back to http://localhost:34115 as the default Vite dev server.
-function oauthRedirectUrl(): string {
+// Configurable via VITE_OAUTH_REDIRECT_URL for custom setups.
+function oauthCallbackUrl(): string {
   const envUrl = import.meta.env.VITE_OAUTH_REDIRECT_URL as string | undefined;
   if (envUrl) {
     return envUrl;
   }
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-    if (origin && origin.startsWith("http://localhost:") && !origin.includes(":3000")) {
-      return `${origin}/#/auth/callback`;
-    }
-  }
-  return "http://localhost:34115/#/auth/callback";
+  // Default: the local OBS/auth server on port 39261.
+  return "http://127.0.0.1:39261/auth/callback";
 }
 
 const missingConfigError =
@@ -116,15 +109,25 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
+// signInWithOAuth returns the OAuth URL for the given provider without
+// navigating the WebView. The caller is responsible for opening the URL in
+// the system's external browser (via Browser.OpenURL from @wailsio/runtime).
+// Google blocks OAuth inside embedded WebViews, so this flow is mandatory.
 export async function signInWithOAuth(
   provider: "google" | "discord",
-): Promise<{ error?: string }> {
+): Promise<{ url?: string; error?: string }> {
   try {
-    const { error } = await getSupabaseClient().auth.signInWithOAuth({
+    const { data, error } = await getSupabaseClient().auth.signInWithOAuth({
       provider,
-      options: { redirectTo: oauthRedirectUrl() },
+      options: {
+        redirectTo: oauthCallbackUrl(),
+        skipBrowserRedirect: true,
+      },
     });
-    return { error: error?.message };
+    if (error) {
+      return { error: error.message };
+    }
+    return { url: data.url ?? undefined };
   } catch (err) {
     if (isConfigError(err)) {
       return { error: missingConfigError };

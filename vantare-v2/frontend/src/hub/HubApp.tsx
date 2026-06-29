@@ -12,6 +12,7 @@ import { LicenseProvider, useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
 import { PaywallScreen } from './auth/PaywallScreen';
 import { LicenseBanner } from './auth/LicenseBanner';
+import { UnconfiguredScreen } from './auth/UnconfiguredScreen';
 import { getSession } from '../lib/supabase-auth';
 
 type Section = 'dashboard' | 'profiles' | 'telemetry' | 'setup' | 'engineer';
@@ -44,17 +45,19 @@ function LicenseGate({ children }: { children: ReactNode }) {
     return (
       <LoginScreen
         onLoggedIn={(accessToken) => {
-          if (accessToken) {
-            Events.Emit('license:validate', { sessionToken: accessToken });
-          } else {
-            Events.Emit('license:validate', {});
-          }
+          if (!accessToken) return;
+          Events.Emit('license:validate', { sessionToken: accessToken });
         }}
       />
     );
   }
+  // Unconfigured is a backend configuration error (missing Supabase env
+  // vars in the release build). It must never block the user behind a
+  // paywall. Show an actionable message instead.
+  if (result.state === 'unconfigured') {
+    return <UnconfiguredScreen />;
+  }
   if (
-    result.state === 'authenticated-no-entitlement' ||
     result.state === 'expired' ||
     result.state === 'device-limit'
   ) {
@@ -69,8 +72,10 @@ function LicenseGate({ children }: { children: ReactNode }) {
 }
 
 // LicenseBridge reenvía el access_token de Supabase al servicio Go. Si no hay
-// sesión (build sin env vars, mocks, offline), refresca el estado local sin
-// bloquear la UI.
+// sesión (build sin env vars, mocks, offline), NO refresca con token vacío
+// para evitar pisar el resultado de un OAuth callback exitoso. El
+// LicenseProvider ya emite license:validate con token vacío en mount; el
+// OAuth callback emitirá license:validate con el token real cuando complete.
 function LicenseBridge() {
   const { refresh } = useLicense();
   useEffect(() => {
@@ -82,12 +87,16 @@ function LicenseBridge() {
           Events.Emit('license:validate', {
             sessionToken: session.access_token,
           });
-        } else {
-          refresh();
         }
+        // If there is no session in the WebView's Supabase client, do NOT
+        // call refresh(). The initial license:validate with an empty token
+        // already ran on LicenseProvider mount, and the OAuth callback will
+        // emit license:validate with the real token when it completes.
+        // Calling refresh() here would race with the OAuth callback and
+        // could overwrite an authenticated state with anonymous.
       })
       .catch(() => {
-        if (!cancelled) refresh();
+        // Supabase config error (missing env vars, etc.) — do not refresh.
       });
     return () => {
       cancelled = true;

@@ -1,3 +1,94 @@
+# Review actual — Hotfix v0.1.0.2 Supabase backend/free plan
+
+**Fecha:** 2026-06-29
+**Modo:** review focal de hotfix auth/licencias.
+
+## Veredicto
+
+**ACCEPT WITH P3.**
+
+No quedan P0/P1/P2 abiertos para el objetivo inmediato de `v0.1.0.2`: Google OAuth externo debe llegar a Free/Hub en build empaquetada, sin Paywall bloqueado falso.
+
+## Confirmaciones
+
+- `StateUnconfigured` no se mapea a `expired`, `device-limit` ni `blocked`; muestra `UnconfiguredScreen`, no `PaywallScreen`.
+- Usuario OAuth valido sin entitlements llega a `authenticated-no-entitlement` -> `free` -> Hub.
+- Sin cliente Supabase y cache activa se respeta `grace`; sin cliente ni cache se devuelve `unconfigured`.
+- La anon key se inyecta via GitHub Actions/env/ldflags; no hay service role hardcodeado ni tokens en logs.
+- `release.yml` pasa `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY` al build Go desde los mismos secrets publicos usados por Vite.
+- `LicenseProvider` no pisa estado autenticado con `anonymous` tardio.
+- `LicenseBridge` no emite `license:validate` vacio sin sesion.
+
+## Follow-ups aceptados
+
+- `TD-043` — RPC `get_account_entitlements` sin migracion SQL: P3 para `v0.1.0.2`; sube a P2 antes de activar cobros/entitlements reales.
+- `TD-044` — sesion Supabase no persiste en WebView tras OAuth externo: P3 para `v0.1.0.2`; sube a P2 si se exige persistencia de sesion para testers antes de la siguiente publicacion.
+- `TD-045` — gaps de tests en `UnconfiguredScreen`, `LicenseGate` y anti-regresion.
+- `TD-046` — `OnboardingFlow.AuthStage` no maneja `unconfigured`.
+
+## Checks reportados
+
+- `go test -count=1 ./...`: OK.
+- `pnpm --dir frontend test`: 699/699 OK.
+- `pnpm --dir frontend exec tsc -b`: OK.
+- `pnpm --dir frontend build`: OK.
+- `pnpm --dir frontend lint`: OK.
+- `git diff --check`: limpio, solo warnings CRLF no bloqueantes.
+- `go vet`: OK.
+- `wails3 task release:artifacts` y `release:verify`: OK, version `v0.1.0.2` embebida.
+
+## Pendiente antes de tag/release
+
+Smoke manual con `bin/vantare.exe`: `/health` 200, Google OAuth externo, callback correcto, entrada al Hub como Free, Ajustes/Cuenta sin suscripcion con acceso basico activo.
+
+---
+
+# Histórico — Review manual visual Login/Auth v0.1.0.1
+
+**Fecha:** 2026-06-29
+**Modo:** QA manual y visual interactivo (sin tocar código de producto).
+**Build analizada:** `vantare-portable-amd64.zip` (extraído y ejecutado localmente, ya que la build oficial instalada no abre interfaz sin GPU desactivada en este entorno virtualizado).
+**Entorno de pruebas:** Windows 11 Build 26200.8655.
+
+---
+
+## Veredicto
+
+**NEEDS FIXES antes de Discord.**
+
+Se ha detectado un bug crítico de nivel **P1** (bloqueante para la beta pública) en el flujo de inicio de sesión: **Google OAuth queda bloqueado y se muestra una pantalla blanca**. Google prohíbe flujos de OAuth dentro de WebViews integrados (como WebView2 de Wails) por seguridad/anti-phishing. La app intenta realizar la navegación internamente modificando `window.location.href` en lugar de abrir el navegador externo del sistema y capturar la redirección mediante Deep Linking o un servidor local.
+
+Se debe realizar un hotfix `v0.1.0.2` antes de anunciar en Discord.
+
+---
+
+## Checklist de Pruebas (A-H)
+
+| Sección | Descripción | Estado | Comentario / Evidencia |
+| --- | --- | --- | --- |
+| **A** | Primer arranque sin sesión | **PASS** | Muestra la pantalla de login (fondo `#0a0a0a` con formulario en el centro). No se permite acceder al Hub. No hay stack traces ni JSON crudo visible. |
+| **B** | Login Google | **FAIL** | Al hacer clic en "CONTINUAR CON GOOGLE" (o activar vía teclado), el WebView2 navega a la URL de autorización de Supabase/Google y se queda permanentemente en blanco (White Screen) por restricciones de seguridad de Google. |
+| **C** | Otros métodos visibles | **FAIL (P1)** | Email/Contraseña y el botón de Discord están visibles en primer plano. No hay posibilidad de registro para nuevos usuarios, lo que confunde. El botón de Discord tiene el mismo riesgo de quedar bloqueado en WebView2. |
+| **D** | Paywall / licencias | **NO EJECUTADO** | Bloqueado por el fallo del flujo de inicio de sesión. |
+| **E** | Logout y sesión persistente | **NO EJECUTADO** | Bloqueado por el flujo de inicio de sesión. |
+| **F** | Primer acceso al Hub | **NO EJECUTADO** | Bloqueado por el flujo de inicio de sesión. |
+| **G** | Estados de red | **NO EJECUTADO** | Bloqueado por el flujo de inicio de sesión. |
+| **H** | Seguridad / privacidad visual | **PASS** | No se imprimen tokens JWT, secretos, anon keys ni URLs internas sensibles en la UI ni en los logs de consola de error (`err_task.log`). |
+
+---
+
+## Findings de Prioridad
+
+### P0/P1: Bloqueo del Login de Google OAuth (Pantalla Blanca en WebView2)
+- **Evidencia:** Al disparar el evento `onClick` del botón "CONTINUAR CON GOOGLE", la ventana cliente del WebView2 de Vantare Hub se queda 100% en blanco. No abre navegador externo y el usuario no puede autenticarse.
+- **Razón:** Google prohíbe flujos OAuth dentro de WebViews incrustados. Supabase JS intenta hacer la redirección modificando `window.location.href`, forzando al WebView2 a realizar la navegación interna que es rechazada.
+- **Fix esperado:** Cambiar la llamada en `supabase-auth.ts` para abrir la URL de OAuth en el navegador externo del usuario (utilizando la API `Browser.OpenURL` de Wails) e implementar Deep Linking en el backend de Go (`vantare://auth/callback`) para recibir la sesión de vuelta.
+
+### P1: Exposición de campos de Email/Contraseña y Discord confusos
+- **Evidencia:** Los campos para Email y Contraseña son totalmente funcionales del lado del cliente (si se escriben datos inválidos, se comunica con Supabase y muestra de forma limpia `"Invalid login credentials"`, lo que demuestra que la conectividad a Supabase con las variables `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` funciona). Sin embargo, no hay opción de crear cuenta para la beta pública en la interfaz. El botón de Discord tampoco debería estar en el flujo principal si no tiene soporte completo.
+
+---
+
 # Review adversarial: Documentacion publica Beta v0.1.0.0
 
 **Fecha:** 2026-06-29

@@ -116,13 +116,18 @@ func (s *Service) validate(ctx context.Context, sessionToken string) (*Result, e
 		if callErr == nil {
 			return s.fromSupabase(info, fp), nil
 		}
-		return s.fromCacheOnFailure(callErr)
+		return s.fromCacheOnFailure(callErr, false)
 	}
 
+	// No Supabase client configured. We must not fall back to StateExpired
+	// unconditionally because that would block authenticated users behind a
+	// paywall for a configuration issue, not a real entitlement problem.
+	// When there is no cache either, surface StateUnconfigured so the UI can
+	// show an actionable message instead of a false "expired" block.
 	if s.cache == nil {
-		return &Result{State: StateExpired, Error: ErrValidationFailed}, nil
+		return &Result{State: StateUnconfigured, Error: ErrUnconfigured}, nil
 	}
-	return s.fromCacheOnFailure(ErrValidationFailed)
+	return s.fromCacheOnFailure(ErrUnconfigured, true)
 }
 
 func (s *Service) fromSupabase(info *AccountInfo, fingerprint string) *Result {
@@ -165,25 +170,52 @@ func (s *Service) fromSupabase(info *AccountInfo, fingerprint string) *Result {
 	return res
 }
 
-func (s *Service) fromCacheOnFailure(cause error) (*Result, error) {
+// fromCacheOnFailure resolves the license state from the local cache when the
+// Supabase client is unavailable. When unconfigured is true (no Supabase
+// client was wired at all), empty/missing caches surface as StateUnconfigured
+// instead of StateExpired so the UI can show an actionable configuration error
+// rather than a false paywall block. When unconfigured is false (the client
+// exists but the network call failed), the original expired/grace semantics
+// are preserved.
+func (s *Service) fromCacheOnFailure(cause error, unconfigured bool) (*Result, error) {
 	if s.cache == nil {
-		return &Result{State: StateExpired, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
+		if unconfigured {
+			return &Result{State: StateUnconfigured, Error: fmt.Errorf("%w: %w", ErrUnconfigured, cause)}, nil
+		}
+		// Client was configured but the RPC call failed (network, 404, etc.)
+		// and there is no cache. For a first-time user this must NOT return
+		// expired because that would block an authenticated user behind a
+		// paywall for a transient or configuration error. Surface as
+		// authenticated-no-entitlement (Free) so the user can enter the Hub.
+		return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
 	}
 	state, ents, expires, cacheErr := s.cache.Read()
 	if cacheErr != nil {
 		if errors.Is(cacheErr, os.ErrNotExist) {
-			return &Result{State: StateExpired, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
+			if unconfigured {
+				return &Result{State: StateUnconfigured, Error: fmt.Errorf("%w: %w", ErrUnconfigured, cause)}, nil
+			}
+			return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
 		}
-		return &Result{State: StateExpired, Entitlements: ents, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
+		if unconfigured {
+			return &Result{State: StateUnconfigured, Entitlements: ents, Error: fmt.Errorf("%w: %w", ErrUnconfigured, cause)}, nil
+		}
+		return &Result{State: StateAuthenticatedNoEntitlement, Entitlements: ents, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
 	}
 
 	now := time.Now().UTC()
 	wrappedErr := fmt.Errorf("%w: %w", ErrValidationFailed, cause)
 
-	// No entitlements in cache: nothing to gate on. Surface as expired so the
-	// UI offers the paywall or login flow.
+	// No entitlements in cache: nothing to gate on. When the backend is
+	// unconfigured, surface as unconfigured so the UI shows an actionable
+	// message. When the backend is configured but Supabase is unreachable,
+	// surface as authenticated-no-entitlement (Free) so the user is not
+	// blocked behind a false paywall.
 	if len(ents) == 0 {
-		return &Result{State: StateExpired, Entitlements: ents, Error: wrappedErr}, nil
+		if unconfigured {
+			return &Result{State: StateUnconfigured, Entitlements: ents, Error: fmt.Errorf("%w: %w", ErrUnconfigured, cause)}, nil
+		}
+		return &Result{State: StateAuthenticatedNoEntitlement, Entitlements: ents, Error: wrappedErr}, nil
 	}
 
 	// If the cached entitlement has a future expiration, the cache itself is

@@ -28,8 +28,15 @@ jobs:
     name: Build Windows release artifacts
     runs-on: windows-latest
     env:
+      # Frontend (Vite consumes these at build time)
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Go binary (injected via ldflags at build time). These are the same
+      # public values Vite uses; the Go binary needs them to validate OAuth
+      # tokens against Supabase at runtime without requiring testers to set
+      # environment variables. Runtime env vars still override these.
+      VANTARE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VANTARE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     defaults:
       run:
         shell: powershell

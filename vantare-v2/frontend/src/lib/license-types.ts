@@ -4,7 +4,8 @@ export type LicenseState =
   | "active"
   | "grace"
   | "expired"
-  | "device-limit";
+  | "device-limit"
+  | "unconfigured";
 
 export type Entitlement =
   | "overlays"

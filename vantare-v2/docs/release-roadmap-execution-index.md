@@ -1,6 +1,6 @@
 # Release Roadmap Execution Index
 
-Fuente de verdad operativa para llevar Vantare Simracing Suite desde la beta actual hasta el release oficial.
+Fuente de verdad operativa para llevar Vantare Simracing Suite desde la beta publica `v0.1.x` hasta el release oficial.
 
 Este indice consolida:
 
@@ -30,7 +30,19 @@ Modulos:
 - telemetria compartida;
 - distribucion/licencias.
 
-La app actual se considera base de beta publica para testers. A partir de estos planes, todo desarrollo se orienta al release oficial.
+La app actual se considera base de beta publica para testers.
+
+Estado publico:
+
+- `v0.1.0.0`: primera beta publica publicada.
+- `v0.1.0.1`: hotfix P0 en curso para inyectar variables Supabase en builds de release y desbloquear login Google empaquetado.
+- `v0.3.*`: historico interno no anunciado.
+
+A partir de estos planes, todo desarrollo debe distinguir entre:
+
+1. hotfixes de la linea `0.1.0.x`;
+2. mejoras visibles de beta `0.1.1.0+`;
+3. releases mayores rumbo a `1.0.0.0`.
 
 ## Decisiones cerradas
 
@@ -81,6 +93,17 @@ Assetto Corsa Lua/CSP Pack:
 
 ## Planes ejecutables
 
+Antes de volver al roadmap largo de release, ejecutar la linea publica inmediata:
+
+| Version | Estado | Objetivo |
+|---------|--------|----------|
+| `0.1.0.x` | Activo | Hotfixes criticos de beta publica: Supabase frontend/backend, Google OAuth, free plan, licencias, updater, fullscreen, crashes o bloqueos de uso. |
+| `0.1.x` | Por planear | Linux/Proton experimental. |
+| `0.1.x` | Por planear | Vantare Setup Launcher v1. |
+| `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador. |
+| `0.1.x` | Por planear | Launcher de simuladores: primer corte LMU-only para abrir simulador desde Vantare y agrupar acciones asociadas. |
+| `0.1.x` | Por planear | Overlays publicos adicionales, Hub, hardening, rendimiento y UX. |
+
 Ejecutar por orden salvo decision explicita:
 
 1. [Release 01 - Beta baseline, recomendados y presets](superpowers/plans/2026-06-26-release-01-beta-baseline-recommended-presets.md)
@@ -105,6 +128,15 @@ Ejecutar por orden salvo decision explicita:
 - Mini-Plan B (Go LicenseService + webhook backend): implementado y aceptado con P3.
 - Mini-Plan C (frontend auth/license UI): implementado y aceptado con P1-P3. Correcciones P1-P3 del review aplicadas el 2026-06-27.
 - Webhook entitlement mapping implementado con tests. Pendiente: gate manual OAuth/Stripe real y validación real del flujo OAuth en builds empaquetadas.
+
+### Linea publica 0.1.x — tracking
+
+- `0.1.0.0`: publicado con release GitHub y 6 assets verificados. Detectado P0 posterior: build sin configuracion Supabase completa.
+- `0.1.0.x`: activo hasta cerrar Google OAuth -> validacion backend Supabase -> estado Free -> Hub en build empaquetada. Debe corregir frontend/backend config, fallar claro si faltan variables y validar manualmente antes de Discord.
+- `0.1.x por planear`: Linux/Proton experimental. Validar primero si conviene app Windows bajo Proton, build Linux nativa o bridge/proxy para telemetria.
+- `0.1.x por planear`: Vantare Setup Launcher v1. Scope inicial: Windows only, UI propia, verificacion SHA256, NSIS por debajo, aviso SmartScreen y enlaces de soporte.
+- `0.1.x por planear`: LMU race countdown beta. Scope inicial: importar manualmente o con IA el calendario semanal publicado en Discord, validar horarios/zona horaria y mostrar avisos temporales sobre el simulador. No incluye scraping automatico de Discord ni bot.
+- `0.1.x por planear`: launcher de simuladores. Primer corte LMU-only para abrir el simulador desde Vantare y agrupar acciones asociadas por simulador.
 
 ## Paralelizacion segura
 

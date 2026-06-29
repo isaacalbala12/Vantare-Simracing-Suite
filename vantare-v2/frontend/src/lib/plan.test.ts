@@ -44,8 +44,9 @@ describe("classifyStatus", () => {
     ["grace", "grace"],
     ["expired", "blocked"],
     ["device-limit", "blocked"],
-    ["authenticated-no-entitlement", "blocked"],
+    ["authenticated-no-entitlement", "free"],
     ["anonymous", "anonymous"],
+    ["unconfigured", "unconfigured"],
     [null, "free"],
   ];
 
@@ -75,6 +76,12 @@ describe("buildSummary", () => {
       status: "blocked",
     });
   });
+  it("authenticated-no-entitlement is free", () => {
+    expect(buildSummary("authenticated-no-entitlement", [])).toEqual({
+      label: "free",
+      status: "free",
+    });
+  });
   it("anonymous forces anonymous status even with suite entitlements", () => {
     expect(buildSummary("anonymous", ["bundle"])).toEqual({
       label: "suite",
@@ -85,6 +92,12 @@ describe("buildSummary", () => {
     expect(buildSummary("active", ["mystery" as Entitlement])).toEqual({
       label: "free",
       status: "active",
+    });
+  });
+  it("unconfigured is not blocked", () => {
+    expect(buildSummary("unconfigured", [])).toEqual({
+      label: "free",
+      status: "unconfigured",
     });
   });
 });
@@ -106,7 +119,7 @@ describe("label maps", () => {
     }
   });
   it("covers every plan status", () => {
-    const statuses: string[] = ["active", "grace", "blocked", "free", "anonymous"];
+    const statuses: string[] = ["active", "grace", "blocked", "free", "anonymous", "unconfigured"];
     for (const status of statuses) {
       expect(PLAN_STATUS_LABELS[status as keyof typeof PLAN_STATUS_LABELS]).toBeTruthy();
     }

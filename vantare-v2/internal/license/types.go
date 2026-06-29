@@ -27,6 +27,11 @@ const (
 	StateGrace                      State = "grace"
 	StateExpired                    State = "expired"
 	StateDeviceLimit                State = "device-limit"
+	// StateUnconfigured is returned when the backend has no Supabase client
+	// and no usable cache. It must never be treated as expired/device-limit
+	// (which would block the user behind a paywall). The frontend surfaces it
+	// as an actionable configuration error instead of a hard block.
+	StateUnconfigured State = "unconfigured"
 )
 
 // Result is the outcome of a license validation cycle.

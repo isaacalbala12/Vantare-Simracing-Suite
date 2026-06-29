@@ -7,18 +7,25 @@ const {
   loginScreenMock,
   paywallScreenMock,
   licenseBannerMock,
-} = vi.hoisted(() => ({
-  useLicenseMock: vi.fn(),
-  loginScreenMock: vi.fn(),
-  paywallScreenMock: vi.fn(),
-  licenseBannerMock: vi.fn(),
-}));
+  loginScreenOnLoggedIn,
+  eventsEmit,
+} = vi.hoisted(() => {
+  const emit = vi.fn();
+  return {
+    useLicenseMock: vi.fn(),
+    loginScreenMock: vi.fn(),
+    paywallScreenMock: vi.fn(),
+    licenseBannerMock: vi.fn(),
+    loginScreenOnLoggedIn: vi.fn(),
+    eventsEmit: emit,
+  };
+});
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: vi.fn(() => () => {}),
     Off: vi.fn(),
-    Emit: vi.fn(),
+    Emit: eventsEmit,
   },
 }));
 
@@ -32,7 +39,8 @@ vi.mock("../../lib/supabase-auth", () => ({
 }));
 
 vi.mock("../auth/LoginScreen", () => ({
-  LoginScreen: () => {
+  LoginScreen: (props: { onLoggedIn?: (token?: string) => void }) => {
+    loginScreenOnLoggedIn.mockImplementation(props.onLoggedIn ?? (() => {}));
     loginScreenMock();
     return <div data-testid="login-screen">login</div>;
   },
@@ -69,6 +77,8 @@ describe("HubApp route gating", () => {
     loginScreenMock.mockReset();
     paywallScreenMock.mockReset();
     licenseBannerMock.mockReset();
+    loginScreenOnLoggedIn.mockReset();
+    eventsEmit.mockReset();
   });
 
   it("shows loading state while license is loading", () => {
@@ -92,7 +102,7 @@ describe("HubApp route gating", () => {
     expect(screen.getByTestId("login-screen")).toBeTruthy();
   });
 
-  it("shows paywall screen when authenticated-no-entitlement", () => {
+  it("renders banner when authenticated-no-entitlement (Free)", () => {
     setLicense({
       state: "authenticated-no-entitlement",
       entitlements: [],
@@ -101,8 +111,8 @@ describe("HubApp route gating", () => {
       deviceOK: true,
     });
     render(<HubApp />);
-    expect(paywallScreenMock).toHaveBeenCalledWith("isaac@example.com");
-    expect(screen.getByTestId("paywall-screen")).toBeTruthy();
+    expect(licenseBannerMock).toHaveBeenCalled();
+    expect(paywallScreenMock).not.toHaveBeenCalled();
   });
 
   it("shows paywall when expired", () => {
@@ -162,5 +172,18 @@ describe("HubApp route gating", () => {
     setLicense(null, false);
     render(<HubApp />);
     expect(loginScreenMock).toHaveBeenCalled();
+  });
+
+  it("does not emit license:validate when onLoggedIn is called without accessToken", () => {
+    setLicense({
+      state: "anonymous",
+      entitlements: [],
+      userId: "",
+      email: "",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    loginScreenOnLoggedIn();
+    expect(eventsEmit).not.toHaveBeenCalledWith("license:validate", expect.anything());
   });
 });

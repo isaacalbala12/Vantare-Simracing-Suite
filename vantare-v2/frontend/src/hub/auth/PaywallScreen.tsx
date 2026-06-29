@@ -10,13 +10,14 @@ import {
 type PaywallScreenProps = {
   email: string;
   result?: LicenseResult | null;
+  onContinueFree?: () => void;
 };
 
 // PaywallScreen se muestra cuando el usuario está autenticado pero no tiene
 // entitlements (o los perdió). La beta pública aún no expone Stripe Checkout
 // embebido: el botón "Suscribirse" deja el flujo a la URL externa del portal
 // cuando esté disponible; mientras tanto muestra un aviso claro.
-export function PaywallScreen({ email, result }: PaywallScreenProps) {
+export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenProps) {
   const [pendingPlan, setPendingPlan] = useState<string | null>(null);
 
   const summary = useMemo(
@@ -45,11 +46,21 @@ export function PaywallScreen({ email, result }: PaywallScreenProps) {
       </p>
       <p
         data-testid="paywall-status"
-        className="mb-6 font-mono text-[10px] uppercase tracking-widest text-vantare-textMuted"
+        className="font-mono text-[10px] uppercase tracking-widest text-vantare-textMuted"
       >
         Estado: {PLAN_LABELS[summary.label]} ·{" "}
         {PLAN_STATUS_LABELS[summary.status]}
       </p>
+      {summary.status === "free" ? (
+        <p
+          data-testid="paywall-free-note"
+          className="mb-6 font-mono text-[10px] text-vantare-textDim"
+        >
+          Acceso básico activo
+        </p>
+      ) : (
+        <div className="mb-6" />
+      )}
       {pendingPlan ? (
         <p
           data-testid="paywall-coming-soon"
@@ -96,11 +107,21 @@ export function PaywallScreen({ email, result }: PaywallScreenProps) {
             </ul>
             <button
               type="button"
-              onClick={() => handleSubscribe(plan.key)}
-              disabled={plan.key === "free"}
+              onClick={() => {
+                if (plan.key === "free" && summary.status === "free") {
+                  onContinueFree?.();
+                } else {
+                  handleSubscribe(plan.key);
+                }
+              }}
+              disabled={plan.key === "free" && summary.status !== "free"}
               className="w-full rounded border border-white/20 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {plan.key === "free" ? "Plan actual" : "Suscribirse"}
+              {plan.key === "free"
+                ? summary.status === "free"
+                  ? "Continuar gratis"
+                  : "Plan actual"
+                : "Suscribirse"}
             </button>
           </div>
         ))}

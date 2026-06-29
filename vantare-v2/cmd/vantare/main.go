@@ -32,7 +32,19 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.1.0.1"
+var version = "v0.1.0.2"
+
+// supabaseURL and supabaseAnonKey are injected at build time via ldflags
+// (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
+// can validate OAuth tokens without requiring end users to set environment
+// variables. They are public values (the Supabase anon key is designed to be
+// shipped in client apps). Runtime env vars VANTARE_SUPABASE_URL /
+// VANTARE_SUPABASE_ANON_KEY still take precedence for development and
+// overrides.
+var (
+	supabaseURL     = ""
+	supabaseAnonKey = ""
+)
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -133,6 +145,7 @@ func main() {
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
+	reorderArgs()
 	flag.Parse()
 
 	if *edit {
@@ -264,23 +277,33 @@ func main() {
 
 	// License service for online entitlement validation (Release 02 Mini-Plan B).
 	licenseCachePath := filepath.Join(cfgDir, "license-cache.json")
-	supabaseURL := os.Getenv("VANTARE_SUPABASE_URL")
-	if supabaseURL == "" {
-		supabaseURL = os.Getenv("SUPABASE_URL")
+	// Supabase config: runtime env vars take precedence over the values
+	// embedded at build time via ldflags. This lets developers override
+	// locally and lets the release build ship with the public anon key
+	// baked in so testers never need to configure environment variables.
+	supabaseURLResolved := os.Getenv("VANTARE_SUPABASE_URL")
+	if supabaseURLResolved == "" {
+		supabaseURLResolved = os.Getenv("SUPABASE_URL")
 	}
-	supabaseAnonKey := os.Getenv("VANTARE_SUPABASE_ANON_KEY")
-	if supabaseAnonKey == "" {
-		supabaseAnonKey = os.Getenv("SUPABASE_ANON_KEY")
+	if supabaseURLResolved == "" {
+		supabaseURLResolved = supabaseURL
+	}
+	supabaseAnonKeyResolved := os.Getenv("VANTARE_SUPABASE_ANON_KEY")
+	if supabaseAnonKeyResolved == "" {
+		supabaseAnonKeyResolved = os.Getenv("SUPABASE_ANON_KEY")
+	}
+	if supabaseAnonKeyResolved == "" {
+		supabaseAnonKeyResolved = supabaseAnonKey
 	}
 	licenseSvc := license.NewService(license.Config{
-		SupabaseURL:     supabaseURL,
-		SupabaseAnonKey: supabaseAnonKey,
+		SupabaseURL:     supabaseURLResolved,
+		SupabaseAnonKey: supabaseAnonKeyResolved,
 		GracePeriod:     24 * time.Hour,
 		CachePath:       licenseCachePath,
 	}, emitter, license.MachineFingerprint)
 	licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
-	if supabaseURL != "" && supabaseAnonKey != "" {
-		licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURL, supabaseAnonKey))
+	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
+		licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURLResolved, supabaseAnonKeyResolved))
 	} else {
 		log.Printf("license: supabase env vars missing, running in offline-grace mode")
 	}
@@ -301,13 +324,19 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
+		// Validate already emits license:changed internally via EmitChanged,
+		// so we must not emit again here to avoid duplicate events that can
+		// race with the frontend state machine.
 		res, verr := licenseSvc.Validate(context.Background(), payload.SessionToken)
 		if verr != nil {
 			log.Printf("license:validate error: %v", verr)
 			emitter.Emit("license:error", map[string]any{"message": verr.Error()})
 			return
 		}
-		licenseSvc.EmitChanged(res)
+		if res != nil {
+			log.Printf("license:validate result state=%s deviceOK=%v err=%v entitlements=%d",
+				res.State, res.DeviceOK, res.Error != nil, len(res.Entitlements))
+		}
 	})
 
 	wailsApp.Event.On("license:reset-device", func(event *application.CustomEvent) {
@@ -357,6 +386,18 @@ func main() {
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
+
+	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
+	httpSrv = server.New(server.ServerConfig{
+		Addr:        *httpAddr,
+		DistFS:      distFS,
+		CfgDir:      cfgDir,
+		Svc:         vapp.Telemetry,
+		EngineerSvc: engSvc,
+		Emitter:     emitter,
+	})
+	httpSrv.Start()
+	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
 
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)
 	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
@@ -815,17 +856,6 @@ func main() {
 	} else {
 		log.Printf("global hotkeys active (%d registered)", len(settingsSvc.Settings().Hotkeys))
 	}
-
-	// --- OBS / SSE HTTP server ---
-	httpSrv = server.New(server.ServerConfig{
-		Addr:        *httpAddr,
-		DistFS:      distFS,
-		CfgDir:      cfgDir,
-		Svc:         vapp.Telemetry,
-		EngineerSvc: engSvc,
-	})
-	httpSrv.Start()
-	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
 
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)
 	wailsApp.Event.On("layout:save", func(event *application.CustomEvent) {

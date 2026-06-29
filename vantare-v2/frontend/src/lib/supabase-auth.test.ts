@@ -156,38 +156,49 @@ describe("supabase-auth", () => {
   });
 
   describe("signInWithOAuth", () => {
-    it("calls signInWithOAuth with google and redirect", async () => {
-      signInWithOAuthFn.mockResolvedValueOnce({ error: null });
+    it("returns OAuth URL with skipBrowserRedirect and callback redirect", async () => {
+      signInWithOAuthFn.mockResolvedValueOnce({
+        data: { url: "https://accounts.google.com/o/oauth2/auth?..." },
+        error: null,
+      });
       const result = await signInWithOAuth("google");
       expect(result.error).toBeUndefined();
+      expect(result.url).toBe("https://accounts.google.com/o/oauth2/auth?...");
       expect(signInWithOAuthFn).toHaveBeenCalledWith({
         provider: "google",
-        options: { redirectTo: "http://localhost:34115/#/auth/callback" },
+        options: {
+          redirectTo: "http://127.0.0.1:39261/auth/callback",
+          skipBrowserRedirect: true,
+        },
       });
     });
 
-    it("calls signInWithOAuth with discord and surfaces error", async () => {
+    it("surfaces error from provider", async () => {
       signInWithOAuthFn.mockResolvedValueOnce({
+        data: { url: null },
         error: { message: "denied" },
       });
       const result = await signInWithOAuth("discord");
       expect(result.error).toBe("denied");
-      expect(signInWithOAuthFn).toHaveBeenCalledWith({
-        provider: "discord",
-        options: { redirectTo: "http://localhost:34115/#/auth/callback" },
-      });
+      expect(result.url).toBeUndefined();
     });
 
     it("uses VITE_OAUTH_REDIRECT_URL when present", async () => {
       vi.stubEnv(
         "VITE_OAUTH_REDIRECT_URL",
-        "https://app.example.com/#/auth/callback",
+        "https://app.example.com/auth/callback",
       );
-      signInWithOAuthFn.mockResolvedValueOnce({ error: null });
+      signInWithOAuthFn.mockResolvedValueOnce({
+        data: { url: "https://accounts.google.com/..." },
+        error: null,
+      });
       await signInWithOAuth("google");
       expect(signInWithOAuthFn).toHaveBeenCalledWith({
         provider: "google",
-        options: { redirectTo: "https://app.example.com/#/auth/callback" },
+        options: {
+          redirectTo: "https://app.example.com/auth/callback",
+          skipBrowserRedirect: true,
+        },
       });
     });
 
@@ -197,28 +208,6 @@ describe("supabase-auth", () => {
       resetSupabaseClient();
       const result = await signInWithOAuth("google");
       expect(result.error).toMatch(/Supabase no configurado/);
-    });
-
-    it("falls back to window.location.origin if it is a localhost port other than 3000", async () => {
-      // Mock window.location.origin
-      const originalLocation = window.location;
-      // @ts-expect-error: delete read-only window.location to allow mocking in test
-      delete window.location;
-      // @ts-expect-error: assign mock URL object to window.location
-      window.location = new URL("http://localhost:12345");
-
-      vi.stubEnv("VITE_OAUTH_REDIRECT_URL", "");
-      signInWithOAuthFn.mockResolvedValueOnce({ error: null });
-      await signInWithOAuth("google");
-
-      expect(signInWithOAuthFn).toHaveBeenCalledWith({
-        provider: "google",
-        options: { redirectTo: "http://localhost:12345/#/auth/callback" },
-      });
-
-      // Restore
-      // @ts-expect-error: restore original window.location object after test
-      window.location = originalLocation;
     });
   });
 });

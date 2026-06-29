@@ -15,16 +15,17 @@ const (
 )
 
 // PlanStatus is the high-level gating state surfaced to the UI together with
-// the plan label. It collapses the six State values into five buckets the
+// the plan label. It collapses the seven State values into six buckets the
 // settings page renders as badges.
 type PlanStatus string
 
 const (
-	PlanStatusActive    PlanStatus = "active"
-	PlanStatusGrace     PlanStatus = "grace"
-	PlanStatusBlocked   PlanStatus = "blocked"
-	PlanStatusFree      PlanStatus = "free"
-	PlanStatusAnonymous PlanStatus = "anonymous"
+	PlanStatusActive       PlanStatus = "active"
+	PlanStatusGrace        PlanStatus = "grace"
+	PlanStatusBlocked      PlanStatus = "blocked"
+	PlanStatusFree         PlanStatus = "free"
+	PlanStatusAnonymous    PlanStatus = "anonymous"
+	PlanStatusUnconfigured PlanStatus = "unconfigured"
 )
 
 // PlanSummary is the wire-shaped status consumed by AccountSettings.
@@ -95,10 +96,14 @@ func ClassifyStatus(state State) PlanStatus {
 		return PlanStatusActive
 	case StateGrace:
 		return PlanStatusGrace
-	case StateExpired, StateDeviceLimit, StateAuthenticatedNoEntitlement:
+	case StateExpired, StateDeviceLimit:
 		return PlanStatusBlocked
+	case StateAuthenticatedNoEntitlement:
+		return PlanStatusFree
 	case StateAnonymous:
 		return PlanStatusAnonymous
+	case StateUnconfigured:
+		return PlanStatusUnconfigured
 	default:
 		return PlanStatusFree
 	}
@@ -111,6 +116,8 @@ func BuildSummary(state State, entitlements []Entitlement) PlanSummary {
 
 	// Blocked and anonymous states override the label so the UI never shows
 	// "Suite" while the user is logged out or the subscription is dead.
+	// Unconfigured is a configuration error, not a block: it keeps the label
+	// so the UI can show an actionable message without a false paywall.
 	if status == PlanStatusBlocked || status == PlanStatusAnonymous {
 		return PlanSummary{Label: label, Status: status}
 	}

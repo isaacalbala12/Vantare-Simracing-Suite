@@ -12,6 +12,7 @@ import { LicenseProvider, useLicense } from "../../lib/license";
 import { LoginScreen } from "../auth/LoginScreen";
 import { PaywallScreen } from "../auth/PaywallScreen";
 import { LicenseBanner } from "../auth/LicenseBanner";
+import { UnconfiguredScreen } from "../auth/UnconfiguredScreen";
 
 type Section = "dashboard" | "profiles" | "telemetry" | "setup" | "engineer";
 
@@ -40,18 +41,16 @@ function LicenseGate({ children }: { children: ReactNode }) {
     return (
       <LoginScreen
         onLoggedIn={(accessToken) => {
-          if (accessToken) {
-            Events.Emit("license:validate", { sessionToken: accessToken });
-          } else {
-            // Fallback for any caller that cannot provide a token.
-            Events.Emit("license:validate", {});
-          }
+          if (!accessToken) return;
+          Events.Emit("license:validate", { sessionToken: accessToken });
         }}
       />
     );
   }
+  if (result.state === "unconfigured") {
+    return <UnconfiguredScreen />;
+  }
   if (
-    result.state === "authenticated-no-entitlement" ||
     result.state === "expired" ||
     result.state === "device-limit"
   ) {
@@ -114,6 +113,9 @@ function HubShell() {
 // license validation can authenticate against Supabase. The bridge is
 // isolated from the gate so a missing Supabase session (no env vars in dev,
 // test mocks, offline) cannot block the UI from rendering its current state.
+// If there is no session, it does NOT refresh with an empty token to avoid
+// racing with the OAuth callback (which emits license:validate with the
+// real token when it completes).
 function LicenseBridge() {
   const { refresh } = useLicense();
   useEffect(() => {
@@ -126,12 +128,12 @@ function LicenseBridge() {
           Events.Emit("license:validate", {
             sessionToken: session.access_token,
           });
-        } else {
-          refresh();
         }
+        // No session: do not refresh. LicenseProvider already emitted
+        // license:validate with an empty token on mount.
       })
       .catch(() => {
-        if (!cancelled) refresh();
+        // Supabase config error — do not refresh.
       });
     return () => {
       cancelled = true;

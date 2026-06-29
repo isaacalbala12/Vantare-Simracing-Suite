@@ -14,7 +14,8 @@ export type PlanStatus =
   | "grace"
   | "blocked"
   | "free"
-  | "anonymous";
+  | "anonymous"
+  | "unconfigured";
 
 export type PlanSummary = {
   label: PlanLabel;
@@ -37,6 +38,7 @@ export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
   blocked: "Bloqueado",
   free: "Sin suscripción",
   anonymous: "Sin sesión",
+  unconfigured: "Configuración incompleta",
 };
 
 export function classifyPlan(entitlements: Entitlement[]): PlanLabel {
@@ -72,10 +74,13 @@ export function classifyStatus(state: LicenseState | null): PlanStatus {
       return "grace";
     case "expired":
     case "device-limit":
-    case "authenticated-no-entitlement":
       return "blocked";
+    case "authenticated-no-entitlement":
+      return "free";
     case "anonymous":
       return "anonymous";
+    case "unconfigured":
+      return "unconfigured";
     default:
       return "free";
   }
@@ -89,6 +94,11 @@ export function buildSummary(
   const label = classifyPlan(entitlements);
 
   if (status === "blocked" || status === "anonymous") {
+    return { label, status };
+  }
+  // Unconfigured is a configuration error, not a block: keep the label so
+  // the UI can show an actionable message without a false paywall.
+  if (status === "unconfigured") {
     return { label, status };
   }
   if (status === "active" || status === "grace") {

@@ -108,11 +108,10 @@ function AuthStage() {
     return <LoginScreen onLoggedIn={() => window.location.reload()} />;
   }
   if (
-    result.state === "authenticated-no-entitlement" ||
     result.state === "expired" ||
     result.state === "device-limit"
   ) {
-    return <PaywallScreen email={result.email} />;
+    return <PaywallScreen email={result.email} result={result} />;
   }
   return null;
 }
@@ -138,7 +137,7 @@ function OnboardingSteps({
     // users who are still signed in.
     if (
       result &&
-      (result.state === "active" || result.state === "grace")
+      (result.state === "active" || result.state === "grace" || result.state === "authenticated-no-entitlement")
     ) {
       return (
         <RecommendedStep onComplete={() => onComplete?.()}>

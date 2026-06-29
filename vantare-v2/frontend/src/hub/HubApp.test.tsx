@@ -164,7 +164,7 @@ describe("HubApp gate (production)", () => {
     expect(paywallScreenMock).toHaveBeenCalledWith("dev@example.com");
   });
 
-  it("blocks with PaywallScreen on authenticated-no-entitlement", () => {
+  it("renders shell when authenticated-no-entitlement (Free)", () => {
     setLicense({
       state: "authenticated-no-entitlement",
       entitlements: [],
@@ -173,7 +173,8 @@ describe("HubApp gate (production)", () => {
       deviceOK: true,
     });
     render(<HubApp />);
-    expect(paywallScreenMock).toHaveBeenCalledWith("u@example.com");
+    expect(paywallScreenMock).not.toHaveBeenCalled();
+    expect(licenseBannerMock).toHaveBeenCalled();
   });
 
   it("renders shell with banner when active", () => {
@@ -221,7 +222,7 @@ describe("HubApp gate (production)", () => {
     });
   });
 
-  it("LicenseBridge falls back to bare validate when no session", async () => {
+  it("LicenseBridge does not refresh when no session (prevents OAuth race)", async () => {
     const refreshMock = vi.fn();
     getSessionMock.mockResolvedValueOnce(null);
     setLicense(
@@ -246,9 +247,14 @@ describe("HubApp gate (production)", () => {
       refresh: refreshMock,
     });
     render(<HubApp />);
+    // Give the async getSession promise a chance to resolve.
     await waitFor(() => {
-      expect(refreshMock).toHaveBeenCalled();
+      expect(getSessionMock).toHaveBeenCalled();
     });
+    // refresh must NOT be called when there is no session: the initial
+    // license:validate with an empty token already ran on mount, and
+    // calling refresh here would race with an OAuth callback.
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 
   it("LoginScreen onLoggedIn with token re-emits license:validate", async () => {
@@ -267,5 +273,19 @@ describe("HubApp gate (production)", () => {
         sessionToken: "tok-123",
       });
     });
+  });
+
+  it("LoginScreen onLoggedIn without token ignores emission (prevents immediate logout loop)", () => {
+    setLicense({
+      state: "anonymous",
+      entitlements: [],
+      userId: "",
+      email: "",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    eventsEmit.mockClear();
+    screen.getByTestId("trigger-login-bare").click();
+    expect(eventsEmit).not.toHaveBeenCalledWith("license:validate", expect.anything());
   });
 });

@@ -31,8 +31,8 @@ vi.mock("../auth/LoginScreen", () => ({
 }));
 
 vi.mock("../auth/PaywallScreen", () => ({
-  PaywallScreen: ({ email }: { email: string }) => {
-    paywallScreenMock(email);
+  PaywallScreen: ({ email, result }: { email: string; result?: unknown }) => {
+    paywallScreenMock(email, result);
     return <div data-testid="paywall-screen">paywall {email}</div>;
   },
 }));
@@ -76,7 +76,7 @@ describe("OnboardingFlow", () => {
     expect(loginScreenMock).toHaveBeenCalled();
   });
 
-  it("shows paywall after simulator when session exists without entitlements", () => {
+  it("advances to recommended when authenticated-no-entitlement (Free)", () => {
     setLicense(
       {
         state: "authenticated-no-entitlement",
@@ -88,7 +88,8 @@ describe("OnboardingFlow", () => {
       false,
     );
     render(<OnboardingFlow initialStep="auth" />);
-    expect(paywallScreenMock).toHaveBeenCalledWith("u@example.com");
+    expect(paywallScreenMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId("onboarding-step-recommended")).toBeTruthy();
   });
 
   it("renders recommended profile step when license is active", () => {
@@ -110,5 +111,43 @@ describe("OnboardingFlow", () => {
     setLicense(null, true);
     render(<OnboardingFlow initialStep="auth" />);
     expect(screen.getByText(/cargando licencia/i)).toBeTruthy();
+  });
+
+  it("shows paywall when license is expired, passing result", () => {
+    setLicense(
+      {
+        state: "expired",
+        entitlements: [],
+        userId: "u",
+        email: "exp@example.com",
+        deviceOK: true,
+      },
+      false,
+    );
+    render(<OnboardingFlow initialStep="auth" />);
+    expect(paywallScreenMock).toHaveBeenCalledWith(
+      "exp@example.com",
+      expect.objectContaining({ state: "expired" }),
+    );
+    expect(screen.getByTestId("paywall-screen")).toBeTruthy();
+  });
+
+  it("shows paywall when device-limit, passing result", () => {
+    setLicense(
+      {
+        state: "device-limit",
+        entitlements: ["overlays"],
+        userId: "u",
+        email: "dev@example.com",
+        deviceOK: false,
+      },
+      false,
+    );
+    render(<OnboardingFlow initialStep="auth" />);
+    expect(paywallScreenMock).toHaveBeenCalledWith(
+      "dev@example.com",
+      expect.objectContaining({ state: "device-limit" }),
+    );
+    expect(screen.getByTestId("paywall-screen")).toBeTruthy();
   });
 });

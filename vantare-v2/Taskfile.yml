@@ -8,6 +8,11 @@ vars:
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   APP_VERSION:
     sh: go run build/sync_version.go -print
+  # Public Supabase config injected into the Go binary via ldflags at build
+  # time. Sourced from env vars (set by CI or local developer). Empty by
+  # default for local dev; the binary then runs in offline-grace mode.
+  VANTARE_SUPABASE_URL: '{{.VANTARE_SUPABASE_URL | default ""}}'
+  VANTARE_SUPABASE_ANON_KEY: '{{.VANTARE_SUPABASE_ANON_KEY | default ""}}'
 
 includes:
   common: ./build/Taskfile.yml

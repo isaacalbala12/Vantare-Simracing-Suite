@@ -85,6 +85,11 @@ func TestValidateStates(t *testing.T) {
 			sbErr:       errors.New("supabase down"),
 			expectState: StateExpired,
 		},
+		{
+			name:        "rpc fails without cache falls to free (not expired)",
+			sbErr:       errors.New("supabase rpc 404"),
+			expectState: StateAuthenticatedNoEntitlement,
+		},
 	}
 
 	for _, tc := range cases {
@@ -253,6 +258,63 @@ func TestSaveCacheWithoutCache(t *testing.T) {
 	err := svc.SaveCache(StateActive, nil, nil)
 	if !errors.Is(err, ErrNoCache) {
 		t.Fatalf("expected ErrNoCache, got %v", err)
+	}
+}
+
+// TestValidateUnconfiguredWithoutCache verifies that when the backend has no
+// Supabase client and no cache, validation returns StateUnconfigured (not
+// StateExpired). This prevents a false paywall block for authenticated users
+// when the release build is missing Supabase env vars.
+func TestValidateUnconfiguredWithoutCache(t *testing.T) {
+	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
+	res, err := svc.Validate(context.Background(), "token")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.State != StateUnconfigured {
+		t.Fatalf("expected StateUnconfigured, got %s", res.State)
+	}
+	if !errors.Is(res.Error, ErrUnconfigured) {
+		t.Fatalf("expected ErrUnconfigured, got %v", res.Error)
+	}
+}
+
+// TestValidateUnconfiguredWithEmptyCache verifies that when the backend has no
+// Supabase client but has an empty cache, validation still returns
+// StateUnconfigured (not StateExpired).
+func TestValidateUnconfiguredWithEmptyCache(t *testing.T) {
+	dir := t.TempDir()
+	cache := NewLicenseCache(dir + "/cache.json")
+	svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
+	svc.WithCache(cache)
+	// No client wired, cache file does not exist yet.
+	res, err := svc.Validate(context.Background(), "token")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.State != StateUnconfigured {
+		t.Fatalf("expected StateUnconfigured, got %s", res.State)
+	}
+}
+
+// TestValidateUnconfiguredDoesNotBlockExpiredUser verifies that a previously
+// cached active entitlement still enters grace when the backend is
+// unconfigured (the cache is authoritative for valid subscriptions).
+func TestValidateUnconfiguredWithActiveCacheEntersGrace(t *testing.T) {
+	dir := t.TempDir()
+	cache := NewLicenseCache(dir + "/cache.json")
+	if err := cache.Write(StateActive, []Entitlement{EntitlementOverlays}, nil); err != nil {
+		t.Fatalf("write cache: %v", err)
+	}
+	svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
+	svc.WithCache(cache)
+	// No client wired: unconfigured path, but cache has active entitlement.
+	res, err := svc.Validate(context.Background(), "token")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.State != StateGrace {
+		t.Fatalf("expected StateGrace from cache, got %s", res.State)
 	}
 }
 

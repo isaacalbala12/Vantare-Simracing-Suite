@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import type { ProfileConfig } from "../../lib/profile";
 import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
@@ -145,5 +145,111 @@ describe("WidgetSettingsPanel", () => {
     expect(panel.className).toContain("overflow-y-auto");
     expect(screen.getByText("Pedales")).toBeTruthy();
     expect(screen.getByLabelText("Acelerador (throttle)")).toBeTruthy();
+  });
+
+  it("renders the widget design gallery when a widget is selected", () => {
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={profile.widgets[0]}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("widget-design-gallery")).toBeTruthy();
+    expect(screen.getByTestId("widget-design-gallery").getAttribute("data-widget-type")).toBe("relative");
+  });
+
+  it("does not render the widget design gallery when no widget is selected", () => {
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={null}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("widget-design-gallery")).toBeNull();
+  });
+
+  it("filters official designs by widget type inside the panel", () => {
+    const pedalsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        {
+          id: "pedals",
+          type: "pedals",
+          enabled: true,
+          updateHz: 30,
+          position: { x: 40, y: 760, w: 90, h: 100 },
+        },
+      ],
+    };
+
+    render(
+      <WidgetSettingsPanel
+        profile={pedalsProfile}
+        widget={pedalsProfile.widgets[0]}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("widget-design-item-pedals-clean-broadcast")).toBeTruthy();
+    expect(screen.getByTestId("widget-design-item-pedals-endurance")).toBeTruthy();
+    expect(screen.queryByTestId("widget-design-item-vantare-racing-essential")).toBeNull();
+    expect(screen.queryByTestId("widget-design-item-delta-time-attack")).toBeNull();
+  });
+
+  it("applies an official design without mutating widget position", () => {
+    const onChange = vi.fn();
+    const targetPosition = { x: 222, y: 333, w: 444, h: 555 };
+    const relativeProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        {
+          id: "rel-x",
+          type: "relative",
+          enabled: true,
+          updateHz: 15,
+          position: targetPosition,
+          props: { appearance: { accentColor: "#000" } },
+        },
+      ],
+    };
+
+    render(
+      <WidgetSettingsPanel
+        profile={relativeProfile}
+        widget={relativeProfile.widgets[0]}
+        onChangeProfile={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("widget-design-apply-broadcast-pro"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const next = onChange.mock.calls[0][0] as ProfileConfig;
+    const newWidget = next.widgets.find((w) => w.id === "rel-x");
+    expect(newWidget).toBeDefined();
+    expect(newWidget?.position).toEqual(targetPosition);
+    expect(newWidget?.props?.appearance?.accentColor).toBe("#FFB703");
+    expect(newWidget?.variantId).toBe("official-broadcast-pro-rel-x");
+    expect(next.variants?.some((v) => v.id === "official-broadcast-pro-rel-x")).toBe(true);
+  });
+
+  it("preserves x/y/w/h in the panel even when no widget is selected", () => {
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={null}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    const panel = screen.getByTestId("widget-settings-panel");
+    expect(panel.textContent).not.toContain("X (px)");
+    expect(panel.textContent).not.toContain("Y (px)");
+    expect(panel.textContent).not.toContain("Ancho");
+    expect(panel.textContent).not.toContain("Eliminar");
   });
 });

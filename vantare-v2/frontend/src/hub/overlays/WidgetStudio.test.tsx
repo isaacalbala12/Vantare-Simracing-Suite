@@ -481,4 +481,32 @@ describe("WidgetStudio", () => {
     expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
     expect((screen.getByTestId("widget-studio-save-btn") as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("exposes the official design gallery inside WidgetStudio without position/tamaño controls", () => {
+    const relativeProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        { id: "relative", type: "relative", enabled: true, updateHz: 15, position: { x: 10, y: 20, w: 320, h: 280 } },
+      ],
+    };
+
+    render(
+      <WidgetStudio
+        profile={relativeProfile}
+        selectedWidgetId="relative"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("widget-design-gallery")).toBeTruthy();
+    expect(screen.getByTestId("widget-design-item-vantare-racing-essential")).toBeTruthy();
+    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
+    expect(screen.queryByLabelText("X (px)")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull();
+  });
 });

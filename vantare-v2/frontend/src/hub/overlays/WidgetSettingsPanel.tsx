@@ -4,6 +4,8 @@ import { RelativeSettingsSection } from "./RelativeSettingsSection";
 import { StandingsSettingsSection } from "./StandingsSettingsSection";
 import { PedalsSettingsSection } from "./PedalsSettingsSection";
 import { WidgetPresetSection } from "./WidgetPresetSection";
+import { WidgetDesignGallery } from "../widgets/WidgetDesignGallery";
+import { applyOfficialDesignToProfile, type OfficialDesign } from "../widgets/widget-design-gallery";
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -43,6 +45,11 @@ function WidgetHeader({ widget }: { widget: WidgetConfig }) {
 }
 
 export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: WidgetSettingsPanelProps) {
+  const handleApplyOfficialDesign = (design: OfficialDesign) => {
+    if (!widget) return;
+    onChangeProfile(applyOfficialDesignToProfile(profile, widget.id, design));
+  };
+
   return (
     <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-y-auto">
       {widget ? <WidgetHeader widget={widget} /> : null}
@@ -58,6 +65,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       </div>
       {widget && (
         <div className="shrink-0">
+          <WidgetDesignGallery widget={widget} onApplyDesign={handleApplyOfficialDesign} />
           <RelativeSettingsSection
             profile={profile}
             widget={widget}

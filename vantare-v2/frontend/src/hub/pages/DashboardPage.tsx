@@ -1,52 +1,29 @@
-import { useEffect, useState } from "react";
-import { Events } from "@wailsio/runtime";
-import { EventBanner } from "../components/EventBanner";
-import { HeroSection } from "../components/HeroSection";
-import { OpsPanel } from "../components/OpsPanel";
-import { isOpsMetrics, type OpsMetrics } from "../../lib/ops-metrics";
-import { ProSidebar } from "../components/ProSidebar";
-import { RatingChart } from "../components/RatingChart";
-import { RatingsCards } from "../components/RatingsCards";
-import { RecentRaces } from "../components/RecentRaces";
+import { PlanStatusCard } from "../components/PlanStatusCard";
+import { QuickActions } from "../components/QuickActions";
+import { EmptyActivity } from "../components/EmptyActivity";
+import { EmptyNextRace } from "../components/EmptyNextRace";
+import { EmptyLauncher } from "../components/EmptyLauncher";
 
-export function DashboardPage() {
-  const [opsMetrics, setOpsMetrics] = useState<OpsMetrics | null>(null);
+type DashboardPageProps = {
+  onNavigate?: (section: string) => void;
+};
 
-  useEffect(() => {
-    const unsubscribe = Events.On("ops:metrics", (event: { data: unknown }) => {
-      if (isOpsMetrics(event.data)) {
-        setOpsMetrics(event.data);
-      } else {
-        console.warn("ops:metrics ignored invalid payload", event.data);
-      }
-    });
-    return () => {
-      unsubscribe?.();
-    };
-  }, []);
+export function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const handleNavigate = onNavigate ?? (() => {});
 
   return (
-    <>
-      <HeroSection />
-
-      <div className="max-w-[1920px] mx-auto px-6 py-6 relative z-20">
-        <EventBanner />
-
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* Left Column (8 cols) */}
-          <div className="xl:col-span-8 flex flex-col gap-6">
-            <RatingsCards />
-            <RatingChart />
-            <RecentRaces />
-          </div>
-
-          {/* Right Column (4 cols) */}
-          <div className="xl:col-span-4 flex flex-col gap-6">
-            <OpsPanel metrics={opsMetrics} />
-            <ProSidebar />
-          </div>
+    <div className="max-w-[1920px] mx-auto px-6 py-6 relative z-20">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-8 flex flex-col gap-6">
+          <PlanStatusCard onNavigate={handleNavigate} />
+          <QuickActions onNavigate={handleNavigate} />
+          <EmptyActivity />
+        </div>
+        <div className="xl:col-span-4 flex flex-col gap-6">
+          <EmptyNextRace />
+          <EmptyLauncher />
         </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -154,13 +154,10 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
             </svg>
             <span className="hidden sm:inline">Notificaciones</span>
           </button>
-          <div className="flex items-center gap-2 pl-4 border-l border-white/5 cursor-pointer group">
-            <div className="lite-motion w-8 h-8 rounded-full bg-gradient-to-br from-vantare-red-600 to-vantare-burgundy flex items-center justify-center text-xs font-bold group-hover:shadow-[0_0_15px_rgba(193,18,31,0.5)] transition-all">
-              IA
+          <div className="flex items-center gap-2 pl-4 border-l border-white/5">
+            <div className="lite-motion w-8 h-8 rounded-full bg-gradient-to-br from-vantare-red-600 to-vantare-burgundy flex items-center justify-center text-xs font-bold">
+              U
             </div>
-            <span className="text-sm font-medium hidden lg:block group-hover:text-white transition-colors">
-              Isaac Albala
-            </span>
           </div>
         </div>
       </div>

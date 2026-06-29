@@ -100,3 +100,17 @@ describe("Topbar source status", () => {
     expect(chip.getAttribute("title")).toBe("Fuente pendiente");
   });
 });
+
+describe("Topbar user display", () => {
+  it("does not show hardcoded user name 'Isaac Albala'", () => {
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.2"
+        sourceStatus={null}
+      />,
+    );
+    expect(screen.queryByText(/Isaac Albala/i)).toBeNull();
+  });
+});

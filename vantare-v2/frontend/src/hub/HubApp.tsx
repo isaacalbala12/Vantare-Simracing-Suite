@@ -136,7 +136,7 @@ function HubShell() {
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
       <UpdateBanner />
       <ScrollableMain className="flex-1 pt-0">
-        {section === "dashboard" && <DashboardPage />}
+        {section === "dashboard" && <DashboardPage onNavigate={handleNavigate} />}
         {section === "profiles" && <OverlaysStudioPage />}
         {section === "setup" && <SettingsPage />}
         {section === "engineer" && <EngineerPage />}

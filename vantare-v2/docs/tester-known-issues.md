@@ -1,6 +1,8 @@
-# Incidencias conocidas (Known Issues) - Beta Publica v0.1.0.0
+# Incidencias conocidas (Known Issues) - Beta Publica v0.1.0.x
 
-Este documento contiene la lista oficial de problemas conocidos, limitaciones del alcance y comportamientos esperados en la version **v0.1.0.0** de **Vantare Suite**. Revisa esta lista antes de reportar un fallo en Discord.
+> **Nota**: la version `v0.1.0.0` fue publicada sin `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` en la build de release. El login con Google OAuth no funciona en esa build. El hotfix `v0.1.0.1` esta en preparacion para corregirlo. **No uses `v0.1.0.0`** para login; espera a `v0.1.0.1` o build de desarrollo local con env vars.
+
+Este documento contiene la lista oficial de problemas conocidos, limitaciones del alcance y comportamientos esperados en la linea **v0.1.x** de **Vantare Suite**. Revisa esta lista antes de reportar un fallo en Discord.
 
 ---
 
@@ -16,7 +18,10 @@ Este documento contiene la lista oficial de problemas conocidos, limitaciones de
 
 ### Bloqueantes
 
-- **Ninguno detectado**: no hay fallos conocidos que impidan iniciar la app o usar las funciones principales de edicion y visualizacion de overlays bajo condiciones normales.
+- **Login Google OAuth roto en v0.1.0.0 (release empaquetada)**
+  - *Sintoma*: al abrir la build empaquetada `v0.1.0.0`, el login con Google falla porque `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` no se inyectaron en CI.
+  - *Causa*: falta de secrets `VITE_SUPABASE_*` en GitHub Actions al ejecutar `release.yml`.
+  - *Solucion*: **no uses la build v0.1.0.0 para login**. Espera al hotfix `v0.1.0.1` que inyecta las env vars correctamente. Para desarrollo local, copia `.env.example` a `.env` con las credenciales reales.
 
 ### Importantes
 

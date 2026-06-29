@@ -6,7 +6,17 @@ Este documento esta pensado para que otro modelo pueda orquestar el desarrollo s
 
 Vantare debe tratarse como suite local. Overlays Studio e Ingeniero son modulos internos del mismo producto.
 
-> Actualizacion 2026-06-26: para el release oficial, la fuente operativa principal es `docs/release-roadmap-execution-index.md`. Las tablas `0.1.X.X` a `0.9.X.X` de este documento se conservan como historial y contexto, pero no deben usarse para descartar features de release como pagos/licencias, autoupdater, multisimulador, OBS LAN, calendario LMU, Track Map o Input Telemetry/Trace.
+> Actualizacion 2026-06-29: para la beta publica, la linea operativa inmediata es `v0.1.x`. Para el release oficial, la fuente principal sigue siendo `docs/release-roadmap-execution-index.md`. Las tablas historicas `0.1.X.X` a `0.9.X.X` de este documento se conservan como contexto, pero no deben contradecir `docs/current-plan.md`.
+
+## Linea publica inmediata 0.1.x
+
+| ID | Version | Minifase | Estado | Modelo worker | Reviewer | Manual |
+|---|---:|---|---|---|---|---|
+| HOTFIX-01 | 0.1.0.1 | Supabase env vars en release build + login Google empaquetado | Next | Kimi K2.7 | GLM/Codex | Si |
+| HOTFIX-* | 0.1.0.X | Hotfixes criticos de beta publica | Planned | Segun area | GLM/Codex | Si |
+| LINUX1 | 0.1.1.0 | Linux/Proton experimental | Planned | GLM/Kimi | GLM | Si |
+| SETUP1 | 0.1.2.0 | Vantare Setup Launcher v1 | Planned | GLM/Kimi | GLM | Si |
+| BETAUX1 | 0.1.3.0+ | Overlays publicos, Hub, disenos, hardening y rendimiento | Planned | Minimax/Kimi/GLM | GLM + Isaac | Si |
 
 ## Release execution board actual
 
@@ -331,12 +341,11 @@ No alcance:
 
 ## Proxima accion
 
-Checkpoint funcional `v0.3.10.0` ya cerró la base de beta privada B1-B6. Después de ese checkpoint se completaron `P1`, `P2` y `P3` de Pedals: inventario, plan de diseño pequeño y render compacto `CLT/BRK/THR`.
+Hotfix v0.1.0.1: Supabase env vars en release build + login Google empaquetado.
+Smoke manual de beta (login Google, overlays, OBS, updater).
+Discord publico solo después de smoke manual.
 
-El próximo paso operativo es `P5 - Recomendados beta pulidos`, salvo que se priorice antes una review GLM final de cierre del lote de workers o REL1.
-
-Checklist manual pendiente para Isaac antes de distribuir:
-1. Smoke manual (ver `docs/alpha-private-checklist.md` seccion Smoke test manual recomendado).
-2. Confirmar que el .exe no está firmado (Windows Defender puede bloquearlo).
-3. Decidir canal de feedback (Discord DM/hilo/formulario).
-4. Comprimir y enviar `bin/vantare.exe` a testers.
+Checklist manual pendiente:
+1. Smoke completo de la build empaquetada (login Google con Supabase env vars).
+2. Confirmar que `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` estan inyectadas en CI.
+3. Si el smoke es OK, publicar version en Discord.

@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Versión de la build, ejemplo v0.3.10.0"
+        description: "Versión de la build, ejemplo v0.1.0.1"
         required: true
         type: string
       release_tag:
-        description: "Tag de la GitHub Release (ej. v0.3.10.0). Si se indica, se extraen download_url y SHA256 automáticamente."
+        description: "Tag de la GitHub Release (ej. v0.1.0.1). Si se indica, se extraen download_url y SHA256 automáticamente."
         required: false
         type: string
       download_url:

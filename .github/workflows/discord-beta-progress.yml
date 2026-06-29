@@ -105,7 +105,7 @@ jobs:
           with open(current_plan_path, "r", encoding="utf-8") as fh:
               current_plan = fh.read()
 
-          stable_match = re.search(r"Version estable actual de runtime/build:\s*`([^`]+)`", current_plan)
+          stable_match = re.search(r"Version (?:publica|estable) actual de runtime/build:\s*`([^`]+)`", current_plan)
           if not stable_match:
               print("Error: Could not find stable version in current-plan.md", file=sys.stderr)
               sys.exit(1)
@@ -142,15 +142,27 @@ jobs:
           next_text = next_tasks[0] if next_tasks else "No hay tareas Next"
           in_progress_text = "\n".join(in_progress_tasks) if in_progress_tasks else "No hay tareas en progreso"
 
-          next_action_match = re.search(
-              r"##\s+Pr[oó]xima\s+acci[oó]n\s*\n+([\s\S]*?)(?=\n##\s+|\Z)",
-              roadmap,
-              re.IGNORECASE
-          )
-          if not next_action_match:
-              print("Error: Could not find Próxima acción block in roadmap-execution-board.md", file=sys.stderr)
+          # Extract "Próxima acción" from current-plan.md "Siguiente trabajo recomendado" (first 3 items)
+          next_lines = []
+          in_section = False
+          for line in current_plan.split("\n"):
+              if "Siguiente trabajo recomendado:" in line:
+                  in_section = True
+                  continue
+              if in_section:
+                  stripped = line.strip()
+                  if not stripped:
+                      continue
+                  if re.match(r"^\d+\.", stripped):
+                      next_lines.append(stripped)
+                      if len(next_lines) >= 3:
+                          break
+                  else:
+                      break
+          if not next_lines:
+              print("Error: Could not find Siguiente trabajo recomendado in current-plan.md", file=sys.stderr)
               sys.exit(1)
-          next_action = next_action_match.group(1).strip()
+          next_action = "\n".join(next_lines)
 
           repo_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{os.environ['GITHUB_REPOSITORY_VALUE']}"
           sha = os.environ.get("GITHUB_SHA_VALUE", "")[:7]

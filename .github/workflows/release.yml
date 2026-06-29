@@ -27,6 +27,9 @@ jobs:
   build:
     name: Build Windows release artifacts
     runs-on: windows-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     defaults:
       run:
         shell: powershell
@@ -37,6 +40,11 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
+
+      - name: Verify Supabase Env Vars
+        run: |
+          if (-not $env:VITE_SUPABASE_URL) { throw "Missing VITE_SUPABASE_URL" }
+          if (-not $env:VITE_SUPABASE_ANON_KEY) { throw "Missing VITE_SUPABASE_ANON_KEY" }
 
       - name: Set up Go
         uses: actions/setup-go@v5

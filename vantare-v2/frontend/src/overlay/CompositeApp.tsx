@@ -53,7 +53,9 @@ export function CompositeApp() {
     const unsubscribe = Events.On("telemetry:update", (event: { data: unknown }) => {
       try {
         applyTelemetryUpdate(parseTelemetryPayload(event.data));
-        setTelemetryKey((k) => k + 1);
+        if (!editMode) {
+          setTelemetryKey((k) => k + 1);
+        }
       } catch (err) {
         console.error("telemetry:update parse failed", err);
       }
@@ -62,7 +64,7 @@ export function CompositeApp() {
     return () => {
       unsubscribe?.();
     };
-  }, []);
+  }, [editMode]);
 
   useEffect(() => {
     const unsub = Events.On("profile:loaded", (event: { data: unknown }) => {

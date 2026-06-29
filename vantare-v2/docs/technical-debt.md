@@ -413,16 +413,19 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Fix esperado: extraer la logica de `overlay:start` a un helper testeable o anadir un harness que pueda invocar el handler y verificar que errores de `StartOverlay` sincronizan `overlayRunning=false`.
 - Riesgo si se ignora: futuras modificaciones del handler podrian reintroducir `overlayRunning=true` sin ventana y no quedar cubiertas por tests unitarios.
 
-### TD-035 - Overlay edit mode: resize libre no conserva ratio en Relative/Standings
+### TD-035 - Overlay edit mode: resize libre no conserva ratio en Relative/Standings + deformación al entrar en edit mode
 
-- Severidad: P3
+- Severidad: P3 → P0 (corregido en beta stabilization 2026-06-28)
 - Area: overlay/frontend/ux
 - Origen: review overlay edit mode in-place (2026-06-28)
-- Estado: abierto
-- Release objetivo: R04 o post-beta polish
-- Motivo para diferir: el comportamiento ya existia en `WidgetEditFrame` legacy y es aceptable para la demo; no bloquea drag/resize ni guardado.
-- Fix esperado: reutilizar la logica proporcional de `canvas-math`/`widget-base-size` para widgets con base size (Relative/Standings) tambien dentro del edit mode in-place.
-- Riesgo si se ignora: usuarios pueden deformar el bbox de Relative/Standings desde el overlay real; el runtime normal lo escala, pero la caja puede quedar visualmente rara hasta otro ajuste.
+- Estado: cerrado
+- Release objetivo: R04 → resuelto en beta stabilization
+- Motivo para diferir: corregido con fix en WidgetEditFrame.
+- Fix aplicado (2 partes):
+  1. **Deformación al entrar en edit mode**: WidgetEditFrame usaba `widget.position` raw sin normalizar, mientras WidgetHost (racing) normaliza con `normalizeWidgetVisualRect` y escala con `transform: scale()`. Fix: añadir `normalizeWidgetVisualRect` + `scale` como WidgetHost para que la apariencia visual sea idéntica entre modos.
+  2. **Resize sin ratio lock**: `handleResizeStart` modificaba w/h libremente. Fix: usar `resizeWithRatio` con `baseAspect` calculado desde `getWidgetBaseSize`, misma lógica que `PreviewWidgetFrame`.
+- Tests: regresión para relative/standings (ratio preservado), delta (ratio fijo), drag, render.
+- Cierre: 2026-06-28
 
 ### TD-036 - Overlay edit mode: widgets no incluidos en shared-widget-map
 

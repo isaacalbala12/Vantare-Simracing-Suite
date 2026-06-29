@@ -26,7 +26,6 @@ export function WidgetHost({ id, position, widget, profile, children }: WidgetHo
         top: `${position.y}px`,
         width: `${visualPos.w}px`,
         height: `${visualPos.h}px`,
-        overflow: "hidden",
       }}
     >
       {baseSize ? (

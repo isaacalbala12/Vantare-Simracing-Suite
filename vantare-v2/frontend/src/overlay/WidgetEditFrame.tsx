@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Rect, WidgetConfig } from "../lib/profile";
 import { getWidgetStyle } from "../lib/profile";
 import { WIDGET_COMPONENTS } from "./shared-widget-map";
+import { resizeWithRatio, WIDGET_MIN_SIZE } from "../lib/canvas-math";
+import { getWidgetBaseSize, normalizeWidgetVisualRect } from "./widgets/widget-base-size";
 
-const MIN_SIZE = { w: 80, h: 40 };
+const MIN_SIZE = WIDGET_MIN_SIZE;
 
 function getScreenBounds(): { width: number; height: number } {
   return {
@@ -21,12 +23,16 @@ function clampRect(rect: Rect): Rect {
   return { x, y, w, h };
 }
 
-function writeFrameRect(el: HTMLElement | null, rect: Rect) {
-  if (!el) return;
+function applyRectToFrame(el: HTMLElement, rect: Rect, baseSize: { width: number; height: number } | null, scalerEl: HTMLElement | null) {
   el.style.left = `${rect.x}px`;
   el.style.top = `${rect.y}px`;
   el.style.width = `${rect.w}px`;
   el.style.height = `${rect.h}px`;
+  if (scalerEl && baseSize && baseSize.width > 0 && baseSize.height > 0) {
+    const BORDER_PX = 2;
+    const s = Math.min((rect.w - BORDER_PX) / baseSize.width, (rect.h - BORDER_PX) / baseSize.height);
+    scalerEl.style.transform = `scale(${s})`;
+  }
 }
 
 type WidgetEditFrameProps = {
@@ -37,17 +43,25 @@ type WidgetEditFrameProps = {
 export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
   const Component = WIDGET_COMPONENTS[widget.type];
   const [previewRect, setPreviewRect] = useState<Rect | null>(null);
-  const visualRect = previewRect ?? widget.position;
+  const baseSize = getWidgetBaseSize(widget.type, widget, null);
+  const normalizedPosition = normalizeWidgetVisualRect(widget.position, baseSize);
+  const visualRect = previewRect ?? normalizedPosition;
   const committedRef = useRef(onChange);
   const frameRef = useRef<HTMLDivElement>(null);
+  const scalerRef = useRef<HTMLDivElement>(null);
+  const BORDER_PX = 2;
+  const contentW = visualRect.w - BORDER_PX;
+  const contentH = visualRect.h - BORDER_PX;
+  const scale = baseSize
+    ? Math.min(contentW / baseSize.width, contentH / baseSize.height)
+    : 1;
 
   useEffect(() => {
     committedRef.current = onChange;
   }, [onChange]);
+
   useEffect(() => {
     function handleResize() {
-      // If the window is resized while a widget is outside the new bounds,
-      // commit a clamped version so it remains reachable.
       const current = previewRect ?? widget.position;
       const clamped = clampRect(current);
       if (
@@ -69,7 +83,8 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
     e.preventDefault();
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
-    const startRect = { ...widget.position };
+    const startRect = { ...visualRect };
+    const frame = frameRef.current;
     let lastRect = startRect;
 
     function onMouseMove(ev: MouseEvent) {
@@ -81,7 +96,9 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
         w: startRect.w,
         h: startRect.h,
       });
-      writeFrameRect(frameRef.current, lastRect);
+      if (frame) {
+        applyRectToFrame(frame, lastRect, baseSize, scalerRef.current);
+      }
     }
 
     function onMouseUp() {
@@ -100,25 +117,36 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
     e.preventDefault();
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
-    const startRect = { ...widget.position };
+    const startRect = { ...visualRect };
+    const resizeBaseSize = getWidgetBaseSize(widget.type, widget, null);
+    const baseAspect = resizeBaseSize ? resizeBaseSize.width / resizeBaseSize.height : undefined;
+    const frame = frameRef.current;
     let lastRect = startRect;
 
     function onMouseMove(ev: MouseEvent) {
       const dw = ev.clientX - startMouseX;
       const dh = ev.clientY - startMouseY;
+      const sized = resizeWithRatio(widget.type, startRect.w, startRect.h, dw, dh, baseAspect, false);
       lastRect = clampRect({
         ...startRect,
-        w: Math.round(startRect.w + dw),
-        h: Math.round(startRect.h + dh),
+        w: sized.w,
+        h: sized.h,
       });
-      writeFrameRect(frameRef.current, lastRect);
+      if (frame) {
+        applyRectToFrame(frame, lastRect, resizeBaseSize, scalerRef.current);
+      }
     }
 
     function onMouseUp() {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       setPreviewRect(null);
-      committedRef.current(widget.id, lastRect);
+      committedRef.current(widget.id, {
+        x: Math.round(lastRect.x),
+        y: Math.round(lastRect.y),
+        w: Math.round(lastRect.w),
+        h: Math.round(lastRect.h),
+      });
     }
 
     window.addEventListener("mousemove", onMouseMove);
@@ -126,6 +154,7 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
   }
 
   const style = getWidgetStyle(widget);
+  const widgetProps = useMemo(() => ({ ...widget.props, style }), [widget.props, style]);
 
   return (
     <div
@@ -140,17 +169,37 @@ export function WidgetEditFrame({ widget, onChange }: WidgetEditFrameProps) {
         height: visualRect.h,
         pointerEvents: "auto",
         zIndex: 50,
+        willChange: "left, top, width, height",
       }}
     >
       {Component && (
         <div className="w-full h-full overflow-hidden relative" style={{ pointerEvents: "none" }}>
-          <Component
-            editMode={true}
-            telemetryMode="mock"
-            updateHz={widget.updateHz}
-            props={{ ...widget.props, style }}
-          />
-          {/* Overlay invisible que cubre todo el widget para capturar el click de drag */}
+          {baseSize ? (
+            <div
+              ref={scalerRef}
+              data-testid="edit-frame-scaler"
+              style={{
+                width: baseSize.width,
+                height: baseSize.height,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+              }}
+            >
+              <Component
+                editMode={true}
+                telemetryMode="mock"
+                updateHz={widget.updateHz}
+                props={widgetProps}
+              />
+            </div>
+          ) : (
+            <Component
+              editMode={true}
+              telemetryMode="mock"
+              updateHz={widget.updateHz}
+              props={widgetProps}
+            />
+          )}
           <div className="absolute inset-0 bg-transparent z-10" style={{ pointerEvents: "auto" }} />
         </div>
       )}

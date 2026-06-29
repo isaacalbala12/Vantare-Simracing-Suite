@@ -115,7 +115,6 @@ func (s *ProfileService) SaveProfileState(widgets []config.WidgetConfig, variant
 			"profile": s.profile,
 		})
 		s.emitter.Emit("profile:saved", map[string]any{"ok": true})
-		s.EmitLoaded()
 	}
 	return nil
 }

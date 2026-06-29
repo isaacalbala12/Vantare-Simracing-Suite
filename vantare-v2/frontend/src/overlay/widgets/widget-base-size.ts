@@ -26,10 +26,10 @@ export const STANDINGS_FOOTER_HEIGHT = 21;
 export const STANDINGS_PANEL_BORDER = 2;
 export const STANDINGS_DEFAULT_MAX_ROWS = 12;
 
-// Relative fill: header (pt-2+pb-1+text-xl+mb-0.5 = ~40) + class (py-1+text-[10px] = ~24) + footer/padding (~8)
+// Relative fill: header (pt-2+pb-1+text-xl+mb-0.5 = ~40) + class (py-1+text-[10px] = ~24) + footer/padding (~14: mt-1=4 + border-top=1 + row borders=8 + buffer=1)
 export const RELATIVE_FILL_HEADER_HEIGHT = 40;
 export const RELATIVE_FILL_CLASS_HEIGHT = 24;
-export const RELATIVE_FILL_FOOTER_PADDING = 8;
+export const RELATIVE_FILL_FOOTER_PADDING = 14;
 export const RELATIVE_FILL_ROW_MIN = 24;
 
 function getActiveRelativeColumns(props?: Record<string, unknown>): ColumnConfig[] {
@@ -94,11 +94,13 @@ export function getWidgetBaseSize(
 export function normalizeWidgetVisualRect(
   position: Rect,
   baseSize: WidgetBaseSize | null,
+  round = true,
 ): Rect {
   if (!baseSize || baseSize.width <= 0 || baseSize.height <= 0) {
     return position;
   }
-  const h = Math.max(WIDGET_MIN_SIZE.h, Math.round(position.w * baseSize.height / baseSize.width));
+  const rawH = Math.max(WIDGET_MIN_SIZE.h, position.w * baseSize.height / baseSize.width);
+  const h = round ? Math.round(rawH) : rawH;
   return {
     x: position.x,
     y: position.y,

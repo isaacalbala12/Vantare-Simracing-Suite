@@ -6,9 +6,9 @@ Este documento no sustituye a los planes detallados. Sirve como indice rapido pa
 
 ## Estado actual
 
-Ultima actualizacion: 2026-06-23.
+Ultima actualizacion: 2026-06-28.
 
-Version estable relacionada: `v0.3.9.0`.
+Version estable relacionada: `v0.3.10.0`.
 
 ## Bugs cerrados
 
@@ -184,6 +184,32 @@ Solucion:
 Regla:
 
 - Los flujos de UI deben soportar perfiles legacy sin exigir migracion silenciosa en disco.
+
+### WidgetHost overflow:hidden cortaba bordes de widgets escalados
+
+Estado: cerrado (2026-06-28).
+
+Sintoma:
+
+- Widgets Relative, Standings y otros escalados via `transform: scale()` aparecian con los bordes ligeramente recortados (1-2px) en el overlay runtime.
+- El clipping era apenas perceptible pero consistente.
+
+Causa raiz:
+
+- `WidgetHost` aplicaba `overflow: hidden` al contenedor de cada widget (`frontend/src/overlay/WidgetHost.tsx:29`).
+- `normalizeWidgetVisualRect` redondea la altura con `Math.round()`, creando una diferencia sub-pixel entre el contenedor y el contenido escalado.
+- El `transform: scale(float)` produce contenido en coordenadas sub-pixel (ej. 119.39px dentro de 119px).
+- El `overflow: hidden` cortaba esa fraccion de pixel, que sumada al `border: 1px` y `rounded-lg` de Relative/Standings, recortaba los bordes visiblemente.
+
+Solucion:
+
+- Eliminar `overflow: "hidden"` del contenedor en `WidgetHost.tsx`.
+- El `transform: scale()` ya confina el contenido visualmente — no hay desborde real que oculte.
+- Los widgets ya tienen su propio `overflow-hidden` interno para contenido que sí necesita recorte (tablas, scroll).
+
+Regla:
+
+- No anadir `overflow: hidden` en contenedores que escalan widgets con `transform: scale()`. El escalado ya respeta las dimensiones del contenedor; el `overflow: hidden` solo introduce clipping sub-pixel sin beneficio real.
 
 ## Riesgos pendientes
 

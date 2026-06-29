@@ -38,11 +38,13 @@ export function resizeWithRatio(
   deltaX: number,
   deltaY: number,
   baseAspect?: number,
+  round = true,
 ): { w: number; h: number } {
   const ratio = WIDGET_RATIOS[type] ?? null;
+  const roundFn = round ? Math.round : (v: number) => v;
   if (ratio != null) {
     const h = Math.max(WIDGET_MIN_SIZE.h, startH + deltaY);
-    const w = Math.max(WIDGET_MIN_SIZE.w, Math.round(h * ratio));
+    const w = Math.max(WIDGET_MIN_SIZE.w, roundFn(h * ratio));
     return { w, h };
   }
   if (PROPORTIONAL_TYPES.has(type)) {
@@ -50,7 +52,7 @@ export function resizeWithRatio(
     const dominant = Math.max(Math.abs(deltaX), Math.abs(deltaY));
     const sign = Math.sign(deltaX) !== 0 ? Math.sign(deltaX) : Math.sign(deltaY);
     const h = Math.max(WIDGET_MIN_SIZE.h, startH + sign * dominant);
-    const w = Math.max(WIDGET_MIN_SIZE.w, Math.round(h * aspect));
+    const w = Math.max(WIDGET_MIN_SIZE.w, roundFn(h * aspect));
     return { w, h };
   }
   return {

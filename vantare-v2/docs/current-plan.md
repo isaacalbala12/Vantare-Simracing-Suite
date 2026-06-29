@@ -6,6 +6,7 @@ Nota post-release (2026-06-29):
 - Para smoke local usar `bin\vantare.exe` generado por `release:artifacts` o el asset descargado desde GitHub Release.
 - No usar `vantare.exe` en raiz ni portables antiguos.
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
+- Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
 ## P0 Free plan bloqueado tras Google OAuth — Fix A+B+C (2026-06-29)
 

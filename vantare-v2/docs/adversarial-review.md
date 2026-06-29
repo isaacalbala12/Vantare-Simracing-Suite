@@ -1,4 +1,56 @@
-# Review adversarial actual: Perfil activo de overlay
+# Review adversarial: Documentacion publica Beta v0.1.0.0
+
+**Fecha:** 2026-06-29
+**Modo:** review documental (sin tocar codigo, workflows, `VERSION` ni configs).
+**Alcance revisado:** `docs/changelog.md`, `docs/tester-build-instructions.md`, `docs/tester-known-issues.md`, `docs/tester-feedback-process.md`, `docs/release-beta-operations-runbook.md` y bloque documental anadido a `docs/current-plan.md`.
+
+---
+
+## Veredicto
+
+**ACCEPT WITH P3 FOLLOW-UPS.**
+
+Los docs se reescribieron para presentar la beta publica `v0.1.0.0`. Cumplen los requisitos obligatorios: aviso de SmartScreen, login con Google obligatorio, explicacion simple de planes free/paid/suite, `v0.3.*` como historico no anunciado, canales Discord `#beta-*` y plantilla de bug report, known issues reales. La galeria de disenos de widgets (Worker C) entrego `ACCEPT WITH P3`; se actualizo changelog, build instructions, known issues y feedback process para reflejar su inclusion en `v0.1.0.0`.
+
+Quedan P3 documentados para el pase final (no bloqueantes para esta tanda).
+
+---
+
+## Checks ejecutados por el worker de documentacion
+
+| Check | Resultado |
+| --- | --- |
+| Edicion limitada a archivos permitidos (`docs/changelog.md`, `docs/tester-build-instructions.md`, `docs/tester-known-issues.md`, `docs/tester-feedback-process.md`, `docs/release-beta-operations-runbook.md`, `docs/current-plan.md`, `docs/adversarial-review.md`) | OK |
+| Sin tocar codigo, workflows, `VERSION`, build ni configs | OK |
+| Aviso de SmartScreen presente en changelog, build instructions y known issues | OK |
+| Login con Google obligatorio documentado en build instructions y known issues | OK |
+| Explicacion simple free/paid/suite en build instructions | OK |
+| `v0.3.*` movido a bloque historico no anunciado en changelog y runbook | OK |
+| Canales `#beta-*` y plantilla de bug report actualizados en feedback process | OK |
+| Galeria de disenos de widgets NO prometida como feature cerrada | OK (Worker C entrego `ACCEPT WITH P3`; docs actualizados) |
+
+## Findings
+
+### P0
+
+Ninguno.
+
+### P1
+
+Ninguno en alcance documental.
+
+### P2
+
+Ninguno.
+
+### P3 (follow-ups para el pase final)
+
+- **P3-1 Verificacion de enlaces relativos**: los enlaces `./<archivo>.md` entre los docs reescritos se escribieron a mano. Pendiente validar con un renderer Markdown real o un script que parsee links antes del primer tag `v0.1.0.0`.
+- **P3-2 Coordinacion con Worker C sobre la galeria de disenos de widgets**: cerrado en este pase. Worker C entrego `ACCEPT WITH P3`. Changelog, build instructions, known issues y feedback process actualizados para reflejar la inclusion en `v0.1.0.0` como catalogo de disenos oficiales de solo lectura (no marketplace, sin compartir). Pendiente validar enlace relativo en `current-plan.md` al bloque "Galeria de disenos oficiales".
+- **P3-3 Secretos de Discord**: el runbook asume que los webhooks apuntan a canales `#beta-*`. Antes del primer tag `v0.1.0.0` hay que verificar `DISCORD_*_WEBHOOK_URL` en GitHub Secrets.
+- **P3-4 Capturas y mensajes antiguos con `v0.3.10.0`**: cualquier captura, video o mensaje previo que cite `v0.3.10.0` queda obsoleto. Pendiente de barrido manual antes de la publicacion.
+
+---
 
 **Fecha:** 2026-06-28
 **Modo:** review + fix acotado del orquestador.

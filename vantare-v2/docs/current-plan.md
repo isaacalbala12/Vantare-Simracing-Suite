@@ -680,6 +680,41 @@ Cierre del P0 residual detectado en el review final del fix P0 de Overlay Edit M
 - P1 residual documentado (no bloqueante): race menor entre `CurrentWindow()` y `ApplyProfileMode` fuera del lock del controller; queda para un futuro `ApplyModeToCurrentWindow` bajo lock.
 - Checks: `gofmt`, `go test ./cmd/vantare/... ./internal/app/... ./internal/window/...`, `go test ./...`, `go vet ./cmd/vantare/... ./internal/app/... ./internal/window/...`, `git diff --check` — todos OK.
 
+## Auth/Licencias - Login bloqueante y gating free/paid/suite (2026-06-29)
+
+Bloque de auth/licencias para beta publica `v0.1.0.0`. Implementa login obligatorio con Google OAuth, gating basico de licencia free/paid/suite, gracia offline de 24h y logout que devuelve al gate.
+
+- **Login bloqueante efectivo**: `HubApp.tsx` envuelve el shell con `LicenseProvider + LicenseBridge + LicenseGate`. Sin sesion valida, se renderiza `LoginScreen`.
+- **Google OAuth como minimo obligatorio**: boton principal `Continuar con Google` con email/password y Discord como accesos secundarios.
+- **Planes free/paid/suite**: helper `internal/license/plan.go` + espejo TS `frontend/src/lib/plan.ts`. `AccountSettings.tsx` muestra tarjeta Plan y Estado. `PaywallScreen.tsx` pinta los cuatro planes con Suite como recomendado.
+- **Logout devuelve al gate**: `signOut()` + refresh; el gate recibe `anonymous` y renderiza `LoginScreen`.
+- **Gracia offline 24h**: si el servidor no responde, el cache local mantiene entitlements por 24h desde la ultima validacion exitosa.
+- **Tests**: tests actualizados para LoginScreen, PaywallScreen, HubApp; nuevos tests para plan.go y plan.ts.
+- **Docs**: docs/stripe-integration-plan.md y docs/supabase-schema-release.md actualizados.
+- **Archivos**: HubApp.tsx, LoginScreen.tsx, PaywallScreen.tsx, paywall-plans.ts, AccountSettings.tsx, plan.ts, plan.go y sus tests.
+
+### Riesgos residuales
+- El flujo OAuth requiere validacion real en builds empaquetados Wails (redirect URL).
+- Sin portal de pagos embebido en la app (se hace desde portal externo, webhook listo).
+
+## Galeria de disenos oficiales - Beta v0.1.0.0 (2026-06-29)
+
+Cierre del P3-2 de `docs/adversarial-review.md`: la galeria de disenos oficiales de widgets queda **incluida** en la beta publica `v0.1.0.0` tras el `ACCEPT WITH P3` del Worker C.
+
+- **Catalogo oficial de solo lectura**: helper puro `frontend/src/hub/widgets/widget-design-gallery.ts` con 8 disenos oficiales (2 por cada widget type: `Relative`, `Standings`, `Delta`, `Pedals`). IDs estables en codigo (sin UUID); nombres y descripciones claras para usuario beta.
+- **Aplicacion sin tocar `position`**: `applyOfficialDesign` reusa `applyPreset` (spread preserva `position` por contrato) y genera un `variantId` determinista (`official-<designId>-<widgetId>`). El widget cambia apariencia y variante; layout intacto.
+- **Sin marketplace, sin cloud sync, sin sharing remoto**: fuera de beta por contrato.
+- **Contrato de responsabilidades intacto**: `WidgetStudio` (donde vive la galeria) no expone position/tamano/eliminar. `LayoutStudio` no se ha tocado.
+- **Convivencia con presets de usuario**: los presets oficiales son solo lectura; los presets de usuario siguen persistiendo en `PresetService` Go y funcionan como antes.
+- **Tests**: 73 nuevos. Suite total: 666 tests frontend OK.
+- **Docs publicos actualizados**: changelog, build instructions, known issues y feedback process reflejan la inclusion.
+- **Plan ejecutado**: `docs/superpowers/plans/2026-06-29-widget-design-gallery-beta.md`.
+
+### Riesgos residuales
+- Sin preview miniatura renderizada del widget con el diseno aplicado (solo nombre + descripcion textual).
+- Sin estado 'activo/inactivo' del diseno aplicado: cualquier cambio libre del usuario sobreescribe el ultimo diseno oficial aplicado.
+- No hay marketplace, cloud sync ni compartir disenos entre usuarios (por contrato de beta).
+
 ## Decisiones pendientes
 
 - Si los planes externos deben copiarse, moverse o archivarse dentro de `vantare-v2/docs`.

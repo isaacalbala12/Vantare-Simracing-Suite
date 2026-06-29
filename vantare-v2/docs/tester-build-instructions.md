@@ -1,170 +1,209 @@
-# Guía de Pruebas para Testers - Vantare Suite (Beta Abierta)
+# Guia de Pruebas para Testers - Vantare Suite (Beta Publica v0.1.0.0)
 
-Bienvenido a la **Beta Abierta** de **Vantare Suite** — la suite local para sim racing con Overlays Studio, Ingeniero y telemetria live para Le Mans Ultimate.
+Bienvenido a la **Beta Publica** de **Vantare Suite** — la suite local para sim racing con Overlays Studio, Ingeniero y telemetria live para Le Mans Ultimate.
 
 > [!IMPORTANT]
 > **Aviso de SmartScreen / Firma de codigo no disponible**
-> Los ejecutables de esta beta **no tienen firma digital (Authenticode)**. Windows SmartScreen mostrara una advertencia de "Editor desconocido" al ejecutar el instalador o el portable. Esto es normal y esperado. Haz clic en **"Mas informacion"** → **"Ejecutar de todas formas"**. La firma de codigo se implementara antes del release estable v1.0.
-> Los checksums SHA256 publicados junto a cada descarga permiten verificar la integridad del binario (ver seccion 6).
+> Los ejecutables de esta beta **no tienen firma digital (Authenticode)**. Windows SmartScreen mostrara una advertencia de "Editor desconocido" al ejecutar el instalador o el portable. Esto es normal y esperado. Haz clic en **"Mas informacion"** -> **"Ejecutar de todas formas"**. La firma de codigo se implementara antes del release estable v1.0.
+> Los checksums SHA256 publicados junto a cada descarga permiten verificar la integridad del binario (ver seccion 8).
 
 ---
 
-## 1. Requisitos del Sistema y Preparación
+## 1. Requisitos del sistema y preparacion
 
-Para ejecutar la aplicación y realizar las pruebas en modo de telemetría en vivo, necesitas:
-*   **Sistema Operativo**: Windows 10 u 11 (64 bits).
-*   **Simulador**: Le Mans Ultimate (LMU) instalado y configurado para compartir memoria.
-*   **Modo de prueba sin simulador**: La app incluye un modo **Mock** (con datos sintéticos) por defecto si el simulador no está abierto, lo que permite probar la interfaz y los widgets en cualquier momento.
-
----
-
-## 2. Instalación y Ejecución
-
-Tienes dos métodos para abrir la aplicación suministrada en el paquete:
-
-### Método A: Instalador NSIS (Recomendado)
-1. Ejecuta el archivo `vantare-amd64-installer.exe`.
-2. Sigue los pasos del asistente de instalación de Windows.
-3. Abre la aplicación desde el acceso directo del escritorio o el menú Inicio.
-
-### Método B: Ejecutable Portable
-1. Extrae el contenido del archivo comprimido de distribución en una carpeta local.
-2. Asegúrate de que la carpeta `configs/` que contiene los perfiles predeterminados está en la misma ruta que el ejecutable `vantare.exe`.
-3. Haz doble clic en `vantare.exe` para iniciar.
+- **Sistema operativo**: Windows 10 u 11 (64 bits).
+- **Simulador (opcional)**: Le Mans Ultimate (LMU) instalado y con Shared Memory habilitada para probar datos live.
+- **Cuenta de Google**: obligatoria para iniciar sesion. La app no arranca en modo utilizable sin login valido.
+- **Modo sin simulador**: la app incluye un modo **Mock** con datos sinteticos por defecto si el simulador no esta abierto, para que puedas probar la interfaz y los widgets en cualquier momento.
+- **Conexion a internet**: necesaria para el login y para la validacion de licencia. Tras validar, hay 24 horas de gracia offline.
 
 ---
 
-## 3. Flujo de Pruebas Recomendado
+## 2. Instalacion y ejecucion
 
-### Bloque A: Overlays Studio (Edición de Widgets)
-1. En el menú lateral del Hub, entra en **Overlays Studio**.
-2. Haz clic en el panel **Widgets** y selecciona uno de los widgets configurables principales:
-   *   **Relative**
-   *   **Standings**
-3. **Prueba de columnas y filtros**:
-   *   Activa o desactiva columnas opcionales en el panel derecho.
-   *   Modifica anchos, formatos de tiempo (Vuelta rápida, Última vuelta) y alineación.
-   *   Observa cómo la **Preview Aislada** central ajusta su ancho intrínseco automáticamente sin dejar espacios vacíos a la derecha ni recortar los nombres de forma forzada.
-4. **Prueba de escenarios sintéticos (Standings)**:
-   *   Cambia el selector de escenario en la preview entre `Práctica`, `Qualy` y `Carrera`.
-   *   Verifica que los datos cambian coherentemente para simular cada tipo de sesión.
-   *   **Nota**: Cambiar el escenario de la preview no modifica el perfil ni activa el botón **Guardar**.
-5. **Guardar cambios**:
-   *   Modifica una columna real y confirma que el botón **Guardar** en la cabecera superior derecha pasa a estar activo.
-   *   Haz clic en **Guardar** para persistir los cambios en tu perfil.
+Tienes dos metodos:
 
-### Bloque B: Gestión de Perfiles y Lienzo (LayoutStudio)
-1. En la pantalla principal de **Overlays Studio**, navega a **Mis perfiles**.
-2. **Recomendados por Vantare**:
-   *   Entra en la sección de recomendados, selecciona un perfil predefinido y haz clic en **Guardar como perfil propio**.
-   *   Confirma que se crea una copia editable con el sufijo `(copia)` en tu sección de **Mis perfiles**.
-3. **Control del Overlay**:
-   *   En la tarjeta de tu perfil activo, haz clic en **Abrir overlay**.
-   *   Se abrirá una ventana transparente de pantalla completa que mostrará tus widgets configurados sobre el escritorio.
-4. **Edición de Layout**:
-   *   Haz clic en **Editar layout** en tu perfil.
-   *   Entrarás a la cuadrícula de diseño. Arrastra los widgets para cambiar su posición y usa los tiradores para redimensionarlos.
-   *   Haz clic en **Guardar** en la barra superior.
-   *   Verifica que el overlay abierto en tu pantalla se updates en tiempo real reflejando la nueva distribución y escala proporcional.
+### Metodo A: instalador NSIS (recomendado)
 
-### Bloque C: Sección del Ingeniero
-1. En el menú lateral, haz clic en **Ingeniero**.
-2. Revisa la pantalla de control donde puedes ajustar el nivel de sensibilidad del spotter y activar/desactivar sus avisos.
-3. Propara un mensaje de prueba a través del modo simulator/replay si está activo.
-4. Verifica que el historial de notificaciones del Hub muestra los mensajes entrantes de forma reactiva.
-5. Abre tu overlay y comprueba que el widget `engineer-notifications` muestra las alertas del spotter en tiempo real con sus animaciones y que estas desaparecen automáticamente cuando expira su tiempo (`expiresAt`).
+1. Ejecuta `vantare-amd64-installer.exe`.
+2. Si SmartScreen aparece, pulsa **"Mas informacion"** -> **"Ejecutar de todas formas"**.
+3. Sigue el asistente y abre la app desde el acceso directo.
+
+### Metodo B: ejecutable portable
+
+1. Extrae el zip en una carpeta local.
+2. Asegurate de que la carpeta `configs/` con los perfiles recomendados esta junto al `vantare.exe`.
+3. Haz doble clic en `vantare.exe`.
 
 ---
 
-## 4. Atajos de Teclado Globales (Hotkeys)
+## 3. Login y planes (free, paid, suite)
 
-Vantare Suite incluye soporte para atajos de teclado globales nativos en Windows. Esto te permite interactuar con la aplicación en segundo plano mientras conduces en el simulador (incluso cuando el juego tiene el foco a pantalla completa).
+Vantare **requiere inicio de sesion obligatorio** desde la primera pantalla. El unico proveedor habilitado para esta beta es **Google OAuth**.
 
-### Hotkeys predeterminadas disponibles:
-*   `ctrl+shift+v`: **Toggle Overlay**. Alterna (muestra u oculta) de forma instantánea el overlay activo en tu pantalla.
-*   `ctrl+shift+e`: **Toggle Edit Mode**. Entra o sale del modo edición in-place sobre el overlay activo. En modo edición los widgets muestran un borde rojo, se pueden arrastrar y redimensionar, y al soltar se guarda la posición. Si el overlay no está abierto, `Ctrl+Shift+E` lo abre directamente en modo edición.
-*   `ctrl+shift+right`: **Siguiente perfil**. Cambia tu overlay activo al siguiente perfil en tu lista de perfiles (solo funciona si el overlay está en ejecución).
-*   `ctrl+shift+left`: **Perfil anterior**. Cambia tu overlay activo al perfil anterior en tu lista de perfiles (solo funciona si el overlay está en ejecución).
+### 3.1 Como iniciar sesion
+
+1. Abre Vantare.
+2. En la pantalla de bienvenida, pulsa **"Iniciar sesion con Google"**.
+3. Autoriza la aplicacion en la ventana del navegador.
+4. Vuelve a Vantare; la app validara la licencia automaticamente y pasara al Hub.
+
+### 3.2 Planes disponibles
+
+| Plan | Que incluye | Ideal para |
+|------|-------------|------------|
+| `free` | Vista previa de widgets, modo Mock sin live, presets de ejemplo. | Probar la app sin datos live y validar instalacion. |
+| `paid` (Overlays) | Todo `free` + Overlays Studio con LMU live (Relative, Standings, Pedals, Delta). | Streamers y pilotos que solo necesitan overlays. |
+| `suite` (Overlays + Ingeniero) | Todo `paid` + Ingeniero con notificaciones en overlay + presets compartibles. | Usuarios que quieran el paquete completo. |
+
+### 3.3 Que pasa si no tienes plan activo
+
+Tras iniciar sesion, si tu cuenta no tiene una suscripcion activa, Vantare mostrara la pantalla de planes. Elige `free` para probar la app con limites o suscribete a `paid` o `suite` desde el portal de pagos. Mas detalles sobre precios y conversion en `#beta-announcements` de Discord.
+
+### 3.4 Gracia offline
+
+Si tras validar la licencia pierdes conexion, la app sigue funcionando durante **24 horas** en modo `grace`. Pasado ese tiempo, pasara a `expired` y tendras que volver a conectarte para revalidar. La gracia solo se concede si ya habias validado online al menos una vez; una instalacion fresca sin cache no entra en gracia.
+
+---
+
+## 4. Flujo de pruebas recomendado
+
+### Bloque A: Overlays Studio (edicion de widgets)
+
+1. En el menu lateral del Hub, entra en **Overlays Studio**.
+2. Abre el panel **Widgets** y selecciona uno:
+   - **Relative** (stable).
+   - **Standings** (stable).
+3. Activa o desactiva columnas opcionales en el panel derecho y modifica anchos, formatos de tiempo y alineacion.
+4. En **Standings**, cambia el selector de escenario mock entre `Practica`, `Qualy` y `Carrera` para validar datos sinteticos.
+5. Cambiar el escenario mock **no activa el boton Guardar**. Solo las columnas y formatos reales lo hacen.
+6. Pulsa **Guardar** y confirma que el cambio persiste al cerrar y reabrir la app.
+7. **Galeria de disenos oficiales**: en el panel derecho del widget seleccionado, debajo de los presets de usuario, aparece la seccion **Disenos oficiales**. Para `Relative`, `Standings`, `Delta` y `Pedals` encontraras al menos 2 disenos por widget. Pulsa **Aplicar** sobre uno y comprueba que el widget cambia de apariencia y variante sin que se modifiquen la posicion ni el tamano en el layout. La galeria es solo lectura: no crea ni comparte disenos.
+
+### Bloque B: gestion de perfiles y LayoutStudio
+
+1. Vuelve a **Overlays Studio** y abre **Mis perfiles**.
+2. Entra en **Recomendados por Vantare** y guarda como copia propia un perfil (`Clean Overlay` o `Le Mans Ultimate - Basic`).
+3. En tu copia, pulsa **Activar** para marcarla como perfil activo (veras el badge `Activo`).
+4. Pulsa **Abrir overlay** en la cabecera para abrir la ventana transparente a pantalla completa.
+5. Pulsa **Editar layout** y arrastra o redimensiona los widgets. Pulsa **Guardar**.
+6. El overlay abierto se actualiza en tiempo real con la nueva distribucion.
+
+### Bloque C: Ingeniero
+
+1. En el menu lateral, abre **Ingeniero**.
+2. Revisa el control de sensibilidad del spotter y activa o desactiva los avisos.
+3. Lanza un mensaje de prueba usando el reproductor de simulacion/replay.
+4. Comprueba que el historial del Hub muestra los mensajes entrantes.
+5. Abre tu overlay y verifica que el widget `engineer-notifications` muestra las alertas en tiempo real y desaparecen al expirar.
+
+### Bloque D: actualizador automatico
+
+1. Espera al banner de actualizacion en el Hub al iniciar la app (si hay una nueva version publicada).
+2. Pulsa **Actualizar**. La app descarga el instalador, verifica el SHA256 y lo ejecuta.
+3. Si la release no incluye `.sha256`, el updater rechaza la instalacion desde la app. En ese caso, descarga manualmente desde `#beta-downloads` y verifica el hash publicado.
+
+---
+
+## 5. Atajos de teclado globales (hotkeys)
+
+Vantare incluye hotkeys globales nativas en Windows. Funcionan aunque el simulador tenga el foco.
+
+| Atajo | Accion |
+|-------|--------|
+| `Ctrl+Shift+V` | Mostrar u ocultar el overlay activo. |
+| `Ctrl+Shift+E` | Entrar o salir del modo edicion in-place sobre el overlay. |
+| `Ctrl+Shift+Flecha derecha` | Cambiar al siguiente perfil. |
+| `Ctrl+Shift+Flecha izquierda` | Cambiar al perfil anterior. |
 
 > [!IMPORTANT]
-> **Privilegios de Administrador (UAC)**
-> Si ejecutas Le Mans Ultimate (LMU) con privilegios de Administrador (muy común para compatibilidad con ciertos volantes o herramientas de telemetría de terceros), Windows por seguridad impedirá que Vantare capture los atajos globales si se está ejecutando con permisos normales. Para solucionarlo, **debes abrir Vantare Suite como Administrador** (clic derecho sobre el ejecutable o acceso directo > *Ejecutar como administrador*).
+> **Privilegios de administrador (UAC)**
+> Si ejecutas Le Mans Ultimate como Administrador (comun para compatibilidad de hardware), Windows impedira que Vantare capture las hotkeys con permisos normales. Solucion: ejecuta **tambien** Vantare como Administrador (clic derecho -> Ejecutar como administrador).
 
 > [!WARNING]
 > **Colisiones con otros programas**
-> Si otra aplicación que se ejecuta en segundo plano (como GeForce Experience, el software de AMD, Steam, Discord u OBS Studio) ya tiene registrado alguno de estos atajos, Windows no permitirá que Vantare lo registre. Puedes cambiar y personalizar estas combinaciones de teclas en cualquier momento desde la página de **Ajustes** en el Hub de Vantare y hacer clic en **Guardar atajos**.
+> Si otra app (GeForce Experience, AMD Adrenalin, Steam, Discord, OBS Studio, etc.) ya registro la misma combinacion, Windows no dejara a Vantare tomarla. Cambia la combinacion en **Ajustes -> Atajos**.
 
 ---
 
-## 5. Widgets y su estado actual
-
-Cada widget tiene un estado que refleja su madurez para la beta:
+## 6. Widgets y su estado actual
 
 | Widget | Estado | Que puedes probar |
 |--------|--------|-------------------|
-| **Relative** | ✅ Stable | Columnas configurables, filtros de clase/rango, ancho intrinseco en preview. |
-| **Standings** | ✅ Stable | Columnas configurables, escenarios mock (Practica/Qualy/Carrera), variantes schema v2. |
-| **Delta** | ✅ Stable | Delta best live nativo LMU, muestra Target y Lap. Valores negativos en verde, positivos en rojo. |
-| **Pedals** | 🟡 Tester | Maqueta compacta CLT/BRK/THR. Colores editables desde WidgetStudio (throttle, brake, clutch). |
-| **Ingeniero (notifications)** | 🟡 Tester | Widget de notificaciones del spotter. Funciona en modo simulacion/replay. Historial visible en el Hub. |
-| **Track Map** | 🔴 Experimental | En desarrollo, no disponible. |
-| **Input Telemetry/Trace** | 🔴 Experimental | En desarrollo, no disponible. |
+| **Relative** | stable | Columnas configurables, filtros de clase/rango, ancho intrinseco. |
+| **Standings** | stable | Columnas configurables, escenarios mock (Practica/Qualy/Carrera), variantes schema v2. |
+| **Delta** | stable | Delta best live nativo LMU, `Target` y `Lap`. Negativos en verde, positivos en rojo. |
+| **Pedals** | tester | Maqueta compacta CLT/BRK/THR. Colores editables desde WidgetStudio. |
+| **Ingeniero (notifications)** | tester | Widget de notificaciones del spotter. Funciona en modo simulacion/replay. |
+| **Track Map** | experimental | En desarrollo, no disponible. |
+| **Input Telemetry/Trace** | experimental | En desarrollo, no disponible. |
 
-> **Stable**: listo para uso general. **Tester**: funcional pero puede tener cambios o necesitar validacion adicional. **Experimental**: en desarrollo, no disponible para testers.
+> **stable**: listo para uso general. **tester**: funcional pero puede tener cambios. **experimental**: en desarrollo, no disponible.
 
-## 6. ¿Qué NO está soportado todavía? (Limitaciones de la Beta)
+---
 
-Por favor, no reportes como fallos las siguientes características planificadas para fases posteriores:
-*   **Ingeniero con LMU en vivo real (Fase EN6)**: La conexión del spotter con LMU live está en desarrollo. Actualmente funciona en modo simulación/replay.
-*   **Audio/Voces TTS del Ingeniero**: Los avisos son puramente visuales y textuales.
-*   **Widget Pedals Completo**: Es una maqueta estética inicial. Lectura de embrague y calibración profundas se completarán post-beta.
-*   **Soporte Multisimulador**: Exclusivo para Le Mans Ultimate. iRacing, Assetto Corsa, etc. tras release estable v1.0.
-*   **Doble PC / LAN para OBS**: La URL local funciona, pero la optimización de red para streaming remoto no forma parte del alcance actual. Configuracion manual posible (ver guia OBS).
+## 7. Que NO esta soportado todavia (fuera de alcance)
 
-## 7. Autoupdater
+No reportes como fallos las siguientes caracteristicas planificadas para fases posteriores:
 
-Vantare Suite incluye un sistema de actualizacion automatica:
+- **Ingeniero con LMU en vivo real**: la conexion del spotter con LMU live esta pendiente. Actualmente solo modo simulacion/replay.
+- **Audio/Voces TTS del Ingeniero**: los avisos son visuales y textuales.
+- **Widget Pedals completo**: es una maqueta estetica. Calibracion profunda llega post-beta.
+- **Soporte multisimulador**: solo Le Mans Ultimate. iRacing, Assetto Corsa, etc. llegaran tras el release estable v1.0.
+- **Doble PC / LAN para OBS**: la URL local funciona; la optimizacion de red para streaming remoto queda fuera de alcance. Configuracion manual posible (ver guia OBS).
+- **Firma de codigo Authenticode**: ver seccion siguiente y `docs/tester-known-issues.md`.
+- **Galeria de disenos de widgets**: incluida en esta build como catalogo de disenos oficiales de solo lectura. La galeria aplica apariencia y variante; no toca `position` ni `tamano`, no crea archivos ni comparte disenos. Marketplace, cloud sync o compartir disenos quedan fuera de alcance de la beta.
 
-- Al iniciar la app, verifica si hay una nueva version en GitHub Releases.
-- Si hay una actualizacion, aparece un banner en el Hub. Puedes hacer clic para descargar e instalar.
-- El instalador descargado se verifica contra su checksum SHA256 antes de ejecutarse.
-- Si el checksum no esta disponible, la instalacion desde el updater se rechaza. En ese caso descarga el instalador manualmente desde Discord/GitHub y verifica el SHA256 publicado.
-- Tambien puedes ir a **Ajustes → Actualizaciones** para buscar actualizaciones manualmente.
+---
 
-## 8. Verificacion de Checksums SHA256
+## 8. Aviso de SmartScreen y verificacion de checksums SHA256
 
-Cada descarga (installer, portable zip, binario) se publica con su archivo `.sha256` sidecar. Puedes verificar la integridad del archivo descargado:
+Esta build **no tiene firma digital Authenticode**. Windows SmartScreen mostrara una advertencia de "Editor desconocido" al ejecutar el instalador o el portable. Es un comportamiento esperado, no un fallo.
+
+**Pasos:**
+
+1. Pulsa **"Mas informacion"**.
+2. Pulsa **"Ejecutar de todas formas"**.
+3. Verifica el checksum SHA256 publicado en `#beta-downloads` o en el archivo `.sha256` sidecar contra tu descarga:
 
 ```powershell
-# Opcion A: PowerShell
 Get-FileHash .\vantare-amd64-installer.exe -Algorithm SHA256
-
-# Opcion B: certutil (Windows nativo, sin dependencias externas)
+# o bien
 certutil.exe -hashfile .\vantare-amd64-installer.exe SHA256
 ```
 
-Compara el hash obtenido contra el publicado en `#beta-downloads` o en el archivo `.sha256` de la GitHub Release. Si coinciden, el archivo no ha sido alterado.
+Si los hashes coinciden, tu archivo no ha sido alterado.
+
+La firma de codigo se implementara antes del release estable v1.0.
+
+---
 
 ## 9. Politica de versionado
 
-- **No se publica una release por cada commit.** Las versiones se acumulan y se publican mediante un tag `v*` cuando hay un conjunto de cambios coherente.
+- **No se publica release por cada commit.** Las versiones se acumulan y se publican cuando hay un tag `v*` que cumple el checklist del runbook.
 - Las builds de desarrollo diarias no se distribuyen a testers.
-- Cada version publicada incluye entrada en el changelog y anuncio en Discord.
+- Cada version publicada lleva entrada en `docs/changelog.md` y anuncio en `#beta-announcements`.
+- La linea publica es `v0.1.x`. Las builds internas previas (`v0.3.*`) son **historicas y no se anuncian**.
 
 ---
 
-## 10. Cómo Reportar Bugs
+## 10. Como reportar bugs
 
-Si encuentras un comportamiento inesperado, errores visuales o problemas de rendimiento:
-1. **Captura de pantalla o vídeo**: Toma una captura del problema (especialmente si es un fallo visual en el editor o en el overlay).
-2. **Pasos para reproducir**: Describe detalladamente qué acciones realizaste justo antes de que ocurriera el fallo.
-3. **Archivos de configuración**: Si el problema está relacionado con perfiles que no se guardan o se visualizan mal, adjunta el archivo JSON del perfil afectado que se encuentra en la carpeta `configs/`.
-4. **Log de errores**: Si la app se cierra inesperadamente, comprueba si existe algún archivo `.log` en la carpeta raíz y adjúntalo.
+Si encuentras un comportamiento inesperado, error visual o problema de rendimiento:
+
+1. **Captura de pantalla o video** del problema.
+2. **Pasos para reproducir**: que acciones realizaste justo antes del fallo.
+3. **Archivos de configuracion**: si el problema es con perfiles, adjunta el JSON afectado de `configs/`.
+4. **Log de errores**: si la app se cierra, adjunta cualquier `.log` de la raiz.
+
+Usa el canal **`#beta-bug-reports`** de Discord con la plantilla de `docs/tester-feedback-process.md`.
 
 ---
 
-## 11. Documentos Relacionados
+## 11. Documentos relacionados
 
-*   Para conocer la lista completa de problemas identificados y limitaciones actuales, consulta la [Guía de Incidencias Conocidas (Known Issues)](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/tester-known-issues.md).
-*   Para saber cómo y dónde reportar fallos y compartir tus comentarios, revisa el [Protocolo de Feedback y Reporte de Bugs](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/tester-feedback-process.md).
-*   Para configurar los overlays en tu software de transmisión, consulta la [Guía de Configuración de OBS Studio (Local)](file:///c:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/obs-local-setup.md).
+- [Incidencias conocidas (Known Issues)](tester-known-issues.md): lista oficial de problemas y limitaciones.
+- [Protocolo de feedback y reporte de bugs](tester-feedback-process.md): canales de Discord y plantilla obligatoria.
+- [Guia OBS Studio local](obs-local-setup.md): como configurar OBS en local.
+- [Runbook de operaciones de release](release-beta-operations-runbook.md): flujo tecnico de publicacion (uso interno).
+- [Changelog publico](changelog.md): historial de versiones publicadas.

@@ -1,94 +1,73 @@
 # Changelog
 
-Changelog publico para testers y Discord.
+Changelog publico para testers y Discord. Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
-Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
+## v0.1.0.0
 
-## v0.3.10.0
+Primera **beta publica** abierta de Vantare Suite.
 
-Primera beta abierta.
+Esta build consolida el conjunto de features estables probadas durante la fase alpha privada y abre el acceso a testers externos. Incluye login obligatorio, gating basico de licencia free / pago / suite, y un sistema de distribucion verificado con autoupdater.
 
 **Nuevo**
 
-- Vantare queda consolidado como suite local con modulo `Ingeniero`, historial de mensajes y widget de notificaciones para overlays.
-- Documentacion para testers: instrucciones de build, known issues, proceso de feedback y setup local de OBS.
-- Hardening inicial de hotkeys globales en Windows con stubs seguros para otras plataformas.
-- Autoupdater: descarga e instalacion verificada de nuevas versiones desde GitHub Releases.
-- Pipeline de release automatizado: build, installer NSIS, portable zip y checksums SHA256 via `wails3 task release:artifacts`.
-- GitHub Actions workflow para builds de release con gates de tests/lint (R03.C).
-- Presets de widgets: guardar, aplicar y compartir configuraciones visuales (Widget Preset Gallery).
+- **Acceso con cuenta obligatoria**: login con Google OAuth como minimo. Sin cuenta no se puede usar la app para nada que no sea la propia pantalla de inicio de sesion.
+- **Licencias online con gracia offline**: estado `active` mientras la validacion online funciona, estado `grace` durante 24 horas si el servidor no responde, `expired` al agotarse. Cache local cifrado con DPAPI en Windows.
+- **Gating basico por plan**:
+  - `free`: acceso limitado (vista previa de widgets y mock data).
+  - `paid`: acceso completo a Overlays Studio con LMU live.
+  - `suite`: Overlays Studio + Ingeniero + presets.
+- **Overlays Studio** completo: editor de widgets (Relative, Standings, Pedals, Delta, Ingeniero), perfiles recomendados (`Clean Overlay`, `Le Mans Ultimate - Basic`), layout con drag/resize, preview aislada con ancho intrinseco.
+- **Ingeniero**: modulo integrado con historial, notificaciones y widget de overlay. Funciona en modo simulacion/replay; el adaptador live LMU queda pendiente para una fase posterior.
+- **Telemetria live de Le Mans Ultimate**: fuente compartida live/mock/demo con fallback automatico a datos sinteticos si LMU no esta abierto.
+- **Widget Delta**: usa el `DeltaBest` nativo de LMU cuando esta disponible, con `Target` y `Lap`. Valores negativos en verde, positivos en rojo.
+- **Hotkeys globales de Windows**: `Ctrl+Shift+V` (toggle overlay), `Ctrl+Shift+E` (modo edicion in-place), `Ctrl+Shift+Flecha izquierda/derecha` (cambiar perfil activo). Personalizables desde Ajustes.
+- **Autoupdater**: descarga e instalacion verificada contra el sidecar `*.sha256` desde GitHub Releases. Si la release no incluye checksum, el updater rechaza la instalacion desde la app y deriva a descarga manual.
+- **OBS local**: servidor interno en `http://127.0.0.1:39261/overlay?profile=...` con soporte SSE para telemetria e Ingeniero.
+- **Presets de widgets**: guardar, aplicar y compartir configuraciones visuales sin tocar posicion ni tamano.
+- **Galeria de disenos oficiales de widgets** (Widget Design Gallery): catalogo de disenos oficiales incluidos por Vantare para los widgets `Relative`, `Standings`, `Delta` y `Pedals`. Cada diseno aplica apariencia y variante sin tocar `position` ni `tamano`. Vive en WidgetStudio dentro del panel de ajustes del widget seleccionado. Solo lectura: los presets oficiales no crean ni comparten archivos; los presets de usuario siguen funcionando como antes.
+- **Instalador NSIS y portable zip**: ambos con checksums SHA256 sidecar y verificacion automatica antes de publicar.
 
 **Mejorado**
 
-- La URL de OBS en Ajustes usa un perfil real activo o el fallback seguro `example-racing.json`.
-- El widget Delta usa datos live reales para `Target` y `Lap`.
-- El backend prioriza el `DeltaBest` nativo de LMU cuando llega desde Shared Memory.
-- Release workflow idempotente: reruns sobre tags ya publicados ya no fallan.
-- Workflows de Discord protegidos contra re-runs y tags fantasma (tag-guard + run_attempt).
-- WidgetStudio: selector de escenario mock (Practica/Qualy/Carrera) para Standings.
-
-**Corregido**
-
+- Consolidacion de la suite local: Vantare ya no se describe solo como app de overlays, sino como suite con modulos `Overlays Studio`, `Ingeniero`, `Telemetria` y `Setup`.
+- El backend prioriza el `DeltaBest` nativo de LMU cuando llega desde Shared Memory, en lugar de calcularlo a mano.
 - Los deltas negativos ya no se descartan en la fusion de telemetria.
 - `DeltaBest == 0` se trata como dato no disponible para no pisar un delta valido previo.
-- Tests de delta usan helpers de fixtures en lugar de offsets hardcodeados.
-- SmartScreen: documentado como comportamiento esperado (sin firma de codigo hasta release estable).
+- Release workflow idempotente: reruns sobre tags ya publicados no fallan.
+- WidgetStudio: selector de escenario mock (Practica/Qualy/Carrera) para Standings.
+- URL de OBS en Ajustes usa un perfil real activo o el fallback seguro `example-racing.json`.
+
+**Corregido**
+
 - NSIS installer: resuelto shim de wails3 que fallaba con 0x2 (`tools/build_nsis.ps1`).
+- Tests de delta usan helpers de fixtures en lugar de offsets hardcodeados.
+
+**Aviso de SmartScreen (importante, leer antes de instalar)**
+
+Los ejecutables de esta beta **no tienen firma digital Authenticode**. Windows SmartScreen mostrara una advertencia de "Editor desconocido" al ejecutar el instalador o el portable. Es un comportamiento esperado, no un fallo. Pasos:
+
+1. Haz clic en **"Mas informacion"**.
+2. Haz clic en **"Ejecutar de todas formas"**.
+3. Verifica el checksum SHA256 publicado en `#beta-downloads` contra tu descarga con `certutil -hashfile` o `Get-FileHash`.
+
+La firma de codigo se implementara antes del release estable v1.0.
 
 **Para testers**
 
-- Esta es la **primera beta abierta**. Consulta `docs/tester-build-instructions.md` para instalar.
-- Los widgets Relative, Standings y Delta son **stable**. Pedals e Ingeniero son **tester**.
-- No hay firma de codigo: SmartScreen mostrara advertencia. Verifica el checksum SHA256 de tu descarga.
+- Esta es la **primera beta publica**. Sigue `docs/tester-build-instructions.md` para instalar.
+- El login con Google es **obligatorio**. No se puede usar la app sin cuenta.
+- Plan por defecto: `free`. Para desbloquear Overlays Studio con datos live necesitas `paid` o `suite`. Mas informacion en `docs/tester-build-instructions.md` seccion 3.
+- Los widgets Relative, Standings y Delta son **stable**. Pedals e Ingeniero son **tester**. Track Map e Input Telemetry/Trace siguen como **experimental** y no estan disponibles.
 - Probad Delta en LMU live: valores negativos deben mostrarse en verde al mejorar y positivos en rojo al perder tiempo.
 - Probad la URL de OBS desde Ajustes y confirmad que carga el perfil correcto.
-- Ingeniero esta disponible como modulo de prueba, pero el adaptador live LMU de Ingeniero sigue pendiente (EN6).
-- Reportad bugs en `#beta-bug-reports` de Discord siguiendo la plantilla del protocolo de feedback.
+- Ingeniero funciona en modo simulacion/replay; el adaptador live LMU queda para una fase posterior.
+- Reportad bugs en `#beta-bug-reports` de Discord siguiendo la plantilla de `docs/tester-feedback-process.md`.
 - No se publica release por cada commit; solo versiones etiquetadas.
 
-## v0.3.9.2
+## v0.3.x (historico no anunciado)
 
-**Nuevo**
+Las versiones `v0.3.*` son **internas y no anunciadas al publico**. Se mantienen aqui solo como rastro historico para el equipo y para evitar confusion con la nueva linea `v0.1.x`. Discord, docs publicos y el updater apuntan exclusivamente a la linea `v0.1.0.0` en adelante.
 
-- Flujo inicial de changelog publico y publicacion automatica en Discord al crear tags `v*`.
-- Documento de UX mock/live/demo para alpha testers.
+No se daran a conocer builds concretas (`v0.3.10.0`, `v0.3.9.2`, `v0.3.9.1`, etc.) en canales publicos. Si encuentras una referencia a una `v0.3.*` en una URL, changelog o captura, considera que es contenido interno antiguo y no la uses como referencia de estado actual.
 
-**Mejorado**
-
-- El indicador global de fuente de telemetria en la barra superior ahora incluye `title` y `aria-label`.
-- Los tests del selector mock de `Standings` usan `aria-pressed` en lugar de clases visuales.
-
-**Corregido**
-
-- Menor riesgo de regresion visual en el selector `Práctica` / `Qualy` / `Carrera`.
-
-**Para testers**
-
-- Sin LMU abierto, comprobad que la fuente se entiende como `Mock` o fallback.
-- En `Widgets` -> `Standings`, cambiad `Práctica` / `Qualy` / `Carrera` y confirmad que no activa `Guardar`.
-- En una release taggeada, Discord deberia recibir automaticamente esta entrada del changelog.
-
-## v0.3.9.1
-
-**Nuevo**
-
-- Los perfiles recomendados de Vantare pueden guardarse como copia propia editable.
-
-**Mejorado**
-
-- `Relative` y `Standings` redimensionan proporcionalmente en el editor de layout, overlay desktop y OBS.
-- Los perfiles legacy con cajas deformadas se muestran con el aspecto correcto desde el primer render.
-- La version visible de la app pasa a `v0.3.9.1`.
-
-**Corregido**
-
-- Guardar un recomendado como copia propia genera IDs unicos y convierte a schema v2.
-- Guardar una copia recomendada ya no muta el perfil original.
-- `Standings` ya no queda ligeramente recortado al redimensionar.
-
-**Para testers**
-
-- Probad `Mis perfiles` -> `Editar layout` con `Relative` y `Standings`.
-- Probad resize horizontal, vertical y diagonal.
-- Probad `Recomendados por Vantare` -> guardar como perfil propio.
-- Reportad si algun overlay queda cortado, deformado o con espacio vacio raro.
+Si necesitas consultar el detalle funcional de las builds internas previas, mira `docs/release-beta-operations-runbook.md` y `docs/current-plan.md`, que conservan el rastro operativo completo.

@@ -1,71 +1,96 @@
-# Incidencias Conocidas (Known Issues) - Beta Abierta
+# Incidencias conocidas (Known Issues) - Beta Publica v0.1.0.0
 
-Este documento contiene la lista oficial de problemas conocidos, limitaciones del alcance actual y comportamientos esperados en la versión **v0.3.10.0** de **Vantare Suite**. Por favor, revisa esta lista antes de reportar un fallo en Discord.
-
----
-
-## 0. Widget states
-
-Los widgets tienen tres estados de madurez, documentados en la guia del tester:
-
-- ✅ **Stable**: Relative, Standings, Delta. Listos para uso general con datos live LMU.
-- 🟡 **Tester**: Pedals, Ingeniero notifications. Funcionales, pueden tener cambios.
-- 🔴 **Experimental**: Track Map, Input Telemetry/Trace. No disponibles.
+Este documento contiene la lista oficial de problemas conocidos, limitaciones del alcance y comportamientos esperados en la version **v0.1.0.0** de **Vantare Suite**. Revisa esta lista antes de reportar un fallo en Discord.
 
 ---
 
-## 1. Incidencias por Severidad
+## 0. Widgets: estados de madurez
 
-### 🔴 Bloqueantes
-*   **Ninguno detectado**: No existen fallos conocidos que impidan el inicio de la aplicación o el uso de las funciones principales de edición y visualización de overlays bajo condiciones normales de uso.
-
-### 🟡 Importantes
-*   **Advertencia de SmartScreen (Ejecutable no firmado)**:
-    *   *Síntoma*: Windows Defender o SmartScreen pueden bloquear la ejecución de `vantare.exe` o `vantare-amd64-installer.exe` mostrando una pantalla roja/azul de advertencia.
-    *   *Causa*: Los ejecutables de la fase Alpha/Beta no cuentan con firma digital comercial.
-    *   *Solución*: Haz clic en **"Más información"** y luego en **"Ejecutar de todas formas"**.
-*   **Ingeniero en Vivo con LMU Pendiente (Fase EN6)**:
-    *   *Síntoma*: El spotter del Ingeniero no reacciona a los datos en tiempo real mientras conduces en el simulador.
-    *   *Causa*: El adaptador para leer el buffer en vivo de LMU está aparcado en esta fase.
-    *   *Solución*: Prueba la sección de Ingeniero utilizando el reproductor de simulación/replay interno del Hub.
-*   **Atajos globales inactivos en carrera (Privilegios UAC)**:
-    *   *Síntoma*: Al pulsar las hotkeys globales (ej. `ctrl+shift+v`) mientras estás en pista en LMU, no ocurre nada, aunque sí funcionan si estás en el escritorio de Windows con el Hub activo.
-    *   *Causa*: El simulador LMU se está ejecutando con privilegios elevados (como Administrador) y Vantare con privilegios normales. Windows por seguridad impide que procesos con menor nivel de integridad capturen el teclado de procesos elevados.
-    *   *Solución*: Cierra Vantare Suite y ejecútala explícitamente como Administrador (clic derecho > *Ejecutar como administrador*).
-
-### 🔵 Menores
-*   **Confusión con la columna "Gap" en Práctica/Qualy (Standings)**:
-    *   *Síntoma*: Durante sesiones de práctica o clasificación, la columna predeterminada `gap` (brecha) muestra tiempos de vuelta debido a lógica legacy heredada, lo que puede confundirse con la columna `bestLap`.
-*   **Densidad visual en widgets pequeños**:
-    *   *Síntoma*: Si activas muchas columnas opcionales (Vuelta rápida, Última vuelta, etc.) en widgets configurados con dimensiones físicas muy reducidas en `LayoutStudio`, los textos pueden superponerse.
-    *   *Solución*: Incrementa el tamaño del widget en `LayoutStudio` o activa la opción de "Recorte de nombre" en la configuración de la variante dentro de `WidgetStudio`.
-*   **Atajo global no responde (Colisión de registro)**:
-    *   *Síntoma*: Un atajo configurado en los Ajustes (ej. `ctrl+shift+v`) no responde en absoluto, o se escribe un aviso de fallo en los logs al iniciar.
-    *   *Causa*: Otra aplicación en segundo plano (Discord, OBS Studio, Steam o software auxiliar de la tarjeta gráfica) ya ha registrado de forma exclusiva esa combinación con Windows.
-    *   *Solución*: Entra a la página de **Ajustes** del Hub de Vantare, cambia la combinación (por ejemplo, agregando `alt` o cambiando la letra) y haz clic en **Guardar atajos**.
-*   **Delta best live pendiente de prueba manual con LMU real**:
-    *   *Síntoma*: El widget Delta ya usa el delta nativo de LMU cuando está disponible, pero esta build todavía necesita validación prolongada en pista con distintos estados de sesión.
-    *   *Causa*: La corrección backend/frontend está implementada y testeada, pero la verificación automatizada no sustituye una sesión real con Shared Memory de LMU.
-    *   *Solución*: Si pruebas LMU live, confirma que los valores negativos aparecen en verde al mejorar y los positivos en rojo al perder tiempo.
-*   **Autoupdater: releases sin checksum no instalables desde la app**:
-    *   *Síntoma*: Si una GitHub Release no incluye el sidecar `.sha256`, el updater rechaza la instalacion.
-    *   *Causa*: La beta exige verificacion SHA256 antes de ejecutar un instalador descargado por la app.
-    *   *Solución*: Usa releases que incluyan `.sha256`. Si una release historica no lo incluye, descarga manualmente desde Discord/GitHub y verifica el hash publicado con `certutil -hashfile`.
-*   **Autoupdater: smoke de integracion contra release real pendiente**:
-    *   *Síntoma*: El updater se ha probado en entorno controlado contra un prerelease real, pero no se ha ejecutado una validación completa desde un tester descargando e instalando una release pública.
-    *   *Solución*: Si encuentras errores al actualizar desde la app (botón de actualizar que no responde, descarga que falla, instalador que no se lanza), reportalo en `#beta-bug-reports`.
+- **stable**: Relative, Standings, Delta. Listos para uso general con datos live LMU.
+- **tester**: Pedals, Ingeniero notifications. Funcionales, pueden tener cambios.
+- **experimental**: Track Map, Input Telemetry/Trace. No disponibles.
 
 ---
 
-## 2. Limitaciones de Diseño y Alcance (Fuera de Scope)
+## 1. Incidencias por severidad
 
-Los siguientes comportamientos son **decisiones de diseño intencionadas** o características planificadas para fases posteriores, por lo que **no deben reportarse como fallos**:
+### Bloqueantes
 
-1.  **Sin audio/voces en el Ingeniero**: El spotter no emite sonidos ni síntesis de voz (TTS). Las alertas y notificaciones son puramente visuales y textuales.
-2.  **Widgets incompletos (Pedals)**: El widget de pedales actual es estético y su calibración completa se realizará en una fase posterior.
-3.  **Exclusividad de Le Mans Ultimate**: La suite está optimizada únicamente para leer la memoria compartida de LMU. No hay soporte en esta fase para iRacing, Assetto Corsa, rFactor 2 u otros simuladores.
-4.  **OBS por LAN (Doble PC)**: La integración con OBS funciona de manera local en el mismo PC. La optimización de red para streaming en doble PC está programada para más adelante (configuración manual posible).
-5.  **Sin cuentas de usuario ni pagos**: No hay inicio de sesión, suscripciones ni pasarelas de pago activas en esta compilación.
-6.  **Sin firma de codigo Authenticode**: Los ejecutables no estan firmados digitalmente. Windows SmartScreen mostrara una advertencia. Es un trade-off aceptado para acelerar el feedback de la beta. La firma se implementara antes del release estable v1.0.
-7.  **Widget Track Map y Input Telemetry/Trace**: Son experimentales y no estan disponibles para testers en esta fase.
-8.  **No release por commit**: No se publica una GitHub Release por cada cambio. Solo versiones etiquetadas con tag `v*` y checklist del runbook completado.
+- **Ninguno detectado**: no hay fallos conocidos que impidan iniciar la app o usar las funciones principales de edicion y visualizacion de overlays bajo condiciones normales.
+
+### Importantes
+
+- **Advertencia de SmartScreen (ejecutable no firmado)**
+  - *Sintoma*: Windows Defender o SmartScreen pueden bloquear `vantare.exe` o `vantare-amd64-installer.exe` con una pantalla roja/azul de advertencia.
+  - *Causa*: los ejecutables de la fase Beta Publica no cuentan con firma digital comercial (Authenticode).
+  - *Solucion*: pulsa **"Mas informacion"** -> **"Ejecutar de todas formas"**. Verifica ademas el SHA256 publicado en `#beta-downloads` contra tu descarga con `certutil -hashfile` o `Get-FileHash`. La firma se implementara antes del release estable v1.0.
+
+- **Ingeniero en vivo con LMU pendiente**
+  - *Sintoma*: el spotter del Ingeniero no reacciona a datos en tiempo real mientras conduces en LMU.
+  - *Causa*: el adaptador para leer el buffer en vivo de LMU esta pendiente de una fase posterior.
+  - *Solucion*: prueba Ingeniero usando el reproductor de simulacion/replay interno del Hub.
+
+- **Login obligatorio con Google OAuth**
+  - *Sintoma*: la app no arranca en modo utilizable sin haber iniciado sesion con Google. No hay inicio de sesion anonimo.
+  - *Causa*: decision de producto para la beta publica. El gating por licencia requiere identidad. Google OAuth es el acceso minimo obligatorio y aparece como boton principal en la pantalla de login; email/password y Discord siguen disponibles como opciones secundarias.
+  - *Solucion*: inicia sesion con tu cuenta de Google desde la pantalla de bienvenida. Si tu cuenta no tiene plan activo, el Hub muestra `PaywallScreen` con los planes `free`, `paid` (Overlays o Engineer) y `suite`. La seccion `Cuenta` en Ajustes refleja tu estado actual (`Activo`, `Periodo de gracia`, `Bloqueado`, `Sin suscripcion`, `Sin sesion`) y tus entitlements (`overlays`, `engineer`, `bundle`, etc.). El boton `Cerrar sesion` siempre devuelve al gate.
+
+- **Atajos globales inactivos en carrera (privilegios UAC)**
+  - *Sintoma*: las hotkeys globales (p. ej. `Ctrl+Shift+V`) no responden mientras estas en pista en LMU, aunque funcionan en el escritorio con el Hub activo.
+  - *Causa*: LMU se ejecuta como Administrador y Vantare con permisos normales. Windows impide que procesos de menor integridad capturen teclado de procesos elevados.
+  - *Solucion*: cierra Vantare y vuelvela a abrir como Administrador (clic derecho -> Ejecutar como administrador).
+
+- **Licencia en periodo de gracia 24h**
+  - *Sintoma*: el Hub muestra una franja roja `Licencia en periodo de gracia hasta <fecha>` aunque tu ultima suscripcion sigue activa.
+  - *Causa*: el servicio Go no pudo validar contra Supabase en el ultimo ciclo (red caida, supabase caido, build sin env vars). El cache local mantiene los entitlements durante 24h desde la ultima validacion exitosa; pasado ese plazo, el estado pasa a `expired` y se muestra paywall.
+  - *Solucion*: si la franja persiste mas de una sesion, reinicia Vantare para forzar una nueva validacion online. Si Supabase sigue sin responder, la app sigue funcionando con el cache de 24h.
+
+- **Pago en linea no embebido en la beta**
+  - *Sintoma*: el boton `Suscribirse` del paywall muestra `Pago en linea proximamente para el plan X. El alta y renovacion se haran desde el portal externo de Vantare cuando este activo para la beta publica.`
+  - *Causa*: el portal externo de Stripe todavia no esta conectado al binario empaquetado de la beta; el webhook ya esta listo y mapea `price_id -> product_key[]` desde `PRICE_ID_TO_PRODUCT_KEYS`.
+  - *Solucion*: el mapeo se valida end-to-end con `deno test` contra `supabase/functions/stripe-webhook/index.test.ts`. Cuando el portal este activo, el handler `handleSubscribe` de `PaywallScreen.tsx` sera el unico punto a tocar.
+
+### Menores
+
+- **Confusion con la columna `Gap` en Practica/Qualy (Standings)**
+  - *Sintoma*: durante sesiones de practica o clasificacion, la columna `gap` puede mostrar tiempos de vuelta por logica legacy.
+  - *Solucion*: distingue entre `gap` y `bestLap` activando ambas columnas en WidgetStudio para verlas lado a lado.
+
+- **Densidad visual en widgets pequenos**
+  - *Sintoma*: si activas muchas columnas opcionales en widgets con tamano fisico muy reducido en LayoutStudio, los textos pueden superponerse.
+  - *Solucion*: aumenta el tamano del widget en LayoutStudio o activa la opcion "Recorte de nombre" en la variante dentro de WidgetStudio.
+
+- **Atajo global no responde (colision de registro)**
+  - *Sintoma*: una hotkey configurada en Ajustes no responde o genera aviso en logs al iniciar.
+  - *Causa*: otra aplicacion en segundo plano (Discord, OBS Studio, Steam, software de GPU, etc.) registro esa misma combinacion con Windows.
+  - *Solucion*: entra a **Ajustes** del Hub, cambia la combinacion (anade `Alt` o cambia la letra) y pulsa **Guardar atajos**.
+
+- **Delta best live pendiente de validacion prolongada con LMU real**
+  - *Sintoma*: el widget Delta usa el delta nativo de LMU cuando esta disponible, pero esta build aun necesita validacion prolongada en pista con distintos estados de sesion.
+  - *Solucion*: si pruebas LMU live, confirma que los negativos aparecen en verde al mejorar y los positivos en rojo al perder tiempo.
+
+- **Autoupdater: releases sin checksum no instalables desde la app**
+  - *Sintoma*: si una GitHub Release no incluye el sidecar `.sha256`, el updater rechaza la instalacion.
+  - *Causa*: la beta exige verificacion SHA256 antes de ejecutar un instalador descargado por la app.
+  - *Solucion*: usa releases que incluyan `.sha256`. Si una release no lo incluye, descarga manualmente desde `#beta-downloads` y verifica el hash con `certutil -hashfile`.
+
+- **Autoupdater: smoke de integracion contra release real pendiente**
+  - *Sintoma*: el updater se probo en entorno controlado, pero no se ha ejecutado una validacion completa desde un tester externo descargando una release publica.
+  - *Solucion*: si encuentras errores al actualizar desde la app, reportalo en `#beta-bug-reports`.
+
+---
+
+## 2. Limitaciones de diseno y alcance (fuera de scope)
+
+Los siguientes comportamientos son **decisiones de diseno intencionadas** o caracteristicas planificadas para fases posteriores. **No deben reportarse como fallos**:
+
+1. **Sin audio/voces en el Ingeniero**: el spotter no emite sonidos ni TTS. Las alertas son visuales y textuales.
+2. **Widget Pedals incompleto**: el widget actual es estetico; su calibracion completa se realizara en una fase posterior.
+3. **Exclusividad de Le Mans Ultimate**: la suite esta optimizada solo para la Shared Memory de LMU. No hay soporte en esta fase para iRacing, Assetto Corsa, rFactor 2 u otros.
+4. **OBS por LAN (doble PC)**: la integracion con OBS funciona de manera local en el mismo PC. La optimizacion de red para doble PC queda para mas adelante (configuracion manual posible).
+5. **Sin pagos en la app**: la compra de `paid` y `suite` se hace desde el portal de pagos externo; en la app solo ves el estado y el enlace.
+6. **Sin firma de codigo Authenticode**: los ejecutables no estan firmados digitalmente. Windows SmartScreen mostrara advertencia. La firma se implementara antes del release estable v1.0.
+7. **Widget Track Map y Input Telemetry/Trace**: experimentales, no disponibles para testers.
+8. **No release por commit**: solo se publica una GitHub Release cuando hay un tag `v*` que cumple el checklist del runbook.
+9. **Galeria de disenos de widgets**: incluida en esta build como catalogo de disenos oficiales de solo lectura. Aplica apariencia y variante a los widgets `Relative`, `Standings`, `Delta` y `Pedals` desde WidgetStudio. No modifica `position` ni `tamano` y no crea archivos. Marketplace, cloud sync y compartir disenos quedan fuera de alcance de la beta.
+10. **Email/password y Discord OAuth**: disponibles como accesos secundarios del login; Google sigue siendo el camino principal y minimo obligatorio. Si encuentras un error reproducible con cualquiera de los tres accesos, reportalo en `#beta-bug-reports`.

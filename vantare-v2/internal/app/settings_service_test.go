@@ -279,3 +279,48 @@ func TestSettingsServicePersistsBetaWelcomeCompleted(t *testing.T) {
 		t.Errorf("expected BetaWelcomeCompleted true after load, got false")
 	}
 }
+
+func TestDefaultAppSettingsBetaUserRoleEmpty(t *testing.T) {
+	s := app.DefaultAppSettings()
+	if s.BetaUserRole != "" {
+		t.Errorf("expected BetaUserRole empty by default, got %q", s.BetaUserRole)
+	}
+}
+
+func TestSettingsServicePersistsBetaUserRole(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil)
+
+	custom := app.DefaultAppSettings()
+	custom.BetaUserRole = "creator"
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	loaded := app.NewSettingsService(path, nil)
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if loaded.Settings().BetaUserRole != "creator" {
+		t.Errorf("expected BetaUserRole=creator after load, got %q", loaded.Settings().BetaUserRole)
+	}
+}
+
+func TestSettingsServiceMergeKeepsBetaUserRole(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+
+	partial := `{"deltaMode":"self","cpuSampling":true,"betaUserRole":"organizer"}`
+	if err := os.WriteFile(path, []byte(partial), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if svc.Settings().BetaUserRole != "organizer" {
+		t.Errorf("expected BetaUserRole=organizer after merge, got %q", svc.Settings().BetaUserRole)
+	}
+}

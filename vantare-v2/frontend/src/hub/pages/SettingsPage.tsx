@@ -57,6 +57,7 @@ export type AppSettings = {
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;
+  betaUserRole?: string;
 };
 
 const DEFAULT_APP_SETTINGS: AppSettings = {

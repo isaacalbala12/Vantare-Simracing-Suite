@@ -8,9 +8,20 @@ Nota post-release (2026-06-29):
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 - Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
-Nota HUB-03 (2026-06-30):
+Nota HUB-04 (2026-06-30):
+- Plan guardado en `docs/superpowers/plans/2026-06-30-hub-04-role-aware-beta-welcome.md`.
+
+Nota LAUNCHER-01 (2026-06-30):
+- Plan guardado en `docs/superpowers/plans/2026-06-30-launcher-01-sim-launcher.md`. PLAN ONLY, sin implementacion. Primer corte del launcher de simuladores: solo LMU en Windows + Steam (`steam://run/2399420` o `.exe` local). Sustituye `EmptyLauncher.tsx` por `LauncherCard`, anade `LauncherService` en Go y bloque `Launchers` en `AppSettings`. Fuera de v0.1.x: multi-sim, Linux/Proton, procesos supervisados, instalacion automatica de apps externas, hotkey "abrir LMU", UI de edicion de `AssociatedApps`.
+- Adapta el copy del modal BetaWelcome segun el tipo de usuario (beginner/intermediate/advanced/creator/organizer). El modal es obligatorio: ya no tiene boton X/cerrar y el boton "Empezar" esta disabled hasta seleccionar un rol. Asi nunca se persiste `betaWelcomeCompleted` sin un rol.
+- Persistencia: nuevo campo `BetaUserRole string` (json `betaUserRole,omitempty`) en `AppSettings` (Go) y `AppSettings` (TS, en `SettingsPage.tsx`). Se guarda junto a `betaWelcomeCompleted: true` en el mismo `settings:save`, sobre la base completa `{ ...settingsRef.current, betaWelcomeCompleted: true, betaUserRole }`. No pisa `activeOverlayProfileId`, hotkeys, deltaMode ni cpuSampling.
+- Diferencias de copy: solo `creator` y `organizer` ven el bloque extra "OBS y streaming" con la URL de Browser Source. Pilotos (beginner/intermediate/advanced) NO ven ese bloque. OBS y Setup siguen accesibles para todos desde el Hub; el cambio es solo en el copy del onboarding.
+- Archivos modificados: `internal/app/settings_service.go` (+`BetaUserRole` y merge en `Load`), `internal/app/settings_service_test.go` (+3 tests), `frontend/src/hub/pages/SettingsPage.tsx` (+campo en type), `frontend/src/hub/onboarding/BetaWelcome.tsx` (reescrito con selector de rol y `onComplete(role)`), `frontend/src/hub/onboarding/BetaWelcome.test.tsx` (13 tests), `frontend/src/hub/HubApp.tsx` (handler con rol), `frontend/src/hub/HubApp.test.tsx` (mock actualizado a `onComplete`, +1 test, 2 tests existentes extendidos con `betaUserRole` en payload).
+- Fuera de scope: dashboard visibility de OBS, estructura de SettingsPage, Auth/licensing/release/Discord, WidgetStudio/LayoutStudio, Go fuera de AppSettings/settings tests, dependencias nuevas.
+- P3 documentado: si `betaWelcomeCompleted=true` pero falta `betaUserRole` (estado heredado de builds previos), el modal no se reabre por ahora; queda como P3.
+- Pendiente: commit selectivo del lote.
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-03-first-use-flow.md`.
-- Implementa un camino guiado desde el Dashboard: Hub -> recomendado -> activar y abrir -> overlay funcionando.
+- Implementa un camino guiado desde el Dashboard: Hub -> recomendado -> guardar como overlay propio -> overlay funcionando.
 - No se toca Go. Solo frontend, sobre eventos `hub:save-own-copy`, `hub:set-active`, `overlay:start-active` ya existentes.
 - Cadena real: `runRecommendedFirstUse` (helper puro) emite `hub:save-own-copy` + `hub:list`, escucha `hub:profiles` con timeout 3s para resolver el `file` por `id`, emite `hub:set-active` y `overlay:start-active`. Muestra banner "Recomendado activado y abierto" o mensaje de error si algo falla.
 - Fuera de scope: rework visual del Hub, Discord, release, calendar LMU, launcher real, auth/licensing, WidgetStudio/LayoutStudio, eventos Wails nuevos, dependencias nuevas.
@@ -19,6 +30,21 @@ Nota HUB-03 (2026-06-30):
 - Tests: 757/757 PASS (98 files), +28 vs baseline 729.
 - Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), `go test ./internal/app/... ./cmd/vantare/...` OK, `gofmt -l` en archivos propios limpio.
 - Pendiente: smoke manual y commit selectivo del lote.
+
+Nota SETTINGS-01 (2026-06-30):
+- Plan guardado en `docs/superpowers/plans/2026-06-30-settings-01-tabs-rework.md`. Solo plan, sin codigo todavia.
+- Reorganiza `SettingsPage` (tab `setup` del Hub) en 7 pestañas horizontales: `account`, `obs`, `telemetry`, `hotkeys`, `updates`, `diagnostics`, `advanced`. Sin rework visual profundo. Funcionalidad primero, polish despues.
+- Topbar interna de Setup con titulo, subtitulo contextual y boton `← Volver al Hub` que llama a un nuevo `onBack` del shell (resuelto en `HubApp` como `setSection('dashboard')`).
+- Estado `activeTab` local en `SettingsPage` + query string `?tab=` solo como deep-link de entrada (whitelist sobre `SETTINGS_TABS`, fallback a `account`). Sin router, sin store global, sin hash.
+- Cada pestana es un sub-componente en `frontend/src/hub/settings/tabs/`. `AccountSettings` y `ObsSetup` se reutilizan sin reescribir. `cpuSampling` se mueve a `HotkeysTab` (acompana a los hotkeys como toggle de runtime). Panel "Informacion" de la columna derecha pasa a `AdvancedTab`.
+- Disciplina de payload completo en `settings:save` (mismo patron que `HUB-04` con `settingsRef`): nunca emitir objetos parciales, proteger `activeOverlayProfileId` (TD-041). Hook nuevo `useAppSettings` centraliza esa disciplina.
+- Hook nuevo `useUpdaterEvents` aísla las 8 suscripciones Wails del updater. `SettingsPage` shell pasa de 651 lineas a ~90.
+- Archivos a crear: 12 (tabs.ts, 2 hooks, 1 header, 1 tab bar, 7 tabs + sus tests). Archivos a modificar: 3 (`SettingsPage.tsx`, `SettingsPage.test.tsx`, `HubApp.tsx` solo en 1 linea + 1 test). `AccountSettings.tsx`, `ObsSetup.tsx`, `Topbar.tsx`, `BetaWelcome.tsx`, `auth/*` y todo el backend Go NO se tocan.
+- Tests: ~30 totales (12 existentes reorganizados por `describe` por tab + 6 de shell + 10 del split + 2 de no-pisar-payload). Test critico: "preserves activeOverlayProfileId when saving from any tab".
+- Checks esperados: tsc, build, lint y `git diff --check` verdes; `pnpm --dir frontend test` verde; sin nuevas dependencias.
+- Verificacion manual: 12 puntos detallados en el plan (cambiar entre tabs, query string, persistencia, no-regresion HUB-04/TD-041, URL OBS con/sin perfil activo).
+- Fuera de scope: Go, eventos Wails, `AccountSettings`/`ObsSetup`/`Topbar`/`BetaWelcome`/`auth/*`, Dashboard/OverlaysStudio/Engineer, router real, i18n, animaciones/iconos/responsive de las tabs (queda como polish posterior en un plan aparte).
+- Pendiente: implementacion, smoke manual, commit selectivo del lote. No se pide tag ni release.
 
 Nota HUB-01/HUB-02 (2026-06-30):
 - HUB-01 P0/P1 cerrado en `9a5cd6f`: dashboard beta sin datos fake, placeholders honestos y Topbar sin nombre hardcodeado.
@@ -198,11 +224,12 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. Commit selectivo de HUB-02 (`ActiveOverlayCard` + integracion en `DashboardPage`) si la review final del lote no encuentra P0/P1/P2.
+1. Commit selectivo de HUB-04 (`BetaWelcome` role-aware) si la review final del lote no encuentra P0/P1/P2.
 2. DISCORD-01 — Limpiar mensajes beta progress y referencias historicas en Discord.
 3. Smoke manual de beta completo con build publicada: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local, updater y nuevo Hub.
-4. HUB-03 — acciones reales adicionales del Hub solo si salen del smoke: abrir perfil recomendado, copy-to-own y acceso OBS mas directo. No hacer rework visual todavia.
-5. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework visual, disenos oficiales adicionales, hardening de auth/licencias y revision global post-beta.
+4. UI polish del Hub queda despues de cerrar funcionalidad — no hacer rework visual todavia.
+5. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework visual, disenos oficiales adicionales, hardening de auth/licencias, revision global post-beta, **SETTINGS-01 (Setup UI Tabs Rework)** y **PACKAGING-01 (Vantare app icon branding)**, Stripe/licencias paid/suite reales, race data real desde LMU.
+6. CALENDAR-01 (LMU race countdown) queda **planificado en `docs/superpowers/plans/2026-06-30-calendar-01-lmu-race-reminder.md`** (PLAN ONLY). Decisiones cerradas: persistencia en `cfgDir/calendar-lmu.json` (no en `app-settings.json`), parser unico en Go con tests table-driven, banner overlay como evento Wails fuera de `WIDGETS` (no como widget), reemplazo de `EmptyNextRace`/`EmptyActivity` en `DashboardPage` por `NextRaceCard`/`LastActivityCard` manteniendo los placeholders como legacy. No scraping Discord, no sync cloud, no multi-sim estable, no resultados oficiales.
 
 Regla de orquestacion: el agente principal no edita codigo salvo necesidad estricta; genera prompts, revisa reportes y actualiza documentacion. Workers implementan. GLM revisa P0/P1/P2 y cualquier cambio de Go debe exigir las skills de Go indicadas en `docs/release-roadmap-execution-index.md`.
 
@@ -234,6 +261,8 @@ La serie `0.1.x` no es solo hotfixes: es la linea de beta publica temprana. El c
 | `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador con avisos de tiempo restante. |
 | `0.1.x` | Por planear | Launcher de simuladores: abrir LMU desde Vantare y agrupar apps asociadas por simulador (overlays, Ingeniero, calendario, presets, configuracion). |
 | `0.1.x` | Por planear | Nuevos overlays publicos, mejoras de Hub, mas disenos oficiales, pulido de OBS, hardening de licencias y primeras correcciones de rendimiento. |
+| `0.1.x` | Por planear | SETTINGS-01 — Setup UI Tabs Rework: convertir `Setup/SettingsPage` en pestañas horizontales estilo videojuego, con topbar interna (pestañas + botón "Volver") y un panel de edición por pestaña. |
+| `0.1.x` | Por planear | PACKAGING-01 — Vantare app icon branding: sustituir `build/appicon.png` por el logo Vantare (idealmente 1024x1024) y regenerar `icon.ico`/`icons.icns` para que taskbar, ventana e instalador muestren branding correcto. |
 
 Regla: salvo hotfixes de `0.1.0.x`, todo lo anterior queda **por planear**. No se implementa ni se promete como version concreta sin miniplan, review y smoke manual.
 
@@ -254,6 +283,73 @@ No scope inicial:
 - No instalacion por componentes.
 - No login/licencia dentro del instalador, salvo que se planifique explicitamente despues.
 - No reemplazar todo NSIS desde cero.
+
+### SETTINGS-01 — Setup UI Tabs Rework
+
+Estado: por planear en `0.1.x`. No se implementa hasta cerrar el hotfix actual de login/licencias y crear miniplan propio.
+
+Motivo:
+- `Setup/SettingsPage` concentrara demasiadas opciones (cuenta/licencia, OBS, telemetria, hotkeys, actualizaciones, diagnostico/soporte, avanzado) y sera incomodo para testers.
+- Necesitamos una navegacion mas clara y ordenada antes de meter mas opciones.
+
+Scope futuro:
+- Reorganizar `Setup/SettingsPage` en pestanas horizontales estilo videojuego, con su propio panel de edicion por pestana.
+- Topbar interna de Setup con:
+  - pestanas visibles;
+  - boton "Volver" / "Volver al Hub";
+  - estado actual si aplica.
+- Secciones previstas (mapeo inicial, no contractual):
+  - Cuenta / Licencia.
+  - OBS.
+  - Telemetria.
+  - Hotkeys.
+  - Actualizaciones.
+  - Diagnostico / Soporte.
+  - Avanzado.
+
+Restricciones:
+- No rework visual profundo todavia (es reorganizacion, no redesign).
+- No tocar auth/licensing core.
+- No tocar updater core.
+- Mantener compatibilidad con los eventos existentes: `settings:get`, `settings:save`, `updater:*`, diagnosticos, account/license.
+
+Riesgos conocidos:
+- Romper `settings:save` por payloads parciales (riesgo vivo, ya recogido en `TD-041`).
+- Duplicar estado entre pestanas si no se define una unica fuente de verdad por dominio.
+- Mezclar `AccountSettings`, `UpdaterSettings` y OBS en un componente gigante, perdiendo la separacion de responsabilidades.
+- Perder claridad entre ajustes de app, cuenta y updater si la pestana "Avanzado" absorbe demasiado.
+
+### PACKAGING-01 — Vantare app icon branding
+
+Estado: por planear en `0.1.x`. No se implementa hasta tener un asset Vantare definitivo aprobado y crear miniplan propio.
+
+Motivo:
+- La app muestra el icono por defecto de Wails en taskbar/ventana porque `build/appicon.png` no se ha sustituido por el logo Vantare.
+- Los builds rapidos con `go build` (camino A2 del runbook) no generan/incrustan `wails_windows_amd64.syso`, por lo que no sirven para validar icono ni metadatos.
+
+Scope futuro:
+- Sustituir `build/appicon.png` por el logo Vantare definitivo en formato cuadrado (idealmente 1024x1024).
+- Regenerar:
+  - `build/windows/icon.ico`;
+  - `build/darwin/icons.icns` si aplica.
+- Asegurar que el pipeline Windows ejecuta:
+  - `wails3 generate icons`;
+  - `wails3 generate syso -icon windows/icon.ico ...`.
+- Verificar:
+  - icono de taskbar y de ventana;
+  - titulo y propiedades del `.exe`;
+  - icono del instalador NSIS.
+- Documentar en el runbook que para validar iconos hay que usar `wails3 task release:artifacts`, no el build rapido A2 con `go build`.
+
+Restricciones:
+- No meter el cambio de icono si no hay asset Vantare definitivo aprobado.
+- No tocar firma Authenticode.
+- No cambiar versionado.
+
+Riesgos conocidos:
+- Windows puede cachear iconos viejos; hay que validar tras reinstalar o usar `ie4uinit.exe -show`/limpiar `IconCache.db` si hace falta.
+- Un `.ico` mal generado puede verse borroso en taskbar.
+- El smoke rapido con `go build` puede seguir mostrando el icono antiguo aunque la release oficial este bien, lo que puede inducir a confusion en testers.
 
 ### Linux/Proton experimental
 

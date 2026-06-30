@@ -14,7 +14,7 @@ import { PaywallScreen } from './auth/PaywallScreen';
 import { LicenseBanner } from './auth/LicenseBanner';
 import { UnconfiguredScreen } from './auth/UnconfiguredScreen';
 import { getSession } from '../lib/supabase-auth';
-import { BetaWelcome } from './onboarding/BetaWelcome';
+import { BetaWelcome, type BetaUserRole } from './onboarding/BetaWelcome';
 
 type Section = 'dashboard' | 'profiles' | 'telemetry' | 'setup' | 'engineer';
 
@@ -147,11 +147,15 @@ function HubShell() {
     setSection(id as Section);
   }, []);
 
-  const handleBetaWelcomeClose = useCallback(() => {
+  const handleBetaWelcomeClose = useCallback((role: BetaUserRole) => {
     setShowBetaWelcome(false);
     const base = settingsRef.current;
     if (base) {
-      Events.Emit('settings:save', { ...base, betaWelcomeCompleted: true });
+      Events.Emit('settings:save', {
+        ...base,
+        betaWelcomeCompleted: true,
+        betaUserRole: role,
+      });
     }
   }, []);
 
@@ -167,7 +171,7 @@ function HubShell() {
   return (
     <div className="h-screen premium-bg relative flex flex-col">
       {settingsLoaded && showBetaWelcome && (
-        <BetaWelcome onClose={handleBetaWelcomeClose} />
+        <BetaWelcome onComplete={handleBetaWelcomeClose} />
       )}
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
       <UpdateBanner />

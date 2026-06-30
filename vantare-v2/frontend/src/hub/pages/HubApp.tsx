@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
 import { ScrollableMain } from "../components/ScrollableMain";
@@ -13,6 +13,7 @@ import { LoginScreen } from "../auth/LoginScreen";
 import { PaywallScreen } from "../auth/PaywallScreen";
 import { LicenseBanner } from "../auth/LicenseBanner";
 import { UnconfiguredScreen } from "../auth/UnconfiguredScreen";
+import { BetaWelcome, type BetaUserRole } from "../onboarding/BetaWelcome";
 
 type Section = "dashboard" | "profiles" | "telemetry" | "setup" | "engineer";
 
@@ -54,7 +55,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
     result.state === "expired" ||
     result.state === "device-limit"
   ) {
-    return <PaywallScreen email={result.email} />;
+    return <PaywallScreen email={result.email} result={result} />;
   }
   return (
     <>
@@ -68,8 +69,11 @@ function HubShell() {
   const [section, setSection] = useState<Section>("dashboard");
   const [version, setVersion] = useState<string | null>(null);
   const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
+  const [showBetaWelcome, setShowBetaWelcome] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [hasActiveProfile, setHasActiveProfile] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
+  const settingsRef = useRef<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     document.body.classList.add("hub");
@@ -80,8 +84,12 @@ function HubShell() {
       setSourceStatus(event.data);
     });
     const unsubSettings = Events.On("settings", (event: { data: Record<string, unknown> }) => {
+      settingsRef.current = event.data ?? null;
+      const completed = event.data?.betaWelcomeCompleted === true;
+      setShowBetaWelcome(!completed);
       const activeId = event.data?.activeOverlayProfileId;
       setHasActiveProfile(typeof activeId === "string" && activeId.length > 0);
+      setSettingsLoaded(true);
     });
     Events.Emit("app:version:get");
     Events.Emit("telemetry:source-status:get");
@@ -98,6 +106,18 @@ function HubShell() {
     setSection(id as Section);
   }, []);
 
+  const handleBetaWelcomeClose = useCallback((role: BetaUserRole) => {
+    setShowBetaWelcome(false);
+    const base = settingsRef.current;
+    if (base) {
+      Events.Emit("settings:save", {
+        ...base,
+        betaWelcomeCompleted: true,
+        betaUserRole: role,
+      });
+    }
+  }, []);
+
   const handleUseRecommended = useCallback(() => {
     setPendingRecommendedAutoStart("recommended-auto");
     setSection("profiles");
@@ -109,6 +129,9 @@ function HubShell() {
 
   return (
     <div className="h-screen premium-bg relative flex flex-col">
+      {settingsLoaded && showBetaWelcome && (
+        <BetaWelcome onComplete={handleBetaWelcomeClose} />
+      )}
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
       <UpdateBanner />
       <ScrollableMain className="flex-1 pt-0">

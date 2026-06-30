@@ -86,9 +86,20 @@ vi.mock("./auth/LicenseBanner", () => ({
 }));
 
 vi.mock("./onboarding/BetaWelcome", () => ({
-  BetaWelcome: ({ onClose }: { onClose: () => void }) => (
+  BetaWelcome: ({ onComplete }: { onComplete: (role: string) => void }) => (
     <div data-testid="beta-welcome">
-      <button type="button" data-testid="beta-welcome-close" onClick={onClose}>
+      <button
+        type="button"
+        data-testid="beta-welcome-pick-creator"
+        onClick={() => onComplete("creator")}
+      >
+        PickCreator
+      </button>
+      <button
+        type="button"
+        data-testid="beta-welcome-close"
+        onClick={() => onComplete("creator")}
+      >
         Empezar
       </button>
     </div>
@@ -375,6 +386,7 @@ describe("HubApp gate (production)", () => {
           hotkeys: { toggleOverlay: "ctrl+shift+v", nextProfile: "ctrl+shift+n" },
           activeOverlayProfileId: "profile-clean",
           betaWelcomeCompleted: true,
+          betaUserRole: "creator",
         }),
       );
     });
@@ -413,6 +425,7 @@ describe("HubApp gate (production)", () => {
         expect.objectContaining({
           activeOverlayProfileId: "profile-active-must-survive",
           betaWelcomeCompleted: true,
+          betaUserRole: "creator",
         }),
       );
     });
@@ -420,6 +433,46 @@ describe("HubApp gate (production)", () => {
       (call: unknown[]) => call[0] === "settings:save",
     ) ?? [];
     expect((payload as Record<string, unknown>).betaWelcomeCompleted).toBe(true);
+    expect((payload as Record<string, unknown>).betaUserRole).toBe("creator");
+  });
+
+  it("saves betaUserRole with the role passed to onComplete", async () => {
+    const settings = {
+      deltaMode: "self",
+      cpuSampling: true,
+      hotkeys: {},
+      activeOverlayProfileId: "profile-x",
+      betaWelcomeCompleted: false,
+    };
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: settings }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.getByTestId("beta-welcome")).toBeTruthy();
+    });
+    eventsEmit.mockClear();
+    screen.getByTestId("beta-welcome-pick-creator").click();
+    await waitFor(() => {
+      expect(eventsEmit).toHaveBeenCalledWith(
+        "settings:save",
+        expect.objectContaining({
+          betaWelcomeCompleted: true,
+          betaUserRole: "creator",
+          activeOverlayProfileId: "profile-x",
+        }),
+      );
+    });
   });
 
   it("navigates to Overlays Studio in recommended mode when 'Usar perfil recomendado' is clicked", async () => {
@@ -440,7 +493,7 @@ describe("HubApp gate (production)", () => {
     const cta = await waitFor(() => screen.getByTestId("recommended-quickstart-cta"));
     cta.click();
     await waitFor(() => {
-      expect(screen.getAllByTestId("recommended-activate-and-start").length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId("recommended-save-as-own").length).toBeGreaterThan(0);
     });
   });
 });

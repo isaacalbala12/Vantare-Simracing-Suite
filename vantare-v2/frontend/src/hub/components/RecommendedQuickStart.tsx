@@ -48,7 +48,7 @@ export function RecommendedQuickStart({
         Empieza con un recomendado
       </h3>
       <p className="mt-1 text-xs text-vantare-textMuted">
-        Clean Overlay o Le Mans Ultimate Basic listos en un click.
+        Clean Overlay o Le Mans Ultimate Basic: elige uno, guárdalo y ábrelo desde Overlays Studio.
       </p>
       <button
         type="button"

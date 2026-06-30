@@ -10,7 +10,7 @@ Nota post-release (2026-06-29):
 
 Nota HUB-03 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-03-first-use-flow.md`.
-- Implementa un camino feliz de un click desde el Dashboard: Hub -> recomendado -> activar y abrir -> overlay funcionando.
+- Implementa un camino guiado desde el Dashboard: Hub -> recomendado -> activar y abrir -> overlay funcionando.
 - No se toca Go. Solo frontend, sobre eventos `hub:save-own-copy`, `hub:set-active`, `overlay:start-active` ya existentes.
 - Cadena real: `runRecommendedFirstUse` (helper puro) emite `hub:save-own-copy` + `hub:list`, escucha `hub:profiles` con timeout 3s para resolver el `file` por `id`, emite `hub:set-active` y `overlay:start-active`. Muestra banner "Recomendado activado y abierto" o mensaje de error si algo falla.
 - Fuera de scope: rework visual del Hub, Discord, release, calendar LMU, launcher real, auth/licensing, WidgetStudio/LayoutStudio, eventos Wails nuevos, dependencias nuevas.

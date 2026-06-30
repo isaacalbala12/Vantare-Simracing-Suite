@@ -40,4 +40,32 @@ describe("RecommendedProfilesView", () => {
     expect(onSaveRecommended).toHaveBeenCalledWith(RECOMMENDED_PROFILES[0]);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it("shows 'Activar y abrir' label when autoActivateAndStart is true", () => {
+    render(
+      <RecommendedProfilesView
+        profiles={RECOMMENDED_PROFILES}
+        onSaveRecommended={vi.fn()}
+        onBack={vi.fn()}
+        autoActivateAndStart
+      />,
+    );
+    const buttons = screen.getAllByTestId("recommended-activate-and-start");
+    expect(buttons.length).toBe(RECOMMENDED_PROFILES.length);
+    expect(buttons[0].textContent).toMatch(/Activar y abrir/i);
+  });
+
+  it("calls onSaveRecommended when 'Activar y abrir' is clicked on first card", () => {
+    const onSave = vi.fn();
+    render(
+      <RecommendedProfilesView
+        profiles={RECOMMENDED_PROFILES}
+        onSaveRecommended={onSave}
+        onBack={vi.fn()}
+        autoActivateAndStart
+      />,
+    );
+    fireEvent.click(screen.getAllByTestId("recommended-activate-and-start")[0]);
+    expect(onSave).toHaveBeenCalledWith(RECOMMENDED_PROFILES[0]);
+  });
 });

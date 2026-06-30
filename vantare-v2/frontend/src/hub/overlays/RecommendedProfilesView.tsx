@@ -5,13 +5,18 @@ type RecommendedProfilesViewProps = {
   profiles: RecommendedProfile[];
   onSaveRecommended: (profile: RecommendedProfile) => void;
   onBack: () => void;
+  autoActivateAndStart?: boolean;
 };
 
 export function RecommendedProfilesView({
   profiles,
   onSaveRecommended,
   onBack,
+  autoActivateAndStart = false,
 }: RecommendedProfilesViewProps) {
+  const ctaLabel = autoActivateAndStart ? "Activar y abrir" : "Guardar como perfil propio";
+  const ctaTestId = autoActivateAndStart ? "recommended-activate-and-start" : undefined;
+
   return (
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1800px] flex-col px-6 py-8">
       <div className="mb-6">
@@ -44,11 +49,12 @@ export function RecommendedProfilesView({
             </div>
             <button
               type="button"
+              data-testid={ctaTestId}
               aria-label={`Guardar ${profile.name} como perfil propio`}
               onClick={() => onSaveRecommended(profile)}
               className="btn-primary mt-4 w-full rounded-lg px-4 py-2 text-xs font-bold text-white"
             >
-              Guardar como perfil propio
+              {ctaLabel}
             </button>
           </article>
         ))}

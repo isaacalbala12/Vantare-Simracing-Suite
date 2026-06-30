@@ -8,6 +8,18 @@ Nota post-release (2026-06-29):
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 - Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
+Nota HUB-03 (2026-06-30):
+- Plan guardado en `docs/superpowers/plans/2026-06-30-hub-03-first-use-flow.md`.
+- Implementa un camino feliz de un click desde el Dashboard: Hub -> recomendado -> activar y abrir -> overlay funcionando.
+- No se toca Go. Solo frontend, sobre eventos `hub:save-own-copy`, `hub:set-active`, `overlay:start-active` ya existentes.
+- Cadena real: `runRecommendedFirstUse` (helper puro) emite `hub:save-own-copy` + `hub:list`, escucha `hub:profiles` con timeout 3s para resolver el `file` por `id`, emite `hub:set-active` y `overlay:start-active`. Muestra banner "Recomendado activado y abierto" o mensaje de error si algo falla.
+- Fuera de scope: rework visual del Hub, Discord, release, calendar LMU, launcher real, auth/licensing, WidgetStudio/LayoutStudio, eventos Wails nuevos, dependencias nuevas.
+- Archivos nuevos: `frontend/src/hub/overlays/recommended-first-use.{ts,test.ts}`, `frontend/src/hub/components/RecommendedQuickStart.{tsx,test.tsx}`, `frontend/src/hub/overlays/RecommendedSuccessBanner.{tsx,test.tsx}`.
+- Archivos modificados: `ActiveOverlayCard.tsx` (CTA secundario aditivo), `DashboardPage.tsx` (integración), `OverlaysStudioPage.tsx` (cadena save→activate→start), `RecommendedProfilesView.tsx` (prop `autoActivateAndStart`), `HubApp.tsx` + espejo.
+- Tests: 757/757 PASS (98 files), +28 vs baseline 729.
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), `go test ./internal/app/... ./cmd/vantare/...` OK, `gofmt -l` en archivos propios limpio.
+- Pendiente: smoke manual y commit selectivo del lote.
+
 Nota HUB-01/HUB-02 (2026-06-30):
 - HUB-01 P0/P1 cerrado en `9a5cd6f`: dashboard beta sin datos fake, placeholders honestos y Topbar sin nombre hardcodeado.
 - HUB-01 P2 cerrado en `6b9b1b4`: BetaWelcome aparece una sola vez y persiste `betaWelcomeCompleted` sin borrar settings existentes.

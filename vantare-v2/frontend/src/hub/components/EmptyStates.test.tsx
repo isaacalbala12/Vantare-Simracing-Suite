@@ -2,7 +2,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { EmptyActivity } from "./EmptyActivity";
 import { EmptyNextRace } from "./EmptyNextRace";
-import { EmptyLauncher } from "./EmptyLauncher";
 
 afterEach(() => {
   cleanup();
@@ -29,19 +28,6 @@ describe("EmptyNextRace", () => {
   it("has disabled import button", () => {
     render(<EmptyNextRace />);
     const btn = screen.getByText(/Importar calendario/i);
-    expect(btn.closest("button")?.disabled).toBe(true);
-  });
-});
-
-describe("EmptyLauncher", () => {
-  it("shows launcher por configurar", () => {
-    render(<EmptyLauncher />);
-    expect(screen.getByText(/por configurar/i)).toBeTruthy();
-  });
-
-  it("has disabled configure button", () => {
-    render(<EmptyLauncher />);
-    const btn = screen.getByText(/Configurar LMU/i);
     expect(btn.closest("button")?.disabled).toBe(true);
   });
 });

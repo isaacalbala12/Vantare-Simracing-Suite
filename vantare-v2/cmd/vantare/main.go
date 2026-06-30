@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/vantare/overlays/v2/configs"
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/internal/app/launcher"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
@@ -126,7 +128,78 @@ func (w *wailsEmitter) Emit(name string, data any) {
 	w.wailsApp.Event.Emit(name, data)
 }
 
-// installerURL returns the direct download URL for the Windows installer asset.
+// launcherStatusGetter abstracts the methods of *launcher.Service that the
+// wiring tests need. The production *launcher.Service satisfies this
+// interface; tests pass a fake.
+type launcherStatusGetter interface {
+	GetStatus(simulatorID string) launcher.LauncherStatus
+}
+
+type launcherConfigurator interface {
+	Configure(in launcher.LauncherConfig) (launcher.LauncherStatus, error)
+}
+
+type launcherRunner interface {
+	Launch(simulatorID string) (launcher.LauncherStatus, error)
+}
+
+// handleLauncherStatusGet resolves the current launcher status for a
+// simulator. Defaults to "lmu" when no simulator is provided, matching the
+// first-cut scope of LAUNCHER-01.
+func handleLauncherStatusGet(simulatorID string, svc launcherStatusGetter, emitter app.EventEmitter) {
+	if simulatorID == "" {
+		simulatorID = "lmu"
+	}
+	st := svc.GetStatus(simulatorID)
+	emitter.Emit("launcher:status", map[string]any{"lmu": st})
+}
+
+// handleLauncherConfigure validates and persists a new launcher config and
+// re-emits the canonical events. On success it also re-emits the full
+// settings payload so the UI can refresh AppSettings without an extra
+// round-trip.
+func handleLauncherConfigure(
+	cfg launcher.LauncherConfig,
+	svc launcherConfigurator,
+	settings *app.SettingsService,
+	emitter app.EventEmitter,
+	logf func(string, ...any),
+) {
+	st, err := svc.Configure(cfg)
+	if err != nil {
+		logf("launcher:configure error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:configured", map[string]any{"simulatorId": st.SimulatorID})
+	emitter.Emit("settings", settings.Settings())
+}
+
+// handleLauncherLaunch fires the configured command. The launcher service is
+// fire-and-forget; a successful invocation only confirms the process was
+// started, not that LMU booted.
+func handleLauncherLaunch(
+	simulatorID string,
+	svc launcherRunner,
+	emitter app.EventEmitter,
+	logf func(string, ...any),
+) {
+	if simulatorID == "" {
+		simulatorID = "lmu"
+	}
+	st, err := svc.Launch(simulatorID)
+	if err != nil {
+		logf("launcher:launch error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:launched", map[string]any{
+		"simulatorId": st.SimulatorID,
+		"method":      st.LaunchMethod,
+		"at":          st.LastLaunchedAt,
+	})
+}
+
 func installerURL(release updater.Release) string {
 	if asset := updater.FindInstaller(release); asset != nil {
 		return asset.DownloadURL
@@ -405,6 +478,12 @@ func main() {
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
+
+	// Launcher service for the simulator cards on the Hub dashboard
+	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
+	// fire-and-forget: it spawns the configured command and forgets it. No
+	// process supervision, no multi-sim, no Linux/Proton yet.
+	launcherSvc := launcher.NewService(settingsSvc, emitter, exec.Command)
 
 	// Wire settings service into hub service for active profile persistence.
 	hubSvc.SetSettingsService(settingsSvc)
@@ -856,6 +935,45 @@ func main() {
 	} else {
 		log.Printf("global hotkeys active (%d registered)", len(settingsSvc.Settings().Hotkeys))
 	}
+
+	// Launcher event handlers (LAUNCHER-01). Three thin events that delegate
+	// to the launcher service and surface canonical statuses back to the
+	// frontend. The service is fire-and-forget: a successful Start returns
+	// without waiting on the spawned process.
+
+	wailsApp.Event.On("launcher:status:get", func(event *application.CustomEvent) {
+		var payload struct {
+			SimulatorID string `json:"simulatorId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleLauncherStatusGet(payload.SimulatorID, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:configure", func(event *application.CustomEvent) {
+		var cfg launcher.LauncherConfig
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &cfg)
+			}
+		}
+		handleLauncherConfigure(cfg, launcherSvc, settingsSvc, emitter, log.Printf)
+	})
+
+	wailsApp.Event.On("launcher:launch", func(event *application.CustomEvent) {
+		var payload struct {
+			SimulatorID string `json:"simulatorId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleLauncherLaunch(payload.SimulatorID, launcherSvc, emitter, log.Printf)
+	})
 
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)
 	wailsApp.Event.On("layout:save", func(event *application.CustomEvent) {

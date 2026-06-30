@@ -3,7 +3,7 @@ import { PlanStatusCard } from "../components/PlanStatusCard";
 import { QuickActions } from "../components/QuickActions";
 import { EmptyActivity } from "../components/EmptyActivity";
 import { EmptyNextRace } from "../components/EmptyNextRace";
-import { EmptyLauncher } from "../components/EmptyLauncher";
+import { LauncherCard } from "../components/LauncherCard";
 import { RecommendedQuickStart } from "../components/RecommendedQuickStart";
 
 type DashboardPageProps = {
@@ -33,7 +33,7 @@ export function DashboardPage({
         </div>
         <div className="xl:col-span-4 flex flex-col gap-6">
           <EmptyNextRace />
-          <EmptyLauncher />
+          <LauncherCard />
           <RecommendedQuickStart
             hasActiveProfile={hasActiveProfile}
             onUseRecommended={onUseRecommended ?? (() => {})}

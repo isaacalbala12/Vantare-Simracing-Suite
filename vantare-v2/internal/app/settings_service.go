@@ -10,12 +10,24 @@ import (
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
-	DeltaMode              string            `json:"deltaMode"`
-	CpuSampling            bool              `json:"cpuSampling"`
-	Hotkeys                map[string]string `json:"hotkeys"`
-	ActiveOverlayProfileID string            `json:"activeOverlayProfileId,omitempty"`
-	BetaWelcomeCompleted   bool              `json:"betaWelcomeCompleted,omitempty"`
-	BetaUserRole           string            `json:"betaUserRole,omitempty"`
+	DeltaMode              string                    `json:"deltaMode"`
+	CpuSampling            bool                      `json:"cpuSampling"`
+	Hotkeys                map[string]string         `json:"hotkeys"`
+	ActiveOverlayProfileID string                    `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted   bool                      `json:"betaWelcomeCompleted,omitempty"`
+	BetaUserRole           string                    `json:"betaUserRole,omitempty"`
+	Launchers              map[string]LauncherConfig `json:"launchers,omitempty"`
+}
+
+// LauncherConfig is the persisted shape of a single launcher entry. The
+// launcher package defines its own equivalent type but the on-disk shape is
+// owned by this struct so the JSON contract stays in one place.
+type LauncherConfig struct {
+	SimulatorID    string   `json:"simulatorId"`
+	LaunchMethod   string   `json:"launchMethod"`
+	ExecutablePath string   `json:"executablePath,omitempty"`
+	SteamAppID     uint32   `json:"steamAppId,omitempty"`
+	AssociatedApps []string `json:"associatedApps,omitempty"`
 }
 
 // DefaultAppSettings returns settings with sensible defaults.
@@ -55,6 +67,32 @@ func (s *SettingsService) Settings() *AppSettings {
 	return s.settings
 }
 
+// GetLaunchers returns the current launcher configuration map. Used by the
+// launcher service to read its persisted state.
+func (s *SettingsService) GetLaunchers() map[string]LauncherConfig {
+	if s.settings == nil {
+		return nil
+	}
+	return s.settings.Launchers
+}
+
+// SetLaunchers replaces the entire Launchers map and persists the change.
+// The launcher service calls this after validating a new configuration.
+func (s *SettingsService) SetLaunchers(launchers map[string]LauncherConfig) error {
+	if s.settings == nil {
+		s.settings = DefaultAppSettings()
+	}
+	if launchers == nil {
+		s.settings.Launchers = nil
+	} else {
+		s.settings.Launchers = make(map[string]LauncherConfig, len(launchers))
+		for k, v := range launchers {
+			s.settings.Launchers[k] = v
+		}
+	}
+	return s.Save(s.settings)
+}
+
 // Load reads settings from disk. If the file does not exist or is corrupt,
 // it falls back to defaults without error.
 func (s *SettingsService) Load() error {
@@ -87,6 +125,12 @@ func (s *SettingsService) Load() error {
 	merged.ActiveOverlayProfileID = loaded.ActiveOverlayProfileID
 	merged.BetaWelcomeCompleted = loaded.BetaWelcomeCompleted
 	merged.BetaUserRole = loaded.BetaUserRole
+	if loaded.Launchers != nil {
+		merged.Launchers = make(map[string]LauncherConfig, len(loaded.Launchers))
+		for k, v := range loaded.Launchers {
+			merged.Launchers[k] = v
+		}
+	}
 	s.settings = merged
 	return nil
 }

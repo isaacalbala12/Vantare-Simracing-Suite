@@ -35,8 +35,9 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/calendario LMU no cargado todavía/i)).toBeTruthy();
   });
 
-  it("renders empty launcher placeholder", () => {
+  it("renders empty launcher card", () => {
     render(<DashboardPage />);
+    expect(screen.getByTestId("launcher-card")).toBeTruthy();
     expect(screen.getByText(/Launcher LMU por configurar/i)).toBeTruthy();
   });
 

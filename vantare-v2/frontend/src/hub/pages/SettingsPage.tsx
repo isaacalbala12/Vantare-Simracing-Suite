@@ -58,6 +58,15 @@ export type AppSettings = {
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;
   betaUserRole?: string;
+  launchers?: Record<string, LauncherConfig>;
+};
+
+export type LauncherConfig = {
+  simulatorId: string;
+  launchMethod: string;
+  executablePath?: string;
+  steamAppId?: number;
+  associatedApps?: string[];
 };
 
 const DEFAULT_APP_SETTINGS: AppSettings = {

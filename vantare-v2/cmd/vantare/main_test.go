@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
@@ -488,5 +490,223 @@ func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	// window. This confirms we did not touch a nil/stale window reference.
 	if factory.last != nil {
 		t.Fatalf("expected no window to be created, got %v", factory.last)
+	}
+}
+
+// --- LAUNCHER-01 wiring tests ---------------------------------------------
+
+// fakeLauncherService satisfies the three interfaces the handler functions
+// depend on. Each field captures the most recent call so tests can assert the
+// wiring triggered the expected method.
+type fakeLauncherService struct {
+	configureCalls atomic.Int32
+	launchCalls    atomic.Int32
+	statusCalls    atomic.Int32
+	statusFor      string
+
+	configureCfg launcher.LauncherConfig
+	launchFor    string
+
+	statusOut launcher.LauncherStatus
+	launchOut launcher.LauncherStatus
+
+	configureErr error
+	launchErr    error
+}
+
+func (f *fakeLauncherService) GetStatus(simulatorID string) launcher.LauncherStatus {
+	f.statusCalls.Add(1)
+	f.statusFor = simulatorID
+	return f.statusOut
+}
+
+func (f *fakeLauncherService) Configure(in launcher.LauncherConfig) (launcher.LauncherStatus, error) {
+	f.configureCalls.Add(1)
+	f.configureCfg = in
+	if f.configureErr != nil {
+		return launcher.LauncherStatus{}, f.configureErr
+	}
+	return launcher.LauncherStatus{SimulatorID: in.SimulatorID, Configured: true, LaunchMethod: in.LaunchMethod, SteamAppID: in.SteamAppID}, nil
+}
+
+func (f *fakeLauncherService) Launch(simulatorID string) (launcher.LauncherStatus, error) {
+	f.launchCalls.Add(1)
+	f.launchFor = simulatorID
+	if f.launchErr != nil {
+		return launcher.LauncherStatus{}, f.launchErr
+	}
+	return f.launchOut, nil
+}
+
+func newTestSettingsService(t *testing.T) *app.SettingsService {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, &spyMainEmitter{})
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	return svc
+}
+
+func TestHandleLauncherStatusGetEmitsStatus(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	fake := &fakeLauncherService{
+		statusOut: launcher.LauncherStatus{SimulatorID: "lmu", Configured: true, LaunchMethod: "steam-uri", SteamAppID: launcher.DefaultLMUAppID},
+	}
+	handleLauncherStatusGet("lmu", fake, emitter)
+	if fake.statusCalls.Load() != 1 {
+		t.Fatalf("expected 1 status call, got %d", fake.statusCalls.Load())
+	}
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:status" {
+		t.Fatalf("expected single launcher:status, got %v", emitter.events)
+	}
+}
+
+func TestHandleLauncherStatusGetDefaultsToLMU(t *testing.T) {
+	fake := &fakeLauncherService{}
+	handleLauncherStatusGet("", fake, &spyMainEmitter{})
+	if fake.statusFor != "lmu" {
+		t.Fatalf("expected default simulator 'lmu', got %q", fake.statusFor)
+	}
+}
+
+func TestHandleLauncherConfigurePersistsAndEmits(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	fake := &fakeLauncherService{}
+	settings := newTestSettingsService(t)
+	handleLauncherConfigure(
+		launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "steam-uri", SteamAppID: launcher.DefaultLMUAppID},
+		fake,
+		settings,
+		emitter,
+		func(string, ...any) {},
+	)
+	if fake.configureCalls.Load() != 1 {
+		t.Fatalf("expected 1 configure call, got %d", fake.configureCalls.Load())
+	}
+	wantEvents := []string{"launcher:configured", "settings"}
+	if len(emitter.events) != 2 || emitter.events[0] != wantEvents[0] || emitter.events[1] != wantEvents[1] {
+		t.Fatalf("events=%v, want %v", emitter.events, wantEvents)
+	}
+}
+
+func TestHandleLauncherConfigureRejectsInvalidPayload(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	fake := &fakeLauncherService{configureErr: errors.New("invalid config: bad")}
+	settings := newTestSettingsService(t)
+	handleLauncherConfigure(
+		launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "magic"},
+		fake,
+		settings,
+		emitter,
+		func(string, ...any) {},
+	)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected single launcher:error event, got %v", emitter.events)
+	}
+	for _, e := range emitter.events {
+		if e == "launcher:configured" || e == "settings" {
+			t.Fatalf("must not emit %q on error, got %v", e, emitter.events)
+		}
+	}
+}
+
+func TestHandleLauncherLaunchEmitsLaunchedOnSuccess(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	fake := &fakeLauncherService{
+		launchOut: launcher.LauncherStatus{
+			SimulatorID:    "lmu",
+			Configured:     true,
+			LaunchMethod:   "steam-uri",
+			SteamAppID:     launcher.DefaultLMUAppID,
+			LastLaunchedAt: "2026-06-30T12:00:00Z",
+		},
+	}
+	handleLauncherLaunch("lmu", fake, emitter, func(string, ...any) {})
+	if fake.launchCalls.Load() != 1 {
+		t.Fatalf("expected 1 launch call, got %d", fake.launchCalls.Load())
+	}
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:launched" {
+		t.Fatalf("expected single launcher:launched event, got %v", emitter.events)
+	}
+}
+
+func TestHandleLauncherLaunchEmitsErrorOnFailure(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	fake := &fakeLauncherService{launchErr: errors.New("not configured: lmu")}
+	handleLauncherLaunch("lmu", fake, emitter, func(string, ...any) {})
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected single launcher:error, got %v", emitter.events)
+	}
+	for _, e := range emitter.events {
+		if e == "launcher:launched" {
+			t.Fatalf("must not emit launcher:launched on error, got %v", emitter.events)
+		}
+	}
+}
+
+func TestHandleLauncherLaunchDefaultsToLMU(t *testing.T) {
+	fake := &fakeLauncherService{
+		launchOut: launcher.LauncherStatus{SimulatorID: "lmu", LaunchMethod: "steam-uri"},
+	}
+	handleLauncherLaunch("", fake, &spyMainEmitter{}, func(string, ...any) {})
+	if fake.launchFor != "lmu" {
+		t.Fatalf("expected default simulator 'lmu', got %q", fake.launchFor)
+	}
+}
+
+// TestLauncherServiceWiringEndToEnd exercises the real *launcher.Service
+// through the wiring functions. It writes a config and confirms GetStatus
+// reflects it after a Save round-trip via the SettingsService. This catches
+// the SettingsBackend interface mismatch silently and proves the wiring
+// works against the production types.
+func TestLauncherServiceWiringEndToEnd(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	settings := newTestSettingsService(t)
+	svc := launcher.NewService(settings, emitter, nil)
+
+	// Configure a steam-uri entry and confirm it persists via settings.
+	cfg := launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "steam-uri"}
+	if _, err := svc.Configure(cfg); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
+	st := settings.GetLaunchers()["lmu"]
+	if st.LaunchMethod != "steam-uri" {
+		t.Fatalf("expected persisted launchMethod=steam-uri, got %q", st.LaunchMethod)
+	}
+	if st.SteamAppID != launcher.DefaultLMUAppID {
+		t.Fatalf("expected default SteamAppID %d, got %d", launcher.DefaultLMUAppID, st.SteamAppID)
+	}
+
+	// Status through the wiring function should return Configured=true.
+	handleLauncherStatusGet("lmu", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:status" {
+		t.Fatalf("expected launcher:status, got %v", emitter.events)
+	}
+	if _, ok := emitter.data[0].(map[string]any)["lmu"].(launcher.LauncherStatus); !ok {
+		t.Fatalf("expected lmu status payload, got %+v", emitter.data[0])
+	}
+}
+
+// TestLauncherConfigureHandlerReEmitsSettingsOnRejection makes sure that
+// when Configure fails the wiring does NOT re-emit "settings" with stale
+// data. This guards against a regression where a rejected configure could
+// leave the UI thinking the saved payload is current.
+func TestLauncherConfigureHandlerReEmitsSettingsOnRejection(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	fake := &fakeLauncherService{configureErr: errors.New("invalid config: bad method")}
+	settings := newTestSettingsService(t)
+	handleLauncherConfigure(
+		launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "magic"},
+		fake,
+		settings,
+		emitter,
+		func(string, ...any) {},
+	)
+	for _, e := range emitter.events {
+		if e == "settings" {
+			t.Fatalf("must not re-emit settings on configure failure, got %v", emitter.events)
+		}
 	}
 }

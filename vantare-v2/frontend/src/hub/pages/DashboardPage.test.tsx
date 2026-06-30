@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@wailsio/runtime", () => ({
@@ -55,5 +55,18 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByTestId("active-overlay-card")).toBeTruthy();
     expect(screen.getByText(/Cargando estado/i)).toBeTruthy();
     expect(screen.queryByTestId("active-overlay-open")).toBeNull();
+  });
+
+  it("renders RecommendedQuickStart primary CTA when no active profile", () => {
+    const onUseRecommended = vi.fn();
+    render(
+      <DashboardPage
+        onNavigate={vi.fn()}
+        onUseRecommended={onUseRecommended}
+      />,
+    );
+    const cta = screen.getByTestId("recommended-quickstart-cta");
+    fireEvent.click(cta);
+    expect(onUseRecommended).toHaveBeenCalledTimes(1);
   });
 });

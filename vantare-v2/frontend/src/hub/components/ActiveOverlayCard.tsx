@@ -10,6 +10,7 @@ import type { AppSettings } from "../pages/SettingsPage";
 
 type ActiveOverlayCardProps = {
   onNavigate: (section: string) => void;
+  onUseRecommended?: () => void;
 };
 
 type HubProfilesPayload = {
@@ -24,7 +25,7 @@ function findActiveProfile(
   return profiles.find((p) => p.id === activeProfileId) ?? null;
 }
 
-export function ActiveOverlayCard({ onNavigate }: ActiveOverlayCardProps) {
+export function ActiveOverlayCard({ onNavigate, onUseRecommended }: ActiveOverlayCardProps) {
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -208,6 +209,16 @@ export function ActiveOverlayCard({ onNavigate }: ActiveOverlayCardProps) {
       >
         Ir a Overlays Studio
       </button>
+      {onUseRecommended && (
+        <button
+          type="button"
+          data-testid="active-overlay-recommended-cta"
+          onClick={onUseRecommended}
+          className="mt-2 btn-secondary rounded-lg px-5 py-2 text-xs font-bold text-white cursor-pointer"
+        >
+          Usar perfil recomendado
+        </button>
+      )}
     </section>
   );
 }

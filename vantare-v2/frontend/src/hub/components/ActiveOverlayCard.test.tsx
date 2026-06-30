@@ -223,4 +223,30 @@ describe("ActiveOverlayCard", () => {
 
     expect(Events.Emit).toHaveBeenCalledWith("hub:list");
   });
+
+  it("renders secondary CTA 'Usar perfil recomendado' when no active profile and prop is provided", () => {
+    const onUseRecommended = vi.fn();
+    render(
+      <ActiveOverlayCard
+        onNavigate={vi.fn()}
+        onUseRecommended={onUseRecommended}
+      />,
+    );
+    dispatchSettings({ activeOverlayProfileId: "" });
+
+    const cta = screen.getByTestId("active-overlay-cta");
+    expect(cta.textContent).toBe("Ir a Overlays Studio");
+
+    const secondary = screen.getByTestId("active-overlay-recommended-cta");
+    expect(secondary.textContent).toMatch(/Usar perfil recomendado/i);
+
+    fireEvent.click(secondary);
+    expect(onUseRecommended).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not render secondary CTA when onUseRecommended prop is not provided", () => {
+    render(<ActiveOverlayCard onNavigate={vi.fn()} />);
+    dispatchSettings({ activeOverlayProfileId: "" });
+    expect(screen.queryByTestId("active-overlay-recommended-cta")).toBeNull();
+  });
 });

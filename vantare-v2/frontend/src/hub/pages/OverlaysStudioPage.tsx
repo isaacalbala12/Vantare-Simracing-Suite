@@ -6,20 +6,57 @@ import { LayoutStudio } from "../overlays/LayoutStudio";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
 import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
+import { RecommendedSuccessBanner } from "../overlays/RecommendedSuccessBanner";
 import { useOverlayStudioState } from "../overlays/useOverlayStudioState";
 import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile } from "../overlays/recommended-profiles";
+import { runRecommendedFirstUse } from "../overlays/recommended-first-use";
 import { isRunningProfile, profileTarget, type OverlayStatus, type ProfileEntry } from "../state/overlay-workbench";
 import type { AppSettings } from "./SettingsPage";
 
 type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout";
 
-export function OverlaysStudioPage() {
+type OverlaysStudioPageProps = {
+  pendingRecommendedAutoStart?: "recommended-auto" | null;
+  onAutoStartHandled?: () => void;
+};
+
+type ProfilesListPayload = {
+  profiles?: Array<{ id: string; file: string }>;
+};
+
+function resolveFileById(id: string, timeoutMs = 3000): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      unsub?.();
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    const unsub = Events.On("hub:profiles", (event: { data?: ProfilesListPayload }) => {
+      const match = event.data?.profiles?.find((p) => p.id === id);
+      if (match) {
+        finish(match.file);
+      }
+    });
+    Events.Emit("hub:list");
+  });
+}
+
+export function OverlaysStudioPage({
+  pendingRecommendedAutoStart = null,
+  onAutoStartHandled,
+}: OverlaysStudioPageProps) {
   const [mode, setMode] = useState<StudioMode>("home");
   const studio = useOverlayStudioState({ autosave: false });
   const [notice, setNotice] = useState<string | null>(null);
   const [layoutTarget, setLayoutTarget] = useState<string | null>(null);
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [autoActivateAndStart, setAutoActivateAndStart] = useState(pendingRecommendedAutoStart === "recommended-auto");
+  const [lastSuccessId, setLastSuccessId] = useState<string | null>(null);
   const activeProfileIdRef = useRef<string | null>(null);
 
   function updateActiveProfileId(id: string | null) {
@@ -64,10 +101,21 @@ export function OverlaysStudioPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (pendingRecommendedAutoStart === "recommended-auto") {
+      setMode("recommended");
+      setAutoActivateAndStart(true);
+    }
+  }, [pendingRecommendedAutoStart]);
+
   function goHome() {
     setNotice(null);
     setLayoutTarget(null);
     setMode("home");
+    if (autoActivateAndStart) {
+      setAutoActivateAndStart(false);
+      onAutoStartHandled?.();
+    }
   }
 
   function createProfile() {
@@ -93,6 +141,24 @@ export function OverlaysStudioPage() {
     const defaultName = `${profile.name} (copia)`;
     const name = window.prompt("Nombre del perfil propio", defaultName);
     if (!name?.trim()) return;
+
+    if (autoActivateAndStart) {
+      runRecommendedFirstUse({
+        profile,
+        name,
+        emit: (eventName, data) => Events.Emit(eventName, data),
+        resolveFile: resolveFileById,
+        onSuccess: (id) => {
+          setLastSuccessId(id);
+          setNotice(null);
+        },
+        onError: (message) => {
+          setNotice(message);
+        },
+      });
+      return;
+    }
+
     Events.Emit("hub:save-own-copy", { profile: cloneRecommendedProfile(profile, name.trim()) });
   }
 
@@ -206,11 +272,36 @@ export function OverlaysStudioPage() {
 
   if (mode === "recommended") {
     return (
-      <RecommendedProfilesView
-        profiles={RECOMMENDED_PROFILES}
-        onSaveRecommended={saveRecommended}
-        onBack={goHome}
-      />
+      <div>
+        {lastSuccessId && (
+          <div className="mx-auto mt-4 max-w-[1800px] px-6">
+            <RecommendedSuccessBanner
+              profileId={lastSuccessId}
+              onGoToDashboard={() => {
+                setLastSuccessId(null);
+                goHome();
+                onAutoStartHandled?.();
+              }}
+            />
+          </div>
+        )}
+        {notice && (
+          <div className="mx-auto mt-4 max-w-[1800px] px-6">
+            <div
+              data-testid="recommended-error-banner"
+              className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+            >
+              {notice}
+            </div>
+          </div>
+        )}
+        <RecommendedProfilesView
+          profiles={RECOMMENDED_PROFILES}
+          onSaveRecommended={saveRecommended}
+          onBack={goHome}
+          autoActivateAndStart={autoActivateAndStart}
+        />
+      </div>
     );
   }
 
@@ -220,10 +311,10 @@ export function OverlaysStudioPage() {
 
   return (
     <>
-      {(notice || studio.lastError) && (
+      {(notice && !lastSuccessId) && (
         <div className="mx-auto mt-4 max-w-[1800px] px-6">
           <div className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300">
-            {notice || studio.lastError}
+            {notice}
           </div>
         </div>
       )}

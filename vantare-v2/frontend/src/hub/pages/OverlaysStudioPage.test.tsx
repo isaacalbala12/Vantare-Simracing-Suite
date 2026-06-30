@@ -365,4 +365,14 @@ describe("OverlaysStudioPage", () => {
 
     vi.useRealTimers();
   });
+
+  it("entra en modo recommended con autoActivateAndStart cuando pendingRecommendedAutoStart lo indica", () => {
+    render(
+      <OverlaysStudioPage
+        pendingRecommendedAutoStart="recommended-auto"
+        onAutoStartHandled={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByTestId("recommended-activate-and-start").length).toBeGreaterThan(0);
+  });
 });

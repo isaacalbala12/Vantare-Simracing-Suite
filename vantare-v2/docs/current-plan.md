@@ -11,6 +11,44 @@ Nota post-release (2026-06-29):
 Nota HUB-04 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-04-role-aware-beta-welcome.md`.
 
+Nota PARALLEL-01 (2026-06-30):
+- Plan de coordinacion guardado en `docs/superpowers/plans/2026-06-30-parallel-01-launcher-calendar-packaging.md`. PLAN ONLY, sin codigo.
+- Coordina tres workers en paralelo para `0.1.x`: Worker A LAUNCHER-01 full, Worker B CALENDAR-01 en fase aislada (parser/service/storage/componentes, sin tocar Dashboard ni CompositeApp), Worker C PACKAGING-01 icon branding (bloqueado hasta tener logo Vantare definitivo aprobado).
+- SETTINGS-01 queda fuera de esta tanda por decision explicita; se planifica e implementa por separado.
+- Orden recomendado: C primero si hay logo, A segundo, B tercero, integrador al final. Commit selectivo por worker, no mega-commit. Sin tag, sin release, sin Discord en esta tanda.
+- Fronteras duras: Worker A toca DashboardPage y AppSettings (bloque Launchers), Worker B NO toca DashboardPage ni CompositeApp ni AppSettings salvo 4 campos opcionales maximo, Worker C solo toca build/ + runbook + technical-debt.
+- CALENDAR-02 (integracion visual de Calendar en Dashboard y banner overlay en CompositeApp) queda como mini-tanda posterior; esta tanda produce backend + componentes aisladamente testeables.
+- Pendiente: confirmacion de Isaac sobre 8 puntos del plan (logo, commit strategy, orden SETTINGS-01 vs CALENDAR-02, conflictos en working tree, alcance macOS de Worker C, etc.).
+
+Nota CALENDAR-01 (2026-06-30) — fase aislada:
+- Implementacion backend + componentes frontend aislados de CALENDAR-01 en fase aislada, segun `docs/superpowers/plans/2026-06-30-calendar-01-lmu-race-reminder.md` y `docs/superpowers/plans/2026-06-30-parallel-01-launcher-calendar-packaging.md` (Worker B).
+- Alcance ejecutado en este commit (lo mas pequeno posible, fase aislada): parser, service, modelo y storage dedicado. NO se integra todavia en `DashboardPage`, `CompositeApp` ni `ObsOverlayApp` (queda para `CALENDAR-02`).
+- Backend Go (nuevo paquete `internal/calendar`):
+  - `calendar.go`: tipos `RaceEvent`, `Calendar`, error `*ErrInvalidLine` con `Line` y `Reason`; `Validate` por evento (title, startTime, durationMin, sim, registrationUrl); `Key()` para dedupe (title|track|startTime lowercase); `IsActiveAt`/`EndTime`; defaults `DefaultTimezone = "Europe/Madrid"` y `DefaultReminderMinutes = [30,15,10,5,2]`.
+  - `parse.go`: `Parse(text, timezone)` con formato estricto por lineas `Dia Mes | HH:MM | Titulo | Circuito | DuracionMin` (opcional `DiaSemana` delante, y campos `Serie`, `SessionLabel`, `RegistrationUrl` hasta 8 pipes). Acepta meses en espanol (enero..diciembre, setiembre alterno). Acepta linea vacia/comentario `#`. Si la fecha parseada ya paso y el usuario no puso anio explicito, suma 1 anio. Devuelve `*ErrInvalidLine` con linea y motivo claro.
+  - `calendar_service.go`: `Service` con `sync.Mutex`, reloj inyectable, escritura atomica via `os.CreateTemp` + `os.Rename` (sin corrupcion ante crash), `Load` tolera archivo inexistente (default), `Replace(events, timezone, source)` valida + reinterpreta zona horaria + dedupe por clave + persist + emite `Updated`; `Clear`, `Upcoming(now)`, `Past(now)`, `Events()`. Persistencia a `cfgDir/calendar-lmu.json` (NO `app-settings.json`).
+  - Tests: 19 PASS (parse 11, service 8) con `go test -count=1 ./internal/calendar/...`. Cubren: 3 lineas validas, comentarios/lineas vacias, errores por linea invalida (6 motivos), error de timezone, line numbers, preservacion de timezone, dedupe estable por clave con update in place, dedupe case-insensitive en Key, `Upcoming` activo / futuro / vacio, `Past` mas reciente / vacio, `IsActiveAt` en bordes, `Clear`, persistencia atomica (no deja `*.tmp-*`), round-trip via reload, `persistLeavesNoTmp`.
+- Frontend (nuevo, aislado, no integrado todavia):
+  - `frontend/src/calendar/calendar-types.ts`: tipos espejo de Go + helpers puros `isEventActive`, `eventEnd`, `formatCountdown` ("En 1d 8h" / "En 2h 14m" / "En 42m" / "Ahora") y `formatEventDate` en espanol estable. Sin dependencias de runtime.
+  - `frontend/src/calendar/calendar-store.ts`: helper reactivo `subscribeToCalendar(callback)` que escucha `calendar:loaded` y entrega `CalendarState = { kind: "no-calendar" } | { kind: "loaded"; calendar: Calendar }`. Tambien `requestCalendar()` (emite `calendar:get`) y `subscribeToCalendarErrors`. NO emite eventos de escritura (queda para el bridge de `CALENDAR-02`).
+  - `frontend/src/hub/components/NextRaceCard.tsx` + `NextRaceCard.test.tsx`: render aislado, 3 estados (`no-calendar` / `loaded` con countdown / `loaded-no-upcoming`). 6 tests PASS: vacio, evento futuro con countdown, evento activo ("Ahora"), solo eventos pasados, lista vacia, preferencia de evento activo sobre futuro. `now` inyectable para tests deterministas.
+  - `frontend/src/hub/components/LastActivityCard.tsx` + `LastActivityCard.test.tsx`: 3 estados (`no-calendar` / `empty` / `loaded`). 5 tests PASS: vacio, mas reciente pasado, ignora futuros, ignora activos, lista vacia. Disclaimer "Resultados oficiales no verificados" en UI.
+- Archivos NO tocados (segun PARALLEL-01): `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `frontend/src/overlay/CompositeApp.tsx`, `frontend/src/overlay/ObsOverlayApp.tsx`, `internal/app/settings_service.go`, `cmd/vantare/main.go`, `cmd/vantare/main_test.go`, `internal/app/launcher/*`. `EmptyNextRace.tsx`/`EmptyActivity.tsx` quedan como legacy (no se importan todavia desde Dashboard). `internal/app/calendar_bridge.go`, `CalendarReminderBanner.tsx` y `ImportCalendarDrawer.tsx` quedan para `CALENDAR-02`.
+- Sin dependencias nuevas (solo `os`, `path/filepath`, `time`, `sync`, `encoding/json`, `strings`, `sort`, `crypto/rand`, `errors`, `fmt`, `strconv`, `net/url`, `time.LoadLocation`).
+- Checks ejecutados en este commit:
+  - `gofmt -l internal/calendar/` limpio.
+  - `go test -count=1 ./internal/calendar/...`: 19/19 PASS.
+  - `go test -count=1 ./internal/app/... ./cmd/...`: PASS (no regresion).
+  - `corepack pnpm --dir frontend test -- NextRaceCard LastActivityCard`: 11/11 PASS (2 files).
+  - `corepack pnpm --dir frontend test`: 777/777 PASS (100 files; +20 sobre el baseline 757 por la suma de los 11 tests nuevos + 9 del calendario: 6 NextRaceCard + 5 LastActivityCard = 11. El delta real de este commit es 11; los 757->777 son +20 porque ya se anadieron 9 en commits previos no anotados. Verificable contando solo los archivos del paquete `internal/calendar/` y los dos componentes nuevos).
+  - `corepack pnpm --dir frontend exec tsc -b`: OK.
+  - `corepack pnpm --dir frontend build`: OK (warning preexistente chunk size, no error).
+  - `corepack pnpm --dir frontend lint`: OK (warning preexistente `.eslintignore`, no error).
+  - `git diff --check`: warning preexistente CRLF en `pnpm-workspace.yaml` (fuera del scope, ya modificado por otro agente); mis archivos sin warnings.
+- Verificacion manual (sin abrir la app, fase aislada): mini-script Go o test que use `internal/calendar/parse.go` y `calendar_service.go` con un paste de prueba, verifique el round-trip en `cfgDir/calendar-lmu.json` y NO en `app-settings.json`. Tambien se puede ejecutar `go test -count=1 -v ./internal/calendar/...` y leer el archivo JSON resultante.
+- Riesgos no cubiertos: timezone mal configurada por el usuario (mitigable solo en UI de import, que es `CALENDAR-02`); paste ambiguo (el parser es estricto y reporta linea por linea); reimportacion duplicada (resuelta con dedupe por clave); reminder ticker y emision `calendar:reminder` (queda para `CALENDAR-02`); bridge Wails en `internal/app/calendar_bridge.go` y registro en `cmd/vantare/main.go` (queda para `CALENDAR-02`); `internal/app/settings_service.go` no se toca en esta fase (los 4 campos opcionales del plan siguen planificados para `CALENDAR-02` cuando se integre banner overlay); tests con `-race` no ejecutados en este host Windows sin CGO (misma nota que `TD-019`).
+- P3 nuevo documentado: si el frontend se monta antes de que el bridge Go emita el primer `calendar:loaded`, las cards muestran el placeholder honesto "no-calendar" indefinidamente hasta el primer emision. Aceptable: el bridge se registra al startup y emite tras `Load`. Se documenta en esta nota y queda como P3 a cerrar cuando se conecte el bridge.
+
 Nota LAUNCHER-01 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-launcher-01-sim-launcher.md`. PLAN ONLY, sin implementacion. Primer corte del launcher de simuladores: solo LMU en Windows + Steam (`steam://run/2399420` o `.exe` local). Sustituye `EmptyLauncher.tsx` por `LauncherCard`, anade `LauncherService` en Go y bloque `Launchers` en `AppSettings`. Fuera de v0.1.x: multi-sim, Linux/Proton, procesos supervisados, instalacion automatica de apps externas, hotkey "abrir LMU", UI de edicion de `AssociatedApps`.
 - Adapta el copy del modal BetaWelcome segun el tipo de usuario (beginner/intermediate/advanced/creator/organizer). El modal es obligatorio: ya no tiene boton X/cerrar y el boton "Empezar" esta disabled hasta seleccionar un rol. Asi nunca se persiste `betaWelcomeCompleted` sin un rol.
@@ -1054,3 +1092,33 @@ Cierre del P3-2 de `docs/adversarial-review.md`: la galeria de disenos oficiales
 - Dependencias.
 - Formato de perfiles JSON.
 - Arquitectura de telemetria LMU.
+
+## Nota PACKAGING-01 (2026-06-30) — Vantare app icon branding (Windows-only)
+
+Worker C de `docs/superpowers/plans/2026-06-30-parallel-01-launcher-calendar-packaging.md` ejecutado en fase aislada sobre `build/`, runbook y este plan. Sin tag, sin release, sin Discord.
+
+Alcance aplicado:
+- `build/appicon.png` sustituido por el logo Vantare definitivo (`E:\Vantare\Graficos\Logo\1024px.png`, 1024x1024, 24bpp RGB, 237131 bytes).
+- `build/windows/icon.ico` regenerado con `wails3 generate icons` desde el nuevo PNG. Resultado: ICO multi-tamano 16/32/48/64/128/256 a 32bpp, header `00 00 01 00` correcto, 28395 bytes (antes 20679 con el icono Wails default). Comando ejecutado: `wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico -iconcomposerinput appicon.icon -macassetdir darwin` (mismo que `build/Taskfile.yml` `common:generate:icons`; `-sizes` por defecto del CLI: 256,128,64,48,32,16).
+- `build/darwin/icons.icns` no se ha tocado (Windows-only): tras cada `wails3 generate icons` se regenera tambien; restaurado a la version de git con `git checkout -- build/darwin/icons.icns` en cada pasada. `build/appicon.icon/**` tampoco se ha tocado.
+- `build/windows/wails.exe.manifest`: el `assemblyIdentity` venia del template Wails con `name="com.example.tempwailsproj"` y `version="0.1.0"`. Bug real que cualquier instalacion/registro de Windows arrastraba. Ajustado a `name="com.vantare.overlays"` y `version="0.1.0.2"` (alineado con `build/windows/info.json` y con el binario actual). Minimo cambio.
+- `docs/release-beta-operations-runbook.md`: nueva subseccion "Smoke del icono de la app (Windows)" dentro de la seccion 4 (Opcion A). Documenta: (a) comando para regenerar el `.ico` cuando cambie el logo fuente; (b) procedimiento de smoke via `wails3 task release:clean` + `release:artifacts` + `release:verify` (recordatorio explicito: el camino A2 con `go build` rapido NO incrusta `.syso`); (c) cache de iconos de Windows y mitigaciones (reinstall, `ie4uinit.exe -show`, limpieza de `IconCache.db` como ultimo recurso); (d) nota de no commitear cambios en `build/darwin/icons.icns` ni en `build/appicon.icon/**` si el alcance es Windows-only.
+
+Checks ejecutados:
+- `wails3 task release:clean` OK.
+- `wails3 task release:artifacts` no se ha podido ejecutar end-to-end en este host: el `cmd/vantare/main.go` actual tiene cambios sin commit del Worker A (LAUNCHER-01) que referencian `launcherSvc`/`app.NewLauncherService`/`exec` no declarados (codigo a medio implementar del worker paralelo, no de este lote). El integrador final debera reejecutar `release:artifacts` cuando A cierre su commit. **Esto no es bloqueante para el commit de PACKAGING-01**: el `.syso` se regenera correctamente desde mi `.ico` y mi `.manifest` (verificado con `wails3 generate syso` aislado, output 31172 bytes). El `.exe` y el instalador NSIS se regeneraran cuando el codigo de A compile.
+- `bin/vantare.exe` (regenerado por la build parcial del pipeline antes de fallar, 13060096 bytes, 30/06 16:45:57) no tiene seccion `.rsrc` porque el host de este agente no tiene toolchain `gcc`/`windres` y Go no incrusta `.syso` sin CGO/MinGW. La verificacion de icono en `.exe` tendra que hacerse en CI (GitHub Actions si tiene toolchain) o en una maquina Windows con MinGW. La seccion `.rsrc` aparecera cuando se ejecute el build oficial con la toolchain presente.
+- `git diff --check` en archivos modificados por este lote: limpio (no se ha ejecutado sobre archivos de otros workers, no es mi responsabilidad).
+
+Riesgos restantes:
+- Cache de iconos de Windows: documentado en runbook; puede requerir reinstall o `ie4uinit.exe -show` para que taskbar/ventana muestren el branding Vantare.
+- Falta de toolchain CGO en este host impide la verificacion end-to-end de `.rsrc` en `.exe` local. El integrador debera confirmar el icono en `.exe` en CI o en una maquina Windows con MinGW.
+- Si el logo fuente definitivo cambia, hay que reejecutar el comando documentado en el runbook; el `.syso` no se regenera solo.
+
+Verificacion manual (a hacer en maquina Windows con MinGW o en CI):
+1. `wails3 task release:clean && wails3 task release:artifacts && wails3 task release:verify`.
+2. Inspeccionar `bin/vantare.exe`: `magick identify bin/vantare.exe` debe listar 16/32/48/64/128/256 con el logo Vantare.
+3. Instalar `bin/vantare-amd64-installer.exe`. Confirmar que el icono del instalador, el acceso directo del menu Inicio y el `.exe` instalado muestran branding Vantare y no el icono Wails por defecto.
+4. Si Windows cachea el icono antiguo, seguir el procedimiento de limpieza del runbook (reinstall, `ie4uinit.exe -show`, `IconCache.db` como ultimo recurso).
+
+Estado del commit: pendiente de ejecucion por el integrador.

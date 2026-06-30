@@ -166,6 +166,40 @@ Los workflows `Discord beta progress` y `Discord known issues` llevan un guard `
    ```
    Debe devolver `{"ok":true}`.
 
+### Smoke del icono de la app (Windows)
+
+El icono que se ve en taskbar, ventana e instalador NSIS sale de `build\windows\icon.ico`, que `release:artifacts` incrusta en `bin\vantare.exe` y en el instalador via `wails3 generate syso`. **El build rapido de la opcion A2 (`go build` directo) NO genera ni incrusta `wails_windows_amd64.syso`, asi que su binario conserva el icono anterior aunque el `.ico` se haya regenerado**. Para validar branding real:
+
+1. Regenerar el icono solo cuando cambie el logo fuente (`build\appicon.png`):
+   ```powershell
+   cd build
+   wails3 generate icons -input appicon.png -macfilename darwin\icons.icns -windowsfilename windows\icon.ico -iconcomposerinput appicon.icon -macassetdir darwin
+   cd ..
+   ```
+   El `.ico` resultante es multi-tamano (16, 32, 48, 64, 128, 256) a 32 bpp. El comando tambien regenera `build\darwin\icons.icns` y `build\appicon.icon\Assets\wails_icon_vector.svg`; **no commitear** cambios en `darwin\icons.icns` ni en `appicon.icon\**` si el alcance es Windows-only — restaurar con `git checkout -- build/darwin/icons.icns build/appicon.icon/`.
+
+2. Smoke de icono con el pipeline oficial (unico que incrusta `.syso`):
+   ```powershell
+   wails3 task release:clean
+   wails3 task release:artifacts
+   wails3 task release:verify
+   ```
+   Inspeccionar el `.exe`:
+   ```powershell
+   magick identify .\bin\vantare.exe
+   ```
+   Debe listar los tamanos del icono (16..256). Alternativa sin ImageMagick: inspeccionar la seccion `.rsrc` del PE con cualquier editor de recursos.
+
+3. Smoke visual minimo: instalar el artefacto (`.\bin\vantare-amd64-installer.exe`), abrir el `.exe` desde el menu Inicio y confirmar que el icono de taskbar/ventana es el logo Vantare y no el icono Wails por defecto. Si Windows sigue mostrando el icono anterior, ver la nota sobre cache de iconos abajo.
+
+#### Cache de iconos en Windows
+
+Windows cachea iconos de `.exe` por ruta y hash. Aunque el binario cambie, el shell puede seguir mostrando el icono antiguo hasta que se libere la cache. Procedimiento recomendado, de menor a mayor impacto:
+
+- Reinstalar encima (`vantare-amd64-installer.exe` por encima de la build anterior) suele bastar.
+- Si no basta, cerrar la app y forzar refresco: `ie4uinit.exe -show` (Windows 10/11).
+- Como ultimo recurso, cerrar la app, parar `explorer.exe` desde el administrador de tareas, borrar `%LocalAppData%\IconCache.db` y volver a iniciar `explorer.exe`. **No** hacerlo si hay otros Vantare/binarios en uso.
+
 ### Opcion A2: build rapido de smoke local, no publicable
 
 Usar solo para probar cambios locales en la app cuando no necesitas installer/zip. Esta ruta genera `bin\vantare.exe` con Supabase embebido, pero **no** produce los 6 artefactos oficiales ni checksums.

@@ -440,7 +440,7 @@ describe("HubApp gate (production)", () => {
     const cta = await waitFor(() => screen.getByTestId("recommended-quickstart-cta"));
     cta.click();
     await waitFor(() => {
-      expect(screen.getByTestId("recommended-activate-and-start")).toBeTruthy();
+      expect(screen.getAllByTestId("recommended-activate-and-start").length).toBeGreaterThan(0);
     });
   });
 });

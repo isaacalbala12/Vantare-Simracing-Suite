@@ -55,9 +55,11 @@ export function OverlaysStudioPage({
   const [layoutTarget, setLayoutTarget] = useState<string | null>(null);
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-  const [autoActivateAndStart, setAutoActivateAndStart] = useState(pendingRecommendedAutoStart === "recommended-auto");
   const [lastSuccessId, setLastSuccessId] = useState<string | null>(null);
   const activeProfileIdRef = useRef<string | null>(null);
+  const isAutoStart = pendingRecommendedAutoStart === "recommended-auto";
+  const effectiveMode: StudioMode = isAutoStart && mode === "home" ? "recommended" : mode;
+  const autoActivateAndStart = isAutoStart;
 
   function updateActiveProfileId(id: string | null) {
     activeProfileIdRef.current = id;
@@ -101,19 +103,11 @@ export function OverlaysStudioPage({
     };
   }, []);
 
-  useEffect(() => {
-    if (pendingRecommendedAutoStart === "recommended-auto") {
-      setMode("recommended");
-      setAutoActivateAndStart(true);
-    }
-  }, [pendingRecommendedAutoStart]);
-
   function goHome() {
     setNotice(null);
     setLayoutTarget(null);
     setMode("home");
-    if (autoActivateAndStart) {
-      setAutoActivateAndStart(false);
+    if (isAutoStart) {
       onAutoStartHandled?.();
     }
   }
@@ -178,7 +172,7 @@ export function OverlaysStudioPage({
     Events.Emit("overlay:start-active");
   }
 
-  if (mode === "widgets") {
+  if (effectiveMode === "widgets") {
     if (!studio.profile) {
       return (
         <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8">
@@ -210,7 +204,7 @@ export function OverlaysStudioPage({
     );
   }
 
-  if (mode === "layout") {
+  if (effectiveMode === "layout") {
     if (!studio.profile || studio.profile.id !== layoutTarget) {
       return (
         <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8">
@@ -253,7 +247,7 @@ export function OverlaysStudioPage({
     );
   }
 
-  if (mode === "ownProfiles") {
+  if (effectiveMode === "ownProfiles") {
     return (
       <OwnProfilesView
         profiles={studio.profiles}
@@ -270,7 +264,7 @@ export function OverlaysStudioPage({
     );
   }
 
-  if (mode === "recommended") {
+  if (effectiveMode === "recommended") {
     return (
       <div>
         {lastSuccessId && (
@@ -305,7 +299,7 @@ export function OverlaysStudioPage({
     );
   }
 
-  if (mode === "community") {
+  if (effectiveMode === "community") {
     return <CommunityComingSoonView onBack={goHome} />;
   }
 

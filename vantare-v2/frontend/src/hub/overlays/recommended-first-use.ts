@@ -20,16 +20,21 @@ export async function runRecommendedFirstUse(params: RunRecommendedFirstUseParam
   }
 
   const cloned = cloneRecommendedProfile(profile, trimmed);
+  if (!cloned.id) {
+    onError?.("El perfil clonado no tiene un identificador válido.");
+    return;
+  }
+  const clonedId = cloned.id;
   emit("hub:save-own-copy", { profile: cloned });
   emit("hub:list");
 
-  const file = await resolveFile(cloned.id);
+  const file = await resolveFile(clonedId);
   if (!file) {
     onError?.("No se encontró el archivo del perfil recién creado.");
     return;
   }
 
-  emit("hub:set-active", { id: cloned.id, file });
+  emit("hub:set-active", { id: clonedId, file });
   emit("overlay:start-active");
-  onSuccess?.(cloned.id);
+  onSuccess?.(clonedId);
 }

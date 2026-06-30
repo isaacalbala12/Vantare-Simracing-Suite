@@ -68,6 +68,8 @@ function HubShell() {
   const [section, setSection] = useState<Section>("dashboard");
   const [version, setVersion] = useState<string | null>(null);
   const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
+  const [hasActiveProfile, setHasActiveProfile] = useState(false);
+  const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
 
   useEffect(() => {
     document.body.classList.add("hub");
@@ -77,12 +79,18 @@ function HubShell() {
     const unsubSource = Events.On("telemetry:source-status", (event: { data: SourceStatus }) => {
       setSourceStatus(event.data);
     });
+    const unsubSettings = Events.On("settings", (event: { data: Record<string, unknown> }) => {
+      const activeId = event.data?.activeOverlayProfileId;
+      setHasActiveProfile(typeof activeId === "string" && activeId.length > 0);
+    });
     Events.Emit("app:version:get");
     Events.Emit("telemetry:source-status:get");
+    Events.Emit("settings:get");
     return () => {
       document.body.classList.remove("hub");
       unsub?.();
       unsubSource?.();
+      unsubSettings?.();
     };
   }, []);
 
@@ -90,13 +98,33 @@ function HubShell() {
     setSection(id as Section);
   }, []);
 
+  const handleUseRecommended = useCallback(() => {
+    setPendingRecommendedAutoStart("recommended-auto");
+    setSection("profiles");
+  }, []);
+
+  const handleAutoStartHandled = useCallback(() => {
+    setPendingRecommendedAutoStart(null);
+  }, []);
+
   return (
     <div className="h-screen premium-bg relative flex flex-col">
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
       <UpdateBanner />
       <ScrollableMain className="flex-1 pt-0">
-        {section === "dashboard" && <DashboardPage />}
-        {section === "profiles" && <OverlaysStudioPage />}
+        {section === "dashboard" && (
+          <DashboardPage
+            onNavigate={handleNavigate}
+            hasActiveProfile={hasActiveProfile}
+            onUseRecommended={handleUseRecommended}
+          />
+        )}
+        {section === "profiles" && (
+          <OverlaysStudioPage
+            pendingRecommendedAutoStart={pendingRecommendedAutoStart}
+            onAutoStartHandled={handleAutoStartHandled}
+          />
+        )}
         {section === "setup" && <SettingsPage />}
         {section === "engineer" && <EngineerPage />}
         {section === "telemetry" && (

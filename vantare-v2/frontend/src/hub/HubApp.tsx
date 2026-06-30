@@ -112,6 +112,8 @@ function HubShell() {
   const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [hasActiveProfile, setHasActiveProfile] = useState(false);
+  const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
 
   useEffect(() => {
@@ -126,6 +128,8 @@ function HubShell() {
       settingsRef.current = event.data ?? null;
       const completed = event.data?.betaWelcomeCompleted === true;
       setShowBetaWelcome(!completed);
+      const activeId = event.data?.activeOverlayProfileId;
+      setHasActiveProfile(typeof activeId === "string" && activeId.length > 0);
       setSettingsLoaded(true);
     });
     Events.Emit('app:version:get');
@@ -151,6 +155,15 @@ function HubShell() {
     }
   }, []);
 
+  const handleUseRecommended = useCallback(() => {
+    setPendingRecommendedAutoStart("recommended-auto");
+    setSection("profiles");
+  }, []);
+
+  const handleAutoStartHandled = useCallback(() => {
+    setPendingRecommendedAutoStart(null);
+  }, []);
+
   return (
     <div className="h-screen premium-bg relative flex flex-col">
       {settingsLoaded && showBetaWelcome && (
@@ -159,8 +172,19 @@ function HubShell() {
       <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
       <UpdateBanner />
       <ScrollableMain className="flex-1 pt-0">
-        {section === "dashboard" && <DashboardPage onNavigate={handleNavigate} />}
-        {section === "profiles" && <OverlaysStudioPage />}
+        {section === "dashboard" && (
+          <DashboardPage
+            onNavigate={handleNavigate}
+            hasActiveProfile={hasActiveProfile}
+            onUseRecommended={handleUseRecommended}
+          />
+        )}
+        {section === "profiles" && (
+          <OverlaysStudioPage
+            pendingRecommendedAutoStart={pendingRecommendedAutoStart}
+            onAutoStartHandled={handleAutoStartHandled}
+          />
+        )}
         {section === "setup" && <SettingsPage />}
         {section === "engineer" && <EngineerPage />}
         {section === "telemetry" && (

@@ -232,7 +232,7 @@ func main() {
 	defer stop()
 
 	wailsApp := application.New(application.Options{
-		Name: "Vantare Overlays",
+		Name: "Vantare Simracing Suite",
 		Assets: application.AssetOptions{
 			Handler: application.BundledAssetFileServer(distFS),
 		},

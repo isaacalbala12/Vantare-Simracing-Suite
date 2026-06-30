@@ -2,19 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { applyTheme, getStoredThemeId, persistThemeId, type VantareTheme } from '../../lib/theme';
 import vantareV5 from '../../themes/vantare-v5.json';
 import vantareLite from '../../themes/vantare-lite.json';
+import { NAV_ITEMS } from '../navigation';
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
-
-type NavItem = { label: string; id: string; active?: boolean };
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Hub', id: 'dashboard', active: true },
-  { label: 'Overlays Studio', id: 'profiles' },
-  { label: 'Ingeniero', id: 'engineer' },
-  { label: 'Telemetría', id: 'telemetry' },
-  { label: 'Setup', id: 'setup' },
-];
 
 type SourceStatus = {
   kind: string;
@@ -119,14 +110,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
                 onClick={handleNav(item.id)}
                 className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''}`}
               >
-                {item.id === 'live' ? (
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-vantare-red-500 live-indicator" />
-                    En Directo
-                  </span>
-                ) : (
-                  item.label
-                )}
+                {item.label}
               </a>
             ))}
           </div>

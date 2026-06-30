@@ -27,6 +27,23 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 
 ## Abierto
 
+### TD-050 - HUB-05 P3 visual/UX cleanup
+
+- Severidad: P3
+- Area: frontend/hub
+- Origen: evidencia final HUB-05 v5.2 Shell, Dashboard y Launcher (2026-06-30)
+- Estado: abierto
+- Release objetivo: `0.1.x` UI/cableado o auditoria global post-Hub
+- Motivo para diferir: HUB-05 prioriza que el primer corte visual funcione sin fake data y sin tocar Go/overlays/auth. Los puntos restantes son limpieza de UX/test/dead code, no bloquean el uso.
+- Fix esperado:
+  - decidir si `Launcher` debe aparecer simultaneamente en topbar, sidebar y dock, o consolidar entradas tras ver uso real;
+  - conectar el modo Lite a las primitivas v5.2 o documentar explicitamente que Lite solo afecta zonas legacy;
+  - sustituir el `top: 58px` fijo del dock por token/CSS var compartido con la topbar;
+  - definir el spec multi-sim/associated apps del Launcher antes de ampliar placeholders;
+  - migrar tests de disabled a matcher semantico cuando el setup de testing lo permita;
+  - eliminar o reconectar `EmptyNextRace.tsx` y `EmptyActivity.tsx` si quedan sin consumidores tras CALENDAR-02.
+- Riesgo si se ignora: duplicidad visual menor, deuda de mantenimiento y posible confusion futura al extender Launcher/Calendar, pero sin bloqueo funcional inmediato.
+
 ### TD-043 - Supabase RPC get_account_entitlements sin migracion SQL
 
 - Severidad: P3

@@ -105,7 +105,8 @@ Antes de volver al roadmap largo de release, ejecutar la linea publica inmediata
 | `0.1.x` | Por planear | Vantare Setup Launcher v1. |
 | `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador. |
 | `0.1.x` | Por planear | Launcher de simuladores: primer corte LMU-only para abrir simulador desde Vantare y agrupar acciones asociadas. |
-| `0.1.x` | Por planear | Overlays publicos adicionales, Hub, hardening, rendimiento y UX. |
+| `0.1.x` | En progreso | Hub v5.2: primer corte visual implementado (shell, Dashboard con calendario integrado y pestaña Launcher real). Pendiente review/commit y siguientes cortes de paginas internas/cableado. |
+| `0.1.x` | Por planear | Overlays publicos adicionales, hardening, rendimiento y UX posterior. |
 | `0.1.x` | Por planear | Setup UI Tabs Rework (SETTINGS-01), icon branding Vantare (PACKAGING-01), UI polish del Hub. |
 | `0.1.x` | Por planear | Stripe/licencias paid/suite reales, race data real desde LMU. |
 
@@ -143,6 +144,7 @@ Ejecutar por orden salvo decision explicita:
 - `HUB-02`: completado — ActiveOverlayCard con acciones reales de overlay activo en Dashboard.
 - `HUB-03`: completado — recommended first-use flow: Hub → recomendado → guardar como propio → overlay funcionando.
 - `HUB-04`: completado y commiteado — role-aware BetaWelcome con copy adaptado por tipo de usuario.
+- `HUB-05`: implementado, pendiente review/commit — primer corte visual v5.2 del Hub: shell/navegacion, Dashboard con calendario integrado, Launcher como pestaña real y placeholders honestos sin fake data.
 - `0.1.x por planear`: Linux/Proton experimental. Validar primero si conviene app Windows bajo Proton, build Linux nativa o bridge/proxy para telemetria.
 - `0.1.x por planear`: Vantare Setup Launcher v1. Scope inicial: Windows only, UI propia, verificacion SHA256, NSIS por debajo, aviso SmartScreen y enlaces de soporte.
 - `0.1.x por planear`: LMU race countdown beta. Scope inicial: importar manualmente o con IA el calendario semanal publicado en Discord, validar horarios/zona horaria y mostrar avisos temporales sobre el simulador. No incluye scraping automatico de Discord ni bot.

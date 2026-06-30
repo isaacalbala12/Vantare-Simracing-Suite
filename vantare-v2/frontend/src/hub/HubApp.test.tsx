@@ -496,4 +496,75 @@ describe("HubApp gate (production)", () => {
       expect(screen.getAllByTestId("recommended-save-as-own").length).toBeGreaterThan(0);
     });
   });
+
+  it("renders Launcher page when launcher section is selected", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    // Wait for the sidebar Launcher button to be available, then click it.
+    const sidebarLauncher = await waitFor(() =>
+      screen.getByTestId("v52-sidebar-launcher"),
+    );
+    sidebarLauncher.click();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Launcher" })).toBeTruthy();
+    });
+  });
+
+  it("marks the active section as current in the sidebar", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      const dash = screen.getByTestId("v52-sidebar-dashboard");
+      expect(dash.getAttribute("aria-current")).toBe("page");
+    });
+  });
+
+  it("sidebar exposes all expected v5.2 sections (no Setup, Ajustes is setup)", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.getByTestId("v52-sidebar-dashboard")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-profiles")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-launcher")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-engineer")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-telemetry")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-setup")).toBeTruthy();
+    });
+  });
 });

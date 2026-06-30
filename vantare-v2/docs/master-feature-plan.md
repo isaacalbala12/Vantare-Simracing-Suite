@@ -28,7 +28,7 @@ El versionado operativo usa formato `X.X.X.X`, por ejemplo `0.1.2.0`.
 Referencia actual:
 
 - `0.1.0.X`: beta publica inicial y hotfixes criticos. El cuarto segmento es hotfix (`0.1.0.1`, `0.1.0.2`).
-- `0.1.x`: backlog por planear tras cerrar hotfixes: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, overlays, Hub, disenos oficiales, hardening y rendimiento.
+- `0.1.x`: backlog activo tras cerrar hotfixes: Hub v5.2 en cortes incrementales, Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, overlays, disenos oficiales, hardening y rendimiento.
 - `0.2.X.X` a `0.9.X.X`: fases de beta/release posteriores segun avance real, no una promesa rigida.
 - `1.0.0.0`: release estable.
 
@@ -229,7 +229,8 @@ Las fases versionadas siguientes son historial operativo previo al reset publico
 | `0.1.x` | Por planear | Vantare Setup Launcher v1: UI propia de instalacion, verificacion SHA256, lanzamiento de NSIS y enlace a portable/known issues. |
 | `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador con avisos de tiempo restante. |
 | `0.1.x` | Por planear | Launcher de simuladores: primer corte LMU-only para abrir simulador desde Vantare y agrupar acciones asociadas. |
-| `0.1.x` | Por planear | Nuevos overlays publicos, mejoras de Hub, disenos oficiales adicionales, hardening de licencias y primeras correcciones de rendimiento. |
+| `0.1.x` | En progreso | Hub v5.2: primer corte implementado (shell, Dashboard y Launcher). Faltan paginas internas/subpestanas, cableado final y review antes de tratarlo como cerrado. |
+| `0.1.x` | Por planear | Nuevos overlays publicos, disenos oficiales adicionales, hardening de licencias y primeras correcciones de rendimiento. |
 
 Regla: salvo hotfixes `0.1.0.x`, todo este bloque queda por planear. No anunciar Linux como estable, instalador propio completo, countdown ni launcher de simuladores hasta cerrar miniplan, implementacion, review y smoke real.
 

@@ -3,23 +3,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRaceCard } from "./NextRaceCard";
 
 type Handler = (event: { data: unknown }) => void;
-const listeners = new Map<string, Handler[]>();
 
-afterEach(() => {
-  cleanup();
+const { listeners, eventsOn, eventsEmit } = vi.hoisted(() => {
+  const map = new Map<string, Handler[]>();
+  const on = vi.fn((name: string, cb: Handler) => {
+    const list = map.get(name) ?? [];
+    list.push(cb);
+    map.set(name, list);
+    return vi.fn();
+  });
+  const emit = vi.fn();
+  return { listeners: map, eventsOn: on, eventsEmit: emit };
 });
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
-    On: vi.fn((name: string, cb: Handler) => {
-      const list = listeners.get(name) ?? [];
-      list.push(cb);
-      listeners.set(name, list);
-      return vi.fn();
-    }),
-    Emit: vi.fn(),
+    On: eventsOn,
+    Emit: eventsEmit,
   },
 }));
+
+afterEach(() => {
+  cleanup();
+});
 
 function dispatch(name: string, data: unknown) {
   act(() => {
@@ -56,8 +62,14 @@ function event(overrides: Record<string, unknown>) {
 describe("NextRaceCard", () => {
   beforeEach(() => {
     clearListeners();
+    eventsEmit.mockClear();
     vi.useFakeTimers();
     vi.setSystemTime(now);
+  });
+
+  it("requests the current calendar on mount", () => {
+    render(<NextRaceCard now={fixedNow} />);
+    expect(eventsEmit).toHaveBeenCalledWith("calendar:get", null);
   });
 
   it("shows empty state when no calendar has been loaded", () => {

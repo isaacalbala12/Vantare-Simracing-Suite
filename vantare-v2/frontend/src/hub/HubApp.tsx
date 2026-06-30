@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
-import { ScrollableMain } from './components/ScrollableMain';
-import { Topbar } from './components/Topbar';
-import { UpdateBanner } from './components/UpdateBanner';
+import { V52Shell } from './components/V52Shell';
 import { DashboardPage } from './pages/DashboardPage';
 import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { EngineerPage } from './pages/EngineerPage';
+import { LauncherPage } from './pages/LauncherPage';
+import { type Section } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
 import { PaywallScreen } from './auth/PaywallScreen';
@@ -15,8 +15,6 @@ import { LicenseBanner } from './auth/LicenseBanner';
 import { UnconfiguredScreen } from './auth/UnconfiguredScreen';
 import { getSession } from '../lib/supabase-auth';
 import { BetaWelcome, type BetaUserRole } from './onboarding/BetaWelcome';
-
-type Section = 'dashboard' | 'profiles' | 'telemetry' | 'setup' | 'engineer';
 
 type SourceStatus = {
   kind: string;
@@ -169,35 +167,37 @@ function HubShell() {
   }, []);
 
   return (
-    <div className="h-screen premium-bg relative flex flex-col">
+    <V52Shell
+      activeSection={section}
+      onNavigate={(next: string) => setSection(next as Section)}
+      version={version}
+      sourceStatus={sourceStatus}
+    >
       {settingsLoaded && showBetaWelcome && (
         <BetaWelcome onComplete={handleBetaWelcomeClose} />
       )}
-      <Topbar activeSection={section} onNavigate={handleNavigate} version={version} sourceStatus={sourceStatus} />
-      <UpdateBanner />
-      <ScrollableMain className="flex-1 pt-0">
-        {section === "dashboard" && (
-          <DashboardPage
-            onNavigate={handleNavigate}
-            hasActiveProfile={hasActiveProfile}
-            onUseRecommended={handleUseRecommended}
-          />
-        )}
-        {section === "profiles" && (
-          <OverlaysStudioPage
-            pendingRecommendedAutoStart={pendingRecommendedAutoStart}
-            onAutoStartHandled={handleAutoStartHandled}
-          />
-        )}
-        {section === "setup" && <SettingsPage />}
-        {section === "engineer" && <EngineerPage />}
-        {section === "telemetry" && (
-          <div className="flex items-center justify-center h-[60vh] text-vantare-textMuted text-sm font-mono">
-            Telemetría — próxima actualización
-          </div>
-        )}
-      </ScrollableMain>
-    </div>
+      {section === "dashboard" && (
+        <DashboardPage
+          onNavigate={handleNavigate}
+          hasActiveProfile={hasActiveProfile}
+          onUseRecommended={handleUseRecommended}
+        />
+      )}
+      {section === "profiles" && (
+        <OverlaysStudioPage
+          pendingRecommendedAutoStart={pendingRecommendedAutoStart}
+          onAutoStartHandled={handleAutoStartHandled}
+        />
+      )}
+      {section === "launcher" && <LauncherPage />}
+      {section === "setup" && <SettingsPage />}
+      {section === "engineer" && <EngineerPage />}
+      {section === "telemetry" && (
+        <div className="flex items-center justify-center h-[60vh] text-vantare-textMuted text-sm font-mono">
+          Telemetría — próxima actualización
+        </div>
+      )}
+    </V52Shell>
   );
 }
 

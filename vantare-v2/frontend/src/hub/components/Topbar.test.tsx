@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { Topbar } from "./Topbar";
 
@@ -112,5 +112,46 @@ describe("Topbar user display", () => {
       />,
     );
     expect(screen.queryByText(/Isaac Albala/i)).toBeNull();
+  });
+});
+
+describe("Topbar v5.2 navigation", () => {
+  it("renders Launcher in the top navigation", () => {
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    expect(screen.getByText("Launcher")).toBeTruthy();
+  });
+
+  it("navigates to launcher when clicking Launcher", () => {
+    const onNavigate = vi.fn();
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={onNavigate}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    fireEvent.click(screen.getByText("Launcher"));
+    expect(onNavigate).toHaveBeenCalledWith("launcher");
+  });
+
+  it("uses Ajustes (not Setup) as the settings section label", () => {
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    expect(screen.getByText("Ajustes")).toBeTruthy();
+    expect(screen.queryByText("Setup")).toBeNull();
   });
 });

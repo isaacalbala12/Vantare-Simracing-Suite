@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { subscribeToCalendar } from "../../calendar/calendar-store";
+import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import {
   EMPTY_CALENDAR,
   formatCountdown,
@@ -42,6 +42,7 @@ export function NextRaceCard({ now, onImport }: NextRaceCardProps) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    requestCalendar();
     const unsub = subscribeToCalendar((state) => {
       if (state.kind === "loaded") {
         setCalendar(state.calendar);

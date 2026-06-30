@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { NAV_ITEMS, isSection, type Section } from "./navigation";
+
+describe("hub navigation contract", () => {
+  it("contains the v5.2 sections in display order", () => {
+    expect(NAV_ITEMS.map((item) => item.id)).toEqual([
+      "dashboard",
+      "profiles",
+      "launcher",
+      "engineer",
+      "telemetry",
+      "setup",
+    ]);
+  });
+
+  it("accepts only known sections", () => {
+    expect(isSection("launcher")).toBe(true);
+    expect(isSection("dashboard")).toBe(true);
+    expect(isSection("plans")).toBe(false);
+    expect(isSection("")).toBe(false);
+  });
+
+  it("keeps labels user-facing and stable", () => {
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual([
+      "Hub",
+      "Overlays Studio",
+      "Launcher",
+      "Ingeniero",
+      "Telemetría",
+      "Ajustes",
+    ]);
+  });
+
+  it("exports a Section type that includes launcher", () => {
+    const section: Section = "launcher";
+    expect(section).toBe("launcher");
+  });
+});

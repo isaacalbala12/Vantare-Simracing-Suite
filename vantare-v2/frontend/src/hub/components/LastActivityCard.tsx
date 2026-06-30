@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { subscribeToCalendar } from "../../calendar/calendar-store";
+import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import {
   eventEnd,
   formatEventDate,
@@ -38,6 +38,7 @@ export function LastActivityCard({ now }: LastActivityCardProps) {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
 
   useEffect(() => {
+    requestCalendar();
     const unsub = subscribeToCalendar((state) => {
       if (state.kind === "loaded") {
         setCalendar(state.calendar);

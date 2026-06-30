@@ -8,6 +8,15 @@ vi.mock("@wailsio/runtime", () => ({
   },
 }));
 
+vi.mock("../components/LastActivityCard", () => ({
+  LastActivityCard: () => (
+    <div data-testid="last-activity-card">
+      <h2>Última actividad</h2>
+      <p>Sin carreras registradas todavía.</p>
+    </div>
+  ),
+}));
+
 afterEach(() => {
   cleanup();
 });
@@ -25,20 +34,21 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Acciones r/i)).toBeTruthy();
   });
 
-  it("renders empty activity placeholder", () => {
+  it("renders v52 calendar strip with Próximas carreras heading", () => {
     render(<DashboardPage />);
-    expect(screen.getByText(/sin carreras registradas/i)).toBeTruthy();
+    expect(screen.getByTestId("v52-calendar-strip")).toBeTruthy();
+    expect(screen.getByText(/Próximas carreras/i)).toBeTruthy();
   });
 
-  it("renders empty next race placeholder", () => {
+  it("renders last activity card (no empty activity placeholder)", () => {
     render(<DashboardPage />);
-    expect(screen.getByText(/calendario LMU no cargado todavía/i)).toBeTruthy();
+    expect(screen.getByTestId("last-activity-card")).toBeTruthy();
+    expect(screen.queryByText(/sin carreras registradas/i)).toBeTruthy();
   });
 
-  it("renders empty launcher card", () => {
+  it("renders launcher card destination", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("launcher-card")).toBeTruthy();
-    expect(screen.getByText(/Launcher LMU por configurar/i)).toBeTruthy();
   });
 
   it("does not render any fake data strings", () => {
@@ -46,9 +56,15 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.queryByText(/Porsche/i)).toBeNull();
     expect(screen.queryByText(/iRating/i)).toBeNull();
     expect(screen.queryByText(/Vantare Pro/i)).toBeNull();
+    expect(screen.queryByText(/4\.99/i)).toBeNull();
+    expect(screen.queryByText(/9\.99/i)).toBeNull();
     expect(screen.queryByText(/Ecosistema/i)).toBeNull();
     expect(screen.queryByText(/CARRERAS RECIENTES/i)).toBeNull();
     expect(screen.queryByText(/Ops/i)).toBeNull();
+    expect(screen.queryByText(/Sebring/i)).toBeNull();
+    expect(screen.queryByText(/COTA/i)).toBeNull();
+    expect(screen.queryByText(/Paul Ricard/i)).toBeNull();
+    expect(screen.queryByText(/v0\.1\.0\.3 publicado/i)).toBeNull();
   });
 
   it("renders the ActiveOverlayCard placeholder (loading) by default", () => {

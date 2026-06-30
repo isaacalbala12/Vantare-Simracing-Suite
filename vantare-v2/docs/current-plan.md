@@ -11,6 +11,49 @@ Nota post-release (2026-06-29):
 Nota HUB-04 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-04-role-aware-beta-welcome.md`.
 
+Nota HUB-05 (2026-06-30):
+- Plan guardado en `docs/superpowers/plans/2026-06-30-hub-05-v52-shell-dashboard-launcher.md`.
+- Primer corte visual v5.2: shell/navegacion nueva, Dashboard con calendario integrado y pestaña Launcher real. Corte incremental para evitar rework masivo.
+- Scope estricto: no redisenar Overlays/Engineer/Telemetry/Settings internamente, no tocar Go, no anadir dependencias, no commitear HTML mockups v5.2.
+- Politica de datos: sin fake data visible; todo dato debe ser real o placeholder honesto. Calendar vive dentro del Dashboard; Launcher se configura en su propia pestaña.
+
+HUB-05 implementacion (2026-06-30, v0.1.x):
+- Shell v5.2 implementado en `frontend/src/hub/components/V52Shell.tsx` con fondo `v52-shell-bg`, grain (`v52-grain`), vignette (`v52-vignette`), topbar, sidebar de navegacion, dock izquierdo (`LauncherDock`), area main con grid 12 columnas responsive y max-width 1920px.
+- Sidebar activo expone `data-testid="v52-sidebar-{section}"` y `aria-current="page"` segun `Section` actual; navegacion con `getByTestId` cubierta por tests.
+- Dock lateral (`LauncherDock.tsx`) oculto en pantallas pequenas (`hidden lg:flex`). Acciones activas: LMU -> `launcher`, OBS -> `setup`. Acciones futuras (`Añadir simulador`, `Añadir app`) renderizadas como `disabled` honesto. Iconos en SVG inline sin librerias externas.
+- Contrato de navegacion unico en `frontend/src/hub/navigation.ts`: tipo `Section` con `"launcher"`, `NAV_ITEMS` con labels `Hub / Overlays Studio / Launcher / Ingeniero / Telemetría / Ajustes` (sin `Setup` en el nav visible), `isSection` como type guard.
+- `Topbar` consume `NAV_ITEMS` desde `navigation.ts`. Eliminado el antiguo `NavItem` local y el item `Setup`. Mantenido el badge de fuente de telemetria y el avatar generico `U`. Tests anti-`Isaac Albala` y anti-`Setup` en topbar.
+- Calendar cards (`NextRaceCard`, `LastActivityCard`) ahora emiten `calendar:get` en mount y se suscriben a `calendar:loaded`. Helpers `requestCalendar`/`subscribeToCalendar` del store ya existian. Tests: 13 PASS (NextRaceCard 7, LastActivityCard 6). Mock Wails con `vi.hoisted` para que `eventsEmit` sea inspeccionable.
+- `V52CalendarStrip.tsx` reemplaza el viejo `EmptyNextRace` en el Dashboard: grid de 3 columnas (NextRaceCard real + placeholders honestos "Pega el calendario LMU" y "Avisos antes de carrera"). Sin Sebring/COTA/Paul Ricard fake; el test del plan lo verifica.
+- `V52InfoCard.tsx` (tonos red/blue/green/amber/purple) y `V52SectionHeader.tsx` (heading + description) como primitivas reutilizables para Dashboard y LauncherPage. Tests propios PASS.
+- `LauncherPage.tsx` como seccion `launcher` real: `LauncherCard` (que ya venia de LAUNCHER-01) + dos placeholders disabled honestos "Perfiles de lanzamiento avanzados" y "Apps asociadas". Sin fake `8/8`, `CrewChief`, `Spotify`. Tests propios PASS.
+- `DashboardPage.tsx` reorganizado a layout v5.2: PlanStatusCard, V52CalendarStrip, ActiveOverlayCard, grid 2 col (LastActivityCard + QuickActions) en xl:col-span-2; columna derecha con LauncherCard, RecommendedQuickStart y seccion `Novedades` con dos `V52InfoCard` honestos ("Hub v5.2 en progreso", "LMU disponible"). Eliminados `EmptyNextRace` y `EmptyActivity` (siguen existiendo como legacy, no se importan desde el Dashboard).
+- `HubApp.tsx` migrado a `V52Shell` como wrapper. `Section` importado desde `./navigation`. Estado `section` puede ser `"launcher"`. Eliminado el antiguo `premium-bg` shell, `Topbar`/`UpdateBanner`/`ScrollableMain` se renderizan dentro de `V52Shell`. Cast explicito `(next: string) => setSection(next as Section)` en el onNavigate del shell.
+- HubApp: +2 tests (`renders Launcher page when launcher section is selected` via `v52-sidebar-launcher`, `marks the active section as current in the sidebar`).
+- Archivos modificados: `frontend/src/index.css` (+8 clases v5.2 en `@layer components`), `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/components/Topbar.tsx`, `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/components/NextRaceCard.tsx`, `frontend/src/hub/components/LastActivityCard.tsx`, `frontend/src/hub/HubApp.test.tsx`, `frontend/src/hub/components/Topbar.test.tsx`, `frontend/src/hub/components/NextRaceCard.test.tsx`, `frontend/src/hub/components/LastActivityCard.test.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
+- Archivos nuevos: `frontend/src/hub/navigation.ts`, `frontend/src/hub/navigation.test.ts`, `frontend/src/hub/components/V52Shell.tsx`, `frontend/src/hub/components/V52Shell.test.tsx`, `frontend/src/hub/components/LauncherDock.tsx`, `frontend/src/hub/components/LauncherDock.test.tsx`, `frontend/src/hub/components/V52CalendarStrip.tsx`, `frontend/src/hub/components/V52CalendarStrip.test.tsx`, `frontend/src/hub/components/V52InfoCard.tsx`, `frontend/src/hub/components/V52InfoCard.test.tsx`, `frontend/src/hub/components/V52SectionHeader.tsx`, `frontend/src/hub/components/V52SectionHeader.test.tsx`, `frontend/src/hub/pages/LauncherPage.tsx`, `frontend/src/hub/pages/LauncherPage.test.tsx`.
+- Archivos NO tocados: `frontend/src/hub/overlays/WidgetStudio*`, `frontend/src/hub/overlays/LayoutStudio*`, `frontend/src/overlay/**`, `internal/**`, `cmd/**`, `.github/workflows/**`, `build/**`, `VERSION`, `EmptyNextRace.tsx`, `EmptyActivity.tsx` (legacy, no consumidos), `WidgetStudio`, `LayoutStudio`, `CompositeApp`, `ObsOverlayApp`, `auth/*`, `recommended-first-use/*` de HUB-03, `account/*` de Hub.
+- Tests finales: `pnpm --dir frontend test` -> 824/824 PASS (109 files, +25 sobre baseline 799). 25 tests nuevos:
+  - 4 navigation.test
+  - 3 Topbar (Launcher visible, navegacion, Ajustes en vez de Setup)
+  - 3 LauncherDock
+  - 3 V52Shell
+  - 2 NextRaceCard (request calendar en mount)
+  - 1 LastActivityCard (request calendar en mount)
+  - 3 V52CalendarStrip
+  - 1 V52InfoCard
+  - 1 V52SectionHeader
+  - 3 LauncherPage
+  - 1 DashboardPage (v52-calendar-strip presente; los demas son reescritos/modificados)
+- `pnpm --dir frontend exec tsc -b`: OK.
+- `pnpm --dir frontend build`: OK (warning preexistente de chunk size, no error).
+- `pnpm --dir frontend lint`: OK (warning preexistente de `.eslintignore`, no error).
+- `git diff --check`: warnings de CRLF preexistentes, sin whitespace errors en archivos tocados.
+- Go: NO se toco. `go test ./...` no requerido.
+- Commit selectivo: pendiente a coordinacion de Isaac; staging limpio para los archivos listados arriba. Los archivos no listados (HTML mockups v5.2 fuera del repo, screenshots, `pnpm-workspace.yaml` ajeno, `RecommendedProfilesView*` y `OverlaysStudioPage.test.tsx` modificados por otros workers) NO se mezclan.
+- P3 documentado: en el sidebar el boton `Launcher` aparece tanto en topbar como en sidebar y dock lateral (3 puntos de entrada). Es esperado para el primer corte; futuros passes pueden consolidar UX. La `LITE motion` del toggle lite no se aplica a las primitivas v5.2 todavia (no es bloqueante). El dock usa `fixed` positioning y ancho fijo 60px; en pantallas < lg queda oculto por `hidden lg:flex`. Si en futuro hay layout < lg con dock necesario, sera un miniplan aparte.
+
+
 Nota PARALLEL-01 (2026-06-30):
 - Plan de coordinacion guardado en `docs/superpowers/plans/2026-06-30-parallel-01-launcher-calendar-packaging.md`. PLAN ONLY, sin codigo.
 - Coordina tres workers en paralelo para `0.1.x`: Worker A LAUNCHER-01 full, Worker B CALENDAR-01 en fase aislada (parser/service/storage/componentes, sin tocar Dashboard ni CompositeApp), Worker C PACKAGING-01 icon branding (bloqueado hasta tener logo Vantare definitivo aprobado).
@@ -275,12 +318,12 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. Commit selectivo de HUB-04 (`BetaWelcome` role-aware) si la review final del lote no encuentra P0/P1/P2.
-2. DISCORD-01 — Limpiar mensajes beta progress y referencias historicas en Discord.
-3. Smoke manual de beta completo con build publicada: installer/portable, login, perfiles recomendados, overlay fullscreen, `Ctrl+Shift+E`, galeria de disenos, OBS local, updater y nuevo Hub.
-4. UI polish del Hub queda despues de cerrar funcionalidad — no hacer rework visual todavia.
-5. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, LMU race countdown, launcher de simuladores, nuevos overlays, Hub rework visual, disenos oficiales adicionales, hardening de auth/licencias, revision global post-beta, **SETTINGS-01 (Setup UI Tabs Rework)** y **PACKAGING-01 (Vantare app icon branding)**, Stripe/licencias paid/suite reales, race data real desde LMU.
-6. CALENDAR-01 (LMU race countdown) queda **planificado en `docs/superpowers/plans/2026-06-30-calendar-01-lmu-race-reminder.md`** (PLAN ONLY). Decisiones cerradas: persistencia en `cfgDir/calendar-lmu.json` (no en `app-settings.json`), parser unico en Go con tests table-driven, banner overlay como evento Wails fuera de `WIDGETS` (no como widget), reemplazo de `EmptyNextRace`/`EmptyActivity` en `DashboardPage` por `NextRaceCard`/`LastActivityCard` manteniendo los placeholders como legacy. No scraping Discord, no sync cloud, no multi-sim estable, no resultados oficiales.
+1. Review y commit selectivo de HUB-05 (primer corte visual v5.2 del Hub) si no aparecen P0/P1/P2.
+2. HUB-05-B — completar paginas internas/subpestanas pendientes cuando haya diseño/copy cerrado, sin reabrir arquitectura.
+3. CALENDAR-02 — cablear import UI, bridge Wails y recordatorios overlay usando el modelo aislado de CALENDAR-01.
+4. OVERLAY-DESIGN-02 — nuevo sistema visual de overlays sobre la arquitectura existente.
+5. DISCORD-01 — limpiar mensajes beta progress y referencias historicas en Discord cuando el estado de v0.1.x este consolidado.
+6. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, nuevos overlays, disenos oficiales adicionales, hardening de auth/licencias, revision global post-beta, **SETTINGS-01 (Setup UI Tabs Rework)**, Stripe/licencias paid/suite reales, race data real desde LMU.
 
 Regla de orquestacion: el agente principal no edita codigo salvo necesidad estricta; genera prompts, revisa reportes y actualiza documentacion. Workers implementan. GLM revisa P0/P1/P2 y cualquier cambio de Go debe exigir las skills de Go indicadas en `docs/release-roadmap-execution-index.md`.
 
@@ -311,7 +354,8 @@ La serie `0.1.x` no es solo hotfixes: es la linea de beta publica temprana. El c
 | `0.1.x` | Por planear | Vantare Setup Launcher v1: instalador propio ligero que verifica SHA256 y lanza NSIS por debajo. |
 | `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador con avisos de tiempo restante. |
 | `0.1.x` | Por planear | Launcher de simuladores: abrir LMU desde Vantare y agrupar apps asociadas por simulador (overlays, Ingeniero, calendario, presets, configuracion). |
-| `0.1.x` | Por planear | Nuevos overlays publicos, mejoras de Hub, mas disenos oficiales, pulido de OBS, hardening de licencias y primeras correcciones de rendimiento. |
+| `0.1.x` | En progreso | Hub v5.2: primer corte implementado (shell, Dashboard con calendario integrado y Launcher como pestaña real). Pendiente review/commit y siguientes cortes internos. |
+| `0.1.x` | Por planear | Nuevos overlays publicos, mas disenos oficiales, pulido de OBS, hardening de licencias y primeras correcciones de rendimiento. |
 | `0.1.x` | Por planear | SETTINGS-01 — Setup UI Tabs Rework: convertir `Setup/SettingsPage` en pestañas horizontales estilo videojuego, con topbar interna (pestañas + botón "Volver") y un panel de edición por pestaña. |
 | `0.1.x` | Por planear | PACKAGING-01 — Vantare app icon branding: sustituir `build/appicon.png` por el logo Vantare (idealmente 1024x1024) y regenerar `icon.ico`/`icons.icns` para que taskbar, ventana e instalador muestren branding correcto. |
 

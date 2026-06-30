@@ -47,7 +47,7 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Estado: abierto
 - Release objetivo: `0.1.x` UX/auth hardening o auditoria global
 - Motivo para diferir: el OAuth ocurre en el navegador externo. Los tokens de Supabase se almacenan en el navegador, no en el WebView2 de Wails. En el proximo reinicio, `getSession()` devuelve null y el usuario debe reautenticarse. El fix anti-regresion en `LicenseProvider` previene el bloqueo inmediato, pero no resuelve la persistencia.
-- Fix esperado: tras el OAuth callback exitoso, llamar `supabase.auth.setSession({access_token, refresh_token})` en el WebView para persistir la sesion en localStorage del WebView2. Requiere que el callback HTTP envie tambien el `refresh_token` (no solo `access_token`).
+- Fix esperado: tras el OAuth callback exitoso, llamar `supabase.auth.setSession({access_token, refresh_token})` en el WebView para persistir la sesion en localStorage del WebView2. Requiere que el callback HTTP envie tambien el `refresh_token` (no solo `access_token`). El callback actual aun no entrega `refresh_token`; sin ese campo, `setSession` no funciona correctamente y no se puede cerrar este TD.
 - Riesgo si se ignora: el usuario debe reautenticarse con Google en cada reinicio de la app. No bloquea el uso, pero es friccion UX.
 - Razon de severidad: no bloquea `v0.1.0.2` porque el login funciona durante la sesion actual. Sube a P2 si se decide exigir persistencia de sesion para testers antes de la siguiente publicacion.
 
@@ -84,16 +84,28 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Fix esperado: anadir un handler Go `overlay:status:get` que emita el estado actual del `OverlayController`/perfil activo, o hacer que `HubService` exponga una consulta idempotente de estado. `ActiveOverlayCard` deberia emitir esa query al montar y cubrirlo con test.
 - Riesgo si se ignora: estado visual inicial potencialmente desincronizado en el Dashboard, especialmente si el usuario vuelve al Hub tras abrir/cerrar overlays desde otra pantalla.
 
+### TD-048 - Legacy betaWelcomeCompleted sin betaUserRole no reabre modal
+
+- Severidad: P3
+- Area: frontend/onboarding
+- Origen: HUB-04 role-aware BetaWelcome (2026-06-30)
+- Estado: abierto
+- Release objetivo: `0.1.x cleanup` o auditoria global
+- Motivo para diferir: builds previos a HUB-04 persistieron `betaWelcomeCompleted: true` sin `betaUserRole`. El modal actual no se reabre en ese caso porque `showBetaWelcome` solo evalua `betaWelcomeCompleted`. El P3 documentado asume que es un estado heredado marginal y el impacto es que el usuario no ve el nuevo selector de rol, pero puede usar la app normalmente.
+- Fix esperado: si `betaWelcomeCompleted === true` y falta `betaUserRole`, reabrir BetaWelcome una vez para capturar el rol, o aplicar migración explícita de settings para asignar un rol por defecto (p.ej. `intermediate`) a esos usuarios legacy.
+- Riesgo si se ignora: usuarios que completaron BetaWelcome antes de HUB-04 nunca ven el selector de rol ni el copy adaptado. No bloquea el uso de la app.
+
 ### TD-009 - Inicio de sesión con Google OAuth bloqueado en WebView2
 
 - Severidad: P1
 - Area: frontend/licensing/auth
 - Origen: review manual visual Login/Auth v0.1.0.1
-- Estado: abierto
+- Estado: cerrado (v0.1.0.2)
 - Release objetivo: R03.X / R04 (hotfix v0.1.0.2 necesario)
 - Motivo para diferir: Ninguno para beta pública, ya que bloquea el login con Google OAuth (obligatorio) debido a que Google bloquea la autenticación OAuth dentro de WebViews integrados y la app no abre el navegador externo para completarlo.
 - Fix esperado: Modificar `signInWithOAuth` en frontend para abrir la URL de autorización de Supabase en el navegador externo del sistema (mediante Wails `Browser.OpenURL`) e implementar Deep Linking en el backend de Go para redirigir la sesión de vuelta a la aplicación.
 - Riesgo si se ignora: Cualquier usuario final de la beta pública que intente registrarse o loguearse con Google quedará permanentemente bloqueado en una pantalla blanca.
+- Cierre: OAuth externo con navegador del sistema + callback/local flow implementado y verificado en v0.1.0.2. Google login funcional en builds empaquetadas.
 
 ### TD-002 - Verificacion de checksums sidecar
 
@@ -172,7 +184,7 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Fix esperado: crear suite de tests visuales con Playwright que detecte regresiones de centrado, clipping y cajas invisibles en previews.
 - Riesgo si se ignora: regresiones visuales de preview solo detectables mediante verificacion manual prolongada.
 
-### TD-009 - `mockSessionScenario` propagado a widgets no-standings
+### TD-049 - `mockSessionScenario` propagado a widgets no-standings
 
 - Severidad: P3
 - Area: frontend/widgets

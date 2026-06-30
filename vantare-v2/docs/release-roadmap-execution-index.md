@@ -35,7 +35,8 @@ La app actual se considera base de beta publica para testers.
 Estado publico:
 
 - `v0.1.0.0`: primera beta publica publicada.
-- `v0.1.0.1`: hotfix P0 en curso para inyectar variables Supabase en builds de release y desbloquear login Google empaquetado.
+- `v0.1.0.1`: hotfix completado — Supabase env vars en release build + login Google empaquetado.
+- `v0.1.0.2`: hotfix completado — Supabase backend Go, Free plan desbloqueado, UnconfiguredScreen, y verificacion manual completa (login Google → Hub Free).
 - `v0.3.*`: historico interno no anunciado.
 
 A partir de estos planes, todo desarrollo debe distinguir entre:
@@ -97,12 +98,16 @@ Antes de volver al roadmap largo de release, ejecutar la linea publica inmediata
 
 | Version | Estado | Objetivo |
 |---------|--------|----------|
-| `0.1.0.x` | Activo | Hotfixes criticos de beta publica: Supabase frontend/backend, Google OAuth, free plan, licencias, updater, fullscreen, crashes o bloqueos de uso. |
+| `0.1.0.0` | Completado | Primera beta publica: login obligatorio, gating free/paid/suite, perfiles recomendados, overlay edit mode, updater. |
+| `0.1.0.1` | Completado | Hotfix Supabase env vars en release build + login Google empaquetado. |
+| `0.1.0.2` | Completado | Hotfix Supabase backend Go + Free plan desbloqueado + UnconfiguredScreen + verificacion manual completa. |
 | `0.1.x` | Por planear | Linux/Proton experimental. |
 | `0.1.x` | Por planear | Vantare Setup Launcher v1. |
 | `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador. |
 | `0.1.x` | Por planear | Launcher de simuladores: primer corte LMU-only para abrir simulador desde Vantare y agrupar acciones asociadas. |
 | `0.1.x` | Por planear | Overlays publicos adicionales, Hub, hardening, rendimiento y UX. |
+| `0.1.x` | Por planear | Setup UI Tabs Rework (SETTINGS-01), icon branding Vantare (PACKAGING-01), UI polish del Hub. |
+| `0.1.x` | Por planear | Stripe/licencias paid/suite reales, race data real desde LMU. |
 
 Ejecutar por orden salvo decision explicita:
 
@@ -132,11 +137,18 @@ Ejecutar por orden salvo decision explicita:
 ### Linea publica 0.1.x — tracking
 
 - `0.1.0.0`: publicado con release GitHub y 6 assets verificados. Detectado P0 posterior: build sin configuracion Supabase completa.
-- `0.1.0.x`: activo hasta cerrar Google OAuth -> validacion backend Supabase -> estado Free -> Hub en build empaquetada. Debe corregir frontend/backend config, fallar claro si faltan variables y validar manualmente antes de Discord.
+- `0.1.0.1`: completado — hotfix Supabase env vars en release build + login Google empaquetado.
+- `0.1.0.2`: completado — hotfix Supabase backend Go (via `generate_supabase_config.ps1`), estado `UnconfiguredScreen`, plan Free desbloqueado tras Google OAuth. Verificacion manual completa.
+- `HUB-01`: completado — dashboard beta honesto, Topbar sin nombre hardcodeado, BetaWelcome una sola vez.
+- `HUB-02`: completado — ActiveOverlayCard con acciones reales de overlay activo en Dashboard.
+- `HUB-03`: completado — recommended first-use flow: Hub → recomendado → guardar como propio → overlay funcionando.
+- `HUB-04`: completado y commiteado — role-aware BetaWelcome con copy adaptado por tipo de usuario.
 - `0.1.x por planear`: Linux/Proton experimental. Validar primero si conviene app Windows bajo Proton, build Linux nativa o bridge/proxy para telemetria.
 - `0.1.x por planear`: Vantare Setup Launcher v1. Scope inicial: Windows only, UI propia, verificacion SHA256, NSIS por debajo, aviso SmartScreen y enlaces de soporte.
 - `0.1.x por planear`: LMU race countdown beta. Scope inicial: importar manualmente o con IA el calendario semanal publicado en Discord, validar horarios/zona horaria y mostrar avisos temporales sobre el simulador. No incluye scraping automatico de Discord ni bot.
 - `0.1.x por planear`: launcher de simuladores. Primer corte LMU-only para abrir el simulador desde Vantare y agrupar acciones asociadas por simulador.
+- `0.1.x por planear`: Setup UI Tabs Rework (SETTINGS-01), icon branding Vantare (PACKAGING-01), UI polish del Hub, hardening de licencias y rendimiento.
+- `0.1.x por planear`: Stripe/licencias paid/suite reales, race data real (safety/rating/progression desde LMU).
 
 ## Paralelizacion segura
 

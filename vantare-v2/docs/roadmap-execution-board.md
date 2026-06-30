@@ -15,11 +15,15 @@ Vantare debe tratarse como suite local. Overlays Studio e Ingeniero son modulos 
 | HOTFIX-01 | 0.1.0.1 | Supabase env vars en release build + login Google empaquetado | Done | Kimi K2.7 | GLM/Codex | Si |
 | HOTFIX-02 | 0.1.0.2 | Supabase backend Go + Free plan desbloqueado + UnconfiguredScreen | Done | — | — | Si |
 | HUB-01 | 0.1.x | Hub beta honesto + BetaWelcome una sola vez | Done | Kimi/Codex | Codex | Si |
-| HUB-02 | 0.1.x | Acciones reales de overlay activo en Dashboard | In progress | Kimi/Codex | Codex | Si |
+| HUB-02 | 0.1.x | Acciones reales de overlay activo en Dashboard | Done | Kimi/Codex | Codex | Si |
+| HUB-03 | 0.1.x | Recommended first-use flow: Hub → recomendado → guardar como propio → overlay funcionando | Done | Kimi/Codex | Codex | Si |
+| HUB-04 | 0.1.x | Role-aware BetaWelcome: copy según tipo de usuario (beginner/intermediate/advanced/creator/organizer) | Done | Kimi/Codex | Codex | Si |
 | HOTFIX-* | 0.1.0.X | Hotfixes criticos de beta publica | Planned | Segun area | GLM/Codex | Si |
 | LINUX1 | 0.1.1.0 | Linux/Proton experimental | Planned | GLM/Kimi | GLM | Si |
 | SETUP1 | 0.1.2.0 | Vantare Setup Launcher v1 | Planned | GLM/Kimi | GLM | Si |
 | BETAUX1 | 0.1.3.0+ | Overlays publicos, Hub, disenos, hardening y rendimiento | Planned | Minimax/Kimi/GLM | GLM + Isaac | Si |
+| SETTINGS-01 | 0.1.x | Setup UI Tabs Rework: pestanas horizontales estilo videojuego + topbar interna (pestanas + boton Volver) en `Setup/SettingsPage` | Planned | TBD | GLM | Si |
+| PACKAGING-01 | 0.1.x | Vantare app icon branding: sustituir `build/appicon.png` por logo Vantare y regenerar `icon.ico`/`icons.icns` para taskbar, ventana e instalador | Planned | TBD | GLM | Si |
 
 ## Release execution board actual
 
@@ -344,8 +348,7 @@ No alcance:
 
 ## Proxima accion
 
-v0.1.0.2 publicado y verificado. HUB-01 cerrado y HUB-02 implementado con smoke manual correcto.
+v0.1.0.2 publicado y verificado. HUB-01/HUB-02/HUB-03/HUB-04 cerrados y commiteados.
 Siguiente:
-- Commit selectivo de HUB-02 si la review final no detecta P0/P1/P2.
 - DISCORD-01: limpiar mensajes beta progress y referencias historicas.
 - Smoke manual completo de beta con build publicada y nuevo Hub.

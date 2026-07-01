@@ -1375,3 +1375,17 @@ Nota SETTINGS-02-A (2026-07-01):
 - Archivos tocados: `frontend/src/hub/components/V52Shell.tsx`, `frontend/src/hub/components/V52Shell.test.tsx`, `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: Go/backend, AccountSettings, ObsSetup, SettingsPage.tsx (lógica interna intacta), Dashboard/Launcher/Overlays/Engineer/Telemetry, index.css, Auth/Supabase, dependencias.
 - Sin commit.
+
+Nota SETTINGS-02-B (2026-07-01):
+- OBS Browser Source movido de SettingsPage a Overlays Studio.
+- SettingsPage: eliminada la tab "obs" (OBS Browser Source) del array TABS. Eliminado el panel `ObsSetup` y su import. Eliminado el estado `activeProfileId` y el listener `profile:loaded` que ya no se necesitan en Settings. Descripción actualizada: "Cuenta, actualizaciones, atajos y diagnósticos." Tabs restantes: Cuenta, Actualizaciones, Hotkeys, Diagnóstico, Avanzado.
+- V52OverlaysHome: nueva prop `onOpenObs` y nueva EntryCard "OBS Browser Source" con copy "Copia la URL para capturar tu overlay en OBS." y CTA "Configurar OBS". Se renderiza como card de ancho completo debajo del grid de 2 columnas.
+- OverlaysStudioPage: nuevo modo `"obs"` en `StudioMode`. Renderiza `ObsOverlaySetupView` con la URL calculada desde `activeProfileId` (con fallback `example-racing.json`). La URL se construye con `window.location.origin + '/overlay?profile=' + encodeURIComponent(activeProfileId || 'example-racing.json')`, mismo patrón que antes usaba SettingsPage.
+- ObsOverlaySetupView (nuevo): wrapper que renderiza `ObsSetup` con la URL y un botón "← Volver a Overlays Studio". Reutiliza `ObsSetup` sin modificarlo.
+- `activeOverlayProfileId` preservado: la URL de OBS en Overlays Studio usa `activeProfileId` que se actualiza desde eventos `settings` y `hub:profile-activated` (misma lógica que antes en SettingsPage).
+- Tests: SettingsPage 19/19 PASS (sin OBS, 5 tabs, anti TD-041 preservado). V52OverlaysHome 7/7 PASS (5 cards, OBS card con copy correcto, callback Configurar OBS). OverlaysStudioPage 14/14 PASS (OBS view con URL, back button, fallback example-racing.json). ObsOverlaySetupView 3/3 PASS (heading, back button, copy buttons).
+- Checks: test 43/43 PASS (4 files), tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes hub_main.html/pnpm-workspace.yaml).
+- Archivos creados: `frontend/src/hub/overlays/ObsOverlaySetupView.tsx`, `frontend/src/hub/overlays/ObsOverlaySetupView.test.tsx`.
+- Archivos modificados: `frontend/src/hub/pages/SettingsPage.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.test.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, ObsSetup.tsx (reutilizado sin cambios), AccountSettings, WidgetStudio, LayoutStudio, OwnProfilesView, RecommendedProfilesView, CommunityComingSoonView, V52Shell, HubApp, index.css, Auth/Supabase, dependencias.
+- Sin commit.

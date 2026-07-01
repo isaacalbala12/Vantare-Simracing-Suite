@@ -6,7 +6,7 @@ import { V52OverlaysHome } from "./V52OverlaysHome";
 afterEach(() => cleanup());
 
 describe("V52OverlaysHome", () => {
-  it("renders the four Overlays Studio entry cards", () => {
+  it("renders the five Overlays Studio entry cards including OBS", () => {
     render(
       <V52OverlaysHome
         profilesCount={4}
@@ -14,6 +14,7 @@ describe("V52OverlaysHome", () => {
         onOpenOwnProfiles={vi.fn()}
         onOpenRecommended={vi.fn()}
         onOpenCommunity={vi.fn()}
+        onOpenObs={vi.fn()}
       />,
     );
 
@@ -22,13 +23,15 @@ describe("V52OverlaysHome", () => {
     expect(screen.getByRole("heading", { name: "Mis perfiles" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Recomendados por Vantare" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Comunidad" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "OBS Browser Source" })).toBeTruthy();
   });
 
-  it("calls callbacks for all four entry cards", () => {
+  it("calls callbacks for all five entry cards", () => {
     const onOpenWidgets = vi.fn();
     const onOpenOwnProfiles = vi.fn();
     const onOpenRecommended = vi.fn();
     const onOpenCommunity = vi.fn();
+    const onOpenObs = vi.fn();
 
     render(
       <V52OverlaysHome
@@ -37,6 +40,7 @@ describe("V52OverlaysHome", () => {
         onOpenOwnProfiles={onOpenOwnProfiles}
         onOpenRecommended={onOpenRecommended}
         onOpenCommunity={onOpenCommunity}
+        onOpenObs={onOpenObs}
       />,
     );
 
@@ -44,11 +48,13 @@ describe("V52OverlaysHome", () => {
     fireEvent.click(screen.getByRole("button", { name: /Ver mis perfiles/ }));
     fireEvent.click(screen.getByRole("button", { name: /Ver recomendados/ }));
     fireEvent.click(screen.getByRole("button", { name: /Explorar comunidad/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Configurar OBS/ }));
 
     expect(onOpenWidgets).toHaveBeenCalledTimes(1);
     expect(onOpenOwnProfiles).toHaveBeenCalledTimes(1);
     expect(onOpenRecommended).toHaveBeenCalledTimes(1);
     expect(onOpenCommunity).toHaveBeenCalledTimes(1);
+    expect(onOpenObs).toHaveBeenCalledTimes(1);
   });
 
   it("Comunidad card is clickable and calls onOpenCommunity", () => {
@@ -61,6 +67,7 @@ describe("V52OverlaysHome", () => {
         onOpenOwnProfiles={vi.fn()}
         onOpenRecommended={vi.fn()}
         onOpenCommunity={onOpenCommunity}
+        onOpenObs={vi.fn()}
       />,
     );
 
@@ -77,6 +84,7 @@ describe("V52OverlaysHome", () => {
         onOpenOwnProfiles={vi.fn()}
         onOpenRecommended={vi.fn()}
         onOpenCommunity={vi.fn()}
+        onOpenObs={vi.fn()}
       />,
     );
 
@@ -93,6 +101,7 @@ describe("V52OverlaysHome", () => {
         onOpenOwnProfiles={vi.fn()}
         onOpenRecommended={vi.fn()}
         onOpenCommunity={vi.fn()}
+        onOpenObs={vi.fn()}
       />,
     );
 
@@ -108,11 +117,29 @@ describe("V52OverlaysHome", () => {
         onOpenOwnProfiles={vi.fn()}
         onOpenRecommended={vi.fn()}
         onOpenCommunity={vi.fn()}
+        onOpenObs={vi.fn()}
       />,
     );
 
     expect(screen.queryByText(/marketplace/i)).toBeNull();
     expect(screen.queryByText(/comunidad activa/i)).toBeNull();
     expect(screen.queryByText(/explorar comunidad/i)).toBeTruthy();
+  });
+
+  it("renders OBS Browser Source card with correct copy", () => {
+    render(
+      <V52OverlaysHome
+        profilesCount={2}
+        onOpenWidgets={vi.fn()}
+        onOpenOwnProfiles={vi.fn()}
+        onOpenRecommended={vi.fn()}
+        onOpenCommunity={vi.fn()}
+        onOpenObs={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("OBS Browser Source")).toBeTruthy();
+    expect(screen.getByText("Copia la URL para capturar tu overlay en OBS.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Configurar OBS/ })).toBeTruthy();
   });
 });

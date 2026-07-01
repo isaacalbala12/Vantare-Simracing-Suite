@@ -7,6 +7,7 @@ type V52OverlaysHomeProps = {
   onOpenOwnProfiles: () => void;
   onOpenRecommended: () => void;
   onOpenCommunity: () => void;
+  onOpenObs: () => void;
 };
 
 function EntryCard({
@@ -74,6 +75,7 @@ export function V52OverlaysHome({
   onOpenOwnProfiles,
   onOpenRecommended,
   onOpenCommunity,
+  onOpenObs,
 }: V52OverlaysHomeProps) {
   return (
     <div className="flex flex-col gap-5">
@@ -126,6 +128,17 @@ export function V52OverlaysHome({
             onClick={onOpenCommunity}
           />
         </div>
+      </div>
+
+      <div className="opacity-0 animate-fade-in-up delay-350">
+        <EntryCard
+          eyebrow="OBS Studio"
+          title="OBS Browser Source"
+          body="Copia la URL para capturar tu overlay en OBS."
+          meta="Conexión con OBS Studio"
+          button="Configurar OBS"
+          onClick={onOpenObs}
+        />
       </div>
     </div>
   );

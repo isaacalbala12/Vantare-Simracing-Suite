@@ -6,6 +6,7 @@ import { LayoutStudio } from "../overlays/LayoutStudio";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
 import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
+import { ObsOverlaySetupView } from "../overlays/ObsOverlaySetupView";
 import { RecommendedSuccessBanner } from "../overlays/RecommendedSuccessBanner";
 import { useOverlayStudioState } from "../overlays/useOverlayStudioState";
 import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile } from "../overlays/recommended-profiles";
@@ -13,7 +14,7 @@ import { runRecommendedFirstUse } from "../overlays/recommended-first-use";
 import { isRunningProfile, profileTarget, type OverlayStatus, type ProfileEntry } from "../state/overlay-workbench";
 import type { AppSettings } from "./SettingsPage";
 
-type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout";
+type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout" | "obs";
 
 type OverlaysStudioPageProps = {
   pendingRecommendedAutoStart?: "recommended-auto" | null;
@@ -303,6 +304,11 @@ export function OverlaysStudioPage({
     return <CommunityComingSoonView onBack={goHome} />;
   }
 
+  if (effectiveMode === "obs") {
+    const obsUrl = window.location.origin + '/overlay?profile=' + encodeURIComponent(activeProfileId || 'example-racing.json');
+    return <ObsOverlaySetupView url={obsUrl} onBack={goHome} />;
+  }
+
   return (
     <>
       {(notice && !lastSuccessId) && (
@@ -319,6 +325,7 @@ export function OverlaysStudioPage({
         onOpenOwnProfiles={() => setMode("ownProfiles")}
         onOpenRecommended={() => setMode("recommended")}
         onOpenCommunity={() => setMode("community")}
+        onOpenObs={() => setMode("obs")}
       />
     </>
   );

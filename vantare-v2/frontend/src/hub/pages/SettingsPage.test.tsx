@@ -96,13 +96,6 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
   });
 
-  it('shows OBS Browser Source when clicking OBS tab', () => {
-    render(<SettingsPage />);
-    clickTab('OBS Browser Source');
-    expect(screen.getByRole('tabpanel', { name: 'OBS Browser Source' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'OBS Browser Source' })).toBeDefined();
-  });
-
   it('shows channel options when clicking Actualizaciones tab', () => {
     render(<SettingsPage />);
     clickTab('Actualizaciones');
@@ -200,48 +193,6 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Confirmar downgrade')).toBeDefined();
   });
 
-  it('displays the active profile ID in the OBS setup URL and falls back to example-racing.json', () => {
-    render(<SettingsPage />);
-    clickTab('OBS Browser Source');
-
-    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
-    const input = inputs.find((i) => i.readOnly || i.value.includes('/overlay'));
-    expect(input).toBeDefined();
-    expect(input!.value).toContain('profile=example-racing.json');
-    expect(input!.value).not.toContain('profile=v0.1.');
-    expect(input!.value).not.toContain('profile=default-racing');
-
-    dispatch('profile:loaded', {
-      profile: {
-        id: 'my-custom-profile',
-      },
-    });
-
-    const inputsAfter = screen.getAllByRole('textbox') as HTMLInputElement[];
-    const inputAfter = inputsAfter.find((i) => i.readOnly || i.value.includes('/overlay'));
-    expect(inputAfter).toBeDefined();
-    expect(inputAfter!.value).toContain('my-custom-profile');
-    expect(inputAfter!.value).not.toContain('profile=example-racing.json');
-    expect(inputAfter!.value).not.toContain('profile=default-racing');
-  });
-
-  it('uses activeOverlayProfileId from settings for OBS URL when available', () => {
-    render(<SettingsPage />);
-    clickTab('OBS Browser Source');
-
-    dispatch('settings', {
-      deltaMode: 'self',
-      cpuSampling: true,
-      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
-      activeOverlayProfileId: 'custom-from-settings',
-    });
-
-    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
-    const input = inputs.find((i) => i.readOnly || i.value.includes('/overlay'));
-    expect(input).toBeDefined();
-    expect(input!.value).toContain('custom-from-settings');
-  });
-
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
     clickTab('Diagnóstico');
@@ -312,13 +263,12 @@ describe('SettingsPage', () => {
     const tablist = screen.getByRole('tablist');
     expect(tablist).toBeDefined();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBeGreaterThanOrEqual(6);
+    expect(tabs.length).toBeGreaterThanOrEqual(5);
     expect(tabs[0].textContent).toBe('Cuenta');
-    expect(tabs[1].textContent).toBe('OBS Browser Source');
-    expect(tabs[2].textContent).toBe('Actualizaciones');
-    expect(tabs[3].textContent).toBe('Hotkeys');
-    expect(tabs[4].textContent).toBe('Diagnóstico');
-    expect(tabs[5].textContent).toBe('Avanzado');
+    expect(tabs[1].textContent).toBe('Actualizaciones');
+    expect(tabs[2].textContent).toBe('Hotkeys');
+    expect(tabs[3].textContent).toBe('Diagnóstico');
+    expect(tabs[4].textContent).toBe('Avanzado');
   });
 
   it('preserves activeOverlayProfileId when saving hotkeys (anti TD-041)', () => {

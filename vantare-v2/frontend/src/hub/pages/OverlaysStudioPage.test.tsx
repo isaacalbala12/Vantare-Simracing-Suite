@@ -375,4 +375,70 @@ describe("OverlaysStudioPage", () => {
     );
     expect(screen.getAllByTestId("recommended-save-as-own").length).toBeGreaterThan(0);
   });
+
+  it("opens OBS view from home and renders ObsSetup with URL", async () => {
+    render(<OverlaysStudioPage />);
+
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+      ],
+    });
+
+    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
+
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-racing",
+        name: "Default Racing",
+        displayMode: "racing",
+        monitorIndex: 0,
+        widgets: [
+          { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
+        ],
+      },
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Configurar OBS/ }));
+
+    expect(await screen.findByRole("heading", { name: "OBS Browser Source" })).toBeTruthy();
+    const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+    const urlInput = inputs.find((i) => i.value.includes("/overlay"));
+    expect(urlInput).toBeDefined();
+    expect(urlInput!.value).toContain("profile=default-racing");
+  });
+
+  it("OBS view shows back button and returns to home", async () => {
+    render(<OverlaysStudioPage />);
+
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Configurar OBS/ }));
+    expect(await screen.findByRole("heading", { name: "OBS Browser Source" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Volver a Overlays Studio/ }));
+    expect(await screen.findByRole("heading", { name: "Overlays Studio" })).toBeTruthy();
+  });
+
+  it("OBS view falls back to example-racing.json when no active profile", async () => {
+    render(<OverlaysStudioPage />);
+
+    dispatch("hub:profiles", {
+      profiles: [
+        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Configurar OBS/ }));
+    expect(await screen.findByRole("heading", { name: "OBS Browser Source" })).toBeTruthy();
+
+    const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+    const urlInput = inputs.find((i) => i.value.includes("/overlay"));
+    expect(urlInput).toBeDefined();
+    expect(urlInput!.value).toContain("profile=example-racing.json");
+  });
 });

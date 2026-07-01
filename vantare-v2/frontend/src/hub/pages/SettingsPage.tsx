@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
-import { ObsSetup } from '../components/ObsSetup';
 import { AccountSettings } from '../settings/AccountSettings';
 
 export type Channel = 'stable' | 'prerelease';
@@ -93,7 +92,6 @@ const HOTKEY_NAMES: Record<string, string> = {
 
 const TABS = [
   { id: 'account', label: 'Cuenta' },
-  { id: 'obs', label: 'OBS Browser Source' },
   { id: 'updates', label: 'Actualizaciones' },
   { id: 'hotkeys', label: 'Hotkeys' },
   { id: 'diagnostics', label: 'Diagnóstico' },
@@ -115,7 +113,6 @@ export function SettingsPage() {
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [diagLoading, setDiagLoading] = useState(false);
   const [diagCopied, setDiagCopied] = useState(false);
   const [diagError, setDiagError] = useState<string | null>(null);
@@ -200,17 +197,6 @@ export function SettingsPage() {
 
     Events.Emit('updater:settings:get');
     Events.Emit('updater:check');
-
-    const unsubProfile = Events.On(
-      'profile:loaded',
-      (event: { data: { profile?: { id: string } } }) => {
-        if (event.data?.profile?.id) {
-          setActiveProfileId(event.data.profile.id);
-        }
-      }
-    );
-    handlers.push(unsubProfile);
-    Events.Emit('profile:request');
 
     const unsubDiagnostics = Events.On(
       'diagnostics',
@@ -342,7 +328,7 @@ export function SettingsPage() {
           Ajustes
         </h1>
         <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
-          Cuenta, OBS, actualizaciones, atajos y diagnósticos.
+          Cuenta, actualizaciones, atajos y diagnósticos.
         </p>
       </header>
 
@@ -375,17 +361,6 @@ export function SettingsPage() {
           <div key="panel-account" id="panel-account" role="tabpanel" aria-label="Cuenta">
             <div className="card-sleek rounded-xl p-5 border border-white/5">
               <AccountSettings />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'obs' && (
-          <div key="panel-obs" id="panel-obs" role="tabpanel" aria-label="OBS Browser Source">
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
-              <h2 className="font-display font-semibold text-lg text-white mb-4">
-                OBS Browser Source
-              </h2>
-              <ObsSetup url={window.location.origin + '/overlay?profile=' + encodeURIComponent(appSettings.activeOverlayProfileId || activeProfileId || 'example-racing.json')} />
             </div>
           </div>
         )}

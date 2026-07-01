@@ -10,7 +10,7 @@ export function V52CalendarStrip() {
         </span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl overflow-hidden border border-white/5 bg-black/20">
+        <div className="rounded-xl overflow-hidden border border-white/5 bg-[rgba(20,20,20,.6)]">
           <div className="v52-cal-bar" />
           <NextRaceCard />
         </div>

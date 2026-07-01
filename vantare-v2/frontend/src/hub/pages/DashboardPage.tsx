@@ -26,7 +26,7 @@ export function DashboardPage({
         className="relative rounded-xl overflow-hidden border border-vantare-red-500/50 hover:border-vantare-red-500/70 transition-all hover:-translate-y-0.5"
         data-testid="dashboard-hero-banner"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-vantare-red-700/60 via-[#9a0606]/40 to-[#0a0a0a]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#ff3b3b]/60 via-[#9a0606]/40 to-[#0a0a0a]" />
         <div className="absolute right-0 top-0 w-64 h-64 bg-vantare-red-500/20 blur-3xl rounded-full" />
         <div className="relative p-7 flex flex-col md:flex-row items-center gap-6">
           <div className="flex-1 min-w-0">

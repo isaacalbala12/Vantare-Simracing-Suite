@@ -184,12 +184,12 @@ body:not(.hub) #root {
 
   .card-sleek {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    background: linear-gradient(180deg, rgba(20,20,20,0.8) 0%, rgba(15,15,15,0.8) 100%);
+    background: linear-gradient(180deg, rgba(20,20,20,0.55) 0%, rgba(15,15,15,0.55) 100%);
     border: 1px solid rgba(245,245,245,.08);
   }
   .card-sleek:hover {
     transform: translateY(var(--v-hover-translate-y));
-    background: linear-gradient(180deg, rgba(25,25,25,0.9) 0%, rgba(20,20,20,0.9) 100%);
+    background: linear-gradient(180deg, rgba(25,25,25,0.65) 0%, rgba(20,20,20,0.65) 100%);
     border-color: rgba(255,59,59,.4);
     box-shadow: 0 24px 60px rgba(255,59,59,.18), 0 0 100px rgba(255,59,59,.10);
   }
@@ -284,7 +284,7 @@ body:not(.hub) #root {
     inset: 0;
     pointer-events: none;
     mix-blend-mode: overlay;
-    opacity: 0.55;
+    opacity: 0.25;
     background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
     background-size: 3px 3px;
   }

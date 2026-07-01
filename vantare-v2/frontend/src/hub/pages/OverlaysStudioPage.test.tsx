@@ -181,9 +181,9 @@ describe("OverlaysStudioPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Volver a Overlays Studio/i }));
 
-    const communityBtn = screen.getByRole("button", { name: /^Explorar comunidad / });
-    expect(communityBtn.closest('[class*="pointer-events-none"]')).toBeTruthy();
-    expect(screen.getByText("No disponible en beta")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Explorar comunidad / }));
+    expect(await screen.findByRole("heading", { name: "Comunidad de overlays" })).toBeTruthy();
+    expect(screen.getByText("Próximamente")).toBeTruthy();
   });
 
   it("saves a recommended profile as an own copy with source metadata", async () => {

@@ -73,6 +73,7 @@ export function V52OverlaysHome({
   onOpenWidgets,
   onOpenOwnProfiles,
   onOpenRecommended,
+  onOpenCommunity,
 }: V52OverlaysHomeProps) {
   return (
     <div className="flex flex-col gap-5">
@@ -122,7 +123,7 @@ export function V52OverlaysHome({
             body="Más adelante podrás descubrir overlays compartidos por la comunidad."
             meta="No disponible en beta"
             button="Explorar comunidad"
-            disabled
+            onClick={onOpenCommunity}
           />
         </div>
       </div>

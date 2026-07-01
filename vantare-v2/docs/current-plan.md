@@ -1343,3 +1343,22 @@ Nota HUB-07 (2026-07-01):
 - Eventos usados: `overlay:start-active` (abrir), `overlay:stop` (cerrar), `overlay:toggle-edit-mode` (editar), `overlay:status` (estado).
 - Tests: ActiveOverlayCard 14/14 PASS, DashboardPage 14/14 PASS, tsc OK, build OK, lint OK (warning preexistente).
 - Sin commit.
+
+HUB-07-C/D (2026-07-01):
+- HUB-07-C: EngineerPage reemplazada por pantalla "Próximamente" grande. UI antigua (toggles, selects, connection badge, notificaciones, footer) completamente eliminada. Eventos Wails siguen registrados en background (engineer:status:get, engineer:status, engineer:notification) pero sin UI visible. Copy honesto: "Ingeniero Vantare", "Spotter IA y análisis de stint en desarrollo", "Esta sección estará disponible en una actualización 0.1.x." + 3 bullets de roadmap (avisos de stint, degradación/estrategia, voz de ingeniero). Sin controles funcionales, sin fake data, sin emisión de eventos engineer desde UI visible.
+- HUB-07-D: TelemetryPage hero reducido de `min-h-[calc(100vh-180px)]` a `py-16` (tamaño normal proporcionado). Copy honesto preservado. Sin charts falsos, sin datos reales conectados.
+- Tests: EngineerPage 7/7 PASS (heading, Próximamente, sin controles antiguos, sin eventos extra, sin fake strings, eventos en background, roadmap bullets). TelemetryPage 3/3 PASS (placeholder honesto, anti-fake, sin full-height hero).
+- Checks: test 10/10 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes hub_main.html/pnpm-workspace.yaml).
+- Archivos tocados: `frontend/src/hub/pages/EngineerPage.tsx`, `frontend/src/hub/pages/EngineerPage.test.tsx`, `frontend/src/hub/pages/TelemetryPage.tsx`, `frontend/src/hub/pages/TelemetryPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, Dashboard/Launcher/Overlays/Settings, V52Shell, index.css, Auth/Supabase, dependencias.
+- Sin commit.
+
+HUB-07-E (2026-07-01):
+- Card Comunidad en V52OverlaysHome ya no es disabled: ahora es clicable y llama a `onOpenCommunity`.
+- CommunityComingSoonView reescrita con look v5.2 (hero gradiente, glow, icono SVG, animaciones fade-in-up). Copy honesto: "Comunidad de overlays", "En el futuro podrás descubrir overlays de otros usuarios, compartir tus propios diseños y votar los mejores." + 3 bullets de roadmap (explorar galería, compartir perfiles, votar y comentar). Sin overlays fake de comunidad, sin datos inventados.
+- Navegación: Overlays Studio home → click "Explorar comunidad" → CommunityComingSoonView → "← Volver a Overlays Studio" → home.
+- Tests: V52OverlaysHome 6/6 PASS (4 cards, callbacks todos activos, Comunidad clicable, pills, profilesCount, anti-fake). CommunityComingSoonView 4/4 PASS (heading, copy honesto, sin perfiles fake, roadmap bullets). OverlaysStudioPage 11/11 PASS (navegación a comunidad con heading "Comunidad de overlays" y "Próximamente").
+- Checks: test 21/21 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes hub_main.html/pnpm-workspace.yaml).
+- Archivos tocados: `frontend/src/hub/overlays/V52OverlaysHome.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.test.tsx`, `frontend/src/hub/overlays/CommunityComingSoonView.tsx`, `frontend/src/hub/overlays/CommunityComingSoonView.test.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, WidgetStudio, LayoutStudio, OwnProfilesView, RecommendedProfilesView, OverlaysStudioPage.tsx (solo test), Engineer/Telemetry/Settings/Dashboard/Launcher, V52Shell, index.css, Auth/Supabase, dependencias.
+- Sin commit.

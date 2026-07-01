@@ -24,7 +24,7 @@ describe("V52OverlaysHome", () => {
     expect(screen.getByRole("heading", { name: "Comunidad" })).toBeTruthy();
   });
 
-  it("calls callbacks for Widgets, Mis perfiles and Recomendados, but not Comunidad", () => {
+  it("calls callbacks for all four entry cards", () => {
     const onOpenWidgets = vi.fn();
     const onOpenOwnProfiles = vi.fn();
     const onOpenRecommended = vi.fn();
@@ -43,14 +43,15 @@ describe("V52OverlaysHome", () => {
     fireEvent.click(screen.getByRole("button", { name: /Configurar widgets/ }));
     fireEvent.click(screen.getByRole("button", { name: /Ver mis perfiles/ }));
     fireEvent.click(screen.getByRole("button", { name: /Ver recomendados/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Explorar comunidad/ }));
 
     expect(onOpenWidgets).toHaveBeenCalledTimes(1);
     expect(onOpenOwnProfiles).toHaveBeenCalledTimes(1);
     expect(onOpenRecommended).toHaveBeenCalledTimes(1);
-    expect(onOpenCommunity).not.toHaveBeenCalled();
+    expect(onOpenCommunity).toHaveBeenCalledTimes(1);
   });
 
-  it("Comunidad card is disabled and does not call onOpenCommunity", () => {
+  it("Comunidad card is clickable and calls onOpenCommunity", () => {
     const onOpenCommunity = vi.fn();
 
     render(
@@ -63,14 +64,9 @@ describe("V52OverlaysHome", () => {
       />,
     );
 
-    const comunidadCard = screen.getByText("Comunidad").closest("article");
-    expect(comunidadCard?.className).toContain("opacity-50");
-    expect(comunidadCard?.className).toContain("cursor-not-allowed");
-    expect(comunidadCard?.className).toContain("pointer-events-none");
-
     const comunidadButton = screen.getByRole("button", { name: /Explorar comunidad/ });
     fireEvent.click(comunidadButton);
-    expect(onOpenCommunity).not.toHaveBeenCalled();
+    expect(onOpenCommunity).toHaveBeenCalledTimes(1);
   });
 
   it("renders recommended pills from RECOMMENDED_PROFILES", () => {

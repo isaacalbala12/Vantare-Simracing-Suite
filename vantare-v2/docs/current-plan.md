@@ -1335,3 +1335,11 @@ Verificacion manual (a hacer en maquina Windows con MinGW o en CI):
 4. Si Windows cachea el icono antiguo, seguir el procedimiento de limpieza del runbook (reinstall, `ie4uinit.exe -show`, `IconCache.db` como ultimo recurso).
 
 Estado del commit: pendiente de ejecucion por el integrador.
+
+Nota HUB-07 (2026-07-01):
+- Plan guardado en `docs/superpowers/plans/2026-07-01-hub-07-ux-cleanup-and-next-features.md`.
+- HUB-07-A: scroll del Dashboard corregido (V52Shell `min-h-screen` → `h-screen`). ActiveOverlayCard no se oculta.
+- HUB-07-B: ActiveOverlayCard ahora permite cerrar overlay cuando está en ejecución (botón "Cerrar overlay" emite `overlay:stop`). Botón "Abrir overlay" ya no se deshabilita permanentemente. "Editar overlay" sigue emitiendo `overlay:toggle-edit-mode`.
+- Eventos usados: `overlay:start-active` (abrir), `overlay:stop` (cerrar), `overlay:toggle-edit-mode` (editar), `overlay:status` (estado).
+- Tests: ActiveOverlayCard 14/14 PASS, DashboardPage 14/14 PASS, tsc OK, build OK, lint OK (warning preexistente).
+- Sin commit.

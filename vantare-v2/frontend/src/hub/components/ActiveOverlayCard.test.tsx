@@ -148,7 +148,7 @@ describe("ActiveOverlayCard", () => {
     expect(Events.Emit).not.toHaveBeenCalledWith("overlay:toggle-edit-mode");
   });
 
-  it("disables Abrir overlay when overlay is running with the active profile", async () => {
+  it("shows Cerrar overlay when overlay is running with the active profile", async () => {
     render(<ActiveOverlayCard onNavigate={vi.fn()} />);
 
     dispatchProfiles([
@@ -158,15 +158,28 @@ describe("ActiveOverlayCard", () => {
 
     const openBtn = await screen.findByTestId("active-overlay-open");
     expect(openBtn.textContent).toBe("Abrir overlay");
-    expect(openBtn.hasAttribute("disabled")).toBe(false);
 
     dispatch("overlay:status", { running: true, profileId: "p1", mode: "racing" });
 
     await waitFor(() => {
       const btn = screen.getByTestId("active-overlay-open");
-      expect(btn.textContent).toBe("Overlay en ejecucion");
-      expect(btn.hasAttribute("disabled")).toBe(true);
+      expect(btn.textContent).toBe("Cerrar overlay");
+      expect(btn.hasAttribute("disabled")).toBe(false);
     });
+  });
+
+  it("emits overlay:stop when clicking Cerrar overlay", async () => {
+    render(<ActiveOverlayCard onNavigate={vi.fn()} />);
+
+    dispatchProfiles([
+      { id: "p1", file: "p1.json", name: "Mi setup", displayMode: "racing", widgets: 3 },
+    ]);
+    dispatchSettings({ activeOverlayProfileId: "p1" });
+    dispatch("overlay:status", { running: true, profileId: "p1", mode: "racing" });
+
+    fireEvent.click(await screen.findByTestId("active-overlay-open"));
+
+    expect(Events.Emit).toHaveBeenCalledWith("overlay:stop");
   });
 
   it("switches Editar overlay label when overlay is in edit mode", async () => {
@@ -189,7 +202,7 @@ describe("ActiveOverlayCard", () => {
     });
   });
 
-  it("re-enables Abrir overlay when overlay status reports not running", async () => {
+  it("switches back to Abrir overlay when overlay status reports not running", async () => {
     render(<ActiveOverlayCard onNavigate={vi.fn()} />);
 
     dispatchProfiles([
@@ -200,16 +213,13 @@ describe("ActiveOverlayCard", () => {
     dispatch("overlay:status", { running: true, profileId: "p1", mode: "racing" });
 
     await waitFor(() => {
-      expect(screen.getByTestId("active-overlay-open").hasAttribute("disabled")).toBe(
-        true,
-      );
+      expect(screen.getByTestId("active-overlay-open").textContent).toBe("Cerrar overlay");
     });
 
     dispatch("overlay:status", { running: false });
 
     await waitFor(() => {
       const btn = screen.getByTestId("active-overlay-open");
-      expect(btn.hasAttribute("disabled")).toBe(false);
       expect(btn.textContent).toBe("Abrir overlay");
     });
   });

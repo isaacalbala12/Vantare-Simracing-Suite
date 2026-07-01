@@ -28,7 +28,7 @@ export function V52Shell({
   children,
 }: V52ShellProps) {
   return (
-    <div className="min-h-screen v52-shell-bg relative flex flex-col">
+    <div className="h-screen v52-shell-bg relative flex flex-col">
       <div className="v52-grain" />
       <div className="v52-vignette" />
       <Topbar

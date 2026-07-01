@@ -82,6 +82,10 @@ export function ActiveOverlayCard({ onNavigate, onUseRecommended }: ActiveOverla
     Events.Emit("overlay:start-active");
   }
 
+  function handleStop() {
+    Events.Emit("overlay:stop");
+  }
+
   function handleEdit() {
     if (!hasActiveProfile) return;
     Events.Emit("overlay:toggle-edit-mode");
@@ -107,9 +111,6 @@ export function ActiveOverlayCard({ onNavigate, onUseRecommended }: ActiveOverla
 
   if (hasActiveProfile) {
     const label = profileLabel(activeProfile);
-    const openLabel = overlayRunningWithActive
-      ? "Overlay en ejecucion"
-      : "Abrir overlay";
     const editLabel = overlayInEditMode ? "Salir de edicion" : "Editar overlay";
 
     return (
@@ -144,12 +145,11 @@ export function ActiveOverlayCard({ onNavigate, onUseRecommended }: ActiveOverla
             <button
               type="button"
               data-testid="active-overlay-open"
-              aria-label={`Abrir overlay ${label}`}
-              disabled={overlayRunningWithActive}
-              onClick={handleOpen}
-              className="btn-primary rounded-lg px-5 py-2 text-xs font-bold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={overlayRunningWithActive ? `Cerrar overlay ${label}` : `Abrir overlay ${label}`}
+              onClick={overlayRunningWithActive ? handleStop : handleOpen}
+              className="btn-primary rounded-lg px-5 py-2 text-xs font-bold text-white cursor-pointer"
             >
-              {openLabel}
+              {overlayRunningWithActive ? "Cerrar overlay" : "Abrir overlay"}
             </button>
             <button
               type="button"

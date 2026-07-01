@@ -53,4 +53,35 @@ describe("V52Shell", () => {
     fireEvent.click(screen.getByTestId("v52-sidebar-launcher"));
     expect(onNavigate).toHaveBeenCalledWith("launcher");
   });
+
+  it("hides sidebar when hideSidebar is true", () => {
+    render(
+      <V52Shell
+        activeSection="setup"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+        hideSidebar
+      >
+        <div data-testid="settings-content">settings</div>
+      </V52Shell>,
+    );
+    expect(screen.queryByTestId("v52-sidebar-setup")).toBeNull();
+    expect(screen.queryByText("Navegación")).toBeNull();
+    expect(screen.getByTestId("settings-content")).toBeTruthy();
+  });
+
+  it("shows sidebar by default when hideSidebar is not set", () => {
+    render(
+      <V52Shell
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      >
+        <div />
+      </V52Shell>,
+    );
+    expect(screen.getByTestId("v52-sidebar-dashboard")).toBeTruthy();
+  });
 });

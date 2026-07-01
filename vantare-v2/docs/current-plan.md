@@ -1362,3 +1362,16 @@ HUB-07-E (2026-07-01):
 - Archivos tocados: `frontend/src/hub/overlays/V52OverlaysHome.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.test.tsx`, `frontend/src/hub/overlays/CommunityComingSoonView.tsx`, `frontend/src/hub/overlays/CommunityComingSoonView.test.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: Go/backend, WidgetStudio, LayoutStudio, OwnProfilesView, RecommendedProfilesView, OverlaysStudioPage.tsx (solo test), Engineer/Telemetry/Settings/Dashboard/Launcher, V52Shell, index.css, Auth/Supabase, dependencias.
 - Sin commit.
+
+Nota SETTINGS-02-A (2026-07-01):
+- SettingsPage ahora oculta el sidebar del V52Shell cuando `section === 'setup'`, usando la nueva prop `hideSidebar`.
+- La página ocupa todo el ancho disponible (sin grid `xl:grid-cols-[260px_1fr]`).
+- Las tabs horizontales existentes (Cuenta, OBS, Actualizaciones, Hotkeys, Diagnóstico, Avanzado) se mantienen intactas con su funcionalidad.
+- No se cambió lógica interna de SettingsPage: todos los handlers, eventos, estado local y `settings:save` con payload completo se preservan.
+- Tests: 51/51 PASS (SettingsPage 22, V52Shell 5, HubApp 22, HubApp.bridge 2).
+  - V52Shell: 3 tests nuevos (sidebar oculto con hideSidebar, sidebar visible por defecto, sidebar visible en setup sin hideSidebar).
+  - SettingsPage: 4 tests nuevos (tab bar horizontal con 6 tabs, anti TD-041 hotkeys/delta/cpu preservan activeOverlayProfileId).
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes hub_main.html/pnpm-workspace.yaml).
+- Archivos tocados: `frontend/src/hub/components/V52Shell.tsx`, `frontend/src/hub/components/V52Shell.test.tsx`, `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, AccountSettings, ObsSetup, SettingsPage.tsx (lógica interna intacta), Dashboard/Launcher/Overlays/Engineer/Telemetry, index.css, Auth/Supabase, dependencias.
+- Sin commit.

@@ -306,4 +306,72 @@ describe('SettingsPage', () => {
 
     expect(runtimeMock.emit).toHaveBeenCalledWith('updater:install:verified', release);
   });
+
+  it('renders horizontal tab bar (no internal sidebar)', () => {
+    render(<SettingsPage />);
+    const tablist = screen.getByRole('tablist');
+    expect(tablist).toBeDefined();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.length).toBeGreaterThanOrEqual(6);
+    expect(tabs[0].textContent).toBe('Cuenta');
+    expect(tabs[1].textContent).toBe('OBS Browser Source');
+    expect(tabs[2].textContent).toBe('Actualizaciones');
+    expect(tabs[3].textContent).toBe('Hotkeys');
+    expect(tabs[4].textContent).toBe('Diagnóstico');
+    expect(tabs[5].textContent).toBe('Avanzado');
+  });
+
+  it('preserves activeOverlayProfileId when saving hotkeys (anti TD-041)', () => {
+    render(<SettingsPage />);
+    dispatch('settings', {
+      deltaMode: 'self',
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
+      activeOverlayProfileId: 'must-survive-hotkeys',
+    });
+    clickTab('Hotkeys');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar atajos' }));
+    const saveCalls = runtimeMock.emit.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'settings:save',
+    );
+    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
+    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
+    expect(payload.activeOverlayProfileId).toBe('must-survive-hotkeys');
+  });
+
+  it('preserves activeOverlayProfileId when changing delta mode (anti TD-041)', () => {
+    render(<SettingsPage />);
+    dispatch('settings', {
+      deltaMode: 'self',
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
+      activeOverlayProfileId: 'must-survive-delta',
+    });
+    clickTab('Avanzado');
+    fireEvent.click(screen.getByLabelText('Sesion (mejor vuelta de la sesion)'));
+    const saveCalls = runtimeMock.emit.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'settings:save',
+    );
+    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
+    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
+    expect(payload.activeOverlayProfileId).toBe('must-survive-delta');
+  });
+
+  it('preserves activeOverlayProfileId when toggling cpuSampling (anti TD-041)', () => {
+    render(<SettingsPage />);
+    dispatch('settings', {
+      deltaMode: 'self',
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
+      activeOverlayProfileId: 'must-survive-cpu',
+    });
+    clickTab('Avanzado');
+    fireEvent.click(screen.getByText('Monitorizar uso de CPU'));
+    const saveCalls = runtimeMock.emit.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'settings:save',
+    );
+    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
+    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
+    expect(payload.activeOverlayProfileId).toBe('must-survive-cpu');
+  });
 });

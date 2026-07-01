@@ -175,6 +175,7 @@ function HubShell() {
       onNavigate={handleNavigate}
       version={version}
       sourceStatus={sourceStatus}
+      hideSidebar={section === 'setup'}
     >
       {settingsLoaded && showBetaWelcome && (
         <BetaWelcome onComplete={handleBetaWelcomeClose} />

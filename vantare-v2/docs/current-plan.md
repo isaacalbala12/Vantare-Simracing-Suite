@@ -45,6 +45,25 @@ HUB-05-C (2026-07-01):
 - Archivos tocados: `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
 - Sin commit.
 
+Nota HUB-06-B (2026-07-01):
+- Polish visual de la pestaña Launcher para acercarla al HTML v5.2, manteniendo solo funcionalidad real y placeholders honestos.
+- Cambios en `LauncherPage.tsx`:
+  - Header envuelto en `opacity-0 animate-fade-in-up` (animación existente en `index.css`).
+  - Columna izquierda (LauncherCard) con `opacity-0 animate-fade-in-up delay-100`.
+  - Columna derecha (perfiles) con `opacity-0 animate-fade-in-up delay-150`.
+  - Botón disabled "+ Crear perfil personalizado" añadido junto al texto "LMU disponible · Apps asociadas pendientes de spec multi-sim".
+  - Cards placeholder "Perfiles de lanzamiento avanzados" y "Apps asociadas" con `group hover:border-accent/40 transition-colors` (hover glow como en el HTML).
+- Cambios en `LauncherCard.tsx` (solo visual, sin tocar contrato Wails/eventos):
+  - Header reestructurado: badge LMU con gradiente rojo (`w-9 h-9 rounded-lg bg-gradient-to-br from-accent to-[#9a0606]`) + título "Le Mans Ultimate" (antes "Launcher LMU") + subtítulo "Abre LMU desde Vantare".
+  - Status dot animado (`w-2 h-2 rounded-full`) con color según estado: verde (ready), ámbar (stale), gris (unconfigured). Con glow verde cuando ready.
+- Fake data evitada: no "8/8 apps detectadas", no CrewChief/Spotify/Trading Paints, no perfiles de lanzamiento reales (Endurance/Streaming/Práctica), no versiones de apps, no "Último uso".
+- Backend/eventos no tocados: `LauncherCard` sigue emitiendo `launcher:status:get`, `launcher:configure`, `launcher:launch` con `simulatorId: "lmu"`. Eventos escuchados: `launcher:status`, `settings`, `launcher:error`, `launcher:launched`. Sin cambios en Go, SettingsService, DashboardPage, V52Shell, index.css.
+- Tests: LauncherPage 5 tests (header, LauncherCard, placeholders honestos, disabled "Crear perfil personalizado", anti-fake apps count, anti-fake versions/profiles). LauncherCard 13 tests (sin cambios). Total: 18/18 PASS.
+- Checks: test 19/19 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/LauncherPage.tsx`, `frontend/src/hub/pages/LauncherPage.test.tsx`, `frontend/src/hub/components/LauncherCard.tsx`, `docs/current-plan.md`.
+- No se tocaron: `LauncherCard.test.tsx` (sin cambios), Go/backend, SettingsService, DashboardPage, V52Shell, index.css, Auth/Supabase, Overlays/Engineer/Telemetry/Settings.
+- Sin commit.
+
 Nota HUB-06-A (2026-07-01):
 - Polish visual de la home de Overlays Studio (`V52OverlaysHome.tsx`) para acercarla al HTML v5.2.
 - Cambios en `EntryCard`:

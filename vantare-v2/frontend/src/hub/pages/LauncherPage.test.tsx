@@ -22,6 +22,13 @@ describe("LauncherPage", () => {
     expect(screen.getAllByRole("button", { name: /próximamente/i }).length).toBeGreaterThan(0);
   });
 
+  it("renders a disabled 'Crear perfil personalizado' button", () => {
+    render(<LauncherPage />);
+    const btn = screen.getByRole("button", { name: /crear perfil personalizado/i });
+    expect(btn).toBeTruthy();
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("does not render fake detected apps count", () => {
     render(<LauncherPage />);
     expect(screen.queryByText(/8 \/ 8/i)).toBeNull();

@@ -117,20 +117,37 @@ export function LauncherCard({ onOpenSettings }: LauncherCardProps) {
     setShowConfig(false);
   };
 
+  const statusColor =
+    view.kind === "ready-steam" || view.kind === "ready-exec"
+      ? "bg-emerald-400"
+      : view.kind === "stale"
+        ? "bg-amber-400"
+        : "bg-vantare-textDim";
+
   return (
     <section
       data-testid="launcher-card"
       className="glass-panel rounded-xl p-6 border border-white/5"
     >
       <header className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <h2 className="font-display font-semibold text-lg text-white">
-            Launcher LMU
-          </h2>
-          <p className="text-xs text-vantare-textMuted">
-            Abre Le Mans Ultimate desde Vantare.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent to-[#9a0606] flex items-center justify-center shrink-0 shadow-lg shadow-red-900/30">
+            <span className="text-[11px] font-bold text-white tracking-tight">LMU</span>
+          </div>
+          <div>
+            <h2 className="font-display font-semibold text-lg text-white">
+              Le Mans Ultimate
+            </h2>
+            <p className="text-xs text-vantare-textMuted">
+              Abre LMU desde Vantare.
+            </p>
+          </div>
         </div>
+        <span
+          className={`w-2 h-2 rounded-full ${statusColor} shrink-0 mt-1.5`}
+          style={view.kind === "ready-steam" || view.kind === "ready-exec" ? { boxShadow: "0 0 6px rgba(52,211,153,.6)" } : undefined}
+          data-testid="launcher-status-dot"
+        />
       </header>
 
       {error && (

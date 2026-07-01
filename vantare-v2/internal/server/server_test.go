@@ -308,6 +308,12 @@ func TestAuthCallbackServesHTML(t *testing.T) {
 	if !strings.Contains(body, "/auth/token") {
 		t.Fatal("callback HTML should POST to /auth/token")
 	}
+	if !strings.Contains(body, "refresh_token") {
+		t.Fatal("callback HTML should extract refresh_token from URL fragment")
+	}
+	if !strings.Contains(body, "access_token") {
+		t.Fatal("callback HTML should extract access_token from URL fragment")
+	}
 }
 
 func TestAuthTokenForwardsToEmitter(t *testing.T) {
@@ -335,6 +341,63 @@ func TestAuthTokenForwardsToEmitter(t *testing.T) {
 	}
 	if dataMap["sessionToken"] != "test-tok-123" {
 		t.Fatalf("sessionToken = %v, want test-tok-123", dataMap["sessionToken"])
+	}
+}
+
+func TestAuthTokenForwardsRefreshToken(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+	payload := `{"access_token":"tok","refresh_token":"ref-456"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST /auth/token = %d, want 200: %s", rr.Code, rr.Body.String())
+	}
+	if len(em.calls) != 1 {
+		t.Fatalf("expected 1 emit call, got %d", len(em.calls))
+	}
+	dataMap, ok := em.calls[0].data.(map[string]any)
+	if !ok {
+		t.Fatalf("emit data type = %T, want map[string]any", em.calls[0].data)
+	}
+	if dataMap["sessionToken"] != "tok" {
+		t.Fatalf("sessionToken = %v, want tok", dataMap["sessionToken"])
+	}
+	if dataMap["refreshToken"] != "ref-456" {
+		t.Fatalf("refreshToken = %v, want ref-456", dataMap["refreshToken"])
+	}
+}
+
+func TestAuthTokenAcceptsMissingRefreshToken(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+	payload := `{"access_token":"tok-only"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST /auth/token = %d, want 200: %s", rr.Code, rr.Body.String())
+	}
+	if len(em.calls) != 1 {
+		t.Fatalf("expected 1 emit call, got %d", len(em.calls))
+	}
+	dataMap, ok := em.calls[0].data.(map[string]any)
+	if !ok {
+		t.Fatalf("emit data type = %T, want map[string]any", em.calls[0].data)
+	}
+	if dataMap["sessionToken"] != "tok-only" {
+		t.Fatalf("sessionToken = %v, want tok-only", dataMap["sessionToken"])
+	}
+	// refreshToken should be empty string (zero value), not cause a panic
+	if _, exists := dataMap["refreshToken"]; !exists {
+		t.Fatal("refreshToken key should exist in emit data")
 	}
 }
 

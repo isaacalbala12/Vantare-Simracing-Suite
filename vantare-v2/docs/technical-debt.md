@@ -62,13 +62,14 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Severidad: P3
 - Area: auth/frontend
 - Origen: diagnostico P0 Free plan bloqueado (2026-06-29)
-- Estado: abierto
+- Estado: cerrado (AUTH-03, 2026-07-01)
 - Release objetivo: `0.1.x` despues del cierre de UI v5.2 (`AUTH-03`)
 - Motivo para diferir: el OAuth ocurre en el navegador externo. Los tokens de Supabase se almacenan en el navegador, no en el WebView2 de Wails. En el proximo reinicio, `getSession()` devuelve null y el usuario debe reautenticarse. El fix anti-regresion en `LicenseProvider` previene el bloqueo inmediato, pero no resuelve la persistencia.
 - Fix esperado: tras el OAuth callback exitoso, llamar `supabase.auth.setSession({access_token, refresh_token})` en el WebView para persistir la sesion en localStorage del WebView2. Requiere que el callback HTTP envie tambien el `refresh_token` (no solo `access_token`). El callback actual aun no entrega `refresh_token`; sin ese campo, `setSession` no funciona correctamente y no se puede cerrar este TD.
 - Riesgo si se ignora: el usuario debe reautenticarse con Google en cada reinicio de la app. No bloquea el uso, pero es friccion UX.
 - Decision 2026-07-01: no mezclar con HUB-05/UI. Se ejecutara como `AUTH-03` despues del pase visual/tokens del Hub, para no cruzar cambios de auth con rework visual.
 - Razon de severidad: no bloquea `v0.1.0.2` porque el login funciona durante la sesion actual. Sube a P2 si se decide exigir persistencia de sesion para testers antes de la siguiente publicacion.
+- Cierre: AUTH-03 implementado. Callback HTTP extrae `access_token` + `refresh_token` del fragment de Supabase. Backend reenvia ambos a `license:validate` y emite `auth:session`. Frontend llama `supabase.auth.setSession()` para persistir en localStorage del WebView2. `LicenseProvider` en mount llama `getSession()` y si hay sesion persistida, la pasa a `license:validate` para validacion automatica sin re-login. Tests: 849/849 PASS, tsc/build/lint OK.
 
 ### TD-045 - Test gaps en UnconfiguredScreen, LicenseGate unconfigured y anti-regresion
 

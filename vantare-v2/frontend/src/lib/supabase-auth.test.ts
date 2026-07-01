@@ -5,12 +5,14 @@ const {
   signOutFn,
   getSessionFn,
   signInWithOAuthFn,
+  setSessionFn,
   createClient,
 } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signOutFn: vi.fn(),
   getSessionFn: vi.fn(),
   signInWithOAuthFn: vi.fn(),
+  setSessionFn: vi.fn(),
   createClient: vi.fn(),
 }));
 
@@ -23,6 +25,7 @@ vi.mock("@supabase/supabase-js", () => ({
         signOut: signOutFn,
         getSession: getSessionFn,
         signInWithOAuth: signInWithOAuthFn,
+        setSession: setSessionFn,
       },
     };
   },
@@ -35,6 +38,7 @@ import {
   signOut as authSignOut,
   getSession,
   signInWithOAuth,
+  setSupabaseSession,
 } from "./supabase-auth";
 
 describe("supabase-auth", () => {
@@ -45,6 +49,7 @@ describe("supabase-auth", () => {
     signInWithPassword.mockReset();
     signOutFn.mockReset();
     getSessionFn.mockReset();
+    setSessionFn.mockReset();
     signInWithOAuthFn.mockReset();
     createClient.mockClear();
   });
@@ -207,6 +212,44 @@ describe("supabase-auth", () => {
       vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
       resetSupabaseClient();
       const result = await signInWithOAuth("google");
+      expect(result.error).toMatch(/Supabase no configurado/);
+    });
+  });
+
+  describe("setSupabaseSession", () => {
+    it("calls supabase.auth.setSession with both tokens on success", async () => {
+      setSessionFn.mockResolvedValueOnce({ error: null });
+      const result = await setSupabaseSession("access-123", "refresh-456");
+      expect(result.error).toBeUndefined();
+      expect(setSessionFn).toHaveBeenCalledWith({
+        access_token: "access-123",
+        refresh_token: "refresh-456",
+      });
+    });
+
+    it("returns error when access_token is empty", async () => {
+      const result = await setSupabaseSession("");
+      expect(result.error).toBe("access_token is required");
+      expect(setSessionFn).not.toHaveBeenCalled();
+    });
+
+    it("returns error when refresh_token is missing", async () => {
+      const result = await setSupabaseSession("access-123");
+      expect(result.error).toMatch(/refresh_token is required/);
+      expect(setSessionFn).not.toHaveBeenCalled();
+    });
+
+    it("surfaces error from supabase.auth.setSession", async () => {
+      setSessionFn.mockResolvedValueOnce({ error: { message: "invalid token" } });
+      const result = await setSupabaseSession("access-123", "refresh-456");
+      expect(result.error).toBe("invalid token");
+    });
+
+    it("returns a clear config error when env vars are missing", async () => {
+      vi.stubEnv("VITE_SUPABASE_URL", "");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+      resetSupabaseClient();
+      const result = await setSupabaseSession("access-123", "refresh-456");
       expect(result.error).toMatch(/Supabase no configurado/);
     });
   });

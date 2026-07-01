@@ -391,6 +391,7 @@ func main() {
 	wailsApp.Event.On("license:validate", func(event *application.CustomEvent) {
 		var payload struct {
 			SessionToken string `json:"sessionToken"`
+			RefreshToken string `json:"refreshToken"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
@@ -409,6 +410,14 @@ func main() {
 		if res != nil {
 			log.Printf("license:validate result state=%s deviceOK=%v err=%v entitlements=%d",
 				res.State, res.DeviceOK, res.Error != nil, len(res.Entitlements))
+		}
+		// Emit auth:session so the frontend can persist the Supabase session
+		// in the WebView's localStorage. This survives app restarts.
+		if payload.SessionToken != "" {
+			emitter.Emit("auth:session", map[string]any{
+				"access_token":  payload.SessionToken,
+				"refresh_token": payload.RefreshToken,
+			})
 		}
 	})
 

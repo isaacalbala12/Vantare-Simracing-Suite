@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
 import type { LicenseResult } from "./license-types";
+import { getSession } from "./supabase-auth";
 
 type LicenseContextValue = {
   result: LicenseResult | null;
@@ -22,9 +23,12 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<LicenseResult | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    Events.Emit("license:validate", {});
-  }, []);
+  const refresh = useCallback(
+    (sessionToken?: string) => {
+      Events.Emit("license:validate", sessionToken ? { sessionToken } : {});
+    },
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +63,20 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setLoading(false);
       },
     );
-    refresh();
+
+    // On mount, check if Supabase has a persisted session in the WebView's
+    // localStorage (from a previous OAuth login). If found, pass the
+    // access_token to license:validate so the backend can validate it
+    // without requiring the user to re-authenticate.
+    getSession().then((session) => {
+      if (!cancelled) {
+        if (session?.access_token) {
+          refresh(session.access_token);
+        } else {
+          refresh();
+        }
+      }
+    });
 
     // Safety timeout: prevent infinite loading if the Wails IPC bridge
     // wasn't ready or the backend never responded. Resolves to anonymous

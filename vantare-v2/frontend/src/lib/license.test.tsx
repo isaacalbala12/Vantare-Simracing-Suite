@@ -7,6 +7,7 @@ const {
   eventsOn,
   eventsOff,
   eventsEmit,
+  mockGetSession,
 } = vi.hoisted(() => {
   const onListeners = new Map<string, (event: unknown) => void>();
   return {
@@ -17,6 +18,7 @@ const {
     }),
     eventsOff: vi.fn(),
     eventsEmit: vi.fn(),
+    mockGetSession: vi.fn(),
   };
 });
 
@@ -26,6 +28,10 @@ vi.mock("@wailsio/runtime", () => ({
     Off: eventsOff,
     Emit: eventsEmit,
   },
+}));
+
+vi.mock("./supabase-auth", () => ({
+  getSession: mockGetSession,
 }));
 
 import { LicenseProvider, useLicense } from "./license";
@@ -48,6 +54,9 @@ describe("license module", () => {
     eventsOn.mockClear();
     eventsEmit.mockClear();
     eventsOff.mockClear();
+    mockGetSession.mockReset();
+    // Default: no persisted session (fresh start)
+    mockGetSession.mockResolvedValue(null);
     cleanup();
   });
 
@@ -56,13 +65,15 @@ describe("license module", () => {
   });
 
   describe("LicenseProvider", () => {
-    it("registers license:changed listener and emits license:validate on mount", () => {
+    it("registers license:changed listener and emits license:validate on mount", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
       expect(eventsOn).toHaveBeenCalledWith(
         "license:changed",
         expect.any(Function),
       );
-      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
+      await vi.waitFor(() => {
+        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
+      });
     });
 
     it("exposes loading state until license:changed is received", () => {
@@ -138,11 +149,14 @@ describe("license module", () => {
       expect(onListeners.has("license:changed")).toBe(false);
     });
 
-    it("ignores license:validate changes for unrelated events", () => {
+    it("ignores license:validate changes for unrelated events", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
+      // Wait for the async getSession to resolve and emit license:validate
+      await vi.waitFor(() => {
+        expect(eventsEmit).toHaveBeenCalled();
+      });
       act(() => emitValidate());
-      // No assertion on state, just ensure no crash and refresh isn't called externally here.
-      expect(eventsEmit).toHaveBeenCalled();
+      // No assertion on state, just ensure no crash
     });
 
     it("resolves loading when timeout fires (no backend response)", () => {
@@ -187,6 +201,26 @@ describe("license module", () => {
       });
       expect(result.current.loading).toBe(false);
       expect(result.current.result?.state).toBe("active");
+    });
+  });
+
+  describe("LicenseProvider persisted session recovery", () => {
+    it("emits license:validate with session token when getSession returns a session", async () => {
+      mockGetSession.mockResolvedValue({ access_token: "persisted-tok" });
+      renderHook(() => useLicense(), { wrapper: LicenseProvider });
+      await vi.waitFor(() => {
+        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
+          sessionToken: "persisted-tok",
+        });
+      });
+    });
+
+    it("emits license:validate without token when getSession returns null", async () => {
+      mockGetSession.mockResolvedValue(null);
+      renderHook(() => useLicense(), { wrapper: LicenseProvider });
+      await vi.waitFor(() => {
+        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
+      });
     });
   });
 

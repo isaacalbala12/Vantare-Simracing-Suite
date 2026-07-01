@@ -174,9 +174,11 @@ const authCallbackHTML = `<!DOCTYPE html>
   var hash = window.location.hash.substring(1);
   var params = new URLSearchParams(hash);
   var token = params.get('access_token');
+  var refresh = params.get('refresh_token');
   if (!token) {
     var search = window.location.search;
     token = new URLSearchParams(search).get('access_token');
+    refresh = new URLSearchParams(search).get('refresh_token');
   }
   if (!token) {
     msg.textContent = 'No se recibió token de autenticación.';
@@ -184,10 +186,12 @@ const authCallbackHTML = `<!DOCTYPE html>
     hint.textContent = 'Vuelve a la app Vantare e intenta de nuevo.';
     return;
   }
+  var body = { access_token: token };
+  if (refresh) { body.refresh_token = refresh; }
   fetch('/auth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ access_token: token })
+    body: JSON.stringify(body)
   }).then(function(res) {
     if (res.ok) {
       msg.textContent = '¡Sesión iniciada correctamente!';
@@ -226,7 +230,8 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var payload struct {
-		AccessToken string `json:"access_token"`
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil || payload.AccessToken == "" {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
@@ -236,6 +241,7 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 	log.Printf("auth: received OAuth token via local callback, forwarding to license:validate")
 	s.emitter.Emit("license:validate", map[string]any{
 		"sessionToken": payload.AccessToken,
+		"refreshToken": payload.RefreshToken,
 	})
 
 	w.Header().Set("Content-Type", "application/json")

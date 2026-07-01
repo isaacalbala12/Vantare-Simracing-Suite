@@ -29,7 +29,7 @@ HUB-05-C (2026-07-01):
 - HUB-05-C color/font local pass (2026-07-01): ajustados gradientes del hero y bloque Ingeniero (`to-transparent` → `to-[#0a0a0a]`) y labels de V52InfoCard por tone (green→emerald, blue→blue-400, purple→violet-400, amber→amber-400). Tokens globales `index.css` quedan pendientes para revision UI global.
 - UI-COLOR-DIFF-03 (2026-07-01): ajustados grain (0.55→0.25), opacidad card-sleek (0.8→0.55, 0.9→0.65), color inicial del hero (`vantare-red-700/60`→`#ff3b3b/60`) y fondo de calendar card (`bg-black/20`→`bg-[rgba(20,20,20,.6)]`) para acercar luminosidad al HTML v5.2. No se tocaron tokens globales adicionales.
 - UI-TOKENS-01 (pendiente inmediato, 2026-07-01): el Dashboard ya es correcto a nivel de estructura, pero los colores/fuentes siguen "off" respecto al HTML v5.2. Siguiente paso recomendado: pase global acotado sobre tokens `frontend/src/index.css` (fuentes Inter/JetBrains Mono, rojo accent, texto muted/dim, `btn-primary`, `glass-panel`) con review previa/posterior porque impacta todo el Hub.
-- AUTH-03 (despues de cerrar UI): persistir sesion OAuth externa en WebView2. El callback debe entregar `access_token` + `refresh_token`, el frontend debe llamar `supabase.auth.setSession(...)`, y el siguiente arranque debe recuperar sesion sin pedir login otra vez. No mezclar con el pase UI; ver TD-044.
+- AUTH-03 (2026-07-01): persistir sesion OAuth externa en WebView2. Implementado y verificado. Ver nota AUTH-03 abajo.
 - Cambios en `DashboardPage.tsx`:
   - Hero banner rojo grande con gradiente, badge "BETA · v0.1.0.2", titulo "Vantare Beta", descripcion honesta del plan Free, CTA "Gestionar cuenta" que navega a setup.
   - Bloque "Proximas carreras" via V52CalendarStrip (3 columnas + NextRaceCard real + placeholders honestos).
@@ -43,6 +43,18 @@ HUB-05-C (2026-07-01):
 - Tests: 14 PASS (DashboardPage). Nuevos tests: hero banner, Gestionar cuenta navega, Ingeniero section, Novedades section, Simulador principal, anti-fake extendido (Sebring/COTA/Paul Ricard/14h 22m/Q4 2026/iRacing y Assetto Corsa).
 - Checks: test DashboardPage 14/14 PASS, test DashboardPage+HubApp 38/38 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
 - Archivos tocados: `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
+- Sin commit.
+
+Nota AUTH-03 (2026-07-01):
+- Implementada persistencia de sesion Supabase en WebView2 tras OAuth externo.
+- Contrato de tokens: el callback HTML en `internal/server/server.go` ahora extrae `access_token` y `refresh_token` del fragment de Supabase. El handler `POST /auth/token` recibe ambos y los reenvia a `license:validate` como `sessionToken` + `refreshToken`.
+- `cmd/vantare/main.go`: tras `license:validate`, emite `auth:session` con `access_token` y `refresh_token`.
+- Frontend `supabase-auth.ts`: nuevo helper `setSupabaseSession(accessToken, refreshToken)` que llama `supabase.auth.setSession(...)`. Si falta `refresh_token`, devuelve error y no llama setSession.
+- `LoginScreen.tsx`: escucha evento `auth:session` y llama `setSupabaseSession` con ambos tokens.
+- `LicenseProvider` (`license.tsx`): en mount, llama `getSession()` para detectar sesion persistida. Si existe, pasa `access_token` a `license:validate` para validacion automatica sin re-login.
+- Tests: backend 3 nuevos (refresh_token forwarding, missing refresh_token no paniquea, callback HTML contiene refresh_token). Frontend 5 nuevos (setSupabaseSession 5 tests, LoginScreen auth:session 2 tests, LicenseProvider persisted session 2 tests). Total: 849/849 PASS.
+- Checks: gofmt OK, go test OK, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `internal/server/server.go`, `internal/server/server_test.go`, `cmd/vantare/main.go`, `frontend/src/lib/supabase-auth.ts`, `frontend/src/lib/supabase-auth.test.ts`, `frontend/src/lib/license.tsx`, `frontend/src/lib/license.test.tsx`, `frontend/src/hub/auth/LoginScreen.tsx`, `frontend/src/hub/auth/LoginScreen.test.tsx`, `docs/current-plan.md`, `docs/technical-debt.md`.
 - Sin commit.
 
 HUB-05-B implementacion (2026-07-01, v0.1.x):

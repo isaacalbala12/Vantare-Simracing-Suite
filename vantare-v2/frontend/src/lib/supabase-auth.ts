@@ -109,6 +109,37 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
+// setSupabaseSession persists an OAuth session in the WebView's Supabase
+// client (localStorage). This is called after the external OAuth callback
+// delivers access_token + refresh_token so the session survives app restarts.
+// Returns an error string if the tokens are invalid or the call fails.
+export async function setSupabaseSession(
+  accessToken: string,
+  refreshToken?: string,
+): Promise<{ error?: string }> {
+  if (!accessToken) {
+    return { error: "access_token is required" };
+  }
+  if (!refreshToken) {
+    return { error: "refresh_token is required to persist session" };
+  }
+  try {
+    const { error } = await getSupabaseClient().auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) {
+      return { error: error.message };
+    }
+    return {};
+  } catch (err) {
+    if (isConfigError(err)) {
+      return { error: missingConfigError };
+    }
+    throw err;
+  }
+}
+
 // signInWithOAuth returns the OAuth URL for the given provider without
 // navigating the WebView. The caller is responsible for opening the URL in
 // the system's external browser (via Browser.OpenURL from @wailsio/runtime).

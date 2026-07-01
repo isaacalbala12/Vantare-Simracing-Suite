@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './SettingsPage';
 
@@ -108,6 +108,80 @@ describe('SettingsPage', () => {
     clickTab('Hotkeys');
     expect(screen.getByRole('heading', { name: 'Atajos de teclado globales' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Guardar atajos' })).toBeDefined();
+    expect(screen.getByText('Toggle overlay')).toBeDefined();
+    expect(screen.getByText('Siguiente perfil')).toBeDefined();
+    expect(screen.getByText('Perfil anterior')).toBeDefined();
+  });
+
+  function clickFirstHotkeyButton() {
+    const buttons = screen.getAllByRole('button', { name: /Cambiar/ });
+    fireEvent.click(buttons[0]);
+  }
+
+  it('enters capture mode when clicking a hotkey row', () => {
+    render(<SettingsPage />);
+    clickTab('Hotkeys');
+    clickFirstHotkeyButton();
+    expect(screen.getByText('Pulsa una combinación...')).toBeDefined();
+    expect(screen.getByText('Cancelar')).toBeDefined();
+  });
+
+  it('captures Ctrl+Shift+E and updates the value', async () => {
+    render(<SettingsPage />);
+    clickTab('Hotkeys');
+    clickFirstHotkeyButton();
+    const event = new KeyboardEvent('keydown', {
+      key: 'e',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => { document.dispatchEvent(event); });
+    await waitFor(() => {
+      expect(screen.queryByText('Pulsa una combinación...')).toBeNull();
+    });
+    expect(screen.getByText('ctrl+shift+e')).toBeDefined();
+  });
+
+  it('cancels capture on Escape and preserves previous value', async () => {
+    render(<SettingsPage />);
+    dispatch('settings', {
+      deltaMode: 'self',
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
+    });
+    clickTab('Hotkeys');
+    clickFirstHotkeyButton();
+    const esc = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => { document.dispatchEvent(esc); });
+    await waitFor(() => {
+      expect(screen.queryByText('Pulsa una combinación...')).toBeNull();
+    });
+    expect(screen.getByText('ctrl+shift+v')).toBeDefined();
+  });
+
+  it('does not change value when pressing only Ctrl', () => {
+    render(<SettingsPage />);
+    dispatch('settings', {
+      deltaMode: 'self',
+      cpuSampling: true,
+      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
+    });
+    clickTab('Hotkeys');
+    clickFirstHotkeyButton();
+    const ctrl = new KeyboardEvent('keydown', {
+      key: 'Control',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(ctrl);
+    expect(screen.getByText('Pulsa una combinación...')).toBeDefined();
   });
 
   it('shows diagnostics when clicking Diagnóstico tab', () => {

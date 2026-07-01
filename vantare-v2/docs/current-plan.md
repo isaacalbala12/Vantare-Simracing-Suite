@@ -111,6 +111,25 @@ Nota HUB-06-D (2026-07-01):
 - No se tocaron: Go/backend, Dashboard/Launcher/Overlays/Engineer/Settings, V52SectionHeader, V52InfoCard, index.css, Auth/Supabase, dependencias.
 - Sin commit.
 
+Nota HOTKEYS-02 (2026-07-01):
+- Implementada captura de atajos estilo videojuego en Ajustes > Hotkeys.
+- Reemplazados inputs de texto por modo captura: click en una acción → estado "Pulsa una combinación..." → pulsar tecla → se guarda automáticamente.
+- Cada hotkey tiene: nombre de acción, valor actual, botón "Cambiar", estado visual de captura con "Cancelar", botón "Guardar atajos" existente.
+- Captura combinaciones con modificadores (Ctrl, Shift, Alt, Meta) + tecla final.
+- Formato normalizado: `ctrl+shift+v` (minúsculas, `+` separador, flechas → `right`/`left`/`up`/`down`, espacio → `space`).
+- Escape cancela la captura y conserva el valor anterior.
+- Solo modificadores sin tecla final no cambian el valor.
+- `preventDefault` + `stopPropagation` en el listener de captura para evitar que el navegador ejecute atajos.
+- `settings:save` emite payload completo (`appSettings`) — no reintroduce TD-041.
+- `activeOverlayProfileId` se preserva en payload (test anti-TD-041 existente intacto).
+- No se cambiaron nombres/keys de acciones existentes (`toggleOverlay`, `nextProfile`, `prevProfile`).
+- No se tocaron: Go/backend, AccountSettings, ObsSetup, delta/cpu/updates/diagnostics tabs.
+- Archivos nuevos: `frontend/src/hub/settings/hotkey-capture.ts`, `frontend/src/hub/settings/hotkey-capture.test.ts`.
+- Archivos modificados: `frontend/src/hub/pages/SettingsPage.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `docs/current-plan.md`.
+- Tests: 33 PASS (10 hotkey-capture + 23 SettingsPage). Tests nuevos: renderiza hotkeys actuales, click entra en captura, Ctrl+Shift+E guarda, Escape cancela, solo Ctrl no cambia.
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (solo warnings preexistentes en hub_main.html y pnpm-workspace.yaml).
+- Sin commit.
+
 Nota HUB-06-B (2026-07-01):
 - Polish visual de la pestaña Launcher para acercarla al HTML v5.2, manteniendo solo funcionalidad real y placeholders honestos.
 - Cambios en `LauncherPage.tsx`:

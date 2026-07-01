@@ -28,4 +28,15 @@ describe("LauncherPage", () => {
     expect(screen.queryByText(/CrewChief/i)).toBeNull();
     expect(screen.queryByText(/Spotify/i)).toBeNull();
   });
+
+  it("does not render fake detected app versions or fake launch profiles", () => {
+    render(<LauncherPage />);
+
+    expect(screen.queryByText(/8 \/ 8/i)).toBeNull();
+    expect(screen.queryByText(/CrewChief/i)).toBeNull();
+    expect(screen.queryByText(/Spotify/i)).toBeNull();
+    expect(screen.queryByText(/v30\.2/i)).toBeNull();
+    expect(screen.queryByText(/Último uso/i)).toBeNull();
+    expect(screen.queryByText(/Endurance/i)).toBeNull();
+  });
 });

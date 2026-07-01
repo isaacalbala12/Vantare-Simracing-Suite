@@ -15,6 +15,9 @@ export function LauncherPage() {
         <section className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <span className="v52-eyebrow">Perfiles de lanzamiento</span>
+            <p className="text-[10px] font-mono text-vantare-textDim uppercase tracking-[.18em]">
+              LMU disponible · Apps asociadas pendientes de spec multi-sim
+            </p>
           </div>
           <article className="card-sleek rounded-xl p-5">
             <div className="flex items-start justify-between gap-3">

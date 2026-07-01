@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import type { EngineerStatus, EngineerNotification } from '../../engineer/engineer-types';
+import { V52SectionHeader } from '../components/V52SectionHeader';
 
 const INITIAL_STATUS: EngineerStatus = {
   enabled: true,
@@ -72,22 +73,18 @@ export function EngineerPage() {
   };
 
   return (
-    <div className="max-w-[1920px] mx-auto px-6 py-8 flex flex-col gap-6 h-full">
-      <div className="flex flex-col gap-1">
-        <h1 className="font-display text-2xl font-bold text-white tracking-wide">
-          Vantare Ingeniero
-        </h1>
-        <p className="text-sm text-vantare-textMuted">
-          Configuración del ingeniero de pista y spotter en tiempo real.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <V52SectionHeader
+        title="Ingeniero Vantare"
+        description="Configura el ingeniero de pista y el spotter. En beta, el módulo trabaja con el estado real que emite el backend."
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
         {/* Left Column: Configuration Panels */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          <div className="glass-panel rounded-xl p-6 flex flex-col gap-6 border border-white/5">
+        <section className="xl:col-span-1 flex flex-col gap-4">
+          <div className="card-sleek rounded-xl p-5 flex flex-col gap-5 border border-white/5">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-white">Estado de Conexión</span>
+              <span className="v52-eyebrow">Estado</span>
               <span
                 data-testid="connection-badge"
                 className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
@@ -147,9 +144,7 @@ export function EngineerPage() {
             {/* Selects */}
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-vantare-textMuted">
-                  Fuente de Telemetría
-                </label>
+                <span className="v52-eyebrow">Fuente de Telemetría</span>
                 <select
                   data-testid="select-source"
                   value={status.source}
@@ -162,9 +157,7 @@ export function EngineerPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-vantare-textMuted">
-                  Sensibilidad del Spotter
-                </label>
+                <span className="v52-eyebrow">Sensibilidad del Spotter</span>
                 <select
                   data-testid="select-sensitivity"
                   value={status.sensitivity}
@@ -178,15 +171,13 @@ export function EngineerPage() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Right Column: Live Notifications Timeline */}
-        <div className="lg:col-span-2 flex flex-col gap-4 h-[600px]">
-          <div className="glass-panel rounded-xl p-6 flex flex-col overflow-hidden h-full border border-white/5">
+        <section className="xl:col-span-2 flex flex-col gap-4 h-[600px]">
+          <div className="card-sleek rounded-xl p-5 flex flex-col overflow-hidden h-full border border-white/5">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">
-                Mensajes Recientes
-              </h2>
+              <span className="v52-eyebrow">Mensajes recientes</span>
               <span className="font-mono text-xs text-vantare-textMuted">
                 {notifications.length} mensajes
               </span>
@@ -243,7 +234,7 @@ export function EngineerPage() {
               )}
             </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

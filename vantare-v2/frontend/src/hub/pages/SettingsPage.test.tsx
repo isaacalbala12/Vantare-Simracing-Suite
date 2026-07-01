@@ -87,6 +87,16 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText('Incluir pre-releases')).toBeDefined();
   });
 
+  it('renders v5.2 settings shell without hiding existing functional sections', () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByRole('heading', { name: 'Ajustes' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();
+    expect(screen.getByLabelText('Solo releases estables')).toBeDefined();
+    expect(screen.getByLabelText('Incluir pre-releases')).toBeDefined();
+  });
+
   it('emits settings save when channel changes', () => {
     render(<SettingsPage />);
     dispatch('updater:settings', { settings: { channel: 'stable' } });

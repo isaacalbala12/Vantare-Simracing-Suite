@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
-import { StudioHome } from "../overlays/StudioHome";
+import { V52OverlaysHome } from "../overlays/V52OverlaysHome";
 import { WidgetStudio } from "../overlays/WidgetStudio";
 import { LayoutStudio } from "../overlays/LayoutStudio";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
@@ -313,10 +313,9 @@ export function OverlaysStudioPage({
         </div>
       )}
 
-      <StudioHome
-        profileCount={studio.profiles.length}
-        recommendedCount={RECOMMENDED_PROFILES.length}
-        onOpenWidgetStudio={openWidgetStudio}
+      <V52OverlaysHome
+        profilesCount={studio.profiles.length}
+        onOpenWidgets={openWidgetStudio}
         onOpenOwnProfiles={() => setMode("ownProfiles")}
         onOpenRecommended={() => setMode("recommended")}
         onOpenCommunity={() => setMode("community")}

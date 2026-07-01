@@ -64,8 +64,16 @@ describe('EngineerPage', () => {
 
   it('renders section heading and description', () => {
     render(<EngineerPage />);
-    expect(screen.getByRole('heading', { name: 'Vantare Ingeniero' })).toBeDefined();
-    expect(screen.getByText('Configuración del ingeniero de pista y spotter en tiempo real.')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Ingeniero Vantare' })).toBeDefined();
+    expect(screen.getByText(/Configura el ingeniero de pista y el spotter/i)).toBeDefined();
+  });
+
+  it('does not render unimplemented fake voice profile data', () => {
+    render(<EngineerPage />);
+
+    expect(screen.queryByText(/Carlos \(Ingeniero\)/i)).toBeNull();
+    expect(screen.queryByText(/12 perfiles compatibles/i)).toBeNull();
+    expect(screen.queryByText(/LMU, iRacing y Assetto Corsa/i)).toBeNull();
   });
 
   it('requests status on mount', () => {

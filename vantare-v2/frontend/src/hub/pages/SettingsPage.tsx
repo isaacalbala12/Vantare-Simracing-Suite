@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import { ObsSetup } from '../components/ObsSetup';
 import { AccountSettings } from '../settings/AccountSettings';
+import { V52SectionHeader } from '../components/V52SectionHeader';
 
 export type Channel = 'stable' | 'prerelease';
 
@@ -325,18 +326,16 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-[1920px] mx-auto px-6 py-6 relative z-20">
-      <div className="mb-6">
-        <h1 className="font-display font-bold text-3xl text-white mb-2">Ajustes</h1>
-        <p className="text-sm text-vantare-textMuted">
-          Configuración global, atajos de teclado, OBS y actualizaciones.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+    <div className="flex flex-col gap-5">
+      <V52SectionHeader
+        title="Ajustes"
+        description="Cuenta, OBS, actualizaciones, atajos y diagnósticos. Las pestañas profundas quedan para SETTINGS-01."
+      />
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
 
         <div className="xl:col-span-8 flex flex-col gap-6">
           {/* Delta Mode */}
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <h2 className="font-display font-semibold text-lg text-white mb-4">
               Modo delta
             </h2>
@@ -361,7 +360,7 @@ export function SettingsPage() {
           </div>
 
           {/* CPU Sampling */}
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <h2 className="font-display font-semibold text-lg text-white mb-4">
               Rendimiento
             </h2>
@@ -377,7 +376,7 @@ export function SettingsPage() {
           </div>
 
           {/* Hotkeys */}
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-semibold text-lg text-white">
                 Atajos de teclado globales
@@ -406,7 +405,7 @@ export function SettingsPage() {
           </div>
 
           {/* OBS Setup */}
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <h2 className="font-display font-semibold text-lg text-white mb-4">
               OBS Browser Source
             </h2>
@@ -414,7 +413,7 @@ export function SettingsPage() {
           </div>
 
           {/* Soporte Técnico y Diagnósticos */}
-          <div className="glass-panel rounded-xl p-6 border border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+          <div className="card-sleek rounded-xl p-5 border border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
             <h2 className="font-display font-semibold text-lg text-white mb-2">
               Soporte Técnico y Diagnósticos
             </h2>
@@ -440,7 +439,7 @@ export function SettingsPage() {
           {settingsStatus && (
             <div className="text-xs text-vantare-textMuted font-mono">{settingsStatus}</div>
           )}
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <h2 className="font-display font-semibold text-lg text-white mb-4">
               Canal de actualizaciones
             </h2>
@@ -470,7 +469,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-semibold text-lg text-white">
                 Versiones disponibles
@@ -608,10 +607,10 @@ export function SettingsPage() {
         </div>
 
         <div className="xl:col-span-4 flex flex-col gap-6">
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <AccountSettings />
           </div>
-          <div className="glass-panel rounded-xl p-6 border border-white/5">
+          <div className="card-sleek rounded-xl p-5 border border-white/5">
             <h3 className="font-display font-semibold text-lg text-white mb-4">Información</h3>
             <p className="text-sm text-vantare-textMuted mb-4">
               El instalador descargado reemplazará la versión actual y reiniciará la aplicación.

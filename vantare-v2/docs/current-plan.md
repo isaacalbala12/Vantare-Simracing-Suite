@@ -45,6 +45,24 @@ HUB-05-C (2026-07-01):
 - Archivos tocados: `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
 - Sin commit.
 
+Nota HUB-06-C (2026-07-01):
+- Polish visual de la pestaña Ingeniero para acercarla al HTML v5.2, sin inventar features ni romper eventos Wails.
+- Cambios en `EngineerPage.tsx`:
+  - Header reemplazado: de `V52SectionHeader` a `<header>` nativo con `opacity-0 animate-fade-in-up`, título `<h1>` grande (`text-3xl font-bold tracking-tight`) y descripción en `text-vantare-textMuted`.
+  - Botón disabled "Opciones avanzadas" añadido en el header, con `cursor-not-allowed` y `title` honesto "Voz IA y perfiles de voz disponibles en futura actualización". Sigue el patrón del HTML v5.2 pero sin modal ni funcionalidad real.
+  - Panel de configuración (columna izquierda) con `opacity-0 animate-fade-in-up delay-100`.
+  - Panel de notificaciones (columna derecha) con `opacity-0 animate-fade-in-up delay-150`, `maxHeight: 520px` inline, `min-h-[200px]` en el scroll container, y hover glow en cada notificación (`hover:border-vantare-red-500/20`).
+  - Footer honesto añadido: "Configuración aplicada localmente · guardado automático" (en lugar del HTML que dice "12 perfiles compatibles").
+  - Eliminado import de `V52SectionHeader` (ya no se usa).
+- Eventos preservados: `engineer:status:get`, `engineer:enabled:set`, `engineer:spotter:set`, `engineer:source:set`, `engineer:sensitivity:set`, `engineer:status`, `engineer:notification`.
+- Test ids preservados: `connection-badge`, `toggle-enabled`, `toggle-spotter`, `select-source`, `select-sensitivity`, `notification-${id}`.
+- Fake data evitada: no "Carlos (Ingeniero)", no "12 perfiles compatibles", no "LMU, iRacing y Assetto Corsa", no "Marcos/Lucía/James/Hugo" (voces fake), no "Probar voz", no "API key TTS", no sliders de voz/velocidad/volumen.
+- Tests: 12 PASS (EngineerPage). 3 tests nuevos: botón avanzado disabled, footer honesto, anti-fake extendido (voces, TTS, sliders). Tests existentes intactos.
+- Checks: test 12/12 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/EngineerPage.tsx`, `frontend/src/hub/pages/EngineerPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, eventos Wails, Auth/Supabase, Dashboard/Launcher/Overlays/Telemetry/Settings, index.css, dependencias.
+- Sin commit.
+
 Nota HUB-06-B (2026-07-01):
 - Polish visual de la pestaña Launcher para acercarla al HTML v5.2, manteniendo solo funcionalidad real y placeholders honestos.
 - Cambios en `LauncherPage.tsx`:

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import type { EngineerStatus, EngineerNotification } from '../../engineer/engineer-types';
-import { V52SectionHeader } from '../components/V52SectionHeader';
 
 const INITIAL_STATUS: EngineerStatus = {
   enabled: true,
@@ -74,15 +73,28 @@ export function EngineerPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <V52SectionHeader
-        title="Ingeniero Vantare"
-        description="Configura el ingeniero de pista y el spotter. En beta, el módulo trabaja con el estado real que emite el backend."
-      />
+      {/* Header */}
+      <header className="opacity-0 animate-fade-in-up flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-bold text-3xl text-white tracking-tight">Ingeniero Vantare</h1>
+          <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
+            Configura el ingeniero de pista y el spotter. En beta, el módulo trabaja con el estado real que emite el backend.
+          </p>
+        </div>
+        <button
+          disabled
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-bold text-white/40 uppercase tracking-[.22em] cursor-not-allowed shrink-0"
+          title="Voz IA y perfiles de voz disponibles en futura actualización"
+        >
+          Opciones avanzadas
+          <span>→</span>
+        </button>
+      </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
         {/* Left Column: Configuration Panels */}
-        <section className="xl:col-span-1 flex flex-col gap-4">
-          <div className="card-sleek rounded-xl p-5 flex flex-col gap-5 border border-white/5">
+        <section className="xl:col-span-1 flex flex-col gap-4 opacity-0 animate-fade-in-up delay-100">
+          <div className="card-sleek rounded-xl p-5 flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <span className="v52-eyebrow">Estado</span>
               <span
@@ -174,8 +186,8 @@ export function EngineerPage() {
         </section>
 
         {/* Right Column: Live Notifications Timeline */}
-        <section className="xl:col-span-2 flex flex-col gap-4 h-[600px]">
-          <div className="card-sleek rounded-xl p-5 flex flex-col overflow-hidden h-full border border-white/5">
+        <section className="xl:col-span-2 flex flex-col gap-4 opacity-0 animate-fade-in-up delay-150">
+          <div className="card-sleek rounded-xl p-5 flex flex-col overflow-hidden border border-white/5" style={{ maxHeight: '520px' }}>
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <span className="v52-eyebrow">Mensajes recientes</span>
               <span className="font-mono text-xs text-vantare-textMuted">
@@ -183,12 +195,12 @@ export function EngineerPage() {
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3">
+            <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 min-h-[200px]">
               {notifications.slice().reverse().map((msg) => (
                 <div
                   key={msg.id}
                   data-testid={`notification-${msg.id}`}
-                  className="bg-black/25 border border-white/5 rounded-lg p-3 flex items-start gap-4 hover:bg-white/5 transition-colors"
+                  className="bg-black/25 border border-white/5 rounded-lg p-3 flex items-start gap-4 hover:bg-white/5 hover:border-vantare-red-500/20 transition-all"
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-vantare-red-950/40 border border-vantare-red-500/20 flex items-center justify-center text-vantare-red-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,6 +248,11 @@ export function EngineerPage() {
           </div>
         </section>
       </div>
+
+      {/* Footer */}
+      <p className="text-[10px] text-vantare-textDim font-mono text-center mt-2">
+        Configuración aplicada localmente · guardado automático
+      </p>
     </div>
   );
 }

@@ -76,6 +76,29 @@ describe('EngineerPage', () => {
     expect(screen.queryByText(/LMU, iRacing y Assetto Corsa/i)).toBeNull();
   });
 
+  it('renders disabled advanced options button', () => {
+    render(<EngineerPage />);
+    const btn = screen.getByRole('button', { name: /opciones avanzadas/i });
+    expect(btn).toBeDefined();
+    expect(btn.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('renders honest footer text', () => {
+    render(<EngineerPage />);
+    expect(screen.getByText(/Configuración aplicada localmente/i)).toBeDefined();
+  });
+
+  it('does not render fake voice panels or TTS sliders', () => {
+    render(<EngineerPage />);
+    expect(screen.queryByText(/Marcos/i)).toBeNull();
+    expect(screen.queryByText(/Lucía/i)).toBeNull();
+    expect(screen.queryByText(/James/i)).toBeNull();
+    expect(screen.queryByText(/Hugo/i)).toBeNull();
+    expect(screen.queryByText(/Carlos \(Ingeniero\)/i)).toBeNull();
+    expect(screen.queryByText(/Probar voz/i)).toBeNull();
+    expect(screen.queryByText(/API key TTS/i)).toBeNull();
+  });
+
   it('requests status on mount', () => {
     render(<EngineerPage />);
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:status:get');

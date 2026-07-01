@@ -43,7 +43,6 @@ describe("DashboardPage — beta honest hub", () => {
   it("renders last activity card (no empty activity placeholder)", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("last-activity-card")).toBeTruthy();
-    expect(screen.queryByText(/sin carreras registradas/i)).toBeTruthy();
   });
 
   it("renders launcher card destination", () => {

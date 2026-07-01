@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 const {
@@ -565,6 +565,31 @@ describe("HubApp gate (production)", () => {
       expect(screen.getByTestId("v52-sidebar-engineer")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-telemetry")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-setup")).toBeTruthy();
+    });
+  });
+
+  it("renders Telemetry page when telemetry section is selected", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    const sidebarTelemetry = await waitFor(() =>
+      screen.getByTestId("v52-sidebar-telemetry"),
+    );
+    fireEvent.click(sidebarTelemetry);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Telemetría" })).toBeTruthy();
+      expect(screen.getByText(/en desarrollo/i)).toBeTruthy();
     });
   });
 });

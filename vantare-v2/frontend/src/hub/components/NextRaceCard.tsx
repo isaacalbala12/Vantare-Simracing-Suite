@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import {
-  EMPTY_CALENDAR,
   formatCountdown,
   formatEventDate,
   isEventActive,
@@ -159,7 +158,3 @@ export function NextRaceCard({ now, onImport }: NextRaceCardProps) {
     </section>
   );
 }
-
-// EmptyCalendar is exposed for tests that want to seed the component with a
-// known empty document.
-export const EMPTY_CALENDAR_FOR_TESTS: Calendar = EMPTY_CALENDAR;

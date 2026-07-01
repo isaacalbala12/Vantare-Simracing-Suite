@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { applyTheme, getStoredThemeId, persistThemeId, type VantareTheme } from '../../lib/theme';
 import vantareV5 from '../../themes/vantare-v5.json';
 import vantareLite from '../../themes/vantare-lite.json';
-import { NAV_ITEMS } from '../navigation';
+import { NAV_ITEMS, type Section } from '../navigation';
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
@@ -15,8 +15,8 @@ type SourceStatus = {
 };
 
 type TopbarProps = {
-  activeSection: string;
-  onNavigate: (section: string) => void;
+  activeSection: Section;
+  onNavigate: (id: Section) => void;
   version?: string | null;
   sourceStatus?: SourceStatus | null;
 };
@@ -43,7 +43,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
     : 'text-vantare-textMuted';
 
   const handleNav = useCallback(
-    (id: string) => (e: React.MouseEvent) => {
+    (id: Section) => (e: React.MouseEvent) => {
       e.preventDefault();
       onNavigate(id);
     },

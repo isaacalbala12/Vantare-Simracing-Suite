@@ -7,7 +7,8 @@ import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { EngineerPage } from './pages/EngineerPage';
 import { LauncherPage } from './pages/LauncherPage';
-import { type Section } from './navigation';
+import { TelemetryPage } from './pages/TelemetryPage';
+import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
 import { PaywallScreen } from './auth/PaywallScreen';
@@ -142,7 +143,9 @@ function HubShell() {
   }, []);
 
   const handleNavigate = useCallback((id: string) => {
-    setSection(id as Section);
+    if (isSection(id)) {
+      setSection(id);
+    }
   }, []);
 
   const handleBetaWelcomeClose = useCallback((role: BetaUserRole) => {
@@ -169,7 +172,7 @@ function HubShell() {
   return (
     <V52Shell
       activeSection={section}
-      onNavigate={(next: string) => setSection(next as Section)}
+      onNavigate={handleNavigate}
       version={version}
       sourceStatus={sourceStatus}
     >
@@ -192,11 +195,7 @@ function HubShell() {
       {section === "launcher" && <LauncherPage />}
       {section === "setup" && <SettingsPage />}
       {section === "engineer" && <EngineerPage />}
-      {section === "telemetry" && (
-        <div className="flex items-center justify-center h-[60vh] text-vantare-textMuted text-sm font-mono">
-          Telemetría — próxima actualización
-        </div>
-      )}
+      {section === "telemetry" && <TelemetryPage />}
     </V52Shell>
   );
 }

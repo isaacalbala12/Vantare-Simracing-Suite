@@ -70,6 +70,10 @@ const release = {
   ],
 };
 
+function clickTab(tabLabel: string) {
+  fireEvent.click(screen.getByRole('tab', { name: tabLabel }));
+}
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
@@ -80,26 +84,58 @@ describe('SettingsPage', () => {
     cleanup();
   });
 
-  it('renders header and channel options', () => {
+  it('renders header and shows Cuenta tab by default', () => {
     render(<SettingsPage />);
     expect(screen.getByRole('heading', { name: 'Ajustes' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Cuenta' })).toBeDefined();
+    expect(screen.getByRole('tabpanel', { name: 'Cuenta' })).toBeDefined();
+  });
+
+  it('renders AccountSettings inside the Cuenta tab', () => {
+    render(<SettingsPage />);
+    expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
+  });
+
+  it('shows OBS Browser Source when clicking OBS tab', () => {
+    render(<SettingsPage />);
+    clickTab('OBS Browser Source');
+    expect(screen.getByRole('tabpanel', { name: 'OBS Browser Source' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'OBS Browser Source' })).toBeDefined();
+  });
+
+  it('shows channel options when clicking Actualizaciones tab', () => {
+    render(<SettingsPage />);
+    clickTab('Actualizaciones');
     expect(screen.getByLabelText('Solo releases estables')).toBeDefined();
     expect(screen.getByLabelText('Incluir pre-releases')).toBeDefined();
   });
 
-  it('renders v5.2 settings shell without hiding existing functional sections', () => {
+  it('shows hotkeys when clicking Hotkeys tab', () => {
     render(<SettingsPage />);
+    clickTab('Hotkeys');
+    expect(screen.getByRole('heading', { name: 'Atajos de teclado globales' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Guardar atajos' })).toBeDefined();
+  });
 
-    expect(screen.getByRole('heading', { name: 'Ajustes' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
+  it('shows diagnostics when clicking Diagnóstico tab', () => {
+    render(<SettingsPage />);
+    clickTab('Diagnóstico');
     expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();
-    expect(screen.getByLabelText('Solo releases estables')).toBeDefined();
-    expect(screen.getByLabelText('Incluir pre-releases')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' })).toBeDefined();
+  });
+
+  it('shows Delta and cpuSampling when clicking Avanzado tab', () => {
+    render(<SettingsPage />);
+    clickTab('Avanzado');
+    expect(screen.getByRole('heading', { name: 'Modo delta' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Rendimiento' })).toBeDefined();
+    expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
   });
 
   it('emits settings save when channel changes', () => {
     render(<SettingsPage />);
     dispatch('updater:settings', { settings: { channel: 'stable' } });
+    clickTab('Actualizaciones');
 
     fireEvent.click(screen.getByLabelText('Incluir pre-releases'));
 
@@ -110,6 +146,7 @@ describe('SettingsPage', () => {
 
   it('displays available releases and marks current version', () => {
     render(<SettingsPage />);
+    clickTab('Actualizaciones');
     dispatch('updater:available', {
       info: {
         currentVersion: 'v0.1.4-prealpha',
@@ -123,6 +160,7 @@ describe('SettingsPage', () => {
 
   it('emits ignore event when skipping a version', () => {
     render(<SettingsPage />);
+    clickTab('Actualizaciones');
     dispatch('updater:available', {
       info: {
         currentVersion: 'v0.1.4-prealpha',
@@ -136,6 +174,7 @@ describe('SettingsPage', () => {
 
   it('shows changelog when clicking Ver cambios', () => {
     render(<SettingsPage />);
+    clickTab('Actualizaciones');
     dispatch('updater:available', {
       info: {
         currentVersion: 'v0.1.4-prealpha',
@@ -149,6 +188,7 @@ describe('SettingsPage', () => {
 
   it('shows downgrade confirmation when installing an older version', () => {
     render(<SettingsPage />);
+    clickTab('Actualizaciones');
     dispatch('updater:available', {
       info: {
         currentVersion: 'v0.1.5-prealpha',
@@ -162,8 +202,8 @@ describe('SettingsPage', () => {
 
   it('displays the active profile ID in the OBS setup URL and falls back to example-racing.json', () => {
     render(<SettingsPage />);
+    clickTab('OBS Browser Source');
 
-    // Fallback initially
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     const input = inputs.find((i) => i.readOnly || i.value.includes('/overlay'));
     expect(input).toBeDefined();
@@ -171,7 +211,6 @@ describe('SettingsPage', () => {
     expect(input!.value).not.toContain('profile=v0.1.');
     expect(input!.value).not.toContain('profile=default-racing');
 
-    // Simulate active profile load
     dispatch('profile:loaded', {
       profile: {
         id: 'my-custom-profile',
@@ -188,8 +227,8 @@ describe('SettingsPage', () => {
 
   it('uses activeOverlayProfileId from settings for OBS URL when available', () => {
     render(<SettingsPage />);
+    clickTab('OBS Browser Source');
 
-    // Dispatch settings with activeOverlayProfileId
     dispatch('settings', {
       deltaMode: 'self',
       cpuSampling: true,
@@ -205,6 +244,7 @@ describe('SettingsPage', () => {
 
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
+    clickTab('Diagnóstico');
     expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' })).toBeDefined();
   });
@@ -218,6 +258,7 @@ describe('SettingsPage', () => {
     });
 
     render(<SettingsPage />);
+    clickTab('Diagnóstico');
 
     const button = screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' });
     fireEvent.click(button);
@@ -234,6 +275,7 @@ describe('SettingsPage', () => {
 
   it('shows error feedback when diagnostics request fails', () => {
     render(<SettingsPage />);
+    clickTab('Diagnóstico');
 
     const button = screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' });
     fireEvent.click(button);
@@ -245,13 +287,9 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Failed to retrieve diagnostics')).toBeDefined();
   });
 
-  it('renders AccountSettings inside the settings page', () => {
-    render(<SettingsPage />);
-    expect(screen.getByRole('heading', { name: 'Cuenta' })).toBeDefined();
-  });
-
   it('emits updater:install:verified (never legacy updater:install) when installing', () => {
     render(<SettingsPage />);
+    clickTab('Actualizaciones');
     dispatch('updater:available', {
       info: {
         currentVersion: 'v0.1.4-prealpha',

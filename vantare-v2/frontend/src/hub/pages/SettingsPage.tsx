@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import { ObsSetup } from '../components/ObsSetup';
 import { AccountSettings } from '../settings/AccountSettings';
-import { V52SectionHeader } from '../components/V52SectionHeader';
 
 export type Channel = 'stable' | 'prerelease';
 
@@ -92,7 +91,19 @@ const HOTKEY_NAMES: Record<string, string> = {
   prevProfile: 'Perfil anterior',
 };
 
+const TABS = [
+  { id: 'account', label: 'Cuenta' },
+  { id: 'obs', label: 'OBS Browser Source' },
+  { id: 'updates', label: 'Actualizaciones' },
+  { id: 'hotkeys', label: 'Hotkeys' },
+  { id: 'diagnostics', label: 'Diagnóstico' },
+  { id: 'advanced', label: 'Avanzado' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
 export function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<TabId>('account');
   const [settings, setSettings] = useState<UpdaterSettings>({ channel: 'stable' });
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -308,7 +319,6 @@ export function SettingsPage() {
   }
 
   function isDowngrade(current: string, target: string): boolean {
-    // Simple semver comparison: strip leading v and compare numeric parts.
     const parse = (v: string) =>
       v
         .replace(/^v/i, '')
@@ -327,301 +337,346 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <V52SectionHeader
-        title="Ajustes"
-        description="Cuenta, OBS, actualizaciones, atajos y diagnósticos. Las pestañas profundas quedan para SETTINGS-01."
-      />
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+      <header className="opacity-0 animate-fade-in-up">
+        <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
+          Ajustes
+        </h1>
+        <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
+          Cuenta, OBS, actualizaciones, atajos y diagnósticos.
+        </p>
+      </header>
 
-        <div className="xl:col-span-8 flex flex-col gap-6">
-          {/* Delta Mode */}
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <h2 className="font-display font-semibold text-lg text-white mb-4">
-              Modo delta
-            </h2>
-            <div className="space-y-2">
-              {DELTA_MODES.map((mode) => (
-                <label
-                  key={mode.value}
-                  className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer"
-                >
+      <nav
+        className="glass-panel rounded-xl p-1.5 flex gap-1 opacity-0 animate-fade-in-up delay-100"
+        role="tablist"
+        aria-label="Secciones de ajustes"
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === tab.id
+                ? 'bg-accent/10 border border-accent/30 text-white'
+                : 'text-vantare-textMuted hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="opacity-0 animate-fade-in-up delay-150 space-y-4">
+        {activeTab === 'account' && (
+          <div key="panel-account" id="panel-account" role="tabpanel" aria-label="Cuenta">
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <AccountSettings />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'obs' && (
+          <div key="panel-obs" id="panel-obs" role="tabpanel" aria-label="OBS Browser Source">
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                OBS Browser Source
+              </h2>
+              <ObsSetup url={window.location.origin + '/overlay?profile=' + encodeURIComponent(appSettings.activeOverlayProfileId || activeProfileId || 'example-racing.json')} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'updates' && (
+          <div key="panel-updates" id="panel-updates" role="tabpanel" aria-label="Actualizaciones" className="space-y-4">
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                Canal de actualizaciones
+              </h2>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer">
                   <input
                     type="radio"
-                    name="deltaMode"
-                    value={mode.value}
-                    checked={appSettings.deltaMode === mode.value}
-                    onChange={() => handleDeltaModeChange(mode.value)}
+                    name="channel"
+                    value="stable"
+                    checked={settings.channel === 'stable'}
+                    onChange={() => handleChannelChange('stable')}
                     className="accent-vantare-red-500"
                   />
-                  {mode.label}
+                  Solo releases estables
                 </label>
-              ))}
-            </div>
-          </div>
-
-          {/* CPU Sampling */}
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <h2 className="font-display font-semibold text-lg text-white mb-4">
-              Rendimiento
-            </h2>
-            <label className="flex items-center gap-3 text-sm text-vantare-textMuted cursor-pointer">
-              <input
-                type="checkbox"
-                checked={appSettings.cpuSampling}
-                onChange={handleCpuToggle}
-                className="accent-vantare-red-500 w-4 h-4"
-              />
-              <span>Monitorizar uso de CPU</span>
-            </label>
-          </div>
-
-          {/* Hotkeys */}
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-lg text-white">
-                Atajos de teclado globales
-              </h2>
-              <button
-                type="button"
-                onClick={handleSaveHotkeys}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
-              >
-                Guardar atajos
-              </button>
-            </div>
-            <div className="space-y-3">
-              {Object.entries(HOTKEY_NAMES).map(([key, label]) => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="text-sm text-vantare-textMuted w-36">{label}</span>
+                <label className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer">
                   <input
-                    type="text"
-                    value={appSettings.hotkeys[key] ?? ''}
-                    onChange={(e) => handleHotkeyChange(key, e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-sm text-white font-mono"
+                    type="radio"
+                    name="channel"
+                    value="prerelease"
+                    checked={settings.channel === 'prerelease'}
+                    onChange={() => handleChannelChange('prerelease')}
+                    className="accent-vantare-red-500"
                   />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* OBS Setup */}
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <h2 className="font-display font-semibold text-lg text-white mb-4">
-              OBS Browser Source
-            </h2>
-            <ObsSetup url={window.location.origin + '/overlay?profile=' + encodeURIComponent(appSettings.activeOverlayProfileId || activeProfileId || 'example-racing.json')} />
-          </div>
-
-          {/* Soporte Técnico y Diagnósticos */}
-          <div className="card-sleek rounded-xl p-5 border border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
-            <h2 className="font-display font-semibold text-lg text-white mb-2">
-              Soporte Técnico y Diagnósticos
-            </h2>
-            <p className="text-sm text-vantare-textMuted mb-4">
-              Si experimentas un error, puedes copiar un paquete de diagnóstico seguro con la configuración actual
-              de la aplicación para compartirlo en el canal de soporte. Las rutas personales de tu equipo se sanitizan automáticamente.
-            </p>
-            <button
-              type="button"
-              onClick={handleCopyDiagnostics}
-              disabled={diagLoading}
-              className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {diagLoading ? 'Generando...' : diagCopied ? '✓ ¡Copiado al Portapapeles!' : 'Copiar paquete de diagnóstico'}
-            </button>
-            {diagError && (
-              <div className="mt-3 text-xs text-red-400 font-mono">
-                {diagError}
+                  Incluir pre-releases
+                </label>
               </div>
-            )}
-          </div>
+            </div>
 
-          {settingsStatus && (
-            <div className="text-xs text-vantare-textMuted font-mono">{settingsStatus}</div>
-          )}
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <h2 className="font-display font-semibold text-lg text-white mb-4">
-              Canal de actualizaciones
-            </h2>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer">
-                <input
-                  type="radio"
-                  name="channel"
-                  value="stable"
-                  checked={settings.channel === 'stable'}
-                  onChange={() => handleChannelChange('stable')}
-                  className="accent-vantare-red-500"
-                />
-                Solo releases estables
-              </label>
-              <label className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer">
-                <input
-                  type="radio"
-                  name="channel"
-                  value="prerelease"
-                  checked={settings.channel === 'prerelease'}
-                  onChange={() => handleChannelChange('prerelease')}
-                  className="accent-vantare-red-500"
-                />
-                Incluir pre-releases
-              </label>
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display font-semibold text-lg text-white">
+                  Versiones disponibles
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="px-3 py-1.5 rounded-lg bg-vantare-surface border border-white/10 text-xs text-white hover:border-vantare-red-500/50 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? 'Buscando...' : 'Buscar actualizaciones'}
+                </button>
+              </div>
+
+              {status && (
+                <div className="mb-4 text-xs text-vantare-textMuted font-mono">{status}</div>
+              )}
+
+              {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-950/30 border border-red-900/50 text-xs text-red-200">
+                  {error}
+                </div>
+              )}
+
+              {info?.releases && info.releases.length === 0 && !loading && (
+                <div className="text-sm text-vantare-textMuted">
+                  No hay versiones disponibles para este canal.
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {info?.releases?.map((release) => {
+                  const asset = findInstallerAsset(release);
+                  const checksum = findChecksumAsset(release);
+                  const isInstalling = installingTag === release.tag_name;
+                  const isCurrent = release.tag_name === info.currentVersion;
+                  const isIgnored = release.tag_name === info.ignoredVersion;
+                  const isExpanded = expandedTag === release.tag_name;
+                  const isDowngradeVersion = info.currentVersion
+                    ? isDowngrade(info.currentVersion, release.tag_name)
+                    : false;
+                  return (
+                    <div
+                      key={release.tag_name}
+                      className="p-4 rounded-xl bg-vantare-surface border border-white/5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-white text-sm">
+                              {release.tag_name}
+                            </span>
+                            {release.prerelease && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-vantare-red-950/50 text-vantare-red-300 border border-vantare-red-900/30">
+                                Pre-release
+                              </span>
+                            )}
+                            {isCurrent && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-900/30">
+                                Instalada
+                              </span>
+                            )}
+                            {isIgnored && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-300 border border-gray-700">
+                                Ignorada
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-vantare-textMuted">
+                            {release.name} · {formatDate(release.published_at)}
+                            {asset && ` · ${(asset.size / 1024 / 1024).toFixed(1)} MB`}
+                            {checksum && ' · SHA256'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!isCurrent && !isIgnored && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleIgnore(release)}
+                                disabled={isInstalling}
+                                className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 disabled:opacity-50 transition-colors"
+                              >
+                                Saltar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isInstalling || !asset}
+                                onClick={() => handleInstall(release)}
+                                className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              >
+                                {isInstalling
+                                  ? `${progress ?? 0}%`
+                                  : isDowngradeVersion
+                                    ? 'Downgrade'
+                                    : 'Instalar'}
+                              </button>
+                            </>
+                          )}
+                          {asset && (
+                            <a
+                              href={asset.browser_download_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 transition-colors"
+                              title="Descargar manualmente"
+                            >
+                              ↓
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {release.body && (
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTag(isExpanded ? null : release.tag_name)}
+                            className="text-xs text-vantare-red-300 hover:text-vantare-red-200"
+                          >
+                            {isExpanded ? 'Ocultar cambios' : 'Ver cambios'}
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-2 p-3 rounded-lg bg-black/20 border border-white/5 text-xs text-vantare-textMuted whitespace-pre-wrap max-h-48 overflow-y-auto">
+                              {release.body}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
+        )}
 
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-lg text-white">
-                Versiones disponibles
+        {activeTab === 'hotkeys' && (
+          <div key="panel-hotkeys" id="panel-hotkeys" role="tabpanel" aria-label="Hotkeys">
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display font-semibold text-lg text-white">
+                  Atajos de teclado globales
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleSaveHotkeys}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
+                >
+                  Guardar atajos
+                </button>
+              </div>
+              <div className="space-y-3">
+                {Object.entries(HOTKEY_NAMES).map(([key, label]) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="text-sm text-vantare-textMuted w-36">{label}</span>
+                    <input
+                      type="text"
+                      value={appSettings.hotkeys[key] ?? ''}
+                      onChange={(e) => handleHotkeyChange(key, e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-sm text-white font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'diagnostics' && (
+          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label="Diagnóstico">
+            <div className="card-sleek rounded-xl p-5 border border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+              <h2 className="font-display font-semibold text-lg text-white mb-2">
+                Soporte Técnico y Diagnósticos
               </h2>
+              <p className="text-sm text-vantare-textMuted mb-4">
+                Si experimentas un error, puedes copiar un paquete de diagnóstico seguro con la configuración actual
+                de la aplicación para compartirlo en el canal de soporte. Las rutas personales de tu equipo se sanitizan automáticamente.
+              </p>
               <button
                 type="button"
-                onClick={handleRefresh}
-                disabled={loading}
-                className="px-3 py-1.5 rounded-lg bg-vantare-surface border border-white/10 text-xs text-white hover:border-vantare-red-500/50 disabled:opacity-50 transition-colors"
+                onClick={handleCopyDiagnostics}
+                disabled={diagLoading}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {loading ? 'Buscando...' : 'Buscar actualizaciones'}
+                {diagLoading ? 'Generando...' : diagCopied ? '✓ ¡Copiado al Portapapeles!' : 'Copiar paquete de diagnóstico'}
               </button>
+              {diagError && (
+                <div className="mt-3 text-xs text-red-400 font-mono">
+                  {diagError}
+                </div>
+              )}
             </div>
+          </div>
+        )}
 
-            {status && (
-              <div className="mb-4 text-xs text-vantare-textMuted font-mono">{status}</div>
-            )}
-
-            {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-950/30 border border-red-900/50 text-xs text-red-200">
-                {error}
-              </div>
-            )}
-
-            {info?.releases && info.releases.length === 0 && !loading && (
-              <div className="text-sm text-vantare-textMuted">
-                No hay versiones disponibles para este canal.
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {info?.releases?.map((release) => {
-                const asset = findInstallerAsset(release);
-                const checksum = findChecksumAsset(release);
-                const isInstalling = installingTag === release.tag_name;
-                const isCurrent = release.tag_name === info.currentVersion;
-                const isIgnored = release.tag_name === info.ignoredVersion;
-                const isExpanded = expandedTag === release.tag_name;
-                const isDowngradeVersion = info.currentVersion
-                  ? isDowngrade(info.currentVersion, release.tag_name)
-                  : false;
-                return (
-                  <div
-                    key={release.tag_name}
-                    className="p-4 rounded-xl bg-vantare-surface border border-white/5"
+        {activeTab === 'advanced' && (
+          <div key="panel-advanced" id="panel-advanced" role="tabpanel" aria-label="Avanzado" className="space-y-4">
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                Modo delta
+              </h2>
+              <div className="space-y-2">
+                {DELTA_MODES.map((mode) => (
+                  <label
+                    key={mode.value}
+                    className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-white text-sm">
-                            {release.tag_name}
-                          </span>
-                          {release.prerelease && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-vantare-red-950/50 text-vantare-red-300 border border-vantare-red-900/30">
-                              Pre-release
-                            </span>
-                          )}
-                          {isCurrent && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-900/30">
-                              Instalada
-                            </span>
-                          )}
-                          {isIgnored && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-300 border border-gray-700">
-                              Ignorada
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-vantare-textMuted">
-                          {release.name} · {formatDate(release.published_at)}
-                          {asset && ` · ${(asset.size / 1024 / 1024).toFixed(1)} MB`}
-                          {checksum && ' · SHA256'}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!isCurrent && !isIgnored && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleIgnore(release)}
-                              disabled={isInstalling}
-                              className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 disabled:opacity-50 transition-colors"
-                            >
-                              Saltar
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isInstalling || !asset}
-                              onClick={() => handleInstall(release)}
-                              className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                            >
-                              {isInstalling
-                                ? `${progress ?? 0}%`
-                                : isDowngradeVersion
-                                  ? 'Downgrade'
-                                  : 'Instalar'}
-                            </button>
-                          </>
-                        )}
-                        {asset && (
-                          <a
-                            href={asset.browser_download_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 transition-colors"
-                            title="Descargar manualmente"
-                          >
-                            ↓
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                    <input
+                      type="radio"
+                      name="deltaMode"
+                      value={mode.value}
+                      checked={appSettings.deltaMode === mode.value}
+                      onChange={() => handleDeltaModeChange(mode.value)}
+                      className="accent-vantare-red-500"
+                    />
+                    {mode.label}
+                  </label>
+                ))}
+              </div>
+            </div>
 
-                    {release.body && (
-                      <div className="mt-3">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedTag(isExpanded ? null : release.tag_name)}
-                          className="text-xs text-vantare-red-300 hover:text-vantare-red-200"
-                        >
-                          {isExpanded ? 'Ocultar cambios' : 'Ver cambios'}
-                        </button>
-                        {isExpanded && (
-                          <div className="mt-2 p-3 rounded-lg bg-black/20 border border-white/5 text-xs text-vantare-textMuted whitespace-pre-wrap max-h-48 overflow-y-auto">
-                            {release.body}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                Rendimiento
+              </h2>
+              <label className="flex items-center gap-3 text-sm text-vantare-textMuted cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={appSettings.cpuSampling}
+                  onChange={handleCpuToggle}
+                  className="accent-vantare-red-500 w-4 h-4"
+                />
+                <span>Monitorizar uso de CPU</span>
+              </label>
+            </div>
+
+            <div className="card-sleek rounded-xl p-5 border border-white/5">
+              <h3 className="font-display font-semibold text-lg text-white mb-4">Información</h3>
+              <p className="text-sm text-vantare-textMuted mb-4">
+                El instalador descargado reemplazará la versión actual y reiniciará la aplicación.
+                Asegúrate de guardar cualquier perfil abierto antes de continuar.
+              </p>
+              <p className="text-xs text-vantare-textMuted font-mono">
+                Versión actual: {info?.currentVersion ?? '—'}
+              </p>
             </div>
           </div>
-        </div>
-
-        <div className="xl:col-span-4 flex flex-col gap-6">
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <AccountSettings />
-          </div>
-          <div className="card-sleek rounded-xl p-5 border border-white/5">
-            <h3 className="font-display font-semibold text-lg text-white mb-4">Información</h3>
-            <p className="text-sm text-vantare-textMuted mb-4">
-              El instalador descargado reemplazará la versión actual y reiniciará la aplicación.
-              Asegúrate de guardar cualquier perfil abierto antes de continuar.
-            </p>
-            <p className="text-xs text-vantare-textMuted font-mono">
-              Versión actual: {info?.currentVersion ?? '—'}
-            </p>
-          </div>
-        </div>
+        )}
       </div>
+
+      {settingsStatus && (
+        <div className="text-xs text-vantare-textMuted font-mono">{settingsStatus}</div>
+      )}
 
       {confirmDowngrade && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

@@ -63,6 +63,39 @@ Nota HUB-06-C (2026-07-01):
 - No se tocaron: Go/backend, eventos Wails, Auth/Supabase, Dashboard/Launcher/Overlays/Telemetry/Settings, index.css, dependencias.
 - Sin commit.
 
+Nota SETTINGS-01-A (2026-07-01):
+- Reestructurada SettingsPage en tabs visuales estilo videojuego, inspirada en el HTML v5.2 de Settings.
+- Mapeo HTML v5.2 a tabs reales:
+  - `cuenta` → `account`: AccountSettings (componente existente, sin cambios).
+  - `apariencia` → omitido (no existe en app real).
+  - `general` → dividido en `hotkeys` (atajos) + `advanced` (delta, cpuSampling, info).
+  - `privacidad` → omitido (no existe en app real).
+  - `actualizar` → `updates`: channel, releases, install, ignore, refresh.
+  - Nuevas tabs reales: `obs` (ObsSetup), `diagnostics` (soporte técnico).
+- Layout:
+  - Header v5.2 con `opacity-0 animate-fade-in-up`.
+  - Tabbar horizontal (`glass-panel rounded-xl p-1.5 flex gap-1`) con `role="tablist"` y `aria-selected`.
+  - Panel único debajo con `role="tabpanel"` y `aria-label`.
+  - Animaciones: `delay-100` en tabbar, `delay-150` en panel.
+- Estado local: `activeTab` con default `account`.
+- Funcionalidades preservadas:
+  - `activeOverlayProfileId` en OBS URL (misma lógica, mismo fallback).
+  - Hotkeys: editor + `settings:save` con payload completo.
+  - Updater: channel, install, ignore, refresh, downgrade confirm, changelog expand.
+  - Diagnostics: `diagnostics:get`, clipboard copy, error handling.
+  - Delta mode + cpuSampling en tab Avanzado.
+  - AccountSettings sin cambios.
+  - ObsSetup sin cambios.
+  - Downgrade modal intacto.
+  - `settingsStatus` feedback intacto.
+- No se reintroduce TD-041: `settings:save` siempre emite objeto completo (`appSettings`).
+- No se copió fake content del HTML (apariencia/privacidad/general con datos falsos).
+- Tests: 18 PASS (7 nuevos de navegación tabs + 11 existentes adaptados).
+- Checks: test 18/18 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/SettingsPage.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: AccountSettings.tsx, ObsSetup.tsx, Go/backend, Auth/Supabase, Dashboard/Overlays/Launcher/Engineer/Telemetry, index.css, dependencias.
+- Sin commit.
+
 Nota HUB-06-D (2026-07-01):
 - Polish visual de la pestaña Telemetría para acercarla al HTML v5.2, sin inventar datos ni conectar backend nuevo.
 - Cambios en `TelemetryPage.tsx`:

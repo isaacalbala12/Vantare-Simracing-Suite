@@ -130,7 +130,17 @@ Nota HOTKEYS-02 (2026-07-01):
 - Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (solo warnings preexistentes en hub_main.html y pnpm-workspace.yaml).
 - Sin commit.
 
-Nota HUB-06-B (2026-07-01):
+Nota SETTINGS-02-C (2026-07-01):
+- Simplificada la tab Avanzado: ahora solo "Condiciones" e "Información".
+- Condiciones contiene: Modo delta (3 radios, funcionalidad intacta) + Monitorizar uso de CPU (checkbox, funcionalidad intacta), separados por línea divisoria.
+- Información contiene: versión actual, canal de actualizaciones, y texto técnico honesto sobre ejecución local y descarga de updates.
+- Eliminados headings "Modo delta" y "Rendimiento" como bloques separados; ahora viven bajo "Condiciones".
+- Diagnóstico verificado: backend tiene handler `diagnostics:get` registrado en `cmd/vantare/main.go:715`, servicio `DiagnosticsService` en `internal/app/diagnostics_service.go` con tests. Frontend emite `diagnostics:get` correctamente y maneja `diagnostics`/`diagnostics:error`. No se tocó Go.
+- Tests: 24 PASS (SettingsPage). Tests nuevos: Avanzado muestra "Condiciones" e "Información", no muestra headings viejos "Rendimiento" ni "Modo delta". Tests existentes de delta/cpu/anti-TD-041 intactos.
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (solo warnings preexistentes).
+- Archivos modificados: `frontend/src/hub/pages/SettingsPage.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, AccountSettings, ObsSetup, hotkeys/updates/diagnostics tabs, Overlays/Launcher/Engineer/Telemetry.
+- Sin commit.
 - Polish visual de la pestaña Launcher para acercarla al HTML v5.2, manteniendo solo funcionalidad real y placeholders honestos.
 - Cambios en `LauncherPage.tsx`:
   - Header envuelto en `opacity-0 animate-fade-in-up` (animación existente en `index.css`).

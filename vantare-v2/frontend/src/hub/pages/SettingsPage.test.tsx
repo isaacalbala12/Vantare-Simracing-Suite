@@ -191,12 +191,22 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' })).toBeDefined();
   });
 
-  it('shows Delta and cpuSampling when clicking Avanzado tab', () => {
+  it('shows Condiciones and Información when clicking Avanzado tab', () => {
     render(<SettingsPage />);
     clickTab('Avanzado');
-    expect(screen.getByRole('heading', { name: 'Modo delta' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Rendimiento' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Condiciones' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Información' })).toBeDefined();
+    expect(screen.getByText('Modo delta')).toBeDefined();
     expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
+    expect(screen.getByText(/Versión actual:/)).toBeDefined();
+    expect(screen.getByText(/Canal:/)).toBeDefined();
+  });
+
+  it('avanzado does not show old headings (Rendimiento, Modo delta as heading)', () => {
+    render(<SettingsPage />);
+    clickTab('Avanzado');
+    expect(screen.queryByRole('heading', { name: 'Rendimiento' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Modo delta' })).toBeNull();
   });
 
   it('emits settings save when channel changes', () => {

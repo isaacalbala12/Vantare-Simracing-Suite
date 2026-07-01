@@ -48,7 +48,7 @@ describe("OverlaysStudioPage", () => {
     expect(Events.Emit).toHaveBeenCalledWith("hub:list");
   });
 
-  it("renders the Overlays Studio panel menu after profiles load", async () => {
+  it("renders the v5.2 Overlays Studio home after profiles load", async () => {
     render(<OverlaysStudioPage />);
 
     dispatch("hub:profiles", {
@@ -58,11 +58,10 @@ describe("OverlaysStudioPage", () => {
     });
 
     expect(await screen.findByRole("heading", { name: "Overlays Studio" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Abrir Widgets/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Abrir Mis perfiles/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Abrir Recomendados por Vantare/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Abrir Comunidad/i })).toBeTruthy();
-    expect(screen.getByText("Próximamente")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Configurar widgets" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver mis perfiles" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver recomendados" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Explorar comunidad" })).toBeTruthy();
   });
 
   it("opens Widget Studio after profiles and active profile load", async () => {
@@ -89,7 +88,7 @@ describe("OverlaysStudioPage", () => {
       },
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Widgets/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Configurar widgets" }));
 
     expect(await screen.findAllByRole("heading", { name: "Widgets" })).toBeTruthy();
     expect(screen.getByText("Sin cambios")).toBeTruthy();
@@ -119,7 +118,7 @@ describe("OverlaysStudioPage", () => {
       },
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver mis perfiles" }));
     expect(await screen.findByRole("heading", { name: "Mis perfiles" })).toBeTruthy();
     expect(screen.getByText("Profile B")).toBeTruthy();
 
@@ -171,17 +170,17 @@ describe("OverlaysStudioPage", () => {
       },
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver mis perfiles" }));
     expect(await screen.findByRole("heading", { name: "Mis perfiles" })).toBeTruthy();
     expect(screen.getByText("Default Racing")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Volver a Overlays Studio/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Abrir Recomendados por Vantare/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver recomendados" }));
     expect(await screen.findByRole("heading", { name: "Recomendados por Vantare" })).toBeTruthy();
     expect(screen.getByText("Clean Overlay")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Volver a Overlays Studio/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Abrir Comunidad/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Explorar comunidad" }));
     expect(await screen.findByRole("heading", { name: "Comunidad" })).toBeTruthy();
     expect(screen.getByText("Próximamente")).toBeTruthy();
   });
@@ -198,7 +197,7 @@ describe("OverlaysStudioPage", () => {
       ],
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Recomendados por Vantare/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver recomendados" }));
     expect(await screen.findByRole("heading", { name: "Recomendados por Vantare" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Guardar Clean Overlay como perfil propio/i }));
@@ -235,7 +234,7 @@ describe("OverlaysStudioPage", () => {
       ],
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver mis perfiles" }));
     fireEvent.click(await screen.findByRole("button", { name: /Activar Default Racing/i }));
 
     expect(Events.Emit).toHaveBeenCalledWith("hub:set-active", {
@@ -262,7 +261,7 @@ describe("OverlaysStudioPage", () => {
 
     dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver mis perfiles" }));
     fireEvent.click(await screen.findByRole("button", { name: "Abrir overlay" }));
 
     expect(Events.Emit).toHaveBeenCalledWith("overlay:start-active");
@@ -288,7 +287,7 @@ describe("OverlaysStudioPage", () => {
 
     dispatch("profile:loaded", { profile: loadedProfile });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver mis perfiles" }));
     fireEvent.click(screen.getByRole("button", { name: /Editar Default Racing/i }));
 
     await screen.findByText("Perfiles Específicos");
@@ -329,7 +328,7 @@ describe("OverlaysStudioPage", () => {
 
     dispatch("profile:loaded", { profile: loadedProfile });
 
-    fireEvent.click(await screen.findByRole("button", { name: /Abrir Mis perfiles/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ver mis perfiles" }));
     fireEvent.click(screen.getByRole("button", { name: /Editar Default Racing/i }));
 
     expect(await screen.findByText("Perfiles Específicos")).toBeTruthy();
@@ -373,6 +372,6 @@ describe("OverlaysStudioPage", () => {
         onAutoStartHandled={vi.fn()}
       />,
     );
-    expect(screen.getAllByTestId("recommended-activate-and-start").length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("recommended-save-as-own").length).toBeGreaterThan(0);
   });
 });

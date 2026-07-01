@@ -41,7 +41,7 @@ describe("RecommendedProfilesView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("shows 'Activar y abrir' label when autoActivateAndStart is true", () => {
+  it("shows 'Guardar como overlay propio' label when autoActivateAndStart is true", () => {
     render(
       <RecommendedProfilesView
         profiles={RECOMMENDED_PROFILES}
@@ -50,12 +50,12 @@ describe("RecommendedProfilesView", () => {
         autoActivateAndStart
       />,
     );
-    const buttons = screen.getAllByTestId("recommended-activate-and-start");
+    const buttons = screen.getAllByTestId("recommended-save-as-own");
     expect(buttons.length).toBe(RECOMMENDED_PROFILES.length);
-    expect(buttons[0].textContent).toMatch(/Activar y abrir/i);
+    expect(buttons[0].textContent).toMatch(/Guardar como overlay propio/i);
   });
 
-  it("calls onSaveRecommended when 'Activar y abrir' is clicked on first card", () => {
+  it("calls onSaveRecommended when 'Guardar como overlay propio' is clicked on first card", () => {
     const onSave = vi.fn();
     render(
       <RecommendedProfilesView
@@ -65,7 +65,7 @@ describe("RecommendedProfilesView", () => {
         autoActivateAndStart
       />,
     );
-    fireEvent.click(screen.getAllByTestId("recommended-activate-and-start")[0]);
+    fireEvent.click(screen.getAllByTestId("recommended-save-as-own")[0]);
     expect(onSave).toHaveBeenCalledWith(RECOMMENDED_PROFILES[0]);
   });
 });

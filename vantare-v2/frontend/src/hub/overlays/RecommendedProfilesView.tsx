@@ -14,8 +14,8 @@ export function RecommendedProfilesView({
   onBack,
   autoActivateAndStart = false,
 }: RecommendedProfilesViewProps) {
-  const ctaLabel = autoActivateAndStart ? "Activar y abrir" : "Guardar como perfil propio";
-  const ctaTestId = autoActivateAndStart ? "recommended-activate-and-start" : undefined;
+  const ctaLabel = autoActivateAndStart ? "Guardar como overlay propio" : "Guardar como perfil propio";
+  const ctaTestId = autoActivateAndStart ? "recommended-save-as-own" : undefined;
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1800px] flex-col px-6 py-8">

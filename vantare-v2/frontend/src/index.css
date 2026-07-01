@@ -33,7 +33,7 @@
 
 :root {
   --v-bg: #0a0a0a;
-  --v-surface: #0F0F0F;
+  --v-surface: #141414;
   --v-panel: #141414;
   --v-border: rgba(245,245,245,.08);
   --v-border-hover: #2A2A2A;
@@ -51,7 +51,7 @@
   --v-blood: #8B0000;
   --v-success: #34D399;
   --v-warning: #FFD700;
-  --v-glass-alpha: 0.6;
+  --v-glass-alpha: 0.55;
   --v-glass-blur: 20px;
   --v-card-shadow: 0 4px 20px rgba(139, 0, 0, 0.1);
   --v-hover-translate-y: -2px;
@@ -284,7 +284,7 @@ body:not(.hub) #root {
     inset: 0;
     pointer-events: none;
     mix-blend-mode: overlay;
-    opacity: 0.32;
+    opacity: 0.55;
     background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
     background-size: 3px 3px;
   }
@@ -294,8 +294,8 @@ body:not(.hub) #root {
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 110% 75% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.45) 100%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, transparent 15%, transparent 85%, rgba(0, 0, 0, 0.45) 100%);
+      radial-gradient(ellipse 110% 75% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.35) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, transparent 15%, transparent 85%, rgba(0, 0, 0, 0.35) 100%);
   }
 
   .v52-eyebrow {

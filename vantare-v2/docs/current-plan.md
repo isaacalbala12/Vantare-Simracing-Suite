@@ -23,6 +23,25 @@ Nota HUB-05-B (2026-06-30):
 - Scope: visual/cableado minimo. No toca Go, runtime overlays, Calendar avanzado, Settings tabs profundas ni nuevos datos fake.
 - Orden recomendado: P3 cleanup barato -> Telemetria -> Overlays home -> Ingeniero -> Ajustes wrapper -> Launcher polish -> review/commit selectivo.
 
+HUB-05-C (2026-07-01):
+- Rehacer visualmente SOLO el Dashboard del Hub para que se parezca mucho mas al HTML v5.2 de referencia.
+- Scope estricto: solo `DashboardPage.tsx` y `DashboardPage.test.tsx`. No se tocan V52Shell, LauncherCard, ActiveOverlayCard, QuickActions, LastActivityCard, NextRaceCard, V52CalendarStrip, V52InfoCard, V52SectionHeader ni ningun otro componente.
+- HUB-05-C color/font local pass (2026-07-01): ajustados gradientes del hero y bloque Ingeniero (`to-transparent` → `to-[#0a0a0a]`) y labels de V52InfoCard por tone (green→emerald, blue→blue-400, purple→violet-400, amber→amber-400). Tokens globales `index.css` quedan pendientes para revision UI global.
+- Cambios en `DashboardPage.tsx`:
+  - Hero banner rojo grande con gradiente, badge "BETA · v0.1.0.2", titulo "Vantare Beta", descripcion honesta del plan Free, CTA "Gestionar cuenta" que navega a setup.
+  - Bloque "Proximas carreras" via V52CalendarStrip (3 columnas + NextRaceCard real + placeholders honestos).
+  - Bloque "Overlay activo" via ActiveOverlayCard (sin cambios).
+  - Bloque Ingeniero morado con gradiente purple, icono de musica, badge "En desarrollo", texto honesto "Disponible en beta segun configuracion actual", barra de progreso 47%.
+  - Grid inferior 3-columnas: "Simulador principal" (LMU configurado, iRacing/AC como "No disponible"), "Novedades Vantare" (4 V52InfoCard con datos reales de beta: v0.1.0.2, Hub v5.2, LMU Launcher, Ingeniero).
+  - Fila secundaria 3-columnas: LauncherCard + QuickActions + LastActivityCard.
+  - RecommendedQuickStart solo cuando no hay perfil activo.
+  - Sin right rail dominante: todo el contenido es main-width con bloques grandes.
+- Fake data evitada: no "Sebring (School)", "COTA (National)", "Paul Ricard (1A)", "14h 22m", "Q4 2026", "iRacing y Assetto Corsa" como soportado real. Simuladores no disponibles marcados como "No disponible". Sin precios falsos (4.99€/9.99€). Sin "Vantare Pro" como producto real.
+- Tests: 14 PASS (DashboardPage). Nuevos tests: hero banner, Gestionar cuenta navega, Ingeniero section, Novedades section, Simulador principal, anti-fake extendido (Sebring/COTA/Paul Ricard/14h 22m/Q4 2026/iRacing y Assetto Corsa).
+- Checks: test DashboardPage 14/14 PASS, test DashboardPage+HubApp 38/38 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
+- Sin commit.
+
 HUB-05-B implementacion (2026-07-01, v0.1.x):
 - Corte visual v5.2 del resto de paginas internas del Hub. Detalles y checklist en `docs/superpowers/plans/2026-06-30-hub-05b-v52-remaining-pages.md`.
 - Cambios:

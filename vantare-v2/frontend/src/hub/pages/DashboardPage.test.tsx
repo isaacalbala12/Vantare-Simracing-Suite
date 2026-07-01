@@ -24,7 +24,22 @@ afterEach(() => {
 import { DashboardPage } from "./DashboardPage";
 
 describe("DashboardPage — beta honest hub", () => {
-  it("renders Plan Free card", () => {
+  it("renders the hero banner with Vantare Beta title", () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId("dashboard-hero-banner")).toBeTruthy();
+    expect(screen.getByText(/Vantare Beta/i)).toBeTruthy();
+  });
+
+  it("renders Gestionar cuenta button in hero banner", () => {
+    const onNavigate = vi.fn();
+    render(<DashboardPage onNavigate={onNavigate} />);
+    const btn = screen.getByText(/Gestionar cuenta/i);
+    expect(btn).toBeTruthy();
+    fireEvent.click(btn);
+    expect(onNavigate).toHaveBeenCalledWith("setup");
+  });
+
+  it("renders Plan Free text in hero banner body", () => {
     render(<DashboardPage />);
     expect(screen.getByText(/Plan Free/i)).toBeTruthy();
   });
@@ -40,14 +55,32 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Próximas carreras/i)).toBeTruthy();
   });
 
-  it("renders last activity card (no empty activity placeholder)", () => {
+  it("renders last activity card", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("last-activity-card")).toBeTruthy();
   });
 
-  it("renders launcher card destination", () => {
+  it("renders launcher card", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("launcher-card")).toBeTruthy();
+  });
+
+  it("renders the Ingeniero section", () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId("dashboard-engineer-section")).toBeTruthy();
+    expect(screen.getByText(/Ingeniero Vantare/i)).toBeTruthy();
+  });
+
+  it("renders Novedades Vantare section", () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId("dashboard-novedades")).toBeTruthy();
+    expect(screen.getByText(/Novedades Vantare/i)).toBeTruthy();
+  });
+
+  it("renders Simulador principal section", () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId("dashboard-main-sim")).toBeTruthy();
+    expect(screen.getByText(/Simulador principal/i)).toBeTruthy();
   });
 
   it("does not render any fake data strings", () => {
@@ -64,6 +97,16 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.queryByText(/COTA/i)).toBeNull();
     expect(screen.queryByText(/Paul Ricard/i)).toBeNull();
     expect(screen.queryByText(/v0\.1\.0\.3 publicado/i)).toBeNull();
+  });
+
+  it("does not render prohibited fake strings from HTML v5.2", () => {
+    render(<DashboardPage />);
+    expect(screen.queryByText(/Sebring \(School\)/i)).toBeNull();
+    expect(screen.queryByText(/COTA \(National\)/i)).toBeNull();
+    expect(screen.queryByText(/Paul Ricard \(1A\)/i)).toBeNull();
+    expect(screen.queryByText(/14h 22m/i)).toBeNull();
+    expect(screen.queryByText(/Q4 2026/i)).toBeNull();
+    expect(screen.queryByText(/iRacing y Assetto Corsa/i)).toBeNull();
   });
 
   it("renders the ActiveOverlayCard placeholder (loading) by default", () => {

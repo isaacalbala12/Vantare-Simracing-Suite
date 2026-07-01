@@ -85,7 +85,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
                 strokeWidth="0.5"
               />
             </svg>
-            <span className="font-display font-bold text-xl tracking-wider text-white">
+            <span className="font-sans font-bold text-xl tracking-wider text-white">
               VANTARE
             </span>
             {version && (

@@ -37,7 +37,7 @@ export function BetaWelcome({ onComplete }: BetaWelcomeProps) {
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
     >
       <div className="glass-panel rounded-2xl p-8 border border-white/10 max-w-lg w-full relative">
-        <h1 className="font-display font-bold text-2xl text-white mb-2">
+        <h1 className="font-sans font-bold text-2xl text-white mb-2">
           Bienvenido a la beta de Vantare
         </h1>
 

@@ -11,6 +11,26 @@ Nota post-release (2026-06-29):
 Nota HUB-04 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-04-role-aware-beta-welcome.md`.
 
+Nota WIDGET-DESIGN-02 (2026-07-01):
+- Plan corregido guardado en `docs/superpowers/plans/2026-07-01-widget-design-02-new-visual-system.md`.
+- El HTML `docs/overlay-glassmorphism-pro.html` se tratará como pack visual oficial nuevo (`glassmorphism-pro`) para widgets existentes, no como reemplazo global ni como fuente de widgets mock.
+- Primeros cortes: plumbing `variant.themeId` -> runtime style, diseños oficiales para relative/standings/delta/pedals, runtime condicional solo para esos widgets. Widgets nuevos con datos faltantes quedan diferidos.
+
+Nota WIDGET-DESIGN-02-A (2026-07-01):
+- Añadido plumbing de estilo para que `props.variant.themeId` active el estilo runtime cuando `props.style` no existe.
+- Añadido `glassmorphism-pro` al catálogo de estilos para widgets existentes.
+- Sin cambios runtime visuales todavía; este corte prepara la base segura.
+
+Nota WIDGET-DESIGN-02-B (2026-07-01):
+- Añadidos diseños oficiales `glassmorphism-pro` para relative, standings, delta y pedals.
+- Aplicar un diseño conserva `position` y usa `variant.themeId = "glassmorphism-pro"`.
+- Sin cambios runtime todavía; si los widgets siguen parecidos, se corrige en WIDGET-DESIGN-02-C.
+
+Nota ROADMAP-01 (2026-07-01):
+- Plan guardado en `docs/superpowers/plans/2026-07-01-roadmap-01-public-roadmap.md`.
+- El HTML `C:\Users\isaac\Desktop\Vantare-Overlays\roadmap_v5.2.html` se tratara como referencia visual, no como fuente de verdad.
+- Scope recomendado: nueva seccion `Roadmap`, datos locales editables en TypeScript, pagina v5.2, feedback/voting deshabilitado y honesto. Sin backend ni claims fake.
+
 Nota HUB-05 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-05-v52-shell-dashboard-launcher.md`.
 - Primer corte visual v5.2: shell/navegacion nueva, Dashboard con calendario integrado y pestaña Launcher real. Corte incremental para evitar rework masivo.
@@ -1417,4 +1437,19 @@ Nota SETTINGS-02-B (2026-07-01):
 - Archivos creados: `frontend/src/hub/overlays/ObsOverlaySetupView.tsx`, `frontend/src/hub/overlays/ObsOverlaySetupView.test.tsx`.
 - Archivos modificados: `frontend/src/hub/pages/SettingsPage.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.test.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: Go/backend, ObsSetup.tsx (reutilizado sin cambios), AccountSettings, WidgetStudio, LayoutStudio, OwnProfilesView, RecommendedProfilesView, CommunityComingSoonView, V52Shell, HubApp, index.css, Auth/Supabase, dependencias.
+- Sin commit.
+
+Nota ROADMAP-01 (2026-07-01):
+- Plan ejecutado segun `docs/superpowers/plans/2026-07-01-roadmap-01-public-roadmap.md`.
+- Nueva seccion `Roadmap` en el Hub con datos locales editables en `frontend/src/hub/roadmap/roadmap-data.ts`.
+- RoadmapPage con hero, fases (4), progreso general, areas (6), hitos (4) y feedback/voting deshabilitado.
+- Navegacion integrada: `navigation.ts` con seccion `roadmap`, sidebar/topbar la muestran automaticamente.
+- CTA "Ver roadmap" desde el bloque Ingeniero del Dashboard.
+- Sin backend, sin Auth/Supabase, sin dependencias nuevas, sin claims fake del HTML.
+- Fake data evitada: no "v0.1.0.3 publicado", no "Q4 2026", no "+30 widgets", no "telemetria completa", no precios.
+- Tests: roadmap-data 16/16 PASS, RoadmapPage 8/8 PASS, navigation 4/4 PASS, HubApp 25/25 PASS, V52Shell 5/5 PASS, DashboardPage 15/15 PASS.
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos creados: `frontend/src/hub/roadmap/roadmap-data.ts`, `frontend/src/hub/roadmap/roadmap-data.test.ts`, `frontend/src/hub/pages/RoadmapPage.tsx`, `frontend/src/hub/pages/RoadmapPage.test.tsx`.
+- Archivos modificados: `frontend/src/hub/navigation.ts`, `frontend/src/hub/navigation.test.ts`, `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`, `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, Auth/Supabase, overlay runtime, widgets, WidgetStudio, LayoutStudio, V52Shell, index.css, dependencias, hub_main.html, roadmap_v5.2.html, HTML mocks, archivos fuera de vantare-v2.
 - Sin commit.

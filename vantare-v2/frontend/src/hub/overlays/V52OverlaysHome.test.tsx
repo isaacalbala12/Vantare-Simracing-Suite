@@ -23,7 +23,7 @@ describe("V52OverlaysHome", () => {
     expect(screen.getByRole("heading", { name: "Comunidad" })).toBeTruthy();
   });
 
-  it("calls the correct callbacks from primary buttons", () => {
+  it("calls callbacks for Widgets, Mis perfiles and Recomendados, but not Comunidad", () => {
     const onOpenWidgets = vi.fn();
     const onOpenOwnProfiles = vi.fn();
     const onOpenRecommended = vi.fn();
@@ -39,18 +39,70 @@ describe("V52OverlaysHome", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Configurar widgets" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ver mis perfiles" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ver recomendados" }));
-    fireEvent.click(screen.getByRole("button", { name: "Explorar comunidad" }));
+    fireEvent.click(screen.getByRole("button", { name: /Configurar widgets/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Ver mis perfiles/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Ver recomendados/ }));
 
     expect(onOpenWidgets).toHaveBeenCalledTimes(1);
     expect(onOpenOwnProfiles).toHaveBeenCalledTimes(1);
     expect(onOpenRecommended).toHaveBeenCalledTimes(1);
-    expect(onOpenCommunity).toHaveBeenCalledTimes(1);
+    expect(onOpenCommunity).not.toHaveBeenCalled();
   });
 
-  it("does not render fake profile counts", () => {
+  it("Comunidad card is disabled and does not call onOpenCommunity", () => {
+    const onOpenCommunity = vi.fn();
+
+    render(
+      <V52OverlaysHome
+        profilesCount={2}
+        onOpenWidgets={vi.fn()}
+        onOpenOwnProfiles={vi.fn()}
+        onOpenRecommended={vi.fn()}
+        onOpenCommunity={onOpenCommunity}
+      />,
+    );
+
+    const comunidadCard = screen.getByText("Comunidad").closest("article");
+    expect(comunidadCard?.className).toContain("opacity-50");
+    expect(comunidadCard?.className).toContain("cursor-not-allowed");
+    expect(comunidadCard?.className).toContain("pointer-events-none");
+
+    const comunidadButton = screen.getByRole("button", { name: /Explorar comunidad/ });
+    fireEvent.click(comunidadButton);
+    expect(onOpenCommunity).not.toHaveBeenCalled();
+  });
+
+  it("renders recommended pills", () => {
+    render(
+      <V52OverlaysHome
+        profilesCount={2}
+        onOpenWidgets={vi.fn()}
+        onOpenOwnProfiles={vi.fn()}
+        onOpenRecommended={vi.fn()}
+        onOpenCommunity={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Clean Overlay")).toBeTruthy();
+    expect(screen.getByText("Le Mans Basic")).toBeTruthy();
+  });
+
+  it("shows real profilesCount in meta and eyebrow", () => {
+    render(
+      <V52OverlaysHome
+        profilesCount={3}
+        onOpenWidgets={vi.fn()}
+        onOpenOwnProfiles={vi.fn()}
+        onOpenRecommended={vi.fn()}
+        onOpenCommunity={vi.fn()}
+      />,
+    );
+
+    const matches = screen.getAllByText(/3 perfiles propios/i);
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not render fake marketplace as active", () => {
     render(
       <V52OverlaysHome
         profilesCount={0}
@@ -61,7 +113,8 @@ describe("V52OverlaysHome", () => {
       />,
     );
 
-    expect(screen.queryByText(/4 perfiles · 3 layouts activos/i)).toBeNull();
-    expect(screen.getByText(/0 perfiles propios/i)).toBeTruthy();
+    expect(screen.queryByText(/marketplace/i)).toBeNull();
+    expect(screen.queryByText(/comunidad activa/i)).toBeNull();
+    expect(screen.queryByText(/explorar comunidad/i)).toBeTruthy();
   });
 });

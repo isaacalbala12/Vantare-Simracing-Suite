@@ -45,6 +45,24 @@ HUB-05-C (2026-07-01):
 - Archivos tocados: `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
 - Sin commit.
 
+Nota HUB-06-A (2026-07-01):
+- Polish visual de la home de Overlays Studio (`V52OverlaysHome.tsx`) para acercarla al HTML v5.2.
+- Cambios en `EntryCard`:
+  - Layout: `p-6`, `min-h-[260px]`, `relative overflow-hidden`, `flex flex-col justify-between`, `group`, `transition-all`.
+  - Glow hover: div decorativo `absolute top-0 right-0 w-32 h-32 bg-vantare-red-400/0 group-hover:bg-vantare-red-400/10 blur-2xl rounded-full transition-all pointer-events-none`.
+  - Botón: de solid red a `border border-vantare-border group-hover:border-vantare-red-400 text-[11px] font-bold uppercase tracking-[.22em]` con flecha `→`.
+  - Nueva prop `disabled?: boolean` que aplica `opacity-50 cursor-not-allowed pointer-events-none`.
+  - Nueva prop `pills?: string[]` que renderiza pills visuales debajo del body.
+- Card "Recomendados": pills `["Clean Overlay", "Le Mans Basic"]` (nombres reales de `recommended-profiles.ts`).
+- Card "Comunidad": disabled, no llama `onOpenCommunity` (prop renombrada a `_onOpenCommunity` en destructuring).
+- Animación: header con `opacity-0 animate-fade-in-up`, cards con `delay-100/150/200/300`. Clases existen en `index.css` (`--animate-fade-in-up` + `@keyframes fadeInUp`).
+- Meta text actualizado: Widgets → `Widgets disponibles · configuración visual`, Mis perfiles → `${profilesCount} perfiles propios`, Recomendados → `Perfiles recomendados incluidos`, Comunidad → `No disponible en beta`.
+- Tests: 6 tests (render 4 cards, callbacks activos, Comunidad disabled, pills, profilesCount real, anti-fake marketplace).
+- Checks: test V52OverlaysHome 6/6 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/overlays/V52OverlaysHome.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: `OverlaysStudioPage.tsx`, `WidgetStudio`, `LayoutStudio`, `OwnProfilesView`, `RecommendedProfilesView`, `CommunityComingSoonView`, `V52SectionHeader`, `index.css`, Go/backend, Auth/Supabase, Launcher/Engineer/Telemetry/Settings.
+- Sin commit.
+
 Nota AUTH-03 (2026-07-01):
 - Implementada persistencia de sesion Supabase en WebView2 tras OAuth externo.
 - Contrato de tokens: el callback HTML en `internal/server/server.go` ahora extrae `access_token` y `refresh_token` del fragment de Supabase. El handler `POST /auth/token` recibe ambos y los reenvia a `license:validate` como `sessionToken` + `refreshToken`.

@@ -15,19 +15,26 @@ function EntryCard({
   meta,
   button,
   onClick,
+  disabled,
+  pills,
 }: {
   eyebrow: string;
   title: string;
   body: string;
   meta: string;
   button: string;
-  onClick: () => void;
+  onClick?: () => void;
+  disabled?: boolean;
+  pills?: string[];
 }) {
   return (
-    <article className="card-sleek rounded-xl p-5 flex flex-col gap-4">
+    <article
+      className={`card-sleek rounded-xl p-6 min-h-[260px] relative overflow-hidden flex flex-col justify-between group transition-all ${disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
+    >
+      <div className="absolute top-0 right-0 w-32 h-32 bg-vantare-red-400/0 group-hover:bg-vantare-red-400/10 blur-2xl rounded-full transition-all pointer-events-none" />
       <div>
         <span className="v52-eyebrow">{eyebrow}</span>
-        <h2 className="font-display font-bold text-xl text-white tracking-tight mt-3">
+        <h2 className="font-sans font-bold text-xl text-white tracking-tight mt-3">
           {title}
         </h2>
         <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
@@ -36,13 +43,25 @@ function EntryCard({
         <p className="text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.18em] mt-3">
           {meta}
         </p>
+        {pills && pills.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {pills.map((pill) => (
+              <span
+                key={pill}
+                className="text-[10px] font-mono font-bold uppercase tracking-[.12em] px-2 py-0.5 rounded border border-vantare-border text-vantare-textDim"
+              >
+                {pill}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <button
         type="button"
         onClick={onClick}
-        className="mt-auto rounded-lg bg-vantare-red-600 px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-white hover:bg-vantare-red-500 transition-colors"
+        className="mt-auto self-start border border-vantare-border group-hover:border-vantare-red-400 text-[11px] font-bold uppercase tracking-[.22em] px-4 py-2 rounded-lg text-white transition-all"
       >
-        {button}
+        {button} →
       </button>
     </article>
   );
@@ -53,48 +72,58 @@ export function V52OverlaysHome({
   onOpenWidgets,
   onOpenOwnProfiles,
   onOpenRecommended,
-  onOpenCommunity,
 }: V52OverlaysHomeProps) {
   return (
     <div className="flex flex-col gap-5">
-      <V52SectionHeader
-        title="Overlays Studio"
-        description="Elige qué quieres editar. Widgets controla apariencia y comportamiento; Mis perfiles controla layouts y colocación."
-      />
+      <div className="opacity-0 animate-fade-in-up">
+        <V52SectionHeader
+          title="Overlays Studio"
+          description="Elige qué quieres editar. Widgets controla apariencia y comportamiento; Mis perfiles controla layouts y colocación."
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <EntryCard
-          eyebrow="Editor de widgets"
-          title="Widgets"
-          body="Edita apariencia, comportamiento, visibilidad y estilo de los widgets disponibles."
-          meta="Widgets disponibles · categorías estables y tester"
-          button="Configurar widgets"
-          onClick={onOpenWidgets}
-        />
-        <EntryCard
-          eyebrow={`${profilesCount} perfiles propios`}
-          title="Mis perfiles"
-          body="Gestiona tus perfiles propios y entra en el editor de colocación con preview real de cada layout."
-          meta="Editor de colocación y preview real"
-          button="Ver mis perfiles"
-          onClick={onOpenOwnProfiles}
-        />
-        <EntryCard
-          eyebrow="Base recomendada"
-          title="Recomendados por Vantare"
-          body="Guarda una copia propia de un perfil recomendado y úsalo como punto de partida."
-          meta="Perfiles oficiales incluidos"
-          button="Ver recomendados"
-          onClick={onOpenRecommended}
-        />
-        <EntryCard
-          eyebrow="Futuro"
-          title="Comunidad"
-          body="Más adelante podrás descubrir overlays compartidos por la comunidad."
-          meta="Sin marketplace en beta"
-          button="Explorar comunidad"
-          onClick={onOpenCommunity}
-        />
+        <div className="opacity-0 animate-fade-in-up delay-100">
+          <EntryCard
+            eyebrow="Editor de widgets"
+            title="Widgets"
+            body="Edita apariencia, comportamiento, visibilidad y estilo de los widgets disponibles."
+            meta="Widgets disponibles · configuración visual"
+            button="Configurar widgets"
+            onClick={onOpenWidgets}
+          />
+        </div>
+        <div className="opacity-0 animate-fade-in-up delay-150">
+          <EntryCard
+            eyebrow={`${profilesCount} perfiles propios`}
+            title="Mis perfiles"
+            body="Gestiona tus perfiles propios y entra en el editor de colocación con preview real de cada layout."
+            meta={`${profilesCount} perfiles propios`}
+            button="Ver mis perfiles"
+            onClick={onOpenOwnProfiles}
+          />
+        </div>
+        <div className="opacity-0 animate-fade-in-up delay-200">
+          <EntryCard
+            eyebrow="Base recomendada"
+            title="Recomendados por Vantare"
+            body="Guarda una copia propia de un perfil recomendado y úsalo como punto de partida."
+            meta="Perfiles recomendados incluidos"
+            button="Ver recomendados"
+            onClick={onOpenRecommended}
+            pills={["Clean Overlay", "Le Mans Basic"]}
+          />
+        </div>
+        <div className="opacity-0 animate-fade-in-up delay-300">
+          <EntryCard
+            eyebrow="Futuro"
+            title="Comunidad"
+            body="Más adelante podrás descubrir overlays compartidos por la comunidad."
+            meta="No disponible en beta"
+            button="Explorar comunidad"
+            disabled
+          />
+        </div>
       </div>
     </div>
   );

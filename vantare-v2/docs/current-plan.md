@@ -63,6 +63,21 @@ Nota HUB-06-C (2026-07-01):
 - No se tocaron: Go/backend, eventos Wails, Auth/Supabase, Dashboard/Launcher/Overlays/Telemetry/Settings, index.css, dependencias.
 - Sin commit.
 
+Nota HUB-06-D (2026-07-01):
+- Polish visual de la pestaña Telemetría para acercarla al HTML v5.2, sin inventar datos ni conectar backend nuevo.
+- Cambios en `TelemetryPage.tsx`:
+  - Header reemplazado: de `V52SectionHeader` a `<header>` nativo con `opacity-0 animate-fade-in-up`, título `<h1>` grande (`text-3xl font-bold tracking-tight`) y descripción en `text-vantare-textMuted`.
+  - Hero section reemplazada: de `card-sleek` simple a `relative rounded-2xl overflow-hidden border border-white/5` con fondo gradiente (`from-[#0a0a0a] via-[#141414] to-[#0a0a0a]`), glow circular superior (`bg-white/[.03] blur-3xl`), icono SVG en caja gradiente, `min-h-[calc(100vh-180px)]` para ocupar toda la pantalla dentro del shell.
+  - Animaciones: `opacity-0 animate-fade-in-up` con `delay-100` en hero, `delay-200` en cards secundarias.
+  - Copy honesto: "En desarrollo · Próxima integración: LMU live/session data" (en lugar de "Q1 2027 · En desarrollo" del HTML).
+  - Eliminado import de `V52SectionHeader` (ya no se usa).
+- Fake data evitada: no "Q1 2027", no iRating/Safety, no "datos reales conectados", no charts falsos.
+- Tests: 2 tests (render placeholder honesto, anti-fake extendido con Safety y charts falsos). Nuevo: heading "Próximamente" visible, texto "LMU live/session data" visible.
+- Checks: test PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/TelemetryPage.tsx`, `frontend/src/hub/pages/TelemetryPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, Dashboard/Launcher/Overlays/Engineer/Settings, V52SectionHeader, V52InfoCard, index.css, Auth/Supabase, dependencias.
+- Sin commit.
+
 Nota HUB-06-B (2026-07-01):
 - Polish visual de la pestaña Launcher para acercarla al HTML v5.2, manteniendo solo funcionalidad real y placeholders honestos.
 - Cambios en `LauncherPage.tsx`:

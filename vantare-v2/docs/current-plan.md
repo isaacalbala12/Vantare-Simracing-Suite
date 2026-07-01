@@ -27,6 +27,8 @@ HUB-05-C (2026-07-01):
 - Rehacer visualmente SOLO el Dashboard del Hub para que se parezca mucho mas al HTML v5.2 de referencia.
 - Scope estricto: solo `DashboardPage.tsx` y `DashboardPage.test.tsx`. No se tocan V52Shell, LauncherCard, ActiveOverlayCard, QuickActions, LastActivityCard, NextRaceCard, V52CalendarStrip, V52InfoCard, V52SectionHeader ni ningun otro componente.
 - HUB-05-C color/font local pass (2026-07-01): ajustados gradientes del hero y bloque Ingeniero (`to-transparent` → `to-[#0a0a0a]`) y labels de V52InfoCard por tone (green→emerald, blue→blue-400, purple→violet-400, amber→amber-400). Tokens globales `index.css` quedan pendientes para revision UI global.
+- UI-TOKENS-01 (pendiente inmediato, 2026-07-01): el Dashboard ya es correcto a nivel de estructura, pero los colores/fuentes siguen "off" respecto al HTML v5.2. Siguiente paso recomendado: pase global acotado sobre tokens `frontend/src/index.css` (fuentes Inter/JetBrains Mono, rojo accent, texto muted/dim, `btn-primary`, `glass-panel`) con review previa/posterior porque impacta todo el Hub.
+- AUTH-03 (despues de cerrar UI): persistir sesion OAuth externa en WebView2. El callback debe entregar `access_token` + `refresh_token`, el frontend debe llamar `supabase.auth.setSession(...)`, y el siguiente arranque debe recuperar sesion sin pedir login otra vez. No mezclar con el pase UI; ver TD-044.
 - Cambios en `DashboardPage.tsx`:
   - Hero banner rojo grande con gradiente, badge "BETA · v0.1.0.2", titulo "Vantare Beta", descripcion honesta del plan Free, CTA "Gestionar cuenta" que navega a setup.
   - Bloque "Proximas carreras" via V52CalendarStrip (3 columnas + NextRaceCard real + placeholders honestos).

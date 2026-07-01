@@ -19,6 +19,7 @@ Vantare debe tratarse como suite local. Overlays Studio e Ingeniero son modulos 
 | HUB-03 | 0.1.x | Recommended first-use flow: Hub → recomendado → guardar como propio → overlay funcionando | Done | Kimi/Codex | Codex | Si |
 | HUB-04 | 0.1.x | Role-aware BetaWelcome: copy según tipo de usuario (beginner/intermediate/advanced/creator/organizer) | Done | Kimi/Codex | Codex | Si |
 | HUB-05 | 0.1.x | Primer corte visual v5.2 del Hub: shell, Dashboard con calendario integrado y pestaña Launcher real | Done (pending review/commit) | Worker frontend | Codex/GLM | Si |
+| HUB-05-B | 0.1.x | Integrar paginas internas v5.2: Overlays home, Ingeniero, Telemetria, Ajustes wrapper y Launcher polish | Done (pending review/commit) | Worker frontend | Codex/GLM | Si |
 | HOTFIX-* | 0.1.0.X | Hotfixes criticos de beta publica | Planned | Segun area | GLM/Codex | Si |
 | LINUX1 | 0.1.1.0 | Linux/Proton experimental | Planned | GLM/Kimi | GLM | Si |
 | SETUP1 | 0.1.2.0 | Vantare Setup Launcher v1 | Planned | GLM/Kimi | GLM | Si |
@@ -349,9 +350,8 @@ No alcance:
 
 ## Proxima accion
 
-v0.1.0.2 publicado y verificado. HUB-01/HUB-02/HUB-03/HUB-04 cerrados y commiteados. HUB-05 completo como primera implementacion visual v5.2 del Hub, pendiente de review/commit selectivo.
+v0.1.0.2 publicado y verificado. HUB-01/HUB-02/HUB-03/HUB-04 cerrados y commiteados. HUB-05 y HUB-05-B completos como implementacion visual v5.2 del Hub (primer corte y paginas internas), pendientes de review/commit selectivo.
 Siguiente:
-- Review/commit selectivo de HUB-05.
-- HUB-05-B: completar paginas internas/subpestanas pendientes cuando haya diseño/copy cerrado.
+- Review/commit selectivo de HUB-05 y HUB-05-B.
 - CALENDAR-02: cablear import UI, bridge Wails y recordatorios overlay cuando el Hub v5.2 quede estable.
 - DISCORD-01: limpiar mensajes beta progress y referencias historicas cuando el estado de v0.1.x este consolidado.

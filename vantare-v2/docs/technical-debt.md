@@ -42,6 +42,7 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
   - definir el spec multi-sim/associated apps del Launcher antes de ampliar placeholders;
   - migrar tests de disabled a matcher semantico cuando el setup de testing lo permita;
   - eliminar o reconectar `EmptyNextRace.tsx` y `EmptyActivity.tsx` si quedan sin consumidores tras CALENDAR-02.
+- Cierre parcial 2026-07-01 (HUB-05-B): casts `as Section` y `id: string` en `HubApp.tsx` sustituidos por `isSection` + `setSection` tipado; `Topbar.activeSection: Section` y `onNavigate: (id: Section) => void`; import muerto y reexport `EMPTY_CALENDAR_FOR_TESTS` eliminados de `NextRaceCard.tsx`; test complaciente `screen.queryByText(/sin carreras registradas/i)` de `DashboardPage.test.tsx` quitado (queda solo `data-testid="last-activity-card"`). Siguen abiertos: entrada triple Launcher, Lite mode en primitivas v5.2, dock top hardcoded, spec multi-sim/associated apps, tests de disabled a matcher semantico, limpieza legacy `EmptyNextRace`/`EmptyActivity`.
 - Riesgo si se ignora: duplicidad visual menor, deuda de mantenimiento y posible confusion futura al extender Launcher/Calendar, pero sin bloqueo funcional inmediato.
 
 ### TD-043 - Supabase RPC get_account_entitlements sin migracion SQL

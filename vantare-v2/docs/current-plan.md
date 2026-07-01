@@ -17,7 +17,27 @@ Nota HUB-05 (2026-06-30):
 - Scope estricto: no redisenar Overlays/Engineer/Telemetry/Settings internamente, no tocar Go, no anadir dependencias, no commitear HTML mockups v5.2.
 - Politica de datos: sin fake data visible; todo dato debe ser real o placeholder honesto. Calendar vive dentro del Dashboard; Launcher se configura en su propia pestaña.
 
+Nota HUB-05-B (2026-06-30):
+- Plan guardado en `docs/superpowers/plans/2026-06-30-hub-05b-v52-remaining-pages.md`.
+- Objetivo: integrar los HTML v5.2 restantes por paginas internas: Overlays home, Ingeniero, Telemetria, Ajustes wrapper y ajuste honesto de Launcher.
+- Scope: visual/cableado minimo. No toca Go, runtime overlays, Calendar avanzado, Settings tabs profundas ni nuevos datos fake.
+- Orden recomendado: P3 cleanup barato -> Telemetria -> Overlays home -> Ingeniero -> Ajustes wrapper -> Launcher polish -> review/commit selectivo.
+
+HUB-05-B implementacion (2026-07-01, v0.1.x):
+- Corte visual v5.2 del resto de paginas internas del Hub. Detalles y checklist en `docs/superpowers/plans/2026-06-30-hub-05b-v52-remaining-pages.md`.
+- Cambios:
+  - Task 1 (P3 cleanup HUB-05): `HubApp.tsx` ahora usa `isSection` y `setSection` tipado como `Section` (sin cast `as Section`); `Topbar.tsx` tipa `activeSection: Section` y `onNavigate: (id: Section) => void`; `NextRaceCard.tsx` ya no reexporta `EMPTY_CALENDAR_FOR_TESTS` (import muerto); `DashboardPage.test.tsx` ya no valida texto del mock `LastActivityCard` (queda solo la aserción de `data-testid`).
+  - Task 2 (Telemetria): nueva `frontend/src/hub/pages/TelemetryPage.tsx` con placeholder honesto v5.2 (`V52SectionHeader` + bloque `card-sleek` "Próximamente / En desarrollo" + 3 `V52InfoCard` con tonos blue/green/amber). Sin Q1 2027, sin "datos reales conectados", sin iRating. Wire en `HubApp.tsx` (`section === "telemetry" && <TelemetryPage />`). +2 tests anti-fake y +1 test de navegacion en `HubApp.test.tsx`.
+  - Task 3 (Overlays Studio home): nuevo `frontend/src/hub/overlays/V52OverlaysHome.tsx` con 4 `EntryCard` (Widgets, Mis perfiles, Recomendados, Comunidad) reusando `V52SectionHeader` y `card-sleek`/`v52-eyebrow`. Usa `profilesCount` real. Wire en `OverlaysStudioPage.tsx` solo cuando `effectiveMode === "home"` (reemplaza `StudioHome`). `WidgetStudio`/`LayoutStudio`/`OwnProfilesView`/`RecommendedProfilesView`/`CommunityComingSoonView` intactos. `OverlaysStudioPage.test.tsx` actualizado: labels "Configurar widgets" / "Ver mis perfiles" / "Ver recomendados" / "Explorar comunidad" en vez de los antiguos "Abrir X". `StudioHome.tsx` legacy sigue existiendo (no se borra) con su test propio verde.
+  - Task 4 (Ingeniero): `EngineerPage.tsx` reorganizado con `V52SectionHeader` y `card-sleek`. Eventos Wails intactos (`engineer:status:get`, `engineer:enabled:set`, `engineer:spotter:set`, `engineer:source:set`, `engineer:sensitivity:set`, `engineer:status`, `engineer:notification`). `data-testid` preservados (`connection-badge`, `toggle-enabled`, `toggle-spotter`, `select-source`, `select-sensitivity`, `notification-${id}`). Empty state honesto "Esperando mensajes de telemetría...". Sin copy fake del HTML ("Carlos (Ingeniero)", "12 perfiles compatibles", "LMU, iRacing y Assetto Corsa") cubierto por test anti-fake.
+  - Task 5 (Ajustes): `SettingsPage.tsx` envuelto con `V52SectionHeader` ("Ajustes" + description mencionando que las pestañas profundas van a SETTINGS-01). Paneles cambiados de `glass-panel p-6` a `card-sleek p-5` (no split en tabs reales, sigue siendo layout de dos columnas). Handlers intactos: `handleChannelChange`, `handleInstall`, `handleIgnore`, `handleRefresh`, `handleDeltaModeChange`, `handleCpuToggle`, `handleHotkeyChange`, `handleSaveHotkeys`, `handleCopyDiagnostics`. `AccountSettings` y `ObsSetup` sin reescribir. No se rompe `activeOverlayProfileId`, `hotkeys`, `deltaMode`, `cpuSampling` ni `launchers`.
+  - Task 6 (Launcher): `LauncherPage.tsx` mantiene `LauncherCard` real + 2 placeholders disabled honestos. Añadido helper text "LMU disponible · Apps asociadas pendientes de spec multi-sim" en la columna de perfiles. No se copian apps fake del HTML (`8/8`, `CrewChief`, `Spotify`, `v30.2`, `Último uso`, `Endurance`) — cubierto por tests anti-fake extendidos.
+- Archivos modificados (16): `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`, `frontend/src/hub/components/Topbar.tsx`, `frontend/src/hub/components/NextRaceCard.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.tsx`, `frontend/src/hub/pages/OverlaysStudioPage.test.tsx`, `frontend/src/hub/pages/EngineerPage.tsx`, `frontend/src/hub/pages/EngineerPage.test.tsx`, `frontend/src/hub/pages/SettingsPage.tsx`, `frontend/src/hub/pages/SettingsPage.test.tsx`, `frontend/src/hub/pages/LauncherPage.tsx`, `frontend/src/hub/pages/LauncherPage.test.tsx`, `docs/current-plan.md`, `docs/roadmap-execution-board.md`, `docs/release-roadmap-execution-index.md`, `docs/technical-debt.md`.
+- Archivos nuevos (4): `frontend/src/hub/pages/TelemetryPage.tsx`, `frontend/src/hub/pages/TelemetryPage.test.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.tsx`, `frontend/src/hub/overlays/V52OverlaysHome.test.tsx`.
+- Archivos NO tocados (segun plan): `WidgetStudio.tsx`, `LayoutStudio.tsx`, `frontend/src/overlay/**`, `internal/**`, `cmd/**`, `.github/workflows/**`, `build/**`, `VERSION`, `EmptyNextRace.tsx`, `EmptyActivity.tsx`, `EmptyLauncher.tsx`, `AccountSettings.tsx`, `ObsSetup.tsx`, `BetaWelcome.tsx`, `auth/*`, `recommended-first-use/*`, `RecommendedProfilesView*` y `OverlaysStudioPage.test.tsx` ajenos, HTMLs v5.2 mock, screenshots, `pnpm-workspace.yaml`, `hub_main.html`, `fotos/`, docs mock/performance historicos, `vantare.exe.stale`.
+
 HUB-05 implementacion (2026-06-30, v0.1.x):
+- Commit: `4ac08a2 feat(hub): add v5.2 shell dashboard and launcher`.
 - Shell v5.2 implementado en `frontend/src/hub/components/V52Shell.tsx` con fondo `v52-shell-bg`, grain (`v52-grain`), vignette (`v52-vignette`), topbar, sidebar de navegacion, dock izquierdo (`LauncherDock`), area main con grid 12 columnas responsive y max-width 1920px.
 - Sidebar activo expone `data-testid="v52-sidebar-{section}"` y `aria-current="page"` segun `Section` actual; navegacion con `getByTestId` cubierta por tests.
 - Dock lateral (`LauncherDock.tsx`) oculto en pantallas pequenas (`hidden lg:flex`). Acciones activas: LMU -> `launcher`, OBS -> `setup`. Acciones futuras (`Añadir simulador`, `Añadir app`) renderizadas como `disabled` honesto. Iconos en SVG inline sin librerias externas.
@@ -318,9 +338,8 @@ Los roadmaps anteriores (`docs/master-feature-plan.md` y `docs/roadmap-execution
 
 Siguiente trabajo recomendado:
 
-1. Review y commit selectivo de HUB-05 (primer corte visual v5.2 del Hub) si no aparecen P0/P1/P2.
-2. HUB-05-B — completar paginas internas/subpestanas pendientes cuando haya diseño/copy cerrado, sin reabrir arquitectura.
-3. CALENDAR-02 — cablear import UI, bridge Wails y recordatorios overlay usando el modelo aislado de CALENDAR-01.
+1. HUB-05-B — commit selectivo del corte de paginas internas v5.2 implementado en 2026-07-01 (ver `docs/superpowers/plans/2026-06-30-hub-05b-v52-remaining-pages.md`).
+2. CALENDAR-02 — cablear import UI, bridge Wails y recordatorios overlay usando el modelo aislado de CALENDAR-01.
 4. OVERLAY-DESIGN-02 — nuevo sistema visual de overlays sobre la arquitectura existente.
 5. DISCORD-01 — limpiar mensajes beta progress y referencias historicas en Discord cuando el estado de v0.1.x este consolidado.
 6. Por planear en `v0.1.x`: Linux/Proton experimental, Vantare Setup Launcher, nuevos overlays, disenos oficiales adicionales, hardening de auth/licencias, revision global post-beta, **SETTINGS-01 (Setup UI Tabs Rework)**, Stripe/licencias paid/suite reales, race data real desde LMU.
@@ -354,7 +373,7 @@ La serie `0.1.x` no es solo hotfixes: es la linea de beta publica temprana. El c
 | `0.1.x` | Por planear | Vantare Setup Launcher v1: instalador propio ligero que verifica SHA256 y lanza NSIS por debajo. |
 | `0.1.x` | Por planear | LMU race countdown beta: import manual/asistido por IA del calendario semanal publicado en Discord y notificacion overlay sobre el simulador con avisos de tiempo restante. |
 | `0.1.x` | Por planear | Launcher de simuladores: abrir LMU desde Vantare y agrupar apps asociadas por simulador (overlays, Ingeniero, calendario, presets, configuracion). |
-| `0.1.x` | En progreso | Hub v5.2: primer corte implementado (shell, Dashboard con calendario integrado y Launcher como pestaña real). Pendiente review/commit y siguientes cortes internos. |
+| `0.1.x` | Pendiente commit | Hub v5.2: shell + Dashboard (HUB-05) y paginas internas restantes (HUB-05-B) implementados. Pendiente review y commit selectivo. |
 | `0.1.x` | Por planear | Nuevos overlays publicos, mas disenos oficiales, pulido de OBS, hardening de licencias y primeras correcciones de rendimiento. |
 | `0.1.x` | Por planear | SETTINGS-01 — Setup UI Tabs Rework: convertir `Setup/SettingsPage` en pestañas horizontales estilo videojuego, con topbar interna (pestañas + botón "Volver") y un panel de edición por pestaña. |
 | `0.1.x` | Por planear | PACKAGING-01 — Vantare app icon branding: sustituir `build/appicon.png` por el logo Vantare (idealmente 1024x1024) y regenerar `icon.ico`/`icons.icns` para que taskbar, ventana e instalador muestren branding correcto. |

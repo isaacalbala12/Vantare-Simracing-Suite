@@ -1,4 +1,5 @@
 import { V52SectionHeader } from "../components/V52SectionHeader";
+import { RECOMMENDED_PROFILES } from "./recommended-profiles";
 
 type V52OverlaysHomeProps = {
   profilesCount: number;
@@ -111,7 +112,7 @@ export function V52OverlaysHome({
             meta="Perfiles recomendados incluidos"
             button="Ver recomendados"
             onClick={onOpenRecommended}
-            pills={["Clean Overlay", "Le Mans Basic"]}
+            pills={RECOMMENDED_PROFILES.slice(0, 2).map((p) => p.name)}
           />
         </div>
         <div className="opacity-0 animate-fade-in-up delay-300">

@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { RECOMMENDED_PROFILES } from "./recommended-profiles";
 import { V52OverlaysHome } from "./V52OverlaysHome";
 
 afterEach(() => cleanup());
@@ -72,7 +73,7 @@ describe("V52OverlaysHome", () => {
     expect(onOpenCommunity).not.toHaveBeenCalled();
   });
 
-  it("renders recommended pills", () => {
+  it("renders recommended pills from RECOMMENDED_PROFILES", () => {
     render(
       <V52OverlaysHome
         profilesCount={2}
@@ -83,8 +84,9 @@ describe("V52OverlaysHome", () => {
       />,
     );
 
-    expect(screen.getByText("Clean Overlay")).toBeTruthy();
-    expect(screen.getByText("Le Mans Basic")).toBeTruthy();
+    expect(screen.getByText(RECOMMENDED_PROFILES[0].name)).toBeTruthy();
+    expect(screen.getByText(RECOMMENDED_PROFILES[1].name)).toBeTruthy();
+    expect(screen.queryByText("Le Mans Basic")).toBeNull();
   });
 
   it("shows real profilesCount in meta and eyebrow", () => {

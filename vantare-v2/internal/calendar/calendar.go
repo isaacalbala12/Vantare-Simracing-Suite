@@ -38,6 +38,18 @@ type RaceEvent struct {
 	Notes           string    `json:"notes,omitempty"`
 }
 
+// Reminder represents a single reminder that is due for a followed event at a
+// specific threshold. MinutesLeft is the threshold value (e.g. 30 means "30
+// minutes before start").
+type Reminder struct {
+	EventID         string    `json:"eventId"`
+	Title           string    `json:"title"`
+	Track           string    `json:"track,omitempty"`
+	MinutesLeft     int       `json:"minutesLeft"`
+	StartTime       time.Time `json:"startTime"`
+	RegistrationURL string    `json:"registrationUrl,omitempty"`
+}
+
 // Calendar is the root document persisted to calendar-lmu.json.
 type Calendar struct {
 	Version          int         `json:"version"`

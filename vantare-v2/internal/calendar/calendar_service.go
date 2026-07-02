@@ -234,6 +234,57 @@ func (s *Service) Past(now time.Time) (RaceEvent, bool) {
 	return RaceEvent{}, false
 }
 
+// DueReminders returns reminders for followed events whose start time falls
+// within each configured reminder threshold. A reminder at threshold T is due
+// when the event starts in (T-1, T] minutes. Past and active events are never
+// included. Deduplication is intentionally not performed here (handled by
+// CALENDAR-02-C2-B).
+func (s *Service) DueReminders(now time.Time) []Reminder {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	reminderMinutes := s.cal.ReminderMinutes
+	if len(reminderMinutes) == 0 {
+		reminderMinutes = DefaultReminderMinutes
+	}
+
+	if len(s.cal.FollowedEventIDs) == 0 {
+		return []Reminder{}
+	}
+
+	followed := make(map[string]struct{}, len(s.cal.FollowedEventIDs))
+	for _, id := range s.cal.FollowedEventIDs {
+		followed[id] = struct{}{}
+	}
+
+	var out []Reminder
+	for _, ev := range s.cal.Events {
+		if _, ok := followed[ev.ID]; !ok {
+			continue
+		}
+		if !now.Before(ev.StartTime) {
+			continue
+		}
+		minutesUntil := int(ev.StartTime.Sub(now).Minutes())
+		for _, t := range reminderMinutes {
+			if minutesUntil <= t && minutesUntil > t-1 {
+				out = append(out, Reminder{
+					EventID:         ev.ID,
+					Title:           ev.Title,
+					Track:           ev.Track,
+					MinutesLeft:     t,
+					StartTime:       ev.StartTime,
+					RegistrationURL: ev.RegistrationURL,
+				})
+			}
+		}
+	}
+	if out == nil {
+		return []Reminder{}
+	}
+	return out
+}
+
 // Events returns a copy of all events sorted by StartTime ascending.
 func (s *Service) Events() []RaceEvent {
 	s.mu.Lock()

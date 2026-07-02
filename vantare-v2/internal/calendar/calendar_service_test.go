@@ -553,6 +553,196 @@ func TestEvent_IsActiveAt(t *testing.T) {
 	}
 }
 
+func TestDueReminders_NoFollowedEvents(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 30, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 0 {
+		t.Errorf("DueReminders = %d, want 0 (no followed events)", len(reminders))
+	}
+}
+
+func TestDueReminders_EventNotFollowed(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev1 := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 30, 0, 0, time.UTC), 60)
+	ev1.ID = "ev-1"
+	ev2 := eventAt(t, "Qualy", time.Date(2026, time.July, 1, 13, 0, 0, 0, time.UTC), 30)
+	ev2.ID = "ev-2"
+	if _, err := svc.Replace([]RaceEvent{ev1, ev2}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-2"); err != nil {
+		t.Fatalf("Follow ev-2: %v", err)
+	}
+	// ev-1 is not followed — should not produce a reminder.
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 0 {
+		t.Errorf("DueReminders = %d, want 0 (ev-1 not followed)", len(reminders))
+	}
+}
+
+func TestDueReminders_FollowedEventWithinThreshold(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 30, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	// 30 minutes before start — DefaultReminderMinutes includes 30.
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 1 {
+		t.Fatalf("DueReminders = %d, want 1", len(reminders))
+	}
+	if reminders[0].EventID != "ev-1" {
+		t.Errorf("EventID = %q, want ev-1", reminders[0].EventID)
+	}
+	if reminders[0].MinutesLeft != 30 {
+		t.Errorf("MinutesLeft = %d, want 30", reminders[0].MinutesLeft)
+	}
+}
+
+func TestDueReminders_FollowedEventOutsideThreshold(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Event starts in 45 minutes — no threshold matches (30 < 45 <= 15 is false).
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 45, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 0 {
+		t.Errorf("DueReminders = %d, want 0 (45 min > 30 threshold)", len(reminders))
+	}
+}
+
+func TestDueReminders_PastEvent(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 11, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 0 {
+		t.Errorf("DueReminders = %d, want 0 (past event)", len(reminders))
+	}
+}
+
+func TestDueReminders_CustomReminderMinutes(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Set custom reminder minutes.
+	svc.mu.Lock()
+	svc.cal.ReminderMinutes = []int{45, 20}
+	svc.mu.Unlock()
+
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 20, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	// 20 minutes before start — custom threshold 20 matches.
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 1 {
+		t.Fatalf("DueReminders = %d, want 1", len(reminders))
+	}
+	if reminders[0].MinutesLeft != 20 {
+		t.Errorf("MinutesLeft = %d, want 20", reminders[0].MinutesLeft)
+	}
+}
+
+func TestDueReminders_EdgeTMinusOne(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Event starts in 29 minutes — threshold 30 uses (T-1, T] = (29, 30].
+	// 29 is NOT > 29, so no reminder for 30.
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 29, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	reminders := svc.DueReminders(now)
+	for _, r := range reminders {
+		if r.MinutesLeft == 30 {
+			t.Errorf("unexpected reminder for 30 at minutesUntil=29 (outside (29,30])")
+		}
+	}
+}
+
+func TestDueReminders_EmptyReminderMinutesUsesDefault(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Set empty reminder minutes.
+	svc.mu.Lock()
+	svc.cal.ReminderMinutes = []int{}
+	svc.mu.Unlock()
+
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 1, 12, 30, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	// 30 minutes before start — DefaultReminderMinutes includes 30.
+	reminders := svc.DueReminders(now)
+	if len(reminders) != 1 {
+		t.Fatalf("DueReminders = %d, want 1", len(reminders))
+	}
+	if reminders[0].MinutesLeft != 30 {
+		t.Errorf("MinutesLeft = %d, want 30", reminders[0].MinutesLeft)
+	}
+}
+
 // helpers (small wrappers so the test file is self contained)
 
 func readDirNames(dir string) ([]string, error) {

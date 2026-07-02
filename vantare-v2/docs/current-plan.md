@@ -1568,3 +1568,18 @@ Nota CALENDAR-02-C2 (2026-07-02):
 - No se tocaron: Go/backend, overlay/CompositeApp/ObsOverlayApp, AppSettings, WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, hub_main.html, archivos untracked ajenos.
 - Overlay banner (CALENDAR-02-D) sigue pendiente.
 - Sin commit.
+
+Nota CALENDAR-02-D1 (2026-07-02):
+- Componente overlay aislado `OverlayCalendarReminderBanner` creado en `frontend/src/overlay/`.
+- Reutiliza `CalendarReminderPayload` desde `frontend/src/calendar/calendar-types.ts` (sin cambios).
+- Props: `reminder`, `onClose`, `className?`.
+- Render: badge "Próxima carrera", título, track condicional, "Faltan X min", botón cerrar con `aria-label`, enlace "Abrir registro" condicional.
+- Sin `fixed` ni posicionamiento global: el contenedor raíz acepta `className` para que el padre decida posición.
+- Sin listeners, timers, effects ni operaciones caras — componente puro.
+- Accesibilidad: `role="alert"`, botón cerrar accesible.
+- Tests: 7/7 PASS (renderiza título/track/minutos, track ausente, Abrir registro condicional, onClose, role alert, sin fixed propio).
+- Integración en CompositeApp/ObsOverlayApp queda para CALENDAR-02-D2.
+- Checks: tsc OK, git diff --check OK (warnings preexistentes).
+- Archivos creados: `frontend/src/overlay/OverlayCalendarReminderBanner.tsx`, `frontend/src/overlay/OverlayCalendarReminderBanner.test.tsx`.
+- No se tocaron: CompositeApp, ObsOverlayApp, HubApp, Go/backend, WidgetStudio, LayoutStudio, WIDGETS, AppSettings, WidgetStudio/LayoutStudio, dependencias.
+- Sin commit.

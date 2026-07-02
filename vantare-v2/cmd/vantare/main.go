@@ -1023,6 +1023,30 @@ func main() {
 		app.HandleCalendarClear(calendarSvc, calendarSvc, emitter, log.Printf)
 	})
 
+	wailsApp.Event.On("calendar:follow", func(event *application.CustomEvent) {
+		var payload struct {
+			EventID string `json:"eventId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf)
+	})
+
+	wailsApp.Event.On("calendar:unfollow", func(event *application.CustomEvent) {
+		var payload struct {
+			EventID string `json:"eventId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		app.HandleCalendarUnfollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf)
+	})
+
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)
 	wailsApp.Event.On("layout:save", func(event *application.CustomEvent) {
 		type layoutSaveData struct {

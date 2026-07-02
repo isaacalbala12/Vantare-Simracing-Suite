@@ -19,6 +19,16 @@ type CalendarClearer interface {
 	Clear() error
 }
 
+// CalendarFollower abstracts the Follow method of *calendar.Service.
+type CalendarFollower interface {
+	Follow(eventID string) (calendar.Calendar, error)
+}
+
+// CalendarUnfollower abstracts the Unfollow method of *calendar.Service.
+type CalendarUnfollower interface {
+	Unfollow(eventID string) (calendar.Calendar, error)
+}
+
 // HandleCalendarGet emits the current calendar document.
 func HandleCalendarGet(svc CalendarGetter, emitter EventEmitter) {
 	cal := svc.Calendar()
@@ -48,6 +58,30 @@ func HandleCalendarImport(text, timezone, source string, replacer CalendarReplac
 func HandleCalendarClear(svc CalendarClearer, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
 	if err := svc.Clear(); err != nil {
 		logf("calendar:clear error: %v", err)
+		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
+		return
+	}
+	cal := getter.Calendar()
+	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
+}
+
+// HandleCalendarFollow marks an event as followed and emits the updated
+// calendar. Returns calendar:error if the eventID does not exist.
+func HandleCalendarFollow(eventID string, svc CalendarFollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
+	if _, err := svc.Follow(eventID); err != nil {
+		logf("calendar:follow error: %v", err)
+		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
+		return
+	}
+	cal := getter.Calendar()
+	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
+}
+
+// HandleCalendarUnfollow removes an event from the followed list and emits
+// the updated calendar.
+func HandleCalendarUnfollow(eventID string, svc CalendarUnfollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
+	if _, err := svc.Unfollow(eventID); err != nil {
+		logf("calendar:unfollow error: %v", err)
 		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
 		return
 	}

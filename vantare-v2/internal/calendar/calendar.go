@@ -40,11 +40,12 @@ type RaceEvent struct {
 
 // Calendar is the root document persisted to calendar-lmu.json.
 type Calendar struct {
-	Version         int         `json:"version"`
-	Timezone        string      `json:"timezone"`
-	ReminderMinutes []int       `json:"reminderMinutes"`
-	Events          []RaceEvent `json:"events"`
-	Updated         time.Time   `json:"updated"`
+	Version          int         `json:"version"`
+	Timezone         string      `json:"timezone"`
+	ReminderMinutes  []int       `json:"reminderMinutes"`
+	Events           []RaceEvent `json:"events"`
+	FollowedEventIDs []string    `json:"followedEventIds,omitempty"`
+	Updated          time.Time   `json:"updated"`
 }
 
 // ErrInvalidLine is returned by the parser when a single line cannot be
@@ -133,10 +134,11 @@ func NewDefaultCalendar() Calendar {
 	rem := make([]int, len(DefaultReminderMinutes))
 	copy(rem, DefaultReminderMinutes)
 	return Calendar{
-		Version:         1,
-		Timezone:        DefaultTimezone,
-		ReminderMinutes: rem,
-		Events:          []RaceEvent{},
-		Updated:         time.Time{},
+		Version:          1,
+		Timezone:         DefaultTimezone,
+		ReminderMinutes:  rem,
+		Events:           []RaceEvent{},
+		FollowedEventIDs: []string{},
+		Updated:          time.Time{},
 	}
 }

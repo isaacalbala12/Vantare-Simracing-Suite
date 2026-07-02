@@ -303,6 +303,231 @@ func TestService_PersistLeavesNoTmp(t *testing.T) {
 	}
 }
 
+func TestService_FollowValidPersistsAndAppearsAfterReload(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+
+	cal, err := svc.Follow("ev-1")
+	if err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+	if len(cal.FollowedEventIDs) != 1 || cal.FollowedEventIDs[0] != "ev-1" {
+		t.Fatalf("FollowedEventIDs=%v, want [ev-1]", cal.FollowedEventIDs)
+	}
+	if !svc.IsFollowed("ev-1") {
+		t.Error("IsFollowed should be true after Follow")
+	}
+
+	// Reload from disk.
+	svc2 := NewService(filepath.Dir(svc.Path()), fixedClock(now))
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("svc2.Load: %v", err)
+	}
+	if !svc2.IsFollowed("ev-1") {
+		t.Error("IsFollowed should survive reload")
+	}
+}
+
+func TestService_FollowInvalidReturnsErrorAndDoesNotChangeCalendar(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// No events exist, so "nonexistent" is invalid.
+	_, err := svc.Follow("nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent event, got nil")
+	}
+	cal := svc.Calendar()
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v, want empty after failed follow", cal.FollowedEventIDs)
+	}
+}
+
+func TestService_UnfollowRemovesIDAndPersists(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+
+	cal, err := svc.Unfollow("ev-1")
+	if err != nil {
+		t.Fatalf("Unfollow: %v", err)
+	}
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v after unfollow, want empty", cal.FollowedEventIDs)
+	}
+	if svc.IsFollowed("ev-1") {
+		t.Error("IsFollowed should be false after Unfollow")
+	}
+
+	// Reload from disk.
+	svc2 := NewService(filepath.Dir(svc.Path()), fixedClock(now))
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("svc2.Load: %v", err)
+	}
+	if svc2.IsFollowed("ev-1") {
+		t.Error("IsFollowed should be false after reload")
+	}
+}
+
+func TestService_ClearEmptiesFollowedIDs(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+
+	if err := svc.Clear(); err != nil {
+		t.Fatalf("Clear: %v", err)
+	}
+	cal := svc.Calendar()
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v after clear, want empty", cal.FollowedEventIDs)
+	}
+	if len(cal.Events) != 0 {
+		t.Errorf("Events=%d after clear, want 0", len(cal.Events))
+	}
+}
+
+func TestService_ReplacePreservesFollowedIDsForExistingEvents(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow: %v", err)
+	}
+
+	// Replace with the same event (dedupe keeps it).
+	ev2 := ev
+	ev2.DurationMin = 90
+	if _, err := svc.Replace([]RaceEvent{ev2}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if !svc.IsFollowed("ev-1") {
+		t.Error("IsFollowed should be true after replace that keeps the event")
+	}
+}
+
+func TestService_ReplaceKeepsFollowedIDsAcrossMerge(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev1 := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev1.ID = "ev-1"
+	ev2 := eventAt(t, "Qualy", time.Date(2026, time.July, 2, 18, 0, 0, 0, time.UTC), 30)
+	ev2.ID = "ev-2"
+	if _, err := svc.Replace([]RaceEvent{ev1, ev2}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("Follow ev-1: %v", err)
+	}
+	if _, err := svc.Follow("ev-2"); err != nil {
+		t.Fatalf("Follow ev-2: %v", err)
+	}
+
+	// Replace with only ev2 — dedupe keeps ev1 (merge semantics), so ev-1 stays followed.
+	if _, err := svc.Replace([]RaceEvent{ev2}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+	if !svc.IsFollowed("ev-1") {
+		t.Error("IsFollowed should remain true for ev-1 (dedupe merge keeps it)")
+	}
+	if !svc.IsFollowed("ev-2") {
+		t.Error("IsFollowed should be true for ev-2")
+	}
+}
+
+func TestService_FollowIdempotent(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+
+	if _, err := svc.Follow("ev-1"); err != nil {
+		t.Fatalf("first Follow: %v", err)
+	}
+	cal, err := svc.Follow("ev-1")
+	if err != nil {
+		t.Fatalf("second Follow: %v", err)
+	}
+	if len(cal.FollowedEventIDs) != 1 {
+		t.Fatalf("FollowedEventIDs=%v after second follow, want [ev-1]", cal.FollowedEventIDs)
+	}
+}
+
+func TestService_UnfollowIdempotent(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ev := eventAt(t, "Race", time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC), 60)
+	ev.ID = "ev-1"
+	if _, err := svc.Replace([]RaceEvent{ev}, "UTC", ""); err != nil {
+		t.Fatalf("Replace: %v", err)
+	}
+
+	// Unfollow when not followed — no-op.
+	cal, err := svc.Unfollow("ev-1")
+	if err != nil {
+		t.Fatalf("first Unfollow: %v", err)
+	}
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v after first unfollow, want empty", cal.FollowedEventIDs)
+	}
+	// Unfollow again — still no-op.
+	cal, err = svc.Unfollow("ev-1")
+	if err != nil {
+		t.Fatalf("second Unfollow: %v", err)
+	}
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v after second unfollow, want empty", cal.FollowedEventIDs)
+	}
+}
+
 func TestEventKey_StableAcrossCase(t *testing.T) {
 	a := RaceEvent{Title: "Race", Track: "Le Mans", StartTime: time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC)}
 	b := RaceEvent{Title: "race", Track: "le mans", StartTime: time.Date(2026, time.July, 2, 20, 0, 0, 0, time.UTC)}

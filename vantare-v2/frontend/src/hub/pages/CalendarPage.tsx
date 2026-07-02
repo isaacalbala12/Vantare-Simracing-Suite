@@ -34,6 +34,11 @@ function pickPast(calendar: Calendar, now: Date): RaceEvent[] {
   });
 }
 
+function isFollowed(eventId: string, followedIds: string[] | undefined): boolean {
+  if (!followedIds) return false;
+  return followedIds.includes(eventId);
+}
+
 export function CalendarPage() {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,9 +79,18 @@ export function CalendarPage() {
     Events.Emit("calendar:clear", null);
   }, []);
 
+  const handleFollow = useCallback((eventId: string) => {
+    Events.Emit("calendar:follow", { eventId });
+  }, []);
+
+  const handleUnfollow = useCallback((eventId: string) => {
+    Events.Emit("calendar:unfollow", { eventId });
+  }, []);
+
   const now = new Date();
   const upcoming = calendar ? pickUpcoming(calendar, now) : [];
   const past = calendar ? pickPast(calendar, now) : [];
+  const followedIds = calendar?.followedEventIds;
 
   return (
     <div className="flex flex-col gap-5">
@@ -193,6 +207,35 @@ export function CalendarPage() {
                     Fuente: {ev.source}
                   </p>
                 ) : null}
+                <div className="mt-3 flex gap-2">
+                  {isFollowed(ev.id, followedIds) ? (
+                    <>
+                      <span
+                        className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600/20 text-emerald-400 border border-emerald-600/30"
+                        data-testid={`calendar-following-badge-${ev.id}`}
+                      >
+                        Siguiendo
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnfollow(ev.id)}
+                        className="px-2.5 py-1 rounded-md text-[10px] font-bold text-vantare-textMuted bg-white/5 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
+                        data-testid={`calendar-unfollow-btn-${ev.id}`}
+                      >
+                        Dejar de seguir
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleFollow(ev.id)}
+                      className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-vantare-red-600 hover:bg-vantare-red-500 text-white transition-colors"
+                      data-testid={`calendar-follow-btn-${ev.id}`}
+                    >
+                      Seguir carrera
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

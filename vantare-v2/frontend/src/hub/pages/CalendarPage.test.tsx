@@ -184,4 +184,93 @@ describe("CalendarPage", () => {
     expect(screen.queryByText(/COTA/)).toBeNull();
     expect(screen.queryByText(/Paul Ricard/)).toBeNull();
   });
+
+  it("shows Seguir carrera button on upcoming event not followed", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z" })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    expect(screen.getByTestId("calendar-follow-btn-ev-1")).toBeTruthy();
+    expect(screen.getByText("Seguir carrera")).toBeTruthy();
+  });
+
+  it("click Seguir carrera emits calendar:follow with eventId", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z" })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    eventsEmit.mockClear();
+    act(() => {
+      fireEvent.click(screen.getByTestId("calendar-follow-btn-ev-1"));
+    });
+    expect(eventsEmit).toHaveBeenCalledWith("calendar:follow", { eventId: "ev-1" });
+  });
+
+  it("shows Siguiendo badge and Dejar de seguir when event is followed", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z" })],
+        followedEventIds: ["ev-1"],
+        updated: "",
+      },
+    });
+    expect(screen.getByTestId("calendar-following-badge-ev-1")).toBeTruthy();
+    expect(screen.getByText("Siguiendo")).toBeTruthy();
+    expect(screen.getByTestId("calendar-unfollow-btn-ev-1")).toBeTruthy();
+    expect(screen.getByText("Dejar de seguir")).toBeTruthy();
+  });
+
+  it("click Dejar de seguir emits calendar:unfollow with eventId", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z" })],
+        followedEventIds: ["ev-1"],
+        updated: "",
+      },
+    });
+    eventsEmit.mockClear();
+    act(() => {
+      fireEvent.click(screen.getByTestId("calendar-unfollow-btn-ev-1"));
+    });
+    expect(eventsEmit).toHaveBeenCalledWith("calendar:unfollow", { eventId: "ev-1" });
+  });
+
+  it("does not show follow buttons on past events", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-06-30T08:00:00Z", durationMin: 60 })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    expect(screen.queryByTestId("calendar-follow-btn-ev-1")).toBeNull();
+    expect(screen.queryByTestId("calendar-following-badge-ev-1")).toBeNull();
+    expect(screen.queryByTestId("calendar-unfollow-btn-ev-1")).toBeNull();
+  });
 });

@@ -81,6 +81,9 @@ function normaliseCalendar(cal: Calendar): Calendar {
       ? [...cal.reminderMinutes]
       : [...EMPTY_CALENDAR.reminderMinutes],
     events: Array.isArray(cal.events) ? [...cal.events] : [],
+    followedEventIds: Array.isArray(cal.followedEventIds)
+      ? [...cal.followedEventIds]
+      : [],
     updated: cal.updated ?? "",
   };
 }

@@ -407,3 +407,191 @@ func TestHandleCalendarGetWithRealServiceNoFile(t *testing.T) {
 		t.Fatalf("timezone=%q, want %q", cal.Timezone, calendar.DefaultTimezone)
 	}
 }
+
+// --- Calendar follow/unfollow bridge tests ---
+
+// fakeCalendarFollowService implements CalendarFollower, CalendarUnfollower,
+// CalendarGetter for testing follow/unfollow bridge handlers.
+type fakeCalendarFollowService struct {
+	cal           calendar.Calendar
+	followErr     error
+	unfollowErr   error
+	followCalls   int
+	unfollowCalls int
+}
+
+func (f *fakeCalendarFollowService) Calendar() calendar.Calendar {
+	return f.cal
+}
+
+func (f *fakeCalendarFollowService) Follow(eventID string) (calendar.Calendar, error) {
+	f.followCalls++
+	if f.followErr != nil {
+		return calendar.Calendar{}, f.followErr
+	}
+	f.cal.FollowedEventIDs = append(f.cal.FollowedEventIDs, eventID)
+	return f.cal, nil
+}
+
+func (f *fakeCalendarFollowService) Unfollow(eventID string) (calendar.Calendar, error) {
+	f.unfollowCalls++
+	if f.unfollowErr != nil {
+		return calendar.Calendar{}, f.unfollowErr
+	}
+	filtered := make([]string, 0, len(f.cal.FollowedEventIDs))
+	for _, id := range f.cal.FollowedEventIDs {
+		if id != eventID {
+			filtered = append(filtered, id)
+		}
+	}
+	f.cal.FollowedEventIDs = filtered
+	return f.cal, nil
+}
+
+func TestHandleCalendarFollowEmitsLoaded(t *testing.T) {
+	svc := &fakeCalendarFollowService{cal: calendar.NewDefaultCalendar()}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarFollow("ev-1", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
+	}
+	if svc.followCalls != 1 {
+		t.Fatalf("followCalls=%d, want 1", svc.followCalls)
+	}
+}
+
+func TestHandleCalendarFollowErrorEmitsError(t *testing.T) {
+	svc := &fakeCalendarFollowService{
+		cal:       calendar.NewDefaultCalendar(),
+		followErr: errors.New("event not found"),
+	}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarFollow("nonexistent", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
+	}
+	if svc.followCalls != 1 {
+		t.Fatalf("followCalls=%d, want 1", svc.followCalls)
+	}
+}
+
+func TestHandleCalendarUnfollowEmitsLoaded(t *testing.T) {
+	svc := &fakeCalendarFollowService{cal: calendar.NewDefaultCalendar()}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarUnfollow("ev-1", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
+	}
+	if svc.unfollowCalls != 1 {
+		t.Fatalf("unfollowCalls=%d, want 1", svc.unfollowCalls)
+	}
+}
+
+func TestHandleCalendarUnfollowErrorEmitsError(t *testing.T) {
+	svc := &fakeCalendarFollowService{
+		cal:         calendar.NewDefaultCalendar(),
+		unfollowErr: errors.New("persist error"),
+	}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarUnfollow("ev-1", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
+	}
+	if svc.unfollowCalls != 1 {
+		t.Fatalf("unfollowCalls=%d, want 1", svc.unfollowCalls)
+	}
+}
+
+// TestHandleCalendarFollowWithRealService verifies the full round-trip with a
+// real *calendar.Service.
+func TestHandleCalendarFollowWithRealService(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	emitter := &spyCalendarEmitter{}
+
+	// Import an event first.
+	text := "Martes 2 Julio | 20:00 | Race | Le Mans | 45"
+	HandleCalendarImport(text, "Europe/Madrid", "discord-lmu-week", svc, svc, emitter, func(string, ...any) {})
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("expected 1 event after import, got %d", len(cal.Events))
+	}
+	eventID := cal.Events[0].ID
+
+	// Follow the event.
+	emitter2 := &spyCalendarEmitter{}
+	HandleCalendarFollow(eventID, svc, svc, emitter2, func(string, ...any) {})
+
+	if len(emitter2.events) != 1 || emitter2.events[0] != "calendar:loaded" {
+		t.Fatalf("follow events=%v, want [calendar:loaded]", emitter2.events)
+	}
+	cal2 := svc.Calendar()
+	if len(cal2.FollowedEventIDs) != 1 || cal2.FollowedEventIDs[0] != eventID {
+		t.Fatalf("FollowedEventIDs=%v, want [%s]", cal2.FollowedEventIDs, eventID)
+	}
+}
+
+// TestHandleCalendarFollowInvalidWithRealService verifies that following a
+// nonexistent event emits calendar:error and does not change the calendar.
+func TestHandleCalendarFollowInvalidWithRealService(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarFollow("nonexistent", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
+	}
+	cal := svc.Calendar()
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v after failed follow, want empty", cal.FollowedEventIDs)
+	}
+}
+
+// TestHandleCalendarUnfollowWithRealService verifies the full unfollow
+// round-trip with a real *calendar.Service.
+func TestHandleCalendarUnfollowWithRealService(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	emitter := &spyCalendarEmitter{}
+
+	// Import an event and follow it.
+	text := "Martes 2 Julio | 20:00 | Race | Le Mans | 45"
+	HandleCalendarImport(text, "Europe/Madrid", "discord-lmu-week", svc, svc, emitter, func(string, ...any) {})
+	cal := svc.Calendar()
+	eventID := cal.Events[0].ID
+	HandleCalendarFollow(eventID, svc, svc, emitter, func(string, ...any) {})
+	if len(svc.Calendar().FollowedEventIDs) != 1 {
+		t.Fatalf("expected 1 followed event after follow")
+	}
+
+	// Unfollow.
+	emitter2 := &spyCalendarEmitter{}
+	HandleCalendarUnfollow(eventID, svc, svc, emitter2, func(string, ...any) {})
+
+	if len(emitter2.events) != 1 || emitter2.events[0] != "calendar:loaded" {
+		t.Fatalf("unfollow events=%v, want [calendar:loaded]", emitter2.events)
+	}
+	cal2 := svc.Calendar()
+	if len(cal2.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs=%v after unfollow, want empty", cal2.FollowedEventIDs)
+	}
+}

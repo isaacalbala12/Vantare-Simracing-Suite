@@ -78,6 +78,9 @@ func (s *Service) loadLocked() error {
 	if raw.ReminderMinutes == nil {
 		raw.ReminderMinutes = append([]int(nil), DefaultReminderMinutes...)
 	}
+	if raw.FollowedEventIDs == nil {
+		raw.FollowedEventIDs = []string{}
+	}
 	s.cal = raw
 	return nil
 }
@@ -93,6 +96,7 @@ func (s *Service) cloneLocked() Calendar {
 	out := s.cal
 	out.Events = append([]RaceEvent(nil), s.cal.Events...)
 	out.ReminderMinutes = append([]int(nil), s.cal.ReminderMinutes...)
+	out.FollowedEventIDs = append([]string(nil), s.cal.FollowedEventIDs...)
 	return out
 }
 
@@ -130,6 +134,8 @@ func (s *Service) Replace(events []RaceEvent, timezone, source string) ([]RaceEv
 	s.cal.Version = 1
 	s.cal.Timezone = timezone
 	s.cal.Events = merged
+	// Prune followed IDs that no longer exist in the merged event set.
+	s.cal.FollowedEventIDs = pruneFollowedLocked(s.cal.FollowedEventIDs, merged)
 	s.cal.Updated = s.now().UTC()
 	return append([]RaceEvent(nil), merged...), s.persistLocked()
 }
@@ -141,6 +147,63 @@ func (s *Service) Clear() error {
 	s.cal = NewDefaultCalendar()
 	s.cal.Updated = s.now().UTC()
 	return s.persistLocked()
+}
+
+// Follow marks an event as followed. Returns an error if the eventID does not
+// exist in the current calendar. The change is persisted atomically.
+func (s *Service) Follow(eventID string) (Calendar, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !eventExistsLocked(s.cal.Events, eventID) {
+		return Calendar{}, fmt.Errorf("event %q not found in calendar", eventID)
+	}
+	for _, id := range s.cal.FollowedEventIDs {
+		if id == eventID {
+			return s.cloneLocked(), nil // already followed, no-op
+		}
+	}
+	s.cal.FollowedEventIDs = append(s.cal.FollowedEventIDs, eventID)
+	s.cal.Updated = s.now().UTC()
+	if err := s.persistLocked(); err != nil {
+		return Calendar{}, err
+	}
+	return s.cloneLocked(), nil
+}
+
+// Unfollow removes an event from the followed list. It is a no-op if the
+// event was not followed. The change is persisted atomically.
+func (s *Service) Unfollow(eventID string) (Calendar, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filtered := make([]string, 0, len(s.cal.FollowedEventIDs))
+	for _, id := range s.cal.FollowedEventIDs {
+		if id != eventID {
+			filtered = append(filtered, id)
+		}
+	}
+	if len(filtered) == len(s.cal.FollowedEventIDs) {
+		return s.cloneLocked(), nil // not followed, no-op
+	}
+	s.cal.FollowedEventIDs = filtered
+	s.cal.Updated = s.now().UTC()
+	if err := s.persistLocked(); err != nil {
+		return Calendar{}, err
+	}
+	return s.cloneLocked(), nil
+}
+
+// IsFollowed reports whether the given event ID is currently followed.
+func (s *Service) IsFollowed(eventID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, id := range s.cal.FollowedEventIDs {
+		if id == eventID {
+			return true
+		}
+	}
+	return false
 }
 
 // Upcoming returns the event that is happening right now (start <= now < end),
@@ -285,6 +348,36 @@ func (s *Service) persistLocked() error {
 		return fmt.Errorf("renaming temp file: %w", err)
 	}
 	return nil
+}
+
+// pruneFollowedLocked removes followed event IDs that no longer exist in the
+// given event list. Callers must hold s.mu.
+func pruneFollowedLocked(followed []string, events []RaceEvent) []string {
+	exists := make(map[string]struct{}, len(events))
+	for _, ev := range events {
+		exists[ev.ID] = struct{}{}
+	}
+	out := make([]string, 0, len(followed))
+	for _, id := range followed {
+		if _, ok := exists[id]; ok {
+			out = append(out, id)
+		}
+	}
+	if out == nil {
+		return []string{}
+	}
+	return out
+}
+
+// eventExistsLocked reports whether an event with the given ID exists in the
+// event list. Callers must hold s.mu.
+func eventExistsLocked(events []RaceEvent, id string) bool {
+	for _, ev := range events {
+		if ev.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // reinterpretInLocation returns t with the same wall-clock hour/minute but

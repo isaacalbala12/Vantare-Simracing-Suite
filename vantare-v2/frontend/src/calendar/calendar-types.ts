@@ -23,6 +23,7 @@ export type Calendar = {
   timezone: string;
   reminderMinutes: number[];
   events: RaceEvent[];
+  followedEventIds?: string[];
   updated: string;
 };
 
@@ -35,6 +36,7 @@ export const EMPTY_CALENDAR: Calendar = {
   timezone: DEFAULT_TIMEZONE,
   reminderMinutes: DEFAULT_REMINDER_MINUTES,
   events: [],
+  followedEventIds: [],
   updated: "",
 };
 

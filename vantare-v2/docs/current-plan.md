@@ -1522,3 +1522,26 @@ Nota CALENDAR-02-B (2026-07-02):
 - No se tocaron: Go/backend, AppSettings, WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, overlay runtime, hub_main.html, archivos untracked ajenos.
 - Recordatorios, seguir carrera y overlay banner quedan para CALENDAR-02-C/D.
 - Sin commit.
+
+Nota CALENDAR-02-C1 (2026-07-02):
+- Implementado seguimiento local de carreras ("Seguir carrera") en la pestaña Calendario.
+- Backend:
+  - `internal/calendar/calendar.go`: nuevo campo `FollowedEventIDs []string` en `Calendar`, normalizado a `[]string{}` en `NewDefaultCalendar`.
+  - `internal/calendar/calendar_service.go`: `loadLocked` normaliza nil, `cloneLocked` deep-copia, `Replace` prunes IDs de eventos eliminados, `Clear` vacía followed.
+  - Nuevos métodos: `Follow(eventID)`, `Unfollow(eventID)`, `IsFollowed(eventID)`. Follow valida que eventID exista; si no, error. Ambos persisten atómicamente.
+  - Helpers: `pruneFollowedLocked`, `eventExistsLocked`.
+  - Tests: 8 nuevos (follow válido persiste, follow inválido no cambia, unfollow elimina, clear vacía, replace conserva, replace merge mantiene, follow idempotente, unfollow idempotente). Total: 34/34 PASS.
+- Bridge:
+  - `internal/app/calendar_bridge.go`: nuevas interfaces `CalendarFollower`, `CalendarUnfollower`; handlers `HandleCalendarFollow`, `HandleCalendarUnfollow`.
+  - `cmd/vantare/main.go`: registrados `calendar:follow` y `calendar:unfollow` con parseo de `eventId`.
+  - Tests bridge: 6 nuevos (follow emite loaded, follow error emite error, unfollow emite loaded, unfollow error emite error, follow con real service, follow inválido con real service, unfollow con real service). Total bridge: 19/19 PASS.
+- Frontend:
+  - `calendar-types.ts`: `Calendar` tipo añade `followedEventIds?: string[]`, `EMPTY_CALENDAR` incluye `followedEventIds: []`.
+  - `calendar-store.ts`: `normaliseCalendar` preserva `followedEventIds`.
+  - `CalendarPage.tsx`: botón `Seguir carrera` en eventos próximos no seguidos; badge `Siguiendo` + botón `Dejar de seguir` en seguidos. Eventos pasados sin botones. Emite `calendar:follow`/`calendar:unfollow` con `{ eventId }`.
+  - Tests: 5 nuevos (Seguir visible, click emite follow, Siguiendo badge visible, click Dejar de seguir emite unfollow, pasados sin botones). Total: 15/15 PASS.
+- Checks: gofmt OK, go test 4 paquetes OK, pnpm test CalendarPage+calendar-store+NextRaceCard+LastActivityCard 28/28 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check solo warnings preexistentes en hub_main.html.
+- Archivos modificados: `internal/calendar/calendar.go`, `internal/calendar/calendar_service.go`, `internal/calendar/calendar_service_test.go`, `internal/app/calendar_bridge.go`, `internal/app/calendar_bridge_test.go`, `cmd/vantare/main.go`, `frontend/src/calendar/calendar-types.ts`, `frontend/src/calendar/calendar-store.ts`, `frontend/src/hub/pages/CalendarPage.tsx`, `frontend/src/hub/pages/CalendarPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: AppSettings, WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, overlay runtime, hub_main.html, archivos untracked ajenos.
+- Reminders/ticker/banner overlay quedan para C2/D.
+- Sin commit.

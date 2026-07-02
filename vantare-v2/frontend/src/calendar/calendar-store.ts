@@ -73,7 +73,8 @@ function extractCalendar(input: unknown): Calendar {
   return { ...EMPTY_CALENDAR, events: [] };
 }
 
-function normaliseCalendar(cal: Calendar): Calendar {
+/** @internal exported for testing only */
+export function normaliseCalendar(cal: Calendar): Calendar {
   return {
     version: cal.version ?? 1,
     timezone: cal.timezone ?? EMPTY_CALENDAR.timezone,
@@ -83,6 +84,13 @@ function normaliseCalendar(cal: Calendar): Calendar {
     events: Array.isArray(cal.events) ? [...cal.events] : [],
     followedEventIds: Array.isArray(cal.followedEventIds)
       ? [...cal.followedEventIds]
+      : [],
+    series: Array.isArray(cal.series) ? [...cal.series] : [],
+    followedSeriesIds: Array.isArray(cal.followedSeriesIds)
+      ? [...cal.followedSeriesIds]
+      : [],
+    seriesPreviews: Array.isArray(cal.seriesPreviews)
+      ? [...cal.seriesPreviews]
       : [],
     updated: cal.updated ?? "",
   };

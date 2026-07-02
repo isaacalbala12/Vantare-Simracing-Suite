@@ -371,4 +371,162 @@ describe("CalendarPage", () => {
     const card = screen.getByTestId("calendar-upcoming-event");
     expect(card.className).toContain("border-vantare-red");
   });
+
+  describe("series rendering", () => {
+    function seriesPayload(overrides: Record<string, unknown> = {}) {
+      return {
+        calendar: {
+          version: 1,
+          timezone: "UTC",
+          reminderMinutes: [30, 15, 10, 5, 2],
+          events: [],
+          series: [
+            {
+              id: "lmu-fixed",
+              name: "LMU Fixed",
+              tier: "beginner",
+              licenseLabel: "Rookie",
+              track: "Silverstone",
+              vehicleClass: "GT3",
+              setup: "Fixed",
+              durationMin: 20,
+              splits: 4,
+              assists: "Auto",
+              tyreWarmers: false,
+              tyres: 4,
+              recurrence: { kind: "interval", intervalMinutes: 30 },
+            },
+            {
+              id: "lmu-open",
+              name: "LMU Open",
+              tier: "intermediate",
+              licenseLabel: "Silver",
+              track: "Spa",
+              vehicleClass: "LMP2",
+              setup: "Open",
+              durationMin: 45,
+              splits: 3,
+              assists: "Factory",
+              tyreWarmers: true,
+              tyres: 4,
+              recurrence: { kind: "interval", intervalMinutes: 20 },
+            },
+            {
+              id: "lmu-pro",
+              name: "LMU Pro",
+              tier: "advanced",
+              licenseLabel: "Gold",
+              track: "Monza",
+              vehicleClass: "Hypercar",
+              setup: "Open",
+              durationMin: 60,
+              splits: 2,
+              assists: "None",
+              tyreWarmers: true,
+              tyres: 6,
+              recurrence: { kind: "interval", intervalMinutes: 15 },
+            },
+            {
+              id: "lmu-weekly",
+              name: "LMU Weekly",
+              tier: "weekly",
+              licenseLabel: "All",
+              track: "Nürburgring",
+              vehicleClass: "GT3",
+              setup: "Fixed",
+              durationMin: 30,
+              splits: 6,
+              assists: "Auto",
+              tyreWarmers: false,
+              tyres: 4,
+              recurrence: { kind: "weekly-slots", days: ["Wed"], timesUTC: ["02:00"] },
+            },
+          ],
+          seriesPreviews: [
+            { seriesId: "lmu-fixed", scheduleLabel: "Cada 30 min", nextStarts: ["2026-07-02T20:00:00Z"] },
+            { seriesId: "lmu-open", scheduleLabel: "Cada 20 min", nextStarts: ["2026-07-02T20:20:00Z"] },
+            { seriesId: "lmu-pro", scheduleLabel: "Cada 15 min", nextStarts: ["2026-07-02T20:15:00Z"] },
+            { seriesId: "lmu-weekly", scheduleLabel: "Wed 02:00", nextStarts: ["2026-07-02T02:00:00Z"] },
+          ],
+          followedSeriesIds: [],
+          updated: "",
+          ...overrides,
+        },
+      };
+    }
+
+    it("renders Bronce/Plata/Oro/Weekly tier groups when series arrive", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.getByText("Bronce")).toBeTruthy();
+      expect(screen.getByText("Plata")).toBeTruthy();
+      expect(screen.getByText("Oro")).toBeTruthy();
+      expect(screen.getByText("Weekly")).toBeTruthy();
+    });
+
+    it("renders Cada 15 min, Cada 20 min, Cada 30 min schedule labels", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      // Each label appears at least once: in the group header badge + inside the series card
+      expect(screen.getAllByText("Cada 15 min").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Cada 20 min").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Cada 30 min").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders weekly label with Wed and 02:00", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.getByText("Wed 02:00")).toBeTruthy();
+    });
+
+    it("renders next start times from seriesPreviews", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.getByText("2026-07-02T20:00:00Z")).toBeTruthy();
+      expect(screen.getByText("2026-07-02T20:15:00Z")).toBeTruthy();
+      expect(screen.getByText("2026-07-02T20:20:00Z")).toBeTruthy();
+      expect(screen.getByText("2026-07-02T02:00:00Z")).toBeTruthy();
+    });
+
+    it("does not render legacy event rows when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByTestId("calendar-upcoming-event")).toBeNull();
+      expect(screen.queryByTestId("calendar-past-event")).toBeNull();
+    });
+
+    it("shows legacy upcoming events when series is empty", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", {
+        calendar: {
+          version: 1,
+          timezone: "UTC",
+          reminderMinutes: [30, 15, 10, 5, 2],
+          events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z", title: "Legacy Race" })],
+          series: [],
+          seriesPreviews: [],
+          followedSeriesIds: [],
+          updated: "",
+        },
+      });
+      expect(screen.getByTestId("calendar-upcoming-event")).toBeTruthy();
+      expect(screen.getByText("Legacy Race")).toBeTruthy();
+    });
+
+    it("does not render import UI when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByTestId("calendar-import-textarea")).toBeNull();
+      expect(screen.queryByTestId("calendar-import-btn")).toBeNull();
+      expect(screen.queryByTestId("calendar-clear-btn")).toBeNull();
+    });
+
+    it("does not render fake data (prices, votes, official rating)", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByText(/€/)).toBeNull();
+      expect(screen.queryByText(/votos/i)).toBeNull();
+      expect(screen.queryByText(/rating/i)).toBeNull();
+    });
+  });
 });

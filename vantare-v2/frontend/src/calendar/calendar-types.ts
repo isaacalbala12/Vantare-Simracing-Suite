@@ -18,12 +18,52 @@ export type RaceEvent = {
   notes: string;
 };
 
+// RaceSeriesPreview is a UI-safe summary of a race series. Mirrors the Go
+// type in internal/calendar/calendar.go.
+export type RaceSeriesPreview = {
+  seriesId: string;
+  scheduleLabel: string;
+  // nextStarts are RFC3339 strings with timezone offset, matching the
+  // convention used by RaceEvent.startTime.
+  nextStarts: string[];
+};
+
+// Recurrence defines how a series repeats. Mirrors the Go type in
+// internal/calendar/official_schedule.go.
+export type Recurrence = {
+  kind: string;
+  intervalMinutes?: number;
+  days?: string[];
+  timesUTC?: string[];
+};
+
+// RaceSeries models a single recurring race series. Mirrors the Go type in
+// internal/calendar/official_schedule.go.
+export type RaceSeries = {
+  id: string;
+  name: string;
+  tier: string;
+  licenseLabel: string;
+  track: string;
+  vehicleClass: string;
+  setup: string;
+  durationMin: number;
+  splits: number;
+  assists: string;
+  tyreWarmers: boolean;
+  tyres: number;
+  recurrence: Recurrence;
+};
+
 export type Calendar = {
   version: number;
   timezone: string;
   reminderMinutes: number[];
   events: RaceEvent[];
   followedEventIds?: string[];
+  series?: RaceSeries[];
+  followedSeriesIds?: string[];
+  seriesPreviews?: RaceSeriesPreview[];
   updated: string;
 };
 
@@ -37,6 +77,9 @@ export const EMPTY_CALENDAR: Calendar = {
   reminderMinutes: DEFAULT_REMINDER_MINUTES,
   events: [],
   followedEventIds: [],
+  series: [],
+  followedSeriesIds: [],
+  seriesPreviews: [],
   updated: "",
 };
 

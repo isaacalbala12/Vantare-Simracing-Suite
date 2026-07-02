@@ -1,12 +1,140 @@
 package app
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestDiagnosticsRedaction(t *testing.T) {
+	origUserProfile := os.Getenv("USERPROFILE")
+	origAppData := os.Getenv("APPDATA")
+	origHome := os.Getenv("HOME")
+
+	os.Setenv("USERPROFILE", "C:\\Users\\TestUser")
+	os.Setenv("APPDATA", "C:\\Users\\TestUser\\AppData\\Roaming")
+	os.Setenv("HOME", "/home/testuser")
+
+	defer func() {
+		os.Setenv("USERPROFILE", origUserProfile)
+		os.Setenv("APPDATA", origAppData)
+		os.Setenv("HOME", origHome)
+	}()
+
+	t.Run("NoExecutablePath", func(t *testing.T) {
+		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc.settings = &AppSettings{
+			Launchers: map[string]LauncherConfig{
+				"acc": {
+					SimulatorID:    "acc",
+					LaunchMethod:   "steam",
+					ExecutablePath: "C:\\Users\\TestUser\\steam\\acc.exe",
+					SteamAppID:     805550,
+				},
+			},
+		}
+		svc := NewDiagnosticsService("v1.0.0", "C:\\some-path", nil, sSvc, nil)
+		diag, err := svc.GetDiagnostics()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if diag.AppSettings == nil || diag.AppSettings.Launchers == nil {
+			t.Fatal("expected launchers in diagnostics")
+		}
+		lc := diag.AppSettings.Launchers["acc"]
+		if lc.ExecutablePath == "C:\\Users\\TestUser\\steam\\acc.exe" {
+			t.Errorf("ExecutablePath should be redacted, got %q", lc.ExecutablePath)
+		}
+		if lc.ExecutablePath == "" {
+			t.Errorf("ExecutablePath should not be empty, got %q", lc.ExecutablePath)
+		}
+		if lc.SimulatorID != "acc" {
+			t.Errorf("expected SimulatorID acc, got %q", lc.SimulatorID)
+		}
+		if lc.SteamAppID != 805550 {
+			t.Errorf("expected SteamAppID 805550, got %d", lc.SteamAppID)
+		}
+	})
+
+	t.Run("NoLocalPathsInJSON", func(t *testing.T) {
+		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc.settings = &AppSettings{
+			Launchers: map[string]LauncherConfig{
+				"acc": {
+					ExecutablePath: "C:\\Users\\TestUser\\steam\\acc.exe",
+				},
+			},
+		}
+		svc := NewDiagnosticsService("v1.0.0", "C:\\Users\\TestUser\\AppData\\Roaming\\Vantare", nil, sSvc, nil)
+		diag, err := svc.GetDiagnostics()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		data, err := json.Marshal(diag)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		body := string(data)
+		if strings.Contains(body, "C:\\Users\\TestUser") {
+			t.Errorf("JSON output should not contain raw user path, got: %s", body)
+		}
+	})
+
+	t.Run("PreservesUsefulFields", func(t *testing.T) {
+		svc := NewDiagnosticsService("v1.2.3", "C:\\some-path", nil, nil, nil)
+		diag, err := svc.GetDiagnostics()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if diag.AppVersion != "v1.2.3" {
+			t.Errorf("expected AppVersion v1.2.3, got %q", diag.AppVersion)
+		}
+		if diag.OS == "" {
+			t.Error("expected non-empty OS")
+		}
+		if diag.Arch == "" {
+			t.Error("expected non-empty Arch")
+		}
+		if diag.GoVersion == "" {
+			t.Error("expected non-empty GoVersion")
+		}
+		if diag.NumCPU <= 0 {
+			t.Errorf("expected NumCPU > 0, got %d", diag.NumCPU)
+		}
+		if diag.Timestamp == "" {
+			t.Error("expected non-empty Timestamp")
+		}
+	})
+
+	t.Run("NoSensitiveStrings", func(t *testing.T) {
+		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc.settings = &AppSettings{
+			Launchers: map[string]LauncherConfig{
+				"test": {
+					ExecutablePath: "C:\\Users\\TestUser\\test.exe",
+				},
+			},
+		}
+		svc := NewDiagnosticsService("v1.0.0", "C:\\some-path", nil, sSvc, nil)
+		diag, err := svc.GetDiagnostics()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		data, err := json.Marshal(diag)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		body := string(data)
+		for _, sensitive := range []string{"access_token", "refresh_token", "jwt", "secret", "webhook"} {
+			if strings.Contains(body, sensitive) {
+				t.Errorf("JSON output should not contain %q", sensitive)
+			}
+		}
+	})
+}
 
 func TestReplaceAllIgnoreCase(t *testing.T) {
 	tests := []struct {
@@ -133,6 +261,10 @@ func TestDiagnosticsService(t *testing.T) {
 		testProfile := &config.ProfileConfig{
 			ID:   "test-profile-123",
 			Name: "Test Profile",
+			Widgets: []config.WidgetConfig{
+				{ID: "w1", Type: "delta", Enabled: true},
+				{ID: "w2", Type: "relative", Enabled: false},
+			},
 		}
 		pSvc.SetProfile(testProfile)
 
@@ -157,6 +289,12 @@ func TestDiagnosticsService(t *testing.T) {
 		}
 		if diag.ActiveProfile.Name != "Test Profile" {
 			t.Errorf("expected profile name %q, got %q", "Test Profile", diag.ActiveProfile.Name)
+		}
+		if diag.ActiveProfile.WidgetCount != 2 {
+			t.Errorf("expected widgetCount 2, got %d", diag.ActiveProfile.WidgetCount)
+		}
+		if len(diag.ActiveProfile.WidgetTypes) != 2 {
+			t.Errorf("expected 2 widget types, got %d", len(diag.ActiveProfile.WidgetTypes))
 		}
 	})
 }

@@ -3,26 +3,55 @@ package app
 import (
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/vantare/overlays/v2/pkg/config"
 )
 
+// SanitizedLauncherConfig is a redacted version of LauncherConfig.
+type SanitizedLauncherConfig struct {
+	SimulatorID    string `json:"simulatorId"`
+	LaunchMethod   string `json:"launchMethod"`
+	ExecutablePath string `json:"executablePath"`
+	SteamAppID     uint32 `json:"steamAppId,omitempty"`
+}
+
+// SanitizedAppSettings is a redacted version of AppSettings safe for diagnostics.
+type SanitizedAppSettings struct {
+	DeltaMode              string                             `json:"deltaMode"`
+	CpuSampling            bool                               `json:"cpuSampling"`
+	Hotkeys                map[string]string                  `json:"hotkeys"`
+	ActiveOverlayProfileID string                             `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted   bool                               `json:"betaWelcomeCompleted,omitempty"`
+	BetaUserRole           string                             `json:"betaUserRole,omitempty"`
+	Launchers              map[string]SanitizedLauncherConfig `json:"launchers,omitempty"`
+}
+
+// SanitizedProfileSummary is a redacted summary of a profile safe for diagnostics.
+type SanitizedProfileSummary struct {
+	ID          string   `json:"id,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	DisplayMode string   `json:"displayMode"`
+	WidgetCount int      `json:"widgetCount"`
+	WidgetTypes []string `json:"widgetTypes,omitempty"`
+}
+
 // DiagnosticsInfo holds sanitized system and application diagnostic data.
 type DiagnosticsInfo struct {
-	AppVersion      string                `json:"appVersion"`
-	OS              string                `json:"os"`
-	Arch            string                `json:"arch"`
-	GoVersion       string                `json:"goVersion"`
-	NumCPU          int                   `json:"numCpu"`
-	ConfigsDir      string                `json:"configsDir"`
-	ActiveProfileID string                `json:"activeProfileId"`
-	TelemetrySource string                `json:"telemetrySource"`
-	TelemetryLive   bool                  `json:"telemetryLive"`
-	AppSettings     *AppSettings          `json:"appSettings"`
-	ActiveProfile   *config.ProfileConfig `json:"activeProfile,omitempty"`
-	Timestamp       string                `json:"timestamp"`
+	AppVersion      string                   `json:"appVersion"`
+	OS              string                   `json:"os"`
+	Arch            string                   `json:"arch"`
+	GoVersion       string                   `json:"goVersion"`
+	NumCPU          int                      `json:"numCpu"`
+	ConfigsDir      string                   `json:"configsDir"`
+	ActiveProfileID string                   `json:"activeProfileId"`
+	TelemetrySource string                   `json:"telemetrySource"`
+	TelemetryLive   bool                     `json:"telemetryLive"`
+	AppSettings     *SanitizedAppSettings    `json:"appSettings"`
+	ActiveProfile   *SanitizedProfileSummary `json:"activeProfile,omitempty"`
+	Timestamp       string                   `json:"timestamp"`
 }
 
 // DiagnosticsService collects system and application information for troubleshooting.
@@ -58,12 +87,13 @@ func (s *DiagnosticsService) GetDiagnostics() (*DiagnosticsInfo, error) {
 	}
 
 	if s.settingsSvc != nil {
-		info.AppSettings = s.settingsSvc.Settings()
+		info.AppSettings = s.sanitizeSettings(s.settingsSvc.Settings())
 	}
 
 	if s.profileSvc != nil && s.profileSvc.GetProfile() != nil {
-		info.ActiveProfileID = s.profileSvc.GetProfile().ID
-		info.ActiveProfile = s.profileSvc.GetProfile()
+		p := s.profileSvc.GetProfile()
+		info.ActiveProfileID = p.ID
+		info.ActiveProfile = s.sanitizeProfile(p)
 	} else {
 		info.ActiveProfileID = "unknown"
 	}
@@ -78,6 +108,66 @@ func (s *DiagnosticsService) GetDiagnostics() (*DiagnosticsInfo, error) {
 	}
 
 	return info, nil
+}
+
+// sanitizeSettings redacts sensitive fields from AppSettings.
+func (s *DiagnosticsService) sanitizeSettings(as *AppSettings) *SanitizedAppSettings {
+	if as == nil {
+		return nil
+	}
+	sanitized := &SanitizedAppSettings{
+		DeltaMode:              as.DeltaMode,
+		CpuSampling:            as.CpuSampling,
+		Hotkeys:                as.Hotkeys,
+		ActiveOverlayProfileID: as.ActiveOverlayProfileID,
+		BetaWelcomeCompleted:   as.BetaWelcomeCompleted,
+		BetaUserRole:           as.BetaUserRole,
+	}
+	if len(as.Launchers) > 0 {
+		sanitized.Launchers = make(map[string]SanitizedLauncherConfig, len(as.Launchers))
+		for k, lc := range as.Launchers {
+			redactedPath := "<redacted>"
+			if lc.ExecutablePath != "" {
+				redactedPath = s.sanitizePath(lc.ExecutablePath)
+			}
+			sanitized.Launchers[k] = SanitizedLauncherConfig{
+				SimulatorID:    lc.SimulatorID,
+				LaunchMethod:   lc.LaunchMethod,
+				ExecutablePath: redactedPath,
+				SteamAppID:     lc.SteamAppID,
+			}
+		}
+	}
+	return sanitized
+}
+
+// sanitizeProfile redacts sensitive layout data from a profile.
+func (s *DiagnosticsService) sanitizeProfile(p *config.ProfileConfig) *SanitizedProfileSummary {
+	if p == nil {
+		return nil
+	}
+	summary := &SanitizedProfileSummary{
+		ID:          p.ID,
+		Name:        p.Name,
+		DisplayMode: string(p.DisplayMode),
+		WidgetCount: len(p.Widgets),
+	}
+	if len(p.Widgets) > 0 {
+		seen := make(map[string]struct{}, len(p.Widgets))
+		for _, w := range p.Widgets {
+			if w.Type != "" {
+				if _, ok := seen[w.Type]; !ok {
+					seen[w.Type] = struct{}{}
+				}
+			}
+		}
+		summary.WidgetTypes = make([]string, 0, len(seen))
+		for t := range seen {
+			summary.WidgetTypes = append(summary.WidgetTypes, t)
+		}
+		sort.Strings(summary.WidgetTypes)
+	}
+	return summary
 }
 
 // sanitizePath replaces user profile paths (e.g. C:\Users\name) with generic placeholders.

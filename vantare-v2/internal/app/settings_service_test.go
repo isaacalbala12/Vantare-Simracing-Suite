@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -402,6 +403,26 @@ func TestSettingsServiceSaveRoundtripsLaunchers(t *testing.T) {
 	}
 	if cfg.LaunchMethod != "executable" || cfg.ExecutablePath == "" {
 		t.Errorf("unexpected round-trip config: %+v", cfg)
+	}
+}
+
+func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+
+	svc := app.NewSettingsService(path, nil)
+	custom := app.DefaultAppSettings()
+	custom.DeltaMode = "session"
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading saved file: %v", err)
+	}
+	if !json.Valid(raw) {
+		t.Fatalf("saved file is not valid JSON: %s", string(raw))
 	}
 }
 

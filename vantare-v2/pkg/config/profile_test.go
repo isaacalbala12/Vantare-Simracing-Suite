@@ -93,6 +93,53 @@ func TestSaveAndLoadRoundtrip(t *testing.T) {
 	}
 }
 
+func TestSaveFileCreatesDirectory(t *testing.T) {
+	// Use a subdirectory that does not exist yet.
+	base := t.TempDir()
+	path := filepath.Join(base, "sub", "nested", "profile.json")
+	p := &config.ProfileConfig{
+		ID:          "creates-dir",
+		Name:        "DirCreate",
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{
+			{ID: "w1", Type: "delta", Enabled: true, Position: config.Rect{X: 0, Y: 0, W: 100, H: 50}},
+		},
+	}
+	if err := config.SaveFile(path, p); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := config.LoadFile(path)
+	if err != nil {
+		t.Fatalf("loading saved file: %v", err)
+	}
+	if loaded.ID != "creates-dir" {
+		t.Fatalf("ID=%q, want %q", loaded.ID, "creates-dir")
+	}
+}
+
+func TestSaveFileProducesValidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test-profile.json")
+	p := &config.ProfileConfig{
+		ID:          "valid-json",
+		Name:        "Test",
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{
+			{ID: "w1", Type: "delta", Enabled: true, Position: config.Rect{X: 10, Y: 20, W: 100, H: 50}},
+		},
+	}
+	if err := config.SaveFile(path, p); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading saved file: %v", err)
+	}
+	if !json.Valid(raw) {
+		t.Fatalf("saved file is not valid JSON: %s", string(raw))
+	}
+}
+
 func TestLoadFileNotFound(t *testing.T) {
 	_, err := config.LoadFile("nonexistent.json")
 	if err == nil {

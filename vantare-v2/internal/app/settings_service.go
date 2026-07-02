@@ -167,11 +167,44 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 		return fmt.Errorf("encoding settings: %w", err)
 	}
 
-	if err := os.WriteFile(s.path, data, 0644); err != nil {
+	if err := atomicWriteFile(s.path, data, 0644); err != nil {
 		return fmt.Errorf("writing settings: %w", err)
 	}
 
 	s.settings = settings
+	return nil
+}
+
+// atomicWriteFile writes data to path atomically: write to a temp file in the
+// same directory, then rename. This prevents partial writes if the process
+// crashes mid-write. The temp file is cleaned up on error.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	cleanup := true
+	defer func() {
+		if cleanup {
+			tmp.Close()
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if _, err := tmp.Write(data); err != nil {
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		return fmt.Errorf("chmod temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("renaming temp file: %w", err)
+	}
+	cleanup = false
 	return nil
 }
 

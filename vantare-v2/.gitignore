@@ -17,3 +17,17 @@
 # Generated at build time from Supabase env vars.
 # Never commit — contains public anon key from CI secrets.
 cmd/vantare/supabase_build.go
+
+# Local design mocks and screenshots
+fotos/
+v5.2*.png
+screenshot*.mjs
+roadmap_v5.2*.html
+
+# Local agent/worktree experiments
+kokoro-test/
+vantare-v2-engineer/
+
+# Stale binary artifacts
+*.exe.stale
+vantare.exe.stale

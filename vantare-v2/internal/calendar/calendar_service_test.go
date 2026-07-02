@@ -3,6 +3,7 @@ package calendar
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -740,6 +741,472 @@ func TestDueReminders_EmptyReminderMinutesUsesDefault(t *testing.T) {
 	}
 	if reminders[0].MinutesLeft != 30 {
 		t.Errorf("MinutesLeft = %d, want 30", reminders[0].MinutesLeft)
+	}
+}
+
+func TestService_ApplyBundledSeed_FirstRun(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	seed := Calendar{
+		Version:         2,
+		Timezone:        "Europe/Madrid",
+		ReminderMinutes: []int{30, 15, 10, 5, 2},
+		Events: []RaceEvent{
+			{ID: "ev-1", Title: "Race 1", Sim: "lmu", StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+			{ID: "ev-2", Title: "Race 2", Sim: "lmu", StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 90},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if len(cal.Events) != 2 {
+		t.Fatalf("Events = %d, want 2", len(cal.Events))
+	}
+	if cal.Version != 2 {
+		t.Errorf("Version = %d, want 2", cal.Version)
+	}
+	if cal.Timezone != "Europe/Madrid" {
+		t.Errorf("Timezone = %q, want Europe/Madrid", cal.Timezone)
+	}
+	for _, ev := range cal.Events {
+		if ev.Source != BundledSource {
+			t.Errorf("event %q Source = %q, want %q", ev.ID, ev.Source, BundledSource)
+		}
+	}
+}
+
+func TestService_ApplyBundledSeed_ReplacesOldBundled(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// Add two bundled events via direct manipulation.
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-old-1", Title: "Old Race 1", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		{ID: "ev-old-2", Title: "Old Race 2", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 90},
+	}
+	svc.mu.Unlock()
+
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events: []RaceEvent{
+			{ID: "ev-new-1", Title: "New Race", Sim: "lmu", StartTime: time.Date(2026, time.July, 6, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-new-1" {
+		t.Errorf("Event ID = %q, want ev-new-1", cal.Events[0].ID)
+	}
+	if cal.Events[0].Source != BundledSource {
+		t.Errorf("Source = %q, want %q", cal.Events[0].Source, BundledSource)
+	}
+}
+
+func TestService_ApplyBundledSeed_PreservesNonBundled(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-bundled", Title: "Bundled", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		{ID: "ev-custom", Title: "Custom", Sim: "lmu", Source: "custom", StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+	}
+	svc.mu.Unlock()
+
+	// Apply empty seed (no events).
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events:   []RaceEvent{},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-custom" {
+		t.Errorf("Event ID = %q, want ev-custom", cal.Events[0].ID)
+	}
+	if cal.Events[0].Source != "custom" {
+		t.Errorf("Source = %q, want custom", cal.Events[0].Source)
+	}
+}
+
+func TestService_ApplyBundledSeed_PreservesFollowedIDs(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-1", Title: "Race 1", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		{ID: "ev-2", Title: "Race 2", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		{ID: "ev-3", Title: "Custom", Sim: "lmu", Source: "custom", StartTime: time.Date(2026, time.July, 6, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+	}
+	svc.cal.FollowedEventIDs = []string{"ev-1", "ev-2", "ev-3"}
+	svc.mu.Unlock()
+
+	// Apply seed with only ev-1 (ev-2 should be pruned from follows).
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events: []RaceEvent{
+			{ID: "ev-1", Title: "Race 1 Updated", Sim: "lmu", StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	// ev-1 (bundled, kept via seed), ev-3 (custom, preserved)
+	if len(cal.Events) != 2 {
+		t.Fatalf("Events = %d, want 2", len(cal.Events))
+	}
+	// ev-1 still followed, ev-2 pruned, ev-3 still followed
+	if len(cal.FollowedEventIDs) != 2 {
+		t.Fatalf("FollowedEventIDs = %v, want [ev-1 ev-3]", cal.FollowedEventIDs)
+	}
+	followed := make(map[string]bool)
+	for _, id := range cal.FollowedEventIDs {
+		followed[id] = true
+	}
+	if !followed["ev-1"] {
+		t.Error("ev-1 should still be followed")
+	}
+	if followed["ev-2"] {
+		t.Error("ev-2 should no longer be followed")
+	}
+	if !followed["ev-3"] {
+		t.Error("ev-3 should still be followed")
+	}
+}
+
+func TestService_ApplyBundledSeed_EmptySeed(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-bundled", Title: "Bundled", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		{ID: "ev-custom", Title: "Custom", Sim: "lmu", Source: "custom", StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+	}
+	svc.mu.Unlock()
+
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events:   []RaceEvent{},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-custom" {
+		t.Errorf("Event ID = %q, want ev-custom", cal.Events[0].ID)
+	}
+}
+
+func TestService_ApplyBundledSeed_PrunesFollowedForRemovedBundled(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-1", Title: "Race 1", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+	}
+	svc.cal.FollowedEventIDs = []string{"ev-1"}
+	svc.mu.Unlock()
+
+	// Apply empty seed — ev-1 is removed, so ev-1 should be pruned from follows.
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events:   []RaceEvent{},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if len(cal.Events) != 0 {
+		t.Fatalf("Events = %d, want 0", len(cal.Events))
+	}
+	if len(cal.FollowedEventIDs) != 0 {
+		t.Errorf("FollowedEventIDs = %v, want empty", cal.FollowedEventIDs)
+	}
+}
+
+func TestService_ApplyBundledSeed_InvalidSeedDoesNotMutate(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// Add one bundled event so we can verify it is not removed.
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-1", Title: "Race", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+	}
+	svc.mu.Unlock()
+
+	// Seed with an event that has an empty title (invalid).
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events: []RaceEvent{
+			{ID: "ev-bad", Title: "", Sim: "lmu", StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		},
+	}
+
+	err := svc.ApplyBundledSeed(seed)
+	if err == nil {
+		t.Fatal("expected validation error for empty title, got nil")
+	}
+
+	// Calendar must be unchanged.
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1 (unchanged)", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-1" {
+		t.Errorf("Event ID = %q, want ev-1", cal.Events[0].ID)
+	}
+	if cal.Events[0].Source != BundledSource {
+		t.Errorf("Source = %q, want %q", cal.Events[0].Source, BundledSource)
+	}
+}
+
+func TestService_ApplyBundledSeed_PreservesNonBundledWithSameKey(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	start := time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC)
+
+	// Add one non-bundled event (Source="custom").
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-custom", Title: "Race", Sim: "lmu", Track: "Le Mans", Source: "custom", StartTime: start, DurationMin: 60},
+	}
+	svc.mu.Unlock()
+
+	// Seed with an event that has the SAME Key() (same title, track, startTime)
+	// but a different ID.
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events: []RaceEvent{
+			{ID: "ev-seed", Title: "Race", Sim: "lmu", Track: "Le Mans", StartTime: start, DurationMin: 60},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	// Non-bundled event must be preserved with its original ID and Source.
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1 (non-bundled preserved)", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-custom" {
+		t.Errorf("Event ID = %q, want ev-custom (original ID preserved)", cal.Events[0].ID)
+	}
+	if cal.Events[0].Source != "custom" {
+		t.Errorf("Source = %q, want custom (original source preserved)", cal.Events[0].Source)
+	}
+}
+
+func TestService_ApplyBundledSeed_PreservesNonBundledWithSameID(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	customStart := time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC)
+	seedStart := time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC)
+
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-shared", Title: "Custom Race", Sim: "lmu", Track: "Custom Track", Source: "custom", StartTime: customStart, DurationMin: 60},
+	}
+	svc.mu.Unlock()
+
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Europe/Madrid",
+		Events: []RaceEvent{
+			{ID: "ev-shared", Title: "Seed Race", Sim: "lmu", Track: "Seed Track", StartTime: seedStart, DurationMin: 90},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1 (non-bundled preserved)", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-shared" {
+		t.Errorf("Event ID = %q, want ev-shared", cal.Events[0].ID)
+	}
+	if cal.Events[0].Title != "Custom Race" {
+		t.Errorf("Title = %q, want Custom Race", cal.Events[0].Title)
+	}
+	if cal.Events[0].Source != "custom" {
+		t.Errorf("Source = %q, want custom", cal.Events[0].Source)
+	}
+	if !cal.Events[0].StartTime.Equal(customStart) {
+		t.Errorf("StartTime = %s, want %s", cal.Events[0].StartTime, customStart)
+	}
+}
+
+func TestService_ApplyBundledSeed_NormalisesReminderMinutes(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	seed := Calendar{
+		Version:         2,
+		Timezone:        "Europe/Madrid",
+		ReminderMinutes: nil,
+		Events: []RaceEvent{
+			{ID: "ev-1", Title: "Race", Sim: "lmu", StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if cal.ReminderMinutes == nil {
+		t.Fatal("ReminderMinutes is nil after normalise")
+	}
+	if len(cal.ReminderMinutes) != len(DefaultReminderMinutes) {
+		t.Fatalf("ReminderMinutes = %v, want %v", cal.ReminderMinutes, DefaultReminderMinutes)
+	}
+	for i, v := range cal.ReminderMinutes {
+		if v != DefaultReminderMinutes[i] {
+			t.Errorf("ReminderMinutes[%d] = %d, want %d", i, v, DefaultReminderMinutes[i])
+		}
+	}
+}
+
+func TestService_ApplyBundledSeed_NormalisesTimezone(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	seed := Calendar{
+		Version:  2,
+		Timezone: "",
+		Events: []RaceEvent{
+			{ID: "ev-1", Title: "Race", Sim: "lmu", StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		},
+	}
+
+	if err := svc.ApplyBundledSeed(seed); err != nil {
+		t.Fatalf("ApplyBundledSeed: %v", err)
+	}
+
+	cal := svc.Calendar()
+	if cal.Timezone != DefaultTimezone {
+		t.Errorf("Timezone = %q, want %q", cal.Timezone, DefaultTimezone)
+	}
+}
+
+func TestService_ApplyBundledSeed_RejectsInvalidTimezone(t *testing.T) {
+	now := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// Add one bundled event so we can verify it is not removed.
+	svc.mu.Lock()
+	svc.cal.Events = []RaceEvent{
+		{ID: "ev-1", Title: "Race", Sim: "lmu", Source: BundledSource, StartTime: time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+	}
+	svc.mu.Unlock()
+
+	seed := Calendar{
+		Version:  2,
+		Timezone: "Mars/Olympus", // invalid timezone
+		Events: []RaceEvent{
+			{ID: "ev-2", Title: "Race 2", Sim: "lmu", StartTime: time.Date(2026, time.July, 5, 20, 0, 0, 0, time.UTC), DurationMin: 60},
+		},
+	}
+
+	err := svc.ApplyBundledSeed(seed)
+	if err == nil {
+		t.Fatal("expected timezone error, got nil")
+	}
+	if !strings.Contains(err.Error(), "Mars/Olympus") {
+		t.Errorf("error = %q, want mention of the invalid timezone", err.Error())
+	}
+
+	// Calendar must be unchanged.
+	cal := svc.Calendar()
+	if len(cal.Events) != 1 {
+		t.Fatalf("Events = %d, want 1 (unchanged)", len(cal.Events))
+	}
+	if cal.Events[0].ID != "ev-1" {
+		t.Errorf("Event ID = %q, want ev-1", cal.Events[0].ID)
+	}
+	if cal.Events[0].Source != BundledSource {
+		t.Errorf("Source = %q, want %q", cal.Events[0].Source, BundledSource)
 	}
 }
 

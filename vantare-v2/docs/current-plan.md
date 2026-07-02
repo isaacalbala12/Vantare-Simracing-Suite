@@ -1615,3 +1615,17 @@ Nota CALENDAR-03 (2026-07-02):
 - La pestaña visible pasa de Calendario a Carreras manteniendo el id interno `calendar`.
 - CalendarPage queda read-only: sin importador manual, sin source visible, con timezone informativa, próximas/activas/pasadas y seguir/dejar de seguir.
 - Backend y contratos `calendar:*` intactos; Vantare publicará el calendario LMU mediante actualizaciones de la app.
+
+Nota CALENDAR-04 (2026-07-02):
+- Implementado calendario LMU bundled desde JSON local, sin Supabase y sin UI de importación.
+- Nuevo archivo `internal/calendar/seed/lmu-calendar.json` con el seed JSON (events vacío, sin carreras inventadas).
+- Nuevo `internal/calendar/bundled_seed.go`: `LoadBundledSeed()` con embed, normalización de defaults y validación (eventos + IDs duplicados).
+- Nueva constante `BundledSource = "vantare-bundled-lmu"` en `calendar.go`.
+- Nuevo método `Service.ApplyBundledSeed()`: reemplaza eventos bundled previos, preserva no-bundled, poda followed IDs huérfanos, persiste atómicamente.
+- Cableado en `cmd/vantare/main.go`: seed se aplica después de `calendarSvc.Load()` y antes del reminder loop. Si falla, log warning y continúa.
+- CalendarPage sigue read-only, sin import UI, sin textarea, sin inputs editables.
+- Vantare actualiza `internal/calendar/seed/lmu-calendar.json` en releases semanales para publicar carreras reales.
+- Archivos creados: `internal/calendar/seed/lmu-calendar.json`, `internal/calendar/bundled_seed.go`, `internal/calendar/bundled_seed_test.go`.
+- Archivos modificados: `internal/calendar/calendar.go` (+BundledSource), `internal/calendar/calendar_service.go` (+ApplyBundledSeed), `internal/calendar/calendar_service_test.go` (+6 tests), `cmd/vantare/main.go` (+wiring), `docs/current-plan.md`.
+- No se tocaron: Supabase, frontend, WidgetStudio, LayoutStudio, Auth, Launcher, Roadmap, Settings, dependencias.
+- Sin commit.

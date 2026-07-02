@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "timezone": "Europe/Madrid",
+  "reminderMinutes": [30, 15, 10, 5, 2],
+  "events": [],
+  "updated": "2026-07-02T00:00:00Z"
+}

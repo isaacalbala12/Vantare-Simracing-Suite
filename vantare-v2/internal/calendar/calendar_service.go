@@ -140,6 +140,70 @@ func (s *Service) Replace(events []RaceEvent, timezone, source string) ([]RaceEv
 	return append([]RaceEvent(nil), merged...), s.persistLocked()
 }
 
+// ApplyBundledSeed applies the bundled seed calendar to the service.
+// It replaces all existing events with Source == BundledSource with the
+// seed events, preserves non-bundled events, prunes followed event IDs
+// that no longer exist, and persists atomically. The seed's timezone and
+// reminderMinutes are applied.
+func (s *Service) ApplyBundledSeed(seed Calendar) error {
+	// Normalise and validate before touching state.
+	normaliseSeed(&seed)
+	if err := validateSeed(seed); err != nil {
+		return err
+	}
+	if _, err := time.LoadLocation(seed.Timezone); err != nil {
+		return fmt.Errorf("bundled seed: timezone %q: %w", seed.Timezone, err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Filter out existing bundled events.
+	var kept []RaceEvent
+	for _, ev := range s.cal.Events {
+		if ev.Source != BundledSource {
+			kept = append(kept, ev)
+		}
+	}
+
+	// Build sets for non-bundled events to protect them from seed overwrite.
+	// Non-bundled events with the same Key() or ID as a seed event must be
+	// preserved as-is.
+	protectedKeys := make(map[string]struct{}, len(kept))
+	protectedIDs := make(map[string]struct{}, len(kept))
+	for _, ev := range kept {
+		protectedKeys[ev.Key()] = struct{}{}
+		protectedIDs[ev.ID] = struct{}{}
+	}
+
+	// Tag seed events with the bundled source, skipping those that would
+	// overwrite a non-bundled event with the same key or ID.
+	var seedFiltered []RaceEvent
+	for _, ev := range seed.Events {
+		if _, protected := protectedKeys[ev.Key()]; protected {
+			continue
+		}
+		if _, protected := protectedIDs[ev.ID]; protected {
+			continue
+		}
+		ev.Source = BundledSource
+		seedFiltered = append(seedFiltered, ev)
+	}
+
+	// Merge kept events with filtered seed events (dedupe by key).
+	merged := dedupe(kept, seedFiltered)
+
+	// Apply seed metadata.
+	s.cal.Version = seed.Version
+	s.cal.Timezone = seed.Timezone
+	s.cal.ReminderMinutes = seed.ReminderMinutes
+	s.cal.Events = merged
+	s.cal.FollowedEventIDs = pruneFollowedLocked(s.cal.FollowedEventIDs, merged)
+	s.cal.Updated = s.now().UTC()
+
+	return s.persistLocked()
+}
+
 // Clear empties the calendar and persists the change.
 func (s *Service) Clear() error {
 	s.mu.Lock()

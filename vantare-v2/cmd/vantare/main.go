@@ -500,6 +500,16 @@ func main() {
 		log.Printf("warning: could not load calendar: %v (using empty)", err)
 	}
 
+	// Apply bundled LMU seed (CALENDAR-04). Replaces old bundled events
+	// with the latest seed while preserving non-bundled events and followed
+	// IDs for events that still exist. A bad seed logs a warning and does
+	// not block startup.
+	if seed, err := calendar.LoadBundledSeed(); err != nil {
+		log.Printf("warning: could not load bundled seed: %v (skipping)", err)
+	} else if err := calendarSvc.ApplyBundledSeed(seed); err != nil {
+		log.Printf("warning: could not apply bundled seed: %v (using existing calendar)", err)
+	}
+
 	// Reminder loop (CALENDAR-02-C2-B): polls DueReminders every 30s and
 	// emits calendar:reminder for each new (eventId, minutesLeft) pair.
 	const calendarReminderInterval = 30 * time.Second

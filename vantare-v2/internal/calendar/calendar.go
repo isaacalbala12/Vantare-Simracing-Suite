@@ -15,6 +15,11 @@ import (
 // one. Keep it stable; tests rely on this exact value.
 const DefaultTimezone = "Europe/Madrid"
 
+// BundledSource is the Source value assigned to events loaded from the
+// bundled LMU seed. It is used by ApplyBundledSeed to identify which
+// events should be replaced on subsequent seed updates.
+const BundledSource = "vantare-bundled-lmu"
+
 // DefaultReminderMinutes are the reminder thresholds emitted by the ticker.
 // The list is intentionally small and only contains positive values.
 var DefaultReminderMinutes = []int{30, 15, 10, 5, 2}

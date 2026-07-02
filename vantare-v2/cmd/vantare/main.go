@@ -20,6 +20,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
@@ -490,6 +491,13 @@ func main() {
 	settingsSvc := app.NewSettingsService(appSettingsPath, emitter)
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
+
+	// Calendar service for the local LMU race calendar (CALENDAR-02).
+	// Data is persisted to cfgDir/calendar-lmu.json, not app-settings.json.
+	calendarSvc := calendar.NewService(cfgDir, time.Now)
+	if err := calendarSvc.Load(); err != nil {
+		log.Printf("warning: could not load calendar: %v (using empty)", err)
 	}
 
 	// Launcher service for the simulator cards on the Hub dashboard
@@ -986,6 +994,33 @@ func main() {
 			}
 		}
 		handleLauncherLaunch(payload.SimulatorID, launcherSvc, emitter, log.Printf)
+	})
+
+	// Calendar event handlers (CALENDAR-02-A). Three thin events that delegate
+	// to the calendar service and surface the canonical calendar document back
+	// to the frontend. The service is synchronous: no goroutine, ticker, or
+	// reminder logic in this phase.
+
+	wailsApp.Event.On("calendar:get", func(event *application.CustomEvent) {
+		app.HandleCalendarGet(calendarSvc, emitter)
+	})
+
+	wailsApp.Event.On("calendar:import", func(event *application.CustomEvent) {
+		var payload struct {
+			Text     string `json:"text"`
+			Timezone string `json:"timezone"`
+			Source   string `json:"source"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		app.HandleCalendarImport(payload.Text, payload.Timezone, payload.Source, calendarSvc, calendarSvc, emitter, log.Printf)
+	})
+
+	wailsApp.Event.On("calendar:clear", func(event *application.CustomEvent) {
+		app.HandleCalendarClear(calendarSvc, calendarSvc, emitter, log.Printf)
 	})
 
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)

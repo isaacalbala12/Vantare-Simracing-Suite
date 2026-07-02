@@ -1479,3 +1479,23 @@ Nota ROADMAP-01 (2026-07-01):
 - Archivos modificados: `frontend/src/hub/navigation.ts`, `frontend/src/hub/navigation.test.ts`, `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`, `frontend/src/hub/pages/DashboardPage.tsx`, `frontend/src/hub/pages/DashboardPage.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: Go/backend, Auth/Supabase, overlay runtime, widgets, WidgetStudio, LayoutStudio, V52Shell, index.css, dependencias, hub_main.html, roadmap_v5.2.html, HTML mocks, archivos fuera de vantare-v2.
 - Sin commit.
+
+Nota CALENDAR-02-A (2026-07-02):
+- Bridge Wails conectado: `internal/app/calendar_bridge.go` con 3 handlers puros (`HandleCalendarGet`, `HandleCalendarImport`, `HandleCalendarClear`) que delegan en `*calendar.Service`.
+- `cmd/vantare/main.go`: instancia `calendar.NewService(cfgDir, time.Now)`, llama `Load()` al arranque, registra 3 handlers Wails (`calendar:get`, `calendar:import`, `calendar:clear`).
+- Eventos registrados:
+  - Frontend emite: `calendar:get`, `calendar:import` (con `{ text, timezone, source }`), `calendar:clear`.
+  - Backend emite: `calendar:loaded` con `{ calendar }`, `calendar:error` con `{ message }`.
+- Comportamiento:
+  - `calendar:get` emite calendario default vacío si `calendar-lmu.json` no existe (sin error).
+  - `calendar:import` parsea con `calendar.Parse`, llama `service.Replace`, emite calendario actualizado.
+  - `calendar:import` inválido (parse error o replace error) emite `calendar:error` y NO modifica el calendario previo.
+  - `calendar:clear` llama `service.Clear()` y emite calendario vacío.
+- Dashboard ya puede recibir calendario real: `NextRaceCard` y `LastActivityCard` emiten `calendar:get` en mount y escuchan `calendar:loaded`.
+- Tests: 16 tests en `internal/app/calendar_bridge_test.go` (8 con fake service + 8 con real `*calendar.Service`). Cubren: get emite default sin archivo, import válido persiste y emite, import inválido emite error y preserva estado, clear vacía y emite, persistencia a disco, round-trip reload.
+- Checks: `gofmt -w` OK, `go test -count=1 ./internal/calendar/... ./internal/app/... ./cmd/vantare/...` PASS, `corepack pnpm --dir frontend test -- NextRaceCard LastActivityCard V52CalendarStrip calendar-store` 16/16 PASS, `corepack pnpm --dir frontend exec tsc -b` OK, `git diff --check` solo warnings preexistentes en hub_main.html.
+- Archivos creados: `internal/app/calendar_bridge.go`, `internal/app/calendar_bridge_test.go`.
+- Archivos modificados: `cmd/vantare/main.go`, `docs/current-plan.md`.
+- No se tocaron: `AppSettings`, `internal/calendar` (no recreado), WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, overlay runtime, hub_main.html, archivos untracked ajenos.
+- Import UI / recordatorios / overlay banner quedan para fases B/C/D.
+- Sin commit.

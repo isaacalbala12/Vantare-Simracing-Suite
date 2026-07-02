@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "timezone": "UTC",
+  "validFrom": "2026-06-30T00:00:00Z",
+  "validUntil": "2026-07-07T00:00:00Z",
+  "updated": "2026-07-02T00:00:00Z",
+  "series": [
+    {
+      "id": "beginner-lmgt3-fixed",
+      "name": "LMGT3 Fixed",
+      "tier": "beginner",
+      "licenseLabel": "Bronze SR",
+      "track": "Sebring (School)",
+      "vehicleClass": "LMGT3 Class",
+      "setup": "fixed",
+      "durationMin": 20,
+      "splits": 20,
+      "assists": "High assists allowed",
+      "tyreWarmers": true,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 15
+      }
+    },
+    {
+      "id": "beginner-mclaren-challenge",
+      "name": "Logitech McLaren G Challenge Q5",
+      "tier": "beginner",
+      "licenseLabel": "Bronze SR",
+      "track": "Monza (WEC)",
+      "vehicleClass": "McLaren 720S LMGT3",
+      "setup": "fixed",
+      "durationMin": 20,
+      "splits": 20,
+      "assists": "High assists allowed",
+      "tyreWarmers": true,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 15
+      }
+    },
+    {
+      "id": "beginner-lmp3-fixed",
+      "name": "LMP3 Fixed",
+      "tier": "beginner",
+      "licenseLabel": "Bronze SR",
+      "track": "Fuji (Classic)",
+      "vehicleClass": "LMP3 Class",
+      "setup": "fixed",
+      "durationMin": 20,
+      "splits": 20,
+      "assists": "High assists allowed",
+      "tyreWarmers": true,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 15
+      }
+    },
+    {
+      "id": "intermediate-lmgt3-sprint",
+      "name": "LMGT3 Sprint Cup",
+      "tier": "intermediate",
+      "licenseLabel": "Silver SR",
+      "track": "COTA (National)",
+      "vehicleClass": "LMGT3 Class",
+      "setup": "open",
+      "durationMin": 30,
+      "splits": 38,
+      "assists": "Low assists allowed",
+      "tyreWarmers": false,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 20
+      }
+    },
+    {
+      "id": "intermediate-prototype-fixed",
+      "name": "Prototype Fixed",
+      "tier": "intermediate",
+      "licenseLabel": "Silver SR",
+      "track": "Barcelona (ELMS)",
+      "vehicleClass": "LMP2 (ELMS) & LMP3 Classes",
+      "setup": "fixed",
+      "durationMin": 30,
+      "splits": 38,
+      "assists": "Low assists allowed",
+      "tyreWarmers": false,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 20
+      }
+    },
+    {
+      "id": "intermediate-elms-sprint",
+      "name": "ELMS Sprint Trophy",
+      "tier": "intermediate",
+      "licenseLabel": "Silver SR",
+      "track": "Portimao (WEC)",
+      "vehicleClass": "LMP2 (ELMS), LMP3 & LMGT3 Classes",
+      "setup": "open",
+      "durationMin": 30,
+      "splits": 38,
+      "assists": "Low assists allowed",
+      "tyreWarmers": false,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 20
+      }
+    },
+    {
+      "id": "advanced-one-stint-sprint",
+      "name": "One Stint Sprint",
+      "tier": "advanced",
+      "licenseLabel": "Gold SR",
+      "track": "Paul Ricard (Layout 1A)",
+      "vehicleClass": "Hypercar & LMGT3 Classes",
+      "setup": "open",
+      "durationMin": 40,
+      "splits": 44,
+      "assists": "No assists allowed",
+      "tyreWarmers": false,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 30
+      }
+    },
+    {
+      "id": "advanced-elms-super-60",
+      "name": "ELMS Super 60",
+      "tier": "advanced",
+      "licenseLabel": "Gold SR",
+      "track": "Spa (ELMS)",
+      "vehicleClass": "LMP2 (ELMS, full fuel tank), LMP3 (70L fuel tank) & LMGT3 Classes (75% VE)",
+      "setup": "open",
+      "durationMin": 60,
+      "splits": 44,
+      "assists": "No assists allowed",
+      "tyreWarmers": false,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 30
+      }
+    },
+    {
+      "id": "advanced-wec-xperience",
+      "name": "WEC-Xperience",
+      "tier": "advanced",
+      "licenseLabel": "Gold SR",
+      "track": "Silverstone (ELMS)",
+      "vehicleClass": "Hypercar & LMGT3 Classes, 75% VE Limit",
+      "setup": "open",
+      "durationMin": 60,
+      "splits": 44,
+      "assists": "No assists allowed",
+      "tyreWarmers": false,
+      "tyres": 8,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 30
+      }
+    },
+    {
+      "id": "weekly-wec-weekly",
+      "name": "WEC Weekly",
+      "tier": "weekly",
+      "licenseLabel": "SR S2",
+      "track": "Portimao (ELMS)",
+      "vehicleClass": "Hypercar & LMGT3 Classes",
+      "setup": "open",
+      "durationMin": 100,
+      "splits": 44,
+      "assists": "No assists allowed",
+      "tyreWarmers": false,
+      "tyres": 10,
+      "recurrence": {
+        "kind": "weekly-slots",
+        "days": ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon"],
+        "timesUTC": ["02:00", "06:00", "09:00", "12:00", "15:00", "18:00", "20:00", "23:00"]
+      }
+    }
+  ]
+}

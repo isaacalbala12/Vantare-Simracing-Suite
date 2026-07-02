@@ -1639,3 +1639,13 @@ Nota LMU-API-RUNTIME (2026-07-02):
 - Actualizado internal/telemetry/lmuapi: añadido MultiplayerTeams(), FindRatingFields(), métodos con context.Context, tipos MultiplayerTeamsResponse/DriverInfo/TeamInfo/RatingField. Tests: 18/18 PASS. gofmt+govet OK.
 - No se tocaron: frontend, Wails, WidgetStudio, LayoutStudio, Auth, dependencias, cmd/vantare/main.go.
 - Sin commit.
+
+Nota CALENDAR-05-A+B (2026-07-02):
+- Correcciones P3 de la review CALENDAR-05 A+B sobre el schedule oficial LMU.
+- Seed: `internal/calendar/seed/lmu-weekly-schedule.json` (10 series oficiales LMU: beginner-lmgt3-fixed, beginner-mclaren-challenge, beginner-lmp3-fixed, intermediate-lmgt3-sprint, intermediate-prototype-fixed, intermediate-elms-sprint, advanced-one-stint-sprint, advanced-elms-super-60, advanced-wec-xperience, weekly-wec-weekly).
+- `official_schedule.go`: series recurrentes (no eventos materializados), expansión acotada por ventana [from, to) con clipping a ValidFrom/ValidUntil y capa de 10000 eventos.
+- Corrección 1: eliminada validación redundante de ID vacío en `validateSchedule` (ya cubierta por `validateSeries`).
+- Corrección 2: `ExpandSeries` ya no ignora el error de `time.Parse("15:04", timeStr)` — lo maneja y lo propaga con contexto.
+- Checks ejecutados: `gofmt`, `go test -count=1 -run "TestLoad|TestValidate|TestExpand|TestMake|TestSort|TestEstimate|TestDefault" ./internal/calendar/...`, `go vet ./internal/calendar/...`, `git diff --check`.
+- Sin frontend, Wails, main.go, WidgetStudio, LayoutStudio, overlay runtime, Supabase, AppSettings, reminders, follow/unfollow.
+- Sin commit.

@@ -24,4 +24,10 @@ describe("TelemetryPage", () => {
     expect(screen.queryByText(/Safety/i)).toBeNull();
     expect(screen.queryByText(/charts? falsos/i)).toBeNull();
   });
+
+  it("does not use full-height hero (min-h-[calc(100vh-180px)])", () => {
+    const { container } = render(<TelemetryPage />);
+    expect(container.innerHTML).not.toContain('calc(100vh-180px)');
+    expect(container.innerHTML).not.toContain('min-h-[calc');
+  });
 });

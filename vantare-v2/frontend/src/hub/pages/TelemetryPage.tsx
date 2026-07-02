@@ -13,7 +13,7 @@ export function TelemetryPage() {
         </p>
       </header>
 
-      <section className="relative rounded-2xl overflow-hidden border border-white/5 opacity-0 animate-fade-in-up delay-100 flex flex-col items-center justify-center text-center min-h-[calc(100vh-180px)]">
+      <section className="relative rounded-2xl overflow-hidden border border-white/5 opacity-0 animate-fade-in-up delay-100 flex flex-col items-center justify-center text-center py-16">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#141414] to-[#0a0a0a]"></div>
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[480px] h-[480px] bg-white/[.03] blur-3xl rounded-full pointer-events-none"></div>
 

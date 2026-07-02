@@ -221,6 +221,10 @@ func main() {
 	reorderArgs()
 	flag.Parse()
 
+	if err := server.ValidateAddr(*httpAddr); err != nil {
+		log.Fatalf("http: %v", err)
+	}
+
 	if *edit {
 		log.Printf("warning: -edit is deprecated in Hub Preview flow; start Hub and use Preview instead")
 	}

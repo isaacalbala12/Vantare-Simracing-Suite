@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -273,6 +274,17 @@ func TestProfileRejectsAbsolutePathUnix(t *testing.T) {
 	}
 }
 
+// nonceReq creates a POST /auth/token request with a valid nonce injected into
+// the given JSON body. The body should omit the "nonce" field; it is appended.
+func nonceReq(srv *server.Server, body string) *http.Request {
+	nonce := srv.GenerateNonce()
+	// Insert nonce into the JSON body by trimming the closing brace.
+	body = strings.TrimRight(body, " \t\r\n}") + `, "nonce":"` + nonce + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
 // testEmitter records Emit calls for verification.
 type testEmitter struct {
 	calls []emitCall
@@ -314,14 +326,21 @@ func TestAuthCallbackServesHTML(t *testing.T) {
 	if !strings.Contains(body, "access_token") {
 		t.Fatal("callback HTML should extract access_token from URL fragment")
 	}
+	if !strings.Contains(body, "AUTH_NONCE") {
+		t.Fatal("callback HTML should contain nonce placeholder")
+	}
+	if !strings.Contains(body, "nonce: AUTH_NONCE") {
+		t.Fatal("callback HTML should send nonce in POST body")
+	}
+	if rr.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("callback should have Cache-Control: no-store")
+	}
 }
 
 func TestAuthTokenForwardsToEmitter(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	payload := `{"access_token":"test-tok-123"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	req := nonceReq(srv, `{"access_token":"test-tok-123"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -347,9 +366,7 @@ func TestAuthTokenForwardsToEmitter(t *testing.T) {
 func TestAuthTokenForwardsRefreshToken(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	payload := `{"access_token":"tok","refresh_token":"ref-456"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	req := nonceReq(srv, `{"access_token":"tok","refresh_token":"ref-456"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -375,9 +392,7 @@ func TestAuthTokenForwardsRefreshToken(t *testing.T) {
 func TestAuthTokenAcceptsMissingRefreshToken(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	payload := `{"access_token":"tok-only"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	req := nonceReq(srv, `{"access_token":"tok-only"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -404,9 +419,7 @@ func TestAuthTokenAcceptsMissingRefreshToken(t *testing.T) {
 func TestAuthTokenRejectsEmptyToken(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	payload := `{"access_token":""}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	req := nonceReq(srv, `{"access_token":""}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -420,17 +433,290 @@ func TestAuthTokenRejectsEmptyToken(t *testing.T) {
 }
 
 func TestAuthTokenRejectsNoEmitter(t *testing.T) {
-	// No emitter configured
 	srv := server.New(server.ServerConfig{})
-	payload := `{"access_token":"tok"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	req := nonceReq(srv, `{"access_token":"tok"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("POST /auth/token no emitter = %d, want 500", rr.Code)
+	}
+}
+
+func TestAuthTokenRejectsMissingNonce(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+	payload := `{"access_token":"tok","nonce":""}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("POST /auth/token missing nonce = %d, want 401", rr.Code)
+	}
+	if len(em.calls) != 0 {
+		t.Fatal("expected 0 emit calls for missing nonce")
+	}
+}
+
+func TestAuthTokenRejectsInvalidNonce(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+	payload := `{"access_token":"tok","nonce":"bogus-nonce"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("POST /auth/token invalid nonce = %d, want 401", rr.Code)
+	}
+	if len(em.calls) != 0 {
+		t.Fatal("expected 0 emit calls for invalid nonce")
+	}
+}
+
+func TestAuthTokenRejectsReusedNonce(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+
+	// Generate a nonce manually and use it in the first request.
+	nonce := srv.GenerateNonce()
+	body1 := `{"access_token":"tok","nonce":"` + nonce + `"}`
+	req1 := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
+	req1.Header.Set("Content-Type", "application/json")
+	rr1 := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr1, req1)
+	if rr1.Code != http.StatusOK {
+		t.Fatalf("first request with valid nonce = %d, want 200", rr1.Code)
+	}
+
+	// Second request reusing the same nonce should fail.
+	req2 := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
+	req2.Header.Set("Content-Type", "application/json")
+	rr2 := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr2, req2)
+
+	if rr2.Code != http.StatusUnauthorized {
+		t.Fatalf("reused nonce = %d, want 401", rr2.Code)
+	}
+	if len(em.calls) != 1 {
+		t.Fatalf("expected 1 emit call, got %d", len(em.calls))
+	}
+}
+
+func TestAuthTokenRateLimited(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+
+	// Generate nonces and send concurrent requests to exhaust the limit.
+	// The default rate limiter allows 10 per minute per IP.
+	for i := 0; i < 10; i++ {
+		req := nonceReq(srv, `{"access_token":"tok"}`)
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK && rr.Code != http.StatusTooManyRequests {
+			t.Fatalf("iteration %d: unexpected status %d", i, rr.Code)
+		}
+	}
+
+	// The next request should be rate-limited.
+	req := nonceReq(srv, `{"access_token":"tok"}`)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("rate-limited request = %d, want 429", rr.Code)
+	}
+}
+
+func TestAuthTokenRateLimitSharesCounterByIP(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+
+	// 10 requests from same IP with different ports should share the counter.
+	for i := 0; i < 10; i++ {
+		req := nonceReq(srv, `{"access_token":"tok"}`)
+		port := 50000 + i
+		req.RemoteAddr = fmt.Sprintf("127.0.0.1:%d", port)
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK && rr.Code != http.StatusTooManyRequests {
+			t.Fatalf("iteration %d: unexpected status %d", i, rr.Code)
+		}
+	}
+
+	// 11th request from same IP should be rate-limited.
+	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req.RemoteAddr = "127.0.0.1:51000"
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("rate-limited request from same IP = %d, want 429", rr.Code)
+	}
+}
+
+func TestAuthTokenRateLimitDifferentIPsDontShare(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+
+	// 10 requests from IP A exhaust the limit for A.
+	for i := 0; i < 10; i++ {
+		req := nonceReq(srv, `{"access_token":"tok"}`)
+		req.RemoteAddr = fmt.Sprintf("10.0.0.1:%d", 50000+i)
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK && rr.Code != http.StatusTooManyRequests {
+			t.Fatalf("iteration %d: unexpected status %d", i, rr.Code)
+		}
+	}
+
+	// Request from IP B should still be allowed (different counter).
+	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req.RemoteAddr = "10.0.0.2:39261"
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("request from different IP = %d, want 200", rr.Code)
+	}
+}
+
+func TestValidateAddrAccepts127_0_0_1(t *testing.T) {
+	err := server.ValidateAddr("127.0.0.1:39261")
+	if err != nil {
+		t.Fatalf("ValidateAddr(127.0.0.1:39261) = %v, want nil", err)
+	}
+}
+
+func TestValidateAddrAcceptsLocalhost(t *testing.T) {
+	err := server.ValidateAddr("localhost:39261")
+	if err != nil {
+		t.Fatalf("ValidateAddr(localhost:39261) = %v, want nil", err)
+	}
+}
+
+func TestValidateAddrAcceptsIPv6Loopback(t *testing.T) {
+	err := server.ValidateAddr("[::1]:39261")
+	if err != nil {
+		t.Fatalf("ValidateAddr([::1]:39261) = %v, want nil", err)
+	}
+}
+
+func TestValidateAddrRejects0_0_0_0(t *testing.T) {
+	err := server.ValidateAddr("0.0.0.0:39261")
+	if err == nil {
+		t.Fatal("ValidateAddr(0.0.0.0:39261) should return an error")
+	}
+}
+
+func TestValidateAddrRejectsIPv6Unspecified(t *testing.T) {
+	err := server.ValidateAddr("[::]:39261")
+	if err == nil {
+		t.Fatal("ValidateAddr([::]:39261) should return an error")
+	}
+}
+
+func TestValidateAddrRejectsEmptyHost(t *testing.T) {
+	err := server.ValidateAddr(":39261")
+	if err == nil {
+		t.Fatal("ValidateAddr(:39261) should return an error")
+	}
+}
+
+func TestValidateAddrRejectsLAN_192_168(t *testing.T) {
+	err := server.ValidateAddr("192.168.1.10:39261")
+	if err == nil {
+		t.Fatal("ValidateAddr(192.168.1.10:39261) should return an error")
+	}
+}
+
+func TestValidateAddrRejectsLAN_10_0_0(t *testing.T) {
+	err := server.ValidateAddr("10.0.0.2:39261")
+	if err == nil {
+		t.Fatal("ValidateAddr(10.0.0.2:39261) should return an error")
+	}
+}
+
+func TestValidateAddrRejectsLAN_172_20(t *testing.T) {
+	err := server.ValidateAddr("172.20.0.2:39261")
+	if err == nil {
+		t.Fatal("ValidateAddr(172.20.0.2:39261) should return an error")
+	}
+}
+
+func TestSecurityHeadersPresent(t *testing.T) {
+	srv := server.New(server.ServerConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("response missing X-Content-Type-Options: nosniff")
+	}
+	if rr.Header().Get("Referrer-Policy") != "no-referrer" {
+		t.Fatal("response missing Referrer-Policy: no-referrer")
+	}
+}
+
+func TestSecurityHeadersCSP(t *testing.T) {
+	srv := server.New(server.ServerConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	csp := rr.Header().Get("Content-Security-Policy")
+	if csp == "" {
+		t.Fatal("response missing Content-Security-Policy")
+	}
+	if !strings.Contains(csp, "default-src 'none'") {
+		t.Fatal("CSP should include default-src 'none'")
+	}
+	if !strings.Contains(csp, "script-src 'unsafe-inline'") {
+		t.Fatal("CSP should include script-src 'unsafe-inline'")
+	}
+	if !strings.Contains(csp, "base-uri 'none'") {
+		t.Fatal("CSP should include base-uri 'none'")
+	}
+	if !strings.Contains(csp, "form-action 'none'") {
+		t.Fatal("CSP should include form-action 'none'")
+	}
+}
+
+func TestAuthCallbackSecurityHeaders(t *testing.T) {
+	srv := server.New(server.ServerConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/auth/callback", nil)
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("callback missing X-Content-Type-Options: nosniff")
+	}
+	if rr.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("callback missing Cache-Control: no-store")
+	}
+}
+
+func TestAuthTokenSecurityHeaders(t *testing.T) {
+	srv := server.New(server.ServerConfig{Emitter: &testEmitter{}})
+	req := nonceReq(srv, `{"access_token":"tok"}`)
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST /auth/token = %d, want 200", rr.Code)
+	}
+	if rr.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("token response missing X-Content-Type-Options: nosniff")
+	}
+	if rr.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("token response missing Cache-Control: no-store")
 	}
 }
 

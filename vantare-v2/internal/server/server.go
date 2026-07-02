@@ -2,17 +2,149 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
 )
+
+// nonceStore tracks single-use nonces for /auth/token CSRF protection.
+type nonceStore struct {
+	mu      sync.Mutex
+	nonces  map[string]bool
+	created map[string]time.Time
+	ttl     time.Duration
+}
+
+func newNonceStore() *nonceStore {
+	return &nonceStore{
+		nonces:  make(map[string]bool),
+		created: make(map[string]time.Time),
+		ttl:     5 * time.Minute,
+	}
+}
+
+func (ns *nonceStore) Generate() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand: " + err.Error())
+	}
+	nonce := hex.EncodeToString(b)
+	ns.mu.Lock()
+	defer ns.mu.Unlock()
+	ns.nonces[nonce] = false
+	ns.created[nonce] = time.Now()
+	for k, t := range ns.created {
+		if time.Since(t) > ns.ttl {
+			delete(ns.nonces, k)
+			delete(ns.created, k)
+		}
+	}
+	return nonce
+}
+
+func (ns *nonceStore) Consume(nonce string) bool {
+	ns.mu.Lock()
+	defer ns.mu.Unlock()
+	used, exists := ns.nonces[nonce]
+	if !exists || used {
+		return false
+	}
+	ns.nonces[nonce] = true
+	delete(ns.nonces, nonce)
+	delete(ns.created, nonce)
+	return true
+}
+
+// rateLimiter is a simple in-memory sliding-window rate limiter.
+type rateLimiter struct {
+	mu        sync.Mutex
+	counts    map[string]int
+	window    time.Duration
+	max       int
+	lastClean time.Time
+}
+
+func newRateLimiter(max int, window time.Duration) *rateLimiter {
+	return &rateLimiter{
+		counts:    make(map[string]int),
+		window:    window,
+		max:       max,
+		lastClean: time.Now(),
+	}
+}
+
+func (rl *rateLimiter) Allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	now := time.Now()
+	if now.Sub(rl.lastClean) > rl.window {
+		rl.counts = make(map[string]int)
+		rl.lastClean = now
+	}
+	c := rl.counts[key]
+	if c >= rl.max {
+		return false
+	}
+	rl.counts[key] = c + 1
+	return true
+}
+
+// clientIP extracts the IP address from an http.Request RemoteAddr, stripping
+// the ephemeral port so rate limiting works by client IP, not by (IP, port).
+func clientIP(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr
+	}
+	return host
+}
+
+// ValidateAddr rejects addresses that bind to non-loopback interfaces.
+func ValidateAddr(addr string) error {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("invalid address %q: %w", addr, err)
+	}
+	if host == "" {
+		return fmt.Errorf("address %q exposes the server to external connections; use 127.0.0.1, localhost, or [::1]", addr)
+	}
+	if host == "localhost" {
+		return nil
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("address %q has an unparseable host %q; use 127.0.0.1, localhost, or [::1]", addr, host)
+	}
+	if ip.IsLoopback() {
+		return nil
+	}
+	return fmt.Errorf("address %q exposes the server to external connections; use 127.0.0.1, localhost, or [::1]", addr)
+}
+
+// securityHeaders wraps an http.Handler to emit basic security headers on every
+// response. Route-specific handlers may set additional headers (e.g. Cache-Control).
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'none'; script-src 'unsafe-inline'; "+
+				"connect-src http://127.0.0.1:39261 http://localhost:39261; "+
+				"style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'")
+		next.ServeHTTP(w, r)
+	})
+}
 
 // EventEmitter is the subset of app.EventEmitter used by the server to forward
 // OAuth tokens to the Wails frontend.
@@ -28,6 +160,8 @@ type Server struct {
 	distFS      fs.FS
 	cfgDir      string
 	emitter     EventEmitter
+	nonceStore  *nonceStore
+	rateLimiter *rateLimiter
 }
 
 type ServerConfig struct {
@@ -48,6 +182,8 @@ func New(cfg ServerConfig) *Server {
 		distFS:      cfg.DistFS,
 		cfgDir:      cfg.CfgDir,
 		emitter:     cfg.Emitter,
+		nonceStore:  newNonceStore(),
+		rateLimiter: newRateLimiter(10, 1*time.Minute),
 	}
 
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -58,14 +194,14 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)
 	mux.HandleFunc("POST /auth/token", s.handleAuthToken)
 	if cfg.DistFS != nil {
-		mux.Handle("GET /assets/", http.FileServerFS(cfg.DistFS))
-		mux.Handle("GET /favicon.svg", http.FileServerFS(cfg.DistFS))
+		mux.Handle("GET /assets/", securityHeaders(http.FileServerFS(cfg.DistFS)))
+		mux.Handle("GET /favicon.svg", securityHeaders(http.FileServerFS(cfg.DistFS)))
 	}
 
 	if cfg.Addr != "" {
 		s.srv = &http.Server{
 			Addr:    cfg.Addr,
-			Handler: mux,
+			Handler: securityHeaders(mux),
 		}
 	}
 
@@ -73,7 +209,7 @@ func New(cfg ServerConfig) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	return securityHeaders(s.mux)
 }
 
 // Addr returns the actual bound address, or "" if the server has not started.
@@ -136,12 +272,11 @@ func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-// authCallbackHTML is the static HTML page served at /auth/callback. The
-// external browser redirects here after completing the OAuth flow. Supabase
-// returns the access_token in the URL fragment (#access_token=...) which is
-// only accessible to client-side JavaScript. The page reads it and POSTs it
-// to /auth/token so the Go server can forward it to the Wails app.
-const authCallbackHTML = `<!DOCTYPE html>
+// authCallbackHTMLTmpl is served at /auth/callback with a one-time nonce
+// embedded via fmt.Sprintf. Supabase returns the access_token in the URL
+// fragment (#access_token=...); the page reads it, reads the nonce from
+// AUTH_NONCE, and POSTs both to /auth/token.
+const authCallbackHTMLTmpl = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -171,6 +306,7 @@ const authCallbackHTML = `<!DOCTYPE html>
 (function() {
   var msg = document.getElementById('msg');
   var hint = document.getElementById('hint');
+  var AUTH_NONCE = '%s';
   var hash = window.location.hash.substring(1);
   var params = new URLSearchParams(hash);
   var token = params.get('access_token');
@@ -186,7 +322,7 @@ const authCallbackHTML = `<!DOCTYPE html>
     hint.textContent = 'Vuelve a la app Vantare e intenta de nuevo.';
     return;
   }
-  var body = { access_token: token };
+  var body = { access_token: token, nonce: AUTH_NONCE };
   if (refresh) { body.refresh_token = refresh; }
   fetch('/auth/token', {
     method: 'POST',
@@ -213,15 +349,33 @@ const authCallbackHTML = `<!DOCTYPE html>
 </html>`
 
 func (s *Server) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
+	nonce := s.nonceStore.Generate()
+	html := fmt.Sprintf(authCallbackHTMLTmpl, nonce)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(authCallbackHTML))
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write([]byte(html))
+}
+
+type authTokenPayload struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	Nonce        string `json:"nonce"`
 }
 
 func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+
 	if s.emitter == nil {
 		http.Error(w, "emitter not configured", http.StatusInternalServerError)
 		return
 	}
+
+	// Rate limit by client IP (without ephemeral port).
+	if !s.rateLimiter.Allow(clientIP(r.RemoteAddr)) {
+		http.Error(w, "too many requests", http.StatusTooManyRequests)
+		return
+	}
+
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<16)) // 64 KiB max
 	if err != nil {
 		http.Error(w, "failed to read body", http.StatusBadRequest)
@@ -229,12 +383,14 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var payload struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}
+	var payload authTokenPayload
 	if err := json.Unmarshal(body, &payload); err != nil || payload.AccessToken == "" {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	if payload.Nonce == "" || !s.nonceStore.Consume(payload.Nonce) {
+		http.Error(w, "invalid or missing nonce", http.StatusUnauthorized)
 		return
 	}
 
@@ -246,4 +402,10 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// GenerateNonce generates a one-time nonce for auth token requests. Exported
+// for testing.
+func (s *Server) GenerateNonce() string {
+	return s.nonceStore.Generate()
 }

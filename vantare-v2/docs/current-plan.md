@@ -1545,3 +1545,26 @@ Nota CALENDAR-02-C1 (2026-07-02):
 - No se tocaron: AppSettings, WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, overlay runtime, hub_main.html, archivos untracked ajenos.
 - Reminders/ticker/banner overlay quedan para C2/D.
 - Sin commit.
+
+Nota CALENDAR-02-C2 (2026-07-02):
+- Implementado banner global del Hub que escucha `calendar:reminder`.
+- Nuevo tipo `CalendarReminderPayload` en `frontend/src/calendar/calendar-types.ts` con `eventId`, `title`, `track`, `minutesLeft`, `startTime`, `registrationUrl`.
+- Nuevo componente `frontend/src/hub/calendar/CalendarReminderBanner.tsx`:
+  - Banner fixed (top-16 right-4, z-50, max-w-sm) dentro del Hub.
+  - Muestra badge "Próxima carrera", título del evento, track (si existe), "Faltan X min".
+  - Botón cerrar con `aria-label="Cerrar recordatorio"`.
+  - Si `registrationUrl` existe, muestra botón "Abrir registro" como enlace `target="_blank"`.
+  - Sin persistencia, sin datos fake.
+- `HubApp.tsx`:
+  - Nuevo estado `reminder: CalendarReminderPayload | null`.
+  - Listener `calendar:reminder` en el useEffect de mount, con cleanup en unmount.
+  - Renderiza `<CalendarReminderBanner>` cuando `reminder` no es null.
+  - `handleCloseReminder` setea reminder a null.
+  - Si llega otro reminder, reemplaza el actual (setReminder sobrescribe).
+- Tests: 5 CalendarReminderBanner + 3 HubApp (banner aparece, reemplaza, se cierra). Total: 8 nuevos.
+- Checks: test 33/33 PASS (CalendarReminderBanner 5 + HubApp 26 + HubApp.bridge 2), tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos creados: `frontend/src/hub/calendar/CalendarReminderBanner.tsx`, `frontend/src/hub/calendar/CalendarReminderBanner.test.tsx`.
+- Archivos modificados: `frontend/src/calendar/calendar-types.ts`, `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, overlay/CompositeApp/ObsOverlayApp, AppSettings, WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, hub_main.html, archivos untracked ajenos.
+- Overlay banner (CALENDAR-02-D) sigue pendiente.
+- Sin commit.

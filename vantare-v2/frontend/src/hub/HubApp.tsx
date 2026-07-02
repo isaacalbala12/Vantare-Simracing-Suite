@@ -18,6 +18,8 @@ import { LicenseBanner } from './auth/LicenseBanner';
 import { UnconfiguredScreen } from './auth/UnconfiguredScreen';
 import { getSession } from '../lib/supabase-auth';
 import { BetaWelcome, type BetaUserRole } from './onboarding/BetaWelcome';
+import { CalendarReminderBanner } from './calendar/CalendarReminderBanner';
+import type { CalendarReminderPayload } from '../calendar/calendar-types';
 
 type SourceStatus = {
   kind: string;
@@ -115,6 +117,7 @@ function HubShell() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [hasActiveProfile, setHasActiveProfile] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
+  const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
 
   useEffect(() => {
@@ -133,6 +136,9 @@ function HubShell() {
       setHasActiveProfile(typeof activeId === "string" && activeId.length > 0);
       setSettingsLoaded(true);
     });
+    const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
+      setReminder(event.data ?? null);
+    });
     Events.Emit('app:version:get');
     Events.Emit('telemetry:source-status:get');
     Events.Emit('settings:get');
@@ -141,6 +147,7 @@ function HubShell() {
       unsub?.();
       unsubSource?.();
       unsubSettings?.();
+      unsubReminder?.();
     };
   }, []);
 
@@ -171,6 +178,10 @@ function HubShell() {
     setPendingRecommendedAutoStart(null);
   }, []);
 
+  const handleCloseReminder = useCallback(() => {
+    setReminder(null);
+  }, []);
+
   return (
     <V52Shell
       activeSection={section}
@@ -181,6 +192,9 @@ function HubShell() {
     >
       {settingsLoaded && showBetaWelcome && (
         <BetaWelcome onComplete={handleBetaWelcomeClose} />
+      )}
+      {reminder && (
+        <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
       )}
       {section === "dashboard" && (
         <DashboardPage

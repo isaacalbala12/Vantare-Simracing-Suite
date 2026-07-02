@@ -619,6 +619,93 @@ describe("HubApp gate (production)", () => {
     });
   });
 
+  it("shows reminder banner when calendar:reminder is received", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      if (name === "calendar:reminder") {
+        setTimeout(() => cb({ data: { eventId: "evt-1", title: "6h de Spa", track: "Spa", minutesLeft: 15, startTime: "2026-07-02T20:00:00+02:00", registrationUrl: "" } }), 10);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.getByTestId("calendar-reminder-banner")).toBeTruthy();
+      expect(screen.getByText("6h de Spa")).toBeTruthy();
+      expect(screen.getByText("Faltan 15 min")).toBeTruthy();
+    });
+  });
+
+  it("replaces reminder banner when a second calendar:reminder arrives", async () => {
+    const reminderCb: { current: ((event: unknown) => void) | null } = { current: null };
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      if (name === "calendar:reminder") {
+        reminderCb.current = cb;
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => {
+      expect(screen.queryByTestId("calendar-reminder-banner")).toBeNull();
+    });
+    reminderCb.current?.({ data: { eventId: "evt-1", title: "6h de Spa", track: "Spa", minutesLeft: 15, startTime: "2026-07-02T20:00:00+02:00", registrationUrl: "" } });
+    await waitFor(() => {
+      expect(screen.getByText("6h de Spa")).toBeTruthy();
+    });
+    reminderCb.current?.({ data: { eventId: "evt-2", title: "24h de Le Mans", track: "La Sarthe", minutesLeft: 5, startTime: "2026-07-03T16:00:00+02:00", registrationUrl: "" } });
+    await waitFor(() => {
+      expect(screen.getByText("24h de Le Mans")).toBeTruthy();
+      expect(screen.queryByText("6h de Spa")).toBeNull();
+    });
+  });
+
+  it("hides reminder banner when close button is clicked", async () => {
+    const reminderCb: { current: ((event: unknown) => void) | null } = { current: null };
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      if (name === "calendar:reminder") {
+        reminderCb.current = cb;
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    reminderCb.current?.({ data: { eventId: "evt-1", title: "6h de Spa", track: "Spa", minutesLeft: 15, startTime: "2026-07-02T20:00:00+02:00", registrationUrl: "" } });
+    await waitFor(() => {
+      expect(screen.getByTestId("calendar-reminder-banner")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("calendar-reminder-banner")).toBeNull();
+    });
+  });
+
   it("renders Roadmap page when roadmap section is selected", async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
       if (name === "settings") {

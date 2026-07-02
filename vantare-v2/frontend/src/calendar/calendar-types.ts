@@ -136,3 +136,15 @@ export function formatEventDate(event: RaceEvent): string {
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
+
+// CalendarReminderPayload is the shape emitted by the backend via
+// calendar:reminder. It carries enough info for the Hub banner to render
+// a countdown and optional registration link.
+export type CalendarReminderPayload = {
+  eventId: string;
+  title: string;
+  track: string;
+  minutesLeft: number;
+  startTime: string;
+  registrationUrl: string;
+};

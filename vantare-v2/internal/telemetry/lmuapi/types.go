@@ -1,5 +1,12 @@
 package lmuapi
 
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+// Vector is a 3D vector with velocity magnitude.
 type Vector struct {
 	Velocity float64 `json:"velocity"`
 	X        float64 `json:"x"`
@@ -7,6 +14,7 @@ type Vector struct {
 	Z        float64 `json:"z"`
 }
 
+// StandingRow is one entry in the LMU live standings.
 type StandingRow struct {
 	SlotID                int32   `json:"slotID"`
 	DriverName            string  `json:"driverName"`
@@ -42,6 +50,7 @@ type StandingRow struct {
 	CarVelocity           Vector  `json:"carVelocity"`
 }
 
+// SlotIDOrPositionID returns a stable identifier for the row.
 func (r StandingRow) SlotIDOrPositionID() int32 {
 	if r.SlotID != 0 {
 		return r.SlotID
@@ -49,6 +58,7 @@ func (r StandingRow) SlotIDOrPositionID() int32 {
 	return r.Position
 }
 
+// SessionInfo is the LMU live session metadata.
 type SessionInfo struct {
 	TrackName                string   `json:"trackName"`
 	Session                  string   `json:"session"`
@@ -59,4 +69,111 @@ type SessionInfo struct {
 	TimeRemainingInGamePhase float64  `json:"timeRemainingInGamePhase"`
 	YellowFlagState          string   `json:"yellowFlagState"`
 	SectorFlag               []string `json:"sectorFlag"`
+}
+
+// MultiplayerTeamsResponse is the LMU multiplayer teams endpoint response.
+type MultiplayerTeamsResponse struct {
+	CoherenceID int64                 `json:"coherenceId"`
+	Drivers     map[string]DriverInfo `json:"drivers"`
+	Teams       map[string]TeamInfo   `json:"teams"`
+}
+
+// DriverInfo contains a driver's multiplayer profile data.
+type DriverInfo struct {
+	Badge        string   `json:"badge"`
+	IsConnected  bool     `json:"isConnected"`
+	Nationality  string   `json:"nationality"`
+	Roles        []string `json:"roles"`
+	TeamID       string   `json:"teamId"`
+	TeamName     string   `json:"teamName"`
+	UniqueTeamID string   `json:"uniqueTeamId"`
+}
+
+// TeamInfo contains a team's multiplayer data.
+type TeamInfo struct {
+	ID        string                `json:"Id"`
+	CarNumber string                `json:"carNumber"`
+	Drivers   map[string]DriverInfo `json:"drivers"`
+	Name      string                `json:"name"`
+	Vehicle   string                `json:"vehicle"`
+}
+
+// RatingField is a discovered rating/safety/rank field in raw JSON.
+type RatingField struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// ratingFieldKeys is the set of case-insensitive field names to search for.
+var ratingFieldKeys = map[string]bool{
+	"safetyrank":         true,
+	"safetybadge":        true,
+	"driverrank":         true,
+	"driverrankprogress": true,
+	"driverrankshort":    true,
+	"elo":                true,
+	"rating":             true,
+	"badge":              true,
+	"rank":               true,
+}
+
+// FindRatingFields walks raw JSON safely and returns any discovered
+// rating/safety/rank/badge/elo fields. It is case-insensitive and does
+// not panic on malformed input, arrays, nulls, or primitives.
+func FindRatingFields(raw json.RawMessage) []RatingField {
+	var out []RatingField
+	walkJSON(raw, "", &out)
+	return out
+}
+
+// walkJSON recursively walks decoded JSON values looking for rating fields.
+func walkJSON(raw json.RawMessage, prefix string, out *[]RatingField) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return
+	}
+	switch val := v.(type) {
+	case map[string]any:
+		for k, child := range val {
+			childRaw, _ := json.Marshal(child)
+			childPrefix := k
+			if prefix != "" {
+				childPrefix = prefix + "." + k
+			}
+			// Case-insensitive lookup: convert key to lowercase
+			lowerK := strings.ToLower(k)
+			if ratingFieldKeys[lowerK] {
+				*out = append(*out, RatingField{Key: childPrefix, Value: fmtValue(child)})
+			}
+			walkJSON(childRaw, childPrefix, out)
+		}
+	case []any:
+		for i, child := range val {
+			childRaw, _ := json.Marshal(child)
+			childPrefix := fmt.Sprintf("%s[%d]", prefix, i)
+			walkJSON(childRaw, childPrefix, out)
+		}
+	}
+}
+
+// fmtValue converts a decoded JSON value to a short string for display.
+func fmtValue(v any) string {
+	switch x := v.(type) {
+	case string:
+		return x
+	case float64:
+		if x == float64(int64(x)) {
+			return fmt.Sprintf("%.0f", x)
+		}
+		return fmt.Sprintf("%.2f", x)
+	case bool:
+		if x {
+			return "true"
+		}
+		return "false"
+	case nil:
+		return "null"
+	default:
+		return fmt.Sprintf("%v", x)
+	}
 }

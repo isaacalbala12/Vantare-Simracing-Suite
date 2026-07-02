@@ -1629,3 +1629,13 @@ Nota CALENDAR-04 (2026-07-02):
 - Archivos modificados: `internal/calendar/calendar.go` (+BundledSource), `internal/calendar/calendar_service.go` (+ApplyBundledSeed), `internal/calendar/calendar_service_test.go` (+6 tests), `cmd/vantare/main.go` (+wiring), `docs/current-plan.md`.
 - No se tocaron: Supabase, frontend, WidgetStudio, LayoutStudio, Auth, Launcher, Roadmap, Settings, dependencias.
 - Sin commit.
+
+Nota LMU-API-RUNTIME (2026-07-02):
+- Verificado runtime: LMU responde en localhost:6397 con 3 endpoints confirmados.
+- sessionInfo: devuelve trackName, session, gamePhase, playerName, currentEventTime, timeRemainingInGamePhase, yellowFlagState, sectorFlag, trackTemp, ambientTemp, weather, windSpeed, etc. NO incluye SafetyRank/DriverRank directamente.
+- standings: array de 28 vehículos con driverName, carClass, carNumber, fullTeamName, position, bestLapTime, lastLapTime, fuelFraction, pitState, finishStatus, penalties, pitstops, steamID (0 en esta sesión), veFraction, etc. NO incluye SafetyRank/DriverRank directamente.
+- multiplayer/teams: drivers con badge, nationality, roles, teamId, teamName. badge siempre "none" en esta sesión (sin SR activo). NO incluye SafetyRank/DriverRank directamente.
+- SafetyRank/DriverRank no aparecen en los endpoints REST básicos. Probablemente vienen de shared memory (rFactor 2) o del endpoint Nakama remoto.
+- Actualizado internal/telemetry/lmuapi: añadido MultiplayerTeams(), FindRatingFields(), métodos con context.Context, tipos MultiplayerTeamsResponse/DriverInfo/TeamInfo/RatingField. Tests: 18/18 PASS. gofmt+govet OK.
+- No se tocaron: frontend, Wails, WidgetStudio, LayoutStudio, Auth, dependencias, cmd/vantare/main.go.
+- Sin commit.

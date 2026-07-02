@@ -562,6 +562,7 @@ describe("HubApp gate (production)", () => {
       expect(screen.getByTestId("v52-sidebar-dashboard")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-profiles")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-launcher")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-calendar")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-engineer")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-telemetry")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-roadmap")).toBeTruthy();
@@ -591,6 +592,30 @@ describe("HubApp gate (production)", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Telemetría" })).toBeTruthy();
       expect(screen.getByText(/en desarrollo/i)).toBeTruthy();
+    });
+  });
+
+  it("renders Calendar page when calendar section is selected", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    const sidebarCalendar = await waitFor(() =>
+      screen.getByTestId("v52-sidebar-calendar"),
+    );
+    fireEvent.click(sidebarCalendar);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Calendario LMU" })).toBeTruthy();
     });
   });
 

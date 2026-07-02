@@ -1499,3 +1499,26 @@ Nota CALENDAR-02-A (2026-07-02):
 - No se tocaron: `AppSettings`, `internal/calendar` (no recreado), WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, overlay runtime, hub_main.html, archivos untracked ajenos.
 - Import UI / recordatorios / overlay banner quedan para fases B/C/D.
 - Sin commit.
+
+Nota CALENDAR-02-B (2026-07-02):
+- Nueva pestaña `Calendario` en el Hub, entre Launcher e Ingeniero.
+- `navigation.ts`: añadido `"calendar"` a `Section`, `NavIcon` y `NAV_ITEMS` con label `Calendario`.
+- `CalendarPage.tsx` (nuevo): página completa con:
+  - Header v5.2: título "Calendario LMU", subtítulo honesto sobre importación desde Discord.
+  - Importador: textarea, timezone (default `Europe/Madrid`), source (default `discord-lmu-week`), botón "Importar calendario", botón "Borrar calendario".
+  - Validación local: textarea vacío muestra error y no emite.
+  - Al importar: emite `calendar:import` con `{ text, timezone, source }`.
+  - Al borrar: `window.confirm` antes de emitir `calendar:clear`.
+  - Escucha `calendar:loaded` y `calendar:error` desde el bridge.
+  - Sección "Próximas carreras": eventos con `startTime >= now` o activos, orden ascendente.
+  - Sección "Carreras pasadas": eventos finalizados, orden descendente.
+  - Empty states honestos sin datos fake.
+- `HubApp.tsx`: renderiza `<CalendarPage />` cuando `section === "calendar"`.
+- Eventos usados: `calendar:get` (mount), `calendar:import`, `calendar:clear`, `calendar:loaded`, `calendar:error`.
+- Tests: 56/56 PASS (CalendarPage 10, navigation 4, HubApp 24, HubApp.bridge 2, NextRaceCard 7, LastActivityCard 6, V52CalendarStrip 3). CalendarPage tests: heading, mount emite get, import vacío no emite y muestra error, import válido emite con text/timezone/source, upcoming desde loaded, past desde loaded, error desde calendar:error, clear con confirm=true emite, clear con confirm=false no emite, anti-fake (Sebring/COTA/Paul Ricard no aparecen).
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check solo warnings preexistentes en hub_main.html.
+- Archivos creados: `frontend/src/hub/pages/CalendarPage.tsx`, `frontend/src/hub/pages/CalendarPage.test.tsx`.
+- Archivos modificados: `frontend/src/hub/navigation.ts`, `frontend/src/hub/navigation.test.ts`, `frontend/src/hub/HubApp.tsx`, `frontend/src/hub/HubApp.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, AppSettings, WidgetStudio, LayoutStudio, WIDGETS, Auth, Launcher, Roadmap, Settings, overlay runtime, hub_main.html, archivos untracked ajenos.
+- Recordatorios, seguir carrera y overlay banner quedan para CALENDAR-02-C/D.
+- Sin commit.

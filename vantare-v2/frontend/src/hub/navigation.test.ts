@@ -7,6 +7,7 @@ describe("hub navigation contract", () => {
       "dashboard",
       "profiles",
       "launcher",
+      "calendar",
       "engineer",
       "telemetry",
       "roadmap",
@@ -18,6 +19,7 @@ describe("hub navigation contract", () => {
     expect(isSection("launcher")).toBe(true);
     expect(isSection("dashboard")).toBe(true);
     expect(isSection("roadmap")).toBe(true);
+    expect(isSection("calendar")).toBe(true);
     expect(isSection("plans")).toBe(false);
     expect(isSection("")).toBe(false);
   });
@@ -27,6 +29,7 @@ describe("hub navigation contract", () => {
       "Hub",
       "Overlays Studio",
       "Launcher",
+      "Calendario",
       "Ingeniero",
       "Telemetría",
       "Roadmap",

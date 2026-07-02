@@ -528,5 +528,89 @@ describe("CalendarPage", () => {
       expect(screen.queryByText(/votos/i)).toBeNull();
       expect(screen.queryByText(/rating/i)).toBeNull();
     });
+
+    it("shows Seguir serie button on series not followed", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: [] }));
+      expect(screen.getByTestId("series-follow-btn-lmu-fixed")).toBeTruthy();
+    });
+
+    it("clicking Seguir serie emits calendar:series:follow with seriesId", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: [] }));
+      eventsEmit.mockClear();
+      act(() => {
+        fireEvent.click(screen.getByTestId("series-follow-btn-lmu-fixed"));
+      });
+      expect(eventsEmit).toHaveBeenCalledWith("calendar:series:follow", { seriesId: "lmu-fixed" });
+    });
+
+    it("shows Siguiendo badge on followed series", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: ["lmu-fixed"] }));
+      expect(screen.getByTestId("series-following-badge-lmu-fixed")).toBeTruthy();
+      expect(screen.getByText("Siguiendo")).toBeTruthy();
+    });
+
+    it("shows Dejar de seguir button on followed series", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: ["lmu-fixed"] }));
+      expect(screen.getByTestId("series-unfollow-btn-lmu-fixed")).toBeTruthy();
+      expect(screen.getByText("Dejar de seguir")).toBeTruthy();
+    });
+
+    it("clicking Dejar de seguir emits calendar:series:unfollow with seriesId", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: ["lmu-fixed"] }));
+      eventsEmit.mockClear();
+      act(() => {
+        fireEvent.click(screen.getByTestId("series-unfollow-btn-lmu-fixed"));
+      });
+      expect(eventsEmit).toHaveBeenCalledWith("calendar:series:unfollow", { seriesId: "lmu-fixed" });
+    });
+
+    it("does not affect legacy event follow — calendar:follow still works for events", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", {
+        calendar: {
+          version: 1,
+          timezone: "UTC",
+          reminderMinutes: [30, 15, 10, 5, 2],
+          events: [event({ id: "ev-legacy", startTime: "2026-07-02T20:00:00Z" })],
+          series: [],
+          seriesPreviews: [],
+          followedEventIds: [],
+          followedSeriesIds: [],
+          updated: "",
+        },
+      });
+      eventsEmit.mockClear();
+      act(() => {
+        fireEvent.click(screen.getByTestId("calendar-follow-btn-ev-legacy"));
+      });
+      expect(eventsEmit).toHaveBeenCalledWith("calendar:follow", { eventId: "ev-legacy" });
+    });
+
+    it("does not affect legacy event unfollow — calendar:unfollow still works for events", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", {
+        calendar: {
+          version: 1,
+          timezone: "UTC",
+          reminderMinutes: [30, 15, 10, 5, 2],
+          events: [event({ id: "ev-legacy", startTime: "2026-07-02T20:00:00Z" })],
+          series: [],
+          seriesPreviews: [],
+          followedEventIds: ["ev-legacy"],
+          followedSeriesIds: [],
+          updated: "",
+        },
+      });
+      eventsEmit.mockClear();
+      act(() => {
+        fireEvent.click(screen.getByTestId("calendar-unfollow-btn-ev-legacy"));
+      });
+      expect(eventsEmit).toHaveBeenCalledWith("calendar:unfollow", { eventId: "ev-legacy" });
+    });
   });
 });

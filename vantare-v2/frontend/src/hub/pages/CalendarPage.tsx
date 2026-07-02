@@ -100,12 +100,21 @@ export function CalendarPage() {
     Events.Emit("calendar:unfollow", { eventId });
   }, []);
 
+  const handleSeriesFollow = useCallback((seriesId: string) => {
+    Events.Emit("calendar:series:follow", { seriesId });
+  }, []);
+
+  const handleSeriesUnfollow = useCallback((seriesId: string) => {
+    Events.Emit("calendar:series:unfollow", { seriesId });
+  }, []);
+
   const now = new Date();
   const hasSeries = calendar ? calendar.series && calendar.series.length > 0 : false;
   const seriesGroups = calendar ? groupSeriesByTier(calendar.series ?? [], calendar.seriesPreviews) : [];
   const upcoming = calendar ? pickUpcoming(calendar, now) : [];
   const past = calendar ? pickPast(calendar, now) : [];
   const followedIds = calendar?.followedEventIds;
+  const followedSeriesIds = calendar?.followedSeriesIds;
 
   return (
     <div className="flex flex-col gap-5">
@@ -185,7 +194,17 @@ export function CalendarPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {group.series.map((s) => {
                     const preview = calendar?.seriesPreviews?.find((p) => p.seriesId === s.id);
-                    return <CalendarSeriesCard key={s.id} series={s} preview={preview} />;
+                    const isSeriesFollowed = followedSeriesIds?.includes(s.id) ?? false;
+                    return (
+                      <CalendarSeriesCard
+                        key={s.id}
+                        series={s}
+                        preview={preview}
+                        isFollowed={isSeriesFollowed}
+                        onFollow={handleSeriesFollow}
+                        onUnfollow={handleSeriesUnfollow}
+                      />
+                    );
                   })}
                 </div>
               </div>

@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CalendarSeriesCard } from "./CalendarSeriesCard";
 
 afterEach(() => {
@@ -86,5 +86,121 @@ describe("CalendarSeriesCard", () => {
     expect(screen.queryByText(/rating/i)).toBeNull();
     expect(screen.queryByText(/SR/i)).toBeNull();
     expect(screen.queryByText(/DR/i)).toBeNull();
+  });
+
+  it("shows Seguir serie button when not followed", () => {
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={false} />);
+    expect(screen.getByTestId("series-follow-btn-lmu-fixed")).toBeTruthy();
+    expect(screen.getByText("Seguir serie")).toBeTruthy();
+  });
+
+  it("clicking Seguir serie calls onFollow with seriesId", () => {
+    const onFollow = vi.fn();
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={false} onFollow={onFollow} />);
+    fireEvent.click(screen.getByTestId("series-follow-btn-lmu-fixed"));
+    expect(onFollow).toHaveBeenCalledWith("lmu-fixed");
+  });
+
+  it("shows Siguiendo badge when followed", () => {
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={true} />);
+    expect(screen.getByTestId("series-following-badge-lmu-fixed")).toBeTruthy();
+    expect(screen.getByText("Siguiendo")).toBeTruthy();
+  });
+
+  it("shows Dejar de seguir button when followed", () => {
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={true} />);
+    expect(screen.getByTestId("series-unfollow-btn-lmu-fixed")).toBeTruthy();
+    expect(screen.getByText("Dejar de seguir")).toBeTruthy();
+  });
+
+  it("clicking Dejar de seguir calls onUnfollow with seriesId", () => {
+    const onUnfollow = vi.fn();
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={true} onUnfollow={onUnfollow} />);
+    fireEvent.click(screen.getByTestId("series-unfollow-btn-lmu-fixed"));
+    expect(onUnfollow).toHaveBeenCalledWith("lmu-fixed");
+  });
+
+  it("does not render follow UI when isFollowed is undefined and no handlers passed", () => {
+    render(<CalendarSeriesCard series={BASE_SERIES} />);
+    expect(screen.queryByTestId("series-follow-btn-lmu-fixed")).toBeNull();
+    expect(screen.queryByTestId("series-following-badge-lmu-fixed")).toBeNull();
+    expect(screen.queryByTestId("series-unfollow-btn-lmu-fixed")).toBeNull();
+  });
+
+  it("Seguir serie button has aria-pressed=false", () => {
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={false} onFollow={vi.fn()} />);
+    const btn = screen.getByTestId("series-follow-btn-lmu-fixed");
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("Seguir serie button has accessible name with series name", () => {
+    render(<CalendarSeriesCard series={BASE_SERIES} isFollowed={false} onFollow={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Seguir serie LMU Fixed" })
+    ).toBeTruthy();
+  });
+
+  it("Dejar de seguir button has aria-pressed=true", () => {
+    render(
+      <CalendarSeriesCard
+        series={BASE_SERIES}
+        isFollowed={true}
+        onUnfollow={vi.fn()}
+      />
+    );
+    const btn = screen.getByTestId("series-unfollow-btn-lmu-fixed");
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("Dejar de seguir button has accessible name with series name", () => {
+    render(
+      <CalendarSeriesCard
+        series={BASE_SERIES}
+        isFollowed={true}
+        onUnfollow={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: "Dejar de seguir serie LMU Fixed" })
+    ).toBeTruthy();
+  });
+
+  it("Siguiendo badge has aria-label with series name", () => {
+    render(
+      <CalendarSeriesCard
+        series={BASE_SERIES}
+        isFollowed={true}
+        onUnfollow={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByTestId("series-following-badge-lmu-fixed").getAttribute("aria-label")
+    ).toBe("Siguiendo LMU Fixed");
+  });
+
+  it("follow/unfollow callbacks still receive series.id", () => {
+    const onFollow = vi.fn();
+    const onUnfollow = vi.fn();
+    const { rerender } = render(
+      <CalendarSeriesCard
+        series={BASE_SERIES}
+        isFollowed={false}
+        onFollow={onFollow}
+        onUnfollow={onUnfollow}
+      />
+    );
+    fireEvent.click(screen.getByTestId("series-follow-btn-lmu-fixed"));
+    expect(onFollow).toHaveBeenCalledWith("lmu-fixed");
+    expect(onUnfollow).not.toHaveBeenCalled();
+    rerender(
+      <CalendarSeriesCard
+        series={BASE_SERIES}
+        isFollowed={true}
+        onFollow={onFollow}
+        onUnfollow={onUnfollow}
+      />
+    );
+    fireEvent.click(screen.getByTestId("series-unfollow-btn-lmu-fixed"));
+    expect(onUnfollow).toHaveBeenCalledWith("lmu-fixed");
   });
 });

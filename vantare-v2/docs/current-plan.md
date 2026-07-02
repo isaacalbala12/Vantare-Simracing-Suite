@@ -321,6 +321,33 @@ Nota CALENDAR-05-E1 (2026-07-03):
 - Test suite completo `./internal/calendar/...`: `TestParse_AcceptsValidLines` falla (preexistente, fixture con 2027 vs test espera 2026), no causada por este cambio.
 - Sin commit, sin tag, sin release.
 
+Nota CALENDAR-05-E2 (2026-07-03):
+- Implementado frontend de follow/unfollow de series oficiales LMU (CALENDAR-05-E2).
+- `CalendarSeriesCard.tsx`: anadidas props `isFollowed?: boolean`, `onFollow?: (seriesId: string) => void`, `onUnfollow?: (seriesId: string) => void`. Nueva seccion follow/unfollow con boton "Seguir serie" (rojo) cuando `isFollowed === false`, y badge "Siguiendo" + boton "Dejar de seguir" cuando `isFollowed === true`. No renderiza nada cuando `isFollowed` es `undefined` (sin handlers).
+- `CalendarPage.tsx`: leido `calendar.followedSeriesIds`, anadidos `handleSeriesFollow` y `handleSeriesUnfollow` que emiten `calendar:series:follow` y `calendar:series:unfollow` respectivamente. Cada `CalendarSeriesCard` recibe `isFollowed` (desde `followedSeriesIds`), `onFollow` y `onUnfollow`. Eventos legacy `calendar:follow`/`calendar:unfollow` para eventos intactos.
+- `CalendarSeriesCard.test.tsx`: 6 tests nuevos (Seguir serie visible, click llama onFollow, Siguiendo visible, Dejar de seguir visible, click llama onUnfollow, no renderiza sin handlers). Total: 12 PASS.
+- `CalendarPage.test.tsx`: 6 tests nuevos para series follow/unfollow + 2 tests anti-regresion legacy. Total: 39 PASS.
+- Accesibilidad: todos los botones tienen texto visible ("Seguir serie", "Dejar de seguir"), no icon-only. Badge "Siguiendo" visible con aria equivalente.
+- Scope: solo follow/unfollow de series. No reminders, no import UI, no cambios en eventos legacy.
+- Checks: `pnpm test CalendarPage CalendarSeriesCard` 51/51 PASS, `pnpm test` 1028/1028 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/calendar/CalendarSeriesCard.tsx`, `frontend/src/hub/calendar/CalendarSeriesCard.test.tsx`, `frontend/src/hub/pages/CalendarPage.tsx`, `frontend/src/hub/pages/CalendarPage.test.tsx`, `docs/current-plan.md`.
+- Sin commit.
+
+Nota CALENDAR-05-E3 (2026-07-03):
+- Pulido accesible de los controles "Seguir serie" / "Dejar de seguir" en `CalendarSeriesCard` sin cambiar contratos, eventos Wails, ni layout.
+- `CalendarSeriesCard.tsx`: anadidos atributos ARIA al bloque follow/unfollow sin alterar handlers, clases ni data-testid.
+  - Boton "Seguir serie" (`series-follow-btn-{id}`): `aria-pressed="false"` y `aria-label="Seguir serie {series.name}"`.
+  - Boton "Dejar de seguir" (`series-unfollow-btn-{id}`): `aria-pressed="true"` y `aria-label="Dejar de seguir serie {series.name}"`.
+  - Badge "Siguiendo" (`series-following-badge-{id}`): `aria-label="Siguiendo {series.name}"` para que lectores de pantalla lo lean con contexto de la serie.
+- Texto visible intacto: "Seguir serie" y "Dejar de seguir" siguen renderizandose dentro del boton; el `aria-label` anade contexto, no sustituye.
+- `data-testid` y nombres de eventos Wails (`calendar:series:follow`, `calendar:series:unfollow`) intactos.
+- `CalendarSeriesCard.test.tsx`: 6 tests nuevos (Seguir serie aria-pressed=false, Seguir serie accessible name con nombre, Dejar de seguir aria-pressed=true, Dejar de seguir accessible name con nombre, badge Siguiendo aria-label con nombre, callbacks siguen recibiendo series.id con rerender). Total: 18 PASS.
+- Scope: solo `CalendarSeriesCard.tsx`, `CalendarSeriesCard.test.tsx`, `docs/current-plan.md`. No se toco Go, CalendarPage, calendar-store, calendar-types, hub_main.html, ni archivos untracked.
+- Checks: `pnpm test CalendarSeriesCard` 18/18 PASS, tsc OK, lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/calendar/CalendarSeriesCard.tsx`, `frontend/src/hub/calendar/CalendarSeriesCard.test.tsx`, `docs/current-plan.md`.
+- Sin commit, sin tag, sin release.
+
+
 Nota LAUNCHER-01 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-launcher-01-sim-launcher.md`. PLAN ONLY, sin implementacion. Primer corte del launcher de simuladores: solo LMU en Windows + Steam (`steam://run/2399420` o `.exe` local). Sustituye `EmptyLauncher.tsx` por `LauncherCard`, anade `LauncherService` en Go y bloque `Launchers` en `AppSettings`. Fuera de v0.1.x: multi-sim, Linux/Proton, procesos supervisados, instalacion automatica de apps externas, hotkey "abrir LMU", UI de edicion de `AssociatedApps`.
 - Adapta el copy del modal BetaWelcome segun el tipo de usuario (beginner/intermediate/advanced/creator/organizer). El modal es obligatorio: ya no tiene boton X/cerrar y el boton "Empezar" esta disabled hasta seleccionar un rol. Asi nunca se persiste `betaWelcomeCompleted` sin un rol.

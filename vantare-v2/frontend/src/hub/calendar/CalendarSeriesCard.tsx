@@ -4,6 +4,9 @@ import { tierLabel, TIER_ACCENT } from "./calendar-tier";
 export type CalendarSeriesCardProps = {
   series: RaceSeries;
   preview?: RaceSeriesPreview;
+  isFollowed?: boolean;
+  onFollow?: (seriesId: string) => void;
+  onUnfollow?: (seriesId: string) => void;
 };
 
 function TierBadge({ tier }: { tier: string }) {
@@ -16,7 +19,7 @@ function TierBadge({ tier }: { tier: string }) {
   );
 }
 
-export function CalendarSeriesCard({ series, preview }: CalendarSeriesCardProps) {
+export function CalendarSeriesCard({ series, preview, isFollowed, onFollow, onUnfollow }: CalendarSeriesCardProps) {
   const scheduleLabel = preview?.scheduleLabel;
   const nextStarts = preview?.nextStarts;
 
@@ -112,6 +115,44 @@ export function CalendarSeriesCard({ series, preview }: CalendarSeriesCardProps)
           ))}
         </div>
       ) : null}
+
+      {/* Follow / Unfollow */}
+      {isFollowed !== undefined && (
+        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2">
+          {isFollowed ? (
+            <>
+              <span
+                className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600/20 text-emerald-400 border border-emerald-600/30"
+                data-testid={`series-following-badge-${series.id}`}
+                aria-label={`Siguiendo ${series.name}`}
+              >
+                Siguiendo
+              </span>
+              <button
+                type="button"
+                onClick={() => onUnfollow?.(series.id)}
+                className="px-2.5 py-1 rounded-md text-[10px] font-bold text-vantare-textMuted bg-white/5 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
+                data-testid={`series-unfollow-btn-${series.id}`}
+                aria-pressed="true"
+                aria-label={`Dejar de seguir serie ${series.name}`}
+              >
+                Dejar de seguir
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onFollow?.(series.id)}
+              className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-vantare-red-600 hover:bg-vantare-red-500 text-white transition-colors"
+              data-testid={`series-follow-btn-${series.id}`}
+              aria-pressed="false"
+              aria-label={`Seguir serie ${series.name}`}
+            >
+              Seguir serie
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }

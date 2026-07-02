@@ -82,8 +82,8 @@ Nota HUB-06-C (2026-07-01):
 - Eventos preservados: `engineer:status:get`, `engineer:enabled:set`, `engineer:spotter:set`, `engineer:source:set`, `engineer:sensitivity:set`, `engineer:status`, `engineer:notification`.
 - Test ids preservados: `connection-badge`, `toggle-enabled`, `toggle-spotter`, `select-source`, `select-sensitivity`, `notification-${id}`.
 - Fake data evitada: no "Carlos (Ingeniero)", no "12 perfiles compatibles", no "LMU, iRacing y Assetto Corsa", no "Marcos/Lucía/James/Hugo" (voces fake), no "Probar voz", no "API key TTS", no sliders de voz/velocidad/volumen.
-- Tests: 12 PASS (EngineerPage). 3 tests nuevos: botón avanzado disabled, footer honesto, anti-fake extendido (voces, TTS, sliders). Tests existentes intactos.
-- Checks: test 12/12 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Tests: 15 PASS (EngineerPage). 3 tests nuevos: botón avanzado disabled, footer honesto, anti-fake extendido (voces, TTS, sliders). Tests existentes intactos.
+- Checks: test 15/15 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK.
 - Archivos tocados: `frontend/src/hub/pages/EngineerPage.tsx`, `frontend/src/hub/pages/EngineerPage.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: Go/backend, eventos Wails, Auth/Supabase, Dashboard/Launcher/Overlays/Telemetry/Settings, index.css, dependencias.
 - Sin commit.
@@ -1405,6 +1405,27 @@ HUB-07-C/D (2026-07-01):
 - Checks: test 10/10 PASS, tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes hub_main.html/pnpm-workspace.yaml).
 - Archivos tocados: `frontend/src/hub/pages/EngineerPage.tsx`, `frontend/src/hub/pages/EngineerPage.test.tsx`, `frontend/src/hub/pages/TelemetryPage.tsx`, `frontend/src/hub/pages/TelemetryPage.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: Go/backend, Dashboard/Launcher/Overlays/Settings, V52Shell, index.css, Auth/Supabase, dependencias.
+- Sin commit.
+
+Nota REGRESSION-01 (2026-07-02):
+- **Corrección de regresión P1 en EngineerPage**: el review global detectó que HUB-07-C reemplazó la UI funcional de EngineerPage por un placeholder estático "Próximamente", perdiendo toggles, selects, connection badge, timeline de notificaciones y eventos Wails interactivos.
+- **Solución**: restaurada la versión funcional del commit `ae603a2` (toggles, selects, connection badge, timeline de notificaciones, eventos Wails completos) y añadido un banner visual "En desarrollo" en la parte superior de la página.
+- Banner "En desarrollo": barra horizontal con fondo gradiente ámbar, texto "En desarrollo" en mono, línea decorativa, y texto "Módulo de ingeniero — funcionalidad activa bajo el banner". Sin eliminar ni ocultar la UI funcional.
+- Funcionalidad restaurada:
+  - Toggle "Ingeniero de pista activo" emite `engineer:enabled:set`
+  - Toggle "Spotter activo" emite `engineer:spotter:set`
+  - Select "Fuente de Telemetría" emite `engineer:source:set`
+  - Select "Sensibilidad del Spotter" emite `engineer:sensitivity:set`
+  - Connection badge con estado CONECTADO/DESCONECTADO
+  - Timeline de notificaciones con scroll, empty state honesto, hover glow
+  - Eventos Wails: `engineer:status:get` al montar, `engineer:status` y `engineer:notification` escuchados
+  - Botón disabled "Opciones avanzadas" con title honesto
+  - Footer honesto "Configuración aplicada localmente · guardado automático"
+- Fake data evitada: no "Carlos (Ingeniero)", no "12 perfiles compatibles", no "LMU, iRacing y Assetto Corsa", no voces/TTS/sliders fake.
+- Tests: 15/15 PASS (EngineerPage). Tests nuevos: banner "En desarrollo" visible, texto "funcionalidad activa bajo el banner" visible. Tests restaurados: emite `engineer:status:get` al montar, escucha `engineer:status` y `engineer:notification`, toggle enabled emite `engineer:enabled:set`, toggle spotter emite `engineer:spotter:set`, select source emite `engineer:source:set`, select sensitivity emite `engineer:sensitivity:set`, connection badge muestra CONECTADO, notificaciones se renderizan desde status y desde evento real-time, no contiene fake data del HTML.
+- Checks: test 15/15 PASS, tsc OK, lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/EngineerPage.tsx`, `frontend/src/hub/pages/EngineerPage.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: Go/backend, Auth/Supabase, Dashboard/Launcher/Overlays/Telemetry/Settings, V52Shell, index.css, dependencias.
 - Sin commit.
 
 HUB-07-E (2026-07-01):

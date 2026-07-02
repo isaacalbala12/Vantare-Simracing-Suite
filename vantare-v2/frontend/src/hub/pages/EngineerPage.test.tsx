@@ -68,6 +68,12 @@ describe('EngineerPage', () => {
     expect(screen.getByText(/Configura el ingeniero de pista y el spotter/i)).toBeDefined();
   });
 
+  it('renders development banner', () => {
+    render(<EngineerPage />);
+    expect(screen.getByText('En desarrollo')).toBeDefined();
+    expect(screen.getByText(/Módulo de ingeniero — funcionalidad activa bajo el banner/i)).toBeDefined();
+  });
+
   it('does not render unimplemented fake voice profile data', () => {
     render(<EngineerPage />);
 
@@ -102,6 +108,12 @@ describe('EngineerPage', () => {
   it('requests status on mount', () => {
     render(<EngineerPage />);
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:status:get');
+  });
+
+  it('listens to engineer:status and engineer:notification events', () => {
+    render(<EngineerPage />);
+    expect(runtimeMock.handlers.has('engineer:status')).toBe(true);
+    expect(runtimeMock.handlers.has('engineer:notification')).toBe(true);
   });
 
   it('displays connection status and recent messages from status', () => {
@@ -161,5 +173,17 @@ describe('EngineerPage', () => {
     fireEvent.change(select, { target: { value: 'aggressive' } });
 
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:sensitivity:set', 'aggressive');
+  });
+
+  it('does not contain fake data from old HTML mock', () => {
+    render(<EngineerPage />);
+    expect(screen.queryByText(/12 perfiles compatibles/i)).toBeNull();
+    expect(screen.queryByText(/Carlos/i)).toBeNull();
+    expect(screen.queryByText(/Marcos/i)).toBeNull();
+    expect(screen.queryByText(/Lucía/i)).toBeNull();
+    expect(screen.queryByText(/James/i)).toBeNull();
+    expect(screen.queryByText(/Hugo/i)).toBeNull();
+    expect(screen.queryByText(/Probar voz/i)).toBeNull();
+    expect(screen.queryByText(/API key TTS/i)).toBeNull();
   });
 });

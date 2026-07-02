@@ -17,10 +17,8 @@ export function EngineerPage() {
   const [notifications, setNotifications] = useState<EngineerNotification[]>([]);
 
   useEffect(() => {
-    // Request initial status
     Events.Emit('engineer:status:get');
 
-    // Listen to status updates
     const unsubStatus = Events.On('engineer:status', (event: { data: EngineerStatus }) => {
       setStatus(event.data);
       if (event.data.recentMessages) {
@@ -28,10 +26,8 @@ export function EngineerPage() {
       }
     });
 
-    // Listen to real-time notifications
     const unsubNotification = Events.On('engineer:notification', (event: { data: EngineerNotification }) => {
       setNotifications((prev) => {
-        // Keep the latest 50 notifications, same as backend
         const next = [...prev, event.data];
         if (next.length > 50) {
           return next.slice(next.length - 50);
@@ -62,7 +58,6 @@ export function EngineerPage() {
     Events.Emit('engineer:sensitivity:set', e.target.value);
   };
 
-  // Helper to format timestamp
   const formatTime = (timestamp: number) => {
     try {
       return new Date(timestamp).toLocaleTimeString();
@@ -73,6 +68,19 @@ export function EngineerPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Development banner */}
+      <div className="relative rounded-2xl overflow-hidden border border-amber-500/20 bg-gradient-to-r from-amber-950/20 via-amber-900/10 to-amber-950/20 opacity-0 animate-fade-in-up">
+        <div className="flex items-center gap-3 px-5 py-3">
+          <span className="text-[10px] font-bold font-mono uppercase tracking-[.28em] text-amber-400 shrink-0">
+            En desarrollo
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-r from-amber-500/20 to-transparent" />
+          <span className="text-[11px] text-amber-300/60">
+            Módulo de ingeniero — funcionalidad activa bajo el banner
+          </span>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="opacity-0 animate-fade-in-up flex items-start justify-between gap-4">
         <div>

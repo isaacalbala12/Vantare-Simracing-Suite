@@ -63,13 +63,13 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
               className="w-8 h-8"
               viewBox="0 0 40 40"
               fill="none"
-              style={{ filter: 'drop-shadow(0 0 10px rgba(139, 0, 0, 0.6))' }}
+              style={{ filter: 'drop-shadow(0 0 10px rgba(255, 59, 59, 0.5))' }}
             >
               <defs>
                 <linearGradient id="logoGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#FF6B6B" />
-                  <stop offset="50%" stopColor="#C1121F" />
-                  <stop offset="100%" stopColor="#800020" />
+                  <stop offset="0%" stopColor="#ff4d4d" />
+                  <stop offset="55%" stopColor="#e21b1b" />
+                  <stop offset="100%" stopColor="#9a0606" />
                 </linearGradient>
               </defs>
               <path

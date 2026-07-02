@@ -52,8 +52,8 @@
   --v-success: #34D399;
   --v-warning: #FFD700;
   --v-glass-alpha: 0.55;
-  --v-glass-blur: 20px;
-  --v-card-shadow: 0 4px 20px rgba(139, 0, 0, 0.1);
+  --v-glass-blur: 0px;
+  --v-card-shadow: 0 24px 60px rgba(255, 59, 59, 0.18), 0 0 100px rgba(255, 59, 59, 0.1);
   --v-hover-translate-y: -2px;
   --v-motion-scale: 1;
   --v-font-sans: 'Inter', sans-serif;
@@ -90,6 +90,7 @@ body {
 	background: var(--v-bg);
 	color: var(--v-text);
 	font-family: var(--v-font-sans);
+	-webkit-font-smoothing: antialiased;
 }
 
 html.desktop-overlay,
@@ -125,12 +126,12 @@ body.hub.desktop-overlay #root {
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-gutter: stable;
-	scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+	scrollbar-color: rgba(245, 245, 245, 0.16) transparent;
 }
 
 .scrollable-main::-webkit-scrollbar {
-	width: 4px;
-	height: 4px;
+	width: 6px;
+	height: 6px;
 }
 
 .scrollable-main::-webkit-scrollbar-track {
@@ -138,12 +139,12 @@ body.hub.desktop-overlay #root {
 }
 
 .scrollable-main::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.08);
+	background: rgba(245, 245, 245, 0.16);
 	border-radius: 9999px;
 }
 
 .scrollable-main::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.18);
+	background: #ff3b3b;
 }
 
 .scrollable-main::-webkit-scrollbar-corner {
@@ -172,9 +173,9 @@ body:not(.hub) #root {
 
 @layer components {
   .glass-panel {
-    background: color-mix(in srgb, var(--v-panel) calc(var(--v-glass-alpha) * 100%), transparent);
-    backdrop-filter: blur(var(--v-glass-blur));
-    -webkit-backdrop-filter: blur(var(--v-glass-blur));
+    background: rgba(20, 20, 20, var(--v-glass-alpha));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border: 1px solid rgba(245,245,245,.08);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -184,14 +185,13 @@ body:not(.hub) #root {
 
   .card-sleek {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    background: linear-gradient(180deg, rgba(20,20,20,0.55) 0%, rgba(15,15,15,0.55) 100%);
+    background: rgba(20,20,20,0.55);
     border: 1px solid rgba(245,245,245,.08);
   }
   .card-sleek:hover {
     transform: translateY(var(--v-hover-translate-y));
-    background: linear-gradient(180deg, rgba(25,25,25,0.65) 0%, rgba(20,20,20,0.65) 100%);
     border-color: rgba(255,59,59,.4);
-    box-shadow: 0 24px 60px rgba(255,59,59,.18), 0 0 100px rgba(255,59,59,.10);
+    box-shadow: var(--v-card-shadow);
   }
 
   .btn-primary {
@@ -201,7 +201,7 @@ body:not(.hub) #root {
   }
   .btn-primary:hover {
     background: linear-gradient(135deg, #ff4d4d 0%, #b00808 100%);
-    box-shadow: 0 0 20px rgba(193, 18, 31, 0.4);
+    box-shadow: 0 0 20px rgba(255,59,59,.4);
     transform: translateY(var(--v-hover-translate-y));
   }
 
@@ -253,8 +253,8 @@ body:not(.hub) #root {
   }
 
   .pro-badge {
-    background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%);
-    color: #000;
+    background: linear-gradient(135deg, #ff3b3b 0%, #9a0606 100%);
+    color: #fff;
     font-weight: 700;
     font-size: 0.65rem;
     padding: 2px 6px;
@@ -284,9 +284,8 @@ body:not(.hub) #root {
     inset: 0;
     pointer-events: none;
     mix-blend-mode: overlay;
-    opacity: 0.25;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-    background-size: 3px 3px;
+    opacity: 0.55;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
 
   .v52-vignette {
@@ -294,13 +293,13 @@ body:not(.hub) #root {
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 110% 75% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.35) 100%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, transparent 15%, transparent 85%, rgba(0, 0, 0, 0.35) 100%);
+      radial-gradient(ellipse 110% 75% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.45) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, transparent 15%, transparent 85%, rgba(0, 0, 0, 0.45) 100%);
   }
 
   .v52-eyebrow {
     font-family: var(--v-font-sans);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: .32em;
     text-transform: uppercase;

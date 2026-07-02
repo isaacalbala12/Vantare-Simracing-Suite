@@ -16,6 +16,10 @@ Nota WIDGET-DESIGN-02 (2026-07-01):
 - El HTML `docs/overlay-glassmorphism-pro.html` se tratará como pack visual oficial nuevo (`glassmorphism-pro`) para widgets existentes, no como reemplazo global ni como fuente de widgets mock.
 - Primeros cortes: plumbing `variant.themeId` -> runtime style, diseños oficiales para relative/standings/delta/pedals, runtime condicional solo para esos widgets. Widgets nuevos con datos faltantes quedan diferidos.
 
+Nota UI-V52-COLOR-02 (2026-07-02):
+- Pase global acotado de fidelidad visual v5.2 para acercar el Hub al HTML de referencia: grain SVG, paneles sin blur, cards planas, brillo rojo en hover/botones/logo y eyebrow mas visible.
+- Scope: `frontend/src/index.css` y `frontend/src/hub/components/Topbar.tsx`. Sin cambios de layout, datos, navegación, calendario, roadmap ni backend.
+
 Nota WIDGET-DESIGN-02-A (2026-07-01):
 - Añadido plumbing de estilo para que `props.variant.themeId` active el estilo runtime cuando `props.style` no existe.
 - Añadido `glassmorphism-pro` al catálogo de estilos para widgets existentes.
@@ -1599,4 +1603,10 @@ Nota CALENDAR-02-D2 (2026-07-02):
 - Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes en hub_main.html).
 - Archivos modificados: `frontend/src/overlay/CompositeApp.tsx`, `frontend/src/overlay/CompositeApp.test.tsx`, `frontend/src/overlay/ObsOverlayApp.tsx`, `frontend/src/overlay/ObsOverlayApp.test.tsx`, `docs/current-plan.md`.
 - No se tocaron: WIDGETS, WidgetStudio, LayoutStudio, Go/backend, AppSettings, perfil JSON/schema, calendario Hub, dependencias.
+- Sin commit.
+
+Nota ROADMAP-02 (2026-07-02):
+- RoadmapPage acercada al HTML v5.2 por microcortes: hero, timeline/fases, progreso/hitos y feedback honesto.
+- Datos siguen viniendo de roadmap-data.ts. Sin backend ni fake claims.
+- Archivos tocados: `frontend/src/hub/pages/RoadmapPage.tsx`, `frontend/src/hub/pages/RoadmapPage.test.tsx`, `docs/current-plan.md`.
 - Sin commit.

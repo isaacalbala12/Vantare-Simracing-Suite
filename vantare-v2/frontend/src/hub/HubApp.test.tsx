@@ -726,7 +726,7 @@ describe("HubApp gate (production)", () => {
     );
     fireEvent.click(sidebarRoadmap);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Roadmap publico" })).toBeTruthy();
+      expect(screen.getByRole("heading", { level: 1, name: "Desarrollo Vantare" })).toBeTruthy();
     });
   });
 });

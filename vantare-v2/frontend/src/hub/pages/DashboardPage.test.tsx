@@ -128,4 +128,13 @@ describe("DashboardPage — beta honest hub", () => {
     fireEvent.click(cta);
     expect(onUseRecommended).toHaveBeenCalledTimes(1);
   });
+
+  it("renders Ver roadmap CTA in Ingeniero section", () => {
+    const onNavigate = vi.fn();
+    render(<DashboardPage onNavigate={onNavigate} />);
+    const cta = screen.getByText(/Ver roadmap/i);
+    expect(cta).toBeTruthy();
+    fireEvent.click(cta);
+    expect(onNavigate).toHaveBeenCalledWith("roadmap");
+  });
 });

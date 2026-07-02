@@ -564,6 +564,7 @@ describe("HubApp gate (production)", () => {
       expect(screen.getByTestId("v52-sidebar-launcher")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-engineer")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-telemetry")).toBeTruthy();
+      expect(screen.getByTestId("v52-sidebar-roadmap")).toBeTruthy();
       expect(screen.getByTestId("v52-sidebar-setup")).toBeTruthy();
     });
   });
@@ -590,6 +591,30 @@ describe("HubApp gate (production)", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Telemetría" })).toBeTruthy();
       expect(screen.getByText(/en desarrollo/i)).toBeTruthy();
+    });
+  });
+
+  it("renders Roadmap page when roadmap section is selected", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    const sidebarRoadmap = await waitFor(() =>
+      screen.getByTestId("v52-sidebar-roadmap"),
+    );
+    fireEvent.click(sidebarRoadmap);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Roadmap publico" })).toBeTruthy();
     });
   });
 });

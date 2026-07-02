@@ -8,6 +8,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { EngineerPage } from './pages/EngineerPage';
 import { LauncherPage } from './pages/LauncherPage';
 import { TelemetryPage } from './pages/TelemetryPage';
+import { RoadmapPage } from './pages/RoadmapPage';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
@@ -197,6 +198,7 @@ function HubShell() {
       {section === "setup" && <SettingsPage />}
       {section === "engineer" && <EngineerPage />}
       {section === "telemetry" && <TelemetryPage />}
+      {section === "roadmap" && <RoadmapPage />}
     </V52Shell>
   );
 }

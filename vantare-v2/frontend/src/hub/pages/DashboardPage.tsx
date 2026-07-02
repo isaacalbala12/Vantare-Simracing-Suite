@@ -109,6 +109,13 @@ export function DashboardPage({
                 47%
               </span>
             </div>
+            <button
+              type="button"
+              onClick={() => handleNavigate("roadmap")}
+              className="mt-3 text-[10px] font-bold uppercase tracking-[.22em] text-vantare-textMuted hover:text-white transition-colors"
+            >
+              Ver roadmap →
+            </button>
           </div>
         </div>
       </section>

@@ -9,6 +9,7 @@ describe("hub navigation contract", () => {
       "launcher",
       "engineer",
       "telemetry",
+      "roadmap",
       "setup",
     ]);
   });
@@ -16,6 +17,7 @@ describe("hub navigation contract", () => {
   it("accepts only known sections", () => {
     expect(isSection("launcher")).toBe(true);
     expect(isSection("dashboard")).toBe(true);
+    expect(isSection("roadmap")).toBe(true);
     expect(isSection("plans")).toBe(false);
     expect(isSection("")).toBe(false);
   });
@@ -27,12 +29,15 @@ describe("hub navigation contract", () => {
       "Launcher",
       "Ingeniero",
       "Telemetría",
+      "Roadmap",
       "Ajustes",
     ]);
   });
 
-  it("exports a Section type that includes launcher", () => {
+  it("exports a Section type that includes launcher and roadmap", () => {
     const section: Section = "launcher";
     expect(section).toBe("launcher");
+    const roadmap: Section = "roadmap";
+    expect(roadmap).toBe("roadmap");
   });
 });

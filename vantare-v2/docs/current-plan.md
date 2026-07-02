@@ -26,6 +26,11 @@ Nota WIDGET-DESIGN-02-B (2026-07-01):
 - Aplicar un diseño conserva `position` y usa `variant.themeId = "glassmorphism-pro"`.
 - Sin cambios runtime todavía; si los widgets siguen parecidos, se corrige en WIDGET-DESIGN-02-C.
 
+Nota WIDGET-DESIGN-02-C (2026-07-01):
+- Runtime de relative, standings, delta y pedals reconoce `glassmorphism-pro` de forma condicional.
+- Estilos existentes se mantienen como fallback; no se cambió LayoutStudio, WidgetStudio ni backend.
+- Pedals V2/V3, Broadcast Tower y widgets nuevos quedan para planes futuros con datos reales.
+
 Nota ROADMAP-01 (2026-07-01):
 - Plan guardado en `docs/superpowers/plans/2026-07-01-roadmap-01-public-roadmap.md`.
 - El HTML `C:\Users\isaac\Desktop\Vantare-Overlays\roadmap_v5.2.html` se tratara como referencia visual, no como fuente de verdad.

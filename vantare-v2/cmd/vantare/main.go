@@ -500,6 +500,24 @@ func main() {
 		log.Printf("warning: could not load calendar: %v (using empty)", err)
 	}
 
+	// Reminder loop (CALENDAR-02-C2-B): polls DueReminders every 30s and
+	// emits calendar:reminder for each new (eventId, minutesLeft) pair.
+	const calendarReminderInterval = 30 * time.Second
+	{
+		reminderTick := time.NewTicker(calendarReminderInterval)
+		defer reminderTick.Stop()
+		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, func(r calendar.Reminder) {
+			emitter.Emit("calendar:reminder", map[string]any{
+				"eventId":         r.EventID,
+				"title":           r.Title,
+				"track":           r.Track,
+				"minutesLeft":     r.MinutesLeft,
+				"startTime":       r.StartTime,
+				"registrationUrl": r.RegistrationURL,
+			})
+		})
+	}
+
 	// Launcher service for the simulator cards on the Hub dashboard
 	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
 	// fire-and-forget: it spawns the configured command and forgets it. No

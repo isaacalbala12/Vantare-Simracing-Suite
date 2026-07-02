@@ -55,14 +55,27 @@ type Reminder struct {
 	RegistrationURL string    `json:"registrationUrl,omitempty"`
 }
 
+// RaceSeriesPreview is a UI-safe summary of a race series. It contains the
+// series ID, a human-readable schedule label, and a small capped list of
+// upcoming start times. This is the primary way the frontend learns about
+// official series without receiving thousands of generated events.
+type RaceSeriesPreview struct {
+	SeriesID      string      `json:"seriesId"`
+	ScheduleLabel string      `json:"scheduleLabel"`
+	NextStarts    []time.Time `json:"nextStarts"`
+}
+
 // Calendar is the root document persisted to calendar-lmu.json.
 type Calendar struct {
-	Version          int         `json:"version"`
-	Timezone         string      `json:"timezone"`
-	ReminderMinutes  []int       `json:"reminderMinutes"`
-	Events           []RaceEvent `json:"events"`
-	FollowedEventIDs []string    `json:"followedEventIds,omitempty"`
-	Updated          time.Time   `json:"updated"`
+	Version           int                 `json:"version"`
+	Timezone          string              `json:"timezone"`
+	ReminderMinutes   []int               `json:"reminderMinutes"`
+	Events            []RaceEvent         `json:"events"`
+	FollowedEventIDs  []string            `json:"followedEventIds,omitempty"`
+	Series            []RaceSeries        `json:"series,omitempty"`
+	FollowedSeriesIDs []string            `json:"followedSeriesIds,omitempty"`
+	SeriesPreviews    []RaceSeriesPreview `json:"seriesPreviews,omitempty"`
+	Updated           time.Time           `json:"updated"`
 }
 
 // ErrInvalidLine is returned by the parser when a single line cannot be
@@ -151,11 +164,14 @@ func NewDefaultCalendar() Calendar {
 	rem := make([]int, len(DefaultReminderMinutes))
 	copy(rem, DefaultReminderMinutes)
 	return Calendar{
-		Version:          1,
-		Timezone:         DefaultTimezone,
-		ReminderMinutes:  rem,
-		Events:           []RaceEvent{},
-		FollowedEventIDs: []string{},
-		Updated:          time.Time{},
+		Version:           1,
+		Timezone:          DefaultTimezone,
+		ReminderMinutes:   rem,
+		Events:            []RaceEvent{},
+		FollowedEventIDs:  []string{},
+		Series:            []RaceSeries{},
+		FollowedSeriesIDs: []string{},
+		SeriesPreviews:    []RaceSeriesPreview{},
+		Updated:           time.Time{},
 	}
 }

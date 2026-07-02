@@ -47,6 +47,15 @@ func normaliseSeed(cal *Calendar) {
 	if cal.FollowedEventIDs == nil {
 		cal.FollowedEventIDs = []string{}
 	}
+	if cal.Series == nil {
+		cal.Series = []RaceSeries{}
+	}
+	if cal.FollowedSeriesIDs == nil {
+		cal.FollowedSeriesIDs = []string{}
+	}
+	if cal.SeriesPreviews == nil {
+		cal.SeriesPreviews = []RaceSeriesPreview{}
+	}
 }
 
 // validateSeed checks that every event passes RaceEvent.Validate and that no

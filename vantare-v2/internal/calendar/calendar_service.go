@@ -81,6 +81,15 @@ func (s *Service) loadLocked() error {
 	if raw.FollowedEventIDs == nil {
 		raw.FollowedEventIDs = []string{}
 	}
+	if raw.Series == nil {
+		raw.Series = []RaceSeries{}
+	}
+	if raw.FollowedSeriesIDs == nil {
+		raw.FollowedSeriesIDs = []string{}
+	}
+	if raw.SeriesPreviews == nil {
+		raw.SeriesPreviews = []RaceSeriesPreview{}
+	}
 	s.cal = raw
 	return nil
 }
@@ -94,9 +103,38 @@ func (s *Service) Calendar() Calendar {
 
 func (s *Service) cloneLocked() Calendar {
 	out := s.cal
-	out.Events = append([]RaceEvent(nil), s.cal.Events...)
-	out.ReminderMinutes = append([]int(nil), s.cal.ReminderMinutes...)
-	out.FollowedEventIDs = append([]string(nil), s.cal.FollowedEventIDs...)
+	out.Events = cloneSlice(s.cal.Events)
+	out.ReminderMinutes = cloneSlice(s.cal.ReminderMinutes)
+	out.FollowedEventIDs = cloneSlice(s.cal.FollowedEventIDs)
+	out.Series = cloneSlice(s.cal.Series)
+	out.FollowedSeriesIDs = cloneSlice(s.cal.FollowedSeriesIDs)
+	out.SeriesPreviews = cloneSeriesPreviews(s.cal.SeriesPreviews)
+	return out
+}
+
+// cloneSeriesPreviews returns a deep copy of a RaceSeriesPreview slice. Each
+// preview's NextStarts slice is independently allocated so that mutating an
+// element in the copy never affects the original.
+func cloneSeriesPreviews(src []RaceSeriesPreview) []RaceSeriesPreview {
+	if src == nil {
+		return []RaceSeriesPreview{}
+	}
+	out := make([]RaceSeriesPreview, len(src))
+	for i, p := range src {
+		out[i] = p
+		out[i].NextStarts = cloneSlice(p.NextStarts)
+	}
+	return out
+}
+
+// cloneSlice returns a non-nil copy of a slice. If the input is nil, an empty
+// slice is returned so that JSON serialisation produces [] instead of null.
+func cloneSlice[T any](src []T) []T {
+	if src == nil {
+		return []T{}
+	}
+	out := make([]T, len(src))
+	copy(out, src)
 	return out
 }
 
@@ -202,6 +240,145 @@ func (s *Service) ApplyBundledSeed(seed Calendar) error {
 	s.cal.Updated = s.now().UTC()
 
 	return s.persistLocked()
+}
+
+// ApplyOfficialSchedule loads the embedded weekly schedule, replaces old
+// bundled events with a bounded window of generated events, stores the
+// official series definitions, generates UI-safe series previews, prunes
+// invalid followed series IDs, and persists atomically. Non-bundled events
+// are preserved. A bad schedule logs a warning and does not mutate state.
+func (s *Service) ApplyOfficialSchedule(now time.Time) error {
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		return fmt.Errorf("official schedule: %w", err)
+	}
+
+	// Generate a bounded window of events for compatibility.
+	from, to := DefaultScheduleWindow(now)
+	events, err := ExpandSchedule(sched, from, to)
+	if err != nil {
+		return fmt.Errorf("official schedule: expand: %w", err)
+	}
+
+	// Build previews for each series.
+	previews := makeSeriesPreviews(sched, now)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Filter out existing bundled events.
+	var kept []RaceEvent
+	for _, ev := range s.cal.Events {
+		if ev.Source != BundledSource {
+			kept = append(kept, ev)
+		}
+	}
+
+	// Build protection sets for non-bundled events.
+	protectedKeys := make(map[string]struct{}, len(kept))
+	protectedIDs := make(map[string]struct{}, len(kept))
+	for _, ev := range kept {
+		protectedKeys[ev.Key()] = struct{}{}
+		protectedIDs[ev.ID] = struct{}{}
+	}
+
+	// Tag generated events with BundledSource, skipping protected ones.
+	var filtered []RaceEvent
+	for _, ev := range events {
+		if _, protected := protectedKeys[ev.Key()]; protected {
+			continue
+		}
+		if _, protected := protectedIDs[ev.ID]; protected {
+			continue
+		}
+		ev.Source = BundledSource
+		filtered = append(filtered, ev)
+	}
+
+	// Merge kept events with filtered generated events.
+	merged := dedupe(kept, filtered)
+
+	// Apply schedule metadata.
+	s.cal.Version = sched.Version
+	s.cal.Timezone = sched.Timezone
+	s.cal.Events = merged
+	s.cal.Series = sched.Series
+	s.cal.SeriesPreviews = previews
+	s.cal.FollowedEventIDs = pruneFollowedLocked(s.cal.FollowedEventIDs, merged)
+	// Prune followed series IDs that no longer exist in the schedule.
+	s.cal.FollowedSeriesIDs = pruneFollowedSeriesLocked(s.cal.FollowedSeriesIDs, sched.Series)
+	s.cal.Updated = s.now().UTC()
+
+	return s.persistLocked()
+}
+
+// makeSeriesPreviews generates UI-safe previews for all series in the
+// schedule. Each preview contains a human-readable schedule label and a
+// capped list (max 5) of upcoming start times from now.
+func makeSeriesPreviews(sched OfficialSchedule, now time.Time) []RaceSeriesPreview {
+	previews := make([]RaceSeriesPreview, 0, len(sched.Series))
+	const maxStarts = 5
+	previewWindow := now.Add(7 * 24 * time.Hour) // look ahead 7 days
+
+	for _, s := range sched.Series {
+		label := scheduleLabel(s)
+		var nextStarts []time.Time
+
+		// Expand a small window to get upcoming starts.
+		events, err := ExpandSeries(s, sched, now, previewWindow)
+		if err == nil {
+			for i, ev := range events {
+				if i >= maxStarts {
+					break
+				}
+				nextStarts = append(nextStarts, ev.StartTime)
+			}
+		}
+		if nextStarts == nil {
+			nextStarts = []time.Time{}
+		}
+
+		previews = append(previews, RaceSeriesPreview{
+			SeriesID:      s.ID,
+			ScheduleLabel: label,
+			NextStarts:    nextStarts,
+		})
+	}
+	return previews
+}
+
+// scheduleLabel returns a human-readable label for a series recurrence.
+// Daily interval series produce "Cada 15 min", "Cada 20 min", "Cada 30 min".
+// Weekly series produce "Wed Thu Fri Sat Sun Mon @ 02:00 06:00..."
+func scheduleLabel(s RaceSeries) string {
+	switch s.Recurrence.Kind {
+	case "interval":
+		return fmt.Sprintf("Cada %d min", s.Recurrence.IntervalMinutes)
+	case "weekly-slots":
+		days := strings.Join(s.Recurrence.Days, " ")
+		times := strings.Join(s.Recurrence.TimesUTC, " ")
+		return fmt.Sprintf("%s @ %s", days, times)
+	}
+	return ""
+}
+
+// pruneFollowedSeriesLocked removes followed series IDs that no longer exist
+// in the given series list. Callers must hold s.mu.
+func pruneFollowedSeriesLocked(followed []string, series []RaceSeries) []string {
+	exists := make(map[string]struct{}, len(series))
+	for _, s := range series {
+		exists[s.ID] = struct{}{}
+	}
+	out := make([]string, 0, len(followed))
+	for _, id := range followed {
+		if _, ok := exists[id]; ok {
+			out = append(out, id)
+		}
+	}
+	if out == nil {
+		return []string{}
+	}
+	return out
 }
 
 // Clear empties the calendar and persists the change.

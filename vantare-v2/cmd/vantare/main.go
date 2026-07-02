@@ -510,6 +510,15 @@ func main() {
 		log.Printf("warning: could not apply bundled seed: %v (using existing calendar)", err)
 	}
 
+	// Apply official LMU weekly schedule (CALENDAR-05-C). Replaces old
+	// bundled events with a bounded window of generated events, stores
+	// official series definitions, generates UI-safe series previews, and
+	// prunes invalid followed series IDs. A bad schedule logs a warning
+	// and does not block startup.
+	if err := calendarSvc.ApplyOfficialSchedule(time.Now()); err != nil {
+		log.Printf("warning: could not apply official schedule: %v (using existing calendar)", err)
+	}
+
 	// Reminder loop (CALENDAR-02-C2-B): polls DueReminders every 30s and
 	// emits calendar:reminder for each new (eventId, minutesLeft) pair.
 	const calendarReminderInterval = 30 * time.Second

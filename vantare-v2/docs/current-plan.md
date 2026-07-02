@@ -1649,3 +1649,20 @@ Nota CALENDAR-05-A+B (2026-07-02):
 - Checks ejecutados: `gofmt`, `go test -count=1 -run "TestLoad|TestValidate|TestExpand|TestMake|TestSort|TestEstimate|TestDefault" ./internal/calendar/...`, `go vet ./internal/calendar/...`, `git diff --check`.
 - Sin frontend, Wails, main.go, WidgetStudio, LayoutStudio, overlay runtime, Supabase, AppSettings, reminders, follow/unfollow.
 - Sin commit.
+
+Nota CALENDAR-05-C (2026-07-02):
+- Integración del schedule oficial LMU en `calendar.Service` (Task C del plan).
+- `Calendar` ahora incluye `Series []RaceSeries`, `FollowedSeriesIDs []string`, `SeriesPreviews []RaceSeriesPreview` con defaults seguros.
+- `RaceSeriesPreview` contiene `seriesId`, `scheduleLabel`, `nextStarts` (cap 5 por serie).
+- `Load()` normaliza los nuevos campos en archivos JSON antiguos (nil → []).
+- `cloneLocked()` deep-copia los nuevos slices usando `cloneSlice[T]` genérico (garantiza slices no-nil).
+- `ApplyOfficialSchedule(now)` en `Service`: carga `LoadWeeklySchedule()`, genera ventana acotada (24h pasado → 7d futuro), reemplaza eventos bundled viejos, preserva no-bundled, genera previews, poda follows inválidos, persiste atómicamente.
+- `scheduleLabel()` produce labels: `Cada 15 min`, `Cada 20 min`, `Cada 30 min` para interval; `Wed Thu Fri... @ 02:00 06:00...` para weekly-slots.
+- `pruneFollowedSeriesLocked()` poda series seguidas que ya no existen.
+- `normaliseSeed()` en `bundled_seed.go` actualizado para los 3 nuevos campos.
+- Wiring en `cmd/vantare/main.go`: `calendarSvc.ApplyOfficialSchedule(time.Now())` después de `ApplyBundledSeed` y antes del reminder loop.
+- Tests nuevos (14): default normaliza, Load soporta JSON antiguo, cloneLocked copia defensiva, ApplyOfficialSchedule mete 10 series, previews cap 3-5, labels daily correctos, weekly label con días/horas UTC, no miles de eventos, preserva no-bundled, poda follows inválidos, idempotente, persiste/reload, scheduleLabel interval/weekly, pruneFollowedSeriesLocked.
+- Checks: `gofmt` OK, `go test -count=1 -run "TestCalendar_Default|TestService_Load_Normalises|TestService_CloneLocked|TestService_ApplyOfficialSchedule|TestScheduleLabel|TestPruneFollowedSeries|TestService_LoadMissing|TestService_SaveLoad|TestService_Replace|TestService_Upcoming|TestService_Past|TestService_Clear|TestService_Persist|TestService_Follow|TestService_Unfollow|TestDueReminders|TestService_ApplyBundledSeed|TestEventKey|TestEvent_IsActiveAt|TestLoadBundledSeed|TestValidateSeed|TestLoadWeeklySchedule|TestValidateSchedule|TestValidateSeries|TestExpandSeries|TestExpandSchedule|TestDefaultScheduleWindow|TestEstimateSeriesCount|TestMakeSeriesEvent|TestExpandRealSchedule|TestSortRaceEventsByStart"` PASS (solo falla preexistente `TestParse_AcceptsValidLines` por fecha). `go vet ./internal/calendar/... ./cmd/vantare/...` OK. `go test -count=1 ./internal/app/... ./cmd/vantare/...` OK. `git diff --check` solo warnings preexistentes en `hub_main.html`.
+- Archivos tocados: `internal/calendar/calendar.go`, `internal/calendar/calendar_service.go`, `internal/calendar/calendar_service_test.go`, `internal/calendar/bundled_seed.go`, `cmd/vantare/main.go`, `docs/current-plan.md`.
+- No se tocó: frontend, CalendarPage, calendar-store/types TS, Reminders, WidgetStudio/LayoutStudio, overlay runtime, Supabase, AppSettings.
+- Sin commit.

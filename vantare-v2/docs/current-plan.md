@@ -1610,3 +1610,8 @@ Nota ROADMAP-02 (2026-07-02):
 - Datos siguen viniendo de roadmap-data.ts. Sin backend ni fake claims.
 - Archivos tocados: `frontend/src/hub/pages/RoadmapPage.tsx`, `frontend/src/hub/pages/RoadmapPage.test.tsx`, `docs/current-plan.md`.
 - Sin commit.
+
+Nota CALENDAR-03 (2026-07-02):
+- La pestaña visible pasa de Calendario a Carreras manteniendo el id interno `calendar`.
+- CalendarPage queda read-only: sin importador manual, sin source visible, con timezone informativa, próximas/activas/pasadas y seguir/dejar de seguir.
+- Backend y contratos `calendar:*` intactos; Vantare publicará el calendario LMU mediante actualizaciones de la app.

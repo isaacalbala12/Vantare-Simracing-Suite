@@ -615,7 +615,7 @@ describe("HubApp gate (production)", () => {
     );
     fireEvent.click(sidebarCalendar);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Calendario LMU" })).toBeTruthy();
+      expect(screen.getByRole("heading", { level: 1, name: "Carreras LMU" })).toBeTruthy();
     });
   });
 

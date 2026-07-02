@@ -42,10 +42,6 @@ function isFollowed(eventId: string, followedIds: string[] | undefined): boolean
 export function CalendarPage() {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [importText, setImportText] = useState("");
-  const [timezone, setTimezone] = useState("Europe/Madrid");
-  const [source, setSource] = useState("discord-lmu-week");
-  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     requestCalendar();
@@ -62,21 +58,6 @@ export function CalendarPage() {
       unsubLoaded();
       unsubErr();
     };
-  }, []);
-
-  const handleImport = useCallback(() => {
-    setLocalError(null);
-    const text = importText.trim();
-    if (!text) {
-      setLocalError("Pega el texto del calendario antes de importar.");
-      return;
-    }
-    Events.Emit("calendar:import", { text, timezone, source });
-  }, [importText, timezone, source]);
-
-  const handleClear = useCallback(() => {
-    if (!window.confirm("¿Borrar el calendario? Los datos importados se perderán.")) return;
-    Events.Emit("calendar:clear", null);
   }, []);
 
   const handleFollow = useCallback((eventId: string) => {
@@ -96,84 +77,29 @@ export function CalendarPage() {
     <div className="flex flex-col gap-5">
       {/* Header */}
       <header className="opacity-0 animate-fade-in-up">
-        <span className="v52-eyebrow">Calendario</span>
+        <span className="v52-eyebrow">Carreras</span>
         <h1 className="font-sans font-bold text-3xl text-white tracking-tight mt-2">
-          Calendario LMU
+          Carreras LMU
         </h1>
         <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed max-w-3xl">
-          Importa horarios semanales de LMU desde Discord usando texto normalizado.
+          Consulta las próximas carreras LMU publicadas por Vantare. Sigue una carrera para recibir avisos antes de la salida.
         </p>
       </header>
 
-      {/* Import section */}
+      {/* Informative block */}
       <section className="card-sleek rounded-xl p-5 opacity-0 animate-fade-in-up delay-75">
-        <span className="v52-eyebrow">Importar calendario</span>
-        <div className="mt-3 space-y-3">
-          <textarea
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            placeholder="Pega aquí el texto con los horarios..."
-            rows={5}
-            className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white font-mono placeholder:text-vantare-textDim resize-y focus:outline-none focus:border-vantare-red-500/50"
-            data-testid="calendar-import-textarea"
-          />
-          <div className="flex flex-wrap gap-3">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="calendar-tz" className="text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">
-                Zona horaria
-              </label>
-              <input
-                id="calendar-tz"
-                type="text"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-vantare-red-500/50"
-                data-testid="calendar-timezone-input"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="calendar-source" className="text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">
-                Fuente
-              </label>
-              <input
-                id="calendar-source"
-                type="text"
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-vantare-red-500/50"
-                data-testid="calendar-source-input"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleImport}
-              className="px-4 py-2 rounded-lg text-xs font-bold bg-vantare-red-600 hover:bg-vantare-red-500 text-white transition-colors"
-              data-testid="calendar-import-btn"
-            >
-              Importar calendario
-            </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="px-4 py-2 rounded-lg text-xs font-bold text-vantare-textMuted bg-white/5 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
-              data-testid="calendar-clear-btn"
-            >
-              Borrar calendario
-            </button>
-          </div>
-          {localError && (
-            <p className="text-xs text-red-400" data-testid="calendar-local-error">
-              {localError}
-            </p>
-          )}
-          {error && (
-            <p className="text-xs text-red-400" data-testid="calendar-error">
-              {error}
-            </p>
-          )}
-        </div>
+        <span className="v52-eyebrow">Calendario publicado por Vantare</span>
+        <p className="text-sm text-vantare-textMuted mt-3 leading-relaxed">
+          No necesitas importar nada manualmente. Cuando publiquemos una actualización semanal, las carreras aparecerán aquí.
+        </p>
+        <p className="text-[10px] font-mono text-vantare-textDim mt-3">
+          Zona horaria: {calendar?.timezone || "local"}
+        </p>
+        {error && (
+          <p className="text-xs text-red-400 mt-3" data-testid="calendar-error">
+            {error}
+          </p>
+        )}
       </section>
 
       {/* Upcoming races */}
@@ -182,62 +108,71 @@ export function CalendarPage() {
         {upcoming.length === 0 ? (
           <div className="card-sleek rounded-xl p-5 mt-3" data-testid="calendar-no-upcoming">
             <p className="text-sm text-vantare-textMuted">
-              {calendar
-                ? "No hay carreras próximas en el calendario importado."
-                : "Importa un calendario para ver las próximas carreras."}
+              No hay carreras próximas publicadas.
+            </p>
+            <p className="text-xs text-vantare-textDim mt-1">
+              Vantare actualizará el calendario LMU desde nuevas versiones de la app.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            {upcoming.map((ev) => (
-              <div
-                key={ev.id}
-                className="card-sleek rounded-xl p-4"
-                data-testid="calendar-upcoming-event"
-              >
-                <p className="font-semibold text-sm text-white">{ev.title}</p>
-                {ev.track ? (
-                  <p className="text-xs text-vantare-textMuted mt-0.5">{ev.track}</p>
-                ) : null}
-                <p className="text-[10px] text-vantare-textDim mt-1 font-mono">
-                  {formatEventDate(ev)}
-                </p>
-                {ev.source ? (
-                  <p className="text-[9px] text-vantare-textDim mt-2 font-mono">
-                    Fuente: {ev.source}
+            {upcoming.map((ev) => {
+              const followed = isFollowed(ev.id, followedIds);
+              const active = isEventActive(ev, now);
+              return (
+                <div
+                  key={ev.id}
+                  className={`card-sleek rounded-xl p-4${followed ? " border border-vantare-red-500/30" : ""}`}
+                  data-testid="calendar-upcoming-event"
+                >
+                  <p className="font-semibold text-sm text-white">{ev.title}</p>
+                  {ev.track ? (
+                    <p className="text-xs text-vantare-textMuted mt-0.5">{ev.track}</p>
+                  ) : null}
+                  <p className="text-[10px] text-vantare-textDim mt-1 font-mono">
+                    {formatEventDate(ev)}
+                    {ev.durationMin > 0 ? ` · ${ev.durationMin} min` : null}
                   </p>
-                ) : null}
-                <div className="mt-3 flex gap-2">
-                  {isFollowed(ev.id, followedIds) ? (
-                    <>
+                  <div className="mt-3 flex gap-2">
+                    {active ? (
                       <span
-                        className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600/20 text-emerald-400 border border-emerald-600/30"
-                        data-testid={`calendar-following-badge-${ev.id}`}
+                        className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-600/20 text-amber-400 border border-amber-600/30"
+                        data-testid={`calendar-active-badge-${ev.id}`}
                       >
-                        Siguiendo
+                        Activa ahora
                       </span>
+                    ) : null}
+                    {followed ? (
+                      <>
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600/20 text-emerald-400 border border-emerald-600/30"
+                          data-testid={`calendar-following-badge-${ev.id}`}
+                        >
+                          Siguiendo
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUnfollow(ev.id)}
+                          className="px-2.5 py-1 rounded-md text-[10px] font-bold text-vantare-textMuted bg-white/5 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
+                          data-testid={`calendar-unfollow-btn-${ev.id}`}
+                        >
+                          Dejar de seguir
+                        </button>
+                      </>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => handleUnfollow(ev.id)}
-                        className="px-2.5 py-1 rounded-md text-[10px] font-bold text-vantare-textMuted bg-white/5 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
-                        data-testid={`calendar-unfollow-btn-${ev.id}`}
+                        onClick={() => handleFollow(ev.id)}
+                        className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-vantare-red-600 hover:bg-vantare-red-500 text-white transition-colors"
+                        data-testid={`calendar-follow-btn-${ev.id}`}
                       >
-                        Dejar de seguir
+                        Seguir carrera
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleFollow(ev.id)}
-                      className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-vantare-red-600 hover:bg-vantare-red-500 text-white transition-colors"
-                      data-testid={`calendar-follow-btn-${ev.id}`}
-                    >
-                      Seguir carrera
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -248,9 +183,7 @@ export function CalendarPage() {
         {past.length === 0 ? (
           <div className="card-sleek rounded-xl p-5 mt-3" data-testid="calendar-no-past">
             <p className="text-sm text-vantare-textMuted">
-              {calendar
-                ? "No hay carreras pasadas en el calendario importado."
-                : "Importa un calendario para ver las carreras pasadas."}
+              No hay carreras pasadas todavía.
             </p>
           </div>
         ) : (
@@ -258,21 +191,24 @@ export function CalendarPage() {
             {past.map((ev) => (
               <div
                 key={ev.id}
-                className="card-sleek rounded-xl p-4"
+                className="card-sleek rounded-xl p-4 opacity-70"
                 data-testid="calendar-past-event"
               >
-                <p className="font-semibold text-sm text-white">{ev.title}</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm text-white">{ev.title}</p>
+                  <span
+                    className="bg-white/5 text-vantare-textDim border border-white/10 text-[10px] font-bold px-2.5 py-1 rounded-md"
+                    data-testid={`calendar-finished-badge-${ev.id}`}
+                  >
+                    Finalizada
+                  </span>
+                </div>
                 {ev.track ? (
                   <p className="text-xs text-vantare-textMuted mt-0.5">{ev.track}</p>
                 ) : null}
                 <p className="text-[10px] text-vantare-textDim mt-1 font-mono">
                   {formatEventDate(ev)}
                 </p>
-                {ev.source ? (
-                  <p className="text-[9px] text-vantare-textDim mt-2 font-mono">
-                    Fuente: {ev.source}
-                  </p>
-                ) : null}
               </div>
             ))}
           </div>

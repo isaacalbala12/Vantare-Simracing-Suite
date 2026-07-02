@@ -28,7 +28,7 @@ export const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { id: "dashboard", label: "Hub", icon: "home" },
   { id: "profiles", label: "Overlays Studio", icon: "overlays" },
   { id: "launcher", label: "Launcher", icon: "bolt" },
-  { id: "calendar", label: "Calendario", icon: "calendar" },
+  { id: "calendar", label: "Carreras", icon: "calendar" },
   { id: "engineer", label: "Ingeniero", icon: "engineer" },
   { id: "telemetry", label: "Telemetría", icon: "telemetry" },
   { id: "roadmap", label: "Roadmap", icon: "roadmap" },

@@ -66,7 +66,7 @@ describe("CalendarPage", () => {
 
   it("renders heading", () => {
     render(<CalendarPage />);
-    expect(screen.getByRole("heading", { level: 1, name: "Calendario LMU" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Carreras LMU" })).toBeTruthy();
   });
 
   it("emits calendar:get on mount", () => {
@@ -74,39 +74,66 @@ describe("CalendarPage", () => {
     expect(eventsEmit).toHaveBeenCalledWith("calendar:get", null);
   });
 
-  it("shows local error and does not emit when import text is empty", () => {
+  it("does not render import UI", () => {
     render(<CalendarPage />);
-    eventsEmit.mockClear();
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-import-btn"));
-    });
-    expect(eventsEmit).not.toHaveBeenCalledWith("calendar:import", expect.anything());
-    expect(screen.getByTestId("calendar-local-error")).toBeTruthy();
+    expect(screen.queryByTestId("calendar-import-textarea")).toBeNull();
+    expect(screen.queryByTestId("calendar-import-btn")).toBeNull();
+    expect(screen.queryByTestId("calendar-clear-btn")).toBeNull();
+    expect(screen.queryByTestId("calendar-timezone-input")).toBeNull();
+    expect(screen.queryByTestId("calendar-source-input")).toBeNull();
+    expect(screen.queryByText(/discord-lmu-week/)).toBeNull();
   });
 
-  it("emits calendar:import with text/timezone/source when text is present", () => {
+  it("shows informative block about published calendar", () => {
     render(<CalendarPage />);
-    const textarea = screen.getByTestId("calendar-import-textarea") as HTMLTextAreaElement;
-    act(() => {
-      fireEvent.change(textarea, { target: { value: "Martes 2 Julio | 20:00 | Race | Le Mans | 45" } });
+    expect(screen.getByText("Calendario publicado por Vantare")).toBeTruthy();
+    expect(screen.getByText("No necesitas importar nada manualmente. Cuando publiquemos una actualización semanal, las carreras aparecerán aquí.")).toBeTruthy();
+  });
+
+  it("shows timezone as informative text", () => {
+    render(<CalendarPage />);
+    expect(screen.getByText(/Zona horaria:/)).toBeTruthy();
+    expect(screen.getByText(/local/)).toBeTruthy();
+  });
+
+  it("shows timezone from calendar when loaded", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "Europe/Madrid",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [],
+        updated: "",
+      },
     });
-    const tzInput = screen.getByTestId("calendar-timezone-input") as HTMLInputElement;
-    act(() => {
-      fireEvent.change(tzInput, { target: { value: "Europe/Madrid" } });
+    expect(screen.getByText("Zona horaria: Europe/Madrid")).toBeTruthy();
+  });
+
+  it("shows empty upcoming state with Vantare explanation when no calendar", () => {
+    render(<CalendarPage />);
+    expect(screen.getByText("No hay carreras próximas publicadas.")).toBeTruthy();
+    expect(screen.getByText("Vantare actualizará el calendario LMU desde nuevas versiones de la app.")).toBeTruthy();
+  });
+
+  it("shows empty upcoming state with Vantare explanation when calendar loaded but empty", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [],
+        updated: "",
+      },
     });
-    const srcInput = screen.getByTestId("calendar-source-input") as HTMLInputElement;
-    act(() => {
-      fireEvent.change(srcInput, { target: { value: "discord-lmu-week" } });
-    });
-    eventsEmit.mockClear();
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-import-btn"));
-    });
-    expect(eventsEmit).toHaveBeenCalledWith("calendar:import", {
-      text: "Martes 2 Julio | 20:00 | Race | Le Mans | 45",
-      timezone: "Europe/Madrid",
-      source: "discord-lmu-week",
-    });
+    expect(screen.getByText("No hay carreras próximas publicadas.")).toBeTruthy();
+    expect(screen.getByText("Vantare actualizará el calendario LMU desde nuevas versiones de la app.")).toBeTruthy();
+  });
+
+  it("shows empty past state", () => {
+    render(<CalendarPage />);
+    expect(screen.getByText("No hay carreras pasadas todavía.")).toBeTruthy();
   });
 
   it("shows upcoming events when calendar:loaded arrives", () => {
@@ -154,35 +181,12 @@ describe("CalendarPage", () => {
     expect(screen.getByText("Error de prueba")).toBeTruthy();
   });
 
-  it("emits calendar:clear when clear button is confirmed", () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn().mockReturnValue(true);
-    render(<CalendarPage />);
-    eventsEmit.mockClear();
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-clear-btn"));
-    });
-    expect(eventsEmit).toHaveBeenCalledWith("calendar:clear", null);
-    window.confirm = originalConfirm;
-  });
-
-  it("does not emit calendar:clear when confirm is cancelled", () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn().mockReturnValue(false);
-    render(<CalendarPage />);
-    eventsEmit.mockClear();
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-clear-btn"));
-    });
-    expect(eventsEmit).not.toHaveBeenCalledWith("calendar:clear", expect.anything());
-    window.confirm = originalConfirm;
-  });
-
   it("does not render prohibited fake strings", () => {
     render(<CalendarPage />);
     expect(screen.queryByText(/Sebring/)).toBeNull();
     expect(screen.queryByText(/COTA/)).toBeNull();
     expect(screen.queryByText(/Paul Ricard/)).toBeNull();
+    expect(screen.queryByText(/discord-lmu-week/)).toBeNull();
   });
 
   it("shows Seguir carrera button on upcoming event not followed", () => {
@@ -272,5 +276,99 @@ describe("CalendarPage", () => {
     expect(screen.queryByTestId("calendar-follow-btn-ev-1")).toBeNull();
     expect(screen.queryByTestId("calendar-following-badge-ev-1")).toBeNull();
     expect(screen.queryByTestId("calendar-unfollow-btn-ev-1")).toBeNull();
+  });
+
+  it("shows Activa ahora badge when event is active", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-01T11:30:00Z", durationMin: 120, title: "Active Race" })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    expect(screen.getByText("Activa ahora")).toBeTruthy();
+  });
+
+  it("shows Activa ahora badge alongside Siguiendo when active and followed", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-01T11:30:00Z", durationMin: 120, title: "Active Followed" })],
+        followedEventIds: ["ev-1"],
+        updated: "",
+      },
+    });
+    expect(screen.getByText("Activa ahora")).toBeTruthy();
+    expect(screen.getByText("Siguiendo")).toBeTruthy();
+  });
+
+  it("shows duration when event has durationMin", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z", durationMin: 90, title: "Long Race" })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    expect(screen.getByText(/90 min/)).toBeTruthy();
+  });
+
+  it("shows Finalizada badge on past events", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-06-30T08:00:00Z", durationMin: 60, title: "Past Race" })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    expect(screen.getByTestId("calendar-finished-badge-ev-1")).toBeTruthy();
+    expect(screen.getByText("Finalizada")).toBeTruthy();
+  });
+
+  it("past events have reduced opacity", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-06-30T08:00:00Z", durationMin: 60, title: "Past Race" })],
+        followedEventIds: [],
+        updated: "",
+      },
+    });
+    const card = screen.getByTestId("calendar-past-event");
+    expect(card.className).toContain("opacity-70");
+  });
+
+  it("shows followed event with red border glow", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        reminderMinutes: [30, 15, 10, 5, 2],
+        events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z", title: "Followed Race" })],
+        followedEventIds: ["ev-1"],
+        updated: "",
+      },
+    });
+    const card = screen.getByTestId("calendar-upcoming-event");
+    expect(card.className).toContain("border-vantare-red");
   });
 });

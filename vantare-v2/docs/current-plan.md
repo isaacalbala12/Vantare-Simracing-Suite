@@ -1583,3 +1583,20 @@ Nota CALENDAR-02-D1 (2026-07-02):
 - Archivos creados: `frontend/src/overlay/OverlayCalendarReminderBanner.tsx`, `frontend/src/overlay/OverlayCalendarReminderBanner.test.tsx`.
 - No se tocaron: CompositeApp, ObsOverlayApp, HubApp, Go/backend, WidgetStudio, LayoutStudio, WIDGETS, AppSettings, WidgetStudio/LayoutStudio, dependencias.
 - Sin commit.
+
+Nota CALENDAR-02-D2 (2026-07-02):
+- Banner overlay montado en CompositeApp y ObsOverlayApp.
+- No es widget, no toca WIDGETS ni perfil JSON.
+- Se oculta en edit mode en CompositeApp.
+- OBS no tiene edit mode; banner siempre visible si hay reminder.
+- Evento escuchado: `calendar:reminder` via `Events.On`.
+- State local `reminder` se limpia al cerrar (onClose → setReminder(null)).
+- Listener se limpia en unmount (return unsub).
+- Banner renderizado como capa absoluta fuera del grid/lista de widgets (`absolute top-4 right-4 z-50`).
+- Tests: 21/21 PASS (CompositeApp 11, ObsOverlayApp 3, OverlayCalendarReminderBanner 7).
+  - CompositeApp: muestra banner, oculta al cerrar, no muestra en edit mode.
+  - ObsOverlayApp: muestra banner, oculta al cerrar.
+- Checks: tsc OK, build OK (warning preexistente chunk size), lint OK (warning preexistente .eslintignore), git diff --check OK (warnings preexistentes en hub_main.html).
+- Archivos modificados: `frontend/src/overlay/CompositeApp.tsx`, `frontend/src/overlay/CompositeApp.test.tsx`, `frontend/src/overlay/ObsOverlayApp.tsx`, `frontend/src/overlay/ObsOverlayApp.test.tsx`, `docs/current-plan.md`.
+- No se tocaron: WIDGETS, WidgetStudio, LayoutStudio, Go/backend, AppSettings, perfil JSON/schema, calendario Hub, dependencias.
+- Sin commit.

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
+import { Events } from "@wailsio/runtime";
 import type {
   ProfileConfig,
   LayoutOrigin,
@@ -21,6 +22,8 @@ import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
 import { PedalsWidget } from "./widgets/PedalsWidget";
 import { EngineerNotificationsWidget } from "./widgets/EngineerNotificationsWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
+import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
+import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
 
 type WidgetProps = {
@@ -47,9 +50,20 @@ export function ObsOverlayApp() {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [telemetryKey, setTelemetryKey] = useState(0);
+  const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   useEffect(() => {
     return applyOverlayDocumentMode();
+  }, []);
+
+  useEffect(() => {
+    const unsub = Events.On("calendar:reminder", (event: { data: CalendarReminderPayload }) => {
+      setReminder(event.data);
+    });
+
+    return () => {
+      unsub?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -138,6 +152,14 @@ export function ObsOverlayApp() {
           </WidgetHost>
         );
       })}
+
+      {reminder && (
+        <OverlayCalendarReminderBanner
+          reminder={reminder}
+          onClose={() => setReminder(null)}
+          className="absolute top-4 right-4 z-50"
+        />
+      )}
     </div>
   );
 }

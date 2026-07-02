@@ -265,6 +265,116 @@ describe("CompositeApp", () => {
     expect(runtimeMock.emit).toHaveBeenCalledWith("profile:request");
   });
 
+  it("shows calendar reminder banner on calendar:reminder event", () => {
+    render(<CompositeApp />);
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-racing",
+        displayMode: "racing",
+        widgets: [
+          {
+            id: "relative",
+            type: "relative",
+            enabled: true,
+            updateHz: 15,
+            position: { x: 0, y: 0, w: 320, h: 280 },
+          },
+        ],
+      },
+      layoutOrigin: { x: 0, y: 0 },
+      windowMode: "racing",
+    });
+    tick(100);
+
+    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
+
+    dispatch("calendar:reminder", {
+      eventId: "evt-1",
+      title: "6h de Spa",
+      track: "Spa-Francorchamps",
+      minutesLeft: 15,
+      startTime: "2026-07-02T20:00:00+02:00",
+      registrationUrl: "",
+    });
+    tick(100);
+
+    expect(screen.getByTestId("overlay-calendar-reminder-banner")).toBeTruthy();
+    expect(screen.getByText("6h de Spa")).toBeTruthy();
+  });
+
+  it("hides calendar reminder banner on close", () => {
+    render(<CompositeApp />);
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-racing",
+        displayMode: "racing",
+        widgets: [
+          {
+            id: "relative",
+            type: "relative",
+            enabled: true,
+            updateHz: 15,
+            position: { x: 0, y: 0, w: 320, h: 280 },
+          },
+        ],
+      },
+      layoutOrigin: { x: 0, y: 0 },
+      windowMode: "racing",
+    });
+    tick(100);
+
+    dispatch("calendar:reminder", {
+      eventId: "evt-1",
+      title: "6h de Spa",
+      track: "Spa-Francorchamps",
+      minutesLeft: 15,
+      startTime: "2026-07-02T20:00:00+02:00",
+      registrationUrl: "",
+    });
+    tick(100);
+
+    expect(screen.getByTestId("overlay-calendar-reminder-banner")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
+    tick(100);
+
+    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
+  });
+
+  it("does not show calendar reminder banner in edit mode", () => {
+    render(<CompositeApp />);
+    dispatch("profile:loaded", {
+      profile: {
+        id: "default-edit",
+        displayMode: "edit",
+        widgets: [
+          {
+            id: "relative",
+            type: "relative",
+            enabled: true,
+            updateHz: 15,
+            position: { x: 0, y: 0, w: 320, h: 280 },
+          },
+        ],
+      },
+      layoutOrigin: { x: 0, y: 0 },
+      windowMode: "edit",
+    });
+    tick(100);
+
+    dispatch("calendar:reminder", {
+      eventId: "evt-1",
+      title: "6h de Spa",
+      track: "Spa-Francorchamps",
+      minutesLeft: 15,
+      startTime: "2026-07-02T20:00:00+02:00",
+      registrationUrl: "",
+    });
+    tick(100);
+
+    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
+  });
+
   it("emits layout:save after dragging a widget in edit mode", () => {
     render(<CompositeApp />);
     dispatch("profile:loaded", {

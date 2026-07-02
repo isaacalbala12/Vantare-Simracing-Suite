@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ObsOverlayApp } from "./ObsOverlayApp";
 import { resetTelemetryRef } from "../lib/telemetry-ref";
@@ -24,6 +24,32 @@ vi.mock("@wailsio/runtime", () => ({
   },
 }));
 
+class MockEventSource {
+  static instances: MockEventSource[] = [];
+  onopen: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  addEventListener = vi.fn();
+  close = vi.fn();
+  constructor(_url: string) {
+    void _url;
+    MockEventSource.instances.push(this);
+  }
+}
+
+function dispatch(name: string, data: unknown) {
+  act(() => {
+    for (const handler of runtimeMock.handlers.get(name) ?? []) {
+      handler({ data });
+    }
+  });
+}
+
+async function flush() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100);
+  });
+}
+
 function tick(ms: number) {
   act(() => {
     vi.advanceTimersByTime(ms);
@@ -36,6 +62,7 @@ describe("ObsOverlayApp", () => {
     runtimeMock.emit.mockClear();
     resetTelemetryRef();
     vi.useFakeTimers();
+    vi.stubGlobal("EventSource", MockEventSource);
   });
 
   afterEach(() => {
@@ -45,7 +72,6 @@ describe("ObsOverlayApp", () => {
   });
 
   it("accepts engineer-notifications widget without crash", () => {
-    // Mock fetch to return a profile with engineer-notifications widget
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -73,10 +99,80 @@ describe("ObsOverlayApp", () => {
     render(<ObsOverlayApp />);
     tick(100);
 
-    // ObsOverlayApp shows a loading state initially, then the profile content.
-    // Since the engineer widget is rendered with __engineerTransport="sse" but no
-    // active notification, it returns null (no visible element). The test verifies
-    // no crash / no error rendering.
     expect(screen.queryByText("Failed to load profile")).toBeNull();
+  });
+
+  it("shows calendar reminder banner on calendar:reminder event", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            profile: {
+              id: "obs-test",
+              displayMode: "streaming",
+              widgets: [],
+            },
+            layoutOrigin: { x: 0, y: 0 },
+          }),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    await flush();
+
+    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
+
+    dispatch("calendar:reminder", {
+      eventId: "evt-1",
+      title: "6h de Spa",
+      track: "Spa-Francorchamps",
+      minutesLeft: 15,
+      startTime: "2026-07-02T20:00:00+02:00",
+      registrationUrl: "",
+    });
+    await flush();
+
+    expect(screen.getByTestId("overlay-calendar-reminder-banner")).toBeTruthy();
+    expect(screen.getByText("6h de Spa")).toBeTruthy();
+  });
+
+  it("hides calendar reminder banner on close", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            profile: {
+              id: "obs-test",
+              displayMode: "streaming",
+              widgets: [],
+            },
+            layoutOrigin: { x: 0, y: 0 },
+          }),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    await flush();
+
+    dispatch("calendar:reminder", {
+      eventId: "evt-1",
+      title: "6h de Spa",
+      track: "Spa-Francorchamps",
+      minutesLeft: 15,
+      startTime: "2026-07-02T20:00:00+02:00",
+      registrationUrl: "",
+    });
+    await flush();
+
+    expect(screen.getByTestId("overlay-calendar-reminder-banner")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
+    await flush();
+
+    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
   });
 });

@@ -25,6 +25,8 @@ import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
 import { PedalsWidget } from "./widgets/PedalsWidget";
 import { EngineerNotificationsWidget } from "./widgets/EngineerNotificationsWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
+import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
+import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import type { ComponentType } from "react";
 import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
 
@@ -44,6 +46,7 @@ export function CompositeApp() {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [telemetryKey, setTelemetryKey] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   useEffect(() => {
     return applyOverlayDocumentMode();
@@ -116,6 +119,16 @@ export function CompositeApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const unsub = Events.On("calendar:reminder", (event: { data: CalendarReminderPayload }) => {
+      setReminder(event.data);
+    });
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
   function handleChange(widgetId: string, rect: Rect) {
     if (!profile) return;
     const next: ProfileConfig = {
@@ -158,6 +171,14 @@ export function CompositeApp() {
               </WidgetHost>
             );
           })}
+
+      {!editMode && reminder && (
+        <OverlayCalendarReminderBanner
+          reminder={reminder}
+          onClose={() => setReminder(null)}
+          className="absolute top-4 right-4 z-50"
+        />
+      )}
 
       {editMode && (
         <div className="fixed bottom-4 left-4 text-[10px] text-white/30 select-none" data-testid="edit-mode-hint">

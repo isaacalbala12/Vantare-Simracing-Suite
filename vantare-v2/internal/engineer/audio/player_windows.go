@@ -3,11 +3,14 @@
 package audio
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 )
 
 // maxPlaybackDuration is the maximum time a single playback can take
@@ -30,6 +33,53 @@ func NewPlayer() *Player {
 	return &Player{}
 }
 
+// escapePSQuote escapes a PowerShell single-quoted string literal.
+// In PowerShell, ” inside a single-quoted string is a literal '.
+func escapePSQuote(path string) string {
+	return strings.ReplaceAll(path, "'", "''")
+}
+
+// buildPSScript returns a PowerShell script that plays the given
+// audio path using WPF MediaPlayer. The path must already be escaped
+// for single-quote context (see escapePSQuote).
+func buildPSScript(escapedPath string) string {
+	return fmt.Sprintf(
+		`try { `+
+			`Add-Type -AssemblyName presentationCore -ErrorAction Stop; `+
+			`$p = New-Object System.Windows.Media.MediaPlayer; `+
+			`$p.Open([uri]'%s'); `+
+			`Start-Sleep -Milliseconds 200; `+
+			`if ($p.NaturalDuration.HasTimeSpan) { `+
+			`$secs = [math]::Ceiling($p.NaturalDuration.TimeSpan.TotalSeconds + 0.5) `+
+			`} else { $secs = 3 }; `+
+			`$p.Play(); `+
+			`Start-Sleep -Seconds $secs; `+
+			`$p.Close() `+
+			`} catch { exit 1 }`,
+		escapedPath,
+	)
+}
+
+// encodePSCommand encodes a PowerShell script as UTF-16LE base64
+// for use with powershell -EncodedCommand. This prevents any
+// command-line injection via the script content.
+func encodePSCommand(script string) string {
+	utf16le := encodeUTF16LE(script)
+	return base64.StdEncoding.EncodeToString(utf16le)
+}
+
+// encodeUTF16LE encodes a string as UTF-16LE bytes (no BOM).
+func encodeUTF16LE(s string) []byte {
+	runes := []rune(s)
+	encoded := utf16.Encode(runes)
+	buf := make([]byte, len(encoded)*2)
+	for i, r := range encoded {
+		buf[i*2] = byte(r)
+		buf[i*2+1] = byte(r >> 8)
+	}
+	return buf
+}
+
 // Play plays an audio file and blocks until playback completes or
 // maxPlaybackDuration elapses. If audio is already playing, it stops
 // the previous playback first. Returns an error if the file cannot
@@ -46,26 +96,14 @@ func (p *Player) Play(path string) error {
 		return fmt.Errorf("audio: cannot resolve path: %w", err)
 	}
 
-	// Use PowerShell with WPF MediaPlayer. The script has try/catch to
-	// exit quickly on errors (invalid file, missing codec, etc.)
-	// rather than sleeping the full duration.
-	script := fmt.Sprintf(
-		`try { `+
-			`Add-Type -AssemblyName presentationCore -ErrorAction Stop; `+
-			`$p = New-Object System.Windows.Media.MediaPlayer; `+
-			`$p.Open([uri]'%s'); `+
-			`Start-Sleep -Milliseconds 200; `+
-			`if ($p.NaturalDuration.HasTimeSpan) { `+
-			`$secs = [math]::Ceiling($p.NaturalDuration.TimeSpan.TotalSeconds + 0.5) `+
-			`} else { $secs = 3 }; `+
-			`$p.Play(); `+
-			`Start-Sleep -Seconds $secs; `+
-			`$p.Close() `+
-			`} catch { exit 1 }`,
-		absPath,
-	)
+	// Build a PowerShell script with the path safely embedded via
+	// single-quote escaping (PS convention: '' inside '' = literal ').
+	// Then encode the entire script as UTF-16LE base64 (-EncodedCommand)
+	// to prevent command-line injection regardless of path contents.
+	psScript := buildPSScript(escapePSQuote(absPath))
+	encoded := encodePSCommand(psScript)
 
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded)
 	// Do NOT set cmd.Stderr — it creates a pipe that blocks cmd.Wait()
 	// after Kill(). We rely on the exit code for error detection.
 

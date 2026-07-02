@@ -1,9 +1,28 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { DeltaWidget, formatDelta, formatLapTime } from "./DeltaWidget";
 
 
 describe("DeltaWidget", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("applies glassmorphism style from variant themeId", () => {
+    const { container } = render(
+      <DeltaWidget
+        editMode
+        telemetryMode="mock"
+        props={{
+          variant: { themeId: "glassmorphism-pro" },
+        }}
+      />,
+    );
+    const root = container.firstChild as HTMLElement;
+    expect(root.style.backdropFilter).toBe("blur(24px)");
+    expect(root.style.borderRadius).toBe("16px");
+  });
+
   it("renders delta value and target info in edit mode", () => {
     render(
       <DeltaWidget editMode={true} updateHz={30} />,

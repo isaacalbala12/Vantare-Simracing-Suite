@@ -30,6 +30,9 @@ type StandingsProps = {
 const BAKED_PANEL_BG = "linear-gradient(180deg, #3a050a 0%, #0d0102 100%)";
 const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #9b2226 0%, #e63946 50%, #9b2226 100%)";
+const GLASS_PANEL_BG = "rgba(18,18,22,0.82)";
+const GLASS_HEADER_BG = "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)";
+const GLASS_CLASS_BG = "rgba(0,0,0,0.45)";
 const ON_TRACK_COLOR = "#FFFFFF";
 const PIT_COLOR = "#9CA3AF";
 
@@ -117,7 +120,8 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
   const maxRows = (props?.maxRows as number) ?? 12;
   const lastFingerprintRef = useRef("");
 
-  const { appearance: a } = resolveWidgetAppearance("standings", props);
+  const { style, appearance: a } = resolveWidgetAppearance("standings", props);
+  const isGlass = style === "glassmorphism-pro";
   const activeColumns = getActiveStandingsColumns(props);
   const intrinsicWidth = getStandingsIntrinsicWidth(activeColumns);
   const fillHost = props?.__previewFillHost !== false;
@@ -170,7 +174,9 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       const classLeader = sorted[0];
 
       const rows = sorted.map((v, i) => {
-        const bgRow = i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
+        const bgRow = isGlass
+          ? i % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.25)"
+          : i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
         const isLeader = i === 0;
         const pitLabel = formatStandingsPit(v);
         const pitting = pitLabel !== "";
@@ -294,28 +300,35 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [maxRows, updateHz, editMode, telemetryMode, mockSessionScenario, props, a, activeColumns, intrinsicWidth, intrinsicOnly, readTelemetry]);
+  }, [maxRows, updateHz, editMode, telemetryMode, mockSessionScenario, props, a, activeColumns, intrinsicWidth, intrinsicOnly, readTelemetry, isGlass]);
 
   const t = readTelemetry();
   const player = t.vehicles.find((v) => v.isPlayer);
   const activeClass = player?.vehicleClass || t.vehicles[0]?.vehicleClass || "HYPERCAR";
   const timeStr = formatRemainingTime(t.timeRemaining);
 
+  const panelBg = isGlass ? GLASS_PANEL_BG : BAKED_PANEL_BG;
+  const headerBg = isGlass ? GLASS_HEADER_BG : BAKED_HEADER_BG;
+  const classBg = isGlass ? GLASS_CLASS_BG : BAKED_CLASS_BG;
+
   return (
     <div
       data-testid="standings-panel"
-      className={`${intrinsicOnly ? "inline-flex" : "flex w-full"} h-fit flex-col overflow-hidden rounded-lg`}
+      className={`${intrinsicOnly ? "inline-flex" : "flex w-full"} h-fit flex-col overflow-hidden`}
       style={{
         width: intrinsicOnly ? `${intrinsicWidth}px` : undefined,
-        background: BAKED_PANEL_BG,
+        background: panelBg,
         border: `1px solid ${a.borderColor}`,
         color: a.textColor,
         opacity: a.opacity,
+        borderRadius: isGlass ? 16 : 8,
+        backdropFilter: isGlass ? "blur(24px)" : undefined,
+        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
       }}
     >
       <div
         className={`flex flex-col items-center pt-4 pb-2 ${!intrinsicOnly ? "w-full" : ""}`}
-        style={{ background: BAKED_HEADER_BG, borderBottom: "2px solid #1a0104" }}
+        style={{ background: headerBg, borderBottom: isGlass ? "1px solid rgba(255,255,255,0.06)" : "2px solid #1a0104" }}
       >
         <div className="text-3xl font-black italic tracking-widest mb-1 text-white font-display">VANTARE</div>
         <div ref={timeRef} className="text-[11px] font-mono font-bold text-white tracking-widest">{timeStr}</div>
@@ -323,7 +336,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       <div
         ref={classRef}
         className={`text-center text-[11px] py-1 font-bold tracking-widest text-white relative ${!intrinsicOnly ? "w-full" : ""}`}
-        style={{ background: BAKED_CLASS_BG, borderBottom: "1px solid #000" }}
+        style={{ background: classBg, borderBottom: "1px solid #000" }}
       >
         {activeClass.toUpperCase()}
       </div>

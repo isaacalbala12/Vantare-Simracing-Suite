@@ -30,4 +30,17 @@ describe("style-catalog", () => {
     const appearance = getDefaultAppearance("standings", "unknown-style");
     expect(appearance.accentColor).toBeTruthy();
   });
+
+  it("includes glassmorphism-pro for existing widget types", () => {
+    for (const type of ["relative", "standings", "delta", "pedals", "telemetry", "telemetry-vertical"]) {
+      expect(getStylesForType(type).some((style) => style.id === "glassmorphism-pro")).toBe(true);
+    }
+  });
+
+  it("returns glassmorphism-pro defaults", () => {
+    const appearance = getDefaultAppearance("relative", "glassmorphism-pro");
+    expect(appearance.backgroundColor).toBe("#121216");
+    expect(appearance.textColor).toBe("#ffffff");
+    expect(appearance.classHypercarColor).toBe("#ff2a3b");
+  });
 });

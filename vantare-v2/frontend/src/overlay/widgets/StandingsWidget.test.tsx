@@ -203,6 +203,23 @@ describe("StandingsWidget", () => {
     expect(panel.textContent).not.toContain("ghost");
   });
 
+  it("applies glassmorphism style from variant themeId", () => {
+    render(
+      <StandingsWidget
+        editMode
+        telemetryMode="mock"
+        props={{
+          variant: { themeId: "glassmorphism-pro" },
+          __previewFillHost: false,
+        }}
+      />,
+    );
+    tick(100);
+    const panel = screen.getByTestId("standings-panel");
+    expect((panel as HTMLElement).style.backdropFilter).toBe("blur(24px)");
+    expect((panel as HTMLElement).style.borderRadius).toBe("16px");
+  });
+
   it("does not depend on or mutate widget position", () => {
     const columns = variantColumns([
       { enabled: true },   // position

@@ -28,6 +28,25 @@ describe("resolveWidgetAppearance", () => {
     expect(appearance.classLmp3Color).toBe("#f59e0b");
     expect(appearance.classGt3Color).toBe("#2ecc71");
   });
+
+  it("uses variant themeId when props style is missing", () => {
+    const { style, appearance } = resolveWidgetAppearance("relative", {
+      variant: { themeId: "glassmorphism-pro" },
+    });
+
+    expect(style).toBe("glassmorphism-pro");
+    expect(appearance.backgroundColor).toBe("#121216");
+    expect(appearance.textColor).toBe("#ffffff");
+  });
+
+  it("props style takes precedence over variant themeId", () => {
+    const { style } = resolveWidgetAppearance("relative", {
+      style: "vantare-racing",
+      variant: { themeId: "glassmorphism-pro" },
+    });
+
+    expect(style).toBe("vantare-racing");
+  });
 });
 
 

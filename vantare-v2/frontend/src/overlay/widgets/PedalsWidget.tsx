@@ -21,7 +21,8 @@ export function PedalsWidget({ editMode, telemetryMode, updateHz = 30, props }: 
   const clutchBarRef = useRef<HTMLDivElement>(null);
   const brakeBarRef = useRef<HTMLDivElement>(null);
   const throttleBarRef = useRef<HTMLDivElement>(null);
-  const { appearance: a } = resolveWidgetAppearance("pedals", props);
+  const { style, appearance: a } = resolveWidgetAppearance("pedals", props);
+  const isGlass = style === "glassmorphism-pro";
 
   const getTelemetry = useMemo(
     () => getWidgetTelemetrySource(telemetryMode ?? (editMode ? "mock" : "live")),
@@ -53,7 +54,14 @@ export function PedalsWidget({ editMode, telemetryMode, updateHz = 30, props }: 
       ref={containerRef}
       data-testid="pedals-widget"
       className="w-full h-full flex items-end justify-center overflow-hidden font-display"
-      style={{ background: containerBg, opacity: a.opacity }}
+      style={{
+        background: containerBg,
+        opacity: a.opacity,
+        borderRadius: isGlass ? 16 : undefined,
+        backdropFilter: isGlass ? "blur(24px)" : undefined,
+        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
+        border: isGlass ? `1px solid ${a.borderColor}` : undefined,
+      }}
     >
       <div
         className="flex gap-[3px] items-end"

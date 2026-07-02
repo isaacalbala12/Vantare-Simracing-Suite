@@ -331,6 +331,23 @@ describe("RelativeWidget", () => {
     expect(panel.style.width).toBe(`${intrinsicWidth}px`);
   });
 
+  it("applies glassmorphism style from variant themeId", () => {
+    render(
+      <RelativeWidget
+        editMode
+        telemetryMode="mock"
+        props={{
+          variant: { themeId: "glassmorphism-pro" },
+          __previewFillHost: false,
+        }}
+      />,
+    );
+    tick(100);
+    const panel = screen.getByTestId("relative-panel");
+    expect((panel as HTMLElement).style.backdropFilter).toBe("blur(24px)");
+    expect((panel as HTMLElement).style.borderRadius).toBe("16px");
+  });
+
   it("fills the host by default in fill mode without preview fill host context", () => {
     render(
       <RelativeWidget

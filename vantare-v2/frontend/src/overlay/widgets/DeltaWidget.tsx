@@ -39,7 +39,8 @@ export function formatLapTime(seconds: number | undefined): string {
 }
 
 export function DeltaWidget({ editMode, telemetryMode, updateHz = 30, props }: DeltaProps) {
-  const { appearance: a } = resolveWidgetAppearance("delta", props);
+  const { style, appearance: a } = resolveWidgetAppearance("delta", props);
+  const isGlass = style === "glassmorphism-pro";
   const deltaRef = useRef<HTMLSpanElement>(null);
   const targetRef = useRef<HTMLSpanElement>(null);
   const lapRef = useRef<HTMLSpanElement>(null);
@@ -92,6 +93,11 @@ export function DeltaWidget({ editMode, telemetryMode, updateHz = 30, props }: D
       style={{
         opacity: a.opacity,
         color: a.textColor,
+        background: isGlass ? "rgba(18,18,22,0.82)" : undefined,
+        border: isGlass ? `1px solid ${a.borderColor}` : undefined,
+        borderRadius: isGlass ? 16 : undefined,
+        backdropFilter: isGlass ? "blur(24px)" : undefined,
+        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
       }}
     >
       <div className="flex justify-between w-full px-4 mb-2 opacity-80">

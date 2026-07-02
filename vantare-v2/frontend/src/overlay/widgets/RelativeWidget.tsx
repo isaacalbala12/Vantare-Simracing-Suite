@@ -48,6 +48,10 @@ const BAKED_PANEL_BG = "linear-gradient(180deg, #3a050a 0%, #0d0102 100%)";
 const BAKED_HEADER_BG = "linear-gradient(180deg, #9b2226 0%, #3a050a 100%)";
 const BAKED_CLASS_BG = "linear-gradient(90deg, #111 0%, #222 50%, #111 100%)";
 const BAKED_PLAYER_BG = "linear-gradient(90deg, rgba(230,57,70,0.2) 0%, rgba(155,34,38,0.4) 100%)";
+const GLASS_PANEL_BG = "rgba(18,18,22,0.82)";
+const GLASS_HEADER_BG = "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)";
+const GLASS_CLASS_BG = "rgba(0,0,0,0.45)";
+const GLASS_PLAYER_BG = "linear-gradient(90deg, rgba(255,42,59,0.22) 0%, rgba(230,57,70,0.05) 100%)";
 const COMPACT_ROW_HEIGHT = 31;
 
 export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }: RelativeProps) {
@@ -60,7 +64,8 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
   const fillHost = props?.__previewFillHost !== false;
   const intrinsicOnly = !fillHost;
   const lastFingerprintRef = useRef("");
-  const { appearance: a } = resolveWidgetAppearance("relative", props);
+  const { style, appearance: a } = resolveWidgetAppearance("relative", props);
+  const isGlass = style === "glassmorphism-pro";
 
   useEffect(() => {
     return startFrameBudgetLoop(updateHz, () => {
@@ -92,7 +97,9 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
 
       const rows = visible.map((v, idx) => {
         const isP = v.isPlayer;
-        const bgRow = idx % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
+        const bgRow = isGlass
+          ? idx % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.25)"
+          : idx % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
 
         let gapDisplay: string;
         let gapColor: string;
@@ -160,40 +167,46 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
           ? `width:${intrinsicWidth}px`
           : `min-width:${intrinsicWidth}px;width:max(100%, ${intrinsicWidth}px)`;
 
-        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="${rowWidthStyle};height:${rowHeight}px;background:${isP ? BAKED_PLAYER_BG : bgRow};${leftInset}">
+        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="${rowWidthStyle};height:${rowHeight}px;background:${isP ? (isGlass ? GLASS_PLAYER_BG : BAKED_PLAYER_BG) : bgRow};${leftInset}">
           ${cells}
         </div>`;
       });
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode, updateHz, editMode, telemetryMode, props, a, activeColumns, intrinsicWidth, intrinsicOnly]);
+  }, [rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode, updateHz, editMode, telemetryMode, props, a, activeColumns, intrinsicWidth, intrinsicOnly, isGlass]);
 
   const compactRows = rowHeightMode === "compact";
   const intrinsicRoot = intrinsicOnly || compactRows;
 
+  const panelBg = isGlass ? GLASS_PANEL_BG : BAKED_PANEL_BG;
+  const headerBg = isGlass ? GLASS_HEADER_BG : BAKED_HEADER_BG;
+  const classBg = isGlass ? GLASS_CLASS_BG : BAKED_CLASS_BG;
+
   return (
     <div
       data-testid="relative-panel"
-      className={`${intrinsicOnly && !compactRows ? "inline-flex h-full" : compactRows ? "inline-flex" : "flex w-full h-full"} flex-col overflow-hidden rounded-lg font-display`}
+      className={`${intrinsicOnly && !compactRows ? "inline-flex h-full" : compactRows ? "inline-flex" : "flex w-full h-full"} flex-col overflow-hidden font-display`}
       style={{
         width: intrinsicRoot ? `${intrinsicWidth}px` : undefined,
-        background: BAKED_PANEL_BG,
+        background: panelBg,
         border: `1px solid ${a.borderColor}`,
         color: a.textColor,
         opacity: a.opacity,
-        boxShadow: "0 10px 40px rgba(0,0,0,0.8)",
+        borderRadius: isGlass ? 16 : 8,
+        backdropFilter: isGlass ? "blur(24px)" : undefined,
+        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : "0 10px 40px rgba(0,0,0,0.8)",
       }}
     >
       <div
         className="pt-2 pb-1 flex flex-col items-center"
-        style={{ background: BAKED_HEADER_BG, borderBottom: "2px solid #1a0104" }}
+        style={{ background: headerBg, borderBottom: isGlass ? "1px solid rgba(255,255,255,0.06)" : "2px solid #1a0104" }}
       >
         <div className="text-xl font-black italic tracking-widest mb-0.5 text-white">VANTARE</div>
       </div>
       <div
         className="text-center text-[10px] py-1 font-bold tracking-widest text-white relative"
-        style={{ background: BAKED_CLASS_BG, borderBottom: "1px solid #000" }}
+        style={{ background: classBg, borderBottom: "1px solid #000" }}
       >
         RELATIVE
       </div>

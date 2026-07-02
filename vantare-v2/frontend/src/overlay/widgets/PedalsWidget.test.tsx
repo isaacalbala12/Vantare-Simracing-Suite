@@ -7,6 +7,21 @@ describe("PedalsWidget", () => {
     cleanup();
   });
 
+  it("applies glassmorphism style from variant themeId", () => {
+    render(
+      <PedalsWidget
+        editMode
+        telemetryMode="mock"
+        props={{
+          variant: { themeId: "glassmorphism-pro" },
+        }}
+      />,
+    );
+    const root = screen.getByTestId("pedals-widget");
+    expect(root.style.backdropFilter).toBe("blur(24px)");
+    expect(root.style.borderRadius).toBe("16px");
+  });
+
   it("renders exactly three pedal bars (clt, brk, thr)", () => {
     render(<PedalsWidget editMode={true} updateHz={30} />);
     expect(screen.getByTestId("pedal-bar-clt")).toBeTruthy();

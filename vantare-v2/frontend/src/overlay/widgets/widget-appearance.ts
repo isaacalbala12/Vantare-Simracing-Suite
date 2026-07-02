@@ -1,12 +1,29 @@
 import type { WidgetAppearance } from "../../lib/profile";
-import { getWidgetStyleFromProps, getWidgetAppearance } from "../../lib/profile";
+import { getWidgetAppearance } from "../../lib/profile";
 import { getDefaultAppearance } from "../../hub/state/style-catalog";
+
+function getWidgetStyleForRender(props?: Record<string, unknown>): string {
+  const explicit = props?.style;
+  if (typeof explicit === "string" && explicit.trim() !== "") {
+    return explicit;
+  }
+
+  const variant = props?.variant;
+  if (variant && typeof variant === "object") {
+    const themeId = (variant as { themeId?: unknown }).themeId;
+    if (typeof themeId === "string" && themeId.trim() !== "") {
+      return themeId;
+    }
+  }
+
+  return "vantare-racing";
+}
 
 export function resolveWidgetAppearance(
   type: string,
   props?: Record<string, unknown>,
 ): { style: string; appearance: Required<WidgetAppearance> } {
-  const style = getWidgetStyleFromProps(type, props);
+  const style = getWidgetStyleForRender(props);
   const defaults = getDefaultAppearance(type, style);
   const overrides = getWidgetAppearance(props);
 

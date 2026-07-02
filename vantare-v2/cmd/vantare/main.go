@@ -1033,10 +1033,11 @@ func main() {
 		handleLauncherLaunch(payload.SimulatorID, launcherSvc, emitter, log.Printf)
 	})
 
-	// Calendar event handlers (CALENDAR-02-A). Three thin events that delegate
-	// to the calendar service and surface the canonical calendar document back
-	// to the frontend. The service is synchronous: no goroutine, ticker, or
-	// reminder logic in this phase.
+	// Calendar event handlers (CALENDAR-02-A) and series follow/unfollow
+	// handlers (CALENDAR-05-E1). Five thin events that delegate to the calendar
+	// service and surface the canonical calendar document back to the frontend.
+	// The service is synchronous: no goroutine, ticker, or reminder logic in
+	// this phase.
 
 	wailsApp.Event.On("calendar:get", func(event *application.CustomEvent) {
 		app.HandleCalendarGet(calendarSvc, emitter)
@@ -1082,6 +1083,31 @@ func main() {
 			}
 		}
 		app.HandleCalendarUnfollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf)
+	})
+
+	// Calendar series follow/unfollow handlers (CALENDAR-05-E1).
+	wailsApp.Event.On("calendar:series:follow", func(event *application.CustomEvent) {
+		var payload struct {
+			SeriesID string `json:"seriesId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf)
+	})
+
+	wailsApp.Event.On("calendar:series:unfollow", func(event *application.CustomEvent) {
+		var payload struct {
+			SeriesID string `json:"seriesId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		app.HandleCalendarSeriesUnfollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf)
 	})
 
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)

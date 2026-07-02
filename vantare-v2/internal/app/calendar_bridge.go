@@ -29,6 +29,16 @@ type CalendarUnfollower interface {
 	Unfollow(eventID string) (calendar.Calendar, error)
 }
 
+// CalendarSeriesFollower abstracts the FollowSeries method of *calendar.Service.
+type CalendarSeriesFollower interface {
+	FollowSeries(seriesID string) (calendar.Calendar, error)
+}
+
+// CalendarSeriesUnfollower abstracts the UnfollowSeries method of *calendar.Service.
+type CalendarSeriesUnfollower interface {
+	UnfollowSeries(seriesID string) (calendar.Calendar, error)
+}
+
 // HandleCalendarGet emits the current calendar document.
 func HandleCalendarGet(svc CalendarGetter, emitter EventEmitter) {
 	cal := svc.Calendar()
@@ -82,6 +92,30 @@ func HandleCalendarFollow(eventID string, svc CalendarFollower, getter CalendarG
 func HandleCalendarUnfollow(eventID string, svc CalendarUnfollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
 	if _, err := svc.Unfollow(eventID); err != nil {
 		logf("calendar:unfollow error: %v", err)
+		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
+		return
+	}
+	cal := getter.Calendar()
+	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
+}
+
+// HandleCalendarSeriesFollow marks a series as followed and emits the updated
+// calendar. Returns calendar:error if the seriesID does not exist.
+func HandleCalendarSeriesFollow(seriesID string, svc CalendarSeriesFollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
+	if _, err := svc.FollowSeries(seriesID); err != nil {
+		logf("calendar:series:follow error: %v", err)
+		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
+		return
+	}
+	cal := getter.Calendar()
+	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
+}
+
+// HandleCalendarSeriesUnfollow removes a series from the followed list and emits
+// the updated calendar.
+func HandleCalendarSeriesUnfollow(seriesID string, svc CalendarSeriesUnfollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
+	if _, err := svc.UnfollowSeries(seriesID); err != nil {
+		logf("calendar:series:unfollow error: %v", err)
 		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
 		return
 	}

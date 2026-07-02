@@ -307,6 +307,20 @@ Nota CALENDAR-01 (2026-06-30) — fase aislada:
 - Riesgos no cubiertos: timezone mal configurada por el usuario (mitigable solo en UI de import, que es `CALENDAR-02`); paste ambiguo (el parser es estricto y reporta linea por linea); reimportacion duplicada (resuelta con dedupe por clave); reminder ticker y emision `calendar:reminder` (queda para `CALENDAR-02`); bridge Wails en `internal/app/calendar_bridge.go` y registro en `cmd/vantare/main.go` (queda para `CALENDAR-02`); `internal/app/settings_service.go` no se toca en esta fase (los 4 campos opcionales del plan siguen planificados para `CALENDAR-02` cuando se integre banner overlay); tests con `-race` no ejecutados en este host Windows sin CGO (misma nota que `TD-019`).
 - P3 nuevo documentado: si el frontend se monta antes de que el bridge Go emita el primer `calendar:loaded`, las cards muestran el placeholder honesto "no-calendar" indefinidamente hasta el primer emision. Aceptable: el bridge se registra al startup y emite tras `Load`. Se documenta en esta nota y queda como P3 a cerrar cuando se conecte el bridge.
 
+Nota CALENDAR-05-E1 (2026-07-03):
+- Implementado el backend de follow/unfollow de series oficiales LMU (CALENDAR-05-E1).
+- Service (`internal/calendar/calendar_service.go`): anadidos `FollowSeries(seriesID)`, `UnfollowSeries(seriesID)` e `IsSeriesFollowed(seriesID)`. `FollowSeries` valida que `seriesID` exista en `Calendar.Series`; es idempotente. `UnfollowSeries` es idempotente. Ambos persisten atomicamente con `persistLocked`.
+- Bridge (`internal/app/calendar_bridge.go`): anadidas interfaces `CalendarSeriesFollower`/`CalendarSeriesUnfollower` y handlers `HandleCalendarSeriesFollow`/`HandleCalendarSeriesUnfollow` que emiten `calendar:loaded` en exito y `calendar:error` en error.
+- Main (`cmd/vantare/main.go`): registrados eventos Wails `calendar:series:follow` y `calendar:series:unfollow` con payload `{ seriesId }`.
+- Tests service (`internal/calendar/calendar_service_test.go`): 6 tests anadidos (Follow valido+persiste, Follow invalido error, Follow idempotente, Unfollow remove+persiste, Unfollow idempotente, IsSeriesFollowed basic).
+- Tests bridge (`internal/app/calendar_bridge_test.go`): 9 tests anadidos (fake follow/unfollow emits loaded/error, real service follow/unfollow round-trip, follow invalido error, persistencia a disk).
+- `ApplyOfficialSchedule` ya poda follows de series invalidas (linea 309 de `calendar_service.go`).
+- Eventos existentes (`calendar:follow`, `calendar:unfollow`, `calendar:get`, `calendar:clear`, `calendar:import`) intactos.
+- Scope: backend y bridge; frontend NO tocado todavia.
+- Checks: gofmt limpio, `go test -count=1 -run "TestService_FollowSeries|TestService_UnfollowSeries|TestService_ApplyOfficialSchedule|TestHandleCalendarSeries" ./internal/calendar/... ./internal/app/... PASS, `go vet` limpio, `git diff --check` limpio.
+- Test suite completo `./internal/calendar/...`: `TestParse_AcceptsValidLines` falla (preexistente, fixture con 2027 vs test espera 2026), no causada por este cambio.
+- Sin commit, sin tag, sin release.
+
 Nota LAUNCHER-01 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-launcher-01-sim-launcher.md`. PLAN ONLY, sin implementacion. Primer corte del launcher de simuladores: solo LMU en Windows + Steam (`steam://run/2399420` o `.exe` local). Sustituye `EmptyLauncher.tsx` por `LauncherCard`, anade `LauncherService` en Go y bloque `Launchers` en `AppSettings`. Fuera de v0.1.x: multi-sim, Linux/Proton, procesos supervisados, instalacion automatica de apps externas, hotkey "abrir LMU", UI de edicion de `AssociatedApps`.
 - Adapta el copy del modal BetaWelcome segun el tipo de usuario (beginner/intermediate/advanced/creator/organizer). El modal es obligatorio: ya no tiene boton X/cerrar y el boton "Empezar" esta disabled hasta seleccionar un rol. Asi nunca se persiste `betaWelcomeCompleted` sin un rol.

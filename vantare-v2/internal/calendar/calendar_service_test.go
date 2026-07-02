@@ -1741,6 +1741,168 @@ func TestPruneFollowedSeriesLocked(t *testing.T) {
 	}
 }
 
+// --- Series follow/unfollow ---
+
+func TestService_FollowSeries_ValidAddsIDAndPersists(t *testing.T) {
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	cal, err := svc.FollowSeries("beginner-lmgt3-fixed")
+	if err != nil {
+		t.Fatalf("FollowSeries: %v", err)
+	}
+	if len(cal.FollowedSeriesIDs) != 1 || cal.FollowedSeriesIDs[0] != "beginner-lmgt3-fixed" {
+		t.Fatalf("FollowedSeriesIDs=%v, want [beginner-lmgt3-fixed]", cal.FollowedSeriesIDs)
+	}
+	if !svc.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should be true after FollowSeries")
+	}
+
+	// Reload from disk.
+	svc2 := NewService(filepath.Dir(svc.Path()), fixedClock(now))
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("svc2.Load: %v", err)
+	}
+	if !svc2.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should survive reload")
+	}
+}
+
+func TestService_FollowSeries_InvalidReturnsErrorAndDoesNotChangeCalendar(t *testing.T) {
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	// "nonexistent-series" does not exist in Calendar.Series.
+	_, err := svc.FollowSeries("nonexistent-series")
+	if err == nil {
+		t.Fatal("expected error for nonexistent series, got nil")
+	}
+	cal := svc.Calendar()
+	if len(cal.FollowedSeriesIDs) != 0 {
+		t.Errorf("FollowedSeriesIDs=%v, want empty after failed FollowSeries", cal.FollowedSeriesIDs)
+	}
+}
+
+func TestService_FollowSeries_Idempotent(t *testing.T) {
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	if _, err := svc.FollowSeries("beginner-lmgt3-fixed"); err != nil {
+		t.Fatalf("first FollowSeries: %v", err)
+	}
+	cal, err := svc.FollowSeries("beginner-lmgt3-fixed")
+	if err != nil {
+		t.Fatalf("second FollowSeries: %v", err)
+	}
+	if len(cal.FollowedSeriesIDs) != 1 {
+		t.Fatalf("FollowedSeriesIDs=%v after twice, want 1 (idempotent)", cal.FollowedSeriesIDs)
+	}
+}
+
+func TestService_UnfollowSeries_RemovesIDAndPersists(t *testing.T) {
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+	if _, err := svc.FollowSeries("beginner-lmgt3-fixed"); err != nil {
+		t.Fatalf("FollowSeries: %v", err)
+	}
+
+	cal, err := svc.UnfollowSeries("beginner-lmgt3-fixed")
+	if err != nil {
+		t.Fatalf("UnfollowSeries: %v", err)
+	}
+	if len(cal.FollowedSeriesIDs) != 0 {
+		t.Errorf("FollowedSeriesIDs=%v after unfollow, want empty", cal.FollowedSeriesIDs)
+	}
+	if svc.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should be false after UnfollowSeries")
+	}
+
+	// Reload from disk.
+	svc2 := NewService(filepath.Dir(svc.Path()), fixedClock(now))
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("svc2.Load: %v", err)
+	}
+	if svc2.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should be false after reload")
+	}
+}
+
+func TestService_UnfollowSeries_Idempotent(t *testing.T) {
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	// Unfollowing a series that is not followed is a no-op.
+	cal, err := svc.UnfollowSeries("beginner-lmgt3-fixed")
+	if err != nil {
+		t.Fatalf("UnfollowSeries: %v", err)
+	}
+	if len(cal.FollowedSeriesIDs) != 0 {
+		t.Errorf("FollowedSeriesIDs=%v, want empty (idempotent)", cal.FollowedSeriesIDs)
+	}
+}
+
+func TestService_IsSeriesFollowed_Basic(t *testing.T) {
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	// Not followed initially.
+	if svc.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should be false before follow")
+	}
+
+	// Follow the series.
+	if _, err := svc.FollowSeries("beginner-lmgt3-fixed"); err != nil {
+		t.Fatalf("FollowSeries: %v", err)
+	}
+	if !svc.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should be true after FollowSeries")
+	}
+
+	// Unfollow the series.
+	if _, err := svc.UnfollowSeries("beginner-lmgt3-fixed"); err != nil {
+		t.Fatalf("UnfollowSeries: %v", err)
+	}
+	if svc.IsSeriesFollowed("beginner-lmgt3-fixed") {
+		t.Error("IsSeriesFollowed should be false after UnfollowSeries")
+	}
+}
+
 // helpers (small wrappers so the test file is self contained)
 
 func readDirNames(dir string) ([]string, error) {

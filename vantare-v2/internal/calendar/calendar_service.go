@@ -447,6 +447,74 @@ func (s *Service) IsFollowed(eventID string) bool {
 	return false
 }
 
+// FollowSeries marks a series as followed. Returns an error if the seriesID
+// does not exist in Calendar.Series. The change is persisted atomically.
+func (s *Service) FollowSeries(seriesID string) (Calendar, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !seriesExistsLocked(s.cal.Series, seriesID) {
+		return Calendar{}, fmt.Errorf("series %q not found in calendar", seriesID)
+	}
+	for _, id := range s.cal.FollowedSeriesIDs {
+		if id == seriesID {
+			return s.cloneLocked(), nil // already followed, no-op
+		}
+	}
+	s.cal.FollowedSeriesIDs = append(s.cal.FollowedSeriesIDs, seriesID)
+	s.cal.Updated = s.now().UTC()
+	if err := s.persistLocked(); err != nil {
+		return Calendar{}, err
+	}
+	return s.cloneLocked(), nil
+}
+
+// UnfollowSeries removes a series from the followed list. It is a no-op if the
+// series was not followed. The change is persisted atomically.
+func (s *Service) UnfollowSeries(seriesID string) (Calendar, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filtered := make([]string, 0, len(s.cal.FollowedSeriesIDs))
+	for _, id := range s.cal.FollowedSeriesIDs {
+		if id != seriesID {
+			filtered = append(filtered, id)
+		}
+	}
+	if len(filtered) == len(s.cal.FollowedSeriesIDs) {
+		return s.cloneLocked(), nil // not followed, no-op
+	}
+	s.cal.FollowedSeriesIDs = filtered
+	s.cal.Updated = s.now().UTC()
+	if err := s.persistLocked(); err != nil {
+		return Calendar{}, err
+	}
+	return s.cloneLocked(), nil
+}
+
+// IsSeriesFollowed reports whether the given series ID is currently followed.
+func (s *Service) IsSeriesFollowed(seriesID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, id := range s.cal.FollowedSeriesIDs {
+		if id == seriesID {
+			return true
+		}
+	}
+	return false
+}
+
+// seriesExistsLocked reports whether a series with the given ID exists in the
+// series list. Callers must hold s.mu.
+func seriesExistsLocked(series []RaceSeries, id string) bool {
+	for _, s := range series {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 // Upcoming returns the event that is happening right now (start <= now < end),
 // or the next future event. ok is false when the calendar has no future or
 // active events.

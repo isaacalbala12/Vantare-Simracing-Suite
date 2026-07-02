@@ -448,6 +448,225 @@ func (f *fakeCalendarFollowService) Unfollow(eventID string) (calendar.Calendar,
 	return f.cal, nil
 }
 
+// --- Calendar series follow/unfollow bridge tests (CALENDAR-05-E1) ---
+
+// fakeCalendarSeriesService implements CalendarSeriesFollower, CalendarSeriesUnfollower,
+// CalendarGetter for testing series follow/unfollow bridge handlers.
+type fakeCalendarSeriesService struct {
+	cal           calendar.Calendar
+	followErr     error
+	unfollowErr   error
+	followCalls   int
+	unfollowCalls int
+}
+
+func (f *fakeCalendarSeriesService) Calendar() calendar.Calendar {
+	return f.cal
+}
+
+func (f *fakeCalendarSeriesService) FollowSeries(seriesID string) (calendar.Calendar, error) {
+	f.followCalls++
+	if f.followErr != nil {
+		return calendar.Calendar{}, f.followErr
+	}
+	for _, id := range f.cal.FollowedSeriesIDs {
+		if id == seriesID {
+			return f.cal, nil // already followed
+		}
+	}
+	f.cal.FollowedSeriesIDs = append(f.cal.FollowedSeriesIDs, seriesID)
+	return f.cal, nil
+}
+
+func (f *fakeCalendarSeriesService) UnfollowSeries(seriesID string) (calendar.Calendar, error) {
+	f.unfollowCalls++
+	if f.unfollowErr != nil {
+		return calendar.Calendar{}, f.unfollowErr
+	}
+	filtered := make([]string, 0, len(f.cal.FollowedSeriesIDs))
+	for _, id := range f.cal.FollowedSeriesIDs {
+		if id != seriesID {
+			filtered = append(filtered, id)
+		}
+	}
+	f.cal.FollowedSeriesIDs = filtered
+	return f.cal, nil
+}
+
+func TestHandleCalendarSeriesFollowEmitsLoaded(t *testing.T) {
+	svc := &fakeCalendarSeriesService{cal: calendar.NewDefaultCalendar()}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
+	}
+	if svc.followCalls != 1 {
+		t.Fatalf("followCalls=%d, want 1", svc.followCalls)
+	}
+}
+
+func TestHandleCalendarSeriesFollowErrorEmitsError(t *testing.T) {
+	svc := &fakeCalendarSeriesService{
+		cal:       calendar.NewDefaultCalendar(),
+		followErr: errors.New("series not found"),
+	}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarSeriesFollow("nonexistent", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
+	}
+	if svc.followCalls != 1 {
+		t.Fatalf("followCalls=%d, want 1", svc.followCalls)
+	}
+}
+
+func TestHandleCalendarSeriesUnfollowEmitsLoaded(t *testing.T) {
+	svc := &fakeCalendarSeriesService{cal: calendar.NewDefaultCalendar()}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
+	}
+	if svc.unfollowCalls != 1 {
+		t.Fatalf("unfollowCalls=%d, want 1", svc.unfollowCalls)
+	}
+}
+
+func TestHandleCalendarSeriesUnfollowErrorEmitsError(t *testing.T) {
+	svc := &fakeCalendarSeriesService{
+		cal:         calendar.NewDefaultCalendar(),
+		unfollowErr: errors.New("persist error"),
+	}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
+	}
+	if svc.unfollowCalls != 1 {
+		t.Fatalf("unfollowCalls=%d, want 1", svc.unfollowCalls)
+	}
+}
+
+// TestHandleCalendarSeriesFollowWithRealService verifies the full round-trip with a
+// real *calendar.Service.
+func TestHandleCalendarSeriesFollowWithRealService(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	emitter := &spyCalendarEmitter{}
+
+	// Set up series via ApplyOfficialSchedule.
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	// Follow a series.
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+		t.Fatalf("follow events=%v, want [calendar:loaded]", emitter.events)
+	}
+	cal2 := svc.Calendar()
+	if len(cal2.FollowedSeriesIDs) != 1 || cal2.FollowedSeriesIDs[0] != "beginner-lmgt3-fixed" {
+		t.Fatalf("FollowedSeriesIDs=%v, want [beginner-lmgt3-fixed]", cal2.FollowedSeriesIDs)
+	}
+}
+
+// TestHandleCalendarSeriesFollowInvalidWithRealService verifies that following a
+// nonexistent series emits calendar:error and does not change the calendar.
+func TestHandleCalendarSeriesFollowInvalidWithRealService(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	emitter := &spyCalendarEmitter{}
+
+	HandleCalendarSeriesFollow("nonexistent-series", svc, svc, emitter, func(string, ...any) {})
+
+	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
+	}
+	cal := svc.Calendar()
+	if len(cal.FollowedSeriesIDs) != 0 {
+		t.Errorf("FollowedSeriesIDs=%v after failed follow, want empty", cal.FollowedSeriesIDs)
+	}
+}
+
+// TestHandleCalendarSeriesUnfollowWithRealService verifies the full unfollow
+// round-trip with a real *calendar.Service.
+func TestHandleCalendarSeriesUnfollowWithRealService(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// Set up series and follow one.
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+	emitter := &spyCalendarEmitter{}
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	if len(svc.Calendar().FollowedSeriesIDs) != 1 {
+		t.Fatalf("expected 1 followed series after follow")
+	}
+
+	// Unfollow.
+	emitter2 := &spyCalendarEmitter{}
+	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter2, func(string, ...any) {})
+
+	if len(emitter2.events) != 1 || emitter2.events[0] != "calendar:loaded" {
+		t.Fatalf("unfollow events=%v, want [calendar:loaded]", emitter2.events)
+	}
+	cal2 := svc.Calendar()
+	if len(cal2.FollowedSeriesIDs) != 0 {
+		t.Errorf("FollowedSeriesIDs=%v after unfollow, want empty", cal2.FollowedSeriesIDs)
+	}
+}
+
+// TestHandleCalendarSeriesFollowPersistsToDisk verifies that after a successful
+// series follow, the data is persisted to disk and survives a reload.
+func TestHandleCalendarSeriesFollowPersistsToDisk(t *testing.T) {
+	dir := t.TempDir()
+	svc := calendar.NewService(dir, time.Now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// Set up series.
+	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatalf("ApplyOfficialSchedule: %v", err)
+	}
+
+	// Follow a series.
+	emitter := &spyCalendarEmitter{}
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+
+	// Reload from disk.
+	svc2 := calendar.NewService(dir, time.Now)
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("svc2.Load: %v", err)
+	}
+	cal := svc2.Calendar()
+	if len(cal.FollowedSeriesIDs) != 1 || cal.FollowedSeriesIDs[0] != "beginner-lmgt3-fixed" {
+		t.Fatalf("FollowedSeriesIDs=%v after reload, want [beginner-lmgt3-fixed]", cal.FollowedSeriesIDs)
+	}
+}
+
 func TestHandleCalendarFollowEmitsLoaded(t *testing.T) {
 	svc := &fakeCalendarFollowService{cal: calendar.NewDefaultCalendar()}
 	emitter := &spyCalendarEmitter{}

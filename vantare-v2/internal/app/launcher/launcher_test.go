@@ -153,11 +153,10 @@ func TestConfigurePersistsViaSettingsBackend(t *testing.T) {
 	}
 }
 
-// stubExec lets tests control the exec.Cmd returned for Launch and capture
-// the arguments without spawning a process. The returned *exec.Cmd is built
-// with the real exec.Command so its Args are inspectable; cmd.Start() will
-// fail in the test environment, but the recorded (name, args) tuple is the
-// assertion surface.
+// stubExec lets tests capture the command Launch would execute without ever
+// starting Steam, LMU, or a local executable. The returned command starts this
+// test binary in helper-process mode, so cmd.Start/cmd.Wait exercise the real
+// process path while staying hermetic.
 type stubExec struct {
 	calls atomic.Int32
 	last  atomic.Pointer[recordedCall]
@@ -171,11 +170,17 @@ type recordedCall struct {
 func (s *stubExec) launcher(name string, args ...string) *exec.Cmd {
 	s.calls.Add(1)
 	s.last.Store(&recordedCall{name: name, args: append([]string(nil), args...)})
-	// Return a real *exec.Cmd but it will not be started unless the test
-	// calls Start. Launch() calls Start() unconditionally, so we redirect
-	// by giving back a command whose Process can be set without OS work.
-	cmd := exec.Command(name, args...)
+	cmdArgs := append([]string{"-test.run=TestLauncherHelperProcess", "--", name}, args...)
+	cmd := exec.Command(os.Args[0], cmdArgs...)
+	cmd.Env = append(os.Environ(), "VANTARE_LAUNCHER_HELPER_PROCESS=1")
 	return cmd
+}
+
+func TestLauncherHelperProcess(t *testing.T) {
+	if os.Getenv("VANTARE_LAUNCHER_HELPER_PROCESS") != "1" {
+		return
+	}
+	os.Exit(0)
 }
 
 func TestLaunchWithoutConfigReturnsErrNotConfigured(t *testing.T) {
@@ -211,16 +216,12 @@ func TestLaunchWithSteamURIBuildsExpectedCommand(t *testing.T) {
 	settings := &fakeSettings{launchers: map[string]LauncherConfig{
 		"lmu": {SimulatorID: "lmu", LaunchMethod: "steam-uri", SteamAppID: DefaultLMUAppID},
 	}}
-	// We need a way to prevent cmd.Start from actually spawning rundll32.
-	// Since we cannot easily inject a failing Start without intercepting
-	// exec.Command itself, we rely on the error path returning and
-	// capturing the recorded arguments via arg1.
 	exec := &stubExec{}
 	svc := NewService(settings, nil, exec.launcher)
 	svc.SetClock(func() time.Time { return time.Unix(1700000000, 0).UTC() })
-	// Launch will return an error from cmd.Start() because the command
-	// is invalid in a test environment; we still verify arguments.
-	_, _ = svc.Launch("lmu")
+	if _, err := svc.Launch("lmu"); err != nil {
+		t.Fatalf("Launch: %v", err)
+	}
 	if exec.calls.Load() != 1 {
 		t.Fatalf("expected 1 exec call, got %d", exec.calls.Load())
 	}
@@ -251,7 +252,9 @@ func TestLaunchWithExecutableBuildsExpectedCommand(t *testing.T) {
 	}}
 	exec := &stubExec{}
 	svc := NewService(settings, nil, exec.launcher)
-	_, _ = svc.Launch("lmu")
+	if _, err := svc.Launch("lmu"); err != nil {
+		t.Fatalf("Launch: %v", err)
+	}
 	if exec.calls.Load() != 1 {
 		t.Fatalf("expected 1 exec call, got %d", exec.calls.Load())
 	}

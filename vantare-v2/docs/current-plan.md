@@ -8,6 +8,28 @@ Nota post-release (2026-06-29):
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 - Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
+Nota CALENDAR-06-C (2026-07-03):
+- Vista mensual de carreras LMU implementada en CalendarPage con el componente dedicado CalendarMonthView.
+- Renderiza grilla de 42 celdas con semana empezando en lunes, resaltado del día actual, atenuación de días de otros meses y el título/eyebrow "Vista mensual".
+- Muestra el resumen compacto de series tipo "interval" (Bronce/Plata/Oro/Semanal cada X min) sin materializar miles de eventos recurrentes diarios.
+- Expande de forma dinámica las series "weekly-slots" y muestra los eventos especiales materializados en la celda del día correspondiente, con control de límite de 3 items visuales por día ("+N más").
+- Se mantiene la compatibilidad con el fallback legacy y el funcionamiento de la barra de herramientas y la gestión de follow/unfollow de la parte inferior.
+- Tests unitarios y de integración de frontend (93/93) validados con éxito. Sin errores de TypeScript o linter.
+
+Nota CALENDAR-06-B (2026-07-03):
+- Componente CalendarToolbar implementado con navegación de fecha (anterior/hoy/siguiente) y switch de vistas (Mes/Semana/Día).
+- Integrado localmente en CalendarPage con estados de vista y fecha base.
+- Toolbar cumple con estética dark/glass v5.2, accesibilidad nativa y sin botones de importación/creación/borrado.
+- Corregida accesibilidad/semántica en el toolbar (role="group" en switch de vistas, aria-hidden="true" en SVGs de navegación).
+- Tests unitarios y de integración de frontend ejecutados con éxito.
+- Sin cambios en backend, store o tipos.
+
+Nota CALENDAR-06-A (2026-07-03):
+- Helpers puros de calendario visual creados en frontend/src/calendar/calendar-view-math.ts.
+- Sin UI ni componentes React.
+- Sin backend.
+- Tests ejecutados con éxito.
+
 Nota HUB-04 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-hub-04-role-aware-beta-welcome.md`.
 
@@ -1734,3 +1756,8 @@ Nota CALENDAR-05-C (2026-07-02):
 - Archivos tocados: `internal/calendar/calendar.go`, `internal/calendar/calendar_service.go`, `internal/calendar/calendar_service_test.go`, `internal/calendar/bundled_seed.go`, `cmd/vantare/main.go`, `docs/current-plan.md`.
 - No se tocó: frontend, CalendarPage, calendar-store/types TS, Reminders, WidgetStudio/LayoutStudio, overlay runtime, Supabase, AppSettings.
 - Sin commit.
+
+Nota CALENDAR-06-C P3 (2026-07-03):
+- Corregido P3: Modificado CalendarMonthView.tsx para separar visualmente los resumenes de interval (siempre visibles, sin cap) y los eventos concretos (sujetos a maxItemsPerDay = 3).
+- Actualizado CalendarMonthView.test.tsx para validar que el cap solo afecta a los eventos concretos y que la cuenta de '+N mas' no incluye intervalos.
+- Verificacion: tsc, eslint y vitest 100% OK.

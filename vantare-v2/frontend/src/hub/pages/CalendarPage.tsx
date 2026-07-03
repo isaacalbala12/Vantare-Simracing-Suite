@@ -15,6 +15,8 @@ import {
 } from "../../calendar/calendar-types";
 import { CalendarSeriesCard } from "../calendar/CalendarSeriesCard";
 import { tierLabel } from "../calendar/calendar-tier";
+import { CalendarToolbar } from "../calendar/CalendarToolbar";
+import { CalendarMonthView } from "../calendar/CalendarMonthView";
 
 function pickUpcoming(calendar: Calendar, now: Date): RaceEvent[] {
   const sorted = [...calendar.events].sort((a, b) =>
@@ -74,6 +76,8 @@ function groupSeriesByTier(
 export function CalendarPage() {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
+  const [calendarAnchorDate, setCalendarAnchorDate] = useState<Date>(new Date());
 
   useEffect(() => {
     requestCalendar();
@@ -108,6 +112,46 @@ export function CalendarPage() {
     Events.Emit("calendar:series:unfollow", { seriesId });
   }, []);
 
+  const handleToday = useCallback(() => {
+    setCalendarAnchorDate(new Date());
+  }, []);
+
+  const handlePrevious = useCallback(() => {
+    setCalendarAnchorDate((prev) => {
+      const newDate = new Date(prev.getTime());
+      if (calendarView === "month") {
+        const day = prev.getDate();
+        newDate.setDate(1);
+        newDate.setMonth(newDate.getMonth() - 1);
+        const lastDayOfNewMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
+        newDate.setDate(Math.min(day, lastDayOfNewMonth));
+      } else if (calendarView === "week") {
+        newDate.setDate(newDate.getDate() - 7);
+      } else {
+        newDate.setDate(newDate.getDate() - 1);
+      }
+      return newDate;
+    });
+  }, [calendarView]);
+
+  const handleNext = useCallback(() => {
+    setCalendarAnchorDate((prev) => {
+      const newDate = new Date(prev.getTime());
+      if (calendarView === "month") {
+        const day = prev.getDate();
+        newDate.setDate(1);
+        newDate.setMonth(newDate.getMonth() + 1);
+        const lastDayOfNewMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
+        newDate.setDate(Math.min(day, lastDayOfNewMonth));
+      } else if (calendarView === "week") {
+        newDate.setDate(newDate.getDate() + 7);
+      } else {
+        newDate.setDate(newDate.getDate() + 1);
+      }
+      return newDate;
+    });
+  }, [calendarView]);
+
   const now = new Date();
   const hasSeries = calendar ? calendar.series && calendar.series.length > 0 : false;
   const seriesGroups = calendar ? groupSeriesByTier(calendar.series ?? [], calendar.seriesPreviews) : [];
@@ -128,6 +172,18 @@ export function CalendarPage() {
           Consulta las próximas carreras LMU publicadas por Vantare. Sigue una carrera para recibir avisos antes de la salida.
         </p>
       </header>
+
+      {/* Calendar Toolbar */}
+      <div className="opacity-0 animate-fade-in-up delay-75">
+        <CalendarToolbar
+          view={calendarView}
+          anchorDate={calendarAnchorDate}
+          onViewChange={setCalendarView}
+          onToday={handleToday}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      </div>
 
       {/* Informative block — copy adapts to mode */}
       <section className="card-sleek rounded-xl p-5 opacity-0 animate-fade-in-up delay-75">
@@ -199,6 +255,28 @@ export function CalendarPage() {
             Las salidas repetitivas se muestran como patrón horario para evitar listar miles de carreras.
           </p>
         </section>
+      )}
+
+      {/* Visual Calendar Grid or Placeholder */}
+      {hasSeries && (
+        <div className="opacity-0 animate-fade-in-up delay-75">
+          {calendarView === "month" ? (
+            <CalendarMonthView
+              anchorDate={calendarAnchorDate}
+              calendar={calendar!}
+            />
+          ) : (
+            <div
+              className="card-sleek rounded-xl p-5 text-center"
+              data-testid="calendar-view-placeholder"
+            >
+              <span className="v52-eyebrow">Vista {calendarView === "week" ? "semanal" : "diaria"}</span>
+              <p className="text-sm text-vantare-textMuted mt-2">
+                La vista {calendarView === "week" ? "semanal" : "diaria"} visual está en desarrollo y estará disponible en una próxima actualización.
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Series (official schedule) or legacy upcoming races */}

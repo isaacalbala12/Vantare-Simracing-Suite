@@ -743,5 +743,127 @@ describe("CalendarPage", () => {
       expect(screen.queryByText(/14h 22m/)).toBeNull();
       expect(screen.queryByText(/Q4 2026/)).toBeNull();
     });
+
+    describe("Toolbar Integration", () => {
+      it("renders calendar toolbar inside CalendarPage", () => {
+        render(<CalendarPage />);
+        expect(screen.getByTestId("calendar-toolbar")).toBeTruthy();
+      });
+
+      it("clicking Mes/Semana/Día changes the active/pressed view in the toolbar", () => {
+        render(<CalendarPage />);
+        const monthBtn = screen.getByTestId("calendar-view-btn-month");
+        const weekBtn = screen.getByTestId("calendar-view-btn-week");
+        const dayBtn = screen.getByTestId("calendar-view-btn-day");
+
+        expect(monthBtn.getAttribute("aria-pressed")).toBe("true");
+        expect(weekBtn.getAttribute("aria-pressed")).toBe("false");
+        expect(dayBtn.getAttribute("aria-pressed")).toBe("false");
+
+        act(() => {
+          fireEvent.click(weekBtn);
+        });
+        expect(monthBtn.getAttribute("aria-pressed")).toBe("false");
+        expect(weekBtn.getAttribute("aria-pressed")).toBe("true");
+        expect(dayBtn.getAttribute("aria-pressed")).toBe("false");
+
+        act(() => {
+          fireEvent.click(dayBtn);
+        });
+        expect(monthBtn.getAttribute("aria-pressed")).toBe("false");
+        expect(weekBtn.getAttribute("aria-pressed")).toBe("false");
+        expect(dayBtn.getAttribute("aria-pressed")).toBe("true");
+      });
+
+      it("clicking previous, today, next changes the date in the title", () => {
+        render(<CalendarPage />);
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Julio 2026");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-next"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Agosto 2026");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-prev"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Julio 2026");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-today"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Julio 2026");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-view-btn-day"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Miércoles 1 Jul");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-next"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Jueves 2 Jul");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-prev"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Miércoles 1 Jul");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-today"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Miércoles 1 Jul");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-view-btn-week"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Semana del 29 Jun");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-next"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Semana del 6 Jul");
+
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-nav-prev"));
+        });
+        expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Semana del 29 Jun");
+      });
+    });
+
+    describe("Month/Week/Day Visual Views Integration", () => {
+      it("renders CalendarMonthView when view is month and series are present", () => {
+        render(<CalendarPage />);
+        dispatch("calendar:loaded", seriesPayload());
+
+        // By default view is month, so month view should be rendered
+        expect(screen.getByTestId("calendar-month-view")).toBeTruthy();
+        expect(screen.getByText("Vista mensual")).toBeTruthy();
+        expect(screen.queryByTestId("calendar-view-placeholder")).toBeNull();
+      });
+
+      it("renders placeholder when view is week or day and series are present", () => {
+        render(<CalendarPage />);
+        dispatch("calendar:loaded", seriesPayload());
+
+        // Click week view button
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-view-btn-week"));
+        });
+
+        expect(screen.queryByTestId("calendar-month-view")).toBeNull();
+        expect(screen.getByTestId("calendar-view-placeholder")).toBeTruthy();
+        expect(screen.getByText("Vista semanal")).toBeTruthy();
+
+        // Click day view button
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-view-btn-day"));
+        });
+
+        expect(screen.queryByTestId("calendar-month-view")).toBeNull();
+        expect(screen.getByTestId("calendar-view-placeholder")).toBeTruthy();
+        expect(screen.getByText("Vista diaria")).toBeTruthy();
+      });
+    });
   });
 });

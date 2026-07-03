@@ -8,6 +8,15 @@ Nota post-release (2026-06-29):
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 - Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
+Nota CALENDAR-06-E (2026-07-03) FIX LMU-only:
+- Vista diaria de carreras LMU implementada en CalendarPage con el componente dedicado CalendarDayView.
+- Simplificada para eliminar overengineering: ahora es estrictamente LMU-only, eliminando strings, colores y dependencias de multisim (iRacing, ACC, etc.).
+- Eliminado tooltip on-hover y layout dinámico side-by-side de solapamientos; los eventos se renderizan ahora de forma secuencial y limpia dentro de cada bloque horario.
+- Eliminado scroll automático (`useRef`, `useEffect`) de la hora actual. Se mantiene la línea indicadora de hora actual ("now-line") de forma estática.
+- Muestra el resumen compacto de patrones Bronce, Plata y Oro en un panel superior siempre de libre acceso y visibilidad.
+- Expande de forma dinámica las series "weekly-slots" y muestra eventos especiales de forma secuencial, capando a 2 visuales por hora ("+N más").
+- Tests unitarios y de integración de frontend adaptados (94/94 PASS). Sin errores de TypeScript, linter o build.
+
 Nota CALENDAR-06-D (2026-07-03):
 - Vista semanal de carreras LMU implementada en CalendarPage con el componente dedicado CalendarWeekView.
 - Renderiza 7 columnas correspondientes a los días de lunes a domingo.

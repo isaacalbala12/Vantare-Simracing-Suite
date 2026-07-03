@@ -18,6 +18,7 @@ import { tierLabel } from "../calendar/calendar-tier";
 import { CalendarToolbar } from "../calendar/CalendarToolbar";
 import { CalendarMonthView } from "../calendar/CalendarMonthView";
 import { CalendarWeekView } from "../calendar/CalendarWeekView";
+import { CalendarDayView } from "../calendar/CalendarDayView";
 
 function pickUpcoming(calendar: Calendar, now: Date): RaceEvent[] {
   const sorted = [...calendar.events].sort((a, b) =>
@@ -272,15 +273,10 @@ export function CalendarPage() {
               calendar={calendar!}
             />
           ) : (
-            <div
-              className="card-sleek rounded-xl p-5 text-center"
-              data-testid="calendar-view-placeholder"
-            >
-              <span className="v52-eyebrow">Vista diaria</span>
-              <p className="text-sm text-vantare-textMuted mt-2">
-                La vista diaria visual está en desarrollo y estará disponible en una próxima actualización.
-              </p>
-            </div>
+            <CalendarDayView
+              anchorDate={calendarAnchorDate}
+              calendar={calendar!}
+            />
           )}
         </div>
       )}

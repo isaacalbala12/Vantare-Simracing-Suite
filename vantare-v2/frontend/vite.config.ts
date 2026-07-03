@@ -8,6 +8,7 @@ export default defineConfig({
   server: { strictPort: true, port: 5173 },
   build: { outDir: "dist", emptyOutDir: true },
   test: {
+    setupFiles: ["./src/test-setup.ts"],
     environment: "happy-dom",
   },
 });

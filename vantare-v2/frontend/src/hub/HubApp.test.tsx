@@ -512,11 +512,11 @@ describe("HubApp gate (production)", () => {
       deviceOK: true,
     });
     render(<HubApp />);
-    // Wait for the sidebar Launcher button to be available, then click it.
-    const sidebarLauncher = await waitFor(() =>
+    // Wait for the topbar Launcher button to be available, then click it.
+    const topbarLauncher = await waitFor(() =>
       screen.getByTestId("topbar-nav-launcher"),
     );
-    sidebarLauncher.click();
+    topbarLauncher.click();
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Launcher" })).toBeTruthy();
     });
@@ -585,10 +585,10 @@ describe("HubApp gate (production)", () => {
       deviceOK: true,
     });
     render(<HubApp />);
-    const sidebarTelemetry = await waitFor(() =>
+    const topbarTelemetry = await waitFor(() =>
       screen.getByTestId("topbar-nav-telemetry"),
     );
-    fireEvent.click(sidebarTelemetry);
+    fireEvent.click(topbarTelemetry);
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Telemetría" })).toBeTruthy();
       expect(screen.getByText(/en desarrollo/i)).toBeTruthy();
@@ -610,10 +610,10 @@ describe("HubApp gate (production)", () => {
       deviceOK: true,
     });
     render(<HubApp />);
-    const sidebarCalendar = await waitFor(() =>
+    const topbarCalendar = await waitFor(() =>
       screen.getByTestId("topbar-nav-calendar"),
     );
-    fireEvent.click(sidebarCalendar);
+    fireEvent.click(topbarCalendar);
     await waitFor(() => {
       expect(screen.getByTestId("calendar-toolbar")).toBeTruthy();
     });
@@ -721,10 +721,10 @@ describe("HubApp gate (production)", () => {
       deviceOK: true,
     });
     render(<HubApp />);
-    const sidebarRoadmap = await waitFor(() =>
+    const topbarRoadmap = await waitFor(() =>
       screen.getByTestId("topbar-nav-roadmap"),
     );
-    fireEvent.click(sidebarRoadmap);
+    fireEvent.click(topbarRoadmap);
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Desarrollo Vantare" })).toBeTruthy();
     });

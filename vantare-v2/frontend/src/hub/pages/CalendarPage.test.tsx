@@ -842,7 +842,7 @@ describe("CalendarPage", () => {
         expect(screen.queryByTestId("calendar-view-placeholder")).toBeNull();
       });
 
-      it("renders placeholder when view is week or day and series are present", () => {
+      it("renders CalendarWeekView when view is week, and placeholder when view is day", () => {
         render(<CalendarPage />);
         dispatch("calendar:loaded", seriesPayload());
 
@@ -852,7 +852,8 @@ describe("CalendarPage", () => {
         });
 
         expect(screen.queryByTestId("calendar-month-view")).toBeNull();
-        expect(screen.getByTestId("calendar-view-placeholder")).toBeTruthy();
+        expect(screen.queryByTestId("calendar-view-placeholder")).toBeNull();
+        expect(screen.getByTestId("calendar-week-view")).toBeTruthy();
         expect(screen.getByText("Vista semanal")).toBeTruthy();
 
         // Click day view button
@@ -861,8 +862,17 @@ describe("CalendarPage", () => {
         });
 
         expect(screen.queryByTestId("calendar-month-view")).toBeNull();
+        expect(screen.queryByTestId("calendar-week-view")).toBeNull();
         expect(screen.getByTestId("calendar-view-placeholder")).toBeTruthy();
         expect(screen.getByText("Vista diaria")).toBeTruthy();
+
+        // Click month view button again to ensure back-and-forth works
+        act(() => {
+          fireEvent.click(screen.getByTestId("calendar-view-btn-month"));
+        });
+        expect(screen.getByTestId("calendar-month-view")).toBeTruthy();
+        expect(screen.queryByTestId("calendar-week-view")).toBeNull();
+        expect(screen.queryByTestId("calendar-view-placeholder")).toBeNull();
       });
     });
   });

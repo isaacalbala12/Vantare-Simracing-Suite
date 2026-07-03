@@ -8,6 +8,16 @@ Nota post-release (2026-06-29):
 - Supabase Go se inyecta con `tools/generate_supabase_config.ps1` generando temporalmente `cmd/vantare/supabase_build.go`, no con ldflags.
 - Para builds locales, mapear `frontend\.env.local` (`VITE_SUPABASE_*`) a `VANTARE_SUPABASE_*` antes de compilar. Si solo se necesita smoke rapido de la app, usar la ruta "Opcion A2" del runbook: `corepack pnpm --dir frontend build` + `generate_supabase_config.ps1` + `go build` + `Start-Process .\bin\vantare.exe`. Esa ruta no sustituye a `release:artifacts` para publicar.
 
+Nota CALENDAR-06-D (2026-07-03):
+- Vista semanal de carreras LMU implementada en CalendarPage con el componente dedicado CalendarWeekView.
+- Renderiza 7 columnas correspondientes a los días de lunes a domingo.
+- Cada columna incluye el día de la semana, el número del día y el indicador de hoy (resaltando el día actual en rojo Vantare).
+- Muestra el resumen compacto de las series de intervalos (Bronce, Plata, Oro, Semanal) por día, no afectándose por el cap de eventos.
+- Muestra eventos semanales concretos (weekly-slots) y eventos especiales materializados en la columna del día correspondiente, con hora local compacta.
+- Limita los eventos concretos a un máximo de 3 por día, mostrando el indicador "+N más" para los eventos concretos que queden ocultos.
+- Integrado en CalendarPage: el botón de "Semana" del toolbar muestra la vista semanal, el de "Mes" muestra la vista mensual y el de "Día" sigue mostrando el placeholder honesto.
+- Tests unitarios y de integración de frontend (93/93) validados con éxito. Sin errores de TypeScript, linter o formato.
+
 Nota CALENDAR-06-C (2026-07-03):
 - Vista mensual de carreras LMU implementada en CalendarPage con el componente dedicado CalendarMonthView.
 - Renderiza grilla de 42 celdas con semana empezando en lunes, resaltado del día actual, atenuación de días de otros meses y el título/eyebrow "Vista mensual".

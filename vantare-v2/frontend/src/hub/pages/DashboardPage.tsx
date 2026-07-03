@@ -3,7 +3,7 @@ import { QuickActions } from "../components/QuickActions";
 import { LastActivityCard } from "../components/LastActivityCard";
 import { LauncherCard } from "../components/LauncherCard";
 import { RecommendedQuickStart } from "../components/RecommendedQuickStart";
-import { V52CalendarStrip } from "../components/V52CalendarStrip";
+import { CalendarHeroUpcomingPanel } from "../calendar/CalendarHeroUpcomingPanel";
 import { V52InfoCard } from "../components/V52InfoCard";
 
 type DashboardPageProps = {
@@ -56,7 +56,7 @@ export function DashboardPage({
       </div>
 
       {/* Próximas carreras — 3 cards + WEC Weekly row */}
-      <V52CalendarStrip />
+      <CalendarHeroUpcomingPanel />
 
       {/* Overlay activo */}
       <ActiveOverlayCard

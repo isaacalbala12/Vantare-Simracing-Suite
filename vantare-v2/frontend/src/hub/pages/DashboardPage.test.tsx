@@ -49,9 +49,9 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Acciones r/i)).toBeTruthy();
   });
 
-  it("renders v52 calendar strip with Próximas carreras heading", () => {
+  it("renders upcoming calendar panel with Próximas carreras heading", () => {
     render(<DashboardPage />);
-    expect(screen.getByTestId("v52-calendar-strip")).toBeTruthy();
+    expect(screen.getByTestId("calendar-hero-upcoming-panel-empty")).toBeTruthy();
     expect(screen.getByText(/Próximas carreras/i)).toBeTruthy();
   });
 

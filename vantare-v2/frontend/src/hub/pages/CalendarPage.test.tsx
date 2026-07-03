@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarPage } from "./CalendarPage";
 
@@ -455,15 +455,6 @@ describe("CalendarPage", () => {
       };
     }
 
-    it("renders Bronce/Plata/Oro/Weekly tier groups when series arrive", () => {
-      render(<CalendarPage />);
-      dispatch("calendar:loaded", seriesPayload());
-      expect(screen.getByText("Bronce")).toBeTruthy();
-      expect(screen.getByText("Plata")).toBeTruthy();
-      expect(screen.getByText("Oro")).toBeTruthy();
-      expect(screen.getByText("Weekly")).toBeTruthy();
-    });
-
     it("renders Cada 15 min, Cada 20 min, Cada 30 min schedule labels", () => {
       render(<CalendarPage />);
       dispatch("calendar:loaded", seriesPayload());
@@ -611,6 +602,146 @@ describe("CalendarPage", () => {
         fireEvent.click(screen.getByTestId("calendar-unfollow-btn-ev-legacy"));
       });
       expect(eventsEmit).toHaveBeenCalledWith("calendar:unfollow", { eventId: "ev-legacy" });
+    });
+
+    // CALENDAR-05-F: compact weekly schedule overview
+
+    it("renders Horario semanal LMU when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByRole("heading", { level: 2, name: "Horario semanal LMU" })).toBeTruthy();
+    });
+
+    it("renders honest copy about no manual import when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByText("Vantare publica el calendario oficial semanal dentro de la app. No necesitas importar nada manualmente.")).toBeTruthy();
+    });
+
+    it("renders timezone when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ calendar: { ...seriesPayload().calendar, timezone: "Europe/Madrid" } }));
+      expect(screen.getByText(/Zona horaria:/)).toBeTruthy();
+    });
+
+    it("renders pattern explanation when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByText("Las salidas repetitivas se muestran como patrón horario para evitar listar miles de carreras.")).toBeTruthy();
+    });
+
+    it("summary shows data-testid per tier cell", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.getByTestId("calendar-series-summary-beginner")).toBeTruthy();
+      expect(screen.getByTestId("calendar-series-summary-intermediate")).toBeTruthy();
+      expect(screen.getByTestId("calendar-series-summary-advanced")).toBeTruthy();
+      expect(screen.getByTestId("calendar-series-summary-weekly")).toBeTruthy();
+    });
+
+    it("beginner cell shows Bronce, count, schedule badge, duration from seriesPreviews", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      const cell = screen.getByTestId("calendar-series-summary-beginner");
+      expect(within(cell).getByText("Bronce")).toBeTruthy();
+      // "1 serie" is split across nodes — use regex
+      expect(within(cell).getByText(/1\s+serie/)).toBeTruthy();
+      // lmu-fixed (beginner) has scheduleLabel "Cada 30 min" per seriesPayload
+      expect(within(cell).getByText("Cada 30 min")).toBeTruthy();
+      expect(within(cell).getByText(/20 min/)).toBeTruthy();
+    });
+
+    it("intermediate cell shows Plata, count, schedule badge, duration", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      const cell = screen.getByTestId("calendar-series-summary-intermediate");
+      expect(within(cell).getByText("Plata")).toBeTruthy();
+      expect(within(cell).getByText(/1\s+serie/)).toBeTruthy();
+      expect(within(cell).getByText("Cada 20 min")).toBeTruthy();
+      expect(within(cell).getByText(/45 min/)).toBeTruthy();
+    });
+
+    it("advanced cell shows Oro, count, schedule badge, duration", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      const cell = screen.getByTestId("calendar-series-summary-advanced");
+      expect(within(cell).getByText("Oro")).toBeTruthy();
+      expect(within(cell).getByText(/1\s+serie/)).toBeTruthy();
+      // lmu-pro (advanced) has scheduleLabel "Cada 15 min" per seriesPayload
+      expect(within(cell).getByText("Cada 15 min")).toBeTruthy();
+      expect(within(cell).getByText(/60 min/)).toBeTruthy();
+    });
+
+    it("weekly cell shows Weekly, count, Slots UTC, duration", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      const cell = screen.getByTestId("calendar-series-summary-weekly");
+      expect(within(cell).getByText("Weekly")).toBeTruthy();
+      expect(within(cell).getByText(/1\s+serie/)).toBeTruthy();
+      expect(within(cell).getByText("Slots UTC")).toBeTruthy();
+      expect(within(cell).getByText(/30 min/)).toBeTruthy();
+    });
+
+    it("does not render import UI when series are present", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByTestId("calendar-import-textarea")).toBeNull();
+      expect(screen.queryByTestId("calendar-import-btn")).toBeNull();
+      expect(screen.queryByTestId("calendar-clear-btn")).toBeNull();
+      expect(screen.queryByTestId("calendar-timezone-input")).toBeNull();
+      expect(screen.queryByTestId("calendar-source-input")).toBeNull();
+    });
+
+    it("follow/unfollow of series still works", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: [] }));
+      expect(screen.getByTestId("series-follow-btn-lmu-fixed")).toBeTruthy();
+      eventsEmit.mockClear();
+      act(() => {
+        fireEvent.click(screen.getByTestId("series-follow-btn-lmu-fixed"));
+      });
+      expect(eventsEmit).toHaveBeenCalledWith("calendar:series:follow", { seriesId: "lmu-fixed" });
+
+      dispatch("calendar:loaded", seriesPayload({ followedSeriesIds: ["lmu-fixed"] }));
+      expect(screen.getByTestId("series-following-badge-lmu-fixed")).toBeTruthy();
+      expect(screen.getByTestId("series-unfollow-btn-lmu-fixed")).toBeTruthy();
+      eventsEmit.mockClear();
+      act(() => {
+        fireEvent.click(screen.getByTestId("series-unfollow-btn-lmu-fixed"));
+      });
+      expect(eventsEmit).toHaveBeenCalledWith("calendar:series:unfollow", { seriesId: "lmu-fixed" });
+    });
+
+    it("fallback legacy still works when series is empty", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", {
+        calendar: {
+          version: 1,
+          timezone: "UTC",
+          reminderMinutes: [30, 15, 10, 5, 2],
+          events: [event({ id: "ev-1", startTime: "2026-07-02T20:00:00Z", title: "Legacy Race" })],
+          series: [],
+          seriesPreviews: [],
+          followedSeriesIds: [],
+          updated: "",
+        },
+      });
+      expect(screen.getByTestId("calendar-upcoming-event")).toBeTruthy();
+      expect(screen.getByText("Legacy Race")).toBeTruthy();
+    });
+
+    it("anti-fake: no invented prices, votes, SR/DR, ratings, or races outside seed data", () => {
+      render(<CalendarPage />);
+      dispatch("calendar:loaded", seriesPayload());
+      expect(screen.queryByText(/Sebring/)).toBeNull();
+      expect(screen.queryByText(/COTA/)).toBeNull();
+      expect(screen.queryByText(/Paul Ricard/)).toBeNull();
+      expect(screen.queryByText(/discord-lmu-week/)).toBeNull();
+      expect(screen.queryByText(/€€/)).toBeNull();
+      expect(screen.queryByText(/votos/i)).toBeNull();
+      expect(screen.queryByText(/rating/i)).toBeNull();
+      expect(screen.queryByText(/14h 22m/)).toBeNull();
+      expect(screen.queryByText(/Q4 2026/)).toBeNull();
     });
   });
 });

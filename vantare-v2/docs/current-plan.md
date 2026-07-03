@@ -347,6 +347,33 @@ Nota CALENDAR-05-E3 (2026-07-03):
 - Archivos tocados: `frontend/src/hub/calendar/CalendarSeriesCard.tsx`, `frontend/src/hub/calendar/CalendarSeriesCard.test.tsx`, `docs/current-plan.md`.
 - Sin commit, sin tag, sin release.
 
+Nota CALENDAR-05-F (2026-07-03):
+- Implementada la vista compacta de consulta de horarios oficiales LMU en la pestaña Carreras (CALENDAR-05-F).
+- `CalendarPage.tsx` cambios:
+  - Bloque informativo (línea 132-146): copy adaptativo que muestra "Vantare publica el calendario oficial semanal..." cuando hay series, y el texto legacy cuando no hay series.
+  - Nueva sección compacta "Horario semanal LMU" (antes de las tarjetas de series): heading h2, grid de 4 celdas con count de series + badge de patrón horario ("Cada 15 min", "Cada 20 min", "Cada 30 min", "Slots UTC"), y explicación "Las salidas repetitivas se muestran como patrón horario para evitar listar miles de carreras."
+  - Estilo: glass/dark con borde rojo Vantare, bg-white/[0.03], badges rojos en bg-vantare-red-500/10.
+- `CalendarPage.test.tsx`: 10 tests nuevos añadidos en el bloque `series rendering` (líneas 616-723). Verifican: heading "Horario semanal LMU", copy honesto, timezone, explicación de patrones, badges de schedule, no import UI, follow/unfollow intacto, fallback legacy, anti-fake.
+- `CalendarSeriesCard.tsx` y `.test.tsx`: NO modificados.
+- Scope: solo UI de consulta. Sin cambios en store, types, navegación, Go/backend, ni eventos Wails.
+- No se reintroduce UI de importación, textarea, discord-lmu-week, ni datos inventados.
+- Tests: CalendarPage 49/49 PASS, CalendarSeriesCard 18/18 PASS, total 67/67 PASS.
+- Checks: tsc OK, lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/CalendarPage.tsx`, `frontend/src/hub/pages/CalendarPage.test.tsx`, `docs/current-plan.md`.
+- Sin commit, sin tag, sin release.
+
+Nota CALENDAR-05-F-REVIEW (2026-07-03):
+- Review de CALENDAR-05-F produjo NEEDS FIXES. Aplicados fixes mínimos:
+  - **Finding 3 (P2)**: `scheduleBadge` en sección de series cards estaba hardcodeado por tier (`beginner = "Cada 15 min"`, `intermediate = "Cada 20 min"`, `advanced = "Cada 30 min"`, `weekly = "Slots UTC"`). Corregido: ahora deriva de `seriesPreviews` del grupo, misma lógica que la sección compacta. Usa `firstLabel.startsWith("Cada") ? firstLabel : "Slots UTC"`.
+  - **Finding 5 (P3)**: variable `tierTier` renombrada a `tier` en todo el ámbito de `seriesGroups.map`.
+  - **Findings 1, 2, 4 ya estaban correctos**: el resumen compacto ya mostraba nombre de grupo/tier (Bronce/Plata/Oro/Weekly), duración derivada de `group.series`, y `data-testid` por celda con tests usando `within(...)`.
+- Tests actualizados: matchers de duración cambiados de string exacta a regex (`/20 min/` en vez de `"20 min"`) porque el texto está embebido en `"1 serie · 20 min"`.
+- tsc: añadidos non-null assertions (`calendar!`) en los dos bloques que acceden a `calendar.seriesPreviews` dentro de `hasSeries` (TypeScript no puede estrechar a través de la variable `hasSeries`).
+- Tests: CalendarPage 51/51 PASS, CalendarSeriesCard 18/18 PASS, total 69/69 PASS.
+- Checks: tsc OK, lint OK (warning preexistente .eslintignore), git diff --check OK.
+- Archivos tocados: `frontend/src/hub/pages/CalendarPage.tsx`, `frontend/src/hub/pages/CalendarPage.test.tsx`, `docs/current-plan.md`.
+- Sin commit, sin tag, sin release.
+
 
 Nota LAUNCHER-01 (2026-06-30):
 - Plan guardado en `docs/superpowers/plans/2026-06-30-launcher-01-sim-launcher.md`. PLAN ONLY, sin implementacion. Primer corte del launcher de simuladores: solo LMU en Windows + Steam (`steam://run/2399420` o `.exe` local). Sustituye `EmptyLauncher.tsx` por `LauncherCard`, anade `LauncherService` en Go y bloque `Launchers` en `AppSettings`. Fuera de v0.1.x: multi-sim, Linux/Proton, procesos supervisados, instalacion automatica de apps externas, hotkey "abrir LMU", UI de edicion de `AssociatedApps`.

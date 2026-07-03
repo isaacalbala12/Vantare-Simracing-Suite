@@ -129,11 +129,13 @@ export function CalendarPage() {
         </p>
       </header>
 
-      {/* Informative block */}
+      {/* Informative block — copy adapts to mode */}
       <section className="card-sleek rounded-xl p-5 opacity-0 animate-fade-in-up delay-75">
         <span className="v52-eyebrow">Calendario publicado por Vantare</span>
         <p className="text-sm text-vantare-textMuted mt-3 leading-relaxed">
-          No necesitas importar nada manualmente. Cuando publiquemos una actualización semanal, las carreras aparecerán aquí.
+          {hasSeries
+            ? "Vantare publica el calendario oficial semanal dentro de la app. No necesitas importar nada manualmente."
+            : "No necesitas importar nada manualmente. Cuando publiquemos una actualización semanal, las carreras aparecerán aquí."}
         </p>
         <p className="text-[10px] font-mono text-vantare-textDim mt-3">
           Zona horaria: {calendar?.timezone || "local"}
@@ -145,40 +147,93 @@ export function CalendarPage() {
         )}
       </section>
 
+      {/* Compact weekly schedule overview — CALENDAR-05-F */}
+      {hasSeries && (
+        <section className="rounded-xl border border-vantare-red-500/20 bg-white/[0.03] backdrop-blur-sm p-4 opacity-0 animate-fade-in-up delay-75">
+          <h2 className="text-base font-bold text-white mt-1">Horario semanal LMU</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+            {seriesGroups.map((group) => {
+              const tier = group.tier;
+              const groupLabel = tierLabel(tier);
+              const count = group.series.length;
+
+              // Derive schedule badge from seriesPreviews of this tier's series
+              const seriesIds = new Set(group.series.map((s) => s.id));
+              const tierPreviews = (calendar!.seriesPreviews ?? []).filter(
+                (p) => seriesIds.has(p.seriesId),
+              );
+              const firstLabel = tierPreviews[0]?.scheduleLabel ?? "";
+              const scheduleBadge = firstLabel.startsWith("Cada") ? firstLabel : "Slots UTC";
+
+              // Derive duration from group.series
+              const durations = group.series
+                .map((s) => s.durationMin)
+                .filter((d) => d > 0);
+              const uniqDurations = [...new Set(durations)].sort((a, b) => a - b);
+              const durationLabel =
+                uniqDurations.length === 0
+                  ? null
+                  : uniqDurations.length === 1
+                    ? `${uniqDurations[0]} min`
+                    : `${uniqDurations[0]}-${uniqDurations[uniqDurations.length - 1]} min`;
+
+              return (
+                <div
+                  key={tier}
+                  data-testid={`calendar-series-summary-${tier}`}
+                  className="rounded-lg border border-white/10 bg-white/[0.02] p-3"
+                >
+                  <p className="text-xs font-bold text-white">{groupLabel}</p>
+                  <p className="text-[10px] text-vantare-textMuted mt-0.5">
+                    {count} {count === 1 ? "serie" : "series"}
+                    {durationLabel ? ` · ${durationLabel}` : null}
+                  </p>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-vantare-red-500/10 text-vantare-red-400 border border-vantare-red-500/20 mt-1.5">
+                    {scheduleBadge}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-vantare-textDim mt-3 leading-relaxed">
+            Las salidas repetitivas se muestran como patrón horario para evitar listar miles de carreras.
+          </p>
+        </section>
+      )}
+
       {/* Series (official schedule) or legacy upcoming races */}
       {hasSeries ? (
         <section className="opacity-0 animate-fade-in-up delay-100">
           <span className="v52-eyebrow">Series oficiales</span>
           {seriesGroups.map((group) => {
-            const tierTier = group.tier;
-            const groupLabel = tierLabel(tierTier);
+            const tier = group.tier;
+            const groupLabel = tierLabel(tier);
             const subtitleMap: Record<string, string> = {
               beginner: "Carreras beginner · Bronze SR",
               intermediate: "Carreras intermediate · Silver SR",
               advanced: "Carreras advanced · Gold SR",
               weekly: "Eventos semanales · SR S2",
             };
-            const subtitle = subtitleMap[tierTier] ?? "";
-            const scheduleBadge =
-              tierTier === "weekly"
-                ? "Slots UTC"
-                : tierTier === "advanced"
-                  ? "Cada 30 min"
-                  : tierTier === "intermediate"
-                    ? "Cada 20 min"
-                    : "Cada 15 min";
+            const subtitle = subtitleMap[tier] ?? "";
+            // Derive schedule badge from seriesPreviews (not hardcoded by tier)
+            const tierSeriesIds = new Set(group.series.map((s) => s.id));
+            const tierPreviews = (calendar!.seriesPreviews ?? []).filter(
+              (p) => tierSeriesIds.has(p.seriesId),
+            );
+            const firstLabel = tierPreviews[0]?.scheduleLabel ?? "";
+            const scheduleBadge = firstLabel.startsWith("Cada") ? firstLabel : "Slots UTC";
             const glowMap: Record<string, string> = {
               beginner: "border-amber-500/20 shadow-amber-500/5",
               intermediate: "border-slate-400/20 shadow-slate-400/5",
               advanced: "border-yellow-400/20 shadow-yellow-400/5",
               weekly: "border-cyan-400/20 shadow-cyan-400/5",
             };
-            const glow = glowMap[tierTier] ?? "";
+            const glow = glowMap[tier] ?? "";
             return (
               <div
-                key={tierTier}
+                key={tier}
                 className={`mt-4 rounded-xl border bg-white/[0.03] backdrop-blur-sm p-4 ${glow}`}
-                data-testid={`calendar-tier-${tierTier}`}
+                data-testid={`calendar-tier-${tier}`}
               >
                 {/* Group header v5.2 */}
                 <div className="flex items-start justify-between gap-3 mb-3">

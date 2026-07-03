@@ -6,10 +6,12 @@ describe("CalendarToolbar", () => {
   const defaultProps = {
     view: "month" as const,
     anchorDate: new Date("2026-07-01T12:00:00Z"),
+    activeFilter: "all" as const,
     onViewChange: vi.fn(),
     onToday: vi.fn(),
     onPrevious: vi.fn(),
     onNext: vi.fn(),
+    onFilterChange: vi.fn(),
   };
 
   afterEach(() => {

@@ -514,7 +514,7 @@ describe("HubApp gate (production)", () => {
     render(<HubApp />);
     // Wait for the sidebar Launcher button to be available, then click it.
     const sidebarLauncher = await waitFor(() =>
-      screen.getByTestId("v52-sidebar-launcher"),
+      screen.getByTestId("topbar-nav-launcher"),
     );
     sidebarLauncher.click();
     await waitFor(() => {
@@ -522,7 +522,7 @@ describe("HubApp gate (production)", () => {
     });
   });
 
-  it("marks the active section as current in the sidebar", async () => {
+  it("marks the active section as current in the topbar", async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
       if (name === "settings") {
         setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
@@ -538,12 +538,12 @@ describe("HubApp gate (production)", () => {
     });
     render(<HubApp />);
     await waitFor(() => {
-      const dash = screen.getByTestId("v52-sidebar-dashboard");
+      const dash = screen.getByTestId("topbar-nav-dashboard");
       expect(dash.getAttribute("aria-current")).toBe("page");
     });
   });
 
-  it("sidebar exposes all expected v5.2 sections (no Setup, Ajustes is setup)", async () => {
+  it("topbar exposes all expected v5.2 sections (no Setup, Ajustes is setup)", async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
       if (name === "settings") {
         setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
@@ -559,14 +559,14 @@ describe("HubApp gate (production)", () => {
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.getByTestId("v52-sidebar-dashboard")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-profiles")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-launcher")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-calendar")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-engineer")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-telemetry")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-roadmap")).toBeTruthy();
-      expect(screen.getByTestId("v52-sidebar-setup")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-dashboard")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-profiles")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-launcher")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-calendar")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-engineer")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-telemetry")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-roadmap")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-setup")).toBeTruthy();
     });
   });
 
@@ -586,7 +586,7 @@ describe("HubApp gate (production)", () => {
     });
     render(<HubApp />);
     const sidebarTelemetry = await waitFor(() =>
-      screen.getByTestId("v52-sidebar-telemetry"),
+      screen.getByTestId("topbar-nav-telemetry"),
     );
     fireEvent.click(sidebarTelemetry);
     await waitFor(() => {
@@ -611,11 +611,11 @@ describe("HubApp gate (production)", () => {
     });
     render(<HubApp />);
     const sidebarCalendar = await waitFor(() =>
-      screen.getByTestId("v52-sidebar-calendar"),
+      screen.getByTestId("topbar-nav-calendar"),
     );
     fireEvent.click(sidebarCalendar);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Carreras LMU" })).toBeTruthy();
+      expect(screen.getByTestId("calendar-toolbar")).toBeTruthy();
     });
   });
 
@@ -722,7 +722,7 @@ describe("HubApp gate (production)", () => {
     });
     render(<HubApp />);
     const sidebarRoadmap = await waitFor(() =>
-      screen.getByTestId("v52-sidebar-roadmap"),
+      screen.getByTestId("topbar-nav-roadmap"),
     );
     fireEvent.click(sidebarRoadmap);
     await waitFor(() => {

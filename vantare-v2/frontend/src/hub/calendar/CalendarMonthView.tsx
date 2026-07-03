@@ -8,12 +8,28 @@ import {
   type DailyPatternSummary,
 } from "../../calendar/calendar-view-math";
 import type { Calendar, RaceEvent } from "../../calendar/calendar-types";
+import { filterIntervalSummaries, matchesTierFilter } from "./calendar-filter";
+import type { CalendarFilter } from "./CalendarToolbar";
 
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+const TIER_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  beginner: { text: "#CD7F32", bg: "rgba(205,127,50,.12)", border: "rgba(205,127,50,.5)" },
+  intermediate: { text: "#B8BFC8", bg: "rgba(184,191,200,.12)", border: "rgba(184,191,200,.5)" },
+  advanced: { text: "#D4A017", bg: "rgba(212,160,23,.12)", border: "rgba(212,160,23,.5)" },
+  weekly: { text: "#ff3b3b", bg: "rgba(255,59,59,.12)", border: "rgba(255,59,59,.5)" },
+  special: { text: "#f59e0b", bg: "rgba(245,158,11,.12)", border: "rgba(245,158,11,.5)" },
+};
+
+function getTierColor(tier: string): { text: string; bg: string; border: string } {
+  return TIER_COLORS[tier] ?? { text: "#f5f5f5", bg: "rgba(245,245,245,.05)", border: "rgba(245,245,245,.1)" };
+}
 
 export type CalendarMonthViewProps = {
   anchorDate: Date;
   calendar: Calendar;
+  activeFilter?: CalendarFilter;
+  onFilterSelect?: (filter: CalendarFilter) => void;
 };
 
 function getTierDisplay(tier: string): string {
@@ -31,22 +47,14 @@ function getTierDisplay(tier: string): string {
   }
 }
 
-function getTierColorClass(tier: string): string {
-  switch (tier) {
-    case "beginner":
-      return "text-amber-500 bg-amber-500/5 border-amber-500/10";
-    case "intermediate":
-      return "text-slate-400 bg-slate-400/5 border-slate-400/10";
-    case "advanced":
-      return "text-yellow-400 bg-yellow-400/5 border-yellow-400/10";
-    case "weekly":
-      return "text-cyan-400 bg-cyan-400/5 border-cyan-400/10";
-    default:
-      return "text-white bg-white/5 border-white/10";
-  }
-}
+type CellItem = {
+  type: "weekly" | "special";
+  label: string;
+  tier?: string;
+  time?: string;
+};
 
-export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewProps) {
+export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", onFilterSelect }: CalendarMonthViewProps) {
   // 1. Build grid cells (42 cells)
   const cells = buildMonthGrid(anchorDate);
 
@@ -58,25 +66,24 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
     expandWeeklySlots(s, gridStart, gridEnd)
   );
 
-  // 3. Build daily pattern summary for interval series
-  const intervalSummaries: DailyPatternSummary[] = getDailyPatternSummary(calendar.series || []);
+  // 3. Build daily pattern summary for interval series (shown only in the shared header)
+  const intervalSummaries: DailyPatternSummary[] = filterIntervalSummaries(
+    getDailyPatternSummary(calendar.series || []),
+    activeFilter,
+  );
 
-  const getCellConcreteItems = (cell: CalendarDayCell) => {
-    const items: {
-      type: "weekly" | "special";
-      label: string;
-      tier?: string;
-      time?: string;
-    }[] = [];
+  const getCellConcreteItems = (cell: CalendarDayCell): CellItem[] => {
+    const items: CellItem[] = [];
 
     // 1. Add materialized special events
     const cellSpecial = (calendar.events || []).filter((ev: RaceEvent) => {
-      // Avoid listing interval series events (as requested: "No listar interval series como eventos concretos")
       const associatedSeries = (calendar.series || []).find((s) => s.id === ev.series);
       if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
         return false;
       }
-      return isSameLocalDay(new Date(ev.startTime), cell.date);
+      if (!isSameLocalDay(new Date(ev.startTime), cell.date)) return false;
+      const tier = associatedSeries?.tier;
+      return matchesTierFilter({ type: "special", tier }, activeFilter);
     });
 
     for (const ev of cellSpecial) {
@@ -91,7 +98,12 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
     }
 
     // 2. Add weekly slots occurrences
-    const cellWeekly = weeklyOccurrences.filter((occ) => isSameLocalDay(occ.startTime, cell.date));
+    const cellWeekly = weeklyOccurrences
+      .filter((occ) => isSameLocalDay(occ.startTime, cell.date))
+      .filter((occ) => {
+        const tier = (calendar.series || []).find((s) => s.id === occ.seriesId)?.tier;
+        return matchesTierFilter({ type: "weekly", tier }, activeFilter);
+      });
     for (const occ of cellWeekly) {
       const timeStr = occ.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       items.push({
@@ -105,7 +117,7 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
     return items;
   };
 
-  const maxConcreteItemsPerDay = 3;
+  const maxConcreteItemsPerDay = 4;
 
   return (
     <section className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75" data-testid="calendar-month-view">
@@ -113,6 +125,32 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
       <div className="flex flex-col">
         <span className="v52-eyebrow">Vista mensual</span>
       </div>
+
+      {/* Shared interval-pattern header (keeps filters reachable without cluttering every cell) */}
+      {intervalSummaries.length > 0 && (
+        <div
+          className="flex flex-wrap gap-2 bg-white/[0.02] border border-white/10 rounded-xl p-3"
+          data-testid="calendar-month-patterns"
+        >
+          <span className="text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted flex items-center mr-1">
+            Frecuencias:
+          </span>
+          {intervalSummaries.map((sum, idx) => {
+            const tc = getTierColor(sum.tier || "");
+            return (
+              <div
+                key={idx}
+                data-testid={`calendar-month-interval-${idx}`}
+                onClick={() => onFilterSelect?.(sum.tier as CalendarFilter)}
+                className="text-[9px] font-bold px-2 py-0.5 rounded border leading-none cursor-pointer"
+                style={{ color: tc.text, background: tc.bg, border: `1px solid ${tc.border}` }}
+              >
+                {getTierDisplay(sum.tier)} · {sum.label}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full">
         {/* Day headers */}
@@ -128,7 +166,7 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
         <div className="grid grid-cols-7 bg-white/5 gap-[1px]">
           {cells.map((cell, idx) => {
             const concreteItems = getCellConcreteItems(cell);
-            const visibleConcrete = concreteItems.slice(0, maxConcreteItemsPerDay - 1);
+            const visibleConcrete = concreteItems.slice(0, maxConcreteItemsPerDay);
             const remainingCount = concreteItems.length - visibleConcrete.length;
             const hasMore = remainingCount > 0;
 
@@ -159,38 +197,17 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
                   </span>
                 </div>
 
-                {/* Cell items (events/summaries) */}
+                {/* Cell items (concrete events only) */}
                 <div className="flex-1 flex flex-col gap-1 overflow-hidden justify-start">
-                  {/* Fixed Pattern Summaries */}
-                  {intervalSummaries.map((sum, sumIdx) => (
-                    <div
-                      key={`interval-${sumIdx}`}
-                      data-testid={`calendar-cell-interval-${idx}-${sumIdx}`}
-                      className={[
-                        "text-[8px] sm:text-[9px] font-bold px-1 py-0.5 rounded border leading-none truncate shrink-0",
-                        getTierColorClass(sum.tier || ""),
-                      ].join(" ")}
-                    >
-                      {getTierDisplay(sum.tier)} {sum.label.toLowerCase()}
-                    </div>
-                  ))}
-
-                  {/* Concrete Events */}
-                  {(hasMore ? visibleConcrete : concreteItems).map((item, itemIdx) => {
-                    const borderClass = item.type === "special" ? "border-vantare-red-500/30" : "border-white/10";
-                    const bgClass = item.type === "special" ? "bg-vantare-red-500/5" : "bg-white/5";
-                    const textClass = item.type === "special" ? "text-vantare-red-200" : "text-white";
-
+                  {visibleConcrete.map((item, itemIdx) => {
+                    const tc = item.type === "special" ? getTierColor("special") : getTierColor(item.tier || "");
                     return (
                       <div
                         key={`concrete-${itemIdx}`}
                         data-testid={`calendar-cell-event-${idx}-${itemIdx}`}
-                        className={[
-                          "text-[8px] sm:text-[9px] px-1 py-0.5 rounded border leading-none flex items-center justify-between gap-1 truncate shrink-0",
-                          borderClass,
-                          bgClass,
-                          textClass,
-                        ].join(" ")}
+                        onClick={() => onFilterSelect?.(item.type === "special" ? "special" : (item.tier as CalendarFilter))}
+                        className="text-[8px] sm:text-[9px] px-1 py-0.5 rounded leading-none flex items-center justify-between gap-1 truncate shrink-0 cursor-pointer"
+                        style={{ color: "#f5f5f5", background: tc.bg, border: `1px solid ${tc.border}` }}
                         title={item.label}
                       >
                         <span className="truncate flex-1">{item.label}</span>
@@ -206,11 +223,13 @@ export function CalendarMonthView({ anchorDate, calendar }: CalendarMonthViewPro
                   {hasMore && (
                     <div
                       data-testid={`calendar-cell-more-${idx}`}
-                      className="text-[8px] sm:text-[9px] text-vantare-textDim italic font-semibold pl-1 leading-none mt-0.5 shrink-0"
+                      className="text-[8px] sm:text-[9px] text-vantare-textDim font-mono font-bold pl-1 leading-none mt-0.5 shrink-0"
                     >
                       +{remainingCount} más
                     </div>
                   )}
+
+                  {/* Empty cells stay clean; frequencies live in the shared header. */}
                 </div>
               </div>
             );

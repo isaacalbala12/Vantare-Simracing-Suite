@@ -2,6 +2,33 @@
 
 Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
 
+Nota CALENDAR-08 (2026-07-03) Microcorte WeekView fidelity:
+- Reescrito `CalendarWeekView` para usar una grilla semanal tipo calendario horario, como el HTML de referencia `calendario_v5.2.html`.
+- Ahora muestra 7 columnas (Lun-Dom), eje horario vertical, eventos concretos posicionados por start/end y segmentación simple de solapes.
+- Los patrones de interval series (Bronce/Plata/Oro) se muestran como badges compactos en un header común, no como pills apiladas dentro de cada columna.
+- Se mantiene LMU-only: colores por tier, sin strings multisim (`iRacing`, `ACC`, `AC Evo`).
+- Se mantiene filtrado, clicks en eventos/pills y apertura de drawer.
+- Actualizado `CalendarWeekView.test.tsx` con tests de eje horario, posicionamiento vertical, segmentación de solapes y anti-fake/anti-nueva-carrera.
+- Se ajustó `frontend/scripts/calendar-visual-compare.mjs` para hacer scroll a la primera carrera en la captura de WeekView y validar que haya eventos visibles.
+- Regeneradas capturas comparativas en `docs/superpowers/screenshots/calendar-08-compare/`.
+
+Nota CALENDAR-08 (2026-07-03) Microcorte MonthView/DayView fidelity:
+- Reescrito `CalendarMonthView` para reducir el ruido de patrones de intervalos (Bronce/Plata/Oro) en cada celda.
+- Los patrones de intervalos ahora viven en un header compacto de "Frecuencias" compartido, accesible para filtros y clics.
+- Las celdas del mes priorizan eventos concretos (especiales y weekly-slots), mostrando hasta 4 items y un indicador `+N más` cuando hay más.
+- Las celdas vacías se mantienen limpias, sin badges de frecuencia, igual que el HTML de referencia.
+- Reescrito `CalendarDayView` como timeline continuo: los eventos se posicionan verticalmente por `startTime` y su altura representa `durationMin`.
+- Se reutiliza la segmentación side-by-side de solapes del WeekView para mantener la densidad sin superposición inusable.
+- Se mantienen la línea de hora actual, el contador de carreras, los tooltips y los clicks que disparan filtros.
+- Se mantiene LMU-only: sin strings multisim (`iRacing`, `ACC`, `AC Evo`) y sin UI de `+ Nueva carrera`.
+- Actualizados `CalendarMonthView.test.tsx` y `CalendarDayView.test.tsx` para reflejar el nuevo layout, header de frecuencias, cap de 4 eventos y posicionamiento vertical.
+- Actualizado `frontend/src/hub/calendar-visual-mock-data.ts` con eventos LMU distribuidos por varios días para hacer la comparación visual más representativa.
+- Regeneradas capturas comparativas en `docs/superpowers/screenshots/calendar-08-compare/`.
+- Checks: 1075/1075 tests PASS, tsc OK, lint OK (warning preexistente `.eslintignore`), build OK (warning preexistente chunk size), script de comparación visual OK, `git diff --check` OK.
+- Sin commit.
+- Checks: 45/45 tests de scope, tsc OK, lint OK, build OK (warning preexistente chunk size), script de comparación OK, git diff --check OK.
+- Sin commit.
+
 Nota CALENDAR-07 (2026-07-03) Microcorte 3:
 - Refactor visual de CalendarPage imitando la estructura de `calendario_v5.2.html`.
 - Eliminados bloques antiguos de `Calendario publicado por Vantare`, `Horario semanal LMU`, `Series oficiales`, `Carreras pasadas` y la UI de importación.

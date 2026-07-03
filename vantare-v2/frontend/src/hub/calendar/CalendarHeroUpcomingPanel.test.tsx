@@ -81,6 +81,6 @@ describe("CalendarHeroUpcomingPanel", () => {
     render(<CalendarHeroUpcomingPanel now={fakeNow} />);
 
     expect(screen.getByTestId("upcoming-card-weekly")).toBeTruthy();
-    expect(screen.getByText(/WEC Weekly · Le Mans/i)).toBeTruthy();
+    expect(screen.getByText(/Weekly LMH · Le Mans/i)).toBeTruthy();
   });
 });

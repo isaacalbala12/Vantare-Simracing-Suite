@@ -107,6 +107,8 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
               <a
                 key={item.id}
                 href="#"
+                data-testid={`topbar-nav-${item.id}`}
+                aria-current={activeSection === item.id ? "page" : undefined}
                 onClick={handleNav(item.id)}
                 className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''}`}
               >

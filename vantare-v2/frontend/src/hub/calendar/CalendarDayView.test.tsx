@@ -19,7 +19,7 @@ describe("CalendarDayView", () => {
         track: "Monza",
         series: "series-special",
         sessionLabel: "",
-        startTime: "2026-07-02T18:30:00Z", // 18:30 UTC
+        startTime: "2026-07-02T18:00:00Z", // 18:00 UTC
         durationMin: 45,
         registrationUrl: "",
         source: "test",
@@ -179,64 +179,122 @@ describe("CalendarDayView", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
     render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    expect(screen.queryByText(/Carrera Bronce Falsa/)).toBeNull();
+    expect(screen.queryByText("Carrera Bronce Falsa")).toBeNull();
   });
 
   it("renders weekly slot occurrences and materialized events in correct time, and ignores other days", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
     render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    // Special event "Carrera Especial" starts at 18:30 UTC. In local time or depending on test environment, it's renderable.
-    // Let's verify by checking title text is present
+    // Special event "Carrera Especial" and weekly slot "Serie Semanal" should be present
     expect(screen.getAllByText(/Carrera Especial/).length).toBeGreaterThanOrEqual(1);
-
-    // Weekly slot "Serie Semanal" (Thursday 09:00 UTC) should be present
     expect(screen.getAllByText(/Serie Semanal/).length).toBeGreaterThanOrEqual(1);
 
     // Event of another day "Carrera Otro Día" should not be present
     expect(screen.queryByText(/Carrera Otro Día/)).toBeNull();
   });
 
-  it("caps events per hour slot to 2 and shows +N más indicator", () => {
-    // Let's add multiple events starting in the same hour (e.g. 10:00 to 10:59)
-    const cappedCalendar: Calendar = {
+  it("positions events vertically by start time and duration", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    // The weekly slot is at 09:00 UTC, so it should be placed above the 18:00 special event.
+    const weeklyCard = screen.getByTestId("calendar-day-event-0");
+    const specialCard = screen.getByTestId("calendar-day-event-1");
+
+    // weekly starts at 09:00, special at 18:00
+    const weeklyTop = parseFloat(weeklyCard.style.top || "0");
+    const specialTop = parseFloat(specialCard.style.top || "0");
+    expect(weeklyTop).toBeLessThan(specialTop);
+
+    // Special event has duration 45 min, so its height should be proportional
+    const specialHeight = parseFloat(specialCard.style.height || "0");
+    expect(specialHeight).toBeGreaterThan(40);
+  });
+
+  it("segments overlapping events side by side", () => {
+    const overlapCalendar: Calendar = {
       ...mockCalendar,
       events: [
         ...mockCalendar.events,
         {
-          id: "ev-cap-1",
-          title: "Carrera Capada 1",
+          id: "ev-overlap-1",
+          title: "Carrera Solapada 1",
           sim: "lmu",
           track: "Monza",
           series: "series-special",
           sessionLabel: "",
-          startTime: "2026-07-02T10:15:00Z",
+          startTime: "2026-07-02T18:00:00Z", // overlaps with Carrera Especial
+          durationMin: 45,
+          registrationUrl: "",
+          source: "test",
+          notes: "",
+        },
+      ],
+    };
+
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={overlapCalendar} />);
+
+    // Two events starting at 18:00 should be split into two columns
+    const cards = screen.getAllByTestId(/calendar-day-event-\d+/);
+    const overlapping = cards.filter((card) => card.textContent?.includes("Carrera Especial") || card.textContent?.includes("Carrera Solapada 1"));
+    expect(overlapping.length).toBe(2);
+
+    const widths = overlapping.map((card) => parseFloat(card.style.width || "0"));
+    expect(widths[0]).toBeLessThan(100);
+    expect(widths[1]).toBeLessThan(100);
+  });
+
+  it("shows a tooltip with tier and time details on each event card", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    const eventCard = screen.getByTestId("calendar-day-event-1");
+    expect(eventCard.getAttribute("title")).toContain("Carrera Especial");
+    expect(eventCard.getAttribute("title")).toContain("Especial");
+  });
+
+  it("does not show a cap indicator or hide events", () => {
+    // Add many events in the same hour; they should all render (segmented) rather than being capped.
+    const manyEventsCalendar: Calendar = {
+      ...mockCalendar,
+      events: [
+        ...mockCalendar.events,
+        {
+          id: "ev-many-1",
+          title: "Carrera Hora 1",
+          sim: "lmu",
+          track: "Monza",
+          series: "series-special",
+          sessionLabel: "",
+          startTime: "2026-07-02T10:00:00Z",
           durationMin: 30,
           registrationUrl: "",
           source: "test",
           notes: "",
         },
         {
-          id: "ev-cap-2",
-          title: "Carrera Capada 2",
+          id: "ev-many-2",
+          title: "Carrera Hora 2",
           sim: "lmu",
-          track: "Monza",
+          track: "Spa",
           series: "series-special",
           sessionLabel: "",
-          startTime: "2026-07-02T10:30:00Z",
+          startTime: "2026-07-02T10:20:00Z",
           durationMin: 30,
           registrationUrl: "",
           source: "test",
           notes: "",
         },
         {
-          id: "ev-cap-3",
-          title: "Carrera Capada 3",
+          id: "ev-many-3",
+          title: "Carrera Hora 3",
           sim: "lmu",
-          track: "Monza",
+          track: "Le Mans",
           series: "series-special",
           sessionLabel: "",
-          startTime: "2026-07-02T10:45:00Z",
+          startTime: "2026-07-02T10:40:00Z",
           durationMin: 30,
           registrationUrl: "",
           source: "test",
@@ -245,24 +303,14 @@ describe("CalendarDayView", () => {
       ],
     };
 
-    // Hour 10 now has:
-    // - "Carrera Capada 1"
-    // - "Carrera Capada 2"
-    // - "Carrera Capada 3"
-    // (Also "Carrera Bronce Falsa" is filtered out since its series is interval)
-    // Total = 3 events starting in hour 10. We cap visible to 2, and show "+1 más"
-
     const anchorDate = new Date("2026-07-02T12:00:00Z");
-    render(<CalendarDayView anchorDate={anchorDate} calendar={cappedCalendar} />);
+    render(<CalendarDayView anchorDate={anchorDate} calendar={manyEventsCalendar} />);
 
-    expect(screen.getAllByText(/Carrera Capada 1/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Carrera Capada 2/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText(/Carrera Capada 3/)).toBeNull();
-
-    expect(screen.getByTestId("calendar-day-more").textContent).toBe("+1 más");
-
-    // Patterns are still visible and unaffected by the cap
-    expect(screen.getByTestId("calendar-day-interval-0").textContent).toBe("Bronce · Cada 15 min");
-    expect(screen.getByTestId("calendar-day-interval-1").textContent).toBe("Plata · Cada 20 min");
+    const allCards = screen.getAllByTestId(/calendar-day-event-\d+/);
+    const titles = allCards.map((card) => card.textContent).join(" ");
+    expect(titles).toContain("Carrera Hora 1");
+    expect(titles).toContain("Carrera Hora 2");
+    expect(titles).toContain("Carrera Hora 3");
+    expect(screen.queryByTestId("calendar-day-more")).toBeNull();
   });
 });

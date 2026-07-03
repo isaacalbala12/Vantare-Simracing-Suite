@@ -162,12 +162,11 @@ describe("CalendarWeekView", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    // Bronce and Plata summaries should render in every column
-    // Let's check column index 2 (July 1st)
-    const intervalItem1 = screen.getByTestId("calendar-week-interval-2-0");
+    // Bronce and Plata summaries should render in the shared header
+    const intervalItem1 = screen.getByTestId("calendar-week-interval-0");
     expect(intervalItem1.textContent).toBe("Bronce · Cada 15 min");
 
-    const intervalItem2 = screen.getByTestId("calendar-week-interval-2-1");
+    const intervalItem2 = screen.getByTestId("calendar-week-interval-1");
     expect(intervalItem2.textContent).toBe("Plata · Cada 20 min");
 
     // It should not render individual events for interval series (e.g. "Carrera Bronce Falsa")
@@ -189,73 +188,96 @@ describe("CalendarWeekView", () => {
     expect(col0.textContent).toContain("Serie Semanal");
   });
 
-  it("caps elements and displays +N more indicator only for concrete items", () => {
-    const extraEventsCalendar: Calendar = {
+  it("renders an hour axis on the left side", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    expect(screen.getByText("08:00")).toBeTruthy();
+    expect(screen.getByText("12:00")).toBeTruthy();
+    expect(screen.getByText("18:00")).toBeTruthy();
+  });
+
+  it("positions concrete events vertically by start time and duration", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    const event = screen.getByTestId("calendar-week-event-3-0");
+    expect(event.textContent).toContain("Carrera Especial");
+    const startDate = new Date("2026-07-02T18:00:00Z");
+    const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+    expect(event.style.top).toBe(`${(startMinutes / 60) * 52}px`);
+    expect(event.style.height).toBe(`${(45 / 60) * 52}px`);
+  });
+
+  it("segments overlapping events side-by-side in the same column", () => {
+    const overlappingCalendar: Calendar = {
       ...mockCalendar,
       events: [
         ...mockCalendar.events,
         {
-          id: "ev-special-2",
-          title: "Carrera Especial 2",
+          id: "ev-overlap-1",
+          title: "Carrera Solapada 1",
           sim: "lmu",
-          track: "Monza",
+          track: "Spa",
           series: "series-special",
           sessionLabel: "",
-          startTime: "2026-06-29T18:00:00Z", // Monday June 29
-          durationMin: 45,
+          startTime: "2026-07-02T18:15:00Z", // overlaps with ev-special-1 at 18:00
+          durationMin: 30,
           registrationUrl: "",
           source: "test",
           notes: "",
         },
-        {
-          id: "ev-special-3",
-          title: "Carrera Especial 3",
-          sim: "lmu",
-          track: "Monza",
-          series: "series-special",
-          sessionLabel: "",
-          startTime: "2026-06-29T19:00:00Z", // Monday June 29
-          durationMin: 45,
-          registrationUrl: "",
-          source: "test",
-          notes: "",
-        },
-        {
-          id: "ev-special-4",
-          title: "Carrera Especial 4",
-          sim: "lmu",
-          track: "Monza",
-          series: "series-special",
-          sessionLabel: "",
-          startTime: "2026-06-29T20:00:00Z", // Monday June 29
-          durationMin: 45,
-          registrationUrl: "",
-          source: "test",
-          notes: "",
-        }
-      ]
+      ],
     };
 
-    // On Monday June 29 (column 0), we will have:
-    // - "Serie Semanal" (weekly occurrence)
-    // - "Carrera Especial 2"
-    // - "Carrera Especial 3"
-    // - "Carrera Especial 4"
-    // Total concrete = 4. With maxConcrete = 3, we show 2 + "+2 más".
-    // PLUS the interval summaries (Bronce, Plata) which should remain visible!
-
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarWeekView anchorDate={anchorDate} calendar={extraEventsCalendar} />);
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={overlappingCalendar} />);
 
-    // Check column 0 (Monday June 29)
-    const col0 = screen.getByTestId("calendar-week-column-0");
-    expect(col0).toBeTruthy();
-    expect(screen.getByTestId("calendar-week-more-0").textContent).toBe("+2 más");
-    // Interval summaries should still be in column 0
-    expect(screen.getByTestId("calendar-week-interval-0-0").textContent).toBe("Bronce · Cada 15 min");
-    expect(screen.getByTestId("calendar-week-interval-0-1").textContent).toBe("Plata · Cada 20 min");
-    // Concrete events that fit in the cap should be shown
-    expect(screen.getByTestId("calendar-week-event-0-0").textContent).toContain("Serie Semanal");
-    expect(screen.getByTestId("calendar-week-event-0-1").textContent).toContain("Carrera Especial 2");
+    const col3 = screen.getByTestId("calendar-week-column-3");
+    expect(col3.textContent).toContain("Carrera Especial");
+    expect(col3.textContent).toContain("Carrera Solapada 1");
+
+    const ev0 = screen.getByTestId("calendar-week-event-3-0");
+    const ev1 = screen.getByTestId("calendar-week-event-3-1");
+
+    // Both events should be narrower than 100% because they overlap
+    expect(parseFloat(ev0.style.width)).toBeLessThan(100);
+    expect(parseFloat(ev1.style.width)).toBeLessThan(100);
+  });
+
+  it("calls onFilterSelect when an interval summary pill is clicked", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    const onFilterSelect = vi.fn();
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} onFilterSelect={onFilterSelect} />);
+
+    const intervalItem = screen.getByTestId("calendar-week-interval-0");
+    intervalItem.click();
+    expect(onFilterSelect).toHaveBeenCalledWith("beginner");
+  });
+
+  it("calls onFilterSelect when a concrete event pill is clicked", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    const onFilterSelect = vi.fn();
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} onFilterSelect={onFilterSelect} />);
+
+    const col3 = screen.getByTestId("calendar-week-event-3-0");
+    col3.click();
+    expect(onFilterSelect).toHaveBeenCalledWith("special");
+  });
+
+  it("does not render multisim fake strings", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    expect(screen.queryByText(/iRacing/)).toBeNull();
+    expect(screen.queryByText(/ACC/)).toBeNull();
+    expect(screen.queryByText(/AC Evo/)).toBeNull();
+  });
+
+  it("does not render create-race button", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    expect(screen.queryByText("Nueva carrera")).toBeNull();
   });
 });

@@ -107,7 +107,7 @@ function TierCard({ item, tierKey, now }: { item: UpcomingRaceItem | null; tierK
             </span>
           )}
         </div>
-        <p className="text-[10px] font-bold uppercase tracking-[.28em] text-accent mb-1.5">Green flag</p>
+        <p className={`text-[10px] font-bold uppercase tracking-[.28em] mb-1.5 ${item.isActive ? "text-accent" : "text-[#f5f5f5]/40"}`}>Green flag</p>
         <p className="font-mono font-bold text-2xl text-white tracking-tight leading-none" style={{ fontFeatureSettings: "'tnum'" }}>{timeStr}</p>
         <div className="mt-4 pt-3 border-t border-line">
           <p className="font-semibold text-sm text-white truncate" title={item.track}>{item.track}</p>
@@ -143,7 +143,7 @@ export function CalendarHeroUpcomingPanel({ now }: CalendarHeroUpcomingPanelProp
     return (
       <section className="glass-panel rounded-xl p-5" data-testid="calendar-hero-upcoming-panel-empty">
         <div className="flex items-center justify-between mb-4">
-          <span className="eyebrow" style={{ fontSize: "10px" }}>Próximas carreras</span>
+          <span className="v52-eyebrow" style={{ fontSize: "10px" }}>Próximas carreras</span>
         </div>
         <div className="rounded-xl bg-[rgba(20,20,20,.55)] border border-white/5 p-5">
           <p className="text-[10px] font-bold uppercase tracking-[.22em] text-vantare-red-400 mb-2">
@@ -161,7 +161,7 @@ export function CalendarHeroUpcomingPanel({ now }: CalendarHeroUpcomingPanelProp
   return (
     <section className="glass-panel rounded-xl p-5 opacity-0 animate-fade-in-up delay-150" data-testid="calendar-hero-upcoming-panel">
       <div className="flex items-center justify-between mb-4">
-        <span className="eyebrow" style={{ fontSize: "10px" }}>Próximas carreras</span>
+        <span className="v52-eyebrow" style={{ fontSize: "10px" }}>Próximas carreras</span>
         <span className="text-[10px] font-bold text-[#f5f5f5]/35 uppercase tracking-[.22em]">LMU · Bronce · Plata · Oro</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -182,7 +182,7 @@ export function CalendarHeroUpcomingPanel({ now }: CalendarHeroUpcomingPanelProp
             </span>
             <div className="min-w-0">
               <p className="font-semibold text-sm text-white truncate" title={summary.weekly.name}>
-                WEC Weekly · {summary.weekly.track}
+                {summary.weekly.name} · {summary.weekly.track}
               </p>
               <p className="text-xs text-[#f5f5f5]/60 truncate mt-0.5" title={summary.weekly.name}>
                 {summary.weekly.durationMin ? `${summary.weekly.durationMin}m races · ` : ""}{summary.weekly.vehicleClass}

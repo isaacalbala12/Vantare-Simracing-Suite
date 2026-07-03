@@ -165,19 +165,24 @@ describe("CalendarMonthView", () => {
     vi.useRealTimers();
   });
 
-  it("shows compact daily pattern summaries for interval series and does not materialise them", () => {
+  it("shows interval patterns in a shared header, not inside every cell", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    // Bronce and Plata summaries should render in every cell
-    // Let's check cell index 2 (July 1st)
-    const intervalItem1 = screen.getByTestId("calendar-cell-interval-2-0");
-    expect(intervalItem1.textContent).toBe("Bronce cada 15 min");
+    const header = screen.getByTestId("calendar-month-patterns");
+    expect(header).toBeTruthy();
+    expect(screen.getByTestId("calendar-month-interval-0").textContent).toBe("Bronce · Cada 15 min");
+    expect(screen.getByTestId("calendar-month-interval-1").textContent).toBe("Plata · Cada 20 min");
 
-    const intervalItem2 = screen.getByTestId("calendar-cell-interval-2-1");
-    expect(intervalItem2.textContent).toBe("Plata cada 20 min");
+    // Cells should not contain full interval labels any more
+    expect(screen.queryByTestId("calendar-cell-interval-2-0")).toBeNull();
+    expect(screen.queryByTestId("calendar-cell-interval-2-1")).toBeNull();
+  });
 
-    // It should not render individual events for interval series (e.g. "Carrera Bronce Falsa")
+  it("does not materialize interval series as events", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+
     expect(screen.queryByText("Carrera Bronce Falsa")).toBeNull();
   });
 
@@ -196,12 +201,8 @@ describe("CalendarMonthView", () => {
     expect(cell7.textContent).toContain("Serie Semanal");
   });
 
-  it("caps elements to maxConcreteItemsPerDay and displays +N more indicator only for concrete items", () => {
-    // In our mockCalendar:
-    // It will contain:
-    // - "Bronce cada 15 min" (interval summary)
-    // - "Plata cada 20 min" (interval summary)
-    // We add more special events on a specific day to trigger the concrete cap without affecting intervals.
+  it("caps concrete events to maxConcreteItemsPerDay and displays +N more indicator", () => {
+    // Add enough special events on a single day to trigger the cap.
     const extraEventsCalendar: Calendar = {
       ...mockCalendar,
       events: [
@@ -244,8 +245,21 @@ describe("CalendarMonthView", () => {
           registrationUrl: "",
           source: "test",
           notes: "",
-        }
-      ]
+        },
+        {
+          id: "ev-special-5",
+          title: "Carrera Especial 5",
+          sim: "lmu",
+          track: "Monza",
+          series: "series-special",
+          sessionLabel: "",
+          startTime: "2026-07-06T21:00:00Z", // Monday July 6
+          durationMin: 45,
+          registrationUrl: "",
+          source: "test",
+          notes: "",
+        },
+      ],
     };
 
     // On Monday July 6, 2026 (cell 7), we will have:
@@ -253,22 +267,43 @@ describe("CalendarMonthView", () => {
     // - "Carrera Especial 2"
     // - "Carrera Especial 3"
     // - "Carrera Especial 4"
-    // Total concrete items = 4. With maxConcreteItemsPerDay = 3, we show 2 + "+2 más".
-    // PLUS the interval summaries (Bronce, Plata) which should remain visible!
+    // - "Carrera Especial 5"
+    // Total concrete items = 5. With maxConcreteItemsPerDay = 4, we show 4 + "+1 más".
 
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     render(<CalendarMonthView anchorDate={anchorDate} calendar={extraEventsCalendar} />);
 
-    // Check cell 7 (Monday July 6, 2026)
     const cell7 = screen.getByTestId("calendar-month-cell-7");
     expect(cell7).toBeTruthy();
-    expect(screen.getByTestId("calendar-cell-more-7").textContent).toBe("+2 más");
-    // Interval summaries should still be in cell 7
-    expect(screen.getByTestId("calendar-cell-interval-7-0").textContent).toBe("Bronce cada 15 min");
-    expect(screen.getByTestId("calendar-cell-interval-7-1").textContent).toBe("Plata cada 20 min");
-    // Concrete events that fit in the cap should be shown
-    // The weekly slot and first special event
+    expect(screen.getByTestId("calendar-cell-more-7").textContent).toBe("+1 más");
+
+    // Four concrete events should be visible
     expect(screen.getByTestId("calendar-cell-event-7-0").textContent).toContain("Carrera Especial 2");
     expect(screen.getByTestId("calendar-cell-event-7-1").textContent).toContain("Carrera Especial 3");
+    expect(screen.getByTestId("calendar-cell-event-7-2").textContent).toContain("Carrera Especial 4");
+    expect(screen.getByTestId("calendar-cell-event-7-3").textContent).toContain("Carrera Especial 5");
+
+    // The cap hides nothing beyond the fifth event
+    expect(screen.queryByText("Carrera Especial 6")).toBeNull();
+  });
+
+  it("calls onFilterSelect when a shared interval summary is clicked", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    const onFilterSelect = vi.fn();
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onFilterSelect={onFilterSelect} />);
+
+    const intervalItem = screen.getByTestId("calendar-month-interval-0");
+    intervalItem.click();
+    expect(onFilterSelect).toHaveBeenCalledWith("beginner");
+  });
+
+  it("calls onFilterSelect when a concrete event pill is clicked", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    const onFilterSelect = vi.fn();
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onFilterSelect={onFilterSelect} />);
+
+    const cell3 = screen.getByTestId("calendar-cell-event-3-0");
+    cell3.click();
+    expect(onFilterSelect).toHaveBeenCalledWith("special");
   });
 });

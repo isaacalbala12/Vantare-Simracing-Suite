@@ -7,7 +7,9 @@ import {
   type CalendarOccurrence,
   type DailyPatternSummary,
 } from "../../calendar/calendar-view-math";
-import type { Calendar, RaceEvent } from "../../calendar/calendar-types";
+import type { Calendar } from "../../calendar/calendar-types";
+import { filterIntervalSummaries, matchesTierFilter } from "./calendar-filter";
+import type { CalendarFilter } from "./CalendarToolbar";
 
 const SPANISH_WEEKDAYS = [
   "Domingo",
@@ -34,9 +36,15 @@ const SPANISH_MONTHS = [
   "Diciembre",
 ];
 
-export type CalendarDayViewProps = {
-  anchorDate: Date;
-  calendar: Calendar;
+const HOUR_HEIGHT = 72;
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const TIER_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  beginner: { text: "#CD7F32", bg: "rgba(205,127,50,.12)", border: "rgba(205,127,50,.5)" },
+  intermediate: { text: "#B8BFC8", bg: "rgba(184,191,200,.12)", border: "rgba(184,191,200,.5)" },
+  advanced: { text: "#D4A017", bg: "rgba(212,160,23,.12)", border: "rgba(212,160,23,.5)" },
+  weekly: { text: "#ff3b3b", bg: "rgba(255,59,59,.12)", border: "rgba(255,59,59,.5)" },
+  special: { text: "#f59e0b", bg: "rgba(245,158,11,.12)", border: "rgba(245,158,11,.5)" },
 };
 
 function getTierDisplay(tier: string): string {
@@ -54,41 +62,69 @@ function getTierDisplay(tier: string): string {
   }
 }
 
-function getTierColorClass(tier: string): string {
-  switch (tier) {
-    case "beginner":
-      return "text-amber-500 bg-amber-500/5 border-amber-500/10";
-    case "intermediate":
-      return "text-slate-400 bg-slate-400/5 border-slate-400/10";
-    case "advanced":
-      return "text-yellow-400 bg-yellow-400/5 border-yellow-400/10";
-    case "weekly":
-      return "text-cyan-400 bg-cyan-400/5 border-cyan-400/10";
-    default:
-      return "text-white bg-white/5 border-white/10";
-  }
+function getTierColor(tier: string): { text: string; bg: string; border: string } {
+  return TIER_COLORS[tier] ?? { text: "#f5f5f5", bg: "rgba(245,245,245,.05)", border: "rgba(245,245,245,.1)" };
 }
 
-function getEventColorClass(type: "weekly" | "special"): {
-  border: string;
-  bg: string;
-  text: string;
-} {
-  if (type === "special") {
-    return {
-      border: "border-amber-500/30",
-      bg: "bg-amber-500/5",
-      text: "text-amber-200",
-    };
-  }
-  return {
-    border: "border-red-500/30",
-    bg: "bg-red-500/5",
-    text: "text-red-200",
-  };
+export type CalendarDayViewProps = {
+  anchorDate: Date;
+  calendar: Calendar;
+  activeFilter?: CalendarFilter;
+  onFilterSelect?: (filter: CalendarFilter) => void;
+};
+
+type DayEvent = {
+  id: string;
+  type: "weekly" | "special";
+  label: string;
+  track: string;
+  durationMin: number;
+  startTime: Date;
+  tier: string;
+};
+
+function minutesOf(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
 }
 
-export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) {
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function segmentEvents(events: DayEvent[]) {
+  if (events.length === 0) return [];
+
+  const sorted = [...events].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  const columns: { start: number; end: number }[][] = [];
+  const placements: { ev: DayEvent; startMin: number; endMin: number; colIndex: number }[] = [];
+
+  for (const ev of sorted) {
+    const startMin = minutesOf(ev.startTime);
+    const endMin = startMin + ev.durationMin;
+    let colIndex = 0;
+    while (true) {
+      columns[colIndex] = columns[colIndex] ?? [];
+      const overlaps = columns[colIndex].some((c) => startMin < c.end && endMin > c.start);
+      if (!overlaps) {
+        columns[colIndex].push({ start: startMin, end: endMin });
+        break;
+      }
+      colIndex++;
+    }
+    placements.push({ ev, startMin, endMin, colIndex });
+  }
+
+  const totalCols = columns.length;
+  return placements.map(({ ev, startMin, endMin, colIndex }) => ({
+    ...ev,
+    top: (startMin / 60) * HOUR_HEIGHT,
+    height: Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 22),
+    left: `${(colIndex / totalCols) * 100}%`,
+    width: `${100 / totalCols}%`,
+  }));
+}
+
+export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", onFilterSelect }: CalendarDayViewProps) {
   const [now, setNow] = useState(new Date());
 
   // Update current time periodically for live line and indicators
@@ -99,10 +135,9 @@ export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) 
     return () => clearInterval(timer);
   }, []);
 
-  // 1. Check if selected day is today
   const isToday = isSameLocalDay(anchorDate, now);
 
-  // 2. Expand weekly-slots for the selected day range
+  // Expand weekly-slots for the selected day range
   const dayStart = startOfLocalDay(anchorDate);
   const dayEnd = new Date(dayStart.getTime() + 86400000);
 
@@ -110,47 +145,51 @@ export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) 
     expandWeeklySlots(s, dayStart, dayEnd)
   );
 
-  // 3. Build daily pattern summary for interval series
-  const intervalSummaries: DailyPatternSummary[] = getDailyPatternSummary(calendar.series || []);
+  // Daily pattern summary for interval series (shared header)
+  const intervalSummaries: DailyPatternSummary[] = filterIntervalSummaries(
+    getDailyPatternSummary(calendar.series || []),
+    activeFilter,
+  );
 
-  // 4. Gather concrete events (special & weekly-slots)
-  const cellSpecial = (calendar.events || []).filter((ev: RaceEvent) => {
-    // Avoid listing interval series events as concrete
+  // Gather concrete events (special & weekly-slots) for the selected day
+  const events: DayEvent[] = [];
+
+  for (const ev of calendar.events || []) {
     const associatedSeries = (calendar.series || []).find((s) => s.id === ev.series);
     if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
-      return false;
+      continue;
     }
-    return isSameLocalDay(new Date(ev.startTime), anchorDate);
-  });
-
-  const concreteItems = [
-    ...cellSpecial.map((ev) => ({
+    if (!isSameLocalDay(new Date(ev.startTime), anchorDate)) continue;
+    const tier = associatedSeries?.tier;
+    if (!matchesTierFilter({ type: "special", tier }, activeFilter)) continue;
+    events.push({
       id: ev.id,
-      type: "special" as const,
+      type: "special",
       label: ev.title,
       track: ev.track,
-      durationMin: ev.durationMin,
+      durationMin: ev.durationMin || 0,
       startTime: new Date(ev.startTime),
-    })),
-    ...weeklyOccurrences.map((occ) => ({
-      id: `${occ.seriesId}-${occ.startTime.getTime()}`,
-      type: "weekly" as const,
-      label: occ.title,
-      track: (calendar.series || []).find((s) => s.id === occ.seriesId)?.track || "",
-      durationMin: occ.durationMin,
-      startTime: occ.startTime,
-    })),
-  ].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+      tier: tier || "special",
+    });
+  }
 
-  // 5. Group by start hour
-  const eventsByHour: Record<number, typeof concreteItems> = {};
-  for (let h = 0; h < 24; h++) {
-    eventsByHour[h] = [];
+  for (const occ of weeklyOccurrences) {
+    if (!isSameLocalDay(occ.startTime, anchorDate)) continue;
+    const series = (calendar.series || []).find((s) => s.id === occ.seriesId);
+    const tier = series?.tier;
+    if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
+    events.push({
+      id: `${occ.seriesId}-${occ.startTime.getTime()}`,
+      type: "weekly",
+      label: occ.title,
+      track: series?.track || "",
+      durationMin: occ.durationMin || 0,
+      startTime: occ.startTime,
+      tier: tier || "weekly",
+    });
   }
-  for (const item of concreteItems) {
-    const h = item.startTime.getHours();
-    eventsByHour[h].push(item);
-  }
+
+  const placedEvents = segmentEvents(events.sort((a, b) => a.startTime.getTime() - b.startTime.getTime()));
 
   // Formatting date header
   const weekday = SPANISH_WEEKDAYS[anchorDate.getDay()];
@@ -160,9 +199,6 @@ export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) 
   const formattedDate = `${weekday} ${dayNum} ${month} ${year}`;
 
   const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  // Hours array for vertical axis (24 hours)
-  const hours = Array.from({ length: 24 }, (_, i) => i);
 
   return (
     <section
@@ -184,7 +220,7 @@ export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) 
               </span>
             )}
             <span className="text-vantare-textMuted font-normal text-xs ml-2">
-              · {concreteItems.length} {concreteItems.length === 1 ? "carrera programada" : "carreras programadas"}
+              · {events.length} {events.length === 1 ? "carrera programada" : "carreras programadas"}
             </span>
           </h2>
         </div>
@@ -198,7 +234,7 @@ export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) 
         )}
       </div>
 
-      {/* Patrones de series diarias (siempre visibles, no se ven afectados por el cap) */}
+      {/* Daily pattern summaries (shared compact header) */}
       <div
         className="flex flex-wrap gap-2 bg-white/[0.02] border border-white/10 rounded-xl p-3"
         data-testid="calendar-day-patterns"
@@ -209,103 +245,98 @@ export function CalendarDayView({ anchorDate, calendar }: CalendarDayViewProps) 
         {intervalSummaries.length === 0 ? (
           <span className="text-xs text-vantare-textDim italic">No hay patrones de intervalos activos</span>
         ) : (
-          intervalSummaries.map((sum, idx) => (
-            <div
-              key={idx}
-              data-testid={`calendar-day-interval-${idx}`}
-              className={[
-                "text-[9px] font-bold px-2 py-0.5 rounded border leading-none",
-                getTierColorClass(sum.tier),
-              ].join(" ")}
-            >
-              {getTierDisplay(sum.tier)} · {sum.label}
-            </div>
-          ))
+          intervalSummaries.map((sum, idx) => {
+            const tc = getTierColor(sum.tier || "");
+            return (
+              <div
+                key={idx}
+                data-testid={`calendar-day-interval-${idx}`}
+                className="text-[9px] font-bold px-2 py-0.5 rounded border leading-none cursor-pointer"
+                style={{ color: tc.text, background: tc.bg, border: `1px solid ${tc.border}` }}
+                onClick={() => onFilterSelect?.(sum.tier as CalendarFilter)}
+              >
+                {getTierDisplay(sum.tier)} · {sum.label}
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Timeline view */}
+      {/* Continuous daily timeline */}
       <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full">
-        <div
-          className="max-h-[640px] overflow-y-auto"
-          style={{ scrollbarWidth: "thin" }}
-        >
-          <div className="flex flex-col bg-white/5 gap-[1px]">
-            {hours.map((h) => {
-              const isNowHour = isToday && h === now.getHours();
-              const hourEvents = eventsByHour[h] || [];
-              const visibleEvents = hourEvents.slice(0, 2);
-              const hiddenCount = hourEvents.length - visibleEvents.length;
-
-              return (
-                <div key={`line-${h}`} className="grid grid-cols-[60px_1fr] min-h-[42px] bg-[#0b0b0b] border-t border-white/[0.03] first:border-t-0">
-                  {/* Gutter */}
-                  <div className="p-2 font-mono text-[10px] text-vantare-textDim text-right flex items-start justify-end select-none">
-                    {String(h).padStart(2, "0")}:00
-                  </div>
-                  {/* Track */}
-                  <div className={[
-                    "relative p-1 flex flex-col gap-1",
-                    isNowHour ? "bg-gradient-to-r from-vantare-red-500/5 to-transparent" : "",
-                  ].join(" ")}>
-                    {isNowHour && (
-                      <div
-                        data-testid="calendar-now-line"
-                        className="absolute left-0 right-0 h-[1px] bg-[#ff3b3b] shadow-[0_0_8px_rgba(255,59,59,0.6)] z-10 pointer-events-none"
-                        style={{ top: `${(now.getMinutes() / 60) * 100}%` }}
-                      >
-                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-[#ff3b3b] shadow-[0_0_8px_rgba(255,59,59,0.8)]" />
-                      </div>
-                    )}
-
-                    {/* Render concrete events sequentially */}
-                    {visibleEvents.map((item, idx) => {
-                      const colors = getEventColorClass(item.type);
-                      const timeFormatted = item.startTime.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      const endFormatted = new Date(
-                        item.startTime.getTime() + (item.durationMin || 0) * 60000
-                      ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-                      return (
-                        <div
-                          key={item.id}
-                          data-testid={`calendar-day-event-${h}-${idx}`}
-                          className={[
-                            "rounded border px-2 py-1 text-xs flex flex-col justify-between overflow-hidden relative z-20",
-                            colors.border,
-                            colors.bg,
-                            colors.text,
-                          ].join(" ")}
-                        >
-                          <div className="font-bold truncate pr-3 leading-tight">
-                            {item.type === "special" ? "★ " : ""}
-                            {item.label}
-                          </div>
-
-                          <div className="font-mono text-[9px] opacity-75 mt-0.5 truncate">
-                            {item.track ? `${item.track} · ` : ""}
-                            {timeFormatted} - {endFormatted}
-                            {item.durationMin > 0 ? ` (${item.durationMin}m)` : ""}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {hiddenCount > 0 && (
-                      <div
-                        data-testid="calendar-day-more"
-                        className="text-[9px] font-bold text-vantare-textDim bg-white/5 border border-white/10 px-1.5 py-0.5 rounded leading-none w-fit mt-0.5"
-                      >
-                        +{hiddenCount} más
-                      </div>
-                    )}
-                  </div>
+        <div className="overflow-y-auto max-h-[640px]" style={{ scrollbarWidth: "thin" }}>
+          <div className="relative grid grid-cols-[60px_1fr]" style={{ height: HOUR_HEIGHT * 24 }}>
+            {/* Gutter */}
+            <div className="relative bg-[#0b0b0b]">
+              {HOURS.map((h) => (
+                <div
+                  key={h}
+                  className="absolute right-2 font-mono text-[10px] text-vantare-textDim -translate-y-1/2"
+                  style={{ top: h * HOUR_HEIGHT }}
+                >
+                  {String(h).padStart(2, "0")}:00
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {/* Track */}
+            <div className="relative bg-[#0b0b0b]">
+              {HOURS.map((h) => (
+                <div
+                  key={h}
+                  className="absolute left-0 right-0 border-t border-white/[0.03]"
+                  style={{ top: h * HOUR_HEIGHT }}
+                />
+              ))}
+
+              {isToday && (
+                <div
+                  data-testid="calendar-now-line"
+                  className="absolute left-0 right-0 h-[1px] bg-[#ff3b3b] shadow-[0_0_8px_rgba(255,59,59,0.6)] z-30 pointer-events-none"
+                  style={{ top: (minutesOf(now) / 60) * HOUR_HEIGHT }}
+                >
+                  <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-[#ff3b3b] shadow-[0_0_8px_rgba(255,59,59,0.8)]" />
+                </div>
+              )}
+
+              {placedEvents.map((item, idx) => {
+                const tc = getTierColor(item.tier || (item.type === "special" ? "special" : "weekly"));
+                const timeFormatted = formatTime(item.startTime);
+                const endFormatted = formatTime(
+                  new Date(item.startTime.getTime() + (item.durationMin || 0) * 60000)
+                );
+                const tooltip = `${item.type === "special" ? "★ " : ""}${item.label} · ${getTierDisplay(item.tier || item.type)} · ${timeFormatted}-${endFormatted}${item.track ? ` · ${item.track}` : ""}`;
+
+                return (
+                  <div
+                    key={item.id}
+                    data-testid={`calendar-day-event-${idx}`}
+                    title={tooltip}
+                    onClick={() => onFilterSelect?.(item.type === "special" ? "special" : (item.tier as CalendarFilter))}
+                    className="absolute z-20 rounded px-2 py-1 text-xs flex flex-col justify-between overflow-hidden cursor-pointer leading-tight"
+                    style={{
+                      top: item.top,
+                      left: item.left,
+                      width: item.width,
+                      height: item.height,
+                      background: tc.bg,
+                      border: `1px solid ${tc.border}`,
+                      color: tc.text,
+                    }}
+                  >
+                    <div className="font-bold truncate pr-3 leading-tight">
+                      {item.type === "special" ? "★ " : ""}
+                      {item.label}
+                    </div>
+                    <div className="font-mono text-[9px] opacity-75 mt-0.5 truncate">
+                      {item.track ? `${item.track} · ` : ""}
+                      {timeFormatted} - {endFormatted}
+                      {item.durationMin > 0 ? ` (${item.durationMin}m)` : ""}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

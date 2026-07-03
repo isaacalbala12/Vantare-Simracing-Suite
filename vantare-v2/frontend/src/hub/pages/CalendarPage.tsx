@@ -1,85 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
-import { Events } from "@wailsio/runtime";
 import {
   requestCalendar,
   subscribeToCalendar,
   subscribeToCalendarErrors,
 } from "../../calendar/calendar-store";
-import {
-  formatEventDate,
-  isEventActive,
-  type Calendar,
-  type RaceEvent,
-  type RaceSeries,
-  type RaceSeriesPreview,
-} from "../../calendar/calendar-types";
-import { CalendarSeriesCard } from "../calendar/CalendarSeriesCard";
-import { tierLabel } from "../calendar/calendar-tier";
-import { CalendarToolbar } from "../calendar/CalendarToolbar";
+import type { Calendar } from "../../calendar/calendar-types";
+import { CalendarToolbar, type CalendarFilter } from "../calendar/CalendarToolbar";
 import { CalendarMonthView } from "../calendar/CalendarMonthView";
 import { CalendarWeekView } from "../calendar/CalendarWeekView";
 import { CalendarDayView } from "../calendar/CalendarDayView";
-
-function pickUpcoming(calendar: Calendar, now: Date): RaceEvent[] {
-  const sorted = [...calendar.events].sort((a, b) =>
-    a.startTime.localeCompare(b.startTime),
-  );
-  return sorted.filter((ev) => {
-    if (isEventActive(ev, now)) return true;
-    const start = new Date(ev.startTime);
-    return start.getTime() >= now.getTime();
-  });
-}
-
-function pickPast(calendar: Calendar, now: Date): RaceEvent[] {
-  const sorted = [...calendar.events].sort((a, b) =>
-    b.startTime.localeCompare(a.startTime),
-  );
-  return sorted.filter((ev) => {
-    if (isEventActive(ev, now)) return false;
-    const end = new Date(new Date(ev.startTime).getTime() + (ev.durationMin > 0 ? ev.durationMin * 60_000 : 0));
-    return end.getTime() < now.getTime();
-  });
-}
-
-function isFollowed(eventId: string, followedIds: string[] | undefined): boolean {
-  if (!followedIds) return false;
-  return followedIds.includes(eventId);
-}
-
-const TIER_ORDER = ["beginner", "intermediate", "advanced", "weekly"];
-
-function groupSeriesByTier(
-  series: RaceSeries[],
-  previews: RaceSeriesPreview[] | undefined,
-): Array<{ tier: string; series: RaceSeries[] }> {
-  const previewMap = new Map<string, RaceSeriesPreview>();
-  if (previews) {
-    for (const p of previews) {
-      previewMap.set(p.seriesId, p);
-    }
-  }
-  const groups = new Map<string, RaceSeries[]>();
-  for (const s of series) {
-    const list = groups.get(s.tier) ?? [];
-    list.push(s);
-    groups.set(s.tier, list);
-  }
-  const result: Array<{ tier: string; series: RaceSeries[] }> = [];
-  for (const t of TIER_ORDER) {
-    const list = groups.get(t);
-    if (list && list.length > 0) {
-      result.push({ tier: t, series: list });
-    }
-  }
-  return result;
-}
+import { CalendarRaceDetailDrawer } from "../calendar/CalendarRaceDetailDrawer";
+import { CalendarRaceRail } from "../calendar/CalendarRaceRail";
 
 export function CalendarPage() {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
   const [calendarAnchorDate, setCalendarAnchorDate] = useState<Date>(new Date());
+  const [activeFilter, setActiveFilter] = useState<CalendarFilter>("all");
+  const [drawerTier, setDrawerTier] = useState<CalendarFilter | null>(null);
 
   useEffect(() => {
     requestCalendar();
@@ -96,22 +35,6 @@ export function CalendarPage() {
       unsubLoaded();
       unsubErr();
     };
-  }, []);
-
-  const handleFollow = useCallback((eventId: string) => {
-    Events.Emit("calendar:follow", { eventId });
-  }, []);
-
-  const handleUnfollow = useCallback((eventId: string) => {
-    Events.Emit("calendar:unfollow", { eventId });
-  }, []);
-
-  const handleSeriesFollow = useCallback((seriesId: string) => {
-    Events.Emit("calendar:series:follow", { seriesId });
-  }, []);
-
-  const handleSeriesUnfollow = useCallback((seriesId: string) => {
-    Events.Emit("calendar:series:unfollow", { seriesId });
   }, []);
 
   const handleToday = useCallback(() => {
@@ -154,311 +77,133 @@ export function CalendarPage() {
     });
   }, [calendarView]);
 
-  const now = new Date();
+  const handleFilterSelect = useCallback((filter: CalendarFilter) => {
+    setActiveFilter(filter);
+    setDrawerTier(filter);
+  }, []);
+
+  const handleClearFilter = useCallback(() => {
+    setActiveFilter("all");
+    setDrawerTier(null);
+  }, []);
+
+  const handleCloseDrawer = useCallback(() => {
+    setDrawerTier(null);
+  }, []);
+
   const hasSeries = calendar ? calendar.series && calendar.series.length > 0 : false;
-  const seriesGroups = calendar ? groupSeriesByTier(calendar.series ?? [], calendar.seriesPreviews) : [];
-  const upcoming = calendar ? pickUpcoming(calendar, now) : [];
-  const past = calendar ? pickPast(calendar, now) : [];
-  const followedIds = calendar?.followedEventIds;
-  const followedSeriesIds = calendar?.followedSeriesIds;
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Header */}
-      <header className="opacity-0 animate-fade-in-up">
-        <span className="v52-eyebrow">Carreras</span>
-        <h1 className="font-sans font-bold text-3xl text-white tracking-tight mt-2">
-          Carreras LMU
-        </h1>
-        <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed max-w-3xl">
-          Consulta las próximas carreras LMU publicadas por Vantare. Sigue una carrera para recibir avisos antes de la salida.
-        </p>
-      </header>
+    <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6">
+      {/* SIDEBAR */}
+      <aside className="flex flex-col gap-5">
+        <CalendarRaceRail activeFilter={activeFilter} onSelectTier={handleFilterSelect} />
+      </aside>
 
-      {/* Calendar Toolbar */}
-      <div className="opacity-0 animate-fade-in-up delay-75">
-        <CalendarToolbar
-          view={calendarView}
-          anchorDate={calendarAnchorDate}
-          onViewChange={setCalendarView}
-          onToday={handleToday}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-        />
-      </div>
+      {/* MAIN CONTENT */}
+      <main className="flex flex-col gap-5">
+        {/* Page header */}
+        <div className="opacity-0 animate-fade-in-up">
+          <span className="v52-eyebrow" style={{ fontSize: "10px" }}>Carreras</span>
+          <h1 className="text-2xl font-bold text-white tracking-tight mt-1">Carreras LMU</h1>
+          <p className="text-xs text-vantare-textMuted mt-1">
+            Calendario oficial Le Mans Ultimate · datos reales
+          </p>
+        </div>
 
-      {/* Informative block — copy adapts to mode */}
-      <section className="card-sleek rounded-xl p-5 opacity-0 animate-fade-in-up delay-75">
-        <span className="v52-eyebrow">Calendario publicado por Vantare</span>
-        <p className="text-sm text-vantare-textMuted mt-3 leading-relaxed">
-          {hasSeries
-            ? "Vantare publica el calendario oficial semanal dentro de la app. No necesitas importar nada manualmente."
-            : "No necesitas importar nada manualmente. Cuando publiquemos una actualización semanal, las carreras aparecerán aquí."}
-        </p>
-        <p className="text-[10px] font-mono text-vantare-textDim mt-3">
-          Zona horaria: {calendar?.timezone || "local"}
-        </p>
+        {/* Calendar Toolbar */}
+        <div className="opacity-0 animate-fade-in-up delay-75">
+          <CalendarToolbar
+            view={calendarView}
+            anchorDate={calendarAnchorDate}
+            activeFilter={activeFilter}
+            onViewChange={setCalendarView}
+            onToday={handleToday}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+            onFilterChange={setActiveFilter}
+          />
+        </div>
+
+        {activeFilter !== "all" && (
+          <div
+            className="flex items-center gap-3 opacity-0 animate-fade-in-up delay-100"
+            data-testid="calendar-active-filter"
+          >
+            <span className="text-xs text-vantare-textMuted">
+              Filtrando por:
+              <span className="text-white font-semibold ml-1 capitalize">
+                {activeFilter === "beginner" && "Bronce"}
+                {activeFilter === "intermediate" && "Plata"}
+                {activeFilter === "advanced" && "Oro"}
+                {activeFilter === "weekly" && "Semanal"}
+                {activeFilter === "special" && "Especial"}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={handleClearFilter}
+              data-testid="calendar-clear-filter"
+              className="text-[11px] font-bold uppercase tracking-[.18em] text-accent hover:text-white transition-colors"
+            >
+              Quitar filtro
+            </button>
+          </div>
+        )}
+
         {error && (
           <p className="text-xs text-red-400 mt-3" data-testid="calendar-error">
             {error}
           </p>
         )}
-      </section>
 
-      {/* Compact weekly schedule overview — CALENDAR-05-F */}
-      {hasSeries && (
-        <section className="rounded-xl border border-vantare-red-500/20 bg-white/[0.03] backdrop-blur-sm p-4 opacity-0 animate-fade-in-up delay-75">
-          <h2 className="text-base font-bold text-white mt-1">Horario semanal LMU</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
-            {seriesGroups.map((group) => {
-              const tier = group.tier;
-              const groupLabel = tierLabel(tier);
-              const count = group.series.length;
-
-              // Derive schedule badge from seriesPreviews of this tier's series
-              const seriesIds = new Set(group.series.map((s) => s.id));
-              const tierPreviews = (calendar!.seriesPreviews ?? []).filter(
-                (p) => seriesIds.has(p.seriesId),
-              );
-              const firstLabel = tierPreviews[0]?.scheduleLabel ?? "";
-              const scheduleBadge = firstLabel.startsWith("Cada") ? firstLabel : "Slots UTC";
-
-              // Derive duration from group.series
-              const durations = group.series
-                .map((s) => s.durationMin)
-                .filter((d) => d > 0);
-              const uniqDurations = [...new Set(durations)].sort((a, b) => a - b);
-              const durationLabel =
-                uniqDurations.length === 0
-                  ? null
-                  : uniqDurations.length === 1
-                    ? `${uniqDurations[0]} min`
-                    : `${uniqDurations[0]}-${uniqDurations[uniqDurations.length - 1]} min`;
-
-              return (
-                <div
-                  key={tier}
-                  data-testid={`calendar-series-summary-${tier}`}
-                  className="rounded-lg border border-white/10 bg-white/[0.02] p-3"
-                >
-                  <p className="text-xs font-bold text-white">{groupLabel}</p>
-                  <p className="text-[10px] text-vantare-textMuted mt-0.5">
-                    {count} {count === 1 ? "serie" : "series"}
-                    {durationLabel ? ` · ${durationLabel}` : null}
-                  </p>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-vantare-red-500/10 text-vantare-red-400 border border-vantare-red-500/20 mt-1.5">
-                    {scheduleBadge}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-[10px] text-vantare-textDim mt-3 leading-relaxed">
-            Las salidas repetitivas se muestran como patrón horario para evitar listar miles de carreras.
-          </p>
-        </section>
-      )}
-
-      {/* Visual Calendar Grid or Placeholder */}
-      {hasSeries && (
-        <div className="opacity-0 animate-fade-in-up delay-75">
-          {calendarView === "month" ? (
-            <CalendarMonthView
-              anchorDate={calendarAnchorDate}
-              calendar={calendar!}
-            />
-          ) : calendarView === "week" ? (
-            <CalendarWeekView
-              anchorDate={calendarAnchorDate}
-              calendar={calendar!}
-            />
-          ) : (
-            <CalendarDayView
-              anchorDate={calendarAnchorDate}
-              calendar={calendar!}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Series (official schedule) or legacy upcoming races */}
-      {hasSeries ? (
-        <section className="opacity-0 animate-fade-in-up delay-100">
-          <span className="v52-eyebrow">Series oficiales</span>
-          {seriesGroups.map((group) => {
-            const tier = group.tier;
-            const groupLabel = tierLabel(tier);
-            const subtitleMap: Record<string, string> = {
-              beginner: "Carreras beginner · Bronze SR",
-              intermediate: "Carreras intermediate · Silver SR",
-              advanced: "Carreras advanced · Gold SR",
-              weekly: "Eventos semanales · SR S2",
-            };
-            const subtitle = subtitleMap[tier] ?? "";
-            // Derive schedule badge from seriesPreviews (not hardcoded by tier)
-            const tierSeriesIds = new Set(group.series.map((s) => s.id));
-            const tierPreviews = (calendar!.seriesPreviews ?? []).filter(
-              (p) => tierSeriesIds.has(p.seriesId),
-            );
-            const firstLabel = tierPreviews[0]?.scheduleLabel ?? "";
-            const scheduleBadge = firstLabel.startsWith("Cada") ? firstLabel : "Slots UTC";
-            const glowMap: Record<string, string> = {
-              beginner: "border-amber-500/20 shadow-amber-500/5",
-              intermediate: "border-slate-400/20 shadow-slate-400/5",
-              advanced: "border-yellow-400/20 shadow-yellow-400/5",
-              weekly: "border-cyan-400/20 shadow-cyan-400/5",
-            };
-            const glow = glowMap[tier] ?? "";
-            return (
-              <div
-                key={tier}
-                className={`mt-4 rounded-xl border bg-white/[0.03] backdrop-blur-sm p-4 ${glow}`}
-                data-testid={`calendar-tier-${tier}`}
-              >
-                {/* Group header v5.2 */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <p className="v52-eyebrow">{subtitle}</p>
-                    <h2 className="text-base font-bold text-white mt-0.5">{groupLabel}</h2>
-                  </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-white/5 text-vantare-textMuted border border-white/10 shrink-0 mt-1">
-                    {scheduleBadge}
-                  </span>
-                </div>
-                {/* Cards grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {group.series.map((s) => {
-                    const preview = calendar?.seriesPreviews?.find((p) => p.seriesId === s.id);
-                    const isSeriesFollowed = followedSeriesIds?.includes(s.id) ?? false;
-                    return (
-                      <CalendarSeriesCard
-                        key={s.id}
-                        series={s}
-                        preview={preview}
-                        isFollowed={isSeriesFollowed}
-                        onFollow={handleSeriesFollow}
-                        onUnfollow={handleSeriesUnfollow}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      ) : (
-        <section className="opacity-0 animate-fade-in-up delay-100">
-          <span className="v52-eyebrow">Próximas carreras</span>
-          {upcoming.length === 0 ? (
-            <div className="card-sleek rounded-xl p-5 mt-3" data-testid="calendar-no-upcoming">
-              <p className="text-sm text-vantare-textMuted">
-                No hay carreras próximas publicadas.
-              </p>
-              <p className="text-xs text-vantare-textDim mt-1">
-                Vantare actualizará el calendario LMU desde nuevas versiones de la app.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-              {upcoming.map((ev) => {
-                const followed = isFollowed(ev.id, followedIds);
-                const active = isEventActive(ev, now);
-                return (
-                  <div
-                    key={ev.id}
-                    className={`card-sleek rounded-xl p-4${followed ? " border border-vantare-red-500/30" : ""}`}
-                    data-testid="calendar-upcoming-event"
-                  >
-                    <p className="font-semibold text-sm text-white">{ev.title}</p>
-                    {ev.track ? (
-                      <p className="text-xs text-vantare-textMuted mt-0.5">{ev.track}</p>
-                    ) : null}
-                    <p className="text-[10px] text-vantare-textDim mt-1 font-mono">
-                      {formatEventDate(ev)}
-                      {ev.durationMin > 0 ? ` · ${ev.durationMin} min` : null}
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      {active ? (
-                        <span
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-600/20 text-amber-400 border border-amber-600/30"
-                          data-testid={`calendar-active-badge-${ev.id}`}
-                        >
-                          Activa ahora
-                        </span>
-                      ) : null}
-                      {followed ? (
-                        <>
-                          <span
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600/20 text-emerald-400 border border-emerald-600/30"
-                            data-testid={`calendar-following-badge-${ev.id}`}
-                          >
-                            Siguiendo
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleUnfollow(ev.id)}
-                            className="px-2.5 py-1 rounded-md text-[10px] font-bold text-vantare-textMuted bg-white/5 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
-                            data-testid={`calendar-unfollow-btn-${ev.id}`}
-                          >
-                            Dejar de seguir
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleFollow(ev.id)}
-                          className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-vantare-red-600 hover:bg-vantare-red-500 text-white transition-colors"
-                          data-testid={`calendar-follow-btn-${ev.id}`}
-                        >
-                          Seguir carrera
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Past races */}
-      <section className="opacity-0 animate-fade-in-up delay-150">
-        <span className="v52-eyebrow">Carreras pasadas</span>
-        {past.length === 0 ? (
-          <div className="card-sleek rounded-xl p-5 mt-3" data-testid="calendar-no-past">
-            <p className="text-sm text-vantare-textMuted">
-              No hay carreras pasadas todavía.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            {past.map((ev) => (
-              <div
-                key={ev.id}
-                className="card-sleek rounded-xl p-4 opacity-70"
-                data-testid="calendar-past-event"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm text-white">{ev.title}</p>
-                  <span
-                    className="bg-white/5 text-vantare-textDim border border-white/10 text-[10px] font-bold px-2.5 py-1 rounded-md"
-                    data-testid={`calendar-finished-badge-${ev.id}`}
-                  >
-                    Finalizada
-                  </span>
-                </div>
-                {ev.track ? (
-                  <p className="text-xs text-vantare-textMuted mt-0.5">{ev.track}</p>
-                ) : null}
-                <p className="text-[10px] text-vantare-textDim mt-1 font-mono">
-                  {formatEventDate(ev)}
-                </p>
-              </div>
-            ))}
+        {/* Visual Calendar Grid or Placeholder */}
+        {hasSeries && (
+          <div className="opacity-0 animate-fade-in-up delay-75">
+            {calendarView === "month" ? (
+              <CalendarMonthView
+                anchorDate={calendarAnchorDate}
+                calendar={calendar!}
+                activeFilter={activeFilter}
+                onFilterSelect={handleFilterSelect}
+              />
+            ) : calendarView === "week" ? (
+              <CalendarWeekView
+                anchorDate={calendarAnchorDate}
+                calendar={calendar!}
+                activeFilter={activeFilter}
+                onFilterSelect={handleFilterSelect}
+              />
+            ) : (
+              <CalendarDayView
+                anchorDate={calendarAnchorDate}
+                calendar={calendar!}
+                activeFilter={activeFilter}
+                onFilterSelect={handleFilterSelect}
+              />
+            )}
           </div>
         )}
-      </section>
+
+        {drawerTier && calendar && (
+          <CalendarRaceDetailDrawer
+            tier={drawerTier}
+            calendar={calendar}
+            anchorDate={calendarAnchorDate}
+            onClose={handleCloseDrawer}
+            onClearFilter={handleClearFilter}
+          />
+        )}
+
+        {/* Footer/Nota honesta */}
+        <div className="flex items-center justify-center opacity-0 animate-fade-in-up delay-600">
+          <span className="font-mono text-xs text-[#f5f5f5]/35 uppercase tracking-[.22em] flex items-center gap-4">
+            <span className="w-6 h-px bg-[#f5f5f5]/12"></span>
+            v0.1 · Calendario LMU
+            <span className="w-6 h-px bg-[#f5f5f5]/12"></span>
+          </span>
+        </div>
+      </main>
     </div>
   );
 }

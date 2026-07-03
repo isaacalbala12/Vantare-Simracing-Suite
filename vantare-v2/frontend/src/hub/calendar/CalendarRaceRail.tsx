@@ -3,9 +3,12 @@ import { Events } from "@wailsio/runtime";
 import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
+import type { CalendarFilter } from "./CalendarToolbar";
 
 type CalendarRaceRailProps = {
   now?: () => Date;
+  activeFilter?: CalendarFilter;
+  onSelectTier?: (filter: CalendarFilter) => void;
 };
 
 function formatRailTime(dateStr: string | null, now: Date): string {
@@ -56,17 +59,28 @@ const TIER_STYLES: Record<string, { label: string; border: string; bgClass: stri
   },
 };
 
-function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; isFollowed: boolean; onFollow: (item: UpcomingRaceItem) => void; onUnfollow: (item: UpcomingRaceItem) => void }) {
+function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSelectTier }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; isFollowed: boolean; onFollow: (item: UpcomingRaceItem) => void; onUnfollow: (item: UpcomingRaceItem) => void; onSelectTier?: (filter: CalendarFilter) => void }) {
   const styles = TIER_STYLES[tierKey] || TIER_STYLES.beginner;
 
   if (!item) return null;
 
   const timeStr = formatRailTime(item.nextStart, now);
 
+  const tierKeyToFilter = (key: string): CalendarFilter => {
+    switch (key) {
+      case "beginner": return "beginner";
+      case "intermediate": return "intermediate";
+      case "advanced": return "advanced";
+      case "weekly": return "weekly";
+      default: return "all";
+    }
+  };
+
   return (
     <div
-      className="card-sleek rounded-xl p-3 relative overflow-hidden group"
+      className="card-sleek rounded-xl p-3 relative overflow-hidden group cursor-pointer"
       data-testid={`rail-card-${tierKey}`}
+      onClick={() => onSelectTier?.(tierKeyToFilter(tierKey))}
     >
       <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: styles.border, boxShadow: `0 0 10px ${styles.border}` }} />
       <div className="flex flex-col gap-1.5 pl-2">
@@ -116,7 +130,7 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow }: { it
   );
 }
 
-export function CalendarRaceRail({ now }: CalendarRaceRailProps) {
+export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: CalendarRaceRailProps) {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [tick, setTick] = useState(0);
 
@@ -142,7 +156,7 @@ export function CalendarRaceRail({ now }: CalendarRaceRailProps) {
     return (
       <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200">
         <div className="px-2 py-1.5 mb-2 flex items-center justify-between">
-          <span className="eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
+          <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
         </div>
         <div className="rounded-xl bg-[rgba(20,20,20,.55)] border border-white/5 p-4 text-center">
           <p className="text-xs font-semibold text-white">Cargando...</p>
@@ -169,12 +183,17 @@ export function CalendarRaceRail({ now }: CalendarRaceRailProps) {
     }
   };
 
-  const hasItems = summary.weekly || summary.bronce || summary.plata || summary.oro;
+  const filter = activeFilter ?? "all";
+  const showWeekly = filter === "all" || filter === "weekly";
+  const showBronce = filter === "all" || filter === "beginner";
+  const showPlata = filter === "all" || filter === "intermediate";
+  const showOro = filter === "all" || filter === "advanced";
+  const hasItems = (showWeekly && summary.weekly) || (showBronce && summary.bronce) || (showPlata && summary.plata) || (showOro && summary.oro);
 
   return (
     <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200" data-testid="calendar-race-rail">
       <div className="px-2 py-1.5 mb-2 flex items-center justify-between">
-        <span className="eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
+        <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
       </div>
 
       {!hasItems ? (
@@ -183,10 +202,11 @@ export function CalendarRaceRail({ now }: CalendarRaceRailProps) {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {summary.weekly && (
+          {showWeekly && summary.weekly && (
             <div
-              className="card-sleek rounded-xl p-3 relative overflow-hidden group"
+              className="card-sleek rounded-xl p-3 relative overflow-hidden group cursor-pointer"
               data-testid="rail-card-weekly"
+              onClick={() => onSelectTier?.("weekly")}
             >
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent" style={{ boxShadow: "0 0 10px #ff3b3b" }} />
               <div className="flex flex-col gap-1.5 pl-2">
@@ -207,7 +227,7 @@ export function CalendarRaceRail({ now }: CalendarRaceRailProps) {
                 </div>
                 <div className="mt-1 flex items-end justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-semibold text-xs text-white truncate" title={summary.weekly.name}>WEC Weekly</p>
+                    <p className="font-semibold text-xs text-white truncate" title={summary.weekly.name}>{summary.weekly.name}</p>
                     <p className="text-[10px] text-[#f5f5f5]/60 truncate mt-0.5" title={summary.weekly.track}>{summary.weekly.track}</p>
                   </div>
                   {summary.weekly.id && (() => {
@@ -237,9 +257,9 @@ export function CalendarRaceRail({ now }: CalendarRaceRailProps) {
               </div>
             </div>
           )}
-          <RailCard item={summary.bronce} tierKey="beginner" now={nowDate} isFollowed={summary.bronce ? (summary.bronce.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.bronce.id) ?? false) : (calendar.followedEventIds?.includes(summary.bronce.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} />
-          <RailCard item={summary.plata} tierKey="intermediate" now={nowDate} isFollowed={summary.plata ? (summary.plata.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.plata.id) ?? false) : (calendar.followedEventIds?.includes(summary.plata.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} />
-          <RailCard item={summary.oro} tierKey="advanced" now={nowDate} isFollowed={summary.oro ? (summary.oro.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.oro.id) ?? false) : (calendar.followedEventIds?.includes(summary.oro.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} />
+          {showBronce && <RailCard item={summary.bronce} tierKey="beginner" now={nowDate} isFollowed={summary.bronce ? (summary.bronce.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.bronce.id) ?? false) : (calendar.followedEventIds?.includes(summary.bronce.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} />}
+          {showPlata && <RailCard item={summary.plata} tierKey="intermediate" now={nowDate} isFollowed={summary.plata ? (summary.plata.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.plata.id) ?? false) : (calendar.followedEventIds?.includes(summary.plata.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} />}
+          {showOro && <RailCard item={summary.oro} tierKey="advanced" now={nowDate} isFollowed={summary.oro ? (summary.oro.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.oro.id) ?? false) : (calendar.followedEventIds?.includes(summary.oro.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} />}
         </div>
       )}
     </div>

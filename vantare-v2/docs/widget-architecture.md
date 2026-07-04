@@ -103,6 +103,29 @@ Reglas:
 - Puede usar sizing intrinseco para widgets configurables.
 - No persiste cambios sin accion explicita del usuario.
 - Nunca abre/detiene overlays.
+### Draft local y edicion
+
+`WidgetSettingsPanel` mantiene un draft local de la configuracion editable del widget seleccionado.
+
+Flujo:
+
+1. `resolveEffectiveWidgetVariant(widget, profile)` resuelve la config efectiva (variant > props > defaults).
+2. El draft se inicializa con la config efectiva.
+3. El usuario edita slots/columns/columnGroups via `WidgetConfigSections`.
+4. El draft diverge sin persistir. Dirty detection via JSON comparison.
+5. El usuario puede:
+   - **Guardar en widget**: merge draft en `widget.props` (slots/columns/columnGroups). No crea variante.
+   - **Guardar como variante**: usa draft como contenido de la variante. No incluye position.
+   - **Descartar**: restaura draft a la config efectiva.
+   - **Aplicar variante existente**: reemplaza draft con la variante.
+
+Reglas:
+
+- `WidgetConfigSections` recibe `slots`, `columns`, `columnGroups` como props y notifica cambios via `onDraftChange`.
+- `canApply` controla si los controles estan habilitados. Free + Pro ven controles disabled.
+- Los helpers de edicion (`toggleSlotEnabled`, `updateColumnConfig`, etc.) son puros y no mutan input.
+- Los helpers no devuelven `position`, `x`, `y`, `w`, `h`.
+- `widthPreset` (xs/sm/md/lg/auto) se mapea a anchos numericos en el runtime via `WIDTH_PRESET_MAP`.
 
 ### LayoutStudio canvas
 

@@ -11,6 +11,37 @@ export type MetricCatalogEntry = {
   compatibleWidgets: string[];
   category?: string;
 };
+// ---------------------------------------------------------------------------
+// Built-in metric catalog for editors
+// ---------------------------------------------------------------------------
+
+export const BUILTIN_METRICS: MetricCatalogEntry[] = [
+  { id: "pos", label: "Posición", compatibleWidgets: ["standings", "relative", "multiclass-relative"] },
+  { id: "carNumber", label: "Número", compatibleWidgets: ["standings", "relative"] },
+  { id: "driverName", label: "Piloto", compatibleWidgets: ["standings", "relative", "multiclass-relative"] },
+  { id: "className", label: "Clase", compatibleWidgets: ["standings", "relative", "multiclass-relative"] },
+  { id: "gap", label: "Gap", compatibleWidgets: ["standings", "relative", "multiclass-relative"] },
+  { id: "gapAhead", label: "Gap adelante", compatibleWidgets: ["relative"] },
+  { id: "gapBehind", label: "Gap atrás", compatibleWidgets: ["relative"] },
+  { id: "lastLapTime", label: "Última vuelta", compatibleWidgets: ["standings", "relative"] },
+  { id: "bestLapTime", label: "Mejor vuelta", compatibleWidgets: ["standings", "relative"] },
+  { id: "trackTemp", label: "Temp. pista", compatibleWidgets: ["delta"] },
+  { id: "sessionTime", label: "Tiempo sesión", compatibleWidgets: ["delta"] },
+  { id: "driverClass", label: "Clase piloto", compatibleWidgets: ["delta"] },
+  { id: "throttle", label: "Acelerador", compatibleWidgets: ["pedals"] },
+  { id: "brake", label: "Freno", compatibleWidgets: ["pedals"] },
+  { id: "clutch", label: "Embrague", compatibleWidgets: ["pedals"] },
+  { id: "currentLap", label: "Vuelta actual", compatibleWidgets: ["broadcast-tower"] },
+  { id: "pos1", label: "Pos 1", compatibleWidgets: ["broadcast-tower"] },
+  { id: "pos2", label: "Pos 2", compatibleWidgets: ["broadcast-tower"] },
+  { id: "pos3", label: "Pos 3", compatibleWidgets: ["broadcast-tower"] },
+  { id: "pos4", label: "Pos 4", compatibleWidgets: ["broadcast-tower"] },
+];
+
+
+export function getMetricLabel(metricId: string): string {
+  return BUILTIN_METRICS.find((m) => m.id === metricId)?.label ?? metricId;
+}
 
 // ---------------------------------------------------------------------------
 // Widget-type → default model definitions
@@ -182,5 +213,119 @@ export function normaliseWidgetVariantConfig(
     filters: variant.filters ?? {},
     formats: variant.formats ?? {},
     props: variant.props,
+  };
+}
+// ---------------------------------------------------------------------------
+// Editing helpers (MC-1)
+// ---------------------------------------------------------------------------
+
+export type WidthPreset = "xs" | "sm" | "md" | "lg" | "auto";
+
+export function toggleSlotEnabled(
+  slots: SlotConfig[],
+  slotId: string,
+): SlotConfig[] {
+  const idx = slots.findIndex((s) => s.id === slotId);
+  if (idx === -1) return slots;
+  return slots.map((s, i) => (i === idx ? { ...s, enabled: !s.enabled } : s));
+}
+
+export function updateSlotConfig(
+  slots: SlotConfig[],
+  slotId: string,
+  updates: { metricId?: string; label?: string; format?: Record<string, unknown> },
+): SlotConfig[] {
+  const idx = slots.findIndex((s) => s.id === slotId);
+  if (idx === -1) return slots;
+  return slots.map((s, i) => {
+    if (i !== idx) return s;
+    const next = { ...s };
+    if (updates.metricId !== undefined) next.metricId = updates.metricId;
+    if (updates.label !== undefined) {
+      next.style = { ...next.style, label: updates.label };
+    }
+    if (updates.format !== undefined) next.format = updates.format;
+    return next;
+  });
+}
+
+export function toggleColumnEnabled(
+  columns: ColumnConfig[],
+  columnId: string,
+): ColumnConfig[] {
+  const idx = columns.findIndex((c) => c.id === columnId);
+  if (idx === -1) return columns;
+  return columns.map((c, i) => (i === idx ? { ...c, enabled: !c.enabled } : c));
+}
+
+export function updateColumnConfig(
+  columns: ColumnConfig[],
+  columnId: string,
+  updates: {
+    metricId?: string;
+    widthPreset?: WidthPreset;
+    format?: Record<string, unknown>;
+  },
+): ColumnConfig[] {
+  const idx = columns.findIndex((c) => c.id === columnId);
+  if (idx === -1) return columns;
+  return columns.map((c, i) => {
+    if (i !== idx) return c;
+    const next = { ...c };
+    if (updates.metricId !== undefined) next.metricId = updates.metricId;
+    if (updates.widthPreset !== undefined) next.widthPreset = updates.widthPreset;
+    if (updates.format !== undefined) next.format = updates.format;
+    return next;
+  });
+}
+
+export function toggleColumnGroupEnabled(
+  groups: ColumnGroupConfig[],
+  groupId: string,
+): ColumnGroupConfig[] {
+  const idx = groups.findIndex((g) => g.id === groupId);
+  if (idx === -1) return groups;
+  return groups.map((g, i) => (i === idx ? { ...g, enabled: !g.enabled } : g));
+}
+// ---------------------------------------------------------------------------
+// Effective config resolution (MC-2)
+// ---------------------------------------------------------------------------
+
+export type EffectiveWidgetConfig = {
+  slots: SlotConfig[];
+  columns: ColumnConfig[];
+  columnGroups: ColumnGroupConfig[];
+  themeId?: string;
+};
+
+export function resolveEffectiveWidgetVariant(
+  widget: { variantId?: string; type: string; style?: string; props?: Record<string, unknown> },
+  profile: { variants?: WidgetVariantConfig[] },
+): EffectiveWidgetConfig {
+  // 1. If widget has a variantId, use that variant
+  if (widget.variantId) {
+    const variant = profile.variants?.find((v) => v.id === widget.variantId);
+    if (variant) {
+      return {
+        slots: variant.slots ?? getDefaults(widget.type).slots,
+        columns: variant.columns ?? getDefaults(widget.type).columns,
+        columnGroups: variant.columnGroups ?? getDefaults(widget.type).columnGroups,
+        themeId: variant.themeId,
+      };
+    }
+  }
+
+  // 2. If widget.props has slots/columns/columnGroups, use those
+  const propsSlots = widget.props?.slots as SlotConfig[] | undefined;
+  const propsColumns = widget.props?.columns as ColumnConfig[] | undefined;
+  const propsColumnGroups = widget.props?.columnGroups as ColumnGroupConfig[] | undefined;
+
+  const defaults = getDefaults(widget.type);
+
+  return {
+    slots: propsSlots ?? defaults.slots,
+    columns: propsColumns ?? defaults.columns,
+    columnGroups: propsColumnGroups ?? defaults.columnGroups,
+    themeId: widget.style,
   };
 }

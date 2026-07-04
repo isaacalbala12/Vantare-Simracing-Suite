@@ -26,6 +26,13 @@ export function getRelativeCompactHeight(rowCount: number): number {
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
+const WIDTH_PRESET_MAP: Record<string, number> = {
+  xs: 20,
+  sm: 36,
+  md: 60,
+  lg: 90,
+  auto: 0,
+};
 
 function readNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
@@ -75,7 +82,10 @@ export function formatRelativeLapTime(seconds: number | undefined, column: Colum
 
 export function getRelativeColumnWidth(column: ColumnConfig, fallback: number): number {
   const width = readNumber(column.width);
-  return Math.max(MIN_COLUMN_WIDTH, Math.round(width ?? fallback));
+  if (width != null) return Math.max(MIN_COLUMN_WIDTH, Math.round(width));
+  const presetWidth = column.widthPreset ? WIDTH_PRESET_MAP[column.widthPreset] : undefined;
+  if (presetWidth != null && presetWidth > 0) return Math.max(MIN_COLUMN_WIDTH, presetWidth);
+  return Math.max(MIN_COLUMN_WIDTH, Math.round(fallback));
 }
 
 export function getRelativeColumnColor(column: ColumnConfig, fallback: string): string {

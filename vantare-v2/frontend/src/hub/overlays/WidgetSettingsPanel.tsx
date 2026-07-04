@@ -1,4 +1,5 @@
-import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import type { ProfileConfig, WidgetConfig, SlotConfig, ColumnConfig, ColumnGroupConfig } from "../../lib/profile";
 import { PreviewInspector } from "../preview/PreviewInspector";
 import { RelativeSettingsSection } from "./RelativeSettingsSection";
 import { StandingsSettingsSection } from "./StandingsSettingsSection";
@@ -10,6 +11,7 @@ import { applyOfficialDesignToProfile, type OfficialDesign } from "../widgets/wi
 import { WidgetVariantManager } from "./WidgetVariantManager";
 import { useAccess } from "../../lib/access";
 import { canApplyWidget } from "./widget-catalog";
+import { resolveEffectiveWidgetVariant } from "./widget-config-model";
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -17,10 +19,15 @@ type WidgetSettingsPanelProps = {
   onChangeProfile: (profile: ProfileConfig) => void;
 };
 
+type DraftConfig = {
+  slots: SlotConfig[];
+  columns: ColumnConfig[];
+  columnGroups: ColumnGroupConfig[];
+};
+
 function statusLabel(enabled: boolean): string {
   return enabled ? "Activo" : "Oculto";
 }
-
 
 function WidgetHeader({ widget }: { widget: WidgetConfig }) {
   const widgetName = widget.name || widget.id;
@@ -48,9 +55,83 @@ function WidgetHeader({ widget }: { widget: WidgetConfig }) {
   );
 }
 
+function isDraftDirty(draft: DraftConfig, effective: DraftConfig): boolean {
+  return (
+    JSON.stringify(draft.slots) !== JSON.stringify(effective.slots) ||
+    JSON.stringify(draft.columns) !== JSON.stringify(effective.columns) ||
+    JSON.stringify(draft.columnGroups) !== JSON.stringify(effective.columnGroups)
+  );
+}
+
 export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: WidgetSettingsPanelProps) {
   const access = useAccess();
   const canApply = widget ? canApplyWidget(widget.type, access) : false;
+
+  const effective = useMemo(
+    () => widget
+      ? resolveEffectiveWidgetVariant(widget, profile)
+      : { slots: [], columns: [], columnGroups: [] },
+    [widget, profile],
+  );
+
+  const [draft, setDraft] = useState<DraftConfig>({
+    slots: effective.slots,
+    columns: effective.columns,
+    columnGroups: effective.columnGroups,
+  });
+
+  // Reset draft when widget changes
+  const prevWidgetId = useRef(widget?.id);
+  useEffect(() => {
+    if (widget?.id !== prevWidgetId.current) {
+      prevWidgetId.current = widget?.id;
+      setDraft({
+        slots: effective.slots,
+        columns: effective.columns,
+        columnGroups: effective.columnGroups,
+      });
+    }
+  }, [widget?.id, effective.slots, effective.columns, effective.columnGroups]);
+
+  const dirty = isDraftDirty(draft, effective);
+
+  const handleDraftChange = useCallback(
+    (changes: { slots?: SlotConfig[]; columns?: ColumnConfig[]; columnGroups?: ColumnGroupConfig[] }) => {
+      setDraft((prev) => ({
+        ...prev,
+        ...(changes.slots !== undefined ? { slots: changes.slots } : {}),
+        ...(changes.columns !== undefined ? { columns: changes.columns } : {}),
+        ...(changes.columnGroups !== undefined ? { columnGroups: changes.columnGroups } : {}),
+      }));
+    },
+    [],
+  );
+
+  const handleSaveToWidget = useCallback(() => {
+    if (!widget || !canApply) return;
+    const updatedWidgets = profile.widgets.map((w) => {
+      if (w.id !== widget.id) return w;
+      return {
+        ...w,
+        props: {
+          ...w.props,
+          slots: draft.slots,
+          columns: draft.columns,
+          columnGroups: draft.columnGroups,
+        },
+      };
+    });
+    onChangeProfile({ ...profile, widgets: updatedWidgets });
+  }, [widget, canApply, profile, draft, onChangeProfile]);
+
+  const handleDiscard = useCallback(() => {
+    setDraft({
+      slots: effective.slots,
+      columns: effective.columns,
+      columnGroups: effective.columnGroups,
+    });
+  }, [effective]);
+
   const handleApplyOfficialDesign = (design: OfficialDesign) => {
     if (!widget || !canApply) return;
     onChangeProfile(applyOfficialDesignToProfile(profile, widget.id, design));
@@ -85,6 +166,38 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
             widget={widget}
             onChangeProfile={onChangeProfile}
             canApply={canApply}
+            draft={dirty ? draft : undefined}
+          />
+
+          {/* Draft actions */}
+          {dirty && canApply && (
+            <div className="flex items-center gap-2 border-t border-white/5 px-3 py-2" data-testid="draft-actions">
+              <button
+                type="button"
+                onClick={handleSaveToWidget}
+                data-testid="save-to-widget-btn"
+                className="rounded bg-vantare-accent/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-accent cursor-pointer"
+              >
+                Guardar en widget
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscard}
+                data-testid="discard-changes-btn"
+                className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
+              >
+                Descartar
+              </button>
+            </div>
+          )}
+
+          <WidgetConfigSections
+            slots={draft.slots}
+            columns={draft.columns}
+            columnGroups={draft.columnGroups}
+            widgetType={widget.type}
+            canApply={canApply}
+            onDraftChange={handleDraftChange}
           />
           <RelativeSettingsSection
             profile={profile}
@@ -105,9 +218,6 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
             profile={profile}
             widget={widget}
             onChangeProfile={onChangeProfile}
-          />
-          <WidgetConfigSections
-            widget={widget}
           />
         </div>
       )}

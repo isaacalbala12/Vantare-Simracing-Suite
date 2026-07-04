@@ -1,101 +1,198 @@
-import { render, screen, cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WidgetConfigSections } from "./WidgetConfigSections";
-import type { WidgetConfig } from "../../lib/profile";
+import type { SlotConfig, ColumnConfig, ColumnGroupConfig } from "../../lib/profile";
+import {
+  buildDefaultSlots,
+  buildDefaultColumns,
+  buildDefaultColumnGroups,
+} from "./widget-config-model";
 
 afterEach(() => {
   cleanup();
 });
 
-const deltaWidget: WidgetConfig = {
-  id: "delta",
-  type: "delta",
-  enabled: true,
-  updateHz: 30,
-  position: { x: 0, y: 0, w: 400, h: 48 },
-};
+const deltaSlots = buildDefaultSlots("delta", undefined);
+const standingsColumns = buildDefaultColumns("standings", undefined);
+const standingsColumnGroups = buildDefaultColumnGroups("standings", undefined);
 
-const standingsWidget: WidgetConfig = {
-  id: "standings",
-  type: "standings",
-  enabled: true,
-  updateHz: 15,
-  position: { x: 0, y: 0, w: 400, h: 300 },
-};
-
-const unknownWidget: WidgetConfig = {
-  id: "unknown-type",
-  type: "nonexistent-widget",
-  enabled: true,
-  updateHz: 10,
-  position: { x: 0, y: 0, w: 200, h: 100 },
-};
+function renderSections(overrides?: {
+  slots?: SlotConfig[];
+  columns?: ColumnConfig[];
+  columnGroups?: ColumnGroupConfig[];
+  widgetType?: string;
+  canApply?: boolean;
+  onDraftChange?: () => void;
+}) {
+  return render(
+    <WidgetConfigSections
+      slots={overrides?.slots ?? deltaSlots}
+      columns={overrides?.columns ?? []}
+      columnGroups={overrides?.columnGroups ?? []}
+      widgetType={overrides?.widgetType ?? "delta"}
+      canApply={overrides?.canApply ?? true}
+      onDraftChange={overrides?.onDraftChange ?? vi.fn()}
+    />,
+  );
+}
 
 describe("WidgetConfigSections", () => {
   it("renders slots section for delta widget", () => {
-    render(
-      <WidgetConfigSections
-        widget={deltaWidget}
-      />,
-    );
+    renderSections();
     expect(screen.getByText("Slots")).toBeDefined();
     expect(screen.getByText("headerStat")).toBeDefined();
   });
 
   it("renders columns section for standings widget", () => {
-    render(
-      <WidgetConfigSections
-        widget={standingsWidget}
-      />,
-    );
+    renderSections({
+      slots: [],
+      columns: standingsColumns,
+      widgetType: "standings",
+    });
     expect(screen.getByText("Columns")).toBeDefined();
     expect(screen.getByText("position")).toBeDefined();
   });
 
   it("renders column groups section for standings widget", () => {
-    render(
-      <WidgetConfigSections
-        widget={standingsWidget}
-      />,
-    );
+    renderSections({
+      slots: [],
+      columns: [],
+      columnGroups: standingsColumnGroups,
+      widgetType: "standings",
+    });
     expect(screen.getByText("Column Groups")).toBeDefined();
     expect(screen.getByText("hypercar")).toBeDefined();
   });
 
-  it("renders nothing for unknown widget type", () => {
-    const { container } = render(
-      <WidgetConfigSections
-        widget={unknownWidget}
-      />,
-    );
+  it("renders nothing when no slots, columns, or groups", () => {
+    const { container } = renderSections({
+      slots: [],
+      columns: [],
+      columnGroups: [],
+    });
     expect(container.querySelector("[data-testid='widget-config-sections']")).toBeNull();
   });
 
-  it("shows read-only indicator for foundation display", () => {
-    render(
-      <WidgetConfigSections
-        widget={deltaWidget}
-      />,
+  // MC-3: Slot editing
+  it("toggles slot enabled via switch", () => {
+    const onDraftChange = vi.fn();
+    renderSections({ onDraftChange });
+    const toggle = screen.getByRole("switch", { name: /toggle headerStat/i });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(onDraftChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slots: expect.arrayContaining([
+          expect.objectContaining({ id: "headerStat", enabled: false }),
+        ]),
+      }),
     );
-    const indicator = screen.getByTestId("widget-config-read-only");
-    expect(indicator.textContent).toContain("Read-only");
-    expect(indicator.textContent).toContain("foundation");
   });
 
-  it("contains no editing form elements or action buttons (read-only foundation)", () => {
-    const { container } = render(
-      <WidgetConfigSections
-        widget={deltaWidget}
-      />,
+  it("disables slot toggle when canApply is false", () => {
+    renderSections({ canApply: false });
+    const toggle = screen.getByRole("switch", { name: /toggle headerStat/i });
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("slot metric selector calls onDraftChange", () => {
+    const onDraftChange = vi.fn();
+    renderSections({ onDraftChange });
+    const selects = screen.getAllByLabelText("Métrica");
+    fireEvent.change(selects[0], { target: { value: "sessionTime" } });
+    expect(onDraftChange).toHaveBeenCalled();
+  });
+
+  // MC-4: Column editing
+  it("toggles column enabled via switch", () => {
+    const onDraftChange = vi.fn();
+    renderSections({
+      slots: [],
+      columns: standingsColumns,
+      widgetType: "standings",
+      onDraftChange,
+    });
+    const toggle = screen.getByRole("switch", { name: /toggle position/i });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(onDraftChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        columns: expect.arrayContaining([
+          expect.objectContaining({ id: "position", enabled: false }),
+        ]),
+      }),
     );
-    // No editing form elements — this is a read-only display, not an editor
-    expect(container.querySelectorAll("input")).toHaveLength(0);
-    expect(container.querySelectorAll("select")).toHaveLength(0);
-    expect(container.querySelectorAll("textarea")).toHaveLength(0);
-    // No action buttons (Save/Apply/Delete/Submit) — only collapse toggles allowed
-    const ACTION_LABELS = /save|apply|delete|submit|remove|discard/i;
-    const buttons = Array.from(container.querySelectorAll("button"));
-    const actionButtons = buttons.filter((b) => ACTION_LABELS.test(b.textContent ?? ""));
-    expect(actionButtons).toHaveLength(0);
+  });
+
+  it("column width preset selector is present", () => {
+    renderSections({
+      slots: [],
+      columns: standingsColumns,
+      widgetType: "standings",
+    });
+    const widthSelects = screen.getAllByLabelText("Ancho");
+    expect(widthSelects.length).toBeGreaterThan(0);
+  });
+
+  it("disables column toggle when canApply is false", () => {
+    renderSections({
+      slots: [],
+      columns: standingsColumns,
+      widgetType: "standings",
+      canApply: false,
+    });
+    const toggle = screen.getByRole("switch", { name: /toggle position/i });
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // MC-5: Column group editing
+  it("toggles column group enabled via switch", () => {
+    const onDraftChange = vi.fn();
+    renderSections({
+      slots: [],
+      columns: [],
+      columnGroups: standingsColumnGroups,
+      widgetType: "standings",
+      onDraftChange,
+    });
+    const toggle = screen.getByRole("switch", { name: /toggle hypercar/i });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(onDraftChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        columnGroups: expect.arrayContaining([
+          expect.objectContaining({ id: "hypercar", enabled: false }),
+        ]),
+      }),
+    );
+  });
+
+  it("disables column group toggle when canApply is false", () => {
+    renderSections({
+      slots: [],
+      columns: [],
+      columnGroups: standingsColumnGroups,
+      widgetType: "standings",
+      canApply: false,
+    });
+    const toggle = screen.getByRole("switch", { name: /toggle hypercar/i });
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("does not expose position fields in any output", () => {
+    const onDraftChange = vi.fn();
+    renderSections({ onDraftChange });
+    const toggle = screen.getByRole("switch", { name: /toggle headerStat/i });
+    fireEvent.click(toggle);
+    const call = onDraftChange.mock.calls[0]?.[0];
+    if (call?.slots) {
+      for (const slot of call.slots) {
+        expect(slot).not.toHaveProperty("position");
+        expect(slot).not.toHaveProperty("x");
+        expect(slot).not.toHaveProperty("y");
+        expect(slot).not.toHaveProperty("w");
+        expect(slot).not.toHaveProperty("h");
+      }
+    }
   });
 });

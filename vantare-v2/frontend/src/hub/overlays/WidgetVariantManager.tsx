@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 
 import { useState } from "react";
-import type { ProfileConfig, WidgetConfig, WidgetVariantConfig } from "../../lib/profile";
+import type { ProfileConfig, WidgetConfig, WidgetVariantConfig, SlotConfig, ColumnConfig, ColumnGroupConfig } from "../../lib/profile";
 import type { AccessContext } from "../../lib/access-policy";
 import { canApplyWidget } from "./widget-catalog";
 import {
@@ -19,6 +19,7 @@ export function saveVariant(
   widget: WidgetConfig,
   variantName: string,
   access?: AccessContext,
+  draft?: { slots?: SlotConfig[]; columns?: ColumnConfig[]; columnGroups?: ColumnGroupConfig[] },
 ): ProfileConfig {
   // Access guard: block save if user cannot apply this widget type
   if (access && !canApplyWidget(widget.type, access)) {
@@ -34,9 +35,9 @@ export function saveVariant(
     widgetType: widget.type,
     themeId: widget.style,
     name: variantName,
-    slots: existingVariant?.slots ?? buildDefaultSlots(widget.type, widget.style),
-    columns: existingVariant?.columns ?? buildDefaultColumns(widget.type, widget.style),
-    columnGroups: existingVariant?.columnGroups ?? buildDefaultColumnGroups(widget.type, widget.style),
+    slots: draft?.slots ?? existingVariant?.slots ?? buildDefaultSlots(widget.type, widget.style),
+    columns: draft?.columns ?? existingVariant?.columns ?? buildDefaultColumns(widget.type, widget.style),
+    columnGroups: draft?.columnGroups ?? existingVariant?.columnGroups ?? buildDefaultColumnGroups(widget.type, widget.style),
   };
 
   return {
@@ -98,13 +99,14 @@ type WidgetVariantManagerProps = {
   widget: WidgetConfig;
   onChangeProfile: (p: ProfileConfig) => void;
   canApply?: boolean;
+  draft?: { slots?: SlotConfig[]; columns?: ColumnConfig[]; columnGroups?: ColumnGroupConfig[] };
 };
-
 export function WidgetVariantManager({
   profile,
   widget,
   onChangeProfile,
   canApply = true,
+  draft,
 }: WidgetVariantManagerProps) {
   const [variantName, setVariantName] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
@@ -117,7 +119,7 @@ export function WidgetVariantManager({
 
   const handleSave = () => {
     if (!variantName.trim() || !canApply) return;
-    const next = saveVariant(profile, widget, variantName.trim());
+    const next = saveVariant(profile, widget, variantName.trim(), undefined, draft);
     onChangeProfile(next);
     setVariantName("");
   };

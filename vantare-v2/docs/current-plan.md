@@ -12,6 +12,27 @@ Nota WIDGET-STUDIO-03 PLAN (2026-07-04):
 - Fuente visual definitiva: `docs/overlay-vantare-crystal-widgets.html`.
 - Plan ejecutable por microcortes con TDD: `docs/superpowers/plans/2026-07-04-widget-studio-03-vantare-crystal-slots.md`.
 - Scope inicial: WidgetStudio y widgets; LayoutStudio queda fuera salvo tests de no regresion de responsabilidades.
+Nota WIDGET-STUDIO-04 PLAN (2026-07-05):
+- Plan creado para convertir la foundation de Vantare Crystal en edicion real de slots, columns y columnGroups.
+- Decisiones: UI editable generica, draft local, guardar en widget actual y como variante, width presets, controles disabled para Free+Pro, sin reordenacion ni drag/drop.
+- Frontera protegida: WidgetStudio edita configuracion interna; LayoutStudio sigue siendo el unico propietario de position/x/y/w/h.
+- Plan ejecutable por Mimo v2.5 con TDD y revision final: `docs/superpowers/plans/2026-07-05-widget-studio-04-editable-slots-columns.md`.
+- Sin implementacion ni commit.
+Nota WIDGET-STUDIO-04 (2026-07-05) — Implementation:
+- MC-0: Baseline verificado — 38 tests PASS, WidgetConfigSections read-only foundation confirmado.
+- MC-1: `widget-config-model.ts` — helpers puros toggleSlotEnabled, updateSlotConfig, toggleColumnEnabled, updateColumnConfig, toggleColumnGroupEnabled. BUILTIN_METRICS y getMetricLabel. 51 tests GREEN.
+- MC-2: `resolveEffectiveWidgetVariant` — resolucion pura de config efectiva: variant > props > defaults. 51 tests GREEN.
+- MC-3/4/5: WidgetConfigSections reescrito como editor real — toggles, metric selectors, width presets (xs/sm/md/lg/auto), column groups. Controles disabled cuando canApply=false. 115 tests GREEN.
+- MC-6: WidgetSettingsPanel con draft local — `useMemo` para effective, dirty detection via JSON, botones "Guardar en widget" y "Descartar". 115 tests GREEN.
+- MC-7: WidgetVariantManager acepta `draft` prop — guardar variante usa draft actual en vez de solo defaults/existing. 115 tests GREEN.
+- MC-8: Standings y Relative respetan `widthPreset` via WIDTH_PRESET_MAP en standings-format.ts y relative-format.ts. Compact display mode preservado. 1288 tests GREEN.
+- MC-9: Visual polish — estados disabled claros, toggles con aria-checked, opacity-40 en disabled.
+- MC-10: Docs actualizados.
+- Tests totales: 1288/1288 PASS (138 files). tsc OK, lint OK, build OK, git diff --check OK.
+- Archivos nuevos: ninguno.
+- Archivos modificados: profile.ts, widget-config-model.ts, widget-config-model.test.ts, WidgetConfigSections.tsx, WidgetConfigSections.test.tsx, WidgetSettingsPanel.tsx, WidgetSettingsPanel.test.tsx, WidgetVariantManager.tsx, standings-format.ts, relative-format.ts, current-plan.md.
+- No se toco: LayoutStudio internamente, backend Go, dependencias nuevas, CompositeApp, ObsOverlayApp, WidgetRenderer.
+- Sin commit, sin tag, sin release.
 Nota WIDGET-STUDIO-03 MC-0 (2026-07-04):
 - Inventario: 7 widget types (delta, relative, standings, telemetry, telemetry-vertical, pedals, engineer-notifications).
 - WidgetRenderer, CompositeApp y ObsOverlayApp registran los mismos 7 tipos.

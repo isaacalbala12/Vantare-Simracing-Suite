@@ -63,6 +63,7 @@ export type ColumnConfig = {
   metricId: string;
   enabled: boolean;
   width?: number;
+  widthPreset?: "xs" | "sm" | "md" | "lg" | "auto";
   format?: Record<string, unknown>;
   style?: Record<string, unknown>;
 };

@@ -7,6 +7,14 @@ const DEFAULT_NAME_MAX_CHARS = 16;
 const MIN_COLUMN_WIDTH = 6;
 const DEFAULT_HORIZONTAL_PADDING = 32;
 
+const WIDTH_PRESET_MAP: Record<string, number> = {
+  xs: 20,
+  sm: 36,
+  md: 60,
+  lg: 90,
+  auto: 0,
+};
+
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -55,13 +63,15 @@ export function formatStandingsLapTime(seconds: number | undefined, column: Colu
   if (display === "compact") {
     return roundedRemaining.toFixed(decimals);
   }
-
   return `${minutes}:${roundedRemaining.toFixed(decimals).padStart(decimals === 0 ? 2 : 3 + decimals, "0")}`;
 }
 
 export function getStandingsColumnWidth(column: ColumnConfig, fallback: number): number {
   const width = readNumber(column.width);
-  return Math.max(MIN_COLUMN_WIDTH, Math.round(width ?? fallback));
+  if (width != null) return Math.max(MIN_COLUMN_WIDTH, Math.round(width));
+  const presetWidth = column.widthPreset ? WIDTH_PRESET_MAP[column.widthPreset] : undefined;
+  if (presetWidth != null && presetWidth > 0) return Math.max(MIN_COLUMN_WIDTH, presetWidth);
+  return Math.max(MIN_COLUMN_WIDTH, Math.round(fallback));
 }
 
 export function getStandingsColumnColor(column: ColumnConfig, fallback: string): string {

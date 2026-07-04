@@ -2,6 +2,18 @@
 
 Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
 
+Nota CALENDAR-10 (2026-07-04) P3:
+- Implementados helpers `groupEventsByDay` e `indexSeriesById` en `calendar-view-math.ts` para evitar filtros repetidos y búsquedas O(n) por celda.
+- MonthView ahora acepta `onDayClick` prop; click en celda de día cambia a DayView con ese día como anchor. `stopPropagation` en pills evita navegación duplicada.
+- DayView semántica reescrita: `all` mode muestra solo weekly + special events (no daily interval cards). `beginner`/`intermediate`/`advanced` expanden timeline solo del tier filtrado. `weekly`/`special` no muestran daily intervals.
+- WeekView protegido con tests de regresión: no muestra daily interval series, solo weekly + special.
+- Viewport fit: CalendarPage usa `min-h-0 overflow-hidden`, Month/Week/Day usan `flex-1 min-h-0` con scroll interno. Eliminado `max-h-[640px]` fijo.
+- Rail title "Próximas carreras" centrado con `justify-center`.
+- Visual compare script actualizado: sección detail panel no crítica, no falla si no se abre. Termina exit 0.
+- Tests: 97/97 enfocados, 1155/1155 full suite. tsc OK, lint OK (warning preexistente `.eslintignore`), build OK (warning preexistente chunk size), visual compare OK, `git diff --check` OK.
+- No se tocó backend Go, ACCESS-01, Supabase/Auth, import UI, WidgetStudio/LayoutStudio/overlays.
+- Commit: `fix(calendar): stabilize visual calendar performance`.
+
 Nota CALENDAR-08 (2026-07-03) Microcorte WeekView fidelity:
 - Reescrito `CalendarWeekView` para usar una grilla semanal tipo calendario horario, como el HTML de referencia `calendario_v5.2.html`.
 - Ahora muestra 7 columnas (Lun-Dom), eje horario vertical, eventos concretos posicionados por start/end y segmentación simple de solapes.

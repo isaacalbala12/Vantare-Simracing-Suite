@@ -87,6 +87,11 @@ export function CalendarPage() {
     setPanelTier(null);
   }, []);
 
+  const handleDayClick = useCallback((date: Date) => {
+    setCalendarAnchorDate(date);
+    setCalendarView("day");
+  }, []);
+
   const handleClosePanel = useCallback(() => {
     setPanelTier(null);
   }, []);
@@ -94,14 +99,14 @@ export function CalendarPage() {
   const hasSeries = calendar ? calendar.series && calendar.series.length > 0 : false;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6 min-h-0 overflow-hidden">
       {/* SIDEBAR */}
-      <aside className="flex flex-col gap-5">
+      <aside className="flex flex-col gap-5 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
         <CalendarRaceRail activeFilter={activeFilter} onSelectTier={handleFilterSelect} />
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex flex-col gap-5">
+      <main className="flex flex-col gap-5 min-h-0 overflow-hidden">
         {/* Page header */}
         <div className="opacity-0 animate-fade-in-up">
           <span className="v52-eyebrow" style={{ fontSize: "10px" }}>Carreras</span>
@@ -159,13 +164,14 @@ export function CalendarPage() {
 
         {/* Visual Calendar Grid or Placeholder */}
         {hasSeries && (
-          <div className="opacity-0 animate-fade-in-up delay-75">
+          <div className="opacity-0 animate-fade-in-up delay-75 flex-1 min-h-0">
             {calendarView === "month" ? (
               <CalendarMonthView
                 anchorDate={calendarAnchorDate}
                 calendar={calendar!}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
+                onDayClick={handleDayClick}
               />
             ) : calendarView === "week" ? (
               <CalendarWeekView

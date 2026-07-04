@@ -355,3 +355,39 @@ export function groupOccurrencesByLocalDay(occurrences: CalendarOccurrence[]): M
 
   return map;
 }
+
+/**
+ * Agrupa eventos de calendario (RaceEvent[]) por su día local en formato YYYY-MM-DD.
+ * No muta el array original.
+ */
+export function groupEventsByDay(events: import("./calendar-types").RaceEvent[]): Map<string, import("./calendar-types").RaceEvent[]> {
+  const map = new Map<string, import("./calendar-types").RaceEvent[]>();
+
+  for (const ev of events) {
+    const date = new Date(ev.startTime);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const key = `${year}-${month}-${day}`;
+
+    const list = map.get(key) ?? [];
+    list.push(ev);
+    map.set(key, list);
+  }
+
+  return map;
+}
+
+/**
+ * Indexa un array de series por su id para búsqueda O(1).
+ * No muta el array original.
+ */
+export function indexSeriesById(series: import("./calendar-types").RaceSeries[]): Map<string, import("./calendar-types").RaceSeries> {
+  const map = new Map<string, import("./calendar-types").RaceSeries>();
+
+  for (const s of series) {
+    map.set(s.id, s);
+  }
+
+  return map;
+}

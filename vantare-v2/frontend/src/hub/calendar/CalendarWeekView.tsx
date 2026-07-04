@@ -2,6 +2,8 @@ import {
   buildWeekRange,
   expandWeeklySlots,
   getDailyPatternSummary,
+  groupEventsByDay,
+  indexSeriesById,
   isSameLocalDay,
   type CalendarOccurrence,
   type DailyPatternSummary,
@@ -125,6 +127,7 @@ export function CalendarWeekView({
   const gridStart = days[0];
   const gridEnd = new Date(days[6].getTime() + 86400000);
   const now = new Date();
+  const seriesById = indexSeriesById(calendar.series || []);
 
   const weeklyOccurrences: CalendarOccurrence[] = (calendar.series || []).flatMap((s) =>
     expandWeeklySlots(s, gridStart, gridEnd)
@@ -134,16 +137,24 @@ export function CalendarWeekView({
     getDailyPatternSummary(calendar.series || []),
     activeFilter,
   );
+  // Pre-group events by day for O(1) lookup per column
+  const eventsByDay = groupEventsByDay(calendar.events || []);
 
   const dayEvents = days.map((dayDate) => {
     const events: WeekEvent[] = [];
 
-    for (const ev of calendar.events || []) {
-      const associatedSeries = (calendar.series || []).find((s) => s.id === ev.series);
+    // 1. Special events from calendar.events (lookup by day key)
+    const year = dayDate.getFullYear();
+    const month = String(dayDate.getMonth() + 1).padStart(2, "0");
+    const day = String(dayDate.getDate()).padStart(2, "0");
+    const dayKey = `${year}-${month}-${day}`;
+    const dayEvents = eventsByDay.get(dayKey) || [];
+
+    for (const ev of dayEvents) {
+      const associatedSeries = seriesById.get(ev.series);
       if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
         continue;
       }
-      if (!isSameLocalDay(new Date(ev.startTime), dayDate)) continue;
       const tier = associatedSeries?.tier;
       if (!matchesTierFilter({ type: "special", tier }, activeFilter)) continue;
       events.push({
@@ -157,9 +168,10 @@ export function CalendarWeekView({
       });
     }
 
+    // 2. Weekly slots
     for (const occ of weeklyOccurrences) {
       if (!isSameLocalDay(occ.startTime, dayDate)) continue;
-      const series = (calendar.series || []).find((s) => s.id === occ.seriesId);
+      const series = seriesById.get(occ.seriesId);
       const tier = series?.tier;
       if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
       events.push({
@@ -176,8 +188,9 @@ export function CalendarWeekView({
     return segmentEvents(events);
   });
 
+
   return (
-    <section className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75" data-testid="calendar-week-view">
+    <section className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75 flex-1 min-h-0" data-testid="calendar-week-view">
       <div className="flex flex-col">
         <span className="v52-eyebrow">Vista semanal</span>
         <p className="text-xs text-vantare-textMuted mt-1">
@@ -210,7 +223,7 @@ export function CalendarWeekView({
         </div>
       )}
 
-      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full">
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full flex-1 min-h-0 flex flex-col">
         {/* Header row */}
         <div className="grid grid-cols-[60px_repeat(7,1fr)] bg-white/5 gap-[1px]">
           <div className="bg-[#0b0b0b]" />
@@ -252,7 +265,7 @@ export function CalendarWeekView({
         </div>
 
         {/* Scrollable timeline */}
-        <div className="overflow-y-auto max-h-[640px]" style={{ scrollbarWidth: "thin" }}>
+        <div className="overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: "thin" }}>
           <div className="relative" style={{ height: HOUR_HEIGHT * 24 }}>
             {/* Grid lines */}
             <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-[1px] bg-white/5 absolute inset-0">

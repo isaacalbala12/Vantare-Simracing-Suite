@@ -250,4 +250,27 @@ describe("CalendarPage", () => {
     });
     expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
   });
+
+  it("clicking a month day cell switches to day view with that date", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        series: [{ id: "s1", name: "S1", tier: "beginner" }],
+        events: [],
+        updated: "",
+      },
+    });
+
+    // Cell 2 is July 1 (first day of month in the grid)
+    const cell2 = screen.getByTestId("calendar-month-cell-2");
+    act(() => {
+      fireEvent.click(cell2);
+    });
+
+    // Should now show day view
+    expect(screen.getByTestId("calendar-day-view")).toBeTruthy();
+    expect(screen.queryByTestId("calendar-month-view")).toBeNull();
+  });
 });

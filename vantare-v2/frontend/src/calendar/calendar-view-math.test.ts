@@ -12,6 +12,8 @@ import {
   expandDailyIntervalSeries,
   getDailyPatternSummary,
   groupOccurrencesByLocalDay,
+  groupEventsByDay,
+  indexSeriesById,
   type CalendarOccurrence,
 } from "./calendar-view-math";
 import type { RaceSeries, RaceSeriesPreview } from "./calendar-types";
@@ -515,5 +517,69 @@ describe("expandDailyIntervalSeries", () => {
     const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
 
     expect(result.length).toBe(12); // only 12 hours
+  });
+});
+
+describe("groupEventsByDay", () => {
+  it("groups two events of the same local day under the same key", () => {
+    const events = [
+      { id: "e1", title: "Race 1", startTime: "2026-07-04T10:00:00Z", series: "s1", sim: "LMU", track: "Silverstone", sessionLabel: "Race", durationMin: 20, registrationUrl: "", source: "", notes: "" },
+      { id: "e2", title: "Race 2", startTime: "2026-07-04T14:00:00Z", series: "s1", sim: "LMU", track: "Silverstone", sessionLabel: "Race", durationMin: 20, registrationUrl: "", source: "", notes: "" },
+    ];
+
+    const grouped = groupEventsByDay(events);
+
+    expect(grouped.size).toBe(1);
+    expect(grouped.get("2026-07-04")?.length).toBe(2);
+  });
+
+  it("separates events of different local days into different keys", () => {
+    const events = [
+      { id: "e1", title: "Race 1", startTime: "2026-07-04T10:00:00Z", series: "s1", sim: "LMU", track: "Silverstone", sessionLabel: "Race", durationMin: 20, registrationUrl: "", source: "", notes: "" },
+      { id: "e2", title: "Race 2", startTime: "2026-07-05T10:00:00Z", series: "s1", sim: "LMU", track: "Silverstone", sessionLabel: "Race", durationMin: 20, registrationUrl: "", source: "", notes: "" },
+    ];
+
+    const grouped = groupEventsByDay(events);
+
+    expect(grouped.size).toBe(2);
+    expect(grouped.get("2026-07-04")?.length).toBe(1);
+    expect(grouped.get("2026-07-05")?.length).toBe(1);
+  });
+
+  it("does not mutate the original array", () => {
+    const events = [
+      { id: "e1", title: "Race 1", startTime: "2026-07-04T10:00:00Z", series: "s1", sim: "LMU", track: "Silverstone", sessionLabel: "Race", durationMin: 20, registrationUrl: "", source: "", notes: "" },
+    ];
+    const originalLength = events.length;
+
+    groupEventsByDay(events);
+
+    expect(events.length).toBe(originalLength);
+  });
+});
+
+describe("indexSeriesById", () => {
+  it("returns a map keyed by series id", () => {
+    const series = [
+      { id: "s1", name: "Bronze GT3", tier: "beginner", licenseLabel: "R", track: "Silverstone", vehicleClass: "GT3", setup: "Fixed", durationMin: 20, splits: 1, assists: "Auto", tyreWarmers: false, tyres: 4, recurrence: { kind: "interval", intervalMinutes: 15 } },
+      { id: "s2", name: "Silver GT3", tier: "intermediate", licenseLabel: "R", track: "Silverstone", vehicleClass: "GT3", setup: "Fixed", durationMin: 20, splits: 1, assists: "Auto", tyreWarmers: false, tyres: 4, recurrence: { kind: "interval", intervalMinutes: 20 } },
+    ];
+
+    const indexed = indexSeriesById(series);
+
+    expect(indexed.size).toBe(2);
+    expect(indexed.get("s1")?.name).toBe("Bronze GT3");
+    expect(indexed.get("s2")?.name).toBe("Silver GT3");
+  });
+
+  it("does not mutate the original array", () => {
+    const series = [
+      { id: "s1", name: "Bronze GT3", tier: "beginner", licenseLabel: "R", track: "Silverstone", vehicleClass: "GT3", setup: "Fixed", durationMin: 20, splits: 1, assists: "Auto", tyreWarmers: false, tyres: 4, recurrence: { kind: "interval", intervalMinutes: 15 } },
+    ];
+    const originalLength = series.length;
+
+    indexSeriesById(series);
+
+    expect(series.length).toBe(originalLength);
   });
 });

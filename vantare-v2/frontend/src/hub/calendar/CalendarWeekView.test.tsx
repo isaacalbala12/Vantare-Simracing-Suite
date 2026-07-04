@@ -280,4 +280,37 @@ describe("CalendarWeekView", () => {
 
     expect(screen.queryByText("Nueva carrera")).toBeNull();
   });
+
+  it("does not show daily interval series as event cards in the grid", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    // Daily interval series (Serie Bronce, Serie Plata) should NOT appear as event cards
+    const allEvents = screen.queryAllByTestId(/calendar-week-event-\d+-\d+/);
+    const dailyCards = allEvents.filter((card) => card.textContent?.includes("Serie Bronce") || card.textContent?.includes("Serie Plata"));
+    expect(dailyCards.length).toBe(0);
+
+    // Special events should still appear
+    const specialCards = allEvents.filter((card) => card.textContent?.includes("Carrera Especial"));
+    expect(specialCards.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("ignores calendar.events backed by interval series", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    // "Carrera Bronce Falsa" is backed by an interval series — should be ignored
+    expect(screen.queryByText("Carrera Bronce Falsa")).toBeNull();
+  });
+
+  it("shows weekly slot occurrences in the correct column", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z"); // Week of June 29 - July 5
+    render(<CalendarWeekView anchorDate={anchorDate} calendar={mockCalendar} />);
+
+    // Serie Semanal has days: ["Mon"] — Monday June 29 is in this week
+    // It should appear as an event card
+    const allEvents = screen.queryAllByTestId(/calendar-week-event-\d+-\d+/);
+    const weeklyCards = allEvents.filter((card) => card.textContent?.includes("Serie Semanal"));
+    expect(weeklyCards.length).toBeGreaterThanOrEqual(1);
+  });
 });

@@ -2,12 +2,14 @@ import {
   buildMonthGrid,
   expandWeeklySlots,
   getDailyPatternSummary,
+  groupEventsByDay,
+  indexSeriesById,
   isSameLocalDay,
   type CalendarDayCell,
   type CalendarOccurrence,
   type DailyPatternSummary,
 } from "../../calendar/calendar-view-math";
-import type { Calendar, RaceEvent } from "../../calendar/calendar-types";
+import type { Calendar } from "../../calendar/calendar-types";
 import { filterIntervalSummaries, matchesTierFilter } from "./calendar-filter";
 import type { CalendarFilter } from "./CalendarToolbar";
 
@@ -24,12 +26,12 @@ const TIER_COLORS: Record<string, { text: string; bg: string; border: string }> 
 function getTierColor(tier: string): { text: string; bg: string; border: string } {
   return TIER_COLORS[tier] ?? { text: "#f5f5f5", bg: "rgba(245,245,245,.05)", border: "rgba(245,245,245,.1)" };
 }
-
 export type CalendarMonthViewProps = {
   anchorDate: Date;
   calendar: Calendar;
   activeFilter?: CalendarFilter;
   onFilterSelect?: (filter: CalendarFilter) => void;
+  onDayClick?: (date: Date) => void;
 };
 
 function getTierDisplay(tier: string): string {
@@ -53,8 +55,10 @@ type CellItem = {
   tier?: string;
   time?: string;
 };
+export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", onFilterSelect, onDayClick }: CalendarMonthViewProps) {
+  // 0. Build series index for O(1) lookups
+  const seriesById = indexSeriesById(calendar.series || []);
 
-export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", onFilterSelect }: CalendarMonthViewProps) {
   // 1. Build grid cells (42 cells)
   const cells = buildMonthGrid(anchorDate);
 
@@ -71,29 +75,33 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
     getDailyPatternSummary(calendar.series || []),
     activeFilter,
   );
+  // 4. Pre-group events by day for O(1) cell lookup
+  const eventsByDay = groupEventsByDay(calendar.events || []);
 
   const getCellConcreteItems = (cell: CalendarDayCell): CellItem[] => {
     const items: CellItem[] = [];
 
-    // 1. Add materialized special events
-    const cellSpecial = (calendar.events || []).filter((ev: RaceEvent) => {
-      const associatedSeries = (calendar.series || []).find((s) => s.id === ev.series);
-      if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
-        return false;
-      }
-      if (!isSameLocalDay(new Date(ev.startTime), cell.date)) return false;
-      const tier = associatedSeries?.tier;
-      return matchesTierFilter({ type: "special", tier }, activeFilter);
-    });
+    // 1. Add materialized special events (lookup by day key)
+    const year = cell.date.getFullYear();
+    const month = String(cell.date.getMonth() + 1).padStart(2, "0");
+    const day = String(cell.date.getDate()).padStart(2, "0");
+    const dayKey = `${year}-${month}-${day}`;
+    const dayEvents = eventsByDay.get(dayKey) || [];
 
-    for (const ev of cellSpecial) {
+    for (const ev of dayEvents) {
+      const associatedSeries = seriesById.get(ev.series);
+      if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
+        continue;
+      }
+      const tier = associatedSeries?.tier;
+      if (!matchesTierFilter({ type: "special", tier }, activeFilter)) continue;
       const dateObj = new Date(ev.startTime);
       const timeStr = dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       items.push({
         type: "special",
         label: ev.title,
         time: timeStr,
-        tier: (calendar.series || []).find((s) => s.id === ev.series)?.tier,
+        tier: seriesById.get(ev.series)?.tier,
       });
     }
 
@@ -101,7 +109,7 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
     const cellWeekly = weeklyOccurrences
       .filter((occ) => isSameLocalDay(occ.startTime, cell.date))
       .filter((occ) => {
-        const tier = (calendar.series || []).find((s) => s.id === occ.seriesId)?.tier;
+        const tier = seriesById.get(occ.seriesId)?.tier;
         return matchesTierFilter({ type: "weekly", tier }, activeFilter);
       });
     for (const occ of cellWeekly) {
@@ -110,7 +118,7 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
         type: "weekly",
         label: occ.title,
         time: timeStr,
-        tier: (calendar.series || []).find((s) => s.id === occ.seriesId)?.tier,
+        tier: seriesById.get(occ.seriesId)?.tier,
       });
     }
 
@@ -120,7 +128,7 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
   const maxConcreteItemsPerDay = 4;
 
   return (
-    <section className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75" data-testid="calendar-month-view">
+    <section className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75 flex-1 min-h-0" data-testid="calendar-month-view">
       {/* Visual month header */}
       <div className="flex flex-col">
         <span className="v52-eyebrow">Vista mensual</span>
@@ -152,7 +160,7 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
         </div>
       )}
 
-      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full">
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full flex-1 min-h-0 flex flex-col">
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-white/10 bg-white/[0.02] text-center text-[10px] sm:text-xs font-bold text-vantare-textMuted py-2">
           {WEEKDAYS.map((day) => (
@@ -163,7 +171,7 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
         </div>
 
         {/* 42 grid cells */}
-        <div className="grid grid-cols-7 bg-white/5 gap-[1px]">
+        <div className="grid grid-cols-7 bg-white/5 gap-[1px] flex-1 auto-rows-fr">
           {cells.map((cell, idx) => {
             const concreteItems = getCellConcreteItems(cell);
             const visibleConcrete = concreteItems.slice(0, maxConcreteItemsPerDay);
@@ -178,11 +186,12 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
                 key={idx}
                 data-testid={`calendar-month-cell-${idx}`}
                 className={[
-                  "min-h-[90px] sm:min-h-[110px] p-1.5 sm:p-2.5 flex flex-col justify-between transition-colors",
+                  "min-h-[90px] sm:min-h-[110px] p-1.5 sm:p-2.5 flex flex-col justify-between transition-colors cursor-pointer",
                   isCurrentMonth ? "bg-[#0b0b0b]" : "bg-[#060606] opacity-35",
                   isToday ? "border border-vantare-red-500/50 bg-vantare-red-500/5" : "border border-transparent",
                   "hover:bg-[#141414]",
                 ].join(" ")}
+                onClick={() => onDayClick?.(cell.date)}
               >
                 {/* Cell header: Day number */}
                 <div className="flex justify-between items-center mb-1">
@@ -205,7 +214,7 @@ export function CalendarMonthView({ anchorDate, calendar, activeFilter = "all", 
                       <div
                         key={`concrete-${itemIdx}`}
                         data-testid={`calendar-cell-event-${idx}-${itemIdx}`}
-                        onClick={() => onFilterSelect?.(item.type === "special" ? "special" : (item.tier as CalendarFilter))}
+                        onClick={(e) => { e.stopPropagation(); onFilterSelect?.(item.type === "special" ? "special" : (item.tier as CalendarFilter)); }}
                         className="text-[8px] sm:text-[9px] px-1 py-0.5 rounded leading-none flex items-center justify-between gap-1 truncate shrink-0 cursor-pointer"
                         style={{ color: "#f5f5f5", background: tc.bg, border: `1px solid ${tc.border}` }}
                         title={item.label}

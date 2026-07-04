@@ -166,13 +166,12 @@ describe("CalendarDayView", () => {
     }
   });
 
-  it("expands daily interval series as events in the timeline", () => {
+  it("expands daily interval series as events in the timeline when a tier filter is active", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
-    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} activeFilter="beginner" />);
 
-    // Daily interval series should appear as events in the timeline
+    // Daily interval series should appear as events in the timeline when filtered by tier
     // Serie Bronce has startOffsetMinute=0 (default), so it appears at :00 each hour
-    // Serie Plata has startOffsetMinute=0 (default), so it appears at :00 each hour
     const bronceEvents = screen.getAllByText(/Serie Bronce/);
     expect(bronceEvents.length).toBeGreaterThanOrEqual(1);
 
@@ -316,5 +315,68 @@ describe("CalendarDayView", () => {
     expect(titles).toContain("Carrera Hora 2");
     expect(titles).toContain("Carrera Hora 3");
     expect(screen.queryByTestId("calendar-day-more")).toBeNull();
+  });
+
+  it("all mode shows compact tier lanes and does not render daily interval cards", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} activeFilter="all" />);
+
+    // Should show the pattern summaries header
+    expect(screen.getByTestId("calendar-day-patterns")).toBeTruthy();
+
+    // Should NOT render daily interval series as event cards in the timeline
+    const allCards = screen.queryAllByTestId(/calendar-day-event-\d+/);
+    const dailyCards = allCards.filter((card) => card.textContent?.includes("Serie Bronce") || card.textContent?.includes("Serie Plata"));
+    expect(dailyCards.length).toBe(0);
+
+    // Weekly and special events should still be visible
+    expect(screen.getAllByText(/Carrera Especial/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Serie Semanal/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("beginner mode shows only beginner events in timeline", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} activeFilter="beginner" />);
+
+    // Should show beginner interval series as event cards
+    const allCards = screen.queryAllByTestId(/calendar-day-event-\d+/);
+    const bronceCards = allCards.filter((card) => card.textContent?.includes("Serie Bronce"));
+    expect(bronceCards.length).toBeGreaterThanOrEqual(1);
+
+    // Should NOT show intermediate (Plata) events
+    const plataCards = allCards.filter((card) => card.textContent?.includes("Serie Plata"));
+    expect(plataCards.length).toBe(0);
+  });
+
+  it("weekly mode does not show daily interval series", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} activeFilter="weekly" />);
+
+    // Should show weekly slot
+    expect(screen.getAllByText(/Serie Semanal/).length).toBeGreaterThanOrEqual(1);
+
+    // Should NOT show daily interval series
+    expect(screen.queryByText(/Serie Bronce/)).toBeNull();
+    expect(screen.queryByText(/Serie Plata/)).toBeNull();
+  });
+
+  it("special mode does not show daily interval series", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} activeFilter="special" />);
+
+    // Should show special event
+    expect(screen.getAllByText(/Carrera Especial/).length).toBeGreaterThanOrEqual(1);
+
+    // Should NOT show daily interval series
+    expect(screen.queryByText(/Serie Bronce/)).toBeNull();
+    expect(screen.queryByText(/Serie Plata/)).toBeNull();
+  });
+
+  it("daily interval events backed by interval series are ignored even when present in calendar.events", () => {
+    const anchorDate = new Date("2026-07-02T12:00:00Z");
+    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} activeFilter="special" />);
+
+    // "Carrera Bronce Falsa" is a calendar.event backed by an interval series — should be ignored
+    expect(screen.queryByText("Carrera Bronce Falsa")).toBeNull();
   });
 });

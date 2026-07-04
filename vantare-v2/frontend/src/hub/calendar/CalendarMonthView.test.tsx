@@ -306,4 +306,36 @@ describe("CalendarMonthView", () => {
     cell3.click();
     expect(onFilterSelect).toHaveBeenCalledWith("special");
   });
+
+  it("calls onDayClick with the cell date when a day cell is clicked", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    const onDayClick = vi.fn();
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onDayClick={onDayClick} />);
+
+    // Cell 2 is July 1 (Wednesday) — first day of the month
+    const cell2 = screen.getByTestId("calendar-month-cell-2");
+    cell2.click();
+
+    expect(onDayClick).toHaveBeenCalledTimes(1);
+    const calledDate = onDayClick.mock.calls[0][0] as Date;
+    expect(calledDate.getFullYear()).toBe(2026);
+    expect(calledDate.getMonth()).toBe(6); // July
+    expect(calledDate.getDate()).toBe(1);
+  });
+
+  it("does not navigate to day view when clicking a concrete event pill (stopPropagation)", () => {
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    const onDayClick = vi.fn();
+    const onFilterSelect = vi.fn();
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onDayClick={onDayClick} onFilterSelect={onFilterSelect} />);
+
+    // Cell 3 (July 2) has a special event pill
+    const eventPill = screen.getByTestId("calendar-cell-event-3-0");
+    eventPill.click();
+
+    // onFilterSelect should be called (filter behavior)
+    expect(onFilterSelect).toHaveBeenCalled();
+    // onDayClick should NOT be called (stopPropagation prevents it)
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
 });

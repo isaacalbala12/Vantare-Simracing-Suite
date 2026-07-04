@@ -155,7 +155,7 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
   if (!calendar) {
     return (
       <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200">
-        <div className="px-2 py-1.5 mb-2 flex items-center justify-between">
+        <div className="px-2 py-1.5 mb-2 flex items-center justify-center">
           <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
         </div>
         <div className="rounded-xl bg-[rgba(20,20,20,.55)] border border-white/5 p-4 text-center">
@@ -192,7 +192,7 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
 
   return (
     <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200" data-testid="calendar-race-rail">
-      <div className="px-2 py-1.5 mb-2 flex items-center justify-between">
+      <div className="px-2 py-1.5 mb-2 flex items-center justify-center">
         <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
       </div>
 

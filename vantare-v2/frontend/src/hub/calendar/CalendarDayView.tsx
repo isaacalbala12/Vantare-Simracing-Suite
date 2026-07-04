@@ -5,6 +5,7 @@ import {
   getDailyPatternSummary,
   isSameLocalDay,
   startOfLocalDay,
+  indexSeriesById,
   type CalendarOccurrence,
   type DailyPatternSummary,
 } from "../../calendar/calendar-view-math";
@@ -137,6 +138,7 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
   }, []);
 
   const isToday = isSameLocalDay(anchorDate, now);
+  const seriesById = indexSeriesById(calendar.series || []);
 
   // Expand weekly-slots for the selected day range
   const dayStart = startOfLocalDay(anchorDate);
@@ -146,13 +148,17 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
     expandWeeklySlots(s, dayStart, dayEnd)
   );
 
-  // Expand daily interval series for the selected day (24h window only)
-  const dailyOccurrences: CalendarOccurrence[] = expandDailyIntervalSeries(
-    calendar.series || [],
-    dayStart,
-    dayEnd,
-    activeFilter !== "all" && activeFilter !== "weekly" && activeFilter !== "special" ? activeFilter : undefined,
-  );
+  // Only expand daily interval series when a specific tier filter is active
+  const isTierFilter = activeFilter !== "all" && activeFilter !== "weekly" && activeFilter !== "special";
+
+  const dailyOccurrences: CalendarOccurrence[] = isTierFilter
+    ? expandDailyIntervalSeries(
+        calendar.series || [],
+        dayStart,
+        dayEnd,
+        activeFilter as string | undefined,
+      )
+    : [];
 
   // Daily pattern summary for interval series (shared header)
   const intervalSummaries: DailyPatternSummary[] = filterIntervalSummaries(
@@ -160,11 +166,12 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
     activeFilter,
   );
 
-  // Gather concrete events (special & weekly-slots) for the selected day
+  // Gather events for the timeline
   const events: DayEvent[] = [];
 
+  // 1. Special events from calendar.events (skip if backed by interval series)
   for (const ev of calendar.events || []) {
-    const associatedSeries = (calendar.series || []).find((s) => s.id === ev.series);
+    const associatedSeries = seriesById.get(ev.series);
     if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
       continue;
     }
@@ -182,9 +189,10 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
     });
   }
 
+  // 2. Weekly slots (always shown when filter matches)
   for (const occ of weeklyOccurrences) {
     if (!isSameLocalDay(occ.startTime, anchorDate)) continue;
-    const series = (calendar.series || []).find((s) => s.id === occ.seriesId);
+    const series = seriesById.get(occ.seriesId);
     const tier = series?.tier;
     if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
     events.push({
@@ -198,9 +206,9 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
     });
   }
 
-  // Add daily interval series occurrences
+  // 3. Daily interval series occurrences (only when a specific tier filter is active)
   for (const occ of dailyOccurrences) {
-    const series = (calendar.series || []).find((s) => s.id === occ.seriesId);
+    const series = seriesById.get(occ.seriesId);
     const tier = series?.tier;
     if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
     events.push({
@@ -227,7 +235,7 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
 
   return (
     <section
-      className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75"
+      className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75 flex-1 min-h-0"
       data-testid="calendar-day-view"
     >
       {/* Header */}
@@ -288,8 +296,8 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
       </div>
 
       {/* Continuous daily timeline */}
-      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full">
-        <div className="overflow-y-auto max-h-[640px]" style={{ scrollbarWidth: "thin" }}>
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full flex-1 min-h-0 flex flex-col">
+        <div className="overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: "thin" }}>
           <div className="relative grid grid-cols-[60px_1fr]" style={{ height: HOUR_HEIGHT * 24 }}>
             {/* Gutter */}
             <div className="relative bg-[#0b0b0b]">

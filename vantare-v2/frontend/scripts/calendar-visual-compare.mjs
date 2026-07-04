@@ -278,7 +278,7 @@ const captureAppHarness = async (context) => {
     await page.close();
   }
 
-  // Drawer (optional, app only)
+  // Detail panel (app only, triggered by clicking a rail card)
   {
     const page = await openAppCalendar(context);
     await page.waitForTimeout(200);
@@ -287,15 +287,15 @@ const captureAppHarness = async (context) => {
       if (el) el.click();
     });
     await page.waitForTimeout(500);
-    await page.waitForSelector('[data-testid="calendar-race-detail-drawer"]', { state: "visible", timeout: 10000 });
+    await page.waitForSelector('[data-testid="calendar-race-detail-panel"]', { state: "visible", timeout: 10000 });
     await page.waitForTimeout(600);
 
-    const drawerEvents = await page.locator('[data-testid="calendar-detail-drawer-day-item"]').count();
-    if (drawerEvents === 0) {
-      throw new Error("Drawer 'Calendario del día filtrado' is empty — no races shown");
+    const panelTitle = await page.locator('[data-testid="calendar-detail-panel-title"]').count();
+    if (panelTitle === 0) {
+      throw new Error("Detail panel is empty — no races shown");
     }
-    await assertHasText(page, "Quitar filtro", "App calendar drawer");
-    await assertNoText(page, "Nueva carrera", "App calendar drawer");
+    await assertHasText(page, "Quitar filtro", "App calendar detail panel");
+    await assertNoText(page, "Nueva carrera", "App calendar detail panel");
     await capture(page, "calendar-drawer-app.png", { fullPage: false });
     await page.close();
   }

@@ -1865,3 +1865,12 @@ Nota ACCESS-01 (2026-07-04) Microcorte 1 — Policy pura + matriz + hook:
 - Checks: 121/121 tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), git diff --check solo whitespace preexistente en hub_main.html.
 - Archivos nuevos: `frontend/src/lib/access-policy.ts`, `frontend/src/lib/access-policy.test.ts`, `frontend/src/lib/access.tsx`, `frontend/src/lib/access.test.tsx`.
 - Sin commit.
+
+Nota CALENDAR-10 P3 (2026-07-04) Microfix post-review:
+- P3-1: `groupEventsByDay` ahora se usa en MonthView y WeekView para lookup O(1) por día, eliminando el filtrado inline de `calendar.events` por cada celda/columna. Semántica visual y filtros intactos. Tests: 97/97 PASS.
+- P3-2: `frontend/scripts/calendar-visual-compare.mjs` actualizado: reemplazado `calendar-race-detail-drawer` por `calendar-race-detail-panel` (testid real de `CalendarRaceDetailPanel`). Script termina con exit 0, genera 9 capturas + 4 side-by-side.
+- P3-3: scroll global documentado: CalendarPage usa `min-h-0 overflow-hidden` en contenedores y `flex-1 min-h-0` en vistas. El scroll es interno al área de calendario. Si el shell padre (V52Shell) no tiene altura explícita, `min-h-0` no funciona — esto es del shell, no de CalendarPage.
+- No se tocaron: backend Go, ACCESS-01, Supabase/Auth, import UI, WidgetStudio, LayoutStudio, overlays, navegación global.
+- Checks: 97/97 tests de scope, 1155/1155 full tests, tsc OK, lint OK (warning preexistente .eslintignore), build OK (warning preexistente chunk size), visual-compare OK (exit 0, 9 capturas), git diff --check OK (solo whitespace preexistente en hub_main.html).
+- Archivos tocados: `frontend/src/hub/calendar/CalendarMonthView.tsx`, `frontend/src/hub/calendar/CalendarWeekView.tsx`, `frontend/scripts/calendar-visual-compare.mjs`, `docs/current-plan.md`.
+- Sin commit.

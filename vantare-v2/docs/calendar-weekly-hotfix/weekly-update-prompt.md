@@ -7,6 +7,8 @@ Lee primero:
 - AGENTS.md
 - docs/current-plan.md
 - docs/calendar-weekly-hotfix/README.md
+- docs/calendar-weekly-hotfix/checklist.md
+- docs/calendar-weekly-hotfix/changelog-template.md
 - internal/calendar/seed/lmu-weekly-schedule.json
 - internal/calendar/official_schedule.go
 - internal/calendar/official_schedule_test.go
@@ -120,6 +122,7 @@ Anade una entrada breve:
 - "Actualizado calendario oficial LMU semanal desde <fecha>".
 - resumen Bronze/Silver/Gold/Weekly.
 - sin prometer features nuevas.
+- usa `docs/calendar-weekly-hotfix/changelog-template.md`.
 
 Autorevision final:
 1. Que texto oficial usaste?

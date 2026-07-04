@@ -110,9 +110,27 @@ Archivos que normalmente participan en un hotfix semanal:
 - `internal/calendar/official_schedule.go`
 - `internal/calendar/official_schedule_test.go`
 - `docs/current-plan.md`
-- changelog del repo, si existe
+- `docs/changelog.md`
 
 Si un hotfix semanal necesita tocar frontend, revisar primero si es un bug existente. El cambio semanal normal deberia ser solo seed/tests/docs.
+
+## Checklist operativo
+
+Antes de lanzar un worker, usar `checklist.md`.
+
+El checklist cubre:
+
+- preparacion,
+- edicion del seed,
+- campos obligatorios,
+- validaciones de datos,
+- checks,
+- version/changelog,
+- review final.
+
+## Changelog
+
+Usar `changelog-template.md` para anadir una entrada semanal sin inventar features ni datos externos.
 
 ## Prompt reutilizable
 

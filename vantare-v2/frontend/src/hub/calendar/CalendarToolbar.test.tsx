@@ -92,4 +92,30 @@ describe("CalendarToolbar", () => {
     const groupElement = screen.getByRole("group", { name: "Vista de calendario" });
     expect(groupElement).toBeTruthy();
   });
+  it("opens filter menu and selects a tier filter", () => {
+    const onFilterChange = vi.fn();
+    render(<CalendarToolbar {...defaultProps} onFilterChange={onFilterChange} />);
+
+    // Menu closed by default
+    expect(screen.queryByTestId("calendar-filter-beginner")).toBeNull();
+
+    // Open menu
+    fireEvent.click(screen.getByTestId("calendar-filter-toggle"));
+    expect(screen.getByTestId("calendar-filter-beginner")).toBeTruthy();
+    expect(screen.getByTestId("calendar-filter-toggle").getAttribute("aria-expanded")).toBe("true");
+
+    // Select a filter
+    fireEvent.click(screen.getByTestId("calendar-filter-beginner"));
+    expect(onFilterChange).toHaveBeenCalledWith("beginner");
+  });
+
+  it("opens filter menu and selects all filter", () => {
+    const onFilterChange = vi.fn();
+    render(<CalendarToolbar {...defaultProps} onFilterChange={onFilterChange} />);
+
+    fireEvent.click(screen.getByTestId("calendar-filter-toggle"));
+    fireEvent.click(screen.getByTestId("calendar-filter-all"));
+    expect(onFilterChange).toHaveBeenCalledWith("all");
+  });
+
 });

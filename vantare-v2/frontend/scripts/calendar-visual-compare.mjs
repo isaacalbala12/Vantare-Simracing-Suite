@@ -297,9 +297,9 @@ const captureAppHarness = async (context) => {
       if (panelTitle > 0) {
         await assertHasText(page, "Quitar filtro", "App calendar detail panel");
         await assertNoText(page, "Nueva carrera", "App calendar detail panel");
-        await capture(page, "calendar-drawer-app.png", { fullPage: false });
+        await capture(page, "calendar-panel-app.png", { fullPage: false });
       } else {
-        console.log("Detail panel opened but empty — skipping drawer screenshot");
+        console.log("Detail panel opened but empty — skipping panel screenshot");
       }
     } catch (e) {
       console.log("Detail panel section skipped (non-critical):", e.message);
@@ -361,12 +361,12 @@ const runValidations = () => {
   validatePng("calendar-week-app.png");
   validatePng("calendar-day-reference.png");
   validatePng("calendar-day-app.png");
-  // calendar-drawer-app.png is optional — may not be generated if detail panel didn't open
-  const drawerPath = path.join(OUT, "calendar-drawer-app.png");
-  if (fs.existsSync(drawerPath)) {
-    validatePng("calendar-drawer-app.png");
+  // calendar-panel-app.png is optional — may not be generated if detail panel didn't open
+  const panelPath = path.join(OUT, "calendar-panel-app.png");
+  if (fs.existsSync(panelPath)) {
+    validatePng("calendar-panel-app.png");
   } else {
-    console.log("Skipping drawer validation (screenshot not generated)");
+    console.log("Skipping panel validation (screenshot not generated)");
   }
 };
 

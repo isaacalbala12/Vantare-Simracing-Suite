@@ -38,7 +38,7 @@ Nota CALENDAR-08 (2026-07-03) Microcorte WeekView fidelity:
 - Ahora muestra 7 columnas (Lun-Dom), eje horario vertical, eventos concretos posicionados por start/end y segmentación simple de solapes.
 - Los patrones de interval series (Bronce/Plata/Oro) se muestran como badges compactos en un header común, no como pills apiladas dentro de cada columna.
 - Se mantiene LMU-only: colores por tier, sin strings multisim (`iRacing`, `ACC`, `AC Evo`).
-- Se mantiene filtrado, clicks en eventos/pills y apertura de drawer.
+- Se mantiene filtrado, clicks en eventos/pills y apertura de panel.
 - Actualizado `CalendarWeekView.test.tsx` con tests de eje horario, posicionamiento vertical, segmentación de solapes y anti-fake/anti-nueva-carrera.
 - Se ajustó `frontend/scripts/calendar-visual-compare.mjs` para hacer scroll a la primera carrera en la captura de WeekView y validar que haya eventos visibles.
 - Regeneradas capturas comparativas en `docs/superpowers/screenshots/calendar-08-compare/`.

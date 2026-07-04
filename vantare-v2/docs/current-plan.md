@@ -1848,3 +1848,20 @@ Nota CALENDAR-09 (2026-07-04) Eventos completos, sesiones y hotfix semanal:
 - Version bump no realizado (origen único: VERSION=0.1.0.2, frontend/package.json, cmd/vantare/main.go, build/config.yml).
 - Checks: 46/46 Go tests PASS (pre-existing TestParse_AcceptsValidLines failure), 1080/1080 frontend tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), build OK (warning preexistente chunk size), git diff --check solo whitespace preexistente en hub_main.html.
 - Sin commit.
+
+Nota ACCESS-01 PLAN (2026-07-04):
+- Plan creado para centralizar feature gates Free/Paid/Tester sin crear una segunda licencia.
+- Fuente actual respetada: `LicenseProvider`, `LicenseResult`, `frontend/src/lib/plan.ts` e `internal/license`.
+- El plan corre en paralelo al análisis/fix de calendario: ACCESS-01 no debe tocar generación/renderizado de eventos y calendario no debe inventar reglas de plan.
+- Enfoque TDD obligatorio: tests RED por policy, navegación, acciones bloqueadas/desbloqueadas y casos Free/Paid/Tester/Blocked/Unconfigured.
+- Plan: `docs/superpowers/plans/2026-07-04-access-01-feature-gates.md`.
+- Sin implementación ni commit.
+
+Nota ACCESS-01 (2026-07-04) Microcorte 1 — Policy pura + matriz + hook:
+- Implementada capa frontend pura de feature gates en `access-policy.ts` sin React/Wails/Supabase.
+- Matriz de permisos Free/Paid overlays/Paid engineer/Suite/Tester/Blocked/Unconfigured testeada con 56 tests de policy + 6 tests de hook.
+- Hook `useAccess` sobre `LicenseProvider` en `access.tsx` sin duplicar estado.
+- No se tocaron: CalendarPage, backend Go, Supabase, navegación, Dashboard, WidgetStudio, LayoutStudio.
+- Checks: 121/121 tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), git diff --check solo whitespace preexistente en hub_main.html.
+- Archivos nuevos: `frontend/src/lib/access-policy.ts`, `frontend/src/lib/access-policy.test.ts`, `frontend/src/lib/access.tsx`, `frontend/src/lib/access.test.tsx`.
+- Sin commit.

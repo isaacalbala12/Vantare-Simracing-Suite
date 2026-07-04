@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { applyTheme, getStoredThemeId, persistThemeId, type VantareTheme } from '../../lib/theme';
 import vantareV5 from '../../themes/vantare-v5.json';
 import vantareLite from '../../themes/vantare-lite.json';
 import { NAV_ITEMS, type Section } from '../navigation';
+import { useAccess } from '../../lib/access';
+import { canSeeSection, type SectionId } from '../../lib/access-policy';
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
@@ -21,7 +23,28 @@ type TopbarProps = {
   sourceStatus?: SourceStatus | null;
 };
 
+const SECTION_TO_FEATURE: Record<string, SectionId> = {
+  dashboard: "dashboard",
+  profiles: "overlays",
+  launcher: "launcher",
+  calendar: "calendar",
+  engineer: "engineer",
+  telemetry: "telemetry",
+  roadmap: "roadmap",
+  setup: "settings",
+};
+
 export function Topbar({ activeSection, onNavigate, version, sourceStatus }: TopbarProps) {
+  const access = useAccess();
+
+  const navItems = useMemo(
+    () =>
+      NAV_ITEMS.map((item) => ({
+        ...item,
+        allowed: canSeeSection(access, SECTION_TO_FEATURE[item.id] ?? item.id),
+      })),
+    [access],
+  );
   const [liteMode, setLiteMode] = useState(() => getStoredThemeId() === 'vantare-lite');
 
   useEffect(() => {
@@ -103,14 +126,16 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-vantare-textMuted">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <a
                 key={item.id}
                 href="#"
                 data-testid={`topbar-nav-${item.id}`}
                 aria-current={activeSection === item.id ? "page" : undefined}
-                onClick={handleNav(item.id)}
-                className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''}`}
+                aria-disabled={!item.allowed ? true : undefined}
+                onClick={item.allowed ? handleNav(item.id) : undefined}
+                className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''} ${!item.allowed ? 'opacity-40 cursor-not-allowed' : ''}`}
+                title={!item.allowed ? "Disponible para testers y planes de pago" : undefined}
               >
                 {item.label}
               </a>

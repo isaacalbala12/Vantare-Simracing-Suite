@@ -12,13 +12,25 @@ vi.mock("../../lib/theme", () => ({
   persistThemeId: vi.fn(),
 }));
 
+const mockUseAccess = vi.fn(() => ({
+  planLabel: "free",
+  planStatus: "free",
+  roles: [] as string[],
+  isBlocked: false,
+  isUnconfigured: false,
+}));
+
+vi.mock("../../lib/access", () => ({
+  useAccess: () => mockUseAccess(),
+}));
+
 describe("Topbar source status", () => {
   it("shows 'Fuente pendiente' when no source status is provided", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
+        version="v0.1.0.2"
         sourceStatus={null}
       />,
     );
@@ -28,10 +40,10 @@ describe("Topbar source status", () => {
   it("shows 'LMU conectado' when live source is available", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
-        sourceStatus={{ kind: "lmu", name: "Le Mans Ultimate", live: true, available: true }}
+        version="v0.1.0.2"
+        sourceStatus={{ kind: "lmu", name: "LMU", live: true, available: true }}
       />,
     );
     expect(screen.getByText("LMU conectado")).toBeTruthy();
@@ -40,10 +52,10 @@ describe("Topbar source status", () => {
   it("shows 'Esperando LMU' when live mode is active but unavailable", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
-        sourceStatus={{ kind: "lmu", name: "Le Mans Ultimate", live: true, available: false }}
+        version="v0.1.0.2"
+        sourceStatus={{ kind: "lmu", name: "LMU", live: true, available: false }}
       />,
     );
     expect(screen.getByText("Esperando LMU")).toBeTruthy();
@@ -52,10 +64,10 @@ describe("Topbar source status", () => {
   it("shows 'Mock' when the active source is mock", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
-        sourceStatus={{ kind: "mock", name: "Mock telemetry", live: false, available: true }}
+        version="v0.1.0.2"
+        sourceStatus={{ kind: "mock", name: "Mock", live: false, available: false }}
       />,
     );
     expect(screen.getByText("Mock")).toBeTruthy();
@@ -64,35 +76,35 @@ describe("Topbar source status", () => {
   it("has a title attribute on the source chip showing the source name", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
-        sourceStatus={{ kind: "lmu", name: "Le Mans Ultimate", live: true, available: true }}
+        version="v0.1.0.2"
+        sourceStatus={{ kind: "lmu", name: "LMU", live: true, available: true }}
       />,
     );
     const chip = screen.getByText("LMU conectado");
-    expect(chip.getAttribute("title")).toBe("Le Mans Ultimate");
+    expect(chip.getAttribute("title")).toBe("LMU");
   });
 
   it("has an aria-label on the source chip describing the telemetry source", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
-        sourceStatus={{ kind: "mock", name: "Mock telemetry", live: false, available: true }}
+        version="v0.1.0.2"
+        sourceStatus={{ kind: "lmu", name: "LMU", live: true, available: true }}
       />,
     );
-    const chip = screen.getByText("Mock");
-    expect(chip.getAttribute("aria-label")).toBe("Fuente de telemetría: Mock");
+    const chip = screen.getByText("LMU conectado");
+    expect(chip.getAttribute("aria-label")).toBe("Fuente de telemetría: LMU conectado");
   });
 
   it("shows 'Fuente pendiente' as title when sourceStatus is null", () => {
     render(
       <Topbar
-        activeSection="profiles"
+        activeSection="dashboard"
         onNavigate={vi.fn()}
-        version="v0.3.9.1"
+        version="v0.1.0.2"
         sourceStatus={null}
       />,
     );
@@ -153,5 +165,71 @@ describe("Topbar v5.2 navigation", () => {
     );
     expect(screen.getByText("Ajustes")).toBeTruthy();
     expect(screen.queryByText("Setup")).toBeNull();
+  });
+});
+
+describe("Topbar gated navigation", () => {
+  it("shows public sections as enabled for free user", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const dashboard = screen.getByTestId("topbar-nav-dashboard");
+    expect(dashboard.getAttribute("aria-disabled")).toBeNull();
+    expect(dashboard.className).not.toContain("cursor-not-allowed");
+  });
+
+  it("shows premium sections as disabled for free user", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const engineer = screen.getByTestId("topbar-nav-engineer");
+    expect(engineer.getAttribute("aria-disabled")).toBe("true");
+    expect(engineer.className).toContain("cursor-not-allowed");
+    expect(engineer.className).toContain("opacity-40");
+  });
+
+  it("shows premium sections as enabled for tester user", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: ["tester"],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const engineer = screen.getByTestId("topbar-nav-engineer");
+    expect(engineer.getAttribute("aria-disabled")).toBeNull();
+    expect(engineer.className).not.toContain("cursor-not-allowed");
   });
 });

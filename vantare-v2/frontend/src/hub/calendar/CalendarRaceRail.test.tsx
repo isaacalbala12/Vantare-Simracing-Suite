@@ -16,6 +16,17 @@ vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: mockEmit },
 }));
 
+const mockUseAccess = vi.fn(() => ({
+  planLabel: "free",
+  planStatus: "free",
+  roles: ["tester"],
+  isBlocked: false,
+  isUnconfigured: false,
+}));
+vi.mock("../../lib/access", () => ({
+  useAccess: () => mockUseAccess(),
+}));
+
 import { CalendarRaceRail } from "./CalendarRaceRail";
 import * as calendarUpcoming from "./calendar-upcoming";
 import { EMPTY_CALENDAR, type Calendar, type RaceSeries, type RaceSeriesPreview } from "../../calendar/calendar-types";
@@ -251,5 +262,38 @@ describe("CalendarRaceRail", () => {
     expect(screen.queryByRole("button", { name: /Seguir|Dejar/ })).toBeNull();
 
     spy.mockRestore();
+  });
+
+  it("shows locked state for free user without followReminders", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+
+    mockSubscribe.mockImplementationOnce((cb: unknown) => {
+      const callback = cb as (state: { kind: "loaded"; calendar: Calendar }) => void;
+      const mockCalendar: Calendar = {
+        ...EMPTY_CALENDAR,
+        series: [
+          { id: "s1", name: "Beginner", tier: "beginner", durationMin: 20, setup: "", track: "Monza", vehicleClass: "GT3" } as RaceSeries,
+        ],
+        seriesPreviews: [
+          { seriesId: "s1", nextStarts: ["2026-07-03T20:00:00Z"] } as RaceSeriesPreview,
+        ],
+        followedSeriesIds: [],
+      };
+      callback({ kind: "loaded", calendar: mockCalendar });
+      return vi.fn();
+    });
+
+    const fakeNow = () => new Date("2026-07-03T18:00:00Z");
+    render(<CalendarRaceRail now={fakeNow} />);
+
+    expect(screen.getByTestId("rail-follow-locked-s1")).toBeTruthy();
+    expect(screen.queryByTestId("rail-follow-btn-s1")).toBeNull();
+    expect(screen.getByText("Bloqueado")).toBeTruthy();
   });
 });

@@ -3,6 +3,8 @@ import { Events } from "@wailsio/runtime";
 import type { Calendar, RaceSeries, RaceEvent, Session } from "../../calendar/calendar-types";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
 import type { CalendarFilter } from "./CalendarToolbar";
+import { useAccess } from "../../lib/access";
+import { canUseFeature } from "../../lib/access-policy";
 
 const TIER_INFO: Record<
   Exclude<CalendarFilter, "all">,
@@ -47,6 +49,8 @@ export function CalendarRaceDetailPanel({
   calendar,
   onClose,
 }: CalendarRaceDetailPanelProps) {
+  const access = useAccess();
+  const canFollow = canUseFeature(access, "calendar.followReminders");
   const info = getTierInfo(tier);
 
   // Handle Escape key
@@ -94,25 +98,25 @@ export function CalendarRaceDetailPanel({
       return calendar.followedSeriesIds?.includes(currentItem.id) ?? false;
     }
     return calendar.followedEventIds?.includes(currentItem.id) ?? false;
-  }, [calendar, currentItem]);
+  }, [currentItem, calendar]);
 
   const handleFollow = useCallback(() => {
-    if (!currentItem) return;
+    if (!currentItem || !canFollow) return;
     if (currentItem.kind === "series") {
       Events.Emit("calendar:series:follow", { seriesId: currentItem.id });
     } else {
       Events.Emit("calendar:follow", { eventId: currentItem.id });
     }
-  }, [currentItem]);
+  }, [currentItem, canFollow]);
 
   const handleUnfollow = useCallback(() => {
-    if (!currentItem) return;
+    if (!currentItem || !canFollow) return;
     if (currentItem.kind === "series") {
       Events.Emit("calendar:series:unfollow", { seriesId: currentItem.id });
     } else {
       Events.Emit("calendar:unfollow", { eventId: currentItem.id });
     }
-  }, [currentItem]);
+  }, [currentItem, canFollow]);
 
   // Determine sessions to display
   const sessions: Session[] = useMemo(() => {
@@ -318,19 +322,32 @@ export function CalendarRaceDetailPanel({
         {/* Footer actions */}
         <div className="p-5 border-t border-white/10 bg-white/[0.02] shrink-0 flex gap-3">
           {currentItem && currentItem.id && (
-            <button
-              data-testid="calendar-detail-panel-follow"
-              onClick={isFollowed ? handleUnfollow : handleFollow}
-              className={`flex-1 py-2.5 rounded text-xs font-bold uppercase tracking-widest transition-colors ${
-                isFollowed
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-vantare-red-500/10 hover:text-vantare-red-400 hover:border-vantare-red-500/20"
-                  : "bg-white/5 text-[#f5f5f5]/60 border border-white/10 hover:text-white hover:border-white/20"
-              }`}
-              aria-label={isFollowed ? `Dejar de seguir ${currentItem.name}` : `Seguir ${currentItem.name}`}
-              aria-pressed={isFollowed}
-            >
-              {isFollowed ? "Siguiendo · Dejar" : "Seguir"}
-            </button>
+            canFollow ? (
+              <button
+                data-testid="calendar-detail-panel-follow"
+                onClick={isFollowed ? handleUnfollow : handleFollow}
+                className={`flex-1 py-2.5 rounded text-xs font-bold uppercase tracking-widest transition-colors ${
+                  isFollowed
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-vantare-red-500/10 hover:text-vantare-red-400 hover:border-vantare-red-500/20"
+                    : "bg-white/5 text-[#f5f5f5]/60 border border-white/10 hover:text-white hover:border-white/20"
+                }`}
+                aria-label={isFollowed ? `Dejar de seguir ${currentItem.name}` : `Seguir ${currentItem.name}`}
+                aria-pressed={isFollowed}
+              >
+                {isFollowed ? "Siguiendo · Dejar" : "Seguir"}
+              </button>
+            ) : (
+              <span
+                data-testid="calendar-detail-panel-locked"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded text-xs font-bold uppercase tracking-widest bg-white/5 text-vantare-textMuted border border-white/10 cursor-not-allowed"
+                title="Disponible para testers y planes de pago"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m0 0v2m0-2h2m-2 0H10m9.364-7.364A9 9 0 1112 3a9 9 0 017.364 4.636z" />
+                </svg>
+                Bloqueado
+              </span>
+            )
           )}
           <button
             data-testid="calendar-detail-panel-close-btn"

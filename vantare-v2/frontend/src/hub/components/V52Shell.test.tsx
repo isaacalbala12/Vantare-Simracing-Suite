@@ -2,6 +2,16 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { V52Shell } from "./V52Shell";
 
+vi.mock("../../lib/access", () => ({
+  useAccess: () => ({
+    planLabel: "free",
+    planStatus: "free",
+    roles: [],
+    isBlocked: false,
+    isUnconfigured: false,
+  }),
+}));
+
 afterEach(() => cleanup());
 
 describe("V52Shell", () => {

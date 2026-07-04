@@ -1,3 +1,5 @@
+import { useAccess } from "../../lib/access";
+import { canUseFeature } from "../../lib/access-policy";
 import {
   ROADMAP_PHASES,
   ROADMAP_AREAS,
@@ -56,6 +58,8 @@ function ProgressBar({ value, color }: { value: number; color?: string }) {
 export function RoadmapPage() {
   const currentPhase = getCurrentPhase(ROADMAP_PHASES);
   const overallProgress = getOverallProgress(ROADMAP_AREAS);
+  const access = useAccess();
+  const canGiveFeedback = canUseFeature(access, "roadmap.feedback");
 
   return (
     <div className="flex flex-col gap-5">
@@ -343,22 +347,37 @@ export function RoadmapPage() {
             El voting público se conectará más adelante; por ahora el feedback va por Discord.
           </p>
           <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              disabled
-              className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-gradient-to-br from-vantare-red-500 to-[#9a0606] border border-white/10 text-white opacity-60 cursor-not-allowed"
-              title="Próximamente"
-            >
-              Sugerir feature
-            </button>
-            <button
-              type="button"
-              disabled
-              className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-white/5 border border-white/10 text-vantare-textMuted opacity-60 cursor-not-allowed"
-              title="Próximamente"
-            >
-              Votar prioridades
-            </button>
+            {!canGiveFeedback ? (
+              <span
+                role="status"
+                data-testid="roadmap-feedback-locked"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-vantare-textMuted"
+              >
+                <svg className="w-4 h-4 shrink-0 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m0 0v2m0-2h2m-2 0H10m9.364-7.364A9 9 0 1112 3a9 9 0 017.364 4.636z" />
+                </svg>
+                <span>Disponible para testers y planes de pago</span>
+              </span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled
+                  className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-gradient-to-br from-vantare-red-500 to-[#9a0606] border border-white/10 text-white opacity-60 cursor-not-allowed"
+                  title="Próximamente"
+                >
+                  Sugerir feature
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-white/5 border border-white/10 text-vantare-textMuted opacity-60 cursor-not-allowed"
+                  title="Próximamente"
+                >
+                  Votar prioridades
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>

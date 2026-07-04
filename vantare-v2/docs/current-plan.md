@@ -13,6 +13,17 @@ Nota CALENDAR-10 (2026-07-04) P3:
 - Tests: 97/97 enfocados, 1155/1155 full suite. tsc OK, lint OK (warning preexistente `.eslintignore`), build OK (warning preexistente chunk size), visual compare OK, `git diff --check` OK.
 - No se tocó backend Go, ACCESS-01, Supabase/Auth, import UI, WidgetStudio/LayoutStudio/overlays.
 - Commit: `fix(calendar): stabilize visual calendar performance`.
+Nota ACCESS-01 (2026-07-04):
+- Feature gates frontend completos: `access-policy.ts` (policy matrix), `access.tsx` (useAccess hook), `AccessGate.tsx` (component + useFeatureGate).
+- Matriz de permisos testada: Free, paid_overlays, paid_engineer, suite, tester, blocked, unconfigured — tabla-driven en `access-policy.test.ts`.
+- Navegación gated: Topbar usa `canSeeSection` para deshabilitar secciones premium para Free; tester desbloquea todo.
+- Calendario: `CalendarRaceRail` y `CalendarRaceDetailPanel` gates en `calendar.followReminders` — Free ve "Bloqueado", Paid/Tester puede seguir.
+- Roadmap: feedback buttons gated con `roadmap.feedback` — Free ve locked state, Paid/Tester ve buttons (disabled por feature no implementada aún).
+- AccessGate: componente presentacional con copy honesta ("Disponible para testers y planes de pago"), estados blocked/unconfigured.
+- Tests: 132/132 access-policy/plan/license/access, 117/117 page-level (Topbar, Calendar, Roadmap, Dashboard, Engineer, Telemetry, HubApp).
+- Fixes preexistentes CALENDAR-10: corregido syntax error en CalendarRaceDetailPanel (useMemo sin cerrar, handleUnfollow duplicado) y CalendarRaceRail (summary no definido, nesting de divs incorrecto).
+- No se tocó backend Go, Supabase/Auth, WidgetStudio/LayoutStudio internamente.
+- Sin commit.
 
 Nota CALENDAR-08 (2026-07-03) Microcorte WeekView fidelity:
 - Reescrito `CalendarWeekView` para usar una grilla semanal tipo calendario horario, como el HTML de referencia `calendario_v5.2.html`.

@@ -4,6 +4,8 @@ import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-st
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
 import type { CalendarFilter } from "./CalendarToolbar";
+import { useAccess } from "../../lib/access";
+import { canUseFeature } from "../../lib/access-policy";
 
 type CalendarRaceRailProps = {
   now?: () => Date;
@@ -59,7 +61,7 @@ const TIER_STYLES: Record<string, { label: string; border: string; bgClass: stri
   },
 };
 
-function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSelectTier }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; isFollowed: boolean; onFollow: (item: UpcomingRaceItem) => void; onUnfollow: (item: UpcomingRaceItem) => void; onSelectTier?: (filter: CalendarFilter) => void }) {
+function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSelectTier, canFollow }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; isFollowed: boolean; onFollow: (item: UpcomingRaceItem) => void; onUnfollow: (item: UpcomingRaceItem) => void; onSelectTier?: (filter: CalendarFilter) => void; canFollow: boolean }) {
   const styles = TIER_STYLES[tierKey] || TIER_STYLES.beginner;
 
   if (!item) return null;
@@ -104,7 +106,7 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
             <p className="font-semibold text-xs text-white truncate" title={item.track}>{item.track}</p>
             <p className="text-[10px] text-[#f5f5f5]/60 truncate mt-0.5" title={item.name}>{item.name}</p>
           </div>
-          {item.id && (
+          {item.id && canFollow && (
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (isFollowed) { onUnfollow(item); } else { onFollow(item); } }}
               className={`shrink-0 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-[.1em] transition-colors group/btn ${
@@ -124,6 +126,15 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
               )}
             </button>
           )}
+          {item.id && !canFollow && (
+            <span
+              className="shrink-0 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-[.1em] bg-white/5 text-vantare-textMuted border border-white/10 cursor-not-allowed"
+              title="Disponible para testers y planes de pago"
+              data-testid={`rail-follow-locked-${item.id}`}
+            >
+              Bloqueado
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -131,6 +142,8 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
 }
 
 export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: CalendarRaceRailProps) {
+  const access = useAccess();
+  const canFollow = canUseFeature(access, "calendar.followReminders");
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [tick, setTick] = useState(0);
 
@@ -164,10 +177,10 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
       </div>
     );
   }
-
   const summary = buildUpcomingRaceItems(calendar, nowDate);
 
   const handleFollow = (item: UpcomingRaceItem) => {
+    if (!canFollow) return;
     if (item.kind === "series") {
       Events.Emit("calendar:series:follow", { seriesId: item.id });
     } else {
@@ -176,6 +189,7 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
   };
 
   const handleUnfollow = (item: UpcomingRaceItem) => {
+    if (!canFollow) return;
     if (item.kind === "series") {
       Events.Emit("calendar:series:unfollow", { seriesId: item.id });
     } else {
@@ -230,7 +244,7 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
                     <p className="font-semibold text-xs text-white truncate" title={summary.weekly.name}>{summary.weekly.name}</p>
                     <p className="text-[10px] text-[#f5f5f5]/60 truncate mt-0.5" title={summary.weekly.track}>{summary.weekly.track}</p>
                   </div>
-                  {summary.weekly.id && (() => {
+                  {summary.weekly.id && canFollow && (() => {
                     const followed = summary.weekly.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.weekly.id) ?? false) : (calendar.followedEventIds?.includes(summary.weekly.id) ?? false);
                     return (
                       <button
@@ -253,13 +267,22 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
                       </button>
                     );
                   })()}
+                  {summary.weekly.id && !canFollow && (
+                    <span
+                      className="shrink-0 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-[.1em] bg-white/5 text-vantare-textMuted border border-white/10 cursor-not-allowed"
+                      title="Disponible para testers y planes de pago"
+                      data-testid={`rail-follow-locked-${summary.weekly.id}`}
+                    >
+                      Bloqueado
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
           )}
-          {showBronce && <RailCard item={summary.bronce} tierKey="beginner" now={nowDate} isFollowed={summary.bronce ? (summary.bronce.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.bronce.id) ?? false) : (calendar.followedEventIds?.includes(summary.bronce.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} />}
-          {showPlata && <RailCard item={summary.plata} tierKey="intermediate" now={nowDate} isFollowed={summary.plata ? (summary.plata.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.plata.id) ?? false) : (calendar.followedEventIds?.includes(summary.plata.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} />}
-          {showOro && <RailCard item={summary.oro} tierKey="advanced" now={nowDate} isFollowed={summary.oro ? (summary.oro.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.oro.id) ?? false) : (calendar.followedEventIds?.includes(summary.oro.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} />}
+          {showBronce && <RailCard item={summary.bronce} tierKey="beginner" now={nowDate} isFollowed={summary.bronce ? (summary.bronce.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.bronce.id) ?? false) : (calendar.followedEventIds?.includes(summary.bronce.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} canFollow={canFollow} />}
+          {showPlata && <RailCard item={summary.plata} tierKey="intermediate" now={nowDate} isFollowed={summary.plata ? (summary.plata.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.plata.id) ?? false) : (calendar.followedEventIds?.includes(summary.plata.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} canFollow={canFollow} />}
+          {showOro && <RailCard item={summary.oro} tierKey="advanced" now={nowDate} isFollowed={summary.oro ? (summary.oro.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.oro.id) ?? false) : (calendar.followedEventIds?.includes(summary.oro.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} canFollow={canFollow} />}
         </div>
       )}
     </div>

@@ -23,6 +23,18 @@ vi.mock("@wailsio/runtime", () => ({
   },
 }));
 
+const mockUseAccess = vi.fn(() => ({
+  planLabel: "free",
+  planStatus: "free",
+  roles: [] as string[],
+  isBlocked: false,
+  isUnconfigured: false,
+}));
+
+vi.mock("../../lib/access", () => ({
+  useAccess: () => mockUseAccess(),
+}));
+
 afterEach(() => {
   cleanup();
 });
@@ -249,6 +261,32 @@ describe("CalendarPage", () => {
       fireEvent.click(screen.getByTestId("calendar-clear-filter"));
     });
     expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
+  });
+
+  it("shows locked follow state in detail panel for free user", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        series: [
+          { id: "s1", name: "Beginner Series", tier: "beginner", durationMin: 20, setup: "", track: "Monza", vehicleClass: "GT3" },
+        ],
+        seriesPreviews: [
+          { seriesId: "s1", nextStarts: ["2026-07-02T20:00:00Z"] },
+        ],
+        events: [],
+        updated: "",
+      },
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("rail-card-beginner"));
+    });
+
+    expect(screen.getByTestId("calendar-race-detail-panel")).toBeTruthy();
+    expect(screen.getByTestId("calendar-detail-panel-locked")).toBeTruthy();
+    expect(screen.queryByTestId("calendar-detail-panel-follow")).toBeNull();
   });
 
   it("clicking a month day cell switches to day view with that date", () => {

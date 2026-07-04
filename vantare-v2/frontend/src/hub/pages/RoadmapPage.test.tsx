@@ -1,3 +1,17 @@
+import { vi } from "vitest";
+
+const mockUseAccess = vi.fn(() => ({
+  planLabel: "free",
+  planStatus: "free",
+  roles: [] as string[],
+  isBlocked: false,
+  isUnconfigured: false,
+}));
+
+vi.mock("../../lib/access", () => ({
+  useAccess: () => mockUseAccess(),
+}));
+
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { RoadmapPage } from "./RoadmapPage";
@@ -92,12 +106,11 @@ describe("RoadmapPage", () => {
     expect(changelogBtn?.hasAttribute("disabled")).toBe(true);
   });
 
-  it("feedback buttons are disabled", () => {
+  it("shows locked state for feedback on free user", () => {
     render(<RoadmapPage />);
-    const suggestBtn = screen.getAllByText("Sugerir feature")[1].closest("button");
-    const voteBtn = screen.getByText("Votar prioridades").closest("button");
-    expect(suggestBtn?.hasAttribute("disabled")).toBe(true);
-    expect(voteBtn?.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("roadmap-feedback-locked")).toBeTruthy();
+    expect(screen.getByText(/disponible para testers/i)).toBeTruthy();
+    expect(screen.queryByText("Votar prioridades")).toBeNull();
   });
 
   it("shows honest feedback message", () => {
@@ -159,10 +172,10 @@ describe("RoadmapPage", () => {
     expect(screen.getByText("El roadmap vive con feedback")).toBeTruthy();
   });
 
-  it("Votar prioridades button is disabled", () => {
+  it("free user sees locked state instead of Votar prioridades button", () => {
     render(<RoadmapPage />);
-    const voteBtn = screen.getByText("Votar prioridades").closest("button");
-    expect(voteBtn?.hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("Votar prioridades")).toBeNull();
+    expect(screen.getByTestId("roadmap-feedback-locked")).toBeTruthy();
   });
 
   it("does not render prohibited fake strings in feedback", () => {
@@ -171,5 +184,58 @@ describe("RoadmapPage", () => {
     expect(screen.queryByText("72%")).toBeNull();
     expect(screen.queryByText("+23")).toBeNull();
     expect(screen.queryByText("+18")).toBeNull();
+  });
+});
+
+describe("RoadmapPage access gating", () => {
+  afterEach(() => {
+    cleanup();
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+  });
+
+  it("shows feedback buttons for paid overlays user", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "paid_overlays",
+      planStatus: "active",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(<RoadmapPage />);
+    expect(screen.queryByTestId("roadmap-feedback-locked")).toBeNull();
+    // "Sugerir feature" appears in hero + feedback for paid users
+    expect(screen.getAllByText("Sugerir feature").length).toBe(2);
+    expect(screen.getByText("Votar prioridades").closest("button")).toBeTruthy();
+  });
+  it("shows feedback buttons for tester user on free plan", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: ["tester"],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(<RoadmapPage />);
+    expect(screen.queryByTestId("roadmap-feedback-locked")).toBeNull();
+    // "Sugerir feature" appears in hero + feedback for tester users
+    expect(screen.getAllByText("Sugerir feature").length).toBe(2);
+  });
+
+  it("shows locked state for blocked user on premium feature", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "suite",
+      planStatus: "blocked",
+      roles: [],
+      isBlocked: true,
+      isUnconfigured: false,
+    });
+    render(<RoadmapPage />);
+    expect(screen.getByTestId("roadmap-feedback-locked")).toBeTruthy();
   });
 });

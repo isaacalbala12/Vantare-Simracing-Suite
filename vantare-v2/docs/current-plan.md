@@ -2,6 +2,43 @@
 
 Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
 
+Nota WIDGET-ARCH (2026-07-04):
+- Documentada arquitectura canonica de widgets en `docs/widget-architecture.md`.
+- El documento consolida responsabilidades de `WidgetStudio` vs `LayoutStudio`, edicion por columnas, modelo `ProfileConfig`/`WidgetConfig`/`WidgetVariantConfig`, superficies de render, sizing, persistencia y checklist para workers.
+- No se tocó codigo productivo ni tests; es un corte docs-only para reducir ambiguedad en futuras tareas de widgets.
+
+Nota WIDGET-STUDIO-03 PLAN (2026-07-04):
+- Plan creado para implementar Vantare Crystal en WidgetStudio con soporte de design systems, slots, columns, columnGroups, gating Free/Pro/Tester y variantes propias.
+- Fuente visual definitiva: `docs/overlay-vantare-crystal-widgets.html`.
+- Plan ejecutable por microcortes con TDD: `docs/superpowers/plans/2026-07-04-widget-studio-03-vantare-crystal-slots.md`.
+- Scope inicial: WidgetStudio y widgets; LayoutStudio queda fuera salvo tests de no regresion de responsabilidades.
+Nota WIDGET-STUDIO-03 MC-0 (2026-07-04):
+- Inventario: 7 widget types (delta, relative, standings, telemetry, telemetry-vertical, pedals, engineer-notifications).
+- WidgetRenderer, CompositeApp y ObsOverlayApp registran los mismos 7 tipos.
+- WidgetStudio NO toca position (grep confirmado: 0 matches).
+- WidgetVariantConfig NO tiene campos position/x/y/w/h (profile.ts confirmado).
+- Design systems existentes: base, glassmorphism-pro (via themeId en variant).
+- Access policy: roles (tester, staff, dev), plans (free, paid_overlays, paid_engineer, suite).
+- Sin cambios de codigo. Solo documentacion.
+Nota WIDGET-STUDIO-03 (2026-07-04) — Implementation:
+- MC-0: Baseline inventariado — 7 widget types, 0 position mutations, sin cambios de codigo.
+- MC-1: `widget-design-system.ts` — resolver puro de tokens por themeId. Soporta "base" y "vantare-crystal". 9 tests GREEN.
+- MC-2: `widget-catalog.ts` — 14 widgets catalogados con access tier, data status, edit model. Helpers canPreview/canApply/isRuntimeReady. 19 tests GREEN.
+- MC-3: `widget-config-model.ts` — helpers buildDefaultSlots/Columns/ColumnGroups, filterMetrics, normaliseVariant. 24 tests GREEN.
+- MC-4: WidgetStudio shell — badges FREE/PRO/TESTER/EXPERIMENTAL, data status badges, secciones Slots/Columns/ColumnGroups, design system selector. 40 tests GREEN.
+- MC-5: Variant save/apply — WidgetVariantManager guarda variantes sin position, aplicar conserva position. 37 tests GREEN.
+- MC-6: Free widgets Crystal — Standings/Delta/Pedals con themeId "vantare-crystal". Fallback base/glassmorphism-pro intacto. 18 tests GREEN.
+- MC-7: Relative Pro — Crystal theme + Pro gating visible en settings. 9 tests GREEN.
+- MC-8: broadcast-tower + multiclass-relative — nuevos widgets Pro registrados en WidgetRenderer/CompositeApp/ObsOverlayApp/widget-factory. 7 tests GREEN.
+- MC-9: Tester/experimental catalog entries verificados — data pending/partial, no runtime-ready.
+- MC-10: Visual harness script para comparacion HTML vs app.
+- MC-11: Docs actualizados.
+- Tests totales: 1221/1221 PASS (138 files). tsc OK.
+- Archivos nuevos: widget-design-system.ts, widget-catalog.ts, widget-config-model.ts, WidgetAccessBadge.tsx, WidgetDataStatusBadge.tsx, WidgetConfigSections.tsx, WidgetVariantManager.tsx, BroadcastTowerWidget.tsx, MulticlassRelativeWidget.tsx + tests.
+- Archivos modificados: WidgetStudio.tsx, WidgetSettingsPanel.tsx, StudioWidgetList.tsx, StandingsWidget.tsx, DeltaWidget.tsx, PedalsWidget.tsx, RelativeWidget.tsx, widget-factory.ts, WidgetRenderer.tsx, CompositeApp.tsx, ObsOverlayApp.tsx.
+- No se tocó: LayoutStudio internamente, backend Go, dependencias nuevas.
+- Sin commit, sin tag, sin release.
+
 Nota CALENDAR-10 (2026-07-04) P3:
 - Implementados helpers `groupEventsByDay` e `indexSeriesById` en `calendar-view-math.ts` para evitar filtros repetidos y búsquedas O(n) por celda.
 - MonthView ahora acepta `onDayClick` prop; click en celda de día cambia a DayView con ese día como anchor. `stopPropagation` en pills evita navegación duplicada.
@@ -1896,6 +1933,12 @@ Nota ACCESS-01 (2026-07-04) Microcorte 1 — Policy pura + matriz + hook:
 - Checks: 121/121 tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), git diff --check solo whitespace preexistente en hub_main.html.
 - Archivos nuevos: `frontend/src/lib/access-policy.ts`, `frontend/src/lib/access-policy.test.ts`, `frontend/src/lib/access.tsx`, `frontend/src/lib/access.test.tsx`.
 - Sin commit.
+
+Nota CALENDAR-WEEKLY-HOTFIX (2026-07-04):
+- Flujo operativo semanal documentado en `docs/calendar-weekly-hotfix/`.
+- Anadidos `checklist.md` y `changelog-template.md` para que un worker pueda actualizar el calendario LMU semanal de forma repetible.
+- El hotfix normal debe tocar solo seed/tests/docs; frontend/backend quedan fuera salvo bug claro.
+- Regla de modelado mantenida: daily races como series recurrentes, Weekly como slots UTC, sesiones estimadas practice 3m + qualy 8m + carrera oficial.
 
 Nota CALENDAR-10 P3 (2026-07-04) Microfix post-review:
 - P3-1: `groupEventsByDay` ahora se usa en MonthView y WeekView para lookup O(1) por día, eliminando el filtrado inline de `calendar.events` por cada celda/columna. Semántica visual y filtros intactos. Tests: 97/97 PASS.

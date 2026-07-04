@@ -8,6 +8,8 @@ import { TelemetryWidget } from "../../overlay/widgets/TelemetryWidget";
 import { TelemetryVerticalWidget } from "../../overlay/widgets/TelemetryVerticalWidget";
 import { PedalsWidget } from "../../overlay/widgets/PedalsWidget";
 import { EngineerNotificationsWidget } from "../../overlay/widgets/EngineerNotificationsWidget";
+import { BroadcastTowerWidget } from "../../overlay/widgets/BroadcastTowerWidget";
+import { MulticlassRelativeWidget } from "../../overlay/widgets/MulticlassRelativeWidget";
 import type { WidgetTelemetryMode } from "../../overlay/widgets/use-widget-telemetry";
 import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
 
@@ -27,6 +29,8 @@ const WIDGETS: Record<string, ComponentType<InnerWidgetProps>> = {
   "telemetry-vertical": TelemetryVerticalWidget,
   pedals: PedalsWidget,
   "engineer-notifications": EngineerNotificationsWidget,
+  "broadcast-tower": BroadcastTowerWidget,
+  "multiclass-relative": MulticlassRelativeWidget,
 };
 
 export type WidgetTelemetryModeProp = WidgetTelemetryMode;
@@ -45,6 +49,19 @@ export type WidgetRendererProps = {
   testId?: string;
 };
 
+/**
+ * Preview/render primitive — renders a widget by type with no runtime gating.
+ *
+ * This component intentionally does NOT filter by `isRuntimeReadyWidget`.
+ * Runtime gating (hiding widgets whose data pipeline isn't ready) is the
+ * responsibility of the composite apps that host this renderer:
+ * - `CompositeApp` (Wails desktop overlay)
+ * - `ObsOverlayApp` (OBS browser source overlay)
+ *
+ * Keeping WidgetRenderer as a pure render primitive keeps it usable in
+ * WidgetStudio previews, test harnesses, and design galleries where the
+ * full catalog should be browsable regardless of runtime readiness.
+ */
 export function WidgetRenderer({
   profile,
   widget,

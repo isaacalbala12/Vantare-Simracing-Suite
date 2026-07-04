@@ -8,6 +8,8 @@ export const WIDGET_TYPES = [
   "telemetry-vertical",
   "pedals",
   "engineer-notifications",
+  "broadcast-tower",
+  "multiclass-relative",
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -20,6 +22,8 @@ export const DEFAULT_WIDGET_SIZES: Record<WidgetType, { w: number; h: number; up
   "telemetry-vertical": { w: 140, h: 360, updateHz: 30 },
   pedals: { w: 90, h: 100, updateHz: 30 },
   "engineer-notifications": { w: 300, h: 80, updateHz: 15 },
+  "broadcast-tower": { w: 780, h: 50, updateHz: 15 },
+  "multiclass-relative": { w: 520, h: 150, updateHz: 15 },
 };
 
 /**

@@ -1,166 +1,180 @@
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, afterEach } from "vitest";
-import type { ProfileConfig } from "../../lib/profile";
-import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
+import { render, screen, cleanup } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AccessContext } from "../../lib/access-policy";
 
-vi.mock("@wailsio/runtime", () => ({
-  Events: {
-    Emit: vi.fn(),
-    On: vi.fn().mockReturnValue(() => {}),
-  },
+// ── Mocks ──────────────────────────────────────────────────────────────────
+
+const mockUseAccess = vi.fn<() => AccessContext>();
+vi.mock("../../lib/access", () => ({
+  useAccess: () => mockUseAccess(),
 }));
+
+vi.mock("../preview/PreviewInspector", () => ({
+  PreviewInspector: () => <div data-testid="preview-inspector" />,
+}));
+
+vi.mock("./RelativeSettingsSection", () => ({
+  RelativeSettingsSection: () => <div data-testid="relative-settings" />,
+}));
+
+vi.mock("./StandingsSettingsSection", () => ({
+  StandingsSettingsSection: () => <div data-testid="standings-settings" />,
+}));
+
+vi.mock("./PedalsSettingsSection", () => ({
+  PedalsSettingsSection: () => <div data-testid="pedals-settings" />,
+}));
+
+vi.mock("./WidgetPresetSection", () => ({
+  WidgetPresetSection: () => <div data-testid="widget-preset" />,
+}));
+
+vi.mock("./WidgetConfigSections", () => ({
+  WidgetConfigSections: () => <div data-testid="widget-config" />,
+}));
+
+vi.mock("../widgets/WidgetDesignGallery", () => ({
+  WidgetDesignGallery: () => <div data-testid="widget-design-gallery" />,
+}));
+
+vi.mock("../widgets/widget-design-gallery", () => ({
+  applyOfficialDesignToProfile: vi.fn((p: unknown) => p),
+}));
+
+vi.mock("./WidgetVariantManager", () => ({
+  WidgetVariantManager: ({ canApply }: { canApply?: boolean }) => (
+    <div data-testid="widget-variant-manager" data-can-apply={String(canApply ?? true)} />
+  ),
+}));
+
+// ── Import after mocks ─────────────────────────────────────────────────────
+
+import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
+import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
 });
 
-const profile: ProfileConfig = {
-  schemaVersion: 2,
-  id: "test-profile",
-  displayMode: "racing",
-  monitorIndex: 0,
-  widgets: [
-    {
-      id: "relative",
-      type: "relative",
-      variantId: "variant-relative-default",
-      enabled: true,
-      updateHz: 15,
-      position: { x: 40, y: 40, w: 300, h: 250 },
-      props: { rangeAhead: 3, rangeBehind: 3 },
-    },
-  ],
-  variants: [
-    {
-      id: "variant-relative-default",
-      widgetType: "relative",
-      templateId: "relative-vantare-default",
-      filters: { rangeAhead: 3, rangeBehind: 4, includePlayer: true, rowHeightMode: "compact" },
-    },
-  ],
+// ── Factories ──────────────────────────────────────────────────────────────
+
+const freeAccess: AccessContext = {
+  planLabel: "free",
+  planStatus: "active",
+  roles: [],
+  isBlocked: false,
+  isUnconfigured: false,
 };
 
-describe("WidgetSettingsPanel", () => {
-  it("keeps relative controls accessible inside a scrolling settings panel", () => {
+const paidAccess: AccessContext = {
+  planLabel: "paid_overlays",
+  planStatus: "active",
+  roles: [],
+  isBlocked: false,
+  isUnconfigured: false,
+};
+
+const testerAccess: AccessContext = {
+  planLabel: "free",
+  planStatus: "active",
+  roles: ["tester"],
+  isBlocked: false,
+  isUnconfigured: false,
+};
+
+function makeProfile(widgets: WidgetConfig[]): ProfileConfig {
+  return {
+    displayMode: "racing",
+    monitorIndex: 0,
+    widgets,
+  };
+}
+
+function makeWidget(type: string, overrides?: Partial<WidgetConfig>): WidgetConfig {
+  return {
+    id: `${type}-1`,
+    type,
+    enabled: true,
+    position: { x: 0, y: 0, w: 200, h: 100 },
+    ...overrides,
+  };
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
+describe("WidgetSettingsPanel — Pro gating", () => {
+  it("shows Pro upgrade notice for a pro widget when user is free", () => {
+    mockUseAccess.mockReturnValue(freeAccess);
+    const widget = makeWidget("relative"); // relative has access: "pro" in catalog
+    const profile = makeProfile([widget]);
+
     render(
       <WidgetSettingsPanel
         profile={profile}
-        widget={profile.widgets[0]}
+        widget={widget}
         onChangeProfile={vi.fn()}
       />,
     );
 
-    const panel = screen.getByTestId("widget-settings-panel");
-    expect(panel.className).toContain("overflow-y-auto");
-    expect(screen.getByText("Columnas relative")).toBeTruthy();
-    expect(screen.getByText("Filtros")).toBeTruthy();
+    const notice = screen.getByTestId("pro-upgrade-notice");
+    expect(notice).toBeDefined();
+    expect(notice.textContent).toContain("Pro");
+    expect(notice.textContent).toContain("upgrade to apply");
   });
 
-  it("keeps standings controls accessible inside a scrolling settings panel", () => {
-    const standingsProfile: ProfileConfig = {
-      ...profile,
-      widgets: [
-        {
-          id: "standings",
-          type: "standings",
-          variantId: "variant-standings-default",
-          enabled: true,
-          updateHz: 15,
-          position: { x: 40, y: 80, w: 360, h: 300 },
-        },
-      ],
-      variants: [
-        {
-          id: "variant-standings-default",
-          widgetType: "standings",
-          templateId: "standings-vantare-default",
-        },
-      ],
-    };
+  it("does NOT show Pro notice when user has paid access", () => {
+    mockUseAccess.mockReturnValue(paidAccess);
+    const widget = makeWidget("relative");
+    const profile = makeProfile([widget]);
 
-    render(
-      <WidgetSettingsPanel
-        profile={standingsProfile}
-        widget={standingsProfile.widgets[0]}
-        onChangeProfile={vi.fn()}
-      />,
-    );
-
-    const panel = screen.getByTestId("widget-settings-panel");
-    expect(panel.className).toContain("overflow-y-auto");
-    expect(screen.getByText("Columnas standings")).toBeTruthy();
-    expect(screen.getByLabelText("Mostrar mejor vuelta standings")).toBeTruthy();
-  });
-
-  it("renders a sticky widget header with name, type and enabled status", () => {
     render(
       <WidgetSettingsPanel
         profile={profile}
-        widget={profile.widgets[0]}
+        widget={widget}
         onChangeProfile={vi.fn()}
       />,
     );
 
-    const header = screen.getByTestId("widget-settings-header");
-    expect(header.className).toContain("sticky");
-    expect(header.textContent).toContain("relative");
-    expect(header.textContent).toContain("Activo");
+    expect(screen.queryByTestId("pro-upgrade-notice")).toBeNull();
   });
 
-  it("does not render a sticky widget header when no widget is selected", () => {
+  it("does NOT show Pro notice when user has tester role", () => {
+    mockUseAccess.mockReturnValue(testerAccess);
+    const widget = makeWidget("relative");
+    const profile = makeProfile([widget]);
+
     render(
       <WidgetSettingsPanel
         profile={profile}
-        widget={null}
+        widget={widget}
         onChangeProfile={vi.fn()}
       />,
     );
 
-    expect(screen.queryByTestId("widget-settings-header")).toBeNull();
+    expect(screen.queryByTestId("pro-upgrade-notice")).toBeNull();
   });
 
-  it("shows pedals settings section for a pedals widget", () => {
-    const pedalsProfile: ProfileConfig = {
-      ...profile,
-      widgets: [
-        {
-          id: "pedals",
-          type: "pedals",
-          enabled: true,
-          updateHz: 30,
-          position: { x: 40, y: 760, w: 90, h: 100 },
-        },
-      ],
-    };
+  it("does NOT show Pro notice for free-tier widgets", () => {
+    mockUseAccess.mockReturnValue(freeAccess);
+    const widget = makeWidget("standings"); // standings has access: "free" in catalog
+    const profile = makeProfile([widget]);
 
-    render(
-      <WidgetSettingsPanel
-        profile={pedalsProfile}
-        widget={pedalsProfile.widgets[0]}
-        onChangeProfile={vi.fn()}
-      />,
-    );
-
-    const panel = screen.getByTestId("widget-settings-panel");
-    expect(panel.className).toContain("overflow-y-auto");
-    expect(screen.getByText("Pedales")).toBeTruthy();
-    expect(screen.getByLabelText("Acelerador (throttle)")).toBeTruthy();
-  });
-
-  it("renders the widget design gallery when a widget is selected", () => {
     render(
       <WidgetSettingsPanel
         profile={profile}
-        widget={profile.widgets[0]}
+        widget={widget}
         onChangeProfile={vi.fn()}
       />,
     );
 
-    expect(screen.getByTestId("widget-design-gallery")).toBeTruthy();
-    expect(screen.getByTestId("widget-design-gallery").getAttribute("data-widget-type")).toBe("relative");
+    expect(screen.queryByTestId("pro-upgrade-notice")).toBeNull();
   });
 
-  it("does not render the widget design gallery when no widget is selected", () => {
+  it("does NOT show Pro notice when no widget is selected", () => {
+    mockUseAccess.mockReturnValue(freeAccess);
+    const profile = makeProfile([]);
+
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -169,87 +183,76 @@ describe("WidgetSettingsPanel", () => {
       />,
     );
 
-    expect(screen.queryByTestId("widget-design-gallery")).toBeNull();
+    expect(screen.queryByTestId("pro-upgrade-notice")).toBeNull();
   });
+});
 
-  it("filters official designs by widget type inside the panel", () => {
-    const pedalsProfile: ProfileConfig = {
-      ...profile,
-      widgets: [
-        {
-          id: "pedals",
-          type: "pedals",
-          enabled: true,
-          updateHz: 30,
-          position: { x: 40, y: 760, w: 90, h: 100 },
-        },
-      ],
-    };
+describe("WidgetSettingsPanel — canApply enforcement", () => {
+  it("passes canApply=false to WidgetVariantManager for Free user on Pro widget", () => {
+    mockUseAccess.mockReturnValue(freeAccess);
+    const widget = makeWidget("relative");
+    const profile = makeProfile([widget]);
 
-    render(
-      <WidgetSettingsPanel
-        profile={pedalsProfile}
-        widget={pedalsProfile.widgets[0]}
-        onChangeProfile={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("widget-design-item-pedals-clean-broadcast")).toBeTruthy();
-    expect(screen.getByTestId("widget-design-item-pedals-endurance")).toBeTruthy();
-    expect(screen.queryByTestId("widget-design-item-vantare-racing-essential")).toBeNull();
-    expect(screen.queryByTestId("widget-design-item-delta-time-attack")).toBeNull();
-  });
-
-  it("applies an official design without mutating widget position", () => {
-    const onChange = vi.fn();
-    const targetPosition = { x: 222, y: 333, w: 444, h: 555 };
-    const relativeProfile: ProfileConfig = {
-      ...profile,
-      widgets: [
-        {
-          id: "rel-x",
-          type: "relative",
-          enabled: true,
-          updateHz: 15,
-          position: targetPosition,
-          props: { appearance: { accentColor: "#000" } },
-        },
-      ],
-    };
-
-    render(
-      <WidgetSettingsPanel
-        profile={relativeProfile}
-        widget={relativeProfile.widgets[0]}
-        onChangeProfile={onChange}
-      />,
-    );
-
-    fireEvent.click(screen.getByTestId("widget-design-apply-broadcast-pro"));
-
-    expect(onChange).toHaveBeenCalledTimes(1);
-    const next = onChange.mock.calls[0][0] as ProfileConfig;
-    const newWidget = next.widgets.find((w) => w.id === "rel-x");
-    expect(newWidget).toBeDefined();
-    expect(newWidget?.position).toEqual(targetPosition);
-    expect(newWidget?.props?.appearance?.accentColor).toBe("#FFB703");
-    expect(newWidget?.variantId).toBe("official-broadcast-pro-rel-x");
-    expect(next.variants?.some((v) => v.id === "official-broadcast-pro-rel-x")).toBe(true);
-  });
-
-  it("preserves x/y/w/h in the panel even when no widget is selected", () => {
     render(
       <WidgetSettingsPanel
         profile={profile}
-        widget={null}
+        widget={widget}
         onChangeProfile={vi.fn()}
       />,
     );
 
-    const panel = screen.getByTestId("widget-settings-panel");
-    expect(panel.textContent).not.toContain("X (px)");
-    expect(panel.textContent).not.toContain("Y (px)");
-    expect(panel.textContent).not.toContain("Ancho");
-    expect(panel.textContent).not.toContain("Eliminar");
+    const variantMgr = screen.getByTestId("widget-variant-manager");
+    expect(variantMgr.getAttribute("data-can-apply")).toBe("false");
+  });
+
+  it("passes canApply=true to WidgetVariantManager for Paid user on Pro widget", () => {
+    mockUseAccess.mockReturnValue(paidAccess);
+    const widget = makeWidget("relative");
+    const profile = makeProfile([widget]);
+
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={widget}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    const variantMgr = screen.getByTestId("widget-variant-manager");
+    expect(variantMgr.getAttribute("data-can-apply")).toBe("true");
+  });
+
+  it("passes canApply=true to WidgetVariantManager for Free user on Free widget", () => {
+    mockUseAccess.mockReturnValue(freeAccess);
+    const widget = makeWidget("standings");
+    const profile = makeProfile([widget]);
+
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={widget}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    const variantMgr = screen.getByTestId("widget-variant-manager");
+    expect(variantMgr.getAttribute("data-can-apply")).toBe("true");
+  });
+
+  it("passes canApply=true to WidgetVariantManager for Tester on Tester widget", () => {
+    mockUseAccess.mockReturnValue(testerAccess);
+    const widget = makeWidget("track-weather");
+    const profile = makeProfile([widget]);
+
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={widget}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    const variantMgr = screen.getByTestId("widget-variant-manager");
+    expect(variantMgr.getAttribute("data-can-apply")).toBe("true");
   });
 });

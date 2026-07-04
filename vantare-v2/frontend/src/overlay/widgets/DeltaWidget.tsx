@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { getWidgetTelemetrySource } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
+import { resolveWidgetDesignSystem } from "./widget-design-system";
 import {
   setStylePropertyIfChanged,
   setTextIfChanged,
@@ -41,6 +42,8 @@ export function formatLapTime(seconds: number | undefined): string {
 export function DeltaWidget({ editMode, telemetryMode, updateHz = 30, props }: DeltaProps) {
   const { style, appearance: a } = resolveWidgetAppearance("delta", props);
   const isGlass = style === "glassmorphism-pro";
+  const isCrystal = style === "vantare-crystal";
+  const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
   const deltaRef = useRef<HTMLSpanElement>(null);
   const targetRef = useRef<HTMLSpanElement>(null);
   const lapRef = useRef<HTMLSpanElement>(null);
@@ -92,12 +95,12 @@ export function DeltaWidget({ editMode, telemetryMode, updateHz = 30, props }: D
       className="w-full h-full flex flex-col items-center justify-center font-display"
       style={{
         opacity: a.opacity,
-        color: a.textColor,
-        background: isGlass ? "rgba(18,18,22,0.82)" : undefined,
-        border: isGlass ? `1px solid ${a.borderColor}` : undefined,
-        borderRadius: isGlass ? 16 : undefined,
-        backdropFilter: isGlass ? "blur(24px)" : undefined,
-        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
+        color: isCrystal && crystal ? crystal.colors.text : a.textColor,
+        background: isCrystal && crystal ? crystal.surfaces.panel : isGlass ? "rgba(18,18,22,0.82)" : undefined,
+        border: isCrystal && crystal ? `1px solid ${crystal.colors.border}` : isGlass ? `1px solid ${a.borderColor}` : undefined,
+        borderRadius: isCrystal && crystal ? 12 : isGlass ? 16 : undefined,
+        backdropFilter: isCrystal && crystal ? "blur(16px)" : isGlass ? "blur(24px)" : undefined,
+        boxShadow: isCrystal && crystal ? `0 0 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)` : isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
       }}
     >
       <div className="flex justify-between w-full px-4 mb-2 opacity-80">
@@ -121,14 +124,14 @@ export function DeltaWidget({ editMode, telemetryMode, updateHz = 30, props }: D
           ref={deltaRef}
           className="text-[75px] font-black leading-none font-tech tracking-tighter"
           style={{
-            textShadow: `0 5px 25px rgba(0,0,0,0.9), 0 0 40px ${a.negativeColor}`,
-            color: a.negativeColor,
+            textShadow: isCrystal && crystal ? `0 5px 25px rgba(0,0,0,0.9), 0 0 40px ${crystal.colors.accent}` : `0 5px 25px rgba(0,0,0,0.9), 0 0 40px ${a.negativeColor}`,
+            color: isCrystal && crystal ? crystal.colors.accent : a.negativeColor,
           }}
         >
           —
         </span>
       </div>
-      <div className="w-full h-[14px] rounded-sm relative z-10" style={{ background: a.backgroundColor, boxShadow: "inset 0 0 5px rgba(0,0,0,1), 0 5px 15px rgba(0,0,0,0.8)" }}>
+      <div className="w-full h-[14px] rounded-sm relative z-10" style={{ background: isCrystal && crystal ? crystal.colors.border : a.backgroundColor, boxShadow: "inset 0 0 5px rgba(0,0,0,1), 0 5px 15px rgba(0,0,0,0.8)" }}>
         <div className="absolute top-[-4px] bottom-[-4px] left-1/2 w-[4px] bg-white rounded-full -translate-x-1/2 z-30" style={{ boxShadow: "0 0 10px white" }} />
         <div ref={fillRef} className="absolute top-0 bottom-0 z-20 rounded-sm" style={{ boxShadow: "0 0 25px currentColor" }} />
       </div>

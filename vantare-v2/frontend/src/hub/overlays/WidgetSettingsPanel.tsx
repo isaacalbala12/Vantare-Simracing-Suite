@@ -4,8 +4,12 @@ import { RelativeSettingsSection } from "./RelativeSettingsSection";
 import { StandingsSettingsSection } from "./StandingsSettingsSection";
 import { PedalsSettingsSection } from "./PedalsSettingsSection";
 import { WidgetPresetSection } from "./WidgetPresetSection";
+import { WidgetConfigSections } from "./WidgetConfigSections";
 import { WidgetDesignGallery } from "../widgets/WidgetDesignGallery";
 import { applyOfficialDesignToProfile, type OfficialDesign } from "../widgets/widget-design-gallery";
+import { WidgetVariantManager } from "./WidgetVariantManager";
+import { useAccess } from "../../lib/access";
+import { canApplyWidget } from "./widget-catalog";
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -45,14 +49,24 @@ function WidgetHeader({ widget }: { widget: WidgetConfig }) {
 }
 
 export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: WidgetSettingsPanelProps) {
+  const access = useAccess();
+  const canApply = widget ? canApplyWidget(widget.type, access) : false;
   const handleApplyOfficialDesign = (design: OfficialDesign) => {
-    if (!widget) return;
+    if (!widget || !canApply) return;
     onChangeProfile(applyOfficialDesignToProfile(profile, widget.id, design));
   };
 
   return (
     <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-y-auto">
       {widget ? <WidgetHeader widget={widget} /> : null}
+      {widget && !canApply && (
+        <div
+          className="mx-2 mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-amber-400"
+          data-testid="pro-upgrade-notice"
+        >
+          Pro — upgrade to apply
+        </div>
+      )}
       <div className="min-h-0 flex-1">
         <PreviewInspector
           profile={profile}
@@ -66,6 +80,12 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       {widget && (
         <div className="shrink-0">
           <WidgetDesignGallery widget={widget} onApplyDesign={handleApplyOfficialDesign} />
+          <WidgetVariantManager
+            profile={profile}
+            widget={widget}
+            onChangeProfile={onChangeProfile}
+            canApply={canApply}
+          />
           <RelativeSettingsSection
             profile={profile}
             widget={widget}
@@ -85,6 +105,9 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
             profile={profile}
             widget={widget}
             onChangeProfile={onChangeProfile}
+          />
+          <WidgetConfigSections
+            widget={widget}
           />
         </div>
       )}

@@ -12,6 +12,7 @@ import {
   resetTelemetryRef,
 } from "../lib/telemetry-ref";
 import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
+import { isRuntimeReadyWidget } from "../hub/overlays/widget-catalog";
 import { WidgetHost } from "./WidgetHost";
 import { enrichWidgetPropsWithVariant } from "../lib/widget-variants";
 import { DeltaWidget } from "./widgets/DeltaWidget";
@@ -21,6 +22,8 @@ import { TelemetryWidget } from "./widgets/TelemetryWidget";
 import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
 import { PedalsWidget } from "./widgets/PedalsWidget";
 import { EngineerNotificationsWidget } from "./widgets/EngineerNotificationsWidget";
+import { BroadcastTowerWidget } from "./widgets/BroadcastTowerWidget";
+import { MulticlassRelativeWidget } from "./widgets/MulticlassRelativeWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
@@ -40,6 +43,8 @@ const WIDGETS: Record<string, ComponentType<WidgetProps>> = {
   "telemetry-vertical": TelemetryVerticalWidget,
   pedals: PedalsWidget,
   "engineer-notifications": EngineerNotificationsWidget,
+  "broadcast-tower": BroadcastTowerWidget,
+  "multiclass-relative": MulticlassRelativeWidget,
 };
 
 const STREAMING_MODE_HINT = "obs-streaming";
@@ -118,9 +123,10 @@ export function ObsOverlayApp() {
 
   // telemetryKey is read during render to recompute visibility on telemetry ticks
   const telemetryState = telemetryKey >= 0 ? getCurrentTelemetryState() : undefined;
-  const visibleWidgets = telemetryState
+  const visibleWidgets = (telemetryState
     ? widgets.filter((w) => isWidgetVisible(w, telemetryState))
-    : widgets;
+    : widgets
+  ).filter((w) => isRuntimeReadyWidget(w.type));
 
   if (error) {
     return (

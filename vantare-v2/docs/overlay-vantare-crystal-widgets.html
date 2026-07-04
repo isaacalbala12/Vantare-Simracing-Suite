@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vantare Crystal — Design System &amp; Widget Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0a0a;--ink:#f5f5f5;--ink-dim:rgba(245,245,245,.6);--ink-mute:rgba(245,245,245,.35);--accent:#ff3b3b;--line:rgba(245,245,245,.08);--line-s:rgba(245,245,245,.18);--card:rgba(20,20,20,.55);--panel:#141414;--surface:#0F0F0F;--border:#1E1E1E;--tm:#7A7A7A;--td:#4A4A4A;--sans:'Inter',-apple-system,sans-serif;--disp:'Plus Jakarta Sans',sans-serif;--mono:'JetBrains Mono',monospace}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--ink);font-family:var(--sans);overflow-x:hidden;background-image:radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px);background-size:32px 32px}
+    .grain{position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.25;z-index:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+    .ph{max-width:1440px;margin:0 auto;padding:28px 24px 20px;position:relative;z-index:1}
+    .ph h1{font-family:var(--disp);font-size:24px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+    .ph .sub{font-size:12px;color:var(--ink-dim);margin-bottom:12px}
+    .br{display:flex;flex-wrap:wrap;gap:6px}
+    .bt{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase}
+    .bt.d{background:rgba(56,189,248,.1);color:#38bdf8;border:1px solid rgba(56,189,248,.25)}
+    .bt.w{background:rgba(255,59,59,.1);color:var(--accent);border:1px solid rgba(255,59,59,.25)}
+    .bt.s{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+    .bt.c{background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.25)}
+    .st{max-width:1440px;margin:32px auto 12px;padding:0 24px;font-family:var(--disp);font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+    .st::after{content:"";flex:1;height:1px;background:var(--line)}
+    .st .l{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:rgba(255,59,59,.1);color:var(--accent);font-size:10px;font-weight:800;border:1px solid rgba(255,59,59,.2)}
+    .su{max-width:1440px;margin:0 auto 8px;padding:0 24px;font-size:10px;font-weight:700;color:var(--td);letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1}
+    .wg{max-width:1440px;margin:0 auto 12px;padding:0 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;position:relative;z-index:1}
+    .wc{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative}
+    .wc.lk{opacity:.82}.wc.lk::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.2);pointer-events:none;z-index:2}
+    .wt{padding:7px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:6px;background:rgba(255,59,59,.04)}
+    .wtn{font-family:var(--disp);font-size:10px;font-weight:800;letter-spacing:.04em}
+    .wbd{display:flex;gap:3px}
+    .wb{font-size:7px;font-weight:800;padding:2px 5px;border-radius:3px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+    .wb.f{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+    .wb.p{background:rgba(255,59,59,.1);color:var(--accent);border:1px solid rgba(255,59,59,.25)}
+    .wb.t{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.25)}
+    .wb.e{background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.25)}
+    .wb.k{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+    .wb.q{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
+    .wb.n{background:rgba(74,74,74,.2);color:var(--td);border:1px solid rgba(74,74,74,.3)}
+    .wbdy{padding:8px 10px}
+    .wsz{font-size:8px;color:var(--td);font-family:var(--mono);margin-top:4px}
+    .wn{font-size:8px;color:#f59e0b;margin-top:3px;font-weight:600}
+    .tk{max-width:1440px;margin:0 auto 12px;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;position:relative;z-index:1}
+    .tc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+    .tc .lb{font-size:9px;font-weight:700;color:var(--td);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+    .sr{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+    .sw{width:22px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.08);flex-shrink:0}
+    .si{font-size:11px}.sh{font-family:var(--mono);font-weight:600;color:var(--ink-mute);font-size:10px}
+    .sd{height:32px;border-radius:5px;border:1px solid var(--line);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--ink-mute);margin-bottom:4px}
+    .sd.hg{background:rgba(255,59,59,.06)}.sd.rw{background:rgba(255,255,255,.015)}
+    .sd.lk{background:rgba(0,0,0,.4);color:var(--td);font-style:italic;position:relative}
+    .sd.lk::after{content:"locked";position:absolute;right:8px;font-style:normal;font-size:8px;text-transform:uppercase;letter-spacing:.1em}
+    .fd{margin-bottom:6px}.fd .fn{font-size:9px;color:var(--td);font-weight:700;letter-spacing:.06em;margin-bottom:1px}
+    .fd.ds{font-family:var(--disp);font-size:18px;font-weight:800}.fd.sn{font-family:var(--sans);font-size:13px;font-weight:600}.fd.mn{font-family:var(--mono);font-size:13px;font-weight:700;color:#38bdf8}
+    .sr2{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+    .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .dot.fr{background:#22c55e}.dot.pr{background:var(--accent)}.dot.te{background:#f59e0b}.dot.ex{background:#a855f7}.dot.pe{background:var(--td)}
+    .sl{font-size:11px;font-weight:600}
+    .ew{max-width:1440px;margin:0 auto 20px;padding:0 24px;position:relative;z-index:1}
+    .es{display:flex;height:600px;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--border)}
+    .el{width:240px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;background:var(--surface)}
+    .ec{flex:1;position:relative;overflow:hidden;background:linear-gradient(to bottom,rgba(8,8,8,.7),rgba(8,8,8,.9)),linear-gradient(135deg,#0a0a0a,#141414,#0a0a0a);display:flex;align-items:center;justify-content:center}
+    .ec .ci{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;z-index:5}
+    .ci .ch{background:rgba(0,0,0,.6);backdrop-filter:blur(8px);padding:4px 10px;border-radius:6px;font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:5px}
+    .ci .ld{width:5px;height:5px;border-radius:50%;background:#3b82f6}
+    .er{width:280px;border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;background:var(--surface);overflow-y:auto}
+    .esh{border-bottom:1px solid var(--border)}
+    .esi{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:default;transition:background .2s;font-size:9px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.1em}
+    .esi:hover{background:rgba(255,255,255,.02)}.esi .chv{font-size:8px;color:var(--td)}
+    .esb{padding:10px 16px 14px}
+    .ef{margin-bottom:10px}.ef label{display:block;font-size:10px;color:var(--ink);margin-bottom:5px;font-weight:500}
+    .ef select,.ef input[type="range"]{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:10px;color:var(--ink);font-family:var(--sans);outline:none;appearance:none}
+    .etr{width:32px;height:16px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);position:relative;cursor:default;flex-shrink:0}
+    .etr.on{background:var(--accent);border-color:var(--accent)}
+    .etr::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform .15s}
+    .etr.on::after{transform:translateX(16px)}
+    .etr.sm{width:22px;height:12px}.etr.sm::after{width:8px;height:8px;top:2px;left:2px}.etr.sm.on::after{transform:translateX(10px)}
+    .en{font-size:9px;color:var(--td);padding:5px 8px;background:rgba(255,255,255,.02);border-radius:4px;border-left:2px solid var(--line);margin-top:6px;font-style:italic}
+    .en.w{border-left-color:#f59e0b;color:#f59e0b;font-style:normal}
+    .li{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:11px;font-weight:500;color:var(--tm);border-radius:6px;cursor:default;border:1px solid transparent;transition:all .2s}
+    .li:hover{background:rgba(255,255,255,.02);border-color:rgba(255,255,255,.04)}
+    .li.act{background:linear-gradient(90deg,rgba(193,18,31,.1),transparent);border-color:rgba(193,18,31,.2);border-left:2px solid #C1121F;color:var(--ink)}
+    .li svg{flex-shrink:0}
+    .mw{max-width:1440px;margin:0 auto 20px;padding:0 24px;overflow-x:auto;position:relative;z-index:1}
+    .mt{width:100%;border-collapse:collapse;font-size:10px}
+    .mt th{font-size:8px;font-weight:800;color:var(--td);letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line-s);background:rgba(0,0,0,.3);white-space:nowrap}
+    .mt td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+    .mt tr:hover td{background:rgba(255,255,255,.02)}
+    .mt .wn2{font-weight:700;color:var(--ink);white-space:nowrap}
+    .tb{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;display:inline-block}
+    .tb.ex{background:rgba(34,197,94,.1);color:#22c55e}.tb.nw{background:rgba(168,85,247,.1);color:#a855f7}
+    .tb.fr{background:rgba(34,197,94,.1);color:#22c55e}.tb.pr{background:rgba(255,59,59,.1);color:var(--accent)}.tb.te{background:rgba(245,158,11,.1);color:#f59e0b}
+    .tb.ok{background:rgba(34,197,94,.1);color:#22c55e}.tb.pa{background:rgba(245,158,11,.1);color:#f59e0b}.tb.pe{background:rgba(74,74,74,.15);color:var(--td)}
+    .mt .md{font-family:var(--mono);font-size:9px;color:#38bdf8}
+    .mt .iy{color:#22c55e;font-weight:700}.mt .ino{color:var(--td)}
+    .mt .nt{font-size:9px;color:var(--ink-mute);max-width:180px}
+    .pf{max-width:1440px;margin:32px auto 0;padding:14px 24px;text-align:center;font-size:10px;color:var(--td);border-top:1px solid var(--line);position:relative;z-index:1}
+    @media(max-width:1100px){.es{flex-direction:column;height:auto}.el,.er{width:100%;border:none;border-top:1px solid var(--border)}}
+    /* Widget styles — from overlay-glassmorphism-pro.html */
+    .gc{background:rgba(18,18,22,.82);border:1px solid rgba(255,255,255,.09);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.1);backdrop-filter:blur(24px);overflow:hidden}
+    .gh{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)}
+    .gh .gt{font-family:var(--disp);font-size:12px;font-weight:800;letter-spacing:.06em;display:flex;align-items:center;gap:8px}
+    .gh .gp{background:rgba(230,57,70,.15);border:1px solid rgba(230,57,70,.4);color:#fff;font-size:9px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em}
+    .gth{height:28px;font-size:9px;font-weight:700;color:var(--td);letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.3)}
+    .gr{height:34px;border-bottom:1px solid rgba(255,255,255,.03)}.gr:nth-child(even){background:rgba(255,255,255,.015)}.gr:nth-child(odd){background:rgba(0,0,0,.25)}
+    .gr.hl{background:linear-gradient(90deg,rgba(255,42,59,.22),rgba(230,57,70,.05));border-top:1px solid rgba(255,42,59,.4);border-bottom:1px solid rgba(255,42,59,.4);position:relative}
+    .gr.hl::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#ff2a3b;box-shadow:0 0 10px #ff2a3b}
+    .gc2{text-align:center;justify-self:center}.gr2{text-align:right;justify-self:end;font-family:var(--mono);font-size:11px;font-weight:600}
+    .gl{text-align:left;justify-self:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;font-weight:600;font-size:12px}
+    .gp2{font-family:var(--mono);font-weight:700;font-size:12px}
+    .gb{width:4px;height:18px;border-radius:2px;justify-self:center}
+    .gb.hc{background:#ff2a3b;box-shadow:0 0 8px rgba(255,42,59,.5)}.gb.l2{background:#3b82f6}.gb.g3{background:#10b981}
+    .gn{padding:2px 5px;border-radius:4px;font-size:11px;font-weight:800;font-family:var(--mono);min-width:28px;text-align:center;display:inline-block;line-height:1}
+    .gf{padding:8px 16px;background:rgba(0,0,0,.45);border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;font-size:10px;color:var(--tm);font-weight:600}
+    .grel{display:grid;grid-template-columns:32px 5px 40px 1fr 70px 70px;align-items:center;column-gap:10px;padding:0 14px}
+    .gsd{display:grid;grid-template-columns:22px 28px 40px 1fr 90px 70px;align-items:center;column-gap:10px;padding:0 14px}
+    .gbr{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;justify-self:center}
+    .gti{display:flex;align-items:center;justify-content:flex-end;gap:6px;width:100%;font-family:var(--mono);font-size:11px;font-weight:600}
+    .gtib{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:3px;font-size:9px;font-weight:800;color:#000;flex-shrink:0}
+    .gtib.S{background:#ff4d4d;box-shadow:0 0 5px rgba(255,77,77,.4)}.gtib.M{background:#facc15}
+    .gbc{width:100%;display:flex;align-items:center;background:rgba(12,12,16,.9);border:1px solid rgba(255,255,255,.12);border-radius:12px;backdrop-filter:blur(24px);padding:6px 10px;gap:6px}
+    .gbl{background:linear-gradient(180deg,#1f1f26,#111116);border:1px solid rgba(255,255,255,.1);padding:6px 12px;border-radius:8px;display:flex;flex-direction:column;align-items:center;min-width:80px}
+    .gds{display:flex;flex:1;gap:6px;align-items:center;overflow-x:auto}
+    .gdb{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:5px 10px;display:flex;align-items:center;gap:8px;min-width:160px}
+    .gdb.a{background:linear-gradient(135deg,rgba(255,42,59,.22),rgba(230,57,70,.05));border-color:#ff2a3b;box-shadow:0 0 14px rgba(255,42,59,.3)}
+    .gdp{background:#fff;color:#000;font-family:var(--mono);font-weight:800;font-size:11px;width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center}
+    .gdb.a .gdp{background:#ff2a3b;color:#fff;box-shadow:0 0 8px #ff2a3b}
+    .gdb2{width:3px;height:22px;border-radius:2px}
+    .gdi{display:flex;flex-direction:column;flex:1;overflow:hidden}
+    .gdn{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gdg{font-family:var(--mono);font-size:10px;font-weight:600;color:#aaa;margin-top:1px}
+    .gdb.a .gdg{color:#ff808b;font-weight:700}
+    .gfl{padding:12px;border-radius:10px;font-family:var(--disp);font-size:16px;font-weight:800;text-align:center}
+    .gfl.gn{background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.05));color:#22c55e;border-top:2px solid #22c55e}
+    .gfl.yw{background:linear-gradient(135deg,rgba(245,158,11,.25),rgba(245,158,11,.05));color:#f59e0b;border-top:2px solid #f59e0b}
+    .gdp2{background:rgba(18,18,22,.85);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:4px 16px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:12px;box-shadow:0 8px 20px rgba(0,0,0,.6);backdrop-filter:blur(24px)}
+    .gdt{width:100%;height:18px;background:rgba(10,10,14,.9);border:1px solid rgba(255,255,255,.14);border-radius:9px;position:relative;overflow:hidden}
+    .gdc{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#fff;transform:translateX(-50%);z-index:5}
+    .gdf{position:absolute;top:2px;bottom:2px;border-radius:6px;z-index:2}
+    .gdf.gn{right:50%;width:30%;background:linear-gradient(90deg,#16a34a,#22c55e);box-shadow:0 0 10px rgba(34,197,94,.7)}
+    .gdv{background:rgba(18,18,22,.9);border-radius:12px;padding:3px 16px;font-family:var(--mono);font-size:14px;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.8);border:1px solid}
+    .gpb{display:flex;flex-direction:column;align-items:center;gap:4px}
+    .gpt{width:12px;height:42px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;display:flex;align-items:flex-end;border:1px solid rgba(255,255,255,.1)}
+    .gpf{width:100%;border-radius:2px}
+    .gpl{font-family:var(--mono);font-size:9px;font-weight:800;color:#aaa}
+    .gh2h{display:flex;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+    .gh2hb{background:linear-gradient(180deg,#ff2a3b,#8b0000);width:30px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--disp);font-size:10px;font-weight:900;letter-spacing:2px;color:#fff}
+    .gh2hr{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06);font-size:11px}
+    .gh2hp{font-family:var(--mono);font-size:11px;font-weight:800;background:#fff;color:#000;padding:2px 6px;border-radius:3px;margin-right:10px}
+    .gh2hn{font-size:13px;font-weight:800;flex:1}.gh2ht{font-family:var(--mono);font-size:13px;font-weight:800}
+    .gwe{text-align:center}.gwe .tp{font-family:var(--mono);font-size:20px;font-weight:900}.gwe .wl{font-size:9px;color:var(--td)}
+    .gwb{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:5px 0;overflow:hidden}.gwb .fl{height:100%;background:#38bdf8;border-radius:2px}
+    .gfb{height:8px;background:rgba(255,255,255,.06);border-radius:4px;border:1px solid rgba(255,255,255,.08);overflow:hidden;margin-bottom:5px}.gfb .fl{height:100%;background:linear-gradient(90deg,#ff2a3b,#22c55e);border-radius:3px}
+    .gfg{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+    .gfc{background:rgba(255,255,255,.03);border-radius:3px;padding:3px 2px;text-align:center}
+    .gfv{font-family:var(--mono);font-size:10px;font-weight:800}.gfl2{font-size:7px;color:var(--td);font-weight:700}
+    .gdc2{width:36px;height:72px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.2);border-radius:8px;position:relative}
+    .gdt2{position:absolute;width:10px;height:18px;border-radius:3px}
+  </style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header class="ph">
+  <h1>Vantare Crystal</h1>
+  <p class="sub">Sistema visual para widgets y edicion por slots.</p>
+  <div class="br">
+    <span class="bt d">Design System</span>
+    <span class="bt w">WidgetStudio</span>
+    <span class="bt s">Slots</span>
+    <span class="bt c">Columns</span>
+  </div>
+</header>
+
+<!-- A: DESIGN TOKENS -->
+<div class="st"><span class="l">A</span> Design Tokens</div>
+<div class="su">Paleta · Superficies · Tipografias · Estados</div>
+<div class="tk">
+  <div class="tc"><div class="lb">Colors</div>
+    <div class="sr"><div class="sw" style="background:#ff3b3b"></div><div><div class="si">Accent</div><div class="sh">#ff3b3b</div></div></div>
+    <div class="sr"><div class="sw" style="background:#22c55e"></div><div><div class="si">Green</div><div class="sh">#22c55e</div></div></div>
+    <div class="sr"><div class="sw" style="background:#f59e0b"></div><div><div class="si">Yellow</div><div class="sh">#f59e0b</div></div></div>
+    <div class="sr"><div class="sw" style="background:#3b82f6"></div><div><div class="si">Blue</div><div class="sh">#3b82f6</div></div></div>
+    <div class="sr"><div class="sw" style="background:#a855f7"></div><div><div class="si">Purple</div><div class="sh">#a855f7</div></div></div>
+  </div>
+  <div class="tc"><div class="lb">Surfaces</div>
+    <div class="sd hg">Header — accent glow</div>
+    <div class="sd rw">Row — alternating</div>
+    <div class="sd lk">Pro locked preview</div>
+  </div>
+  <div class="tc"><div class="lb">Fonts</div>
+    <div class="fd ds">Plus Jakarta Sans</div>
+    <div class="fd sn">Inter — Body</div>
+    <div class="fd mn">JetBrains Mono</div>
+  </div>
+  <div class="tc"><div class="lb">Availability</div>
+    <div class="sr2"><div class="dot fr"></div><span class="sl">Free</span></div>
+    <div class="sr2"><div class="dot pr"></div><span class="sl">Pro</span></div>
+    <div class="sr2"><div class="dot te"></div><span class="sl">Tester</span></div>
+    <div class="sr2"><div class="dot ex"></div><span class="sl">Experimental</span></div>
+    <div class="sr2"><div class="dot pe"></div><span class="sl" style="color:var(--td)">Data Pending</span></div>
+  </div>
+</div>
+
+<!-- B: WIDGET SHOWCASE -->
+<div class="st"><span class="l">B</span> Widget Showcase</div>
+<div class="su">Widgets Free</div>
+<div class="wg">
+  <!-- STANDINGS -->
+  <div class="wc" style="width:520px"><div class="wt"><span class="wtn">Standings</span><div class="wbd"><span class="wb f">FREE</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="padding:0"><div class="gc" style="border:none;border-radius:0;box-shadow:none">
+      <div class="gh"><div class="gt"><svg viewBox="0 0 100 90" fill="none" style="height:18px;filter:drop-shadow(0 0 6px rgba(230,57,70,.5))"><defs><linearGradient id="v1" x1="0%" y1="100%" x2="50%" y2="0%"><stop offset="0%" stop-color="#b3121f"/><stop offset="50%" stop-color="#e63946"/><stop offset="100%" stop-color="#ff4d5a"/></linearGradient></defs><path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#v1)"/></svg> VANTARE</div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-size:9px;font-weight:700;padding:3px 8px;border-radius:10px">HYPERCAR</span><span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent)">01:45:22</span></div></div>
+      <div class="gsd gth"><div></div><div class="gc2">POS</div><div class="gc2">#</div><div class="gl">EQUIPO / PILOTO</div><div class="gr2">GAP</div><div class="gr2">LAST</div></div>
+      <div>
+        <div class="gsd gr"><div class="gbr" style="background:#cc0000;color:#fff">FE</div><div class="gc2 gp2" style="color:var(--accent)">1</div><div class="gc2"><span class="gn" style="background:#cc0000;color:#fff">50</span></div><div class="gl">Ferrari AF Corse</div><div class="gti"><span class="gtib M">M</span>Leader</div><div class="gr2" style="color:#aaa">3:26.110</div></div>
+        <div class="gsd gr hl"><div class="gbr" style="background:#ff2a3b;color:#fff;box-shadow:0 0 8px rgba(255,42,59,.5)">FE</div><div class="gc2 gp2" style="color:#fff">2</div><div class="gc2"><span class="gn" style="background:#ff2a3b;color:#fff">51</span></div><div class="gl" style="color:#fff;font-weight:700">Ferrari AF Corse (YOU)</div><div class="gti" style="color:var(--accent)"><span class="gtib S">S</span>+3.450s</div><div class="gr2" style="color:#fff;font-weight:700">3:25.400</div></div>
+        <div class="gsd gr"><div class="gbr" style="background:#006600;color:#fff">PO</div><div class="gc2 gp2">3</div><div class="gc2"><span class="gn" style="background:#006600;color:#fff">6</span></div><div class="gl" style="color:#bbb">Porsche Penske</div><div class="gti" style="color:#f59e0b">IN PIT</div><div class="gr2" style="color:#aaa">3:45.200</div></div>
+      </div>
+      <div class="gf"><span>LE MANS ULTIMATE</span><span>TRACK TEMP: 28°C</span></div>
+    </div></div>
+    <div class="wsz">~520 × 180</div>
+  </div>
+  <!-- DELTA -->
+  <div class="wc" style="width:320px"><div class="wt"><span class="wtn">Delta</span><div class="wbd"><span class="wb f">FREE</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="display:flex;flex-direction:column;align-items:center;gap:5px">
+      <div class="gdp2"><span style="color:#f59e0b;font-weight:800">LAP 14</span><span style="color:rgba(255,255,255,.2)">|</span><span style="font-weight:800;font-size:13px">2:44.659</span><span style="color:rgba(255,255,255,.2)">|</span><span style="font-weight:800;font-size:13px;color:#22c55e">-0.24</span></div>
+      <div class="gdt"><div class="gdc"></div><div class="gdf gn"></div></div>
+      <div class="gdv" style="color:#22c55e;border-color:rgba(34,197,94,.4)">-0.24</div>
+    </div>
+    <div class="wsz" style="text-align:center">~440 × 60</div>
+  </div>
+  <!-- PEDALS -->
+  <div class="wc" style="width:240px"><div class="wt"><span class="wtn">Pedals</span><div class="wbd"><span class="wb f">FREE</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="display:flex;gap:12px;align-items:flex-end;justify-content:center;padding:10px">
+      <div class="gpb"><div class="gpt"><div class="gpf" style="height:85%;background:#22c55e;box-shadow:0 0 8px #22c55e"></div></div><span class="gpl" style="color:#22c55e">THR</span></div>
+      <div class="gpb"><div class="gpt"><div class="gpf" style="height:15%;background:#ff2a3b;box-shadow:0 0 8px #ff2a3b"></div></div><span class="gpl" style="color:#ff2a3b">BRK</span></div>
+      <div class="gpb"><div class="gpt"><div class="gpf" style="height:0%;background:#f59e0b"></div></div><span class="gpl">CLU</span></div>
+    </div>
+    <div class="wsz" style="text-align:center">~90 × 100</div>
+  </div>
+</div>
+
+<div class="su" style="margin-top:12px">Widgets Pro <span style="font-weight:400;color:var(--td)">(preview visible, bloqueado para Free)</span></div>
+<div class="wg">
+  <!-- RELATIVE -->
+  <div class="wc lk" style="width:520px"><div class="wt"><span class="wtn">Relative</span><div class="wbd"><span class="wb p">PRO</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="padding:0"><div class="gc" style="border:none;border-radius:0;box-shadow:none">
+      <div class="gh"><div class="gt"><svg viewBox="0 0 100 90" fill="none" style="height:18px;filter:drop-shadow(0 0 6px rgba(230,57,70,.5))"><defs><linearGradient id="v2" x1="0%" y1="100%" x2="50%" y2="0%"><stop offset="0%" stop-color="#b3121f"/><stop offset="50%" stop-color="#e63946"/><stop offset="100%" stop-color="#ff4d5a"/></linearGradient></defs><path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#v2)"/></svg> VANTARE</div><span class="gp"><span style="color:#ff2a3b">●</span> RELATIVE</span></div>
+      <div class="grel gth"><div class="gc2">POS</div><div></div><div class="gc2">#</div><div class="gl">PILOTO</div><div class="gr2">GAP</div><div class="gr2">BEST</div></div>
+      <div>
+        <div class="grel gr"><div class="gc2 gp2">3</div><div class="gb hc"></div><div class="gc2"><span class="gn" style="background:#cc0000;color:#fff">50</span></div><div class="gl">Driver 01</div><div class="gr2" style="color:#ff4d4d">+3.450</div><div class="gr2" style="color:#aaa">3:26.110</div></div>
+        <div class="grel gr hl"><div class="gc2 gp2" style="color:#fff">4</div><div class="gb hc"></div><div class="gc2"><span class="gn" style="background:#ff2a3b;color:#fff;box-shadow:0 0 8px rgba(255,42,59,.6)">51</span></div><div class="gl" style="color:#fff;font-weight:700">Driver 23 (YOU)</div><div class="gr2" style="color:#fff">—</div><div class="gr2" style="color:#fff;font-weight:700">3:25.400</div></div>
+        <div class="grel gr"><div class="gc2 gp2">5</div><div class="gb hc"></div><div class="gc2"><span class="gn" style="background:#006600;color:#fff">6</span></div><div class="gl">Driver 08</div><div class="gr2" style="color:#34d399">-0.850</div><div class="gr2" style="color:#aaa">3:27.010</div></div>
+      </div>
+      <div class="gf"><span><strong style="color:var(--accent)">●</strong> LIVE TIMING</span><span>SOF: 2,450</span></div>
+    </div></div>
+    <div class="wsz" style="text-align:center">~520 × 170</div>
+  </div>
+  <!-- BROADCAST TOWER -->
+  <div class="wc lk" style="width:780px"><div class="wt"><span class="wtn">Broadcast Tower</span><div class="wbd"><span class="wb p">PRO</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="padding:0"><div class="gbc">
+      <div class="gbl"><span style="font-size:9px;color:#aaa;font-weight:800;letter-spacing:.1em">VUELTA</span><span style="font-size:16px;font-weight:800;color:#fff;font-family:var(--mono)">12<span style="font-size:11px;color:var(--accent)">/25</span></span></div>
+      <div class="gds">
+        <div class="gdb"><div class="gdp">1</div><div class="gdb2" style="background:#cc0000"></div><div class="gdi"><div class="gdn">Driver 01</div><div class="gdg">LIDER</div></div></div>
+        <div class="gdb a"><div class="gdp">2</div><div class="gdb2" style="background:#ff2a3b"></div><div class="gdi"><div class="gdn" style="color:#fff">Driver 23 (YOU)</div><div class="gdg">+0.846s</div></div></div>
+        <div class="gdb"><div class="gdp">3</div><div class="gdb2" style="background:#3b82f6"></div><div class="gdi"><div class="gdn">Driver 12</div><div class="gdg">+11.363</div></div></div>
+        <div class="gdb"><div class="gdp">4</div><div class="gdb2" style="background:#10b981"></div><div class="gdi"><div class="gdn">Driver 42</div><div class="gdg">+18.600</div></div></div>
+      </div>
+    </div></div>
+    <div class="wsz" style="text-align:center">~780 × 50</div>
+  </div>
+  <!-- MULTICLASS RELATIVE -->
+  <div class="wc lk" style="width:520px"><div class="wt"><span class="wtn">Multiclass Relative</span><div class="wbd"><span class="wb p">PRO</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="padding:0">
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06)"><div style="font-family:var(--mono);font-size:14px;font-weight:800;width:32px;color:#fbbf24">3</div><div style="font-family:var(--disp);font-size:11px;font-weight:900;padding:3px 8px;border-radius:4px;background:#fbbf24;color:#000;margin-right:12px">LMP2</div><div style="flex:1;font-size:14px;font-weight:800">Driver 05</div><div style="font-family:var(--mono);font-size:14px;font-weight:900;color:#ff2a3b">+8.200</div></div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.04);border-left:3px solid #fff"><div style="font-family:var(--mono);font-size:14px;font-weight:800;width:32px;color:#fff">4</div><div style="font-family:var(--disp);font-size:11px;font-weight:900;padding:3px 8px;border-radius:4px;background:#ff2a3b;color:#fff;margin-right:12px">HC</div><div style="flex:1;font-size:14px;font-weight:800;color:#fff">Driver 23 (YOU)</div><div style="font-family:var(--mono);font-size:14px;font-weight:900;color:#fff">—</div></div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06)"><div style="font-family:var(--mono);font-size:14px;font-weight:800;width:32px;color:#10b981">5</div><div style="font-family:var(--disp);font-size:11px;font-weight:900;padding:3px 8px;border-radius:4px;background:#10b981;color:#000;margin-right:12px">GT3</div><div style="flex:1;font-size:14px;font-weight:800">Driver 42</div><div style="font-family:var(--mono);font-size:14px;font-weight:900;color:#22c55e">-2.100</div></div>
+    </div>
+    <div class="wsz" style="text-align:center">~520 × 150</div>
+  </div>
+  <!-- RACE SCHEDULE -->
+  <div class="wc lk" style="width:520px"><div class="wt"><span class="wtn">Race Schedule / Upcoming</span><div class="wbd"><span class="wb p">PRO</span><span class="wb q">DATA PARTIAL</span></div></div>
+    <div class="wbdy" style="padding:0">
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);border-left:4px solid #d97706"><div style="flex:1"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:#f59e0b">BRONZE SR</div><div style="font-size:13px;font-weight:700">LMP3 Fixed Challenge</div><div style="font-size:11px;color:rgba(255,255,255,.6)">Spa-Francorchamps</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:#22c55e">03:45</div><div style="font-size:9px;font-weight:700;color:#22c55e">LIVE</div></div></div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);border-left:4px solid #94a3b8"><div style="flex:1"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:#cbd5e1">SILVER SR</div><div style="font-size:13px;font-weight:700">LMGT3 Sprint Cup</div><div style="font-size:11px;color:rgba(255,255,255,.6)">Monza (Curva Grande)</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:13px;font-weight:700">NEXT 00:00</div><div style="font-size:9px;font-weight:700;color:var(--tm)">REG OPEN</div></div></div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);border-left:4px solid #fbbf24"><div style="flex:1"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:#facc15">GOLD SR</div><div style="font-size:13px;font-weight:700">One Stint Sprint</div><div style="font-size:11px;color:rgba(255,255,255,.6)">Circuit of the Americas</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:13px;font-weight:700">NEXT 00:00</div><div style="font-size:9px;font-weight:700;color:var(--tm)">REG OPEN</div></div></div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-left:4px solid #a855f7;background:linear-gradient(90deg,rgba(168,85,247,.06),transparent)"><div style="flex:1"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:#c084fc">SPECIAL</div><div style="font-size:13px;font-weight:700">6 Hours of Le Mans</div><div style="font-size:11px;color:rgba(255,255,255,.6)">Circuit de la Sarthe</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:#c084fc">FRI-SUN</div><div style="font-size:9px;font-weight:700;color:#c084fc">TEAM REG</div></div></div>
+    </div>
+    <div class="wsz" style="text-align:center">~520 × 180</div>
+  </div>
+</div>
+
+<div class="su" style="margin-top:12px">Widgets Tester / Experimental</div>
+<div class="wg">
+  <!-- FUEL CALCULATOR -->
+  <div class="wc" style="width:340px"><div class="wt"><span class="wtn">Fuel Calculator</span><div class="wbd"><span class="wb t">TESTER</span><span class="wb q">DATA PARTIAL</span></div></div>
+    <div class="wbdy"><div class="gfb"><div class="fl" style="width:31%"></div></div>
+      <div class="gfg"><div class="gfc"><div class="gfv">0.9 L</div><div class="gfl2">AVG</div></div><div class="gfc"><div class="gfv">12.9</div><div class="gfl2">LAPS</div></div><div class="gfc"><div class="gfv" style="color:var(--accent)">+17.4</div><div class="gfl2">REFUEL</div></div></div>
+      <div class="wn">Mock — no live fuel telemetry yet</div>
+    </div>
+  </div>
+  <!-- TRACK WEATHER -->
+  <div class="wc" style="width:200px"><div class="wt"><span class="wtn">Track Weather</span><div class="wbd"><span class="wb t">TESTER</span><span class="wb n">DATA PENDING</span></div></div>
+    <div class="wbdy"><div class="gwe"><div class="gwb"><div class="fl" style="width:35%"></div></div><div class="tp">27°C</div><div class="wl">ASPHALT · RAIN 35%</div></div><div class="wn">Mock — LMU weather API pending</div></div>
+  </div>
+  <!-- CAR DAMAGE VISUAL -->
+  <div class="wc" style="width:170px"><div class="wt"><span class="wtn">Car Damage Visual</span><div class="wbd"><span class="wb t">TESTER</span><span class="wb n">DATA PENDING</span></div></div>
+    <div class="wbdy" style="display:flex;gap:10px;align-items:center;justify-content:center">
+      <div class="gdc2"><div class="gdt2" style="top:5px;left:-7px;background:#22c55e;box-shadow:0 0 6px #22c55e"></div><div class="gdt2" style="top:5px;right:-7px;background:#22c55e;box-shadow:0 0 6px #22c55e"></div><div class="gdt2" style="bottom:5px;left:-7px;background:#f59e0b;box-shadow:0 0 6px #f59e0b"></div><div class="gdt2" style="bottom:5px;right:-7px;background:#22c55e;box-shadow:0 0 6px #22c55e"></div></div>
+      <div style="font-family:var(--mono);font-size:14px;font-weight:900">94%</div>
+    </div>
+    <div class="wn" style="text-align:center">Mock — damage API pending</div>
+  </div>
+  <!-- HEAD 2 HEAD -->
+  <div class="wc" style="width:520px"><div class="wt"><span class="wtn">Head 2 Head</span><div class="wbd"><span class="wb t">TESTER</span><span class="wb n">DATA PENDING</span></div></div>
+    <div class="wbdy" style="padding:0"><div class="gh2h" style="border-radius:0;border:none">
+      <div class="gh2hb">H2H</div>
+      <div style="flex:1">
+        <div class="gh2hr"><div class="gh2hp">11</div><div class="gh2hn">Driver 01</div><div style="font-family:var(--mono);font-size:10px;color:#888;flex:1;text-align:center">S1 · S2 · S3</div><div class="gh2ht">01:23.990</div></div>
+        <div class="gh2hr" style="background:rgba(255,255,255,.04)"><div class="gh2hp" style="background:#ff2a3b;color:#fff">12</div><div class="gh2hn" style="color:#ff2a3b">Driver 23 (YOU)</div><div style="display:flex;gap:4px;flex:1;justify-content:center"><div style="background:rgba(34,197,94,.3);border:1px solid #22c55e;border-radius:3px;width:24px;height:20px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:800;color:#fff">0.0</div><div style="background:rgba(34,197,94,.3);border:1px solid #22c55e;border-radius:3px;width:24px;height:20px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:800;color:#fff">0.0</div><div style="background:rgba(239,68,68,.3);border:1px solid #ef4444;border-radius:3px;width:24px;height:20px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:800;color:#fff">0.1</div></div><div class="gh2ht" style="color:#22c55e">01:24.100</div></div>
+        <div class="gh2hr"><div class="gh2hp">13</div><div class="gh2hn">Driver 15</div><div style="font-family:var(--mono);font-size:10px;color:#888;flex:1;text-align:center">+0.1 · +0.2 · +0.0</div><div class="gh2ht">01:24.130</div></div>
+      </div>
+    </div></div>
+    <div class="wn" style="padding:0 10px 6px">Mock — H2H data pending</div>
+  </div>
+  <!-- DELTA TRACE -->
+  <div class="wc" style="width:680px"><div class="wt"><span class="wtn">Delta Trace / Corner Analysis</span><div class="wbd"><span class="wb e">EXPERIMENTAL</span><span class="wb n">DATA PENDING</span></div></div>
+    <div class="wbdy" style="padding:0"><div style="display:flex;gap:16px;padding:12px 16px;font-family:var(--sans)">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="display:flex;gap:8px;font-family:var(--mono);color:#fff;align-items:center"><span style="background:rgba(255,255,255,.08);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.1);font-size:11px;font-weight:700">SOF: 2K</span><span style="font-size:18px;font-weight:800">01:32.500</span></div><div style="display:flex;align-items:baseline"><span style="font-size:18px;font-weight:800;font-family:var(--mono);color:#22c55e;text-shadow:0 0 10px rgba(34,197,94,.5)">-0.428</span><span style="font-size:12px;color:#22c55e;margin-left:6px;font-weight:700">▲ -0.05/s</span></div></div>
+        <div style="height:80px;background:rgba(0,0,0,.25);border-radius:6px;border:1px solid rgba(255,255,255,.05);overflow:hidden;position:relative;margin-bottom:6px"><svg viewBox="0 0 600 80" width="100%" height="100%" preserveAspectRatio="none"><line x1="0" y1="40" x2="600" y2="40" stroke="rgba(255,255,255,.3)" stroke-width="1" stroke-dasharray="3 3"/><path d="M 0,40 L 5,40 L 10,65 L 50,65 Q 80,50 110,60 L 150,70 L 150,40 Z" fill="rgba(34,197,94,.3)"/><path d="M 0,40 L 5,40 L 10,65 L 50,65 Q 80,50 110,60 L 150,70" fill="none" stroke="#22c55e" stroke-width="2"/><line x1="150" y1="0" x2="150" y2="80" stroke="#fff" stroke-width="1.5" style="filter:drop-shadow(0 0 4px #fff)"/><circle cx="150" cy="70" r="3" fill="#fff" style="filter:drop-shadow(0 0 6px #22c55e)"/></svg></div>
+        <div style="display:flex;gap:3px;height:16px"><div style="flex:2;background:rgba(168,85,247,.3);border:1px solid #a855f7;border-radius:2px"></div><div style="flex:1;background:rgba(34,197,94,.25);border:1px solid #22c55e;border-radius:2px"></div><div style="flex:1;background:rgba(34,197,94,.25);border:1px solid #22c55e;border-radius:2px"></div><div style="flex:2;background:rgba(168,85,247,.3);border:1px solid #a855f7;border-radius:2px"></div><div style="flex:1;background:rgba(255,255,255,.06);border-radius:2px"></div><div style="flex:1;background:rgba(255,42,59,.3);border:1px solid #ff2a3b;border-radius:2px"></div></div>
+      </div>
+      <div style="width:160px;text-align:center;display:flex;flex-direction:column;justify-content:space-between;border-left:1px solid rgba(255,255,255,.08);padding-left:14px"><div><div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;font-weight:700;color:#bbb;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:4px;margin-bottom:4px"><span>APEX</span><span>REF: 70</span></div><div style="font-family:var(--disp);font-size:40px;font-weight:900;line-height:1;color:#fff;text-shadow:0 4px 10px rgba(0,0,0,.5)">T16</div></div><div style="font-family:var(--mono);font-size:10px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;padding:2px 4px;background:rgba(255,255,255,.04);border-radius:3px"><span style="color:#888">MIN SPD</span><span style="font-weight:800;color:#22c55e">184 km/h</span></div><div style="display:flex;justify-content:space-between;padding:2px 4px;background:rgba(255,255,255,.04);border-radius:3px"><span style="color:#888">BRK PT</span><span style="font-weight:800">85m</span></div></div></div>
+      <div style="width:120px;display:flex;align-items:center;justify-content:center;border-left:1px solid rgba(255,255,255,.08);padding-left:10px"><svg viewBox="0 0 100 80" width="100" height="80"><path d="M70,8 L60,8 Q55,8 55,18 L55,35 Q55,42 62,42 L95,42 Q100,42 100,50 L100,60 Q100,70 85,70 L8,70" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="6" stroke-linecap="round"/><path d="M100,50 L100,60 Q100,70 85,70 L40,70" fill="none" stroke="#ff2a3b" stroke-width="6" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(255,42,59,.8))"/></svg></div>
+    </div></div>
+    <div class="wn" style="padding:0 10px 6px">Experimental — sector data unstable</div>
+  </div>
+  <!-- RACING FLAGS -->
+  <div class="wc" style="width:260px"><div class="wt"><span class="wtn">Racing Flags</span><div class="wbd"><span class="wb t">TESTER</span><span class="wb q">DATA PARTIAL</span></div></div>
+    <div class="wbdy" style="display:flex;gap:8px"><div class="gfl gn" style="flex:1">GREEN FLAG</div><div class="gfl yw" style="flex:1">YELLOW FLAG</div></div>
+    <div class="wn" style="padding:0 10px 6px">Partial — flag state from LMU, no sector detail</div>
+  </div>
+  <!-- TELEMETRY BLADE -->
+  <div class="wc lk" style="width:400px"><div class="wt"><span class="wtn">Telemetry Blade</span><div class="wbd"><span class="wb p">PRO</span><span class="wb k">DATA OK</span></div></div>
+    <div class="wbdy" style="display:flex;align-items:center;gap:12px;justify-content:center;padding:10px">
+      <div style="font-family:var(--disp);font-size:32px;font-weight:900;color:#fff;line-height:1;text-shadow:0 0 12px rgba(255,255,255,.3)">6</div>
+      <div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:baseline;gap:4px"><span style="font-family:var(--mono);font-size:16px;font-weight:800;color:#22c55e">260</span><span style="font-size:9px;font-weight:800;color:var(--td)">KM/H</span></div><div style="display:flex;align-items:baseline;gap:4px"><span style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--accent)">6432</span><span style="font-size:9px;font-weight:800;color:var(--td)">RPM</span></div></div>
+    </div>
+    <div class="wsz" style="text-align:center">~400 × 70</div>
+  </div>
+</div>
+
+<!-- C: WIDGETSTUDIO EDITOR -->
+<div class="st"><span class="l">C</span> WidgetStudio Editor Reference</div>
+<div class="su">3-pane layout · WidgetStudio (apariencia) · NO LayoutStudio (posicion/tamano)</div>
+<div class="ew">
+  <div class="es">
+    <!-- LEFT: widget list (Racelab-inspired) -->
+    <div class="el">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(155,34,38,.12),rgba(102,0,26,.06))">
+        <div style="display:flex;align-items:center;gap:7px"><svg style="width:14px;height:14px;color:var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg><span style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Overlays</span></div>
+        <div style="display:flex;gap:5px"><div style="width:22px;height:22px;border-radius:5px;background:rgba(255,59,59,.12);border:1px solid rgba(255,59,59,.25);display:flex;align-items:center;justify-content:center"><svg style="width:11px;height:11px;color:var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg></div><div style="width:22px;height:22px;border-radius:5px;background:rgba(255,255,255,.04);border:1px solid var(--line);display:flex;align-items:center;justify-content:center"><svg style="width:11px;height:11px;color:var(--accent)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div></div>
+      </div>
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border)"><div style="position:relative"><svg style="width:11px;height:11px;position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Buscar overlay..." style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:5px 8px 5px 24px;font-size:10px;color:var(--ink);font-family:var(--sans);outline:none"></div></div>
+      <div style="flex:1;overflow-y:auto;padding:4px 6px">
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span style="flex:1">Standings</span><svg style="width:9px;height:9px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg><span style="flex:1">Delta</span><svg style="width:9px;height:9px;color:var(--accent)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg><span style="flex:1">Pedals</span></div>
+        <div class="li act"><svg style="width:13px;height:13px;color:var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span style="flex:1;font-weight:600;color:var(--ink)">Relative</span><svg style="width:9px;height:9px;color:var(--accent)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg><span style="flex:1">Broadcast Tower</span><svg style="width:9px;height:9px;color:var(--accent)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span style="flex:1">Multiclass Relative</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><span style="flex:1">Race Schedule</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z"/></svg><span style="flex:1">Telemetry Blade</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg><span style="flex:1">Fuel Calculator</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg><span style="flex:1">Track Weather</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg><span style="flex:1">Car Damage</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg><span style="flex:1">Head 2 Head</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span style="flex:1">Delta Trace</span></div>
+        <div class="li"><svg style="width:13px;height:13px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z"/></svg><span style="flex:1">Racing Flags</span></div>
+      </div>
+      <div style="padding:8px 12px;border-top:1px solid var(--border);font-size:9px;font-family:var(--mono);color:var(--td);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px"><div style="width:5px;height:5px;border-radius:50%;background:#22c55e"></div>LMU Conectado</div>
+    </div>
+    <!-- CENTER: canvas -->
+    <div class="ec">
+      <div class="ci"><div class="ch"><svg style="width:11px;height:11px;color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>1920×1080</div><div class="ch"><div class="ld"></div>Modo Edición</div></div>
+      <div style="background:rgba(18,18,22,.9);border:1px solid rgba(255,255,255,.1);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.7);width:420px;overflow:hidden">
+        <div class="gh"><div class="gt"><svg viewBox="0 0 100 90" fill="none" style="height:15px;filter:drop-shadow(0 0 5px rgba(230,57,70,.5))"><defs><linearGradient id="v3" x1="0%" y1="100%" x2="50%" y2="0%"><stop offset="0%" stop-color="#b3121f"/><stop offset="50%" stop-color="#e63946"/><stop offset="100%" stop-color="#ff4d5a"/></linearGradient></defs><path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#v3)"/></svg> VANTARE</div><span class="gp"><span style="color:#ff2a3b">●</span> RELATIVE</span></div>
+        <div class="grel gth"><div class="gc2">POS</div><div></div><div class="gc2">#</div><div class="gl">PILOTO</div><div class="gr2">GAP</div><div class="gr2">BEST</div></div>
+        <div><div class="grel gr"><div class="gc2 gp2">3</div><div class="gb hc"></div><div class="gc2"><span class="gn" style="background:#cc0000;color:#fff">50</span></div><div class="gl">Driver 01</div><div class="gr2" style="color:#ff4d4d">+3.450</div><div class="gr2" style="color:#aaa">3:26.110</div></div><div class="grel gr hl"><div class="gc2 gp2" style="color:#fff">4</div><div class="gb hc"></div><div class="gc2"><span class="gn" style="background:#ff2a3b;color:#fff;box-shadow:0 0 8px rgba(255,42,59,.6)">51</span></div><div class="gl" style="color:#fff;font-weight:700">Driver 23 (YOU)</div><div class="gr2" style="color:#fff">—</div><div class="gr2" style="color:#fff;font-weight:700">3:25.400</div></div><div class="grel gr"><div class="gc2 gp2">5</div><div class="gb hc"></div><div class="gc2"><span class="gn" style="background:#006600;color:#fff">6</span></div><div class="gl">Driver 08</div><div class="gr2" style="color:#34d399">-0.850</div><div class="gr2" style="color:#aaa">3:27.010</div></div></div>
+        <div class="gf"><span><strong style="color:var(--accent)">●</strong> LIVE TIMING</span><span>SOF: 2,450</span></div>
+      </div>
+      <div style="position:absolute;bottom:44px;right:calc(50% - 200px);width:10px;height:10px;border-right:2px solid rgba(255,255,255,.15);border-bottom:2px solid rgba(255,255,255,.15);cursor:se-resize"></div>
+    </div>
+    <!-- RIGHT: overlay controls (Racelab-inspired) -->
+    <div class="er">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:2"><span style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)">Overlay Controls</span><div style="width:20px;height:20px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:default;font-size:10px;color:var(--td)">−</div></div>
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border)"><div style="background:rgba(18,18,22,.9);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:48px;height:36px;border-radius:4px;background:linear-gradient(135deg,rgba(255,42,59,.2),rgba(0,0,0,.5));border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;color:var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div><div><div style="font-size:11px;font-weight:700">Relative</div><div style="font-size:9px;font-weight:700;color:var(--accent)">PRO OVERLAY</div></div></div></div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border)"><div style="position:relative"><svg style="width:11px;height:11px;position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--td)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Type to filter settings..." style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:6px 8px 6px 24px;font-size:10px;color:var(--ink);font-family:var(--sans);outline:none"></div></div>
+      <div style="flex:1;overflow-y:auto">
+        <div class="esh"><div class="esi">Overview <span class="chv">−</span></div><div class="esb"><button style="width:100%;background:linear-gradient(135deg,#b45309,#92400e);border:1px solid rgba(245,158,11,.3);color:#fff;font-size:10px;font-weight:700;padding:8px;border-radius:6px;cursor:default;display:flex;align-items:center;justify-content:center;gap:5px">⚡ Getting started</button></div></div>
+        <div class="esh"><div class="esi">Appearance <span class="chv">+</span></div></div>
+        <div class="esh"><div class="esi">Visibility <span class="chv">+</span></div></div>
+        <div class="esh"><div class="esi">Settings <span class="chv">+</span></div></div>
+        <div class="esh"><div class="esi">Slots (4) <span class="chv">▾</span></div><div class="esb">
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1"><div style="font-weight:600">Header stat</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">trackTemp · allow: trackTemp, sessionTime</div></div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1"><div style="font-weight:600">Footer stat</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">sessionTime · allow: sessionTime, sof</div></div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1"><div style="font-weight:600">Player badge</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">driverClass · allow: class, team</div></div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;font-size:10px;opacity:.45"><div class="etr sm"></div><div style="flex:1"><div style="font-weight:600">Target delta 🔒</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">Pro only</div></div></div>
+          <div class="en">Slots = bloques aislados. Drag/drop = future.</div>
+        </div></div>
+        <div class="esh"><div class="esi">Columns (7) <span class="chv">▾</span></div><div class="esb">
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Position</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">24px</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Car #</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">30px</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Driver</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">1fr</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Class</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">36px</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Gap</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">60px</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Last lap</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">60px</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:600">Best lap</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">60px</div></div>
+          <div class="en w">Column width is internal, not layout width.</div>
+        </div></div>
+        <div class="esh"><div class="esi">Column Groups (3) <span class="chv">▾</span></div><div class="esb">
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:700">Hypercar</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">12</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;font-size:10px"><div class="etr sm on"></div><div style="flex:1;font-weight:700">LMP2</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">8</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;font-size:10px;opacity:.45"><div class="etr sm"></div><div style="flex:1;font-weight:700">LMGT3</div><div style="font-family:var(--mono);font-size:8px;color:var(--td)">6</div></div>
+        </div></div>
+        <div class="esh"><div class="esi">Alignment <span class="chv">+</span></div></div>
+        <div class="esh"><div class="esi">Browser <span class="chv">+</span></div></div>
+        <div class="esh"><div class="esi">Key &amp; Button Bindings <span class="chv">+</span></div></div>
+      </div>
+    </div>
+    <!-- BOTTOM BAR -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:36px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:10">
+      <div style="display:flex;align-items:center;gap:5px;font-size:8px;font-family:var(--mono);color:var(--td);text-transform:uppercase;letter-spacing:.08em"><div style="width:4px;height:4px;border-radius:50%;background:#3b82f6"></div>Workspace: Activo</div>
+      <div style="display:flex;gap:5px"><div style="padding:3px 8px;border:1px solid var(--border);background:var(--panel);color:var(--ink);font-size:8px;font-weight:700;border-radius:4px;cursor:default;text-transform:uppercase;letter-spacing:.06em">Vista Navegador</div><div style="padding:3px 8px;background:linear-gradient(135deg,#9B2226,#66001A);color:#fff;font-size:8px;font-weight:700;border-radius:4px;cursor:default;text-transform:uppercase;letter-spacing:.06em">Copiar URL</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- D: IMPLEMENTATION MATRIX -->
+<div class="st"><span class="l">D</span> Implementation Matrix</div>
+<div class="mw">
+  <table class="mt">
+    <thead><tr><th>Widget</th><th>Tipo</th><th>Access</th><th>Data</th><th>Model</th><th>Now</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="wn2">Standings</td><td><span class="tb ex">existing</span></td><td><span class="tb fr">Free</span></td><td><span class="tb ok">OK</span></td><td class="md">columns</td><td class="iy">yes</td><td class="nt">Tabular, columnas configurables</td></tr>
+      <tr><td class="wn2">Delta</td><td><span class="tb ex">existing</span></td><td><span class="tb fr">Free</span></td><td><span class="tb ok">OK</span></td><td class="md">slots</td><td class="iy">yes</td><td class="nt">Barra predictiva, fill host</td></tr>
+      <tr><td class="wn2">Pedals</td><td><span class="tb ex">existing</span></td><td><span class="tb fr">Free</span></td><td><span class="tb ok">OK</span></td><td class="md">slots</td><td class="iy">yes</td><td class="nt">THR/BRK/CLU, transparente</td></tr>
+      <tr><td class="wn2">Relative</td><td><span class="tb ex">existing</span></td><td><span class="tb pr">Pro</span></td><td><span class="tb ok">OK</span></td><td class="md">columns</td><td class="iy">yes</td><td class="nt">Beta validador del sistema</td></tr>
+      <tr><td class="wn2">Broadcast Tower</td><td><span class="tb ex">existing</span></td><td><span class="tb pr">Pro</span></td><td><span class="tb ok">OK</span></td><td class="md">slots</td><td class="iy">yes</td><td class="nt">Horizontal ticker</td></tr>
+      <tr><td class="wn2">Multiclass Relative</td><td><span class="tb ex">existing</span></td><td><span class="tb pr">Pro</span></td><td><span class="tb ok">OK</span></td><td class="md">mixed</td><td class="iy">yes</td><td class="nt">Columnas + class badge</td></tr>
+      <tr><td class="wn2">Race Schedule</td><td><span class="tb ex">existing</span></td><td><span class="tb pr">Pro</span></td><td><span class="tb pa">Partial</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">Proximos eventos, data parcial</td></tr>
+      <tr><td class="wn2">Telemetry Blade</td><td><span class="tb ex">existing</span></td><td><span class="tb pr">Pro</span></td><td><span class="tb ok">OK</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">Gear/speed/RPM</td></tr>
+      <tr><td class="wn2">Fuel Calculator</td><td><span class="tb nw">new</span></td><td><span class="tb te">Tester</span></td><td><span class="tb pa">Partial</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">Fuel data via LMU no confirmada</td></tr>
+      <tr><td class="wn2">Track Weather</td><td><span class="tb nw">new</span></td><td><span class="tb te">Tester</span></td><td><span class="tb pe">Pending</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">Weather API pendiente</td></tr>
+      <tr><td class="wn2">Car Damage Visual</td><td><span class="tb nw">new</span></td><td><span class="tb te">Tester</span></td><td><span class="tb pe">Pending</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">Damage API pendiente</td></tr>
+      <tr><td class="wn2">Head 2 Head</td><td><span class="tb nw">new</span></td><td><span class="tb te">Tester</span></td><td><span class="tb pe">Pending</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">H2H data pendiente</td></tr>
+      <tr><td class="wn2">Delta Trace</td><td><span class="tb nw">new</span></td><td><span class="tb te">Tester</span></td><td><span class="tb pe">Pending</span></td><td class="md">mixed</td><td class="ino">no</td><td class="nt">Corner analysis experimental</td></tr>
+      <tr><td class="wn2">Racing Flags</td><td><span class="tb nw">new</span></td><td><span class="tb te">Tester</span></td><td><span class="tb pa">Partial</span></td><td class="md">slots</td><td class="ino">no</td><td class="nt">Flag state, sin sector detail</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer class="pf">
+  Vantare Crystal — HTML visual reference only. No production data. No live API calls. All mock data clearly marked.
+</footer>
+
+</body>
+</html>

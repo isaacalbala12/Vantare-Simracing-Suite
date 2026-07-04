@@ -406,4 +406,28 @@ describe("CompositeApp", () => {
     tick(100);
     expect(runtimeMock.emit).toHaveBeenCalledWith("layout:save", expect.any(Object));
   });
+
+  it("does not render widgets that are not runtime-ready in the catalog", () => {
+    render(<CompositeApp />);
+    dispatch("profile:loaded", {
+      profile: {
+        id: "runtime-test",
+        displayMode: "racing",
+        widgets: [
+          {
+            id: "broadcast-tower-1",
+            type: "broadcast-tower",
+            enabled: true,
+            updateHz: 15,
+            position: { x: 0, y: 0, w: 300, h: 100 },
+          },
+        ],
+      },
+      layoutOrigin: { x: 0, y: 0 },
+      windowMode: "racing",
+    });
+    tick(100);
+    // broadcast-tower has runtimeReady:false in catalog — must not render
+    expect(screen.queryByTestId("broadcast-tower-widget")).toBeNull();
+  });
 });

@@ -29,6 +29,7 @@ export function WidgetStudio({
 }: WidgetStudioProps) {
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile.widgets[0] ?? null;
   const [mockSessionScenario, setMockSessionScenario] = useState<MockSessionScenario>("race");
+  const [themeId, setThemeId] = useState<string>("base");
 
   const saveLabel =
     saveState === "saving"
@@ -91,6 +92,23 @@ export function WidgetStudio({
             Guardar
           </button>
         </div>
+      </div>
+      <div className="flex flex-none items-center gap-2 border-b border-white/5 px-3 py-2" data-testid="design-system-selector">
+        <label
+          htmlFor="design-system-select"
+          className="font-mono text-[10px] font-bold uppercase tracking-widest text-vantare-textDim"
+        >
+          Theme
+        </label>
+        <select
+          id="design-system-select"
+          value={themeId}
+          onChange={(e) => setThemeId(e.target.value)}
+          className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] text-white cursor-pointer"
+        >
+          <option value="base">Base</option>
+          <option value="vantare-crystal">Vantare Crystal</option>
+        </select>
       </div>
 
       <div

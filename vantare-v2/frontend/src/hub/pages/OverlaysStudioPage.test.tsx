@@ -20,6 +20,15 @@ vi.mock("@wailsio/runtime", () => ({
     Emit: vi.fn(),
   },
 }));
+vi.mock("../../lib/access", () => ({
+  useAccess: () => ({
+    planLabel: "free",
+    planStatus: "free",
+    roles: [],
+    isBlocked: false,
+    isUnconfigured: false,
+  }),
+}));
 
 function dispatch(name: string, data: unknown) {
   for (const handler of listeners.get(name) ?? []) {

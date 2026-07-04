@@ -14,6 +14,7 @@ import {
   resetTelemetryRef,
 } from "../lib/telemetry-ref";
 import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
+import { isRuntimeReadyWidget } from "../hub/overlays/widget-catalog";
 import { WidgetHost } from "./WidgetHost";
 import { WidgetEditFrame } from "./WidgetEditFrame";
 import { enrichWidgetPropsWithVariant } from "../lib/widget-variants";
@@ -24,6 +25,8 @@ import { TelemetryWidget } from "./widgets/TelemetryWidget";
 import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
 import { PedalsWidget } from "./widgets/PedalsWidget";
 import { EngineerNotificationsWidget } from "./widgets/EngineerNotificationsWidget";
+import { BroadcastTowerWidget } from "./widgets/BroadcastTowerWidget";
+import { MulticlassRelativeWidget } from "./widgets/MulticlassRelativeWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
@@ -38,6 +41,8 @@ const WIDGETS: Record<string, ComponentType<{ editMode: boolean; telemetryMode?:
   "telemetry-vertical": TelemetryVerticalWidget,
   pedals: PedalsWidget,
   "engineer-notifications": EngineerNotificationsWidget,
+  "broadcast-tower": BroadcastTowerWidget,
+  "multiclass-relative": MulticlassRelativeWidget,
 };
 
 export function CompositeApp() {
@@ -154,11 +159,13 @@ export function CompositeApp() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {editMode
-        ? widgets.map((w) => {
+        ? widgets.filter((w) => isRuntimeReadyWidget(w.type)).map((w) => {
             const enrichedWidget = { ...w, props: { ...enrichWidgetPropsWithVariant(profile, w) } };
             return <WidgetEditFrame key={w.id} widget={enrichedWidget} onChange={handleChange} />;
           })
-        : (telemetryState ? widgets.filter((w) => isWidgetVisible(w, telemetryState)) : widgets).map((w) => {
+        : (telemetryState ? widgets.filter((w) => isWidgetVisible(w, telemetryState)) : widgets)
+            .filter((w) => isRuntimeReadyWidget(w.type))
+            .map((w) => {
             const Component = WIDGETS[w.type];
             if (!Component) {
               console.warn(`unknown widget type: ${w.type}`);

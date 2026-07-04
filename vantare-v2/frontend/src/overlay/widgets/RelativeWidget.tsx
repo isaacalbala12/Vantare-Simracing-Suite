@@ -3,6 +3,7 @@ import { getTelemetryRef } from "../../lib/telemetry-ref";
 import { getMockTelemetry } from "./mock-telemetry";
 import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
+import { resolveWidgetDesignSystem } from "./widget-design-system";
 import { setHTMLIfChanged } from "../../lib/dom-write";
 import { escapeHTML } from "../../lib/html-escape";
 import { brandTextColor } from "../../lib/color-utils";
@@ -53,6 +54,10 @@ const GLASS_HEADER_BG = "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, tran
 const GLASS_CLASS_BG = "rgba(0,0,0,0.45)";
 const GLASS_PLAYER_BG = "linear-gradient(90deg, rgba(255,42,59,0.22) 0%, rgba(230,57,70,0.05) 100%)";
 const COMPACT_ROW_HEIGHT = 31;
+const CRYSTAL_PANEL_BG = "rgba(20,20,20,0.55)";
+const CRYSTAL_HEADER_BG = "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)";
+const CRYSTAL_CLASS_BG = "rgba(0,0,0,0.35)";
+const CRYSTAL_PLAYER_BG = "linear-gradient(90deg, rgba(255,42,59,0.22), rgba(230,57,70,0.05))";
 
 export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }: RelativeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,6 +71,8 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
   const lastFingerprintRef = useRef("");
   const { style, appearance: a } = resolveWidgetAppearance("relative", props);
   const isGlass = style === "glassmorphism-pro";
+  const isCrystal = style === "vantare-crystal";
+  const ds = resolveWidgetDesignSystem(isCrystal ? "vantare-crystal" : undefined);
 
   useEffect(() => {
     return startFrameBudgetLoop(updateHz, () => {
@@ -97,7 +104,9 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
 
       const rows = visible.map((v, idx) => {
         const isP = v.isPlayer;
-        const bgRow = isGlass
+        const bgRow = isCrystal
+          ? idx % 2 === 0 ? ds.surfaces.rowEven : ds.surfaces.rowOdd
+          : isGlass
           ? idx % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.25)"
           : idx % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
 
@@ -167,21 +176,21 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
           ? `width:${intrinsicWidth}px`
           : `min-width:${intrinsicWidth}px;width:max(100%, ${intrinsicWidth}px)`;
 
-        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="${rowWidthStyle};height:${rowHeight}px;background:${isP ? (isGlass ? GLASS_PLAYER_BG : BAKED_PLAYER_BG) : bgRow};${leftInset}">
+        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="${rowWidthStyle};height:${rowHeight}px;background:${isP ? (isCrystal ? CRYSTAL_PLAYER_BG : isGlass ? GLASS_PLAYER_BG : BAKED_PLAYER_BG) : bgRow};${leftInset}">
           ${cells}
         </div>`;
       });
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode, updateHz, editMode, telemetryMode, props, a, activeColumns, intrinsicWidth, intrinsicOnly, isGlass]);
+  }, [rangeAhead, rangeBehind, classScope, includePlayer, rowHeightMode, updateHz, editMode, telemetryMode, props, a, activeColumns, intrinsicWidth, intrinsicOnly, isGlass, isCrystal, ds]);
 
   const compactRows = rowHeightMode === "compact";
   const intrinsicRoot = intrinsicOnly || compactRows;
 
-  const panelBg = isGlass ? GLASS_PANEL_BG : BAKED_PANEL_BG;
-  const headerBg = isGlass ? GLASS_HEADER_BG : BAKED_HEADER_BG;
-  const classBg = isGlass ? GLASS_CLASS_BG : BAKED_CLASS_BG;
+  const panelBg = isCrystal ? CRYSTAL_PANEL_BG : isGlass ? GLASS_PANEL_BG : BAKED_PANEL_BG;
+  const headerBg = isCrystal ? CRYSTAL_HEADER_BG : isGlass ? GLASS_HEADER_BG : BAKED_HEADER_BG;
+  const classBg = isCrystal ? CRYSTAL_CLASS_BG : isGlass ? GLASS_CLASS_BG : BAKED_CLASS_BG;
 
   return (
     <div
@@ -193,14 +202,14 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
         border: `1px solid ${a.borderColor}`,
         color: a.textColor,
         opacity: a.opacity,
-        borderRadius: isGlass ? 16 : 8,
-        backdropFilter: isGlass ? "blur(24px)" : undefined,
-        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : "0 10px 40px rgba(0,0,0,0.8)",
+        borderRadius: isCrystal || isGlass ? ds.radius.lg : 8,
+        backdropFilter: isCrystal || isGlass ? "blur(24px)" : undefined,
+        boxShadow: isCrystal ? ds.glow.accent : isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : "0 10px 40px rgba(0,0,0,0.8)",
       }}
     >
       <div
         className="pt-2 pb-1 flex flex-col items-center"
-        style={{ background: headerBg, borderBottom: isGlass ? "1px solid rgba(255,255,255,0.06)" : "2px solid #1a0104" }}
+        style={{ background: headerBg, borderBottom: isCrystal ? `1px solid ${ds.colors.border}` : isGlass ? "1px solid rgba(255,255,255,0.06)" : "2px solid #1a0104" }}
       >
         <div className="text-xl font-black italic tracking-widest mb-0.5 text-white">VANTARE</div>
       </div>

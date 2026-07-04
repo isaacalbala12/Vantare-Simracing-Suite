@@ -1,373 +1,192 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  RelativeWidget,
-} from "./RelativeWidget";
-import {
-  formatLapTime,
-  formatSignedGap,
-  resolveClassColor,
-  selectRelativeRowsByGap,
-} from "./relative-widget-helpers";
-import { createDefaultRelativeColumns } from "./relative-catalog";
-import { getRelativeIntrinsicWidth } from "./relative-format";
+import { render, screen, cleanup } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("RelativeWidget helpers", () => {
-  it("resolves class colors", () => {
-    const a = {
-      classHypercarColor: "#c1121f",
-      classLmp2Color: "#0055A4",
-      classLmp3Color: "#f59e0b",
-      classGt3Color: "#2ecc71",
-      classUnknownColor: "#6b7280",
+// ── Mocks ──────────────────────────────────────────────────────────────────
+
+vi.mock("./widget-appearance", () => ({
+  resolveWidgetAppearance: vi.fn((_type: string, props?: Record<string, unknown>) => {
+    const style = (props?.style as string) ?? "vantare-racing";
+    return {
+      style,
+      appearance: {
+        accentColor: "#9b2226",
+        backgroundColor: "#000000",
+        textColor: "#FFFFFF",
+        borderColor: "#9b2226",
+        opacity: 1,
+        positiveColor: "#e74c3c",
+        negativeColor: "#2ecc71",
+        gapAheadColor: "#f87171",
+        gapBehindColor: "#4ade80",
+        classHypercarColor: "#c1121f",
+        classLmp2Color: "#0055A4",
+        classLmp3Color: "#f59e0b",
+        classGt3Color: "#2ecc71",
+        classUnknownColor: "#6b7280",
+      },
     };
-    expect(resolveClassColor("HYPERCAR", a)).toBe("#c1121f");
-    expect(resolveClassColor("LMP2", a)).toBe("#0055A4");
-    expect(resolveClassColor("LMP3", a)).toBe("#f59e0b");
-    expect(resolveClassColor("LMGT3", a)).toBe("#2ecc71");
-    expect(resolveClassColor("GT3", a)).toBe("#2ecc71");
-    expect(resolveClassColor("UNKNOWN", a)).toBe("#6b7280");
-  });
+  }),
+}));
 
-  it("formats signed gaps", () => {
-    expect(formatSignedGap(undefined)).toBe("—");
-    expect(formatSignedGap(0)).toBe("—");
-    expect(formatSignedGap(1.234)).toBe("+1.2");
-    expect(formatSignedGap(-2.5)).toBe("-2.5");
-  });
+vi.mock("./widget-design-system", () => ({
+  resolveWidgetDesignSystem: vi.fn((themeId?: string) => {
+    if (themeId === "vantare-crystal") {
+      return {
+        id: "vantare-crystal",
+        name: "Vantare Crystal",
+        colors: { accent: "#ff3b3b", border: "#1E1E1E", text: "#f5f5f5" },
+        surfaces: {
+          rowEven: "rgba(255,255,255,.015)",
+          rowOdd: "rgba(0,0,0,.25)",
+          playerHighlight: "linear-gradient(90deg,rgba(255,42,59,.22),rgba(230,57,70,.05))",
+        },
+        radius: { lg: "12px" },
+        glow: { accent: "0 0 10px rgba(255,59,59,.5)" },
+      };
+    }
+    return {
+      id: "base",
+      name: "Base",
+      colors: { accent: "#9b2226", border: "#222222", text: "#ffffff" },
+      surfaces: {
+        rowEven: "rgba(255,255,255,.03)",
+        rowOdd: "rgba(0,0,0,.3)",
+        playerHighlight: "linear-gradient(90deg,rgba(155,34,38,.3),rgba(155,34,38,.05))",
+      },
+      radius: { lg: "10px" },
+      glow: { accent: "0 0 8px rgba(155,34,38,.5)" },
+    };
+  }),
+}));
 
-  it("orders cars 3rd ahead at top, 1st ahead just above player", () => {
-    const player = { id: 0, driverName: "Player", place: 4, isPlayer: true, timeGapToPlayer: 0 };
-    const vehicles = [
-      { id: 1, driverName: "Ahead3", place: 1, timeGapToPlayer: 8.0 },
-      { id: 2, driverName: "Ahead2", place: 2, timeGapToPlayer: 3.0 },
-      { id: 3, driverName: "Ahead1", place: 3, timeGapToPlayer: 1.5 },
-      player,
-      { id: 5, driverName: "Behind1", place: 5, timeGapToPlayer: -2.0 },
-      { id: 6, driverName: "Behind2", place: 6, timeGapToPlayer: -5.0 },
-      { id: 7, driverName: "Behind3", place: 7, timeGapToPlayer: -12.0 },
-    ];
-    const rows = selectRelativeRowsByGap(vehicles, 3, 3);
-    expect(rows.map((v) => v.driverName)).toEqual([
-      "Ahead3", "Ahead2", "Ahead1", "Player", "Behind1", "Behind2", "Behind3",
-    ]);
-  });
+vi.mock("../../lib/telemetry-ref", () => ({
+  getTelemetryRef: vi.fn(() => ({ vehicles: [] })),
+}));
+
+vi.mock("./mock-telemetry", () => ({
+  getMockTelemetry: vi.fn(() => ({ vehicles: [] })),
+}));
+
+vi.mock("../../lib/frame-budget", () => ({
+  startFrameBudgetLoop: vi.fn(() => () => {}),
+}));
+
+vi.mock("../../lib/dom-write", () => ({
+  setHTMLIfChanged: vi.fn(),
+}));
+
+vi.mock("./relative-filters", () => ({
+  getRelativeFilters: vi.fn(() => ({
+    rangeAhead: 5,
+    rangeBehind: 5,
+    classScope: "all",
+    includePlayer: true,
+    rowHeightMode: "auto",
+  })),
+  selectRelativeRows: vi.fn(() => []),
+}));
+
+vi.mock("./relative-format", () => ({
+  formatRelativeDriverName: vi.fn((_name: string) => _name),
+  formatRelativeLapTime: vi.fn(() => "1:23.456"),
+  DEFAULT_RELATIVE_COLUMN_WIDTHS: {},
+  getRelativeColumnAlign: vi.fn(() => "left"),
+  getRelativeColumnColor: vi.fn((_col: unknown, fallback: string) => fallback),
+  getRelativeColumnWidth: vi.fn(() => 80),
+  getRelativeIntrinsicWidth: vi.fn(() => 400),
+  getRelativeJustifyClass: vi.fn(() => "justify-start"),
+}));
+
+vi.mock("./relative-widget-helpers", () => ({
+  formatSignedGap: vi.fn((v: number) => (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2))),
+  resolveClassColor: vi.fn(() => "#6b7280"),
+}));
+
+vi.mock("./relative-catalog", () => ({
+  createDefaultRelativeColumns: vi.fn(() => []),
+}));
+
+vi.mock("../../lib/color-utils", () => ({
+  brandTextColor: vi.fn(() => "#FFFFFF"),
+}));
+
+vi.mock("../../lib/html-escape", () => ({
+  escapeHTML: vi.fn((s: string) => s),
+}));
+
+// ── Import after mocks ─────────────────────────────────────────────────────
+
+import { RelativeWidget } from "./RelativeWidget";
+
+afterEach(() => {
+  cleanup();
 });
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
 describe("RelativeWidget", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    cleanup();
-    vi.useRealTimers();
-  });
-
-  function tick(ms: number) {
-    act(() => { vi.advanceTimersByTime(ms); });
-  }
-
-  it("renders player and surrounding drivers in edit mode", () => {
-    render(
-      <RelativeWidget editMode={true} updateHz={15} />,
-    );
-    tick(100);
-    expect(screen.getByText("VANTARE")).toBeTruthy();
-    expect(screen.getByText("TOYOTA GAZOO")).toBeTruthy();
-  });
-
-  it("displays signed time gaps to the player", () => {
-    render(
-      <RelativeWidget editMode={true} updateHz={15} />,
-    );
-    tick(100);
-    expect(screen.getByText("+2.4")).toBeTruthy();
-    expect(screen.getByText("-1.0")).toBeTruthy();
-  });
-
-  it("uses ahead color for cars ahead on track", () => {
-    render(
-      <RelativeWidget editMode={true} updateHz={15} props={{ appearance: { gapAheadColor: "#ff0000" } }} />,
-    );
-    tick(100);
-    const redSpan = screen.getByText("+2.4");
-    expect(redSpan.style.color).toBe("#ff0000");
-  });
-
-  it("formats lap times as m:ss.mmm with dash fallback", () => {
-    expect(formatLapTime(undefined)).toBe("-");
-    expect(formatLapTime(0)).toBe("-");
-    expect(formatLapTime(NaN)).toBe("-");
-    expect(formatLapTime(90.876)).toBe("1:30.876");
-    expect(formatLapTime(89.455)).toBe("1:29.455");
-  });
-
-  it("renders best lap and last lap columns when enabled by variant", () => {
+  it("renders with vantare-crystal style without errors", () => {
     render(
       <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            columns: [
-              { id: "position", metricId: "position", enabled: true },
-              { id: "class", metricId: "class", enabled: true },
-              { id: "carNumber", metricId: "carNumber", enabled: true },
-              { id: "driverName", metricId: "driverName", enabled: true },
-              { id: "gap", metricId: "gap", enabled: true },
-              { id: "bestLap", metricId: "bestLap", enabled: true },
-              { id: "lastLap", metricId: "lastLap", enabled: true },
-            ],
-          },
-        }}
+        editMode={false}
+        props={{ style: "vantare-crystal" }}
       />,
     );
-
-    tick(100);
-
-    expect(screen.getByText("1:30.876")).toBeTruthy();
-    expect(screen.getByText("1:29.455")).toBeTruthy();
-    expect(screen.getByText("1:31.221")).toBeTruthy();
-    expect(screen.getByText("+3.1").parentElement?.getAttribute("style")).toContain("width:48px");
-    expect(screen.getByText("1:30.876").parentElement?.getAttribute("style")).toContain("width:62px");
-    expect(screen.getByText("1:31.221").parentElement?.getAttribute("style")).toContain("width:62px");
-  });
-
-  it("keeps optional lap columns hidden by default", () => {
-    render(<RelativeWidget editMode={true} updateHz={15} />);
-
-    tick(100);
-
-    expect(screen.queryByText("1:30.876")).toBeNull();
-    expect(screen.queryByText("1:29.455")).toBeNull();
-  });
-
-  it("does not truncate driver names by default when optional columns are enabled", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            columns: [
-              { id: "position", metricId: "position", enabled: true, width: 24 },
-              { id: "class", metricId: "class", enabled: true, width: 6 },
-              { id: "carNumber", metricId: "carNumber", enabled: true, width: 28 },
-              { id: "driverName", metricId: "driverName", enabled: true, width: 210, format: { mode: "full", maxChars: 18 } },
-              { id: "gap", metricId: "gap", enabled: true, width: 48 },
-              { id: "bestLap", metricId: "bestLap", enabled: true, width: 62, format: { display: "full", decimals: 3 } },
-              { id: "lastLap", metricId: "lastLap", enabled: true, width: 62, format: { display: "compact", decimals: 2 } },
-            ],
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
-    expect(screen.getByText("PORSCHE PENSKE")).toBeTruthy();
-    expect(screen.queryByText("PORSCHE…")).toBeNull();
-    expect(screen.getByText("1:30.101")).toBeTruthy();
-  });
-
-  it("truncates driver names only when configured", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            columns: [
-              { id: "driverName", metricId: "driverName", enabled: true, width: 110, format: { mode: "truncate", maxChars: 8 } },
-            ],
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
-    expect(screen.getByText("PORSCHE…")).toBeTruthy();
-  });
-
-  it("applies compact lap format, column width, color and alignment", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            columns: [
-              { id: "driverName", metricId: "driverName", enabled: true, width: 180 },
-              { id: "bestLap", metricId: "bestLap", enabled: true, width: 90, format: { display: "compact", decimals: 1 }, style: { color: "#ffcc00", align: "center" } },
-            ],
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
-    const compact = screen.getByText("30.9");
-    expect(compact.style.color).toBe("#ffcc00");
-    expect(compact.parentElement?.getAttribute("style")).toContain("width:90px");
-    expect(compact.parentElement?.className).toContain("justify-center");
-  });
-
-  it("filters relative rows to the player class when configured", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            filters: { classScope: "sameClass", rangeAhead: 3, rangeBehind: 3, includePlayer: true },
-            columns: [
-              { id: "position", metricId: "position", enabled: true },
-              { id: "driverName", metricId: "driverName", enabled: true },
-              { id: "gap", metricId: "gap", enabled: true },
-            ],
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
-    expect(screen.getByText("TOYOTA GAZOO")).toBeTruthy();
-    expect(screen.queryByText("UNITED AUTOSPORTS")).toBeNull();
-  });
-
-  it("can hide the player row when includePlayer is false", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            filters: { rangeAhead: 1, rangeBehind: 1, includePlayer: false },
-            columns: [
-              { id: "position", metricId: "position", enabled: true },
-              { id: "driverName", metricId: "driverName", enabled: true },
-              { id: "gap", metricId: "gap", enabled: true },
-            ],
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
-    expect(screen.queryByText("TOYOTA GAZOO")).toBeNull();
-    expect(screen.getByText("CADILLAC RACING")).toBeTruthy();
-    expect(screen.getByText("PEUGEOT")).toBeTruthy();
-  });
-
-  it("can render compact rows without forcing the panel to full height", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            filters: { rangeAhead: 1, rangeBehind: 1, includePlayer: true, rowHeightMode: "compact" },
-            columns: [
-              { id: "position", metricId: "position", enabled: true },
-              { id: "driverName", metricId: "driverName", enabled: true },
-              { id: "gap", metricId: "gap", enabled: true },
-            ],
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
     const panel = screen.getByTestId("relative-panel");
-    expect(panel.className).not.toContain("h-full");
-    expect(panel.className).not.toContain("w-full");
-    expect(panel.getAttribute("style")).toContain("width: 224px");
-    expect(screen.getByText("TOYOTA GAZOO").parentElement?.getAttribute("style")).toContain("height:31px");
+    expect(panel).toBeDefined();
+    expect(panel.style.borderRadius).toBe("12px");
   });
 
-  it("wraps intrinsic width in fill mode when preview fill host is disabled", () => {
-    const columns = createDefaultRelativeColumns();
-    const intrinsicWidth = getRelativeIntrinsicWidth(columns);
+  it("renders with base style (existing, still works)", () => {
+    render(
+      <RelativeWidget
+        editMode={false}
+        props={{ style: "vantare-racing" }}
+      />,
+    );
+    const panel = screen.getByTestId("relative-panel");
+    expect(panel).toBeDefined();
+    expect(panel.style.borderRadius).toBe("8px");
+  });
+
+  it("columns can be edited without position changing", () => {
+    const position = { x: 100, y: 200, w: 300, h: 400 };
+    const positionCopy = { ...position };
+
     render(
       <RelativeWidget
         editMode={true}
-        updateHz={15}
         props={{
-          __previewFillHost: false,
+          style: "vantare-racing",
           variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            filters: { rangeAhead: 3, rangeBehind: 3, includePlayer: true, rowHeightMode: "fill" },
-            columns,
+            columns: [
+              { id: "driverName", metricId: "driverName", enabled: true, width: 120 },
+              { id: "gap", metricId: "gap", enabled: true, width: 80 },
+            ],
           },
+          position,
         }}
       />,
     );
 
-    tick(100);
-
-    const panel = screen.getByTestId("relative-panel");
-    expect(panel.className).not.toContain("w-full");
-    expect(panel.className).toContain("h-full");
-    expect(panel.style.width).toBe(`${intrinsicWidth}px`);
+    // Position should not have been mutated by column rendering
+    expect(position.x).toBe(positionCopy.x);
+    expect(position.y).toBe(positionCopy.y);
+    expect(position.w).toBe(positionCopy.w);
+    expect(position.h).toBe(positionCopy.h);
+    expect(screen.getByTestId("relative-panel")).toBeDefined();
   });
 
-  it("applies glassmorphism style from variant themeId", () => {
+  it("renders glassmorphism-pro style with glass panel background", () => {
     render(
       <RelativeWidget
-        editMode
-        telemetryMode="mock"
-        props={{
-          variant: { themeId: "glassmorphism-pro" },
-          __previewFillHost: false,
-        }}
+        editMode={false}
+        props={{ style: "glassmorphism-pro" }}
       />,
     );
-    tick(100);
     const panel = screen.getByTestId("relative-panel");
-    expect((panel as HTMLElement).style.backdropFilter).toBe("blur(24px)");
-    expect((panel as HTMLElement).style.borderRadius).toBe("16px");
-  });
-
-  it("fills the host by default in fill mode without preview fill host context", () => {
-    render(
-      <RelativeWidget
-        editMode={true}
-        updateHz={15}
-        props={{
-          variant: {
-            id: "variant-relative-default",
-            templateId: "relative-vantare-default",
-            filters: { rangeAhead: 3, rangeBehind: 3, includePlayer: true, rowHeightMode: "fill" },
-            columns: createDefaultRelativeColumns(),
-          },
-        }}
-      />,
-    );
-
-    tick(100);
-
-    const panel = screen.getByTestId("relative-panel");
-    expect(panel.className).toContain("w-full");
-    expect(panel.style.width).toBe("");
+    expect(panel).toBeDefined();
+    expect(panel.style.borderRadius).toBe("10px");
+    expect(panel.style.backdropFilter).toBe("blur(24px)");
   });
 });

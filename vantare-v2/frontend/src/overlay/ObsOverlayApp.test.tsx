@@ -175,4 +175,35 @@ describe("ObsOverlayApp", () => {
 
     expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
   });
+  it("does not render widgets with runtimeReady:false (e.g. broadcast-tower)", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            profile: {
+              id: "obs-runtime-test",
+              displayMode: "streaming",
+              widgets: [
+                {
+                  id: "bt-obs",
+                  type: "broadcast-tower",
+                  enabled: true,
+                  updateHz: 15,
+                  position: { x: 0, y: 0, w: 300, h: 100 },
+                },
+              ],
+            },
+            layoutOrigin: { x: 0, y: 0 },
+          }),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    tick(100);
+
+    // broadcast-tower has runtimeReady:false — must not render in OBS overlay
+    expect(screen.queryByTestId("broadcast-tower-widget")).toBeNull();
+  });
 });

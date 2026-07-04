@@ -3,6 +3,7 @@ import { getTelemetryRef, resolveSessionMode, type SessionMode, type VehicleScor
 import { getMockTelemetry, getMockTelemetryForSession, type MockSessionScenario } from "./mock-telemetry";
 import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
+import { resolveWidgetDesignSystem } from "./widget-design-system";
 import { setHTMLIfChanged } from "../../lib/dom-write";
 import { escapeHTML } from "../../lib/html-escape";
 import { brandTextColor } from "../../lib/color-utils";
@@ -122,6 +123,8 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
 
   const { style, appearance: a } = resolveWidgetAppearance("standings", props);
   const isGlass = style === "glassmorphism-pro";
+  const isCrystal = style === "vantare-crystal";
+  const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
   const activeColumns = getActiveStandingsColumns(props);
   const intrinsicWidth = getStandingsIntrinsicWidth(activeColumns);
   const fillHost = props?.__previewFillHost !== false;
@@ -174,9 +177,12 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       const classLeader = sorted[0];
 
       const rows = sorted.map((v, i) => {
-        const bgRow = isGlass
+        const baseBgRow = isCrystal && crystal
+          ? i % 2 === 0 ? crystal.surfaces.rowEven : crystal.surfaces.rowOdd
+          : isGlass
           ? i % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.25)"
           : i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
+        const bgRow = isCrystal && crystal && i === 0 ? crystal.surfaces.playerHighlight : baseBgRow;
         const isLeader = i === 0;
         const pitLabel = formatStandingsPit(v);
         const pitting = pitLabel !== "";
@@ -195,8 +201,8 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
         const teamBg = v.teamBrandColor || "transparent";
         const tc = hasBrand ? brandTextColor(teamBg) : rowTextColor;
 
-        const leaderShadow = isLeader ? `box-shadow: inset 2px 0 0 0 ${a.posLeaderColor}` : "";
-        const fastestShadow = v.fastestLap ? `box-shadow: inset 2px 0 0 0 ${a.textColor}` : "";
+        const leaderShadow = isLeader ? `box-shadow: inset 2px 0 0 0 ${isCrystal && crystal ? crystal.colors.accent : a.posLeaderColor}` : "";
+        const fastestShadow = v.fastestLap ? `box-shadow: inset 2px 0 0 0 ${isCrystal && crystal ? crystal.colors.accent : a.textColor}` : "";
         const leftInset = fastestShadow || leaderShadow;
 
         const brandCell = hasBrand
@@ -300,16 +306,16 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
 
       setHTMLIfChanged(container, rows.join(""));
     });
-  }, [maxRows, updateHz, editMode, telemetryMode, mockSessionScenario, props, a, activeColumns, intrinsicWidth, intrinsicOnly, readTelemetry, isGlass]);
+  }, [maxRows, updateHz, editMode, telemetryMode, mockSessionScenario, props, a, activeColumns, intrinsicWidth, intrinsicOnly, readTelemetry, isGlass, isCrystal, crystal]);
 
   const t = readTelemetry();
   const player = t.vehicles.find((v) => v.isPlayer);
   const activeClass = player?.vehicleClass || t.vehicles[0]?.vehicleClass || "HYPERCAR";
   const timeStr = formatRemainingTime(t.timeRemaining);
 
-  const panelBg = isGlass ? GLASS_PANEL_BG : BAKED_PANEL_BG;
-  const headerBg = isGlass ? GLASS_HEADER_BG : BAKED_HEADER_BG;
-  const classBg = isGlass ? GLASS_CLASS_BG : BAKED_CLASS_BG;
+  const panelBg = isCrystal && crystal ? crystal.surfaces.panel : isGlass ? GLASS_PANEL_BG : BAKED_PANEL_BG;
+  const headerBg = isCrystal && crystal ? crystal.surfaces.header : isGlass ? GLASS_HEADER_BG : BAKED_HEADER_BG;
+  const classBg = isCrystal && crystal ? `linear-gradient(90deg, ${crystal.colors.accent}, ${crystal.colors.accent}80, ${crystal.colors.accent})` : isGlass ? GLASS_CLASS_BG : BAKED_CLASS_BG;
 
   return (
     <div
@@ -318,12 +324,12 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       style={{
         width: intrinsicOnly ? `${intrinsicWidth}px` : undefined,
         background: panelBg,
-        border: `1px solid ${a.borderColor}`,
-        color: a.textColor,
+        border: `1px solid ${isCrystal && crystal ? crystal.colors.border : a.borderColor}`,
+        color: isCrystal && crystal ? crystal.colors.text : a.textColor,
         opacity: a.opacity,
-        borderRadius: isGlass ? 16 : 8,
-        backdropFilter: isGlass ? "blur(24px)" : undefined,
-        boxShadow: isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
+        borderRadius: isCrystal && crystal ? 12 : isGlass ? 16 : 8,
+        backdropFilter: isCrystal && crystal ? "blur(16px)" : isGlass ? "blur(24px)" : undefined,
+        boxShadow: isCrystal && crystal ? `0 0 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)` : isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
       }}
     >
       <div

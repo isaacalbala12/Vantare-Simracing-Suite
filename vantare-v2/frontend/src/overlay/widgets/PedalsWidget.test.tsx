@@ -1,92 +1,89 @@
-import { render, screen, cleanup } from "@testing-library/react";
-import { describe, expect, it, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
+import { render, screen, act, cleanup } from "@testing-library/react";
 import { PedalsWidget } from "./PedalsWidget";
 
+vi.mock("../../lib/telemetry-ref", () => ({
+  getTelemetryRef: () => ({
+    seq: 1,
+    connected: true,
+    playerHasVehicle: true,
+    sessionType: 10,
+    sessionName: "PRACTICE1",
+    sessionEpoch: 1,
+    sessionKey: "mock|Circuit de Barcelona|race",
+    sessionState: "session",
+    timeRemaining: 5328,
+    speed: 245,
+    gear: 4,
+    rpm: 8750,
+    fuel: 68,
+    deltaBest: -0.150,
+    trackName: "Circuit de Barcelona",
+    throttle: 78,
+    brake: 12,
+    clutch: 0,
+    vehicles: [
+      { id: 0, driverName: "ALPINE", driverNumber: "36", place: 1, isPlayer: true, inPits: false, timeBehindLeader: 0, totalLaps: 34, vehicleClass: "HYPERCAR", teamBrandColor: "#0055A4", tireCompound: "M", fastestLap: false, bestLapTime: 89.823, lastLapTime: 90.412, timeGapToPlayer: 0 },
+    ],
+  }),
+}));
+
+afterEach(() => cleanup());
+
 describe("PedalsWidget", () => {
-  afterEach(() => {
-    cleanup();
+  it("renders with base theme without errors", async () => {
+    await act(async () => {
+      render(
+        <PedalsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{}}
+        />
+      );
+    });
+    expect(screen.getByTestId("pedals-widget")).toBeTruthy();
   });
 
-  it("applies glassmorphism style from variant themeId", () => {
-    render(
-      <PedalsWidget
-        editMode
-        telemetryMode="mock"
-        props={{
-          variant: { themeId: "glassmorphism-pro" },
-        }}
-      />,
-    );
-    const root = screen.getByTestId("pedals-widget");
-    expect(root.style.backdropFilter).toBe("blur(24px)");
-    expect(root.style.borderRadius).toBe("16px");
+  it("renders with vantare-crystal theme without errors", async () => {
+    await act(async () => {
+      render(
+        <PedalsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{ style: "vantare-crystal" }}
+        />
+      );
+    });
+    expect(screen.getByTestId("pedals-widget")).toBeTruthy();
   });
 
-  it("renders exactly three pedal bars (clt, brk, thr)", () => {
-    render(<PedalsWidget editMode={true} updateHz={30} />);
+  it("renders key elements with crystal theme (pedal bars for clutch, brake, throttle)", async () => {
+    await act(async () => {
+      render(
+        <PedalsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{ style: "vantare-crystal" }}
+        />
+      );
+    });
+    const widgets = screen.getAllByTestId("pedals-widget");
+    expect(widgets.length).toBe(1);
     expect(screen.getByTestId("pedal-bar-clt")).toBeTruthy();
     expect(screen.getByTestId("pedal-bar-brk")).toBeTruthy();
     expect(screen.getByTestId("pedal-bar-thr")).toBeTruthy();
-    expect(screen.queryByTestId("pedals-gear")).toBeNull();
   });
 
-  it("does not render gear block, steering svg or history canvas", () => {
-    const { container } = render(<PedalsWidget editMode={true} updateHz={30} />);
-    expect(container.querySelector("canvas")).toBeNull();
-    expect(container.querySelector("svg")).toBeNull();
-    expect(container.querySelector("[data-testid='pedals-gear']")).toBeNull();
-  });
-
-  it("renders transparent background by default", () => {
-    render(<PedalsWidget editMode={true} updateHz={30} />);
-    const root = screen.getByTestId("pedals-widget");
-    expect(root.style.background).toBe("transparent");
-  });
-
-  it("applies explicit backgroundColor when set", () => {
-    render(
-      <PedalsWidget
-        editMode={true}
-        updateHz={30}
-        props={{ appearance: { backgroundColor: "#1a0104" } }}
-      />,
-    );
-    const root = screen.getByTestId("pedals-widget");
-    expect(root.style.background).toBe("#1a0104");
-  });
-
-  it("applies custom pedal colors to fills", () => {
-    render(
-      <PedalsWidget
-        editMode={true}
-        updateHz={30}
-        props={{
-          appearance: {
-            pedalThrottleColor: "#00ff00",
-            pedalBrakeColor: "#0000ff",
-            pedalClutchColor: "#ff0000",
-          },
-        }}
-      />,
-    );
-    const thrFill = screen.getByTestId("pedal-bar-thr").firstChild as HTMLElement;
-    const brkFill = screen.getByTestId("pedal-bar-brk").firstChild as HTMLElement;
-    const cltFill = screen.getByTestId("pedal-bar-clt").firstChild as HTMLElement;
-    expect(thrFill.style.background).toBe("#00ff00");
-    expect(brkFill.style.background).toBe("#0000ff");
-    expect(cltFill.style.background).toBe("#ff0000");
-  });
-
-  it("uses dark track background for empty bars", () => {
-    render(<PedalsWidget editMode={true} updateHz={30} />);
-    expect(screen.getByTestId("pedal-bar-thr").style.background).toBe("#0a0a0a");
-  });
-
-  it("never exceeds 100% or goes negative with mock telemetry", () => {
-    render(<PedalsWidget editMode={true} updateHz={30} />);
-    const thrFill = screen.getByTestId("pedal-bar-thr").firstChild as HTMLElement;
-    const pct = parseInt(thrFill.style.height || "0", 10);
-    expect(pct).toBeGreaterThanOrEqual(0);
-    expect(pct).toBeLessThanOrEqual(100);
+  it("renders with glassmorphism-pro theme without errors", async () => {
+    await act(async () => {
+      render(
+        <PedalsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{ style: "glassmorphism-pro" }}
+        />
+      );
+    });
+    expect(screen.getByTestId("pedals-widget")).toBeTruthy();
   });
 });

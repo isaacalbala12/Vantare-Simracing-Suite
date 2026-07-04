@@ -9,6 +9,15 @@ vi.mock("@wailsio/runtime", () => ({
     On: vi.fn().mockReturnValue(() => {}),
   },
 }));
+vi.mock("../../lib/access", () => ({
+  useAccess: () => ({
+    planLabel: "free",
+    planStatus: "free",
+    roles: [],
+    isBlocked: false,
+    isUnconfigured: false,
+  }),
+}));
 
 afterEach(() => {
   cleanup();
@@ -508,5 +517,47 @@ describe("WidgetStudio", () => {
     expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
     expect(screen.queryByLabelText("X (px)")).toBeNull();
     expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull();
+  });
+
+  it("renders a design system selector", () => {
+    render(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="delta"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("design-system-selector")).toBeTruthy();
+    const select = screen.getByLabelText("Theme") as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    expect(select.value).toBe("base");
+    expect(screen.getByText("Vantare Crystal")).toBeTruthy();
+  });
+
+  it("does not show position or size controls in WidgetStudio", () => {
+    render(
+      <WidgetStudio
+        profile={profile}
+        selectedWidgetId="delta"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
+    expect(screen.queryByLabelText("X (px)")).toBeNull();
+    expect(screen.queryByLabelText("Y (px)")).toBeNull();
+    expect(screen.queryByLabelText("W (px)")).toBeNull();
+    expect(screen.queryByLabelText("H (px)")).toBeNull();
   });
 });

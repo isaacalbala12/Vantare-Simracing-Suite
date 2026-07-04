@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   expandWeeklySlots,
+  expandDailyIntervalSeries,
   getDailyPatternSummary,
   isSameLocalDay,
   startOfLocalDay,
@@ -75,7 +76,7 @@ export type CalendarDayViewProps = {
 
 type DayEvent = {
   id: string;
-  type: "weekly" | "special";
+  type: "daily" | "weekly" | "special";
   label: string;
   track: string;
   durationMin: number;
@@ -145,6 +146,14 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
     expandWeeklySlots(s, dayStart, dayEnd)
   );
 
+  // Expand daily interval series for the selected day (24h window only)
+  const dailyOccurrences: CalendarOccurrence[] = expandDailyIntervalSeries(
+    calendar.series || [],
+    dayStart,
+    dayEnd,
+    activeFilter !== "all" && activeFilter !== "weekly" && activeFilter !== "special" ? activeFilter : undefined,
+  );
+
   // Daily pattern summary for interval series (shared header)
   const intervalSummaries: DailyPatternSummary[] = filterIntervalSummaries(
     getDailyPatternSummary(calendar.series || []),
@@ -186,6 +195,22 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
       durationMin: occ.durationMin || 0,
       startTime: occ.startTime,
       tier: tier || "weekly",
+    });
+  }
+
+  // Add daily interval series occurrences
+  for (const occ of dailyOccurrences) {
+    const series = (calendar.series || []).find((s) => s.id === occ.seriesId);
+    const tier = series?.tier;
+    if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
+    events.push({
+      id: `daily-${occ.seriesId}-${occ.startTime.getTime()}`,
+      type: "daily",
+      label: occ.title,
+      track: series?.track || "",
+      durationMin: occ.durationMin,
+      startTime: occ.startTime,
+      tier: tier || "beginner",
     });
   }
 

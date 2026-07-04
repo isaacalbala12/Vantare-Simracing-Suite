@@ -56,7 +56,7 @@ export function DashboardPage({
       </div>
 
       {/* Próximas carreras — 3 cards + WEC Weekly row */}
-      <CalendarHeroUpcomingPanel />
+      <CalendarHeroUpcomingPanel onNavigate={handleNavigate} />
 
       {/* Overlay activo */}
       <ActiveOverlayCard

@@ -2,6 +2,13 @@
 // Keep this file a pure type module with no runtime dependencies so it can be
 // imported safely by both React components and tests.
 
+export type Session = {
+  name: string;
+  durationMin: number;
+  estimated: boolean;
+};
+
+
 export type RaceEvent = {
   id: string;
   title: string;
@@ -13,6 +20,9 @@ export type RaceEvent = {
   // browser Date constructor to render and compare.
   startTime: string;
   durationMin: number;
+  raceDurationMin?: number;
+  eventDurationMin?: number;
+  sessions?: Session[];
   registrationUrl: string;
   source: string;
   notes: string;
@@ -48,6 +58,10 @@ export type RaceSeries = {
   vehicleClass: string;
   setup: string;
   durationMin: number;
+  raceDurationMin?: number;
+  eventDurationMin?: number;
+  sessions?: Session[];
+  startOffsetMinute?: number;
   splits: number;
   assists: string;
   tyreWarmers: boolean;

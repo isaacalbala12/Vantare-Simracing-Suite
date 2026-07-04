@@ -24,22 +24,39 @@ type OfficialSchedule struct {
 	Updated    time.Time    `json:"updated"`
 }
 
+// Session models a single session within a race event (practice, qualifying, race).
+type Session struct {
+	Name        string `json:"name"`
+	DurationMin int    `json:"durationMin"`
+	Estimated   bool   `json:"estimated"`
+}
+
+
 // RaceSeries models a single recurring race series in the official LMU
 // schedule. Recurrence defines how often the series runs.
+// DurationMin is kept as race duration for backward compatibility.
+// RaceDurationMin is the explicit race duration.
+// EventDurationMin = practice + qualifying + race (total visual duration).
+// Sessions lists the individual sessions (practice, qualifying, race).
+// StartOffsetMinute is the minute offset within the hour for interval series.
 type RaceSeries struct {
-	ID           string     `json:"id"`
-	Name         string     `json:"name"`
-	Tier         string     `json:"tier"`
-	LicenseLabel string     `json:"licenseLabel"`
-	Track        string     `json:"track"`
-	VehicleClass string     `json:"vehicleClass"`
-	Setup        string     `json:"setup"`
-	DurationMin  int        `json:"durationMin"`
-	Splits       int        `json:"splits"`
-	Assists      string     `json:"assists"`
-	TyreWarmers  bool       `json:"tyreWarmers"`
-	Tyres        int        `json:"tyres"`
-	Recurrence   Recurrence `json:"recurrence"`
+	ID                string     `json:"id"`
+	Name              string     `json:"name"`
+	Tier              string     `json:"tier"`
+	LicenseLabel      string     `json:"licenseLabel"`
+	Track             string     `json:"track"`
+	VehicleClass      string     `json:"vehicleClass"`
+	Setup             string     `json:"setup"`
+	DurationMin       int        `json:"durationMin"`
+	RaceDurationMin   int        `json:"raceDurationMin,omitempty"`
+	EventDurationMin  int        `json:"eventDurationMin,omitempty"`
+	Sessions          []Session  `json:"sessions,omitempty"`
+	StartOffsetMinute int        `json:"startOffsetMinute,omitempty"`
+	Splits            int        `json:"splits"`
+	Assists           string     `json:"assists"`
+	TyreWarmers       bool       `json:"tyreWarmers"`
+	Tyres             int        `json:"tyres"`
+	Recurrence        Recurrence `json:"recurrence"`
 }
 
 // Recurrence defines how a series repeats. Two kinds are supported:
@@ -278,18 +295,29 @@ func ExpandSchedule(sched OfficialSchedule, from, to time.Time) ([]RaceEvent, er
 
 // makeSeriesEvent creates a single RaceEvent from a series at the given start
 // time. The event ID is deterministic: "{seriesID}-{startUTC}".
+// It populates RaceDurationMin, EventDurationMin and Sessions from the series.
 func makeSeriesEvent(s RaceSeries, start time.Time) RaceEvent {
 	id := fmt.Sprintf("%s-%s", s.ID, start.UTC().Format("20060102T150405Z"))
+	raceDur := s.DurationMin
+	eventDur := raceDur + 11 // practice 3 + qualifying 8
+	sessions := []Session{
+		{Name: "practice", DurationMin: 3, Estimated: true},
+		{Name: "qualifying", DurationMin: 8, Estimated: true},
+		{Name: "race", DurationMin: raceDur, Estimated: false},
+	}
 	return RaceEvent{
-		ID:          id,
-		Title:       s.Name,
-		Sim:         "lmu",
-		Track:       s.Track,
-		Series:      s.Name,
-		StartTime:   start,
-		DurationMin: s.DurationMin,
-		Source:      BundledSource,
-		Notes:       fmt.Sprintf("Tier: %s | License: %s | Setup: %s | Splits: %d | Assists: %s | Tyre warmers: %v | Tyres: %d", s.Tier, s.LicenseLabel, s.Setup, s.Splits, s.Assists, s.TyreWarmers, s.Tyres),
+		ID:               id,
+		Title:            s.Name,
+		Sim:              "lmu",
+		Track:            s.Track,
+		Series:           s.Name,
+		StartTime:        start,
+		DurationMin:      raceDur,
+		RaceDurationMin:  raceDur,
+		EventDurationMin: eventDur,
+		Sessions:         sessions,
+		Source:           BundledSource,
+		Notes:            fmt.Sprintf("Tier: %s | License: %s | Setup: %s | Splits: %d | Assists: %s | Tyre warmers: %v | Tyres: %d", s.Tier, s.LicenseLabel, s.Setup, s.Splits, s.Assists, s.TyreWarmers, s.Tyres),
 	}
 }
 

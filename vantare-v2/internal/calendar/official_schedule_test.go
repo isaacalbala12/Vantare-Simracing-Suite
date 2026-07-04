@@ -658,6 +658,63 @@ func TestMakeSeriesEvent_Notes(t *testing.T) {
 	}
 }
 
+func TestMakeSeriesEvent_SessionFields(t *testing.T) {
+	s := validSchedule().Series[0]
+	start := time.Date(2026, time.July, 4, 20, 0, 0, 0, time.UTC)
+
+	ev := makeSeriesEvent(s, start)
+
+	if ev.RaceDurationMin != s.DurationMin {
+		t.Errorf("RaceDurationMin = %d, want %d", ev.RaceDurationMin, s.DurationMin)
+	}
+	expectedEventDur := s.DurationMin + 11
+	if ev.EventDurationMin != expectedEventDur {
+		t.Errorf("EventDurationMin = %d, want %d", ev.EventDurationMin, expectedEventDur)
+	}
+	if len(ev.Sessions) != 3 {
+		t.Fatalf("Sessions = %d, want 3", len(ev.Sessions))
+	}
+	if ev.Sessions[0].Name != "practice" || ev.Sessions[0].DurationMin != 3 || !ev.Sessions[0].Estimated {
+		t.Errorf("Session[0] = %+v, want practice/3/estimated", ev.Sessions[0])
+	}
+	if ev.Sessions[1].Name != "qualifying" || ev.Sessions[1].DurationMin != 8 || !ev.Sessions[1].Estimated {
+		t.Errorf("Session[1] = %+v, want qualifying/8/estimated", ev.Sessions[1])
+	}
+	if ev.Sessions[2].Name != "race" || ev.Sessions[2].DurationMin != s.DurationMin || ev.Sessions[2].Estimated {
+		t.Errorf("Session[2] = %+v, want race/%d/not estimated", ev.Sessions[2], s.DurationMin)
+	}
+}
+
+func TestExpandRealSchedule_EventDurationMin(t *testing.T) {
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+
+	from := time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC)
+	to := from.Add(1 * time.Hour)
+
+	events, err := ExpandSchedule(sched, from, to)
+	if err != nil {
+		t.Fatalf("ExpandSchedule: %v", err)
+	}
+
+	for _, ev := range events {
+		if ev.RaceDurationMin == 0 {
+			t.Errorf("event %q: RaceDurationMin is 0", ev.ID)
+		}
+		if ev.EventDurationMin == 0 {
+			t.Errorf("event %q: EventDurationMin is 0", ev.ID)
+		}
+		if ev.EventDurationMin != ev.RaceDurationMin+11 {
+			t.Errorf("event %q: EventDurationMin=%d, RaceDurationMin=%d, want %d", ev.ID, ev.EventDurationMin, ev.RaceDurationMin, ev.RaceDurationMin+11)
+		}
+		if len(ev.Sessions) != 3 {
+			t.Errorf("event %q: Sessions=%d, want 3", ev.ID, len(ev.Sessions))
+		}
+	}
+}
+
 // --- Real schedule expansion sanity ---
 
 func TestExpandRealSchedule_OneHour(t *testing.T) {

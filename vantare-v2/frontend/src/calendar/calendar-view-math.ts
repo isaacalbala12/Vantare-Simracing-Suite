@@ -240,6 +240,53 @@ export function expandWeeklySlots(series: RaceSeries, from: Date, to: Date): Cal
 }
 
 /**
+ * Expande interval series para un día local específico (ventana de 24h).
+ * Cada serie daily genera una salida por hora en su minuto fijo (startOffsetMinute).
+ * Usa eventDurationMin como duración visual si está disponible, o durationMin + 11 como fallback.
+ * Solo para recurrence.kind === "interval".
+ * No materializa más allá de 24h — seguro para MonthView/WeekView.
+ */
+export function expandDailyIntervalSeries(
+  series: RaceSeries[],
+  dayStart: Date,
+  dayEnd: Date,
+  tierFilter?: string,
+): CalendarOccurrence[] {
+  const occurrences: CalendarOccurrence[] = [];
+  const fromMs = dayStart.getTime();
+  const toMs = dayEnd.getTime();
+
+  for (const s of series) {
+    if (!isIntervalSeries(s)) continue;
+    if (tierFilter && s.tier !== tierFilter) continue;
+
+    const offset = s.startOffsetMinute ?? 0;
+    const visualDuration = s.eventDurationMin ?? s.durationMin + 11;
+
+    // Generate one occurrence per hour for the 24h window
+    for (let h = 0; h < 24; h++) {
+      const startTime = new Date(dayStart);
+      startTime.setHours(h, offset, 0, 0);
+      const startMs = startTime.getTime();
+
+      if (startMs < fromMs || startMs >= toMs) continue;
+
+      const endTime = new Date(startMs + visualDuration * 60_000);
+
+      occurrences.push({
+        seriesId: s.id,
+        title: s.name,
+        startTime,
+        endTime,
+        durationMin: visualDuration,
+      });
+    }
+  }
+
+  return occurrences.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+}
+
+/**
  * Agrupa las interval series por tier, sin materializar horarios concretos.
  * Devuelve tier + label + count.
  */

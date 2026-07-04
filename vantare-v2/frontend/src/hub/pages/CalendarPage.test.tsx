@@ -204,7 +204,7 @@ describe("CalendarPage", () => {
     expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
   });
 
-  it("opens detail drawer when clicking a rail card and clears filter from drawer", () => {
+  it("opens detail panel when clicking a rail card and closes panel", () => {
     render(<CalendarPage />);
     dispatch("calendar:loaded", {
       calendar: {
@@ -231,15 +231,23 @@ describe("CalendarPage", () => {
       fireEvent.click(screen.getByTestId("rail-card-beginner"));
     });
 
-    expect(screen.getByTestId("calendar-race-detail-drawer")).toBeTruthy();
-    expect(screen.getByTestId("calendar-detail-drawer-title").textContent).toBe("Bronce");
+    expect(screen.getByTestId("calendar-race-detail-panel")).toBeTruthy();
+    expect(screen.getByTestId("calendar-detail-panel-title").textContent).toBe("Bronce");
     expect(screen.getByTestId("calendar-active-filter")).toBeTruthy();
 
+    // Close panel
     act(() => {
-      fireEvent.click(screen.getByTestId("calendar-detail-drawer-clear-filter"));
+      fireEvent.click(screen.getByTestId("calendar-detail-panel-close-btn"));
     });
 
-    expect(screen.queryByTestId("calendar-race-detail-drawer")).toBeNull();
+    expect(screen.queryByTestId("calendar-race-detail-panel")).toBeNull();
+    // Filter remains active after closing panel
+    expect(screen.getByTestId("calendar-active-filter")).toBeTruthy();
+
+    // Clear filter separately
+    act(() => {
+      fireEvent.click(screen.getByTestId("calendar-clear-filter"));
+    });
     expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
   });
 });

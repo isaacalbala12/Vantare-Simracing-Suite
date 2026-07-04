@@ -9,7 +9,7 @@ import { CalendarToolbar, type CalendarFilter } from "../calendar/CalendarToolba
 import { CalendarMonthView } from "../calendar/CalendarMonthView";
 import { CalendarWeekView } from "../calendar/CalendarWeekView";
 import { CalendarDayView } from "../calendar/CalendarDayView";
-import { CalendarRaceDetailDrawer } from "../calendar/CalendarRaceDetailDrawer";
+import { CalendarRaceDetailPanel } from "../calendar/CalendarRaceDetailPanel";
 import { CalendarRaceRail } from "../calendar/CalendarRaceRail";
 
 export function CalendarPage() {
@@ -18,7 +18,7 @@ export function CalendarPage() {
   const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
   const [calendarAnchorDate, setCalendarAnchorDate] = useState<Date>(new Date());
   const [activeFilter, setActiveFilter] = useState<CalendarFilter>("all");
-  const [drawerTier, setDrawerTier] = useState<CalendarFilter | null>(null);
+  const [panelTier, setPanelTier] = useState<CalendarFilter | null>(null);
 
   useEffect(() => {
     requestCalendar();
@@ -79,16 +79,16 @@ export function CalendarPage() {
 
   const handleFilterSelect = useCallback((filter: CalendarFilter) => {
     setActiveFilter(filter);
-    setDrawerTier(filter);
+    setPanelTier(filter);
   }, []);
 
   const handleClearFilter = useCallback(() => {
     setActiveFilter("all");
-    setDrawerTier(null);
+    setPanelTier(null);
   }, []);
 
-  const handleCloseDrawer = useCallback(() => {
-    setDrawerTier(null);
+  const handleClosePanel = useCallback(() => {
+    setPanelTier(null);
   }, []);
 
   const hasSeries = calendar ? calendar.series && calendar.series.length > 0 : false;
@@ -185,13 +185,11 @@ export function CalendarPage() {
           </div>
         )}
 
-        {drawerTier && calendar && (
-          <CalendarRaceDetailDrawer
-            tier={drawerTier}
+        {panelTier && calendar && (
+          <CalendarRaceDetailPanel
+            tier={panelTier}
             calendar={calendar}
-            anchorDate={calendarAnchorDate}
-            onClose={handleCloseDrawer}
-            onClearFilter={handleClearFilter}
+            onClose={handleClosePanel}
           />
         )}
 

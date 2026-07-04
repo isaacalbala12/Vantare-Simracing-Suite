@@ -1831,3 +1831,20 @@ Nota CALENDAR-06-C P3 (2026-07-03):
 M i c r o c o r t e   2   c o m p l e t a d o :   P a n e l   ' P r � x i m a s   c a r r e r a s '   i m p l e m e n t a d o   e   i n t e g r a d o   e n   e l   H u b .   L i m p i e z a   d e   c o m p o n e n t e s   o b s o l e t o s   r e a l i z a d a . 
  
  
+
+Nota CALENDAR-09 (2026-07-04) Eventos completos, sesiones y hotfix semanal:
+- Extendidos tipos Go (RaceSeries, RaceEvent) con Session, raceDurationMin, eventDurationMin, sessions, startOffsetMinute.
+- durationMin se mantiene como duración de carrera (compatibilidad).
+- eventDurationMin = raceDurationMin + 11 (práctica 3 + quali 8).
+- Sesiones estimadas: práctica 3m, quali 8m, carrera raceDurationMin.
+- Seed LMU actualizado con raceDurationMin, eventDurationMin, sessions, startOffsetMinute (15/30/45 por orden del seed).
+- Creado expandDailyIntervalSeries en calendar-view-math.ts (solo 24h, seguro para Month/Week).
+- CalendarDayView expande daily series por hora con eventDurationMin y side-by-side en solapes.
+- Creado CalendarRaceDetailPanel (modal central con blur) reemplazando CalendarRaceDetailDrawer.
+- Panel muestra sesiones, duración total, carrera, categoría, setup, track, aviso de estimación, follow/unfollow.
+- No hay URL de inscripción inventada: muestra "Desde LMU / RaceControl" si no existe registrationUrl.
+- CalendarHeroUpcomingPanel cards clicables navegan a Carreras.
+- Docs de hotfix semanal actualizados con práctica 3m, quali 8m, offsets 15/30/45.
+- Version bump no realizado (origen único: VERSION=0.1.0.2, frontend/package.json, cmd/vantare/main.go, build/config.yml).
+- Checks: 46/46 Go tests PASS (pre-existing TestParse_AcceptsValidLines failure), 1080/1080 frontend tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), build OK (warning preexistente chunk size), git diff --check solo whitespace preexistente en hub_main.html.
+- Sin commit.

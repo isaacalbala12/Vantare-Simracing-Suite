@@ -9,6 +9,7 @@ import {
   isIntervalSeries,
   isWeeklySlotsSeries,
   expandWeeklySlots,
+  expandDailyIntervalSeries,
   getDailyPatternSummary,
   groupOccurrencesByLocalDay,
   type CalendarOccurrence,
@@ -383,5 +384,136 @@ describe("calendar-view-math", () => {
       expect(occurrences.length).toBe(1);
       expect(occurrences[0].startTime.toISOString()).toBe("2026-07-01T08:30:00.000Z");
     });
+  });
+});
+
+describe("expandDailyIntervalSeries", () => {
+  function createIntervalSeries(overrides: Partial<RaceSeries> = {}): RaceSeries {
+    return {
+      id: "test-series",
+      name: "Test Series",
+      tier: "beginner",
+      licenseLabel: "Bronze SR",
+      track: "Silverstone",
+      vehicleClass: "GT3",
+      setup: "Fixed",
+      durationMin: 20,
+      raceDurationMin: 20,
+      eventDurationMin: 31,
+      sessions: [
+        { name: "practice", durationMin: 3, estimated: true },
+        { name: "qualifying", durationMin: 8, estimated: true },
+        { name: "race", durationMin: 20, estimated: false },
+      ],
+      startOffsetMinute: 15,
+      splits: 1,
+      assists: "Auto",
+      tyreWarmers: false,
+      tyres: 4,
+      recurrence: { kind: "interval", intervalMinutes: 15 },
+      ...overrides,
+    };
+  }
+
+  it("expands one series to 24 occurrences for a full day", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+    const series = [createIntervalSeries()];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
+
+    expect(result.length).toBe(24);
+    for (const occ of result) {
+      expect(occ.durationMin).toBe(31); // eventDurationMin
+      expect(occ.startTime.getMinutes()).toBe(15); // startOffsetMinute
+    }
+  });
+
+  it("uses eventDurationMin for visual duration", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+    const series = [createIntervalSeries({ eventDurationMin: 45 })];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
+
+    expect(result.length).toBe(24);
+    expect(result[0].durationMin).toBe(45);
+  });
+
+  it("falls back to durationMin + 11 when eventDurationMin is missing", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+    const series = [createIntervalSeries({ eventDurationMin: undefined, durationMin: 30 })];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
+
+    expect(result[0].durationMin).toBe(41); // 30 + 11
+  });
+
+  it("respects startOffsetMinute for each series", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+    const series = [
+      createIntervalSeries({ id: "s1", startOffsetMinute: 15 }),
+      createIntervalSeries({ id: "s2", startOffsetMinute: 30 }),
+      createIntervalSeries({ id: "s3", startOffsetMinute: 45 }),
+    ];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
+
+    expect(result.length).toBe(72); // 3 series × 24h
+    const s1 = result.filter((o) => o.seriesId === "s1");
+    const s2 = result.filter((o) => o.seriesId === "s2");
+    const s3 = result.filter((o) => o.seriesId === "s3");
+    expect(s1.length).toBe(24);
+    expect(s2.length).toBe(24);
+    expect(s3.length).toBe(24);
+    expect(s1[0].startTime.getMinutes()).toBe(15);
+    expect(s2[0].startTime.getMinutes()).toBe(30);
+    expect(s3[0].startTime.getMinutes()).toBe(45);
+  });
+
+  it("filters by tier when tierFilter is provided", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+    const series = [
+      createIntervalSeries({ id: "s1", tier: "beginner" }),
+      createIntervalSeries({ id: "s2", tier: "intermediate" }),
+      createIntervalSeries({ id: "s3", tier: "advanced" }),
+    ];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd, "intermediate");
+
+    expect(result.length).toBe(24);
+    expect(result[0].seriesId).toBe("s2");
+  });
+
+  it("returns empty for non-interval series", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+    const series = [createIntervalSeries({ recurrence: { kind: "weekly-slots", days: ["Wed"], timesUTC: ["20:00"] } })];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
+
+    expect(result.length).toBe(0);
+  });
+
+  it("returns empty for empty series list", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-05T00:00:00");
+
+    const result = expandDailyIntervalSeries([], dayStart, dayEnd);
+
+    expect(result.length).toBe(0);
+  });
+
+  it("does not expand beyond 24h window", () => {
+    const dayStart = new Date("2026-07-04T00:00:00");
+    const dayEnd = new Date("2026-07-04T12:00:00"); // 12h window
+    const series = [createIntervalSeries()];
+
+    const result = expandDailyIntervalSeries(series, dayStart, dayEnd);
+
+    expect(result.length).toBe(12); // only 12 hours
   });
 });

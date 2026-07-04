@@ -166,21 +166,20 @@ describe("CalendarDayView", () => {
     }
   });
 
-  it("shows Bronce/Plata/Oro as patterns", () => {
+  it("expands daily interval series as events in the timeline", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
     render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    expect(screen.getByTestId("calendar-day-patterns")).toBeTruthy();
-    expect(screen.getByTestId("calendar-day-interval-0").textContent).toBe("Bronce · Cada 15 min");
-    expect(screen.getByTestId("calendar-day-interval-1").textContent).toBe("Plata · Cada 20 min");
-  });
+    // Daily interval series should appear as events in the timeline
+    // Serie Bronce has startOffsetMinute=0 (default), so it appears at :00 each hour
+    // Serie Plata has startOffsetMinute=0 (default), so it appears at :00 each hour
+    const bronceEvents = screen.getAllByText(/Serie Bronce/);
+    expect(bronceEvents.length).toBeGreaterThanOrEqual(1);
 
-  it("does not materialize interval series as events", () => {
-    const anchorDate = new Date("2026-07-02T12:00:00Z");
-    render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
-
+    // The concrete event "Carrera Bronce Falsa" from an interval series should still be skipped
     expect(screen.queryByText("Carrera Bronce Falsa")).toBeNull();
   });
+
 
   it("renders weekly slot occurrences and materialized events in correct time, and ignores other days", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
@@ -198,17 +197,20 @@ describe("CalendarDayView", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
     render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    // The weekly slot is at 09:00 UTC, so it should be placed above the 18:00 special event.
-    const weeklyCard = screen.getByTestId("calendar-day-event-0");
-    const specialCard = screen.getByTestId("calendar-day-event-1");
+    // Find cards by text content instead of index
+    const allCards = screen.getAllByTestId(/calendar-day-event-\d+/);
+    const weeklyCard = allCards.find((card) => card.textContent?.includes("Serie Semanal"));
+    const specialCard = allCards.find((card) => card.textContent?.includes("Carrera Especial"));
+    expect(weeklyCard).toBeTruthy();
+    expect(specialCard).toBeTruthy();
 
     // weekly starts at 09:00, special at 18:00
-    const weeklyTop = parseFloat(weeklyCard.style.top || "0");
-    const specialTop = parseFloat(specialCard.style.top || "0");
+    const weeklyTop = parseFloat(weeklyCard!.style.top || "0");
+    const specialTop = parseFloat(specialCard!.style.top || "0");
     expect(weeklyTop).toBeLessThan(specialTop);
 
     // Special event has duration 45 min, so its height should be proportional
-    const specialHeight = parseFloat(specialCard.style.height || "0");
+    const specialHeight = parseFloat(specialCard!.style.height || "0");
     expect(specialHeight).toBeGreaterThan(40);
   });
 
@@ -250,9 +252,11 @@ describe("CalendarDayView", () => {
     const anchorDate = new Date("2026-07-02T12:00:00Z");
     render(<CalendarDayView anchorDate={anchorDate} calendar={mockCalendar} />);
 
-    const eventCard = screen.getByTestId("calendar-day-event-1");
-    expect(eventCard.getAttribute("title")).toContain("Carrera Especial");
-    expect(eventCard.getAttribute("title")).toContain("Especial");
+    const allCards = screen.getAllByTestId(/calendar-day-event-\d+/);
+    const eventCard = allCards.find((card) => card.textContent?.includes("Carrera Especial"));
+    expect(eventCard).toBeTruthy();
+    expect(eventCard!.getAttribute("title")).toContain("Carrera Especial");
+    expect(eventCard!.getAttribute("title")).toContain("Especial");
   });
 
   it("does not show a cap indicator or hide events", () => {

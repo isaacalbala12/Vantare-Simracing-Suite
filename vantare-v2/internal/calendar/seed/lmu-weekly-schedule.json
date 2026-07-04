@@ -14,6 +14,14 @@
       "vehicleClass": "LMGT3 Class",
       "setup": "fixed",
       "durationMin": 20,
+      "raceDurationMin": 20,
+      "eventDurationMin": 31,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 20, "estimated": false }
+      ],
+      "startOffsetMinute": 15,
       "splits": 20,
       "assists": "High assists allowed",
       "tyreWarmers": true,
@@ -32,6 +40,14 @@
       "vehicleClass": "McLaren 720S LMGT3",
       "setup": "fixed",
       "durationMin": 20,
+      "raceDurationMin": 20,
+      "eventDurationMin": 31,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 20, "estimated": false }
+      ],
+      "startOffsetMinute": 30,
       "splits": 20,
       "assists": "High assists allowed",
       "tyreWarmers": true,
@@ -50,6 +66,14 @@
       "vehicleClass": "LMP3 Class",
       "setup": "fixed",
       "durationMin": 20,
+      "raceDurationMin": 20,
+      "eventDurationMin": 31,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 20, "estimated": false }
+      ],
+      "startOffsetMinute": 45,
       "splits": 20,
       "assists": "High assists allowed",
       "tyreWarmers": true,
@@ -68,6 +92,14 @@
       "vehicleClass": "LMGT3 Class",
       "setup": "open",
       "durationMin": 30,
+      "raceDurationMin": 30,
+      "eventDurationMin": 41,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 30, "estimated": false }
+      ],
+      "startOffsetMinute": 15,
       "splits": 38,
       "assists": "Low assists allowed",
       "tyreWarmers": false,
@@ -86,6 +118,14 @@
       "vehicleClass": "LMP2 (ELMS) & LMP3 Classes",
       "setup": "fixed",
       "durationMin": 30,
+      "raceDurationMin": 30,
+      "eventDurationMin": 41,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 30, "estimated": false }
+      ],
+      "startOffsetMinute": 30,
       "splits": 38,
       "assists": "Low assists allowed",
       "tyreWarmers": false,
@@ -104,6 +144,14 @@
       "vehicleClass": "LMP2 (ELMS), LMP3 & LMGT3 Classes",
       "setup": "open",
       "durationMin": 30,
+      "raceDurationMin": 30,
+      "eventDurationMin": 41,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 30, "estimated": false }
+      ],
+      "startOffsetMinute": 45,
       "splits": 38,
       "assists": "Low assists allowed",
       "tyreWarmers": false,
@@ -122,6 +170,14 @@
       "vehicleClass": "Hypercar & LMGT3 Classes",
       "setup": "open",
       "durationMin": 40,
+      "raceDurationMin": 40,
+      "eventDurationMin": 51,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 40, "estimated": false }
+      ],
+      "startOffsetMinute": 15,
       "splits": 44,
       "assists": "No assists allowed",
       "tyreWarmers": false,
@@ -140,6 +196,14 @@
       "vehicleClass": "LMP2 (ELMS, full fuel tank), LMP3 (70L fuel tank) & LMGT3 Classes (75% VE)",
       "setup": "open",
       "durationMin": 60,
+      "raceDurationMin": 60,
+      "eventDurationMin": 71,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 60, "estimated": false }
+      ],
+      "startOffsetMinute": 30,
       "splits": 44,
       "assists": "No assists allowed",
       "tyreWarmers": false,
@@ -158,6 +222,14 @@
       "vehicleClass": "Hypercar & LMGT3 Classes, 75% VE Limit",
       "setup": "open",
       "durationMin": 60,
+      "raceDurationMin": 60,
+      "eventDurationMin": 71,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 60, "estimated": false }
+      ],
+      "startOffsetMinute": 45,
       "splits": 44,
       "assists": "No assists allowed",
       "tyreWarmers": false,
@@ -176,6 +248,13 @@
       "vehicleClass": "Hypercar & LMGT3 Classes",
       "setup": "open",
       "durationMin": 100,
+      "raceDurationMin": 100,
+      "eventDurationMin": 111,
+      "sessions": [
+        { "name": "practice", "durationMin": 3, "estimated": true },
+        { "name": "qualifying", "durationMin": 8, "estimated": true },
+        { "name": "race", "durationMin": 100, "estimated": false }
+      ],
       "splits": 44,
       "assists": "No assists allowed",
       "tyreWarmers": false,

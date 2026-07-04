@@ -5,6 +5,7 @@ import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcomi
 
 type CalendarHeroUpcomingPanelProps = {
   now?: () => Date;
+  onNavigate?: (section: string) => void;
 };
 
 function formatUpcomingTime(dateStr: string | null, now: Date): string {
@@ -61,7 +62,7 @@ const TIER_STYLES: Record<string, { label: string; bg: string; border: string; s
   },
 };
 
-function TierCard({ item, tierKey, now }: { item: UpcomingRaceItem | null; tierKey: string; now: Date }) {
+function TierCard({ item, tierKey, now, onNavigate }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; onNavigate?: (section: string) => void }) {
   const styles = TIER_STYLES[tierKey] || TIER_STYLES.beginner;
 
   if (!item) {
@@ -89,11 +90,22 @@ function TierCard({ item, tierKey, now }: { item: UpcomingRaceItem | null; tierK
   const timeStr = formatUpcomingTime(item.nextStart, now);
   const colorBase = styles.border.replace("rgba", "rgb").replace(",.5)", ")").replace("0.5", "1");
 
+  const handleClick = () => {
+    if (onNavigate) {
+      onNavigate("carreras");
+    }
+  };
+
   return (
     <div
-      className="group rounded-xl bg-[rgba(20,20,20,.6)] border border-line overflow-hidden transition-all hover:-translate-y-1 relative"
+      className="group rounded-xl bg-[rgba(20,20,20,.6)] border border-line overflow-hidden transition-all hover:-translate-y-1 relative cursor-pointer"
       style={{ borderTopColor: styles.border }}
       data-testid={`upcoming-card-${tierKey}`}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClick(); }}
+      aria-label={`Ver carreras ${styles.label}`}
     >
       <div className="cal-bar h-2" style={{ background: styles.barGrad, boxShadow: `0 0 18px ${styles.shadow}` }} />
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: `radial-gradient(ellipse 100% 45% at 50% 0%,${styles.border.replace(".5)", ".12)")},transparent 70%)` }} />
@@ -118,7 +130,7 @@ function TierCard({ item, tierKey, now }: { item: UpcomingRaceItem | null; tierK
   );
 }
 
-export function CalendarHeroUpcomingPanel({ now }: CalendarHeroUpcomingPanelProps) {
+export function CalendarHeroUpcomingPanel({ now, onNavigate }: CalendarHeroUpcomingPanelProps) {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [tick, setTick] = useState(0);
 
@@ -156,7 +168,7 @@ export function CalendarHeroUpcomingPanel({ now }: CalendarHeroUpcomingPanelProp
   }
 
   const summary = buildUpcomingRaceItems(calendar, nowDate);
-  void tick; // Ensure React rerenders on tick
+  void tick;
 
   return (
     <section className="glass-panel rounded-xl p-5 opacity-0 animate-fade-in-up delay-150" data-testid="calendar-hero-upcoming-panel">
@@ -165,15 +177,20 @@ export function CalendarHeroUpcomingPanel({ now }: CalendarHeroUpcomingPanelProp
         <span className="text-[10px] font-bold text-[#f5f5f5]/35 uppercase tracking-[.22em]">LMU · Bronce · Plata · Oro</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <TierCard item={summary.bronce} tierKey="beginner" now={nowDate} />
-        <TierCard item={summary.plata} tierKey="intermediate" now={nowDate} />
-        <TierCard item={summary.oro} tierKey="advanced" now={nowDate} />
+        <TierCard item={summary.bronce} tierKey="beginner" now={nowDate} onNavigate={onNavigate} />
+        <TierCard item={summary.plata} tierKey="intermediate" now={nowDate} onNavigate={onNavigate} />
+        <TierCard item={summary.oro} tierKey="advanced" now={nowDate} onNavigate={onNavigate} />
       </div>
 
       {summary.weekly && (
         <div
-          className="group mt-4 card-sleek rounded-xl p-4 flex items-center justify-between gap-4 relative overflow-hidden"
+          className="group mt-4 card-sleek rounded-xl p-4 flex items-center justify-between gap-4 relative overflow-hidden cursor-pointer"
           data-testid="upcoming-card-weekly"
+          onClick={() => onNavigate?.("carreras")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onNavigate?.("carreras"); }}
+          aria-label="Ver carreras semanales"
         >
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent" style={{ boxShadow: "0 0 10px #ff3b3b" }} />
           <div className="flex items-center gap-4 pl-3 min-w-0">

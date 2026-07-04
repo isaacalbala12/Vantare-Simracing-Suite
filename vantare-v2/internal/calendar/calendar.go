@@ -38,6 +38,9 @@ type RaceEvent struct {
 	SessionLabel    string    `json:"sessionLabel,omitempty"`
 	StartTime       time.Time `json:"startTime"`
 	DurationMin     int       `json:"durationMin,omitempty"`
+	RaceDurationMin int       `json:"raceDurationMin,omitempty"`
+	EventDurationMin int      `json:"eventDurationMin,omitempty"`
+	Sessions        []Session `json:"sessions,omitempty"`
 	RegistrationURL string    `json:"registrationUrl,omitempty"`
 	Source          string    `json:"source,omitempty"`
 	Notes           string    `json:"notes,omitempty"`

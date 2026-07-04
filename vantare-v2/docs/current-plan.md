@@ -24,6 +24,14 @@ Nota ACCESS-01 (2026-07-04):
 - Fixes preexistentes CALENDAR-10: corregido syntax error en CalendarRaceDetailPanel (useMemo sin cerrar, handleUnfollow duplicado) y CalendarRaceRail (summary no definido, nesting de divs incorrecto).
 - No se tocó backend Go, Supabase/Auth, WidgetStudio/LayoutStudio internamente.
 - Sin commit.
+Nota ACCESS-02/P3 (2026-07-04):
+- Topbar: secciones bloqueadas ahora renderizan como `<button type="button" disabled>` en vez de `<a href="#" aria-disabled>`.
+- Elimina focusable/activable como enlace en items premium para usuarios Free.
+- Secciones permitidas siguen funcionando como `<a href="#">` con navegación y `aria-current`.
+- Tests: 18/18 Topbar PASS (4 nuevos: no href, no navigate, disabled attribute, allowed navigates + aria-current).
+- Checks: tsc OK, lint OK, build OK, git diff --check OK.
+- Commit: `fix(hub): make locked topbar items non-interactive`.
+
 
 Nota CALENDAR-08 (2026-07-03) Microcorte WeekView fidelity:
 - Reescrito `CalendarWeekView` para usar una grilla semanal tipo calendario horario, como el HTML de referencia `calendario_v5.2.html`.

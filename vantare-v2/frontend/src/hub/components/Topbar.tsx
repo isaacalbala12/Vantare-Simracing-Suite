@@ -126,20 +126,31 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-vantare-textMuted">
-            {navItems.map((item) => (
-              <a
-                key={item.id}
-                href="#"
-                data-testid={`topbar-nav-${item.id}`}
-                aria-current={activeSection === item.id ? "page" : undefined}
-                aria-disabled={!item.allowed ? true : undefined}
-                onClick={item.allowed ? handleNav(item.id) : undefined}
-                className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''} ${!item.allowed ? 'opacity-40 cursor-not-allowed' : ''}`}
-                title={!item.allowed ? "Disponible para testers y planes de pago" : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
+            {navItems.map((item) =>
+              item.allowed ? (
+                <a
+                  key={item.id}
+                  href="#"
+                  data-testid={`topbar-nav-${item.id}`}
+                  aria-current={activeSection === item.id ? "page" : undefined}
+                  onClick={handleNav(item.id)}
+                  className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''}`}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled
+                  data-testid={`topbar-nav-${item.id}`}
+                  className={`nav-item opacity-40 cursor-not-allowed`}
+                  title="Disponible para testers y planes de pago"
+                >
+                  {item.label}
+                </button>
+              )
+            )}
           </div>
         </div>
 

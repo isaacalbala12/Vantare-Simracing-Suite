@@ -207,7 +207,7 @@ describe("Topbar gated navigation", () => {
       />,
     );
     const engineer = screen.getByTestId("topbar-nav-engineer");
-    expect(engineer.getAttribute("aria-disabled")).toBe("true");
+    expect(engineer.getAttribute("disabled")).not.toBeNull();
     expect(engineer.className).toContain("cursor-not-allowed");
     expect(engineer.className).toContain("opacity-40");
   });
@@ -232,4 +232,90 @@ describe("Topbar gated navigation", () => {
     expect(engineer.getAttribute("aria-disabled")).toBeNull();
     expect(engineer.className).not.toContain("cursor-not-allowed");
   });
+  it("locked section is not an anchor element (no href)", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const engineer = screen.getByTestId("topbar-nav-engineer");
+    expect(engineer.tagName).not.toBe("A");
+    expect(engineer.hasAttribute("href")).toBe(false);
+  });
+
+  it("locked section does not call onNavigate on click", () => {
+    const onNavigate = vi.fn();
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={onNavigate}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const engineer = screen.getByTestId("topbar-nav-engineer");
+    fireEvent.click(engineer);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it("locked section has disabled attribute for accessible state", () => {
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={vi.fn()}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const engineer = screen.getByTestId("topbar-nav-engineer");
+    expect(engineer.getAttribute("disabled")).not.toBeNull();
+  });
+
+  it("allowed section navigates and shows aria-current when active", () => {
+    const onNavigate = vi.fn();
+    mockUseAccess.mockReturnValue({
+      planLabel: "free",
+      planStatus: "free",
+      roles: [],
+      isBlocked: false,
+      isUnconfigured: false,
+    });
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={onNavigate}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+    const dashboard = screen.getByTestId("topbar-nav-dashboard");
+    expect(dashboard.getAttribute("aria-current")).toBe("page");
+    fireEvent.click(dashboard);
+    expect(onNavigate).toHaveBeenCalledWith("dashboard");
+  });
+
 });

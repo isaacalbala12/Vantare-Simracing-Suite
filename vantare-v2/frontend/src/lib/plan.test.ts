@@ -36,6 +36,14 @@ describe("classifyPlan", () => {
       expect(classifyPlan(tc.in)).toBe(tc.want);
     });
   }
+
+  it("treats null runtime entitlements as free", () => {
+    expect(classifyPlan(null)).toBe("free");
+  });
+
+  it("treats missing runtime entitlements as free", () => {
+    expect(classifyPlan(undefined)).toBe("free");
+  });
 });
 
 describe("classifyStatus", () => {
@@ -100,6 +108,13 @@ describe("buildSummary", () => {
       status: "unconfigured",
     });
   });
+
+  it("handles null entitlements from Wails runtime payloads", () => {
+    expect(buildSummary("active", null)).toEqual({
+      label: "free",
+      status: "active",
+    });
+  });
 });
 
 describe("sortedEntitlements", () => {
@@ -108,6 +123,10 @@ describe("sortedEntitlements", () => {
     const got = sortedEntitlements(src);
     expect(got).toEqual(["bundle", "engineer", "overlays"]);
     expect(src).toEqual(["bundle", "overlays", "engineer"]);
+  });
+
+  it("handles null runtime entitlements", () => {
+    expect(sortedEntitlements(null)).toEqual([]);
   });
 });
 

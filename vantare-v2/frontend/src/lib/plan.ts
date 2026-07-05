@@ -41,9 +41,13 @@ export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
   unconfigured: "Configuración incompleta",
 };
 
-export function classifyPlan(entitlements: Entitlement[]): PlanLabel {
+function normaliseEntitlements(entitlements: Entitlement[] | null | undefined): Entitlement[] {
+  return Array.isArray(entitlements) ? entitlements : [];
+}
+
+export function classifyPlan(entitlements: Entitlement[] | null | undefined): PlanLabel {
   const has = new Set<Entitlement>();
-  for (const e of entitlements) {
+  for (const e of normaliseEntitlements(entitlements)) {
     if (!e) continue;
     has.add(e);
   }
@@ -88,7 +92,7 @@ export function classifyStatus(state: LicenseState | null): PlanStatus {
 
 export function buildSummary(
   state: LicenseState | null,
-  entitlements: Entitlement[],
+  entitlements: Entitlement[] | null | undefined,
 ): PlanSummary {
   const status = classifyStatus(state);
   const label = classifyPlan(entitlements);
@@ -108,6 +112,6 @@ export function buildSummary(
   return { label: "free", status };
 }
 
-export function sortedEntitlements(entitlements: Entitlement[]): Entitlement[] {
-  return [...entitlements].sort();
+export function sortedEntitlements(entitlements: Entitlement[] | null | undefined): Entitlement[] {
+  return [...normaliseEntitlements(entitlements)].sort();
 }

@@ -2,6 +2,21 @@
 
 Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
 
+Nota HUB-ERROR-BOUNDARY (2026-07-05):
+- Añadido `HubErrorBoundary` (class component React) alrededor de `HubShell` en `HubApp.tsx`.
+- Si `HubShell` o cualquier hijo crashea durante render/lifecycle, muestra fallback oscuro estilo Vantare en vez de pantalla blanca/negra.
+- Fallback incluye: título "Hub no pudo renderizarse", mensaje, detalle técnico colapsable (error.message + componentStack), botón "Reintentar".
+- `console.error("[HubErrorBoundary]", error, errorInfo)` en `componentDidCatch` para diagnóstico.
+- Diagnóstico: reproduce en browser con `_wails.dispatchWailsEvent` → Hub renderiza correctamente con todos los estados de licencia. Causa real del blank screen es específica al runtime Wails/WebView2 (no reproducible en browser standalone). Boundary es contención preventiva.
+- Tests: 5 tests unitarios del boundary + verificación de tests HubApp existentes.
+- No se tocó: LicenseProvider, LicenseGate, OAuth, Supabase, backend Go, dependencias.
+- Sin commit, sin tag, sin release.
+Nota HUB-RUNTIME-ENTITLEMENTS (2026-07-05):
+- Causa runtime confirmada por ErrorBoundary: `e is not iterable` al montar Topbar/useAccess.
+- El payload real de Wails puede entregar `license.entitlements` como `null`/missing; `classifyPlan` asumía array y hacía `for...of`.
+- `plan.ts` ahora normaliza entitlements null/undefined a `[]` en classifyPlan/buildSummary/sortedEntitlements.
+- Tests de regresion añadidos en `plan.test.ts` y `access-policy.test.ts` para payload Wails con entitlements null.
+- Checks enfocados: 165/165 PASS (plan/access-policy/access/Topbar/HubApp), tsc OK, diff-check OK.
 Nota WIDGET-ARCH (2026-07-04):
 - Documentada arquitectura canonica de widgets en `docs/widget-architecture.md`.
 - El documento consolida responsabilidades de `WidgetStudio` vs `LayoutStudio`, edicion por columnas, modelo `ProfileConfig`/`WidgetConfig`/`WidgetVariantConfig`, superficies de render, sizing, persistencia y checklist para workers.

@@ -18,6 +18,14 @@ const baseLicense = (overrides: Partial<LicenseResult> = {}): LicenseResult => (
 
 describe("access-policy", () => {
   describe("free user", () => {
+    it("handles null entitlements from Wails payloads", () => {
+      const access = buildAccessContext({
+        license: baseLicense({ entitlements: null as never }),
+      });
+      expect(access.planLabel).toBe("free");
+      expect(canSeeSection(access, "dashboard")).toBe(true);
+    });
+
     it("keeps calendar visual available", () => {
       const access = buildAccessContext({ license: baseLicense() });
       expect(canUseFeature(access, "calendar.visual")).toBe(true);

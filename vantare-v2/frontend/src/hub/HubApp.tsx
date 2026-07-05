@@ -20,6 +20,7 @@ import { getSession } from '../lib/supabase-auth';
 import { BetaWelcome, type BetaUserRole } from './onboarding/BetaWelcome';
 import { CalendarReminderBanner } from './calendar/CalendarReminderBanner';
 import type { CalendarReminderPayload } from '../calendar/calendar-types';
+import { HubErrorBoundary } from './HubErrorBoundary';
 
 type SourceStatus = {
   kind: string;
@@ -223,7 +224,9 @@ export function HubApp() {
     <LicenseProvider>
       <LicenseBridge />
       <LicenseGate>
-        <HubShell />
+        <HubErrorBoundary>
+          <HubShell />
+        </HubErrorBoundary>
       </LicenseGate>
     </LicenseProvider>
   );

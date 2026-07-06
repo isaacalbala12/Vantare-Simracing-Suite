@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
 import { enrichWidgetPropsWithVariant } from "../../lib/widget-variants";
 import { getRelativeFilters } from "../../overlay/widgets/relative-filters";
@@ -30,6 +31,7 @@ type LogicalSizeState = {
 };
 
 export function WidgetSandboxPreview({ profile, activeWidget, mockSessionScenario }: WidgetSandboxPreviewProps) {
+  const { t } = useI18n();
   const contentRef = useRef<HTMLDivElement | null>(null);
   const rendererProps = useMemo(() => {
     if (!activeWidget) return null;
@@ -110,7 +112,7 @@ export function WidgetSandboxPreview({ profile, activeWidget, mockSessionScenari
         className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-neutral-800 text-sm text-neutral-500"
         style={checkerboardStyle}
       >
-        Selecciona un widget para previsualizarlo.
+        {t("studio.selectWidgetPreview")}
       </div>
     );
   }

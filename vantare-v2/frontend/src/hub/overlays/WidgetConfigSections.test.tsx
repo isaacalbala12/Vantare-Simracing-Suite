@@ -49,7 +49,7 @@ describe("WidgetConfigSections", () => {
       columns: standingsColumns,
       widgetType: "standings",
     });
-    expect(screen.getByText("Columns")).toBeDefined();
+    expect(screen.getByText("Columnas")).toBeDefined();
     expect(screen.getByText("position")).toBeDefined();
   });
 
@@ -60,7 +60,7 @@ describe("WidgetConfigSections", () => {
       columnGroups: standingsColumnGroups,
       widgetType: "standings",
     });
-    expect(screen.getByText("Column Groups")).toBeDefined();
+    expect(screen.getByText("Grupos de Columnas")).toBeDefined();
     expect(screen.getByText("hypercar")).toBeDefined();
   });
 

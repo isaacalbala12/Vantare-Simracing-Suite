@@ -409,3 +409,46 @@ describe('SettingsPage', () => {
     expect(payload.activeOverlayProfileId).toBe('must-survive-cpu');
   });
 });
+describe('SettingsPage i18n', () => {
+  beforeEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.clearAllMocks();
+    runtimeMock.handlers.clear();
+    dispatch('settings', { deltaMode: 'lap', hotkeys: { toggleOverlay: '' } });
+    dispatch('updater:settings', { settings: { channel: 'stable' } });
+    dispatch('updater:available', { info: { currentVersion: '0.1.0', latestVersion: '0.1.1', available: false } });
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it('shows language selector in settings', () => {
+    render(<SettingsPage />);
+    expect(screen.getByTestId('language-selector')).toBeTruthy();
+  });
+
+  it('displays settings title in Spanish by default', () => {
+    render(<SettingsPage />);
+    expect(screen.getByText('Ajustes')).toBeTruthy();
+  });
+
+  it('changes visible text when language is switched to Portuguese', () => {
+    render(<SettingsPage />);
+    expect(screen.getByText('Ajustes')).toBeTruthy();
+    const select = screen.getByTestId('language-selector') as HTMLSelectElement;
+    select.value = 'pt';
+    fireEvent.change(select);
+    expect(screen.getByText('Configurações')).toBeTruthy();
+  });
+
+  it('persists language choice in localStorage', () => {
+    render(<SettingsPage />);
+    const select = screen.getByTestId('language-selector') as HTMLSelectElement;
+    select.value = 'it';
+    fireEvent.change(select);
+    expect(localStorage.getItem('vantare.locale')).toBe('it');
+  });
+});

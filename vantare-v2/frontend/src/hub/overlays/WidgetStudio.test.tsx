@@ -534,7 +534,7 @@ describe("WidgetStudio", () => {
     );
 
     expect(screen.getByTestId("design-system-selector")).toBeTruthy();
-    const select = screen.getByLabelText("Theme") as HTMLSelectElement;
+    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
     expect(select).toBeTruthy();
     expect(select.value).toBe("base");
     expect(screen.getByText("Vantare Crystal")).toBeTruthy();

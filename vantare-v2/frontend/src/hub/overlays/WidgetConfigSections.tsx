@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 import type { SlotConfig, ColumnConfig, ColumnGroupConfig } from "../../lib/profile";
 import {
   toggleSlotEnabled,
@@ -159,6 +160,7 @@ export function WidgetConfigSections({
   canApply,
   onDraftChange,
 }: WidgetConfigSectionsProps) {
+  const { t } = useI18n();
   const hasSlots = slots.length > 0;
   const hasColumns = columns.length > 0;
   const hasColumnGroups = columnGroups.length > 0;
@@ -168,7 +170,7 @@ export function WidgetConfigSections({
   return (
     <div data-testid="widget-config-sections">
       {hasSlots && (
-        <CollapsibleSection title="Slots" count={slots.length} defaultOpen>
+        <CollapsibleSection title={t("studio.slots")} count={slots.length} defaultOpen>
           {slots.map((slot) => (
             <div
               key={slot.id}
@@ -203,7 +205,7 @@ export function WidgetConfigSections({
       )}
 
       {hasColumns && (
-        <CollapsibleSection title="Columns" count={columns.length} defaultOpen>
+        <CollapsibleSection title={t("studio.columns")} count={columns.length} defaultOpen>
           {columns.map((col) => (
             <div
               key={col.id}
@@ -245,7 +247,7 @@ export function WidgetConfigSections({
       )}
 
       {hasColumnGroups && (
-        <CollapsibleSection title="Column Groups" count={columnGroups.length} defaultOpen>
+        <CollapsibleSection title={t("studio.columnGroups")} count={columnGroups.length} defaultOpen>
           {columnGroups.map((group) => (
             <div
               key={group.id}

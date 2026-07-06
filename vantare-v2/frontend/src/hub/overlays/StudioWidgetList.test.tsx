@@ -34,7 +34,7 @@ describe("StudioWidgetList", () => {
   it("searches by id and type", () => {
     render(<StudioWidgetList widgets={widgets} selectedWidgetId="delta" onSelectWidget={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText("Buscar widget..."), { target: { value: "rel" } });
+    fireEvent.change(screen.getByPlaceholderText("Buscar overlay..."), { target: { value: "rel" } });
 
     expect(screen.queryByText("delta")).toBeNull();
     expect(screen.getAllByText("relative").length).toBeGreaterThan(0);

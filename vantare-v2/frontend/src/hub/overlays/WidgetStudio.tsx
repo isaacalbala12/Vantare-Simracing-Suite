@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { I18nProvider, useI18n } from "../../i18n/I18nProvider";
 import type { ProfileConfig } from "../../lib/profile";
 import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
 import type { SaveState } from "./useOverlayStudioState";
@@ -17,7 +18,7 @@ type WidgetStudioProps = {
   onBack: () => void;
 };
 
-export function WidgetStudio({
+function WidgetStudioInner({
   profile,
   selectedWidgetId,
   dirty,
@@ -27,20 +28,21 @@ export function WidgetStudio({
   onSave,
   onBack,
 }: WidgetStudioProps) {
+  const { t } = useI18n();
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile.widgets[0] ?? null;
   const [mockSessionScenario, setMockSessionScenario] = useState<MockSessionScenario>("race");
   const [themeId, setThemeId] = useState<string>("base");
 
   const saveLabel =
     saveState === "saving"
-      ? "Guardando..."
+      ? t("studio.saveLabel.saving")
       : saveState === "saved"
-        ? "Guardado"
+        ? t("studio.saveLabel.saved")
         : saveState === "error"
-          ? "Error al guardar"
+          ? t("studio.saveLabel.error")
           : dirty
-            ? "Cambios sin guardar"
-            : "Sin cambios";
+            ? t("studio.saveLabel.dirty")
+            : t("studio.saveLabel.idle");
   const saveAccent = saveState === "error" || (saveState === "idle" && dirty);
 
   return (
@@ -52,14 +54,14 @@ export function WidgetStudio({
             onClick={onBack}
             className="font-mono text-[10px] font-bold uppercase tracking-widest text-vantare-textMuted transition-colors hover:text-white cursor-pointer"
           >
-            ← Overlays Studio
+            {t("studio.overlaysStudio")}
           </button>
           <span className="h-3 w-px bg-white/10" aria-hidden="true" />
           <h1 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-white">
-            Widgets
+            {t("studio.widgets")}
           </h1>
           <span className="hidden font-mono text-[10px] text-vantare-textDim sm:inline">
-            Edición interna · sin posición
+            {t("studio.internalEdit")}
           </span>
         </div>
 
@@ -89,7 +91,7 @@ export function WidgetStudio({
             data-testid="widget-studio-save-btn"
             className="btn-secondary rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
-            Guardar
+            {t("studio.save")}
           </button>
         </div>
       </div>
@@ -98,7 +100,7 @@ export function WidgetStudio({
           htmlFor="design-system-select"
           className="font-mono text-[10px] font-bold uppercase tracking-widest text-vantare-textDim"
         >
-          Theme
+          {t("studio.designLabel")}
         </label>
         <select
           id="design-system-select"
@@ -127,13 +129,13 @@ export function WidgetStudio({
               data-testid="mock-session-selector"
             >
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-vantare-textDim">
-                Mock
+                {t("studio.mock")}
               </span>
               <div className="flex overflow-hidden rounded-md border border-white/10 bg-black/40">
                 {[
-                  ["practice", "Práctica"],
-                  ["qual", "Qualy"],
-                  ["race", "Carrera"],
+                  ["practice", t("studio.mockPractice")],
+                  ["qual", t("studio.mockQualy")],
+                  ["race", t("studio.mockRace")],
                 ].map(([value, label]) => {
                   const active = value === mockSessionScenario;
                   return (
@@ -165,5 +167,13 @@ export function WidgetStudio({
         />
       </div>
     </div>
+  );
+}
+
+export function WidgetStudio(props: WidgetStudioProps) {
+  return (
+    <I18nProvider>
+      <WidgetStudioInner {...props} />
+    </I18nProvider>
   );
 }

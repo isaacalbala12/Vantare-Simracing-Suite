@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 import type { ProfileConfig, WidgetConfig, SlotConfig, ColumnConfig, ColumnGroupConfig } from "../../lib/profile";
 import { PreviewInspector } from "../preview/PreviewInspector";
 import { RelativeSettingsSection } from "./RelativeSettingsSection";
@@ -25,11 +26,8 @@ type DraftConfig = {
   columnGroups: ColumnGroupConfig[];
 };
 
-function statusLabel(enabled: boolean): string {
-  return enabled ? "Activo" : "Oculto";
-}
-
 function WidgetHeader({ widget }: { widget: WidgetConfig }) {
+  const { t } = useI18n();
   const widgetName = widget.name || widget.id;
   return (
     <div
@@ -49,7 +47,7 @@ function WidgetHeader({ widget }: { widget: WidgetConfig }) {
           widget.enabled ? "text-emerald-400" : "text-vantare-textDim"
         }`}
       >
-        {statusLabel(widget.enabled)}
+        {widget.enabled ? t("studio.widgetStatus.active") : t("studio.widgetStatus.hidden")}
       </span>
     </div>
   );
@@ -66,6 +64,7 @@ function isDraftDirty(draft: DraftConfig, effective: DraftConfig): boolean {
 export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: WidgetSettingsPanelProps) {
   const access = useAccess();
   const canApply = widget ? canApplyWidget(widget.type, access) : false;
+  const { t } = useI18n();
 
   const effective = useMemo(
     () => widget
@@ -145,7 +144,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           className="mx-2 mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-amber-400"
           data-testid="pro-upgrade-notice"
         >
-          Pro — upgrade to apply
+          {t("studio.proUpgrade")}
         </div>
       )}
       <div className="min-h-0 flex-1">
@@ -178,7 +177,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
                 data-testid="save-to-widget-btn"
                 className="rounded bg-vantare-accent/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-accent cursor-pointer"
               >
-                Guardar en widget
+                {t("studio.saveToWidget")}
               </button>
               <button
                 type="button"
@@ -186,7 +185,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
                 data-testid="discard-changes-btn"
                 className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
               >
-                Descartar
+                {t("studio.discard")}
               </button>
             </div>
           )}

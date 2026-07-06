@@ -19,6 +19,15 @@ Nota ACCESS-DEV-MODES (2026-07-06) — Implementation:
 - Checks: 23/23 access-dev-modes PASS, 164/164 access-policy/plan/license/access PASS (no regresion), 1483/1483 full suite PASS, tsc PASS, lint PASS (0 errors, 2 preexisting warnings), git diff --check OK.
 - Sin commit, sin tag, sin release.
 
+Nota I18N-01 (2026-07-06) — Implementation:
+- Base i18n ligera añadida para `es`, `en`, `pt` e `it` en `frontend/src/i18n/` con provider, selector de idioma, normalizacion de locale y fallback seguro.
+- Selector de idioma integrado en onboarding y en la pagina de Ajustes. La preferencia se persiste en `localStorage` (`vantare.locale`).
+- Widget Studio traduce copy visible principal: shell, lista de overlays/widgets, preview empty state, estado de guardado, acciones de draft, panel derecho, secciones de configuracion y galeria de diseños.
+- Alcance deliberado: no se traduce todo el cuerpo legacy de SettingsPage en este corte. Queda como I18N-02 para evitar mezclar una migracion amplia de ajustes/updater/hotkeys.
+- No se tocó: backend Go, Supabase/Auth, Calendar, LayoutStudio, runtime OBS, dependencias, position/x/y/w/h.
+- Checks enfocados: 211/211 PASS (i18n, onboarding, settings y Widget Studio).
+- Sin tag, sin release.
+
 Nota VISUAL-PARITY-INFRA (2026-07-06):
 - Se crea una infraestructura documental para que modelos worker puedan ejecutar tareas de paridad visual con Playwright sin depender de revisiones manuales improvisadas.
 - Se añade la skill local `visual-parity-with-playwright` y la carpeta `docs/visual-parity/` con protocolo, checklist, prompts de implementacion/review e indice de HTMLs de referencia.

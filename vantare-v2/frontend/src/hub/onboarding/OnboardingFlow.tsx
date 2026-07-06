@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
+import { I18nProvider, useI18n } from "../../i18n/I18nProvider";
+import { LanguageSelector } from "../../i18n/LanguageSelector";
 import { LicenseProvider, useLicense } from "../../lib/license";
 import { LoginScreen } from "../auth/LoginScreen";
 import { PaywallScreen } from "../auth/PaywallScreen";
@@ -11,10 +13,10 @@ export type OnboardingStep =
 
 export type SimulatorId = "lmu" | "iracing" | "acc";
 
-const SIMULATORS: { id: SimulatorId; name: string; note: string }[] = [
-  { id: "lmu", name: "Le Mans Ultimate", note: "Release 02 sim principal" },
-  { id: "iracing", name: "iRacing", note: "Release 06" },
-  { id: "acc", name: "Assetto Corsa Competizione", note: "Release 06" },
+const SIMULATORS: { id: SimulatorId; name: string; noteKey: string }[] = [
+  { id: "lmu", name: "Le Mans Ultimate", noteKey: "onboarding.simulatorNote.release02" },
+  { id: "iracing", name: "iRacing", noteKey: "onboarding.simulatorNote.release06" },
+  { id: "acc", name: "Assetto Corsa Competizione", noteKey: "onboarding.simulatorNote.release06" },
 ];
 
 type OnboardingFlowProps = {
@@ -22,22 +24,25 @@ type OnboardingFlowProps = {
   onComplete?: () => void;
   children?: ReactNode;
 };
-
 function SimulatorStep({
   onNext,
 }: {
   onNext: (sim: SimulatorId) => void;
 }) {
+  const { t } = useI18n();
   return (
     <section
       data-testid="onboarding-step-simulator"
       className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#0a0a0a] p-4 text-white"
     >
+      <div className="absolute right-4 top-4">
+        <LanguageSelector />
+      </div>
       <h1 className="font-mono text-sm uppercase tracking-widest">
-        Bienvenido a Vantare
+        {t("onboarding.welcome")}
       </h1>
       <p className="font-mono text-[10px] text-vantare-textDim">
-        Elige tu simulador principal para empezar
+        {t("onboarding.chooseSimulator")}
       </p>
       <div className="grid gap-3 md:grid-cols-3">
         {SIMULATORS.map((sim) => (
@@ -49,7 +54,7 @@ function SimulatorStep({
           >
             <p className="font-mono text-xs uppercase">{sim.name}</p>
             <p className="font-mono text-[10px] text-vantare-textDim">
-              {sim.note}
+              {t(sim.noteKey)}
             </p>
           </button>
         ))}
@@ -57,7 +62,6 @@ function SimulatorStep({
     </section>
   );
 }
-
 function RecommendedStep({
   onComplete,
   children,
@@ -65,16 +69,17 @@ function RecommendedStep({
   onComplete: () => void;
   children?: ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <section
       data-testid="onboarding-step-recommended"
       className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a] p-4 text-white"
     >
       <h1 className="font-mono text-sm uppercase tracking-widest">
-        Elige tu perfil recomendado
+        {t("onboarding.chooseRecommended")}
       </h1>
       <p className="font-mono text-[10px] text-vantare-textDim">
-        Empezamos con un perfil base. Podrás cambiarlo en cualquier momento.
+        {t("onboarding.profileBase")}
       </p>
       <div className="flex gap-2">
         <button
@@ -82,7 +87,7 @@ function RecommendedStep({
           onClick={onComplete}
           className="rounded bg-vantare-red-500 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-black"
         >
-          Empezar
+          {t("onboarding.start")}
         </button>
       </div>
       {children}
@@ -92,6 +97,7 @@ function RecommendedStep({
 
 function AuthStage() {
   const { result, loading } = useLicense();
+  const { t } = useI18n();
   if (loading) {
     return (
       <div
@@ -99,7 +105,7 @@ function AuthStage() {
         className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
       >
         <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
-          Cargando licencia...
+          {t("onboarding.loadingLicense")}
         </p>
       </div>
     );
@@ -156,20 +162,21 @@ function OnboardingSteps({
     </RecommendedStep>
   );
 }
-
 export function OnboardingFlow({
   initialStep = "simulator",
   onComplete,
   children,
 }: OnboardingFlowProps) {
   return (
-    <LicenseProvider>
-      <OnboardingSteps
-        initialStep={initialStep}
-        onComplete={onComplete}
-      >
-        {children}
-      </OnboardingSteps>
-    </LicenseProvider>
+    <I18nProvider>
+      <LicenseProvider>
+        <OnboardingSteps
+          initialStep={initialStep}
+          onComplete={onComplete}
+        >
+          {children}
+        </OnboardingSteps>
+      </LicenseProvider>
+    </I18nProvider>
   );
 }

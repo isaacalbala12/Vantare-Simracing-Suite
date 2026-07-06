@@ -31,3 +31,5 @@ vantare-v2-engineer/
 # Stale binary artifacts
 *.exe.stale
 vantare.exe.stale
+# Local Pi runtime state
+.atl/

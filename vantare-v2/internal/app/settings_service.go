@@ -10,24 +10,54 @@ import (
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
-	DeltaMode              string                    `json:"deltaMode"`
-	CpuSampling            bool                      `json:"cpuSampling"`
-	Hotkeys                map[string]string         `json:"hotkeys"`
-	ActiveOverlayProfileID string                    `json:"activeOverlayProfileId,omitempty"`
-	BetaWelcomeCompleted   bool                      `json:"betaWelcomeCompleted,omitempty"`
-	BetaUserRole           string                    `json:"betaUserRole,omitempty"`
-	Launchers              map[string]LauncherConfig `json:"launchers,omitempty"`
+	DeltaMode              string                      `json:"deltaMode"`
+	CpuSampling            bool                        `json:"cpuSampling"`
+	Hotkeys                map[string]string           `json:"hotkeys"`
+	ActiveOverlayProfileID string                      `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted   bool                        `json:"betaWelcomeCompleted,omitempty"`
+	BetaUserRole           string                      `json:"betaUserRole,omitempty"`
+	LauncherApps           map[string]LauncherAppEntry `json:"launcherApps,omitempty"`
+	LauncherProfiles       []LaunchProfile             `json:"launcherProfiles,omitempty"`
 }
 
-// LauncherConfig is the persisted shape of a single launcher entry. The
-// launcher package defines its own equivalent type but the on-disk shape is
-// owned by this struct so the JSON contract stays in one place.
-type LauncherConfig struct {
-	SimulatorID    string   `json:"simulatorId"`
-	LaunchMethod   string   `json:"launchMethod"`
-	ExecutablePath string   `json:"executablePath,omitempty"`
-	SteamAppID     uint32   `json:"steamAppId,omitempty"`
-	AssociatedApps []string `json:"associatedApps,omitempty"`
+// LauncherAppCategory clasifica una app para la UI.
+type LauncherAppCategory string
+
+const (
+	AppCategorySimulator LauncherAppCategory = "simulator"
+	AppCategoryStreaming LauncherAppCategory = "streaming"
+	AppCategoryAudio     LauncherAppCategory = "audio"
+	AppCategoryTelemetry LauncherAppCategory = "telemetry"
+	AppCategoryUtility   LauncherAppCategory = "utility"
+)
+
+// LauncherAppEntry representa una app detectada o añadida manualmente.
+type LauncherAppEntry struct {
+	ID             string              `json:"id"`
+	DisplayName    string              `json:"displayName"`
+	Abbreviation   string              `json:"abbreviation"`
+	Category       LauncherAppCategory `json:"category"`
+	LaunchMethod   string              `json:"launchMethod"`
+	SteamAppID     uint32              `json:"steamAppId,omitempty"`
+	ExecutablePath string              `json:"executablePath,omitempty"`
+	Args           string              `json:"args,omitempty"`
+	Detected       bool                `json:"detected"`
+	GradientFrom   string              `json:"gradientFrom"`
+	GradientTo     string              `json:"gradientTo"`
+}
+
+// LaunchStep es un paso dentro de un perfil.
+type LaunchStep struct {
+	AppID string `json:"appId"`
+	Delay int    `json:"delay"`
+}
+
+// LaunchProfile es un perfil de lanzamiento editable.
+type LaunchProfile struct {
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Description string       `json:"description,omitempty"`
+	Steps       []LaunchStep `json:"steps"`
 }
 
 // DefaultAppSettings returns settings with sensible defaults.
@@ -40,6 +70,43 @@ func DefaultAppSettings() *AppSettings {
 			"toggleEditMode": "ctrl+shift+e",
 			"nextProfile":    "ctrl+shift+right",
 			"prevProfile":    "ctrl+shift+left",
+		},
+		LauncherApps:     defaultLauncherApps(),
+		LauncherProfiles: defaultLauncherProfiles(),
+	}
+}
+
+func defaultLauncherApps() map[string]LauncherAppEntry {
+	// LMU detectada por defecto (el discovery la sobreescribe si la encuentra)
+	lmu := LauncherAppEntry{
+		ID: "lmu", DisplayName: "Le Mans Ultimate", Abbreviation: "LMU",
+		Category: AppCategorySimulator, LaunchMethod: "steam-uri",
+		SteamAppID: 2399420, Detected: true,
+		GradientFrom: "#ff3b3b", GradientTo: "#9a0606",
+	}
+	return map[string]LauncherAppEntry{"lmu": lmu}
+}
+
+func defaultLauncherProfiles() []LaunchProfile {
+	return []LaunchProfile{
+		{
+			ID:   "creator",
+			Name: "Creador de Contenido",
+			Steps: []LaunchStep{
+				{AppID: "lmu", Delay: 0},
+				{AppID: "obs", Delay: 2},
+				{AppID: "spotify", Delay: 2},
+			},
+		},
+		{
+			ID:   "pro",
+			Name: "Pro",
+			Steps: []LaunchStep{
+				{AppID: "lmu", Delay: 0},
+				{AppID: "crewchief", Delay: 2},
+				{AppID: "spotify", Delay: 2},
+				{AppID: "motec", Delay: 2},
+			},
 		},
 	}
 }
@@ -67,29 +134,42 @@ func (s *SettingsService) Settings() *AppSettings {
 	return s.settings
 }
 
-// GetLaunchers returns the current launcher configuration map. Used by the
-// launcher service to read its persisted state.
-func (s *SettingsService) GetLaunchers() map[string]LauncherConfig {
+// GetLauncherApps returns the current launcher apps map.
+func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
 	if s.settings == nil {
 		return nil
 	}
-	return s.settings.Launchers
+	return s.settings.LauncherApps
 }
 
-// SetLaunchers replaces the entire Launchers map and persists the change.
-// The launcher service calls this after validating a new configuration.
-func (s *SettingsService) SetLaunchers(launchers map[string]LauncherConfig) error {
+// SetLauncherApps replaces the entire LauncherApps map and persists the change.
+func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) error {
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
-	if launchers == nil {
-		s.settings.Launchers = nil
-	} else {
-		s.settings.Launchers = make(map[string]LauncherConfig, len(launchers))
-		for k, v := range launchers {
-			s.settings.Launchers[k] = v
-		}
+	s.settings.LauncherApps = make(map[string]LauncherAppEntry, len(apps))
+	for k, v := range apps {
+		s.settings.LauncherApps[k] = v
 	}
+	return s.Save(s.settings)
+}
+
+// GetLauncherProfiles returns the current launch profiles slice.
+func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
+	if s.settings == nil {
+		return nil
+	}
+	return s.settings.LauncherProfiles
+}
+
+// SetLauncherProfiles replaces the entire LaunchProfiles slice and persists the change.
+func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
+	if s.settings == nil {
+		s.settings = DefaultAppSettings()
+	}
+	out := make([]LaunchProfile, len(profiles))
+	copy(out, profiles)
+	s.settings.LauncherProfiles = out
 	return s.Save(s.settings)
 }
 
@@ -125,11 +205,21 @@ func (s *SettingsService) Load() error {
 	merged.ActiveOverlayProfileID = loaded.ActiveOverlayProfileID
 	merged.BetaWelcomeCompleted = loaded.BetaWelcomeCompleted
 	merged.BetaUserRole = loaded.BetaUserRole
-	if loaded.Launchers != nil {
-		merged.Launchers = make(map[string]LauncherConfig, len(loaded.Launchers))
-		for k, v := range loaded.Launchers {
-			merged.Launchers[k] = v
+	if loaded.LauncherApps != nil {
+		merged.LauncherApps = make(map[string]LauncherAppEntry, len(loaded.LauncherApps))
+		for k, v := range loaded.LauncherApps {
+			merged.LauncherApps[k] = v
 		}
+	}
+	if loaded.LauncherProfiles != nil {
+		merged.LauncherProfiles = make([]LaunchProfile, len(loaded.LauncherProfiles))
+		copy(merged.LauncherProfiles, loaded.LauncherProfiles)
+	}
+	if merged.LauncherApps == nil {
+		merged.LauncherApps = defaultLauncherApps()
+	}
+	if merged.LauncherProfiles == nil {
+		merged.LauncherProfiles = defaultLauncherProfiles()
 	}
 	s.settings = merged
 	return nil

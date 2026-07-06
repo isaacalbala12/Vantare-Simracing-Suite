@@ -9,6 +9,22 @@ Nota WORKDAY-2026-07-06 — Widget Studio launch polish:
 - Segmento 5 — WIDGET-TABLE-PRIMITIVES: alinear columnas, badges, neumaticos, gaps y celdas entre standings, relative y multiclass con primitives compartidas. `textAlign` debe ser configurable internamente por columna aunque no sea ajuste publico.
 - Segmento 6 — DESIGN-SELECTOR-UX: hacer el selector de diseno mas visible e intuitivo, con nombre, descripcion, access badge y estado activo/bloqueado. No debe quedar como un select pequeno perdido en la esquina.
 - Segmento 7 — UI-POLISH-LAUNCH: pasada final de consistencia visual y copy antes del lanzamiento: comprobar tamanos, traducciones, estados bloqueados, previews, visual compare con Playwright y screenshots side-by-side. No commitear PNGs salvo decision explicita.
+Nota WIDGET-PREVIEW-PARITY-01 (2026-07-06) — Plan:
+- Plan creado en `docs/superpowers/plans/2026-07-06-widget-preview-parity-01-canonical-fixtures-and-size.md`.
+- Objetivo: que cada widget conserve mismos datos, mismos pilotos/items, misma densidad, misma altura visible y mismo tamano de preview entre sus disenos oficiales. Solo puede cambiar la personalizacion visual implicita del sistema de diseno.
+- Decisiones cerradas: standings usa 20 pilotos canonicos; relative usa 5 filas; standings/relative usan el mismo set semantico de columnas entre disenos; el alcance de tamano igual es solo preview/harness; delta/pedals solo requieren tamano proporcional, no simetria perfecta.
+- Alcance previsto: fixtures canonicos, contrato de tamano/densidad preview-only, tests RED/GREEN y visual compare con Playwright. No tocar LayoutStudio, runtime OBS, backend, calendario, access policy ni `position/x/y/w/h`.
+Nota WIDGET-PREVIEW-PARITY-01 (2026-07-06) — Implementation:
+- Fixtures canónicos: `widget-preview-fixtures.ts` — 20 pilotos HYPERCAR canónicos (player TOYOTA GAZOO #8 en posición 5), derivación de 5 filas relative (2 ahead + player + 2 behind), columnas semánticas canónicas para standings (6 columnas) y relative (6 columnas), filtros canónicos para relative (rangeAhead: 2, rangeBehind: 2), valores estáticos para delta/pedals.
+- Contrato de preview: `widget-preview-contract.ts` — tamaños canónicos por widget type (standings: 420×620, relative: 420×260, delta: 420×140, pedals: 420×120).
+- WidgetSandboxPreview: cuando el widget tiene un diseño oficial (`variantId.startsWith("official-")`), aplica overrides canónicos al profile (columnas, filtros, maxRows) y usa el tamaño del contrato en vez de `widget.position`.
+- mock-telemetry.ts: sin cambios. Se mantuvo el mock base original (16 vehículos, mix de clases) para preservar la intención multi-class del runtime mock. La fuente canónica de preview es `widget-preview-fixtures.ts` (20 HYPERCAR). El mock se documenta como intencionalmente distinto.
+- Tests: 38 tests nuevos (widget-preview-fixtures: 28, widget-preview-contract: 10). 89 tests enfocados widget PASS. tsc OK, lint OK, build OK.
+- Visual compare: `widget-studio-visual-compare.mjs` creado — captura 12 diseños oficiales, valida invariantes de paridad (row count, columnas semánticas, drivers canónicos), exit 1 si falla. Requiere dev server y Playwright.
+- Archivos nuevos: widget-preview-fixtures.ts, widget-preview-fixtures.test.ts, widget-preview-contract.ts, widget-preview-contract.test.ts, widget-studio-visual-compare.mjs.
+- Archivos modificados: mock-telemetry.ts (comment documentando divergencia intencional vs fixture canónica), WidgetSandboxPreview.tsx (overrides canónicos para diseños oficiales).
+- No se tocó: LayoutStudio, runtime OBS, backend Go, Supabase/Auth, Calendar, access policy, billing, dependencias, position/x/y/w/h.
+- Sin commit, sin tag, sin release.
 Nota ACCESS-DEV-MODES (2026-07-06) — Implementation:
 - Archivos nuevos: `frontend/src/lib/access-dev-modes.ts` (helper puro: `AccessDevMode`, `DEV_MODES`, `resolveAccessDevModeInput()`, `resolveLicenseForDevMode()`) + `frontend/src/lib/access-dev-modes.test.ts` (23 tests).
 - Archivo modificado: `frontend/src/lib/access.tsx` (~15 líneas nuevas: lee dev mode, sintetiza license, añade rol `tester` para tester/power-tester).

@@ -9,6 +9,7 @@ type WidgetDesignGalleryProps = {
   widget: WidgetConfig | null;
   onApplyDesign: (design: OfficialDesign) => void;
   applyingDesignId?: string | null;
+  activeDesignId?: string | null;
   testId?: string;
 };
 
@@ -16,6 +17,7 @@ export function WidgetDesignGallery({
   widget,
   onApplyDesign,
   applyingDesignId = null,
+  activeDesignId = null,
   testId = "widget-design-gallery",
 }: WidgetDesignGalleryProps) {
   const { t } = useI18n();
@@ -49,11 +51,13 @@ export function WidgetDesignGallery({
         <ul className="space-y-0.5" data-testid="widget-design-list">
           {designs.map((design) => {
             const isApplying = applyingDesignId === design.id;
+            const isActive = activeDesignId === design.id;
             return (
               <li
                 key={design.id}
                 data-testid={`widget-design-item-${design.id}`}
                 data-design-type={design.widgetType}
+                data-design-active={isActive ? "true" : "false"}
                 className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-white/5"
               >
                 <div className="flex-1 min-w-0">
@@ -64,16 +68,25 @@ export function WidgetDesignGallery({
                     {design.description}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  data-testid={`widget-design-apply-${design.id}`}
-                  onClick={() => onApplyDesign(design)}
-                  disabled={isApplying}
-                  className="text-emerald-400 hover:text-emerald-300 font-mono text-[10px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                  title={t("studio.applyDesign")}
-                >
-                  {isApplying ? "..." : t("studio.apply")}
-                </button>
+                {isActive ? (
+                  <span
+                    data-testid={`widget-design-active-${design.id}`}
+                    className="font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-400"
+                  >
+                    {t("studio.active")}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid={`widget-design-apply-${design.id}`}
+                    onClick={() => onApplyDesign(design)}
+                    disabled={isApplying}
+                    className="text-emerald-400 hover:text-emerald-300 font-mono text-[10px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    title={t("studio.applyDesign")}
+                  >
+                    {isApplying ? "..." : t("studio.apply")}
+                  </button>
+                )}
               </li>
             );
           })}

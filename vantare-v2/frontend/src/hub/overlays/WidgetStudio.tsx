@@ -6,6 +6,13 @@ import type { SaveState } from "./useOverlayStudioState";
 import { StudioWidgetList } from "./StudioWidgetList";
 import { WidgetPreviewPanel } from "./WidgetPreviewPanel";
 import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
+import {
+  applyOfficialDesignToProfile,
+  getOfficialDesign,
+  listOfficialDesigns,
+  getActiveOfficialDesignId,
+  resetWidgetDesignToBase,
+} from "../widgets/widget-design-gallery";
 
 type WidgetStudioProps = {
   profile: ProfileConfig;
@@ -31,7 +38,7 @@ function WidgetStudioInner({
   const { t } = useI18n();
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile.widgets[0] ?? null;
   const [mockSessionScenario, setMockSessionScenario] = useState<MockSessionScenario>("race");
-  const [themeId, setThemeId] = useState<string>("base");
+  const activeDesignId = selectedWidget ? getActiveOfficialDesignId(selectedWidget) : null;
 
   const saveLabel =
     saveState === "saving"
@@ -104,12 +111,25 @@ function WidgetStudioInner({
         </label>
         <select
           id="design-system-select"
-          value={themeId}
-          onChange={(e) => setThemeId(e.target.value)}
+          value={activeDesignId ?? "base"}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!selectedWidget) return;
+            if (value === "base") {
+              onChangeProfile(resetWidgetDesignToBase(profile, selectedWidget.id));
+              return;
+            }
+            const design = getOfficialDesign(value);
+            if (design) onChangeProfile(applyOfficialDesignToProfile(profile, selectedWidget.id, design));
+          }}
           className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] text-white cursor-pointer"
         >
           <option value="base">Base</option>
-          <option value="vantare-crystal">Vantare Crystal</option>
+          {selectedWidget
+            ? listOfficialDesigns(selectedWidget.type).map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))
+            : null}
         </select>
       </div>
 

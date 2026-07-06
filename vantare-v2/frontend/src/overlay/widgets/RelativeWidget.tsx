@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getTelemetryRef } from "../../lib/telemetry-ref";
+import { getTelemetryRef, type TelemetryRefState } from "../../lib/telemetry-ref";
 import { getMockTelemetry } from "./mock-telemetry";
 import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
@@ -76,7 +76,8 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
 
   useEffect(() => {
     return startFrameBudgetLoop(updateHz, () => {
-      const t = (telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef();
+      const previewTelemetry = props?.__previewTelemetry as TelemetryRefState | undefined;
+      const t = previewTelemetry ?? ((telemetryMode ?? (editMode ? "mock" : "live")) === "mock" ? getMockTelemetry() : getTelemetryRef());
       const container = containerRef.current;
       if (!container) return;
 
@@ -176,7 +177,7 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
           ? `width:${intrinsicWidth}px`
           : `min-width:${intrinsicWidth}px;width:max(100%, ${intrinsicWidth}px)`;
 
-        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="${rowWidthStyle};height:${rowHeight}px;background:${isP ? (isCrystal ? CRYSTAL_PLAYER_BG : isGlass ? GLASS_PLAYER_BG : BAKED_PLAYER_BG) : bgRow};${leftInset}">
+        return `<div data-relative-row="${idx}" class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" style="${rowWidthStyle};height:${rowHeight}px;background:${isP ? (isCrystal ? CRYSTAL_PLAYER_BG : isGlass ? GLASS_PLAYER_BG : BAKED_PLAYER_BG) : bgRow};${leftInset}">
           ${cells}
         </div>`;
       });
@@ -195,6 +196,7 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
   return (
     <div
       data-testid="relative-panel"
+      data-relative-template={isGlass ? "glassmorphism" : "default"}
       className={`${intrinsicOnly && !compactRows ? "inline-flex h-full" : compactRows ? "inline-flex" : "flex w-full h-full"} flex-col overflow-hidden font-display`}
       style={{
         width: intrinsicRoot ? `${intrinsicWidth}px` : undefined,

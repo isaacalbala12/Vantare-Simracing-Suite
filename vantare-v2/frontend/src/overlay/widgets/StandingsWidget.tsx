@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { getTelemetryRef, resolveSessionMode, type SessionMode, type VehicleScoring } from "../../lib/telemetry-ref";
+import { getTelemetryRef, resolveSessionMode, type SessionMode, type TelemetryRefState, type VehicleScoring } from "../../lib/telemetry-ref";
 import { getMockTelemetry, getMockTelemetryForSession, type MockSessionScenario } from "./mock-telemetry";
 import type { WidgetTelemetryMode } from "./use-widget-telemetry";
 import { resolveWidgetAppearance } from "./widget-appearance";
@@ -131,13 +131,16 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
   const intrinsicOnly = !fillHost;
 
   const readTelemetry = useCallback(
-    () =>
-      (telemetryMode ?? (editMode ? "mock" : "live")) === "mock"
+    () => {
+      const previewTelemetry = props?.__previewTelemetry as TelemetryRefState | undefined;
+      if (previewTelemetry) return previewTelemetry;
+      return (telemetryMode ?? (editMode ? "mock" : "live")) === "mock"
         ? mockSessionScenario
           ? getMockTelemetryForSession(mockSessionScenario)
           : getMockTelemetry()
-        : getTelemetryRef(),
-    [editMode, mockSessionScenario, telemetryMode],
+        : getTelemetryRef();
+    },
+    [editMode, mockSessionScenario, telemetryMode, props],
   );
 
   useEffect(() => {
@@ -320,6 +323,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
   return (
     <div
       data-testid="standings-panel"
+      data-standings-template={isGlass ? "glassmorphism" : "default"}
       className={`${intrinsicOnly ? "inline-flex" : "flex w-full"} h-fit flex-col overflow-hidden`}
       style={{
         width: intrinsicOnly ? `${intrinsicWidth}px` : undefined,

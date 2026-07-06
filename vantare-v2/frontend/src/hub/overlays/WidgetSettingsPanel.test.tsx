@@ -60,6 +60,7 @@ vi.mock("../widgets/WidgetDesignGallery", () => ({
 
 vi.mock("../widgets/widget-design-gallery", () => ({
   applyOfficialDesignToProfile: vi.fn((p: unknown) => p),
+  getActiveOfficialDesignId: vi.fn(() => null),
 }));
 
 vi.mock("./WidgetVariantManager", () => ({

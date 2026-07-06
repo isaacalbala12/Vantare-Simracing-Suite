@@ -8,7 +8,7 @@ import { PedalsSettingsSection } from "./PedalsSettingsSection";
 import { WidgetPresetSection } from "./WidgetPresetSection";
 import { WidgetConfigSections } from "./WidgetConfigSections";
 import { WidgetDesignGallery } from "../widgets/WidgetDesignGallery";
-import { applyOfficialDesignToProfile, type OfficialDesign } from "../widgets/widget-design-gallery";
+import { applyOfficialDesignToProfile, getActiveOfficialDesignId, type OfficialDesign } from "../widgets/widget-design-gallery";
 import { WidgetVariantManager } from "./WidgetVariantManager";
 import { useAccess } from "../../lib/access";
 import { canApplyWidget } from "./widget-catalog";
@@ -159,7 +159,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       </div>
       {widget && (
         <div className="shrink-0">
-          <WidgetDesignGallery widget={widget} onApplyDesign={handleApplyOfficialDesign} />
+          <WidgetDesignGallery widget={widget} activeDesignId={getActiveOfficialDesignId(widget)} onApplyDesign={handleApplyOfficialDesign} />
           <WidgetVariantManager
             profile={profile}
             widget={widget}

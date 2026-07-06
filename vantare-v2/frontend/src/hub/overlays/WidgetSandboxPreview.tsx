@@ -4,8 +4,14 @@ import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
 import { enrichWidgetPropsWithVariant } from "../../lib/widget-variants";
 import { getRelativeFilters } from "../../overlay/widgets/relative-filters";
 import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
+import {
+  applyCanonicalPreviewOverrides,
+  getCanonicalPreviewMaxRows,
+  getCanonicalPreviewTelemetry,
+} from "../../overlay/widgets/widget-preview-fixtures";
 import { PreviewScaler } from "../preview/PreviewScaler";
 import { WidgetRenderer } from "../preview/WidgetRenderer";
+import { getWidgetPreviewContractSize } from "../preview/widget-preview-contract";
 import { resolveWidgetPreviewBaseSize } from "../preview/widget-preview-size";
 
 const checkerboardStyle = {
@@ -33,16 +39,43 @@ type LogicalSizeState = {
 export function WidgetSandboxPreview({ profile, activeWidget, mockSessionScenario }: WidgetSandboxPreviewProps) {
   const { t } = useI18n();
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const rendererProps = useMemo(() => {
+
+  const isOfficialDesign = (activeWidget?.variantId ?? "").startsWith("official-");
+
+  const previewProfile = useMemo(() => {
+    if (!activeWidget || !isOfficialDesign) return profile;
+    return applyCanonicalPreviewOverrides(profile, activeWidget);
+  }, [profile, activeWidget, isOfficialDesign]);
+
+  const previewWidget = useMemo(() => {
     if (!activeWidget) return null;
-    return enrichWidgetPropsWithVariant(profile, activeWidget);
-  }, [activeWidget, profile]);
+    if (!isOfficialDesign) return activeWidget;
+    const maxRows = getCanonicalPreviewMaxRows(activeWidget.type);
+    const previewProps = {
+      ...activeWidget.props,
+      __previewTelemetry: getCanonicalPreviewTelemetry(),
+    };
+    if (maxRows != null) {
+      return { ...activeWidget, props: { ...previewProps, maxRows } };
+    }
+    return { ...activeWidget, props: previewProps };
+  }, [activeWidget, isOfficialDesign]);
+
+  const effectiveWidget = previewWidget ?? activeWidget;
+
+  const rendererProps = useMemo(() => {
+    if (!effectiveWidget) return null;
+    return enrichWidgetPropsWithVariant(previewProfile, effectiveWidget);
+  }, [effectiveWidget, previewProfile]);
   const baseSize = useMemo(() => {
     if (!activeWidget) {
       return { width: 320, height: 180, mode: "declared" as const };
     }
+    if (isOfficialDesign) {
+      return getWidgetPreviewContractSize(activeWidget.type);
+    }
     return resolveWidgetPreviewBaseSize(profile, activeWidget);
-  }, [activeWidget, profile]);
+  }, [activeWidget, profile, isOfficialDesign]);
   const compactRelative = activeWidget?.type === "relative"
     && getRelativeFilters(rendererProps?.variant?.filters, rendererProps ?? undefined).rowHeightMode === "compact";
   const intrinsicSizing = baseSize.mode === "intrinsic" || compactRelative;
@@ -133,8 +166,8 @@ export function WidgetSandboxPreview({ profile, activeWidget, mockSessionScenari
           }}
         >
           <WidgetRenderer
-            profile={profile}
-            widget={activeWidget}
+            profile={previewProfile}
+            widget={effectiveWidget!}
             editMode
             telemetryMode="mock"
             mockSessionScenario={mockSessionScenario}

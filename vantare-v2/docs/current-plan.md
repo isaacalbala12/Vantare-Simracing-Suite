@@ -1,6 +1,83 @@
 # Plan actual
 
+Nota WORKDAY-2026-07-06 — Widget Studio launch polish:
+- Objetivo del dia: estabilizar Widget Studio para el lanzamiento de esta tarde sin mezclarlo con cambios de backend, calendario o LayoutStudio.
+- Segmento 1 — ACCESS-DEV-MODES: preparar modos de ejecucion/verificacion Free, Paid, Tester, Power Tester y Blocked sin rehacer la arquitectura de roles. La fuente de verdad sigue siendo `access-policy`/licencia; los modos son para dev, harness y pruebas manuales.
+- Segmento 2 — I18N-01: crear base i18n ligera para espanol, ingles, portugues e italiano. Traducir primero la UI visible de Widget Studio y mantener IDs tecnicos internos como datos, no copy publica.
+- Segmento 3 — WIDGET-FIXTURES-01: unificar fixtures canonicos por widget. El mismo widget debe tener los mismos datos mock entre disenos oficiales: standings con la misma densidad de pilotos, relative con el mismo entorno de coches, delta/pedals con los mismos valores.
+- Segmento 4 — WIDGET-PREVIEW-SCALE: normalizar tamano relativo en la preview de Widget Studio sin tocar runtime OBS, sin mutar `position`, `x`, `y`, `w` ni `h`. La escala debe vivir en el contenedor de preview, no dentro del widget.
+- Segmento 5 — WIDGET-TABLE-PRIMITIVES: alinear columnas, badges, neumaticos, gaps y celdas entre standings, relative y multiclass con primitives compartidas. `textAlign` debe ser configurable internamente por columna aunque no sea ajuste publico.
+- Segmento 6 — DESIGN-SELECTOR-UX: hacer el selector de diseno mas visible e intuitivo, con nombre, descripcion, access badge y estado activo/bloqueado. No debe quedar como un select pequeno perdido en la esquina.
+- Segmento 7 — UI-POLISH-LAUNCH: pasada final de consistencia visual y copy antes del lanzamiento: comprobar tamanos, traducciones, estados bloqueados, previews, visual compare con Playwright y screenshots side-by-side. No commitear PNGs salvo decision explicita.
+Nota ACCESS-DEV-MODES (2026-07-06) — Implementation:
+- Archivos nuevos: `frontend/src/lib/access-dev-modes.ts` (helper puro: `AccessDevMode`, `DEV_MODES`, `resolveAccessDevModeInput()`, `resolveLicenseForDevMode()`) + `frontend/src/lib/access-dev-modes.test.ts` (23 tests).
+- Archivo modificado: `frontend/src/lib/access.tsx` (~15 líneas nuevas: lee dev mode, sintetiza license, añade rol `tester` para tester/power-tester).
+- Modos: real (default), free, paid, tester, power-tester, blocked. Resueltos via `?access=` query param o `VITE_ACCESS_MODE` env var. Producción ignora overrides (`import.meta.env.PROD`).
+- tester y power-tester son equivalentes en este corte: ambos añaden rol `tester` y desbloquean todo. Diferenciación futura pendiente.
+- No se tocó: access-policy.ts, license.tsx, license-types.ts, plan.ts, WidgetStudio, widget-catalog, widget-visual-harness, backend Go, Supabase.
+- Code review P3 fixes: `DEV_MODES` sin anotación redundante (as const produce tuple estrecho), +2 roundtrip tests para tester/power-tester.
+- Checks: 23/23 access-dev-modes PASS, 164/164 access-policy/plan/license/access PASS (no regresion), 1483/1483 full suite PASS, tsc PASS, lint PASS (0 errors, 2 preexisting warnings), git diff --check OK.
+- Sin commit, sin tag, sin release.
+
+Nota VISUAL-PARITY-INFRA (2026-07-06):
+- Se crea una infraestructura documental para que modelos worker puedan ejecutar tareas de paridad visual con Playwright sin depender de revisiones manuales improvisadas.
+- Se añade la skill local `visual-parity-with-playwright` y la carpeta `docs/visual-parity/` con protocolo, checklist, prompts de implementacion/review e indice de HTMLs de referencia.
+- No cambia codigo productivo ni comportamiento runtime.
+
+Nota WIDGET-STUDIO-09 (2026-07-05) — Implementation:
+- Full Glassmorphism Widget Parity: copia la estructura visual real de widgets desde `overlay-glassmorphism-pro.html`.
+- Phase 0: Inventario de 16 secciones HTML mapeadas a componentes en `docs/widget-glassmorphism-parity.md`.
+- Phase 1: `glassmorphism-primitives.ts` — tokens compartidos (glass card, header, pill, footer, Vantare SVG logo, row styles) + `getVisualTemplate()` helper.
+- Phase 2 Free: Standings (glassmorphism template con Vantare SVG, HYPERCAR pill, grid 26px/32px/44px/1fr/100px/80px, 3 preview rows, footer LE MANS ULTIMATE + TRACK TEMP), Delta (bar/simple/advanced con top pill, track container, center line, fill bar, bottom pill, 4-cell grid), Pedals (V1 capsule HUD, V2 rectangular low profile, V3 solo vertical tall).
+- Phase 3 Pro: Relative (glassmorphism con grid 36px/6px/44px/1fr/80px/80px, RELATIVE pill, LIVE TIMING footer), Broadcast Tower (ticker con lap box, driver stream, active glow, weather box), Multiclass Relative (gapless rows, class badges, player highlight).
+- Phase 4 Preview: FuelCalculatorWidget, TrackWeatherWidget, CarDamageWidget (visual+numbers), Head2HeadWidget, DeltaTraceWidget, RacingFlagsWidget — todos preview-only, data-preview-only=true, sin runtime real.
+- Phase 5: OFFICIAL_DESIGNS actualizados con `props: { visualTemplate: "..." }` para delta (bar/simple/advanced) y pedals (v1/v2/v3). 4 nuevos diseños oficiales: delta-simple-glassmorphism, delta-advanced-glassmorphism, pedals-v1-glassmorphism, pedals-v3-glassmorphism. `getActiveOfficialDesign()` restaurada.
+- Tests: 1430/1430 PASS (139 files). tsc OK, lint OK (0 errors, 2 preexisting warnings), build OK, visual compare OK (18 capturas, 0 errors), diff-check OK.
+- Archivos nuevos: glassmorphism-primitives.ts, FuelCalculatorWidget.tsx, TrackWeatherWidget.tsx, CarDamageWidget.tsx, Head2HeadWidget.tsx, DeltaTraceWidget.tsx, RacingFlagsWidget.tsx, widget-glassmorphism-parity.md.
+- Archivos modificados: StandingsWidget.tsx, DeltaWidget.tsx, PedalsWidget.tsx, RelativeWidget.tsx, BroadcastTowerWidget.tsx, MulticlassRelativeWidget.tsx, widget-design-gallery.ts, + tests.
+- No se toco: LayoutStudio, backend Go, access-policy, dependencias, position/x/y/w/h.
+- Sin commit, sin tag, sin release.
+
+
 Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
+Nota WIDGET-STUDIO-07 (2026-07-05) — Implementation:
+- Reemplazado selector productivo `Theme: Base / Vantare Crystal` por selector real de `Diseño` basado en `OFFICIAL_DESIGNS`.
+- MC-1: Helper puro `getActiveOfficialDesign(profile, widget)` en `widget-design-gallery.ts` — detecta diseño activo por `variantId` convención (`official-{designId}-{widgetId}`) o por match de template+theme en `profile.variants`.
+- MC-2: Selector superior en `WidgetStudio.tsx` — label `Diseño`, `data-testid="widget-design-selector"`, opciones desde `listOfficialDesigns(selectedWidget.type)`, opción `Personalizado` cuando no hay match, deshabilitado cuando no hay widget o no hay diseños. Selección llama `onChangeProfile(applyOfficialDesignToProfile(...))`. Eliminado estado local `themeId` y prop `initialThemeId`.
+- MC-3: `WidgetDesignGallery` recibe `activeDesignId` — badge `Activo`, botón deshabilitado para diseño activo. `WidgetSettingsPanel` calcula activo con `getActiveOfficialDesign` y lo pasa a la galería.
+- MC-4: Harness visual actualizado — query param `design` en vez de `theme`, aplica `applyOfficialDesignToProfile` al profile mock antes de renderizar. Capturas por diseño oficial real (12 diseños × 4 widgets). Script valida ausencia de label `Theme` y presencia de `data-testid="widget-design-selector"`.
+- Tests: 114/114 enfocados (WidgetStudio 31, WidgetDesignGallery 15, widget-design-gallery 39, WidgetSettingsPanel 29). tsc OK, lint OK, build OK (warning preexistente chunk size), git diff --check OK.
+- Archivos modificados: widget-design-gallery.ts, widget-design-gallery.test.ts, WidgetStudio.tsx, WidgetStudio.test.tsx, WidgetDesignGallery.tsx, WidgetDesignGallery.test.tsx, WidgetSettingsPanel.tsx, WidgetSettingsPanel.test.tsx, widget-visual-harness.tsx, widget-studio-visual-compare.mjs, current-plan.md.
+- No se tocó: LayoutStudio, backend Go, dependencias, HTML de referencia, position/x/y/w/h.
+- Sin commit, sin tag, sin release.
+
+Nota WIDGET-STUDIO-07 P1/P2 FIX (2026-07-05):
+- Corregido bypass de access gate en el selector superior de diseño: `WidgetStudio.tsx` ahora usa `useAccess()` + `canApplyWidget()` y deshabilita/bloquea `onChange` cuando el usuario no puede aplicar el widget seleccionado.
+- Añadido test de regresion: usuario Free con widget Pro (`relative`) no puede aplicar diseños Pro desde `widget-design-selector`.
+- Endurecido `widget-studio-visual-compare.mjs`: si vuelve el label productivo `Theme` o falta `widget-design-selector`, el script registra error y termina con exit 1.
+- Checks: suite frontend 1356/1356 PASS, tsc OK, lint OK, build OK, visual compare OK (18 capturas, 0 skipped, 0 errors), diff-check OK.
+- Sin commit, sin tag, sin release.
+Nota WIDGET-STUDIO-08 (2026-07-05) — Implementation:
+- Selector de Diseño ya existía (WIDGET-STUDIO-07); este corte implementa templates visuales reales solo para `standings`.
+- MC-1: Tipo `StandingsTemplateMode` y helper puro `resolveStandingsTemplateMode(style)` en `StandingsWidget.tsx` — mapea `"glassmorphism-pro"` → `"glassmorphism"`, `"endurance"` → `"endurance"`, resto → `"leaderboard"`.
+- MC-2: Root panel incluye `data-standings-template={templateMode}` y `data-standings-template-style={style}` para detección DOM por tests y Playwright.
+- MC-3: Template glassmorphism — header horizontal con VANTARE izquierda, class pill + time derecha; header row con labels `POS`, `#`, `EQUIPO / PILOTO`, `GAP`, `LAST`; footer con `LE MANS ULTIMATE` + `TRACK TEMP`.
+- MC-4: Template endurance — header row con labels `POS`, `#`, `DRIVER`, `GAP`, `INTERVAL` (si enabled), `LAP` (si enabled), `LAST`.
+- MC-5: Template leaderboard — comportamiento base con `data-standings-template="leaderboard"`.
+- MC-6: Visual compare endurecido — valida `data-standings-template` antes de capturar para los 3 diseños oficiales de standings.
+- Tests: 7/7 StandingsWidget PASS (4 originales + 3 nuevos template). 126/126 enfocados PASS. tsc OK, lint OK, build OK, visual compare OK (18 capturas, 0 skipped, 0 errors), diff-check OK.
+- Archivos modificados: StandingsWidget.tsx, StandingsWidget.test.tsx, widget-studio-visual-compare.mjs, current-plan.md.
+- No se tocó: WidgetStudio selector, LayoutStudio, backend Go, access gates, dependencias, position/x/y/w/h.
+- Delta, pedals y relative quedan para siguientes cortes.
+- Sin commit, sin tag, sin release.
+
+
+
+Nota WIDGET-STUDIO-06 PLAN (2026-07-05):
+- Creado plan conceptual en `docs/superpowers/plans/2026-07-05-widget-studio-06-direct-visual-iteration.md`.
+- Objetivo: iteracion directa para llevar toda la pestana WidgetStudio al estilo Vantare Crystal del HTML de referencia, no solo el panel derecho.
+- Prioridad: Overlay Controls, tipografia, visual compare y capturas widget-by-widget por sistema de diseno.
+- Mantiene restricciones: WidgetStudio no toca posicion/tamano, sin LayoutStudio, sin backend, sin autosave y sin commitear PNGs.
 
 Nota HUB-ERROR-BOUNDARY (2026-07-05):
 - Añadido `HubErrorBoundary` (class component React) alrededor de `HubShell` en `HubApp.tsx`.
@@ -47,6 +124,18 @@ Nota WIDGET-STUDIO-04 (2026-07-05) — Implementation:
 - Archivos nuevos: ninguno.
 - Archivos modificados: profile.ts, widget-config-model.ts, widget-config-model.test.ts, WidgetConfigSections.tsx, WidgetConfigSections.test.tsx, WidgetSettingsPanel.tsx, WidgetSettingsPanel.test.tsx, WidgetVariantManager.tsx, standings-format.ts, relative-format.ts, current-plan.md.
 - No se toco: LayoutStudio internamente, backend Go, dependencias nuevas, CompositeApp, ObsOverlayApp, WidgetRenderer.
+- Sin commit, sin tag, sin release.
+Nota WIDGET-STUDIO-05A (2026-07-05) — Post-review fix:
+- Scope declarado originalmente: "solo Overlay Controls + tipografía".
+- Scope real ampliado y documentado: MC-1 a MC-5 del plan WIDGET-STUDIO-05.
+- MC-1: WidgetStudio shell Crystal — panel embebido 3-columnas (240px/1fr/280px), data-testid="widget-studio-crystal-shell", footer interno, save state, theme selector.
+- MC-2: StudioWidgetList left panel Crystal — header gradiente rojo, icono, search "Buscar overlay...", filter pills Todos/Activos, selected state con borde izquierdo rojo, footer "LMU Conectado".
+- MC-3: WidgetSandboxPreview canvas Crystal — fondo gradient dark, chips "1920x1080" y "Modo Edicion", resize handle visual (sin mutar layout).
+- MC-4: WidgetSettingsPanel Overlay Controls — header sticky "Overlay Controls", widget info card con tier badge, search "Type to filter settings...", secciones collapsibles (Overview, Appearance, Visibility, Settings, Variants, Slots/Columns/Column Groups, Alignment, Browser, Key & Button Bindings), draft actions.
+- MC-5: WidgetConfigSections compacto — toggles, metric selects, width presets con display ("24px", "36px", "60px", "90px", "1fr"), notas de ayuda, font-mono eliminado de selects principales (post-review fix).
+- Post-review fixes: P2 resuelto — script visual genera capturas individuales por widget (base + crystal) via query params. P3 resuelto — font-mono eliminado de MetricSelect y WidthPresetSelect.
+- Tests: 128/128 PASS (widget studio + widgets runtime). tsc OK, lint OK, build OK, git diff --check OK.
+- No se toco: LayoutStudio internamente, backend Go, position/x/y/w/h, access-policy, dependencias.
 - Sin commit, sin tag, sin release.
 Nota WIDGET-STUDIO-03 MC-0 (2026-07-04):
 - Inventario: 7 widget types (delta, relative, standings, telemetry, telemetry-vertical, pedals, engineer-notifications).
@@ -1984,3 +2073,36 @@ Nota CALENDAR-10 P3 (2026-07-04) Microfix post-review:
 - Checks: 97/97 tests de scope, 1155/1155 full tests, tsc OK, lint OK (warning preexistente .eslintignore), build OK (warning preexistente chunk size), visual-compare OK (exit 0, 9 capturas), git diff --check OK (solo whitespace preexistente en hub_main.html).
 - Archivos tocados: `frontend/src/hub/calendar/CalendarMonthView.tsx`, `frontend/src/hub/calendar/CalendarWeekView.tsx`, `frontend/scripts/calendar-visual-compare.mjs`, `docs/current-plan.md`.
 - Sin commit.
+
+Nota WIDGET-STUDIO-05 PLAN (2026-07-05):
+- Plan creado para convertir visualmente `Overlays Studio > Widgets` al HTML definitivo Vantare Crystal.
+- Fuente visual: `docs/overlay-vantare-crystal-widgets.html` (`file:///C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/overlay-vantare-crystal-widgets.html`).
+- El plan exige loop Playwright contra el HTML hasta paridad visual razonable: panel embebido 3-pane, left panel, canvas, inspector `Overlay Controls`, footer interno y widgets Crystal.
+- Reforzado: no basta con captura general del editor. El harness debe capturar tambien sistemas visuales por widget (`base`/`vantare-crystal`) y documentar skipped-with-reason para widgets del HTML que queden preview-only/catalog-only.
+- Incluye matriz obligatoria de widgets con access, data status, runtimeReady, sistemas visuales y estado implementado/preview-only/catalog-only.
+- Conserva WIDGET-STUDIO-04: slots/columns/groups editables, draft local, guardar en widget, variantes, access gates, sin tocar `LayoutStudio` ni `position/x/y/w/h`.
+- Plan: `docs/superpowers/plans/2026-07-05-widget-studio-05-visual-fidelity.md`.
+- Sin implementación ni commit.
+Nota WIDGET-STUDIO-05 (2026-07-05) — Implementation:
+- MC-0: Script `frontend/scripts/widget-studio-visual-compare.mjs` — captura HTML reference + widget matrix JSON + README.
+- MC-1: `WidgetStudio.tsx` shell Crystal 3-pane — `data-testid="widget-studio-crystal-shell"`, grid `240px/1fr/280px`, footer interno.
+- MC-2: `StudioWidgetList.tsx` left panel Crystal — gradiente rojo, 'Overlays', 'Buscar overlay...', LMU Conectado.
+- MC-3: `WidgetSandboxPreview.tsx` canvas Crystal — dark gradient, chips, resize handle decorativo.
+- MC-4: `WidgetSettingsPanel.tsx` Overlay Controls — header sticky, widget info card, search, 10 secciones.
+- MC-5: `WidgetConfigSections.tsx` compacto — WIDTH_DISPLAY, help notes slots/columns.
+- MC-6B: `widget-design-matrix.json` — 14 widgets documentados.
+- MC-7: Pro/locked parity integrado en info card.
+- 1321/1321 tests PASS, tsc OK, lint OK, build OK, git diff --check OK.
+- Archivos: 4 nuevos (script, matrix, README, reference.png), 11 modificados (source+tests+docs).
+- No LayoutStudio, no Go, no position/x/y/w/h. Sin commit.
+
+Nota WIDGET-STUDIO-06 (2026-07-05) — Direct visual iteration:
+- Iteracion directa sobre `WidgetStudio` usando `docs/overlay-vantare-crystal-widgets.html` como base visual.
+- `WidgetSettingsPanel` y `WidgetConfigSections` se compactaron: tipografia sans, overview abierto, secciones de edicion cerradas por defecto y controles expandibles.
+- `WidgetStudio` pasa `previewThemeId` al preview; el selector `Base/Vantare Crystal` afecta la preview sin mutar el widget guardado.
+- `StudioWidgetList` en WidgetStudio muestra el catalogo completo mediante `widget-catalog`; LayoutStudio sigue recibiendo solo widgets del perfil.
+- `WidgetSandboxPreview` usa canvas neutral Crystal, no gradiente azul/morado.
+- `frontend/scripts/widget-studio-visual-compare.mjs` actualizado a WIDGET-STUDIO-06: arranca Vite con binario local, soporta capturas por widget+tema y genera side-by-side contra el HTML.
+- Capturas generadas en `docs/superpowers/screenshots/widget-studio-06/` (no commitear PNGs salvo decision explicita).
+- Checks: 1338/1338 tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), build OK (warning preexistente chunk size), visual compare OK (14 capturas, 0 skipped).
+- No se tocaron LayoutStudio, backend Go, position/x/y/w/h ni dependencias.

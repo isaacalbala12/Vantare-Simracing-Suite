@@ -129,83 +129,116 @@ func (w *wailsEmitter) Emit(name string, data any) {
 	w.wailsApp.Event.Emit(name, data)
 }
 
-// launcherStatusGetter abstracts the methods of *launcher.Service that the
-// wiring tests need. The production *launcher.Service satisfies this
-// interface; tests pass a fake.
-type launcherStatusGetter interface {
-	GetStatus(simulatorID string) launcher.LauncherStatus
-}
-
-type launcherConfigurator interface {
-	Configure(in launcher.LauncherConfig) (launcher.LauncherStatus, error)
-}
-
-type launcherRunner interface {
-	Launch(simulatorID string) (launcher.LauncherStatus, error)
-}
-
-// handleLauncherStatusGet resolves the current launcher status for a
-// simulator. Defaults to "lmu" when no simulator is provided, matching the
-// first-cut scope of LAUNCHER-01.
-func handleLauncherStatusGet(simulatorID string, svc launcherStatusGetter, emitter app.EventEmitter) {
-	if simulatorID == "" {
-		simulatorID = "lmu"
-	}
-	st := svc.GetStatus(simulatorID)
-	emitter.Emit("launcher:status", map[string]any{"lmu": st})
-}
-
-// handleLauncherConfigure validates and persists a new launcher config and
-// re-emits the canonical events. On success it also re-emits the full
-// settings payload so the UI can refresh AppSettings without an extra
-// round-trip.
-func handleLauncherConfigure(
-	cfg launcher.LauncherConfig,
-	svc launcherConfigurator,
-	settings *app.SettingsService,
-	emitter app.EventEmitter,
-	logf func(string, ...any),
-) {
-	st, err := svc.Configure(cfg)
-	if err != nil {
-		logf("launcher:configure error: %v", err)
-		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
-		return
-	}
-	emitter.Emit("launcher:configured", map[string]any{"simulatorId": st.SimulatorID})
-	emitter.Emit("settings", settings.Settings())
-}
-
-// handleLauncherLaunch fires the configured command. The launcher service is
-// fire-and-forget; a successful invocation only confirms the process was
-// started, not that LMU booted.
-func handleLauncherLaunch(
-	simulatorID string,
-	svc launcherRunner,
-	emitter app.EventEmitter,
-	logf func(string, ...any),
-) {
-	if simulatorID == "" {
-		simulatorID = "lmu"
-	}
-	st, err := svc.Launch(simulatorID)
-	if err != nil {
-		logf("launcher:launch error: %v", err)
-		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
-		return
-	}
-	emitter.Emit("launcher:launched", map[string]any{
-		"simulatorId": st.SimulatorID,
-		"method":      st.LaunchMethod,
-		"at":          st.LastLaunchedAt,
-	})
-}
-
 func installerURL(release updater.Release) string {
 	if asset := updater.FindInstaller(release); asset != nil {
 		return asset.DownloadURL
 	}
 	return release.HTMLURL
+}
+
+// handleDiscoverApps runs discovery, persists the merged app set and emits the
+// canonical launcher:apps:detected event. On error it falls back to
+// launcher:error so the UI can surface a message.
+func handleDiscoverApps(svc *launcher.Service, emitter app.EventEmitter) {
+	if _, err := svc.DiscoverApps(); err != nil {
+		log.Printf("launcher:discover error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+	}
+}
+
+// handleAddApp validates and persists a manually-added app, then emits
+// launcher:apps:updated with the full app set so the UI refreshes.
+func handleAddApp(entry app.LauncherAppEntry, svc *launcher.Service, emitter app.EventEmitter) {
+	if err := svc.AddManualApp(entry); err != nil {
+		log.Printf("launcher:addApp error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": svc.Settings().GetLauncherApps()})
+}
+
+// handleRemoveApp deletes an app (refusing when a profile still uses it) and
+// emits launcher:apps:updated with the remaining set.
+func handleRemoveApp(id string, svc *launcher.Service, emitter app.EventEmitter) {
+	if err := svc.RemoveApp(id); err != nil {
+		log.Printf("launcher:removeApp error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": svc.Settings().GetLauncherApps()})
+}
+
+// handleListProfiles emits launcher:profiles:updated with the current profiles.
+func handleListProfiles(svc *launcher.Service, emitter app.EventEmitter) {
+	profiles := svc.ListProfiles()
+	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": profiles})
+}
+
+// handleSaveProfile validates and persists a profile, then re-emits the full
+// profile list so the UI stays in sync.
+func handleSaveProfile(profile app.LaunchProfile, svc *launcher.Service, emitter app.EventEmitter) {
+	if err := svc.SaveProfile(profile); err != nil {
+		log.Printf("launcher:saveProfile error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+}
+
+// handleDeleteProfile removes a profile by ID and re-emits the remaining list.
+func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmitter) {
+	if err := svc.DeleteProfile(id); err != nil {
+		log.Printf("launcher:deleteProfile error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+}
+
+// handleLaunchProfile starts the launch chain for a profile. The chain runs on
+// a goroutine; chain progress/error events are emitted by the ChainRunner. On
+// lookup failure (unknown profile) it emits launcher:error.
+func handleLaunchProfile(id string, svc *launcher.Service, emitter app.EventEmitter, parentCtx context.Context) {
+	if err := svc.LaunchProfile(parentCtx, id); err != nil {
+		log.Printf("launcher:launchProfile error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+}
+
+// handleCancelProfile cancels the active launch chain for a profile, if any.
+func handleCancelProfile(id string, svc *launcher.Service, emitter app.EventEmitter) {
+	svc.CancelChain(id)
+	_ = emitter
+}
+
+// handleChainError reacts to a failed chain step. Wails v3 alpha.98-tui does
+// not expose a native QuestionDialog, so we emit a launcher:dialog:question
+// event the frontend can render, plus launcher:error as a fallback. When the
+// user confirms the retry in the UI, the frontend re-emits launcher:profile:launch.
+//
+// TODO(launcher): when Wails exposes a native question dialog, open it here and
+// re-emit launcher:profile:launch with {id} when the user accepts.
+func handleChainError(emitter app.EventEmitter, payload launcher.ChainProgress) {
+	emitter.Emit("launcher:dialog:question", map[string]any{
+		"profileId": payload.ProfileID,
+		"stepIndex": payload.StepIndex,
+		"message":   payload.Message,
+	})
+	emitter.Emit("launcher:error", map[string]any{"message": payload.Message})
+}
+
+// handleAppPick opens a native file picker for an executable. Wails v3
+// alpha.98-tui does not expose a file dialog API, so we emit a launcher:error
+// noting the limitation and let the frontend's HTML file input take over.
+//
+// TODO(launcher): when Wails exposes a native file dialog, replace the fallback
+// with application.NewFileDialog().SetTitle(...).AddFilter("exe","*.exe").BrowseFiles()
+// and emit launcher:app:picked with the chosen path.
+func handleAppPick(emitter app.EventEmitter) {
+	emitter.Emit("launcher:error", map[string]any{
+		"message": "file picker no disponible en esta versión de Wails; usa el selector del navegador",
+	})
 }
 
 func main() {
@@ -994,43 +1027,107 @@ func main() {
 		log.Printf("global hotkeys active (%d registered)", len(settingsSvc.Settings().Hotkeys))
 	}
 
-	// Launcher event handlers (LAUNCHER-01). Three thin events that delegate
-	// to the launcher service and surface canonical statuses back to the
-	// frontend. The service is fire-and-forget: a successful Start returns
-	// without waiting on the spawned process.
+	// Launcher event handlers (Launcher Extendido, Fase 5). Each thin event
+	// delegates to a package-level handler and surfaces the canonical events
+	// from the new contract back to the frontend. App discovery, manual add,
+	// removal, profile list/save/delete, launch and cancel all flow through
+	// the orchestrator Service.
 
-	wailsApp.Event.On("launcher:status:get", func(event *application.CustomEvent) {
+	wailsApp.Event.On("launcher:apps:discover", func(event *application.CustomEvent) {
+		_ = event
+		handleDiscoverApps(launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:add", func(event *application.CustomEvent) {
+		var entry app.LauncherAppEntry
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &entry)
+			}
+		}
+		handleAddApp(entry, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:remove", func(event *application.CustomEvent) {
 		var payload struct {
-			SimulatorID string `json:"simulatorId"`
+			ID string `json:"id"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleLauncherStatusGet(payload.SimulatorID, launcherSvc, emitter)
+		handleRemoveApp(payload.ID, launcherSvc, emitter)
 	})
 
-	wailsApp.Event.On("launcher:configure", func(event *application.CustomEvent) {
-		var cfg launcher.LauncherConfig
+	wailsApp.Event.On("launcher:profiles:list", func(event *application.CustomEvent) {
+		_ = event
+		handleListProfiles(launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:profile:save", func(event *application.CustomEvent) {
+		var profile app.LaunchProfile
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
-				_ = json.Unmarshal(raw, &cfg)
+				_ = json.Unmarshal(raw, &profile)
 			}
 		}
-		handleLauncherConfigure(cfg, launcherSvc, settingsSvc, emitter, log.Printf)
+		handleSaveProfile(profile, launcherSvc, emitter)
 	})
 
-	wailsApp.Event.On("launcher:launch", func(event *application.CustomEvent) {
+	wailsApp.Event.On("launcher:profile:delete", func(event *application.CustomEvent) {
 		var payload struct {
-			SimulatorID string `json:"simulatorId"`
+			ID string `json:"id"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleLauncherLaunch(payload.SimulatorID, launcherSvc, emitter, log.Printf)
+		handleDeleteProfile(payload.ID, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:profile:launch", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleLaunchProfile(payload.ID, launcherSvc, emitter, context.Background())
+	})
+
+	wailsApp.Event.On("launcher:profile:cancel", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleCancelProfile(payload.ID, launcherSvc, emitter)
+	})
+
+	// File picker for manual apps. Wails v3 alpha.98-tui has no native dialog
+	// API, so this emits a fallback error and lets the frontend's HTML file
+	// input drive the real selection (see handleAppPick).
+	wailsApp.Event.On("launcher:app:pick", func(event *application.CustomEvent) {
+		_ = event
+		handleAppPick(emitter)
+	})
+
+	// Chain error -> native question dialog fallback (see handleChainError).
+	wailsApp.Event.On("launcher:chain:error", func(event *application.CustomEvent) {
+		var payload launcher.ChainProgress
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleChainError(emitter, payload)
 	})
 
 	// Calendar event handlers (CALENDAR-02-A) and series follow/unfollow

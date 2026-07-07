@@ -1,238 +1,127 @@
-// Package launcher implements a thin service that lets the Hub launch a
-// simulator (Le Mans Ultimate only in this first cut) using either a Steam URI
-// or a local executable. The service does not supervise the spawned process:
-// callers receive a fire-and-forget result. Settings persist through the
-// existing SettingsService so no extra files are introduced.
+// Package launcher is the orchestration service that ties together app
+// discovery, the apps registry (detected + manual), the launch-profile CRUD,
+// and the chain runner that launches a profile as a cancelable sequence of
+// steps. It is a thin delegator: the real logic lives in discovery.go,
+// apps.go, profiles.go and chain.go (Fases 1-4). This file only wires them
+// and exposes a stable, test-friendly Service surface plus the Wails-style
+// event names the frontend depends on.
 package launcher
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"runtime"
-	"sync"
-	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
 
-// LauncherConfig is an alias for the persisted launcher entry shape defined
-// in the parent app package. Using the parent's type keeps the JSON contract
-// in a single place and lets the SettingsBackend interface match without
-// additional conversions.
-type LauncherConfig = app.LauncherConfig
-
-// LauncherStatus is the read-only view exposed to the UI.
-type LauncherStatus struct {
-	SimulatorID    string   `json:"simulatorId"`
-	Configured     bool     `json:"configured"`
-	LaunchMethod   string   `json:"launchMethod,omitempty"`
-	ExecutablePath string   `json:"executablePath,omitempty"`
-	SteamAppID     uint32   `json:"steamAppId,omitempty"`
-	ExecutableOK   bool     `json:"executableOk,omitempty"`
-	AssociatedApps []string `json:"associatedApps,omitempty"`
-	LastLaunchedAt string   `json:"lastLaunchedAt,omitempty"`
+// LauncherSettingsBackend is the slice of SettingsService the launcher needs.
+// Only the methods actually used are exposed; the production
+// *app.SettingsService satisfies it, so no extra glue is required.
+type LauncherSettingsBackend interface {
+	GetLauncherApps() map[string]app.LauncherAppEntry
+	SetLauncherApps(map[string]app.LauncherAppEntry) error
+	GetLauncherProfiles() []app.LaunchProfile
+	SetLauncherProfiles([]app.LaunchProfile) error
 }
 
-// Public errors so callers can react to specific failure modes without
-// parsing error messages.
-var (
-	ErrNotConfigured     = errors.New("launcher: simulator not configured")
-	ErrInvalidConfig     = errors.New("launcher: invalid configuration")
-	ErrExecutableMissing = errors.New("launcher: executable path does not exist")
-	ErrUnsupported       = errors.New("launcher: not supported on this platform")
-)
-
-// execLauncher mirrors os/exec.Command's signature so tests can swap it out
-// without spawning real processes.
-type execLauncher func(name string, args ...string) *exec.Cmd
-
-// defaultExecLauncher is the production launcher. Tests swap it via NewService.
-var defaultExecLauncher execLauncher = exec.Command
-
-// SettingsBackend is the slice of SettingsService the launcher depends on.
-// Defined in the consumer (this package) per the repo's "no premature
-// interfaces" rule; only the methods we use are exposed.
-type SettingsBackend interface {
-	GetLaunchers() map[string]LauncherConfig
-	SetLaunchers(launchers map[string]LauncherConfig) error
-}
-
-// Emitter is the minimal event sink the launcher needs. The production
-// *wailsEmitter in main.go satisfies this interface; tests pass a spy.
-type Emitter interface {
-	Emit(name string, data any)
-}
-
-// Service is the LauncherService. It is safe to call Configure/Launch/
-// GetStatus from multiple goroutines; the only mutable state is the
-// last-launched timestamp which is guarded by mu.
+// Service is the launcher orchestrator. It owns the ChainRunner and delegates
+// every other operation to the package-level helpers in apps.go / profiles.go
+// / discovery.go. It is safe to use from multiple goroutines because the only
+// shared mutable state is wrapped by ChainRunner (its own mutex) and every
+// LauncherSettingsBackend is the slice of SettingsService the launcher needs.
 type Service struct {
-	settings   SettingsBackend
-	emit       Emitter
-	exec       execLauncher
-	now        func() time.Time
-	mu         sync.Mutex
-	lastLaunch map[string]string // simulatorID -> RFC3339 timestamp
+	settings LauncherSettingsBackend
+	emit     Emitter
+	chain    *ChainRunner
 }
 
-// NewService constructs a launcher Service. The emitter is invoked with the
-// canonical Wails event names; in tests a spy satisfies the Emitter
-// interface.
-func NewService(settings SettingsBackend, emit Emitter, execFn execLauncher) *Service {
+// NewService builds the orchestrator. execFn defaults to defaultExecLauncher
+// when nil. The ChainRunner it creates reads apps lazily from the settings
+// backend so a discovery/add/remove performed after construction is reflected
+// in the next launch.
+func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLauncher) *Service {
 	if execFn == nil {
 		execFn = defaultExecLauncher
 	}
-	return &Service{
-		settings:   settings,
-		emit:       emit,
-		exec:       execFn,
-		now:        time.Now,
-		lastLaunch: map[string]string{},
+	s := &Service{
+		settings: settings,
+		emit:     emit,
 	}
+	s.chain = NewChainRunner(s.settings.GetLauncherApps, emit, execFn)
+	return s
 }
 
-// SetClock overrides the clock used for LastLaunchedAt. Tests only.
-func (s *Service) SetClock(now func() time.Time) {
-	if now != nil {
-		s.now = now
+// Settings returns the backend the orchestrator was constructed with. Handlers
+// use it to read the live app set when emitting launcher:apps:updated without
+// coupling to the concrete *app.SettingsService type.
+func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
+
+// DiscoverApps detects installed apps, merges them with the persisted set
+// (preserving manual apps) and persists the result. It is named DiscoverApps
+// rather than Discover to avoid a name collision with the package-level
+// Discover() helper in discovery.go. Emits launcher:apps:detected.
+func (s *Service) DiscoverApps() (map[string]app.LauncherAppEntry, error) {
+	detected := Discover()
+	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
+	if err := s.settings.SetLauncherApps(merged); err != nil {
+		return nil, err
 	}
+	s.emit.Emit("launcher:apps:detected", map[string]any{"apps": merged})
+	return merged, nil
 }
 
-// GetStatus returns the read-only view for a given simulator. Unknown
-// simulator IDs are reported as not configured.
-func (s *Service) GetStatus(simulatorID string) LauncherStatus {
-	cfg, ok := s.lookupConfig(simulatorID)
-	if !ok {
-		return LauncherStatus{SimulatorID: simulatorID, Configured: false}
-	}
-	st := LauncherStatus{
-		SimulatorID:    cfg.SimulatorID,
-		Configured:     true,
-		LaunchMethod:   cfg.LaunchMethod,
-		ExecutablePath: cfg.ExecutablePath,
-		SteamAppID:     cfg.SteamAppID,
-		AssociatedApps: append([]string(nil), cfg.AssociatedApps...),
-	}
-	if cfg.LaunchMethod == "executable" && cfg.ExecutablePath != "" {
-		st.ExecutableOK = fileExists(cfg.ExecutablePath)
-	}
-	s.mu.Lock()
-	if ts, ok := s.lastLaunch[simulatorID]; ok {
-		st.LastLaunchedAt = ts
-	}
-	s.mu.Unlock()
-	return st
+// AddManualApp delegates to apps.go.
+func (s *Service) AddManualApp(entry app.LauncherAppEntry) error {
+	return AddManualApp(s.settings, entry)
 }
 
-// Configure validates the incoming config, applies defaults, persists the
-// entry through SettingsBackend and returns the resulting status. Validation
-// rejects unknown simulators, unknown methods, missing fields and bad paths
-// before saving.
-func (s *Service) Configure(in LauncherConfig) (LauncherStatus, error) {
-	if _, known := KnownSteamAppIDs[in.SimulatorID]; !known {
-		return LauncherStatus{}, fmt.Errorf("%w: simulator %q not supported", ErrInvalidConfig, in.SimulatorID)
-	}
-	if _, ok := KnownLaunchMethods[in.LaunchMethod]; !ok {
-		return LauncherStatus{}, fmt.Errorf("%w: launchMethod %q not supported", ErrInvalidConfig, in.LaunchMethod)
-	}
-	cfg := LauncherConfig{
-		SimulatorID:    in.SimulatorID,
-		LaunchMethod:   in.LaunchMethod,
-		ExecutablePath: in.ExecutablePath,
-		AssociatedApps: append([]string(nil), in.AssociatedApps...),
-	}
-	switch in.LaunchMethod {
-	case "steam-uri":
-		appID := in.SteamAppID
-		if appID == 0 {
-			appID = KnownSteamAppIDs[in.SimulatorID]
+// RemoveApp delegates to apps.go.
+func (s *Service) RemoveApp(id string) error {
+	return RemoveApp(s.settings, id)
+}
+
+// ListProfiles delegates to profiles.go.
+func (s *Service) ListProfiles() []app.LaunchProfile {
+	return ListProfiles(s.settings)
+}
+
+// SaveProfile delegates to profiles.go.
+func (s *Service) SaveProfile(profile app.LaunchProfile) error {
+	return SaveProfile(s.settings, profile)
+}
+
+// DeleteProfile delegates to profiles.go.
+func (s *Service) DeleteProfile(id string) error {
+	return DeleteProfile(s.settings, id)
+}
+
+// DuplicateProfile delegates to profiles.go.
+func (s *Service) DuplicateProfile(id, newID, newName string) error {
+	return DuplicateProfile(s.settings, id, newID, newName)
+}
+
+// LaunchProfile starts the launch chain for the given profile. It looks up the
+// profile, emits launcher:profiles:updated? No — per contract only chain
+// progress events are emitted by the runner; the caller decides on success.
+// Returns ErrProfileNotFound when there is no profile with the given ID. The
+// chain runs on a goroutine (StartChain), so this call returns immediately.
+func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
+	profiles := s.settings.GetLauncherProfiles()
+	var profile *app.LaunchProfile
+	for i := range profiles {
+		if profiles[i].ID == profileID {
+			profile = &profiles[i]
+			break
 		}
-		cfg.SteamAppID = appID
-	case "executable":
-		if in.ExecutablePath == "" {
-			return LauncherStatus{}, fmt.Errorf("%w: executablePath is required", ErrInvalidConfig)
-		}
-		if !fileExists(in.ExecutablePath) {
-			return LauncherStatus{}, fmt.Errorf("%w: %s", ErrInvalidConfig, in.ExecutablePath)
-		}
-		cfg.ExecutablePath = in.ExecutablePath
 	}
-	if err := s.persistConfig(cfg); err != nil {
-		return LauncherStatus{}, err
+	if profile == nil {
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
 	}
-	return s.GetStatus(cfg.SimulatorID), nil
+	s.chain.StartChain(ctx, *profile)
+	return nil
 }
 
-// Launch executes the configured command for the simulator. It is
-// fire-and-forget: the spawned process is not waited on and the caller is
-// notified via the emitted events. If the platform is not Windows the call
-// returns ErrUnsupported immediately.
-func (s *Service) Launch(simulatorID string) (LauncherStatus, error) {
-	cfg, ok := s.lookupConfig(simulatorID)
-	if !ok {
-		return LauncherStatus{}, fmt.Errorf("%w: %s", ErrNotConfigured, simulatorID)
-	}
-	if runtime.GOOS != "windows" {
-		return LauncherStatus{}, ErrUnsupported
-	}
-	var cmd *exec.Cmd
-	switch cfg.LaunchMethod {
-	case "steam-uri":
-		uri := fmt.Sprintf("steam://run/%d", cfg.SteamAppID)
-		cmd = s.exec("rundll32.exe", "url.dll,FileProtocolHandler", uri)
-	case "executable":
-		if !fileExists(cfg.ExecutablePath) {
-			return LauncherStatus{}, fmt.Errorf("%w: %s", ErrExecutableMissing, cfg.ExecutablePath)
-		}
-		cmd = s.exec(cfg.ExecutablePath)
-	default:
-		return LauncherStatus{}, fmt.Errorf("%w: launchMethod %q", ErrInvalidConfig, cfg.LaunchMethod)
-	}
-	if cmd == nil {
-		return LauncherStatus{}, fmt.Errorf("%w: exec returned nil command", ErrInvalidConfig)
-	}
-	if err := cmd.Start(); err != nil {
-		return LauncherStatus{}, fmt.Errorf("launcher: start failed: %w", err)
-	}
-	ts := s.now().UTC().Format(time.RFC3339)
-	s.mu.Lock()
-	s.lastLaunch[simulatorID] = ts
-	s.mu.Unlock()
-	// Detach the process so we never block on the Wails goroutine waiting
-	// for Steam or LMU to exit. A failed Wait is logged by the runtime.
-	go func(c *exec.Cmd) {
-		_ = c.Wait()
-	}(cmd)
-	return s.GetStatus(simulatorID), nil
-}
-
-func (s *Service) lookupConfig(simulatorID string) (LauncherConfig, bool) {
-	if s.settings == nil {
-		return LauncherConfig{}, false
-	}
-	all := s.settings.GetLaunchers()
-	cfg, ok := all[simulatorID]
-	return cfg, ok
-}
-
-func (s *Service) persistConfig(cfg LauncherConfig) error {
-	if s.settings == nil {
-		return errors.New("launcher: settings backend not wired")
-	}
-	all := s.settings.GetLaunchers()
-	if all == nil {
-		all = map[string]LauncherConfig{}
-	}
-	all[cfg.SimulatorID] = cfg
-	return s.settings.SetLaunchers(all)
-}
-
-func fileExists(path string) bool {
-	if path == "" {
-		return false
-	}
-	_, err := os.Stat(path)
-	return err == nil
+// CancelChain cancels the active launch chain for a profile, if any.
+func (s *Service) CancelChain(profileID string) bool {
+	return s.chain.CancelChain(profileID)
 }

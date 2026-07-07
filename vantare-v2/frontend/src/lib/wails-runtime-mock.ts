@@ -90,12 +90,57 @@ export const Events = {
       return;
     }
 
-    // Auto-respond to launcher status
-    if (name === "launcher:status:get") {
+    // Auto-respond to launcher apps discovery
+    if (name === "launcher:apps:discover") {
       setTimeout(
         () =>
-          broadcast("launcher:status", {
-            lmu: { configured: false },
+          broadcast("launcher:apps:detected", {
+            apps: [
+              {
+                id: "lmu",
+                displayName: "Le Mans Ultimate",
+                abbreviation: "LMU",
+                category: "simulator",
+                launchMethod: "steam-uri",
+                steamAppId: 2399420,
+                detected: true,
+                gradientFrom: "#ff3b3b",
+                gradientTo: "#9a0606",
+              },
+            ],
+          }),
+        50,
+      );
+      return;
+    }
+
+    // Auto-respond to launcher profiles list
+    if (name === "launcher:profiles:list") {
+      setTimeout(
+        () =>
+          broadcast("launcher:profiles:updated", {
+            profiles: [
+              {
+                id: "creator",
+                name: "Creador de Contenido",
+                description: "LMU + OBS + Spotify",
+                steps: [
+                  { appId: "lmu", delay: 0 },
+                  { appId: "obs", delay: 2 },
+                  { appId: "spotify", delay: 2 },
+                ],
+              },
+              {
+                id: "pro",
+                name: "Pro",
+                steps: [
+                  { appId: "lmu", delay: 0 },
+                  { appId: "crewchief", delay: 2 },
+                  { appId: "spotify", delay: 2 },
+                  { appId: "motec", delay: 2 },
+                ],
+              },
+            ],
           }),
         50,
       );

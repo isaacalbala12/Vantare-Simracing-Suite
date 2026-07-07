@@ -1,49 +1,86 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Events } from "@wailsio/runtime";
 import { LauncherPage } from "./LauncherPage";
 
-vi.mock("../components/LauncherCard", () => ({
-  LauncherCard: () => <div data-testid="launcher-card">LauncherCard</div>,
+const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
+
+afterEach(() => {
+  cleanup();
+  listeners.clear();
+  vi.clearAllMocks();
+});
+
+vi.mock("@wailsio/runtime", () => ({
+  Events: {
+    On: vi.fn((name: string, cb: (event: { data: unknown }) => void) => {
+      const existing = listeners.get(name) ?? [];
+      existing.push(cb);
+      listeners.set(name, existing);
+      return vi.fn();
+    }),
+    Emit: vi.fn(),
+  },
 }));
 
-afterEach(() => cleanup());
+function dispatch(name: string, data: unknown) {
+  act(() => {
+    for (const handler of listeners.get(name) ?? []) {
+      handler({ data });
+    }
+  });
+}
 
 describe("LauncherPage", () => {
-  it("renders the launcher heading and real launcher card", () => {
+  it("renders the launcher heading", () => {
     render(<LauncherPage />);
     expect(screen.getByRole("heading", { name: "Launcher" })).toBeTruthy();
-    expect(screen.getByTestId("launcher-card")).toBeTruthy();
   });
 
-  it("renders honest placeholders for advanced launcher profiles", () => {
+  it("renders the apps panel and profiles panel (no placeholders)", () => {
     render(<LauncherPage />);
-    expect(screen.getByText("Perfiles de lanzamiento avanzados")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Apps asociadas" })).toBeTruthy();
-    expect(screen.getAllByRole("button", { name: /próximamente/i }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("apps-panel")).toBeTruthy();
+    expect(screen.getByTestId("profiles-panel")).toBeTruthy();
+    expect(screen.queryByText(/próximamente/i)).toBeNull();
   });
 
-  it("renders a disabled 'Crear perfil personalizado' button", () => {
+  it("discovers apps and lists detected apps from the backend", () => {
     render(<LauncherPage />);
-    const btn = screen.getByRole("button", { name: /crear perfil personalizado/i });
-    expect(btn).toBeTruthy();
-    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:apps:discover");
+    dispatch("launcher:apps:detected", {
+      apps: [
+        {
+          id: "lmu",
+          displayName: "Le Mans Ultimate",
+          abbreviation: "LMU",
+          category: "simulator",
+          launchMethod: "steam-uri",
+          steamAppId: 2399420,
+          detected: true,
+          gradientFrom: "#ff3b3b",
+          gradientTo: "#9a0606",
+        },
+      ],
+    });
+    expect(screen.getByTestId("app-row-lmu")).toBeTruthy();
   });
 
-  it("does not render fake detected apps count", () => {
+  it("lists profiles from the backend", () => {
     render(<LauncherPage />);
-    expect(screen.queryByText(/8 \/ 8/i)).toBeNull();
-    expect(screen.queryByText(/CrewChief/i)).toBeNull();
-    expect(screen.queryByText(/Spotify/i)).toBeNull();
-  });
-
-  it("does not render fake detected app versions or fake launch profiles", () => {
-    render(<LauncherPage />);
-
-    expect(screen.queryByText(/8 \/ 8/i)).toBeNull();
-    expect(screen.queryByText(/CrewChief/i)).toBeNull();
-    expect(screen.queryByText(/Spotify/i)).toBeNull();
-    expect(screen.queryByText(/v30\.2/i)).toBeNull();
-    expect(screen.queryByText(/Último uso/i)).toBeNull();
-    expect(screen.queryByText(/Endurance/i)).toBeNull();
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:profiles:list");
+    dispatch("launcher:profiles:updated", {
+      profiles: [
+        {
+          id: "creator",
+          name: "Creador de Contenido",
+          description: "LMU + OBS + Spotify",
+          steps: [{ appId: "lmu", delay: 0 }],
+        },
+      ],
+    });
+    expect(screen.getByTestId("profile-card-creator")).toBeTruthy();
+    expect(
+      screen.getByTestId("profile-launch-creator"),
+    ).toBeTruthy();
   });
 });

@@ -1,7 +1,6 @@
 import { ActiveOverlayCard } from "../components/ActiveOverlayCard";
 import { QuickActions } from "../components/QuickActions";
 import { LastActivityCard } from "../components/LastActivityCard";
-import { LauncherCard } from "../components/LauncherCard";
 import { RecommendedQuickStart } from "../components/RecommendedQuickStart";
 import { CalendarHeroUpcomingPanel } from "../calendar/CalendarHeroUpcomingPanel";
 import { V52InfoCard } from "../components/V52InfoCard";
@@ -215,7 +214,6 @@ export function DashboardPage({
 
       {/* Secondary row: Launcher + Quick actions + Last activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <LauncherCard />
         <QuickActions onNavigate={handleNavigate} />
         <LastActivityCard />
       </div>

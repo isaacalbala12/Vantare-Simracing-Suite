@@ -1,118 +1,140 @@
 import { describe, expect, it } from "vitest";
+import type { AppSettings } from "../pages/SettingsPage";
 import {
-  DEFAULT_LMU_STEAM_APP_ID,
-  parseConfigured,
-  parseLauncherStatus,
+  appSortOrder,
+  getAppsFromSettings,
+  getProfilesFromSettings,
+  isProfileLaunchable,
+  type LauncherAppEntry,
 } from "./launcher-state";
-import type { AppSettings, LauncherConfig } from "../pages/SettingsPage";
 
-function makeSettings(launchers: Record<string, LauncherConfig> | undefined): AppSettings {
+function makeApp(over: Partial<LauncherAppEntry>): LauncherAppEntry {
   return {
-    deltaMode: "self",
-    cpuSampling: true,
-    hotkeys: {},
-    launchers,
+    id: over.id ?? "x",
+    displayName: over.displayName ?? "X",
+    abbreviation: over.abbreviation ?? "X",
+    category: over.category ?? "utility",
+    launchMethod: over.launchMethod ?? "executable",
+    detected: over.detected ?? false,
+    gradientFrom: over.gradientFrom ?? "#000",
+    gradientTo: over.gradientTo ?? "#fff",
   };
 }
 
-describe("parseLauncherStatus", () => {
-  it("returns unconfigured when settings are null", () => {
-    expect(parseLauncherStatus(null)).toEqual({ kind: "unconfigured" });
+describe("getAppsFromSettings", () => {
+  it("returns empty array for null settings", () => {
+    expect(getAppsFromSettings(null)).toEqual([]);
   });
 
-  it("returns unconfigured when settings are undefined", () => {
-    expect(parseLauncherStatus(undefined)).toEqual({ kind: "unconfigured" });
+  it("returns empty array for undefined settings", () => {
+    expect(getAppsFromSettings(undefined)).toEqual([]);
   });
 
-  it("returns unconfigured when launchers map is missing", () => {
-    expect(parseLauncherStatus(makeSettings(undefined))).toEqual({
-      kind: "unconfigured",
-    });
+  it("returns empty array when launcherApps is missing", () => {
+    expect(getAppsFromSettings({} as AppSettings)).toEqual([]);
   });
 
-  it("returns unconfigured when launchers map is empty", () => {
-    expect(parseLauncherStatus(makeSettings({}))).toEqual({
-      kind: "unconfigured",
-    });
-  });
-
-  it("returns ready-steam for a configured steam-uri entry with a Steam AppID", () => {
-    const settings = makeSettings({
-      lmu: {
-        simulatorId: "lmu",
-        launchMethod: "steam-uri",
-        steamAppId: 2399420,
+  it("sorts LMU first, then by category, then by display name", () => {
+    const settings = {
+      launcherApps: {
+        spotify: makeApp({
+          id: "spotify",
+          displayName: "Spotify",
+          category: "audio",
+        }),
+        lmu: makeApp({ id: "lmu", displayName: "LMU", category: "simulator" }),
+        obs: makeApp({
+          id: "obs",
+          displayName: "OBS Studio",
+          category: "streaming",
+        }),
       },
-    });
-    expect(parseLauncherStatus(settings)).toEqual({
-      kind: "ready-steam",
-      steamAppId: 2399420,
-    });
-  });
-
-  it("falls back to the default LMU AppID when steamAppId is missing", () => {
-    const settings = makeSettings({
-      lmu: { simulatorId: "lmu", launchMethod: "steam-uri" },
-    });
-    expect(parseLauncherStatus(settings)).toEqual({
-      kind: "ready-steam",
-      steamAppId: DEFAULT_LMU_STEAM_APP_ID,
-    });
-  });
-
-  it("returns ready-exec for a configured executable entry", () => {
-    const settings = makeSettings({
-      lmu: {
-        simulatorId: "lmu",
-        launchMethod: "executable",
-        executablePath: "C:/Games/LMU/LMU.exe",
-        steamAppId: 2399420,
-      },
-    });
-    expect(parseLauncherStatus(settings)).toEqual({
-      kind: "ready-exec",
-      path: "C:/Games/LMU/LMU.exe",
-      ok: true,
-    });
-  });
-
-  it("returns unconfigured when the only entry is for a different simulator", () => {
-    const settings = makeSettings({
-      iracing: {
-        simulatorId: "iracing",
-        launchMethod: "steam-uri",
-        steamAppId: 266410,
-      },
-    });
-    expect(parseLauncherStatus(settings)).toEqual({ kind: "unconfigured" });
-  });
-
-  it("returns stale for an unknown launch method", () => {
-    const settings = makeSettings({
-      lmu: { simulatorId: "lmu", launchMethod: "magic" },
-    });
-    expect(parseLauncherStatus(settings)).toEqual({
-      kind: "stale",
-      reason: expect.stringMatching(/desconocido/i) as unknown as string,
-    });
-  });
-
-  it("returns stale for executable with empty path", () => {
-    const settings = makeSettings({
-      lmu: { simulatorId: "lmu", launchMethod: "executable", executablePath: "" },
-    });
-    expect(parseLauncherStatus(settings)).toEqual({
-      kind: "stale",
-      reason: expect.stringMatching(/vacía/i) as unknown as string,
-    });
+    } as unknown as AppSettings;
+    const ids = getAppsFromSettings(settings).map((a) => a.id);
+    expect(ids).toEqual(["lmu", "obs", "spotify"]);
   });
 });
 
-describe("parseConfigured", () => {
-  it("returns stale for an empty config", () => {
-    expect(parseConfigured({} as LauncherConfig)).toEqual({
-      kind: "stale",
-      reason: expect.any(String) as unknown as string,
-    });
+describe("getProfilesFromSettings", () => {
+  it("returns empty array for null settings", () => {
+    expect(getProfilesFromSettings(null)).toEqual([]);
+  });
+
+  it("returns the profiles slice", () => {
+    const profiles = [
+      { id: "pro", name: "Pro", steps: [] },
+      { id: "creator", name: "Creator", steps: [] },
+    ];
+    const settings = {
+      launcherProfiles: profiles,
+    } as unknown as AppSettings;
+    expect(getProfilesFromSettings(settings)).toEqual(profiles);
+  });
+});
+
+describe("appSortOrder", () => {
+  it("puts LMU before any other app", () => {
+    expect(
+      appSortOrder(
+        makeApp({ id: "lmu", category: "simulator" }),
+        makeApp({ id: "obs", category: "simulator" }),
+      ),
+    ).toBe(-1);
+  });
+
+  it("orders by category when neither is LMU", () => {
+    expect(
+      appSortOrder(
+        makeApp({ id: "obs", category: "streaming" }),
+        makeApp({ id: "spotify", category: "audio" }),
+      ),
+    ).toBeLessThan(0);
+  });
+
+  it("orders by display name within the same category", () => {
+    expect(
+      appSortOrder(
+        makeApp({ id: "a", displayName: "Alpha", category: "audio" }),
+        makeApp({ id: "b", displayName: "Beta", category: "audio" }),
+      ),
+    ).toBeLessThan(0);
+  });
+});
+
+describe("isProfileLaunchable", () => {
+  const apps = [
+    makeApp({ id: "lmu", category: "simulator" }),
+    makeApp({ id: "obs", category: "streaming" }),
+  ];
+
+  it("returns false for a profile with no steps", () => {
+    expect(
+      isProfileLaunchable({ id: "p", name: "P", steps: [] }, apps),
+    ).toBe(false);
+  });
+
+  it("returns false when a step references an unknown app", () => {
+    expect(
+      isProfileLaunchable(
+        { id: "p", name: "P", steps: [{ appId: "missing", delay: 0 }] },
+        apps,
+      ),
+    ).toBe(false);
+  });
+
+  it("returns true when every step references a known app", () => {
+    expect(
+      isProfileLaunchable(
+        {
+          id: "p",
+          name: "P",
+          steps: [
+            { appId: "lmu", delay: 0 },
+            { appId: "obs", delay: 2 },
+          ],
+        },
+        apps,
+      ),
+    ).toBe(true);
   });
 });

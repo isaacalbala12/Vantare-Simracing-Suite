@@ -60,11 +60,6 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByTestId("last-activity-card")).toBeTruthy();
   });
 
-  it("renders launcher card", () => {
-    render(<DashboardPage />);
-    expect(screen.getByTestId("launcher-card")).toBeTruthy();
-  });
-
   it("renders the Ingeniero section", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("dashboard-engineer-section")).toBeTruthy();

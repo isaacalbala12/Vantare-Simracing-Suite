@@ -4,6 +4,10 @@ import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { AccountSettings } from '../settings/AccountSettings';
 import { parseKeyEvent } from '../settings/hotkey-capture';
+import type {
+  LauncherAppEntry,
+  LaunchProfile,
+} from "../launcher/launcher-state";
 
 export type Channel = 'stable' | 'prerelease';
 
@@ -60,16 +64,16 @@ export type AppSettings = {
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;
   betaUserRole?: string;
-  launchers?: Record<string, LauncherConfig>;
+  launcherApps?: Record<string, LauncherAppEntry>;
+  launcherProfiles?: LaunchProfile[];
 };
 
-export type LauncherConfig = {
-  simulatorId: string;
-  launchMethod: string;
-  executablePath?: string;
-  steamAppId?: number;
-  associatedApps?: string[];
-};
+export type {
+  LauncherAppEntry,
+  LauncherAppCategory,
+  LaunchStep,
+  LaunchProfile,
+} from "../launcher/launcher-state";
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
   deltaMode: 'self',

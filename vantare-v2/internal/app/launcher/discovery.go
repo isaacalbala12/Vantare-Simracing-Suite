@@ -66,10 +66,10 @@ func matchKnownApps(candidates []discoveredCandidate) map[string]app.LauncherApp
 			if _, ok := found[known.ID]; ok {
 				continue
 			}
-			matched := true
+			matched := false
 			for _, m := range known.DisplayNameMatchers {
-				if !strings.Contains(nameLower, strings.ToLower(m)) {
-					matched = false
+				if strings.Contains(nameLower, strings.ToLower(m)) {
+					matched = true
 					break
 				}
 			}

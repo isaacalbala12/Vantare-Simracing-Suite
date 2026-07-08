@@ -1,5 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -36,6 +35,18 @@ const LANGUAGE_OPTIONS: { value: Locale; label: string }[] = SUPPORTED_LOCALES.m
 );
 
 export function I18nProvider({ children }: { children: ReactNode }) {
+  const parent = useContext(I18nContext);
+  // Si ya existe un I18nProvider padre (p.ej. el provider global en HubApp),
+  // este provider es transparente: delega al contexto existente para que
+  // toda la app comparta una sola fuente de verdad de idioma.
+  if (parent) {
+    return <>{children}</>;
+  }
+
+  return <I18nProviderInner>{children}</I18nProviderInner>;
+}
+
+function I18nProviderInner({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale);
 
   const setLocale = useCallback((newLocale: Locale) => {

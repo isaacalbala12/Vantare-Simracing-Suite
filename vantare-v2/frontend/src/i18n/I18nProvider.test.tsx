@@ -172,3 +172,51 @@ describe("cross-component language persistence", () => {
     expect(screen.getByTestId("current-locale").textContent).toBe("en");
   });
 });
+
+describe("I18nProvider global coherence", () => {
+  beforeEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it("changing locale in a nested provider updates the shared parent context", () => {
+    function OuterProbe() {
+      const { locale } = useI18n();
+      return <span data-testid="outer-locale">{locale}</span>;
+    }
+    function InnerProbe() {
+      const { locale } = useI18n();
+      return <span data-testid="inner-locale">{locale}</span>;
+    }
+    render(
+      <I18nProvider>
+        <OuterProbe />
+        <I18nProvider>
+          <InnerProbe />
+          <TestConsumer />
+        </I18nProvider>
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId("outer-locale").textContent).toBe("es");
+    expect(screen.getByTestId("inner-locale").textContent).toBe("es");
+    // Change via the nested provider's consumer (TestConsumer lives inside
+    // the nested provider but shares the parent context).
+    act(() => {
+      screen.getByTestId("set-pt").click();
+    });
+    // Both outer and inner read the same shared context
+    expect(screen.getByTestId("outer-locale").textContent).toBe("pt");
+    expect(screen.getByTestId("inner-locale").textContent).toBe("pt");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("pt");
+    // Switching back through the nested consumer is reflected everywhere
+    act(() => {
+      screen.getByTestId("set-en").click();
+    });
+    expect(screen.getByTestId("inner-locale").textContent).toBe("en");
+  });
+});

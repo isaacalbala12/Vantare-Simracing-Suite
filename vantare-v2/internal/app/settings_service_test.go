@@ -99,11 +99,11 @@ func TestSettingsServiceLoadDefaultsOnCorruptFile(t *testing.T) {
 	emitter := &spyEmitter{}
 	svc := app.NewSettingsService(path, emitter)
 	err := svc.Load()
-	if err == nil {
-		t.Fatal("expected error on corrupt file")
+	if err != nil {
+		t.Fatalf("load should not error on corrupt file (falls back to defaults): %v", err)
 	}
 
-	// Settings should still be defaults despite error
+	// Settings should be defaults despite corruption
 	s := svc.Settings()
 	if s.DeltaMode != "self" {
 		t.Errorf("expected defaults on error, got %q", s.DeltaMode)
@@ -496,5 +496,64 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("LauncherProfiles should be initialized")
+	}
+}
+
+func TestLoadToleratesCorruptedJSONFallsBackToBak(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	bakPath := path + ".bak"
+	if err := os.WriteFile(path, []byte("{ \"deltaMode\":"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bakPath, []byte(`{"schemaVersion": 1, "deltaMode": "self", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc := app.NewSettingsService(path, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if svc.Settings().DeltaMode != "self" {
+		t.Errorf("expected DeltaMode=self from .bak, got %s", svc.Settings().DeltaMode)
+	}
+}
+
+func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	bakPath := path + ".bak"
+	os.WriteFile(path, []byte("garbage"), 0o644)
+	os.WriteFile(bakPath, []byte("also garbage"), 0o644)
+	svc := app.NewSettingsService(path, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load should not panic: %v", err)
+	}
+	if svc.Settings().SchemaVersion != 1 {
+		t.Errorf("expected defaults with SchemaVersion=1")
+	}
+	if svc.Settings().LauncherProfiles == nil {
+		t.Error("expected default profiles")
+	}
+}
+
+func TestSidecarAppliedOnStartup(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	sidecarPath := path + ".failed"
+	if err := os.WriteFile(sidecarPath, []byte(`{"schemaVersion": 1, "deltaMode": "absolute", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": [{"id":"x","name":"X","steps":[]}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc := app.NewSettingsService(path, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if svc.Settings().DeltaMode != "absolute" {
+		t.Errorf("expected sidecar applied, got %s", svc.Settings().DeltaMode)
+	}
+	if len(svc.Settings().LauncherProfiles) != 1 {
+		t.Errorf("expected 1 profile from sidecar")
+	}
+	if _, err := os.Stat(sidecarPath); !os.IsNotExist(err) {
+		t.Errorf("sidecar should be removed after applied")
 	}
 }

@@ -206,33 +206,66 @@ func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 	return s.Save(s.settings)
 }
 
-// Load reads settings from disk. If the file does not exist or is corrupt,
-// it falls back to defaults without error.
+// Load reads settings from disk with tolerance for corruption.
+// Priority order: .failed sidecar → main file → .bak → defaults.
 func (s *SettingsService) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.settings = DefaultAppSettings()
+	return s.loadLocked()
+}
 
+// loadLocked performs the load with the mutex already held.
+func (s *SettingsService) loadLocked() error {
+	s.settings = DefaultAppSettings()
+	s.migrateSettings(s.settings)
+	if s.path == "" {
+		return nil
+	}
+
+	// 1. Sidecar has priority: if it exists and parses, apply and delete it.
+	if sidecarData, err := os.ReadFile(s.path + ".failed"); err == nil {
+		var sc AppSettings
+		if err := json.Unmarshal(sidecarData, &sc); err == nil {
+			s.applyLoaded(&sc)
+			_ = os.Remove(s.path + ".failed")
+			return s.persistSidecarApplied()
+		}
+	}
+
+	// 2. Try main file.
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil // first run, defaults are fine
+			return nil // defaults already loaded
 		}
-		return fmt.Errorf("reading settings: %w", err)
+		return fmt.Errorf("read: %w", err)
 	}
-
 	var loaded AppSettings
 	if err := json.Unmarshal(data, &loaded); err != nil {
-		return fmt.Errorf("parsing settings: %w", err)
+		// 3. Fallback to .bak.
+		if bakData, bakErr := os.ReadFile(s.path + ".bak"); bakErr == nil {
+			if err := json.Unmarshal(bakData, &loaded); err == nil {
+				s.applyLoaded(&loaded)
+				return nil
+			}
+		}
+		// 4. Everything failed, use defaults (already set).
+		return nil
 	}
+	s.applyLoaded(&loaded)
+	return nil
+}
 
-	// Merge: start from defaults, overlay persisted values.
+// applyLoaded merges the loaded settings over defaults, preserving
+// fields not present in the persisted file.
+func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	merged := DefaultAppSettings()
 	if loaded.DeltaMode != "" {
 		merged.DeltaMode = loaded.DeltaMode
 	}
 	merged.CpuSampling = loaded.CpuSampling
 	if loaded.Hotkeys != nil {
+		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))
 		for k, v := range loaded.Hotkeys {
 			merged.Hotkeys[k] = v
 		}
@@ -250,14 +283,31 @@ func (s *SettingsService) Load() error {
 		merged.LauncherProfiles = make([]LaunchProfile, len(loaded.LauncherProfiles))
 		copy(merged.LauncherProfiles, loaded.LauncherProfiles)
 	}
-	if merged.LauncherApps == nil {
-		merged.LauncherApps = defaultLauncherApps()
-	}
-	if merged.LauncherProfiles == nil {
-		merged.LauncherProfiles = defaultLauncherProfiles()
-	}
 	s.migrateSettings(merged)
 	s.settings = merged
+}
+
+// persistSidecarApplied writes the current settings to disk (via .tmp + .bak + rename)
+// after a sidecar was successfully applied. It does NOT write the sidecar file itself.
+func (s *SettingsService) persistSidecarApplied() error {
+	if s.settings == nil {
+		return nil
+	}
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmpPath := s.path + ".tmp"
+	bakPath := s.path + ".bak"
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
+		return fmt.Errorf("persist sidecar write tmp: %w", err)
+	}
+	if _, err := os.Stat(s.path); err == nil {
+		_ = os.Rename(s.path, bakPath)
+	}
+	if err := os.Rename(tmpPath, s.path); err != nil {
+		return fmt.Errorf("persist sidecar rename: %w", err)
+	}
 	return nil
 }
 

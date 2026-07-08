@@ -1,26 +1,29 @@
+import { useMemo, useState } from "react";
 import { useAccess } from "../../lib/access";
 import { canUseFeature } from "../../lib/access-policy";
+import { useI18n } from "../../i18n/I18nProvider";
 import {
-  ROADMAP_PHASES,
-  ROADMAP_AREAS,
-  ROADMAP_MILESTONES,
-  getCurrentPhase,
+  ROADMAP_CHANGELOG,
+  ROADMAP_CHANGELOG_URL,
+  ROADMAP_FEEDBACK_LINKS,
   getOverallProgress,
+  getCurrentPhase,
+  getRoadmapDataset,
+  type RoadmapDatasetKey,
   type RoadmapStatus,
+  type RoadmapFeedbackType,
+  type RoadmapFeedbackDestination,
 } from "../roadmap/roadmap-data";
+import {
+  getFeatureCategories,
+  getFutureCategories,
+  getOverallFeatureProgress,
+  TIPO_META,
+  type RoadmapFeature,
+} from "../roadmap/roadmap-features";
 
-const STATUS_LABELS: Record<RoadmapStatus, string> = {
-  done: "Completado",
-  "in-progress": "En progreso",
-  planned: "Planificado",
-  future: "Futuro",
-};
-
-const STATUS_COLORS: Record<RoadmapStatus, string> = {
-  done: "text-green-400 border-green-500/30 bg-green-500/10",
-  "in-progress": "text-vantare-red-400 border-vantare-red-500/30 bg-vantare-red-500/10",
-  planned: "text-blue-400 border-blue-500/30 bg-blue-500/10",
-  future: "text-vantare-textDim border-white/10 bg-white/5",
+const STATUS_COLORS = {
+  active: "text-vantare-red-400 border-vantare-red-500/30 bg-vantare-red-500/10",
 };
 
 const MILESTONE_TYPE_COLORS: Record<string, string> = {
@@ -30,12 +33,12 @@ const MILESTONE_TYPE_COLORS: Record<string, string> = {
   plan: "text-violet-400 border-violet-500/30 bg-violet-500/10",
 };
 
-function StatusBadge({ status }: { status: RoadmapStatus }) {
+function StatusBadge({ status, t }: { status: RoadmapStatus; t: (key: string) => string }) {
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-[.22em] ${STATUS_COLORS[status]}`}
+      className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] ${STATUS_COLORS.active}`}
     >
-      {STATUS_LABELS[status]}
+      {t(`roadmap.status.${status}`)}
     </span>
   );
 }
@@ -45,24 +48,299 @@ function ProgressBar({ value, color }: { value: number; color?: string }) {
   return (
     <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
       <div
-        className="h-full rounded-full"
-        style={{
-          width: `${Math.min(100, Math.max(0, value))}%`,
-          background: `linear-gradient(90deg, ${bg})`,
-        }}
+        className={`h-full rounded-full bg-gradient-to-r ${bg}`}
+        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
   );
 }
 
+function RoadmapFeedback({ t }: { t: (key: string) => string }) {
+  const [type, setType] = useState<RoadmapFeedbackType>("bug");
+  const [message, setMessage] = useState("");
+  const [destination, setDestination] = useState<RoadmapFeedbackDestination>("github");
+
+  const handleSend = () => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    if (destination === "github") {
+      const title = `[${type === "bug" ? "BUG" : type === "suggestion" ? "SUG" : "GEN"}] ${trimmed.slice(0, 80)}`;
+      const url = `${ROADMAP_FEEDBACK_LINKS.github}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(trimmed)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      const url =
+        destination === "discord"
+          ? ROADMAP_FEEDBACK_LINKS.discord
+          : ROADMAP_FEEDBACK_LINKS.form;
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-3">
+        <span
+          role="status"
+          data-testid="roadmap-feedback-unlocked"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vantare-red-500/10 border border-vantare-red-500/30 text-xs text-vantare-textMuted"
+        >
+          <svg className="w-4 h-4 shrink-0 text-vantare-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span>{t("roadmap.feedback.opensExternal")}</span>
+        </span>
+      </div>
+
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim">
+        {t("roadmap.feedback.type")}
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as RoadmapFeedbackType)}
+          className="mt-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white font-sans normal-case tracking-normal"
+        >
+          <option value="bug">{t("roadmap.feedback.type.bug")}</option>
+          <option value="suggestion">{t("roadmap.feedback.type.suggestion")}</option>
+          <option value="general">{t("roadmap.feedback.type.general")}</option>
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim">
+        {t("roadmap.feedback.message")}
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={3}
+          placeholder="..."
+          className="mt-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white font-sans normal-case tracking-normal resize-none"
+        />
+      </label>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-[10px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim">
+          {t("roadmap.feedback.destination")}
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {(["github", "discord", "form"] as RoadmapFeedbackDestination[]).map((dest) => (
+            <button
+              key={dest}
+              type="button"
+              onClick={() => setDestination(dest)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                destination === dest
+                  ? "bg-vantare-red-500 text-white border border-white/10"
+                  : "bg-white/5 text-vantare-textMuted border border-white/10 hover:text-white"
+              }`}
+            >
+              {t(`roadmap.feedback.dest.${dest}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          disabled={!message.trim()}
+          onClick={handleSend}
+          className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-gradient-to-br from-vantare-red-500 to-[#9a0606] border border-white/10 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {destination === "github"
+            ? t("roadmap.feedback.sendGithub")
+            : destination === "discord"
+              ? t("roadmap.feedback.sendDiscord")
+              : t("roadmap.feedback.sendForm")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type FeaturesSectionProps = {
+  t: (key: string) => string;
+  categories: ReadonlyArray<{
+    id: string;
+    label: string;
+    percent: number;
+    features: ReadonlyArray<RoadmapFeature>;
+  }>;
+  futureCategories: ReadonlyArray<{
+    id: string;
+    label: string;
+    percent: number;
+    features: ReadonlyArray<RoadmapFeature>;
+  }>;
+  overallProgress: number;
+};
+
+function FeatureCard({ t: _t, feat, isExpanded, onToggle }: { t: (key: string) => string; feat: RoadmapFeature; isExpanded: boolean; onToggle: () => void }) {
+  const tipo = TIPO_META[feat.tipo] ?? TIPO_META.feature;
+  return (
+    <article
+      onClick={onToggle}
+      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-300 cursor-pointer ${
+        feat.future
+          ? "bg-[rgba(20,20,20,.35)] border border-white/5 hover:border-white/10 opacity-70"
+          : "border border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5 hover:shadow-[0_0_20px_rgba(255,59,59,.15)]"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-[10px]">{tipo.icon} {tipo.label}</span>
+        <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] ${feat.future ? "text-vantare-textDim border border-white/10 bg-white/5" : STATUS_COLORS.active}`}>
+          {feat.future ? "Próximamente" : "En desarrollo"}
+        </span>
+        {feat.checkProgress && feat.checkProgress.total > 0 && (
+          <span className="text-[9px] font-mono text-vantare-textDim">({feat.checkProgress.done}/{feat.checkProgress.total})</span>
+        )}
+      </div>
+      <h3 className="font-bold text-sm text-white tracking-tight leading-tight">{feat.label}</h3>
+      {!isExpanded && feat.description && (
+        <p className="text-[11px] text-vantare-textMuted leading-relaxed line-clamp-2 flex-1">{feat.description}</p>
+      )}
+      {isExpanded && (
+        <div className="flex flex-col gap-2 mt-1">
+          {feat.description && <p className="text-[11px] text-vantare-textMuted leading-relaxed">{feat.description}</p>}
+          <div className="mt-1 pt-2 border-t border-white/5">
+            <span className="text-[9px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim block mb-0.5">Progreso</span>
+            <span className="text-sm font-bold text-white">{feat.percent}%</span>
+            {feat.checkProgress && feat.checkProgress.total > 0 && (
+              <span className="text-[10px] text-vantare-textDim ml-1">({feat.checkProgress.done} de {feat.checkProgress.total} pasos)</span>
+            )}
+          </div>
+          {feat.checkProgress && feat.checkProgress.total > 0 && (
+            <div className="mt-1"><ProgressBar value={feat.percent} /></div>
+          )}
+          <a
+            href={`https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/main/docs/superpowers/plans/${feat.slug}.md`}
+            target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10px] text-vantare-red-400 hover:text-white transition-colors mt-1"
+          >Ver plan →</a>
+        </div>
+      )}
+      {!isExpanded && (
+        <div className="mt-auto pt-1">
+          <ProgressBar value={feat.percent} />
+          <div className="flex justify-end mt-1">
+            <span className="text-[9px] font-mono font-bold text-vantare-red-400">{feat.percent}%</span>
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function FeaturesSection({ t, categories, futureCategories, overallProgress }: FeaturesSectionProps) {
+  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
+  const toggle = (slug: string) => setExpandedSlug((prev) => (prev === slug ? null : slug));
+
+  return (
+    <div className="flex flex-col gap-5 opacity-0 animate-fade-in-up delay-100">
+      {/* Overall progress */}
+      <section className="glass-panel rounded-xl p-6">
+        <div className="flex items-end justify-between mb-2">
+          <span className="v52-eyebrow">{t("roadmap.features.eyebrow")}</span>
+          <span className="text-3xl font-bold text-vantare-red-400" style={{ textShadow: "0 0 20px rgba(255,59,59,.3)" }}>{overallProgress}%</span>
+        </div>
+        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, overallProgress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)", boxShadow: "0 0 12px rgba(255,59,59,.4)" }} />
+        </div>
+        <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-vantare-textDim">
+          <span>{categories.reduce((s, c) => s + c.features.length, 0)} en desarrollo · {futureCategories.reduce((s, c) => s + c.features.length, 0)} próximas</span>
+          <span>{categories.length + futureCategories.length} áreas</span>
+        </div>
+      </section>
+
+      {/* Active categories */}
+      {categories.map((cat) => (
+        <section key={cat.id}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <span className="v52-eyebrow">{cat.label}</span>
+              <span className="text-[10px] font-mono font-bold text-vantare-textDim px-2 py-0.5 rounded bg-white/5">{cat.features.length}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-24">
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, cat.percent))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
+                </div>
+              </div>
+              <span className="text-sm font-bold text-vantare-red-400">{cat.percent}%</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {cat.features.map((feat) => (
+              <FeatureCard key={feat.slug} t={t} feat={feat} isExpanded={expandedSlug === feat.slug} onToggle={() => toggle(feat.slug)} />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {/* Future categories */}
+      {futureCategories.length > 0 && (
+        <>
+          <div className="flex items-center gap-3 mt-4">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="v52-eyebrow text-vantare-textDim">Próximamente</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+          {futureCategories.map((cat) => (
+            <section key={cat.id}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="v52-eyebrow text-vantare-textDim">{cat.label}</span>
+                  <span className="text-[10px] font-mono font-bold text-vantare-textDim px-2 py-0.5 rounded bg-white/5">{cat.features.length}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {cat.features.map((feat) => (
+                  <FeatureCard key={feat.slug} t={t} feat={feat} isExpanded={expandedSlug === feat.slug} onToggle={() => toggle(feat.slug)} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function RoadmapPage() {
-  const currentPhase = getCurrentPhase(ROADMAP_PHASES);
-  const overallProgress = getOverallProgress(ROADMAP_AREAS);
+  const { t } = useI18n();
   const access = useAccess();
   const canGiveFeedback = canUseFeature(access, "roadmap.feedback");
+  const [activeKey, setActiveKey] = useState<RoadmapDatasetKey>("current");
+
+  const dataset = useMemo(() => getRoadmapDataset(activeKey), [activeKey]);
+  const currentPhase = getCurrentPhase(dataset.phases);
+  const overallProgress = getOverallProgress(dataset.areas);
+  const allPhasesDoneOrActive = dataset.phases.filter(
+    (p) => p.status === "done" || p.status === "in-progress",
+  ).length;
+  const trackWidth = (allPhasesDoneOrActive / dataset.phases.length) * 100;
+  const featureCategories = useMemo(() => getFeatureCategories(), []);
+  const futureCategories = useMemo(() => getFutureCategories(), []);
+  const featureOverallProgress = useMemo(() => getOverallFeatureProgress(), []);
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Dataset toggle */}
+      <div className="flex items-center gap-2">
+        {(["current", "next"] as RoadmapDatasetKey[]).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveKey(key)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-[.18em] transition-colors ${
+              activeKey === key
+                ? "bg-gradient-to-br from-vantare-red-500 to-[#9a0606] text-white border border-white/10"
+                : "bg-white/5 text-vantare-textMuted border border-white/10 hover:text-white"
+            }`}
+          >
+            {t(`roadmap.tab.${key}`)}
+          </button>
+        ))}
+      </div>
+
       {/* Hero */}
       <div className="relative rounded-xl overflow-hidden border border-vantare-red-400/40 opacity-0 animate-fade-in-up">
         <div className="absolute inset-0 bg-gradient-to-br from-vantare-red-400/50 via-[#9a0606]/30 to-[#0a0a0a]" />
@@ -70,264 +348,216 @@ export function RoadmapPage() {
         <div className="relative p-8">
           <div className="flex items-center gap-2 mb-3">
             <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-[.22em] bg-vantare-red-400/15 text-vantare-red-400 border border-vantare-red-400/40">
-              v0.1 · pública
+              {t("roadmap.hero.badge")}
             </span>
             <span className="flex items-center gap-1.5 text-[9px] font-mono font-bold text-vantare-textDim">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(52,211,153,.6)" }} />
-              Actualizado desde datos locales
+              {t("roadmap.hero.updated")}
             </span>
           </div>
-          <span className="v52-eyebrow mb-4">Roadmap</span>
+          <span className="v52-eyebrow mb-4">{t("roadmap.hero.title")}</span>
           <h1 className="font-sans font-bold text-[clamp(2.5rem,5vw,4.5rem)] text-white tracking-tight leading-[.92] -tracking-[.045em] mt-2">
-            Desarrollo Vantare
+            {t("roadmap.hero.title")}
           </h1>
           <p className="mt-3 text-base text-vantare-textMuted max-w-2xl leading-relaxed">
-            Fases, prioridades y progreso del desarrollo beta de Vantare.
+            {t("roadmap.hero.subtitle")}
           </p>
           <div className="flex items-center gap-3 mt-5">
-            <button
-              type="button"
-              disabled
-              className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-gradient-to-br from-vantare-red-500 to-[#9a0606] border border-white/10 text-white opacity-60 cursor-not-allowed"
-              title="Próximamente"
+            <a
+              href={ROADMAP_FEEDBACK_LINKS.github}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-gradient-to-br from-vantare-red-500 to-[#9a0606] border border-white/10 text-white hover:opacity-90 transition-opacity"
             >
-              Sugerir feature
-            </button>
-            <button
-              type="button"
-              disabled
-              className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-white/5 border border-white/10 text-vantare-textMuted opacity-60 cursor-not-allowed"
-              title="Próximamente"
+              {t("roadmap.hero.suggest")}
+            </a>
+            <a
+              href={ROADMAP_CHANGELOG_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-white/5 border border-white/10 text-vantare-textMuted hover:text-white transition-colors"
             >
-              Ver changelog
-            </button>
+              {t("roadmap.hero.changelog")}
+            </a>
           </div>
         </div>
       </div>
 
-      {/* Current phase highlight */}
-      {currentPhase && (
-        <section className="relative rounded-xl overflow-hidden border border-vantare-red-500/30 opacity-0 animate-fade-in-up delay-75">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#ff3b3b]/20 via-[#9a0606]/10 to-[#0a0a0a]" />
-          <div className="absolute -right-20 top-0 w-64 h-64 bg-vantare-red-500/10 blur-3xl rounded-full pointer-events-none" />
-          <div className="relative p-6">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="v52-eyebrow">Fase actual</span>
-              <StatusBadge status={currentPhase.status} />
-            </div>
-            <h2 className="font-bold text-2xl text-white tracking-tight">
-              {currentPhase.title}
-            </h2>
-            <p className="text-sm text-vantare-textMuted mt-1 leading-relaxed">
-              {currentPhase.summary}
-            </p>
-            <div className="flex items-center gap-3 mt-3">
-              <div className="flex-1">
-                <ProgressBar value={currentPhase.progress} color="#ff3b3b, #ff6b6b" />
+      {activeKey === "current" && (
+        <>
+          {/* Current phase highlight */}
+          {currentPhase && (
+            <section className="relative rounded-xl overflow-hidden border border-vantare-red-500/30 opacity-0 animate-fade-in-up delay-75">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ff3b3b]/20 via-[#9a0606]/10 to-[#0a0a0a]" />
+              <div className="absolute -right-20 top-0 w-64 h-64 bg-vantare-red-500/10 blur-3xl rounded-full pointer-events-none" />
+              <div className="relative p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="v52-eyebrow">{t("roadmap.currentPhase.eyebrow")}</span>
+                  <StatusBadge status={currentPhase.status} t={t} />
+                </div>
+                <h2 className="font-bold text-2xl text-white tracking-tight">
+                  {t(currentPhase.titleKey)}
+                </h2>
+                <p className="text-sm text-vantare-textMuted mt-1 leading-relaxed">
+                  {t(currentPhase.summaryKey)}
+                </p>
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="flex-1">
+                    <ProgressBar value={currentPhase.progress} color="from-[#ff3b3b] to-[#ff6b6b]" />
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-vantare-red-400 shrink-0">
+                    {currentPhase.progress}%
+                  </span>
+                </div>
+                <div className="mt-2 text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">
+                  {t("roadmap.phases.range")}
+                </div>
               </div>
-              <span className="text-[10px] font-mono font-bold text-vantare-red-400 shrink-0">
-                {currentPhase.progress}%
-              </span>
+            </section>
+          )}
+
+          {/* Phases grid */}
+          <section className="glass-panel rounded-xl p-6 opacity-0 animate-fade-in-up delay-100">
+            <div className="flex items-center justify-between mb-6">
+              <span className="v52-eyebrow">{t("roadmap.phases.eyebrow")}</span>
+              <span className="text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{t("roadmap.phases.range")}</span>
             </div>
-            <div className="mt-2 text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">
-              Target: {currentPhase.targetLabel}
+            <div className="relative h-2 mx-2 mb-12">
+              <div className="absolute inset-0 rounded-full bg-white/10" />
+              <div
+                className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-vantare-red-500 to-vantare-red-400/20"
+                style={{ width: `${trackWidth}%` }}
+              />
+              {dataset.phases.map((phase, i) => {
+                const isActive = phase.status === "in-progress";
+                const left = `${((i + 0.5) / dataset.phases.length) * 100}%`;
+                return (
+                  <div key={phase.id} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left }}>
+                    <div className={`w-3 h-3 rotate-45 border transition-all duration-500 ${isActive ? "bg-vantare-red-500 border-vantare-red-500 shadow-[0_0_12px_rgba(255,59,59,.6)] w-5 h-5" : "bg-[#0a0a0a] border-white/20"}`} />
+                  </div>
+                );
+              })}
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {dataset.phases.map((phase) => {
+                const isActive = phase.status === "in-progress";
+                return (
+                  <article key={phase.id} className={`rounded-xl p-5 flex flex-col gap-3 transition-all duration-300 ${isActive ? "border border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5 shadow-[0_0_0_1px_rgba(255,59,59,.18),0_24px_60px_rgba(255,59,59,.22)]" : "bg-[rgba(20,20,20,.55)] border border-white/5 hover:border-vantare-red-400/40"}`}>
+                    <div className="flex items-center gap-2">
+                      {isActive ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-vantare-red-500 shadow-[0_0_8px_rgba(255,59,59,.6)]" />
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-[.18em] text-vantare-red-400">{t("roadmap.phase.status.current")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-[.18em] text-vantare-textDim">{t(`roadmap.status.${phase.status}`)}</span>
+                        </>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-lg text-white tracking-tight leading-tight">{t(phase.titleKey)}</h3>
+                    <p className="text-xs text-vantare-textMuted leading-relaxed flex-1">{t(phase.summaryKey)}</p>
+                    {phase.highlightsKeys.length > 0 && (
+                      <ul className="space-y-1">
+                        {phase.highlightsKeys.map((hk, i) => (
+                          <li key={i} className="text-[10px] text-vantare-textMuted flex items-start gap-1.5">
+                            <span className="text-vantare-red-400 mt-0.5 shrink-0">•</span>
+                            {t(hk)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-auto">
+                      <ProgressBar value={phase.progress} color="from-[#ff3b3b] to-[#ff6b6b]" />
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{t(phase.phaseLabelKey)}</span>
+                        <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{t(phase.targetLabelKey)}</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Overall progress + Areas + Milestones + Changelog */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 opacity-0 animate-fade-in-up delay-150">
+            <section className="glass-panel rounded-xl p-5">
+              <span className="v52-eyebrow">{t("roadmap.progress.eyebrow")}</span>
+              <div className="mt-4">
+                <div className="flex items-end justify-between mb-2">
+                  <span className="text-sm font-bold text-white">{t("roadmap.progress.completed")}</span>
+                  <span className="text-3xl font-bold text-vantare-red-400" style={{ textShadow: "0 0 20px rgba(255,59,59,.3)" }}>{overallProgress}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, overallProgress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)", boxShadow: "0 0 12px rgba(255,59,59,.4)" }} />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-vantare-textDim">
+                  <span>{t("roadmap.progress.betaActive")}</span>
+                  <span>{t("roadmap.progress.goal")}</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-2.5">
+                {dataset.areas.map((area) => (
+                  <div key={area.id}>
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <span className="text-vantare-textMuted">{t(area.titleKey)}</span>
+                      <span className="font-mono font-bold text-white">{area.progress}%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, area.progress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="glass-panel rounded-xl p-5 lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <span className="v52-eyebrow">{t("roadmap.milestones.eyebrow")}</span>
+                <a href={ROADMAP_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-vantare-red-400 uppercase tracking-[.22em] hover:text-white transition-colors">{t("roadmap.milestones.all")}</a>
+              </div>
+              <div className="space-y-2">
+                {dataset.milestones.length > 0 ? dataset.milestones.map((ms) => (
+                  <div key={ms.id} className="flex items-start gap-3 p-3 rounded-lg bg-[rgba(20,20,20,.5)] border border-white/5">
+                    <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] shrink-0 mt-0.5 ${MILESTONE_TYPE_COLORS[ms.type]}`}>{t(ms.labelKey)}</span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold text-white">{t(ms.titleKey)}</h4>
+                      <p className="text-[11px] text-vantare-textMuted mt-0.5 leading-relaxed">{t(ms.bodyKey)}</p>
+                    </div>
+                  </div>
+                )) : <p className="text-[11px] text-vantare-textDim">{t("roadmap.milestones.all")}</p>}
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="v52-eyebrow">{t("roadmap.changelog.eyebrow")}</span>
+                </div>
+                <div className="space-y-2">
+                  {ROADMAP_CHANGELOG.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg bg-[rgba(20,20,20,.5)] border border-white/5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-white">{t(entry.titleKey)}</h4>
+                          <span className="text-[9px] font-mono font-bold text-vantare-textDim">{entry.version}</span>
+                          <span className="text-[9px] font-mono text-vantare-textDim">{entry.date}</span>
+                        </div>
+                        <p className="text-[11px] text-vantare-textMuted mt-0.5 leading-relaxed">{t(entry.bodyKey)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
+        </>
       )}
 
-      {/* Phases grid */}
-      <section className="glass-panel rounded-xl p-6 opacity-0 animate-fade-in-up delay-100">
-        <div className="flex items-center justify-between mb-6">
-          <span className="v52-eyebrow">Roadmap beta</span>
-          <span className="text-[10px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">v0.1.x → futuro</span>
-        </div>
+      {/* Features by area (next tab) */}
+      {activeKey === "next" && (
+        <FeaturesSection t={t} categories={featureCategories} futureCategories={futureCategories} overallProgress={featureOverallProgress} />
+      )}
 
-        {/* Track */}
-        <div className="relative h-2 mx-2 mb-12">
-          <div className="absolute inset-0 rounded-full bg-white/10" />
-          <div
-            className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-vantare-red-500 to-vantare-red-400/20"
-            style={{ width: `${(ROADMAP_PHASES.filter(p => p.status === "done" || p.status === "in-progress").length / ROADMAP_PHASES.length) * 100}%` }}
-          />
-          {ROADMAP_PHASES.map((phase, i) => {
-            const isActive = phase.status === "in-progress";
-            const left = `${((i + 0.5) / ROADMAP_PHASES.length) * 100}%`;
-            return (
-              <div
-                key={phase.id}
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ left }}
-              >
-                <div
-                  className={`w-3 h-3 rotate-45 border transition-all duration-500 ${
-                    isActive
-                      ? "bg-vantare-red-500 border-vantare-red-500 shadow-[0_0_12px_rgba(255,59,59,.6)] w-5 h-5"
-                      : "bg-[#0a0a0a] border-white/20"
-                  }`}
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {ROADMAP_PHASES.map((phase) => {
-            const isActive = phase.status === "in-progress";
-            return (
-              <article
-                key={phase.id}
-                className={`rounded-xl p-5 flex flex-col gap-3 transition-all duration-300 ${
-                  isActive
-                    ? "border border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5 shadow-[0_0_0_1px_rgba(255,59,59,.18),0_24px_60px_rgba(255,59,59,.22)]"
-                    : "bg-[rgba(20,20,20,.55)] border border-white/5 hover:border-vantare-red-400/40"
-                }`}
-              >
-                {/* Status indicator */}
-                <div className="flex items-center gap-2">
-                  {isActive ? (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-vantare-red-500 shadow-[0_0_8px_rgba(255,59,59,.6)]" />
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-[.18em] text-vantare-red-400">
-                        Estado actual
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-[.18em] text-vantare-textDim">
-                        {STATUS_LABELS[phase.status]}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* Title */}
-                <h3 className="font-bold text-lg text-white tracking-tight leading-tight">
-                  {phase.title}
-                </h3>
-
-                {/* Summary */}
-                <p className="text-xs text-vantare-textMuted leading-relaxed flex-1">
-                  {phase.summary}
-                </p>
-
-                {/* Highlights */}
-                {phase.highlights.length > 0 && (
-                  <ul className="space-y-1">
-                    {phase.highlights.map((h, i) => (
-                      <li key={i} className="text-[10px] text-vantare-textMuted flex items-start gap-1.5">
-                        <span className="text-vantare-red-400 mt-0.5 shrink-0">•</span>
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {/* Progress + target */}
-                <div className="mt-auto">
-                  <ProgressBar value={phase.progress} color="#ff3b3b, #ff6b6b" />
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">
-                      {phase.phaseLabel}
-                    </span>
-                    <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">
-                      {phase.targetLabel}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Overall progress + Areas + Milestones */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 opacity-0 animate-fade-in-up delay-150">
-        {/* Progress card */}
-        <section className="glass-panel rounded-xl p-5">
-          <span className="v52-eyebrow">Progreso global</span>
-          <div className="mt-4">
-            <div className="flex items-end justify-between mb-2">
-              <span className="text-sm font-bold text-white">Completado</span>
-              <span className="text-3xl font-bold text-vantare-red-400" style={{ textShadow: "0 0 20px rgba(255,59,59,.3)" }}>
-                {overallProgress}%
-              </span>
-            </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${Math.min(100, Math.max(0, overallProgress))}%`,
-                  background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)",
-                  boxShadow: "0 0 12px rgba(255,59,59,.4)",
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-vantare-textDim">
-              <span>Beta activa</span>
-              <span>Meta: 100% · Release 1.0</span>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-white/5 space-y-2.5">
-            {ROADMAP_AREAS.map((area) => (
-              <div key={area.id}>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-vantare-textMuted">{area.title}</span>
-                  <span className="font-mono font-bold text-white">{area.progress}%</span>
-                </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, area.progress))}%`,
-                      background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)",
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Milestones */}
-        <section className="glass-panel rounded-xl p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <span className="v52-eyebrow">Últimos hitos</span>
-            <button
-              type="button"
-              disabled
-              className="text-[10px] font-bold text-vantare-red-400 uppercase tracking-[.22em] opacity-60 cursor-not-allowed transition-colors"
-              title="Próximamente"
-            >
-              Changelog completo →
-            </button>
-          </div>
-          <div className="space-y-2">
-            {ROADMAP_MILESTONES.map((ms) => (
-              <div
-                key={ms.id}
-                className="flex items-start gap-3 p-3 rounded-lg bg-[rgba(20,20,20,.5)] border border-white/5"
-              >
-                <span
-                  className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] shrink-0 mt-0.5 ${MILESTONE_TYPE_COLORS[ms.type]}`}
-                >
-                  {ms.label}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-semibold text-white">{ms.title}</h4>
-                  <p className="text-[11px] text-vantare-textMuted mt-0.5 leading-relaxed">
-                    {ms.body}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* Feedback / Voting — disabled */}
+      {/* Feedback / Voting */}
       <section className="relative rounded-xl p-6 overflow-hidden border border-vantare-red-400/30 opacity-0 animate-fade-in-up delay-250">
         <div className="absolute inset-0 bg-gradient-to-br from-vantare-red-400/10 via-[#9a0606]/15 to-[#0a0a0a]" />
         <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-vantare-red-400/10 blur-3xl rounded-full pointer-events-none" />
@@ -338,13 +568,13 @@ export function RoadmapPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" />
               </svg>
             </div>
-            <span className="v52-eyebrow">Feedback</span>
+            <span className="v52-eyebrow">{t("roadmap.feedback.eyebrow")}</span>
           </div>
           <h3 className="text-xl font-bold text-white tracking-tight mb-2">
-            El roadmap vive con feedback
+            {t("roadmap.feedback.title")}
           </h3>
           <p className="text-sm text-vantare-textMuted leading-relaxed mb-5 max-w-xl">
-            El voting público se conectará más adelante; por ahora el feedback va por Discord.
+            {t("roadmap.feedback.body")}
           </p>
           <div className="flex flex-wrap gap-3">
             {!canGiveFeedback ? (
@@ -356,27 +586,10 @@ export function RoadmapPage() {
                 <svg className="w-4 h-4 shrink-0 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m0 0v2m0-2h2m-2 0H10m9.364-7.364A9 9 0 1112 3a9 9 0 017.364 4.636z" />
                 </svg>
-                <span>Disponible para testers y planes de pago</span>
+                <span>{t("roadmap.feedback.locked")}</span>
               </span>
             ) : (
-              <>
-                <button
-                  type="button"
-                  disabled
-                  className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-gradient-to-br from-vantare-red-500 to-[#9a0606] border border-white/10 text-white opacity-60 cursor-not-allowed"
-                  title="Próximamente"
-                >
-                  Sugerir feature
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-[.18em] bg-white/5 border border-white/10 text-vantare-textMuted opacity-60 cursor-not-allowed"
-                  title="Próximamente"
-                >
-                  Votar prioridades
-                </button>
-              </>
+              <RoadmapFeedback t={t} />
             )}
           </div>
         </div>

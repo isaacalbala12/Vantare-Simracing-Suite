@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
+	SchemaVersion          int                         `json:"schemaVersion"`
 	DeltaMode              string                      `json:"deltaMode"`
 	CpuSampling            bool                        `json:"cpuSampling"`
 	Hotkeys                map[string]string           `json:"hotkeys"`
@@ -44,6 +46,7 @@ type LauncherAppEntry struct {
 	Detected       bool                `json:"detected"`
 	GradientFrom   string              `json:"gradientFrom"`
 	GradientTo     string              `json:"gradientTo"`
+	IsFavorite     bool                `json:"isFavorite,omitempty"`
 }
 
 // LaunchStep es un paso dentro de un perfil.
@@ -54,17 +57,25 @@ type LaunchStep struct {
 
 // LaunchProfile es un perfil de lanzamiento editable.
 type LaunchProfile struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Description string       `json:"description,omitempty"`
-	Steps       []LaunchStep `json:"steps"`
+	ID                     string       `json:"id"`
+	Name                   string       `json:"name"`
+	Description            string       `json:"description,omitempty"`
+	Steps                  []LaunchStep `json:"steps"`
+	IsFavorite             bool         `json:"isFavorite,omitempty"`
+	Notes                  string       `json:"notes,omitempty"`
+	LaunchCount            int          `json:"launchCount,omitempty"`
+	LastLaunchedAt         *time.Time   `json:"lastLaunchedAt,omitempty"`
+	AvgChainDurationMs     int64        `json:"avgChainDurationMs,omitempty"`
+	LaunchOnWindowsStartup bool         `json:"launchOnWindowsStartup,omitempty"`
+	Hotkey                 string       `json:"hotkey,omitempty"`
 }
 
 // DefaultAppSettings returns settings with sensible defaults.
 func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
-		DeltaMode:   "self",
-		CpuSampling: true,
+		SchemaVersion: 1,
+		DeltaMode:     "self",
+		CpuSampling:   true,
 		Hotkeys: map[string]string{
 			"toggleOverlay":  "ctrl+shift+v",
 			"toggleEditMode": "ctrl+shift+e",
@@ -73,6 +84,20 @@ func DefaultAppSettings() *AppSettings {
 		},
 		LauncherApps:     defaultLauncherApps(),
 		LauncherProfiles: defaultLauncherProfiles(),
+	}
+}
+
+// migrateSettings applies additive schema migrations in place.
+// v0 (no SchemaVersion) -> v1: set version and ensure launcher collections exist.
+func (s *SettingsService) migrateSettings(settings *AppSettings) {
+	if settings.SchemaVersion == 0 {
+		settings.SchemaVersion = 1
+		if settings.LauncherApps == nil {
+			settings.LauncherApps = defaultLauncherApps()
+		}
+		if settings.LauncherProfiles == nil {
+			settings.LauncherProfiles = defaultLauncherProfiles()
+		}
 	}
 }
 
@@ -221,6 +246,7 @@ func (s *SettingsService) Load() error {
 	if merged.LauncherProfiles == nil {
 		merged.LauncherProfiles = defaultLauncherProfiles()
 	}
+	s.migrateSettings(merged)
 	s.settings = merged
 	return nil
 }

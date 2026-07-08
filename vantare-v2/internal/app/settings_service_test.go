@@ -409,3 +409,36 @@ func TestDefaultAppSettingsIncludesDefaultProfiles(t *testing.T) {
 		t.Fatalf("expected 1 default app (lmu), got %d", len(s.LauncherApps))
 	}
 }
+
+func TestDefaultAppSettingsHasSchemaVersion1(t *testing.T) {
+	s := app.DefaultAppSettings()
+	if s.SchemaVersion != 1 {
+		t.Fatalf("expected SchemaVersion=1, got %d", s.SchemaVersion)
+	}
+}
+
+func TestLoadMigratesLegacySettings(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	legacy := `{
+		"deltaMode": "self",
+		"cpuSampling": true,
+		"hotkeys": {}
+	}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	svc := app.NewSettingsService(path, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if svc.Settings().SchemaVersion != 1 {
+		t.Errorf("expected SchemaVersion=1 after migration, got %d", svc.Settings().SchemaVersion)
+	}
+	if svc.Settings().LauncherApps == nil {
+		t.Error("LauncherApps should be initialized")
+	}
+	if svc.Settings().LauncherProfiles == nil {
+		t.Error("LauncherProfiles should be initialized")
+	}
+}

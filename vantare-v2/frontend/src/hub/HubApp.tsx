@@ -17,7 +17,6 @@ import { LoginScreen } from './auth/LoginScreen';
 import { PaywallScreen } from './auth/PaywallScreen';
 import { LicenseBanner } from './auth/LicenseBanner';
 import { UnconfiguredScreen } from './auth/UnconfiguredScreen';
-import { getSession } from '../lib/supabase-auth';
 import { BetaWelcome, type BetaUserRole } from './onboarding/BetaWelcome';
 import { CalendarReminderBanner } from './calendar/CalendarReminderBanner';
 import type { CalendarReminderPayload } from '../calendar/calendar-types';
@@ -142,11 +141,6 @@ function HubShell() {
         betaUserRole: role,
       });
     }
-  }, []);
-
-  const handleUseRecommended = useCallback(() => {
-    setPendingRecommendedAutoStart("recommended-auto");
-    setSection("profiles");
   }, []);
 
   const handleAutoStartHandled = useCallback(() => {

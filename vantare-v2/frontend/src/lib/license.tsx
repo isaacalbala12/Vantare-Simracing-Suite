@@ -9,7 +9,7 @@ import {
 import type { ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
 import type { LicenseResult } from "./license-types";
-import { getSession } from "./supabase-auth";
+
 
 type LicenseContextValue = {
   result: LicenseResult | null;
@@ -67,7 +67,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
     // Skip getSession in standalone mode (no Wails backend)
     // Just call refresh directly after a short delay
-    const initTimeout = setTimeout(() => {
+    setTimeout(() => {
       if (!cancelled) refresh();
     }, 500);
 

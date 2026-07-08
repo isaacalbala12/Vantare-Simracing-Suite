@@ -17,6 +17,8 @@ const CHANGELOG_TONE_MAP: Record<string, "green" | "blue" | "purple" | "amber" |
 
 type DashboardPageProps = {
   onNavigate?: (section: string) => void;
+  hasActiveProfile?: boolean;
+  onUseRecommended?: () => void;
 };
 
 export function DashboardPage({

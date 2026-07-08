@@ -57,9 +57,20 @@ func Parse(text, timezone string) ([]RaceEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ParseWithReference(text, timezone, time.Now().In(loc))
+}
 
+// ParseWithReference behaves like Parse but uses the provided reference time
+// instead of time.Now() to resolve rolling-forward of past dates. This makes
+// parsing deterministic and testable.
+func ParseWithReference(text, timezone string, reference time.Time) ([]RaceEvent, error) {
+	loc, err := resolveLocation(timezone)
+	if err != nil {
+		return nil, err
+	}
+
+	refInLoc := reference.In(loc)
 	var events []RaceEvent
-	reference := time.Now().In(loc)
 	lines := strings.Split(text, "\n")
 	for i, raw := range lines {
 		lineNo := i + 1
@@ -67,7 +78,7 @@ func Parse(text, timezone string) ([]RaceEvent, error) {
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
-		ev, err := parseLine(trimmed, lineNo, loc, reference)
+		ev, err := parseLine(trimmed, lineNo, loc, refInLoc)
 		if err != nil {
 			return nil, err
 		}

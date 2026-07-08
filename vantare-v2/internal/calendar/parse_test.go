@@ -2,6 +2,7 @@ package calendar
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,17 @@ func mustLoad(t *testing.T, name string) *time.Location {
 	return loc
 }
 
+// spanishMonthsReverse maps a time.Month back to its Spanish name, used by
+// regression tests that build date strings dynamically.
+func spanishMonthsReverse(m time.Month) string {
+	for name, mth := range spanishMonths {
+		if mth == m {
+			return name
+		}
+	}
+	return ""
+}
+
 func TestParse_AcceptsValidLines(t *testing.T) {
 	loc := mustLoad(t, "UTC")
 	reference := time.Date(2026, time.July, 1, 0, 0, 0, 0, loc)
@@ -29,9 +41,9 @@ func TestParse_AcceptsValidLines(t *testing.T) {
 		"Miercoles 3 Julio | 20:00 | Race | Le Mans | 45",
 	}, "\n")
 
-	events, err := Parse(text, "UTC")
+	events, err := ParseWithReference(text, "UTC", reference)
 	if err != nil {
-		t.Fatalf("Parse returned error: %v", err)
+		t.Fatalf("ParseWithReference returned error: %v", err)
 	}
 	if len(events) != 3 {
 		t.Fatalf("expected 3 events, got %d", len(events))
@@ -71,6 +83,22 @@ func TestParse_AcceptsValidLines(t *testing.T) {
 	}
 	if reference.IsZero() {
 		t.Fatal("reference should be set for documentation purposes")
+	}
+}
+
+func TestParseWithReference_UsesGivenReference(t *testing.T) {
+	loc := mustLoad(t, "UTC")
+	reference := time.Date(2026, time.July, 1, 0, 0, 0, 0, loc)
+	text := "2 Julio | 20:00 | Practice | Le Mans | 60"
+	events, err := ParseWithReference(text, "UTC", reference)
+	if err != nil {
+		t.Fatalf("ParseWithReference returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if !events[0].StartTime.Equal(time.Date(2026, time.July, 2, 20, 0, 0, 0, loc)) {
+		t.Errorf("event[0].StartTime = %v, want 2026-07-02 20:00 UTC", events[0].StartTime)
 	}
 }
 
@@ -224,5 +252,30 @@ func TestIsWeekdayToken(t *testing.T) {
 		if got := IsWeekdayToken(tc.in); got != tc.want {
 			t.Errorf("IsWeekdayToken(%q) = %v, want %v", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestParse_UsesCurrentTimeAsReference(t *testing.T) {
+	// Hoy: anio X. Input: dia/mes de ayer. Sin ano explicito.
+	// El rolling forward debe producir un evento en anio X o X+1.
+	loc := mustLoad(t, "UTC")
+	now := time.Now().In(loc)
+	yesterday := now.AddDate(0, 0, -1)
+	// Formato "2 Julio" (sin ano, sin weekday)
+	text := fmt.Sprintf("%d %s | 20:00 | Test | Le Mans | 60",
+		yesterday.Day(),
+		spanishMonthsReverse(yesterday.Month()),
+	)
+	events, err := Parse(text, "UTC")
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	// La fecha debe estar en el futuro de `now` (anio actual o siguiente).
+	year := events[0].StartTime.Year()
+	if year != now.Year() && year != now.Year()+1 {
+		t.Errorf("event year = %d, want %d or %d (rolling forward)", year, now.Year(), now.Year()+1)
 	}
 }

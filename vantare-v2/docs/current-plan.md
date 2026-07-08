@@ -2300,3 +2300,10 @@ Nota WIDGET-STUDIO-10 (2026-07-07) — Implementation:
 - Tests: 1410/1410 PASS (3 tests reescritos al contrato actual, 0 fallos; baseline previo 1407/1410).
 - tsc OK, lint OK (8 errores pre-existentes en archivos ajenos: PaywallScreen, Calendar*, RoadmapPage, AccountSettings, wails-runtime-topbar-mock, topbar-visual-harness — fuera de scope, no introducidos por este cambio).
 - Sin commit, sin tag, sin release.
+
+## Nota FIX-CALENDAR-PARSE-01 (2026-07-08) — Implementation:
+- Objetivo: hacer `calendar.Parse` testeable de forma determinista anadiendo `ParseWithReference(text, timezone, reference)` que recibe un `reference time.Time` explicito. `Parse` mantiene su firma y delega a `ParseWithReference(text, tz, time.Now().In(loc))`.
+- Archivos modificados: `internal/calendar/parse.go` (extraido el cuerpo de `Parse` a `ParseWithReference`; `Parse` reescrito para delegar; sin tocar rolling forward ni `parseLine`/`parseDate`), `internal/calendar/parse_test.go` (test `TestParse_AcceptsValidLines` usa `ParseWithReference` con su `reference` local; anadido `TestParseWithReference_UsesGivenReference` RED→GREEN; anadido `TestParse_UsesCurrentTimeAsReference` de regresion + helper `spanishMonthsReverse`; import `fmt`).
+- Tests: 30/30 Go PASS (1 test arreglado `TestParse_AcceptsValidLines` + 1 test nuevo `TestParseWithReference_UsesGivenReference` + 1 test de regresion `TestParse_UsesCurrentTimeAsReference`). `go test ./internal/calendar/...` GREEN, `go test ./...` 30/30 paquetes OK.
+- go vet OK (en scope `./internal/calendar/...`; hay 1 warning pre-existente fuera de scope en `internal/telemetry/lmu/reader_windows.go` que no se toco). gofmt OK (en scope; `calendar.go` y `official_schedule.go` tienen formato pre-existente fuera de scope y no se modificaron). `git diff --check` OK.
+- Sin commit, sin tag, sin release, sin push.

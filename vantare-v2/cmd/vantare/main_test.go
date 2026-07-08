@@ -718,6 +718,69 @@ func TestHandleChainErrorDoesNotRetryOnNo(t *testing.T) {
 	}
 }
 
+func TestHandleRegistryListEmitsListed(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	handleRegistryList(emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:registry:listed" {
+		t.Fatalf("expected launcher:registry:listed, got %v", emitter.events)
+	}
+	payload := emitter.data[0].(map[string]any)
+	if _, ok := payload["apps"]; !ok {
+		t.Fatal("expected apps key in payload")
+	}
+}
+
+func TestHandleAppUpdateEmitsUpdated(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	// Seed an app
+	custom := app.DefaultAppSettings()
+	custom.LauncherApps = map[string]app.LauncherAppEntry{
+		"obs": {ID: "obs", DisplayName: "OBS Studio", Abbreviation: "OBS", Category: app.AppCategoryStreaming, LaunchMethod: "executable", Detected: true, GradientFrom: "#302e31", GradientTo: "#0a0a0a"},
+	}
+	if err := settingsSvc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	// Reload so the pointer is fresh
+	settingsSvc2 := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc2.Load(); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+
+	emitter := &spyMainEmitter{}
+	handleAppUpdate("obs", "--new-args", settingsSvc2, emitter)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
+		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	}
+	payload := emitter.data[0].(map[string]any)
+	if _, ok := payload["apps"]; !ok {
+		t.Fatal("expected apps key in payload")
+	}
+}
+
+func TestHandleAppUpdateEmitsErrorOnUnknown(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	emitter := &spyMainEmitter{}
+	handleAppUpdate("ghost", "args", settingsSvc, emitter)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
 func TestHandleChainErrorOnMissingProfileEmitsError(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	dialog := &fakeLauncherDialog{answer: true}

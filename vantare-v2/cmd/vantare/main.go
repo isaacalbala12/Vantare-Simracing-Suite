@@ -237,6 +237,26 @@ func handleAppPick(emitter app.EventEmitter) {
 	})
 }
 
+// handleRegistryList reads all installed apps from the Windows Registry using
+// launcher.ListRegistryApps and emits them as launcher:registry:listed so the
+// AddNonSteamGameModal can display the system-wide installed app list.
+func handleRegistryList(emitter app.EventEmitter) {
+	apps := launcher.ListRegistryApps()
+	emitter.Emit("launcher:registry:listed", map[string]any{"apps": apps})
+}
+
+// handleAppUpdate updates the Args field of a launcher app entry identified by
+// id. On success it emits launcher:apps:updated with the full app set so the
+// UI refreshes. On error it emits launcher:error with the failure reason.
+func handleAppUpdate(id, args string, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
+	if err := settingsSvc.UpdateLauncherAppArgs(id, args); err != nil {
+		log.Printf("launcher:app:update error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": settingsSvc.GetLauncherApps()})
+}
+
 // handleChainError is invoked when the chain runner reports a step failure.
 // It first verifies the profile still exists (race-safe: the user may have
 // deleted it while the chain ran). When the profile is missing, it emits
@@ -1178,6 +1198,28 @@ func main() {
 	wailsApp.Event.On("launcher:app:pick", func(event *application.CustomEvent) {
 		_ = event
 		handleAppPick(emitter)
+	})
+
+	// Registry list handler for the AddNonSteamGameModal. Reads all installed
+	// apps from the Windows Registry and emits launcher:registry:listed.
+	wailsApp.Event.On("launcher:registry:list", func(event *application.CustomEvent) {
+		_ = event
+		handleRegistryList(emitter)
+	})
+
+	// App args update handler. The frontend emits launcher:app:update with
+	// { id, args } when the user edits the args field in the app details panel.
+	wailsApp.Event.On("launcher:app:update", func(event *application.CustomEvent) {
+		var payload struct {
+			ID   string `json:"id"`
+			Args string `json:"args"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
 	})
 
 	// Chain error -> native question dialog asking whether to retry.

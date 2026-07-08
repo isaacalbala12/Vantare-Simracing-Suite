@@ -668,6 +668,70 @@ func TestSidecarAppliedOnStartup(t *testing.T) {
 	}
 }
 
+func TestUpdateLauncherAppArgs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	// Seed an app
+	custom := app.DefaultAppSettings()
+	custom.LauncherApps = map[string]app.LauncherAppEntry{
+		"obs": {ID: "obs", DisplayName: "OBS Studio", Abbreviation: "OBS", Category: app.AppCategoryStreaming, LaunchMethod: "executable", Detected: true, GradientFrom: "#302e31", GradientTo: "#0a0a0a"},
+	}
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	// Reload to get a clean service
+	svc2 := app.NewSettingsService(path, nil, nil)
+	if err := svc2.Load(); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+
+	// Update args
+	if err := svc2.UpdateLauncherAppArgs("obs", "--start --profile x"); err != nil {
+		t.Fatalf("UpdateLauncherAppArgs: %v", err)
+	}
+
+	// Verify persistence
+	loaded := app.NewSettingsService(path, nil, nil)
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("final load: %v", err)
+	}
+	entry, ok := loaded.Settings().LauncherApps["obs"]
+	if !ok {
+		t.Fatal("obs app missing after update")
+	}
+	if entry.Args != "--start --profile x" {
+		t.Errorf("expected args updated, got %q", entry.Args)
+	}
+}
+
+func TestUpdateLauncherAppArgsReturnsErrorOnUnknownApp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	err := svc.UpdateLauncherAppArgs("ghost", "args")
+	if err != app.ErrAppNotFound {
+		t.Fatalf("expected ErrAppNotFound, got %v", err)
+	}
+}
+
+func TestUpdateLauncherAppArgsReturnsErrorOnNilSettings(t *testing.T) {
+	svc := app.NewSettingsService("", nil, nil)
+	err := svc.UpdateLauncherAppArgs("obs", "args")
+	if err != app.ErrSettingsNotLoaded {
+		t.Fatalf("expected ErrSettingsNotLoaded, got %v", err)
+	}
+}
+
 func TestConcurrentSavesDontCorruptFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")

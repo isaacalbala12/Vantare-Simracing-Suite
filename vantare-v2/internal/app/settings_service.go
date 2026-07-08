@@ -15,6 +15,12 @@ import (
 // ErrSettingsPathEmpty is returned when Save is called without a file path.
 var ErrSettingsPathEmpty = errors.New("settings: path is empty")
 
+// ErrSettingsNotLoaded is returned when an operation requires loaded settings.
+var ErrSettingsNotLoaded = errors.New("settings: not loaded")
+
+// ErrAppNotFound is returned when an app ID is not found in LauncherApps.
+var ErrAppNotFound = errors.New("settings: app not found")
+
 // saveBackoffs defines the backoff durations for retries.
 var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second}
 
@@ -236,6 +242,32 @@ func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 	copy(out, profiles)
 	s.settings.LauncherProfiles = out
 	// Marshal under lock for data consistency, then persist without the lock.
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		s.mu.Unlock()
+		return fmt.Errorf("marshal: %w", err)
+	}
+	settings := s.settings
+	s.mu.Unlock()
+
+	return s.saveWithRetry(settings, data, 0)
+}
+
+// UpdateLauncherAppArgs updates the Args field of a launcher app entry and
+// persists the change. It returns ErrAppNotFound if the app ID does not exist.
+func (s *SettingsService) UpdateLauncherAppArgs(id, args string) error {
+	s.mu.Lock()
+	if s.settings == nil {
+		s.mu.Unlock()
+		return ErrSettingsNotLoaded
+	}
+	entry, ok := s.settings.LauncherApps[id]
+	if !ok {
+		s.mu.Unlock()
+		return ErrAppNotFound
+	}
+	entry.Args = args
+	s.settings.LauncherApps[id] = entry
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
 		s.mu.Unlock()

@@ -151,7 +151,8 @@ describe("OverlaysStudioPage", () => {
     });
 
     expect(await screen.findByText("Perfiles Específicos")).toBeTruthy();
-    expect(screen.getByText("POSICIÓN Y TAMAÑO")).toBeTruthy();
+    // WidgetSettingsPanel renders when widget is selected in layout studio
+    expect(screen.getByTestId("widget-settings-panel")).toBeTruthy();
     expect(screen.queryByText("Cargando perfil...")).toBeNull();
     expect(screen.getByText(/Este perfil no es el activo/)).toBeTruthy();
   });
@@ -346,7 +347,8 @@ describe("OverlaysStudioPage", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
     fireEvent.click(screen.getByTestId("studio-show-add-widget"));
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    const select = selects[0];
     fireEvent.change(select, { target: { value: "pedals" } });
 
     vi.clearAllMocks();
@@ -362,7 +364,7 @@ describe("OverlaysStudioPage", () => {
     );
     expect(saveCalls.length).toBe(0);
 
-    const saveBtn = screen.getByRole("button", { name: "Guardar" });
+    const saveBtn = screen.getAllByRole("button", { name: "Guardar" })[0];
     fireEvent.click(saveBtn);
 
     expect(Events.Emit).toHaveBeenCalledWith("layout:save", expect.objectContaining({

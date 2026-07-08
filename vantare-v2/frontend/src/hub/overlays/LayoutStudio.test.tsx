@@ -3,6 +3,16 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { LayoutStudio } from "./LayoutStudio";
 import type { ProfileConfig } from "../../lib/profile";
 
+vi.mock("../../lib/access", () => ({
+  useAccess: () => ({
+    planLabel: "free",
+    planStatus: "free",
+    roles: [],
+    isBlocked: false,
+    isUnconfigured: false,
+  }),
+}));
+
 afterEach(() => {
   cleanup();
 });
@@ -33,12 +43,20 @@ const defaultProps = {
 };
 
 describe("LayoutStudio", () => {
-  it("renders layout studio and hides appearance controls", () => {
+  it("renders layout studio with widget settings panel when widget selected", () => {
     render(<LayoutStudio {...defaultProps} />);
 
     expect(screen.getByText("Perfiles Específicos")).toBeTruthy();
-    expect(screen.queryByText("APARIENCIA")).toBeNull();
-    expect(screen.getByText("POSICIÓN Y TAMAÑO")).toBeTruthy();
+    // WidgetSettingsPanel renders appearance controls (style selector, etc.)
+    expect(screen.getByTestId("widget-settings-panel")).toBeTruthy();
+  });
+
+  it("shows placeholder when no widget selected", () => {
+    render(<LayoutStudio {...defaultProps} selectedWidgetId={null} />);
+
+    expect(screen.getByText("Perfiles Específicos")).toBeTruthy();
+    expect(screen.getByText("Selecciona un widget para editar")).toBeTruthy();
+    expect(screen.queryByTestId("widget-settings-panel")).toBeNull();
   });
 
   it("hides danger actions while no callbacks are wired", () => {
@@ -102,9 +120,10 @@ describe("LayoutStudio", () => {
     fireEvent.click(screen.getByTestId("studio-show-add-widget"));
     expect(screen.getByTestId("studio-add-widget-form")).toBeTruthy();
 
-    // Confirmar pedals
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "pedals" } });
+    // Confirmar pedals — use the first combobox (the add widget select, not WidgetSettingsPanel selects)
+    const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    const addWidgetSelect = selects[0];
+    fireEvent.change(addWidgetSelect, { target: { value: "pedals" } });
     fireEvent.click(screen.getByTestId("studio-confirm-add-widget"));
 
     expect(onAddWidget).toHaveBeenCalledWith("pedals");

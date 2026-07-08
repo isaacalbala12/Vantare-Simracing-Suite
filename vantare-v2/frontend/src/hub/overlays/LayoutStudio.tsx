@@ -2,7 +2,7 @@ import type { ProfileConfig } from "../../lib/profile";
 import type { SaveState } from "./useOverlayStudioState";
 import { StudioWidgetList } from "./StudioWidgetList";
 import { PreviewCanvas } from "../preview/PreviewCanvas";
-import { PreviewInspector } from "../preview/PreviewInspector";
+import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
 
 type LayoutStudioProps = {
   profile: ProfileConfig;
@@ -13,7 +13,7 @@ type LayoutStudioProps = {
   isActiveProfile: boolean;
   onStartOverlay: () => void;
   onStopOverlay: () => void;
-  onSelectWidget: (id: string) => void;
+  onSelectWidget: (id: string | null) => void;
   onChangeProfile: (profile: ProfileConfig) => void;
   onAddWidget?: (type: string) => void;
   onSave: () => void;
@@ -108,14 +108,17 @@ export function LayoutStudio({
           onSelectWidget={onSelectWidget}
           onChangeProfile={onChangeProfile}
         />
-        <PreviewInspector
-          profile={profile}
-          widget={selectedWidget}
-          onChangeProfile={onChangeProfile}
-          showAppearanceControls={false}
-          showPositionControls={true}
-          showDangerActions={false}
-        />
+        {selectedWidget ? (
+          <WidgetSettingsPanel
+            profile={profile}
+            widget={selectedWidget}
+            onChangeProfile={onChangeProfile}
+          />
+        ) : (
+          <div className="glass-panel flex h-full items-center justify-center rounded-xl text-sm text-vantare-textMuted">
+            Selecciona un widget para editar
+          </div>
+        )}
       </div>
     </div>
   );

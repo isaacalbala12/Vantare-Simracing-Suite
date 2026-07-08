@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-08",
+  "note": "Fuente de verdad manual para el tab 'Desarrollo por features' del Roadmap. Isaac edita este archivo a mano. La app lo obtiene via FEATURES_SOURCE_URL en runtime.",
+  "categories": [
+    { "id": "calendar", "label": { "es": "Calendario", "en": "Calendar", "pt": "Calendário", "it": "Calendario" }, "order": 1 },
+    { "id": "roadmap",   "label": { "es": "Roadmap",  "en": "Roadmap",  "pt": "Roadmap",    "it": "Roadmap" },    "order": 2 },
+    { "id": "widgets",   "label": { "es": "Widgets",  "en": "Widgets",  "pt": "Widgets",    "it": "Widgets" },    "order": 3 },
+    { "id": "engineer",  "label": { "es": "Ingeniero","en": "Engineer", "pt": "Engenheiro", "it": "Engineer" },    "order": 4 }
+  ],
+  "features": [
+    {
+      "id": "calendar-interval-races-dayview",
+      "category": "calendar",
+      "label": {
+        "es": "Carreras de Intervalo en Calendario",
+        "en": "Calendar Interval Races",
+        "pt": "Corridas de Intervalo no Calendário",
+        "it": "Gare a Intervallo nel Calendario"
+      },
+      "description": {
+        "es": "mostrar las carreras de intervalo (Bronce/Plata/Oro) como eventos individuales en la línea de tiempo del DayView, con patrón escalonado predecible.",
+        "en": "Display interval races (Bronze/Silver/Gold) as individual events in the DayView timeline, with a predictable staggered pattern.",
+        "pt": "Exibir as corridas de intervalo (Bronze/Prata/Ouro) como eventos individuais na linha do tempo do DayView, com padrão escalonado previsível.",
+        "it": "Mostrare le gare a intervallo (Bronzo/Argento/Oro) come eventi individuali nella timeline del DayView, con schema scalato prevedibile."
+      },
+      "tipo": "feature",
+      "status": "in-development",
+      "percent": 0
+    },
+    {
+      "id": "roadmap-features-from-plans",
+      "category": "roadmap",
+      "label": {
+        "es": "Iteración de Roadmap",
+        "en": "Roadmap Iteration",
+        "pt": "Iteração do Roadmap",
+        "it": "Iterazione della Roadmap"
+      },
+      "description": {
+        "es": "iterar la pantalla RoadmapPage — i18n de datos, dual roadmaps, changelog real, panel de feedback, features desde planes y porcentajes reales.",
+        "en": "Iterate the RoadmapPage — data i18n, dual roadmaps, real changelog, feedback panel, features from plans, and real percentages.",
+        "pt": "Iterar a tela RoadmapPage — i18n de dados, roadmaps duais, changelog real, painel de feedback, recursos a partir de planos e porcentagens reais.",
+        "it": "Iterare la schermata RoadmapPage — i18n dei dati, roadmap duali, changelog reale, pannello di feedback, funzionalità dai piani e percentuali reali."
+      },
+      "tipo": "feature",
+      "status": "in-development",
+      "percent": 100
+    },
+    {
+      "id": "obslan-double-pc",
+      "category": "engineer",
+      "label": {
+        "es": "OBS LAN Doble PC",
+        "en": "OBS LAN Double PC",
+        "pt": "OBS LAN PC Duplo",
+        "it": "OBS LAN Doppio PC"
+      },
+      "description": {
+        "es": "configuración automatizada de OBS LAN para doble PC con Vantare.",
+        "en": "Automated OBS LAN setup for dual PC with Vantare.",
+        "pt": "Configuração automatizada de OBS LAN para PC duplo com Vantare.",
+        "it": "Configurazione automatizzata di OBS LAN per doppio PC con Vantare."
+      },
+      "tipo": "feature",
+      "status": "future",
+      "percent": 0
+    },
+    {
+      "id": "overlay-performance-fixes",
+      "category": "engineer",
+      "label": {
+        "es": "Rendimiento de Overlays",
+        "en": "Overlay Performance",
+        "pt": "Desempenho de Overlays",
+        "it": "Prestazioni degli Overlay"
+      },
+      "description": {
+        "es": "optimizaciones de rendimiento en el runtime de overlays.",
+        "en": "Performance optimizations in the overlay runtime.",
+        "pt": "Otimizações de desempenho no runtime de overlays.",
+        "it": "Ottimizzazioni delle prestazioni nel runtime degli overlay."
+      },
+      "tipo": "improve",
+      "status": "future",
+      "percent": 0
+    },
+    {
+      "id": "p1-pedals-inventory",
+      "category": "widgets",
+      "label": {
+        "es": "Inventario de Pedals",
+        "en": "Pedals Inventory",
+        "pt": "Inventário de Pedals",
+        "it": "Inventario Pedals"
+      },
+      "description": {
+        "es": "inventario técnico del widget Pedals y camino a implementación completa.",
+        "en": "Technical inventory of the Pedals widget and path to full implementation.",
+        "pt": "Inventário técnico do widget Pedals e caminho para implementação completa.",
+        "it": "Inventario tecnico del widget Pedals e percorso per l'implementazione completa."
+      },
+      "tipo": "feature",
+      "status": "future",
+      "percent": 0
+    },
+    {
+      "id": "vantare-suite-ingeniero-integration",
+      "category": "engineer",
+      "label": {
+        "es": "Integración con Ingeniero",
+        "en": "Engineering Suite Integration",
+        "pt": "Integração com Engenheiro",
+        "it": "Integrazione Ingegnere"
+      },
+      "description": {
+        "es": "integración completa del módulo Ingeniero con LMU live.",
+        "en": "Full integration of the Engineering module with LMU live.",
+        "pt": "Integração completa do módulo Engenheiro com LMU live.",
+        "it": "Integrazione completa del modulo Ingegnere con LMU live."
+      },
+      "tipo": "feature",
+      "status": "future",
+      "percent": 0
+    }
+  ]
+}

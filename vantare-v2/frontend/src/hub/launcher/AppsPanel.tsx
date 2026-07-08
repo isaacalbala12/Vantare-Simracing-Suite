@@ -104,7 +104,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
             gradientFrom: "#6b7280",
             gradientTo: "#1f2937",
           };
-          Events.Emit("launcher:app:add", { entry: newEntry });
+          Events.Emit("launcher:app:add", newEntry);
         }}
       />
 
@@ -135,7 +135,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
                     e.stopPropagation();
                     Events.Emit("launcher:app:favorite", {
                       id: app.id,
-                      isFavorite: !app.isFavorite,
+                      favorite: !app.isFavorite,
                     });
                   }}
                   data-testid={`app-favorite-btn-${app.id}`}

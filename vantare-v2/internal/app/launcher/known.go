@@ -37,7 +37,7 @@ var KnownApps = []KnownApp{
 		ID: "crewchief", DisplayName: "CrewChief", Abbreviation: "CC",
 		Category: "utility", LaunchMethod: "executable",
 		ExecutableNames:     []string{"CrewChiefV4.exe", "CrewChief.exe"},
-		DisplayNameMatchers: []string{"crewchief"},
+		DisplayNameMatchers: []string{"crewchief", "crew chief"},
 		KnownPaths:          []string{`%LOCALAPPDATA%\CrewChief`},
 		GradientFrom:        "#3b82f6", GradientTo: "#1d4ed8",
 	},

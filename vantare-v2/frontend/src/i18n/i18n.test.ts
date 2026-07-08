@@ -170,6 +170,42 @@ describe("i18n pure module", () => {
   });
 });
 
+describe("launcher v2 translations (Task 7.4)", () => {
+  // Keys añadidas en corte 7 del plan launcher-v2
+  const NEW_KEYS = [
+    "launcher.chain.states.pending",
+    "launcher.chain.states.launching",
+    "launcher.chain.states.done",
+    "launcher.chain.states.failed",
+    "launcher.chain.states.cancelled",
+    "launcher.autostart",
+    "launcher.hotkey",
+    "launcher.appDetails.path",
+    "launcher.appDetails.args",
+    "launcher.toast.success",
+    "launcher.toast.partial",
+    "launcher.toast.error",
+    "launcher.toast.retry",
+  ];
+
+  it("new cut 7 launcher keys are present in all 4 locales", () => {
+    for (const dict of [es, en, pt, itLocale]) {
+      for (const key of NEW_KEYS) {
+        expect(dict[key]).toBeTruthy();
+        expect(typeof dict[key]).toBe("string");
+        expect(dict[key].length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("launcher.profile.unlaunchable is present and updated in all 4 locales", () => {
+    expect(es["launcher.profile.unlaunchable"]).toBe("Perfil no lanzable");
+    expect(en["launcher.profile.unlaunchable"]).toBe("Profile not launchable");
+    expect(pt["launcher.profile.unlaunchable"]).toBe("Perfil não lançável");
+    expect(itLocale["launcher.profile.unlaunchable"]).toBe("Profilo non avviabile");
+  });
+});
+
 describe("widget studio translations", () => {
     it("has widget studio shell labels", () => {
       expect(es["studio.widgets"]).toBe("Widgets");

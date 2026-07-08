@@ -347,3 +347,53 @@ Gracias por vuestro feedback.
 - Las builds `v0.3.*` previas son internas y **no se anuncian al publico**.
 - Los canales de Discord publicos pasan a `#beta-*`. Los `#alpha-*` quedan como rastro historico interno.
 - El updater debe apuntar a la nueva linea. Si quedan caches apuntando a tags `v0.3.*`, dejaran de recibir updates; forzar manualmente la actualizacion a `v0.1.0.0` desde `#beta-downloads`.
+## Soporte de licencias y pagos
+
+Usa el CLI `vantare-admin` (compilado con `go build -o vantare-admin ./cmd/vantare-admin`) y los dashboards externos según el escenario.
+
+### Prerrequisitos
+
+```powershell
+$env:SUPABASE_URL = "<url>"
+$env:SUPABASE_SERVICE_ROLE_KEY = "<service-role-key>"
+```
+
+### Escenario 1: Usuario pagó pero la app muestra Free
+
+**Síntomas:** El usuario reporta que hizo el pago en Stripe pero la app sigue en Free.
+
+**Diagnóstico:**
+
+```bash
+./vantare-admin lookup <email>
+```
+
+Verificar que `user_entitlements` tiene fila con `status: active` para el product_key correcto.
+
+**Causas posibles:**
+1. **Webhook no procesado** — Revisar logs de la EF: `supabase functions logs stripe-webhook --project-ref <ref>`.
+2. **El RPC get_account_entitlements no devuelve entitlement** — Verificar en Supabase SQL Editor: `select * from get_account_entitlements('<fingerprint>');`.
+3. **Device-limit** — `./vantare-admin device-reset <email>`.
+
+**Resolución de emergencia:** `./vantare-admin grant <email> <product_key>`.
+
+### Escenario 2: Usuario atrapado en device-limit
+
+**Síntomas:** La app muestra "Límite de dispositivos".
+
+**Diagnóstico:** `./vantare-admin lookup <email>`. Verificar `active_device` != fingerprint del usuario.
+
+**Resolución:** `./vantare-admin device-reset <email>`. Esto limpia `devices.fingerprint_hash` y `devices.last_reset_at`. El usuario debe reiniciar la app.
+
+### Escenario 3: Reembolso o cancelación
+
+**Reembolso:** Stripe Dashboard → Payments → Refund. Stripe emite `charge.refunded` (no manejado por la EF). Revocar manualmente: `./vantare-admin revoke <email> <product_key>`.
+
+**Cancelación de suscripción:** Stripe Dashboard → Customers → Subscriptions → Cancelar. Stripe emite `customer.subscription.deleted` → la EF lo procesa y marca `status = 'expired'`. Verificar: `select * from user_entitlements where user_id = '<id>'`. Si no se procesó, revocar manualmente con el CLI.
+
+### Logs y auditoría
+
+```bash
+./vantare-admin events <email>
+supabase functions logs stripe-webhook --project-ref <ref>
+```

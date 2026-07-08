@@ -1,4 +1,65 @@
+Nota CALENDAR-INTERVAL-RACES (2026-07-07):
+- Objetivo: mostrar las carreras de intervalo (Bronce/Plata/Oro) como eventos individuales en la línea de tiempo del DayView, con patrón escalonado predecible.
+- Problema: actualmente las series de intervalo solo aparecen como banda "Horario" estática. El usuario quiere verlas en la grid de 24h.
+- Solución: 2 cortes — (1) añadir `offsetMinutes` al mock data para crear patrón escalonado, (2) modificar DayView para generar eventos de intervalo individuales (máx 3/tier/hora).
+- Plan detallado: `docs/superpowers/plans/2026-07-07-calendar-interval-races-dayview.md`
+- Bugfixes asociados: filtro en mes/semana, bandas Horario por filtro, rail duplicados.
+- Estado: 🟢 ACTIVO
+
+Nota CALENDAR-REFACTOR (2026-07-07):
+- Objetivo: reescribir la pestaña de calendario para mostrar la cadencia de preparación de LMU (cada cuánto, duración, pista, setup, splits, assists, neumáticos) en vez de materializar cientos de eventos de intervalo. Corregir bugs de filtro Especial, zona horaria, panelTier, y código muerto.
+- Problema raíz: el calendario oficial LMU tiene series diarias (Bronce cada 15min, Plata cada 20min, Oro cada 30min) con múltiples pistas por tier. El código anterior materializaba 24 bloques/hora por serie en DayView y no mostraba info de preparación. El filtro "Especial" estaba roto en rail. La zona horaria usaba el navegador en vez de `calendar.timezone`. `panelTier` se abría automáticamente al filtrar (inconsistente toolbar vs rail).
+- Decisiones cerradas:
+  - (1) Interval-series NUNCA se materializan en la rejilla. Se muestran como banda de "Preparación" con cadencia + duración + pistas. Solo weekly-slots y special van a la línea de tiempo.
+  - (2) Filtrar NUNCA abre el modal de detalle. Solo un click explícito en tarjeta de rail o badge de tier lo abre.
+  - (3) Zona horaria: todas las vistas usan `calendar.timezone` vía `Intl.DateTimeFormat` con `timeZone`. `DEFAULT_TIMEZONE` se usa como fallback en `EMPTY_CALENDAR`.
+  - (4) Mock reescrito con datos reales del seed LMU: 3 beginner, 3 intermediate, 3 advanced, 1 weekly, 1 special. `seriesPreviews` con `nextStarts` y `scheduleLabel`.
+  - (5) `CalendarRaceRail` recibe `calendar` como prop (no se suscribe internamente). Eliminado doble `requestCalendar`.
+  - (6) Navegación month usa día 1 del mes destino (sin deriva de fecha).
+  - (7) Título de semana muestra rango completo cross-mes ("28 Jun - 4 Jul"). Día capitaliza día de semana ("Miércoles").
+- Archivos nuevos: `frontend/src/hub/calendar/calendar-shared.ts` (tierStyle, formatInZone, cadenceLabel, TIER_STYLES, TIER_LABELS).
+- Archivos eliminados: `CalendarSeriesCard.tsx` + test, `calendar-tier.ts`, tests de `getSeriesPatternLabel` y `groupOccurrencesByLocalDay` en `calendar-view-math.test.ts`.
+- Archivos reescritos: `CalendarMonthView.tsx`, `CalendarWeekView.tsx`, `CalendarDayView.tsx`, `CalendarRaceRail.tsx`, `CalendarToolbar.tsx`, `calendar-visual-mock-data.ts`.
+- Archivos modificados: `CalendarPage.tsx` (panelTier desacoplado, loading state, timeZone), `CalendarRaceDetailPanel.tsx` (timeZone), `calendar-upcoming.ts` (special slot), `calendar-view-math.ts` (eliminadas funciones muertas).
+- Tests: 123/123 calendar+page PASS, 1395/1395 full suite PASS, tsc 0 calendar errors. Lint/build errores preexistentes (roadmap test, react-refresh).
+- No se tocó: backend Go, Supabase/Auth, WidgetStudio, LayoutStudio, runtime OBS, dependencias, position/x/y/w/h.
+- Estado: 🟢 ACTIVO
+- Plan: `docs/superpowers/plans/2026-07-07-calendar-interval-races-dayview.md`
+
 # Plan actual
+
+Nota ROADMAP-ITERATION (2026-07-07):
+- Objetivo: iterar la pantalla RoadmapPage — i18n de datos, dual roadmaps, changelog real, feedback panel, features desde planes, y porcentajes reales.
+- Decisiones cerradas: (1) feedback abre enlaces externos prefirmados; gating por `roadmap.feedback`. (2) Dos roadmaps con toggle. (3) Escala de porcentajes obligatoria. (4) Changelog sincronizado a mano. (5) Strings i18n. (6) Features desde planes de superpowers con progreso automático via checks.
+- Archivos nuevos: `docs/roadmap-maintenance.md`, `docs/superpowers/plans/2026-07-06-roadmap-*.md`, `docs/superpowers/plans/2026-07-07-roadmap-features-from-plans.md`.
+- Archivos modificados: `frontend/src/hub/roadmap/roadmap-data.ts`, `roadmap-data.test.ts`, `RoadmapPage.tsx`, `RoadmapPage.test.tsx`, locales i18n.
+- Checks: 79/79 roadmap+i18n tests PASS, tsc OK, lint 0 errores.
+- Estado: 🟢 ACTIVO
+- Plan: `docs/superpowers/plans/2026-07-07-roadmap-features-from-plans.md`
+- Sin commit, sin tag, sin release.
+Nota OBS-LAN-DOUBLE-PC (2026-06-25):
+- Objetivo: configuración automatizada de OBS LAN para doble PC con Vantare.
+- Tipo: research
+- Estado: 🔮 FUTURO
+- Plan: `docs/superpowers/plans/2026-06-25-obslan-double-pc.md`
+
+Nota OVERLAY-PERFORMANCE (2026-06-25):
+- Objetivo: optimizaciones de rendimiento en el runtime de overlays.
+- Tipo: improve
+- Estado: 🔮 FUTURO
+- Plan: `docs/superpowers/plans/2026-06-25-overlay-performance-fixes.md`
+
+Nota PEDALS-INVENTORY (2026-06-25):
+- Objetivo: inventario técnico del widget Pedals y camino a implementación completa.
+- Tipo: research
+- Estado: 🔮 FUTURO
+- Plan: `docs/superpowers/plans/2026-06-25-p1-pedals-inventory.md`
+
+Nota INGENIERO-INTEGRATION (2026-06-25):
+- Objetivo: integración completa del módulo Ingeniero con LMU live.
+- Tipo: feature
+- Estado: 🔮 FUTURO
+- Plan: `docs/superpowers/plans/2026-06-25-vantare-suite-ingeniero-integration.md`
 
 Nota WORKDAY-2026-07-06 — Widget Studio launch polish:
 - Objetivo del dia: estabilizar Widget Studio para el lanzamiento de esta tarde sin mezclarlo con cambios de backend, calendario o LayoutStudio.
@@ -43,6 +104,66 @@ Nota I18N-01 (2026-07-06) — Implementation:
 - No se tocó: backend Go, Supabase/Auth, Calendar, LayoutStudio, runtime OBS, dependencias, position/x/y/w/h.
 - Checks enfocados: 211/211 PASS (i18n, onboarding, settings y Widget Studio).
 - Sin tag, sin release.
+
+Nota I18N-02 (2026-07-06) — Provider global + navegacion:
+- Objetivo: convertir el i18n en una unica fuente de verdad para toda la app y dejar lista la infraestructura para traducir el resto de pantallas poco a poco, atado a cada feature (sin big-bang).
+- `I18nProvider` ahora es transparente si ya existe un provider padre: si se monta dentro de otro `I18nProvider`, delega al contexto existente en vez de crear un arbol aislado. Asi `OnboardingFlow`, `WidgetStudio` y `SettingsPage` (que hoy montan su propio provider) siguen funcionando y comparten el mismo idioma que el resto del Hub.
+- `HubApp` monta un unico `I18nProvider` global envolviendo `HubShell` (dentro de `LicenseProvider`). Ahora cualquier pantalla del Hub puede usar `useI18n()` -> `t()` sin montar su propio provider. El fallback de `useI18n` ya cubria el caso sin provider, asi que no hay regresion para pantallas no migradas.
+- Se anadieron las keys de navegacion del Topbar a los 4 diccionarios (`nav.dashboard`, `nav.profiles`, `nav.launcher`, `nav.calendar`, `nav.engineer`, `nav.telemetry`, `nav.roadmap`, `nav.setup`) con paridad es/en/pt/it (104 keys). La migracion visual del Topbar queda para su corte propio (no se toca `navigation.ts` aun).
+- Tests nuevos en `I18nProvider.test.tsx`: coherencia de provider global (provider anidado delega al padre; cambio de idioma en provider anidado se refleja en el contexto padre compartido).
+- No se toco: backend Go, Supabase/Auth, Calendar, LayoutStudio, runtime OBS, dependencias, position/x/y/w/h, cuerpo de SettingsPage, Launcher (lo lleva otro worker en paralelo).
+- Checks enfocados: 36/36 i18n PASS (incluye 2 nuevos de coherencia global), 27/27 HubApp PASS, 62/62 OnboardingFlow+SettingsPage+WidgetStudio PASS, tsc OK, lint OK (0 errors).
+- Riesgo restante: el resto de pantallas (Dashboard, Auth/Login/Paywall, Calendar, Roadmap, Engineer, Telemetry, Profiles, Widgets, Preview, Community, cuerpo de Settings) sigue con copy hardcodeada en espanol; se traduce atado a cada feature. El `I18nProvider` global ya las habilita.
+- Sin tag, sin release.
+
+- Nota TOPBAR-RESPONSIVE (2026-07-06) — Fix de responsividad del topbar (sin i18n):
+- Sintoma reportado: en pantalla partida/movil, "Overlays Studio" se partia en dos lineas y "Ajustes" se cortaba por falta de ancho.
+- Cambio en `Topbar.tsx` (responsive, sin i18n): (1) items de nav (`<a>`/`<button> nav-item`) con `whitespace-nowrap` (evita el partido de "Overlays Studio"); (2) contenedor de nav: `max-md:flex-1 max-md:min-w-0 flex ... gap-2 md:gap-3 lg:gap-5 text-[11px] md:text-xs lg:text-sm max-md:overflow-x-auto` (scrollbarWidth thin) — en `md+` es flex normal SIN scroll (los 8 items caben); en movil (<md) la nav ocupa el ancho restante y hace scroll horizontal util (logo y botones laterales llevan `shrink-0`, el padre flex lleva `min-w-0`). Antes: `hidden md:flex` (oculta en movil) y "Ajustes" se cortaba en partida.
+- No se toco: i18n, avatar, notificaciones, hamburguesa, backend Go, Supabase/Auth, calendar, LayoutStudio, runtime OBS, position/x/y/w/h.
+- Verificacion visual EJECUTADA via entry minimo aislado (opcion 2 del usuario): `topbar-harness.html` + `topbar-visual-harness.tsx` monta solo `<Topbar>` con `LicenseProvider`+`I18nProvider` y `@wailsio/runtime` aliasado a `wails-runtime-topbar-mock.ts` (usuario free, secciones premium bloqueadas) via alias condicional en `vite.config.ts` (`VITE_RUNTIME_MOCK=topbar`). Resultados DOM finales (sin scroll en partida, segun peticion del usuario):
+  - 900px (partida): `scrollable=false` (scrollWidth=clientWidth=485), "Ajustes" visible (`ajustesInView=true`), "Overlays Studio" en UNA linea. ANTES: `ajustesClipped=true` (se cortaba).
+  - 375px (movil): `scrollable=true` con scroll UTIL — al hacer scroll, "Ajustes" queda dentro del viewport (`ajustesReachableByScroll=true`); "Overlays Studio" en una linea. ANTES: nav `hidden` en <768px (invisible).
+  - Capturas: /tmp/topbar-900-final3.png, /tmp/topbar-375-final3.png, /tmp/before-900.png (antes del fix, con stash temporal).
+  - Archivos nuevos del harness (fuera de produccion; el alias solo se activa con VITE_RUNTIME_MOCK=topbar, NO afecta `pnpm build`): `frontend/topbar-harness.html`, `frontend/src/topbar-visual-harness.tsx`, `frontend/src/lib/wails-runtime-topbar-mock.ts` (copia de `wails-runtime-mock.ts` pero `license:validate` -> anonymous/free).
+- Sin commit, sin tag, sin release.
+Nota I18N-03 (2026-07-06) — Plan de traduccion completa (pendiente, por feature):
+- Necesidad: I18N-01 cubrio solo la UI visible de Widget Studio + onboarding + tabs de Ajustes. I18N-02 dejo lista la infraestructura (provider global) pero NO tradujo el resto. Hoy ~10% de la superficie visible esta traducida. Para una "traduccion completa de lo actual" hace falta migrar el copy hardcodeado de todas las pantallas restantes a `t()`, atado a la feature que toque cada pantalla (no big-bang, ver riesgos en I18N-02 y decision de evitar rework).
+- Inventario de areas pendientes (excluye Launcher: lo lleva otro worker en paralelo):
+  - **Hub shell / Topbar** (`Topbar.tsx`, `navigation.ts`): labels de nav (Hub, Overlays Studio, Launcher, Carreras, Ingeniero, Telemetria, Roadmap, Ajustes), estados de fuente (Fuente pendiente, LMU conectado, Esperando LMU, Mock), Notificaciones, Lite ON/OFF, tooltip "Disponible para testers y planes de pago". Las keys `nav.*` ya existen en los 4 diccionarios; falta cablear `navigation.ts`/`Topbar` a `t()`.
+  - **Dashboard** (`DashboardPage.tsx`, `V52Shell.tsx`, cards: HeroSection, PlanStatusCard, QuickActions, LastActivityCard, ActiveOverlayCard, etc.): Simulador principal, Configurado, No disponible, Novedades, Proximas carreras, Acciones rapidas.
+  - **Auth** (`LoginScreen`, `PaywallScreen`, `LicenseBanner`, `UnconfiguredScreen`, `BetaWelcome`): toda la copy de login/paywall/licencia. Critico: es lo que ve el usuario sin licencia valida.
+  - **Calendar** (`CalendarPage.tsx` + `calendar/*`): Carreras LMU, Calendario oficial, labels de vistas Mes/Semana/Dia, filtros, paneles de series, horario semanal.
+  - **Roadmap** (`RoadmapPage.tsx`): Desarrollo Vantare, Fase actual, Progreso global, Completado, Ultimos hitos, Feedback, El roadmap vive con feedback.
+  - **Engineer / Telemetry** (`EngineerPage`, `TelemetryPage`, `widgets/*` settings sections): Estado, Mensajes recientes, Telemetria.
+  - **Profiles / Widgets** (`ProfilesPage`, `WidgetsPage`, `ProfileLibraryCard`, `OwnProfilesView`, `StudioHome`, etc.): Overlays, Gestiona tus perfiles, Crear nuevo perfil, Abrir overlay, Cambios sin guardar, Selecciona un widget.
+  - **Preview / AppearanceEditor** (`preview/AppearanceEditor.tsx`, `StyleSelector.tsx`, `PreviewInspector.tsx`): labels de edicion de apariencia/estilo.
+  - **Community / EmptyStates** (`CommunityComingSoonView`, `EmptyStates`): Proximamente, estados vacios.
+  - **Cuerpo de Settings** (`AccountSettings.tsx`, hotkeys, updater, diagnostics): I18N-01 solo tradujo titulo + tabs; el contenido de cada tab sigue en espanol.
+- Reglas que NO se traducen (datos, no copy): IDs tecnicos (widget/column/slot/design/variant), datos runtime/telemetria (pilotos, marcas, VANTARE, LE MANS ULTIMATE, carreras), nombres de simuladores (Le Mans Ultimate, iRacing, Assetto Corsa), keys de enum en codigo.
+- Estrategia propuesta (CORTES INCREMENTALES, no big-bang):
+  1. I18N-03a: Topbar + Hub shell + navegacion (mayor impacto, keys `nav.*` ya listas).
+  2. I18N-03b: Auth (Login/Paywall/License/Unconfigured/BetaWelcome) — critico para usuarios sin licencia.
+  3. I18N-03c: Dashboard + cards compartidas.
+  4. I18N-03d: Calendar + Roadmap.
+  5. I18N-03e: Engineer/Telemetry/Profiles/Widgets/Preview/Community.
+  6. I18N-03f: Cuerpo de Settings (tabs Cuenta/Actualizaciones/Hotkeys/Diagnostico/Avanzado).
+  7. Cierre: test de paridad de keys (ya existe en `i18n.test.ts`) + test/lint que detecte strings visibles hardcodeados en pantallas ya migradas (evitar regresion a español literal).
+- Cada corte: anade las keys al diccionario 4-lenguaje (paridad obligatoria), migra los `t()` en la pantalla, y corre los tests de esa pantalla + `i18n.test.ts`. El `I18nProvider` global (I18N-02) ya habilita `useI18n()` en todas sin montar provider local.
+- Riesgos de no hacerlo por feature: (1) big-bang mezcla trabajo con features activas y genera conflictos de merge (especialmente con el worker de Launcher en archivos compartidos); (2) strings nuevos de features futuras quedarian hardcodeados otra vez (re-trabajo); (3) keys huerfanas si se traduce y luego se borra UI; (4) el fallback de `translate()` devuelve la key, lo que enmascara huecos. Por eso la migracion viaja con cada feature.
+- Estado: PENDIENTE. No implementado. Sin commit, sin tag, sin release.
+
+Nota I18N-ROADMAP (2026-07-06) — Futuro multiidioma:
+- Objetivo a medio plazo: la app sea traducible de forma completa y mantenible en es/en/pt/it, con el idioma elegido una sola vez y reflejado en todas las pantallas (onboarding, hub, ajustes, overlays).
+- Prerrequisitos ya cubiertos: modulo i18n puro, provider global (I18N-02), selector de idioma, persistencia en localStorage, fallback determinista, paridad de keys testeada.
+- Trabajo futuro documentado (multiple cosas por hacer, no solo un corte):
+  - Traducir todas las areas de I18N-03 (ver arriba) — es el grueso del trabajo restante.
+  - Ampliar lenguajes mas alla de es/en/pt/it si el publico lo pide (fria, de, etc.) — requiere ampliar `SUPPORTED_LOCALES` + diccionarios + selector; hoy el diseno ya soporta anadir locales sin tocar el consumidor.
+  - Pluralizacion/genero: el modulo actual es lookup plano `key -> string`. Si alguna copy necesita plurales o genero por locale, habra que anadir un helper (p.ej. `tPlural(key, count)` o `Intl`). No necesario para el copy actual.
+  - Deteccion de idioma del SO/region como default suave (hoy el default es `es` fijo). Opcional: leer `navigator.language` y hacer fallback a `es` si no esta soportado.
+  - Interceptors de traduccion en runtime OBS/overlay: el runtime de overlays (CompositeApp/ObsOverlayApp) NO monta `I18nProvider` hoy. Si los widgets deben mostrar copy traducida (no solo datos), habra que montar el provider ahi tambien. Fuera de scope para widgets (la regla es no traducir datos runtime).
+  - Auditoria de "no espanol literal" en CI: anadir un test/lint que falle si aparece un string visible en espanol hardcodeado en archivos ya migrados, para evitar regresion.
+- No se toca backend Go, Supabase/Auth, runtime OBS (salvo el punto de providers si aplica), LayoutStudio, dependencias, position/x/y/w/h.
+- Estado: planificado, no iniciado.
 
 Nota VISUAL-PARITY-INFRA (2026-07-06):
 - Se crea una infraestructura documental para que modelos worker puedan ejecutar tareas de paridad visual con Playwright sin depender de revisiones manuales improvisadas.
@@ -2131,3 +2252,44 @@ Nota WIDGET-STUDIO-06 (2026-07-05) — Direct visual iteration:
 - Capturas generadas en `docs/superpowers/screenshots/widget-studio-06/` (no commitear PNGs salvo decision explicita).
 - Checks: 1338/1338 tests PASS, tsc OK, lint OK (warning preexistente .eslintignore), build OK (warning preexistente chunk size), visual compare OK (14 capturas, 0 skipped).
 - No se tocaron LayoutStudio, backend Go, position/x/y/w/h ni dependencias.
+
+---
+
+## Auditoría Stripe / Licencias / Pagos Reales (2026-07-06)
+
+- Creado `docs/stripe-licensing-status-audit.md`: informe extenso de estado de la capa de pagos/licencias paid & suite.
+- Hallazgo central: el backend Go `internal/license` (service, cache, supabase client, fingerprint, plan classifier) y la Edge Function `supabase/functions/stripe-webhook` ESTÁN implementados y testeados. El frontend tiene gating completo (Login/Paywall/AccountSettings/Banner/Unconfigured) + `access-policy` + `ACCESS-DEV-MODES`.
+- Bloqueadores de pagos reales (ver sección 3 del doc):
+  1. **`SQL-01`**: no existe migración SQL en el repo (`find . -name "*.sql"` vacío). Faltan tablas + RLS + los 2 RPCs que el Go invoca (`get_account_entitlements`, `reset_active_device`). Es `TD-043` (P2 antes de cobros reales). Sin esto, un usuario pagado cae a `authenticated-no-entitlement`.
+  2. **`CHECKOUT-01`**: `PaywallScreen.handleSubscribe` solo muestra "Pago en línea próximamente"; no hay Stripe JS SDK ni Checkout Session.
+  3. **`DEPLOY-01`**: Edge Function no deployada ni configurada con secretos Stripe/Supabase.
+  4. **`STRIPE-01`**: productos/precios no creados (price IDs son placeholders).
+- **Decisión de producto**: se OMITE completamente un panel de administración web propio (sección 6 del doc). El soporte operativo de la beta se cubre con Stripe Dashboard + Supabase Studio + un **CLI de soporte Go local** (`SUPPORT-01`, no distribuido). Panel web admin diferido a fase estable 0.2+.
+- **Nota de desincronización**: `licensing-auth-architecture.md`, `stripe-integration-plan.md`, `license-service-contract.md` y `supabase-schema-release.md` dicen "design-only / no production code yet" pero el código ya está implementado. Conviene añadir nota de "Estado real 2026-07-06" a cada uno para no confundir a otros workers (p. ej. el de Launcher).
+- Orden de planificación propuesto: `SQL-01` → `STRIPE-01` → `DEPLOY-01` → `CHECKOUT-01` → `E2E-01` → `SUPPORT-01` + `RUNBOOK-01` → `AUDIT-01` (license_events + Discord sync follow-ups) → `I18N-03b`.
+- **Gap de auth añadido (2026-07-06):** la auditoría detectó que falta el **registro de nuevos usuarios** (`signUp`) y la recuperación de password en la app (`AUTH-04`). Login/OAuth/logout/sesión ya funcionan. Para una beta pública esto es bloqueante (evidencia: `adversarial-review.md` caso C, P1). Ver secciones 11 y 12 del doc de auditoría.
+- Orden de ejecución actualizado: `AUTH-04` → `SQL-01` → `STRIPE-01` → `DEPLOY-01` → `CHECKOUT-01` → `E2E-01` → `SUPPORT-01` + `RUNBOOK-01` → `AUDIT-01` → `I18N-03b`.
+- **Doc ancla del stage** (2026-07-06): creado `docs/release-02-licensing-auth-stage.md` como punto de referencia único de la sección licencias/auth/pagos. Indexa los 10 miniplans (`AUTH-04`, `SQL-01`, `STRIPE-01`, `DEPLOY-01`, `CHECKOUT-01`, `E2E-01`, `SUPPORT-01`, `RUNBOOK-01`, `AUDIT-01`, `I18N-03b`), la ruta crítica y el DoD. La evidencia técnica vive en `docs/stripe-licensing-status-audit.md`.
+- **Planes de stage completos (2026-07-06):** los 10 miniplans del stage licencias/auth/pagos están redactados en `docs/superpowers/plans/2026-07-06-*.md`. Siguen la plantilla writing-plans (header + TDD RED→GREEN→commit). El ancla es `docs/release-02-licensing-auth-stage.md`. Estado: bloqueados por acceso F0 (ref Supabase + STRIPE_SECRET_KEY test + Customer Portal). Una vez desbloqueados, se ejecutan en orden de dependencia con agents en paralelo (~2-3 días de reloj).
+- Sin commit, sin tag, sin release. Solo documentación.
+
+- **Planes de stage REVISADOS y listos para ejecutar (2026-07-06, sesión de corrección):** los 10 miniplans fueron revisados contra el código real (`internal/license`, `supabase/functions/stripe-webhook`, `frontend/src/hub/auth/*`, `AccountSettings.tsx`, `supabase-auth.ts`) y corregidos con tus decisiones A–J. Cambios aplicados:
+  - **SQL-01**: bug de rate-limit corregido (ahora `last_reset_at`, no contador roto); 1 PC por usuario confirmado; `get_account_entitlements` devuelve `stripe_customer_id` para el portal.
+  - **CHECKOUT-01**: handler devuelve `200 + JSON {url}` (no redirect 303); retorno al servidor local `127.0.0.1:39261/checkout/callback`; ruta `/create-checkout-session` antes de la firma Stripe; **añadido Task 3: botón "Gestionar suscripción" (Customer Portal)**.
+  - **AUDIT-01**: `syncDiscordRole` → `notifyDiscord` (aviso al canal del equipo, no rol); añadido Task 0 para extender el mock de tests.
+  - **STRIPE-01**: fila `free` fuera del mapping; precios beta creados en Stripe.
+  - **SUPPORT-01**: `device-reset` limpia `last_reset_at`.
+  - **AUTH-04**: signup abierto + email confirmation cerrado.
+  - **I18N-03b**: se ejecuta ANTES que CHECKOUT-01.
+  - **E2E-01 / RUNBOOK-01**: retornos y campos de reset actualizados.
+  - **Stage doc**: AUTH-04 marcado como paralelo a SQL-01 (no depende).
+  - Resumen de decisiones: A=signup abierto+email · B=retorno servidor local · C=portal con botón · D=aviso Discord al equipo · E=1 PC · F=rate-limit simplificado · G/H=beta creados, free fuera · I=I18N antes de checkout · J=AUTH paralelo a SQL-01.
+  - **Sigue bloqueado por F0** (ref Supabase + `STRIPE_SECRET_KEY` test + Customer Portal). Sin eso no se ejecuta. Orden de ejecución final: F0 → F1 paralelo [SQL-01, STRIPE-01, SUPPORT-01, I18N-03b, AUTH-04, RUNBOOK-01] → F2 [DEPLOY-01, CHECKOUT-01] → F3 [E2E-01, AUDIT-01].
+  - Sin commit, sin tag, sin release. Solo documentación.
+Nota WIDGET-STUDIO-10 (2026-07-07) — Implementation:
+- Objetivo: permitir acceder a Widget Studio sin perfil propio. Eliminar el guard de OverlaysStudioPage que bloqueaba el acceso y sintetizar un EMPTY_PROFILE cuando no hay profile real.
+- Archivos nuevos: `widget-studio-empty-profile.ts` (helper puro EMPTY_PROFILE + isSyntheticProfile), `widget-studio-empty-profile.test.ts` (6 tests).
+- Archivos modificados: `OverlaysStudioPage.tsx` (import EMPTY_PROFILE, eliminar guard 176-192, pasar EMPTY_PROFILE con callbacks no-op), `OverlaysStudioPage.test.tsx` (+2 tests RED→GREEN), `WidgetStudio.tsx` (import isSyntheticProfile, añadir isSynthetic, deshabilitar save button + design selector con copy honesto cuando synthetic), `WidgetStudio.test.tsx` (+3 tests RED→GREEN), `StudioWidgetList.tsx` (añadir empty state con data-testid cuando widgets.length === 0), `StudioWidgetList.test.tsx` (+2 tests RED→GREEN).
+- Tests: 55/55 enfocados PASS (OverlaysStudioPage 16, WidgetStudio 24, widget-studio-empty-profile 6, StudioWidgetList 9). tsc OK (pendiente MC-5), lint OK (pendiente MC-5), build OK (pendiente MC-5).
+- No se tocó: LayoutStudio, backend Go, Supabase/Auth, Calendar, Roadmap, Launcher, Engineer/Telemetry, dependencias, position/x/y/w/h, autosave, drag/drop.
+- Sin commit, sin tag, sin release, sin Discord.

@@ -19,6 +19,9 @@ Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
 | `docs/agent-workflow.md` | Nuevo workflow de agentes | Mantener alineado con el proceso real |
 | `docs/operations.md` | Nueva guia de operaciones | Actualizar si cambia tooling |
 | `docs/go-review-checklist.md` | Nueva checklist Go | Mantener como referencia para reviewers |
+| `docs/stripe-licensing-status-audit.md` | Auditoría extensa de Stripe/licencias/pagos (2026-07-06) | Mantener actualizado al cerrar SQL-01/CHECKOUT-01/DEPLOY-01 |
+| `docs/release-02-licensing-auth-stage.md` | Doc ancla del stage licencias/auth/pagos (2026-07-06) | Mantener actualizado el estado de miniplans al cerrar cada uno |
+| `docs/release-02-licensing-auth-handoff.md` | Handoff de sesión licencias/auth (2026-07-06) | Leer al continuar esta sección en otro chat |
 | `docs/adr/0001-close-lmu-pilot-ratings.md` | ADR existente util | Mantener |
 | `docs/adr/0002-llm-first-stack.md` | Nuevo ADR | Mantener |
 | `tools/README.md` | Util para herramientas LMU | Mantener |

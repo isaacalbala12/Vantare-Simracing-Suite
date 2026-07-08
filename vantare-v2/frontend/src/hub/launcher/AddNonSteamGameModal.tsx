@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Events } from "@wailsio/runtime";
+import { AppBadge } from "../components/AppBadge";
+import type { LauncherAppEntry } from "./launcher-state";
 
 type RegistryApp = {
   id: string;
@@ -16,6 +18,35 @@ type Props = {
 };
 
 const CAP = 200;
+
+function toLauncherEntry(app: RegistryApp): LauncherAppEntry {
+  const hash = [...app.displayName].reduce(
+    (a, c) => a + c.charCodeAt(0),
+    0,
+  );
+  const hue = hash % 360;
+  const words = app.displayName.split(/[\s_-]+/).filter(Boolean);
+  const abbreviation =
+    words.length > 0
+      ? words
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 3)
+      : app.displayName.slice(0, 2).toUpperCase();
+
+  return {
+    id: app.id,
+    displayName: app.displayName,
+    abbreviation,
+    category: "utility",
+    launchMethod: "executable",
+    executablePath: app.executablePath,
+    detected: true,
+    gradientFrom: `hsl(${hue}, 40%, 40%)`,
+    gradientTo: `hsl(${hue}, 40%, 20%)`,
+  };
+}
 
 export function AddNonSteamGameModal({ open, onClose, onAdd }: Props) {
   return createPortal(
@@ -74,16 +105,18 @@ function ModalBody({
     };
   }, []);
 
+  const entries = useMemo(() => apps.map(toLauncherEntry), [apps]);
+
   const lowercased = useMemo(
     () =>
-      apps.map((a) => ({
+      entries.map((a) => ({
         ...a,
         _lower:
           a.displayName.toLowerCase() +
           "|" +
-          a.executablePath.toLowerCase(),
+          (a.executablePath ?? "").toLowerCase(),
       })),
-    [apps],
+    [entries],
   );
 
   const filtered = useMemo(() => {
@@ -121,10 +154,17 @@ function ModalBody({
     onClose();
   };
 
+  const toggleSelection = (id: string) => {
+    setSelectedId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <>
       <header className="p-4 border-b border-white/10">
         <h2 className="text-lg font-bold text-white">Añadir programa</h2>
+        <p className="mt-1 text-xs text-vantare-textDim">
+          Selecciona un programa para añadir a tu launcher
+        </p>
       </header>
 
       <div className="p-3">
@@ -142,7 +182,7 @@ function ModalBody({
       </div>
 
       <div
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto scrollable-main"
         data-testid="add-non-steam-list"
       >
         {loading ? (
@@ -151,23 +191,41 @@ function ModalBody({
           </div>
         ) : (
           <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-wider text-vantare-textDim border-b border-white/5">
+                <th className="p-2 text-left font-medium">PROGRAMA</th>
+                <th className="p-2 text-left font-medium">UBICACIÓN</th>
+              </tr>
+            </thead>
             <tbody>
-              {visible.map((a) => (
+              {visible.map((entry) => (
                 <tr
-                  key={a.id}
-                  onClick={() =>
-                    setSelectedId(selectedId === a.id ? null : a.id)
-                  }
+                  key={entry.id}
+                  onClick={() => toggleSelection(entry.id)}
                   className={`cursor-pointer ${
-                    selectedId === a.id
+                    selectedId === entry.id
                       ? "bg-accent/20"
                       : "hover:bg-white/5"
                   }`}
-                  data-testid={`add-non-steam-row-${a.id}`}
+                  data-testid={`add-non-steam-row-${entry.id}`}
                 >
-                  <td className="p-2">{a.displayName}</td>
-                  <td className="p-2 text-xs text-vantare-textDim">
-                    {a.executablePath}
+                  <td className="p-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedId === entry.id}
+                        readOnly
+                        className="accent-accent"
+                        data-testid={`add-non-steam-checkbox-${entry.id}`}
+                      />
+                      <AppBadge app={entry} size="sm" />
+                    </label>
+                  </td>
+                  <td
+                    className="max-w-[320px] truncate p-2 text-xs text-vantare-textDim"
+                    title={entry.executablePath ?? ""}
+                  >
+                    {entry.executablePath ?? ""}
                   </td>
                 </tr>
               ))}

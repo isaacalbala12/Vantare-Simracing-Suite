@@ -3,10 +3,15 @@
   "updatedAt": "2026-07-08",
   "note": "Fuente de verdad manual para el tab 'Desarrollo por features' del Roadmap. Isaac edita este archivo a mano. La app lo obtiene via FEATURES_SOURCE_URL en runtime.",
   "categories": [
-    { "id": "calendar", "label": { "es": "Calendario", "en": "Calendar", "pt": "Calendário", "it": "Calendario" }, "order": 1 },
-    { "id": "roadmap",   "label": { "es": "Roadmap",  "en": "Roadmap",  "pt": "Roadmap",    "it": "Roadmap" },    "order": 2 },
-    { "id": "widgets",   "label": { "es": "Widgets",  "en": "Widgets",  "pt": "Widgets",    "it": "Widgets" },    "order": 3 },
-    { "id": "engineer",  "label": { "es": "Ingeniero","en": "Engineer", "pt": "Engenheiro", "it": "Engineer" },    "order": 4 }
+    { "id": "calendar",     "label": { "es": "Calendario",   "en": "Calendar",     "pt": "Calendário",    "it": "Calendario" },    "order": 1 },
+    { "id": "roadmap",      "label": { "es": "Roadmap",      "en": "Roadmap",      "pt": "Roadmap",       "it": "Roadmap" },       "order": 2 },
+    { "id": "widgets",      "label": { "es": "Widgets",      "en": "Widgets",      "pt": "Widgets",       "it": "Widgets" },       "order": 3 },
+    { "id": "engineer",     "label": { "es": "Ingeniero",    "en": "Engineer",     "pt": "Engenheiro",    "it": "Engineer" },      "order": 4 },
+    { "id": "widget-studio","label": { "es": "Widget Studio","en": "Widget Studio","pt": "Widget Studio", "it": "Widget Studio" }, "order": 5 },
+    { "id": "launcher",     "label": { "es": "Launcher",     "en": "Launcher",     "pt": "Launcher",      "it": "Launcher" },      "order": 6 },
+    { "id": "onboarding",   "label": { "es": "Onboarding",   "en": "Onboarding",   "pt": "Onboarding",    "it": "Onboarding" },    "order": 7 },
+    { "id": "payments",     "label": { "es": "Pagos",        "en": "Payments",     "pt": "Pagamentos",    "it": "Pagamenti" },     "order": 8 },
+    { "id": "settings",     "label": { "es": "Ajustes",      "en": "Settings",     "pt": "Configurações", "it": "Impostazioni" },  "order": 9 }
   ],
   "features": [
     {
@@ -118,6 +123,101 @@
         "en": "Full integration of the Engineering module with LMU live.",
         "pt": "Integração completa do módulo Engenheiro com LMU live.",
         "it": "Integrazione completa del modulo Ingegnere con LMU live."
+      },
+      "tipo": "feature",
+      "status": "future",
+      "percent": 0
+    },
+    {
+      "id": "widget-studio-reform",
+      "category": "widget-studio",
+      "label": {
+        "es": "Widget Studio — Reforma y code-review",
+        "en": "Widget Studio — Reform and code review",
+        "pt": "Widget Studio — Reforma e code review",
+        "it": "Widget Studio — Riforma e code review"
+      },
+      "description": {
+        "es": "Reformar Widget Studio sección a sección, code-review extenso, completar widgets Crystal restantes y revisión de personalización extensa.",
+        "en": "Reform Widget Studio section by section, extensive code review, complete remaining Crystal widgets, and thorough customization review.",
+        "pt": "Reformar o Widget Studio seção por seção, code review extenso, completar os widgets Crystal restantes e revisão extensa de personalização.",
+        "it": "Riformare Widget Studio sezione per sezione, code review esteso, completare i widget Crystal rimanenti e revisione approfondita della personalizzazione."
+      },
+      "tipo": "feature",
+      "status": "in-development",
+      "percent": 0
+    },
+    {
+      "id": "launcher-reform",
+      "category": "launcher",
+      "label": {
+        "es": "Launcher — Revisión visual y filtros",
+        "en": "Launcher — Visual review and filters",
+        "pt": "Launcher — Revisão visual e filtros",
+        "it": "Launcher — Revisione visiva e filtri"
+      },
+      "description": {
+        "es": "Revisión visual parcial del Launcher, filtros de aplicaciones y code-review extenso.",
+        "en": "Partial visual review of the Launcher, application filters, and extensive code review.",
+        "pt": "Revisão visual parcial do Launcher, filtros de aplicações e code review extenso.",
+        "it": "Revisione visiva parziale del Launcher, filtri delle applicazioni e code review esteso."
+      },
+      "tipo": "feature",
+      "status": "in-development",
+      "percent": 0
+    },
+    {
+      "id": "onboarding-login-review",
+      "category": "onboarding",
+      "label": {
+        "es": "Onboarding + Inicio de sesión",
+        "en": "Onboarding + Login",
+        "pt": "Onboarding + Login",
+        "it": "Onboarding + Login"
+      },
+      "description": {
+        "es": "Revisión completa visual del flujo de onboarding e inicio de sesión.",
+        "en": "Complete visual review of the onboarding and login flow.",
+        "pt": "Revisão visual completa do fluxo de onboarding e login.",
+        "it": "Revisione visiva completa del flusso di onboarding e login."
+      },
+      "tipo": "feature",
+      "status": "future",
+      "percent": 0
+    },
+    {
+      "id": "payments-research",
+      "category": "payments",
+      "label": {
+        "es": "Pagos — Investigación",
+        "en": "Payments — Research",
+        "pt": "Pagamentos — Pesquisa",
+        "it": "Pagamenti — Ricerca"
+      },
+      "description": {
+        "es": "Revisión completa del sistema de pagos, evaluación Polar vs Stripe, reservar GPT 5.6.",
+        "en": "Complete review of the payment system, evaluate Polar vs Stripe, reserve GPT 5.6.",
+        "pt": "Revisão completa do sistema de pagamentos, avaliação Polar vs Stripe, reservar GPT 5.6.",
+        "it": "Revisione completa del sistema di pagamenti, valutazione Polar vs Stripe, prenotare GPT 5.6."
+      },
+      "tipo": "feature",
+      "status": "research",
+      "percent": 0
+    },
+    {
+      "id": "settings-account",
+      "category": "settings",
+      "label": {
+        "es": "Ajustes + Cuenta de Vantare",
+        "en": "Settings + Vantare Account",
+        "pt": "Configurações + Conta Vantare",
+        "it": "Impostazioni + Account Vantare"
+      },
+      "description": {
+        "es": "Configuraciones básicas y cuenta de Vantare. Dependiente de pagos.",
+        "en": "Basic settings and Vantare account. Dependent on payments.",
+        "pt": "Configurações básicas e conta Vantare. Dependente de pagamentos.",
+        "it": "Impostazioni di base e account Vantare. Dipendente dai pagamenti."
       },
       "tipo": "feature",
       "status": "future",

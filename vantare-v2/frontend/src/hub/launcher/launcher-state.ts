@@ -113,6 +113,39 @@ export function estimateChainDuration(
   return totalMs;
 }
 
+// Hotkeys reservadas del sistema que no deben asignarse a perfiles.
+const RESERVED_HOTKEYS = new Set([
+  "ctrl+c",
+  "ctrl+v",
+  "ctrl+x",
+  "ctrl+a",
+  "ctrl+z",
+  "ctrl+y",
+  "ctrl+s",
+  "ctrl+o",
+  "ctrl+n",
+  "ctrl+p",
+  "ctrl+w",
+  "ctrl+q",
+  "ctrl+r",
+  "ctrl+t",
+  "ctrl+f",
+  "ctrl+h",
+  "ctrl+d",
+  "ctrl+e",
+  "ctrl+b",
+  "ctrl+u",
+  "ctrl+i",
+  "ctrl+l",
+  "ctrl+k",
+  "ctrl+j",
+  "win+l",
+]);
+
+export function isHotkeyAllowed(hotkey: string): boolean {
+  return !RESERVED_HOTKEYS.has(hotkey.toLowerCase().trim());
+}
+
 // newProfileId genera un id único para un perfil o app nuevos.
 export function newProfileId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random()

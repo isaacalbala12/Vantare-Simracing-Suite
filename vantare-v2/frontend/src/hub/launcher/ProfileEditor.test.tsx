@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfileEditor } from "./ProfileEditor";
-import type { LaunchProfile } from "./launcher-state";
+import type { LaunchProfile, LauncherAppEntry } from "./launcher-state";
 
 afterEach(() => {
   cleanup();
@@ -16,6 +16,30 @@ const baseProfile: LaunchProfile = {
   notes: "n",
 };
 
+const mockApps: LauncherAppEntry[] = [
+  {
+    id: "lmu",
+    displayName: "Le Mans Ultimate",
+    abbreviation: "LMU",
+    category: "simulator",
+    launchMethod: "steam-uri",
+    steamAppId: 2399420,
+    detected: true,
+    gradientFrom: "#ff3b3b",
+    gradientTo: "#9a0606",
+  },
+  {
+    id: "obs",
+    displayName: "OBS Studio",
+    abbreviation: "OBS",
+    category: "streaming",
+    launchMethod: "executable",
+    detected: true,
+    gradientFrom: "#302e31",
+    gradientTo: "#1a1a1a",
+  },
+];
+
 describe("ProfileEditor", () => {
   it("renders side-panel with name, description, notes fields", () => {
     render(
@@ -24,6 +48,7 @@ describe("ProfileEditor", () => {
         open={true}
         onClose={() => {}}
         onSave={() => {}}
+        apps={mockApps}
       />,
     );
     const nameInput = screen.getByTestId(
@@ -48,6 +73,7 @@ describe("ProfileEditor", () => {
         open={true}
         onClose={() => {}}
         onSave={onSave}
+        apps={mockApps}
       />,
     );
     const nameInput = screen.getByTestId("profile-editor-name");
@@ -72,9 +98,71 @@ describe("ProfileEditor", () => {
         open={true}
         onClose={onClose}
         onSave={() => {}}
+        apps={mockApps}
       />,
     );
     fireEvent.click(screen.getByTestId("profile-editor-cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // ── Task 3.3b tests ──────────────────────────────────────────
+
+  it("renders steps editor with add/remove/reorder", () => {
+    const profileWithStep: LaunchProfile = {
+      ...baseProfile,
+      steps: [{ appId: "lmu", delay: 2 }],
+    };
+    render(
+      <ProfileEditor
+        profile={profileWithStep}
+        open={true}
+        onClose={() => {}}
+        onSave={() => {}}
+        apps={mockApps}
+      />,
+    );
+    // Step row exists with select, delay, remove, up, and down elements
+    expect(screen.getByTestId("editor-step-0")).not.toBeNull();
+    expect(screen.getByTestId("editor-step-app-0")).not.toBeNull();
+    expect(screen.getByTestId("editor-step-delay-0")).not.toBeNull();
+    expect(screen.getByTestId("editor-step-remove-0")).not.toBeNull();
+    expect(screen.getByTestId("editor-step-up-0")).not.toBeNull();
+    expect(screen.getByTestId("editor-step-down-0")).not.toBeNull();
+    // "Add step" button is present
+    expect(screen.getByTestId("editor-step-add")).not.toBeNull();
+  });
+
+  it("renders hotkey input", () => {
+    render(
+      <ProfileEditor
+        profile={baseProfile}
+        open={true}
+        onClose={() => {}}
+        onSave={() => {}}
+        apps={mockApps}
+      />,
+    );
+    const hotkeyInput = screen.getByTestId(
+      "profile-editor-hotkey",
+    ) as HTMLInputElement;
+    expect(hotkeyInput).not.toBeNull();
+    expect(hotkeyInput.placeholder).toContain("ctrl+shift+1");
+  });
+
+  it("renders autostart toggle disabled when no steps", () => {
+    render(
+      <ProfileEditor
+        profile={baseProfile}
+        open={true}
+        onClose={() => {}}
+        onSave={() => {}}
+        apps={mockApps}
+      />,
+    );
+    const autostartCheckbox = screen.getByTestId(
+      "profile-editor-autostart",
+    ) as HTMLInputElement;
+    expect(autostartCheckbox).not.toBeNull();
+    expect(autostartCheckbox.disabled).toBe(true);
   });
 });

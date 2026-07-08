@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
-import type { LaunchProfile } from "../launcher/launcher-state";
+import { formatRelativeTime, type LaunchProfile } from "../launcher/launcher-state";
 import { useChainState, useLastResult } from "../launcher/chain-store";
 
 type LauncherDockProps = {
@@ -36,25 +36,14 @@ function ProfileGlyph({ name }: { name: string }) {
 
 const CIRCUMFERENCE = 2 * Math.PI * 10; // ~62.83
 
-function formatLastLaunched(lastLaunchedAt: string | null | undefined): string {
-  if (!lastLaunchedAt) return "";
-  const now = Date.now();
-  const then = new Date(lastLaunchedAt).getTime();
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "hace unos segundos";
-  if (diffMin < 60) return `hace ${diffMin} min`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `hace ${diffHours}h`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `hace ${diffDays}d`;
-}
-
 function buildTooltip(profile: LaunchProfile): string {
   const count = profile.launchCount ?? 0;
   let tip = `${profile.name} (lanzado ${count} veces)`;
-  const formatted = formatLastLaunched(profile.lastLaunchedAt);
-  if (formatted) tip += ` · ${formatted}`;
+  if (profile.lastLaunchedAt) {
+    const diffMs = Date.now() - new Date(profile.lastLaunchedAt).getTime();
+    const formatted = formatRelativeTime(diffMs);
+    if (formatted) tip += ` · ${formatted}`;
+  }
   return tip;
 }
 

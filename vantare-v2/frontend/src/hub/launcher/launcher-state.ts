@@ -146,6 +146,18 @@ export function isHotkeyAllowed(hotkey: string): boolean {
   return !RESERVED_HOTKEYS.has(hotkey.toLowerCase().trim());
 }
 
+/** Format a relative time string (e.g. "hace 10m", "hace 2h", "hace 3d"). */
+export function formatRelativeTime(ms: number): string {
+  if (ms < 0) return "";
+  const diffMin = Math.floor(ms / 60000);
+  if (diffMin < 1) return "hace unos segundos";
+  if (diffMin < 60) return `hace ${diffMin}m`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `hace ${diffHr}h`;
+  const diffDays = Math.round(diffHr / 24);
+  return `hace ${diffDays}d`;
+}
+
 // newProfileId genera un id único para un perfil o app nuevos.
 export function newProfileId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random()

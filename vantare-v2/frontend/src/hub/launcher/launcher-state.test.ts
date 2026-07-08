@@ -3,6 +3,7 @@ import type { AppSettings } from "../pages/SettingsPage";
 import {
   appSortOrder,
   estimateChainDuration,
+  formatRelativeTime,
   getAppsFromSettings,
   getProfilesFromSettings,
   isProfileLaunchable,
@@ -169,5 +170,34 @@ describe("estimateChainDuration", () => {
       avgChainDurationMs: 12345,
     };
     expect(estimateChainDuration(profile, [])).toBe(12345);
+  });
+});
+
+describe("formatRelativeTime", () => {
+  it("returns empty string for negative ms", () => {
+    expect(formatRelativeTime(-1)).toBe("");
+  });
+
+  it("returns 'hace unos segundos' for less than 1 minute", () => {
+    expect(formatRelativeTime(0)).toBe("hace unos segundos");
+    expect(formatRelativeTime(59000)).toBe("hace unos segundos");
+  });
+
+  it("returns minutes for < 60 min", () => {
+    expect(formatRelativeTime(60000)).toBe("hace 1m");
+    expect(formatRelativeTime(600000)).toBe("hace 10m");
+    expect(formatRelativeTime(3540000)).toBe("hace 59m");
+  });
+
+  it("returns hours for < 24h", () => {
+    expect(formatRelativeTime(3600000)).toBe("hace 1h");
+    expect(formatRelativeTime(7200000)).toBe("hace 2h");
+    expect(formatRelativeTime(82800000)).toBe("hace 23h");
+  });
+
+  it("returns days for >= 24h", () => {
+    expect(formatRelativeTime(86400000)).toBe("hace 1d");
+    expect(formatRelativeTime(172800000)).toBe("hace 2d");
+    expect(formatRelativeTime(864000000)).toBe("hace 10d");
   });
 });

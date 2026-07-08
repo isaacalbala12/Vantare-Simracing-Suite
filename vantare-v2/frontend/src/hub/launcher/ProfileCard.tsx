@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
+  formatRelativeTime,
   isProfileLaunchable,
   newProfileId,
   estimateChainDuration,
@@ -23,19 +24,13 @@ function appFor(apps: LauncherAppEntry[], id: string): LauncherAppEntry | undefi
   return apps.find((a) => a.id === id);
 }
 
-/** Format a relative time string (e.g. "hace 10m", "hace 2h"). */
+/** Format a relative time string (e.g. "hace 10m", "hace 2h"). Delegates to shared formatRelativeTime in launcher-state. */
 function relativeTime(dateStr: string): string {
   try {
     const then = new Date(dateStr).getTime();
     const diffMs = Date.now() - then;
     if (Number.isNaN(diffMs)) return "";
-    const diffMin = Math.round(diffMs / 60000);
-    if (diffMin < 1) return "hace unos segundos";
-    if (diffMin < 60) return `hace ${diffMin}m`;
-    const diffHr = Math.round(diffMin / 60);
-    if (diffHr < 24) return `hace ${diffHr}h`;
-    const diffDays = Math.round(diffHr / 24);
-    return `hace ${diffDays}d`;
+    return formatRelativeTime(diffMs);
   } catch {
     return "";
   }

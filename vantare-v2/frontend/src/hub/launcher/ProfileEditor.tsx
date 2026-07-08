@@ -26,17 +26,23 @@ export function ProfileEditor({
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <>
+      <AnimatePresence>
+        {open && (
           <motion.div
+            key="overlay"
             className="fixed inset-0 z-40 bg-black/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {open && (
           <motion.aside
+            key="panel"
             className="fixed right-0 top-0 bottom-0 w-[480px] z-50 card-sleek p-5 overflow-y-auto"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -246,8 +252,8 @@ export function ProfileEditor({
               </button>
             </div>
           </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

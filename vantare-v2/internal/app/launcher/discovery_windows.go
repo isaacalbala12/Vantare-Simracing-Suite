@@ -6,12 +6,34 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/vantare/overlays/v2/internal/app"
 
 	"golang.org/x/sys/windows/registry"
 )
+
+// vdfPathRe matches a `"path"` key followed by its quoted value in VDF files.
+// Steam's libraryfolders.vdf uses keys of the form:
+//
+//	"path" "C:\\Program Files (x86)\\Steam"
+var vdfPathRe = regexp.MustCompile(`"path"\s+"([^"]+)"`)
+
+// parseLibraryFoldersVDF parses a Steam libraryfolders.vdf string and returns
+// the absolute paths of all configured Steam library roots.
+func parseLibraryFoldersVDF(content string) []string {
+	var paths []string
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		m := vdfPathRe.FindStringSubmatch(scanner.Text())
+		if m != nil && m[1] != "" {
+			// Steam VDF escapes backslashes as \\; normalise to single separator.
+			paths = append(paths, strings.ReplaceAll(m[1], `\\`, `\`))
+		}
+	}
+	return paths
+}
 
 // discoverPlatform reads the Windows uninstall registry (machine-wide and
 // per-user) and known Steam library folders, then matches them against the
@@ -70,34 +92,11 @@ func readSteamLibraryFolders() []string {
 	libs := []string{steamPath}
 
 	vdf := filepath.Join(steamPath, "steamapps", "libraryfolders.vdf")
-	f, err := os.Open(vdf)
+	data, err := os.ReadFile(vdf)
 	if err != nil {
 		return libs
 	}
-	defer f.Close()
 
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if !strings.Contains(line, `"path"`) {
-			continue
-		}
-		idx := strings.Index(line, `"path"`)
-		rest := line[idx+len(`"path"`):]
-		start := strings.Index(rest, `"`)
-		if start < 0 {
-			continue
-		}
-		end := strings.Index(rest[start+1:], `"`)
-		if end < 0 {
-			continue
-		}
-		raw := rest[start+1 : start+1+end]
-		// Steam VDF escapes backslashes as \\; normalise to a single separator.
-		raw = strings.ReplaceAll(raw, `\\`, `\`)
-		if raw != "" {
-			libs = append(libs, raw)
-		}
-	}
+	libs = append(libs, parseLibraryFoldersVDF(string(data))...)
 	return libs
 }

@@ -207,8 +207,16 @@ Nota WIDGET-STUDIO-09 (2026-07-05) — Implementation:
 - No se toco: LayoutStudio, backend Go, access-policy, dependencias, position/x/y/w/h.
 - Sin commit, sin tag, sin release.
 
+Nota LOGIN-REDESIGN (2026-07-09):
+- Rediseñado `LoginScreen.tsx` con estilo inspirado en Devin pero usando tokens de Vantare.
+- Cambios visuales: layout fullscreen centrado sin card contenedora, logo SVG de Vantare con gradiente rojo y drop-shadow, título "Welcome to Vantare" con subtítulo, dos botones OAuth apilados (Google=gradiente rojo primario, Discord=borde secundario), divider "o", formulario email/password, links de navegación entre modos, footer "made by Vantare".
+- Tokens de DESIGN.md aplicados: fondo `bg-[#0a0a0a]`, texto `text-white/60`, bordes `border-white/20`, inputs `bg-white/5`, gradiente rojo `from-vantare-red-500 to-[#9a0606]`, chrome UI `uppercase tracking-widest`.
+- Funcionalidad intacta: login, signup, reset password, Google OAuth, Discord OAuth, estados de espera, manejo de errores.
+- Archivo modificado: `frontend/src/hub/auth/LoginScreen.tsx`.
+- No se tocaron: tests (19/19 PASS), backend Go, Supabase/Auth, otros componentes.
+- Commit: `feat(auth): redesign LoginScreen with Devin-style layout and Vantare design tokens`.
 
-Ultima actualizacion: 2026-06-29. Release v0.1.0.2 publicado: commit 626b66d, tag v0.1.0.2. Assets verificados (3/3 checksums OK). Smoke local del asset publicado: PASS.
+Ultima actualizacion: 2026-07-09. Commit 6e00192 (feat(auth): redesign LoginScreen).
 Nota WIDGET-STUDIO-07 (2026-07-05) — Implementation:
 - Reemplazado selector productivo `Theme: Base / Vantare Crystal` por selector real de `Diseño` basado en `OFFICIAL_DESIGNS`.
 - MC-1: Helper puro `getActiveOfficialDesign(profile, widget)` en `widget-design-gallery.ts` — detecta diseño activo por `variantId` convención (`official-{designId}-{widgetId}`) o por match de template+theme en `profile.variants`.
@@ -2382,3 +2390,12 @@ Nota FEATURES-DATA (2026-07-08):
 - Checks: 13/13 tests PASS, build OK (tsc -b + vite build), lint preexisting errors sin cambios en archivos tocados.
 - Archivos nuevos: features-data.ts, features-data.test.ts.
 - Commit: 330d077 feat(roadmap): add features-data.ts with remote fetch + fallback
+
+## Nota LAUNCHER-TASK-3.3b (2026-07-08) — Implementation:
+- Objetivo: completar ProfileEditor side-panel con steps editor, hotkey input y autostart toggle (Task 3.3b del plan `docs/superpowers/plans/2026-07-08-launcher-v2.md`).
+- ProfileEditor.tsx: añadido `apps` prop, steps editor con select/input delay/botones ↑/↓/✕, botón "+ Añadir paso", hotkey input con placeholder y validación contra reservadas (ctrl+c, ctrl+v, etc.), autostart checkbox deshabilitado cuando steps.length === 0.
+- launcher-state.ts: añadido `isHotkeyAllowed()` helper con RESERVED_HOTKEYS set (24 combos del sistema).
+- ProfileEditor.test.tsx: 3 tests nuevos (steps editor add/remove/reorder, hotkey input, autostart disabled sin steps).
+- Tests: 157/157 files, 1503/1503 tests PASS (regresión 0). Lint 0 errores en archivos tocados.
+- Archivos modificados: ProfileEditor.tsx, ProfileEditor.test.tsx, launcher-state.ts (3 archivos).
+- Commit: 9efd6ee feat(launcher): ProfileEditor steps + hotkey + autostart (cut 3)

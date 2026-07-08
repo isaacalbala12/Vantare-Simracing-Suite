@@ -52,10 +52,17 @@ export function resolveWidgetAppearance(
       gapAheadColor: overrides.gapAheadColor ?? defaults.gapAheadColor ?? "#f87171",
       gapBehindColor: overrides.gapBehindColor ?? defaults.gapBehindColor ?? "#4ade80",
       classHypercarColor: overrides.classHypercarColor ?? defaults.classHypercarColor ?? "#c1121f",
+      classHypercarFg: overrides.classHypercarFg ?? defaults.classHypercarFg ?? "#f87171",
       classLmp2Color: overrides.classLmp2Color ?? defaults.classLmp2Color ?? "#0055A4",
+      classLmp2Fg: overrides.classLmp2Fg ?? defaults.classLmp2Fg ?? "#60a5fa",
       classLmp3Color: overrides.classLmp3Color ?? defaults.classLmp3Color ?? "#f59e0b",
+      classLmp3Fg: overrides.classLmp3Fg ?? defaults.classLmp3Fg ?? "#22d3ee",
       classGt3Color: overrides.classGt3Color ?? defaults.classGt3Color ?? "#2ecc71",
+      classGt3Fg: overrides.classGt3Fg ?? defaults.classGt3Fg ?? "#fbbf24",
+      classGt4Color: overrides.classGt4Color ?? defaults.classGt4Color ?? "rgba(244,114,182,0.25)",
+      classGt4Fg: overrides.classGt4Fg ?? defaults.classGt4Fg ?? "#f472b6",
       classUnknownColor: overrides.classUnknownColor ?? defaults.classUnknownColor ?? "#6b7280",
+      classUnknownFg: overrides.classUnknownFg ?? defaults.classUnknownFg ?? "#6b7280",
     },
   };
 }

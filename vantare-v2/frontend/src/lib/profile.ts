@@ -32,10 +32,17 @@ export type WidgetAppearance = {
   gapAheadColor?: string;
   gapBehindColor?: string;
   classHypercarColor?: string;
+  classHypercarFg?: string;
   classLmp2Color?: string;
+  classLmp2Fg?: string;
   classLmp3Color?: string;
+  classLmp3Fg?: string;
   classGt3Color?: string;
+  classGt3Fg?: string;
+  classGt4Color?: string;
+  classGt4Fg?: string;
   classUnknownColor?: string;
+  classUnknownFg?: string;
 };
 
 export type WidgetPropsMap = Record<string, unknown> & {

@@ -35,8 +35,20 @@ describe("resolveWidgetAppearance", () => {
     });
 
     expect(style).toBe("vantare-crystal");
-    expect(appearance.backgroundColor).toBe("#121216");
+    expect(appearance.backgroundColor).toBe("#060608");
     expect(appearance.textColor).toBe("#ffffff");
+  });
+
+  it("resolves vantare-crystal translucent class colors with fg", () => {
+    const { appearance } = resolveWidgetAppearance("relative", {
+      variant: { themeId: "vantare-crystal" },
+    });
+    expect(appearance.classHypercarColor).toBe("rgba(239,68,68,0.25)");
+    expect(appearance.classHypercarFg).toBe("#f87171");
+    expect(appearance.classGt4Color).toBe("rgba(244,114,182,0.25)");
+    expect(appearance.classGt4Fg).toBe("#f472b6");
+    expect(appearance.classUnknownColor).toBe("rgba(107,114,128,0.25)");
+    expect(appearance.classUnknownFg).toBe("#6b7280");
   });
 
   it("props style takes precedence over variant themeId", () => {

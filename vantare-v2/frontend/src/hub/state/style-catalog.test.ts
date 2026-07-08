@@ -39,8 +39,23 @@ describe("style-catalog", () => {
 
   it("returns vantare-crystal defaults", () => {
     const appearance = getDefaultAppearance("relative", "vantare-crystal");
-    expect(appearance.backgroundColor).toBe("#121216");
+    expect(appearance.backgroundColor).toBe("#060608");
     expect(appearance.textColor).toBe("#ffffff");
-    expect(appearance.classHypercarColor).toBe("#ff2a3b");
+    expect(appearance.classHypercarColor).toBe("rgba(239,68,68,0.25)");
+  });
+
+  it("relative vantare-crystal has translucent class colors with fg", () => {
+    const appearance = getDefaultAppearance("relative", "vantare-crystal");
+    expect(appearance.classHypercarColor).toBe("rgba(239,68,68,0.25)");
+    expect(appearance.classHypercarFg).toBe("#f87171");
+  });
+
+  it("vantare-crystal has invented tokens for HTML gaps", () => {
+    const standings = getDefaultAppearance("standings", "vantare-crystal");
+    const telemetry = getDefaultAppearance("telemetry", "vantare-crystal");
+    const relative = getDefaultAppearance("relative", "vantare-crystal");
+    expect(standings.tireHardColor).toBe("#e5e7eb");
+    expect(telemetry.rpmBlue).toBe("#38bdf8");
+    expect(relative.classUnknownColor).toBe("rgba(107,114,128,0.25)");
   });
 });

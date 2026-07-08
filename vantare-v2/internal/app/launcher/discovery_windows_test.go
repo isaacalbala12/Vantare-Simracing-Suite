@@ -124,3 +124,54 @@ func TestReadSteamLibraryFoldersIncludesPrimary(t *testing.T) {
 		t.Error("expected at least the primary Steam path")
 	}
 }
+
+func TestDiscoverFindsAll7CatalogedApps(t *testing.T) {
+	original := readUninstallEntries
+	defer func() { readUninstallEntries = original }()
+	readUninstallEntries = func() []discoveredCandidate {
+		return []discoveredCandidate{
+			{DisplayName: "Le Mans Ultimate", InstallLocation: ""},
+			{DisplayName: "OBS Studio 30.0.0", InstallLocation: "C:\\Program Files\\obs-studio\\bin\\64bit"},
+			{DisplayName: "CrewChiefV4", InstallLocation: "C:\\Users\\Test\\AppData\\Local\\CrewChief"},
+			{DisplayName: "Discord", InstallLocation: "C:\\Users\\Test\\AppData\\Local\\Discord"},
+			{DisplayName: "Spotify", InstallLocation: "C:\\Users\\Test\\AppData\\Roaming\\Spotify"},
+			{DisplayName: "MoTeC i2", InstallLocation: "C:\\Program Files\\MoTeC"},
+			{DisplayName: "SimHub", InstallLocation: "C:\\Program Files\\SimHub"},
+		}
+	}
+	found := matchKnownApps(readUninstallEntries())
+	expectedIDs := []string{"lmu", "obs", "crewchief", "discord", "spotify", "motec", "simhub"}
+	for _, id := range expectedIDs {
+		if _, ok := found[id]; !ok {
+			t.Errorf("expected %s in discovered apps", id)
+		}
+	}
+}
+
+func TestDiscoverAlwaysIncludesLMUEvenWhenNotDetected(t *testing.T) {
+	original := readUninstallEntries
+	defer func() { readUninstallEntries = original }()
+	readUninstallEntries = func() []discoveredCandidate { return nil }
+	found := Discover()
+	if _, ok := found["lmu"]; !ok {
+		t.Fatal("lmu must always be present")
+	}
+	if found["lmu"].Detected {
+		t.Error("lmu should be marked Detected=false when not found")
+	}
+}
+
+func TestReadUninstallEntriesFiltersEmpty(t *testing.T) {
+	original := readUninstallEntries
+	defer func() { readUninstallEntries = original }()
+	readUninstallEntries = func() []discoveredCandidate {
+		return []discoveredCandidate{
+			{DisplayName: "", InstallLocation: "C:\\Whatever"},
+			{DisplayName: "Valid App", InstallLocation: "C:\\Valid"},
+		}
+	}
+	out := readUninstallEntries()
+	if len(out) != 2 {
+		t.Fatalf("expected 2 (no filter at this layer), got %d", len(out))
+	}
+}

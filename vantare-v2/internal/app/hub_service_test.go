@@ -839,7 +839,7 @@ func TestHubServiceSetActiveProfilePersistsAndLoads(t *testing.T) {
 	settingsPath := filepath.Join(dir, "app-settings.json")
 
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
-	settingsSvc := app.NewSettingsService(settingsPath, nil)
+	settingsSvc := app.NewSettingsService(settingsPath, nil, nil)
 	require.NoError(t, settingsSvc.Load())
 
 	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
@@ -855,7 +855,7 @@ func TestHubServiceSetActiveProfilePersistsAndLoads(t *testing.T) {
 	require.Equal(t, "custom-alpha", settingsSvc.Settings().ActiveOverlayProfileID)
 
 	// Reload settings from disk to verify persistence.
-	settingsSvc2 := app.NewSettingsService(settingsPath, nil)
+	settingsSvc2 := app.NewSettingsService(settingsPath, nil, nil)
 	require.NoError(t, settingsSvc2.Load())
 	require.Equal(t, "custom-alpha", settingsSvc2.Settings().ActiveOverlayProfileID)
 }
@@ -865,7 +865,7 @@ func TestHubServiceSetActiveProfileWithFilePersistsCanonicalID(t *testing.T) {
 	settingsPath := filepath.Join(dir, "app-settings.json")
 
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
-	settingsSvc := app.NewSettingsService(settingsPath, nil)
+	settingsSvc := app.NewSettingsService(settingsPath, nil, nil)
 	require.NoError(t, settingsSvc.Load())
 
 	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
@@ -882,7 +882,7 @@ func TestHubServiceSetActiveProfileWithFilePersistsCanonicalID(t *testing.T) {
 func TestHubServiceSetActiveProfileInvalidIDErrors(t *testing.T) {
 	dir := t.TempDir()
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
-	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil, nil)
 	require.NoError(t, settingsSvc.Load())
 
 	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)
@@ -896,7 +896,7 @@ func TestHubServiceSetActiveProfileInvalidIDErrors(t *testing.T) {
 func TestHubServiceSetActiveProfileStopsRunningOverlay(t *testing.T) {
 	dir := t.TempDir()
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
-	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil, nil)
 	require.NoError(t, settingsSvc.Load())
 
 	runtime := &fakeOverlayRuntime{}
@@ -930,7 +930,7 @@ func TestHubServiceStartActiveOverlayUsesActiveProfile(t *testing.T) {
 	profileSvc := app.NewProfileService(path, nil, nil)
 	require.NoError(t, profileSvc.Load())
 
-	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil, nil)
 	require.NoError(t, settingsSvc.Load())
 
 	runtime := &fakeOverlayRuntime{}
@@ -950,7 +950,7 @@ func TestHubServiceStartActiveOverlayUsesActiveProfile(t *testing.T) {
 func TestHubServiceDeleteActiveProfileClearsSettings(t *testing.T) {
 	dir := t.TempDir()
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
-	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil)
+	settingsSvc := app.NewSettingsService(filepath.Join(dir, "app-settings.json"), nil, nil)
 	require.NoError(t, settingsSvc.Load())
 
 	hubSvc := app.NewHubService(dir, profileSvc, nil, nil)

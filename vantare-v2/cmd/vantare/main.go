@@ -194,6 +194,7 @@ func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmit
 	}
 	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
 }
+
 // handleDuplicateProfile copies an existing profile into a new one with the
 // given newID and newName (both required). On success it re-emits the profile
 // list so the UI refreshes with the new card.
@@ -216,11 +217,13 @@ func handleLaunchProfile(id string, svc *launcher.Service, emitter app.EventEmit
 		return
 	}
 }
+
 // handleCancelProfile cancels the active launch chain for a profile, if any.
 func handleCancelProfile(id string, svc *launcher.Service, emitter app.EventEmitter) {
 	svc.CancelChain(id)
 	_ = emitter
 }
+
 // handleAppPick opens a native file picker for an executable. Wails v3
 // alpha.98-tui does not expose a file dialog API, so we emit a launcher:error
 // noting the limitation and let the frontend's HTML file input take over.
@@ -271,7 +274,7 @@ func handleChainError(profileID string, stepIndex int, message string, svc *laun
 	}
 }
 func main() {
-// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
+	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
 		udf := filepath.Join(appData, "Vantare", "webview_v0.3.10.0")
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
@@ -550,7 +553,7 @@ func main() {
 
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)
 	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter)
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}

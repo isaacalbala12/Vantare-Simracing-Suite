@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
@@ -145,30 +146,47 @@ func defaultLauncherProfiles() []LaunchProfile {
 
 // SettingsService persists AppSettings to a JSON file and emits Wails events.
 type SettingsService struct {
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	path     string
 	settings *AppSettings
 	emitter  EventEmitter
+	logger   *slog.Logger
 }
 
 // NewSettingsService creates a settings service backed by the given JSON file.
-func NewSettingsService(path string, emitter EventEmitter) *SettingsService {
+// If logger is nil, slog.Default() is used.
+func NewSettingsService(path string, emitter EventEmitter, logger *slog.Logger) *SettingsService {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &SettingsService{
 		path:    path,
 		emitter: emitter,
+		logger:  logger,
 	}
 }
 
-// Settings returns the current in-memory settings.
+// Settings returns the current in-memory settings with a read lock.
 func (s *SettingsService) Settings() *AppSettings {
+	s.mu.RLock()
+	if s.settings != nil {
+		s.mu.RUnlock()
+		return s.settings
+	}
+	s.mu.RUnlock()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
 	return s.settings
 }
 
-// GetLauncherApps returns the current launcher apps map.
+// GetLauncherApps returns the current launcher apps map with a read lock.
 func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.settings == nil {
 		return nil
 	}
@@ -177,6 +195,8 @@ func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
 
 // SetLauncherApps replaces the entire LauncherApps map and persists the change.
 func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
@@ -184,11 +204,13 @@ func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) erro
 	for k, v := range apps {
 		s.settings.LauncherApps[k] = v
 	}
-	return s.Save(s.settings)
+	return s.saveLocked(s.settings, 0)
 }
 
-// GetLauncherProfiles returns the current launch profiles slice.
+// GetLauncherProfiles returns the current launch profiles slice with a read lock.
 func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.settings == nil {
 		return nil
 	}
@@ -197,13 +219,15 @@ func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
 
 // SetLauncherProfiles replaces the entire LaunchProfiles slice and persists the change.
 func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
 	out := make([]LaunchProfile, len(profiles))
 	copy(out, profiles)
 	s.settings.LauncherProfiles = out
-	return s.Save(s.settings)
+	return s.saveLocked(s.settings, 0)
 }
 
 // Load reads settings from disk with tolerance for corruption.
@@ -222,13 +246,32 @@ func (s *SettingsService) loadLocked() error {
 		return nil
 	}
 
-	// 1. Sidecar has priority: if it exists and parses, apply and delete it.
+	// 1. Sidecar recovery: if a .failed file exists, check staleness and apply if valid.
 	if sidecarData, err := os.ReadFile(s.path + ".failed"); err == nil {
 		var sc AppSettings
 		if err := json.Unmarshal(sidecarData, &sc); err == nil {
-			s.applyLoaded(&sc)
+			mainStat, mainStatErr := os.Stat(s.path)
+			sidecarStat, sidecarStatErr := os.Stat(s.path + ".failed")
+			applySidecar := false
+			if os.IsNotExist(mainStatErr) {
+				// Main does not exist: apply sidecar.
+				applySidecar = true
+			} else if sidecarStatErr == nil && sidecarStat.ModTime().After(mainStat.ModTime()) {
+				// Sidecar is newer than main: apply.
+				applySidecar = true
+			}
+			if applySidecar {
+				s.logger.Warn("settings recovered from sidecar", "path", s.path)
+				s.applyLoaded(&sc)
+				_ = os.Remove(s.path + ".failed")
+				return s.persistSidecarApplied()
+			}
+			// Sidecar is stale (main is newer): remove it and continue with main.
 			_ = os.Remove(s.path + ".failed")
-			return s.persistSidecarApplied()
+			s.logger.Info("stale sidecar removed", "path", s.path)
+		} else {
+			// Unparseable sidecar: remove and continue.
+			_ = os.Remove(s.path + ".failed")
 		}
 	}
 
@@ -245,11 +288,13 @@ func (s *SettingsService) loadLocked() error {
 		// 3. Fallback to .bak.
 		if bakData, bakErr := os.ReadFile(s.path + ".bak"); bakErr == nil {
 			if err := json.Unmarshal(bakData, &loaded); err == nil {
+				s.logger.Warn("settings main file corrupted, recovered from .bak", "path", s.path)
 				s.applyLoaded(&loaded)
 				return nil
 			}
 		}
 		// 4. Everything failed, use defaults (already set).
+		s.logger.Error("settings main and .bak both corrupted, using defaults — USER DATA LOST", "path", s.path)
 		return nil
 	}
 	s.applyLoaded(&loaded)
@@ -335,10 +380,15 @@ func (s *SettingsService) saveLocked(settings *AppSettings, attempt int) error {
 	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
 		return s.retryOrSidecar(settings, attempt, data, sidecarPath, fmt.Errorf("write tmp: %w", err))
 	}
-	// Rotate existing file to .bak.
+	// Copy existing main to .bak before replacing it. We copy (not rename)
+	// so the main file is never absent between the two operations.
+	// If the copy fails, the .bak may be stale but the update proceeds.
 	if _, err := os.Stat(s.path); err == nil {
-		_ = os.Rename(s.path, bakPath)
+		if bakData, err := os.ReadFile(s.path); err == nil {
+			_ = os.WriteFile(bakPath, bakData, 0o644)
+		}
 	}
+	// Atomically replace main with .tmp. If this fails, the old main is intact.
 	if err := os.Rename(tmpPath, s.path); err != nil {
 		return s.retryOrSidecar(settings, attempt, data, sidecarPath, fmt.Errorf("rename: %w", err))
 	}

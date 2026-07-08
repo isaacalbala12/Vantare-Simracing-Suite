@@ -25,7 +25,7 @@ func TestDiagnosticsRedaction(t *testing.T) {
 	}()
 
 	t.Run("NoExecutablePath", func(t *testing.T) {
-		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc := NewSettingsService("configs/app-settings.json", nil, nil)
 		sSvc.settings = &AppSettings{
 			LauncherApps: map[string]LauncherAppEntry{
 				"acc": {
@@ -61,7 +61,7 @@ func TestDiagnosticsRedaction(t *testing.T) {
 	})
 
 	t.Run("NoLocalPathsInJSON", func(t *testing.T) {
-		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc := NewSettingsService("configs/app-settings.json", nil, nil)
 		sSvc.settings = &AppSettings{
 			LauncherApps: map[string]LauncherAppEntry{
 				"acc": {
@@ -115,7 +115,7 @@ func TestDiagnosticsRedaction(t *testing.T) {
 	})
 
 	t.Run("NoSensitiveStrings", func(t *testing.T) {
-		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc := NewSettingsService("configs/app-settings.json", nil, nil)
 		sSvc.settings = &AppSettings{
 			LauncherApps: map[string]LauncherAppEntry{
 				"test": {
@@ -278,7 +278,7 @@ func TestDiagnosticsService(t *testing.T) {
 		pSvc.SetProfile(testProfile)
 
 		// Mock settings service
-		sSvc := NewSettingsService("configs/app-settings.json", nil)
+		sSvc := NewSettingsService("configs/app-settings.json", nil, nil)
 		sSvc.settings = &AppSettings{
 			DeltaMode:   "session",
 			CpuSampling: false,

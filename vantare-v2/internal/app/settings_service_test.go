@@ -51,7 +51,7 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	path := filepath.Join(dir, "app-settings.json")
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 
 	// Load non-existent file -> should get defaults
 	if err := svc.Load(); err != nil {
@@ -72,7 +72,7 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	}
 
 	// Load from disk into a fresh service
-	svc2 := app.NewSettingsService(path, emitter)
+	svc2 := app.NewSettingsService(path, emitter, nil)
 	if err := svc2.Load(); err != nil {
 		t.Fatalf("Load after save: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestSettingsServiceLoadDefaultsOnCorruptFile(t *testing.T) {
 	}
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 	err := svc.Load()
 	if err != nil {
 		t.Fatalf("load should not error on corrupt file (falls back to defaults): %v", err)
@@ -116,7 +116,7 @@ func TestSettingsServiceSaveInvalidDeltaMode(t *testing.T) {
 	path := filepath.Join(dir, "app-settings.json")
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 	_ = svc.Load()
 
 	custom := app.DefaultAppSettings()
@@ -125,7 +125,7 @@ func TestSettingsServiceSaveInvalidDeltaMode(t *testing.T) {
 		t.Fatalf("Save should succeed but got: %v", err)
 	}
 	// Verify the invalid delta mode is persisted (validation moved to caller)
-	loaded := app.NewSettingsService(path, nil)
+	loaded := app.NewSettingsService(path, nil, nil)
 	if err := loaded.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestSettingsServiceSaveEmptyHotkey(t *testing.T) {
 	path := filepath.Join(dir, "app-settings.json")
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 	_ = svc.Load()
 
 	custom := app.DefaultAppSettings()
@@ -151,7 +151,7 @@ func TestSettingsServiceSaveEmptyHotkey(t *testing.T) {
 
 func TestSettingsServiceSaveNilSettings(t *testing.T) {
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService("", emitter)
+	svc := app.NewSettingsService("", emitter, nil)
 	err := svc.Save(nil)
 	if err == nil {
 		t.Fatal("expected error for nil settings")
@@ -191,7 +191,7 @@ func TestSettingsServiceMergePersistedWithDefaults(t *testing.T) {
 	}
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestSettingsServiceLoadSaveActiveOverlayProfileID(t *testing.T) {
 	path := filepath.Join(dir, "app-settings.json")
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -232,7 +232,7 @@ func TestSettingsServiceLoadSaveActiveOverlayProfileID(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	svc2 := app.NewSettingsService(path, emitter)
+	svc2 := app.NewSettingsService(path, emitter, nil)
 	if err := svc2.Load(); err != nil {
 		t.Fatalf("Load after save: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestSettingsServiceMergeKeepsActiveOverlayProfileID(t *testing.T) {
 	}
 
 	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter)
+	svc := app.NewSettingsService(path, emitter, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestDefaultAppSettingsBetaWelcomeCompleted(t *testing.T) {
 func TestSettingsServicePersistsBetaWelcomeCompleted(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 
 	custom := app.DefaultAppSettings()
 	custom.BetaWelcomeCompleted = true
@@ -279,7 +279,7 @@ func TestSettingsServicePersistsBetaWelcomeCompleted(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	loaded := app.NewSettingsService(path, nil)
+	loaded := app.NewSettingsService(path, nil, nil)
 	if err := loaded.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestDefaultAppSettingsBetaUserRoleEmpty(t *testing.T) {
 func TestSettingsServicePersistsBetaUserRole(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 
 	custom := app.DefaultAppSettings()
 	custom.BetaUserRole = "creator"
@@ -306,7 +306,7 @@ func TestSettingsServicePersistsBetaUserRole(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	loaded := app.NewSettingsService(path, nil)
+	loaded := app.NewSettingsService(path, nil, nil)
 	if err := loaded.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -324,7 +324,7 @@ func TestSettingsServiceMergeKeepsBetaUserRole(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	custom := app.DefaultAppSettings()
 	custom.DeltaMode = "session"
 	if err := svc.Save(custom); err != nil {
@@ -356,7 +356,7 @@ func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
 func TestSettingsServicePersistsLauncherApps(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	_ = svc.Load()
 	custom := app.DefaultAppSettings()
 	custom.LauncherApps = map[string]app.LauncherAppEntry{
@@ -365,7 +365,7 @@ func TestSettingsServicePersistsLauncherApps(t *testing.T) {
 	if err := svc.Save(custom); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	loaded := app.NewSettingsService(path, nil)
+	loaded := app.NewSettingsService(path, nil, nil)
 	if err := loaded.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -380,7 +380,7 @@ func TestSettingsServicePersistsLauncherApps(t *testing.T) {
 func TestSettingsServicePersistsLauncherProfiles(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	_ = svc.Load()
 	custom := app.DefaultAppSettings()
 	custom.LauncherProfiles = []app.LaunchProfile{
@@ -389,7 +389,7 @@ func TestSettingsServicePersistsLauncherProfiles(t *testing.T) {
 	if err := svc.Save(custom); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	loaded := app.NewSettingsService(path, nil)
+	loaded := app.NewSettingsService(path, nil, nil)
 	if err := loaded.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestDefaultAppSettingsHasSchemaVersion1(t *testing.T) {
 func TestSaveIsAtomic(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	_ = svc.Load()
 	s := app.DefaultAppSettings()
 	if err := svc.Save(s); err != nil {
@@ -454,7 +454,7 @@ func TestSaveIsAtomic(t *testing.T) {
 func TestSaveRetriesOnLock(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	_ = svc.Load()
 
 	// Create a directory at the .tmp path to simulate a lock
@@ -485,7 +485,7 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -510,7 +510,7 @@ func TestLoadToleratesCorruptedJSONFallsBackToBak(t *testing.T) {
 	if err := os.WriteFile(bakPath, []byte(`{"schemaVersion": 1, "deltaMode": "self", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -525,7 +525,7 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	bakPath := path + ".bak"
 	os.WriteFile(path, []byte("garbage"), 0o644)
 	os.WriteFile(bakPath, []byte("also garbage"), 0o644)
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
@@ -544,7 +544,7 @@ func TestSidecarAppliedOnStartup(t *testing.T) {
 	if err := os.WriteFile(sidecarPath, []byte(`{"schemaVersion": 1, "deltaMode": "absolute", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": [{"id":"x","name":"X","steps":[]}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -562,7 +562,7 @@ func TestSidecarAppliedOnStartup(t *testing.T) {
 func TestSettingsWriteMutexSerializesConcurrentWrites(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, nil)
+	svc := app.NewSettingsService(path, nil, nil)
 	_ = svc.Load()
 
 	const N = 20

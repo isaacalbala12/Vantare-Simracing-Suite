@@ -70,9 +70,42 @@ function applyStep(
   };
 }
 
+const CLEANUP_MS = 3000;
+const STALE_MS = 30000;
+const WATCHDOG_INTERVAL_MS = 5000;
+
 export function createChainStore() {
   const chains = new Map<string, ChainState>();
   const lastResults = new Map<string, LastResult>();
+  const timeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  let watchdogInterval: ReturnType<typeof setInterval> | null = null;
+
+  function scheduleCleanup(profileId: string) {
+    const pending = timeouts.get(profileId);
+    if (pending) clearTimeout(pending);
+    const t = setTimeout(() => {
+      chains.delete(profileId);
+      timeouts.delete(profileId);
+    }, CLEANUP_MS);
+    timeouts.set(profileId, t);
+  }
+
+  function startWatchdog() {
+    if (watchdogInterval) return;
+    watchdogInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [id, chain] of chains) {
+        if (
+          chain.overallStatus === "running" &&
+          now - chain.lastEventAt > STALE_MS
+        ) {
+          chains.set(id, { ...chain, overallStatus: "error" });
+          lastResults.set(id, "error");
+          scheduleCleanup(id);
+        }
+      }
+    }, WATCHDOG_INTERVAL_MS);
+  }
 
   return {
     getChain(profileId: string): ChainState | undefined {
@@ -84,28 +117,51 @@ export function createChainStore() {
     },
 
     handleStep(ev: ChainStepEvent) {
+      const pending = timeouts.get(ev.profileId);
+      if (pending) {
+        clearTimeout(pending);
+        timeouts.delete(ev.profileId);
+      }
       const existing = chains.get(ev.profileId);
-      const steps = existing ? [...existing.steps] : [];
+      // Si la cadena está en estado terminal y llega un launching,
+      // es un relanzamiento dentro de la ventana de cleanup → empezar fresca.
+      const isRelaunch =
+        existing &&
+        (existing.overallStatus === "done" ||
+          existing.overallStatus === "error") &&
+        ev.status === "launching";
+      const steps = existing && !isRelaunch ? [...existing.steps] : [];
       steps[ev.stepIndex] = applyStep(steps[ev.stepIndex], ev);
       const now = ev.startedAt ?? ev.finishedAt ?? Date.now();
-      chains.set(
-        ev.profileId,
-        existing
-          ? {
-              ...existing,
-              steps,
-              currentStepIndex: ev.stepIndex,
-              lastEventAt: now,
-            }
-          : {
-              profileId: ev.profileId,
-              startedAt: now,
-              lastEventAt: now,
-              steps,
-              currentStepIndex: ev.stepIndex,
-              overallStatus: "running",
-            },
-      );
+      if (isRelaunch) {
+        chains.set(ev.profileId, {
+          profileId: ev.profileId,
+          startedAt: now,
+          lastEventAt: now,
+          steps,
+          currentStepIndex: ev.stepIndex,
+          overallStatus: "running",
+        });
+      } else {
+        chains.set(
+          ev.profileId,
+          existing && !isRelaunch
+            ? {
+                ...existing,
+                steps,
+                currentStepIndex: ev.stepIndex,
+                lastEventAt: now,
+              }
+            : {
+                profileId: ev.profileId,
+                startedAt: now,
+                lastEventAt: now,
+                steps,
+                currentStepIndex: ev.stepIndex,
+                overallStatus: "running",
+              },
+        );
+      }
     },
 
     handleDone(profileId: string, success: boolean) {
@@ -121,14 +177,36 @@ export function createChainStore() {
           profileId,
           existing.steps.some((s) => s.status === "done") ? "partial" : "error",
         );
+      scheduleCleanup(profileId);
     },
 
     handleError(profileId: string) {
       lastResults.set(profileId, "error");
+      const existing = chains.get(profileId);
+      if (existing) {
+        chains.set(profileId, { ...existing, overallStatus: "error" });
+        scheduleCleanup(profileId);
+      }
     },
 
     clearChain(profileId: string) {
+      const pending = timeouts.get(profileId);
+      if (pending) {
+        clearTimeout(pending);
+        timeouts.delete(profileId);
+      }
       chains.delete(profileId);
+    },
+
+    startWatchdog,
+
+    shutdown() {
+      timeouts.forEach((t) => clearTimeout(t));
+      timeouts.clear();
+      if (watchdogInterval) {
+        clearInterval(watchdogInterval);
+        watchdogInterval = null;
+      }
     },
   };
 }

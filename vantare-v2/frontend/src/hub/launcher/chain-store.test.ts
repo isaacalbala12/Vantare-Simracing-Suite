@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createChainStore } from "./chain-store";
 
 describe("chain-store reducer", () => {
@@ -43,5 +43,73 @@ describe("chain-store reducer", () => {
       finishedAt: 3000,
     });
     expect(store.getChain("p1")?.steps[0].finishedAt).toBe(2000);
+  });
+
+  it("clears chain after 3s of done", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "done",
+      finishedAt: 1000,
+    });
+    store.handleDone("p1", true);
+    vi.advanceTimersByTime(2999);
+    expect(store.getChain("p1")).toBeDefined();
+    vi.advanceTimersByTime(1);
+    expect(store.getChain("p1")).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it("clears pending timeout when new step arrives within 3s", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "done",
+      finishedAt: 1000,
+    });
+    store.handleDone("p1", true);
+    // Avanzar 2s (aún dentro de la ventana de 3s)
+    vi.advanceTimersByTime(2000);
+    // Relanzar el mismo perfil dentro de los 3s
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "launching",
+      startedAt: 5000,
+    });
+    // Avanzar 2s más (total 4s desde done, pero relanzado a los 2s)
+    vi.advanceTimersByTime(2000);
+    // La cadena nueva NO debe estar borrada
+    expect(store.getChain("p1")).toBeDefined();
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.useRealTimers();
+  });
+
+  it("marks stale chain after 30s of inactivity", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    // Iniciar watchdog (en producción lo arranca el provider)
+    store.startWatchdog();
+    // Step sin startedAt explicit → lastEventAt = Date.now() (faked)
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "launching",
+    });
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    // Avanzar 35s → el watchdog corre cada 5s, en t=35s la condición
+    // now - lastEventAt > 30000 se cumple
+    vi.advanceTimersByTime(35000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
   });
 });

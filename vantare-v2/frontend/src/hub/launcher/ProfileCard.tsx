@@ -148,6 +148,7 @@ export function ProfileCard({
         open={editing}
         onClose={() => setEditing(false)}
         onSave={handleSave}
+        apps={apps}
       />
       <div className="mt-3 flex items-center gap-2 justify-end">
         <button

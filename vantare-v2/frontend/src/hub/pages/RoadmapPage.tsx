@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccess } from "../../lib/access";
 import { canUseFeature } from "../../lib/access-policy";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -10,19 +10,20 @@ import {
   getCurrentPhase,
   fetchRoadmapDataset,
   ROADMAP_FALLBACK,
-  pickText,
   type RoadmapDataset,
   type RoadmapStatus,
   type RoadmapFeedbackType,
   type RoadmapFeedbackDestination,
 } from "../roadmap/roadmap-data";
 import {
-  getFeatureCategories,
-  getFutureCategories,
-  getOverallFeatureProgress,
+  getActiveSections,
+  STATUS_META,
   TIPO_META,
-  type RoadmapFeature,
+  type ActiveSections,
+  type RoadmapCategory,
 } from "../roadmap/roadmap-features";
+import { pickText } from "../roadmap/roadmap-data";
+import type { RoadmapFeature } from "../roadmap/features-data";
 
 const STATUS_COLORS = {
   active: "text-vantare-red-400 border-vantare-red-500/30 bg-vantare-red-500/10",
@@ -159,71 +160,77 @@ function RoadmapFeedback({ t }: { t: (key: string) => string }) {
 
 type FeaturesSectionProps = {
   t: (key: string) => string;
-  categories: ReadonlyArray<{
-    id: string;
-    label: string;
-    percent: number;
-    features: ReadonlyArray<RoadmapFeature>;
-  }>;
-  futureCategories: ReadonlyArray<{
-    id: string;
-    label: string;
-    percent: number;
-    features: ReadonlyArray<RoadmapFeature>;
-  }>;
+  locale: string;
+  sections: ActiveSections;
   overallProgress: number;
 };
 
-function FeatureCard({ t: _t, feat, isExpanded, onToggle }: { t: (key: string) => string; feat: RoadmapFeature; isExpanded: boolean; onToggle: () => void }) {
+function FeatureCard({
+  locale,
+  feat,
+  isExpanded,
+  onToggle,
+}: {
+  locale: string;
+  feat: RoadmapFeature;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
   const tipo = TIPO_META[feat.tipo] ?? TIPO_META.feature;
+  const status = STATUS_META[feat.status] ?? STATUS_META.future;
   return (
     <article
       onClick={onToggle}
-      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-300 cursor-pointer ${
-        feat.future
-          ? "bg-[rgba(20,20,20,.35)] border border-white/5 hover:border-white/10 opacity-70"
-          : "border border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5 hover:shadow-[0_0_20px_rgba(255,59,59,.15)]"
+      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-300 cursor-pointer border ${
+        feat.status === "future"
+          ? "bg-[rgba(20,20,20,.35)] border-white/5 hover:border-white/10 opacity-70"
+          : "border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5 hover:shadow-[0_0_20px_rgba(255,59,59,.15)]"
       }`}
+      data-testid={`feature-card-${feat.id}`}
+      data-status={feat.status}
     >
       <div className="flex items-center gap-2">
-        <span className="text-[10px]">{tipo.icon} {tipo.label}</span>
-        <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] ${feat.future ? "text-vantare-textDim border border-white/10 bg-white/5" : STATUS_COLORS.active}`}>
-          {feat.future ? "Próximamente" : "En desarrollo"}
+        <span className={`text-[10px] ${tipo.color}`}>
+          {tipo.icon} {tipo.label}
         </span>
-        {feat.checkProgress && feat.checkProgress.total > 0 && (
-          <span className="text-[9px] font-mono text-vantare-textDim">({feat.checkProgress.done}/{feat.checkProgress.total})</span>
-        )}
+        <span
+          className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] ${
+            feat.status === "future"
+              ? "text-vantare-textDim border border-white/10 bg-white/5"
+              : "text-vantare-red-400 border border-vantare-red-500/30 bg-vantare-red-500/10"
+          }`}
+        >
+          {status.label}
+        </span>
       </div>
-      <h3 className="font-bold text-sm text-white tracking-tight leading-tight">{feat.label}</h3>
-      {!isExpanded && feat.description && (
-        <p className="text-[11px] text-vantare-textMuted leading-relaxed line-clamp-2 flex-1">{feat.description}</p>
+      <h3 className="font-bold text-sm text-white tracking-tight leading-tight">
+        {pickText(feat.label, locale)}
+      </h3>
+      {!isExpanded && pickText(feat.description, locale) && (
+        <p className="text-[11px] text-vantare-textMuted leading-relaxed line-clamp-2 flex-1">
+          {pickText(feat.description, locale)}
+        </p>
       )}
       {isExpanded && (
         <div className="flex flex-col gap-2 mt-1">
-          {feat.description && <p className="text-[11px] text-vantare-textMuted leading-relaxed">{feat.description}</p>}
+          <p className="text-[11px] text-vantare-textMuted leading-relaxed">
+            {pickText(feat.description, locale)}
+          </p>
           <div className="mt-1 pt-2 border-t border-white/5">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim block mb-0.5">Progreso</span>
+            <span className="text-[9px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim block mb-0.5">
+              Progreso
+            </span>
             <span className="text-sm font-bold text-white">{feat.percent}%</span>
-            {feat.checkProgress && feat.checkProgress.total > 0 && (
-              <span className="text-[10px] text-vantare-textDim ml-1">({feat.checkProgress.done} de {feat.checkProgress.total} pasos)</span>
-            )}
           </div>
-          {feat.checkProgress && feat.checkProgress.total > 0 && (
-            <div className="mt-1"><ProgressBar value={feat.percent} /></div>
-          )}
-          <a
-            href={`https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/main/docs/superpowers/plans/${feat.slug}.md`}
-            target="_blank" rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-[10px] text-vantare-red-400 hover:text-white transition-colors mt-1"
-          >Ver plan →</a>
         </div>
       )}
       {!isExpanded && (
         <div className="mt-auto pt-1">
           <ProgressBar value={feat.percent} />
           <div className="flex justify-end mt-1">
-            <span className="text-[9px] font-mono font-bold text-vantare-red-400">{feat.percent}%</span>
+            <span className="text-[9px] font-mono font-bold text-vantare-red-400">
+              {feat.percent}%
+            </span>
           </div>
         </div>
       )}
@@ -231,77 +238,146 @@ function FeatureCard({ t: _t, feat, isExpanded, onToggle }: { t: (key: string) =
   );
 }
 
-function FeaturesSection({ t, categories, futureCategories, overallProgress }: FeaturesSectionProps) {
-  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
-  const toggle = (slug: string) => setExpandedSlug((prev) => (prev === slug ? null : slug));
-
+function SectionBlock({
+  locale,
+  title,
+  categories,
+  expandedId,
+  onToggle,
+}: {
+  locale: string;
+  title: string;
+  categories: ReadonlyArray<RoadmapCategory>;
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+}) {
+  if (categories.length === 0) return null;
   return (
-    <div className="flex flex-col gap-5 opacity-0 animate-fade-in-up delay-100">
-      {/* Overall progress */}
-      <section className="glass-panel rounded-xl p-6">
-        <div className="flex items-end justify-between mb-2">
-          <span className="v52-eyebrow">{t("roadmap.features.eyebrow")}</span>
-          <span className="text-3xl font-bold text-vantare-red-400" style={{ textShadow: "0 0 20px rgba(255,59,59,.3)" }}>{overallProgress}%</span>
-        </div>
-        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, overallProgress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)", boxShadow: "0 0 12px rgba(255,59,59,.4)" }} />
-        </div>
-        <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-vantare-textDim">
-          <span>{categories.reduce((s, c) => s + c.features.length, 0)} en desarrollo · {futureCategories.reduce((s, c) => s + c.features.length, 0)} próximas</span>
-          <span>{categories.length + futureCategories.length} áreas</span>
-        </div>
-      </section>
-
-      {/* Active categories */}
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3">
+        <span className="v52-eyebrow">{title}</span>
+      </div>
       {categories.map((cat) => (
         <section key={cat.id}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <span className="v52-eyebrow">{cat.label}</span>
-              <span className="text-[10px] font-mono font-bold text-vantare-textDim px-2 py-0.5 rounded bg-white/5">{cat.features.length}</span>
+              <span className="v52-eyebrow text-vantare-textMuted">
+                {pickText(cat.label, locale)}
+              </span>
+              <span className="text-[10px] font-mono font-bold text-vantare-textDim px-2 py-0.5 rounded bg-white/5">
+                {cat.features.length}
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-24">
                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, cat.percent))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, cat.percent))}%`,
+                      background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)",
+                    }}
+                  />
                 </div>
               </div>
-              <span className="text-sm font-bold text-vantare-red-400">{cat.percent}%</span>
+              <span className="text-sm font-bold text-vantare-red-400">
+                {cat.percent}%
+              </span>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {cat.features.map((feat) => (
-              <FeatureCard key={feat.slug} t={t} feat={feat} isExpanded={expandedSlug === feat.slug} onToggle={() => toggle(feat.slug)} />
+              <FeatureCard
+                key={feat.id}
+                locale={locale}
+                feat={feat}
+                isExpanded={expandedId === feat.id}
+                onToggle={() => onToggle(feat.id)}
+              />
             ))}
           </div>
         </section>
       ))}
+    </div>
+  );
+}
 
-      {/* Future categories */}
-      {futureCategories.length > 0 && (
-        <>
-          <div className="flex items-center gap-3 mt-4">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="v52-eyebrow text-vantare-textDim">Próximamente</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
-          {futureCategories.map((cat) => (
-            <section key={cat.id}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="v52-eyebrow text-vantare-textDim">{cat.label}</span>
-                  <span className="text-[10px] font-mono font-bold text-vantare-textDim px-2 py-0.5 rounded bg-white/5">{cat.features.length}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {cat.features.map((feat) => (
-                  <FeatureCard key={feat.slug} t={t} feat={feat} isExpanded={expandedSlug === feat.slug} onToggle={() => toggle(feat.slug)} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </>
-      )}
+function FeaturesSection({ t, locale, sections, overallProgress }: FeaturesSectionProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const toggle = (id: string) =>
+    setExpandedId((prev) => (prev === id ? null : id));
+
+  const inDevCount = sections.inDevelopment.reduce(
+    (s, c) => s + c.features.length,
+    0,
+  );
+  const researchCount = sections.research.reduce(
+    (s, c) => s + c.features.length,
+    0,
+  );
+  const futureCount = sections.future.reduce(
+    (s, c) => s + c.features.length,
+    0,
+  );
+  const totalCats =
+    sections.inDevelopment.length +
+    sections.research.length +
+    sections.future.length;
+
+  return (
+    <div className="flex flex-col gap-5 opacity-0 animate-fade-in-up delay-100">
+      <section className="glass-panel rounded-xl p-6">
+        <div className="flex items-end justify-between mb-2">
+          <span className="v52-eyebrow">{t("roadmap.features.eyebrow")}</span>
+          <span
+            className="text-3xl font-bold text-vantare-red-400"
+            style={{ textShadow: "0 0 20px rgba(255,59,59,.3)" }}
+          >
+            {overallProgress}%
+          </span>
+        </div>
+        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.min(100, Math.max(0, overallProgress))}%`,
+              background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)",
+              boxShadow: "0 0 12px rgba(255,59,59,.4)",
+            }}
+          />
+        </div>
+        <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-vantare-textDim">
+          <span>
+            {inDevCount} en desarrollo · {researchCount} en investigación ·{" "}
+            {futureCount} próximas
+          </span>
+          <span>{totalCats} áreas</span>
+        </div>
+      </section>
+
+      <SectionBlock
+        locale={locale}
+        title={STATUS_META["in-development"].label}
+        categories={sections.inDevelopment}
+        expandedId={expandedId}
+        onToggle={toggle}
+      />
+
+      <SectionBlock
+        locale={locale}
+        title={STATUS_META.research.label}
+        categories={sections.research}
+        expandedId={expandedId}
+        onToggle={toggle}
+      />
+
+      <SectionBlock
+        locale={locale}
+        title={STATUS_META.future.label}
+        categories={sections.future}
+        expandedId={expandedId}
+        onToggle={toggle}
+      />
     </div>
   );
 }
@@ -325,9 +401,29 @@ export function RoadmapPage() {
     (p) => p.status === "done" || p.status === "in-progress",
   ).length;
   const trackWidth = (allPhasesDoneOrActive / dataset.phases.length) * 100;
-  const featureCategories = useMemo(() => getFeatureCategories(), []);
-  const futureCategories = useMemo(() => getFutureCategories(), []);
-  const featureOverallProgress = useMemo(() => getOverallFeatureProgress(), []);
+  // Estado inicial síncrono con FEATURES_FALLBACK (consistente con roadmap-data.ts).
+  const [sections, setSections] = useState<ActiveSections>(() => ({
+    inDevelopment: [],
+    research: [],
+    future: [],
+  }));
+  const [featureOverallProgress, setFeatureOverallProgress] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getActiveSections()
+      .then((result) => {
+        if (cancelled) return;
+        setSections(result.sections);
+        setFeatureOverallProgress(result.overallProgress);
+      })
+      .catch(() => {
+        if (cancelled) return;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex flex-col gap-5">
@@ -562,7 +658,12 @@ export function RoadmapPage() {
 
       {/* Features by area (next tab) */}
       {activeKey === "next" && (
-        <FeaturesSection t={t} categories={featureCategories} futureCategories={futureCategories} overallProgress={featureOverallProgress} />
+        <FeaturesSection
+          t={t}
+          locale={locale}
+          sections={sections}
+          overallProgress={featureOverallProgress}
+        />
       )}
 
       {/* Feedback / Voting */}

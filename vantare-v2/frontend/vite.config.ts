@@ -14,17 +14,18 @@ const topbarMockPath = path.resolve(
   "../src/lib/wails-runtime-topbar-mock.ts",
 );
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   const useTopbarMock = process.env.VITE_RUNTIME_MOCK === "topbar";
+  const isProduction = mode === "production";
+  const alias: Record<string, string> = {};
+  if (!isProduction) {
+    alias["@wailsio/runtime"] = useTopbarMock ? topbarMockPath : wailsMockPath;
+  }
   return {
     plugins: [react(), tailwindcss()],
     server: { strictPort: true, port: 5173 },
     build: { outDir: "dist", emptyOutDir: true },
-    resolve: {
-      alias: {
-        "@wailsio/runtime": useTopbarMock ? topbarMockPath : wailsMockPath,
-      },
-    },
+    resolve: { alias },
     test: {
       setupFiles: ["./src/test-setup.ts"],
       environment: "happy-dom",

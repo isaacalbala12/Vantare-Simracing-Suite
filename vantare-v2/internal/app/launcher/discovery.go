@@ -13,6 +13,11 @@ type discoveredCandidate struct {
 	DisplayName     string
 	InstallLocation string
 	Publisher       string
+	SystemComponent int    // DWORD: 1 = system component
+	ParentKeyName   string // non-empty means child of another product
+	NoRemove        int    // DWORD: 1 = system-protected
+	ReleaseType     string // "Update", "Hotfix", "SecurityUpdate", "ServicePack"
+	UninstallString string
 }
 
 // findFirstExisting returns the first name from the list whose path exists

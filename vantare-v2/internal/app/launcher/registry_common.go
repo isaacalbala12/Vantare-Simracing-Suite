@@ -30,11 +30,26 @@ var readUninstallEntries = func() []discoveredCandidate {
 			}
 			dn, _, _ := sub.GetStringValue("DisplayName")
 			loc, _, _ := sub.GetStringValue("InstallLocation")
+			pub, _, _ := sub.GetStringValue("Publisher")
+			sc, _, _ := sub.GetIntegerValue("SystemComponent")
+			pk, _, _ := sub.GetStringValue("ParentKeyName")
+			nr, _, _ := sub.GetIntegerValue("NoRemove")
+			rt, _, _ := sub.GetStringValue("ReleaseType")
+			us, _, _ := sub.GetStringValue("UninstallString")
 			sub.Close()
 			if dn == "" {
 				continue
 			}
-			out = append(out, discoveredCandidate{DisplayName: dn, InstallLocation: loc})
+			out = append(out, discoveredCandidate{
+				DisplayName:     dn,
+				InstallLocation: loc,
+				Publisher:       pub,
+				SystemComponent: int(sc),
+				ParentKeyName:   pk,
+				NoRemove:        int(nr),
+				ReleaseType:     rt,
+				UninstallString: us,
+			})
 		}
 	}
 	return out

@@ -20,11 +20,15 @@ type RegistryApp struct {
 
 // ListRegistryApps reads all installed applications from the Windows Registry
 // (HKLM + WOW6432Node + HKCU Uninstall keys) using the shared readUninstallEntries
-// seam and returns them as a flat list. This is the unfiltered system-wide view.
+// seam and returns them as a flat list. Entries that match system-component or
+// blacklist heuristics (SDKs, drivers, runtimes, etc.) are filtered out.
 func ListRegistryApps() []RegistryApp {
 	candidates := readUninstallEntries()
 	out := make([]RegistryApp, 0, len(candidates))
 	for i, c := range candidates {
+		if IsFilteredOut(&c) {
+			continue
+		}
 		exePath := c.InstallLocation
 		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".exe") {
 			if entries, err := os.ReadDir(exePath); err == nil {

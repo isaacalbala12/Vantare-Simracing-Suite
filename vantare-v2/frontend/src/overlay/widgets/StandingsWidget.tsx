@@ -108,7 +108,7 @@ function tireBadgeHtml(compound: string | undefined, tireSoft: string, tireMediu
   if (c === "S") color = tireSoft;
   else if (c === "M") color = tireMedium;
   else if (c === "H") color = tireHard;
-  return `<span class="inline-flex items-center justify-center w-4 h-4 text-[8px] font-black rounded-sm" style="background:${color};color:#000">${c}</span>`;
+  return `<span style="width:14px;height:14px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#000;background:${color}">${c}</span>`;
 }
 
 function brandInitial(name: string | undefined): string {
@@ -221,11 +221,9 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
         const leftInset = fastestShadow || leaderShadow;
 
         const brandCell = hasBrand
-          ? `<div class="w-7 flex items-center justify-center py-[2px] px-[2px] shrink-0" style="height:${rowHeight}px">
-            <div class="w-full h-full flex items-center justify-center" style="background:${teamBg}">
-              <span class="font-black text-[10px]" style="color:${tc}">${bi}</span>
-            </div>
-          </div>`
+          ? `<div style="width:16px;height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;background:${teamBg};flex-shrink:0">
+              <span style="font-family:var(--font-display);font-weight:800;font-size:9px;color:${tc}">${bi}</span>
+            </div>`
           : "";
 
         const cells = activeColumns.map((column) => {
@@ -239,10 +237,10 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
             return `<div class="text-center shrink-0" style="${baseStyle};color:${posColor}">${classPlace}</div>`;
 
           case "driverNumber": {
-            return `<div class="flex items-center justify-center py-[2px] px-[2px] shrink-0" style="${baseStyle};height:${rowHeight}px">
-              <div class="w-5 h-[18px] flex items-center justify-center relative" style="background:${numBg};${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
-                <span class="font-black text-[11px]" style="color:${numColor}">${escapeHTML(v.driverNumber ?? "")}</span>
-                ${pitLabel ? `<div class="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[6px] px-0.5 rounded-sm leading-none whitespace-nowrap font-black" style="background:${a.pitColor};color:#000">PIT</div>` : ""}
+            return `<div class="flex items-center justify-center shrink-0" style="${baseStyle};height:${rowHeight}px">
+              <div style="width:26px;height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;background:${numBg};position:relative;${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
+                <span style="font-family:var(--font-mono);font-weight:900;font-size:11px;color:${numColor}">${escapeHTML(v.driverNumber ?? "")}</span>
+                ${pitLabel ? `<div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:6px;padding:0 2px;border-radius:2px;line-height:1;white-space:nowrap;font-weight:800;background:${a.pitColor};color:#000">PIT</div>` : ""}
               </div>
             </div>`;
           }
@@ -314,7 +312,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
           ? `width:${intrinsicWidth}px`
           : `min-width:${intrinsicWidth}px;width:max(100%, ${intrinsicWidth}px)`;
 
-        return `<div class="flex items-center text-[11px] font-bold border-b border-black/20 transition-all" data-standings-row style="${rowWidthStyle};height:${rowHeight}px;background:${bgRow};${leftInset}">
+        return `<div data-standings-row style="display:flex;align-items:center;height:${rowHeight}px;background:${bgRow};border-bottom:1px solid rgba(255,255,255,0.03);padding:0 8px;${leftInset}${rowWidthStyle}">
           ${brandCell}${cells}
         </div>`;
       });

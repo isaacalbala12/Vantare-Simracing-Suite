@@ -227,6 +227,105 @@ describe("AddNonSteamGameModal", () => {
     expect(screen.queryByText("Some Driver Tool")).toBeNull();
   });
 
+  it.each([
+    ["Microsoft Visual C++ 2013"],
+    ["HIP SDK Core"],
+    ["AMD Ryzen Master"],
+    ["Python 3.12.10 Test Suite"],
+  ])('filters out problematic app "%s"', async (name) => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    dispatch("launcher:registry:listed", {
+      apps: [
+        { id: "r-1", displayName: name, executablePath: "C:\\P\\x.exe" },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(name)).toBeNull();
+    });
+  });
+
+  it.each([
+    ["Le Mans Ultimate", "lmu"],
+    ["OBS Studio", "obs"],
+    ["Firefox", "r-99"],
+  ])('keeps known/real app "%s" visible', async (name, id) => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    dispatch("launcher:registry:listed", {
+      apps: [
+        { id, displayName: name, executablePath: "C:\\P\\x.exe" },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(name)).toBeTruthy();
+    });
+  });
+
+  it("filters out apps in system32 path even with benign name", async () => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    dispatch("launcher:registry:listed", {
+      apps: [
+        {
+          id: "r-1",
+          displayName: "Notepad",
+          executablePath: "C:\\Windows\\System32\\notepad.exe",
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Notepad")).toBeNull();
+    });
+  });
+
+  it("filters out apps with version-like names", async () => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    dispatch("launcher:registry:listed", {
+      apps: [
+        {
+          id: "r-1",
+          displayName: "3.12.10",
+          executablePath: "C:\\P\\x.exe",
+        },
+        {
+          id: "r-2",
+          displayName: "1.0.0.0",
+          executablePath: "C:\\P\\x.exe",
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("3.12.10")).toBeNull();
+      expect(screen.queryByText("1.0.0.0")).toBeNull();
+    });
+  });
+
   it("single-select: clicking a row highlights it, clicking another switches selection", async () => {
     render(
       <AddNonSteamGameModal

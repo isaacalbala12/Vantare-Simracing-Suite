@@ -30,18 +30,48 @@ const KNOWN_IDS = new Set([
 ]);
 
 const BLOCKED_KEYWORDS = [
-  "driver",
+  // Drivers
+  "driver", "drivers",
+  // SDKs y runtimes
+  "sdk", "runtime", "run time", "redistributable", "c++", "vc++", "vc redist",
+  "vulkan run", "vulkan", "directx", "opengl",
+  // Debuggers y dev tools
+  "debugger", "debug", "developer", "diagnostic",
+  // Test suites
+  "test suite", "test framework",
+  // System utilities
+  "ryzen master", "intel", "nvidia", "amd install", "geforce", "radeon",
+  "install manager", "uninstall", "updater", "update service",
+  // Services y agents
+  "service", "agent", "helper", "support agent",
+  // Audio drivers
+  "audio accelerator", "audio driver", "audio control",
+  // Microsoft/Windows components
+  "microsoft visual", "windows sdk", "net framework", ".net",
+  "powershell", "wsl", "openssh",
+  // Python dev
+  "idle",
+  // Build tools
+  "cmake", "mingw", "toolchain",
+  // Control panels
   "control panel",
-  "updater",
-  "uninstall",
-  "helper",
-  "install manager",
-  "service",
-  "agent",
-  "support agent",
+  // Utility accelerators
   "utility accelerator",
-  "audio accelerator",
 ];
+
+function shouldBlockApp(name: string, path: string): boolean {
+  const nameLower = name.toLowerCase();
+  // Bloquear si el nombre contiene alguna keyword bloqueada
+  if (BLOCKED_KEYWORDS.some((kw) => nameLower.includes(kw))) return true;
+  // Bloquear si el path contiene carpetas de sistema
+  if (path.toLowerCase().includes("\\windows\\system32")) return true;
+  if (path.toLowerCase().includes("\\windows\\syswow64")) return true;
+  // Bloquear apps cuyo nombre es solo números o muy corto (<3 chars)
+  if (name.trim().length < 3) return true;
+  // Bloquear apps cuyo nombre parece un número de versión (ej: "3.12.10")
+  if (/^\d+\.\d+/.test(name.trim())) return true;
+  return false;
+}
 
 function toLauncherEntry(app: RegistryApp): LauncherAppEntry {
   const hash = [...app.displayName].reduce(
@@ -148,9 +178,8 @@ function ModalBody({
     return lowercased.filter((a) => {
       // Siempre mostrar apps del catálogo conocido
       if (KNOWN_IDS.has(a.id)) return true;
-      // Bloquear apps con keywords no deseadas
-      const nameLower = a.displayName.toLowerCase();
-      if (BLOCKED_KEYWORDS.some((kw) => nameLower.includes(kw)))
+      // Bloquear apps no deseadas por keyword, path, nombre corto o versión
+      if (shouldBlockApp(a.displayName, a.executablePath ?? ""))
         return false;
       // Filtrar por búsqueda
       return q ? a._lower.includes(q) : true;

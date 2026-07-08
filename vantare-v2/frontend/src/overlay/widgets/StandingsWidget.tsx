@@ -6,7 +6,6 @@ import { resolveWidgetAppearance } from "./widget-appearance";
 import { resolveWidgetDesignSystem } from "./widget-design-system";
 import { setHTMLIfChanged } from "../../lib/dom-write";
 import { escapeHTML } from "../../lib/html-escape";
-import { brandTextColor } from "../../lib/color-utils";
 import { startFrameBudgetLoop } from "../../lib/frame-budget";
 import type { ColumnConfig } from "../../lib/profile";
 import { useWidgetComponents } from "../../hub/registry";
@@ -188,17 +187,18 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
         setHTMLIfChanged(classRef.current, activeClass.toUpperCase());
       }
 
-      const rowHeight = 24;
+      const rowHeight = 28;
       const classLeader = sorted[0];
 
       const rows = sorted.map((v, i) => {
+        const isPlayer = !!v.isPlayer;
+        const isLeader = i === 0;
         const baseBgRow = isCrystal && crystal
           ? i % 2 === 0 ? crystal.surfaces.rowEven : crystal.surfaces.rowOdd
           : isGlass
           ? i % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.25)"
           : i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.3)";
-        const bgRow = isCrystal && crystal && i === 0 ? crystal.surfaces.playerHighlight : baseBgRow;
-        const isLeader = i === 0;
+        const bgRow = isCrystal && crystal && isPlayer ? crystal.surfaces.playerHighlight : baseBgRow;
         const pitLabel = formatStandingsPit(v);
         const pitting = pitLabel !== "";
         const gapText = mode === "race" && v.fastestLap ? "FASTEST" : formatStandingsGapForMode(mode, v, classLeader);
@@ -207,23 +207,19 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
         const rowTextColor = pitting ? PIT_COLOR : ON_TRACK_COLOR;
         const classPlace = i + 1;
 
-        const numColor = pitLabel ? "#000000" : rowTextColor;
-        const numBg = pitLabel ? a.pitColor : (v.teamBrandColor || "transparent");
         const teamColor = isLeader ? a.posLeaderColor : rowTextColor;
 
         const hasBrand = !!v.teamBrandColor;
         const bi = hasBrand ? brandInitial(v.driverName) : "";
         const teamBg = v.teamBrandColor || "transparent";
-        const tc = hasBrand ? brandTextColor(teamBg) : rowTextColor;
 
-        const leaderShadow = isLeader ? `box-shadow: inset 2px 0 0 0 ${isCrystal && crystal ? crystal.colors.accent : a.posLeaderColor}` : "";
-        const fastestShadow = v.fastestLap ? `box-shadow: inset 2px 0 0 0 ${isCrystal && crystal ? crystal.colors.accent : a.textColor}` : "";
-        const leftInset = fastestShadow || leaderShadow;
+        const leaderBorder = isLeader && !isPlayer ? `border-left:3px solid ${isCrystal && crystal ? crystal.colors.accent : a.posLeaderColor};` : "";
+        const fastestBorder = v.fastestLap && !isPlayer ? `border-left:3px solid ${isCrystal && crystal ? crystal.colors.accent : a.textColor};` : "";
+        const playerLeftBorder = isPlayer ? `border-left:3px solid ${isCrystal && crystal ? crystal.colors.accent : a.posLeaderColor};` : "";
+        const leftBorder = playerLeftBorder || fastestBorder || leaderBorder;
 
         const brandCell = hasBrand
-          ? `<div style="width:16px;height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;background:${teamBg};flex-shrink:0">
-              <span style="font-family:var(--font-display);font-weight:800;font-size:9px;color:${tc}">${bi}</span>
-            </div>`
+          ? `<div style="font-size:8px;font-weight:800;letter-spacing:0.5px;width:20px;text-align:center;justify-self:center;color:${teamBg};flex-shrink:0">${bi}</div>`
           : "";
 
         const cells = activeColumns.map((column) => {
@@ -238,8 +234,8 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
 
           case "driverNumber": {
             return `<div class="flex items-center justify-center shrink-0" style="${baseStyle};height:${rowHeight}px">
-              <div style="width:26px;height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;background:${numBg};position:relative;${pitLabel ? `border:1px solid ${a.pitColor}` : ""}">
-                <span style="font-family:var(--font-mono);font-weight:900;font-size:11px;color:${numColor}">${escapeHTML(v.driverNumber ?? "")}</span>
+              <div style="width:26px;text-align:center;position:relative;display:inline-block;${pitLabel ? `background:${a.pitColor};border-radius:3px` : ""}">
+                <span style="font-family:var(--font-mono);font-weight:900;font-size:11px;color:#fff">${escapeHTML(v.driverNumber ?? "")}</span>
                 ${pitLabel ? `<div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:6px;padding:0 2px;border-radius:2px;line-height:1;white-space:nowrap;font-weight:800;background:${a.pitColor};color:#000">PIT</div>` : ""}
               </div>
             </div>`;
@@ -312,7 +308,9 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
           ? `width:${intrinsicWidth}px`
           : `min-width:${intrinsicWidth}px;width:max(100%, ${intrinsicWidth}px)`;
 
-        return `<div data-standings-row style="display:flex;align-items:center;height:${rowHeight}px;background:${bgRow};border-bottom:1px solid rgba(255,255,255,0.03);padding:0 8px;${leftInset}${rowWidthStyle}">
+        const playerHighlightBorder = isPlayer ? "border-top:1px solid rgba(255,42,59,0.4);border-bottom:1px solid rgba(255,42,59,0.4);" : "";
+
+        return `<div data-standings-row style="display:flex;align-items:center;height:${rowHeight}px;background:${bgRow};border-bottom:1px solid rgba(255,255,255,0.03);padding:0 10px;${leftBorder}${playerHighlightBorder}${rowWidthStyle}">
           ${brandCell}${cells}
         </div>`;
       });
@@ -355,8 +353,9 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "8px 12px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            padding: "10px 12px",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -370,19 +369,22 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{
-              background: "rgba(255,59,59,0.15)",
-              color: "#ff3b3b",
+              background: "rgba(230,57,70,0.15)",
+              border: "1px solid rgba(230,57,70,0.4)",
+              color: "#fff",
               fontSize: "9px",
               fontWeight: 700,
-              padding: "2px 8px",
-              borderRadius: "3px",
+              padding: "3px 10px",
+              borderRadius: "20px",
+              letterSpacing: "0.05em",
             }}>{activeClass.toUpperCase()}</span>
             <span
               ref={timeRef}
               style={{
                 fontFamily: crystal?.typography?.monoFont ?? "'JetBrains Mono', monospace",
                 fontSize: "11px",
-                color: "#ff3b3b",
+                fontWeight: 700,
+                color: "#ff2a3b",
               }}
             >{timeStr}</span>
           </div>
@@ -408,7 +410,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
       )}
       {/* Table header row (crystal mode only) */}
       {isGlass && (
-        <div style={{ display: "grid", gridTemplateColumns: "20px 20px 26px 1fr 76px 58px", height: "24px", padding: "0 8px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", alignItems: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "20px 20px 26px 1fr 76px 58px", height: "24px", padding: "0 10px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", alignItems: "center", columnGap: "6px" }}>
           <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}></span>
           <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>POS</span>
           <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>#</span>

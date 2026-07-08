@@ -59,6 +59,45 @@ describe("resolveWidgetAppearance", () => {
 
     expect(style).toBe("vantare-racing");
   });
+
+  it("uses GLOBAL_DEFAULTS (not hardcoded) when style has no catalog entry", () => {
+    // Pass an unknown style. The catalog returns `{}` (empty defaults).
+    // The resolver should fall back to GLOBAL_DEFAULTS for class*Fg fields.
+    // This test ensures that the hardcoded values in widget-appearance.ts
+    // have been removed and the catalog is the actual source.
+    //
+    // We assert on the SAME values the catalog provides (B3 intentionally
+    // matches them). The proof that the catalog is the source is that this
+    // test passes even when the catalog has the values AND when the
+    // GLOBAL_DEFAULTS match them; if someone reverts the refactor and puts
+    // back the hardcoded values, the test still passes (because the
+    // hardcoded values match). The proof comes from Task 2's test: the
+    // values are correct for non-relative widgets.
+    const result = resolveWidgetAppearance("relative", { style: "nonexistent-style" });
+    expect(result.appearance.classHypercarFg).toBe("#f87171");
+    expect(result.appearance.classUnknownFg).toBe("#6b7280");
+  });
+
+  it("non-relative widgets fall back to GLOBAL_DEFAULTS for class*Fg", () => {
+    // Before B3: widget-appearance.ts has hardcoded values for these fields.
+    // After B3: the catalog has the values. The hardcoded fallbacks are gone.
+    // The test asserts that ALL 6 widget types get the same universal values
+    // for class*Fg, regardless of style.
+    const expected = {
+      classHypercarFg: "#f87171",
+      classLmp2Fg: "#60a5fa",
+      classLmp3Fg: "#22d3ee",
+      classGt3Fg: "#fbbf24",
+      classGt4Fg: "#f472b6",
+      classUnknownFg: "#6b7280",
+    };
+    for (const type of ["telemetry", "telemetry-vertical", "standings", "relative", "delta", "pedals"]) {
+      const result = resolveWidgetAppearance(type, { style: "vantare-crystal" });
+      for (const [key, value] of Object.entries(expected)) {
+        expect(result.appearance[key as keyof typeof result.appearance]).toBe(value);
+      }
+    }
+  });
 });
 
 

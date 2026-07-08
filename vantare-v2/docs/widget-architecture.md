@@ -271,3 +271,36 @@ Antes de cerrar un cambio de widgets:
 - Layout canvas: `frontend/src/hub/preview/PreviewCanvas.tsx`
 - Runtime desktop: `frontend/src/overlay/CompositeApp.tsx`
 - Runtime OBS: `frontend/src/overlay/ObsOverlayApp.tsx`
+
+## Visual Token Architecture (WS-11.A1-A3)
+
+The visual presentation of widgets is composed of three layers, each with a single responsibility:
+
+### Layer 1: Runtime resolver (`widget-design-system.ts`)
+
+The resolver (`resolveWidgetDesignSystem(themeId)`) returns a `DesignSystemTokens` object containing **structural tokens**: accent color, background, surface, border, text colors, typography (displayFont, bodyFont, monoFont), radii (sm/md/lg/xl), and effects (glow). The runtime OBS/overlay reads these tokens to render the widget's chrome (header, panel, card).
+
+Two themes are registered: `base` and `vantare-crystal`. The `vantare-crystal` tokens match the visual reference in `docs/overlay-glassmorphism-pro.html`. Vantare brand tokens (accent `#ff3b3b`, negative `#ff2a3b`, glow accent) are kept as the Vantare identity.
+
+### Layer 2: Per-widget-type catalog (`style-catalog.ts`)
+
+The catalog (`getStylesForType(widgetType)`, `getDefaultAppearance(widgetType, styleId)`) provides per-widget-type `WidgetAppearance` defaults: accentColor, textColor, backgroundColor, borderColor, plus widget-specific fields (tire colors, pedal colors, class colors, gap colors, RPM LEDs).
+
+For `vantare-crystal`, the defaults match the HTML reference. Class colors use a translucent badge scheme (`bg: rgba(...,0.25)` + `fg: #...`). Tokens not defined in the HTML (tireHard, rpmBlue, classGt4, classUnknown) have invented values documented in the commit.
+
+### Layer 3: User overrides (`OfficialDesign.appearance`, `WidgetVariantConfig.appearance`)
+
+When the user applies an `OfficialDesign` from the gallery, the design's `appearance` overrides the catalog defaults. When the user creates a custom variant, the variant's `appearance` (and `props`, `columns`, `filters`, `formats`) overrides everything.
+
+### Flow
+
+1. User selects an `OfficialDesign` in `WidgetDesignGallery`.
+2. `applyOfficialDesignToProfile` creates a `WidgetVariantConfig` with `appearance` from the design.
+3. On render, the runtime reads `widget.style` (or `variant.themeId`) to get the `themeId`.
+4. The runtime calls `resolveWidgetDesignSystem(themeId)` to get structural tokens.
+5. The widget reads `variant.appearance` (or the catalog default) for per-widget-type colors.
+6. Structural tokens + per-widget colors are merged to render the widget.
+
+### Future: Design system registry (WS-11.B)
+
+The next microcorte (B) introduces a `design-system-registry.ts` that allows registering new design systems (e.g. "F1 leaderboard", "WEC broadcast", "Vantare v3") with their own structural tokens AND per-widget-type components (Header, Row, Footer). This enables systems that change the **form** of the widget, not just the colors.

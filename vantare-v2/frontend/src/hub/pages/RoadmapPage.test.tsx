@@ -24,6 +24,12 @@ beforeEach(() => {
     isBlocked: false,
     isUnconfigured: false,
   });
+  // El roadmap se trae por fetch en runtime; en tests usamos el fallback
+  // empaquetado para no tocar la red.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockRejectedValue(new Error("no network in tests")),
+  );
 });
 
 afterEach(() => {

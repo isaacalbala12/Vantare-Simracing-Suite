@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ROADMAP_CURRENT, getOverallProgress } from "../roadmap/roadmap-data";
+import { ROADMAP_FALLBACK, getOverallProgress, pickText } from "../roadmap/roadmap-data";
 import { useI18n } from "../../i18n/I18nProvider";
 
 type DashboardFeatureCarouselProps = {
@@ -35,17 +35,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function DashboardFeatureCarousel({ onNavigate }: DashboardFeatureCarouselProps) {
-  const { t } = useI18n();
+  const { locale } = useI18n();
   const [activeIndex, setActiveIndex] = useState(0);
   const [prevIndex, setPrevIndex] = useState<number | null>(null);
 
   const inProgressAreas = useMemo(
-    () => ROADMAP_CURRENT.areas.filter((a) => a.status === "in-progress"),
+    () => ROADMAP_FALLBACK.areas.filter((a) => a.status === "in-progress"),
     [],
   );
 
   const overallProgress = useMemo(
-    () => getOverallProgress(ROADMAP_CURRENT.areas),
+    () => getOverallProgress(ROADMAP_FALLBACK.areas),
     [],
   );
 
@@ -70,7 +70,7 @@ export function DashboardFeatureCarousel({ onNavigate }: DashboardFeatureCarouse
   const currentArea = inProgressAreas[activeIndex];
   const prevArea = prevIndex !== null ? inProgressAreas[prevIndex] : null;
 
-  function renderFeatureCard(area: typeof currentArea, translate: (key: string) => string) {
+  function renderFeatureCard(area: typeof currentArea, locale: string) {
     const areaColors = STATUS_COLORS[area.status] ?? STATUS_COLORS["in-progress"];
     const areaStatusLabel = STATUS_LABELS[area.status] ?? area.status;
     return (
@@ -85,7 +85,7 @@ export function DashboardFeatureCarousel({ onNavigate }: DashboardFeatureCarouse
               </span>
             </div>
             <h3 className="font-bold text-lg text-white tracking-tight">
-              {translate(area.titleKey)}
+              {pickText(area.title, locale)}
             </h3>
           </div>
           <div className="text-right shrink-0">
@@ -151,7 +151,7 @@ export function DashboardFeatureCarousel({ onNavigate }: DashboardFeatureCarouse
             key={`prev-${prevArea.id}`}
             className="absolute inset-0 opacity-0 transition-opacity duration-500 ease-in-out pointer-events-none"
           >
-            {renderFeatureCard(prevArea, t)}
+            {renderFeatureCard(prevArea, locale)}
           </div>
         )}
         {/* Current item (fading in) */}
@@ -160,7 +160,7 @@ export function DashboardFeatureCarousel({ onNavigate }: DashboardFeatureCarouse
           className="absolute inset-0 opacity-100 transition-opacity duration-500 ease-in-out"
           data-testid={`carousel-feature-${currentArea.id}`}
         >
-          {renderFeatureCard(currentArea, t)}
+          {renderFeatureCard(currentArea, locale)}
         </div>
       </div>
 

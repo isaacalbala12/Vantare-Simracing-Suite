@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-08",
+  "note": "Fuente manual del roadmap (v0.1.x). Isaac edita este archivo; la app lo trae por fetch en runtime. Texto en es/en/pt/it. Progreso en escala 0/10/25/50/75/100.",
+  "phases": [
+    {
+      "id": "beta-foundation",
+      "phaseLabel": { "es": "Fase 1", "en": "Phase 1", "pt": "Fase 1", "it": "Fase 1" },
+      "title": { "es": "Beta pública", "en": "Public beta", "pt": "Beta pública", "it": "Beta pubblica" },
+      "target": { "es": "v0.1.0", "en": "v0.1.0", "pt": "v0.1.0", "it": "v0.1.0" },
+      "status": "done",
+      "progress": 100,
+      "summary": {
+        "es": "Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.",
+        "en": "Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.",
+        "pt": "Login Google, plan Free, overlays recomendados, launcher LMU e Hub v5.2.",
+        "it": "Login Google, piano Free, overlay consigliati, launcher LMU e Hub v5.2."
+      },
+      "highlights": [
+        { "es": "Google OAuth externo y sesión persistente", "en": "External Google OAuth and persistent session", "pt": "Google OAuth externo e sessão persistente", "it": "Google OAuth esterno e sessione persistente" },
+        { "es": "Perfiles recomendados y editor de overlays", "en": "Recommended profiles and overlay editor", "pt": "Perfis recomendados e editor de overlays", "it": "Profili consigliati e editor di overlay" },
+        { "es": "Launcher LMU básico", "en": "Basic LMU launcher", "pt": "Launcher LMU básico", "it": "Launcher LMU di base" }
+      ]
+    },
+    {
+      "id": "beta-iteration",
+      "phaseLabel": { "es": "Fase 2", "en": "Phase 2", "pt": "Fase 2", "it": "Fase 2" },
+      "title": { "es": "Pulido beta v0.1.x", "en": "Beta polish v0.1.x", "pt": "Polimento beta v0.1.x", "it": "Polish beta v0.1.x" },
+      "target": { "es": "v0.1.x", "en": "v0.1.x", "pt": "v0.1.x", "it": "v0.1.x" },
+      "status": "in-progress",
+      "progress": 75,
+      "summary": {
+        "es": "Refactor del calendario LMU, iteración de la página de roadmap y Launcher LMU funcional.",
+        "en": "LMU calendar refactor, roadmap page iteration and a working LMU Launcher.",
+        "pt": "Refactor do calendário LMU, iteração da página de roadmap e Launcher LMU funcional.",
+        "it": "Refactor del calendario LMU, iterazione della pagina di roadmap e Launcher LMU funzionante."
+      },
+      "highlights": [
+        { "es": "Refactor del calendario LMU (cadencia, filtros, zona horaria)", "en": "LMU calendar refactor (cadence, filters, timezone)", "pt": "Refactor do calendário LMU (cadência, filtros, fuso)", "it": "Refactor calendario LMU (cadenza, filtri, fuso orario)" },
+        { "es": "Iteración de la página Roadmap (i18n, doble vista, changelog, feedback)", "en": "Roadmap page iteration (i18n, dual view, changelog, feedback)", "pt": "Iteração da página Roadmap (i18n, dupla visão, changelog, feedback)", "it": "Iterazione pagina Roadmap (i18n, vista doppia, changelog, feedback)" },
+        { "es": "Launcher LMU para abrir el simulador", "en": "LMU Launcher to open the simulator", "pt": "Launcher LMU para abrir o simulador", "it": "LMU Launcher per aprire il simulatore" }
+      ]
+    },
+    {
+      "id": "engineer",
+      "phaseLabel": { "es": "Fase 3", "en": "Phase 3", "pt": "Fase 3", "it": "Fase 3" },
+      "title": { "es": "Ingeniero Vantare", "en": "Vantare Engineer", "pt": "Engenheiro Vantare", "it": "Engineer Vantare" },
+      "target": { "es": "Por planear", "en": "To plan", "pt": "Por planear", "it": "Da pianificare" },
+      "status": "planned",
+      "progress": 25,
+      "summary": {
+        "es": "Spotter e ingeniero con avisos útiles, sin prometer voz IA completa hasta validar datos.",
+        "en": "Spotter and engineer with useful alerts, no full AI voice until data is validated.",
+        "pt": "Spotter e engenheiro com avisos úteis, sem prometer voz IA completa até validar dados.",
+        "it": "Spotter e engineer con avvisi utili, senza promettere voce IA completa finché i dati non sono validati."
+      },
+      "highlights": [
+        { "es": "Notificaciones contextuales", "en": "Contextual notifications", "pt": "Notificações contextuais", "it": "Notifiche contestuali" },
+        { "es": "Reglas locales primero", "en": "Local rules first", "pt": "Regras locais primeiro", "it": "Regole locali prima" },
+        { "es": "Voz y perfiles avanzados después", "en": "Voice and advanced profiles later", "pt": "Voz e perfis avançados depois", "it": "Voce e profili avanzati dopo" }
+      ]
+    },
+    {
+      "id": "ecosystem",
+      "phaseLabel": { "es": "Fase 4", "en": "Phase 4", "pt": "Fase 4", "it": "Fase 4" },
+      "title": { "es": "Ecosistema", "en": "Ecosystem", "pt": "Ecossistema", "it": "Ecosistema" },
+      "target": { "es": "Futuro", "en": "Future", "pt": "Futuro", "it": "Futuro" },
+      "status": "future",
+      "progress": 10,
+      "summary": {
+        "es": "Comunidad, paid tiers, multisim y analíticas reales cuando la base esté estable.",
+        "en": "Community, paid tiers, multisim and real analytics once the base is stable.",
+        "pt": "Comunidade, paid tiers, multisim e analíticas reais quando a base estiver estável.",
+        "it": "Community, paid tier, multisim e analitiche reali quando la base è stabile."
+      },
+      "highlights": [
+        { "es": "Comunidad de overlays", "en": "Overlay community", "pt": "Comunidade de overlays", "it": "Community di overlay" },
+        { "es": "Licencias paid/suite reales", "en": "Real paid/suite licenses", "pt": "Licenças paid/suite reais", "it": "Licenze paid/suite reali" },
+        { "es": "Datos reales de carrera y progresión", "en": "Real race and progression data", "pt": "Dados reais de corrida e progressão", "it": "Dati reali di gara e progressione" }
+      ]
+    }
+  ],
+  "areas": [
+    { "id": "overlays-studio", "title": { "es": "Overlays Studio", "en": "Overlays Studio", "pt": "Overlays Studio", "it": "Overlays Studio" }, "progress": 75, "status": "in-progress" },
+    { "id": "launcher-lmu", "title": { "es": "Launcher LMU", "en": "LMU Launcher", "pt": "Launcher LMU", "it": "LMU Launcher" }, "progress": 75, "status": "in-progress" },
+    { "id": "calendar-local", "title": { "es": "Calendario local", "en": "Local calendar", "pt": "Calendário local", "it": "Calendario locale" }, "progress": 50, "status": "in-progress" },
+    { "id": "engineer", "title": { "es": "Ingeniero", "en": "Engineer", "pt": "Engenheiro", "it": "Engineer" }, "progress": 25, "status": "planned" },
+    { "id": "telemetry", "title": { "es": "Telemetría", "en": "Telemetry", "pt": "Telemetria", "it": "Telemetria" }, "progress": 10, "status": "planned" },
+    { "id": "ui-v52", "title": { "es": "UI v5.2", "en": "UI v5.2", "pt": "UI v5.2", "it": "UI v5.2" }, "progress": 75, "status": "in-progress" }
+  ],
+  "milestones": [
+    {
+      "id": "v0102",
+      "type": "release",
+      "title": { "es": "v0.1.0.2 publicado", "en": "v0.1.0.2 released", "pt": "v0.1.0.2 publicado", "it": "v0.1.0.2 rilasciato" },
+      "body": {
+        "es": "Fix de login Google OAuth, Free plan funcional, Supabase configurado en build.",
+        "en": "Google OAuth login fix, working Free plan, Supabase configured in build.",
+        "pt": "Fix de login Google OAuth, Free plan funcional, Supabase configurado no build.",
+        "it": "Fix login Google OAuth, Free plan funzionante, Supabase configurato nel build."
+      },
+      "label": { "es": "Release", "en": "Release", "pt": "Release", "it": "Release" }
+    },
+    {
+      "id": "hub-v52",
+      "type": "feature",
+      "title": { "es": "Hub v5.2 en migración", "en": "Hub v5.2 in progress", "pt": "Hub v5.2 em migração", "it": "Hub v5.2 in corso" },
+      "body": {
+        "es": "Migración del Hub por cortes pequeños: shell, dashboard, launcher, ingeniero, telemetría, ajustes.",
+        "en": "Hub migration in small cuts: shell, dashboard, launcher, engineer, telemetry, settings.",
+        "pt": "Migração do Hub em cortes pequenos: shell, dashboard, launcher, engenheiro, telemetria, ajustes.",
+        "it": "Migrazione Hub a piccoli tagli: shell, dashboard, launcher, engineer, telemetria, impostazioni."
+      },
+      "label": { "es": "Feature", "en": "Feature", "pt": "Feature", "it": "Feature" }
+    },
+    {
+      "id": "launcher-lmu",
+      "type": "feature",
+      "title": { "es": "Launcher LMU disponible", "en": "LMU Launcher available", "pt": "Launcher LMU disponível", "it": "LMU Launcher disponibile" },
+      "body": {
+        "es": "Configuración de Steam o ejecutable local para lanzar Le Mans Ultimate desde Vantare.",
+        "en": "Steam or local executable config to launch Le Mans Ultimate from Vantare.",
+        "pt": "Configuração de Steam ou executável local para abrir Le Mans Ultimate pelo Vantare.",
+        "it": "Config di Steam o eseguibile locale per avviare Le Mans Ultimate da Vantare."
+      },
+      "label": { "es": "Feature", "en": "Feature", "pt": "Feature", "it": "Feature" }
+    },
+    {
+      "id": "calendar-refactor",
+      "type": "feature",
+      "title": { "es": "Refactor del calendario LMU", "en": "LMU calendar refactor", "pt": "Refactor do calendário LMU", "it": "Refactor calendario LMU" },
+      "body": {
+        "es": "Calendario reescrito para mostrar cadencia de preparación LMU, con filtros y zona horaria correctas.",
+        "en": "Calendar rewritten to show LMU prep cadence, with correct filters and timezone.",
+        "pt": "Calendário reescrito para mostrar cadência de preparação LMU, com filtros e fuso corretos.",
+        "it": "Calendario riscritto per mostrare la cadenza di preparazione LMU, con filtri e fuso corretti."
+      },
+      "label": { "es": "En desarrollo", "en": "In progress", "pt": "Em desenvolvimento", "it": "In corso" }
+    },
+    {
+      "id": "roadmap-public",
+      "type": "plan",
+      "title": { "es": "Roadmap público planificado", "en": "Public roadmap planned", "pt": "Roadmap público planejado", "it": "Roadmap pubblico pianificato" },
+      "body": {
+        "es": "Página de roadmap con fuente manual remota, fases, áreas de progreso e hitos que se actualizan solos.",
+        "en": "Roadmap page with remote manual source, phases, progress areas and self-updating milestones.",
+        "pt": "Página de roadmap com fonte remota manual, fases, áreas de progresso e marcos que se atualizam sozinhos.",
+        "it": "Pagina roadmap con fonte remota manuale, fasi, aree di progresso e traguardi auto-aggiornanti."
+      },
+      "label": { "es": "Plan", "en": "Plan", "pt": "Plano", "it": "Piano" }
+    }
+  ]
+}

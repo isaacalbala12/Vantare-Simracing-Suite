@@ -1,74 +1,69 @@
 # Mantenimiento del Roadmap y Changelog (Vantare)
 
-Documento de procedimiento para editar los porcentajes del roadmap y mantener el
-changelog. Orientado a que cualquier modelo worker (o humano) entienda las reglas
-sin tener que re-derivarlas del chat de orquestación.
-
-Este documento es fuente de verdad operativa para las tareas `ROADMAP-I18N`,
-`ROADMAP-DUAL`, `ROADMAP-CHANGELOG` y `ROADMAP-FEEDBACK`.
+Procedimiento para editar el roadmap de forma **manual** y que se **actualice
+solo** en la app de todos los usuarios, sin scripts de generación automática.
 
 ## 1. Dónde vive el roadmap
 
-- Datos: `frontend/src/hub/roadmap/roadmap-data.ts`.
-- UI: `frontend/src/hub/pages/RoadmapPage.tsx`.
-- Textos editoriales internacionalizados en `frontend/src/i18n/locales/{es,en,pt,it}.ts`
-  bajo el namespace `roadmap.*`.
+- **Fuente manual (la editas tú):** `docs/roadmap-source.json`.
+  - Texto de las cards en `es/en/pt/it` (inline, no en i18n).
+  - Progreso en la escala obligatoria `0/10/25/50/75/100`.
+  - Fases, áreas de progreso y hitos (milestones).
+- **App (runtime):** `frontend/src/hub/roadmap/roadmap-data.ts` trae el JSON
+  por `fetch` en `RoadmapPage` (`fetchRoadmapDataset`). Si no hay red, usa
+  `ROADMAP_FALLBACK` (copia empaquetada del JSON, en el mismo archivo).
+- **UI:** `frontend/src/hub/pages/RoadmapPage.tsx`.
+- **Changelog:** sigue en `docs/changelog.md` + array `ROADMAP_CHANGELOG`
+  (ver §5). El "chrome" de la UI (eyebrows, labels, feedback, hero) sigue en
+  los diccionarios i18n bajo `roadmap.*`.
 
-## 2. Dos roadmaps
+## 2. Flujo manual (sin script)
 
-- `ROADMAP_CURRENT`: línea activa (v0.1.x). Datos manuales, editados por el producto.
-- `ROADMAP_NEXT`: siguiente major. Snapshot en build-time de las filas `R0x` de
-  `docs/release-roadmap-execution-index.md`. NO es lectura en runtime: se copian
-  los datos a `roadmap-data.ts` cuando se regenera.
+No hay ningún script que regenere el roadmap desde otros documentos. El flujo
+es:
 
-El toggle en `RoadmapPage` cambia qué dataset se renderiza (`useState<"current"|"next">`).
+1. **Tú editas `docs/roadmap-source.json`** (porcentajes, estado, texto de
+   cards, hitos nuevos).
+2. Haces commit/push del JSON al repo.
+3. La app de cada usuario hace `fetch(ROADMAP_SOURCE_URL)` al abrir la pestaña
+   Roadmap y muestra los valores nuevos. Sin nuevo release.
+
+Los agentes pueden leer `roadmap-source.json` y proponer/transcribir cambios,
+pero **la fuente de verdad la escribes tú a mano**. No se auto-genera nada.
+
+Si más adelante quieres editar desde otro sitio (p.ej. un Google Doc exportado
+a JSON o Supabase Storage), solo cambias la constante `ROADMAP_SOURCE_URL` en
+`roadmap-data.ts`. No tocas otra cosa.
 
 ## 3. Escala de porcentajes (OBLIGATORIA)
 
-Solo estos valores: `0, 10, 25, 50, 75, 100`.
+Solo: `0, 10, 25, 50, 75, 100`.
 
-Significado sugerido:
-
-- `0` — ni siquiera empezado / bloqueado.
-- `10` — explorado, sin trabajo real hecho.
+- `0` — ni empezado / bloqueado.
+- `10` — explorado, sin trabajo real.
 - `25` — base puesta, bastante por hacer.
 - `50` — mitad del camino.
 - `75` — casi hecho, pulido / restante menor.
 - `100` — cerrado.
 
-Cualquier `%` fuera de esa escala se considera bug y debe corregirse al valor más
-cercano de la escala.
+Cualquier `%` fuera de esa escala se considera bug. `nearestOnScale` lo ajusta
+al valor más cercano al renderizar el progreso global.
 
-## 4. Cómo valorar el % de una fase o área (criterio del producto)
+## 4. Cómo valorar el % (criterio del producto)
 
 - El `%` refleja trabajo real restante, no esperanza ni marketing.
-- `ROADMAP_CURRENT`: lo fija el producto (Isaac) manualmente al cerrar cada fase.
-  Se edita el número directamente en `roadmap-data.ts`.
-- `ROADMAP_NEXT`: se deriva del estado de la fila en el release index:
-
-  | estado en board | %  |
-  |-----------------|----|
-  | done            | 100|
-  | in-progress     | 75 |
-  | next            | 50 |
-  | ready           | 25 |
-  | planned         | 10 |
-  | blocked / later | 0  |
-
-  Al hacer el snapshot se aplica este mapeo y se redondea a la escala.
-- `%` global = media entera de las áreas (o fases, según corresponda), redondeada
-  al valor de la escala más cercano.
+- Lo fijas tú manualmente al cerrar cada fase o avanzar una área.
+- `%` global = media entera de las áreas, redondeada a la escala.
 
 ## 5. Procedimiento de changelog (paso a paso)
 
 Cuando se cierra una feature / hotfix que el usuario deba ver:
 
-1. Añadir la entrada a `docs/changelog.md` respetando su formato existente
-   (versión, fecha, bullets).
-2. Añadir la misma entrada (solo las últimas 5) al array `ROADMAP_CHANGELOG` en
-   `roadmap-data.ts`:
-   `{ version: string; date: string; titleKey: string; bodyKey: string }`.
-   `titleKey` / `bodyKey` apuntan a `roadmap.changelog.<id>.title` / `.body` en los
+1. Añadir la entrada a `docs/changelog.md` respetando su formato.
+2. Añadir la misma entrada (solo las últimas 5) al array `ROADMAP_CHANGELOG`
+   en `roadmap-data.ts`:
+   `{ id, version, date, titleKey, bodyKey }`.
+   `titleKey` / `bodyKey` apuntan a `roadmap.changelog.<id>.title/.body` en los
    4 diccionarios i18n.
 3. Correr `pnpm --dir frontend test` y `pnpm --dir frontend build`.
 4. Commit + tag según `docs/versioning-and-release-gates.md`.
@@ -76,15 +71,16 @@ Cuando se cierra una feature / hotfix que el usuario deba ver:
 Reglas:
 
 - No commitear PNGs salvo decisión explícita.
-- El botón "Ver changelog completo" en Roadmap enlaza a `ROADMAP_CHANGELOG_URL`
-  (constante en `roadmap-data.ts`), no renderiza `docs/changelog.md` en runtime.
-- El array `ROADMAP_CHANGELOG` se sincroniza a mano con `docs/changelog.md`; no hay
-  lectura automática.
+- El botón "Ver changelog completo" enlaza a `ROADMAP_CHANGELOG_URL`, no
+  renderiza `docs/changelog.md` en runtime.
+- El array se sincroniza a mano con `docs/changelog.md`; no hay lectura
+  automática.
 
 ## 6. No tocar
 
 - Backend Go, Supabase/Auth, runtime OBS, LayoutStudio.
 - `position` / `x` / `y` / `w` / `h`.
 - Dependencias nuevas.
-- `roadmap-execution-board.md` y `release-roadmap-execution-index.md` son fuente de
-  verdad; el roadmap los consume (snapshot), no los edita.
+- `release-roadmap-execution-index.md` y `roadmap-execution-board.md` son
+  contexto de ejecución; el roadmap de la app los consume como inspiración
+  manual, no los lee ni los edita automáticamente.

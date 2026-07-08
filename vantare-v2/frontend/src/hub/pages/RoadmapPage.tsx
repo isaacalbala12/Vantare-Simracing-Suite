@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccess } from "../../lib/access";
 import { canUseFeature } from "../../lib/access-policy";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -8,8 +8,10 @@ import {
   ROADMAP_FEEDBACK_LINKS,
   getOverallProgress,
   getCurrentPhase,
-  getRoadmapDataset,
-  type RoadmapDatasetKey,
+  fetchRoadmapDataset,
+  ROADMAP_FALLBACK,
+  pickText,
+  type RoadmapDataset,
   type RoadmapStatus,
   type RoadmapFeedbackType,
   type RoadmapFeedbackDestination,
@@ -305,12 +307,18 @@ function FeaturesSection({ t, categories, futureCategories, overallProgress }: F
 }
 
 export function RoadmapPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const access = useAccess();
   const canGiveFeedback = canUseFeature(access, "roadmap.feedback");
-  const [activeKey, setActiveKey] = useState<RoadmapDatasetKey>("current");
+  const [activeKey, setActiveKey] = useState<"current" | "next">("current");
+  const [dataset, setDataset] = useState<RoadmapDataset>(ROADMAP_FALLBACK);
 
-  const dataset = useMemo(() => getRoadmapDataset(activeKey), [activeKey]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchRoadmapDataset(controller.signal).then(setDataset).catch(() => {});
+    return () => controller.abort();
+  }, []);
+
   const currentPhase = getCurrentPhase(dataset.phases);
   const overallProgress = getOverallProgress(dataset.areas);
   const allPhasesDoneOrActive = dataset.phases.filter(
@@ -325,7 +333,7 @@ export function RoadmapPage() {
     <div className="flex flex-col gap-5">
       {/* Dataset toggle */}
       <div className="flex items-center gap-2">
-        {(["current", "next"] as RoadmapDatasetKey[]).map((key) => (
+        {(["current", "next"] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -396,10 +404,10 @@ export function RoadmapPage() {
                   <StatusBadge status={currentPhase.status} t={t} />
                 </div>
                 <h2 className="font-bold text-2xl text-white tracking-tight">
-                  {t(currentPhase.titleKey)}
+                  {pickText(currentPhase.title, locale)}
                 </h2>
                 <p className="text-sm text-vantare-textMuted mt-1 leading-relaxed">
-                  {t(currentPhase.summaryKey)}
+                  {pickText(currentPhase.summary, locale)}
                 </p>
                 <div className="flex items-center gap-3 mt-3">
                   <div className="flex-1">
@@ -456,14 +464,14 @@ export function RoadmapPage() {
                         </>
                       )}
                     </div>
-                    <h3 className="font-bold text-lg text-white tracking-tight leading-tight">{t(phase.titleKey)}</h3>
-                    <p className="text-xs text-vantare-textMuted leading-relaxed flex-1">{t(phase.summaryKey)}</p>
-                    {phase.highlightsKeys.length > 0 && (
+                    <h3 className="font-bold text-lg text-white tracking-tight leading-tight">{pickText(phase.title, locale)}</h3>
+                    <p className="text-xs text-vantare-textMuted leading-relaxed flex-1">{pickText(phase.summary, locale)}</p>
+                    {phase.highlights.length > 0 && (
                       <ul className="space-y-1">
-                        {phase.highlightsKeys.map((hk, i) => (
+                        {phase.highlights.map((hk, i) => (
                           <li key={i} className="text-[10px] text-vantare-textMuted flex items-start gap-1.5">
                             <span className="text-vantare-red-400 mt-0.5 shrink-0">•</span>
-                            {t(hk)}
+                            {pickText(hk, locale)}
                           </li>
                         ))}
                       </ul>
@@ -471,8 +479,8 @@ export function RoadmapPage() {
                     <div className="mt-auto">
                       <ProgressBar value={phase.progress} color="from-[#ff3b3b] to-[#ff6b6b]" />
                       <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{t(phase.phaseLabelKey)}</span>
-                        <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{t(phase.targetLabelKey)}</span>
+                        <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{pickText(phase.phaseLabel, locale)}</span>
+                        <span className="text-[9px] font-mono font-bold text-vantare-textDim uppercase tracking-[.22em]">{pickText(phase.target, locale)}</span>
                       </div>
                     </div>
                   </article>
@@ -502,7 +510,7 @@ export function RoadmapPage() {
                 {dataset.areas.map((area) => (
                   <div key={area.id}>
                     <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="text-vantare-textMuted">{t(area.titleKey)}</span>
+                      <span className="text-vantare-textMuted">{pickText(area.title, locale)}</span>
                       <span className="font-mono font-bold text-white">{area.progress}%</span>
                     </div>
                     <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -520,10 +528,10 @@ export function RoadmapPage() {
               <div className="space-y-2">
                 {dataset.milestones.length > 0 ? dataset.milestones.map((ms) => (
                   <div key={ms.id} className="flex items-start gap-3 p-3 rounded-lg bg-[rgba(20,20,20,.5)] border border-white/5">
-                    <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] shrink-0 mt-0.5 ${MILESTONE_TYPE_COLORS[ms.type]}`}>{t(ms.labelKey)}</span>
+                    <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] shrink-0 mt-0.5 ${MILESTONE_TYPE_COLORS[ms.type]}`}>{pickText(ms.label, locale)}</span>
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-semibold text-white">{t(ms.titleKey)}</h4>
-                      <p className="text-[11px] text-vantare-textMuted mt-0.5 leading-relaxed">{t(ms.bodyKey)}</p>
+                      <h4 className="text-sm font-semibold text-white">{pickText(ms.title, locale)}</h4>
+                      <p className="text-[11px] text-vantare-textMuted mt-0.5 leading-relaxed">{pickText(ms.body, locale)}</p>
                     </div>
                   </div>
                 )) : <p className="text-[11px] text-vantare-textDim">{t("roadmap.milestones.all")}</p>}

@@ -80,4 +80,14 @@ describe("StudioWidgetList", () => {
     expect(screen.queryByTestId("studio-add-widget-form")).toBeNull();
     expect(screen.getByTestId("studio-show-add-widget")).toBeTruthy();
   });
+  it("renders empty state when widgets array is empty", () => {
+    render(<StudioWidgetList widgets={[]} selectedWidgetId={null} onSelectWidget={vi.fn()} />);
+    expect(screen.getByTestId("studio-widget-list-empty")).toBeTruthy();
+    expect(screen.getByTestId("studio-widget-list-empty").textContent).toContain("Crea o activa un perfil");
+  });
+
+  it("does not render empty state when widgets array is non-empty", () => {
+    render(<StudioWidgetList widgets={widgets} selectedWidgetId="delta" onSelectWidget={vi.fn()} />);
+    expect(screen.queryByTestId("studio-widget-list-empty")).toBeNull();
+  });
 });

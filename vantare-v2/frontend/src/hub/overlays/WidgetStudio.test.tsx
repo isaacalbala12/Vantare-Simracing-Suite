@@ -663,4 +663,83 @@ describe("WidgetStudio", () => {
     expect(screen.queryByLabelText("W (px)")).toBeNull();
     expect(screen.queryByLabelText("H (px)")).toBeNull();
   });
+  it("disables save button with honest title when profile is empty", () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    render(
+      <WidgetStudio
+        profile={emptyProfile}
+        selectedWidgetId={null}
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    const btn = screen.getByTestId("widget-studio-save-btn");
+    expect(btn).toHaveProperty("disabled", true);
+    expect(btn.getAttribute("title")).toContain("Crea o activa un perfil");
+  });
+
+  it("disables design selector when profile is empty", () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    render(
+      <WidgetStudio
+        profile={emptyProfile}
+        selectedWidgetId={null}
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: /Diseño/i }) as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+  });
+
+  it("save state stays idle when profile is empty even after onChangeProfile", async () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    const onChangeProfile = vi.fn();
+    render(
+      <WidgetStudio
+        profile={emptyProfile}
+        selectedWidgetId={null}
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={onChangeProfile}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    // Badge should show idle (not dirty) when profile is synthetic
+    expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
+    // Save button should remain disabled — it must not become enabled via any interaction
+    const btn = screen.getByTestId("widget-studio-save-btn");
+    expect(btn).toHaveProperty("disabled", true);
+  });
 });

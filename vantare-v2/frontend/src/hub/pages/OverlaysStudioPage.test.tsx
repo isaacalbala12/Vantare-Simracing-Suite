@@ -450,4 +450,23 @@ describe("OverlaysStudioPage", () => {
     expect(urlInput).toBeDefined();
     expect(urlInput!.value).toContain("profile=example-racing.json");
   });
+
+  it("renders WidgetStudio with empty profile when no profile loaded", async () => {
+    render(<OverlaysStudioPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Configurar widgets/ }));
+    // Guard empty state should NOT appear
+    expect(screen.queryByText("Selecciona o crea un perfil para editar widgets.")).toBeNull();
+    // WidgetStudio should render (save button proves it)
+    expect(await screen.findByTestId("widget-studio-save-btn")).toBeTruthy();
+    // Save button should be disabled (no profile to save to)
+    expect(screen.getByTestId("widget-studio-save-btn")).toHaveProperty("disabled", true);
+  });
+
+  it("WidgetStudio shows honest save state when no profile loaded", async () => {
+    render(<OverlaysStudioPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Configurar widgets/ }));
+    const badge = await screen.findByTestId("widget-studio-save-state");
+    expect(badge.textContent).toContain("Sin cambios");
+  });
+
 });

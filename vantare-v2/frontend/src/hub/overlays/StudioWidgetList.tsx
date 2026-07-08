@@ -87,6 +87,13 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
         </div>
       </div>
 
+      {widgets.length === 0 && (
+        <div className="flex flex-1 items-center justify-center p-4">
+          <p data-testid="studio-widget-list-empty" className="text-center text-xs text-vantare-textMuted">
+            No hay widgets en este perfil. Crea o activa un perfil para empezar.
+          </p>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto p-1.5">
         {filteredWidgets.map((widget) => {
           const selected = selectedWidgetId === widget.id;
@@ -130,8 +137,7 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
             </button>
           );
         })}
-
-        {filteredWidgets.length === 0 && (
+        {widgets.length > 0 && filteredWidgets.length === 0 && (
           <p className="rounded-md border border-white/5 bg-black/30 px-2 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-vantare-textDim">
             {t("studio.noWidgets")}
           </p>

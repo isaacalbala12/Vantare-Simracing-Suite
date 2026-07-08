@@ -13,6 +13,7 @@ import {
   getActiveOfficialDesignId,
   resetWidgetDesignToBase,
 } from "../widgets/widget-design-gallery";
+import { isSyntheticProfile } from "./widget-studio-empty-profile";
 
 type WidgetStudioProps = {
   profile: ProfileConfig;
@@ -39,6 +40,7 @@ function WidgetStudioInner({
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile.widgets[0] ?? null;
   const [mockSessionScenario, setMockSessionScenario] = useState<MockSessionScenario>("race");
   const activeDesignId = selectedWidget ? getActiveOfficialDesignId(selectedWidget) : null;
+  const isSynthetic = isSyntheticProfile(profile);
 
   const saveLabel =
     saveState === "saving"
@@ -94,7 +96,8 @@ function WidgetStudioInner({
           <button
             type="button"
             onClick={onSave}
-            disabled={!dirty || saveState === "saving"}
+            disabled={isSynthetic || !dirty || saveState === "saving"}
+            title={isSynthetic ? "Crea o activa un perfil para guardar los cambios" : undefined}
             data-testid="widget-studio-save-btn"
             className="btn-secondary rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
@@ -112,6 +115,8 @@ function WidgetStudioInner({
         <select
           id="design-system-select"
           value={activeDesignId ?? "base"}
+          disabled={isSynthetic}
+          title={isSynthetic ? "Crea o activa un perfil para aplicar diseños" : undefined}
           onChange={(e) => {
             const value = e.target.value;
             if (!selectedWidget) return;
@@ -122,7 +127,7 @@ function WidgetStudioInner({
             const design = getOfficialDesign(value);
             if (design) onChangeProfile(applyOfficialDesignToProfile(profile, selectedWidget.id, design));
           }}
-          className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] text-white cursor-pointer"
+          className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
         >
           <option value="base">Base</option>
           {selectedWidget

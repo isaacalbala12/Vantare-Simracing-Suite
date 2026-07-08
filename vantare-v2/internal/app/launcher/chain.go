@@ -44,6 +44,7 @@ type ChainProgress struct {
 	StepIndex  int    `json:"stepIndex"`
 	AppID      string `json:"appId"`
 	Status     string `json:"status"`               // "pending" | "launching" | "done" | "failed"
+	Success    bool   `json:"success"`              // only meaningful for chain:done
 	StartedAt  int64  `json:"startedAt,omitempty"`  // epoch ms
 	FinishedAt int64  `json:"finishedAt,omitempty"` // epoch ms
 	Pid        int    `json:"pid,omitempty"`
@@ -133,6 +134,7 @@ func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 	r.emit.Emit("launcher:chain:done", ChainProgress{
 		ProfileID: profile.ID,
 		Status:    "done",
+		Success:   success,
 	})
 }
 

@@ -107,6 +107,53 @@ func (b *lockingAppsBackend) GetLauncherApps() map[string]app.LauncherAppEntry {
 	return b.fakeProfilesBackend.GetLauncherApps()
 }
 
+func TestRunChainDoneEventHasSuccessField(t *testing.T) {
+	emit := &spyEmitter{}
+	backend := sampleBackend()
+	runner := NewChainRunner(backend, emit, stubChainExec)
+
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creador de Contenido",
+		Steps: []app.LaunchStep{
+			{AppID: "lmu", Delay: 0},
+			{AppID: "obs", Delay: 0},
+		},
+	}
+	runner.RunChain(context.Background(), profile)
+
+	p, ok := emit.lastPayload("launcher:chain:done")
+	if !ok {
+		t.Fatal("expected chain:done payload")
+	}
+	if !p.Success {
+		t.Error("expected chain:done.Success to be true when all steps succeed")
+	}
+}
+
+func TestRunChainDoneEventHasSuccessFalseOnFailure(t *testing.T) {
+	emit := &spyEmitter{}
+	backend := &fakeProfilesBackend{
+		apps: map[string]app.LauncherAppEntry{
+			"obs": {ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\nope\missing.exe`},
+		},
+	}
+	runner := NewChainRunner(backend, emit, stubChainExec)
+
+	profile := app.LaunchProfile{
+		ID: "p", Name: "P",
+		Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}},
+	}
+	runner.RunChain(context.Background(), profile)
+
+	p, ok := emit.lastPayload("launcher:chain:done")
+	if !ok {
+		t.Fatal("expected chain:done payload")
+	}
+	if p.Success {
+		t.Error("expected chain:done.Success to be false when a step fails")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Existing tests adapted to the new NewChainRunner signature
 // ---------------------------------------------------------------------------

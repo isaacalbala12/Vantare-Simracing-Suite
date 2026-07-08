@@ -45,6 +45,33 @@ describe("chain-store reducer", () => {
     expect(store.getChain("p1")?.steps[0].finishedAt).toBe(2000);
   });
 
+  it("handleDone(true) marks chain as done, handleDone(false) as error", () => {
+    const store = createChainStore();
+    // Step for p1
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "done",
+      finishedAt: 1000,
+    });
+    store.handleDone("p1", true);
+    expect(store.getChain("p1")?.overallStatus).toBe("done");
+    expect(store.getLastResult("p1")).toBe("success");
+
+    // Step for p2
+    store.handleStep({
+      profileId: "p2",
+      stepIndex: 0,
+      appId: "obs",
+      status: "failed",
+      finishedAt: 2000,
+    });
+    store.handleDone("p2", false);
+    expect(store.getChain("p2")?.overallStatus).toBe("error");
+    expect(store.getLastResult("p2")).toBe("error");
+  });
+
   it("clears chain after 3s of done", () => {
     vi.useFakeTimers();
     const store = createChainStore();

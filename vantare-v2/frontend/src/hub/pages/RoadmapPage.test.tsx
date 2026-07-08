@@ -49,10 +49,10 @@ describe("RoadmapPage", () => {
     expect(screen.getByText("Desarrollo por features")).toBeTruthy();
   });
 
-  it("switches dataset when toggle clicked", () => {
+  it("switches dataset when toggle clicked (async)", async () => {
     render(<RoadmapPage />);
     fireEvent.click(screen.getByText("Desarrollo por features"));
-    expect(screen.getByText("Features por área")).toBeTruthy();
+    expect(await screen.findByText("Features por área")).toBeTruthy();
   });
 
   it("hero buttons are external links (not disabled)", () => {
@@ -131,6 +131,24 @@ describe("RoadmapPage", () => {
   it("renders feedback title", () => {
     render(<RoadmapPage />);
     expect(screen.getByText("El roadmap vive con feedback")).toBeTruthy();
+  });
+
+  it("renders 2 feature sections after switching to 'Desarrollo por features' tab", async () => {
+    render(<RoadmapPage />);
+    fireEvent.click(screen.getByText("Desarrollo por features"));
+    const cards = await screen.findAllByTestId(/^feature-card-/);
+    expect(cards.length).toBe(6);
+    const devLabels = screen.getAllByText("En desarrollo");
+    expect(devLabels.length).toBeGreaterThanOrEqual(1);
+    const futureLabels = screen.getAllByText("Próximamente");
+    expect(futureLabels.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does NOT show checkProgress (X/Y) on any feature card", async () => {
+    render(<RoadmapPage />);
+    fireEvent.click(screen.getByText("Desarrollo por features"));
+    await screen.findAllByTestId(/^feature-card-/);
+    expect(screen.queryByText(/\d+\/\d+/)).toBeNull();
   });
 });
 

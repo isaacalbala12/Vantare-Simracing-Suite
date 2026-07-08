@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
+import { useI18n } from "../../i18n/I18nProvider";
 import type { LaunchProfile } from "../launcher/launcher-state";
 
 type LauncherDockProps = {
@@ -33,6 +34,7 @@ function ProfileGlyph({ name }: { name: string }) {
 }
 
 export function LauncherDock({ onNavigate }: LauncherDockProps) {
+  const { t } = useI18n();
   const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
 
   useEffect(() => {
@@ -64,19 +66,22 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
         <ListIcon />
       </button>
       <div className="overflow-y-auto flex flex-col gap-1">
-        {profiles.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => handleLaunch(p.id)}
-            title={p.name}
-            className="v52-dock-item"
-            data-testid={`dock-profile-${p.id}`}
-            aria-label={`Lanzar perfil ${p.name}`}
-          >
-            <ProfileGlyph name={p.name} />
-          </button>
-        ))}
+        {profiles.map((p) => {
+          const displayName = p.id === "creator" ? t("launcher.profiles.creator.name") : p.id === "pro" ? t("launcher.profiles.pro.name") : p.name;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handleLaunch(p.id)}
+              title={displayName}
+              className="v52-dock-item"
+              data-testid={`dock-profile-${p.id}`}
+              aria-label={`Lanzar perfil ${displayName}`}
+            >
+              <ProfileGlyph name={displayName} />
+            </button>
+          );
+        })}
       </div>
     </aside>
   );

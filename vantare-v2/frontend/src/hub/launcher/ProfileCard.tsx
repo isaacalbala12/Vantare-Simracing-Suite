@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Events } from "@wailsio/runtime";
-import type {
-  ChainProgress,
-  LauncherAppEntry,
-  LaunchProfile,
+import { useI18n } from "../../i18n/I18nProvider";
+import {
+  isProfileLaunchable,
+  newProfileId,
+  type ChainProgress,
+  type LauncherAppEntry,
+  type LaunchProfile,
 } from "./launcher-state";
 import { AppBadge } from "../components/AppBadge";
 import { ProfileEditor } from "./ProfileEditor";
@@ -25,10 +28,12 @@ export function ProfileCard({
   progress,
   className,
 }: ProfileCardProps) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
 
   const launching = progress?.status === "starting" || progress?.status === "started";
   const error = progress?.status === "error";
+  const launchable = isProfileLaunchable(profile, apps);
 
   const handleLaunch = () =>
     Events.Emit("launcher:profile:launch", { id: profile.id });
@@ -36,9 +41,15 @@ export function ProfileCard({
     Events.Emit("launcher:profile:cancel", { id: profile.id });
   const handleDelete = () =>
     Events.Emit("launcher:profile:delete", { id: profile.id });
+  // Duplicate uses a unique generated id so two consecutive duplicates do
+  // not collide on the backend (which would silently overwrite the previous
+  // copy). The new name is localized so the UI reads correctly in any
+  // supported language.
   const handleDuplicate = () =>
-    Events.Emit("launcher:profile:save", {
-      profile: { ...profile, id: `${profile.id}-copy`, name: `${profile.name} (copia)` },
+    Events.Emit("launcher:profile:duplicate", {
+      id: profile.id,
+      newId: newProfileId("profile"),
+      newName: `${profile.name} ${t("launcher.profiles.copy.suffix")}`.trim(),
     });
   const handleSave = (updated: LaunchProfile) =>
     Events.Emit("launcher:profile:save", { profile: updated });
@@ -51,7 +62,7 @@ export function ProfileCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display font-bold text-lg text-white">
-            {profile.name}
+            {profile.id === "creator" ? t("launcher.profiles.creator.name") : profile.id === "pro" ? t("launcher.profiles.pro.name") : profile.name}
           </h2>
           {profile.description && (
             <p className="text-xs text-vantare-textMuted mt-1">
@@ -68,16 +79,18 @@ export function ProfileCard({
                 className="px-3 py-1.5 rounded-lg border border-amber-400/40 text-[10px] uppercase tracking-[.18em] text-amber-300 hover:bg-amber-400/10"
                 data-testid={`profile-cancel-${profile.id}`}
               >
-                Cancelar
+                {t("launcher.profile.cancel")}
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleLaunch}
-                className="px-3 py-1.5 rounded-lg bg-accent text-[10px] uppercase tracking-[.18em] font-bold text-black hover:opacity-90"
+                disabled={!launchable}
+                title={launchable ? undefined : t("launcher.profile.unlaunchable")}
+                className="px-3 py-1.5 rounded-lg bg-accent text-[10px] uppercase tracking-[.18em] font-bold text-black hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid={`profile-launch-${profile.id}`}
               >
-                Iniciar
+                {t("launcher.profile.start")}
               </button>
             ))}
         </div>

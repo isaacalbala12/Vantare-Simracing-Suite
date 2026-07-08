@@ -154,20 +154,73 @@ func TestProfilesCRUDRoundTrip(t *testing.T) {
 	if got := svc.ListProfiles(); len(got) != 1 {
 		t.Fatalf("expected 1 profile, got %d", len(got))
 	}
-
-	if err := svc.DuplicateProfile("creator", "creator2", "Copia"); err != nil {
-		t.Fatalf("DuplicateProfile: %v", err)
-	}
-	if got := svc.ListProfiles(); len(got) != 2 {
-		t.Fatalf("expected 2 profiles after duplicate, got %d", len(got))
-	}
-
-	if err := svc.DeleteProfile("creator2"); err != nil {
+	if err := svc.DeleteProfile("creator"); err != nil {
 		t.Fatalf("DeleteProfile: %v", err)
 	}
-	if got := svc.ListProfiles(); len(got) != 1 {
-		t.Fatalf("expected 1 profile after delete, got %d", len(got))
+	if got := svc.ListProfiles(); len(got) != 0 {
+		t.Fatalf("expected 0 profiles after delete, got %d", len(got))
 	}
+}
+
+func TestDuplicateProfileThroughService(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: "C:/obs.exe"}
+	svc := NewService(backend, &spyEmitter{}, nil)
+
+	src := app.LaunchProfile{
+		ID: "creator", Name: "Creador de Contenido", Description: "LMU+OBS",
+		Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}, {AppID: "obs", Delay: 2}},
+	}
+	if err := svc.SaveProfile(src); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	t.Run("happy path clones and is independent", func(t *testing.T) {
+		if err := svc.DuplicateProfile("creator", "creator-copy", "Creador (copia)"); err != nil {
+			t.Fatalf("DuplicateProfile: %v", err)
+		}
+		got := svc.ListProfiles()
+		if len(got) != 2 {
+			t.Fatalf("expected 2 profiles, got %d", len(got))
+		}
+		var dup *app.LaunchProfile
+		for i := range got {
+			if got[i].ID == "creator-copy" {
+				dup = &got[i]
+				break
+			}
+		}
+		if dup == nil {
+			t.Fatal("duplicate profile not found")
+		}
+		if dup.Name != "Creador (copia)" {
+			t.Errorf("unexpected name: %q", dup.Name)
+		}
+		if dup.Description != "LMU+OBS" {
+			t.Errorf("description not copied: %q", dup.Description)
+		}
+		// Mutate the dup and verify source is unchanged.
+		dup.Steps[0].Delay = 99
+		for _, p := range backend.GetLauncherProfiles() {
+			if p.ID == "creator" && p.Steps[0].Delay != 0 {
+				t.Errorf("duplicate shares steps slice with source")
+			}
+		}
+	})
+
+	t.Run("missing source returns ErrProfileNotFound", func(t *testing.T) {
+		err := svc.DuplicateProfile("ghost", "ghost-copy", "Ghost Copy")
+		if !errors.Is(err, ErrProfileNotFound) {
+			t.Fatalf("expected ErrProfileNotFound, got %v", err)
+		}
+	})
+
+	t.Run("colliding new id returns ErrProfileDuplicate", func(t *testing.T) {
+		err := svc.DuplicateProfile("creator", "creator-copy", "Otra")
+		if !errors.Is(err, ErrProfileDuplicate) {
+			t.Fatalf("expected ErrProfileDuplicate, got %v", err)
+		}
+	})
 }
 
 func TestSaveProfileRejectsUnknownApp(t *testing.T) {

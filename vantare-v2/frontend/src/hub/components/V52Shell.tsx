@@ -40,8 +40,8 @@ export function V52Shell({
       <UpdateBanner />
       <LauncherDock onNavigate={onNavigate} />
       <ScrollableMain className="relative z-20 flex-1 pt-0">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 pt-6 pb-6 lg:pl-[84px]">
-          <main className="flex flex-col gap-5 min-w-0">{children}</main>
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 pt-6 pb-6 lg:pl-[84px] flex flex-col h-full overflow-x-hidden">
+          <main className="flex flex-col gap-5 min-w-0 flex-1 min-h-0">{children}</main>
         </div>
       </ScrollableMain>
     </div>

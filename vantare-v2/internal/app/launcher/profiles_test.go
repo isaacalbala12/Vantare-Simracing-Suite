@@ -143,55 +143,72 @@ func TestDeleteProfile(t *testing.T) {
 }
 
 func TestDuplicateProfile(t *testing.T) {
-	backend := newProfilesBackend()
-	src := app.LaunchProfile{
-		ID: "creator", Name: "Creador de Contenido", Description: "streaming setup",
-		Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}, {AppID: "obs", Delay: 2}},
-	}
-	if err := SaveProfile(backend, src); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	t.Run("duplicate ok", func(t *testing.T) {
-		err := DuplicateProfile(backend, "creator", "creator-copy", "Creador (copia)")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(backend.profiles) != 2 {
-			t.Fatalf("expected 2 profiles, got %d", len(backend.profiles))
-		}
-		var dup *app.LaunchProfile
-		for i := range backend.profiles {
-			if backend.profiles[i].ID == "creator-copy" {
-				dup = &backend.profiles[i]
-			}
-		}
-		if dup == nil {
-			t.Fatal("duplicate not found")
-		}
-		if dup.Name != "Creador (copia)" {
-			t.Errorf("unexpected name %q", dup.Name)
-		}
-		if len(dup.Steps) != 2 || dup.Steps[0].AppID != "lmu" {
-			t.Errorf("steps not copied correctly: %+v", dup.Steps)
-		}
-		// Original must be untouched.
-		if backend.profiles[0].ID != "creator" || backend.profiles[0].Name != "Creador de Contenido" {
-			t.Errorf("source profile mutated: %+v", backend.profiles[0])
-		}
-	})
-
-	t.Run("source not found", func(t *testing.T) {
-		err := DuplicateProfile(backend, "ghost", "x", "X")
+	t.Run("source not found returns ErrProfileNotFound", func(t *testing.T) {
+		backend := newProfilesBackend()
+		err := DuplicateProfile(backend, "missing", "missing-copy", "Missing Copy")
 		if !errors.Is(err, ErrProfileNotFound) {
 			t.Fatalf("expected ErrProfileNotFound, got %v", err)
 		}
+		if len(backend.profiles) != 0 {
+			t.Errorf("no profile should be created when source is missing; got %d", len(backend.profiles))
+		}
 	})
 
-	t.Run("duplicate id collision", func(t *testing.T) {
-		err := DuplicateProfile(backend, "creator", "creator", "Otra vez")
+	t.Run("new id collides returns ErrProfileDuplicate", func(t *testing.T) {
+		backend := newProfilesBackend()
+		backend.profiles = []app.LaunchProfile{
+			{ID: "creator", Name: "Creador"},
+			{ID: "creator-copy", Name: "Creador Copy"},
+		}
+		err := DuplicateProfile(backend, "creator", "creator-copy", "Otra copia")
 		if !errors.Is(err, ErrProfileDuplicate) {
 			t.Fatalf("expected ErrProfileDuplicate, got %v", err)
+		}
+		if len(backend.profiles) != 2 {
+			t.Errorf("profile list must not change on collision; got %d", len(backend.profiles))
+		}
+	})
+
+	t.Run("duplicates steps into a new independent slice", func(t *testing.T) {
+		backend := newProfilesBackend()
+		backend.profiles = []app.LaunchProfile{
+			{
+				ID: "creator", Name: "Creador de Contenido", Description: "LMU + OBS",
+				Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}, {AppID: "obs", Delay: 2}},
+			},
+		}
+		if err := DuplicateProfile(backend, "creator", "creator-copy", "Creador de Contenido (copia)"); err != nil {
+			t.Fatalf("DuplicateProfile: %v", err)
+		}
+		if len(backend.profiles) != 2 {
+			t.Fatalf("expected 2 profiles after duplicate, got %d", len(backend.profiles))
+		}
+		dup := backend.profiles[1]
+		if dup.ID != "creator-copy" {
+			t.Errorf("expected new id creator-copy, got %q", dup.ID)
+		}
+		if dup.Name != "Creador de Contenido (copia)" {
+			t.Errorf("expected new name, got %q", dup.Name)
+		}
+		if dup.Description != "LMU + OBS" {
+			t.Errorf("description must be copied, got %q", dup.Description)
+		}
+		if len(dup.Steps) != 2 || dup.Steps[0].AppID != "lmu" || dup.Steps[1].Delay != 2 {
+			t.Errorf("steps not copied correctly: %+v", dup.Steps)
+		}
+		// Mutating the duplicate must NOT mutate the source (independent copy).
+		dup.Steps[0].Delay = 99
+		if backend.profiles[0].Steps[0].Delay != 0 {
+			t.Errorf("duplicate shares underlying steps slice with source")
+		}
+	})
+
+	t.Run("empty new id rejected as invalid", func(t *testing.T) {
+		backend := newProfilesBackend()
+		backend.profiles = []app.LaunchProfile{{ID: "p1", Name: "P1"}}
+		err := DuplicateProfile(backend, "p1", "", "Sin id")
+		if !errors.Is(err, ErrInvalidConfig) {
+			t.Fatalf("expected ErrInvalidConfig for empty newID, got %v", err)
 		}
 	})
 }

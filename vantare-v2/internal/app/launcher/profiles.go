@@ -79,10 +79,15 @@ func DeleteProfile(backend ProfilesBackend, id string) error {
 	return backend.SetLauncherProfiles(profiles)
 }
 
-// DuplicateProfile copies an existing profile under a new ID and name. It
-// validates that the source exists and that the new ID does not collide with
-// an existing profile.
+// DuplicateProfile copies an existing profile into a new one with newID and
+// newName. The steps slice is duplicated so the new profile can be edited
+// independently. Returns ErrProfileNotFound when the source is missing,
+// ErrProfileDuplicate when newID is already taken, and ErrInvalidConfig when
+// newID is empty.
 func DuplicateProfile(backend ProfilesBackend, id, newID, newName string) error {
+	if newID == "" {
+		return fmt.Errorf("%w: new id is required", ErrInvalidConfig)
+	}
 	profiles := backend.GetLauncherProfiles()
 	var src *app.LaunchProfile
 	for i := range profiles {
@@ -99,11 +104,13 @@ func DuplicateProfile(backend ProfilesBackend, id, newID, newName string) error 
 			return ErrProfileDuplicate
 		}
 	}
+	steps := make([]app.LaunchStep, len(src.Steps))
+	copy(steps, src.Steps)
 	dup := app.LaunchProfile{
 		ID:          newID,
 		Name:        newName,
 		Description: src.Description,
-		Steps:       append([]app.LaunchStep(nil), src.Steps...),
+		Steps:       steps,
 	}
 	profiles = append(profiles, dup)
 	return backend.SetLauncherProfiles(profiles)

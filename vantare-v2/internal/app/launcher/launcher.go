@@ -95,11 +95,12 @@ func (s *Service) DeleteProfile(id string) error {
 	return DeleteProfile(s.settings, id)
 }
 
-// DuplicateProfile delegates to profiles.go.
+// DuplicateProfile delegates to profiles.go. Use this to copy an existing
+// profile into a new one with a new ID and display name; the steps are cloned
+// so the copy can be edited independently.
 func (s *Service) DuplicateProfile(id, newID, newName string) error {
 	return DuplicateProfile(s.settings, id, newID, newName)
 }
-
 // LaunchProfile starts the launch chain for the given profile. It looks up the
 // profile, emits launcher:profiles:updated? No — per contract only chain
 // progress events are emitted by the runner; the caller decides on success.

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
+import { useI18n } from "../../i18n/I18nProvider";
 import {
   appSortOrder,
+  newProfileId,
   type LauncherAppCategory,
   type LauncherAppEntry,
   type LaunchProfile,
@@ -20,13 +22,13 @@ const CATEGORIES: LauncherAppCategory[] = [
   "utility",
 ];
 
-function newId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
-}
-
+// AppsPanel renders the list of detected + manual apps. Wails v3 alpha.98
+// does not expose a native file dialog, so the "Add manually" flow uses a
+// hidden <input type="file"> as a fallback: the browser's picker gives us
+// the absolute path (via the File API on the desktop runtime) which we
+// then pass to launcher:app:add.
 export function AppsPanel({ className }: AppsPanelProps) {
+  const { t } = useI18n();
   const [apps, setApps] = useState<LauncherAppEntry[]>([]);
   const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
   const [pickedPath, setPickedPath] = useState<string | null>(null);
@@ -60,15 +62,14 @@ export function AppsPanel({ className }: AppsPanelProps) {
         setProfiles(event.data?.profiles ?? []);
       },
     );
+    // The backend may also answer the file-pick request via the legacy
+    // event name. We support both: a picked file opens the form.
     const offPicked = Events.On(
       "launcher:app:picked",
       (event: { data?: { path?: string } }) => {
         const path = event.data?.path;
         if (path) {
           setPickedPath(path);
-          const base =
-            path.split(/[\\/]/).pop()?.replace(/\.exe$/i, "") ?? "App";
-          setDraftName(base);
         }
       },
     );
@@ -85,12 +86,22 @@ export function AppsPanel({ className }: AppsPanelProps) {
     Events.Emit("launcher:app:remove", { id });
   };
 
-  const handlePick = () => Events.Emit("launcher:app:pick");
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // On desktop runtimes the File object has a non-standard `path` property
+    // pointing to the absolute filesystem path. When unavailable, we fall
+    // back to the file name so the user can still see and edit the entry.
+    const fileWithPath = file as File & { path?: string };
+    const path = fileWithPath.path || file.name;
+    setPickedPath(path);
+    setDraftName(file.name.replace(/\.exe$/i, ""));
+  };
 
   const handleAdd = () => {
     if (!pickedPath || !draftName.trim()) return;
     const entry: LauncherAppEntry = {
-      id: newId("app"),
+      id: newProfileId("app"),
       displayName: draftName.trim(),
       abbreviation: draftName.trim().slice(0, 3).toUpperCase(),
       category: draftCategory,
@@ -112,23 +123,28 @@ export function AppsPanel({ className }: AppsPanelProps) {
       data-testid="apps-panel"
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="v52-eyebrow">Apps</span>
+        <span className="v52-eyebrow">{t("launcher.apps.title")}</span>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePick}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+          <label
+            className="cursor-pointer px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
             data-testid="apps-add-manual"
           >
-            + Añadir app manualmente
-          </button>
+            + {t("launcher.apps.addManual")}
+            <input
+              type="file"
+              accept=".exe"
+              className="hidden"
+              onChange={handleFileChange}
+              data-testid="apps-file-input"
+            />
+          </label>
           <button
             type="button"
             onClick={() => Events.Emit("launcher:apps:discover")}
             className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
             data-testid="apps-rescan"
           >
-            Reescanear
+            {t("launcher.apps.rescan")}
           </button>
         </div>
       </div>
@@ -136,7 +152,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
       <ul className="mt-4 flex flex-col gap-2" data-testid="apps-list">
         {apps.length === 0 && (
           <li className="text-xs text-vantare-textDim">
-            No se han detectado apps todavía.
+            {t("launcher.apps.noApps")}
           </li>
         )}
         {apps.map((app) => {
@@ -150,7 +166,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
               <AppBadge app={app} />
               {app.detected && (
                 <span className="text-[10px] uppercase tracking-[.18em] text-emerald-400/80">
-                  Detectada
+                  {t("launcher.apps.detected")}
                 </span>
               )}
               {!referenced && (
@@ -160,7 +176,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
                   className="text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:text-vantare-red-400 transition-colors"
                   data-testid={`app-remove-${app.id}`}
                 >
-                  Eliminar
+                  {t("launcher.profile.delete")}
                 </button>
               )}
             </li>
@@ -182,7 +198,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
             type="text"
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
-            placeholder="Nombre de la app"
+            placeholder={t("launcher.apps.namePlaceholder")}
             className="rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
             data-testid="app-add-name"
           />
@@ -196,7 +212,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {t(`launcher.category.${c}`)}
               </option>
             ))}
           </select>
@@ -210,14 +226,14 @@ export function AppsPanel({ className }: AppsPanelProps) {
               className="px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:text-white"
               data-testid="app-add-cancel"
             >
-              Cancelar
+              {t("launcher.profile.cancel")}
             </button>
             <button
               type="submit"
               className="px-3 py-1.5 rounded-lg bg-accent text-[10px] uppercase tracking-[.18em] font-bold text-black hover:opacity-90"
               data-testid="app-add-save"
             >
-              Guardar app
+              {t("launcher.apps.add")}
             </button>
           </div>
         </form>

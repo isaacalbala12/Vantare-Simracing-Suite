@@ -2,6 +2,19 @@
 
 Changelog publico para testers y Discord. Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
+## v0.1.0.4
+
+Hotfix critico: el backend no emitia `hub:profiles` despues de `hub:create`, `hub:save-own-copy` o `hub:delete`, por lo que la lista de perfiles propios nunca se actualizaba en la UI aunque los perfiles se creasen correctamente en disco.
+
+**Corregido**
+
+- El backend ahora emite `hub:profiles` (lista completa) tras crear, copiar o eliminar un perfil, ademas de los eventos `hub:profile-created` / `hub:profile-deleted` que ya existian. El frontend escucha `hub:profiles` y refresca la lista automaticamente.
+- Resuelve el bug visual de "Nuevo perfil" en Overlays Studio -> Mis perfiles: el prompt aceptaba el nombre, el perfil se guardaba en disco, pero la UI no lo mostraba hasta recargar.
+
+**Para testers**
+
+- Si tienes un perfil que creaste en `v0.1.0.3` y no aparecia en la lista, ya deberia verse al abrir esta build.
+
 ## v0.1.0.3
 
 Patch de beta con microcortes cerrados: fixes de launcher post-fase-6, refactor de calendar con series de intervalo en DayView, roadmap dual con feedback panel, locales completos (es, en, pt, it) y traduccion de auth/paywall, dashboard polish, integracion de supabase auth y stripe webhook, y Widget Studio accesible sin perfil propio.

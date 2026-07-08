@@ -33,3 +33,11 @@ vantare-v2-engineer/
 vantare.exe.stale
 # Local Pi runtime state
 .atl/
+# Local visual harnesses
+frontend/topbar-harness.html
+frontend/scripts/calendar-harness.html
+frontend/scripts/widget-parity-harness.html
+frontend/src/topbar-visual-harness.tsx
+docs/superpowers/screenshots/
+frontend/.tmp/
+frontend/dev-server.log

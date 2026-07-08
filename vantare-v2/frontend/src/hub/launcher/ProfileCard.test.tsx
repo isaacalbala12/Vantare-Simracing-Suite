@@ -100,4 +100,17 @@ describe("ProfileCard", () => {
     const btn = screen.getByTestId("profile-launch-creator") as HTMLButtonElement;
     expect(btn.disabled).toBe(false);
   });
+
+  it("renders favorite badge when profile.isFavorite is true", () => {
+    const favProfile: LaunchProfile = {
+      id: "creator",
+      name: "Creator",
+      steps: [],
+      isFavorite: true,
+    };
+    render(<ProfileCard profile={favProfile} apps={[]} />);
+    expect(
+      screen.queryByTestId("profile-favorite-badge-creator"),
+    ).not.toBeNull();
+  });
 });

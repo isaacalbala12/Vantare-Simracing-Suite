@@ -61,8 +61,11 @@ export function ProfileCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-display font-bold text-lg text-white">
+          <h2 className="font-display font-bold text-lg text-white flex items-center">
             {profile.id === "creator" ? t("launcher.profiles.creator.name") : profile.id === "pro" ? t("launcher.profiles.pro.name") : profile.name}
+            {profile.isFavorite && (
+              <span className="text-amber-400 ml-2" data-testid={`profile-favorite-badge-${profile.id}`} aria-label="Favorita">★</span>
+            )}
           </h2>
           {profile.description && (
             <p className="text-xs text-vantare-textMuted mt-1">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
@@ -108,6 +108,15 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
     Events.Emit("launcher:profile:save", { profile: blank });
   };
 
+  const orderedProfiles = useMemo(
+    () => [...profiles].sort((a, b) => {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return a.name.localeCompare(b.name);
+    }),
+    [profiles],
+  );
+
   return (
     <section
       className={`flex flex-col gap-3 ${className ?? ""}`}
@@ -159,7 +168,7 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
             </p>
           </article>
         )}
-        {profiles.map((profile) => (
+        {orderedProfiles.map((profile) => (
           <ProfileCard
             key={profile.id}
             profile={profile}

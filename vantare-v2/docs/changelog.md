@@ -2,6 +2,39 @@
 
 Changelog publico para testers y Discord. Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
+## v0.1.0.3
+
+Patch de beta con microcortes cerrados: fixes de launcher post-fase-6, refactor de calendar con series de intervalo en DayView, roadmap dual con feedback panel, locales completos (es, en, pt, it) y traduccion de auth/paywall, dashboard polish, integracion de supabase auth y stripe webhook, y Widget Studio accesible sin perfil propio.
+
+**Nuevo**
+
+- **Calendar**: DayView, MonthView y WeekView reescritos con soporte de series de intervalo (Bronce/Plata/Oro) y helpers compartidos.
+- **Roadmap**: doble roadmap con panel de feedback y changelog real, incluyendo datos i18n.
+- **i18n**: soporte completo de 4 locales (es, en, pt, it) con provider global y fallback.
+- **i18n-03b**: traduccion de LoginScreen, PaywallScreen, LicenseBanner y UnconfiguredScreen.
+- **Widget Studio accesible sin perfil propio (WS-10)**: editor Crystal ahora abre con `EMPTY_PROFILE` sintetico; boton Guardar y selector de diseno quedan deshabilitados con copy honesto hasta que el usuario cree o active un perfil real.
+- **Hub dashboard polish**: carousel de features, account settings, license provider y cliente Supabase.
+- **Stripe webhook**: integracion de checkout y portal en supabase functions.
+- **Admin CLI**: nuevo binario `vantare-admin` con tests.
+- **Roadmap features from plans**: lectura automatica de features desde planes con `scripts/generate-roadmap-progress.mjs`.
+
+**Mejorado**
+
+- **Launcher post-fase-6 fixes**: orchestrator, profiles y dock integrados con eventos Wails.
+- **Calendar refactor**: eliminados componentes legacy (CalendarSeriesCard, calendar-tier) consolidados en `calendar-shared.ts`.
+- **Build config**: `build/config.yml` y `build/windows/info.json` sincronizados con VERSION via `task version:sync`.
+- **Changelog**: entrada `v0.1.0.3` con detalle de microcortes cerrados.
+
+**Corregido**
+
+- **Configuracion incompleta en smoke local**: mejor separacion entre binarios stale y reales.
+
+**Para testers**
+
+- Esta es la build que consolida los microcortes cerrados durante la fase beta. Si encuentras regresiones, reportalas en `#beta-bug-reports`.
+- El plan `v0.1.0.x` se mantiene en fase beta publica de pago (`0.6.X.X` en el sistema de gates).
+- No publiques tags `v0.3.*` ni `v0.1.0-alpha.*` en Discord: son rastro interno, no builds publicas.
+
 ## v0.1.0.2
 
 Hotfix de beta para completar el flujo de login con Google OAuth externo y evitar bloqueos falsos de licencia Free.

@@ -223,10 +223,10 @@ function ModalBody({
                   data-testid={`add-non-steam-row-${entry.id}`}
                 >
                   <td className="p-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="flex items-center gap-2">
                       <span
                         data-testid={`add-non-steam-checkbox-${entry.id}`}
-                        className={`inline-flex items-center justify-center w-4 h-4 rounded border ${
+                        className={`inline-flex items-center justify-center w-4 h-4 rounded border flex-shrink-0 ${
                           selectedId === entry.id
                             ? "bg-accent border-accent"
                             : "border-white/20 bg-black/40"
@@ -247,7 +247,7 @@ function ModalBody({
                         )}
                       </span>
                       <AppBadge app={entry} size="sm" />
-                    </label>
+                    </div>
                   </td>
                   <td
                     className="max-w-[320px] truncate p-2 text-xs text-white/50"

@@ -9,6 +9,8 @@ import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
 import { EditOverlayApp } from "./overlay/EditOverlayApp";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
+import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
+registerBuiltinDesignSystems();
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;

@@ -8,7 +8,7 @@ import { PedalsSettingsSection } from "./PedalsSettingsSection";
 import { WidgetPresetSection } from "./WidgetPresetSection";
 import { WidgetConfigSections } from "./WidgetConfigSections";
 import { WidgetDesignGallery } from "../widgets/WidgetDesignGallery";
-import { applyOfficialDesignToProfile, getActiveOfficialDesignId, type OfficialDesign } from "../widgets/widget-design-gallery";
+import { applyOfficialDesignToProfile, getActiveOfficialDesignId, getOfficialDesign, type OfficialDesign } from "../widgets/widget-design-gallery";
 import { WidgetVariantManager } from "./WidgetVariantManager";
 import { useAccess } from "../../lib/access";
 import { canApplyWidget } from "./widget-catalog";
@@ -136,6 +136,12 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
     onChangeProfile(applyOfficialDesignToProfile(profile, widget.id, design));
   };
 
+  const activeDesignId = widget ? getActiveOfficialDesignId(widget) : null;
+  const selectedDesign = activeDesignId ? getOfficialDesign(activeDesignId) : null;
+  const sameTypeWidgets = widget
+    ? profile.widgets.filter((w) => w.type === widget.type)
+    : [];
+
   return (
     <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-y-auto">
       {widget ? <WidgetHeader widget={widget} /> : null}
@@ -159,7 +165,26 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       </div>
       {widget && (
         <div className="shrink-0">
-          <WidgetDesignGallery widget={widget} activeDesignId={getActiveOfficialDesignId(widget)} onApplyDesign={handleApplyOfficialDesign} />
+          <WidgetDesignGallery widget={widget} activeDesignId={activeDesignId} onApplyDesign={handleApplyOfficialDesign} />
+          {selectedDesign && sameTypeWidgets.length > 1 && (
+            <div className="border-t border-white/5 px-3 py-2">
+              <button
+                type="button"
+                data-testid="apply-design-to-all"
+                onClick={() => {
+                  let updated = profile;
+                  for (const w of sameTypeWidgets) {
+                    updated = applyOfficialDesignToProfile(updated, w.id, selectedDesign);
+                  }
+                  onChangeProfile(updated);
+                }}
+                title="Aplica este diseño a todos los widgets del mismo tipo en el profile"
+                className="w-full rounded bg-vantare-accent/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-accent cursor-pointer"
+              >
+                Aplicar a todos
+              </button>
+            </div>
+          )}
           <WidgetVariantManager
             profile={profile}
             widget={widget}

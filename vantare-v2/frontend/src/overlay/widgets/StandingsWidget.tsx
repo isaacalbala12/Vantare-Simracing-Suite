@@ -9,6 +9,7 @@ import { escapeHTML } from "../../lib/html-escape";
 import { brandTextColor } from "../../lib/color-utils";
 import { startFrameBudgetLoop } from "../../lib/frame-budget";
 import type { ColumnConfig } from "../../lib/profile";
+import { useWidgetComponents } from "../../hub/registry";
 import { createDefaultStandingsColumns, getStandingsColumn } from "./standings-catalog";
 import {
   formatStandingsDriverName,
@@ -122,6 +123,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
   const lastFingerprintRef = useRef("");
 
   const { style, appearance: a } = resolveWidgetAppearance("standings", props);
+  const { Header: CustomHeader } = useWidgetComponents("standings", style);
   const isGlass = style === "vantare-crystal";
   const isCrystal = style === "vantare-crystal";
   const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
@@ -336,13 +338,17 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
         boxShadow: isCrystal && crystal ? `0 0 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)` : isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
       }}
     >
-      <div
-        className={`flex flex-col items-center pt-4 pb-2 ${!intrinsicOnly ? "w-full" : ""}`}
-        style={{ background: headerBg, borderBottom: isGlass ? "1px solid rgba(255,255,255,0.06)" : "2px solid #1a0104" }}
-      >
-        <div className="text-3xl font-black italic tracking-widest mb-1 text-white font-display">VANTARE</div>
-        <div ref={timeRef} className="text-[11px] font-mono font-bold text-white tracking-widest">{timeStr}</div>
-      </div>
+      {CustomHeader ? (
+        <CustomHeader data={{ time: timeStr }} appearance={a} className="" />
+      ) : (
+        <div
+          className={`flex flex-col items-center pt-4 pb-2 ${!intrinsicOnly ? "w-full" : ""}`}
+          style={{ background: headerBg, borderBottom: isGlass ? "1px solid rgba(255,255,255,0.06)" : "2px solid #1a0104" }}
+        >
+          <div className="text-3xl font-black italic tracking-widest mb-1 text-white font-display">VANTARE</div>
+          <div ref={timeRef} className="text-[11px] font-mono font-bold text-white tracking-widest">{timeStr}</div>
+        </div>
+      )}
       <div
         ref={classRef}
         className={`text-center text-[11px] py-1 font-bold tracking-widest text-white relative ${!intrinsicOnly ? "w-full" : ""}`}

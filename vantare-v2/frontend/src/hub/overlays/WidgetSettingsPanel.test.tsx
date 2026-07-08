@@ -58,9 +58,20 @@ vi.mock("../widgets/WidgetDesignGallery", () => ({
   WidgetDesignGallery: () => <div data-testid="widget-design-gallery" />,
 }));
 
+const {
+  mockGetActiveOfficialDesignId,
+  mockGetOfficialDesign,
+  mockApplyOfficialDesignToProfile,
+} = vi.hoisted(() => ({
+  mockGetActiveOfficialDesignId: vi.fn<(...args: unknown[]) => string | null>(() => null),
+  mockGetOfficialDesign: vi.fn(() => null),
+  mockApplyOfficialDesignToProfile: vi.fn((p: unknown) => p),
+}));
+
 vi.mock("../widgets/widget-design-gallery", () => ({
-  applyOfficialDesignToProfile: vi.fn((p: unknown) => p),
-  getActiveOfficialDesignId: vi.fn(() => null),
+  applyOfficialDesignToProfile: mockApplyOfficialDesignToProfile,
+  getActiveOfficialDesignId: mockGetActiveOfficialDesignId,
+  getOfficialDesign: mockGetOfficialDesign,
 }));
 
 vi.mock("./WidgetVariantManager", () => ({
@@ -435,5 +446,89 @@ describe("WidgetSettingsPanel — Save to widget", () => {
 
     // Save button should NOT appear even though draft is dirty
     expect(screen.queryByTestId("save-to-widget-btn")).toBeNull();
+  });
+});
+
+// ── Apply to all button ────────────────────────────────────────────────────
+
+describe("WidgetSettingsPanel — Apply to all", () => {
+  const mockDesign = { id: "standings-vantare-default", name: "Default", widgetType: "standings" } as never;
+
+  beforeEach(() => {
+    mockUseAccess.mockReturnValue(paidAccess);
+    mockGetActiveOfficialDesignId.mockReturnValue("standings-vantare-default");
+    mockGetOfficialDesign.mockReturnValue(mockDesign);
+  });
+
+  it("renders the button when a design is selected and >=2 widgets of the same type", () => {
+    const widgets = [
+      makeWidget("standings", { id: "s1" }),
+      makeWidget("standings", { id: "s2" }),
+      makeWidget("standings", { id: "s3" }),
+      makeWidget("delta", { id: "d1" }),
+    ];
+    const profile = makeProfile(widgets);
+
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={widgets[0]}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("apply-design-to-all")).toBeDefined();
+  });
+
+  it("does NOT render the button when only 1 widget of the type", () => {
+    const widgets = [
+      makeWidget("standings", { id: "s1" }),
+    ];
+    const profile = makeProfile(widgets);
+
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={widgets[0]}
+        onChangeProfile={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("apply-design-to-all")).toBeNull();
+  });
+
+  it("applies the design to all widgets of the same type on click", () => {
+    const widgets = [
+      makeWidget("standings", { id: "s1" }),
+      makeWidget("standings", { id: "s2" }),
+      makeWidget("standings", { id: "s3" }),
+      makeWidget("delta", { id: "d1" }),
+    ];
+    const profile = makeProfile(widgets);
+    const onChangeProfile = vi.fn();
+
+    // applyOfficialDesignToProfile returns profile unchanged (mock), so the
+    // final callback receives the same profile object.
+    mockApplyOfficialDesignToProfile.mockReturnValue(profile);
+
+    render(
+      <WidgetSettingsPanel
+        profile={profile}
+        widget={widgets[0]}
+        onChangeProfile={onChangeProfile}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("apply-design-to-all"));
+
+    // Should call applyOfficialDesignToProfile for each standings widget (3 times)
+    expect(mockApplyOfficialDesignToProfile).toHaveBeenCalledTimes(3);
+    expect(mockApplyOfficialDesignToProfile).toHaveBeenCalledWith(profile, "s1", mockDesign);
+    expect(mockApplyOfficialDesignToProfile).toHaveBeenCalledWith(profile, "s2", mockDesign);
+    expect(mockApplyOfficialDesignToProfile).toHaveBeenCalledWith(profile, "s3", mockDesign);
+
+    // onChangeProfile should have been called once with the final profile
+    expect(onChangeProfile).toHaveBeenCalledTimes(1);
+    expect(onChangeProfile).toHaveBeenCalledWith(profile);
   });
 });

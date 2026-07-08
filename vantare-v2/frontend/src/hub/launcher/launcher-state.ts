@@ -19,6 +19,7 @@ export type LauncherAppEntry = {
   detected: boolean;
   gradientFrom: string;
   gradientTo: string;
+  isFavorite?: boolean;
 };
 
 export type LaunchStep = { appId: string; delay: number };
@@ -28,6 +29,13 @@ export type LaunchProfile = {
   name: string;
   description?: string;
   steps: LaunchStep[];
+  isFavorite?: boolean;
+  notes?: string;
+  launchCount?: number;
+  lastLaunchedAt?: string | null;
+  avgChainDurationMs?: number;
+  launchOnWindowsStartup?: boolean;
+  hotkey?: string;
 };
 
 export type ChainStatus = "waiting" | "starting" | "started" | "error" | "done";
@@ -84,6 +92,25 @@ export function isProfileLaunchable(
     profile.steps.length > 0 &&
     profile.steps.every((s) => appIds.has(s.appId))
   );
+}
+
+// estimateChainDuration estima la duración total de una cadena en ms.
+// Si el profile ya tiene avgChainDurationMs (telemetría real), se prefiere.
+// Si no hay steps, devuelve 0. En otro caso suma delay*1000 + overhead por app
+// (1s para steam-uri, 2s para executable).
+export function estimateChainDuration(
+  profile: LaunchProfile,
+  apps: LauncherAppEntry[],
+): number {
+  if (profile.avgChainDurationMs) return profile.avgChainDurationMs;
+  if (profile.steps.length === 0) return 0;
+  let totalMs = 0;
+  for (const step of profile.steps) {
+    const app = apps.find((a) => a.id === step.appId);
+    const launchOverheadMs = app?.launchMethod === "steam-uri" ? 1000 : 2000;
+    totalMs += step.delay * 1000 + launchOverheadMs;
+  }
+  return totalMs;
 }
 
 // newProfileId genera un id único para un perfil o app nuevos.

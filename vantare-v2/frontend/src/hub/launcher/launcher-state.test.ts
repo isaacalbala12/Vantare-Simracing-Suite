@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AppSettings } from "../pages/SettingsPage";
 import {
   appSortOrder,
+  estimateChainDuration,
   getAppsFromSettings,
   getProfilesFromSettings,
   isProfileLaunchable,
@@ -136,5 +137,37 @@ describe("isProfileLaunchable", () => {
         apps,
       ),
     ).toBe(true);
+  });
+});
+
+describe("estimateChainDuration", () => {
+  it("returns 0 for empty profile", () => {
+    const profile = { id: "p", name: "P", steps: [] };
+    expect(estimateChainDuration(profile, [])).toBe(0);
+  });
+
+  it("sums delays + 2s per executable + 1s per steam-uri", () => {
+    const profile = {
+      id: "p", name: "P",
+      steps: [
+        { appId: "lmu", delay: 0 },
+        { appId: "obs", delay: 2 },
+      ],
+    };
+    const apps = [
+      { id: "lmu", launchMethod: "steam-uri" as const, detected: true, displayName: "LMU", abbreviation: "LMU", category: "simulator" as const, gradientFrom: "", gradientTo: "" },
+      { id: "obs", launchMethod: "executable" as const, detected: true, displayName: "OBS", abbreviation: "OBS", category: "streaming" as const, gradientFrom: "", gradientTo: "" },
+    ];
+    // 0 (lmu delay) + 1 (steam-uri) + 2 (obs delay) + 2 (executable) = 5
+    expect(estimateChainDuration(profile, apps)).toBe(5000);
+  });
+
+  it("prefers avgChainDurationMs over estimate when present", () => {
+    const profile = {
+      id: "p", name: "P",
+      steps: [{ appId: "lmu", delay: 0 }],
+      avgChainDurationMs: 12345,
+    };
+    expect(estimateChainDuration(profile, [])).toBe(12345);
   });
 });

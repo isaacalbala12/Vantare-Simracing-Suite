@@ -2,10 +2,12 @@ package app_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
@@ -333,6 +335,113 @@ func TestSettingsServiceMergeKeepsBetaUserRole(t *testing.T) {
 	}
 }
 
+func TestConcurrentReadWriteNoRace(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil, nil)
+	_ = svc.Load()
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			_ = svc.Settings()
+		}()
+		go func(i int) {
+			defer wg.Done()
+			s := app.DefaultAppSettings()
+			s.DeltaMode = fmt.Sprintf("m-%d", i)
+			_ = svc.Save(s)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func TestSidecarWithInvalidJSONIgnored(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	sidecarPath := path + ".failed"
+	if err := os.WriteFile(sidecarPath, []byte("{\"schemaVersion\""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if _, err := os.Stat(sidecarPath); !os.IsNotExist(err) {
+		t.Errorf("invalid sidecar should be removed, got: %v", err)
+	}
+}
+
+func TestSidecarStaleIsIgnored(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	sidecarPath := path + ".failed"
+	// main primero.
+	mainJSON := `{"schemaVersion": 1, "deltaMode": "main", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
+	if err := os.WriteFile(path, []byte(mainJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	// sidecar después (más nuevo en mtime, pero más viejo semánticamente).
+	sidecarJSON := `{"schemaVersion": 1, "deltaMode": "sidecar", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
+	if err := os.WriteFile(sidecarPath, []byte(sidecarJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Ajustar mtime del main para que sea más nuevo.
+	now := time.Now()
+	os.Chtimes(path, now.Add(time.Hour), now.Add(time.Hour))
+	os.Chtimes(sidecarPath, now, now)
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if svc.Settings().DeltaMode != "main" {
+		t.Errorf("expected main, got %s", svc.Settings().DeltaMode)
+	}
+	if _, err := os.Stat(sidecarPath); !os.IsNotExist(err) {
+		t.Errorf("stale sidecar should be removed")
+	}
+}
+
+func TestSaveNilSettingsWithValidPathReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil, nil)
+	_ = svc.Load()
+	if err := svc.Save(nil); err == nil {
+		t.Fatal("expected error for nil settings")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("file should not exist after Save(nil), got: %v", err)
+	}
+}
+
+func TestLoadPreservesSchemaVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	data := `{"schemaVersion": 2, "deltaMode": "x", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
+	os.WriteFile(path, []byte(data), 0o644)
+	svc := app.NewSettingsService(path, nil, nil)
+	svc.Load()
+	if svc.Settings().SchemaVersion != 2 {
+		t.Errorf("expected SchemaVersion=2 preserved, got %d", svc.Settings().SchemaVersion)
+	}
+}
+
+func TestSaveCreatesMissingDirectory(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "subdir", "app-settings.json")
+	svc := app.NewSettingsService(path, nil, nil)
+	s := app.DefaultAppSettings()
+	if err := svc.Save(s); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("file should exist: %v", err)
+	}
+}
+
 func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
@@ -559,7 +668,7 @@ func TestSidecarAppliedOnStartup(t *testing.T) {
 	}
 }
 
-func TestSettingsWriteMutexSerializesConcurrentWrites(t *testing.T) {
+func TestConcurrentSavesDontCorruptFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 	svc := app.NewSettingsService(path, nil, nil)
@@ -567,26 +676,29 @@ func TestSettingsWriteMutexSerializesConcurrentWrites(t *testing.T) {
 
 	const N = 20
 	var wg sync.WaitGroup
-	errs := make(chan error, N)
+	errs := make(chan error, N*2)
 	for i := 0; i < N; i++ {
-		wg.Add(1)
+		wg.Add(2)
 		go func(i int) {
 			defer wg.Done()
 			s := app.DefaultAppSettings()
 			s.LauncherApps = map[string]app.LauncherAppEntry{
-				"k": {ID: "k", DisplayName: "K" + string(rune('a'+i%26)), Abbreviation: "K", Category: app.AppCategoryUtility, LaunchMethod: "executable", Detected: true, GradientFrom: "#000", GradientTo: "#fff"},
+				"k": {ID: "k", DisplayName: "App" + string(rune('A'+i%26)), Abbreviation: "K", Category: app.AppCategoryUtility, LaunchMethod: "executable", Detected: true, GradientFrom: "#000", GradientTo: "#fff"},
 			}
 			errs <- svc.Save(s)
 		}(i)
+		go func() {
+			defer wg.Done()
+			_ = svc.GetLauncherProfiles() // interleaving de lectura.
+		}()
 	}
 	wg.Wait()
 	close(errs)
 	for err := range errs {
 		if err != nil {
-			t.Errorf("concurrent save error: %v", err)
+			t.Errorf("concurrent save: %v", err)
 		}
 	}
-	// El archivo final debe ser JSON válido.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -594,5 +706,8 @@ func TestSettingsWriteMutexSerializesConcurrentWrites(t *testing.T) {
 	var s app.AppSettings
 	if err := json.Unmarshal(data, &s); err != nil {
 		t.Errorf("final file must be valid JSON: %v", err)
+	}
+	if len(s.LauncherApps) != 1 {
+		t.Errorf("expected 1 app, got %d", len(s.LauncherApps))
 	}
 }

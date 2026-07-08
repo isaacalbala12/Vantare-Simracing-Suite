@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -196,7 +197,6 @@ func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
 // SetLauncherApps replaces the entire LauncherApps map and persists the change.
 func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
@@ -204,7 +204,16 @@ func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) erro
 	for k, v := range apps {
 		s.settings.LauncherApps[k] = v
 	}
-	return s.saveLocked(s.settings, 0)
+	// Marshal under lock for data consistency, then persist without the lock.
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		s.mu.Unlock()
+		return fmt.Errorf("marshal: %w", err)
+	}
+	settings := s.settings
+	s.mu.Unlock()
+
+	return s.saveWithRetry(settings, data, 0)
 }
 
 // GetLauncherProfiles returns the current launch profiles slice with a read lock.
@@ -220,14 +229,22 @@ func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
 // SetLauncherProfiles replaces the entire LaunchProfiles slice and persists the change.
 func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
 	out := make([]LaunchProfile, len(profiles))
 	copy(out, profiles)
 	s.settings.LauncherProfiles = out
-	return s.saveLocked(s.settings, 0)
+	// Marshal under lock for data consistency, then persist without the lock.
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		s.mu.Unlock()
+		return fmt.Errorf("marshal: %w", err)
+	}
+	settings := s.settings
+	s.mu.Unlock()
+
+	return s.saveWithRetry(settings, data, 0)
 }
 
 // Load reads settings from disk with tolerance for corruption.
@@ -301,39 +318,56 @@ func (s *SettingsService) loadLocked() error {
 	return nil
 }
 
-// applyLoaded merges the loaded settings over defaults, preserving
-// fields not present in the persisted file.
+// applyLoaded merges the loaded settings, using defaults only for nil
+// map/slice fields. It does NOT allocate default maps unless the loaded
+// file lacks them, preserving SchemaVersion from the persisted data.
 func (s *SettingsService) applyLoaded(loaded *AppSettings) {
-	merged := DefaultAppSettings()
-	if loaded.DeltaMode != "" {
-		merged.DeltaMode = loaded.DeltaMode
+	if loaded == nil {
+		s.settings = DefaultAppSettings()
+		s.migrateSettings(s.settings)
+		return
 	}
-	merged.CpuSampling = loaded.CpuSampling
+	merged := &AppSettings{
+		SchemaVersion:          loaded.SchemaVersion,
+		DeltaMode:              loaded.DeltaMode,
+		CpuSampling:            loaded.CpuSampling,
+		ActiveOverlayProfileID: loaded.ActiveOverlayProfileID,
+		BetaWelcomeCompleted:   loaded.BetaWelcomeCompleted,
+		BetaUserRole:           loaded.BetaUserRole,
+	}
 	if loaded.Hotkeys != nil {
 		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))
 		for k, v := range loaded.Hotkeys {
 			merged.Hotkeys[k] = v
 		}
+	} else {
+		merged.Hotkeys = map[string]string{
+			"toggleOverlay":  "ctrl+shift+v",
+			"toggleEditMode": "ctrl+shift+e",
+			"nextProfile":    "ctrl+shift+right",
+			"prevProfile":    "ctrl+shift+left",
+		}
 	}
-	merged.ActiveOverlayProfileID = loaded.ActiveOverlayProfileID
-	merged.BetaWelcomeCompleted = loaded.BetaWelcomeCompleted
-	merged.BetaUserRole = loaded.BetaUserRole
 	if loaded.LauncherApps != nil {
 		merged.LauncherApps = make(map[string]LauncherAppEntry, len(loaded.LauncherApps))
 		for k, v := range loaded.LauncherApps {
 			merged.LauncherApps[k] = v
 		}
+	} else {
+		merged.LauncherApps = defaultLauncherApps()
 	}
 	if loaded.LauncherProfiles != nil {
 		merged.LauncherProfiles = make([]LaunchProfile, len(loaded.LauncherProfiles))
 		copy(merged.LauncherProfiles, loaded.LauncherProfiles)
+	} else {
+		merged.LauncherProfiles = defaultLauncherProfiles()
 	}
 	s.migrateSettings(merged)
 	s.settings = merged
 }
 
-// persistSidecarApplied writes the current settings to disk (via .tmp + .bak + rename)
-// after a sidecar was successfully applied. It does NOT write the sidecar file itself.
+// persistSidecarApplied writes the current settings to disk (via atomicWrite)
+// after a sidecar was successfully applied. Called under the loadLocked lock.
 func (s *SettingsService) persistSidecarApplied() error {
 	if s.settings == nil {
 		return nil
@@ -342,30 +376,25 @@ func (s *SettingsService) persistSidecarApplied() error {
 	if err != nil {
 		return err
 	}
-	tmpPath := s.path + ".tmp"
-	bakPath := s.path + ".bak"
-	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
-		return fmt.Errorf("persist sidecar write tmp: %w", err)
+	if dir := filepath.Dir(s.path); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("mkdir: %w", err)
+		}
 	}
-	if _, err := os.Stat(s.path); err == nil {
-		_ = os.Rename(s.path, bakPath)
-	}
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		return fmt.Errorf("persist sidecar rename: %w", err)
+	if err := s.atomicWrite(data); err != nil {
+		return fmt.Errorf("persist sidecar: %w", err)
 	}
 	return nil
 }
 
 // Save persists settings to disk atomically with retry+backoff and .bak rotation.
+// It marshals the settings under the write lock for data consistency, then
+// releases the lock before I/O and sleep so the mutex is never held during
+// backoff delays.
 func (s *SettingsService) Save(settings *AppSettings) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.saveLocked(settings, 0)
-}
-
-// saveLocked performs the actual write with atomic tmp→rename, .bak rotation,
-// and .failed sidecar cleanup. It is called with the mutex already held.
-func (s *SettingsService) saveLocked(settings *AppSettings, attempt int) error {
+	if settings == nil {
+		return fmt.Errorf("settings cannot be nil")
+	}
 	if s.path == "" {
 		return ErrSettingsPathEmpty
 	}
@@ -373,41 +402,64 @@ func (s *SettingsService) saveLocked(settings *AppSettings, attempt int) error {
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
-	tmpPath := s.path + ".tmp"
-	bakPath := s.path + ".bak"
-	sidecarPath := s.path + ".failed"
-
-	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
-		return s.retryOrSidecar(settings, attempt, data, sidecarPath, fmt.Errorf("write tmp: %w", err))
-	}
-	// Copy existing main to .bak before replacing it. We copy (not rename)
-	// so the main file is never absent between the two operations.
-	// If the copy fails, the .bak may be stale but the update proceeds.
-	if _, err := os.Stat(s.path); err == nil {
-		if bakData, err := os.ReadFile(s.path); err == nil {
-			_ = os.WriteFile(bakPath, bakData, 0o644)
-		}
-	}
-	// Atomically replace main with .tmp. If this fails, the old main is intact.
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		return s.retryOrSidecar(settings, attempt, data, sidecarPath, fmt.Errorf("rename: %w", err))
-	}
-	// Save successful: remove stale sidecar if it exists.
-	_ = os.Remove(sidecarPath)
-	s.settings = settings
-	return nil
+	// Directory is ensured at the top of saveWithRetry (idempotent).
+	return s.saveWithRetry(settings, data, 0)
 }
 
-// retryOrSidecar sleeps with backoff and retries, or writes a .failed sidecar
-// when all retries are exhausted.
-func (s *SettingsService) retryOrSidecar(settings *AppSettings, attempt int, data []byte, sidecarPath string, lastErr error) error {
+// saveWithRetry attempts to persist data atomically, retrying with backoff
+// on failure. The caller must NOT hold s.mu — this function takes the lock
+// only briefly to update s.settings after a successful write.
+func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, attempt int) error {
+	if dir := filepath.Dir(s.path); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("mkdir: %w", err)
+		}
+	}
+	err := s.atomicWrite(data)
+	if err == nil {
+		_ = os.Remove(s.path + ".failed")
+		s.mu.Lock()
+		s.settings = settings
+		s.mu.Unlock()
+		return nil
+	}
 	if attempt+1 < len(saveBackoffs) {
 		time.Sleep(saveBackoffs[attempt+1])
-		return s.saveLocked(settings, attempt+1)
+		return s.saveWithRetry(settings, data, attempt+1)
 	}
 	// Exhausted: write payload to sidecar file.
-	_ = os.WriteFile(sidecarPath, data, 0o644)
-	return fmt.Errorf("save failed after retries: %w", lastErr)
+	_ = os.WriteFile(s.path+".failed", data, 0o644)
+	return fmt.Errorf("save failed after retries: %w", err)
+}
+
+// atomicWrite performs a safe write: .tmp → rename → .bak rotation.
+// It does NOT take s.mu; callers that need memory consistency
+// (e.g. s.settings = settings) must do so separately.
+func (s *SettingsService) atomicWrite(data []byte) error {
+	tmpPath := s.path + ".tmp"
+	bakPath := s.path + ".bak"
+
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
+		return fmt.Errorf("write tmp: %w", err)
+	}
+
+	var oldData []byte
+	if existing, err := os.ReadFile(s.path); err == nil {
+		oldData = existing
+	}
+
+	if err := os.Rename(tmpPath, s.path); err != nil {
+		return fmt.Errorf("rename tmp: %w", err)
+	}
+
+	// Rotate .bak with the old main content. Failure is non-fatal.
+	if oldData != nil {
+		if err := os.WriteFile(bakPath, oldData, 0o644); err != nil {
+			s.logger.Warn("failed to write .bak, continuing", "err", err)
+		}
+	}
+
+	return nil
 }
 
 // ValidateHotkeyCombo checks that a hotkey string has at least two parts (modifier+key).

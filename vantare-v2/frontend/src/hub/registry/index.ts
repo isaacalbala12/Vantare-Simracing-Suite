@@ -10,3 +10,7 @@ export {
   listDesignSystems,
   clearDesignSystemRegistry,
 } from "./design-system-registry";
+export {
+  resolveWidgetComponents,
+  useWidgetComponents,
+} from "./widget-components";

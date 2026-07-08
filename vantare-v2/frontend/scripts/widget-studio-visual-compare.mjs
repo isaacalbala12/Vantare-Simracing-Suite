@@ -33,16 +33,16 @@ const BASE_URL = `http://localhost:${PORT}`;
 const DESIGNS = [
   { id: "standings-leaderboard", widgetType: "standings", name: "Standings Leaderboard" },
   { id: "standings-endurance", widgetType: "standings", name: "Standings Endurance" },
-  { id: "standings-glassmorphism-pro", widgetType: "standings", name: "Standings Glassmorphism" },
+  { id: "standings-vantare-crystal", widgetType: "standings", name: "Standings Vantare Crystal" },
   { id: "vantare-racing-essential", widgetType: "relative", name: "Relative Vantare Racing" },
   { id: "broadcast-pro", widgetType: "relative", name: "Relative Broadcast Pro" },
-  { id: "relative-glassmorphism-pro", widgetType: "relative", name: "Relative Glassmorphism" },
+  { id: "relative-vantare-crystal", widgetType: "relative", name: "Relative Vantare Crystal" },
   { id: "delta-time-attack", widgetType: "delta", name: "Delta Time Attack" },
   { id: "delta-broadcast", widgetType: "delta", name: "Delta Broadcast" },
-  { id: "delta-glassmorphism-pro", widgetType: "delta", name: "Delta Glassmorphism" },
+  { id: "delta-vantare-crystal", widgetType: "delta", name: "Delta Vantare Crystal" },
   { id: "pedals-clean-broadcast", widgetType: "pedals", name: "Pedals Clean Broadcast" },
   { id: "pedals-endurance", widgetType: "pedals", name: "Pedals Endurance" },
-  { id: "pedals-glassmorphism-pro", widgetType: "pedals", name: "Pedals Glassmorphism" },
+  { id: "pedals-vantare-crystal", widgetType: "pedals", name: "Pedals Vantare Crystal" },
 ];
 
 // ── Expected canonical values ─────────────────────────────────────────────────
@@ -207,9 +207,9 @@ function validateInvariants(design, measurement, content) {
     if (!templateMatch) {
       fail(`${design.id}: missing data-standings-template attribute`);
     } else {
-      if (design.id === "standings-glassmorphism-pro" && templateMatch[1] !== "glassmorphism") {
+      if (design.id === "standings-vantare-crystal" && templateMatch[1] !== "glassmorphism") {
         fail(`${design.id}: expected data-standings-template="glassmorphism", got "${templateMatch[1]}"`);
-      } else if (design.id !== "standings-glassmorphism-pro" && templateMatch[1] === "glassmorphism") {
+      } else if (design.id !== "standings-vantare-crystal" && templateMatch[1] === "glassmorphism") {
         fail(`${design.id}: base/non-glass design must not render data-standings-template="glassmorphism" (got "${templateMatch[1]}")`);
       } else {
         ok(`${design.id}: data-standings-template="${templateMatch[1]}"`);

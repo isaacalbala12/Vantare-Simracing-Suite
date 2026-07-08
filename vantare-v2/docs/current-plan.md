@@ -2293,3 +2293,10 @@ Nota WIDGET-STUDIO-10 (2026-07-07) — Implementation:
 - Tests: 55/55 enfocados PASS (OverlaysStudioPage 16, WidgetStudio 24, widget-studio-empty-profile 6, StudioWidgetList 9). tsc OK (pendiente MC-5), lint OK (pendiente MC-5), build OK (pendiente MC-5).
 - No se tocó: LayoutStudio, backend Go, Supabase/Auth, Calendar, Roadmap, Launcher, Engineer/Telemetry, dependencias, position/x/y/w/h, autosave, drag/drop.
 - Sin commit, sin tag, sin release, sin Discord.
+
+## Nota FIX-LICENSE-BRIDGE-01 (2026-07-08) — Implementation:
+- Objetivo: alinear 3 tests al contrato "standalone mode" (LicenseBridge stub + LicenseProvider sin getSession). Producción ya no llama a `getSession`; LicenseProvider emite `license:validate` con `{}` tras 500ms.
+- Archivos modificados: `frontend/src/hub/HubApp.test.tsx` (2 tests reescritos + eliminado `vi.mock("../lib/supabase-auth")`), `frontend/src/lib/license.test.tsx` (1 test reescrito + limpieza de `mockGetSession` muerto + comentario actualizado).
+- Tests: 1410/1410 PASS (3 tests reescritos al contrato actual, 0 fallos; baseline previo 1407/1410).
+- tsc OK, lint OK (8 errores pre-existentes en archivos ajenos: PaywallScreen, Calendar*, RoadmapPage, AccountSettings, wails-runtime-topbar-mock, topbar-visual-harness — fuera de scope, no introducidos por este cambio).
+- Sin commit, sin tag, sin release.

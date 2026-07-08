@@ -7,7 +7,6 @@ const {
   eventsOn,
   eventsOff,
   eventsEmit,
-  mockGetSession,
 } = vi.hoisted(() => {
   const onListeners = new Map<string, (event: unknown) => void>();
   return {
@@ -18,7 +17,6 @@ const {
     }),
     eventsOff: vi.fn(),
     eventsEmit: vi.fn(),
-    mockGetSession: vi.fn(),
   };
 });
 
@@ -28,10 +26,6 @@ vi.mock("@wailsio/runtime", () => ({
     Off: eventsOff,
     Emit: eventsEmit,
   },
-}));
-
-vi.mock("./supabase-auth", () => ({
-  getSession: mockGetSession,
 }));
 
 import { LicenseProvider, useLicense } from "./license";
@@ -54,9 +48,6 @@ describe("license module", () => {
     eventsOn.mockClear();
     eventsEmit.mockClear();
     eventsOff.mockClear();
-    mockGetSession.mockReset();
-    // Default: no persisted session (fresh start)
-    mockGetSession.mockResolvedValue(null);
     cleanup();
   });
 
@@ -151,7 +142,7 @@ describe("license module", () => {
 
     it("ignores license:validate changes for unrelated events", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
-      // Wait for the async getSession to resolve and emit license:validate
+      // Wait for the 500ms setTimeout in LicenseProvider to fire and emit license:validate
       await vi.waitFor(() => {
         expect(eventsEmit).toHaveBeenCalled();
       });
@@ -204,19 +195,17 @@ describe("license module", () => {
     });
   });
 
-  describe("LicenseProvider persisted session recovery", () => {
-    it("emits license:validate with session token when getSession returns a session", async () => {
-      mockGetSession.mockResolvedValue({ access_token: "persisted-tok" });
+  describe("LicenseProvider standalone mode", () => {
+    it("emits license:validate without session token in standalone mode", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
+      // Standalone mode skips the Supabase session lookup entirely; the
+      // provider emits an empty payload (no sessionToken) after its timer.
       await vi.waitFor(() => {
-        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
-          sessionToken: "persisted-tok",
-        });
+        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
       });
     });
 
-    it("emits license:validate without token when getSession returns null", async () => {
-      mockGetSession.mockResolvedValue(null);
+    it("emits license:validate with an empty payload in standalone mode", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
       await vi.waitFor(() => {
         expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});

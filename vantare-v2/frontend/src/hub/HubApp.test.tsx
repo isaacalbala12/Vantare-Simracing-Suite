@@ -43,10 +43,6 @@ vi.mock("../lib/license", () => ({
   useLicense: useLicenseMock,
 }));
 
-vi.mock("../lib/supabase-auth", () => ({
-  getSession: getSessionMock,
-}));
-
 vi.mock("./auth/LoginScreen", () => ({
   LoginScreen: ({ onLoggedIn }: { onLoggedIn: (token?: string) => void }) => {
     loginScreenMock();
@@ -226,8 +222,7 @@ describe("HubApp gate (production)", () => {
     expect(screen.queryByTestId("paywall-screen")).toBeNull();
   });
 
-  it("LicenseBridge forwards Supabase access_token to license:validate", async () => {
-    getSessionMock.mockResolvedValueOnce({ access_token: "bridge-tok" });
+  it("LicenseBridge is a no-op stub in standalone mode", async () => {
     setLicense({
       state: "active",
       entitlements: ["overlays"],
@@ -236,16 +231,16 @@ describe("HubApp gate (production)", () => {
       deviceOK: true,
     });
     render(<HubApp />);
+    // LicenseBridge is a stub in standalone mode: it must NOT call getSession.
+    // (LicenseProvider is mocked in this file, so license:validate is emitted
+    // by the real provider in license.test.tsx, not here.)
     await waitFor(() => {
-      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
-        sessionToken: "bridge-tok",
-      });
+      expect(getSessionMock).not.toHaveBeenCalled();
     });
   });
 
-  it("LicenseBridge does not refresh when no session (prevents OAuth race)", async () => {
+  it("LicenseBridge does not invoke getSession (standalone mode skips it)", async () => {
     const refreshMock = vi.fn();
-    getSessionMock.mockResolvedValueOnce(null);
     setLicense(
       {
         state: "active",
@@ -268,13 +263,9 @@ describe("HubApp gate (production)", () => {
       refresh: refreshMock,
     });
     render(<HubApp />);
-    // Give the async getSession promise a chance to resolve.
-    await waitFor(() => {
-      expect(getSessionMock).toHaveBeenCalled();
-    });
-    // refresh must NOT be called when there is no session: the initial
-    // license:validate with an empty token already ran on mount, and
-    // calling refresh here would race with an OAuth callback.
+    // In standalone mode the bridge is a stub and never calls getSession.
+    expect(getSessionMock).not.toHaveBeenCalled();
+    // refresh must NOT be called: the stub does not trigger a recovery.
     expect(refreshMock).not.toHaveBeenCalled();
   });
 

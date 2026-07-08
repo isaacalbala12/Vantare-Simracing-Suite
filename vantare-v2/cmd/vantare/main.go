@@ -891,6 +891,11 @@ func main() {
 			return
 		}
 		emitter.Emit("hub:profile-created", map[string]any{"ok": true})
+		if profiles, listErr := hubSvc.ListProfiles(); listErr != nil {
+			log.Printf("hub:save-own-copy list error: %v", listErr)
+		} else {
+			emitter.Emit("hub:profiles", map[string]any{"profiles": profiles})
+		}
 	})
 
 	wailsApp.Event.On("hub:create", func(event *application.CustomEvent) {
@@ -908,6 +913,11 @@ func main() {
 			return
 		}
 		emitter.Emit("hub:profile-created", map[string]any{"ok": true})
+		if profiles, listErr := hubSvc.ListProfiles(); listErr != nil {
+			log.Printf("hub:create list error: %v", listErr)
+		} else {
+			emitter.Emit("hub:profiles", map[string]any{"profiles": profiles})
+		}
 	})
 
 	wailsApp.Event.On("hub:delete", func(event *application.CustomEvent) {
@@ -930,6 +940,11 @@ func main() {
 			return
 		}
 		emitter.Emit("hub:profile-deleted", map[string]any{"ok": true})
+		if profiles, listErr := hubSvc.ListProfiles(); listErr != nil {
+			log.Printf("hub:delete list error: %v", listErr)
+		} else {
+			emitter.Emit("hub:profiles", map[string]any{"profiles": profiles})
+		}
 	})
 
 	wailsApp.Event.On("hub:activate", func(event *application.CustomEvent) {

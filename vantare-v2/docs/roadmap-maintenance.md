@@ -84,3 +84,62 @@ Reglas:
 - `release-roadmap-execution-index.md` y `roadmap-execution-board.md` son
   contexto de ejecución; el roadmap de la app los consume como inspiración
   manual, no los lee ni los edita automáticamente.
+
+## 7. Fuente de "Desarrollo por features" (features)
+
+La pestaña "Desarrollo por features" del Roadmap sigue el mismo patrón que la
+pestaña "Roadmap actual": fuente manual (JSON), sin script de auto-generación.
+
+### Dónde vive
+
+- **Fuente manual:** `docs/features-source.json` (categorías + features).
+- **URL pública (runtime):** `FEATURES_SOURCE_URL` en
+  `frontend/src/hub/roadmap/features-data.ts` — apunta a raw GitHub:
+  `https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/main/docs/features-source.json`.
+- **Fallback offline (bundled):** `FEATURES_FALLBACK` en el mismo archivo
+  `features-data.ts`. Debe estar sincronizado a mano con el JSON fuente.
+- **UI:** `frontend/src/hub/roadmap/roadmap-features.ts` consume el dataset y
+  expone `TIPO_META` (4 tipos), `STATUS_META` (3 status) y `getActiveSections`.
+- **Script eliminado:** `scripts/generate-roadmap-progress.mjs` ya no existe.
+  No hay auto-generación. Las features son manuales.
+
+### Schema de validación
+
+El JSON fuente debe cumplir:
+
+- `category` debe existir en `categories[].id`.
+- `status` ∈ `in-development | research | future`.
+- `tipo` ∈ `feature | bugfix | improve | component`.
+- `percent` ∈ `0 | 10 | 25 | 50 | 75 | 100`.
+- `label` y `description` son `LocalizedText` (4 idiomas: es, en, pt, it).
+- `pickText` se reusa de `roadmap-data.ts` para obtener el texto según el
+  locale activo.
+
+### Cómo añadir una feature
+
+1. Abre `docs/features-source.json`.
+2. Localiza el array `features[]`.
+3. Añade un objeto con:
+   - `id` (único, kebab-case)
+   - `category` (debe coincidir con un id en `categories[]`)
+   - `label` (4 idiomas)
+   - `description` (4 idiomas)
+   - `tipo`
+   - `status`
+   - `percent`
+4. Abre `frontend/src/hub/roadmap/features-data.ts`, localiza
+   `FEATURES_FALLBACK.features` y replica exactamente el mismo objeto.
+5. Ejecuta los checks: `tsc --noEmit`, `pnpm test`, `pnpm build`.
+
+### Cómo añadir una categoría
+
+1. Abre `docs/features-source.json`.
+2. Localiza el array `categories[]`.
+3. Añade un objeto con:
+   - `id` (único, kebab-case)
+   - `label` (4 idiomas)
+   - `order` (número de orden en la UI)
+4. Replica el mismo objeto en `FEATURES_FALLBACK.categories` en
+   `features-data.ts`.
+5. Asegúrate de que las features existentes referencian el nuevo `id` si
+   corresponde.

@@ -246,3 +246,91 @@ Pide revisión humana (y **para**) si:
   fallback en el dashboard.
 - `frontend/src/i18n/locales/{es,en,pt,it}.ts` — claves de changelog
   (`roadmap.changelog.*`).
+
+## 10. Features (Desarrollo por features)
+
+La pestaña "Desarrollo por features" sigue el mismo patrón que la pestaña
+"Roadmap actual": fuente manual (JSON), sin auto-generación.
+
+### Fuente de datos
+
+| Archivo | Para qué es | Quién lo lee |
+|---|---|---|
+| `docs/features-source.json` | **Fuente de verdad manual.** Categorías + features con texto en 4 idiomas. | La app en runtime, por `fetch(FEATURES_SOURCE_URL)`. |
+| `frontend/src/hub/roadmap/features-data.ts` | Constante `FEATURES_FALLBACK` (copia empaquetada del JSON) + `FEATURES_SOURCE_URL`. | La app sin red, como respaldo. |
+
+### Schema (recordatorio)
+
+Las features se validan con las mismas reglas que el JSON fuente:
+
+```ts
+type FeatureStatus = "in-development" | "research" | "future";
+type FeatureTipo   = "feature" | "bugfix" | "improve" | "component";
+
+type RoadmapFeature = {
+  id: string;          // único, kebab-case
+  category: string;    // debe existir en categories[].id
+  label: LocalizedText;       // 4 idiomas
+  description: LocalizedText; // 4 idiomas
+  tipo: FeatureTipo;
+  status: FeatureStatus;
+  percent: 0 | 10 | 25 | 50 | 75 | 100;
+};
+
+type FeatureCategory = {
+  id: string;
+  label: LocalizedText; // 4 idiomas
+  order: number;
+};
+```
+
+- Escala de progreso: solo `0, 10, 25, 50, 75, 100` (la misma que el roadmap
+  actual).
+- `pickText` se reusa de `roadmap-data.ts`.
+
+### Cómo añadir una feature
+
+1. Abre `docs/features-source.json`, añade un objeto al array `features[]` con
+   `id`, `category`, `label`, `description`, `tipo`, `status`, `percent`.
+2. Abre `frontend/src/hub/roadmap/features-data.ts`, replica el mismo objeto en
+   `FEATURES_FALLBACK.features`.
+3. Ejecuta los checks (§5 de esta guía).
+
+### Cómo añadir una categoría
+
+1. Añade el objeto a `categories[]` en el JSON con `id`, `label` (4 idiomas),
+   `order`.
+2. Replica en `FEATURES_FALLBACK.categories`.
+3. Asegúrate de que las features existentes referencian el nuevo `id` si
+   procede.
+
+### Cómo editar una feature existente
+
+- Cambia `percent` al nuevo valor de la escala.
+- Cambia `status` (`in-development` → `research`, `research` → `future`, etc.).
+- Cambia `tipo` si la naturaleza de la feature cambia.
+- Cambia `category` si la feature pertenece a otra categoría.
+- Cambia `label` / `description` (los 4 idiomas).
+- Replica **exactamente el mismo cambio** en `FEATURES_FALLBACK` en
+   `features-data.ts`.
+- Ejecuta los checks.
+
+### Lo que NO debes hacer
+
+- **No** crees un script `.mjs` / `.ts` / `.ps1` que regenere `features-source.json`.
+  El script `scripts/generate-roadmap-progress.mjs` ya fue eliminado y no debe
+  reintroducirse.
+- **No** uses auto-generación de `done` / `total`. El progreso es un único campo
+  `percent` en la escala.
+- **No** uses `research` como `tipo` (es un `status`).
+- **No** uses `future` como `tipo` (es un `status`).
+
+### Checks
+
+Después de editar features, ejecuta en orden:
+
+```bash
+corepack pnpm --dir frontend exec tsc --noEmit
+corepack pnpm --dir frontend test
+corepack pnpm --dir frontend build
+```

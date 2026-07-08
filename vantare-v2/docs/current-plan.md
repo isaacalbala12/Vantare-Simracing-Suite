@@ -1,3 +1,14 @@
+Nota FEATURES-MANUAL-SOURCE (2026-07-08):
+- Objetivo: la pestaña 'Desarrollo por features' del Roadmap pasa a tener una fuente manual (JSON) igual que 'Roadmap actual', sin scripts de auto-generación.
+- Decisiones cerradas: (1) Fuente de verdad = docs/features-source.json (Isaac edita a mano). (2) App trae el JSON por fetch en runtime; sin red, usa FEATURES_FALLBACK. (3) 3 secciones en la pestaña: 'En desarrollo' / 'En investigación' / 'Próximamente'. (4) `status` ∈ in-development|research|future (campo explícito). (5) `tipo` ∈ feature|bugfix|improve|component (research deja de ser tipo y pasa a ser status). (6) `category` declarada en la fuente, sin CATEGORY_MAP hardcodeado. (7) `percent` único campo de progreso (escala 0/10/25/50/75/100), sin done/total. (8) `pickText` reusado de roadmap-data.ts.
+- Archivos nuevos: docs/features-source.json, frontend/src/hub/roadmap/features-data.ts, frontend/src/hub/roadmap/features-data.test.ts.
+- Archivos modificados: frontend/src/hub/roadmap/roadmap-features.ts (consume features-data.ts, expone TIPO_META de 4 tipos + STATUS_META de 3 status + getActiveSections con return { sections, overallProgress }), frontend/src/hub/roadmap/roadmap-features.test.ts, frontend/src/hub/pages/RoadmapPage.tsx (FeaturesSection pinta 3 bloques, import cleanup explícito, estado inicial síncrono), frontend/src/hub/pages/RoadmapPage.test.tsx, docs/roadmap-maintenance.md, docs/roadmap-agent-guide.md.
+- Archivos eliminados: scripts/generate-roadmap-progress.mjs, frontend/src/hub/roadmap/roadmap-progress.json.
+- Keys i18n obsoletas: roadmap.features.noFeatures y roadmap.features.checks quedan sin uso. No se añaden keys nuevas.
+- Checks: tsc 0 errores, suite completa +25 tests PASS, build OK.
+- Sin commit, sin tag, sin release.
+- Estado: 🟢 ACTIVO
+
 Nota ROADMAP-MANUAL-SOURCE (2026-07-08):
 - Objetivo: hacer el roadmap 100% manual (sin scripts de auto-generación) y que los cambios lleguen automáticamente a todos los clientes con la app descargada, sin nuevo release.
 - Decisiones cerradas: (1) Fuente de verdad manual = `docs/roadmap-source.json` (Isaac edita a mano). (2) La app trae el JSON por `fetch(ROADMAP_SOURCE_URL)` en runtime al abrir la pestaña Roadmap; sin red, usa `ROADMAP_FALLBACK` empaquetado. (3) Texto de las cards (título, resumen, highlights, hitos) pasa de i18n a inline en el JSON en es/en/pt/it; el "chrome" de la UI (eyebrows, feedback, hero, tab labels) sigue en i18n. (4) `ROADMAP_NEXT` (r1–r15) eliminado (era código muerto; la pestaña "next" ya mostraba `roadmap-features.ts`). (5) `DashboardFeatureCarousel` migrado de `ROADMAP_CURRENT` a `ROADMAP_FALLBACK` + `pickText`. (6) Procedimiento documentado en `docs/roadmap-maintenance.md` (re-escrito, sin lenguaje de "snapshot/build-time/script").
@@ -2358,3 +2369,16 @@ Nota WIDGET-STUDIO-10 (2026-07-07) — Implementation:
 - Tests: 1417/1417 PASS (1410 previos + 7 contract), tsc OK, lint OK (0 errores nuevos; 8 errores preexistentes en otros archivos), `git diff --check` OK.
 - Sin commit, sin tag, sin release, sin push (regla dura del usuario).
 - Siguiente microcorte: A3 (catálogo de estilos por widget type con defaults del HTML).
+
+Nota FEATURES-DATA (2026-07-08):
+- Creado frontend/src/hub/roadmap/features-data.ts como modulo espejo de roadmap-data.ts para la pestana 'Desarrollo por features' del Roadmap.
+- Fuente de verdad: docs/features-source.json (Task 1, ya existente).
+- Tipos: FeatureStatus, FeatureTipo, FeatureCategory, RoadmapFeature, FeaturesDataset.
+- PROGRESS_SCALE importado de roadmap-data.ts (no duplicado).
+- pickText re-exportado desde roadmap-data.ts.
+- fetchFeaturesDataset(signal?) - fetch remoto con fallback a FEATURES_FALLBACK, nunca lanza.
+- normalizeFeaturesSource - valida y mapea raw JSON, dropea features con category/status/tipo/percent invalidos, retorna null si no quedan features validas (causa fallback).
+- Creado frontend/src/hub/roadmap/features-data.test.ts con 13 tests TDD: validacion de FEATURES_FALLBACK, fetch con mock, fallback en fallos.
+- Checks: 13/13 tests PASS, build OK (tsc -b + vite build), lint preexisting errors sin cambios en archivos tocados.
+- Archivos nuevos: features-data.ts, features-data.test.ts.
+- Commit: 330d077 feat(roadmap): add features-data.ts with remote fetch + fallback

@@ -8,6 +8,7 @@ import { mockCalendar } from "../hub/calendar-visual-mock-data";
 const listeners = new Map<string, Set<(event: unknown) => void>>();
 
 function broadcast(name: string, data: unknown) {
+
   setTimeout(() => {
     listeners.get(name)?.forEach((fn) => fn({ data }));
   }, 0);
@@ -25,8 +26,8 @@ export const Events = {
   Off(name: string, handler: (event: unknown) => void) {
     listeners.get(name)?.delete(handler);
   },
-
   Emit(name: string, data: unknown) {
+
     // Auto-respond to license validation
     if (name === "license:validate") {
       setTimeout(() => {

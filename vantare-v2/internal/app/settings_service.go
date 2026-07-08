@@ -279,6 +279,31 @@ func (s *SettingsService) UpdateLauncherAppArgs(id, args string) error {
 	return s.saveWithRetry(settings, data, 0)
 }
 
+// SetLauncherAppFavorite updates the IsFavorite field of a launcher app entry
+// and persists the change. Returns ErrAppNotFound if the app ID does not exist.
+func (s *SettingsService) SetLauncherAppFavorite(id string, favorite bool) error {
+	s.mu.Lock()
+	if s.settings == nil {
+		s.mu.Unlock()
+		return ErrSettingsNotLoaded
+	}
+	entry, ok := s.settings.LauncherApps[id]
+	if !ok {
+		s.mu.Unlock()
+		return ErrAppNotFound
+	}
+	entry.IsFavorite = favorite
+	s.settings.LauncherApps[id] = entry
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		s.mu.Unlock()
+		return fmt.Errorf("marshal: %w", err)
+	}
+	settings := s.settings
+	s.mu.Unlock()
+	return s.saveWithRetry(settings, data, 0)
+}
+
 // Load reads settings from disk with tolerance for corruption.
 // Priority order: .failed sidecar → main file → .bak → defaults.
 func (s *SettingsService) Load() error {

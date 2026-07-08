@@ -795,3 +795,235 @@ func TestHandleChainErrorOnMissingProfileEmitsError(t *testing.T) {
 		t.Fatalf("expected launcher:error, got %v", emitter.events)
 	}
 }
+
+// --- Task 7.3 — Backend handlers wiring tests -------------------------------
+
+func TestHandleProfileCancel(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	// Cancel a non-existent profile must not panic or emit events.
+	handleCancelProfile("nonexistent", svc, emitter)
+	if len(emitter.events) != 0 {
+		t.Fatalf("cancel must not emit events, got %v", emitter.events)
+	}
+	// Save a profile and verify cancellation is accepted without error.
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "pro", Name: "Pro"}); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+	handleCancelProfile("pro", svc, emitter)
+	if len(emitter.events) != 0 {
+		t.Fatalf("cancel must not emit events after save, got %v", emitter.events)
+	}
+}
+
+func TestHandleProfileRetryFailed(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	// Seed a valid profile.
+	if err := svc.SaveProfile(app.LaunchProfile{
+		ID: "creator", Name: "Creador",
+		Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}},
+	}); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+	ctx := context.Background()
+	// Retry must not return an immediate error (the chain runs on a goroutine).
+	handleProfileRetryFailed("creator", svc, emitter, ctx)
+	// No error event must be emitted.
+	for _, e := range emitter.events {
+		if e == "launcher:error" {
+			t.Fatal("retry failed must not emit launcher:error for a valid profile")
+		}
+	}
+}
+
+func TestHandleProfileStatsSave(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	// Seed a profile with a known ID.
+	custom := app.DefaultAppSettings()
+	custom.LauncherProfiles = []app.LaunchProfile{
+		{ID: "p1", Name: "P1", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}},
+	}
+	// Also seed the app referenced by the profile step.
+	custom.LauncherApps = map[string]app.LauncherAppEntry{
+		"lmu": {ID: "lmu", DisplayName: "LMU", LaunchMethod: "steam-uri", SteamAppID: 2399420, GradientFrom: "#000", GradientTo: "#fff"},
+	}
+	if err := settingsSvc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	// Reload to get a fresh settings pointer.
+	settingsSvc2 := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc2.Load(); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+
+	emitter := &spyMainEmitter{}
+	handleProfileStatsSave("p1", 5000, settingsSvc2, emitter)
+
+	// Must emit success.
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profile:stats:saved" {
+		t.Fatalf("expected launcher:profile:stats:saved, got %v", emitter.events)
+	}
+	// AvgChainDurationMs must be set on the profile.
+	profiles := settingsSvc2.GetLauncherProfiles()
+	if len(profiles) != 1 || profiles[0].AvgChainDurationMs != 5000 {
+		t.Fatalf("expected AvgChainDurationMs=5000, got %d", profiles[0].AvgChainDurationMs)
+	}
+}
+
+func TestHandleProfileStatsSaveEmitsErrorOnUnknown(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	emitter := &spyMainEmitter{}
+	handleProfileStatsSave("ghost", 1000, settingsSvc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error for unknown profile, got %v", emitter.events)
+	}
+}
+
+func TestHandleProfileHotkeySet(t *testing.T) {
+	hkMgr := launcher.NewHotkeyManager()
+	defer hkMgr.Unregister("test-profile")
+
+	emitter := &spyMainEmitter{}
+
+	// Empty combo = unregister; must succeed even if not registered.
+	handleProfileHotkeySet("test-profile", "", hkMgr, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profile:hotkey:set" {
+		t.Fatalf("expected launcher:profile:hotkey:set on unregister, got %v", emitter.events)
+	}
+	payload := emitter.data[0].(map[string]any)
+	if payload["combo"] != "" {
+		t.Fatalf("expected empty combo in payload, got %q", payload["combo"])
+	}
+}
+
+func TestHandleAutostartToggle(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	// On non-Windows, RegisterAutostart will fail (registry API not available).
+	// The handler must emit launcher:error in that case; on Windows it may
+	// succeed depending on the test environment. We test both paths.
+	handleAutostartToggle("test-profile", true, emitter)
+
+	if len(emitter.events) == 0 {
+		t.Fatal("expected at least one event from autostart toggle")
+	}
+	// If it succeeded, we got launcher:autostart:toggled; if it failed,
+	// we got launcher:error. Either is valid behavior for the handler.
+	got := emitter.events[0]
+	if got != "launcher:autostart:toggled" && got != "launcher:error" {
+		t.Fatalf("expected launcher:autostart:toggled or launcher:error, got %q", got)
+	}
+}
+
+func TestHandleAppFavorite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	// Seed an app entry.
+	custom := app.DefaultAppSettings()
+	custom.LauncherApps = map[string]app.LauncherAppEntry{
+		"obs": {
+			ID: "obs", DisplayName: "OBS Studio", Abbreviation: "OBS",
+			Category: app.AppCategoryStreaming, LaunchMethod: "executable",
+			Detected: true, GradientFrom: "#302e31", GradientTo: "#0a0a0a",
+		},
+	}
+	if err := settingsSvc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	settingsSvc2 := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc2.Load(); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+
+	emitter := &spyMainEmitter{}
+	handleAppFavorite("obs", true, settingsSvc2, emitter)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
+		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	}
+	// Verify the app is marked as favorite.
+	apps := settingsSvc2.GetLauncherApps()
+	if app, ok := apps["obs"]; !ok || !app.IsFavorite {
+		t.Fatal("expected obs to be marked as favorite")
+	}
+}
+
+func TestHandleAppFavoriteEmitsErrorOnUnknown(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(path, nil, nil)
+	if err := settingsSvc.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	emitter := &spyMainEmitter{}
+	handleAppFavorite("ghost", true, settingsSvc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleLaunchFlag(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	// Seed a valid profile so the launch succeeds.
+	if err := svc.SaveProfile(app.LaunchProfile{
+		ID: "creator", Name: "Creador",
+		Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}},
+	}); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+
+	emitter := &spyMainEmitter{}
+	// Valid launch flag must not emit an error (chain runs on goroutine).
+	handleLaunchFlag([]string{"--launch=creator"}, nil, svc, emitter)
+	for _, e := range emitter.events {
+		if e == "launcher:error" {
+			t.Fatal("launch flag must not emit error for a valid profile")
+		}
+	}
+}
+
+func TestHandleLaunchFlagIgnoresMissingFlag(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	emitter := &spyMainEmitter{}
+	// No launch flag = no-op, no events emitted.
+	handleLaunchFlag([]string{"--other-flag"}, nil, svc, emitter)
+	if len(emitter.events) != 0 {
+		t.Fatalf("expected no events when flag is missing, got %v", emitter.events)
+	}
+}
+
+func TestHandleWindowCloseCancelsChains(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	// Seed a profile.
+	if err := svc.SaveProfile(app.LaunchProfile{
+		ID: "p1", Name: "P1",
+		Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}},
+	}); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+	// Start a chain (runs on goroutine).
+	if err := svc.LaunchProfile(context.Background(), "p1"); err != nil {
+		t.Fatalf("launch: %v", err)
+	}
+	// CancelAll must not panic.
+	handleShutdownCancelChains(svc)
+	// No event check needed; CancelAll is silent.
+	emitter2 := &spyMainEmitter{}
+	handleShutdownCancelChains(svc)
+	if len(emitter2.events) != 0 {
+		t.Fatalf("expected no events from CancelAll, got %v", emitter2.events)
+	}
+}

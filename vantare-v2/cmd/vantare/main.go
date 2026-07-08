@@ -293,6 +293,99 @@ func handleChainError(profileID string, stepIndex int, message string, svc *laun
 		})
 	}
 }
+
+// handleProfileRetryFailed re-launches a profile from scratch as a retry of
+// the entire chain. The frontend emits this when the user clicks
+// "Reintentar fallidos" in the native toast after a partial/failed chain.
+func handleProfileRetryFailed(profileID string, svc *launcher.Service, emitter app.EventEmitter, parentCtx context.Context) {
+	if err := svc.LaunchProfile(parentCtx, profileID); err != nil {
+		log.Printf("launcher:profile:retry:failed error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+}
+
+// handleProfileStatsSave manually records a successful profile launch with the
+// given wall-clock duration. This is used when the frontend wants to persist
+// telemetry data independently of the automatic chain-runner path.
+func handleProfileStatsSave(profileID string, durationMs int64, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
+	if err := launcher.RecordProfileSuccess(settingsSvc, profileID, durationMs); err != nil {
+		log.Printf("launcher:profile:stats:save error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:profile:stats:saved", map[string]any{"profileId": profileID})
+}
+
+// handleProfileHotkeySet registers or unregisters a global Windows hotkey for
+// a profile. When combo is empty the existing hotkey (if any) is unregistered.
+// On registration failure (reserved combo, Windows conflict, or syscall error)
+// it emits launcher:profile:hotkey:error with the failure reason.
+func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.HotkeyManager, emitter app.EventEmitter) {
+	if combo == "" {
+		profileHkMgr.Unregister(profileID)
+		emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": ""})
+		return
+	}
+	if err := profileHkMgr.Register(profileID, combo); err != nil {
+		log.Printf("launcher:profile:hotkey:set error: %v", err)
+		emitter.Emit("launcher:profile:hotkey:error", map[string]any{"profileId": profileID, "message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": combo})
+}
+
+// handleAutostartToggle registers or unregisters a Windows Run key entry for
+// the given profile (Vantare.<profileID> => vantare.exe --launch=<profileID>).
+func handleAutostartToggle(profileID string, enabled bool, emitter app.EventEmitter) {
+	var err error
+	if enabled {
+		err = launcher.RegisterAutostart(profileID)
+	} else {
+		err = launcher.UnregisterAutostart(profileID)
+	}
+	if err != nil {
+		log.Printf("launcher:autostart:toggle error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:autostart:toggled", map[string]any{"profileId": profileID, "enabled": enabled})
+}
+
+// handleAppFavorite toggles the IsFavorite flag for a launcher app entry and
+// re-emits the full app set so the UI stays in sync.
+func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
+	if err := settingsSvc.SetLauncherAppFavorite(id, favorite); err != nil {
+		log.Printf("launcher:app:favorite error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": settingsSvc.GetLauncherApps()})
+}
+
+// handleLaunchFlag parses --launch=<profileID> from the command-line arguments.
+// When the flag is present and valid it launches the profile immediately via
+// the chain runner. This is the entry point for Windows autostart
+// (HKCU\...\Run → vantare.exe --launch=<id>).
+func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *launcher.Service, emitter app.EventEmitter) {
+	id, ok := launcher.ParseLaunchFlag(args)
+	if !ok {
+		return
+	}
+	if err := svc.LaunchProfile(context.Background(), id); err != nil {
+		log.Printf("launcher:launch-flag error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+}
+
+// handleShutdownCancelChains cancels every active launch chain. This is the
+// shutdown hook called by wails.OnShutdown so no orphaned processes are left
+// behind when the Hub closes mid-chain.
+func handleShutdownCancelChains(svc *launcher.Service) {
+	svc.CancelAll()
+}
+
 func main() {
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
@@ -338,6 +431,7 @@ func main() {
 	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
+	var launcherSvc *launcher.Service
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			if overlayController != nil {
@@ -359,6 +453,11 @@ func main() {
 			}
 			if engBridge != nil {
 				engBridge.Stop()
+			}
+			// Cancel any active launch chains (launcherSvc is nil during
+			// the defer path but valid in the Wails OnShutdown path).
+			if launcherSvc != nil {
+				launcherSvc.CancelAll()
 			}
 			vapp.StopTelemetry()
 		})
@@ -626,7 +725,7 @@ func main() {
 	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
 	// fire-and-forget: it spawns the configured command and forgets it. No
 	// process supervision, no multi-sim, no Linux/Proton yet.
-	launcherSvc := launcher.NewService(settingsSvc, emitter, exec.Command)
+	launcherSvc = launcher.NewService(settingsSvc, emitter, exec.Command)
 
 	// Wire settings service into hub service for active profile persistence.
 	hubSvc.SetSettingsService(settingsSvc)
@@ -657,6 +756,7 @@ func main() {
 
 	// Hotkey manager
 	hkMgr = app.NewHotkeyManager()
+	profileHkMgr := launcher.NewHotkeyManager()
 
 	// Register default hotkey actions
 	hkMgr.Register("toggleOverlay", settingsSvc.Settings().Hotkeys["toggleOverlay"], func() {
@@ -1238,6 +1338,74 @@ func main() {
 			}
 		}
 		handleChainError(payload.ProfileID, payload.StepIndex, payload.Message, launcherSvc, emitter, chainDialog)
+	})
+
+	// Launcher extendido (Task 7.3): per-profile retry, stats save, hotkey
+	// set, autostart toggle, app favorite toggle, and launch-flag handling.
+	// Each thin event delegates to a package-level handler.
+
+	wailsApp.Event.On("launcher:profile:retry:failed", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleProfileRetryFailed(payload.ID, launcherSvc, emitter, ctx)
+	})
+
+	wailsApp.Event.On("launcher:profile:stats:save", func(event *application.CustomEvent) {
+		var payload struct {
+			ProfileID  string `json:"profileId"`
+			DurationMs int64  `json:"durationMs"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleProfileStatsSave(payload.ProfileID, payload.DurationMs, settingsSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:profile:hotkey:set", func(event *application.CustomEvent) {
+		var payload struct {
+			ProfileID string `json:"profileId"`
+			Combo     string `json:"combo"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleProfileHotkeySet(payload.ProfileID, payload.Combo, profileHkMgr, emitter)
+	})
+
+	wailsApp.Event.On("launcher:autostart:toggle", func(event *application.CustomEvent) {
+		var payload struct {
+			ProfileID string `json:"profileId"`
+			Enabled   bool   `json:"enabled"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleAutostartToggle(payload.ProfileID, payload.Enabled, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:favorite", func(event *application.CustomEvent) {
+		var payload struct {
+			ID       string `json:"id"`
+			Favorite bool   `json:"favorite"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleAppFavorite(payload.ID, payload.Favorite, settingsSvc, emitter)
 	})
 
 	// Calendar event handlers (CALENDAR-02-A) and series follow/unfollow

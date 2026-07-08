@@ -127,3 +127,9 @@ func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
 func (s *Service) CancelChain(profileID string) bool {
 	return s.chain.CancelChain(profileID)
 }
+
+// CancelAll cancels every active launch chain. Used by the Wails shutdown hook
+// to ensure no orphaned processes are left behind when the Hub closes.
+func (s *Service) CancelAll() {
+	s.chain.CancelAll()
+}

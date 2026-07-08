@@ -47,7 +47,7 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		settings: settings,
 		emit:     emit,
 	}
-	s.chain = NewChainRunner(s.settings.GetLauncherApps, emit, execFn)
+	s.chain = NewChainRunner(s.settings, emit, execFn)
 	return s
 }
 
@@ -101,6 +101,7 @@ func (s *Service) DeleteProfile(id string) error {
 func (s *Service) DuplicateProfile(id, newID, newName string) error {
 	return DuplicateProfile(s.settings, id, newID, newName)
 }
+
 // LaunchProfile starts the launch chain for the given profile. It looks up the
 // profile, emits launcher:profiles:updated? No — per contract only chain
 // progress events are emitted by the runner; the caller decides on success.

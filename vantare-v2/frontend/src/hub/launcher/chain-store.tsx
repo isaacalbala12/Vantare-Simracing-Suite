@@ -4,10 +4,12 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { Events } from "@wailsio/runtime";
+import { HubToast, type HubToastVariant } from "./HubToast";
 
 export type ChainStepStatus = "pending" | "launching" | "done" | "failed";
 export type ChainStepState = {
@@ -257,6 +259,12 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
   }
   const store = storeRef.current;
 
+  const [toastInfo, setToastInfo] = useState<{
+    variant: HubToastVariant;
+    message: string;
+    profileId: string;
+  } | null>(null);
+
   useEffect(() => {
     store.startWatchdog();
 
@@ -267,6 +275,31 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
       const data = (event as { data: { profileId: string; success: boolean } })
         .data;
       store.handleDone(data.profileId, data.success);
+
+      // Show HubToast fallback with the result details
+      const chain = store.getChain(data.profileId);
+      const result = store.getLastResult(data.profileId);
+      if (chain && result) {
+        const total = chain.steps.length;
+        const doneSteps = chain.steps.filter(
+          (s) => s.status === "done",
+        ).length;
+        const failedSteps = chain.steps.filter(
+          (s) => s.status === "failed",
+        );
+        const failedNames = failedSteps.map((s) => s.appId).join(", ");
+
+        let message: string;
+        if (result === "success") {
+          message = `Perfil ${data.profileId} · ${doneSteps}/${total} apps lanzadas`;
+        } else if (result === "partial") {
+          message = `Perfil ${data.profileId} · ${doneSteps}/${total} apps listas, falló ${failedNames}`;
+        } else {
+          message = `Perfil ${data.profileId} · no se pudo iniciar`;
+        }
+
+        setToastInfo({ variant: result, message, profileId: data.profileId });
+      }
     });
     const offError = Events.On("launcher:chain:error", (event: unknown) => {
       const data = (event as { data: { profileId: string } }).data;
@@ -281,10 +314,30 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
     };
   }, [store]);
 
+  const handleRetry = useCallback((profileId: string) => {
+    Events.Emit("launcher:profile:retry:failed", { id: profileId });
+    setToastInfo(null);
+  }, []);
+
+  const handleCloseToast = useCallback(() => {
+    setToastInfo(null);
+  }, []);
+
   return (
-    <ChainRunnerContext.Provider value={store}>
-      {children}
-    </ChainRunnerContext.Provider>
+    <>
+      <ChainRunnerContext.Provider value={store}>
+        {children}
+      </ChainRunnerContext.Provider>
+      {toastInfo && (
+        <HubToast
+          variant={toastInfo.variant}
+          message={toastInfo.message}
+          profileId={toastInfo.profileId}
+          onRetry={handleRetry}
+          onClose={handleCloseToast}
+        />
+      )}
+    </>
   );
 }
 

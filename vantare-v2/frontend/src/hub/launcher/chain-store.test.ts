@@ -119,6 +119,32 @@ describe("chain-store reducer", () => {
     vi.useRealTimers();
   });
 
+  it("relaunch via pending status resets terminal chain to running", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    // Terminar la cadena
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "done",
+      finishedAt: 1000,
+    });
+    store.handleDone("p1", true);
+    expect(store.getChain("p1")?.overallStatus).toBe("done");
+    // Llega un step con status "pending" — relanzamiento
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "pending",
+      startedAt: 5000,
+    });
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    expect(store.getChain("p1")?.startedAt).toBe(5000);
+    vi.useRealTimers();
+  });
+
   it("marks stale chain after 30s of inactivity", () => {
     vi.useFakeTimers();
     const store = createChainStore();

@@ -159,7 +159,7 @@ export function createChainStore() {
         existing &&
         (existing.overallStatus === "done" ||
           existing.overallStatus === "error") &&
-        ev.status === "launching";
+        (ev.status === "launching" || ev.status === "pending");
       const steps = existing && !isRelaunch ? [...existing.steps] : [];
       steps[ev.stepIndex] = applyStep(steps[ev.stepIndex], ev);
       const now = ev.startedAt ?? ev.finishedAt ?? Date.now();

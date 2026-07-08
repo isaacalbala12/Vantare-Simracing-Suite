@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" fill="none">
+  <defs>
+    <linearGradient id="vantare-grad" x1="0%" y1="100%" x2="50%" y2="0%">
+      <stop offset="0%" stop-color="#b3121f" />
+      <stop offset="50%" stop-color="#e63946" />
+      <stop offset="100%" stop-color="#ff4d5a" />
+    </linearGradient>
+  </defs>
+  <path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#vantare-grad)" />
+</svg>

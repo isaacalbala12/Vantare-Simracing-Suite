@@ -20,6 +20,7 @@ import {
   getStandingsIntrinsicWidth,
   getStandingsJustifyClass,
 } from "./standings-format";
+import { VantareDiamondLogo } from "./_assets/VantareDiamondLogo";
 
 type StandingsProps = {
   editMode: boolean;
@@ -127,6 +128,15 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
   const isGlass = style === "vantare-crystal";
   const isCrystal = style === "vantare-crystal";
   const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
+  const containerStyle = isGlass ? {
+    background: "rgba(18,18,22,0.82)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(255,255,255,0.09)",
+    borderRadius: "16px",
+    boxShadow: "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)",
+    overflow: "hidden",
+  } : {};
   const activeColumns = getActiveStandingsColumns(props);
   const intrinsicWidth = getStandingsIntrinsicWidth(activeColumns);
   const fillHost = props?.__previewFillHost !== false;
@@ -336,10 +346,49 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
         borderRadius: isCrystal && crystal ? 12 : isGlass ? 16 : 8,
         backdropFilter: isCrystal && crystal ? "blur(16px)" : isGlass ? "blur(24px)" : undefined,
         boxShadow: isCrystal && crystal ? `0 0 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)` : isGlass ? "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
+        ...containerStyle,
       }}
     >
       {CustomHeader ? (
         <CustomHeader data={{ time: timeStr }} appearance={a} className="" />
+      ) : isGlass ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "8px 12px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <VantareDiamondLogo size={20} />
+            <span style={{
+              fontFamily: crystal?.typography.displayFont ?? a.textColor,
+              fontSize: "13px",
+              fontWeight: 800,
+              color: a.textColor,
+            }}>VANTARE</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{
+              background: "rgba(255,59,59,0.15)",
+              color: "#ff3b3b",
+              fontSize: "9px",
+              fontWeight: 700,
+              padding: "2px 8px",
+              borderRadius: "3px",
+            }}>{activeClass.toUpperCase()}</span>
+            <span
+              ref={timeRef}
+              style={{
+                fontFamily: crystal?.typography?.monoFont ?? "'JetBrains Mono', monospace",
+                fontSize: "11px",
+                color: "#ff3b3b",
+              }}
+            >{timeStr}</span>
+          </div>
+        </div>
       ) : (
         <div
           className={`flex flex-col items-center pt-4 pb-2 ${!intrinsicOnly ? "w-full" : ""}`}
@@ -349,17 +398,39 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
           <div ref={timeRef} className="text-[11px] font-mono font-bold text-white tracking-widest">{timeStr}</div>
         </div>
       )}
-      <div
-        ref={classRef}
-        className={`text-center text-[11px] py-1 font-bold tracking-widest text-white relative ${!intrinsicOnly ? "w-full" : ""}`}
-        style={{ background: classBg, borderBottom: "1px solid #000" }}
-      >
-        {activeClass.toUpperCase()}
-      </div>
+      {/* Class bar: hidden in crystal mode (class is in header pill) */}
+      {!isGlass && (
+        <div
+          ref={classRef}
+          className={`text-center text-[11px] py-1 font-bold tracking-widest text-white relative ${!intrinsicOnly ? "w-full" : ""}`}
+          style={{ background: classBg, borderBottom: "1px solid #000" }}
+        >
+          {activeClass.toUpperCase()}
+        </div>
+      )}
+      {/* Table header row (crystal mode only) */}
+      {isGlass && (
+        <div style={{ display: "grid", gridTemplateColumns: "20px 20px 26px 1fr 76px 58px", height: "24px", padding: "0 8px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", alignItems: "center" }}>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}></span>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>POS</span>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>#</span>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>EQUIPO / PILOTO</span>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>GAP</span>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>LAST</span>
+        </div>
+      )}
       <div ref={containerRef} className={`mt-1 px-1 ${!intrinsicOnly ? "w-full" : ""}`} />
-      <div className={`mt-1 py-1 text-center text-[8px] tracking-widest text-white/50 font-bold border-t border-black ${!intrinsicOnly ? "w-full" : ""}`} style={{ background: "#1a0104" }}>
-        LE MANS ULTIMATE
-      </div>
+      {/* Footer: crystal mode has track temp */}
+      {isGlass ? (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 12px", background: "rgba(0,0,0,0.45)", borderTop: "1px solid rgba(255,255,255,0.06)", alignItems: "center" }}>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>LE MANS ULTIMATE</span>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>TRACK TEMP: --°C</span>
+        </div>
+      ) : (
+        <div className={`mt-1 py-1 text-center text-[8px] tracking-widest text-white/50 font-bold border-t border-black ${!intrinsicOnly ? "w-full" : ""}`} style={{ background: "#1a0104" }}>
+          LE MANS ULTIMATE
+        </div>
+      )}
     </div>
   );
 }

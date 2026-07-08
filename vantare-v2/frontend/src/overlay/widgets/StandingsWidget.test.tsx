@@ -106,3 +106,60 @@ describe("StandingsWidget with custom design system Header", () => {
     expect(screen.getByTestId("standings-panel").textContent).toContain("VANTARE");
   });
 });
+
+describe("StandingsWidget crystal visual structure", () => {
+  it("crystal container has glass properties", async () => {
+    await act(async () => {
+      render(
+        <StandingsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{ style: "vantare-crystal" }}
+        />
+      );
+    });
+    const glass = screen.getByTestId("standings-panel");
+    expect(glass).toBeTruthy();
+    // Gap 10: backdrop blur 24px
+    expect((glass as HTMLElement).style.backdropFilter).toContain("blur(24px)");
+    // Gap 11: border radius 16px
+    expect((glass as HTMLElement).style.borderRadius).toBe("16px");
+    // Gap 12: box shadow
+    expect((glass as HTMLElement).style.boxShadow).toContain("0 24px 60px");
+    // Gap 13: semi-transparent background (browser adds spaces after commas)
+    expect((glass as HTMLElement).style.background).toContain("18, 18, 22");
+  });
+
+  it("crystal renders table header row with column labels", async () => {
+    await act(async () => {
+      render(
+        <StandingsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{ style: "vantare-crystal" }}
+        />
+      );
+    });
+    // Gap 4: table header labels
+    expect(screen.getByText("POS")).toBeTruthy();
+    expect(screen.getByText("#")).toBeTruthy();
+    expect(screen.getByText("EQUIPO / PILOTO")).toBeTruthy();
+    expect(screen.getByText("GAP")).toBeTruthy();
+    expect(screen.getByText("LAST")).toBeTruthy();
+  });
+
+  it("crystal footer shows track temperature", async () => {
+    await act(async () => {
+      render(
+        <StandingsWidget
+          editMode={true}
+          telemetryMode="mock"
+          props={{ style: "vantare-crystal" }}
+        />
+      );
+    });
+    // Gap 17: footer content
+    expect(screen.getByText(/LE MANS ULTIMATE/)).toBeTruthy();
+    expect(screen.getByText(/TRACK TEMP/)).toBeTruthy();
+  });
+});

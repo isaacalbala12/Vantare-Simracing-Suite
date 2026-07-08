@@ -40,7 +40,13 @@ export const it: Record<string, string> = {
   "launcher.category.audio": "Audio",
   "launcher.category.telemetry": "Telemetria",
   "launcher.category.utility": "Utilità",
-
+  "launcher.favorite": "Preferita",
+  "launcher.notes": "Note",
+  "launcher.modal.addNonSteam.title": "Aggiungi programma",
+  "launcher.modal.addNonSteam.search": "Cerca...",
+  "launcher.modal.addNonSteam.browse": "Sfoglia...",
+  "launcher.modal.addNonSteam.moreResults": "Affina la ricerca per vedere più risultati ({n} in più)",
+ 
   // Settings
   "settings.title": "Impostazioni",
   "settings.subtitle": "Account, aggiornamenti, scorciatoie e diagnostica.",

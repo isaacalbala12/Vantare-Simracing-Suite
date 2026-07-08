@@ -141,7 +141,36 @@ describe("i18n pure module", () => {
     });
   });
 
-  describe("widget studio translations", () => {
+  describe("launcher v2 translations (Task 3.4)", () => {
+  // Keys añadidas en corte 3 del plan launcher-v2
+  const NEW_KEYS = [
+    "launcher.favorite",
+    "launcher.notes",
+    "launcher.modal.addNonSteam.title",
+    "launcher.modal.addNonSteam.search",
+    "launcher.modal.addNonSteam.browse",
+    "launcher.modal.addNonSteam.moreResults",
+  ];
+
+  it("new launcher keys are present in all 4 locales", () => {
+    for (const dict of [es, en, pt, itLocale]) {
+      for (const key of NEW_KEYS) {
+        expect(dict[key]).toBeTruthy();
+        expect(typeof dict[key]).toBe("string");
+        expect(dict[key].length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("launcher.modal.addNonSteam.moreResults contains {n} placeholder", () => {
+    expect(es["launcher.modal.addNonSteam.moreResults"]).toContain("{n}");
+    expect(en["launcher.modal.addNonSteam.moreResults"]).toContain("{n}");
+    expect(pt["launcher.modal.addNonSteam.moreResults"]).toContain("{n}");
+    expect(itLocale["launcher.modal.addNonSteam.moreResults"]).toContain("{n}");
+  });
+});
+
+describe("widget studio translations", () => {
     it("has widget studio shell labels", () => {
       expect(es["studio.widgets"]).toBe("Widgets");
       expect(en["studio.widgets"]).toBe("Widgets");

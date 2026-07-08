@@ -17,7 +17,7 @@ import (
 // per-user) and known Steam library folders, then matches them against the
 // KnownApps catalog. It returns the detected apps keyed by KnownApp.ID.
 func discoverPlatform() map[string]app.LauncherAppEntry {
-	candidates := readUninstallRegistry()
+	candidates := readUninstallEntries()
 	found := matchKnownApps(candidates)
 
 	// Steam library folders can host Steam-installed executables (e.g. future
@@ -48,46 +48,6 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 		}
 	}
 	return found
-}
-
-// readUninstallRegistry enumerates the Uninstall keys under HKLM (both 32/64
-// views) and HKCU. Per-user installs (Discord, Spotify) live under HKCU.
-func readUninstallRegistry() []discoveredCandidate {
-	var out []discoveredCandidate
-	type regRoot struct {
-		root registry.Key
-		path string
-	}
-	roots := []regRoot{
-		{registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`},
-		{registry.LOCAL_MACHINE, `SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall`},
-		{registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`},
-	}
-	for _, r := range roots {
-		k, err := registry.OpenKey(r.root, r.path, registry.READ|registry.WOW64_64KEY)
-		if err != nil {
-			continue
-		}
-		names, err := k.ReadSubKeyNames(-1)
-		k.Close()
-		if err != nil {
-			continue
-		}
-		for _, name := range names {
-			sub, err := registry.OpenKey(r.root, r.path+`\`+name, registry.READ|registry.WOW64_64KEY)
-			if err != nil {
-				continue
-			}
-			dn, _, _ := sub.GetStringValue("DisplayName")
-			loc, _, _ := sub.GetStringValue("InstallLocation")
-			sub.Close()
-			if dn == "" {
-				continue
-			}
-			out = append(out, discoveredCandidate{DisplayName: dn, InstallLocation: loc})
-		}
-	}
-	return out
 }
 
 // readSteamLibraryFolders returns absolute paths to Steam library roots by

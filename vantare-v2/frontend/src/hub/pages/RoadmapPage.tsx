@@ -218,40 +218,41 @@ function FeatureCard({
           {pickText(feat.description, locale)}
         </p>
       )}
-      {/* Subtasks + Progreso */}
-      <div className="flex gap-3 mt-auto pt-2 border-t border-white/5">
-        <div className="flex-1 flex flex-col gap-1">
-          {feat.subtasks.map((st, i) => (
-            <label
-              key={i}
-              className="flex items-center gap-2 text-[11px] text-vantare-textMuted select-none"
-              onClick={(e) => e.stopPropagation()}
+      {/* Subtasks */}
+      <div className="flex flex-col gap-1 mt-auto pt-2 border-t border-white/5">
+        {feat.subtasks.map((st, i) => (
+          <label
+            key={i}
+            className="flex items-center gap-2 text-[11px] text-vantare-textMuted select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span
+              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                st.done
+                  ? "bg-vantare-red-500 border-vantare-red-500"
+                  : "border-white/20 bg-white/5"
+              }`}
             >
-              <span
-                className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                  st.done
-                    ? "bg-vantare-red-500 border-vantare-red-500"
-                    : "border-white/20 bg-white/5"
-                }`}
-              >
-                {st.done && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </span>
-              <span className={st.done ? "line-through opacity-50" : ""}>
-                {pickText(st.label, locale)}
-              </span>
-            </label>
-          ))}
+              {st.done && (
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </span>
+            <span className={st.done ? "line-through opacity-50" : ""}>
+              {pickText(st.label, locale)}
+            </span>
+          </label>
+        ))}
+      </div>
+      {/* Progress bar + percentage */}
+      <div className="flex items-center gap-3 mt-1">
+        <div className="flex-1">
+          <ProgressBar value={pct} />
         </div>
-        <div className="flex flex-col items-end shrink-0 pt-0.5">
-          <span className="text-[8px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim">
-            Progreso
-          </span>
-          <span className="text-lg font-bold text-white">{pct}%</span>
-        </div>
+        <span className="text-[10px] font-mono font-bold text-vantare-red-400 shrink-0">
+          {pct}%
+        </span>
       </div>
     </article>
   );

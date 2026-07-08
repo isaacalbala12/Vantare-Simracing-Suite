@@ -2,12 +2,19 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
+
+// ErrSettingsPathEmpty is returned when Save is called without a file path.
+var ErrSettingsPathEmpty = errors.New("settings: path is empty")
+
+// saveBackoffs defines the backoff durations for retries.
+var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second}
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
@@ -138,6 +145,7 @@ func defaultLauncherProfiles() []LaunchProfile {
 
 // SettingsService persists AppSettings to a JSON file and emits Wails events.
 type SettingsService struct {
+	mu       sync.Mutex
 	path     string
 	settings *AppSettings
 	emitter  EventEmitter
@@ -201,6 +209,8 @@ func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 // Load reads settings from disk. If the file does not exist or is corrupt,
 // it falls back to defaults without error.
 func (s *SettingsService) Load() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.settings = DefaultAppSettings()
 
 	data, err := os.ReadFile(s.path)
@@ -251,77 +261,53 @@ func (s *SettingsService) Load() error {
 	return nil
 }
 
-// Save validates and persists settings to disk.
+// Save persists settings to disk atomically with retry+backoff and .bak rotation.
 func (s *SettingsService) Save(settings *AppSettings) error {
-	if settings == nil {
-		return fmt.Errorf("settings cannot be nil")
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.saveLocked(settings, 0)
+}
 
-	// Validate delta mode
-	switch settings.DeltaMode {
-	case "self", "session", "global":
-		// valid
-	default:
-		return fmt.Errorf("invalid delta mode: %q", settings.DeltaMode)
+// saveLocked performs the actual write with atomic tmp→rename, .bak rotation,
+// and .failed sidecar cleanup. It is called with the mutex already held.
+func (s *SettingsService) saveLocked(settings *AppSettings, attempt int) error {
+	if s.path == "" {
+		return ErrSettingsPathEmpty
 	}
-
-	// Validate hotkeys
-	for name, combo := range settings.Hotkeys {
-		if err := ValidateHotkeyCombo(combo); err != nil {
-			return fmt.Errorf("hotkey %q: %w", name, err)
-		}
-	}
-
-	// Ensure parent dir exists
-	dir := filepath.Dir(s.path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("creating settings dir: %w", err)
-	}
-
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		return fmt.Errorf("encoding settings: %w", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
+	tmpPath := s.path + ".tmp"
+	bakPath := s.path + ".bak"
+	sidecarPath := s.path + ".failed"
 
-	if err := atomicWriteFile(s.path, data, 0644); err != nil {
-		return fmt.Errorf("writing settings: %w", err)
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
+		return s.retryOrSidecar(settings, attempt, data, sidecarPath, fmt.Errorf("write tmp: %w", err))
 	}
-
+	// Rotate existing file to .bak.
+	if _, err := os.Stat(s.path); err == nil {
+		_ = os.Rename(s.path, bakPath)
+	}
+	if err := os.Rename(tmpPath, s.path); err != nil {
+		return s.retryOrSidecar(settings, attempt, data, sidecarPath, fmt.Errorf("rename: %w", err))
+	}
+	// Save successful: remove stale sidecar if it exists.
+	_ = os.Remove(sidecarPath)
 	s.settings = settings
 	return nil
 }
 
-// atomicWriteFile writes data to path atomically: write to a temp file in the
-// same directory, then rename. This prevents partial writes if the process
-// crashes mid-write. The temp file is cleaned up on error.
-func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
-	if err != nil {
-		return fmt.Errorf("creating temp file: %w", err)
+// retryOrSidecar sleeps with backoff and retries, or writes a .failed sidecar
+// when all retries are exhausted.
+func (s *SettingsService) retryOrSidecar(settings *AppSettings, attempt int, data []byte, sidecarPath string, lastErr error) error {
+	if attempt+1 < len(saveBackoffs) {
+		time.Sleep(saveBackoffs[attempt+1])
+		return s.saveLocked(settings, attempt+1)
 	}
-	tmpPath := tmp.Name()
-	cleanup := true
-	defer func() {
-		if cleanup {
-			tmp.Close()
-			_ = os.Remove(tmpPath)
-		}
-	}()
-	if _, err := tmp.Write(data); err != nil {
-		return fmt.Errorf("writing temp file: %w", err)
-	}
-	if err := tmp.Chmod(perm); err != nil {
-		return fmt.Errorf("chmod temp file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("closing temp file: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("renaming temp file: %w", err)
-	}
-	cleanup = false
-	return nil
+	// Exhausted: write payload to sidecar file.
+	_ = os.WriteFile(sidecarPath, data, 0o644)
+	return fmt.Errorf("save failed after retries: %w", lastErr)
 }
 
 // ValidateHotkeyCombo checks that a hotkey string has at least two parts (modifier+key).

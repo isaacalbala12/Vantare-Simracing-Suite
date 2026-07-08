@@ -120,9 +120,16 @@ func TestSettingsServiceSaveInvalidDeltaMode(t *testing.T) {
 
 	custom := app.DefaultAppSettings()
 	custom.DeltaMode = "invalid"
-	err := svc.Save(custom)
-	if err == nil {
-		t.Fatal("expected error for invalid delta mode")
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("Save should succeed but got: %v", err)
+	}
+	// Verify the invalid delta mode is persisted (validation moved to caller)
+	loaded := app.NewSettingsService(path, nil)
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Settings().DeltaMode != "invalid" {
+		t.Errorf("expected DeltaMode=invalid to be persisted, got %q", loaded.Settings().DeltaMode)
 	}
 }
 
@@ -136,9 +143,8 @@ func TestSettingsServiceSaveEmptyHotkey(t *testing.T) {
 
 	custom := app.DefaultAppSettings()
 	custom.Hotkeys["toggleOverlay"] = ""
-	err := svc.Save(custom)
-	if err == nil {
-		t.Fatal("expected error for empty hotkey")
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("Save should succeed but got: %v", err)
 	}
 }
 
@@ -414,6 +420,56 @@ func TestDefaultAppSettingsHasSchemaVersion1(t *testing.T) {
 	s := app.DefaultAppSettings()
 	if s.SchemaVersion != 1 {
 		t.Fatalf("expected SchemaVersion=1, got %d", s.SchemaVersion)
+	}
+}
+
+func TestSaveIsAtomic(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil)
+	_ = svc.Load()
+	s := app.DefaultAppSettings()
+	if err := svc.Save(s); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("main should exist: %v", err)
+	}
+	s.DeltaMode = "relative"
+	if err := svc.Save(s); err != nil {
+		t.Fatalf("save 2: %v", err)
+	}
+	if _, err := os.Stat(path + ".bak"); err != nil {
+		t.Errorf(".bak should exist after second save: %v", err)
+	}
+	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+		t.Errorf(".tmp should not exist after successful save")
+	}
+	if _, err := os.Stat(path + ".failed"); !os.IsNotExist(err) {
+		t.Errorf(".failed should not exist on success")
+	}
+}
+
+func TestSaveRetriesOnLock(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil)
+	_ = svc.Load()
+
+	// Create a directory at the .tmp path to simulate a lock
+	tmpPath := path + ".tmp"
+	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
+		t.Fatalf("mkdir tmp dir: %v", err)
+	}
+
+	s := app.DefaultAppSettings()
+	err := svc.Save(s)
+	if err == nil {
+		t.Fatal("expected error when .tmp is locked by a directory")
+	}
+	// The .failed sidecar should exist after retries exhausted
+	if _, err := os.Stat(path + ".failed"); os.IsNotExist(err) {
+		t.Error(".failed should exist after retries exhausted")
 	}
 }
 

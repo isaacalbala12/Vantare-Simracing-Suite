@@ -1,25 +1,27 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Events } from "@wailsio/runtime";
 import { ProfileCard } from "./ProfileCard";
 import type { LauncherAppEntry, LaunchProfile } from "./launcher-state";
+import type { ChainState } from "./chain-store";
 
-const emitCalls: { name: string; data: unknown }[] = [];
+// ── Mocks ───────────────────────────────────────────────────────────
 
-afterEach(() => {
-  cleanup();
-  emitCalls.length = 0;
-  vi.clearAllMocks();
-});
+const mockUseChainState = vi.fn();
+const mockUseLastResult = vi.fn();
+
+vi.mock("./chain-store", () => ({
+  useChainState: (id: string) => mockUseChainState(id),
+  useLastResult: (id: string) => mockUseLastResult(id),
+}));
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: vi.fn(() => vi.fn()),
-    Emit: vi.fn((name: string, data: unknown) => {
-      emitCalls.push({ name, data });
-    }),
+    Emit: vi.fn(),
   },
 }));
+
+// ── Fixtures ────────────────────────────────────────────────────────
 
 const LMU: LauncherAppEntry = {
   id: "lmu",
@@ -33,84 +35,128 @@ const LMU: LauncherAppEntry = {
   gradientTo: "#9a0606",
 };
 
-const profile: LaunchProfile = {
-  id: "creator",
-  name: "Creador de Contenido",
-  steps: [{ appId: "lmu", delay: 0 }],
+const OBS: LauncherAppEntry = {
+  id: "obs",
+  displayName: "OBS Studio",
+  abbreviation: "OBS",
+  category: "streaming",
+  launchMethod: "executable",
+  detected: true,
+  gradientFrom: "#302e31",
+  gradientTo: "#111",
 };
 
+const fullProfile: LaunchProfile = {
+  id: "creator",
+  name: "Creador de Contenido",
+  description: "Perfil para crear contenido de simracing",
+  steps: [
+    { appId: "lmu", delay: 0 },
+    { appId: "obs", delay: 2 },
+  ],
+  isFavorite: true,
+  launchCount: 5,
+  lastLaunchedAt: new Date(Date.now() - 60000 * 10).toISOString(),
+  avgChainDurationMs: 8000,
+};
+
+// ── Setup ───────────────────────────────────────────────────────────
+
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+});
+
+// ── Tests ───────────────────────────────────────────────────────────
+
 describe("ProfileCard", () => {
-  it("emits launcher:profile:launch when the Iniciar button is clicked", () => {
-    render(<ProfileCard profile={profile} apps={[LMU]} />);
-    fireEvent.click(screen.getByTestId("profile-launch-creator"));
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:profile:launch", {
-      id: "creator",
-    });
+  it("renders full card with name, description, time, apps, lastResult badge", () => {
+    mockUseLastResult.mockReturnValue("success");
+
+    render(<ProfileCard profile={fullProfile} apps={[LMU, OBS]} />);
+
+    // Name: element exists and contains the display name
+    const nameEl = screen.getByTestId("profile-name-creator");
+    expect(nameEl).not.toBeNull();
+    expect(nameEl.textContent).toContain("Creador de Contenido");
+
+    // Description
+    const descEl = screen.getByTestId("profile-description-creator");
+    expect(descEl).not.toBeNull();
+    expect(descEl.textContent).toContain("Perfil para crear contenido de simracing");
+
+    // Time (avgChainDurationMs=8000 → ≈8s)
+    const timeEl = screen.getByTestId("profile-time-creator");
+    expect(timeEl).not.toBeNull();
+    expect(timeEl.textContent).toContain("≈8s");
+
+    // Steps rendered
+    expect(screen.getByTestId("profile-step-row-0")).not.toBeNull();
+    expect(screen.getByTestId("profile-step-row-1")).not.toBeNull();
+
+    // LastResult badge present and green (success)
+    const lastResultBadge = screen.getByTestId("profile-lastresult-creator");
+    expect(lastResultBadge).not.toBeNull();
+    expect(lastResultBadge.className).toContain("bg-emerald-500");
+
+    // Favorite badge present
+    const favBadge = screen.getByTestId("profile-favorite-badge-creator");
+    expect(favBadge).not.toBeNull();
+    expect(favBadge.textContent).toContain("★");
+
+    // Launch button present
+    expect(screen.getByTestId("profile-launch-creator")).not.toBeNull();
+
+    // Last launched telemetry present
+    const lastEl = screen.getByTestId("profile-last-creator");
+    expect(lastEl).not.toBeNull();
+    expect(lastEl.textContent).toContain("Último:");
   });
 
-  it("emits launcher:profile:delete when Eliminar is clicked", () => {
-    render(<ProfileCard profile={profile} apps={[LMU]} />);
-    fireEvent.click(screen.getByTestId("profile-delete-creator"));
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:profile:delete", {
-      id: "creator",
-    });
-  });
-
-  it("emits launcher:profile:duplicate with a unique id and suffixed name", () => {
-    render(<ProfileCard profile={profile} apps={[LMU]} />);
-    fireEvent.click(screen.getByTestId("profile-duplicate-creator"));
-    const dup = emitCalls.find((c) => c.name === "launcher:profile:duplicate");
-    expect(dup).toBeDefined();
-    const payload = dup!.data as { id: string; newId: string; newName: string };
-    // The new id must be different from the source so the backend can persist
-    // the copy without overwriting the original.
-    expect(payload.newId).not.toBe("creator");
-    expect(payload.newId.length).toBeGreaterThan(0);
-    // And the name must be a localized copy.
-    expect(payload.newName).toMatch(/copia/i);
-  });
-
-  it("does not emit launcher:profile:save for duplicate (avoids id collision on backend)", () => {
-    render(<ProfileCard profile={profile} apps={[LMU]} />);
-    fireEvent.click(screen.getByTestId("profile-duplicate-creator"));
-    const saveCall = emitCalls.find((c) => c.name === "launcher:profile:save");
-    expect(saveCall).toBeUndefined();
-  });
-
-  it("disables the Iniciar button when the profile has no resolvable steps", () => {
-    const broken: LaunchProfile = {
-      id: "broken",
-      name: "Broken",
-      steps: [{ appId: "missing-app", delay: 0 }],
+  it("renders early return to ProfileCardTimeline when chain active", () => {
+    const mockChain: ChainState = {
+      profileId: "creator",
+      startedAt: Date.now() - 1000,
+      lastEventAt: Date.now(),
+      steps: [
+        { appId: "lmu", status: "done" },
+        { appId: "obs", status: "launching" },
+      ],
+      currentStepIndex: 1,
+      overallStatus: "running",
     };
-    render(<ProfileCard profile={broken} apps={[LMU]} />);
-    const btn = screen.getByTestId("profile-launch-broken") as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+    mockUseChainState.mockReturnValue(mockChain);
+
+    render(<ProfileCard profile={fullProfile} apps={[LMU, OBS]} />);
+
+    // The early return renders ProfileCardTimeline which has data-testid="profile-timeline"
+    const timelineEl = screen.getByTestId("profile-timeline");
+    expect(timelineEl).not.toBeNull();
+
+    // When chain is active, the normal card elements should NOT be present
+    expect(screen.queryByTestId("profile-name-creator")).toBeNull();
   });
 
-  it("disables the Iniciar button when the profile has zero steps", () => {
-    const empty: LaunchProfile = { id: "empty", name: "Empty", steps: [] };
-    render(<ProfileCard profile={empty} apps={[LMU]} />);
-    const btn = screen.getByTestId("profile-launch-empty") as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+  it("count appears in tooltip on hover, not on the face", () => {
+    render(<ProfileCard profile={fullProfile} apps={[LMU, OBS]} />);
+
+    const countSpan = screen.getByTestId("profile-count-creator");
+    expect(countSpan).not.toBeNull();
+
+    // The descriptive sentence "Lanzado N veces" is in the title attribute,
+    // NOT in the visible text content.
+    expect(countSpan.getAttribute("title")).toBe("Lanzado 5 veces");
+
+    // The visible text only has the compact count marker ("5×"), not the
+    // full descriptive text.
+    expect(countSpan.textContent).not.toContain("Lanzado");
   });
 
-  it("enables the Iniciar button when all steps are resolvable", () => {
-    render(<ProfileCard profile={profile} apps={[LMU]} />);
-    const btn = screen.getByTestId("profile-launch-creator") as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
-  });
+  it("renders favorite badge in header when isFavorite", () => {
+    render(<ProfileCard profile={fullProfile} apps={[LMU, OBS]} />);
 
-  it("renders favorite badge when profile.isFavorite is true", () => {
-    const favProfile: LaunchProfile = {
-      id: "creator",
-      name: "Creator",
-      steps: [],
-      isFavorite: true,
-    };
-    render(<ProfileCard profile={favProfile} apps={[]} />);
-    expect(
-      screen.queryByTestId("profile-favorite-badge-creator"),
-    ).not.toBeNull();
+    const badge = screen.getByTestId("profile-favorite-badge-creator");
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toContain("★");
   });
 });

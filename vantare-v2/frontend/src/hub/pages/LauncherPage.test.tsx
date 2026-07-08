@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
+import { ChainRunnerProvider } from "../launcher/chain-store";
 import { LauncherPage } from "./LauncherPage";
 
 const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
@@ -23,6 +24,14 @@ vi.mock("@wailsio/runtime", () => ({
   },
 }));
 
+function renderPage() {
+  return render(
+    <ChainRunnerProvider>
+      <LauncherPage />
+    </ChainRunnerProvider>,
+  );
+}
+
 function dispatch(name: string, data: unknown) {
   act(() => {
     for (const handler of listeners.get(name) ?? []) {
@@ -33,19 +42,19 @@ function dispatch(name: string, data: unknown) {
 
 describe("LauncherPage", () => {
   it("renders the launcher heading", () => {
-    render(<LauncherPage />);
+    renderPage();
     expect(screen.getByRole("heading", { name: "Launcher" })).toBeTruthy();
   });
 
   it("renders the apps panel and profiles panel (no placeholders)", () => {
-    render(<LauncherPage />);
+    renderPage();
     expect(screen.getByTestId("apps-panel")).toBeTruthy();
     expect(screen.getByTestId("profiles-panel")).toBeTruthy();
     expect(screen.queryByText(/próximamente/i)).toBeNull();
   });
 
   it("discovers apps and lists detected apps from the backend", () => {
-    render(<LauncherPage />);
+    renderPage();
     expect(Events.Emit).toHaveBeenCalledWith("launcher:apps:discover");
     dispatch("launcher:apps:detected", {
       apps: [
@@ -66,7 +75,7 @@ describe("LauncherPage", () => {
   });
 
   it("lists profiles from the backend", () => {
-    render(<LauncherPage />);
+    renderPage();
     expect(Events.Emit).toHaveBeenCalledWith("launcher:profiles:list");
     dispatch("launcher:profiles:updated", {
       profiles: [

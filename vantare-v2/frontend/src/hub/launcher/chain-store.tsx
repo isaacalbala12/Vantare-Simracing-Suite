@@ -1,3 +1,14 @@
+import {
+  createContext,
+  useContext,
+  useRef,
+  useEffect,
+  useCallback,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+import { Events } from "@wailsio/runtime";
+
 export type ChainStepStatus = "pending" | "launching" | "done" | "failed";
 export type ChainStepState = {
   appId: string;
@@ -78,7 +89,12 @@ export function createChainStore() {
   const chains = new Map<string, ChainState>();
   const lastResults = new Map<string, LastResult>();
   const timeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  const subscribers = new Map<string, Set<() => void>>();
   let watchdogInterval: ReturnType<typeof setInterval> | null = null;
+
+  function notifySubscribers(profileId: string) {
+    subscribers.get(profileId)?.forEach((cb) => cb());
+  }
 
   function scheduleCleanup(profileId: string) {
     const pending = timeouts.get(profileId);
@@ -86,6 +102,7 @@ export function createChainStore() {
     const t = setTimeout(() => {
       chains.delete(profileId);
       timeouts.delete(profileId);
+      notifySubscribers(profileId);
     }, CLEANUP_MS);
     timeouts.set(profileId, t);
   }
@@ -101,6 +118,7 @@ export function createChainStore() {
         ) {
           chains.set(id, { ...chain, overallStatus: "error" });
           lastResults.set(id, "error");
+          notifySubscribers(id);
           scheduleCleanup(id);
         }
       }
@@ -114,6 +132,16 @@ export function createChainStore() {
 
     getLastResult(profileId: string): LastResult | undefined {
       return lastResults.get(profileId);
+    },
+
+    subscribe(profileId: string, cb: () => void): () => void {
+      if (!subscribers.has(profileId)) {
+        subscribers.set(profileId, new Set());
+      }
+      subscribers.get(profileId)!.add(cb);
+      return () => {
+        subscribers.get(profileId)?.delete(cb);
+      };
     },
 
     handleStep(ev: ChainStepEvent) {
@@ -162,6 +190,7 @@ export function createChainStore() {
               },
         );
       }
+      notifySubscribers(ev.profileId);
     },
 
     handleDone(profileId: string, success: boolean) {
@@ -177,6 +206,7 @@ export function createChainStore() {
           profileId,
           existing.steps.some((s) => s.status === "done") ? "partial" : "error",
         );
+      notifySubscribers(profileId);
       scheduleCleanup(profileId);
     },
 
@@ -185,7 +215,10 @@ export function createChainStore() {
       const existing = chains.get(profileId);
       if (existing) {
         chains.set(profileId, { ...existing, overallStatus: "error" });
+        notifySubscribers(profileId);
         scheduleCleanup(profileId);
+      } else {
+        notifySubscribers(profileId);
       }
     },
 
@@ -196,6 +229,7 @@ export function createChainStore() {
         timeouts.delete(profileId);
       }
       chains.delete(profileId);
+      notifySubscribers(profileId);
     },
 
     startWatchdog,
@@ -207,6 +241,85 @@ export function createChainStore() {
         clearInterval(watchdogInterval);
         watchdogInterval = null;
       }
+      subscribers.clear();
     },
   };
+}
+
+type ChainRunnerStore = ReturnType<typeof createChainStore>;
+
+const ChainRunnerContext = createContext<ChainRunnerStore | null>(null);
+
+export function ChainRunnerProvider({ children }: { children: ReactNode }) {
+  const storeRef = useRef<ChainRunnerStore | null>(null);
+  if (!storeRef.current) {
+    storeRef.current = createChainStore();
+  }
+  const store = storeRef.current;
+
+  useEffect(() => {
+    store.startWatchdog();
+
+    const offStep = Events.On("launcher:chain:step", (event: unknown) => {
+      store.handleStep((event as { data: ChainStepEvent }).data);
+    });
+    const offDone = Events.On("launcher:chain:done", (event: unknown) => {
+      const data = (event as { data: { profileId: string; success: boolean } })
+        .data;
+      store.handleDone(data.profileId, data.success);
+    });
+    const offError = Events.On("launcher:chain:error", (event: unknown) => {
+      const data = (event as { data: { profileId: string } }).data;
+      store.handleError(data.profileId);
+    });
+
+    return () => {
+      offStep();
+      offDone();
+      offError();
+      store.shutdown();
+    };
+  }, [store]);
+
+  return (
+    <ChainRunnerContext.Provider value={store}>
+      {children}
+    </ChainRunnerContext.Provider>
+  );
+}
+
+function useChainRunnerStore(): ChainRunnerStore {
+  const store = useContext(ChainRunnerContext);
+  if (!store) {
+    throw new Error(
+      "useChainRunnerStore must be used within ChainRunnerProvider",
+    );
+  }
+  return store;
+}
+
+export function useChainState(profileId: string): ChainState | undefined {
+  const store = useChainRunnerStore();
+  const subscribe = useCallback(
+    (cb: () => void) => store.subscribe(profileId, cb),
+    [store, profileId],
+  );
+  const getSnapshot = useCallback(
+    () => store.getChain(profileId),
+    [store, profileId],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+export function useLastResult(profileId: string): LastResult | undefined {
+  const store = useChainRunnerStore();
+  const subscribe = useCallback(
+    (cb: () => void) => store.subscribe(profileId, cb),
+    [store, profileId],
+  );
+  const getSnapshot = useCallback(
+    () => store.getLastResult(profileId),
+    [store, profileId],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot);
 }

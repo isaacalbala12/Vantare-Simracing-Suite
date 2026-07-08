@@ -7,13 +7,15 @@
  */
 
 import {
-  FEATURES_FALLBACK,
   fetchFeaturesDataset,
+  featurePercent,
   type FeatureStatus,
   type FeatureTipo,
   type FeaturesDataset,
   type RoadmapFeature,
 } from "./features-data";
+
+export { featurePercent };
 
 // ── UI chrome (iconos y colores) ─────────────────────────────────────
 
@@ -81,9 +83,9 @@ function buildCategories(
   for (const cat of ordered) {
     const feats = grouped.get(cat.id);
     if (!feats || feats.length === 0) continue;
-    const sorted = [...feats].sort((a, b) => b.percent - a.percent);
+    const sorted = [...feats].sort((a, b) => featurePercent(b) - featurePercent(a));
     const avg = Math.round(
-      sorted.reduce((sum, f) => sum + f.percent, 0) / sorted.length,
+      sorted.reduce((sum, f) => sum + featurePercent(f), 0) / sorted.length,
     );
     out.push({
       id: cat.id,
@@ -133,6 +135,6 @@ export function getOverallFeatureProgress(dataset: FeaturesDataset): number {
   );
   if (active.length === 0) return 0;
   return Math.round(
-    active.reduce((acc, f) => acc + f.percent, 0) / active.length,
+    active.reduce((acc, f) => acc + featurePercent(f), 0) / active.length,
   );
 }

@@ -17,6 +17,7 @@ import {
 } from "../roadmap/roadmap-data";
 import {
   getActiveSections,
+  featurePercent,
   STATUS_META,
   TIPO_META,
   type ActiveSections,
@@ -178,6 +179,7 @@ function FeatureCard({
 }) {
   const tipo = TIPO_META[feat.tipo] ?? TIPO_META.feature;
   const status = STATUS_META[feat.status] ?? STATUS_META.future;
+  const pct = featurePercent(feat);
   return (
     <article
       onClick={onToggle}
@@ -212,28 +214,45 @@ function FeatureCard({
         </p>
       )}
       {isExpanded && (
-        <div className="flex flex-col gap-2 mt-1">
-          <p className="text-[11px] text-vantare-textMuted leading-relaxed">
-            {pickText(feat.description, locale)}
-          </p>
-          <div className="mt-1 pt-2 border-t border-white/5">
-            <span className="text-[9px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim block mb-0.5">
-              Progreso
-            </span>
-            <span className="text-sm font-bold text-white">{feat.percent}%</span>
-          </div>
-        </div>
+        <p className="text-[11px] text-vantare-textMuted leading-relaxed mt-1">
+          {pickText(feat.description, locale)}
+        </p>
       )}
-      {!isExpanded && (
-        <div className="mt-auto pt-1">
-          <ProgressBar value={feat.percent} />
-          <div className="flex justify-end mt-1">
-            <span className="text-[9px] font-mono font-bold text-vantare-red-400">
-              {feat.percent}%
-            </span>
-          </div>
+      {/* Subtasks + Progreso */}
+      <div className="flex gap-3 mt-auto pt-2 border-t border-white/5">
+        <div className="flex-1 flex flex-col gap-1">
+          {feat.subtasks.map((st, i) => (
+            <label
+              key={i}
+              className="flex items-center gap-2 text-[11px] text-vantare-textMuted select-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span
+                className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                  st.done
+                    ? "bg-vantare-red-500 border-vantare-red-500"
+                    : "border-white/20 bg-white/5"
+                }`}
+              >
+                {st.done && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </span>
+              <span className={st.done ? "line-through opacity-50" : ""}>
+                {pickText(st.label, locale)}
+              </span>
+            </label>
+          ))}
         </div>
-      )}
+        <div className="flex flex-col items-end shrink-0 pt-0.5">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-[.22em] text-vantare-textDim">
+            Progreso
+          </span>
+          <span className="text-lg font-bold text-white">{pct}%</span>
+        </div>
+      </div>
     </article>
   );
 }

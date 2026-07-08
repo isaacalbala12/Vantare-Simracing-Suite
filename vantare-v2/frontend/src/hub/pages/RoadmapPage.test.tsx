@@ -137,7 +137,7 @@ describe("RoadmapPage", () => {
     render(<RoadmapPage />);
     fireEvent.click(screen.getByText("Desarrollo por features"));
     const cards = await screen.findAllByTestId(/^feature-card-/);
-    expect(cards.length).toBe(11);
+    expect(cards.length).toBe(5);
     const devLabels = screen.getAllByText("En desarrollo");
     expect(devLabels.length).toBeGreaterThanOrEqual(1);
     const futureLabels = screen.getAllByText("Próximamente");

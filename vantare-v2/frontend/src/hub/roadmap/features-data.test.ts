@@ -10,9 +10,9 @@ import {
 const lt = (s: string) => ({ es: s, en: s, pt: s, it: s });
 
 describe("FEATURES_FALLBACK dataset", () => {
-  it("has at least 4 categories and 6 features (current migration baseline)", () => {
-    expect(FEATURES_FALLBACK.categories.length).toBeGreaterThanOrEqual(4);
-    expect(FEATURES_FALLBACK.features.length).toBeGreaterThanOrEqual(6);
+  it("has 5 categories and 5 features", () => {
+    expect(FEATURES_FALLBACK.categories.length).toBe(5);
+    expect(FEATURES_FALLBACK.features.length).toBe(5);
   });
 
   it("every feature has a category id that exists in categories", () => {
@@ -36,9 +36,10 @@ describe("FEATURES_FALLBACK dataset", () => {
     }
   });
 
-  it("every feature has percent on the 0/10/25/50/75/100 scale", () => {
+  it("every feature has subtasks", () => {
     for (const f of FEATURES_FALLBACK.features) {
-      expect([0, 10, 25, 50, 75, 100]).toContain(f.percent);
+      expect(Array.isArray(f.subtasks)).toBe(true);
+      expect(f.subtasks.length).toBeGreaterThan(0);
     }
   });
 
@@ -74,7 +75,8 @@ describe("fetchFeaturesDataset", () => {
       categories: [{ id: "calendar", label: lt("Calendar"), order: 1 }],
       features: [{
         id: "x", category: "calendar", label: lt("X"), description: lt("d"),
-        tipo: "feature", status: "in-development", percent: 25,
+        tipo: "feature", status: "in-development",
+        subtasks: [{ label: lt("task1"), done: false }],
       }],
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => fakeJson }));
@@ -101,7 +103,7 @@ describe("fetchFeaturesDataset", () => {
       ok: true, json: async () => ({
         categories: [{ id: "calendar", label: lt("Calendar"), order: 1 }],
         features: [
-          { id: "x", category: "ghost", label: lt("X"), description: lt("d"), tipo: "feature", status: "in-development", percent: 0 },
+          { id: "x", category: "ghost", label: lt("X"), description: lt("d"), tipo: "feature", status: "in-development", subtasks: [] },
         ],
       }),
     }));
@@ -109,17 +111,18 @@ describe("fetchFeaturesDataset", () => {
     expect(ds.features.length).toBe(FEATURES_FALLBACK.features.length);
   });
 
-  it("falls back when features have invalid status, tipo, or percent", async () => {
+  it("drops features with invalid status or tipo, keeps valid ones", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true, json: async () => ({
         categories: [{ id: "calendar", label: lt("Calendar"), order: 1 }],
         features: [
-          { id: "x", category: "calendar", label: lt("X"), description: lt("d"), tipo: "alien", status: "wip", percent: 0 },
-          { id: "y", category: "calendar", label: lt("Y"), description: lt("d"), tipo: "feature", status: "in-development", percent: 33 },
+          { id: "x", category: "calendar", label: lt("X"), description: lt("d"), tipo: "alien", status: "wip", subtasks: [] },
+          { id: "y", category: "calendar", label: lt("Y"), description: lt("d"), tipo: "feature", status: "in-development", subtasks: [{ label: lt("t"), done: false }] },
         ],
       }),
     }));
     const ds = await fetchFeaturesDataset();
-    expect(ds.features.length).toBe(FEATURES_FALLBACK.features.length);
+    expect(ds.features.length).toBe(1);
+    expect(ds.features[0].id).toBe("y");
   });
 });

@@ -21,6 +21,7 @@ import { BetaWelcome, type BetaUserRole } from './onboarding/BetaWelcome';
 import { CalendarReminderBanner } from './calendar/CalendarReminderBanner';
 import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
+import { ChainRunnerProvider } from './launcher/chain-store';
 
 type SourceStatus = {
   kind: string;
@@ -192,7 +193,9 @@ export function HubApp() {
         <LicenseBridge />
         <LicenseGate>
           <HubErrorBoundary>
-            <HubShell />
+            <ChainRunnerProvider>
+              <HubShell />
+            </ChainRunnerProvider>
           </HubErrorBoundary>
         </LicenseGate>
       </I18nProvider>

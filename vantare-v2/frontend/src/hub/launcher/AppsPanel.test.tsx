@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { AppsPanel } from "./AppsPanel";
 
-const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
+const listeners = new Map<
+  string,
+  ((event: { data: unknown }) => void)[]
+>();
 const emitCalls: { name: string; data: unknown }[] = [];
 
 afterEach(() => {
@@ -15,12 +18,14 @@ afterEach(() => {
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
-    On: vi.fn((name: string, cb: (event: { data: unknown }) => void) => {
-      const existing = listeners.get(name) ?? [];
-      existing.push(cb);
-      listeners.set(name, existing);
-      return vi.fn();
-    }),
+    On: vi.fn(
+      (name: string, cb: (event: { data: unknown }) => void) => {
+        const existing = listeners.get(name) ?? [];
+        existing.push(cb);
+        listeners.set(name, existing);
+        return vi.fn();
+      },
+    ),
     Emit: vi.fn((name: string, data: unknown) => {
       emitCalls.push({ name, data });
     }),
@@ -61,34 +66,62 @@ describe("AppsPanel", () => {
     expect(screen.getByTestId("app-row-lmu")).toBeTruthy();
   });
 
-  it("opens the manual-add form after the user selects a file", () => {
+  it("opens AddNonSteamGameModal on add button click", () => {
     render(<AppsPanel />);
-    const file = new File(["MZ"], "app.exe");
-    const input = screen.getByTestId("apps-file-input") as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(screen.getByTestId("app-add-form")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("apps-add-manual"));
+    expect(screen.getByTestId("add-non-steam-modal")).toBeTruthy();
   });
 
-  it("emits launcher:app:add with the picked path when the form is saved", () => {
+  it("renders details panel with args input when clicking on an app", () => {
     render(<AppsPanel />);
-    const file = new File(["MZ"], "myapp.exe");
-    const input = screen.getByTestId("apps-file-input") as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [file] } });
-    // Browser provides the path via webkitRelativePath/file path; we set the
-    // name via a programmatic value since jsdom does not resolve a real path.
-    Object.defineProperty(input, "files", {
-      value: [{ name: "myapp.exe" }],
-      configurable: true,
+    dispatch("launcher:apps:detected", {
+      apps: [
+        {
+          id: "obs",
+          displayName: "OBS Studio",
+          abbreviation: "OBS",
+          category: "streaming",
+          launchMethod: "executable",
+          executablePath: "C:\\obs\\obs64.exe",
+          detected: true,
+          gradientFrom: "#302e31",
+          gradientTo: "#1a1a1a",
+        },
+      ],
     });
-    fireEvent.change(input, { target: { files: [{ name: "myapp.exe", path: "C:/apps/myapp.exe" }] } });
-    fireEvent.change(screen.getByTestId("app-add-name"), {
-      target: { value: "My App" },
+    fireEvent.click(screen.getByTestId("app-row-obs"));
+    expect(screen.getByTestId("app-details-obs")).toBeTruthy();
+    expect(screen.getByTestId("app-args-input-obs")).toBeTruthy();
+  });
+
+  it("emits launcher:app:update when editing args", () => {
+    render(<AppsPanel />);
+    dispatch("launcher:apps:detected", {
+      apps: [
+        {
+          id: "obs",
+          displayName: "OBS Studio",
+          abbreviation: "OBS",
+          category: "streaming",
+          launchMethod: "executable",
+          executablePath: "C:\\obs\\obs64.exe",
+          args: "",
+          detected: true,
+          gradientFrom: "#302e31",
+          gradientTo: "#1a1a1a",
+        },
+      ],
     });
-    fireEvent.click(screen.getByTestId("app-add-save"));
-    const addCall = emitCalls.find((c) => c.name === "launcher:app:add");
-    expect(addCall).toBeDefined();
-    const data = addCall!.data as { entry: { executablePath: string; displayName: string } };
-    expect(data.entry.executablePath).toBe("C:/apps/myapp.exe");
-    expect(data.entry.displayName).toBe("My App");
+    fireEvent.click(screen.getByTestId("app-row-obs"));
+    fireEvent.change(screen.getByTestId("app-args-input-obs"), {
+      target: { value: "--start-streaming" },
+    });
+    const updateCall = emitCalls.find(
+      (c) => c.name === "launcher:app:update",
+    );
+    expect(updateCall).toBeDefined();
+    const data = updateCall!.data as { id: string; args: string };
+    expect(data.id).toBe("obs");
+    expect(data.args).toBe("--start-streaming");
   });
 });

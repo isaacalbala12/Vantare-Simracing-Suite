@@ -1,10 +1,21 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+
+const { mockOpenURL } = vi.hoisted(() => ({
+  mockOpenURL: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@wailsio/runtime", () => ({
+  Browser: { OpenURL: (...args: unknown[]) => mockOpenURL(...args) },
+}));
+
 import { PaywallScreen } from "./PaywallScreen";
 
 describe("PaywallScreen", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("renders the four primary plan cards with prices", () => {
@@ -48,13 +59,39 @@ describe("PaywallScreen", () => {
     expect(screen.getByRole("button", { name: /continuar gratis/i })).toBeTruthy();
   });
 
-  it("shows a coming-soon notice with no fake checkout when Suscribirse is clicked", () => {
+  it("calls fetch to create-checkout-session and opens Stripe URL when Suscribirse is clicked", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ url: "https://checkout.stripe.com/pay/cs_test" }),
+    } as Response);
+
     render(<PaywallScreen email="u@example.com" />);
     const buttons = screen.getAllByRole("button", { name: /suscribirse/i });
     fireEvent.click(buttons[0]);
-    const banner = screen.getByTestId("paywall-coming-soon");
-    expect(banner.textContent).toMatch(/Pago en línea próximamente/);
-    expect(banner.textContent).toMatch(/portal externo/);
+
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    const [url, opts] = fetchSpy.mock.calls[0];
+    expect(url).toContain("/functions/v1/create-checkout-session");
+    expect(opts?.method).toBe("POST");
+    expect(await mockOpenURL).toHaveBeenCalledWith("https://checkout.stripe.com/pay/cs_test");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("shows error when checkout fetch fails", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Plan not found" }),
+    } as Response);
+
+    render(<PaywallScreen email="u@example.com" />);
+    const buttons = screen.getAllByRole("button", { name: /suscribirse/i });
+    fireEvent.click(buttons[0]);
+
+    expect(await screen.findByTestId("paywall-error")).toBeTruthy();
+    expect(screen.getByText(/Plan not found/)).toBeTruthy();
+
+    fetchSpy.mockRestore();
   });
 
   it("Free plan button is enabled and shows Continuar gratis label", () => {

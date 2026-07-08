@@ -143,41 +143,38 @@ export function ProfileCard({
         </p>
       )}
 
-      {editing ? (
-        <ProfileEditor
-          profile={profile}
-          apps={apps}
-          onSave={handleSave}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <div className="mt-3 flex items-center gap-2 justify-end">
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
-            data-testid={`profile-edit-${profile.id}`}
-          >
-            Editar
-          </button>
-          <button
-            type="button"
-            onClick={handleDuplicate}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
-            data-testid={`profile-duplicate-${profile.id}`}
-          >
-            Duplicar
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:border-vantare-red-400/50 hover:text-vantare-red-400 transition-colors"
-            data-testid={`profile-delete-${profile.id}`}
-          >
-            Eliminar
-          </button>
-        </div>
-      )}
+      <ProfileEditor
+        profile={profile}
+        open={editing}
+        onClose={() => setEditing(false)}
+        onSave={handleSave}
+      />
+      <div className="mt-3 flex items-center gap-2 justify-end">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+          data-testid={`profile-edit-${profile.id}`}
+        >
+          Editar
+        </button>
+        <button
+          type="button"
+          onClick={handleDuplicate}
+          className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+          data-testid={`profile-duplicate-${profile.id}`}
+        >
+          Duplicar
+        </button>
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:border-vantare-red-400/50 hover:text-vantare-red-400 transition-colors"
+          data-testid={`profile-delete-${profile.id}`}
+        >
+          Eliminar
+        </button>
+      </div>
     </article>
   );
 }

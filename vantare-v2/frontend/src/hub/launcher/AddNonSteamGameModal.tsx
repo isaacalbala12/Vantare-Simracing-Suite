@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Events } from "@wailsio/runtime";
 
@@ -17,7 +18,7 @@ type Props = {
 const CAP = 200;
 
 export function AddNonSteamGameModal({ open, onClose, onAdd }: Props) {
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -39,7 +40,8 @@ export function AddNonSteamGameModal({ open, onClose, onAdd }: Props) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 

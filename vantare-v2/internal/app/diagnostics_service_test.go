@@ -307,3 +307,26 @@ func TestDiagnosticsService(t *testing.T) {
 		}
 	})
 }
+
+func TestSanitizeLauncherProfileRedactsNotes(t *testing.T) {
+	s := NewDiagnosticsService("", "", nil, nil, nil)
+	profiles := []SanitizedLauncherProfile{
+		{ID: "p1", Name: "Creator", Steps: 3, Notes: "C:\\Users\\me\\file.exe with --flag"},
+	}
+	out := s.SanitizeLauncherProfiles(profiles)
+	if !strings.Contains(out[0].Notes, "[redacted]") {
+		t.Errorf("expected notes path to be redacted, got: %s", out[0].Notes)
+	}
+}
+
+func TestSanitizeLauncherAppRedactsArgs(t *testing.T) {
+	s := NewDiagnosticsService("", "", nil, nil, nil)
+	apps := []SanitizedLauncherApp{
+		{ID: "obs", DisplayName: "OBS", Category: "streaming", LaunchMethod: "executable",
+			Detected: true, ExecutablePath: "C:\\Program Files\\OBS\\obs64.exe --profile x"},
+	}
+	out := s.SanitizeLauncherApps(apps)
+	if strings.Contains(out[0].ExecutablePath, "OBS\\obs64.exe") {
+		t.Errorf("expected exe path to be redacted, got: %s", out[0].ExecutablePath)
+	}
+}

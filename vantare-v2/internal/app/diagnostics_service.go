@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -18,12 +19,15 @@ type SanitizedLauncherApp struct {
 	LaunchMethod   string `json:"launchMethod"`
 	Detected       bool   `json:"detected"`
 	ExecutablePath string `json:"executablePath,omitempty"` // redacted
+	Args           string `json:"args,omitempty"`           // redacted
+	IsFavorite     bool   `json:"isFavorite"`
 }
 
 // SanitizedLauncherProfile is a redacted version of LaunchProfile.
 type SanitizedLauncherProfile struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
+	Notes string `json:"notes,omitempty"` // paths redactados
 	Steps int    `json:"steps"`
 }
 
@@ -62,6 +66,35 @@ type DiagnosticsInfo struct {
 	AppSettings     *SanitizedAppSettings    `json:"appSettings"`
 	ActiveProfile   *SanitizedProfileSummary `json:"activeProfile,omitempty"`
 	Timestamp       string                   `json:"timestamp"`
+}
+
+// pathInTextRe matches Windows drive-letter paths like C:\something.
+var pathInTextRe = regexp.MustCompile(`[A-Za-z]:\\[^"'\n]+`)
+
+// redactPaths replaces Windows paths in free text with [redacted].
+func redactPaths(s string) string {
+	return pathInTextRe.ReplaceAllString(s, "[redacted]")
+}
+
+// SanitizeLauncherProfiles applies path redaction to the Notes field of each profile.
+func (s *DiagnosticsService) SanitizeLauncherProfiles(profiles []SanitizedLauncherProfile) []SanitizedLauncherProfile {
+	out := make([]SanitizedLauncherProfile, len(profiles))
+	for i, p := range profiles {
+		p.Notes = redactPaths(p.Notes)
+		out[i] = p
+	}
+	return out
+}
+
+// SanitizeLauncherApps applies path redaction to Args and ExecutablePath of each app.
+func (s *DiagnosticsService) SanitizeLauncherApps(apps []SanitizedLauncherApp) []SanitizedLauncherApp {
+	out := make([]SanitizedLauncherApp, len(apps))
+	for i, a := range apps {
+		a.Args = redactPaths(a.Args)
+		a.ExecutablePath = redactPaths(a.ExecutablePath)
+		out[i] = a
+	}
+	return out
 }
 
 // DiagnosticsService collects system and application information for troubleshooting.
@@ -147,6 +180,8 @@ func (s *DiagnosticsService) sanitizeSettings(as *AppSettings) *SanitizedAppSett
 				LaunchMethod:   appEntry.LaunchMethod,
 				Detected:       appEntry.Detected,
 				ExecutablePath: redactedPath,
+				Args:           redactPaths(appEntry.Args),
+				IsFavorite:     appEntry.IsFavorite,
 			}
 		}
 	}
@@ -156,6 +191,7 @@ func (s *DiagnosticsService) sanitizeSettings(as *AppSettings) *SanitizedAppSett
 			sanitized.LauncherProfiles[i] = SanitizedLauncherProfile{
 				ID:    p.ID,
 				Name:  p.Name,
+				Notes: redactPaths(p.Notes),
 				Steps: len(p.Steps),
 			}
 		}

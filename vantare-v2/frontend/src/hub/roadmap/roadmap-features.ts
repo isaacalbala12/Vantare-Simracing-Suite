@@ -1,197 +1,138 @@
 /**
  * roadmap-features.ts
  *
- * Lee roadmap-progress.json (generado por scripts/generate-roadmap-progress.mjs).
- * Parsea current-plan.md para planes con "Estado: 🟢 ACTIVO" o "🔮 FUTURO".
- * Sin overrides manuales — todo es automático.
+ * Construye las 3 secciones ("En desarrollo" / "En investigación" /
+ * "Próximamente") a partir de features-data.ts (fuente manual). No hay
+ * auto-generación: la fuente es docs/features-source.json.
  */
 
-import progressData from "./roadmap-progress.json";
+import {
+  FEATURES_FALLBACK,
+  fetchFeaturesDataset,
+  type FeatureStatus,
+  type FeatureTipo,
+  type FeaturesDataset,
+  type RoadmapFeature,
+} from "./features-data";
 
-// ── Types ──────────────────────────────────────────────────────────
+// ── UI chrome (iconos y colores) ─────────────────────────────────────
 
-export type FeatureTipo = "feature" | "bugfix" | "improve" | "research" | "component";
-
-export type RoadmapFeature = {
-  slug: string;
-  label: string;
-  description: string;
-  tipo: FeatureTipo;
-  future: boolean;
-  percent: number;
-  checkProgress: { done: number; total: number } | null;
+export const TIPO_META: Record<
+  FeatureTipo,
+  { icon: string; label: string; color: string }
+> = {
+  feature: { icon: "⚡", label: "Feature", color: "text-vantare-red-400" },
+  bugfix: { icon: "🐛", label: "Bugfix", color: "text-amber-400" },
+  improve: { icon: "🔧", label: "Mejora", color: "text-blue-400" },
+  component: { icon: "🧩", label: "Componente", color: "text-emerald-400" },
 };
+
+export const STATUS_META: Record<
+  FeatureStatus,
+  { label: string; color: string }
+> = {
+  "in-development": { label: "En desarrollo", color: "text-vantare-red-400" },
+  research: { label: "En investigación", color: "text-violet-400" },
+  future: { label: "Próximamente", color: "text-vantare-textDim" },
+};
+
+// ── Public types ─────────────────────────────────────────────────────
 
 export type RoadmapCategory = {
   id: string;
-  label: string;
+  label: { es: string; en: string; pt: string; it: string };
   features: ReadonlyArray<RoadmapFeature>;
   percent: number;
 };
 
-// ── Data ───────────────────────────────────────────────────────────
-
-type ProgressEntry = {
-  label: string;
-  description: string;
-  tipo: string;
-  future: boolean;
-  done: number;
-  total: number;
-  percent: number;
+export type ActiveSections = {
+  inDevelopment: ReadonlyArray<RoadmapCategory>;
+  research: ReadonlyArray<RoadmapCategory>;
+  future: ReadonlyArray<RoadmapCategory>;
 };
 
-const progressMap: Record<string, ProgressEntry> = progressData as Record<
-  string,
-  ProgressEntry
->;
-
-// ── Constants ──────────────────────────────────────────────────────
-
-const CATEGORY_MAP: Record<string, string> = {
-  "calendar-interval-races-dayview": "calendar",
-  "calendar-refactor": "calendar",
-  "roadmap-features-from-plans": "roadmap",
-  "launcher-extensive": "launcher",
-  "release-02-licensing-auth": "auth-licensing",
-  "sql-01-migration": "auth-licensing",
-  "stripe-01-products": "auth-licensing",
-  "deploy-01-webhook": "auth-licensing",
-  "checkout-01": "auth-licensing",
-  "auth-04-signup": "auth-licensing",
-  "audit-01": "auth-licensing",
-  "e2e-01": "auth-licensing",
-  "support-01-cli": "auth-licensing",
-  "runbook-01": "auth-licensing",
-  "i18n-03b-auth": "auth-licensing",
-  "obslan-double-pc": "releases",
-  "overlay-performance-fixes": "overlays",
-  "profile-hardening-fixes": "overlays",
-  "p1-pedals-inventory": "widgets",
-  "vantare-suite-ingeniero-integration": "engineer",
+export type ActiveSectionsResult = {
+  sections: ActiveSections;
+  overallProgress: number;
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  calendar: "Calendario",
-  launcher: "Launcher",
-  "auth-licensing": "Auth & Licencias",
-  roadmap: "Roadmap",
-  widgets: "Widgets",
-  "widget-studio": "Widget Studio",
-  hub: "Hub UI",
-  engineer: "Ingeniero",
-  releases: "Releases",
-  overlays: "Overlays",
-  other: "Otros",
-};
+// ── Helpers ─────────────────────────────────────────────────────────
 
-export const TIPO_META: Record<FeatureTipo, { icon: string; label: string; color: string }> = {
-  feature: { icon: "⚡", label: "Feature", color: "text-vantare-red-400" },
-  bugfix: { icon: "🐛", label: "Bugfix", color: "text-amber-400" },
-  improve: { icon: "🔧", label: "Mejora", color: "text-blue-400" },
-  research: { icon: "🔬", label: "Investigación", color: "text-violet-400" },
-  component: { icon: "🧩", label: "Componente", color: "text-emerald-400" },
-};
-
-// ── Public API ─────────────────────────────────────────────────────
-
-function buildFeatures(): RoadmapFeature[] {
-  return Object.entries(progressMap).map(([slug, entry]) => ({
-    slug,
-    label: entry.label,
-    description: entry.description,
-    tipo: (entry.tipo as FeatureTipo) ?? "feature",
-    future: entry.future,
-    percent: entry.percent,
-    checkProgress:
-      entry.total > 0 ? { done: entry.done, total: entry.total } : null,
-  }));
-}
-
-function groupByCategory(features: RoadmapFeature[]): Map<string, RoadmapFeature[]> {
+export function groupFeaturesByCategory(
+  features: ReadonlyArray<RoadmapFeature>,
+): Map<string, RoadmapFeature[]> {
   const grouped = new Map<string, RoadmapFeature[]>();
   for (const f of features) {
-    const cat = CATEGORY_MAP[f.slug] ?? "other";
-    const arr = grouped.get(cat) ?? [];
+    const arr = grouped.get(f.category) ?? [];
     arr.push(f);
-    grouped.set(cat, arr);
+    grouped.set(f.category, arr);
   }
   return grouped;
 }
 
-const CATEGORY_ORDER = [
-  "calendar",
-  "launcher",
-  "auth-licensing",
-  "roadmap",
-  "widgets",
-  "widget-studio",
-  "hub",
-  "engineer",
-  "releases",
-  "overlays",
-  "other",
-];
+function buildCategories(
+  features: ReadonlyArray<RoadmapFeature>,
+  dataset: FeaturesDataset,
+): ReadonlyArray<RoadmapCategory> {
+  const grouped = groupFeaturesByCategory(features);
+  const ordered = [...dataset.categories].sort((a, b) => a.order - b.order);
 
-/**
- * Features activas (🟢 ACTIVO), agrupadas por categoría.
- */
-export function getFeatureCategories(): ReadonlyArray<RoadmapCategory> {
-  const active = buildFeatures().filter((f) => !f.future);
-  const grouped = groupByCategory(active);
-
-  const categories: RoadmapCategory[] = [];
-  for (const catId of CATEGORY_ORDER) {
-    const feats = grouped.get(catId);
+  const out: RoadmapCategory[] = [];
+  for (const cat of ordered) {
+    const feats = grouped.get(cat.id);
     if (!feats || feats.length === 0) continue;
-
-    feats.sort((a, b) => b.percent - a.percent);
-    const avg = feats.reduce((sum, f) => sum + f.percent, 0) / feats.length;
-
-    categories.push({
-      id: catId,
-      label: CATEGORY_LABELS[catId] ?? catId,
-      features: feats,
-      percent: Math.round(avg),
+    const sorted = [...feats].sort((a, b) => b.percent - a.percent);
+    const avg = Math.round(
+      sorted.reduce((sum, f) => sum + f.percent, 0) / sorted.length,
+    );
+    out.push({
+      id: cat.id,
+      label: cat.label,
+      features: sorted,
+      percent: avg,
     });
   }
+  return out;
+}
 
-  return categories;
+// ── API pública ─────────────────────────────────────────────────────
+
+/**
+ * Devuelve las 3 secciones que pinta la pestaña "Desarrollo por features"
+ * Y el progreso global calculado del mismo dataset que las alimenta,
+ * para que header y cards nunca se desincronicen.
+ * Si el fetch falla, se usa FEATURES_FALLBACK; el resultado nunca es null.
+ */
+export async function getActiveSections(): Promise<ActiveSectionsResult> {
+  const dataset = await fetchFeaturesDataset();
+  const byStatus: Record<FeatureStatus, RoadmapFeature[]> = {
+    "in-development": [],
+    research: [],
+    future: [],
+  };
+  for (const f of dataset.features) {
+    byStatus[f.status].push(f);
+  }
+  return {
+    sections: {
+      inDevelopment: buildCategories(byStatus["in-development"], dataset),
+      research: buildCategories(byStatus.research, dataset),
+      future: buildCategories(byStatus.future, dataset),
+    },
+    overallProgress: getOverallFeatureProgress(dataset),
+  };
 }
 
 /**
- * Features futuras (🔮 FUTURO), agrupadas por categoría.
+ * % global = media de los % de las features ACTIVAS (in-development + research).
+ * Las future no cuentan para el progreso global.
  */
-export function getFutureCategories(): ReadonlyArray<RoadmapCategory> {
-  const future = buildFeatures().filter((f) => f.future);
-  const grouped = groupByCategory(future);
-
-  const categories: RoadmapCategory[] = [];
-  for (const catId of CATEGORY_ORDER) {
-    const feats = grouped.get(catId);
-    if (!feats || feats.length === 0) continue;
-
-    feats.sort((a, b) => b.percent - a.percent);
-    const avg = feats.reduce((sum, f) => sum + f.percent, 0) / feats.length;
-
-    categories.push({
-      id: catId,
-      label: CATEGORY_LABELS[catId] ?? catId,
-      features: feats,
-      percent: Math.round(avg),
-    });
-  }
-
-  return categories;
-}
-
-/**
- * % global de features activas.
- */
-export function getOverallFeatureProgress(): number {
-  const categories = getFeatureCategories();
-  const allFeatures = categories.flatMap((c) => [...c.features]);
-  if (allFeatures.length === 0) return 0;
-  const sum = allFeatures.reduce((acc, f) => acc + f.percent, 0);
-  return Math.round(sum / allFeatures.length);
+export function getOverallFeatureProgress(dataset: FeaturesDataset): number {
+  const active = dataset.features.filter(
+    (f) => f.status === "in-development" || f.status === "research",
+  );
+  if (active.length === 0) return 0;
+  return Math.round(
+    active.reduce((acc, f) => acc + f.percent, 0) / active.length,
+  );
 }

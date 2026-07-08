@@ -1,19 +1,19 @@
-import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
-import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
+import { tierStyle } from "./calendar-shared";
 import type { CalendarFilter } from "./CalendarToolbar";
 import { useAccess } from "../../lib/access";
 import { canUseFeature } from "../../lib/access-policy";
 
 type CalendarRaceRailProps = {
+  calendar: Calendar | null;
   now?: () => Date;
   activeFilter?: CalendarFilter;
   onSelectTier?: (filter: CalendarFilter) => void;
 };
 
-function formatRailTime(dateStr: string | null, now: Date): string {
+function formatRailTime(dateStr: string | null, now: Date, _timeZone: string): string {
   if (!dateStr) return "N/A";
   const start = new Date(dateStr).getTime();
   const diff = start - now.getTime();
@@ -29,54 +29,33 @@ function formatRailTime(dateStr: string | null, now: Date): string {
   const diffDays = Math.floor(diffHours / 24);
   return `en ${diffDays}d`;
 }
-
-function formatWeeklyTime(dateStr: string | null, now: Date): string {
-  if (!dateStr) return "N/A";
-  const d = new Date(dateStr);
-  const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (isToday) return `Hoy ${time}`;
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const isTomorrow = d.getDate() === tomorrow.getDate() && d.getMonth() === tomorrow.getMonth() && d.getFullYear() === tomorrow.getFullYear();
-  if (isTomorrow) return `Mañana ${time}`;
-  return `${d.toLocaleDateString([], { day: "2-digit", month: "short" })} ${time}`;
+function tierKeyToFilter(key: string): CalendarFilter {
+  switch (key) {
+    case "beginner": return "beginner";
+    case "intermediate": return "intermediate";
+    case "advanced": return "advanced";
+    case "weekly": return "weekly";
+    case "special": return "special";
+    default: return "all";
+  }
 }
 
-const TIER_STYLES: Record<string, { label: string; border: string; bgClass: string }> = {
-  beginner: {
-    label: "Bronce",
-    border: "rgba(205,127,50,1)",
-    bgClass: "bg-[rgba(205,127,50,.1)]",
-  },
-  intermediate: {
-    label: "Plata",
-    border: "rgba(184,191,200,1)",
-    bgClass: "bg-[rgba(184,191,200,.1)]",
-  },
-  advanced: {
-    label: "Oro",
-    border: "rgba(212,160,23,1)",
-    bgClass: "bg-[rgba(212,160,23,.1)]",
-  },
-};
-
-function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSelectTier, canFollow }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; isFollowed: boolean; onFollow: (item: UpcomingRaceItem) => void; onUnfollow: (item: UpcomingRaceItem) => void; onSelectTier?: (filter: CalendarFilter) => void; canFollow: boolean }) {
-  const styles = TIER_STYLES[tierKey] || TIER_STYLES.beginner;
+function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSelectTier, canFollow, timeZone }: {
+  item: UpcomingRaceItem | null;
+  tierKey: string;
+  now: Date;
+  isFollowed: boolean;
+  onFollow: (item: UpcomingRaceItem) => void;
+  onUnfollow: (item: UpcomingRaceItem) => void;
+  onSelectTier?: (filter: CalendarFilter) => void;
+  canFollow: boolean;
+  timeZone: string;
+}) {
+  const styles = tierStyle(tierKey);
 
   if (!item) return null;
 
-  const timeStr = formatRailTime(item.nextStart, now);
-
-  const tierKeyToFilter = (key: string): CalendarFilter => {
-    switch (key) {
-      case "beginner": return "beginner";
-      case "intermediate": return "intermediate";
-      case "advanced": return "advanced";
-      case "weekly": return "weekly";
-      default: return "all";
-    }
-  };
+  const timeStr = formatRailTime(item.nextStart, now, timeZone);
 
   return (
     <div
@@ -84,11 +63,15 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
       data-testid={`rail-card-${tierKey}`}
       onClick={() => onSelectTier?.(tierKeyToFilter(tierKey))}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: styles.border, boxShadow: `0 0 10px ${styles.border}` }} />
+      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: styles.accent, boxShadow: `0 0 10px ${styles.accent}` }} />
       <div className="flex flex-col gap-1.5 pl-2">
         <div className="flex items-center justify-between">
-          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-[.22em] ${styles.bgClass}`} style={{ color: styles.border, border: `1px solid ${styles.border}` }}>
-            {styles.label}
+          <span
+            className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-[.22em]"
+            style={{ color: styles.text, background: styles.bg, border: `1px solid ${styles.border}` }}
+          >
+            {styles.text === "#f5f5f5" ? tierKey : ""}
+            {tierLabelShort(tierKey)}
           </span>
           {item.isActive ? (
             <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[.22em] text-accent">
@@ -141,34 +124,27 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
   );
 }
 
-export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: CalendarRaceRailProps) {
+function tierLabelShort(tier: string): string {
+  switch (tier) {
+    case "beginner": return "Bronce";
+    case "intermediate": return "Plata";
+    case "advanced": return "Oro";
+    case "weekly": return "Semanal";
+    case "special": return "Especial";
+    default: return tier;
+  }
+}
+
+export function CalendarRaceRail({ calendar, now, activeFilter = "all", onSelectTier }: CalendarRaceRailProps) {
   const access = useAccess();
   const canFollow = canUseFeature(access, "calendar.followReminders");
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    requestCalendar();
-    const unsub = subscribeToCalendar((state) => {
-      if (state.kind === "loaded") {
-        setCalendar(state.calendar);
-      }
-    });
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
-
   const nowDate = now ? now() : new Date();
-  void tick;
+  const timeZone = calendar?.timezone ?? "UTC";
 
   if (!calendar) {
     return (
       <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200">
-        <div className="px-2 py-1.5 mb-2 flex items-center justify-center">
+        <div className="py-1.5 mb-2 text-center">
           <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
         </div>
         <div className="rounded-xl bg-[rgba(20,20,20,.55)] border border-white/5 p-4 text-center">
@@ -177,7 +153,14 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
       </div>
     );
   }
-  const summary = buildUpcomingRaceItems(calendar, nowDate);
+  const allItems = buildUpcomingRaceItems(calendar, nowDate);
+
+  const filter = activeFilter ?? "all";
+  const filteredItems = allItems.filter((item) => {
+    if (filter === "all") return true;
+    if (item.tier === "event") return filter === "special";
+    return item.tier === filter;
+  });
 
   const handleFollow = (item: UpcomingRaceItem) => {
     if (!canFollow) return;
@@ -197,92 +180,34 @@ export function CalendarRaceRail({ now, activeFilter = "all", onSelectTier }: Ca
     }
   };
 
-  const filter = activeFilter ?? "all";
-  const showWeekly = filter === "all" || filter === "weekly";
-  const showBronce = filter === "all" || filter === "beginner";
-  const showPlata = filter === "all" || filter === "intermediate";
-  const showOro = filter === "all" || filter === "advanced";
-  const hasItems = (showWeekly && summary.weekly) || (showBronce && summary.bronce) || (showPlata && summary.plata) || (showOro && summary.oro);
-
   return (
     <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200" data-testid="calendar-race-rail">
-      <div className="px-2 py-1.5 mb-2 flex items-center justify-center">
+      <div className="py-1.5 mb-2 text-center">
         <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
       </div>
 
-      {!hasItems ? (
+      {filteredItems.length === 0 ? (
         <div className="rounded-xl bg-[rgba(20,20,20,.55)] border border-white/5 p-4 text-center">
           <p className="text-xs font-semibold text-white">No hay carreras</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {showWeekly && summary.weekly && (
-            <div
-              className="card-sleek rounded-xl p-3 relative overflow-hidden group cursor-pointer"
-              data-testid="rail-card-weekly"
-              onClick={() => onSelectTier?.("weekly")}
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent" style={{ boxShadow: "0 0 10px #ff3b3b" }} />
-              <div className="flex flex-col gap-1.5 pl-2">
-                <div className="flex items-center justify-between">
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-[.22em]" style={{ background: "rgba(255,59,59,.15)", color: "#ff3b3b", border: "1px solid rgba(255,59,59,.4)" }}>
-                    Weekly
-                  </span>
-                  {summary.weekly.isActive ? (
-                    <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[.22em] text-accent">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent live-indicator"></span>
-                      Live
-                    </span>
-                  ) : (
-                    <span className="font-mono font-bold text-xs text-white" style={{ fontFeatureSettings: "'tnum'" }}>
-                      {formatWeeklyTime(summary.weekly.nextStart, nowDate)}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 flex items-end justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-xs text-white truncate" title={summary.weekly.name}>{summary.weekly.name}</p>
-                    <p className="text-[10px] text-[#f5f5f5]/60 truncate mt-0.5" title={summary.weekly.track}>{summary.weekly.track}</p>
-                  </div>
-                  {summary.weekly.id && canFollow && (() => {
-                    const followed = summary.weekly.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.weekly.id) ?? false) : (calendar.followedEventIds?.includes(summary.weekly.id) ?? false);
-                    return (
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (followed) { handleUnfollow(summary.weekly!); } else { handleFollow(summary.weekly!); } }}
-                        className={`shrink-0 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-[.1em] transition-colors group/btn ${
-                          followed
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-vantare-red-500/10 hover:text-vantare-red-400 hover:border-vantare-red-500/20"
-                            : "bg-white/5 text-[#f5f5f5]/60 border border-white/10 hover:text-white hover:border-white/20"
-                        }`}
-                        title={followed ? "Dejar de seguir" : "Seguir serie"}
-                        aria-label={followed ? `Dejar de seguir ${summary.weekly.name}` : `Seguir ${summary.weekly.name}`}
-                        aria-pressed={followed}
-                        data-testid={`rail-follow-btn-${summary.weekly.id}`}
-                      >
-                        {followed ? (
-                          <span>Siguiendo · Dejar</span>
-                        ) : (
-                          <span>Seguir</span>
-                        )}
-                      </button>
-                    );
-                  })()}
-                  {summary.weekly.id && !canFollow && (
-                    <span
-                      className="shrink-0 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-[.1em] bg-white/5 text-vantare-textMuted border border-white/10 cursor-not-allowed"
-                      title="Disponible para testers y planes de pago"
-                      data-testid={`rail-follow-locked-${summary.weekly.id}`}
-                    >
-                      Bloqueado
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          {showBronce && <RailCard item={summary.bronce} tierKey="beginner" now={nowDate} isFollowed={summary.bronce ? (summary.bronce.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.bronce.id) ?? false) : (calendar.followedEventIds?.includes(summary.bronce.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} canFollow={canFollow} />}
-          {showPlata && <RailCard item={summary.plata} tierKey="intermediate" now={nowDate} isFollowed={summary.plata ? (summary.plata.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.plata.id) ?? false) : (calendar.followedEventIds?.includes(summary.plata.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} canFollow={canFollow} />}
-          {showOro && <RailCard item={summary.oro} tierKey="advanced" now={nowDate} isFollowed={summary.oro ? (summary.oro.kind === "series" ? (calendar.followedSeriesIds?.includes(summary.oro.id) ?? false) : (calendar.followedEventIds?.includes(summary.oro.id) ?? false)) : false} onFollow={handleFollow} onUnfollow={handleUnfollow} onSelectTier={onSelectTier} canFollow={canFollow} />}
+          {filteredItems.map((item) => (
+            <RailCard
+              key={item.id}
+              item={item}
+              tierKey={item.tier}
+              now={nowDate}
+              isFollowed={item.kind === "series"
+                ? (calendar.followedSeriesIds?.includes(item.id) ?? false)
+                : (calendar.followedEventIds?.includes(item.id) ?? false)}
+              onFollow={handleFollow}
+              onUnfollow={handleUnfollow}
+              onSelectTier={onSelectTier}
+              canFollow={canFollow}
+              timeZone={timeZone}
+            />
+          ))}
         </div>
       )}
     </div>

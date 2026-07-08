@@ -3,81 +3,38 @@ import {
   expandWeeklySlots,
   expandDailyIntervalSeries,
   getDailyPatternSummary,
+  indexSeriesById,
+  isIntervalSeries,
   isSameLocalDay,
   startOfLocalDay,
-  indexSeriesById,
   type CalendarOccurrence,
   type DailyPatternSummary,
 } from "../../calendar/calendar-view-math";
-import type { Calendar } from "../../calendar/calendar-types";
-import { filterIntervalSummaries, matchesTierFilter } from "./calendar-filter";
+import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
+import { matchesTierFilter } from "./calendar-filter";
+import { tierStyle, formatInZone } from "./calendar-shared";
 import type { CalendarFilter } from "./CalendarToolbar";
 
-const SPANISH_WEEKDAYS = [
-  "Domingo",
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-];
-
 const SPANISH_MONTHS = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
 const HOUR_HEIGHT = 72;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-const TIER_COLORS: Record<string, { text: string; bg: string; border: string }> = {
-  beginner: { text: "#CD7F32", bg: "rgba(205,127,50,.12)", border: "rgba(205,127,50,.5)" },
-  intermediate: { text: "#B8BFC8", bg: "rgba(184,191,200,.12)", border: "rgba(184,191,200,.5)" },
-  advanced: { text: "#D4A017", bg: "rgba(212,160,23,.12)", border: "rgba(212,160,23,.5)" },
-  weekly: { text: "#ff3b3b", bg: "rgba(255,59,59,.12)", border: "rgba(255,59,59,.5)" },
-  special: { text: "#f59e0b", bg: "rgba(245,158,11,.12)", border: "rgba(245,158,11,.5)" },
-};
-
-function getTierDisplay(tier: string): string {
-  switch (tier) {
-    case "beginner":
-      return "Bronce";
-    case "intermediate":
-      return "Plata";
-    case "advanced":
-      return "Oro";
-    case "weekly":
-      return "Semanal";
-    default:
-      return tier;
-  }
-}
-
-function getTierColor(tier: string): { text: string; bg: string; border: string } {
-  return TIER_COLORS[tier] ?? { text: "#f5f5f5", bg: "rgba(245,245,245,.05)", border: "rgba(245,245,245,.1)" };
-}
-
 export type CalendarDayViewProps = {
   anchorDate: Date;
   calendar: Calendar;
+  timeZone: string;
   activeFilter?: CalendarFilter;
   onFilterSelect?: (filter: CalendarFilter) => void;
+  onTierClick?: (tier: CalendarFilter) => void;
 };
 
 type DayEvent = {
   id: string;
-  type: "daily" | "weekly" | "special";
+  type: "daily" | "weekly" | "special" | "interval";
   label: string;
   track: string;
   durationMin: number;
@@ -89,13 +46,8 @@ function minutesOf(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
 function segmentEvents(events: DayEvent[]) {
   if (events.length === 0) return [];
-
   const sorted = [...events].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   const columns: { start: number; end: number }[][] = [];
   const placements: { ev: DayEvent; startMin: number; endMin: number; colIndex: number }[] = [];
@@ -126,10 +78,31 @@ function segmentEvents(events: DayEvent[]) {
   }));
 }
 
-export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", onFilterSelect }: CalendarDayViewProps) {
+function tierShort(tier: string): string {
+  switch (tier) {
+    case "beginner":
+      return "Bronce";
+    case "intermediate":
+      return "Plata";
+    case "advanced":
+      return "Oro";
+    case "weekly":
+      return "Semanal";
+    default:
+      return tier;
+  }
+}
+
+export function CalendarDayView({
+  anchorDate,
+  calendar,
+  timeZone,
+  activeFilter = "all",
+  onFilterSelect: _onFilterSelect,
+  onTierClick,
+}: CalendarDayViewProps) {
   const [now, setNow] = useState(new Date());
 
-  // Update current time periodically for live line and indicators
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
@@ -140,7 +113,6 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
   const isToday = isSameLocalDay(anchorDate, now);
   const seriesById = indexSeriesById(calendar.series || []);
 
-  // Expand weekly-slots for the selected day range
   const dayStart = startOfLocalDay(anchorDate);
   const dayEnd = new Date(dayStart.getTime() + 86400000);
 
@@ -148,35 +120,29 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
     expandWeeklySlots(s, dayStart, dayEnd)
   );
 
-  // Only expand daily interval series when a specific tier filter is active
-  const isTierFilter = activeFilter !== "all" && activeFilter !== "weekly" && activeFilter !== "special";
+  // Interval series are NOT materialised as 24 blocks/hour. We summarise them
+  // as a single preparation band. The tier filter only affects opacity —
+  // non-matching tiers are shown dimmed for context.
+  const isTierFilter = ["beginner", "intermediate", "advanced"].includes(activeFilter);
+  const intervalSeriesByTier = new Map<string, RaceSeries[]>();
+  for (const s of calendar.series || []) {
+    if (!isIntervalSeries(s)) continue;
+    const list = intervalSeriesByTier.get(s.tier) ?? [];
+    list.push(s);
+    intervalSeriesByTier.set(s.tier, list);
+  }
+  // Always show all interval summaries; the tier filter only dims non-matching tiers.
+  const intervalSummaries: DailyPatternSummary[] = getDailyPatternSummary(calendar.series || []);
 
-  const dailyOccurrences: CalendarOccurrence[] = isTierFilter
-    ? expandDailyIntervalSeries(
-        calendar.series || [],
-        dayStart,
-        dayEnd,
-        activeFilter as string | undefined,
-      )
-    : [];
-
-  // Daily pattern summary for interval series (shared header)
-  const intervalSummaries: DailyPatternSummary[] = filterIntervalSummaries(
-    getDailyPatternSummary(calendar.series || []),
-    activeFilter,
-  );
-
-  // Gather events for the timeline
   const events: DayEvent[] = [];
 
-  // 1. Special events from calendar.events (skip if backed by interval series)
   for (const ev of calendar.events || []) {
     const associatedSeries = seriesById.get(ev.series);
     if (associatedSeries && associatedSeries.recurrence?.kind === "interval") {
       continue;
     }
     if (!isSameLocalDay(new Date(ev.startTime), anchorDate)) continue;
-    const tier = associatedSeries?.tier;
+    const tier = associatedSeries?.tier ?? "special";
     if (!matchesTierFilter({ type: "special", tier }, activeFilter)) continue;
     events.push({
       id: ev.id,
@@ -185,15 +151,14 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
       track: ev.track,
       durationMin: ev.durationMin || 0,
       startTime: new Date(ev.startTime),
-      tier: tier || "special",
+      tier,
     });
   }
 
-  // 2. Weekly slots (always shown when filter matches)
   for (const occ of weeklyOccurrences) {
     if (!isSameLocalDay(occ.startTime, anchorDate)) continue;
     const series = seriesById.get(occ.seriesId);
-    const tier = series?.tier;
+    const tier = series?.tier ?? "weekly";
     if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
     events.push({
       id: `${occ.seriesId}-${occ.startTime.getTime()}`,
@@ -202,46 +167,55 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
       track: series?.track || "",
       durationMin: occ.durationMin || 0,
       startTime: occ.startTime,
-      tier: tier || "weekly",
+      tier,
     });
   }
-
-  // 3. Daily interval series occurrences (only when a specific tier filter is active)
-  for (const occ of dailyOccurrences) {
+  // Generate interval series events for the timeline
+  const intervalOccurrences = expandDailyIntervalSeries(
+    calendar.series || [],
+    dayStart,
+    dayEnd,
+    isTierFilter ? activeFilter : undefined,
+  );
+  // Limit: 1 event per series per calendar hour to avoid saturation
+  const seriesHourSeen = new Set<string>();
+  for (const occ of intervalOccurrences) {
+    if (!isSameLocalDay(occ.startTime, anchorDate)) continue;
     const series = seriesById.get(occ.seriesId);
-    const tier = series?.tier;
-    if (!matchesTierFilter({ type: "weekly", tier }, activeFilter)) continue;
+    const tier = series?.tier ?? "beginner";
+    if (!matchesTierFilter({ type: "interval", tier }, activeFilter)) continue;
+    const hour = occ.startTime.getHours();
+    const key = `${occ.seriesId}-${hour}`;
+    if (seriesHourSeen.has(key)) continue;
+    seriesHourSeen.add(key);
     events.push({
-      id: `daily-${occ.seriesId}-${occ.startTime.getTime()}`,
-      type: "daily",
+      id: `${occ.seriesId}-${occ.startTime.getTime()}`,
+      type: "interval",
       label: occ.title,
       track: series?.track || "",
-      durationMin: occ.durationMin,
+      durationMin: occ.durationMin || 0,
       startTime: occ.startTime,
-      tier: tier || "beginner",
+      tier,
     });
   }
 
   const placedEvents = segmentEvents(events.sort((a, b) => a.startTime.getTime() - b.startTime.getTime()));
 
-  // Formatting date header
-  const weekday = SPANISH_WEEKDAYS[anchorDate.getDay()];
-  const dayNum = anchorDate.getDate();
+  const weekday = formatInZone(anchorDate, timeZone, { weekday: "long" });
+  const dayNum = formatInZone(anchorDate, timeZone, { day: "numeric" });
   const month = SPANISH_MONTHS[anchorDate.getMonth()];
   const year = anchorDate.getFullYear();
   const formattedDate = `${weekday} ${dayNum} ${month} ${year}`;
 
-  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timeStr = formatInZone(now, timeZone, { hour: "2-digit", minute: "2-digit" });
 
   return (
     <section
       className="flex flex-col gap-3 opacity-0 animate-fade-in-up delay-75 flex-1 min-h-0"
       data-testid="calendar-day-view"
     >
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
         <div>
-          <span className="v52-eyebrow">Vista diaria</span>
           <h2 className="text-base font-bold text-white mt-1">
             <span data-testid="calendar-day-title">{formattedDate}</span>
             {isToday && (
@@ -267,39 +241,41 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
         )}
       </div>
 
-      {/* Daily pattern summaries (shared compact header) */}
-      <div
-        className="flex flex-wrap gap-2 bg-white/[0.02] border border-white/10 rounded-xl p-3"
-        data-testid="calendar-day-patterns"
-      >
-        <span className="text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted flex items-center mr-1">
-          Frecuencias:
-        </span>
-        {intervalSummaries.length === 0 ? (
-          <span className="text-xs text-vantare-textDim italic">No hay patrones de intervalos activos</span>
-        ) : (
-          intervalSummaries.map((sum, idx) => {
-            const tc = getTierColor(sum.tier || "");
+      {/* Preparation bands: cadence + duration per interval tier (no 24 blocks/hour) */}
+      {intervalSummaries.length > 0 && (
+        <div
+          className="flex flex-wrap gap-2 bg-white/[0.02] border border-white/10 rounded-xl p-3"
+          data-testid="calendar-day-patterns"
+        >
+          <span className="text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted flex items-center mr-1">
+            Horario:
+          </span>
+          {intervalSummaries.map((sum, idx) => {
+            const tc = tierStyle(sum.tier || "");
+            const tierSeries = intervalSeriesByTier.get(sum.tier || "") ?? [];
+            const duration = tierSeries[0]?.durationMin ?? 0;
+            const tracks = tierSeries.length;
+            const isActive = !isTierFilter || activeFilter === sum.tier;
             return (
-              <div
+              <button
                 key={idx}
+                type="button"
                 data-testid={`calendar-day-interval-${idx}`}
-                className="text-[9px] font-bold px-2 py-0.5 rounded border leading-none cursor-pointer"
+                onClick={() => onTierClick?.(sum.tier as CalendarFilter)}
+                className={`text-[9px] font-bold px-2 py-0.5 rounded border leading-none cursor-pointer text-left transition-opacity ${isActive ? "" : "opacity-40"}`}
                 style={{ color: tc.text, background: tc.bg, border: `1px solid ${tc.border}` }}
-                onClick={() => onFilterSelect?.(sum.tier as CalendarFilter)}
+                title={`${sum.label} · ${duration}m · ${tracks} pista(s)`}
               >
-                {getTierDisplay(sum.tier)} · {sum.label}
-              </div>
+                {tierShort(sum.tier)} · {sum.label} · {duration}m{tracks > 1 ? ` · ${tracks} pistas` : ""}
+              </button>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
-      {/* Continuous daily timeline */}
       <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01] backdrop-blur-sm w-full flex-1 min-h-0 flex flex-col">
         <div className="overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: "thin" }}>
           <div className="relative grid grid-cols-[60px_1fr]" style={{ height: HOUR_HEIGHT * 24 }}>
-            {/* Gutter */}
             <div className="relative bg-[#0b0b0b]">
               {HOURS.map((h) => (
                 <div
@@ -312,7 +288,6 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
               ))}
             </div>
 
-            {/* Track */}
             <div className="relative bg-[#0b0b0b]">
               {HOURS.map((h) => (
                 <div
@@ -333,19 +308,17 @@ export function CalendarDayView({ anchorDate, calendar, activeFilter = "all", on
               )}
 
               {placedEvents.map((item, idx) => {
-                const tc = getTierColor(item.tier || (item.type === "special" ? "special" : "weekly"));
-                const timeFormatted = formatTime(item.startTime);
-                const endFormatted = formatTime(
-                  new Date(item.startTime.getTime() + (item.durationMin || 0) * 60000)
-                );
-                const tooltip = `${item.type === "special" ? "★ " : ""}${item.label} · ${getTierDisplay(item.tier || item.type)} · ${timeFormatted}-${endFormatted}${item.track ? ` · ${item.track}` : ""}`;
+                const tc = item.type === "special" ? tierStyle("special") : tierStyle(item.tier || "weekly");
+                const timeFormatted = formatInZone(item.startTime, timeZone, { hour: "2-digit", minute: "2-digit" });
+                const endFormatted = formatInZone(new Date(item.startTime.getTime() + (item.durationMin || 0) * 60000), timeZone, { hour: "2-digit", minute: "2-digit" });
+                const tooltip = `${item.type === "special" ? "★ " : ""}${item.label} · ${tierShort(item.tier || item.type)} · ${timeFormatted}-${endFormatted}${item.track ? ` · ${item.track}` : ""}`;
 
                 return (
                   <div
                     key={item.id}
                     data-testid={`calendar-day-event-${idx}`}
                     title={tooltip}
-                    onClick={() => onFilterSelect?.(item.type === "special" ? "special" : (item.tier as CalendarFilter))}
+                    onClick={() => onTierClick?.(item.type === "special" ? "special" : (item.tier as CalendarFilter))}
                     className="absolute z-20 rounded px-2 py-1 text-xs flex flex-col justify-between overflow-hidden cursor-pointer leading-tight"
                     style={{
                       top: item.top,

@@ -1,4 +1,4 @@
-import type { RaceSeries, RaceSeriesPreview } from "./calendar-types";
+import type { RaceEvent, RaceSeries } from "./calendar-types";
 
 export type CalendarDayCell = {
   date: Date;
@@ -122,29 +122,14 @@ export function formatMonthTitle(date: Date): string {
   return `${monthName} ${date.getFullYear()}`;
 }
 
-/**
- * Obtiene la etiqueta del patrón de repetición de una serie.
- */
-export function getSeriesPatternLabel(series: RaceSeries, preview?: RaceSeriesPreview): string {
-  if (preview?.scheduleLabel) {
-    return preview.scheduleLabel;
-  }
+export const SPANISH_MONTHS_SHORT = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
 
-  const kind = series.recurrence?.kind;
-  if (kind === "interval") {
-    const interval = series.recurrence?.intervalMinutes;
-    if (typeof interval === "number" && interval > 0) {
-      return `Cada ${interval} min`;
-    }
-    return "Horario pendiente";
-  }
-
-  if (kind === "weekly-slots") {
-    return "Slots UTC";
-  }
-
-  return "Horario pendiente";
-}
+export const SPANISH_WEEKDAYS_FULL = [
+  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
+];
 
 /**
  * Determina si la serie se repite por intervalos de tiempo.
@@ -245,6 +230,10 @@ export function expandWeeklySlots(series: RaceSeries, from: Date, to: Date): Cal
  * Usa eventDurationMin como duración visual si está disponible, o durationMin + 11 como fallback.
  * Solo para recurrence.kind === "interval".
  * No materializa más allá de 24h — seguro para MonthView/WeekView.
+ *
+ * NOTA: esta función solo se usa en la DayView cuando un filtro de tier está
+ * activo y el usuario quiere ver franjas; el grid principal NUNCA materializa
+ * las series de intervalo (ver calendar-filter / las vistas).
  */
 export function expandDailyIntervalSeries(
   series: RaceSeries[],
@@ -260,13 +249,14 @@ export function expandDailyIntervalSeries(
     if (!isIntervalSeries(s)) continue;
     if (tierFilter && s.tier !== tierFilter) continue;
 
+    const interval = s.recurrence?.intervalMinutes ?? 60;
     const offset = s.startOffsetMinute ?? 0;
     const visualDuration = s.eventDurationMin ?? s.durationMin + 11;
 
-    // Generate one occurrence per hour for the 24h window
-    for (let h = 0; h < 24; h++) {
-      const startTime = new Date(dayStart);
-      startTime.setHours(h, offset, 0, 0);
+    // Generate occurrences at the actual interval frequency
+    for (let minutesFromMidnight = offset; minutesFromMidnight < 24 * 60; minutesFromMidnight += interval) {
+      const startTime = new Date(dayStart.getTime());
+      startTime.setHours(0, minutesFromMidnight, 0, 0);
       const startMs = startTime.getTime();
 
       if (startMs < fromMs || startMs >= toMs) continue;
@@ -338,30 +328,8 @@ export function getDailyPatternSummary(series: RaceSeries[]): DailyPatternSummar
 /**
  * Agrupa una lista de ocurrencias de calendario por su día local en formato YYYY-MM-DD.
  */
-export function groupOccurrencesByLocalDay(occurrences: CalendarOccurrence[]): Map<string, CalendarOccurrence[]> {
-  const map = new Map<string, CalendarOccurrence[]>();
-
-  for (const occ of occurrences) {
-    const date = occ.startTime;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const key = `${year}-${month}-${day}`;
-
-    const list = map.get(key) ?? [];
-    list.push(occ);
-    map.set(key, list);
-  }
-
-  return map;
-}
-
-/**
- * Agrupa eventos de calendario (RaceEvent[]) por su día local en formato YYYY-MM-DD.
- * No muta el array original.
- */
-export function groupEventsByDay(events: import("./calendar-types").RaceEvent[]): Map<string, import("./calendar-types").RaceEvent[]> {
-  const map = new Map<string, import("./calendar-types").RaceEvent[]>();
+export function groupEventsByDay(events: RaceEvent[]): Map<string, RaceEvent[]> {
+  const map = new Map<string, RaceEvent[]>();
 
   for (const ev of events) {
     const date = new Date(ev.startTime);
@@ -382,8 +350,8 @@ export function groupEventsByDay(events: import("./calendar-types").RaceEvent[])
  * Indexa un array de series por su id para búsqueda O(1).
  * No muta el array original.
  */
-export function indexSeriesById(series: import("./calendar-types").RaceSeries[]): Map<string, import("./calendar-types").RaceSeries> {
-  const map = new Map<string, import("./calendar-types").RaceSeries>();
+export function indexSeriesById(series: RaceSeries[]): Map<string, RaceSeries> {
+  const map = new Map<string, RaceSeries>();
 
   for (const s of series) {
     map.set(s.id, s);

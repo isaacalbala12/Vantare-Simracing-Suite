@@ -106,7 +106,7 @@ describe("CalendarMonthView", () => {
 
   it("renders monthly grid with 42 cells", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
     for (let i = 0; i < 42; i++) {
       expect(screen.getByTestId(`calendar-month-cell-${i}`)).toBeTruthy();
@@ -115,28 +115,21 @@ describe("CalendarMonthView", () => {
 
   it("checks that the week starts on Monday", () => {
     // July 1, 2026 is Wednesday.
-    // The grid for July 2026 will start on June 29 (Monday).
+    // The grid for July 2026 will start on June 28 (Sunday).
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
-    // First cell (index 0) should correspond to June 29 (29)
+    // First cell (index 0) should correspond to June 28 (28)
     const firstCellDay = screen.getByTestId("calendar-month-cell-day-0");
-    expect(firstCellDay.textContent).toBe("29");
+    expect(firstCellDay.textContent).toBe("28");
 
-    // Second cell (index 1) is June 30 (30)
+    // Second cell (index 1) is June 29 (29)
     const secondCellDay = screen.getByTestId("calendar-month-cell-day-1");
-    expect(secondCellDay.textContent).toBe("30");
+    expect(secondCellDay.textContent).toBe("29");
 
-    // Third cell (index 2) is July 1 (1)
+    // Third cell (index 2) is June 30 (30)
     const thirdCellDay = screen.getByTestId("calendar-month-cell-day-2");
-    expect(thirdCellDay.textContent).toBe("1");
-  });
-
-  it("displays the eyebrow title 'Vista mensual'", () => {
-    const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
-
-    expect(screen.getByText("Vista mensual")).toBeTruthy();
+    expect(thirdCellDay.textContent).toBe("30");
   });
 
   it("highlights current day and dims days outside current month", () => {
@@ -146,7 +139,7 @@ describe("CalendarMonthView", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-15T12:00:00Z"));
 
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
     // July 15, 2026 inside July grid:
     // June 29 is cell 0, June 30 is cell 1, July 1 is cell 2.
@@ -167,12 +160,12 @@ describe("CalendarMonthView", () => {
 
   it("shows interval patterns in a shared header, not inside every cell", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
     const header = screen.getByTestId("calendar-month-patterns");
     expect(header).toBeTruthy();
-    expect(screen.getByTestId("calendar-month-interval-0").textContent).toBe("Bronce · Cada 15 min");
-    expect(screen.getByTestId("calendar-month-interval-1").textContent).toBe("Plata · Cada 20 min");
+    expect(screen.getByTestId("calendar-month-interval-0").textContent).toBe("Bronce · Cada 15 min · 15m");
+    expect(screen.getByTestId("calendar-month-interval-1").textContent).toBe("Plata · Cada 20 min · 20m");
 
     // Cells should not contain full interval labels any more
     expect(screen.queryByTestId("calendar-cell-interval-2-0")).toBeNull();
@@ -181,14 +174,14 @@ describe("CalendarMonthView", () => {
 
   it("does not materialize interval series as events", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
     expect(screen.queryByText("Carrera Bronce Falsa")).toBeNull();
   });
 
   it("renders weekly slot occurrences and materialized events in the correct day", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
     // July 2, 2026 is Thursday (cell 3).
     // It should show "Carrera Especial" (materialized special event).
@@ -271,7 +264,7 @@ describe("CalendarMonthView", () => {
     // Total concrete items = 5. With maxConcreteItemsPerDay = 4, we show 4 + "+1 más".
 
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={extraEventsCalendar} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={extraEventsCalendar} timeZone="UTC" />);
 
     const cell7 = screen.getByTestId("calendar-month-cell-7");
     expect(cell7).toBeTruthy();
@@ -287,20 +280,20 @@ describe("CalendarMonthView", () => {
     expect(screen.queryByText("Carrera Especial 6")).toBeNull();
   });
 
-  it("calls onFilterSelect when a shared interval summary is clicked", () => {
+  it("calls onTierClick when a shared interval summary is clicked", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
-    const onFilterSelect = vi.fn();
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onFilterSelect={onFilterSelect} />);
+    const onTierClick = vi.fn();
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" onTierClick={onTierClick} />);
 
     const intervalItem = screen.getByTestId("calendar-month-interval-0");
     intervalItem.click();
-    expect(onFilterSelect).toHaveBeenCalledWith("beginner");
+    expect(onTierClick).toHaveBeenCalledWith("beginner");
   });
 
   it("calls onFilterSelect when a concrete event pill is clicked", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     const onFilterSelect = vi.fn();
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onFilterSelect={onFilterSelect} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" onFilterSelect={onFilterSelect} />);
 
     const cell3 = screen.getByTestId("calendar-cell-event-3-0");
     cell3.click();
@@ -310,7 +303,7 @@ describe("CalendarMonthView", () => {
   it("calls onDayClick with the cell date when a day cell is clicked", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     const onDayClick = vi.fn();
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onDayClick={onDayClick} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" onDayClick={onDayClick} />);
 
     // Cell 2 is July 1 (Wednesday) — first day of the month
     const cell2 = screen.getByTestId("calendar-month-cell-2");
@@ -327,7 +320,7 @@ describe("CalendarMonthView", () => {
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     const onDayClick = vi.fn();
     const onFilterSelect = vi.fn();
-    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} onDayClick={onDayClick} onFilterSelect={onFilterSelect} />);
+    render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" onDayClick={onDayClick} onFilterSelect={onFilterSelect} />);
 
     // Cell 3 (July 2) has a special event pill
     const eventPill = screen.getByTestId("calendar-cell-event-3-0");

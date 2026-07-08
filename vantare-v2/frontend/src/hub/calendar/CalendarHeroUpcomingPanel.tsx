@@ -6,6 +6,7 @@ import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcomi
 type CalendarHeroUpcomingPanelProps = {
   now?: () => Date;
   onNavigate?: (section: string) => void;
+  onTierClick?: (tier: string) => void;
 };
 
 function formatUpcomingTime(dateStr: string | null, now: Date): string {
@@ -62,13 +63,13 @@ const TIER_STYLES: Record<string, { label: string; bg: string; border: string; s
   },
 };
 
-function TierCard({ item, tierKey, now, onNavigate }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; onNavigate?: (section: string) => void }) {
+function TierCard({ item, tierKey, now, onNavigate, onTierClick }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; onNavigate?: (section: string) => void; onTierClick?: (tier: string) => void }) {
   const styles = TIER_STYLES[tierKey] || TIER_STYLES.beginner;
 
   if (!item) {
     return (
       <div
-        className="group rounded-xl bg-[rgba(20,20,20,.6)] border border-line overflow-hidden relative"
+        className="group rounded-xl bg-[rgba(20,20,20,.6)] overflow-hidden relative"
         style={{ borderTopColor: styles.border }}
         data-testid={`upcoming-card-${tierKey}-empty`}
       >
@@ -91,14 +92,16 @@ function TierCard({ item, tierKey, now, onNavigate }: { item: UpcomingRaceItem |
   const colorBase = styles.border.replace("rgba", "rgb").replace(",.5)", ")").replace("0.5", "1");
 
   const handleClick = () => {
-    if (onNavigate) {
+    if (onTierClick) {
+      onTierClick(tierKey);
+    } else if (onNavigate) {
       onNavigate("carreras");
     }
   };
 
   return (
     <div
-      className="group rounded-xl bg-[rgba(20,20,20,.6)] border border-line overflow-hidden transition-all hover:-translate-y-1 relative cursor-pointer"
+      className="group rounded-xl bg-[rgba(20,20,20,.6)] overflow-hidden transition-all hover:-translate-y-1 relative cursor-pointer"
       style={{ borderTopColor: styles.border }}
       data-testid={`upcoming-card-${tierKey}`}
       onClick={handleClick}
@@ -121,7 +124,7 @@ function TierCard({ item, tierKey, now, onNavigate }: { item: UpcomingRaceItem |
         </div>
         <p className={`text-[10px] font-bold uppercase tracking-[.28em] mb-1.5 ${item.isActive ? "text-accent" : "text-[#f5f5f5]/40"}`}>Green flag</p>
         <p className="font-mono font-bold text-2xl text-white tracking-tight leading-none" style={{ fontFeatureSettings: "'tnum'" }}>{timeStr}</p>
-        <div className="mt-4 pt-3 border-t border-line">
+        <div className="mt-4 pt-3 border-t border-white/[0.06]">
           <p className="font-semibold text-sm text-white truncate" title={item.track}>{item.track}</p>
           <p className="text-xs text-[#f5f5f5]/60 truncate mt-0.5" title={item.name}>{item.name}</p>
         </div>
@@ -130,7 +133,7 @@ function TierCard({ item, tierKey, now, onNavigate }: { item: UpcomingRaceItem |
   );
 }
 
-export function CalendarHeroUpcomingPanel({ now, onNavigate }: CalendarHeroUpcomingPanelProps) {
+export function CalendarHeroUpcomingPanel({ now, onNavigate, onTierClick }: CalendarHeroUpcomingPanelProps) {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [tick, setTick] = useState(0);
 
@@ -167,7 +170,9 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate }: CalendarHeroUpcom
     );
   }
 
-  const summary = buildUpcomingRaceItems(calendar, nowDate);
+  const items = buildUpcomingRaceItems(calendar, nowDate);
+  const findItem = (tier: string) => items.find((i) => i.tier === tier) ?? null;
+  const weeklyItem = items.find((i) => i.tier === "weekly") ?? null;
   void tick;
 
   return (
@@ -177,14 +182,14 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate }: CalendarHeroUpcom
         <span className="text-[10px] font-bold text-[#f5f5f5]/35 uppercase tracking-[.22em]">LMU · Bronce · Plata · Oro</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <TierCard item={summary.bronce} tierKey="beginner" now={nowDate} onNavigate={onNavigate} />
-        <TierCard item={summary.plata} tierKey="intermediate" now={nowDate} onNavigate={onNavigate} />
-        <TierCard item={summary.oro} tierKey="advanced" now={nowDate} onNavigate={onNavigate} />
+        <TierCard item={findItem("beginner")} tierKey="beginner" now={nowDate} onNavigate={onNavigate} onTierClick={onTierClick} />
+        <TierCard item={findItem("intermediate")} tierKey="intermediate" now={nowDate} onNavigate={onNavigate} onTierClick={onTierClick} />
+        <TierCard item={findItem("advanced")} tierKey="advanced" now={nowDate} onNavigate={onNavigate} onTierClick={onTierClick} />
       </div>
 
-      {summary.weekly && (
+      {weeklyItem && (
         <div
-          className="group mt-4 card-sleek rounded-xl p-4 flex items-center justify-between gap-4 relative overflow-hidden cursor-pointer"
+          className="group mt-4 card-sleek rounded-xl p-4 pl-5 flex items-center justify-between gap-4 relative overflow-hidden cursor-pointer border-l-2 border-accent"
           data-testid="upcoming-card-weekly"
           onClick={() => onNavigate?.("carreras")}
           role="button"
@@ -192,17 +197,16 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate }: CalendarHeroUpcom
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onNavigate?.("carreras"); }}
           aria-label="Ver carreras semanales"
         >
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent" style={{ boxShadow: "0 0 10px #ff3b3b" }} />
           <div className="flex items-center gap-4 pl-3 min-w-0">
             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-[.22em]" style={{ background: "rgba(255,59,59,.15)", color: "#ff3b3b", border: "1px solid rgba(255,59,59,.4)" }}>
               Weekly
             </span>
             <div className="min-w-0">
-              <p className="font-semibold text-sm text-white truncate" title={summary.weekly.name}>
-                {summary.weekly.name} · {summary.weekly.track}
+              <p className="font-semibold text-sm text-white truncate" title={weeklyItem.name}>
+                {weeklyItem.name} · {weeklyItem.track}
               </p>
-              <p className="text-xs text-[#f5f5f5]/60 truncate mt-0.5" title={summary.weekly.name}>
-                {summary.weekly.durationMin ? `${summary.weekly.durationMin}m races · ` : ""}{summary.weekly.vehicleClass}
+              <p className="text-xs text-[#f5f5f5]/60 truncate mt-0.5" title={weeklyItem.name}>
+                {weeklyItem.durationMin ? `${weeklyItem.durationMin}m races · ` : ""}{weeklyItem.vehicleClass}
               </p>
             </div>
           </div>
@@ -210,7 +214,7 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate }: CalendarHeroUpcom
             <div className="text-right">
               <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#f5f5f5]/40">Próxima</p>
               <p className="font-mono font-bold text-sm text-white" style={{ fontFeatureSettings: "'tnum'" }}>
-                {formatWeeklyTime(summary.weekly.nextStart, nowDate)}
+                {formatWeeklyTime(weeklyItem.nextStart, nowDate)}
               </p>
             </div>
           </div>

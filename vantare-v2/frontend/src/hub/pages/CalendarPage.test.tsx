@@ -64,6 +64,11 @@ describe("CalendarPage", () => {
     expect(eventsEmit).toHaveBeenCalledWith("calendar:get", null);
   });
 
+  it("shows loading state before calendar data arrives", () => {
+    render(<CalendarPage />);
+    expect(screen.getByTestId("calendar-loading")).toBeTruthy();
+  });
+
   it("does not render removed sections", () => {
     render(<CalendarPage />);
     expect(screen.queryByText(/Calendario publicado por Vantare/i)).toBeNull();
@@ -71,6 +76,7 @@ describe("CalendarPage", () => {
     expect(screen.queryByText(/Series oficiales/i)).toBeNull();
     expect(screen.queryByText(/Carreras pasadas/i)).toBeNull();
   });
+
   it("renders rail 'Próximas carreras'", () => {
     render(<CalendarPage />);
     dispatch("calendar:loaded", {
@@ -85,6 +91,7 @@ describe("CalendarPage", () => {
     expect(screen.getByText("Próximas carreras")).toBeTruthy();
     expect(screen.getByTestId("calendar-race-rail")).toBeTruthy();
   });
+
   it("rail shows Bronce, Plata, Oro, Weekly from buildUpcomingRaceItems", () => {
     render(<CalendarPage />);
     dispatch("calendar:loaded", {
@@ -142,14 +149,14 @@ describe("CalendarPage", () => {
       },
     });
 
-    const weekBtn = screen.getByTestId("calendar-view-btn-week");
+    const weekBtn = screen.getByTestId("calendar-view-week");
     act(() => {
       fireEvent.click(weekBtn);
     });
     expect(screen.getByTestId("calendar-week-view")).toBeTruthy();
     expect(screen.queryByTestId("calendar-month-view")).toBeNull();
 
-    const dayBtn = screen.getByTestId("calendar-view-btn-day");
+    const dayBtn = screen.getByTestId("calendar-view-day");
     act(() => {
       fireEvent.click(dayBtn);
     });
@@ -162,8 +169,7 @@ describe("CalendarPage", () => {
     expect(screen.queryByText(/Importar calendario/i)).toBeNull();
     expect(screen.queryByText(/Borrar calendario/i)).toBeNull();
     expect(screen.queryByText(/Nueva carrera/i)).toBeNull();
-    expect(screen.queryByTestId("calendar-new-race-btn")).toBeNull();
-    expect(screen.getByText(/Filtros/i)).toBeTruthy();
+    expect(screen.getByTestId("calendar-filter-toggle")).toBeTruthy();
   });
 
   it("does not render multisim or fake data strings", () => {
@@ -245,7 +251,8 @@ describe("CalendarPage", () => {
 
     expect(screen.getByTestId("calendar-race-detail-panel")).toBeTruthy();
     expect(screen.getByTestId("calendar-detail-panel-title").textContent).toBe("Bronce");
-    expect(screen.getByTestId("calendar-active-filter")).toBeTruthy();
+    // Rail click opens panel only — does NOT activate a filter
+    expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
 
     // Close panel
     act(() => {
@@ -253,13 +260,6 @@ describe("CalendarPage", () => {
     });
 
     expect(screen.queryByTestId("calendar-race-detail-panel")).toBeNull();
-    // Filter remains active after closing panel
-    expect(screen.getByTestId("calendar-active-filter")).toBeTruthy();
-
-    // Clear filter separately
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-clear-filter"));
-    });
     expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
   });
 

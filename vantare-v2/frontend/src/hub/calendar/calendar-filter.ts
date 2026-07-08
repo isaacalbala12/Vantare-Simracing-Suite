@@ -3,7 +3,7 @@ import type { CalendarFilter } from "./CalendarToolbar";
 import type { DailyPatternSummary } from "../../calendar/calendar-view-math";
 
 type FilterableItem = {
-  type?: "weekly" | "special";
+  type?: "weekly" | "special" | "interval";
   tier?: string;
 };
 

@@ -13,22 +13,8 @@ export type UpcomingRaceItem = {
   isActive: boolean;
 };
 
-export type UpcomingRaceSummary = {
-  bronce: UpcomingRaceItem | null;
-  plata: UpcomingRaceItem | null;
-  oro: UpcomingRaceItem | null;
-  weekly: UpcomingRaceItem | null;
-  events: UpcomingRaceItem[];
-};
-
-export function buildUpcomingRaceItems(calendar: Calendar, now: Date): UpcomingRaceSummary {
-  const summary: UpcomingRaceSummary = {
-    bronce: null,
-    plata: null,
-    oro: null,
-    weekly: null,
-    events: [],
-  };
+export function buildUpcomingRaceItems(calendar: Calendar, now: Date): UpcomingRaceItem[] {
+  const items: UpcomingRaceItem[] = [];
 
   if (calendar.series && calendar.seriesPreviews) {
     for (const series of calendar.series) {
@@ -78,16 +64,7 @@ export function buildUpcomingRaceItems(calendar: Calendar, now: Date): UpcomingR
         nextStart,
         isActive,
       };
-
-      if (series.tier === "beginner" && !summary.bronce) {
-        summary.bronce = item;
-      } else if (series.tier === "intermediate" && !summary.plata) {
-        summary.plata = item;
-      } else if (series.tier === "advanced" && !summary.oro) {
-        summary.oro = item;
-      } else if (series.tier === "weekly" && !summary.weekly) {
-        summary.weekly = item;
-      }
+      items.push(item);
     }
   }
 
@@ -99,10 +76,10 @@ export function buildUpcomingRaceItems(calendar: Calendar, now: Date): UpcomingR
       const active = isEventActive(event, now);
 
       if (active || startMs > now.getTime()) {
-        summary.events.push({
+        items.push({
           id: event.id,
           kind: "event",
-          tier: "event", // Events might not have a direct tier mapped easily unless matched with series
+          tier: "event",
           name: event.title,
           track: event.track,
           vehicleClass: "",
@@ -113,13 +90,13 @@ export function buildUpcomingRaceItems(calendar: Calendar, now: Date): UpcomingR
         });
       }
     }
-
-    summary.events.sort((a, b) => {
-      const timeA = a.nextStart ? new Date(a.nextStart).getTime() : 0;
-      const timeB = b.nextStart ? new Date(b.nextStart).getTime() : 0;
-      return timeA - timeB;
-    });
   }
 
-  return summary;
+  items.sort((a, b) => {
+    const timeA = a.nextStart ? new Date(a.nextStart).getTime() : Infinity;
+    const timeB = b.nextStart ? new Date(b.nextStart).getTime() : Infinity;
+    return timeA - timeB;
+  });
+
+  return items;
 }

@@ -1,21 +1,15 @@
-import { useState } from "react";
-import { buildWeekRange, formatMonthTitle } from "../../calendar/calendar-view-math";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { buildWeekRange, formatMonthTitle, SPANISH_MONTHS_SHORT } from "../../calendar/calendar-view-math";
+import { formatInZone } from "./calendar-shared";
 
 export type CalendarFilter = "all" | "beginner" | "intermediate" | "advanced" | "weekly" | "special";
-
-const SPANISH_MONTHS_SHORT = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
-];
-
-const SPANISH_WEEKDAYS_FULL = [
-  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
-];
 
 export type CalendarToolbarProps = {
   view: "month" | "week" | "day";
   anchorDate: Date;
   activeFilter: CalendarFilter;
+  timeZone: string;
   onViewChange: (view: "month" | "week" | "day") => void;
   onToday: () => void;
   onPrevious: () => void;
@@ -27,13 +21,13 @@ export function CalendarToolbar({
   view,
   anchorDate,
   activeFilter,
+  timeZone,
   onViewChange,
   onToday,
   onPrevious,
   onNext,
   onFilterChange,
 }: CalendarToolbarProps) {
-  // Format title
   const getTitle = () => {
     if (view === "month") {
       return formatMonthTitle(anchorDate);
@@ -41,21 +35,54 @@ export function CalendarToolbar({
     if (view === "week") {
       const weekDays = buildWeekRange(anchorDate);
       const monday = weekDays[0];
-      return `Semana del ${monday.getDate()} ${SPANISH_MONTHS_SHORT[monday.getMonth()]}`;
+      const sunday = weekDays[6];
+      const monthMon = SPANISH_MONTHS_SHORT[monday.getMonth()];
+      const monthSun = SPANISH_MONTHS_SHORT[sunday.getMonth()];
+      const mondayDay = formatInZone(monday, timeZone, { day: "numeric" });
+      const sundayDay = formatInZone(sunday, timeZone, { day: "numeric" });
+      if (monday.getMonth() === sunday.getMonth()) {
+        return `Semana del ${mondayDay} - ${sundayDay} ${monthMon}`;
+      }
+      return `Semana del ${mondayDay} ${monthMon} - ${sundayDay} ${monthSun}`;
     }
-    return `${SPANISH_WEEKDAYS_FULL[anchorDate.getDay()]} ${anchorDate.getDate()} ${SPANISH_MONTHS_SHORT[anchorDate.getMonth()]}`;
+    const weekday = formatInZone(anchorDate, timeZone, { weekday: "long" });
+    const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    const day = formatInZone(anchorDate, timeZone, { day: "numeric" });
+    const month = SPANISH_MONTHS_SHORT[anchorDate.getMonth()];
+    return `${weekdayCap} ${day} ${month}`;
   };
 
   const title = getTitle();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
-  const filters: { id: CalendarFilter; label: string; dot: string }[] = [
-    { id: "all", label: "Todas", dot: "bg-white" },
-    { id: "beginner", label: "Bronce", dot: "bg-amber-500" },
-    { id: "intermediate", label: "Plata", dot: "bg-slate-400" },
-    { id: "advanced", label: "Oro", dot: "bg-yellow-500" },
-    { id: "weekly", label: "Semanal", dot: "bg-[#ff3b3b]" },
-    { id: "special", label: "Especial", dot: "bg-[#f59e0b]" },
+  const toggleFilters = useCallback(() => {
+    if (!filtersOpen && toggleRef.current) {
+      const rect = toggleRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setFiltersOpen((prev) => !prev);
+  }, [filtersOpen]);
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (toggleRef.current && !toggleRef.current.contains(e.target as Node)) {
+        setFiltersOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [filtersOpen]);
+
+  const filters: { id: CalendarFilter; label: string; dot: string; cssColor: string }[] = [
+    { id: "all", label: "Todas", dot: "bg-white", cssColor: "#ffffff" },
+    { id: "beginner", label: "Bronce", dot: "bg-amber-500", cssColor: "#f59e0b" },
+    { id: "intermediate", label: "Plata", dot: "bg-slate-400", cssColor: "#94a3b8" },
+    { id: "advanced", label: "Oro", dot: "bg-yellow-500", cssColor: "#eab308" },
+    { id: "weekly", label: "Semanal", dot: "bg-[#ff3b3b]", cssColor: "#ff3b3b" },
+    { id: "special", label: "Especial", dot: "bg-[#f59e0b]", cssColor: "#f59e0b" },
   ];
 
   const views: { id: "month" | "week" | "day"; label: string }[] = [
@@ -66,154 +93,123 @@ export function CalendarToolbar({
 
   return (
     <div
-      className="glass-panel rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 w-full"
+      className="glass-panel rounded-xl p-3 flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-3 w-full"
       data-testid="calendar-toolbar"
     >
-      {/* Date Navigation & Title */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onPrevious}
-            className="btn-secondary p-1.5 rounded-lg text-white hover:text-white flex items-center justify-center"
-            aria-label="Anterior"
-            data-testid="calendar-nav-prev"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onToday}
-            className="btn-secondary px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:text-white"
-            data-testid="calendar-nav-today"
-          >
-            Hoy
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            className="btn-secondary p-1.5 rounded-lg text-white hover:text-white flex items-center justify-center"
-            aria-label="Siguiente"
-            data-testid="calendar-nav-next"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <span
-          className="text-base font-bold text-white tracking-tight"
-          data-testid="calendar-toolbar-title"
+      {/* Navigation arrows + Title */}
+      <div className="flex items-center gap-2 min-w-0 shrink">
+        <button
+          type="button"
+          onClick={onPrevious}
+          data-testid="calendar-nav-prev"
+          className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+          aria-label="Anterior"
         >
+          <svg className="w-4 h-4 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onToday}
+          data-testid="calendar-nav-today"
+          className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:text-white hover:bg-white/5 transition-colors"
+        >
+          Hoy
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          data-testid="calendar-nav-next"
+          className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+          aria-label="Siguiente"
+        >
+          <svg className="w-4 h-4 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <h2 className="text-sm font-bold text-white tracking-tight ml-2 truncate min-w-0" data-testid="calendar-toolbar-title">
           {title}
-        </span>
+        </h2>
       </div>
 
-      {/* View Switcher + Filters */}
-      <div className="flex items-center gap-2">
+      {/* View switcher + Filter dropdown */}
+      <div className="flex items-center gap-2 min-w-0 shrink-0">
+        {/* View switcher */}
         <div
-          className="flex bg-white/[0.02] border border-white/10 rounded-lg p-0.5"
+          className="flex gap-1 glass-panel rounded-xl p-1.5"
           role="group"
           aria-label="Vista de calendario"
         >
-          {views.map((v) => {
-            const isActive = view === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => onViewChange(v.id)}
-                aria-pressed={isActive}
-                data-testid={`calendar-view-btn-${v.id}`}
-                className={[
-                  "px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 border cursor-pointer",
-                  isActive
-                    ? "bg-vantare-red-700/20 border-vantare-red-500/30 text-white shadow-[0_0_12px_rgba(255,59,59,0.15)]"
-                    : "bg-transparent border-transparent text-vantare-textMuted hover:text-white hover:bg-white/5",
-                ].join(" ")}
-              >
-                {v.label}
-              </button>
-            );
-          })}
+          {views.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              data-testid={`calendar-view-${v.id}`}
+              onClick={() => onViewChange(v.id)}
+              className={[
+                "px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[.18em] transition-colors",
+                view === v.id
+                  ? "bg-vantare-red-500/20 text-accent"
+                  : "text-vantare-textMuted hover:text-white hover:bg-white/5",
+              ].join(" ")}
+              aria-pressed={view === v.id}
+            >
+              {v.label}
+            </button>
+          ))}
         </div>
 
+        {/* Filter dropdown */}
         <div className="relative">
           <button
+            ref={toggleRef}
             type="button"
-            onClick={() => setFiltersOpen((open) => !open)}
-            aria-expanded={filtersOpen}
-            aria-haspopup="true"
+            onClick={toggleFilters}
             data-testid="calendar-filter-toggle"
-            className={[
-              "btn-secondary px-3 h-9 rounded-lg text-[11px] font-bold uppercase tracking-[.18em] flex items-center gap-1.5 transition-colors",
-              activeFilter !== "all" ? "text-accent border-accent/40 bg-accent/10" : "text-white/70",
-            ].join(" ")}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[.18em] glass-panel hover:bg-white/5 transition-colors"
+            aria-haspopup="true"
+            aria-expanded={filtersOpen}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            <span className="w-2 h-2 rounded-full" style={{
+              background: filters.find((f) => f.id === activeFilter)?.cssColor ?? "#fff"
+            }} />
+            {filters.find((f) => f.id === activeFilter)?.label ?? "Todas"}
+            <svg className="w-3 h-3 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-            Filtros
           </button>
-
-          {filtersOpen && (
+          {filtersOpen && menuPos && createPortal(
             <div
-              className="absolute right-0 top-full mt-2 z-30 glass-panel rounded-xl p-2 min-w-[180px] shadow-xl"
+              className="glass-panel rounded-xl p-1.5 min-w-[140px] shadow-xl"
+              style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
               role="menu"
-              aria-label="Filtros de carreras"
+              aria-label="Filtros de calendario"
+              data-testid="calendar-filter-menu"
             >
-              {filters.map((f) => {
-                const isActive = activeFilter === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onFilterChange(f.id);
-                      setFiltersOpen(false);
-                    }}
-                    data-testid={`calendar-filter-${f.id}`}
-                    className={[
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs font-semibold transition-colors",
-                      isActive
-                        ? "bg-vantare-red-700/20 text-white"
-                        : "text-vantare-textMuted hover:text-white hover:bg-white/5",
-                    ].join(" ")}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${f.dot} ${f.id === "all" ? "" : "shadow-[0_0_6px_currentColor]"}`} />
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
+              {filters.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="menuitem"
+                  data-testid={`calendar-filter-${f.id}`}
+                  onClick={() => {
+                    onFilterChange(f.id);
+                    setFiltersOpen(false);
+                  }}
+                  className={[
+                    "flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[.18em] transition-colors text-left",
+                    activeFilter === f.id
+                      ? "bg-vantare-red-500/15 text-accent"
+                      : "text-vantare-textMuted hover:text-white hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ background: f.cssColor }} />
+                  {f.label}
+                </button>
+              ))}
+            </div>,
+            document.body,
           )}
         </div>
       </div>

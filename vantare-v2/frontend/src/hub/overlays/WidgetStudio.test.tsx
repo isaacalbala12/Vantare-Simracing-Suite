@@ -550,16 +550,16 @@ describe("WidgetStudio", () => {
           type: "standings",
           enabled: true,
           updateHz: 15,
-          variantId: "official-standings-glassmorphism-pro-standings",
+          variantId: "official-standings-vantare-crystal-standings",
           position: { x: 0, y: 0, w: 360, h: 300 },
         },
       ],
       variants: [
         {
-          id: "official-standings-glassmorphism-pro-standings",
+          id: "official-standings-vantare-crystal-standings",
           widgetType: "standings",
           templateId: "standings-vantare-default",
-          themeId: "glassmorphism-pro",
+          themeId: "vantare-crystal",
           columns: createDefaultStandingsColumns(),
         },
       ],
@@ -579,14 +579,14 @@ describe("WidgetStudio", () => {
     );
 
     const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
-    expect(select.value).toBe("standings-glassmorphism-pro");
+    expect(select.value).toBe("standings-vantare-crystal");
     expect(
-      Array.from(select.options).find((option) => option.value === "standings-glassmorphism-pro")
+      Array.from(select.options).find((option) => option.value === "standings-vantare-crystal")
         ?.textContent,
-    ).toBe("Standings Glassmorphism");
+    ).toBe("Standings Vantare Crystal");
   });
 
-  it("selecting Standings Glassmorphism applies it and re-renders the glassmorphism preview", async () => {
+  it("selecting Standings Vantare Crystal applies it and re-renders the vantare-crystal preview", async () => {
     const onChangeProfile = vi.fn();
     const standingsProfile: ProfileConfig = {
       ...profile,
@@ -616,14 +616,14 @@ describe("WidgetStudio", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Diseño"), {
-      target: { value: "standings-glassmorphism-pro" },
+      target: { value: "standings-vantare-crystal" },
     });
 
     expect(onChangeProfile).toHaveBeenCalledTimes(1);
     const next = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     const applied = next.widgets[0];
-    expect(applied.variantId).toBe("official-standings-glassmorphism-pro-standings");
-    expect(next.variants?.find((v) => v.id === applied.variantId)?.themeId).toBe("glassmorphism-pro");
+    expect(applied.variantId).toBe("official-standings-vantare-crystal-standings");
+    expect(next.variants?.find((v) => v.id === applied.variantId)?.themeId).toBe("vantare-crystal");
 
     rerender(
       <WidgetStudio

@@ -122,7 +122,7 @@ export function StandingsWidget({ editMode, telemetryMode, mockSessionScenario, 
   const lastFingerprintRef = useRef("");
 
   const { style, appearance: a } = resolveWidgetAppearance("standings", props);
-  const isGlass = style === "glassmorphism-pro";
+  const isGlass = style === "vantare-crystal";
   const isCrystal = style === "vantare-crystal";
   const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
   const activeColumns = getActiveStandingsColumns(props);

@@ -31,10 +31,10 @@ describe("resolveWidgetAppearance", () => {
 
   it("uses variant themeId when props style is missing", () => {
     const { style, appearance } = resolveWidgetAppearance("relative", {
-      variant: { themeId: "glassmorphism-pro" },
+      variant: { themeId: "vantare-crystal" },
     });
 
-    expect(style).toBe("glassmorphism-pro");
+    expect(style).toBe("vantare-crystal");
     expect(appearance.backgroundColor).toBe("#121216");
     expect(appearance.textColor).toBe("#ffffff");
   });
@@ -42,7 +42,7 @@ describe("resolveWidgetAppearance", () => {
   it("props style takes precedence over variant themeId", () => {
     const { style } = resolveWidgetAppearance("relative", {
       style: "vantare-racing",
-      variant: { themeId: "glassmorphism-pro" },
+      variant: { themeId: "vantare-crystal" },
     });
 
     expect(style).toBe("vantare-racing");

@@ -70,7 +70,7 @@ export function RelativeWidget({ editMode, telemetryMode, props, updateHz = 15 }
   const intrinsicOnly = !fillHost;
   const lastFingerprintRef = useRef("");
   const { style, appearance: a } = resolveWidgetAppearance("relative", props);
-  const isGlass = style === "glassmorphism-pro";
+  const isGlass = style === "vantare-crystal";
   const isCrystal = style === "vantare-crystal";
   const ds = resolveWidgetDesignSystem(isCrystal ? "vantare-crystal" : undefined);
 

@@ -318,8 +318,8 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
   },
   {
-    id: "relative-glassmorphism-pro",
-    name: "Glassmorphism Pro",
+    id: "relative-vantare-crystal",
+    name: "Vantare Crystal",
     description: "Cristal oscuro, filas compactas y acentos rojos para relative.",
     widgetType: "relative",
     appearance: {
@@ -337,7 +337,7 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
     variant: {
       templateId: RELATIVE_DEFAULT_TEMPLATE_ID,
-      themeId: "glassmorphism-pro",
+      themeId: "vantare-crystal",
       columns: [
         { id: "position", metricId: "position", enabled: true, width: 36, style: { align: "center" } },
         { id: "class", metricId: "class", enabled: true, width: 6, style: { align: "center" } },
@@ -357,9 +357,9 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
   },
   {
-    id: "standings-glassmorphism-pro",
-    name: "Standings Glassmorphism",
-    description: "Tabla vertical glass con neumáticos, PIT y foco en líder.",
+    id: "standings-vantare-crystal",
+    name: "Standings Vantare Crystal",
+    description: "Tabla vertical cristal con neumáticos, PIT y foco en líder.",
     widgetType: "standings",
     appearance: {
       accentColor: "#e63946",
@@ -374,7 +374,7 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
     variant: {
       templateId: STANDINGS_DEFAULT_TEMPLATE_ID,
-      themeId: "glassmorphism-pro",
+      themeId: "vantare-crystal",
       columns: [
         { id: "position", metricId: "position", enabled: true, width: 32, style: { align: "center" } },
         { id: "driverNumber", metricId: "driverNumber", enabled: true, width: 44, style: { align: "center" } },
@@ -388,9 +388,9 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
   },
   {
-    id: "delta-glassmorphism-pro",
-    name: "Delta Glassmorphism",
-    description: "Barra delta glass con rojo positivo y verde negativo.",
+    id: "delta-vantare-crystal",
+    name: "Delta Vantare Crystal",
+    description: "Barra delta cristal con rojo positivo y verde negativo.",
     widgetType: "delta",
     appearance: {
       positiveColor: "#ff2a3b",
@@ -402,13 +402,13 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
     variant: {
       templateId: DELTA_DEFAULT_TEMPLATE_ID,
-      themeId: "glassmorphism-pro",
+      themeId: "vantare-crystal",
     },
   },
   {
-    id: "pedals-glassmorphism-pro",
-    name: "Pedals Glassmorphism",
-    description: "Pedales glass de alto contraste con colores THR/BRK/CLT.",
+    id: "pedals-vantare-crystal",
+    name: "Pedals Vantare Crystal",
+    description: "Pedales cristal de alto contraste con colores THR/BRK/CLT.",
     widgetType: "pedals",
     appearance: {
       accentColor: "#e63946",
@@ -421,7 +421,7 @@ export const OFFICIAL_DESIGNS: OfficialDesign[] = [
     },
     variant: {
       templateId: PEDALS_DEFAULT_TEMPLATE_ID,
-      themeId: "glassmorphism-pro",
+      themeId: "vantare-crystal",
     },
   },
 ];

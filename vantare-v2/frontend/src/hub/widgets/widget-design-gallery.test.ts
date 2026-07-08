@@ -265,58 +265,58 @@ describe("applyOfficialDesignToProfile", () => {
   });
 });
 
-describe("glassmorphism-pro official designs", () => {
-  it("lists glassmorphism official designs for existing widget types", () => {
-    expect(getOfficialDesign("relative-glassmorphism-pro")?.widgetType).toBe("relative");
-    expect(getOfficialDesign("standings-glassmorphism-pro")?.widgetType).toBe("standings");
-    expect(getOfficialDesign("delta-glassmorphism-pro")?.widgetType).toBe("delta");
-    expect(getOfficialDesign("pedals-glassmorphism-pro")?.widgetType).toBe("pedals");
+describe("vantare-crystal official designs", () => {
+  it("lists vantare-crystal official designs for existing widget types", () => {
+    expect(getOfficialDesign("relative-vantare-crystal")?.widgetType).toBe("relative");
+    expect(getOfficialDesign("standings-vantare-crystal")?.widgetType).toBe("standings");
+    expect(getOfficialDesign("delta-vantare-crystal")?.widgetType).toBe("delta");
+    expect(getOfficialDesign("pedals-vantare-crystal")?.widgetType).toBe("pedals");
   });
 
-  it("applies glassmorphism design without changing widget position", () => {
+  it("applies vantare-crystal design without changing widget position", () => {
     const widget = makeWidget();
-    const design = getOfficialDesign("relative-glassmorphism-pro")!;
+    const design = getOfficialDesign("relative-vantare-crystal")!;
     const result = applyOfficialDesign(widget, design);
 
     expect(result.widget.position).toEqual(widget.position);
-    expect(result.variant?.themeId).toBe("glassmorphism-pro");
+    expect(result.variant?.themeId).toBe("vantare-crystal");
     expect(result.widget.variantId).toBe(`official-${design.id}-${widget.id}`);
   });
 
-  it("applies glassmorphism design to standings preserving position", () => {
+  it("applies vantare-crystal design to standings preserving position", () => {
     const widget = makeWidget({
       id: "stand-1",
       type: "standings",
       position: { x: 50, y: 60, w: 340, h: 420 },
     });
-    const design = getOfficialDesign("standings-glassmorphism-pro")!;
+    const design = getOfficialDesign("standings-vantare-crystal")!;
     const result = applyOfficialDesign(widget, design);
     expect(result.widget.position).toEqual({ x: 50, y: 60, w: 340, h: 420 });
-    expect(result.variant?.themeId).toBe("glassmorphism-pro");
+    expect(result.variant?.themeId).toBe("vantare-crystal");
   });
 
-  it("applies glassmorphism design to delta preserving position", () => {
+  it("applies vantare-crystal design to delta preserving position", () => {
     const widget = makeWidget({
       id: "delta-1",
       type: "delta",
       position: { x: 700, y: 40, w: 400, h: 48 },
     });
-    const design = getOfficialDesign("delta-glassmorphism-pro")!;
+    const design = getOfficialDesign("delta-vantare-crystal")!;
     const result = applyOfficialDesign(widget, design);
     expect(result.widget.position).toEqual({ x: 700, y: 40, w: 400, h: 48 });
-    expect(result.variant?.themeId).toBe("glassmorphism-pro");
+    expect(result.variant?.themeId).toBe("vantare-crystal");
   });
 
-  it("applies glassmorphism design to pedals preserving position", () => {
+  it("applies vantare-crystal design to pedals preserving position", () => {
     const widget = makeWidget({
       id: "pedals-1",
       type: "pedals",
       position: { x: 80, y: 80, w: 90, h: 100 },
     });
-    const design = getOfficialDesign("pedals-glassmorphism-pro")!;
+    const design = getOfficialDesign("pedals-vantare-crystal")!;
     const result = applyOfficialDesign(widget, design);
     expect(result.widget.position).toEqual({ x: 80, y: 80, w: 90, h: 100 });
-    expect(result.variant?.themeId).toBe("glassmorphism-pro");
+    expect(result.variant?.themeId).toBe("vantare-crystal");
   });
 
   it("existing designs still appear in the catalog", () => {
@@ -330,17 +330,17 @@ describe("glassmorphism-pro official designs", () => {
     expect(getOfficialDesign("pedals-endurance")).toBeDefined();
   });
 
-  it("glassmorphism designs set themeId correctly on variant", () => {
-    const design = getOfficialDesign("relative-glassmorphism-pro")!;
-    expect(design.variant?.themeId).toBe("glassmorphism-pro");
+  it("vantare-crystal designs set themeId correctly on variant", () => {
+    const design = getOfficialDesign("relative-vantare-crystal")!;
+    expect(design.variant?.themeId).toBe("vantare-crystal");
 
-    const standingsDesign = getOfficialDesign("standings-glassmorphism-pro")!;
-    expect(standingsDesign.variant?.themeId).toBe("glassmorphism-pro");
+    const standingsDesign = getOfficialDesign("standings-vantare-crystal")!;
+    expect(standingsDesign.variant?.themeId).toBe("vantare-crystal");
 
-    const deltaDesign = getOfficialDesign("delta-glassmorphism-pro")!;
-    expect(deltaDesign.variant?.themeId).toBe("glassmorphism-pro");
+    const deltaDesign = getOfficialDesign("delta-vantare-crystal")!;
+    expect(deltaDesign.variant?.themeId).toBe("vantare-crystal");
 
-    const pedalsDesign = getOfficialDesign("pedals-glassmorphism-pro")!;
-    expect(pedalsDesign.variant?.themeId).toBe("glassmorphism-pro");
+    const pedalsDesign = getOfficialDesign("pedals-vantare-crystal")!;
+    expect(pedalsDesign.variant?.themeId).toBe("vantare-crystal");
   });
 });

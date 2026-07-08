@@ -483,23 +483,23 @@ describe("WidgetSandboxPreview", () => {
     expect(widget.position).toEqual({ x: 0, y: 0, w: 200, h: 100 });
   });
 
-  it("canonical preview overrides preserve themeId/templateId of an official glassmorphism variant", () => {
+  it("canonical preview overrides preserve themeId/templateId of an official vantare-crystal variant", () => {
     const widget: WidgetConfig = {
       id: "standings",
       type: "standings",
       enabled: true,
       updateHz: 15,
-      variantId: "official-standings-glassmorphism-pro-standings",
+      variantId: "official-standings-vantare-crystal-standings",
       position: { x: 0, y: 0, w: 360, h: 300 },
     };
     const profile: ProfileConfig = {
       ...profileWith(widget),
       variants: [
         {
-          id: "official-standings-glassmorphism-pro-standings",
+          id: "official-standings-vantare-crystal-standings",
           widgetType: "standings",
           templateId: "standings-vantare-default",
-          themeId: "glassmorphism-pro",
+          themeId: "vantare-crystal",
           columns: createDefaultStandingsColumns(),
         },
       ],
@@ -508,7 +508,7 @@ describe("WidgetSandboxPreview", () => {
     const out = applyCanonicalPreviewOverrides(profile, widget);
     const variant = out.variants!.find((v) => v.id === widget.variantId)!;
 
-    expect(variant.themeId).toBe("glassmorphism-pro");
+    expect(variant.themeId).toBe("vantare-crystal");
     expect(variant.templateId).toBe("standings-vantare-default");
     expect(variant.columns).toBeTruthy();
   });

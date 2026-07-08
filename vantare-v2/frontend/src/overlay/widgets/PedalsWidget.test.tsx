@@ -74,13 +74,13 @@ describe("PedalsWidget", () => {
     expect(screen.getByTestId("pedal-bar-thr")).toBeTruthy();
   });
 
-  it("renders with glassmorphism-pro theme without errors", async () => {
+  it("renders with vantare-crystal theme without errors", async () => {
     await act(async () => {
       render(
         <PedalsWidget
           editMode={true}
           telemetryMode="mock"
-          props={{ style: "glassmorphism-pro" }}
+          props={{ style: "vantare-crystal" }}
         />
       );
     });

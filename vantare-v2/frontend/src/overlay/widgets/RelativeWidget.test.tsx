@@ -177,16 +177,16 @@ describe("RelativeWidget", () => {
     expect(screen.getByTestId("relative-panel")).toBeDefined();
   });
 
-  it("renders glassmorphism-pro style with glass panel background", () => {
+  it("renders vantare-crystal style with glass panel background", () => {
     render(
       <RelativeWidget
         editMode={false}
-        props={{ style: "glassmorphism-pro" }}
+        props={{ style: "vantare-crystal" }}
       />,
     );
     const panel = screen.getByTestId("relative-panel");
     expect(panel).toBeDefined();
-    expect(panel.style.borderRadius).toBe("10px");
+    expect(panel.style.borderRadius).toBe("12px");
     expect(panel.style.backdropFilter).toBe("blur(24px)");
   });
 });

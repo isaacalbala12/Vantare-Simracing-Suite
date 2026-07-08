@@ -78,13 +78,13 @@ describe("DeltaWidget", () => {
     expect(screen.getAllByText(/-0\.150s/).length).toBe(1);
   });
 
-  it("renders with glassmorphism-pro theme without errors", async () => {
+  it("renders with vantare-crystal theme without errors", async () => {
     await act(async () => {
       render(
         <DeltaWidget
           editMode={true}
           telemetryMode="mock"
-          props={{ style: "glassmorphism-pro" }}
+          props={{ style: "vantare-crystal" }}
         />
       );
     });

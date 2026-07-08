@@ -41,7 +41,7 @@ export function formatLapTime(seconds: number | undefined): string {
 
 export function DeltaWidget({ editMode, telemetryMode, updateHz = 30, props }: DeltaProps) {
   const { style, appearance: a } = resolveWidgetAppearance("delta", props);
-  const isGlass = style === "glassmorphism-pro";
+  const isGlass = style === "vantare-crystal";
   const isCrystal = style === "vantare-crystal";
   const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
   const deltaRef = useRef<HTMLSpanElement>(null);

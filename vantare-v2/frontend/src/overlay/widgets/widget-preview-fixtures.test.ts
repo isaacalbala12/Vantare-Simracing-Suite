@@ -285,10 +285,10 @@ describe("widget-preview-fixtures", () => {
     });
   });
 
-  describe("regression: base and glassmorphism official designs keep distinct visual identity", () => {
-    it("does not collapse base and glassmorphism to the same themeId", () => {
+  describe("regression: base and vantare-crystal official designs keep distinct visual identity", () => {
+    it("does not collapse base and vantare-crystal to the same themeId", () => {
       const baseDesign = getOfficialDesign("standings-leaderboard")!;
-      const glassDesign = getOfficialDesign("standings-glassmorphism-pro")!;
+      const glassDesign = getOfficialDesign("standings-vantare-crystal")!;
 
       const baseWidget = makeWidget("standings");
       let baseProfile = makeProfile(baseWidget);
@@ -306,8 +306,8 @@ describe("widget-preview-fixtures", () => {
 
       expect(baseVariant).toBeDefined();
       expect(glassVariant).toBeDefined();
-      expect(baseVariant?.themeId).not.toBe("glassmorphism-pro");
-      expect(glassVariant?.themeId).toBe("glassmorphism-pro");
+      expect(baseVariant?.themeId).not.toBe("vantare-crystal");
+      expect(glassVariant?.themeId).toBe("vantare-crystal");
       expect(glassVariant?.templateId).toBeTruthy();
     });
   });

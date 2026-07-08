@@ -23,7 +23,7 @@ export function PedalsWidget({ editMode, telemetryMode, updateHz = 30, props }: 
   const brakeBarRef = useRef<HTMLDivElement>(null);
   const throttleBarRef = useRef<HTMLDivElement>(null);
   const { style, appearance: a } = resolveWidgetAppearance("pedals", props);
-  const isGlass = style === "glassmorphism-pro";
+  const isGlass = style === "vantare-crystal";
   const isCrystal = style === "vantare-crystal";
   const crystal = isCrystal ? resolveWidgetDesignSystem("vantare-crystal") : null;
 

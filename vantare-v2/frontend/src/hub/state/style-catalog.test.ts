@@ -31,14 +31,14 @@ describe("style-catalog", () => {
     expect(appearance.accentColor).toBeTruthy();
   });
 
-  it("includes glassmorphism-pro for existing widget types", () => {
+  it("includes vantare-crystal for existing widget types", () => {
     for (const type of ["relative", "standings", "delta", "pedals", "telemetry", "telemetry-vertical"]) {
-      expect(getStylesForType(type).some((style) => style.id === "glassmorphism-pro")).toBe(true);
+      expect(getStylesForType(type).some((style) => style.id === "vantare-crystal")).toBe(true);
     }
   });
 
-  it("returns glassmorphism-pro defaults", () => {
-    const appearance = getDefaultAppearance("relative", "glassmorphism-pro");
+  it("returns vantare-crystal defaults", () => {
+    const appearance = getDefaultAppearance("relative", "vantare-crystal");
     expect(appearance.backgroundColor).toBe("#121216");
     expect(appearance.textColor).toBe("#ffffff");
     expect(appearance.classHypercarColor).toBe("#ff2a3b");

@@ -25,8 +25,8 @@ const CATALOG: Record<string, StyleEntry[]> = {
       },
     },
     {
-      id: "glassmorphism-pro",
-      name: "Glassmorphism Pro",
+      id: "vantare-crystal",
+      name: "Vantare Crystal",
       defaults: {
         accentColor: "#e63946",
         textColor: "#ffffff",
@@ -61,8 +61,8 @@ const CATALOG: Record<string, StyleEntry[]> = {
       },
     },
     {
-      id: "glassmorphism-pro",
-      name: "Glassmorphism Pro",
+      id: "vantare-crystal",
+      name: "Vantare Crystal",
       defaults: {
         accentColor: "#e63946",
         textColor: "#ffffff",
@@ -95,8 +95,8 @@ const CATALOG: Record<string, StyleEntry[]> = {
       },
     },
     {
-      id: "glassmorphism-pro",
-      name: "Glassmorphism Pro",
+      id: "vantare-crystal",
+      name: "Vantare Crystal",
       defaults: {
         accentColor: "#e63946",
         textColor: "#ffffff",
@@ -129,8 +129,8 @@ const CATALOG: Record<string, StyleEntry[]> = {
       },
     },
     {
-      id: "glassmorphism-pro",
-      name: "Glassmorphism Pro",
+      id: "vantare-crystal",
+      name: "Vantare Crystal",
       defaults: {
         accentColor: "#e63946",
         textColor: "#ffffff",
@@ -158,8 +158,8 @@ const CATALOG: Record<string, StyleEntry[]> = {
       },
     },
     {
-      id: "glassmorphism-pro",
-      name: "Glassmorphism Pro",
+      id: "vantare-crystal",
+      name: "Vantare Crystal",
       defaults: {
         accentColor: "#e63946",
         textColor: "#ffffff",
@@ -184,8 +184,8 @@ const CATALOG: Record<string, StyleEntry[]> = {
       },
     },
     {
-      id: "glassmorphism-pro",
-      name: "Glassmorphism Pro",
+      id: "vantare-crystal",
+      name: "Vantare Crystal",
       defaults: {
         accentColor: "#e63946",
         textColor: "#ffffff",

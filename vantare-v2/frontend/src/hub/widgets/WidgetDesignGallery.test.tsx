@@ -110,7 +110,7 @@ describe("WidgetDesignGallery", () => {
   });
 
   it("shows the Activo badge and no Aplicar button for the active design", () => {
-    const activeId = "relative-glassmorphism-pro";
+    const activeId = "relative-vantare-crystal";
     render(
       <WidgetDesignGallery
         widget={makeWidget({ id: "rel-1", type: "relative", variantId: `official-${activeId}-rel-1` })}
@@ -124,7 +124,7 @@ describe("WidgetDesignGallery", () => {
   });
 
   it("still exposes Aplicar for non-active designs", () => {
-    const activeId = "relative-glassmorphism-pro";
+    const activeId = "relative-vantare-crystal";
     render(
       <WidgetDesignGallery
         widget={makeWidget({ id: "rel-1", type: "relative", variantId: `official-${activeId}-rel-1` })}

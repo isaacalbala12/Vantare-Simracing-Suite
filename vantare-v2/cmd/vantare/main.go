@@ -35,7 +35,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.1.0.2"
+var version = "v0.1.0.3"
 
 // supabaseURL and supabaseAnonKey are injected at build time via ldflags
 // (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
@@ -194,6 +194,17 @@ func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmit
 	}
 	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
 }
+// handleDuplicateProfile copies an existing profile into a new one with the
+// given newID and newName (both required). On success it re-emits the profile
+// list so the UI refreshes with the new card.
+func handleDuplicateProfile(id, newID, newName string, svc *launcher.Service, emitter app.EventEmitter) {
+	if err := svc.DuplicateProfile(id, newID, newName); err != nil {
+		log.Printf("launcher:duplicateProfile error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+}
 
 // handleLaunchProfile starts the launch chain for a profile. The chain runs on
 // a goroutine; chain progress/error events are emitted by the ChainRunner. On
@@ -205,29 +216,11 @@ func handleLaunchProfile(id string, svc *launcher.Service, emitter app.EventEmit
 		return
 	}
 }
-
 // handleCancelProfile cancels the active launch chain for a profile, if any.
 func handleCancelProfile(id string, svc *launcher.Service, emitter app.EventEmitter) {
 	svc.CancelChain(id)
 	_ = emitter
 }
-
-// handleChainError reacts to a failed chain step. Wails v3 alpha.98-tui does
-// not expose a native QuestionDialog, so we emit a launcher:dialog:question
-// event the frontend can render, plus launcher:error as a fallback. When the
-// user confirms the retry in the UI, the frontend re-emits launcher:profile:launch.
-//
-// TODO(launcher): when Wails exposes a native question dialog, open it here and
-// re-emit launcher:profile:launch with {id} when the user accepts.
-func handleChainError(emitter app.EventEmitter, payload launcher.ChainProgress) {
-	emitter.Emit("launcher:dialog:question", map[string]any{
-		"profileId": payload.ProfileID,
-		"stepIndex": payload.StepIndex,
-		"message":   payload.Message,
-	})
-	emitter.Emit("launcher:error", map[string]any{"message": payload.Message})
-}
-
 // handleAppPick opens a native file picker for an executable. Wails v3
 // alpha.98-tui does not expose a file dialog API, so we emit a launcher:error
 // noting the limitation and let the frontend's HTML file input take over.
@@ -241,8 +234,44 @@ func handleAppPick(emitter app.EventEmitter) {
 	})
 }
 
+// handleChainError is invoked when the chain runner reports a step failure.
+// It first verifies the profile still exists (race-safe: the user may have
+// deleted it while the chain ran). When the profile is missing, it emits
+// launcher:error and stops. Otherwise it asks the user via the native
+// question dialog whether to retry the whole chain. On yes it re-issues
+// LaunchProfile; on no it stays silent (the chain already terminated).
+func handleChainError(profileID string, stepIndex int, message string, svc *launcher.Service, emitter app.EventEmitter, dialog launcherDialogShower) {
+	profiles := svc.ListProfiles()
+	found := false
+	for _, p := range profiles {
+		if p.ID == profileID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		log.Printf("launcher:chain error for unknown profile %q (step %d): %s", profileID, stepIndex, message)
+		emitter.Emit("launcher:error", map[string]any{
+			"message":   message,
+			"profileId": profileID,
+			"stepIndex": stepIndex,
+		})
+		return
+	}
+	if !dialog.ShowRetry(profileID, message) {
+		return
+	}
+	if err := svc.LaunchProfile(context.Background(), profileID); err != nil {
+		log.Printf("launcher:chain retry error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{
+			"message":   err.Error(),
+			"profileId": profileID,
+			"stepIndex": stepIndex,
+		})
+	}
+}
 func main() {
-	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
+// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
 		udf := filepath.Join(appData, "Vantare", "webview_v0.3.10.0")
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
@@ -1087,6 +1116,20 @@ func main() {
 		handleDeleteProfile(payload.ID, launcherSvc, emitter)
 	})
 
+	wailsApp.Event.On("launcher:profile:duplicate", func(event *application.CustomEvent) {
+		var payload struct {
+			ID      string `json:"id"`
+			NewID   string `json:"newId"`
+			NewName string `json:"newName"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleDuplicateProfile(payload.ID, payload.NewID, payload.NewName, launcherSvc, emitter)
+	})
+
 	wailsApp.Event.On("launcher:profile:launch", func(event *application.CustomEvent) {
 		var payload struct {
 			ID string `json:"id"`
@@ -1096,7 +1139,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleLaunchProfile(payload.ID, launcherSvc, emitter, context.Background())
+		handleLaunchProfile(payload.ID, launcherSvc, emitter, ctx)
 	})
 
 	wailsApp.Event.On("launcher:profile:cancel", func(event *application.CustomEvent) {
@@ -1119,15 +1162,22 @@ func main() {
 		handleAppPick(emitter)
 	})
 
-	// Chain error -> native question dialog fallback (see handleChainError).
+	// Chain error -> native question dialog asking whether to retry.
+	// The dialog is created lazily and only used here so headless test
+	// runs and the OBS overlay mode (no wailsApp) don't pay the cost.
+	chainDialog := newWailsLauncherDialog(wailsApp)
 	wailsApp.Event.On("launcher:chain:error", func(event *application.CustomEvent) {
-		var payload launcher.ChainProgress
+		var payload struct {
+			ProfileID string `json:"profileId"`
+			StepIndex int    `json:"stepIndex"`
+			Message   string `json:"message"`
+		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleChainError(emitter, payload)
+		handleChainError(payload.ProfileID, payload.StepIndex, payload.Message, launcherSvc, emitter, chainDialog)
 	})
 
 	// Calendar event handlers (CALENDAR-02-A) and series follow/unfollow

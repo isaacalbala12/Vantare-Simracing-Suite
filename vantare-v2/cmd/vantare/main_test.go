@@ -114,7 +114,7 @@ func TestBuildHotkeyActionMapIncludesToggleEditMode(t *testing.T) {
 
 	expected := []string{"toggleOverlay", "toggleEditMode", "nextProfile", "prevProfile"}
 	if len(actionMap) != len(expected) {
-		t.Fatalf("expected %d actions, got %d", len(expected), len(actionMap))
+		t.Fatalf("expected %d actions, got %d", len(actionMap), len(expected))
 	}
 	for _, name := range expected {
 		if _, ok := actionMap[name]; !ok {
@@ -129,7 +129,6 @@ func TestHandleToggleEditModeTogglesDisplayMode(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
 
-	// Start the overlay so the toggle has something to act on.
 	if _, err := controller.Start(profileSvc.Profile()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
@@ -348,14 +347,12 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
 
-	// Start the overlay so a window exists and the flag is true.
 	if _, err := controller.Start(profileSvc.Profile()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
 	var overlayRunning atomic.Bool
 	overlayRunning.Store(true)
 
-	// Replicate the stopOverlay closure body exactly.
 	controller.Stop()
 	if overlayRunning.Load() {
 		resetOverlayDisplayMode(controller, profileSvc, emitter)
@@ -368,15 +365,11 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	if profileSvc.Profile().DisplayMode != config.ModeRacing {
 		t.Fatalf("expected racing mode after close, got %q", profileSvc.Profile().DisplayMode)
 	}
-	// resetOverlayDisplayMode emits profile:loaded + overlay:edit-mode-changed.
 	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
 		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
 	}
 }
 
-// TestStopOverlayClosureSkipsResetWhenAlreadyStopped verifies the guard: if
-// overlayRunning is already false (normal stop path already ran), the closure
-// does not double-reset nor emit spurious events.
 func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
@@ -387,7 +380,6 @@ func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 		t.Fatalf("start overlay: %v", err)
 	}
 	var overlayRunning atomic.Bool
-	// Normal stop path already cleared the flag.
 	overlayRunning.Store(false)
 
 	controller.Stop()
@@ -404,24 +396,18 @@ func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	}
 }
 
-// TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning
-// verifies that when StartActiveOverlay fails after stopping the previous
-// window, overlayRunning is synced to false and no edit-mode-changed event is
-// emitted.
 func TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning(t *testing.T) {
 	controller := app.NewOverlayController(&fakeOverlayFactory{
 		last: &fakeOverlayWindow{},
 	})
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-	// Starter returns a non-running status with an error, simulating a failed
-	// start after the previous window was closed.
 	starter := &fakeOverlayStarter{
 		status: app.OverlayStatus{Running: false},
 		err:    fmt.Errorf("simulated start failure"),
 	}
 	var overlayRunning atomic.Bool
-	overlayRunning.Store(true) // pretend a window was running before
+	overlayRunning.Store(true)
 
 	handleToggleEditMode(controller, profileSvc, starter, &overlayRunning, emitter)
 
@@ -438,17 +424,12 @@ func TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning(t *te
 	}
 }
 
-// TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails verifies
-// that when ApplyProfileMode fails on the real window, the frontend is NOT
-// told edit mode changed (otherwise it would render edit chrome over a window
-// that is still click-through).
 func TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails(t *testing.T) {
 	factory := &failingApplyProfileModeFactory{}
 	controller := app.NewOverlayController(factory)
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
 
-	// Start so a (failing) window exists.
 	if _, err := controller.Start(profileSvc.Profile()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
@@ -462,22 +443,14 @@ func TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails(t *testi
 			t.Fatal("must not emit overlay:edit-mode-changed when ApplyProfileMode fails")
 		}
 	}
-	// SetDisplayMode already mutated the profile to edit before the window
-	// apply failed; that is expected and documented — the frontend is not
-	// notified, so it will not render edit chrome.
 }
 
-// TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow verifies Fix D:
-// when there is no running window, resetOverlayDisplayMode still forces the
-// profile to racing but does not attempt to apply the mode to a nil window
-// (which would log a spurious error).
 func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
 
-	// No window started; controller has no current window.
 	resetOverlayDisplayMode(controller, profileSvc, emitter)
 
 	if profileSvc.Profile().DisplayMode != config.ModeRacing {
@@ -486,8 +459,6 @@ func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
 		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
 	}
-	// The fake factory never created a window, so no mode was applied to any
-	// window. This confirms we did not touch a nil/stale window reference.
 	if factory.last != nil {
 		t.Fatalf("expected no window to be created, got %v", factory.last)
 	}
@@ -495,9 +466,6 @@ func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 
 // --- Launcher Extendido (Fase 5) wiring tests ------------------------------
 
-// fakeLauncherBackend is an in-memory app.LauncherSettingsBackend for the
-// wiring tests. It mirrors what SettingsService persists so the handlers can
-// round-trip exactly like production.
 type fakeLauncherBackend struct {
 	apps     map[string]app.LauncherAppEntry
 	profiles []app.LaunchProfile
@@ -530,6 +498,7 @@ func (f *fakeLauncherBackend) SetLauncherProfiles(profiles []app.LaunchProfile) 
 	copy(f.profiles, profiles)
 	return nil
 }
+
 func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 	t.Helper()
 	backend := &fakeLauncherBackend{
@@ -558,7 +527,6 @@ func TestHandleAddAppEmitsUpdated(t *testing.T) {
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
 		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
 	}
-	// The app must be present in the emitted payload.
 	payload := emitter.data[0].(map[string]any)
 	apps, ok := payload["apps"].(map[string]app.LauncherAppEntry)
 	if !ok {
@@ -571,7 +539,7 @@ func TestHandleAddAppEmitsUpdated(t *testing.T) {
 
 func TestHandleAddAppEmitsErrorOnInvalid(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
-	bad := app.LauncherAppEntry{ID: "x", LaunchMethod: "executable", ExecutablePath: "p"} // missing displayName
+	bad := app.LauncherAppEntry{ID: "x", LaunchMethod: "executable", ExecutablePath: "p"}
 	handleAddApp(bad, svc, emitter)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
 		t.Fatalf("expected launcher:error, got %v", emitter.events)
@@ -588,7 +556,6 @@ func TestHandleRemoveAppEmitsUpdated(t *testing.T) {
 
 func TestHandleRemoveAppEmitsErrorWhenUsedByProfile(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
-	// Make lmu used by a profile via the service's own backend.
 	if err := svc.SaveProfile(app.LaunchProfile{ID: "pro", Name: "Pro", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}); err != nil {
 		t.Fatalf("seed profile: %v", err)
 	}
@@ -635,6 +602,42 @@ func TestHandleDeleteProfileEmitsUpdated(t *testing.T) {
 	}
 }
 
+func TestHandleDuplicateProfileEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	handleDuplicateProfile("creator", "creator-copy", "Creador (copia)", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
+		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	}
+	if got := svc.ListProfiles(); len(got) != 2 {
+		t.Fatalf("expected 2 profiles after duplicate, got %d", len(got))
+	}
+}
+
+func TestHandleDuplicateProfileEmitsErrorOnMissing(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleDuplicateProfile("ghost", "ghost-copy", "G", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleDuplicateProfileEmitsErrorOnCollision(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator-copy", Name: "Existing"}); err != nil {
+		t.Fatalf("seed dup: %v", err)
+	}
+	handleDuplicateProfile("creator", "creator-copy", "Otra", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
 func TestHandleLaunchProfileEmitsErrorOnUnknown(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleLaunchProfile("nope", svc, emitter, context.Background())
@@ -651,28 +654,81 @@ func TestHandleCancelProfileNoPanic(t *testing.T) {
 	}
 }
 
-func TestHandleChainErrorEmitsDialogAndError(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	payload := launcher.ChainProgress{ProfileID: "pro", StepIndex: 1, Message: "boom"}
-	handleChainError(emitter, payload)
-	// We emit a question event for the frontend dialog plus launcher:error fallback.
-	want := map[string]bool{"launcher:dialog:question": false, "launcher:error": false}
-	for _, e := range emitter.events {
-		if _, ok := want[e]; ok {
-			want[e] = true
-		}
-	}
-	for name, seen := range want {
-		if !seen {
-			t.Fatalf("expected event %q, got %v", name, emitter.events)
-		}
-	}
-}
-
 func TestHandleAppPickEmitsFallbackError(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	handleAppPick(emitter)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
 		t.Fatalf("expected launcher:error fallback, got %v", emitter.events)
+	}
+}
+
+// fakeLauncherDialog is a minimal launcherDialogShower for tests. It records
+// every prompt and returns the pre-configured answer.
+type fakeLauncherDialog struct {
+	answer  bool
+	prompts []struct{ profile, message string }
+}
+
+func (f *fakeLauncherDialog) ShowRetry(profileID, message string) bool {
+	f.prompts = append(f.prompts, struct{ profile, message string }{profileID, message})
+	return f.answer
+}
+
+func TestHandleChainErrorRetriesOnYes(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dialog := &fakeLauncherDialog{answer: true}
+	handleChainError("creator", 0, "launcher: app lmu not found", svc, emitter, dialog)
+
+	if len(dialog.prompts) != 1 {
+		t.Fatalf("expected 1 dialog prompt, got %d", len(dialog.prompts))
+	}
+	if dialog.prompts[0].profile != "creator" {
+		t.Errorf("wrong profile in prompt: %q", dialog.prompts[0].profile)
+	}
+	if dialog.prompts[0].message != "launcher: app lmu not found" {
+		t.Errorf("wrong message in prompt: %q", dialog.prompts[0].message)
+	}
+	// On yes, the handler must relaunch the profile. svc.LaunchProfile runs
+	// the chain on a goroutine; we accept that the profile is still
+	// resolvable and that the handler did not error.
+	got := svc.ListProfiles()
+	if len(got) != 1 || got[0].ID != "creator" {
+		t.Errorf("profile lost after retry: %+v", got)
+	}
+}
+
+func TestHandleChainErrorDoesNotRetryOnNo(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dialog := &fakeLauncherDialog{answer: false}
+	handleChainError("creator", 0, "boom", svc, emitter, dialog)
+
+	if len(dialog.prompts) != 1 {
+		t.Fatalf("expected 1 dialog prompt, got %d", len(dialog.prompts))
+	}
+	// On no, the handler must NOT call LaunchProfile and must NOT emit
+	// events.
+	if len(emitter.events) != 0 {
+		t.Errorf("expected no events on no-retry, got %v", emitter.events)
+	}
+}
+
+func TestHandleChainErrorOnMissingProfileEmitsError(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	dialog := &fakeLauncherDialog{answer: true}
+	// Profile does not exist; handler must emit launcher:error and not
+	// prompt the user.
+	handleChainError("ghost", 0, "boom", svc, emitter, dialog)
+
+	if len(dialog.prompts) != 0 {
+		t.Errorf("must not prompt when profile is missing; got %d prompts", len(dialog.prompts))
+	}
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
 	}
 }

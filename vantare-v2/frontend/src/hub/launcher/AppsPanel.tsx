@@ -119,7 +119,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
           return (
             <li
               key={app.id}
-              className="rounded-lg bg-black/20 px-3 py-2 cursor-pointer"
+              className="rounded-lg bg-black/20 px-3 py-2 cursor-pointer hover:bg-white/5 transition-colors"
               onClick={() =>
                 setDetailsAppId(
                   detailsAppId === app.id ? null : app.id,

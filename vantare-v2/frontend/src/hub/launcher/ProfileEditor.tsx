@@ -64,7 +64,7 @@ export function ProfileEditor({
                   setDraft({ ...draft, name: e.target.value })
                 }
                 data-testid="profile-editor-name"
-                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
+                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
               />
             </label>
 
@@ -78,7 +78,7 @@ export function ProfileEditor({
                   setDraft({ ...draft, description: e.target.value })
                 }
                 data-testid="profile-editor-description"
-                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
+                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
               />
             </label>
 
@@ -93,7 +93,7 @@ export function ProfileEditor({
                 }
                 data-testid="profile-editor-notes"
                 rows={3}
-                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
+                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
               />
             </label>
 
@@ -116,7 +116,7 @@ export function ProfileEditor({
                       setDraft({ ...draft, steps: next });
                     }}
                     data-testid={`editor-step-app-${i}`}
-                    className="flex-1 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
+                    className="flex-1 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
                   >
                     <option value="">— Selecciona app —</option>
                     {apps.map((a) => (
@@ -135,7 +135,7 @@ export function ProfileEditor({
                       setDraft({ ...draft, steps: next });
                     }}
                     data-testid={`editor-step-delay-${i}`}
-                    className="w-16 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
+                    className="w-16 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
                   />
                   <button
                     onClick={() => {
@@ -146,7 +146,7 @@ export function ProfileEditor({
                     }}
                     data-testid={`editor-step-up-${i}`}
                     aria-label="Mover arriba"
-                    className="px-1 text-vantare-textDim hover:text-white"
+                    className="p-1 rounded hover:bg-white/10 transition-colors text-vantare-textDim hover:text-white"
                   >
                     ↑
                   </button>
@@ -159,7 +159,7 @@ export function ProfileEditor({
                     }}
                     data-testid={`editor-step-down-${i}`}
                     aria-label="Mover abajo"
-                    className="px-1 text-vantare-textDim hover:text-white"
+                    className="p-1 rounded hover:bg-white/10 transition-colors text-vantare-textDim hover:text-white"
                   >
                     ↓
                   </button>
@@ -170,7 +170,7 @@ export function ProfileEditor({
                     }}
                     data-testid={`editor-step-remove-${i}`}
                     aria-label="Eliminar paso"
-                    className="px-1 text-vantare-textDim hover:text-vantare-red-400"
+                    className="p-1 rounded hover:bg-white/10 hover:bg-vantare-red-400/10 transition-colors text-vantare-textDim hover:text-vantare-red-400"
                   >
                     ✕
                   </button>
@@ -206,7 +206,7 @@ export function ProfileEditor({
                 }
                 data-testid="profile-editor-hotkey"
                 placeholder="ctrl+shift+1 (vacío = sin hotkey)"
-                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white"
+                className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
               />
               {draft.hotkey && !isHotkeyAllowed(draft.hotkey) && (
                 <span

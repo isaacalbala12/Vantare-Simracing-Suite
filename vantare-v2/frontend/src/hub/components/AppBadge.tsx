@@ -21,7 +21,7 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
     <span
       className="inline-flex items-center gap-2"
       title={title}
-      data-testid="app-badge"
+      data-testid={`app-badge-${app.id}`}
     >
       <span
         className={`inline-flex items-center justify-center rounded-lg font-bold text-white ${dim}`}

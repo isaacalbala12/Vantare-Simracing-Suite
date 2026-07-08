@@ -2,7 +2,12 @@
 
 package launcher
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
 
 // RegistryApp represents a single application entry discovered from the Windows
 // Registry uninstall keys. It is the source data for the "Add Non-Steam Game"
@@ -20,10 +25,21 @@ func ListRegistryApps() []RegistryApp {
 	candidates := readUninstallEntries()
 	out := make([]RegistryApp, 0, len(candidates))
 	for i, c := range candidates {
+		exePath := c.InstallLocation
+		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".exe") {
+			if entries, err := os.ReadDir(exePath); err == nil {
+				for _, e := range entries {
+					if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".exe") {
+						exePath = filepath.Join(exePath, e.Name())
+						break
+					}
+				}
+			}
+		}
 		out = append(out, RegistryApp{
 			ID:             fmt.Sprintf("registry-%d", i),
 			DisplayName:    c.DisplayName,
-			ExecutablePath: c.InstallLocation,
+			ExecutablePath: exePath,
 		})
 	}
 	return out

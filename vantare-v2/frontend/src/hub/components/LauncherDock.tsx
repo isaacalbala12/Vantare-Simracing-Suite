@@ -172,7 +172,7 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
       >
         <ListIcon />
       </button>
-      <div className="overflow-y-auto flex flex-col gap-1">
+      <div className="overflow-y-auto flex flex-col gap-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(245,245,245,0.16) transparent" }}>
         {orderedProfiles.map((p) => {
           const displayName =
             p.id === "creator"

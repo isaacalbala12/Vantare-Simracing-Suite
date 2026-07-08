@@ -3,6 +3,7 @@ package launcher
 import (
 	"context"
 	"fmt"
+	"log"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -126,9 +127,13 @@ func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 	success := r.runChained(ctx, profile)
 	durationMs := time.Since(chainStart).Milliseconds()
 
-	_ = RecordProfileAttempt(r.backend, profile.ID)
+	if err := RecordProfileAttempt(r.backend, profile.ID); err != nil {
+		log.Printf("launcher: telemetry: %v", err)
+	}
 	if success {
-		_ = RecordProfileSuccess(r.backend, profile.ID, durationMs)
+		if err := RecordProfileSuccess(r.backend, profile.ID, durationMs); err != nil {
+			log.Printf("launcher: telemetry: %v", err)
+		}
 	}
 
 	r.emit.Emit("launcher:chain:done", ChainProgress{

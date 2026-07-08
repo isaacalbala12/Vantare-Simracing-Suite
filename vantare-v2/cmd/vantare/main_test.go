@@ -648,7 +648,7 @@ func TestHandleLaunchProfileEmitsErrorOnUnknown(t *testing.T) {
 
 func TestHandleCancelProfileNoPanic(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
-	handleCancelProfile("whatever", svc, emitter)
+	handleCancelProfile("whatever", svc)
 	if len(emitter.events) != 0 {
 		t.Fatalf("cancel must not emit events, got %v", emitter.events)
 	}
@@ -801,7 +801,7 @@ func TestHandleChainErrorOnMissingProfileEmitsError(t *testing.T) {
 func TestHandleProfileCancel(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	// Cancel a non-existent profile must not panic or emit events.
-	handleCancelProfile("nonexistent", svc, emitter)
+	handleCancelProfile("nonexistent", svc)
 	if len(emitter.events) != 0 {
 		t.Fatalf("cancel must not emit events, got %v", emitter.events)
 	}
@@ -809,7 +809,7 @@ func TestHandleProfileCancel(t *testing.T) {
 	if err := svc.SaveProfile(app.LaunchProfile{ID: "pro", Name: "Pro"}); err != nil {
 		t.Fatalf("seed profile: %v", err)
 	}
-	handleCancelProfile("pro", svc, emitter)
+	handleCancelProfile("pro", svc)
 	if len(emitter.events) != 0 {
 		t.Fatalf("cancel must not emit events after save, got %v", emitter.events)
 	}
@@ -1005,7 +1005,7 @@ func TestHandleLaunchFlagIgnoresMissingFlag(t *testing.T) {
 	}
 }
 
-func TestHandleWindowCloseCancelsChains(t *testing.T) {
+func TestCancelAllNoPanic(t *testing.T) {
 	svc, _ := newTestLauncherService(t)
 	// Seed a profile.
 	if err := svc.SaveProfile(app.LaunchProfile{
@@ -1019,10 +1019,10 @@ func TestHandleWindowCloseCancelsChains(t *testing.T) {
 		t.Fatalf("launch: %v", err)
 	}
 	// CancelAll must not panic.
-	handleShutdownCancelChains(svc)
+	svc.CancelAll()
 	// No event check needed; CancelAll is silent.
 	emitter2 := &spyMainEmitter{}
-	handleShutdownCancelChains(svc)
+	svc.CancelAll()
 	if len(emitter2.events) != 0 {
 		t.Fatalf("expected no events from CancelAll, got %v", emitter2.events)
 	}

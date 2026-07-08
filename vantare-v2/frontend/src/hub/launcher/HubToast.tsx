@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion } from "motion/react";
 import { Events } from "@wailsio/runtime";
 
@@ -47,6 +48,13 @@ export function HubToast({
   onClose,
 }: HubToastProps) {
   const styles = variantStyles[variant];
+
+  // Auto-dismiss after 8 seconds
+  useEffect(() => {
+    if (!onClose) return;
+    const timer = setTimeout(onClose, 8000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
   const handleRetry = () => {
     if (onRetry) {

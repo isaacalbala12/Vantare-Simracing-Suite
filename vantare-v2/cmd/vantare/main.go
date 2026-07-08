@@ -219,9 +219,8 @@ func handleLaunchProfile(id string, svc *launcher.Service, emitter app.EventEmit
 }
 
 // handleCancelProfile cancels the active launch chain for a profile, if any.
-func handleCancelProfile(id string, svc *launcher.Service, emitter app.EventEmitter) {
+func handleCancelProfile(id string, svc *launcher.Service) {
 	svc.CancelChain(id)
-	_ = emitter
 }
 
 // handleAppPick opens a native file picker for an executable. Wails v3
@@ -377,13 +376,6 @@ func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *laun
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-}
-
-// handleShutdownCancelChains cancels every active launch chain. This is the
-// shutdown hook called by wails.OnShutdown so no orphaned processes are left
-// behind when the Hub closes mid-chain.
-func handleShutdownCancelChains(svc *launcher.Service) {
-	svc.CancelAll()
 }
 
 func main() {
@@ -1289,7 +1281,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleCancelProfile(payload.ID, launcherSvc, emitter)
+		handleCancelProfile(payload.ID, launcherSvc)
 	})
 
 	// File picker for manual apps. Wails v3 alpha.98-tui has no native dialog

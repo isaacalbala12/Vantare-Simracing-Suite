@@ -38,16 +38,6 @@ export type LaunchProfile = {
   hotkey?: string;
 };
 
-export type ChainStatus = "waiting" | "starting" | "started" | "error" | "done";
-
-export type ChainProgress = {
-  profileId: string;
-  stepIndex: number;
-  appId: string;
-  status: ChainStatus;
-  message?: string;
-};
-
 // Helpers puros
 
 export function getAppsFromSettings(

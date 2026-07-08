@@ -18,6 +18,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const DEFAULT_COLOR = "#6b7280";
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  launching: "Lanzando…",
+  done: "Completado",
+  failed: "Fallido",
+};
+
 function getCategoryColor(apps: LauncherAppEntry[], appId: string): string {
   const app = apps.find((a) => a.id === appId);
   if (!app) return DEFAULT_COLOR;
@@ -101,7 +108,7 @@ export function ProfileCardTimeline({ chain, apps, onCancel }: Props) {
                   step.appId}
               </div>
               <div className="text-[10px] text-vantare-textMuted">
-                {step.status}
+                {STATUS_LABELS[step.status] ?? step.status}
               </div>
             </motion.div>
           );

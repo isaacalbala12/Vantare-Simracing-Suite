@@ -173,6 +173,60 @@ describe("AddNonSteamGameModal", () => {
     expect(screen.getByText("Beta App")).toBeTruthy();
   });
 
+  it("filters out apps with blocked keywords in displayName", async () => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    dispatch("launcher:registry:listed", {
+      apps: [
+        { id: "r-1", displayName: "NVIDIA Driver", executablePath: "C:\\P\\d.exe" },
+        { id: "r-2", displayName: "Java Updater", executablePath: "C:\\P\\u.exe" },
+        { id: "r-3", displayName: "Support Agent", executablePath: "C:\\P\\a.exe" },
+        { id: "r-4", displayName: "Spotify", executablePath: "C:\\P\\s.exe" },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Spotify")).toBeTruthy();
+    });
+
+    // Apps with blocked keywords should not appear
+    expect(screen.queryByText("NVIDIA Driver")).toBeNull();
+    expect(screen.queryByText("Java Updater")).toBeNull();
+    expect(screen.queryByText("Support Agent")).toBeNull();
+  });
+
+  it("always shows known apps even with blocked keywords in name", async () => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    // "crewchief" has "helper" in blocked keywords semantics, but
+    // known IDs bypass filtering entirely
+    dispatch("launcher:registry:listed", {
+      apps: [
+        { id: "crewchief", displayName: "CrewChief", executablePath: "C:\\P\\cc.exe" },
+        { id: "lmu", displayName: "LMU Helper", executablePath: "C:\\P\\lmu.exe" },
+        { id: "r-1", displayName: "Some Driver Tool", executablePath: "C:\\P\\t.exe" },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("CrewChief")).toBeTruthy();
+      expect(screen.getByText("LMU Helper")).toBeTruthy();
+    });
+
+    // Non-known app with blocked keyword should be filtered
+    expect(screen.queryByText("Some Driver Tool")).toBeNull();
+  });
+
   it("single-select: clicking a row highlights it, clicking another switches selection", async () => {
     render(
       <AddNonSteamGameModal
@@ -204,13 +258,13 @@ describe("AddNonSteamGameModal", () => {
 
     // Click first row
     fireEvent.click(row1);
-    expect(row1.className).toContain("bg-accent/20");
-    expect(row2.className).not.toContain("bg-accent/20");
+    expect(row1.className).toContain("bg-accent/10");
+    expect(row2.className).not.toContain("bg-accent/10");
 
     // Click second row
     fireEvent.click(row2);
-    expect(row1.className).not.toContain("bg-accent/20");
-    expect(row2.className).toContain("bg-accent/20");
+    expect(row1.className).not.toContain("bg-accent/10");
+    expect(row2.className).toContain("bg-accent/10");
   });
 
   it("single-select: clicking the same row toggles selection off", async () => {
@@ -238,10 +292,10 @@ describe("AddNonSteamGameModal", () => {
     const row = screen.getByTestId("add-non-steam-row-r-1");
 
     fireEvent.click(row);
-    expect(row.className).toContain("bg-accent/20");
+    expect(row.className).toContain("bg-accent/10");
 
     fireEvent.click(row);
-    expect(row.className).not.toContain("bg-accent/20");
+    expect(row.className).not.toContain("bg-accent/10");
   });
 
   it("add button is disabled when no selection", () => {

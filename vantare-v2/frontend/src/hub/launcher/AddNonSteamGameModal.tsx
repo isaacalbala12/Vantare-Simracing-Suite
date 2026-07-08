@@ -19,6 +19,30 @@ type Props = {
 
 const CAP = 200;
 
+const KNOWN_IDS = new Set([
+  "lmu",
+  "obs",
+  "crewchief",
+  "discord",
+  "spotify",
+  "motec",
+  "simhub",
+]);
+
+const BLOCKED_KEYWORDS = [
+  "driver",
+  "control panel",
+  "updater",
+  "uninstall",
+  "helper",
+  "install manager",
+  "service",
+  "agent",
+  "support agent",
+  "utility accelerator",
+  "audio accelerator",
+];
+
 function toLauncherEntry(app: RegistryApp): LauncherAppEntry {
   const hash = [...app.displayName].reduce(
     (a, c) => a + c.charCodeAt(0),
@@ -121,9 +145,16 @@ function ModalBody({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return q
-      ? lowercased.filter((a) => a._lower.includes(q))
-      : lowercased;
+    return lowercased.filter((a) => {
+      // Siempre mostrar apps del catálogo conocido
+      if (KNOWN_IDS.has(a.id)) return true;
+      // Bloquear apps con keywords no deseadas
+      const nameLower = a.displayName.toLowerCase();
+      if (BLOCKED_KEYWORDS.some((kw) => nameLower.includes(kw)))
+        return false;
+      // Filtrar por búsqueda
+      return q ? a._lower.includes(q) : true;
+    });
   }, [lowercased, search]);
 
   const visible = filtered.slice(0, CAP);
@@ -162,7 +193,7 @@ function ModalBody({
     <>
       <header className="p-4 border-b border-white/10">
         <h2 className="text-lg font-bold text-white">Añadir programa</h2>
-        <p className="mt-1 text-xs text-vantare-textDim">
+        <p className="mt-1 text-xs text-white/60">
           Selecciona un programa para añadir a tu launcher
         </p>
       </header>
@@ -176,7 +207,7 @@ function ModalBody({
             setSelectedId(null);
           }}
           placeholder="Buscar..."
-          className="w-full rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
+          className="w-full rounded-md bg-black/40 border border-white/20 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
           data-testid="add-non-steam-search"
         />
       </div>
@@ -186,13 +217,13 @@ function ModalBody({
         data-testid="add-non-steam-list"
       >
         {loading ? (
-          <div className="p-4 text-xs text-vantare-textDim">
+          <div className="p-4 text-xs text-white/35">
             Cargando...
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs uppercase tracking-wider text-vantare-textDim border-b border-white/5">
+              <tr className="text-xs uppercase tracking-wider text-white/35 border-b border-white/5">
                 <th className="p-2 text-left font-medium">PROGRAMA</th>
                 <th className="p-2 text-left font-medium">UBICACIÓN</th>
               </tr>
@@ -202,27 +233,42 @@ function ModalBody({
                 <tr
                   key={entry.id}
                   onClick={() => toggleSelection(entry.id)}
-                  className={`cursor-pointer ${
+                  className={`cursor-pointer bg-black/20 ${
                     selectedId === entry.id
-                      ? "bg-accent/20"
+                      ? "bg-accent/10 border border-accent/30"
                       : "hover:bg-white/5"
                   }`}
                   data-testid={`add-non-steam-row-${entry.id}`}
                 >
                   <td className="p-2">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedId === entry.id}
-                        readOnly
-                        className="accent-accent"
+                      <span
                         data-testid={`add-non-steam-checkbox-${entry.id}`}
-                      />
+                        className={`inline-flex items-center justify-center w-4 h-4 rounded border ${
+                          selectedId === entry.id
+                            ? "bg-accent border-accent"
+                            : "border-white/20 bg-black/40"
+                        }`}
+                      >
+                        {selectedId === entry.id && (
+                          <svg
+                            className="w-3 h-3 text-black"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </span>
                       <AppBadge app={entry} size="sm" />
                     </label>
                   </td>
                   <td
-                    className="max-w-[320px] truncate p-2 text-xs text-vantare-textDim"
+                    className="max-w-[320px] truncate p-2 text-xs text-white/50"
                     title={entry.executablePath ?? ""}
                   >
                     {entry.executablePath ?? ""}
@@ -233,7 +279,7 @@ function ModalBody({
           </table>
         )}
         {moreCount > 0 && (
-          <div className="p-3 text-xs text-vantare-textMuted border-t border-white/5">
+          <div className="p-3 text-xs text-white/35 border-t border-white/5">
             Refina la búsqueda para ver más ({moreCount} resultados más).
           </div>
         )}
@@ -251,14 +297,14 @@ function ModalBody({
         <button
           onClick={handleBrowse}
           data-testid="add-non-steam-browse"
-          className="mr-auto px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:text-white"
+          className="mr-auto px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-white/60 hover:text-white"
         >
           Browse...
         </button>
         <button
           onClick={onClose}
           data-testid="add-non-steam-cancel"
-          className="px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:text-white"
+          className="px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[.18em] text-white/35 hover:text-white"
         >
           Cancelar
         </button>

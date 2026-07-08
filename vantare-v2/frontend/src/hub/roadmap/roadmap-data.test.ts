@@ -3,12 +3,73 @@ import {
   clampProgress,
   getOverallProgress,
   getCurrentPhase,
+  getRoadmapDataset,
+  nearestOnScale,
+  PROGRESS_SCALE,
   ROADMAP_PHASES,
   ROADMAP_AREAS,
   ROADMAP_MILESTONES,
+  ROADMAP_CURRENT,
+  ROADMAP_NEXT,
+  ROADMAP_CHANGELOG,
+  ROADMAP_FEEDBACK_LINKS,
+  ROADMAP_CHANGELOG_URL,
   type RoadmapPhase,
   type RoadmapArea,
 } from "./roadmap-data";
+
+describe("nearestOnScale", () => {
+  it("snaps to the scale", () => {
+    for (const v of [3, 12, 27, 49, 73, 98]) {
+      expect(PROGRESS_SCALE).toContain(nearestOnScale(v));
+    }
+  });
+  it("maps midpoints correctly", () => {
+    expect(nearestOnScale(0)).toBe(0);
+    expect(nearestOnScale(10)).toBe(10);
+    expect(nearestOnScale(17)).toBe(10);
+  expect(nearestOnScale(18)).toBe(25);
+  expect(nearestOnScale(37)).toBe(25);
+  expect(nearestOnScale(38)).toBe(50);
+  expect(nearestOnScale(62)).toBe(50);
+  });
+});
+
+describe("ROADMAP datasets", () => {
+  it("current has 4 phases and 6 areas", () => {
+    expect(getRoadmapDataset("current").phases.length).toBe(4);
+    expect(getRoadmapDataset("current").areas.length).toBe(6);
+  });
+  it("next has 15 phases", () => {
+    expect(getRoadmapDataset("next").phases.length).toBe(15);
+  });
+  it("all phase/area progress values are on the scale", () => {
+    for (const ds of [ROADMAP_CURRENT, ROADMAP_NEXT]) {
+      for (const p of ds.phases) {
+        expect(PROGRESS_SCALE).toContain(p.progress);
+      }
+      for (const a of ds.areas) {
+        expect(PROGRESS_SCALE).toContain(a.progress);
+      }
+    }
+  });
+  it("current overall progress is on the scale", () => {
+    expect(PROGRESS_SCALE).toContain(getOverallProgress(ROADMAP_CURRENT.areas));
+  });
+});
+
+describe("ROADMAP changelog + feedback links", () => {
+  it("changelog has 4 entries", () => {
+    expect(ROADMAP_CHANGELOG.length).toBe(4);
+  });
+  it("feedback links use real URLs", () => {
+    expect(ROADMAP_FEEDBACK_LINKS.github).toContain("github.com/isaacalbala12");
+    expect(ROADMAP_FEEDBACK_LINKS.discord).toContain("discord.gg");
+  });
+  it("changelog url points to public changelog", () => {
+    expect(ROADMAP_CHANGELOG_URL).toContain("docs/changelog.md");
+  });
+});
 
 describe("clampProgress", () => {
   it("clamps negative values to 0", () => {
@@ -33,30 +94,30 @@ describe("getOverallProgress", () => {
     expect(getOverallProgress([])).toBe(0);
   });
 
-  it("calculates rounded average of area progress", () => {
+  it("snaps to the progress scale (40 -> 50)", () => {
     const areas: ReadonlyArray<RoadmapArea> = [
-      { id: "a", title: "A", progress: 50, status: "in-progress" },
-      { id: "b", title: "B", progress: 30, status: "in-progress" },
+      { id: "a", titleKey: "a", progress: 50, status: "in-progress" },
+      { id: "b", titleKey: "b", progress: 30, status: "in-progress" },
     ];
-    expect(getOverallProgress(areas)).toBe(40);
+    expect(getOverallProgress(areas)).toBe(50);
   });
 
-  it("rounds to nearest integer", () => {
+  it("snaps to the progress scale (33 -> 25)", () => {
     const areas: ReadonlyArray<RoadmapArea> = [
-      { id: "a", title: "A", progress: 33, status: "in-progress" },
-      { id: "b", title: "B", progress: 33, status: "in-progress" },
-      { id: "c", title: "C", progress: 33, status: "in-progress" },
+      { id: "a", titleKey: "a", progress: 33, status: "in-progress" },
+      { id: "b", titleKey: "b", progress: 33, status: "in-progress" },
+      { id: "c", titleKey: "c", progress: 33, status: "in-progress" },
     ];
-    expect(getOverallProgress(areas)).toBe(33);
+    expect(getOverallProgress(areas)).toBe(25);
   });
 });
 
 describe("getCurrentPhase", () => {
   it("returns the first in-progress phase", () => {
     const phases: ReadonlyArray<RoadmapPhase> = [
-      { id: "a", phaseLabel: "Fase A", title: "A", status: "done", targetLabel: "v1", progress: 100, summary: "", highlights: [] },
-      { id: "b", phaseLabel: "Fase B", title: "B", status: "in-progress", targetLabel: "v2", progress: 50, summary: "", highlights: [] },
-      { id: "c", phaseLabel: "Fase C", title: "C", status: "planned", targetLabel: "v3", progress: 0, summary: "", highlights: [] },
+      { id: "a", phaseLabelKey: "a", titleKey: "a", status: "done", targetLabelKey: "v1", progress: 100, summaryKey: "", highlightsKeys: [] },
+      { id: "b", phaseLabelKey: "b", titleKey: "b", status: "in-progress", targetLabelKey: "v2", progress: 50, summaryKey: "", highlightsKeys: [] },
+      { id: "c", phaseLabelKey: "c", titleKey: "c", status: "planned", targetLabelKey: "v3", progress: 0, summaryKey: "", highlightsKeys: [] },
     ];
     const result = getCurrentPhase(phases);
     expect(result).not.toBeNull();
@@ -65,8 +126,8 @@ describe("getCurrentPhase", () => {
 
   it("falls back to first planned when no in-progress", () => {
     const phases: ReadonlyArray<RoadmapPhase> = [
-      { id: "a", phaseLabel: "Fase A", title: "A", status: "done", targetLabel: "v1", progress: 100, summary: "", highlights: [] },
-      { id: "c", phaseLabel: "Fase C", title: "C", status: "planned", targetLabel: "v3", progress: 0, summary: "", highlights: [] },
+      { id: "a", phaseLabelKey: "a", titleKey: "a", status: "done", targetLabelKey: "v1", progress: 100, summaryKey: "", highlightsKeys: [] },
+      { id: "c", phaseLabelKey: "c", titleKey: "c", status: "planned", targetLabelKey: "v3", progress: 0, summaryKey: "", highlightsKeys: [] },
     ];
     const result = getCurrentPhase(phases);
     expect(result).not.toBeNull();
@@ -75,8 +136,8 @@ describe("getCurrentPhase", () => {
 
   it("returns null when no in-progress or planned", () => {
     const phases: ReadonlyArray<RoadmapPhase> = [
-      { id: "a", phaseLabel: "Fase A", title: "A", status: "done", targetLabel: "v1", progress: 100, summary: "", highlights: [] },
-      { id: "d", phaseLabel: "Fase D", title: "D", status: "future", targetLabel: "v4", progress: 0, summary: "", highlights: [] },
+      { id: "a", phaseLabelKey: "a", titleKey: "a", status: "done", targetLabelKey: "v1", progress: 100, summaryKey: "", highlightsKeys: [] },
+      { id: "d", phaseLabelKey: "d", titleKey: "d", status: "future", targetLabelKey: "v4", progress: 0, summaryKey: "", highlightsKeys: [] },
     ];
     expect(getCurrentPhase(phases)).toBeNull();
   });

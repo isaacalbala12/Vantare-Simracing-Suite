@@ -1,0 +1,10 @@
+{
+  "price_OVERLAYS_TODO": ["overlays"],
+  "price_ENGINEER_TODO": ["engineer"],
+  "price_SUITE_TODO": ["overlays", "engineer"],
+  "price_BETA_ACCESS_TODO": ["beta_access", "overlays", "engineer"],
+  "price_SUPPORTER_TODO": ["supporter", "overlays"],
+  "price_FOUNDER_TODO": ["founder", "overlays", "engineer", "ac_lua_pack"],
+  "price_PRO_FOUNDER_TODO": ["pro_founder", "overlays", "engineer", "ac_lua_pack"],
+  "price_VISIONARY_BACKER_TODO": ["visionary_backer", "overlays", "engineer", "ac_lua_pack"]
+}

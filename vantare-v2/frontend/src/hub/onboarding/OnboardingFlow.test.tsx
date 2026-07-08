@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 const { useLicenseMock, loginScreenMock, paywallScreenMock } = vi.hoisted(
@@ -149,5 +149,51 @@ describe("OnboardingFlow", () => {
       expect.objectContaining({ state: "device-limit" }),
     );
     expect(screen.getByTestId("paywall-screen")).toBeTruthy();
+  });
+});
+describe("OnboardingFlow i18n", () => {
+  beforeEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.clearAllMocks();
+    setLicense(null, true);
+  });
+
+  it("shows language selector in simulator step", () => {
+    render(<OnboardingFlow initialStep="simulator" />);
+    expect(screen.getByTestId("language-selector")).toBeTruthy();
+  });
+
+  it("displays welcome text in Spanish by default", () => {
+    render(<OnboardingFlow initialStep="simulator" />);
+    expect(screen.getByText("Bienvenido a Vantare")).toBeTruthy();
+  });
+
+  it("changes visible text when language is switched to English", () => {
+    render(<OnboardingFlow initialStep="simulator" />);
+    expect(screen.getByText("Bienvenido a Vantare")).toBeTruthy();
+    const select = screen.getByTestId("language-selector") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "en" } });
+    expect(screen.getByText("Welcome to Vantare")).toBeTruthy();
+  });
+
+  it("persists language choice in localStorage", () => {
+    render(<OnboardingFlow initialStep="simulator" />);
+    const select = screen.getByTestId("language-selector") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "pt" } });
+    expect(localStorage.getItem("vantare.locale")).toBe("pt");
+  });
+  it("renders simulator notes through i18n (noteKey)", () => {
+    render(<OnboardingFlow initialStep="simulator" />);
+    // Default locale is es → "Release 02 sim principal"
+    expect(screen.getByText("Release 02 sim principal")).toBeTruthy();
+  });
+
+  it("translates simulator notes when locale changes", () => {
+    render(<OnboardingFlow initialStep="simulator" />);
+    expect(screen.getByText("Release 02 sim principal")).toBeTruthy();
+    const select = screen.getByTestId("language-selector") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "en" } });
+    expect(screen.getByText("Release 02 main sim")).toBeTruthy();
   });
 });

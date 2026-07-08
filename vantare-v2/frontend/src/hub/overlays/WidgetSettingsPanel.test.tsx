@@ -60,6 +60,7 @@ vi.mock("../widgets/WidgetDesignGallery", () => ({
 
 vi.mock("../widgets/widget-design-gallery", () => ({
   applyOfficialDesignToProfile: vi.fn((p: unknown) => p),
+  getActiveOfficialDesignId: vi.fn(() => null),
 }));
 
 vi.mock("./WidgetVariantManager", () => ({
@@ -141,7 +142,7 @@ describe("WidgetSettingsPanel — Pro gating", () => {
     const notice = screen.getByTestId("pro-upgrade-notice");
     expect(notice).toBeDefined();
     expect(notice.textContent).toContain("Pro");
-    expect(notice.textContent).toContain("upgrade to apply");
+    expect(notice.textContent).toContain("mejora para aplicar");
   });
 
   it("does NOT show Pro notice when user has paid access", () => {

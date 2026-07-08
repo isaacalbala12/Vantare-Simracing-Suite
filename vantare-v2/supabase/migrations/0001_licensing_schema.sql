@@ -1,0 +1,200 @@
+-- 0001_licensing_schema.sql
+-- Migración de licencias para Release 02. Idempotente.
+-- Incluye correcciones de rate-limit (last_reset_at) y stripe_customer_id
+-- para el botón de Customer Portal (CHECKOUT-01 Task 3).
+
+-- ============================================================
+-- TASK 1: TABLAS
+-- ============================================================
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  email text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  language text default 'es',
+  primary_simulator text,
+  onboarding_completed boolean default false
+);
+
+create table if not exists public.user_entitlements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  product_key text not null,
+  status text not null default 'active',
+  expires_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  metadata jsonb,
+  unique (user_id, product_key)
+);
+
+create table if not exists public.devices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references public.profiles (id) on delete cascade,
+  fingerprint_hash text,
+  first_seen_at timestamptz default now(),
+  last_seen_at timestamptz default now(),
+  -- last_reset_at: cuándo se hizo el último reset de dispositivo.
+  -- Sustituye al contador reset_count_24h. La regla "1 reset cada 24h"
+  -- se comprueba contra esta fecha (ver RPC reset_active_device).
+  last_reset_at timestamptz
+);
+
+create table if not exists public.license_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles (id) on delete set null,
+  event_type text not null,
+  payload jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.stripe_customers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references public.profiles (id) on delete cascade,
+  stripe_customer_id text not null unique,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.stripe_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  stripe_subscription_id text not null unique,
+  stripe_price_id text,
+  status text,
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  cancel_at_period_end boolean,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists user_entitlements_user_id_idx on public.user_entitlements (user_id);
+create index if not exists user_entitlements_user_product_idx on public.user_entitlements (user_id, product_key);
+create index if not exists devices_user_id_idx on public.devices (user_id);
+create index if not exists devices_fingerprint_hash_idx on public.devices (fingerprint_hash);
+create index if not exists license_events_user_id_idx on public.license_events (user_id);
+create index if not exists license_events_created_at_idx on public.license_events (created_at);
+create index if not exists stripe_customers_customer_id_idx on public.stripe_customers (stripe_customer_id);
+create index if not exists stripe_subscriptions_sub_id_idx on public.stripe_subscriptions (stripe_subscription_id);
+create index if not exists stripe_subscriptions_user_id_idx on public.stripe_subscriptions (user_id);
+
+-- ============================================================
+-- TASK 2: RLS + TRIGGER
+-- ============================================================
+
+alter table public.profiles enable row level security;
+alter table public.user_entitlements enable row level security;
+alter table public.devices enable row level security;
+alter table public.license_events enable row level security;
+alter table public.stripe_customers enable row level security;
+alter table public.stripe_subscriptions enable row level security;
+
+drop policy if exists profiles_select_own on public.profiles;
+create policy profiles_select_own on public.profiles
+  for select using (auth.uid() = id);
+drop policy if exists profiles_update_own on public.profiles;
+create policy profiles_update_own on public.profiles
+  for update using (auth.uid() = id);
+
+drop policy if exists entitlements_select_own on public.user_entitlements;
+create policy entitlements_select_own on public.user_entitlements
+  for select using (auth.uid() = user_id);
+
+drop policy if exists devices_select_own on public.devices;
+create policy devices_select_own on public.devices
+  for select using (auth.uid() = user_id);
+
+drop policy if exists license_events_select_own on public.license_events;
+create policy license_events_select_own on public.license_events
+  for select using (auth.uid() = user_id and created_at > now() - interval '30 days');
+
+drop policy if exists stripe_customers_select_own on public.stripe_customers;
+create policy stripe_customers_select_own on public.stripe_customers
+  for select using (auth.uid() = user_id);
+
+drop policy if exists stripe_subscriptions_select_own on public.stripe_subscriptions;
+create policy stripe_subscriptions_select_own on public.stripe_subscriptions
+  for select using (auth.uid() = user_id);
+
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email)
+  values (new.id, new.email);
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ============================================================
+-- TASK 3: RPCS
+-- ============================================================
+
+-- RPC: get_account_entitlements
+-- Devuelve los entitlements activos del usuario autenticado, su email,
+-- fingerprint del device actual, la fecha de expiración más próxima
+-- y el stripe_customer_id para el botón de Customer Portal.
+create or replace function public.get_account_entitlements(device_fingerprint text)
+returns table(
+  user_id uuid,
+  email text,
+  entitlements text[],
+  active_device text,
+  expires_at timestamptz,
+  stripe_customer_id text
+) language plpgsql security definer as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  return query
+  select
+    p.id as user_id,
+    p.email,
+    coalesce(
+      array_agg(ue.product_key order by ue.product_key) filter (where ue.product_key is not null),
+      '{}'::text[]
+    ) as entitlements,
+    d.fingerprint_hash as active_device,
+    min(ue.expires_at) filter (where ue.expires_at is not null) as expires_at,
+    sc.stripe_customer_id
+  from public.profiles p
+  left join public.user_entitlements ue
+    on ue.user_id = p.id and ue.status = 'active'
+  left join public.devices d
+    on d.user_id = p.id
+  left join public.stripe_customers sc
+    on sc.user_id = p.id
+  where p.id = v_user_id
+  group by p.id, p.email, d.fingerprint_hash, sc.stripe_customer_id;
+end;
+$$;
+
+-- RPC: reset_active_device
+-- Borra el fingerprint del device activo para que Validate pueda
+-- reregistrar este PC como activo. Rate-limit 1 reset cada 24h.
+-- (Corregido: usa last_reset_at en vez de un contador que nunca volvía a 0.)
+create or replace function public.reset_active_device(device_fingerprint text)
+returns void language plpgsql security definer as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_last_reset timestamptz;
+begin
+  select d.last_reset_at into v_last_reset
+  from public.devices d
+  where d.user_id = v_user_id;
+
+  if v_last_reset is not null and v_last_reset > now() - interval '24 hours' then
+    raise exception 'rate_limit: solo 1 reset cada 24h';
+  end if;
+
+  update public.devices
+  set fingerprint_hash = null,
+      last_reset_at = now()
+  where user_id = v_user_id;
+end;
+$$;

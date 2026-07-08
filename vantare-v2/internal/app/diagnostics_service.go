@@ -10,23 +10,33 @@ import (
 	"github.com/vantare/overlays/v2/pkg/config"
 )
 
-// SanitizedLauncherConfig is a redacted version of LauncherConfig.
-type SanitizedLauncherConfig struct {
-	SimulatorID    string `json:"simulatorId"`
+// SanitizedLauncherApp is a redacted version of LauncherAppEntry.
+type SanitizedLauncherApp struct {
+	ID             string `json:"id"`
+	DisplayName    string `json:"displayName"`
+	Category       string `json:"category"`
 	LaunchMethod   string `json:"launchMethod"`
-	ExecutablePath string `json:"executablePath"`
-	SteamAppID     uint32 `json:"steamAppId,omitempty"`
+	Detected       bool   `json:"detected"`
+	ExecutablePath string `json:"executablePath,omitempty"` // redacted
+}
+
+// SanitizedLauncherProfile is a redacted version of LaunchProfile.
+type SanitizedLauncherProfile struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Steps int    `json:"steps"`
 }
 
 // SanitizedAppSettings is a redacted version of AppSettings safe for diagnostics.
 type SanitizedAppSettings struct {
-	DeltaMode              string                             `json:"deltaMode"`
-	CpuSampling            bool                               `json:"cpuSampling"`
-	Hotkeys                map[string]string                  `json:"hotkeys"`
-	ActiveOverlayProfileID string                             `json:"activeOverlayProfileId,omitempty"`
-	BetaWelcomeCompleted   bool                               `json:"betaWelcomeCompleted,omitempty"`
-	BetaUserRole           string                             `json:"betaUserRole,omitempty"`
-	Launchers              map[string]SanitizedLauncherConfig `json:"launchers,omitempty"`
+	DeltaMode              string                          `json:"deltaMode"`
+	CpuSampling            bool                            `json:"cpuSampling"`
+	Hotkeys                map[string]string               `json:"hotkeys"`
+	ActiveOverlayProfileID string                          `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted   bool                            `json:"betaWelcomeCompleted,omitempty"`
+	BetaUserRole           string                          `json:"betaUserRole,omitempty"`
+	LauncherApps           map[string]SanitizedLauncherApp `json:"launcherApps,omitempty"`
+	LauncherProfiles       []SanitizedLauncherProfile      `json:"launcherProfiles,omitempty"`
 }
 
 // SanitizedProfileSummary is a redacted summary of a profile safe for diagnostics.
@@ -123,18 +133,30 @@ func (s *DiagnosticsService) sanitizeSettings(as *AppSettings) *SanitizedAppSett
 		BetaWelcomeCompleted:   as.BetaWelcomeCompleted,
 		BetaUserRole:           as.BetaUserRole,
 	}
-	if len(as.Launchers) > 0 {
-		sanitized.Launchers = make(map[string]SanitizedLauncherConfig, len(as.Launchers))
-		for k, lc := range as.Launchers {
+	if len(as.LauncherApps) > 0 {
+		sanitized.LauncherApps = make(map[string]SanitizedLauncherApp, len(as.LauncherApps))
+		for k, appEntry := range as.LauncherApps {
 			redactedPath := "<redacted>"
-			if lc.ExecutablePath != "" {
-				redactedPath = s.sanitizePath(lc.ExecutablePath)
+			if appEntry.ExecutablePath != "" {
+				redactedPath = s.sanitizePath(appEntry.ExecutablePath)
 			}
-			sanitized.Launchers[k] = SanitizedLauncherConfig{
-				SimulatorID:    lc.SimulatorID,
-				LaunchMethod:   lc.LaunchMethod,
+			sanitized.LauncherApps[k] = SanitizedLauncherApp{
+				ID:             appEntry.ID,
+				DisplayName:    appEntry.DisplayName,
+				Category:       string(appEntry.Category),
+				LaunchMethod:   appEntry.LaunchMethod,
+				Detected:       appEntry.Detected,
 				ExecutablePath: redactedPath,
-				SteamAppID:     lc.SteamAppID,
+			}
+		}
+	}
+	if len(as.LauncherProfiles) > 0 {
+		sanitized.LauncherProfiles = make([]SanitizedLauncherProfile, len(as.LauncherProfiles))
+		for i, p := range as.LauncherProfiles {
+			sanitized.LauncherProfiles[i] = SanitizedLauncherProfile{
+				ID:    p.ID,
+				Name:  p.Name,
+				Steps: len(p.Steps),
 			}
 		}
 	}

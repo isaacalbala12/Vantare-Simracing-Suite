@@ -326,86 +326,6 @@ func TestSettingsServiceMergeKeepsBetaUserRole(t *testing.T) {
 	}
 }
 
-func TestSettingsServiceLoadPreservesLegacyWithoutLaunchers(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "app-settings.json")
-
-	// A legacy file from a build before LAUNCHER-01 has no "launchers" key.
-	// Load must succeed and keep Launchers nil so the card renders the
-	// "no configurado" state without errors.
-	legacy := `{"deltaMode":"self","cpuSampling":true,"hotkeys":{"toggleOverlay":"ctrl+shift+v"}}`
-	if err := os.WriteFile(path, []byte(legacy), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	svc := app.NewSettingsService(path, nil)
-	if err := svc.Load(); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if svc.Settings().Launchers != nil {
-		t.Errorf("expected Launchers to remain nil for legacy file, got %v", svc.Settings().Launchers)
-	}
-}
-
-func TestSettingsServiceLoadMergesLaunchers(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "app-settings.json")
-
-	persisted := `{"deltaMode":"self","cpuSampling":true,"launchers":{"lmu":{"simulatorId":"lmu","launchMethod":"steam-uri","steamAppId":2399420}}}`
-	if err := os.WriteFile(path, []byte(persisted), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	svc := app.NewSettingsService(path, nil)
-	if err := svc.Load(); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	cfg, ok := svc.Settings().Launchers["lmu"]
-	if !ok {
-		t.Fatal("expected lmu launcher config after load")
-	}
-	if cfg.LaunchMethod != "steam-uri" {
-		t.Errorf("expected launchMethod=steam-uri, got %q", cfg.LaunchMethod)
-	}
-	if cfg.SteamAppID != 2399420 {
-		t.Errorf("expected SteamAppID=2399420, got %d", cfg.SteamAppID)
-	}
-}
-
-func TestSettingsServiceSaveRoundtripsLaunchers(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "app-settings.json")
-
-	svc := app.NewSettingsService(path, nil)
-	if err := svc.Load(); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-
-	custom := app.DefaultAppSettings()
-	custom.Launchers = map[string]app.LauncherConfig{
-		"lmu": {
-			SimulatorID:    "lmu",
-			LaunchMethod:   "executable",
-			ExecutablePath: filepath.Join(dir, "lmu.exe"),
-		},
-	}
-	if err := svc.Save(custom); err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-
-	reloaded := app.NewSettingsService(path, nil)
-	if err := reloaded.Load(); err != nil {
-		t.Fatalf("Load after Save: %v", err)
-	}
-	cfg, ok := reloaded.Settings().Launchers["lmu"]
-	if !ok {
-		t.Fatal("expected lmu launcher config after round-trip")
-	}
-	if cfg.LaunchMethod != "executable" || cfg.ExecutablePath == "" {
-		t.Errorf("unexpected round-trip config: %+v", cfg)
-	}
-}
-
 func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
@@ -426,26 +346,66 @@ func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
 	}
 }
 
-func TestSettingsServiceGetSetLaunchers(t *testing.T) {
+func TestSettingsServicePersistsLauncherApps(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-
 	svc := app.NewSettingsService(path, nil)
-	if err := svc.Load(); err != nil {
-		t.Fatalf("Load: %v", err)
+	_ = svc.Load()
+	custom := app.DefaultAppSettings()
+	custom.LauncherApps = map[string]app.LauncherAppEntry{
+		"obs": {ID: "obs", DisplayName: "OBS Studio", Abbreviation: "OBS", Category: app.AppCategoryStreaming, LaunchMethod: "executable", Detected: true, GradientFrom: "#302e31", GradientTo: "#0a0a0a"},
 	}
-	if got := svc.GetLaunchers(); got != nil {
-		t.Errorf("expected nil GetLaunchers on fresh service, got %v", got)
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
 	}
+	loaded := app.NewSettingsService(path, nil)
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(loaded.Settings().LauncherApps) != 1 {
+		t.Fatalf("expected 1 app, got %d", len(loaded.Settings().LauncherApps))
+	}
+	if loaded.Settings().LauncherApps["obs"].DisplayName != "OBS Studio" {
+		t.Errorf("unexpected app name")
+	}
+}
 
-	want := map[string]app.LauncherConfig{
-		"lmu": {SimulatorID: "lmu", LaunchMethod: "steam-uri", SteamAppID: 2399420},
+func TestSettingsServicePersistsLauncherProfiles(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil)
+	_ = svc.Load()
+	custom := app.DefaultAppSettings()
+	custom.LauncherProfiles = []app.LaunchProfile{
+		{ID: "creator", Name: "Creador de Contenido", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}, {AppID: "obs", Delay: 2}}},
 	}
-	if err := svc.SetLaunchers(want); err != nil {
-		t.Fatalf("SetLaunchers: %v", err)
+	if err := svc.Save(custom); err != nil {
+		t.Fatalf("save: %v", err)
 	}
-	got := svc.GetLaunchers()
-	if got["lmu"].SteamAppID != 2399420 {
-		t.Errorf("expected GetLaunchers to reflect SetLaunchers, got %+v", got)
+	loaded := app.NewSettingsService(path, nil)
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(loaded.Settings().LauncherProfiles) != 1 {
+		t.Fatalf("expected 1 profile, got %d", len(loaded.Settings().LauncherProfiles))
+	}
+	if loaded.Settings().LauncherProfiles[0].Steps[1].Delay != 2 {
+		t.Errorf("expected delay 2, got %d", loaded.Settings().LauncherProfiles[0].Steps[1].Delay)
+	}
+}
+
+func TestDefaultAppSettingsIncludesDefaultProfiles(t *testing.T) {
+	s := app.DefaultAppSettings()
+	if len(s.LauncherProfiles) != 2 {
+		t.Fatalf("expected 2 default profiles, got %d", len(s.LauncherProfiles))
+	}
+	if s.LauncherProfiles[0].ID != "creator" {
+		t.Errorf("expected creator, got %s", s.LauncherProfiles[0].ID)
+	}
+	if s.LauncherProfiles[1].ID != "pro" {
+		t.Errorf("expected pro, got %s", s.LauncherProfiles[1].ID)
+	}
+	if len(s.LauncherApps) != 1 {
+		t.Fatalf("expected 1 default app (lmu), got %d", len(s.LauncherApps))
 	}
 }

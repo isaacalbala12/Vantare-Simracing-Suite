@@ -7,14 +7,11 @@ vi.mock("@wailsio/runtime", () => ({
     Emit: vi.fn(),
   },
 }));
-
-vi.mock("../components/LastActivityCard", () => ({
-  LastActivityCard: () => (
-    <div data-testid="last-activity-card">
-      <h2>Última actividad</h2>
-      <p>Sin carreras registradas todavía.</p>
-    </div>
-  ),
+vi.mock("../../i18n/I18nProvider", () => ({
+  useI18n: () => ({
+    locale: "es",
+    t: (key: string) => key,
+  }),
 }));
 
 afterEach(() => {
@@ -44,10 +41,6 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Plan Free/i)).toBeTruthy();
   });
 
-  it("renders Acciones rapidas", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText(/Acciones r/i)).toBeTruthy();
-  });
 
   it("renders upcoming calendar panel with Próximas carreras heading", () => {
     render(<DashboardPage />);
@@ -55,21 +48,7 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Próximas carreras/i)).toBeTruthy();
   });
 
-  it("renders last activity card", () => {
-    render(<DashboardPage />);
-    expect(screen.getByTestId("last-activity-card")).toBeTruthy();
-  });
 
-  it("renders launcher card", () => {
-    render(<DashboardPage />);
-    expect(screen.getByTestId("launcher-card")).toBeTruthy();
-  });
-
-  it("renders the Ingeniero section", () => {
-    render(<DashboardPage />);
-    expect(screen.getByTestId("dashboard-engineer-section")).toBeTruthy();
-    expect(screen.getByText(/Ingeniero Vantare/i)).toBeTruthy();
-  });
 
   it("renders Novedades Vantare section", () => {
     render(<DashboardPage />);
@@ -77,11 +56,6 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Novedades Vantare/i)).toBeTruthy();
   });
 
-  it("renders Simulador principal section", () => {
-    render(<DashboardPage />);
-    expect(screen.getByTestId("dashboard-main-sim")).toBeTruthy();
-    expect(screen.getByText(/Simulador principal/i)).toBeTruthy();
-  });
 
   it("does not render any fake data strings", () => {
     render(<DashboardPage />);
@@ -109,29 +83,12 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.queryByText(/iRacing y Assetto Corsa/i)).toBeNull();
   });
 
-  it("renders the ActiveOverlayCard placeholder (loading) by default", () => {
-    render(<DashboardPage />);
-    expect(screen.getByTestId("active-overlay-card")).toBeTruthy();
-    expect(screen.getByText(/Cargando estado/i)).toBeTruthy();
-    expect(screen.queryByTestId("active-overlay-open")).toBeNull();
-  });
 
-  it("renders RecommendedQuickStart primary CTA when no active profile", () => {
-    const onUseRecommended = vi.fn();
-    render(
-      <DashboardPage
-        onNavigate={vi.fn()}
-        onUseRecommended={onUseRecommended}
-      />,
-    );
-    const cta = screen.getByTestId("recommended-quickstart-cta");
-    fireEvent.click(cta);
-    expect(onUseRecommended).toHaveBeenCalledTimes(1);
-  });
 
-  it("renders Ver roadmap CTA in Ingeniero section", () => {
+  it("renders Ver roadmap CTA in feature carousel", () => {
     const onNavigate = vi.fn();
     render(<DashboardPage onNavigate={onNavigate} />);
+    expect(screen.getByTestId("dashboard-feature-carousel")).toBeTruthy();
     const cta = screen.getByText(/Ver roadmap/i);
     expect(cta).toBeTruthy();
     fireEvent.click(cta);

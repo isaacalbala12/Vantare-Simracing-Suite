@@ -1,0 +1,56 @@
+{
+  "calendar-interval-races-dayview": {
+    "label": "CALENDAR INTERVAL RACES",
+    "description": "mostrar las carreras de intervalo (Bronce/Plata/Oro) como eventos individuales en la línea de tiempo del DayView, con patrón escalonado predecible.",
+    "tipo": "feature",
+    "future": false,
+    "done": 0,
+    "total": 22,
+    "percent": 0
+  },
+  "roadmap-features-from-plans": {
+    "label": "ROADMAP ITERATION",
+    "description": "iterar la pantalla RoadmapPage — i18n de datos, dual roadmaps, changelog real, feedback panel, features desde planes, y porcentajes reales.",
+    "tipo": "feature",
+    "future": false,
+    "done": 24,
+    "total": 24,
+    "percent": 100
+  },
+  "obslan-double-pc": {
+    "label": "OBS LAN DOUBLE PC",
+    "description": "configuración automatizada de OBS LAN para doble PC con Vantare.",
+    "tipo": "research",
+    "future": true,
+    "done": 0,
+    "total": 0,
+    "percent": 0
+  },
+  "overlay-performance-fixes": {
+    "label": "OVERLAY PERFORMANCE",
+    "description": "optimizaciones de rendimiento en el runtime de overlays.",
+    "tipo": "improve",
+    "future": true,
+    "done": 0,
+    "total": 0,
+    "percent": 0
+  },
+  "p1-pedals-inventory": {
+    "label": "PEDALS INVENTORY",
+    "description": "inventario técnico del widget Pedals y camino a implementación completa.",
+    "tipo": "research",
+    "future": true,
+    "done": 0,
+    "total": 18,
+    "percent": 0
+  },
+  "vantare-suite-ingeniero-integration": {
+    "label": "INGENIERO INTEGRATION",
+    "description": "integración completa del módulo Ingeniero con LMU live.",
+    "tipo": "feature",
+    "future": true,
+    "done": 0,
+    "total": 55,
+    "percent": 0
+  }
+}

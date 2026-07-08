@@ -1,12 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { signOutMock, getSessionMock, useLicenseMock, refreshMock, emitMock } = vi.hoisted(() => ({
+const { signOutMock, getSessionMock, useLicenseMock, refreshMock, emitMock, mockOpenURL } = vi.hoisted(() => ({
   signOutMock: vi.fn(),
   getSessionMock: vi.fn(),
   useLicenseMock: vi.fn(),
   refreshMock: vi.fn(),
   emitMock: vi.fn(),
+  mockOpenURL: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../../lib/supabase-auth", () => ({
@@ -23,6 +24,7 @@ vi.mock("@wailsio/runtime", () => ({
     Emit: emitMock,
     On: vi.fn().mockReturnValue(() => {}),
   },
+  Browser: { OpenURL: (...args: unknown[]) => mockOpenURL(...args) },
 }));
 
 import { AccountSettings } from "./AccountSettings";
@@ -37,12 +39,14 @@ function mockUseLicense(result: unknown) {
 
 describe("AccountSettings", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     cleanup();
     signOutMock.mockReset();
     getSessionMock.mockReset();
     useLicenseMock.mockReset();
     refreshMock.mockReset();
     emitMock.mockReset();
+    mockOpenURL.mockReset();
   });
 
   it("renders account section with email and license state", () => {
@@ -155,5 +159,55 @@ describe("AccountSettings", () => {
     expect(
       screen.getByTestId("account-entitlement-overlays"),
     ).toBeTruthy();
+  });
+
+  // --- CHECKOUT-01 Task 3: Portal button ---
+
+  it("calls fetch to create-portal-session and opens portal URL when Gestionar suscripción is clicked", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ url: "https://billing.stripe.com/session/test" }),
+    } as Response);
+
+    mockUseLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u123",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<AccountSettings />);
+    fireEvent.click(screen.getByRole("button", { name: /gestionar suscripción/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    const [url, opts] = fetchSpy.mock.calls[0];
+    expect(url).toContain("/functions/v1/create-portal-session");
+    expect(opts?.method).toBe("POST");
+    expect(mockOpenURL).toHaveBeenCalledWith("https://billing.stripe.com/session/test");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("shows portal error when portal fetch fails", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "No customer" }),
+    } as Response);
+
+    mockUseLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<AccountSettings />);
+    fireEvent.click(screen.getByRole("button", { name: /gestionar suscripción/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/no se pudo abrir el portal/i)).toBeTruthy(),
+    );
+
+    fetchSpy.mockRestore();
   });
 });

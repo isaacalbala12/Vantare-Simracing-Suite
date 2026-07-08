@@ -31,6 +31,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+
     let cancelled = false;
 
     const unsubChanged = Events.On(
@@ -64,19 +65,11 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       },
     );
 
-    // On mount, check if Supabase has a persisted session in the WebView's
-    // localStorage (from a previous OAuth login). If found, pass the
-    // access_token to license:validate so the backend can validate it
-    // without requiring the user to re-authenticate.
-    getSession().then((session) => {
-      if (!cancelled) {
-        if (session?.access_token) {
-          refresh(session.access_token);
-        } else {
-          refresh();
-        }
-      }
-    });
+    // Skip getSession in standalone mode (no Wails backend)
+    // Just call refresh directly after a short delay
+    const initTimeout = setTimeout(() => {
+      if (!cancelled) refresh();
+    }, 500);
 
     // Safety timeout: prevent infinite loading if the Wails IPC bridge
     // wasn't ready or the backend never responded. Resolves to anonymous
@@ -84,8 +77,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     const timeoutId = setTimeout(() => {
       if (cancelled) return;
       setLoading(false);
-      refresh();
-    }, 8000);
+      // Call refresh directly, don't wait for getSession which may hang
+      Events.Emit("license:validate", {});
+    }, 3000);
 
     return () => {
       cancelled = true;

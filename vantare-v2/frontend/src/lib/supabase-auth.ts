@@ -2,6 +2,7 @@ import {
   createClient,
   type Session,
   type SupabaseClient,
+  type User,
 } from "@supabase/supabase-js";
 
 function supabaseUrl(): string {
@@ -85,6 +86,21 @@ export async function signInWithEmail(
   }
 }
 
+export async function signUp(
+  email: string,
+  password: string,
+): Promise<{ user: User | null; session: Session | null; error?: string }> {
+  try {
+    const c = getSupabaseClient();
+    const { data, error } = await c.auth.signUp({ email, password });
+    if (error) return { user: null, session: null, error: error.message };
+    return { user: data.user, session: data.session, error: undefined };
+  } catch (err) {
+    if (isConfigError(err)) return { user: null, session: null, error: missingConfigError };
+    return { user: null, session: null, error: err instanceof Error ? err.message : "Error desconocido" };
+  }
+}
+
 export async function signOut(): Promise<{ error?: string }> {
   try {
     const { error } = await getSupabaseClient().auth.signOut();
@@ -94,6 +110,21 @@ export async function signOut(): Promise<{ error?: string }> {
       return { error: missingConfigError };
     }
     throw err;
+  }
+}
+
+export async function resetPasswordForEmail(
+  email: string,
+): Promise<{ error?: string }> {
+  try {
+    const c = getSupabaseClient();
+    const redirectTo = `${oauthCallbackUrl()}/#/auth/callback`;
+    const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return { error: error.message };
+    return { error: undefined };
+  } catch (err) {
+    if (isConfigError(err)) return { error: missingConfigError };
+    return { error: err instanceof Error ? err.message : "Error desconocido" };
   }
 }
 

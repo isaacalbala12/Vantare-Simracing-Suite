@@ -27,12 +27,13 @@ func TestDiagnosticsRedaction(t *testing.T) {
 	t.Run("NoExecutablePath", func(t *testing.T) {
 		sSvc := NewSettingsService("configs/app-settings.json", nil)
 		sSvc.settings = &AppSettings{
-			Launchers: map[string]LauncherConfig{
+			LauncherApps: map[string]LauncherAppEntry{
 				"acc": {
-					SimulatorID:    "acc",
-					LaunchMethod:   "steam",
+					ID:             "acc",
+					DisplayName:    "Assetto Corsa Competizione",
+					Category:       AppCategorySimulator,
+					LaunchMethod:   "executable",
 					ExecutablePath: "C:\\Users\\TestUser\\steam\\acc.exe",
-					SteamAppID:     805550,
 				},
 			},
 		}
@@ -41,29 +42,33 @@ func TestDiagnosticsRedaction(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if diag.AppSettings == nil || diag.AppSettings.Launchers == nil {
-			t.Fatal("expected launchers in diagnostics")
+		if diag.AppSettings == nil || diag.AppSettings.LauncherApps == nil {
+			t.Fatal("expected launcher apps in diagnostics")
 		}
-		lc := diag.AppSettings.Launchers["acc"]
-		if lc.ExecutablePath == "C:\\Users\\TestUser\\steam\\acc.exe" {
-			t.Errorf("ExecutablePath should be redacted, got %q", lc.ExecutablePath)
+		la := diag.AppSettings.LauncherApps["acc"]
+		if la.ExecutablePath == "C:\\Users\\TestUser\\steam\\acc.exe" {
+			t.Errorf("ExecutablePath should be redacted, got %q", la.ExecutablePath)
 		}
-		if lc.ExecutablePath == "" {
-			t.Errorf("ExecutablePath should not be empty, got %q", lc.ExecutablePath)
+		if la.ExecutablePath == "" {
+			t.Errorf("ExecutablePath should not be empty, got %q", la.ExecutablePath)
 		}
-		if lc.SimulatorID != "acc" {
-			t.Errorf("expected SimulatorID acc, got %q", lc.SimulatorID)
+		if la.ID != "acc" {
+			t.Errorf("expected ID acc, got %q", la.ID)
 		}
-		if lc.SteamAppID != 805550 {
-			t.Errorf("expected SteamAppID 805550, got %d", lc.SteamAppID)
+		if la.DisplayName != "Assetto Corsa Competizione" {
+			t.Errorf("expected DisplayName, got %q", la.DisplayName)
 		}
 	})
 
 	t.Run("NoLocalPathsInJSON", func(t *testing.T) {
 		sSvc := NewSettingsService("configs/app-settings.json", nil)
 		sSvc.settings = &AppSettings{
-			Launchers: map[string]LauncherConfig{
+			LauncherApps: map[string]LauncherAppEntry{
 				"acc": {
+					ID:             "acc",
+					DisplayName:    "Assetto Corsa Competizione",
+					Category:       AppCategorySimulator,
+					LaunchMethod:   "executable",
 					ExecutablePath: "C:\\Users\\TestUser\\steam\\acc.exe",
 				},
 			},
@@ -112,8 +117,12 @@ func TestDiagnosticsRedaction(t *testing.T) {
 	t.Run("NoSensitiveStrings", func(t *testing.T) {
 		sSvc := NewSettingsService("configs/app-settings.json", nil)
 		sSvc.settings = &AppSettings{
-			Launchers: map[string]LauncherConfig{
+			LauncherApps: map[string]LauncherAppEntry{
 				"test": {
+					ID:             "test",
+					DisplayName:    "Test App",
+					Category:       AppCategoryUtility,
+					LaunchMethod:   "executable",
 					ExecutablePath: "C:\\Users\\TestUser\\test.exe",
 				},
 			},

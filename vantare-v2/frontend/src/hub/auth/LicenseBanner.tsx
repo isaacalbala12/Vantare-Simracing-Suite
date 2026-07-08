@@ -1,4 +1,5 @@
 import { useLicense } from "../../lib/license";
+import { useI18n } from "../../i18n/I18nProvider";
 
 type BannerMessage = {
   state: "grace" | "expired" | "device-limit";
@@ -6,6 +7,7 @@ type BannerMessage = {
 };
 
 function getMessage(
+  t: (key: string) => string,
   state: BannerMessage["state"] | "active" | "anonymous" | "authenticated-no-entitlement" | "unconfigured",
   graceEndsAt?: string,
 ): BannerMessage | null {
@@ -13,29 +15,27 @@ function getMessage(
     return {
       state,
       text: graceEndsAt
-        ? `Licencia en periodo de gracia hasta ${new Date(graceEndsAt).toLocaleString()}`
-        : "Licencia en periodo de gracia",
+        ? t("license.graceCountdown").replace("{date}", new Date(graceEndsAt).toLocaleString())
+        : t("license.graceNoDate"),
     };
   }
   if (state === "expired") {
-    return { state, text: "Licencia expirada. Renueva para continuar." };
+    return { state, text: t("license.expiredMsg") };
   }
   if (state === "device-limit") {
-    return {
-      state,
-      text: "Límite de dispositivo alcanzado. Restablece tu PC activo.",
-    };
+    return { state, text: t("license.deviceLimitMsg") };
   }
   return null;
 }
 
 export function LicenseBanner() {
   const { result, loading } = useLicense();
+  const { t } = useI18n();
   if (loading || !result) return null;
   if (result.state === "active") return null;
   if (result.state === "anonymous") return null;
 
-  const msg = getMessage(result.state, result.graceEndsAt);
+  const msg = getMessage(t, result.state, result.graceEndsAt);
   if (!msg) return null;
 
   return (

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"path/filepath"
 	"sync/atomic"
@@ -114,7 +114,7 @@ func TestBuildHotkeyActionMapIncludesToggleEditMode(t *testing.T) {
 
 	expected := []string{"toggleOverlay", "toggleEditMode", "nextProfile", "prevProfile"}
 	if len(actionMap) != len(expected) {
-		t.Fatalf("expected %d actions, got %d", len(expected), len(actionMap))
+		t.Fatalf("expected %d actions, got %d", len(actionMap), len(expected))
 	}
 	for _, name := range expected {
 		if _, ok := actionMap[name]; !ok {
@@ -129,7 +129,6 @@ func TestHandleToggleEditModeTogglesDisplayMode(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
 
-	// Start the overlay so the toggle has something to act on.
 	if _, err := controller.Start(profileSvc.Profile()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
@@ -348,14 +347,12 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
 
-	// Start the overlay so a window exists and the flag is true.
 	if _, err := controller.Start(profileSvc.Profile()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
 	var overlayRunning atomic.Bool
 	overlayRunning.Store(true)
 
-	// Replicate the stopOverlay closure body exactly.
 	controller.Stop()
 	if overlayRunning.Load() {
 		resetOverlayDisplayMode(controller, profileSvc, emitter)
@@ -368,15 +365,11 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	if profileSvc.Profile().DisplayMode != config.ModeRacing {
 		t.Fatalf("expected racing mode after close, got %q", profileSvc.Profile().DisplayMode)
 	}
-	// resetOverlayDisplayMode emits profile:loaded + overlay:edit-mode-changed.
 	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
 		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
 	}
 }
 
-// TestStopOverlayClosureSkipsResetWhenAlreadyStopped verifies the guard: if
-// overlayRunning is already false (normal stop path already ran), the closure
-// does not double-reset nor emit spurious events.
 func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
@@ -387,7 +380,6 @@ func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 		t.Fatalf("start overlay: %v", err)
 	}
 	var overlayRunning atomic.Bool
-	// Normal stop path already cleared the flag.
 	overlayRunning.Store(false)
 
 	controller.Stop()
@@ -404,24 +396,18 @@ func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	}
 }
 
-// TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning
-// verifies that when StartActiveOverlay fails after stopping the previous
-// window, overlayRunning is synced to false and no edit-mode-changed event is
-// emitted.
 func TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning(t *testing.T) {
 	controller := app.NewOverlayController(&fakeOverlayFactory{
 		last: &fakeOverlayWindow{},
 	})
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-	// Starter returns a non-running status with an error, simulating a failed
-	// start after the previous window was closed.
 	starter := &fakeOverlayStarter{
 		status: app.OverlayStatus{Running: false},
 		err:    fmt.Errorf("simulated start failure"),
 	}
 	var overlayRunning atomic.Bool
-	overlayRunning.Store(true) // pretend a window was running before
+	overlayRunning.Store(true)
 
 	handleToggleEditMode(controller, profileSvc, starter, &overlayRunning, emitter)
 
@@ -438,17 +424,12 @@ func TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning(t *te
 	}
 }
 
-// TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails verifies
-// that when ApplyProfileMode fails on the real window, the frontend is NOT
-// told edit mode changed (otherwise it would render edit chrome over a window
-// that is still click-through).
 func TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails(t *testing.T) {
 	factory := &failingApplyProfileModeFactory{}
 	controller := app.NewOverlayController(factory)
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
 
-	// Start so a (failing) window exists.
 	if _, err := controller.Start(profileSvc.Profile()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
@@ -462,22 +443,14 @@ func TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails(t *testi
 			t.Fatal("must not emit overlay:edit-mode-changed when ApplyProfileMode fails")
 		}
 	}
-	// SetDisplayMode already mutated the profile to edit before the window
-	// apply failed; that is expected and documented — the frontend is not
-	// notified, so it will not render edit chrome.
 }
 
-// TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow verifies Fix D:
-// when there is no running window, resetOverlayDisplayMode still forces the
-// profile to racing but does not attempt to apply the mode to a nil window
-// (which would log a spurious error).
 func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
 	emitter := &spyMainEmitter{}
 	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
 
-	// No window started; controller has no current window.
 	resetOverlayDisplayMode(controller, profileSvc, emitter)
 
 	if profileSvc.Profile().DisplayMode != config.ModeRacing {
@@ -486,227 +459,276 @@ func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
 		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
 	}
-	// The fake factory never created a window, so no mode was applied to any
-	// window. This confirms we did not touch a nil/stale window reference.
 	if factory.last != nil {
 		t.Fatalf("expected no window to be created, got %v", factory.last)
 	}
 }
 
-// --- LAUNCHER-01 wiring tests ---------------------------------------------
+// --- Launcher Extendido (Fase 5) wiring tests ------------------------------
 
-// fakeLauncherService satisfies the three interfaces the handler functions
-// depend on. Each field captures the most recent call so tests can assert the
-// wiring triggered the expected method.
-type fakeLauncherService struct {
-	configureCalls atomic.Int32
-	launchCalls    atomic.Int32
-	statusCalls    atomic.Int32
-	statusFor      string
-
-	configureCfg launcher.LauncherConfig
-	launchFor    string
-
-	statusOut launcher.LauncherStatus
-	launchOut launcher.LauncherStatus
-
-	configureErr error
-	launchErr    error
+type fakeLauncherBackend struct {
+	apps     map[string]app.LauncherAppEntry
+	profiles []app.LaunchProfile
 }
 
-func (f *fakeLauncherService) GetStatus(simulatorID string) launcher.LauncherStatus {
-	f.statusCalls.Add(1)
-	f.statusFor = simulatorID
-	return f.statusOut
-}
-
-func (f *fakeLauncherService) Configure(in launcher.LauncherConfig) (launcher.LauncherStatus, error) {
-	f.configureCalls.Add(1)
-	f.configureCfg = in
-	if f.configureErr != nil {
-		return launcher.LauncherStatus{}, f.configureErr
+func (f *fakeLauncherBackend) GetLauncherApps() map[string]app.LauncherAppEntry {
+	out := make(map[string]app.LauncherAppEntry, len(f.apps))
+	for k, v := range f.apps {
+		out[k] = v
 	}
-	return launcher.LauncherStatus{SimulatorID: in.SimulatorID, Configured: true, LaunchMethod: in.LaunchMethod, SteamAppID: in.SteamAppID}, nil
+	return out
 }
 
-func (f *fakeLauncherService) Launch(simulatorID string) (launcher.LauncherStatus, error) {
-	f.launchCalls.Add(1)
-	f.launchFor = simulatorID
-	if f.launchErr != nil {
-		return launcher.LauncherStatus{}, f.launchErr
+func (f *fakeLauncherBackend) SetLauncherApps(apps map[string]app.LauncherAppEntry) error {
+	f.apps = make(map[string]app.LauncherAppEntry, len(apps))
+	for k, v := range apps {
+		f.apps[k] = v
 	}
-	return f.launchOut, nil
+	return nil
 }
 
-func newTestSettingsService(t *testing.T) *app.SettingsService {
+func (f *fakeLauncherBackend) GetLauncherProfiles() []app.LaunchProfile {
+	out := make([]app.LaunchProfile, len(f.profiles))
+	copy(out, f.profiles)
+	return out
+}
+
+func (f *fakeLauncherBackend) SetLauncherProfiles(profiles []app.LaunchProfile) error {
+	f.profiles = make([]app.LaunchProfile, len(profiles))
+	copy(f.profiles, profiles)
+	return nil
+}
+
+func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "app-settings.json")
-	svc := app.NewSettingsService(path, &spyMainEmitter{})
-	if err := svc.Load(); err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	return svc
-}
-
-func TestHandleLauncherStatusGetEmitsStatus(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	fake := &fakeLauncherService{
-		statusOut: launcher.LauncherStatus{SimulatorID: "lmu", Configured: true, LaunchMethod: "steam-uri", SteamAppID: launcher.DefaultLMUAppID},
-	}
-	handleLauncherStatusGet("lmu", fake, emitter)
-	if fake.statusCalls.Load() != 1 {
-		t.Fatalf("expected 1 status call, got %d", fake.statusCalls.Load())
-	}
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:status" {
-		t.Fatalf("expected single launcher:status, got %v", emitter.events)
-	}
-}
-
-func TestHandleLauncherStatusGetDefaultsToLMU(t *testing.T) {
-	fake := &fakeLauncherService{}
-	handleLauncherStatusGet("", fake, &spyMainEmitter{})
-	if fake.statusFor != "lmu" {
-		t.Fatalf("expected default simulator 'lmu', got %q", fake.statusFor)
-	}
-}
-
-func TestHandleLauncherConfigurePersistsAndEmits(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	fake := &fakeLauncherService{}
-	settings := newTestSettingsService(t)
-	handleLauncherConfigure(
-		launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "steam-uri", SteamAppID: launcher.DefaultLMUAppID},
-		fake,
-		settings,
-		emitter,
-		func(string, ...any) {},
-	)
-	if fake.configureCalls.Load() != 1 {
-		t.Fatalf("expected 1 configure call, got %d", fake.configureCalls.Load())
-	}
-	wantEvents := []string{"launcher:configured", "settings"}
-	if len(emitter.events) != 2 || emitter.events[0] != wantEvents[0] || emitter.events[1] != wantEvents[1] {
-		t.Fatalf("events=%v, want %v", emitter.events, wantEvents)
-	}
-}
-
-func TestHandleLauncherConfigureRejectsInvalidPayload(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	fake := &fakeLauncherService{configureErr: errors.New("invalid config: bad")}
-	settings := newTestSettingsService(t)
-	handleLauncherConfigure(
-		launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "magic"},
-		fake,
-		settings,
-		emitter,
-		func(string, ...any) {},
-	)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
-		t.Fatalf("expected single launcher:error event, got %v", emitter.events)
-	}
-	for _, e := range emitter.events {
-		if e == "launcher:configured" || e == "settings" {
-			t.Fatalf("must not emit %q on error, got %v", e, emitter.events)
-		}
-	}
-}
-
-func TestHandleLauncherLaunchEmitsLaunchedOnSuccess(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	fake := &fakeLauncherService{
-		launchOut: launcher.LauncherStatus{
-			SimulatorID:    "lmu",
-			Configured:     true,
-			LaunchMethod:   "steam-uri",
-			SteamAppID:     launcher.DefaultLMUAppID,
-			LastLaunchedAt: "2026-06-30T12:00:00Z",
+	backend := &fakeLauncherBackend{
+		apps: map[string]app.LauncherAppEntry{
+			"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate", LaunchMethod: "steam-uri", SteamAppID: 2399420},
 		},
 	}
-	handleLauncherLaunch("lmu", fake, emitter, func(string, ...any) {})
-	if fake.launchCalls.Load() != 1 {
-		t.Fatalf("expected 1 launch call, got %d", fake.launchCalls.Load())
-	}
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:launched" {
-		t.Fatalf("expected single launcher:launched event, got %v", emitter.events)
+	emitter := &spyMainEmitter{}
+	return launcher.NewService(backend, emitter, nil), emitter
+}
+
+func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleDiscoverApps(svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:detected" {
+		t.Fatalf("expected launcher:apps:detected, got %v", emitter.events)
 	}
 }
 
-func TestHandleLauncherLaunchEmitsErrorOnFailure(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	fake := &fakeLauncherService{launchErr: errors.New("not configured: lmu")}
-	handleLauncherLaunch("lmu", fake, emitter, func(string, ...any) {})
+func TestHandleAddAppEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	entry := app.LauncherAppEntry{
+		ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\obs.exe`,
+	}
+	handleAddApp(entry, svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
+		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	}
+	payload := emitter.data[0].(map[string]any)
+	apps, ok := payload["apps"].(map[string]app.LauncherAppEntry)
+	if !ok {
+		t.Fatalf("apps payload missing or wrong type: %+v", payload)
+	}
+	if _, ok := apps["obs"]; !ok {
+		t.Fatal("added app missing from emitted apps")
+	}
+}
+
+func TestHandleAddAppEmitsErrorOnInvalid(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	bad := app.LauncherAppEntry{ID: "x", LaunchMethod: "executable", ExecutablePath: "p"}
+	handleAddApp(bad, svc, emitter)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
-		t.Fatalf("expected single launcher:error, got %v", emitter.events)
-	}
-	for _, e := range emitter.events {
-		if e == "launcher:launched" {
-			t.Fatalf("must not emit launcher:launched on error, got %v", emitter.events)
-		}
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
 	}
 }
 
-func TestHandleLauncherLaunchDefaultsToLMU(t *testing.T) {
-	fake := &fakeLauncherService{
-		launchOut: launcher.LauncherStatus{SimulatorID: "lmu", LaunchMethod: "steam-uri"},
-	}
-	handleLauncherLaunch("", fake, &spyMainEmitter{}, func(string, ...any) {})
-	if fake.launchFor != "lmu" {
-		t.Fatalf("expected default simulator 'lmu', got %q", fake.launchFor)
+func TestHandleRemoveAppEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleRemoveApp("lmu", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
+		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
 	}
 }
 
-// TestLauncherServiceWiringEndToEnd exercises the real *launcher.Service
-// through the wiring functions. It writes a config and confirms GetStatus
-// reflects it after a Save round-trip via the SettingsService. This catches
-// the SettingsBackend interface mismatch silently and proves the wiring
-// works against the production types.
-func TestLauncherServiceWiringEndToEnd(t *testing.T) {
+func TestHandleRemoveAppEmitsErrorWhenUsedByProfile(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "pro", Name: "Pro", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+	handleRemoveApp("lmu", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleListProfilesEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleListProfiles(svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
+		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	}
+}
+
+func TestHandleSaveProfileEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}
+	handleSaveProfile(profile, svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
+		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	}
+}
+
+func TestHandleSaveProfileEmitsErrorOnInvalid(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	bad := app.LaunchProfile{ID: "p", Name: "P", Steps: []app.LaunchStep{{AppID: "ghost", Delay: 0}}}
+	handleSaveProfile(bad, svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleDeleteProfileEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "pro", Name: "Pro"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	handleDeleteProfile("pro", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
+		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	}
+}
+
+func TestHandleDuplicateProfileEmitsUpdated(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	handleDuplicateProfile("creator", "creator-copy", "Creador (copia)", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
+		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	}
+	if got := svc.ListProfiles(); len(got) != 2 {
+		t.Fatalf("expected 2 profiles after duplicate, got %d", len(got))
+	}
+}
+
+func TestHandleDuplicateProfileEmitsErrorOnMissing(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleDuplicateProfile("ghost", "ghost-copy", "G", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleDuplicateProfileEmitsErrorOnCollision(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator-copy", Name: "Existing"}); err != nil {
+		t.Fatalf("seed dup: %v", err)
+	}
+	handleDuplicateProfile("creator", "creator-copy", "Otra", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleLaunchProfileEmitsErrorOnUnknown(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleLaunchProfile("nope", svc, emitter, context.Background())
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleCancelProfileNoPanic(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleCancelProfile("whatever", svc, emitter)
+	if len(emitter.events) != 0 {
+		t.Fatalf("cancel must not emit events, got %v", emitter.events)
+	}
+}
+
+func TestHandleAppPickEmitsFallbackError(t *testing.T) {
 	emitter := &spyMainEmitter{}
-	settings := newTestSettingsService(t)
-	svc := launcher.NewService(settings, emitter, nil)
-
-	// Configure a steam-uri entry and confirm it persists via settings.
-	cfg := launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "steam-uri"}
-	if _, err := svc.Configure(cfg); err != nil {
-		t.Fatalf("Configure: %v", err)
-	}
-	st := settings.GetLaunchers()["lmu"]
-	if st.LaunchMethod != "steam-uri" {
-		t.Fatalf("expected persisted launchMethod=steam-uri, got %q", st.LaunchMethod)
-	}
-	if st.SteamAppID != launcher.DefaultLMUAppID {
-		t.Fatalf("expected default SteamAppID %d, got %d", launcher.DefaultLMUAppID, st.SteamAppID)
-	}
-
-	// Status through the wiring function should return Configured=true.
-	handleLauncherStatusGet("lmu", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:status" {
-		t.Fatalf("expected launcher:status, got %v", emitter.events)
-	}
-	if _, ok := emitter.data[0].(map[string]any)["lmu"].(launcher.LauncherStatus); !ok {
-		t.Fatalf("expected lmu status payload, got %+v", emitter.data[0])
+	handleAppPick(emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error fallback, got %v", emitter.events)
 	}
 }
 
-// TestLauncherConfigureHandlerReEmitsSettingsOnRejection makes sure that
-// when Configure fails the wiring does NOT re-emit "settings" with stale
-// data. This guards against a regression where a rejected configure could
-// leave the UI thinking the saved payload is current.
-func TestLauncherConfigureHandlerReEmitsSettingsOnRejection(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	fake := &fakeLauncherService{configureErr: errors.New("invalid config: bad method")}
-	settings := newTestSettingsService(t)
-	handleLauncherConfigure(
-		launcher.LauncherConfig{SimulatorID: "lmu", LaunchMethod: "magic"},
-		fake,
-		settings,
-		emitter,
-		func(string, ...any) {},
-	)
-	for _, e := range emitter.events {
-		if e == "settings" {
-			t.Fatalf("must not re-emit settings on configure failure, got %v", emitter.events)
-		}
+// fakeLauncherDialog is a minimal launcherDialogShower for tests. It records
+// every prompt and returns the pre-configured answer.
+type fakeLauncherDialog struct {
+	answer  bool
+	prompts []struct{ profile, message string }
+}
+
+func (f *fakeLauncherDialog) ShowRetry(profileID, message string) bool {
+	f.prompts = append(f.prompts, struct{ profile, message string }{profileID, message})
+	return f.answer
+}
+
+func TestHandleChainErrorRetriesOnYes(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dialog := &fakeLauncherDialog{answer: true}
+	handleChainError("creator", 0, "launcher: app lmu not found", svc, emitter, dialog)
+
+	if len(dialog.prompts) != 1 {
+		t.Fatalf("expected 1 dialog prompt, got %d", len(dialog.prompts))
+	}
+	if dialog.prompts[0].profile != "creator" {
+		t.Errorf("wrong profile in prompt: %q", dialog.prompts[0].profile)
+	}
+	if dialog.prompts[0].message != "launcher: app lmu not found" {
+		t.Errorf("wrong message in prompt: %q", dialog.prompts[0].message)
+	}
+	// On yes, the handler must relaunch the profile. svc.LaunchProfile runs
+	// the chain on a goroutine; we accept that the profile is still
+	// resolvable and that the handler did not error.
+	got := svc.ListProfiles()
+	if len(got) != 1 || got[0].ID != "creator" {
+		t.Errorf("profile lost after retry: %+v", got)
+	}
+}
+
+func TestHandleChainErrorDoesNotRetryOnNo(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creador"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dialog := &fakeLauncherDialog{answer: false}
+	handleChainError("creator", 0, "boom", svc, emitter, dialog)
+
+	if len(dialog.prompts) != 1 {
+		t.Fatalf("expected 1 dialog prompt, got %d", len(dialog.prompts))
+	}
+	// On no, the handler must NOT call LaunchProfile and must NOT emit
+	// events.
+	if len(emitter.events) != 0 {
+		t.Errorf("expected no events on no-retry, got %v", emitter.events)
+	}
+}
+
+func TestHandleChainErrorOnMissingProfileEmitsError(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	dialog := &fakeLauncherDialog{answer: true}
+	// Profile does not exist; handler must emit launcher:error and not
+	// prompt the user.
+	handleChainError("ghost", 0, "boom", svc, emitter, dialog)
+
+	if len(dialog.prompts) != 0 {
+		t.Errorf("must not prompt when profile is missing; got %d prompts", len(dialog.prompts))
+	}
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
 	}
 }

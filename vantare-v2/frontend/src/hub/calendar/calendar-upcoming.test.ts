@@ -3,13 +3,9 @@ import { buildUpcomingRaceItems } from "./calendar-upcoming";
 import { EMPTY_CALENDAR, type Calendar, type RaceSeries, type RaceSeriesPreview, type RaceEvent } from "../../calendar/calendar-types";
 
 describe("buildUpcomingRaceItems", () => {
-  it("returns empty summary for empty calendar", () => {
-    const summary = buildUpcomingRaceItems(EMPTY_CALENDAR, new Date("2026-07-03T10:00:00Z"));
-    expect(summary.bronce).toBeNull();
-    expect(summary.plata).toBeNull();
-    expect(summary.oro).toBeNull();
-    expect(summary.weekly).toBeNull();
-    expect(summary.events).toEqual([]);
+  it("returns empty array for empty calendar", () => {
+    const items = buildUpcomingRaceItems(EMPTY_CALENDAR, new Date("2026-07-03T10:00:00Z"));
+    expect(items).toHaveLength(0);
   });
 
   it("extracts nextStarts correctly for series", () => {
@@ -46,11 +42,12 @@ describe("buildUpcomingRaceItems", () => {
     const calendar: Calendar = { ...EMPTY_CALENDAR, series, seriesPreviews: previews };
     const now = new Date("2026-07-03T10:25:00Z");
 
-    const summary = buildUpcomingRaceItems(calendar, now);
+    const items = buildUpcomingRaceItems(calendar, now);
 
-    expect(summary.bronce).toBeTruthy();
-    expect(summary.bronce?.isActive).toBe(true);
-    expect(summary.bronce?.nextStart).toBe("2026-07-03T10:20:00Z");
+    const beginner = items.find((i) => i.tier === "beginner");
+    expect(beginner).toBeTruthy();
+    expect(beginner!.isActive).toBe(true);
+    expect(beginner!.nextStart).toBe("2026-07-03T10:20:00Z");
   });
 
   it("picks the closest future start if none are active", () => {
@@ -87,11 +84,12 @@ describe("buildUpcomingRaceItems", () => {
     const calendar: Calendar = { ...EMPTY_CALENDAR, series, seriesPreviews: previews };
     const now = new Date("2026-07-03T10:25:00Z");
 
-    const summary = buildUpcomingRaceItems(calendar, now);
+    const items = buildUpcomingRaceItems(calendar, now);
 
-    expect(summary.plata).toBeTruthy();
-    expect(summary.plata?.isActive).toBe(false);
-    expect(summary.plata?.nextStart).toBe("2026-07-03T11:00:00Z");
+    const intermediate = items.find((i) => i.tier === "intermediate");
+    expect(intermediate).toBeTruthy();
+    expect(intermediate!.isActive).toBe(false);
+    expect(intermediate!.nextStart).toBe("2026-07-03T11:00:00Z");
   });
 
   it("extracts concrete upcoming events from calendar.events", () => {
@@ -140,12 +138,13 @@ describe("buildUpcomingRaceItems", () => {
     const calendar: Calendar = { ...EMPTY_CALENDAR, events };
     const now = new Date("2026-07-03T10:30:00Z");
 
-    const summary = buildUpcomingRaceItems(calendar, now);
+    const items = buildUpcomingRaceItems(calendar, now);
 
-    expect(summary.events.length).toBe(2);
-    expect(summary.events[0].name).toBe("Active Event");
-    expect(summary.events[0].isActive).toBe(true);
-    expect(summary.events[1].name).toBe("Future Event");
-    expect(summary.events[1].isActive).toBe(false);
+    const raceEvents = items.filter((i) => i.kind === "event");
+    expect(raceEvents.length).toBe(2);
+    expect(raceEvents[0].name).toBe("Active Event");
+    expect(raceEvents[0].isActive).toBe(true);
+    expect(raceEvents[1].name).toBe("Future Event");
+    expect(raceEvents[1].isActive).toBe(false);
   });
 });

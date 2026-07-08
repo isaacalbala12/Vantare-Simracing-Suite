@@ -475,27 +475,6 @@ describe("HubApp gate (production)", () => {
     });
   });
 
-  it("navigates to Overlays Studio in recommended mode when 'Usar perfil recomendado' is clicked", async () => {
-    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true, activeOverlayProfileId: "" } }), 0);
-      }
-      return () => false;
-    });
-    setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
-      deviceOK: true,
-    });
-    render(<HubApp />);
-    const cta = await waitFor(() => screen.getByTestId("recommended-quickstart-cta"));
-    cta.click();
-    await waitFor(() => {
-      expect(screen.getAllByTestId("recommended-save-as-own").length).toBeGreaterThan(0);
-    });
-  });
 
   it("renders Launcher page when launcher section is selected", async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {

@@ -20,6 +20,8 @@ vi.mock("@wailsio/runtime", () => ({
 vi.mock("../../lib/supabase-auth", () => ({
   signInWithEmail: vi.fn(),
   signInWithOAuth: vi.fn(),
+  signUp: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
   setSupabaseSession: mockSetSupabaseSession,
 }));
 
@@ -28,6 +30,8 @@ import { LoginScreen } from "./LoginScreen";
 import {
   signInWithEmail,
   signInWithOAuth,
+  signUp,
+  resetPasswordForEmail,
 } from "../../lib/supabase-auth";
 
 describe("LoginScreen", () => {
@@ -146,7 +150,7 @@ describe("LoginScreen", () => {
       { url: "https://discord.com/api/oauth2/authorize?..." },
     );
     render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /^discord$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continuar con discord/i }));
     expect(signInWithOAuth).toHaveBeenCalledWith("discord");
     await vi.waitFor(() =>
       expect(mockOpenURL).toHaveBeenCalledWith(
@@ -229,5 +233,91 @@ describe("LoginScreen", () => {
     await vi.waitFor(() => {
       expect(mockSetSupabaseSession).not.toHaveBeenCalled();
     });
+  });
+
+  // --- AUTH-04: Signup / Reset / Toggle tests ---
+
+  it("toggles to signup form when 'Crear cuenta' is clicked", () => {
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+    fireEvent.click(screen.getByText(/no tienes cuenta/i));
+    expect(screen.getByTestId("login-signup-form")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /crear cuenta/i })).toBeTruthy();
+  });
+
+  it("calls signUp on form submit in signup mode", async () => {
+    (signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      { user: { id: "u1" }, session: { access_token: "tok" } },
+    );
+    const onLoggedIn = vi.fn();
+    render(<LoginScreen onLoggedIn={onLoggedIn} />);
+    fireEvent.click(screen.getByText(/no tienes cuenta/i));
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "new@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/contraseña/i), {
+      target: { value: "pass123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
+    expect(signUp).toHaveBeenCalledWith("new@example.com", "pass123");
+    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalledWith("tok"));
+  });
+
+  it("shows confirmation message when email confirmation is required", async () => {
+    (signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      { user: { id: "u1" }, session: null },
+    );
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+    fireEvent.click(screen.getByText(/no tienes cuenta/i));
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "new@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/contraseña/i), {
+      target: { value: "pass123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
+    expect(await screen.findByTestId("login-email-sent")).toBeTruthy();
+    expect(screen.getByText(/revisa tu email/i)).toBeTruthy();
+  });
+
+  it("shows error message on signup failure", async () => {
+    (signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      { user: null, session: null, error: "User already registered" },
+    );
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+    fireEvent.click(screen.getByText(/no tienes cuenta/i));
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "existing@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/contraseña/i), {
+      target: { value: "pass" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
+    expect(await screen.findByText(/user already registered/i)).toBeTruthy();
+  });
+
+  it("toggles back to login mode", () => {
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+    fireEvent.click(screen.getByText(/no tienes cuenta/i));
+    expect(screen.getByTestId("login-signup-form")).toBeTruthy();
+    fireEvent.click(screen.getByText(/ya tienes cuenta/i));
+    expect(screen.queryByTestId("login-signup-form")).toBeNull();
+    expect(screen.getByRole("button", { name: /entrar/i })).toBeTruthy();
+  });
+
+  it("shows reset password link and calls resetPasswordForEmail", async () => {
+    (resetPasswordForEmail as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      {},
+    );
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+    fireEvent.click(screen.getByText(/olvidaste tu contraseña/i));
+    expect(screen.getByTestId("login-reset-form")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "reset@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /enviar enlace/i }));
+    expect(resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
+    await vi.waitFor(() =>
+      expect(screen.getByText(/restablecer tu contraseña/i)).toBeTruthy(),
+    );
   });
 });

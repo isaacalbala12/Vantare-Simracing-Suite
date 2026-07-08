@@ -6,6 +6,7 @@ import type {
   WidgetVariantConfig,
 } from "../../lib/profile";
 import { applyPreset } from "../../lib/widget-presets";
+import { withDefaultWidgetVariants } from "../../lib/widget-variants";
 
 export type OfficialDesign = {
   id: string;
@@ -437,6 +438,37 @@ export function listOfficialDesigns(widgetType: string): OfficialDesign[] {
 
 export function getOfficialDesign(id: string): OfficialDesign | undefined {
   return OFFICIAL_DESIGNS.find((design) => design.id === id);
+}
+
+/**
+ * Maps a widget to its active official design id, derived from `variantId`.
+ * Official variants use the shape `official-<designId>-<widgetId>`.
+ * Returns null for widgets without an official design applied.
+ */
+export function getActiveOfficialDesignId(widget: WidgetConfig | null): string | null {
+  if (!widget?.variantId) return null;
+  if (!widget.variantId.startsWith("official-")) return null;
+  for (const design of OFFICIAL_DESIGNS) {
+    if (widget.variantId.startsWith(`official-${design.id}-`)) return design.id;
+  }
+  return null;
+}
+
+/**
+ * Reverts a widget that has an official design applied back to its default
+ * (base) variant. Does NOT touch position, x, y, w, h, or any other field.
+ */
+export function resetWidgetDesignToBase(profile: ProfileConfig, widgetId: string): ProfileConfig {
+  const widget = profile.widgets.find((w) => w.id === widgetId);
+  if (!widget || !widget.variantId?.startsWith("official-")) return profile;
+
+  const officialVariantId = widget.variantId;
+  const variants = (profile.variants ?? []).filter((v) => v.id !== officialVariantId);
+  const defaultVariantId = `variant-${widgetId}-default`;
+  const widgets = profile.widgets.map((w) =>
+    w.id === widgetId ? { ...w, variantId: defaultVariantId } : w,
+  );
+  return withDefaultWidgetVariants({ ...profile, widgets, variants });
 }
 
 export function applyOfficialDesign(

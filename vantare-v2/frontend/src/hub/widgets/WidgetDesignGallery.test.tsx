@@ -109,6 +109,35 @@ describe("WidgetDesignGallery", () => {
     expect(onApply).toHaveBeenCalledWith(target);
   });
 
+  it("shows the Activo badge and no Aplicar button for the active design", () => {
+    const activeId = "relative-glassmorphism-pro";
+    render(
+      <WidgetDesignGallery
+        widget={makeWidget({ id: "rel-1", type: "relative", variantId: `official-${activeId}-rel-1` })}
+        onApplyDesign={vi.fn()}
+        activeDesignId={activeId}
+      />,
+    );
+
+    expect(screen.getByTestId(`widget-design-active-${activeId}`)).toBeTruthy();
+    expect(screen.queryByTestId(`widget-design-apply-${activeId}`)).toBeNull();
+  });
+
+  it("still exposes Aplicar for non-active designs", () => {
+    const activeId = "relative-glassmorphism-pro";
+    render(
+      <WidgetDesignGallery
+        widget={makeWidget({ id: "rel-1", type: "relative", variantId: `official-${activeId}-rel-1` })}
+        onApplyDesign={vi.fn()}
+        activeDesignId={activeId}
+      />,
+    );
+
+    const other = OFFICIAL_DESIGNS.find((d) => d.widgetType === "relative" && d.id !== activeId)!;
+    expect(screen.getByTestId(`widget-design-apply-${other.id}`)).toBeTruthy();
+    expect(screen.queryByTestId(`widget-design-active-${other.id}`)).toBeNull();
+  });
+
   it("disables Aplicar button when the design is being applied", () => {
     const target = OFFICIAL_DESIGNS.find((d) => d.widgetType === "relative")!;
     render(

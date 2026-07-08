@@ -20,6 +20,7 @@ const TIER_INFO: Record<
 export type CalendarRaceDetailPanelProps = {
   tier: CalendarFilter;
   calendar: Calendar;
+  timeZone: string;
   onClose: () => void;
 };
 
@@ -27,12 +28,12 @@ function getTierInfo(tier: CalendarFilter): { label: string; color: string; bg: 
   return TIER_INFO[tier as Exclude<CalendarFilter, "all">] ?? TIER_INFO.special;
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function formatTime(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("es-ES", { timeZone, hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+function formatDate(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("es-ES", { timeZone, day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
 function getSessionLabel(name: string): string {
@@ -47,6 +48,7 @@ function getSessionLabel(name: string): string {
 export function CalendarRaceDetailPanel({
   tier,
   calendar,
+  timeZone,
   onClose,
 }: CalendarRaceDetailPanelProps) {
   const access = useAccess();
@@ -69,16 +71,12 @@ export function CalendarRaceDetailPanel({
   }, [handleKeyDown]);
 
   // Find the series/event for this tier
-  const upcoming = useMemo(() => buildUpcomingRaceItems(calendar, new Date()), [calendar]);
+  const items = useMemo(() => buildUpcomingRaceItems(calendar, new Date()), [calendar]);
 
   const currentItem: UpcomingRaceItem | null = useMemo(() => {
-    if (tier === "beginner") return upcoming.bronce;
-    if (tier === "intermediate") return upcoming.plata;
-    if (tier === "advanced") return upcoming.oro;
-    if (tier === "weekly") return upcoming.weekly;
-    if (tier === "special") return upcoming.events[0] ?? null;
-    return null;
-  }, [upcoming, tier]);
+    if (tier === "special") return items.find((i) => i.kind === "event") ?? null;
+    return items.find((i) => i.tier === tier) ?? null;
+  }, [items, tier]);
 
   // Find the full series data
   const seriesData: RaceSeries | null = useMemo(() => {
@@ -205,7 +203,7 @@ export function CalendarRaceDetailPanel({
                 <div className="flex items-center gap-2 text-xs font-mono text-vantare-textMuted">
                   <span>Próxima salida:</span>
                   <span className="text-white font-semibold">
-                    {formatDate(nextStartDate)} · {formatTime(nextStartDate)}
+                    {formatDate(nextStartDate, timeZone)} · {formatTime(nextStartDate, timeZone)}
                   </span>
                 </div>
               )}

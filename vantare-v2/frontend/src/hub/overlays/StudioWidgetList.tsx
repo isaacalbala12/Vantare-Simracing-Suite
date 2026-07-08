@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 import type { WidgetConfig } from "../../lib/profile";
 import { WIDGET_TYPES } from "../../lib/widget-factory";
 
@@ -10,6 +11,7 @@ type StudioWidgetListProps = {
 };
 
 export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, onAddWidget }: StudioWidgetListProps) {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<"all" | "active">("all");
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
@@ -33,7 +35,7 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
       <div className="border-b border-white/5 p-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-[11px] font-bold uppercase tracking-widest text-white">
-            Widgets
+            {t("studio.widgets")}
           </h2>
           <span className="font-mono text-[10px] text-vantare-textDim">{widgets.length}</span>
         </div>
@@ -47,7 +49,7 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
               filter === "all" ? "bg-white/10 text-white" : "text-vantare-textMuted hover:text-white"
             }`}
           >
-            Todos
+            {t("studio.filterAll")}
           </button>
           <button
             type="button"
@@ -57,7 +59,7 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
               filter === "active" ? "bg-white/10 text-white" : "text-vantare-textMuted hover:text-white"
             }`}
           >
-            Activos
+            {t("studio.filterActive")}
           </button>
         </div>
 
@@ -79,12 +81,19 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar widget..."
+            placeholder={t("studio.searchPlaceholder")}
             className="w-full rounded-md border border-white/10 bg-black/40 py-1.5 pl-7 pr-3 font-mono text-[11px] text-white outline-none placeholder:text-vantare-textDim focus:border-vantare-borderHover"
           />
         </div>
       </div>
 
+      {widgets.length === 0 && (
+        <div className="flex flex-1 items-center justify-center p-4">
+          <p data-testid="studio-widget-list-empty" className="text-center text-xs text-vantare-textMuted">
+            No hay widgets en este perfil. Crea o activa un perfil para empezar.
+          </p>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto p-1.5">
         {filteredWidgets.map((widget) => {
           const selected = selectedWidgetId === widget.id;
@@ -123,15 +132,14 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
                   widget.enabled ? "text-emerald-400" : "text-vantare-textDim"
                 }`}
               >
-                {widget.enabled ? "Activo" : "Oculto"}
+                {widget.enabled ? t("studio.widgetStatus.active") : t("studio.widgetStatus.hidden")}
               </span>
             </button>
           );
         })}
-
-        {filteredWidgets.length === 0 && (
+        {widgets.length > 0 && filteredWidgets.length === 0 && (
           <p className="rounded-md border border-white/5 bg-black/30 px-2 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-vantare-textDim">
-            Sin widgets
+            {t("studio.noWidgets")}
           </p>
         )}
       </div>
@@ -182,7 +190,7 @@ export function StudioWidgetList({ widgets, selectedWidgetId, onSelectWidget, on
               onClick={() => setAdding(true)}
               className="w-full border border-dashed border-white/10 hover:border-white/20 rounded py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-vantare-textDim hover:text-white transition-colors cursor-pointer"
             >
-              + Añadir widget
+              {t("studio.addWidget")}
             </button>
           )}
         </div>

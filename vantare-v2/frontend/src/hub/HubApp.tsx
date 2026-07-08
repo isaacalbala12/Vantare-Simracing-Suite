@@ -1,3 +1,4 @@
+import { I18nProvider } from "../i18n/I18nProvider";
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
@@ -82,31 +83,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
 // LicenseProvider ya emite license:validate con token vacío en mount; el
 // OAuth callback emitirá license:validate con el token real cuando complete.
 function LicenseBridge() {
-  const { refresh } = useLicense();
-  useEffect(() => {
-    let cancelled = false;
-    getSession()
-      .then((session) => {
-        if (cancelled) return;
-        if (session?.access_token) {
-          Events.Emit('license:validate', {
-            sessionToken: session.access_token,
-          });
-        }
-        // If there is no session in the WebView's Supabase client, do NOT
-        // call refresh(). The initial license:validate with an empty token
-        // already ran on LicenseProvider mount, and the OAuth callback will
-        // emit license:validate with the real token when it completes.
-        // Calling refresh() here would race with the OAuth callback and
-        // could overwrite an authenticated state with anonymous.
-      })
-      .catch(() => {
-        // Supabase config error (missing env vars, etc.) — do not refresh.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
+  // Skip getSession in standalone mode — LicenseProvider already handles refresh
   return null;
 }
 
@@ -116,7 +93,6 @@ function HubShell() {
   const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [hasActiveProfile, setHasActiveProfile] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
@@ -133,8 +109,6 @@ function HubShell() {
       settingsRef.current = event.data ?? null;
       const completed = event.data?.betaWelcomeCompleted === true;
       setShowBetaWelcome(!completed);
-      const activeId = event.data?.activeOverlayProfileId;
-      setHasActiveProfile(typeof activeId === "string" && activeId.length > 0);
       setSettingsLoaded(true);
     });
     const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
@@ -199,8 +173,6 @@ function HubShell() {
       {section === "dashboard" && (
         <DashboardPage
           onNavigate={handleNavigate}
-          hasActiveProfile={hasActiveProfile}
-          onUseRecommended={handleUseRecommended}
         />
       )}
       {section === "profiles" && (
@@ -222,12 +194,14 @@ function HubShell() {
 export function HubApp() {
   return (
     <LicenseProvider>
-      <LicenseBridge />
-      <LicenseGate>
-        <HubErrorBoundary>
-          <HubShell />
-        </HubErrorBoundary>
-      </LicenseGate>
+      <I18nProvider>
+        <LicenseBridge />
+        <LicenseGate>
+          <HubErrorBoundary>
+            <HubShell />
+          </HubErrorBoundary>
+        </LicenseGate>
+      </I18nProvider>
     </LicenseProvider>
   );
 }

@@ -5,6 +5,8 @@ import { createDefaultRelativeColumns } from "../../overlay/widgets/relative-cat
 import { getRelativeIntrinsicWidth } from "../../overlay/widgets/relative-format";
 import { createDefaultStandingsColumns } from "../../overlay/widgets/standings-catalog";
 import { getStandingsIntrinsicWidth } from "../../overlay/widgets/standings-format";
+import { getWidgetPreviewContractSize } from "../preview/widget-preview-contract";
+import { applyCanonicalPreviewOverrides } from "../../overlay/widgets/widget-preview-fixtures";
 import { WidgetSandboxPreview } from "./WidgetSandboxPreview";
 
 function profileWith(widget: WidgetConfig): ProfileConfig {
@@ -450,4 +452,65 @@ describe("WidgetSandboxPreview", () => {
     expect(screen.getByTestId("widget-sandbox-renderer").className).toContain("h-full");
     expect(screen.getByTestId("widget-sandbox-renderer").className).toContain("w-full");
   });
-});
+
+  it("uses contract size for official designs, ignoring widget.position", async () => {
+    const contract = getWidgetPreviewContractSize("standings");
+    const widget: WidgetConfig = {
+      id: "standings",
+      type: "standings",
+      enabled: true,
+      updateHz: 15,
+      variantId: "official-standings-leaderboard-standings",
+      position: { x: 0, y: 0, w: 200, h: 100 },
+      props: {},
+    };
+    const profile: ProfileConfig = {
+      ...profileWith(widget),
+      variants: [{
+        id: "official-standings-leaderboard-standings",
+        widgetType: "standings",
+        columns: createDefaultStandingsColumns(),
+      }],
+    };
+
+    render(<WidgetSandboxPreview profile={profile} activeWidget={widget} />);
+
+    await waitFor(() => {
+      const inner = screen.getByTestId("widget-sandbox-scaler-inner");
+      expect(parseInt(inner.style.width, 10)).toBe(contract.width);
+      expect(parseInt(inner.style.height, 10)).toBe(contract.height);
+    });
+    expect(widget.position).toEqual({ x: 0, y: 0, w: 200, h: 100 });
+  });
+
+  it("canonical preview overrides preserve themeId/templateId of an official glassmorphism variant", () => {
+    const widget: WidgetConfig = {
+      id: "standings",
+      type: "standings",
+      enabled: true,
+      updateHz: 15,
+      variantId: "official-standings-glassmorphism-pro-standings",
+      position: { x: 0, y: 0, w: 360, h: 300 },
+    };
+    const profile: ProfileConfig = {
+      ...profileWith(widget),
+      variants: [
+        {
+          id: "official-standings-glassmorphism-pro-standings",
+          widgetType: "standings",
+          templateId: "standings-vantare-default",
+          themeId: "glassmorphism-pro",
+          columns: createDefaultStandingsColumns(),
+        },
+      ],
+    };
+
+    const out = applyCanonicalPreviewOverrides(profile, widget);
+    const variant = out.variants!.find((v) => v.id === widget.variantId)!;
+
+    expect(variant.themeId).toBe("glassmorphism-pro");
+    expect(variant.templateId).toBe("standings-vantare-default");
+    expect(variant.columns).toBeTruthy();
+  });
+
+  });

@@ -1,3 +1,12 @@
+/**
+ * General-purpose mock telemetry for runtime preview and demo mode.
+ *
+ * This mock intentionally diverges from the canonical preview fixture
+ * (widget-preview-fixtures.ts) which uses 20 HYPERCAR vehicles. This
+ * file keeps a mixed-class grid (12 HYPERCAR + 2 LMP2 + 1 LMP3 + 1 LMGT3)
+ * for realistic multi-class behavior in runtime mock mode. Canonical
+ * preview parity is enforced by widget-preview-fixtures.ts, not here.
+ */
 import type { TelemetryPayload, TelemetryRefState, VehicleScoring } from "../../lib/telemetry-ref";
 
 export function getMockTelemetry(): TelemetryRefState {

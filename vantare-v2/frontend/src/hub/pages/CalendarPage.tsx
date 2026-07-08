@@ -41,15 +41,14 @@ export function CalendarPage() {
     setCalendarAnchorDate(new Date());
   }, []);
 
+  // Navigation snaps to day 1 of the target month to avoid date drift
+  // (e.g. Mar 31 -> Apr would otherwise land on Mar 30).
   const handlePrevious = useCallback(() => {
     setCalendarAnchorDate((prev) => {
       const newDate = new Date(prev.getTime());
       if (calendarView === "month") {
-        const day = prev.getDate();
         newDate.setDate(1);
         newDate.setMonth(newDate.getMonth() - 1);
-        const lastDayOfNewMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
-        newDate.setDate(Math.min(day, lastDayOfNewMonth));
       } else if (calendarView === "week") {
         newDate.setDate(newDate.getDate() - 7);
       } else {
@@ -63,11 +62,8 @@ export function CalendarPage() {
     setCalendarAnchorDate((prev) => {
       const newDate = new Date(prev.getTime());
       if (calendarView === "month") {
-        const day = prev.getDate();
         newDate.setDate(1);
         newDate.setMonth(newDate.getMonth() + 1);
-        const lastDayOfNewMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
-        newDate.setDate(Math.min(day, lastDayOfNewMonth));
       } else if (calendarView === "week") {
         newDate.setDate(newDate.getDate() + 7);
       } else {
@@ -77,9 +73,13 @@ export function CalendarPage() {
     });
   }, [calendarView]);
 
+  // Filtering never opens the detail panel — only an explicit tier click does.
   const handleFilterSelect = useCallback((filter: CalendarFilter) => {
     setActiveFilter(filter);
-    setPanelTier(filter);
+  }, []);
+
+  const handleOpenPanel = useCallback((tier: CalendarFilter) => {
+    setPanelTier(tier);
   }, []);
 
   const handleClearFilter = useCallback(() => {
@@ -96,19 +96,21 @@ export function CalendarPage() {
     setPanelTier(null);
   }, []);
 
-  const hasSeries = calendar ? calendar.series && calendar.series.length > 0 : false;
+  const timeZone = calendar?.timezone ?? "UTC";
+  const loading = calendar === null && error === null;
+  const hasCalendar = calendar !== null;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6 min-h-0 overflow-hidden">
+    <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6 items-stretch">
       {/* SIDEBAR */}
-      <aside className="flex flex-col gap-5 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-        <CalendarRaceRail activeFilter={activeFilter} onSelectTier={handleFilterSelect} />
+      <aside className="sticky top-5 max-h-[calc(100vh-6rem)] flex flex-col gap-5 overflow-y-auto pt-1" style={{ scrollbarWidth: "thin" }}>
+        <CalendarRaceRail calendar={calendar} activeFilter={activeFilter} onSelectTier={handleOpenPanel} />
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex flex-col gap-5 min-h-0 overflow-hidden">
+      <main className="flex flex-col min-h-0">
         {/* Page header */}
-        <div className="opacity-0 animate-fade-in-up">
+        <div className="flex-none opacity-0 animate-fade-in-up">
           <span className="v52-eyebrow" style={{ fontSize: "10px" }}>Carreras</span>
           <h1 className="text-2xl font-bold text-white tracking-tight mt-1">Carreras LMU</h1>
           <p className="text-xs text-vantare-textMuted mt-1">
@@ -117,11 +119,12 @@ export function CalendarPage() {
         </div>
 
         {/* Calendar Toolbar */}
-        <div className="opacity-0 animate-fade-in-up delay-75">
+        <div className="flex-none opacity-0 animate-fade-in-up delay-75">
           <CalendarToolbar
             view={calendarView}
             anchorDate={calendarAnchorDate}
             activeFilter={activeFilter}
+            timeZone={timeZone}
             onViewChange={setCalendarView}
             onToday={handleToday}
             onPrevious={handlePrevious}
@@ -130,9 +133,10 @@ export function CalendarPage() {
           />
         </div>
 
+        {/* Active filter indicator */}
         {activeFilter !== "all" && (
           <div
-            className="flex items-center gap-3 opacity-0 animate-fade-in-up delay-100"
+            className="flex-none flex items-center gap-3 opacity-0 animate-fade-in-up delay-100"
             data-testid="calendar-active-filter"
           >
             <span className="text-xs text-vantare-textMuted">
@@ -157,50 +161,66 @@ export function CalendarPage() {
         )}
 
         {error && (
-          <p className="text-xs text-red-400 mt-3" data-testid="calendar-error">
+          <p className="flex-none text-xs text-red-400 mt-3" data-testid="calendar-error">
             {error}
           </p>
         )}
 
-        {/* Visual Calendar Grid or Placeholder */}
-        {hasSeries && (
-          <div className="opacity-0 animate-fade-in-up delay-75 flex-1 min-h-0">
+        {/* Calendar Grid */}
+        {loading && (
+          <div
+            className="flex-1 min-h-0 flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.01]"
+            data-testid="calendar-loading"
+          >
+            <p className="text-sm font-semibold text-white">Cargando calendario LMU…</p>
+          </div>
+        )}
+
+        {hasCalendar && (
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto opacity-0 animate-fade-in-up delay-75" style={{ scrollbarWidth: "thin" }}>
             {calendarView === "month" ? (
               <CalendarMonthView
                 anchorDate={calendarAnchorDate}
                 calendar={calendar!}
+                timeZone={timeZone}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
+                onTierClick={handleOpenPanel}
                 onDayClick={handleDayClick}
               />
             ) : calendarView === "week" ? (
               <CalendarWeekView
                 anchorDate={calendarAnchorDate}
                 calendar={calendar!}
+                timeZone={timeZone}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
+                onTierClick={handleOpenPanel}
               />
-            ) : (
+            ) : calendarView === "day" ? (
               <CalendarDayView
                 anchorDate={calendarAnchorDate}
                 calendar={calendar!}
+                timeZone={timeZone}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
+                onTierClick={handleOpenPanel}
               />
-            )}
+            ) : null}
           </div>
         )}
 
+        {/* Detail panel */}
         {panelTier && calendar && (
           <CalendarRaceDetailPanel
             tier={panelTier}
             calendar={calendar}
+            timeZone={timeZone}
             onClose={handleClosePanel}
           />
         )}
-
-        {/* Footer/Nota honesta */}
-        <div className="flex items-center justify-center opacity-0 animate-fade-in-up delay-600">
+        {/* Footer */}
+        <div className="flex-none flex items-center justify-center opacity-0 animate-fade-in-up delay-600">
           <span className="font-mono text-xs text-[#f5f5f5]/35 uppercase tracking-[.22em] flex items-center gap-4">
             <span className="w-6 h-px bg-[#f5f5f5]/12"></span>
             v0.1 · Calendario LMU

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, cleanup, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WidgetStudio } from "./WidgetStudio";
 import type { ProfileConfig } from "../../lib/profile";
+import { createDefaultStandingsColumns } from "../../overlay/widgets/standings-catalog";
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
@@ -519,7 +520,7 @@ describe("WidgetStudio", () => {
     expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull();
   });
 
-  it("renders a design system selector", () => {
+  it("renders a design system selector reflecting the active design", () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -534,10 +535,112 @@ describe("WidgetStudio", () => {
     );
 
     expect(screen.getByTestId("design-system-selector")).toBeTruthy();
-    const select = screen.getByLabelText("Theme") as HTMLSelectElement;
+    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
     expect(select).toBeTruthy();
     expect(select.value).toBe("base");
-    expect(screen.getByText("Vantare Crystal")).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Base" })).toBeTruthy();
+  });
+
+  it("shows the active official design selected in the top selector", () => {
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        {
+          id: "standings",
+          type: "standings",
+          enabled: true,
+          updateHz: 15,
+          variantId: "official-standings-glassmorphism-pro-standings",
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
+      ],
+      variants: [
+        {
+          id: "official-standings-glassmorphism-pro-standings",
+          widgetType: "standings",
+          templateId: "standings-vantare-default",
+          themeId: "glassmorphism-pro",
+          columns: createDefaultStandingsColumns(),
+        },
+      ],
+    };
+
+    render(
+      <WidgetStudio
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
+    expect(select.value).toBe("standings-glassmorphism-pro");
+    expect(
+      Array.from(select.options).find((option) => option.value === "standings-glassmorphism-pro")
+        ?.textContent,
+    ).toBe("Standings Glassmorphism");
+  });
+
+  it("selecting Standings Glassmorphism applies it and re-renders the glassmorphism preview", async () => {
+    const onChangeProfile = vi.fn();
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        {
+          id: "standings",
+          type: "standings",
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
+      ],
+      variants: [],
+    };
+
+    const { rerender } = render(
+      <WidgetStudio
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={onChangeProfile}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Diseño"), {
+      target: { value: "standings-glassmorphism-pro" },
+    });
+
+    expect(onChangeProfile).toHaveBeenCalledTimes(1);
+    const next = onChangeProfile.mock.calls[0][0] as ProfileConfig;
+    const applied = next.widgets[0];
+    expect(applied.variantId).toBe("official-standings-glassmorphism-pro-standings");
+    expect(next.variants?.find((v) => v.id === applied.variantId)?.themeId).toBe("glassmorphism-pro");
+
+    rerender(
+      <WidgetStudio
+        profile={next}
+        selectedWidgetId="standings"
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("standings-panel").getAttribute("data-standings-template")).toBe("glassmorphism");
+    });
   });
 
   it("does not show position or size controls in WidgetStudio", () => {
@@ -559,5 +662,84 @@ describe("WidgetStudio", () => {
     expect(screen.queryByLabelText("Y (px)")).toBeNull();
     expect(screen.queryByLabelText("W (px)")).toBeNull();
     expect(screen.queryByLabelText("H (px)")).toBeNull();
+  });
+  it("disables save button with honest title when profile is empty", () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    render(
+      <WidgetStudio
+        profile={emptyProfile}
+        selectedWidgetId={null}
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    const btn = screen.getByTestId("widget-studio-save-btn");
+    expect(btn).toHaveProperty("disabled", true);
+    expect(btn.getAttribute("title")).toContain("Crea o activa un perfil");
+  });
+
+  it("disables design selector when profile is empty", () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    render(
+      <WidgetStudio
+        profile={emptyProfile}
+        selectedWidgetId={null}
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={vi.fn()}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: /Diseño/i }) as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+  });
+
+  it("save state stays idle when profile is empty even after onChangeProfile", async () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    const onChangeProfile = vi.fn();
+    render(
+      <WidgetStudio
+        profile={emptyProfile}
+        selectedWidgetId={null}
+        dirty={false}
+        saveState="idle"
+        onSelectWidget={vi.fn()}
+        onChangeProfile={onChangeProfile}
+        onSave={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    // Badge should show idle (not dirty) when profile is synthetic
+    expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
+    // Save button should remain disabled — it must not become enabled via any interaction
+    const btn = screen.getByTestId("widget-studio-save-btn");
+    expect(btn).toHaveProperty("disabled", true);
   });
 });

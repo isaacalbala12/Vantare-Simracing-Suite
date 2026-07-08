@@ -3,6 +3,8 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getSupabaseAdmin } from "./_utils/supabase.ts";
 import { verifyStripeSignature } from "./_utils/stripe.ts";
+import { handleCreateCheckoutSession } from "./_utils/checkout.ts";
+import { handleCreatePortalSession } from "./_utils/portal.ts";
 
 /**
  * Webhook runtime context. Handlers receive this object instead of importing
@@ -287,6 +289,11 @@ export async function handleCheckoutSessionCompleted(
         { session_id: session.id },
       );
     }
+    await insertLicenseEvent(ctx.supabase, userId, "checkout_complete", {
+      session_id: session.id,
+      mode: "subscription",
+      subscription_id: subscriptionId,
+    });
     return;
   }
 
@@ -308,6 +315,13 @@ export async function handleCheckoutSessionCompleted(
     null,
     { stripe_session_id: session.id, price_ids: priceIds },
   );
+  await insertLicenseEvent(ctx.supabase, userId, "checkout_complete", {
+    session_id: session.id,
+    product_keys: productKeys,
+    customer_id: session.customer as string ?? null,
+    mode: session.mode,
+  });
+  await notifyDiscord(userId, session.customer_email ?? "", productKeys, classifyTier(productKeys));
 }
 
 export async function handleSubscriptionUpdated(
@@ -357,6 +371,12 @@ export async function handleSubscriptionUpdated(
     // tier-downgrade or unmapping is handled safely.
     await revokeEntitlementsForSubscription(ctx.supabase, userId, sub.id, []);
   }
+  await insertLicenseEvent(ctx.supabase, userId, "subscription_updated", {
+    subscription_id: sub.id,
+    status: sub.status,
+    product_keys: productKeys,
+  });
+  await notifyDiscord(userId, "", productKeys, classifyTier(productKeys));
 }
 
 export async function handleSubscriptionDeleted(
@@ -393,6 +413,9 @@ export async function handleSubscriptionDeleted(
       .eq("product_key", productKey);
     if (updErr) throw updErr;
   }
+  await insertLicenseEvent(ctx.supabase, userId, "subscription_deleted", {
+    subscription_id: sub.id,
+  });
 }
 
 export async function handleInvoicePaymentFailed(
@@ -433,6 +456,90 @@ export async function handleInvoicePaymentFailed(
       .eq("product_key", productKey);
     if (updErr) throw updErr;
   }
+  await insertLicenseEvent(ctx.supabase, userId, "payment_failed", {
+    invoice_id: invoice.id,
+    subscription_id: subscriptionId ?? null,
+  });
+}
+// ---------------------------------------------------------------------------
+// Audit helpers
+// ---------------------------------------------------------------------------
+
+export async function insertLicenseEvent(
+  supabase: SupabaseClient,
+  userId: string,
+  eventType: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("license_events")
+    .insert({ user_id: userId, event_type: eventType, payload });
+  if (error) {
+    console.error("insertLicenseEvent failed:", error.message);
+    // No lanzar — la escritura de entitlements es más importante que la auditoría.
+  }
+}
+
+/**
+ * Envía un aviso al canal de soporte del equipo vía webhook de
+ * Discord (NO asigna roles, solo notifica). Opcional: si no está
+ * configurado DISCORD_ROLE_SYNC_WEBHOOK_URL, se salta sin error.
+ */
+export async function notifyDiscord(
+  userId: string,
+  email: string,
+  productKeys: string[],
+  tier: string,
+): Promise<void> {
+  const webhookUrl = Deno.env.get("DISCORD_ROLE_SYNC_WEBHOOK_URL");
+  if (!webhookUrl) return;
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: `💳 Nuevo tier: ${tier} para ${email} (${userId}) — ${productKeys.join(", ")}`,
+      }),
+    });
+    if (!res.ok) {
+      console.error("Discord notify failed:", res.status);
+    }
+  } catch (err) {
+    console.error("Discord notify error:", err);
+  }
+}
+
+function classifyTier(keys: string[]): string {
+  if (keys.includes("visionary_backer")) return "visionary_backer";
+  if (keys.includes("pro_founder")) return "pro_founder";
+  if (keys.includes("founder")) return "founder";
+  if (keys.includes("supporter")) return "supporter";
+  if (keys.includes("beta_access")) return "beta_access";
+  const hasOverlays = keys.includes("overlays");
+  const hasEngineer = keys.includes("engineer");
+  if (hasOverlays && hasEngineer) return "suite";
+  if (hasOverlays) return "overlays";
+  if (hasEngineer) return "engineer";
+  return "free";
+}
+
+// ---------------------------------------------------------------------------
+// Frontend-facing endpoints (llamados desde la app, NO desde Stripe)
+// Deben ir ANTES de la verificación de firma Stripe (issue 3b).
+// ---------------------------------------------------------------------------
+async function handleFrontendRequest(req: Request, ctx: WebhookContext): Promise<Response | null> {
+  const url = new URL(req.url);
+
+  if (url.pathname === "/create-checkout-session" && req.method === "POST") {
+    return await handleCreateCheckoutSession(null, req);
+  }
+
+  if (url.pathname === "/create-portal-session" && req.method === "POST") {
+    return await handleCreatePortalSession(null, req);
+  }
+
+  return null; // No es un endpoint frontend, pasar al webhook
 }
 
 async function handleRequest(req: Request, ctx: WebhookContext): Promise<Response> {

@@ -13,6 +13,7 @@ import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile 
 import { runRecommendedFirstUse } from "../overlays/recommended-first-use";
 import { isRunningProfile, profileTarget, type OverlayStatus, type ProfileEntry } from "../state/overlay-workbench";
 import type { AppSettings } from "./SettingsPage";
+import { EMPTY_PROFILE } from "../overlays/widget-studio-empty-profile";
 
 type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout" | "obs";
 
@@ -174,32 +175,15 @@ export function OverlaysStudioPage({
   }
 
   if (effectiveMode === "widgets") {
-    if (!studio.profile) {
-      return (
-        <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8">
-          <button
-            type="button"
-            className="mb-4 w-fit text-xs font-bold uppercase tracking-wider text-vantare-textMuted hover:text-white cursor-pointer"
-            onClick={goHome}
-          >
-            ← Volver a Overlays Studio
-          </button>
-          <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-            Selecciona o crea un perfil para editar widgets.
-          </div>
-        </div>
-      );
-    }
-
     return (
       <WidgetStudio
-        profile={studio.profile}
+        profile={studio.profile ?? EMPTY_PROFILE}
         selectedWidgetId={studio.selectedWidgetId}
-        dirty={studio.dirty}
+        dirty={studio.profile ? studio.dirty : false}
         saveState={studio.saveState}
-        onSelectWidget={studio.setSelectedWidgetId}
-        onChangeProfile={studio.updateDraft}
-        onSave={studio.saveProfile}
+        onSelectWidget={studio.profile ? studio.setSelectedWidgetId : () => {}}
+        onChangeProfile={studio.profile ? studio.updateDraft : () => {}}
+        onSave={studio.profile ? studio.saveProfile : () => {}}
         onBack={goHome}
       />
     );

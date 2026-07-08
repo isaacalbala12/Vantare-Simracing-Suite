@@ -34,7 +34,7 @@ describe("StudioWidgetList", () => {
   it("searches by id and type", () => {
     render(<StudioWidgetList widgets={widgets} selectedWidgetId="delta" onSelectWidget={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText("Buscar widget..."), { target: { value: "rel" } });
+    fireEvent.change(screen.getByPlaceholderText("Buscar overlay..."), { target: { value: "rel" } });
 
     expect(screen.queryByText("delta")).toBeNull();
     expect(screen.getAllByText("relative").length).toBeGreaterThan(0);
@@ -79,5 +79,15 @@ describe("StudioWidgetList", () => {
     fireEvent.click(screen.getByTestId("studio-cancel-add-widget"));
     expect(screen.queryByTestId("studio-add-widget-form")).toBeNull();
     expect(screen.getByTestId("studio-show-add-widget")).toBeTruthy();
+  });
+  it("renders empty state when widgets array is empty", () => {
+    render(<StudioWidgetList widgets={[]} selectedWidgetId={null} onSelectWidget={vi.fn()} />);
+    expect(screen.getByTestId("studio-widget-list-empty")).toBeTruthy();
+    expect(screen.getByTestId("studio-widget-list-empty").textContent).toContain("Crea o activa un perfil");
+  });
+
+  it("does not render empty state when widgets array is non-empty", () => {
+    render(<StudioWidgetList widgets={widgets} selectedWidgetId="delta" onSelectWidget={vi.fn()} />);
+    expect(screen.queryByTestId("studio-widget-list-empty")).toBeNull();
   });
 });

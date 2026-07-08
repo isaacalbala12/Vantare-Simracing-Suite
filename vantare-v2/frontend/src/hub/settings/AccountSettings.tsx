@@ -1,13 +1,14 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { signOut, getSession } from "../../lib/supabase-auth";
 import { useLicense } from "../../lib/license";
-import { Events } from "@wailsio/runtime";
+import { Events, Browser } from "@wailsio/runtime";
 import {
   buildSummary,
   PLAN_LABELS,
   PLAN_STATUS_LABELS,
   sortedEntitlements,
 } from "../../lib/plan";
+import { useI18n } from "../../i18n/I18nProvider";
 
 const STATUS_TONE: Record<string, string> = {
   active: "text-vantare-success",
@@ -18,7 +19,9 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export function AccountSettings() {
+  const { t } = useI18n();
   const { result, refresh } = useLicense();
+  const [portalError, setPortalError] = useState<string | null>(null);
 
   const handleLogout = useCallback(async () => {
     await signOut();
@@ -34,6 +37,26 @@ export function AccountSettings() {
       console.error("Error retrieving session for reset-device:", err);
     }
   }, []);
+
+  const handleManageSubscription = useCallback(async () => {
+    setPortalError(null);
+    try {
+      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-portal-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stripeCustomerId: result?.userId ?? "" }),
+      });
+      if (!res.ok) {
+        setPortalError(t("account.portalError"));
+        return;
+      }
+      const data = await res.json();
+      if (data.url) await Browser.OpenURL(data.url);
+    } catch {
+      setPortalError(t("account.portalError"));
+    }
+  }, [result?.userId, t]);
 
   const summary = useMemo(
     () =>
@@ -51,13 +74,13 @@ export function AccountSettings() {
 
   return (
     <section className="space-y-4 text-white" aria-label="account-settings">
-      <h2 className="font-mono text-xs uppercase tracking-widest">Cuenta</h2>
+      <h2 className="font-mono text-xs uppercase tracking-widest">{t("account.title")}</h2>
       <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">Email</p>
+        <p className="font-mono text-[10px] text-vantare-textDim">{t("account.email")}</p>
         <p className="font-mono text-xs">{result?.email ?? "—"}</p>
       </div>
       <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">Plan</p>
+        <p className="font-mono text-[10px] text-vantare-textDim">{t("account.plan")}</p>
         <p
           data-testid="account-plan"
           className="font-mono text-xs uppercase"
@@ -66,7 +89,7 @@ export function AccountSettings() {
         </p>
       </div>
       <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">Estado</p>
+        <p className="font-mono text-[10px] text-vantare-textDim">{t("account.status")}</p>
         <p
           data-testid="account-status"
           className={`font-mono text-xs uppercase ${statusTone}`}
@@ -75,24 +98,23 @@ export function AccountSettings() {
         </p>
         {summary.status === "grace" && result?.graceEndsAt ? (
           <p className="mt-1 font-mono text-[10px] text-vantare-warning">
-            Gracia hasta {new Date(result.graceEndsAt).toLocaleString()}
+            {t("account.graceUntil")} {new Date(result.graceEndsAt).toLocaleString()}
           </p>
         ) : null}
         {summary.status === "blocked" ? (
           <p className="mt-1 font-mono text-[10px] text-vantare-red-400">
-            Suscripción bloqueada. Usa Restablecer PC si es límite de
-            dispositivo o renueva desde el portal externo.
+            {t("account.blockedHint")}
           </p>
         ) : null}
         {result?.error ? (
           <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
-            Último error: {result.error}
+            {t("account.lastError")}: {result.error}
           </p>
         ) : null}
       </div>
       <div className="rounded border border-white/10 bg-[#111] p-3">
         <p className="font-mono text-[10px] text-vantare-textDim">
-          Entitlements
+          {t("account.entitlements")}
         </p>
         {entitlements.length > 0 ? (
           <ul className="space-y-1">
@@ -110,20 +132,30 @@ export function AccountSettings() {
           <p className="font-mono text-xs text-vantare-textDim">—</p>
         )}
       </div>
-      <div className="flex gap-2">
+      {portalError && (
+        <p className="font-mono text-[10px] text-vantare-red-400">{portalError}</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleManageSubscription}
+          className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
+        >
+          {t("account.manageSubscription")}
+        </button>
         <button
           type="button"
           onClick={handleResetDevice}
           className="rounded border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 font-mono text-[10px] uppercase text-red-400"
         >
-          Restablecer PC
+          {t("account.resetDevice")}
         </button>
         <button
           type="button"
           onClick={handleLogout}
           className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
         >
-          Cerrar sesión
+          {t("account.logout")}
         </button>
       </div>
     </section>

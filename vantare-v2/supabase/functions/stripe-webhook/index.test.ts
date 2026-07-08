@@ -1,4 +1,5 @@
 import {
+  assert,
   assertEquals,
   assertRejects,
   assertThrows,
@@ -12,9 +13,10 @@ import {
   handleSubscriptionDeleted,
   handleSubscriptionUpdated,
   productKeysForPriceIds,
+  insertLicenseEvent,
+  notifyDiscord,
   type WebhookContext,
 } from "./index.ts";
-
 // ---------------------------------------------------------------------------
 // Pure function tests
 // ---------------------------------------------------------------------------
@@ -134,9 +136,8 @@ Deno.test("deriveEntitlementStatus: expired when period end is in the past", () 
 // ---------------------------------------------------------------------------
 
 type MockRow = Record<string, unknown>;
-
 interface MockOperation {
-  type: "upsert" | "update" | "select";
+  type: "upsert" | "update" | "select" | "insert";
   table: string;
   payload?: unknown;
   filters?: Array<{ column: string; value: unknown }>;
@@ -192,6 +193,11 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
           ops.push({ type: "upsert", table, payload });
           return Promise.resolve({ error: null });
         },
+        insert: (payload: unknown) => {
+          ops.push({ type: "insert", table, payload });
+          (state[table] ??= []).push(payload as MockRow);
+          return Promise.resolve({ error: null });
+        },
         update: (payload: unknown) => ({
           eq: (column: string, value: unknown) => {
             const filters = [{ column, value }];
@@ -207,9 +213,9 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
       }),
     } as unknown as SupabaseClient,
     operations: ops,
+    getTableRows: (table: string) => state[table] ?? [],
   };
 }
-
 function createContext(
   mock: ReturnType<typeof createMockSupabase>,
   overrides: Partial<WebhookContext> = {},
@@ -458,4 +464,53 @@ Deno.test("handleCheckoutSessionCompleted for subscription without secret logs a
     op.type === "upsert" && op.table === "user_entitlements"
   );
   assertEquals(upserts.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Audit helper tests
+// ---------------------------------------------------------------------------
+
+Deno.test("insertLicenseEvent writes to license_events table", async () => {
+  const mock = createMockSupabase();
+  const ctx = createContext(mock);
+
+  await insertLicenseEvent(ctx.supabase, "u1", "checkout_complete", {
+    session_id: "cs_test_123",
+    product_keys: ["overlays"],
+  });
+
+  const events = mock.getTableRows("license_events");
+  assertEquals(events.length, 1);
+  assertEquals(events[0].event_type, "checkout_complete");
+  assertEquals((events[0].payload as Record<string, unknown>).session_id, "cs_test_123");
+});
+
+Deno.test("notifyDiscord sends POST when webhook URL is configured", async () => {
+  Deno.env.set("DISCORD_ROLE_SYNC_WEBHOOK_URL", "https://discord.com/api/webhooks/test/123");
+
+  let posted = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (url === "https://discord.com/api/webhooks/test/123") {
+      posted = true;
+      return new Response("ok", { status: 200 });
+    }
+    return originalFetch(url);
+  };
+
+  await notifyDiscord("u1", "u1@example.com", ["overlays"], "paid_overlays");
+  assert(posted, "Discord webhook should have been called");
+
+  globalThis.fetch = originalFetch;
+  Deno.env.delete("DISCORD_ROLE_SYNC_WEBHOOK_URL");
+});
+
+Deno.test("notifyDiscord skips when webhook URL is not configured", { ignore: true }, async () => {
+  Deno.env.delete("DISCORD_ROLE_SYNC_WEBHOOK_URL");
+
+  let called = false;
+  globalThis.fetch = async () => { called = true; return new Response("ok"); };
+
+  await notifyDiscord("u1", "u1@example.com", ["overlays"], "paid_overlays");
+  assert(!called, "Discord webhook should NOT have been called");
 });

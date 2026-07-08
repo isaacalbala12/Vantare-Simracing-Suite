@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
+import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
+import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { AccountSettings } from '../settings/AccountSettings';
 import { parseKeyEvent } from '../settings/hotkey-capture';
+import type {
+  LauncherAppEntry,
+  LaunchProfile,
+} from "../launcher/launcher-state";
 
 export type Channel = 'stable' | 'prerelease';
 
@@ -58,16 +64,16 @@ export type AppSettings = {
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;
   betaUserRole?: string;
-  launchers?: Record<string, LauncherConfig>;
+  launcherApps?: Record<string, LauncherAppEntry>;
+  launcherProfiles?: LaunchProfile[];
 };
 
-export type LauncherConfig = {
-  simulatorId: string;
-  launchMethod: string;
-  executablePath?: string;
-  steamAppId?: number;
-  associatedApps?: string[];
-};
+export type {
+  LauncherAppEntry,
+  LauncherAppCategory,
+  LaunchStep,
+  LaunchProfile,
+} from "../launcher/launcher-state";
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
   deltaMode: 'self',
@@ -91,17 +97,10 @@ const HOTKEY_NAMES: Record<string, string> = {
   prevProfile: 'Perfil anterior',
 };
 
-const TABS = [
-  { id: 'account', label: 'Cuenta' },
-  { id: 'updates', label: 'Actualizaciones' },
-  { id: 'hotkeys', label: 'Hotkeys' },
-  { id: 'diagnostics', label: 'Diagnóstico' },
-  { id: 'advanced', label: 'Avanzado' },
-] as const;
+type TabId = 'account' | 'updates' | 'hotkeys' | 'diagnostics' | 'advanced';
 
-type TabId = (typeof TABS)[number]['id'];
 
-export function SettingsPage() {
+function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
   const [settings, setSettings] = useState<UpdaterSettings>({ channel: 'stable' });
   const [info, setInfo] = useState<UpdateInfo | null>(null);
@@ -117,6 +116,15 @@ export function SettingsPage() {
   const [diagLoading, setDiagLoading] = useState(false);
   const [diagCopied, setDiagCopied] = useState(false);
   const [diagError, setDiagError] = useState<string | null>(null);
+  const { t } = useI18n();
+
+  const TABS = [
+    { id: 'account' as const, label: t('settings.tab.account') },
+    { id: 'updates' as const, label: t('settings.tab.updates') },
+    { id: 'hotkeys' as const, label: t('settings.tab.hotkeys') },
+    { id: 'diagnostics' as const, label: t('settings.tab.diagnostics') },
+    { id: 'advanced' as const, label: t('settings.tab.advanced') },
+  ];
 
 
   useEffect(() => {
@@ -360,13 +368,16 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="opacity-0 animate-fade-in-up">
-        <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
-          Ajustes
-        </h1>
-        <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
-          Cuenta, actualizaciones, atajos y diagnósticos.
-        </p>
+      <header className="flex items-start justify-between opacity-0 animate-fade-in-up">
+        <div>
+          <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
+            {t('settings.title')}
+          </h1>
+          <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
+            {t('settings.subtitle')}
+          </p>
+        </div>
+        <LanguageSelector />
       </header>
 
       <nav
@@ -746,5 +757,12 @@ export function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+export function SettingsPage() {
+  return (
+    <I18nProvider>
+      <SettingsPageInner />
+    </I18nProvider>
   );
 }

@@ -80,8 +80,8 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
   return (
     <nav className="sticky top-0 z-50 glass-panel border-b border-white/5">
       <div className="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-8 min-w-0">
+          <div className="flex items-center gap-3 shrink-0">
             <svg
               className="w-8 h-8"
               viewBox="0 0 40 40"
@@ -125,7 +125,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
             </span>
           </div>
 
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-vantare-textMuted">
+          <div className="max-md:flex-1 max-md:min-w-0 flex items-center gap-2 md:gap-3 lg:gap-5 text-[11px] md:text-xs lg:text-sm font-medium text-vantare-textMuted max-md:overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
             {navItems.map((item) =>
               item.allowed ? (
                 <a
@@ -134,7 +134,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
                   data-testid={`topbar-nav-${item.id}`}
                   aria-current={activeSection === item.id ? "page" : undefined}
                   onClick={handleNav(item.id)}
-                  className={`nav-item ${activeSection === item.id ? 'active text-vantare-text' : ''}`}
+                  className={`nav-item whitespace-nowrap ${activeSection === item.id ? 'active text-vantare-text' : ''}`}
                 >
                   {item.label}
                 </a>
@@ -144,7 +144,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
                   type="button"
                   disabled
                   data-testid={`topbar-nav-${item.id}`}
-                  className={`nav-item opacity-40 cursor-not-allowed`}
+                  className={`nav-item whitespace-nowrap opacity-40 cursor-not-allowed`}
                   title="Disponible para testers y planes de pago"
                 >
                   {item.label}
@@ -154,7 +154,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           <button
             type="button"
             onClick={toggleLiteMode}

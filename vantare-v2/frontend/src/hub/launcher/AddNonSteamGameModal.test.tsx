@@ -173,7 +173,7 @@ describe("AddNonSteamGameModal", () => {
     expect(screen.getByText("Beta App")).toBeTruthy();
   });
 
-  it("filters out apps with blocked keywords in displayName", async () => {
+  it("always shows known apps even with system-keyword-like names", async () => {
     render(
       <AddNonSteamGameModal
         open={true}
@@ -181,73 +181,20 @@ describe("AddNonSteamGameModal", () => {
         onAdd={() => {}}
       />,
     );
-    dispatch("launcher:registry:listed", {
-      apps: [
-        { id: "r-1", displayName: "NVIDIA Driver", executablePath: "C:\\P\\d.exe" },
-        { id: "r-2", displayName: "Java Updater", executablePath: "C:\\P\\u.exe" },
-        { id: "r-3", displayName: "Support Agent", executablePath: "C:\\P\\a.exe" },
-        { id: "r-4", displayName: "Spotify", executablePath: "C:\\P\\s.exe" },
-      ],
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Spotify")).toBeTruthy();
-    });
-
-    // Apps with blocked keywords should not appear
-    expect(screen.queryByText("NVIDIA Driver")).toBeNull();
-    expect(screen.queryByText("Java Updater")).toBeNull();
-    expect(screen.queryByText("Support Agent")).toBeNull();
-  });
-
-  it("always shows known apps even with blocked keywords in name", async () => {
-    render(
-      <AddNonSteamGameModal
-        open={true}
-        onClose={() => {}}
-        onAdd={() => {}}
-      />,
-    );
-    // "crewchief" has "helper" in blocked keywords semantics, but
-    // known IDs bypass filtering entirely
+    // KNOWN_IDS always bypass the search filter. The backend is now responsible
+    // for filtering out system apps, so the frontend only applies search text.
     dispatch("launcher:registry:listed", {
       apps: [
         { id: "crewchief", displayName: "CrewChief", executablePath: "C:\\P\\cc.exe" },
         { id: "lmu", displayName: "LMU Helper", executablePath: "C:\\P\\lmu.exe" },
-        { id: "r-1", displayName: "Some Driver Tool", executablePath: "C:\\P\\t.exe" },
+        { id: "r-1", displayName: "Some Utility", executablePath: "C:\\P\\t.exe" },
       ],
     });
 
     await waitFor(() => {
       expect(screen.getByText("CrewChief")).toBeTruthy();
       expect(screen.getByText("LMU Helper")).toBeTruthy();
-    });
-
-    // Non-known app with blocked keyword should be filtered
-    expect(screen.queryByText("Some Driver Tool")).toBeNull();
-  });
-
-  it.each([
-    ["Microsoft Visual C++ 2013"],
-    ["HIP SDK Core"],
-    ["AMD Ryzen Master"],
-    ["Python 3.12.10 Test Suite"],
-  ])('filters out problematic app "%s"', async (name) => {
-    render(
-      <AddNonSteamGameModal
-        open={true}
-        onClose={() => {}}
-        onAdd={() => {}}
-      />,
-    );
-    dispatch("launcher:registry:listed", {
-      apps: [
-        { id: "r-1", displayName: name, executablePath: "C:\\P\\x.exe" },
-      ],
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText(name)).toBeNull();
+      expect(screen.getByText("Some Utility")).toBeTruthy();
     });
   });
 
@@ -271,58 +218,6 @@ describe("AddNonSteamGameModal", () => {
 
     await waitFor(() => {
       expect(screen.getByText(name)).toBeTruthy();
-    });
-  });
-
-  it("filters out apps in system32 path even with benign name", async () => {
-    render(
-      <AddNonSteamGameModal
-        open={true}
-        onClose={() => {}}
-        onAdd={() => {}}
-      />,
-    );
-    dispatch("launcher:registry:listed", {
-      apps: [
-        {
-          id: "r-1",
-          displayName: "Notepad",
-          executablePath: "C:\\Windows\\System32\\notepad.exe",
-        },
-      ],
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText("Notepad")).toBeNull();
-    });
-  });
-
-  it("filters out apps with version-like names", async () => {
-    render(
-      <AddNonSteamGameModal
-        open={true}
-        onClose={() => {}}
-        onAdd={() => {}}
-      />,
-    );
-    dispatch("launcher:registry:listed", {
-      apps: [
-        {
-          id: "r-1",
-          displayName: "3.12.10",
-          executablePath: "C:\\P\\x.exe",
-        },
-        {
-          id: "r-2",
-          displayName: "1.0.0.0",
-          executablePath: "C:\\P\\x.exe",
-        },
-      ],
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText("3.12.10")).toBeNull();
-      expect(screen.queryByText("1.0.0.0")).toBeNull();
     });
   });
 

@@ -129,6 +129,25 @@ export function AppsPanel({ className }: AppsPanelProps) {
             >
               <div className="flex items-center justify-between gap-3">
                 <AppBadge app={app} />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    Events.Emit("launcher:app:favorite", {
+                      id: app.id,
+                      isFavorite: !app.isFavorite,
+                    });
+                  }}
+                  data-testid={`app-favorite-btn-${app.id}`}
+                  aria-label={
+                    app.isFavorite
+                      ? "Quitar de favoritas"
+                      : "Marcar como favorita"
+                  }
+                  className="ml-auto text-sm transition-colors hover:text-amber-400"
+                >
+                  {app.isFavorite ? "★" : "☆"}
+                </button>
                 {app.detected && (
                   <span className="text-[10px] uppercase tracking-[.18em] text-emerald-400/80">
                     {t("launcher.apps.detected")}

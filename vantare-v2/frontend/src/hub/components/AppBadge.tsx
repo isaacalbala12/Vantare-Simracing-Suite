@@ -3,6 +3,7 @@ import type { LauncherAppEntry } from "../launcher/launcher-state";
 type AppBadgeProps = {
   app: LauncherAppEntry;
   size?: "sm" | "md";
+  onFavorite?: (id: string, isFavorite: boolean) => void;
 };
 
 const CATEGORY_LABEL: Record<LauncherAppEntry["category"], string> = {
@@ -13,7 +14,7 @@ const CATEGORY_LABEL: Record<LauncherAppEntry["category"], string> = {
   utility: "Utilidad",
 };
 
-export function AppBadge({ app, size = "md" }: AppBadgeProps) {
+export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
   const dim = size === "sm" ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
   const title = `${app.displayName} · ${CATEGORY_LABEL[app.category]}`;
   return (
@@ -32,6 +33,19 @@ export function AppBadge({ app, size = "md" }: AppBadgeProps) {
         {app.abbreviation}
       </span>
       <span className="text-sm text-white">{app.displayName}</span>
+      {onFavorite && (
+        <button
+          type="button"
+          onClick={() => onFavorite(app.id, !app.isFavorite)}
+          data-testid={`app-favorite-${app.id}`}
+          aria-label={
+            app.isFavorite ? "Quitar de favoritas" : "Marcar como favorita"
+          }
+          className="ml-auto text-sm transition-colors hover:text-amber-400"
+        >
+          {app.isFavorite ? "★" : "☆"}
+        </button>
+      )}
     </span>
   );
 }

@@ -6,7 +6,7 @@ import { getStylesForType } from "../state/style-catalog";
 type WidgetListProps = {
   widgets: WidgetConfig[];
   selectedWidgetId: string | null;
-  onSelectWidget: (id: string) => void;
+  onSelectWidget: (id: string | null) => void;
   onAddWidget?: (type: string) => void;
 };
 

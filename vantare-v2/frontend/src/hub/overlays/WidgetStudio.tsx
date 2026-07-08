@@ -20,7 +20,7 @@ type WidgetStudioProps = {
   selectedWidgetId: string | null;
   dirty: boolean;
   saveState: SaveState;
-  onSelectWidget: (id: string) => void;
+  onSelectWidget: (id: string | null) => void;
   onChangeProfile: (profile: ProfileConfig) => void;
   onSave: () => void;
   onBack: () => void;

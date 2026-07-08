@@ -7,7 +7,7 @@ import { PreviewWidgetFrame } from "./PreviewWidgetFrame";
 type PreviewCanvasProps = {
   profile: ProfileConfig;
   selectedWidgetId: string | null;
-  onSelectWidget: (id: string) => void;
+  onSelectWidget: (id: string | null) => void;
   onChangeProfile: (profile: ProfileConfig) => void;
   disabled?: boolean;
 };
@@ -199,6 +199,11 @@ export function PreviewCanvas({ profile, selectedWidgetId, onSelectWidget, onCha
         style={{ width: canvasWidth, height: LOGICAL_HEIGHT * scale }}
         tabIndex={disabled ? -1 : 0}
         onKeyDown={onKeyDown}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onSelectWidget(null);
+          }
+        }}
       >
         <div
           data-testid="preview-scene"

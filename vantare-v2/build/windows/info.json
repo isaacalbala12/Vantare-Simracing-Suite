@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0.3"
+		"file_version": "0.1.0.4"
 	},
 	"info": {
 		"0000": {
-			"Comments": "v0.1.0.3",
+			"Comments": "v0.1.0.4",
 			"CompanyName": "Vantare",
 			"FileDescription": "Vantare Simracing Suite",
 			"LegalCopyright": "© 2026 Vantare",
 			"ProductName": "Vantare Simracing Suite",
-			"ProductVersion": "0.1.0.3"
+			"ProductVersion": "0.1.0.4"
 		}
 	}
 }

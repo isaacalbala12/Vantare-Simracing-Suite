@@ -35,7 +35,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.1.0.3"
+var version = "v0.1.0.4"
 
 // supabaseURL and supabaseAnonKey are injected at build time via ldflags
 // (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build

@@ -189,7 +189,7 @@ function ModalBody({
             setSelectedId(null);
           }}
           placeholder="Buscar..."
-          className="w-full rounded-md bg-black/40 border border-white/20 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
+          className="w-full rounded-md bg-black/40 border border-white/20 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-[#C1121F]/40 focus:outline-none"
           data-testid="add-non-steam-search"
         />
       </div>
@@ -215,9 +215,9 @@ function ModalBody({
                 <tr
                   key={entry.id}
                   onClick={() => toggleSelection(entry.id)}
-                  className={`cursor-pointer bg-black/20 ${
+                  className={`cursor-pointer bg-black/20 transition-colors ${
                     selectedId === entry.id
-                      ? "bg-accent/10 border border-accent/30"
+                      ? "bg-[#C1121F]/10 border border-[#C1121F]/30"
                       : "hover:bg-white/5"
                   }`}
                   data-testid={`add-non-steam-row-${entry.id}`}
@@ -226,15 +226,15 @@ function ModalBody({
                     <div className="flex items-center gap-2">
                       <span
                         data-testid={`add-non-steam-checkbox-${entry.id}`}
-                        className={`inline-flex items-center justify-center w-4 h-4 rounded border flex-shrink-0 ${
+                        className={`inline-flex items-center justify-center w-4 h-4 rounded border flex-shrink-0 transition-colors ${
                           selectedId === entry.id
-                            ? "bg-accent border-accent"
+                            ? "bg-[#C1121F] border-[#C1121F]"
                             : "border-white/20 bg-black/40"
                         }`}
                       >
                         {selectedId === entry.id && (
                           <svg
-                            className="w-3 h-3 text-black"
+                            className="w-3 h-3 text-white"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -294,7 +294,7 @@ function ModalBody({
           onClick={handleAdd}
           disabled={!selectedId}
           data-testid="add-non-steam-add"
-          className="px-3 py-1.5 rounded-lg bg-accent text-[10px] uppercase tracking-[.18em] font-bold text-black hover:opacity-90 disabled:opacity-40"
+          className="px-3 py-1.5 rounded-lg bg-[#C1121F] text-[10px] uppercase tracking-[.18em] font-bold text-white hover:opacity-90 disabled:opacity-40"
         >
           Añadir
         </button>

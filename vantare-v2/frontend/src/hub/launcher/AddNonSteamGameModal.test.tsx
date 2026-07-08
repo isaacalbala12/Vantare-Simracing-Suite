@@ -252,13 +252,13 @@ describe("AddNonSteamGameModal", () => {
 
     // Click first row
     fireEvent.click(row1);
-    expect(row1.className).toContain("bg-accent/10");
-    expect(row2.className).not.toContain("bg-accent/10");
+    expect(row1.className).toContain("bg-[#C1121F]/10");
+    expect(row2.className).not.toContain("bg-[#C1121F]/10");
 
     // Click second row
     fireEvent.click(row2);
-    expect(row1.className).not.toContain("bg-accent/10");
-    expect(row2.className).toContain("bg-accent/10");
+    expect(row1.className).not.toContain("bg-[#C1121F]/10");
+    expect(row2.className).toContain("bg-[#C1121F]/10");
   });
 
   it("single-select: clicking the same row toggles selection off", async () => {
@@ -286,10 +286,10 @@ describe("AddNonSteamGameModal", () => {
     const row = screen.getByTestId("add-non-steam-row-r-1");
 
     fireEvent.click(row);
-    expect(row.className).toContain("bg-accent/10");
+    expect(row.className).toContain("bg-[#C1121F]/10");
 
     fireEvent.click(row);
-    expect(row.className).not.toContain("bg-accent/10");
+    expect(row.className).not.toContain("bg-[#C1121F]/10");
   });
 
   it("add button is disabled when no selection", () => {

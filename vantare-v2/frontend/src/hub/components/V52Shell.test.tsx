@@ -31,6 +31,11 @@ function dispatch(name: string, data: unknown) {
   });
 }
 
+vi.mock("../launcher/chain-store", () => ({
+  useChainState: vi.fn(),
+  useLastResult: vi.fn(),
+}));
+
 vi.mock("../../lib/access", () => ({
   useAccess: () => ({
     planLabel: "free",

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { LaunchProfile } from "../launcher/launcher-state";
+import { useChainState, useLastResult } from "../launcher/chain-store";
 
 type LauncherDockProps = {
   onNavigate: (section: string) => void;
@@ -33,6 +34,113 @@ function ProfileGlyph({ name }: { name: string }) {
   );
 }
 
+const CIRCUMFERENCE = 2 * Math.PI * 10; // ~62.83
+
+function formatLastLaunched(lastLaunchedAt: string | null | undefined): string {
+  if (!lastLaunchedAt) return "";
+  const now = Date.now();
+  const then = new Date(lastLaunchedAt).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "hace unos segundos";
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `hace ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `hace ${diffDays}d`;
+}
+
+function buildTooltip(profile: LaunchProfile): string {
+  const count = profile.launchCount ?? 0;
+  let tip = `${profile.name} (lanzado ${count} veces)`;
+  const formatted = formatLastLaunched(profile.lastLaunchedAt);
+  if (formatted) tip += ` · ${formatted}`;
+  return tip;
+}
+
+type DockProfileButtonProps = {
+  profile: LaunchProfile;
+  onLaunch: () => void;
+};
+
+function DockProfileButton({ profile, onLaunch }: DockProfileButtonProps) {
+  const chain = useChainState(profile.id);
+  const lastResult = useLastResult(profile.id);
+
+  // Use static ring color since we don't have apps array here
+  const ringColor: string | null = chain ? "#3b82f6" : null;
+
+  const tooltip = buildTooltip(profile);
+
+  return (
+    <button
+      type="button"
+      onClick={onLaunch}
+      title={tooltip}
+      className="v52-dock-item relative"
+      data-testid={`dock-profile-${profile.id}`}
+      aria-label={`Lanzar perfil ${profile.name}`}
+    >
+      {chain ? (
+        <svg viewBox="0 0 24 24" className="w-5 h-5" data-testid={`dock-ring-${profile.id}`}>
+          <circle
+            cx="12" cy="12" r="10"
+            stroke="rgba(255,255,255,0.1)"
+            strokeWidth="2"
+            fill="none"
+          />
+          <circle
+            cx="12" cy="12" r="10"
+            stroke={ringColor ?? "#3b82f6"}
+            strokeWidth="2"
+            fill="none"
+            strokeDasharray={String(CIRCUMFERENCE)}
+            strokeDashoffset={String(
+              CIRCUMFERENCE -
+                CIRCUMFERENCE *
+                  ((chain.currentStepIndex + 1) / chain.steps.length),
+            )}
+            style={{ transform: "rotate(-90deg)", transformOrigin: "12px 12px" }}
+            data-testid={`dock-ring-progress-${profile.id}`}
+          />
+        </svg>
+      ) : lastResult ? (
+        <ProfileGlyph name={profile.name} />
+      ) : (
+        <ProfileGlyph name={profile.name} />
+      )}
+
+      {/* Favorite golden dot */}
+      {profile.isFavorite && (
+        <span
+          className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400"
+          data-testid={`dock-favorite-${profile.id}`}
+        />
+      )}
+
+      {/* Last result border badge (only when no chain active) */}
+      {!chain && lastResult === "success" && (
+        <span
+          className="absolute inset-0 rounded border border-emerald-500/40 pointer-events-none"
+          data-testid={`dock-lastresult-success-${profile.id}`}
+        />
+      )}
+      {!chain && lastResult === "error" && (
+        <span
+          className="absolute inset-0 rounded border border-red-500/50 pointer-events-none"
+          data-testid={`dock-lastresult-error-${profile.id}`}
+        />
+      )}
+      {!chain && lastResult === "partial" && (
+        <span
+          className="absolute inset-0 rounded border border-amber-500/40 pointer-events-none"
+          data-testid={`dock-lastresult-partial-${profile.id}`}
+        />
+      )}
+    </button>
+  );
+}
+
 export function LauncherDock({ onNavigate }: LauncherDockProps) {
   const { t } = useI18n();
   const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
@@ -52,6 +160,16 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
     };
   }, []);
 
+  const orderedProfiles = useMemo(
+    () =>
+      [...profiles].sort((a, b) => {
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        return a.name.localeCompare(b.name);
+      }),
+    [profiles],
+  );
+
   const handleLaunch = (id: string) => Events.Emit("launcher:profile:launch", { id });
 
   return (
@@ -66,20 +184,19 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
         <ListIcon />
       </button>
       <div className="overflow-y-auto flex flex-col gap-1">
-        {profiles.map((p) => {
-          const displayName = p.id === "creator" ? t("launcher.profiles.creator.name") : p.id === "pro" ? t("launcher.profiles.pro.name") : p.name;
+        {orderedProfiles.map((p) => {
+          const displayName =
+            p.id === "creator"
+              ? t("launcher.profiles.creator.name")
+              : p.id === "pro"
+                ? t("launcher.profiles.pro.name")
+                : p.name;
           return (
-            <button
+            <DockProfileButton
               key={p.id}
-              type="button"
-              onClick={() => handleLaunch(p.id)}
-              title={displayName}
-              className="v52-dock-item"
-              data-testid={`dock-profile-${p.id}`}
-              aria-label={`Lanzar perfil ${displayName}`}
-            >
-              <ProfileGlyph name={displayName} />
-            </button>
+              profile={{ ...p, name: displayName }}
+              onLaunch={() => handleLaunch(p.id)}
+            />
           );
         })}
       </div>

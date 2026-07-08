@@ -2,6 +2,11 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { LauncherDock } from "./LauncherDock";
+import * as chainStore from "../launcher/chain-store";
+
+// ---------------------------------------------------------------------------
+// Mock Wails runtime events
+// ---------------------------------------------------------------------------
 
 const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
 
@@ -30,6 +35,28 @@ function dispatch(name: string, data: unknown) {
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// Mock chain-store hooks – each test sets its own return values
+// ---------------------------------------------------------------------------
+
+vi.mock("../launcher/chain-store", () => ({
+  useChainState: vi.fn(),
+  useLastResult: vi.fn(),
+}));
+
+const mockUseChainState = vi.mocked(chainStore.useChainState);
+const mockUseLastResult = vi.mocked(chainStore.useLastResult);
+
+// Helper: profiles fixture
+const CREATOR_PROFILE = {
+  id: "creator",
+  name: "Creador de Contenido",
+  steps: [],
+  isFavorite: false,
+  launchCount: 3,
+  lastLaunchedAt: new Date(Date.now() - 7200000).toISOString(), // 2h ago
+};
 
 describe("LauncherDock", () => {
   it("requests the profile list on mount", () => {
@@ -66,5 +93,85 @@ describe("LauncherDock", () => {
     render(<LauncherDock onNavigate={onNavigate} />);
     fireEvent.click(screen.getByRole("button", { name: /ir a launcher/i }));
     expect(onNavigate).toHaveBeenCalledWith("launcher");
+  });
+
+  // ----- New tests for Cut 6 -----
+
+  it("renders lastResult badge when no chain active but profile has last result", () => {
+    mockUseChainState.mockReturnValue(undefined); // no active chain
+    mockUseLastResult.mockReturnValue("success");
+
+    render(<LauncherDock onNavigate={vi.fn()} />);
+    dispatch("launcher:profiles:updated", {
+      profiles: [CREATOR_PROFILE],
+    });
+
+    // Should have the success border badge element
+    expect(
+      screen.getByTestId("dock-lastresult-success-creator"),
+    ).toBeTruthy();
+  });
+
+  it("count appears in tooltip on hover", () => {
+    mockUseChainState.mockReturnValue(undefined);
+    mockUseLastResult.mockReturnValue(undefined);
+
+    render(<LauncherDock onNavigate={vi.fn()} />);
+    dispatch("launcher:profiles:updated", {
+      profiles: [CREATOR_PROFILE],
+    });
+
+    const btn = screen.getByTestId("dock-profile-creator") as HTMLButtonElement;
+    // The title attribute should include the count
+    expect(btn.title).toBeTruthy();
+    expect(btn.title).toContain("3 veces");
+  });
+
+  it("renders SVG ring during active chain", () => {
+    // Simulate an active chain
+    mockUseChainState.mockReturnValue({
+      profileId: "creator",
+      startedAt: 1000,
+      lastEventAt: 2000,
+      steps: [
+        { appId: "lmu", status: "launching" },
+        { appId: "obs", status: "pending" },
+      ],
+      currentStepIndex: 0,
+      overallStatus: "running",
+    });
+    mockUseLastResult.mockReturnValue(undefined);
+
+    render(<LauncherDock onNavigate={vi.fn()} />);
+    dispatch("launcher:profiles:updated", {
+      profiles: [CREATOR_PROFILE],
+    });
+
+    // Should render the SVG ring element
+    expect(screen.getByTestId("dock-ring-creator")).toBeTruthy();
+    // And the progress arc element
+    expect(
+      screen.getByTestId("dock-ring-progress-creator"),
+    ).toBeTruthy();
+  });
+
+  it("favorites first, alphabetical after", () => {
+    mockUseChainState.mockReturnValue(undefined);
+    mockUseLastResult.mockReturnValue(undefined);
+
+    render(<LauncherDock onNavigate={vi.fn()} />);
+    dispatch("launcher:profiles:updated", {
+      profiles: [
+        { id: "zulu", name: "Zulu", steps: [], isFavorite: false },
+        { id: "alpha", name: "Alpha", steps: [], isFavorite: true },
+        { id: "beta", name: "Beta", steps: [], isFavorite: false },
+      ],
+    });
+
+    const buttons = screen.getAllByTestId(/^dock-profile-/);
+    // alpha (favorite) first, then beta, then zulu (alphabetical among non-favorites)
+    expect(buttons[0].getAttribute("data-testid")).toBe("dock-profile-alpha");
+    expect(buttons[1].getAttribute("data-testid")).toBe("dock-profile-beta");
+    expect(buttons[2].getAttribute("data-testid")).toBe("dock-profile-zulu");
   });
 });

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/app"
@@ -555,5 +556,43 @@ func TestSidecarAppliedOnStartup(t *testing.T) {
 	}
 	if _, err := os.Stat(sidecarPath); !os.IsNotExist(err) {
 		t.Errorf("sidecar should be removed after applied")
+	}
+}
+
+func TestSettingsWriteMutexSerializesConcurrentWrites(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, nil)
+	_ = svc.Load()
+
+	const N = 20
+	var wg sync.WaitGroup
+	errs := make(chan error, N)
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			s := app.DefaultAppSettings()
+			s.LauncherApps = map[string]app.LauncherAppEntry{
+				"k": {ID: "k", DisplayName: "K" + string(rune('a'+i%26)), Abbreviation: "K", Category: app.AppCategoryUtility, LaunchMethod: "executable", Detected: true, GradientFrom: "#000", GradientTo: "#fff"},
+			}
+			errs <- svc.Save(s)
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("concurrent save error: %v", err)
+		}
+	}
+	// El archivo final debe ser JSON válido.
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var s app.AppSettings
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Errorf("final file must be valid JSON: %v", err)
 	}
 }

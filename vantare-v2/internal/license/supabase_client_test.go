@@ -51,6 +51,33 @@ func TestSupabaseClientFetchAccount(t *testing.T) {
 	}
 }
 
+func TestSupabaseClientFetchAccountPostgRESTArray(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		expires := time.Now().Add(time.Hour).UTC()
+		_ = json.NewEncoder(w).Encode([]AccountInfo{{
+			UserID:       "u2",
+			Email:        "u2@example.com",
+			Entitlements: []Entitlement{EntitlementEngineer},
+			ActiveDevice: "fp2",
+			ExpiresAt:    &expires,
+		}})
+	}))
+	defer server.Close()
+
+	client := NewStdlibSupabaseClient(server.URL, "anon-key")
+	info, err := client.FetchAccount(context.Background(), "token-456", "fp2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if info.UserID != "u2" {
+		t.Fatalf("expected user u2, got %s", info.UserID)
+	}
+	if len(info.Entitlements) != 1 || info.Entitlements[0] != EntitlementEngineer {
+		t.Fatalf("unexpected entitlements: %v", info.Entitlements)
+	}
+}
+
 func TestSupabaseClientFetchAccountError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

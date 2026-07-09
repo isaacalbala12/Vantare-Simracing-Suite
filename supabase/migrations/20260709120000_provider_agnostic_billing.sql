@@ -275,3 +275,10 @@ begin
   where user_id = v_user_id;
 end;
 $$;
+
+-- ============================================================
+-- 6. GRANTS: RPCs invocables vía PostgREST con JWT authenticated
+-- ============================================================
+
+grant execute on function public.get_account_entitlements(text) to authenticated;
+grant execute on function public.reset_active_device(text) to authenticated;

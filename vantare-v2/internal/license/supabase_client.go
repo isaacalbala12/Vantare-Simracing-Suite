@@ -62,9 +62,39 @@ func (c *stdlibSupabaseClient) FetchAccount(ctx context.Context, sessionToken st
 		return nil, fmt.Errorf("fetch account failed: %d %s", resp.StatusCode, string(msg))
 	}
 
-	var info AccountInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+	info, err := decodeAccountInfo(resp.Body)
+	if err != nil {
 		return nil, fmt.Errorf("decoding account: %w", err)
+	}
+	return info, nil
+}
+
+// decodeAccountInfo accepts PostgREST RPC payloads as either a single object
+// ({...}) or a one-row array ([{...}]) for functions that RETURNS TABLE.
+func decodeAccountInfo(r io.Reader) (*AccountInfo, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("empty account response")
+	}
+
+	if raw[0] == '[' {
+		var rows []AccountInfo
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			return nil, fmt.Errorf("empty account response array")
+		}
+		return &rows[0], nil
+	}
+
+	var info AccountInfo
+	if err := json.Unmarshal(raw, &info); err != nil {
+		return nil, err
 	}
 	return &info, nil
 }

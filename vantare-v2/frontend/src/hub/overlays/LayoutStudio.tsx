@@ -3,6 +3,14 @@ import type { SaveState } from "./useOverlayStudioState";
 import { StudioWidgetList } from "./StudioWidgetList";
 import { PreviewCanvas } from "../preview/PreviewCanvas";
 import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
+import {
+  applyOfficialDesignToProfile,
+  getOfficialDesign,
+  listOfficialDesigns,
+  getActiveOfficialDesignId,
+  resetWidgetDesignToBase,
+} from "../widgets/widget-design-gallery";
+import { isSyntheticProfile } from "./widget-studio-empty-profile";
 
 type LayoutStudioProps = {
   profile: ProfileConfig;
@@ -36,6 +44,8 @@ export function LayoutStudio({
   onBack,
 }: LayoutStudioProps) {
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? null;
+  const activeDesignId = selectedWidget ? getActiveOfficialDesignId(selectedWidget) : null;
+  const isSynthetic = isSyntheticProfile(profile);
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
@@ -93,6 +103,39 @@ export function LayoutStudio({
             </button>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-none items-center gap-2 border-b border-white/5 px-3 py-2" data-testid="design-system-selector">
+        <label
+          htmlFor="design-system-select-layout"
+          className="font-mono text-[10px] font-bold uppercase tracking-widest text-vantare-textDim"
+        >
+          Diseño
+        </label>
+        <select
+          id="design-system-select-layout"
+          value={activeDesignId ?? "base"}
+          disabled={isSynthetic}
+          title={isSynthetic ? "Crea o activa un perfil para aplicar diseños" : undefined}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!selectedWidget) return;
+            if (value === "base") {
+              onChangeProfile(resetWidgetDesignToBase(profile, selectedWidget.id));
+              return;
+            }
+            const design = getOfficialDesign(value);
+            if (design) onChangeProfile(applyOfficialDesignToProfile(profile, selectedWidget.id, design));
+          }}
+          className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <option value="base">Base</option>
+          {selectedWidget
+            ? listOfficialDesigns(selectedWidget.type).map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))
+            : null}
+        </select>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto xl:grid-cols-[280px_1fr_340px] xl:overflow-hidden">

@@ -140,4 +140,69 @@ describe("LayoutStudio", () => {
 
     expect(screen.queryByText(/Este perfil no es el activo/)).toBeNull();
   });
+
+  it("renders a design system selector reflecting the active design", () => {
+    render(<LayoutStudio {...defaultProps} />);
+
+    expect(screen.getByTestId("design-system-selector")).toBeTruthy();
+    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    expect(select.value).toBe("base");
+    expect(screen.getByRole("option", { name: "Base" })).toBeTruthy();
+  });
+
+  it("shows the active official design selected in the design selector", () => {
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        {
+          id: "standings",
+          type: "standings",
+          enabled: true,
+          updateHz: 15,
+          variantId: "official-standings-vantare-crystal-standings",
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
+      ],
+      variants: [
+        {
+          id: "official-standings-vantare-crystal-standings",
+          widgetType: "standings",
+          templateId: "standings-vantare-default",
+          themeId: "vantare-crystal",
+        },
+      ],
+    };
+
+    render(
+      <LayoutStudio
+        {...defaultProps}
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+      />,
+    );
+
+    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
+    expect(select.value).toBe("standings-vantare-crystal");
+  });
+
+  it("disables design selector when profile is synthetic", () => {
+    const emptyProfile: ProfileConfig = {
+      schemaVersion: 2,
+      displayMode: "racing",
+      monitorIndex: 0,
+      widgets: [],
+      variants: [],
+      layouts: {},
+    };
+    render(
+      <LayoutStudio
+        {...defaultProps}
+        profile={emptyProfile}
+        selectedWidgetId={null}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: /Diseño/i }) as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+  });
 });

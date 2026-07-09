@@ -185,7 +185,7 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       id: "launcher-reform", category: "launcher",
       label: { es: "Launcher — Revisión visual y filtros", en: "Launcher — Visual review and filters", pt: "Launcher — Revisão visual e filtros", it: "Launcher — Revisione visiva e filtri" },
       description: { es: "Revisión visual parcial, filtros de aplicaciones y code-review extenso.", en: "Partial visual review, application filters, and extensive code review.", pt: "Revisão visual parcial, filtros de aplicações e code review extenso.", it: "Revisione visiva parziale, filtri delle applicazioni e code review esteso." },
-      tipo: "feature", status: "in-development",
+      tipo: "feature", status: "future",
       subtasks: [
         { label: { es: "Revisión visual parcial", en: "Partial visual review", pt: "Revisão visual parcial", it: "Revisione visiva parziale" }, done: false },
         { label: { es: "Filtros de aplicaciones", en: "Application filters", pt: "Filtros de aplicações", it: "Filtri delle applicazioni" }, done: false },

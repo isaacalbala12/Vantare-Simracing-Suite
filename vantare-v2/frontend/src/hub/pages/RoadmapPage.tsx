@@ -169,24 +169,19 @@ type FeaturesSectionProps = {
 function FeatureCard({
   locale,
   feat,
-  isExpanded,
-  onToggle,
 }: {
   locale: string;
   feat: RoadmapFeature;
-  isExpanded: boolean;
-  onToggle: () => void;
 }) {
   const tipo = TIPO_META[feat.tipo] ?? TIPO_META.feature;
   const status = STATUS_META[feat.status] ?? STATUS_META.future;
   const pct = featurePercent(feat);
   return (
     <article
-      onClick={onToggle}
-      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-300 cursor-pointer border ${
+      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-300 border ${
         feat.status === "future"
-          ? "bg-[rgba(20,20,20,.35)] border-white/5 hover:border-white/10 opacity-70"
-          : "border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5 hover:shadow-[0_0_20px_rgba(255,59,59,.15)]"
+          ? "bg-[rgba(20,20,20,.35)] border-white/5 opacity-70"
+          : "border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5"
       }`}
       data-testid={`feature-card-${feat.id}`}
       data-status={feat.status}
@@ -208,13 +203,8 @@ function FeatureCard({
       <h3 className="font-bold text-sm text-white tracking-tight leading-tight">
         {pickText(feat.label, locale)}
       </h3>
-      {!isExpanded && pickText(feat.description, locale) && (
-        <p className="text-[11px] text-vantare-textMuted leading-relaxed line-clamp-2 flex-1">
-          {pickText(feat.description, locale)}
-        </p>
-      )}
-      {isExpanded && (
-        <p className="text-[11px] text-vantare-textMuted leading-relaxed mt-1">
+      {pickText(feat.description, locale) && (
+        <p className="text-[11px] text-vantare-textMuted leading-relaxed">
           {pickText(feat.description, locale)}
         </p>
       )}
@@ -224,7 +214,6 @@ function FeatureCard({
           <label
             key={i}
             className="flex items-center gap-2 text-[11px] text-vantare-textMuted select-none"
-            onClick={(e) => e.stopPropagation()}
           >
             <span
               className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
@@ -262,14 +251,10 @@ function SectionBlock({
   locale,
   title,
   categories,
-  expandedId,
-  onToggle,
 }: {
   locale: string;
   title: string;
   categories: ReadonlyArray<RoadmapCategory>;
-  expandedId: string | null;
-  onToggle: (id: string) => void;
 }) {
   if (categories.length === 0) return null;
   return (
@@ -311,8 +296,6 @@ function SectionBlock({
                 key={feat.id}
                 locale={locale}
                 feat={feat}
-                isExpanded={expandedId === feat.id}
-                onToggle={() => onToggle(feat.id)}
               />
             ))}
           </div>
@@ -323,10 +306,6 @@ function SectionBlock({
 }
 
 function FeaturesSection({ t, locale, sections, overallProgress }: FeaturesSectionProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const toggle = (id: string) =>
-    setExpandedId((prev) => (prev === id ? null : id));
-
   const inDevCount = sections.inDevelopment.reduce(
     (s, c) => s + c.features.length,
     0,
@@ -379,24 +358,18 @@ function FeaturesSection({ t, locale, sections, overallProgress }: FeaturesSecti
         locale={locale}
         title={STATUS_META["in-development"].label}
         categories={sections.inDevelopment}
-        expandedId={expandedId}
-        onToggle={toggle}
       />
 
       <SectionBlock
         locale={locale}
         title={STATUS_META.research.label}
         categories={sections.research}
-        expandedId={expandedId}
-        onToggle={toggle}
       />
 
       <SectionBlock
         locale={locale}
         title={STATUS_META.future.label}
         categories={sections.future}
-        expandedId={expandedId}
-        onToggle={toggle}
       />
     </div>
   );

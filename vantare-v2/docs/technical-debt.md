@@ -50,13 +50,12 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Severidad: P3
 - Area: licensing/supabase
 - Origen: diagnostico P0 Free plan bloqueado (2026-06-29)
-- Estado: migracion local lista, pendiente `db push` humano (Fase 1.6E)
+- Estado: **cerrado en remoto** (2026-07-09) — migraciones `20260709120000` + hotfix `20260709150000` aplicadas; smoke RPC PASS (device binding, entitlements `overlays`).
 - Release objetivo: `0.1.x` antes de activar pagos reales o antes de release publico (R15 o equivalente)
-- Fix aplicado (local): `supabase/migrations/20260709120000_provider_agnostic_billing.sql` — tablas `user_entitlements`, `devices`, `license_events`, `billing_customers`, `billing_subscriptions` + RPCs `get_account_entitlements` y `reset_active_device` (device binding seguro). Archivo tracked en repo; **no aplicado al remoto** hasta gate humano Task 9.
-- Motivo para diferir push: additive schema sobre remoto con tablas viejas (`licenses`, `subscriptions`); requiere backup + revision PR + ventana controlada.
-- Fix pendiente: `supabase db push` (solo humano), smoke SQL con JWT test, insert manual `user_entitlements` para validar premium.
-- Riesgo si se ignora push: usuarios pagados no reciben entitlements reales (RPC sigue inexistente en remoto).
-- Razon de severidad: no bloquea beta Free -> Hub. Sube a P2 antes de activar cobros/entitlements reales o `VITE_BILLING_ENABLED=true`.
+- Fix aplicado: schema provider-agnostic + RPCs `get_account_entitlements` / `reset_active_device` + `GRANT EXECUTE` authenticated; hotfix PL/pgSQL `devices.user_id` cualificado (bug 42702 post-push).
+- Residual: backup pre-push por CLI fallo (Docker inactivo); smoke app Wails pendiente con env/build alineados a `olhwhfaczmrmooeaoqqf`.
+- Riesgo residual: binarios/`supabase_build.go` generados con proyecto distinto (`ombjshwzqgeisazijduq`) si build local no actualiza `VITE_*`/`VANTARE_*`.
+- Razon de severidad: RPC operativa en remoto. Sube a P2 solo antes de `VITE_BILLING_ENABLED=true` o cobros reales.
 
 ### TD-044 - Sesion Supabase no persiste en WebView tras OAuth externo
 

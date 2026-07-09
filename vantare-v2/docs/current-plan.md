@@ -1,9 +1,16 @@
+Nota LAUNCHER-BUGFIX (2026-07-09):
+- Bug 1: `os.ExpandEnv` no expande `%VAR%` Windows. Fix: `expandWindowsEnv()` en `discovery.go`.
+- Bug 2: Apps como OBS necesitan `cmd.Dir` = su carpeta para encontrar archivos relativos (locale, config). Fix: `cmd.Dir = filepath.Dir(entry.ExecutablePath)` en `chain.go`.
+- Apps afectadas conocidas: OBS. Potencialmente CrewChief, SimHub, MoTeC.
+- Documentación completa en `docs/superpowers/specs/2026-07-08-launcher-v2-design.md` sección 11.
+
 Nota FASE-1-6-BILLING (2026-07-09):
-- Objetivo: billing/licensing provider-agnostic (Polar-ready) sin integrar Polar ni aplicar schema al remoto.
-- Completado: migración local `20260709120000_provider_agnostic_billing.sql`, `billing-client` (`BILLING_ENABLED=false`), PaywallScreen/AccountSettings sin endpoints fantasma, stripe-webhook en `_deprecated`, stub `billing-webhook`, `validate-license` marcada deprecated.
-- Pendiente humano (Task 9): backup remoto + `supabase db push` + smoke RPC. Ver `docs/superpowers/plans/2026-07-09-fase-1-6-billing-licensing-pre-polar.md`.
-- NO hecho: Polar, deploy EF, `db reset`, borrar tablas viejas.
-- Estado: 🟢 ACTIVO (push gated)
+- Objetivo: billing/licensing provider-agnostic (Polar-ready) sin integrar Polar.
+- Completado: `20260709120000` + hotfix `20260709150000` aplicados en remoto `olhwhfaczmrmooeaoqqf`; `billing-client` (`BILLING_ENABLED=false`); Paywall/AccountSettings sin endpoints fantasma; Go decoder PostgREST array; smoke RPC device binding + entitlements OK (usuario `fase16-smoke@vantare.dev`).
+- Pendiente: smoke manual app Wails con `VANTARE_SUPABASE_*` + frontend build alineado a `olhwhfaczmrmooeaoqqf`; backup CLI (Docker); `validate-license` legacy deployada (Fase 3).
+- NO hecho: Polar, deploy EF nuevas, `db reset`, borrar tablas viejas.
+- Smoke local app: `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` en runtime (Go); `VITE_SUPABASE_*` en build time (frontend). Binario embebido puede apuntar a otro proyecto si se compiló con `.env.local` viejo.
+- Estado: 🟡 CASI CERRADO (smoke app manual)
 
 Nota FEATURES-MANUAL-SOURCE (2026-07-08):
 - Objetivo: la pestaña 'Desarrollo por features' del Roadmap pasa a tener una fuente manual (JSON) igual que 'Roadmap actual', sin scripts de auto-generación.

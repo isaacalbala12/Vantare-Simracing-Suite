@@ -1,3 +1,40 @@
+Nota LAUNCH-0-AUDIT (2026-07-09):
+- Objetivo: auditoría pre-producción billing Polar — sin deploy prod, sin activar `VITE_BILLING_ENABLED` en release.
+- Tests: `pnpm --dir frontend test` 164 files / 1570 PASS; `pnpm --dir frontend build` OK; `deno test supabase/functions` 79 PASS; `go test ./internal/license/...` PASS.
+- Secretos: `.env` / `apps/desktop/.env` locales con service role (gitignored); nada trackeado en `git ls-files` (`.env.local`, `smoke-jwt`, `smoke-session.json`).
+- Playwright E2E: no hay `playwright.config.ts`; checklist billing cubierto por Vitest (`billing-client`, `PaywallScreen`, `AccountSettings`, `entitlements-refresh`).
+- Riesgo bloqueante pre-prod: working tree sucio (billing untracked + mezcla launcher/calendar); commits ordenados pendientes antes de Launch-1.
+- Launch-1 (humano): Polar prod org + productos, webhook prod, `supabase secrets set` prod, deploy EF, `VITE_BILLING_ENABLED=true` solo en pipeline release, smoke post-deploy, rollback = `VITE_BILLING_ENABLED=false` + revert secrets.
+- Recomendación Launch-0: **no-go a producción** hasta commit limpio billing + Launch-1 checklist humano.
+- Estado: ✅ CERRADO (auditoría)
+
+Nota FASE-2G-SMOKE (2026-07-09):
+- Objetivo: smoke GUI post-pago Polar — login → premium activo → Hub desbloqueado → refresh/reset PC en Ajustes.
+- Usuario smoke: `fase2g.smoke.1783629293344@gmail.com` (credenciales en `%TEMP%\vantare-fase2g-state.json`, gitignored).
+- Supabase oficial `ombjshwzqgeisazijduq`: `user_entitlements` con `bundle` + `active` (Polar lifetime); RPC `get_account_entitlements` OK con huella real del PC.
+- **Smoke GUI PASS (2026-07-09):** `wails3 dev` + login email → Ajustes → “Actualizar estado de licencia” → **“Acceso lifetime activo.”** Diagnóstico: `mock_runtime=false`, `state=active`, `entitlements=["bundle"]`, `deviceOK=true`, `tokenLen=843`, refresh `unlocked=true`.
+- Bugs corregidos en este corte:
+  1. `frontend/vite.config.ts`: el mock `@wailsio/runtime` solo con `VITE_RUNTIME_MOCK` (harnesses); `wails3 dev` usa runtime real → Go.
+  2. `internal/license/types.go` + `service.go`: `lastValidated` como RFC3339 string en wire.
+  3. `frontend/src/lib/entitlements-refresh.ts`: correlación refresh/reset + logs.
+  4. `frontend/src/lib/license-debug.ts`, `license-debug-log.ts`, `hub/settings/LicenseDiagnosticsPanel.tsx` (panel dev en Ajustes).
+  5. `tools/start-wails-dev-visible.ps1` (terminal visible opcional).
+- Comando dev: `powershell -File tools\start-wails-dev.ps1` (inyecta `VANTARE_SUPABASE_*` desde `frontend/.env.local`).
+- Tests: `go test ./internal/license/...` PASS; `pnpm --dir frontend test -- entitlements-refresh AccountSettings license` PASS.
+- Pendiente Fase 2H: `VITE_BILLING_ENABLED=true` en release prod, secrets prod, monitor webhooks. `BILLING_ENABLED` sigue `false` en dev por defecto.
+- Spec técnico completo: `docs/superpowers/specs/2026-07-09-fase-2g-licensing-revalidation-spec.md`
+- Estado 2G: ✅ CERRADO (smoke GUI PASS)
+
+Nota FASE-2-POLAR (2026-07-09):
+- Plan maestro: `docs/superpowers/plans/2026-07-09-fase-2-polar-integration.md`
+- Fase 2A: `docs/superpowers/plans/2026-07-09-fase-2a-polar-dashboard-setup.md` — docs Polar + mapping example.
+- Fase 2B: skeleton EF billing + tests Deno.
+- Fase 2C: `billing-checkout` checkout real Polar sandbox (`POST /v1/checkouts/`, mapping `product_id_to_checkout_key`, sin `polar_price_id`). Tests Deno 35 PASS. Sin deploy, sin `VITE_BILLING_ENABLED`.
+- Fase 2G: smoke GUI post-pago + revalidación — ver nota **FASE-2G-SMOKE** arriba (✅ CERRADO).
+- Secrets en Supabase (humano): `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_MAP`, `CHECKOUT_*`, `PORTAL_RETURN_URL`.
+- Gate: no deploy EF hasta E2E sandbox manual post-deploy.
+- Estado 2C: ✅ CERRADO EN REPO — listo para deploy sandbox `billing-checkout`
+
 Nota LAUNCHER-BUGFIX (2026-07-09):
 - Bug 1: `os.ExpandEnv` no expande `%VAR%` Windows. Fix: `expandWindowsEnv()` en `discovery.go`.
 - Bug 2: Apps como OBS necesitan `cmd.Dir` = su carpeta para encontrar archivos relativos (locale, config). Fix: `cmd.Dir = filepath.Dir(entry.ExecutablePath)` en `chain.go`.
@@ -6,11 +43,14 @@ Nota LAUNCHER-BUGFIX (2026-07-09):
 
 Nota FASE-1-6-BILLING (2026-07-09):
 - Objetivo: billing/licensing provider-agnostic (Polar-ready) sin integrar Polar.
-- Completado: `20260709120000` + hotfix `20260709150000` aplicados en remoto `olhwhfaczmrmooeaoqqf`; `billing-client` (`BILLING_ENABLED=false`); Paywall/AccountSettings sin endpoints fantasma; Go decoder PostgREST array; smoke RPC device binding + entitlements OK (usuario `fase16-smoke@vantare.dev`).
-- Pendiente: smoke manual app Wails con `VANTARE_SUPABASE_*` + frontend build alineado a `olhwhfaczmrmooeaoqqf`; backup CLI (Docker); `validate-license` legacy deployada (Fase 3).
-- NO hecho: Polar, deploy EF nuevas, `db reset`, borrar tablas viejas.
-- Smoke local app: `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` en runtime (Go); `VITE_SUPABASE_*` en build time (frontend). Binario embebido puede apuntar a otro proyecto si se compiló con `.env.local` viejo.
-- Estado: 🟡 CASI CERRADO (smoke app manual)
+- Proyecto Supabase **oficial**: `ombjshwzqgeisazijduq` (`https://ombjshwzqgeisazijduq.supabase.co`). Auth/Google operativo; migraciones aplicadas 2026-07-09.
+- Proyecto **equivocado** (solo pruebas): `olhwhfaczmrmooeaoqqf` — Fase 1.6 se aplicó allí por error antes de la corrección. Queda como staging/test o abandonado; **no usar en app/CI**.
+- Completado en proyecto correcto: migraciones `20260605140000`, `20260709120000`, `20260709150000`, `20260709160000` (backfill profiles); `billing-client` (`BILLING_ENABLED=false`); Paywall/AccountSettings sin endpoints fantasma; Go decoder PostgREST array; smoke RPC + device binding + entitlement manual; smoke GUI Wails (`bin/vantare-smoke-correct.exe`) PASS.
+- Env locales alineados (gitignored): `.env` raíz, `vantare-v2/frontend/.env.local`, `apps/desktop/.env`. Build Wails: `tools/generate_supabase_config.ps1` lee `VANTARE_SUPABASE_*` en compile-time.
+- Pendiente humano: GitHub Actions secrets `VITE_SUPABASE_*` deben apuntar a `ombjshwzqgeisazijduq` antes del próximo release tag; backup CLI pre-push (Docker); `validate-license` legacy deployada (Fase 3).
+- NO hecho: Polar, deploy EF nuevas, `db reset`, borrar tablas viejas (`licenses`/`subscriptions` siguen en schema por trigger `handle_new_user`; runtime app usa `user_entitlements` vía RPC).
+- Tablas legacy: sin dependencia activa en Go/frontend (solo trigger SQL signup + EF `validate-license` deprecated).
+- Estado: ✅ CERRADO (proyecto correcto)
 
 Nota FEATURES-MANUAL-SOURCE (2026-07-08):
 - Objetivo: la pestaña 'Desarrollo por features' del Roadmap pasa a tener una fuente manual (JSON) igual que 'Roadmap actual', sin scripts de auto-generación.

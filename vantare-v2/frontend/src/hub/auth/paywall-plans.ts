@@ -61,3 +61,29 @@ export const FOUNDER_PLANS: Plan[] = [
 ];
 
 export type PlanKey = (typeof PAYWALL_PLANS)[number]["key"];
+
+export const BILLING_PAYWALL_PLANS: Plan[] = [
+  {
+    key: "launch_lifetime",
+    name: "Launch Edition",
+    price: "30 EUR · lifetime",
+    features: [
+      "Bundle completo (Overlays + Engineer)",
+      "Pago único de lanzamiento",
+      "Sin renovación",
+    ],
+  },
+  {
+    key: "pro_monthly",
+    name: "Pro Monthly",
+    price: "4.99 EUR/mes",
+    recommended: true,
+    features: [
+      "Bundle completo (Overlays + Engineer)",
+      "Facturación mensual",
+      "Cancela cuando quieras",
+    ],
+  },
+];
+
+export type BillingPlanKey = (typeof BILLING_PAYWALL_PLANS)[number]["key"];

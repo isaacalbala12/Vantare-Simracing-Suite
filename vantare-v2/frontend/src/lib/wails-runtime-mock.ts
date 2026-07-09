@@ -1,9 +1,17 @@
 /**
- * Mock for @wailsio/runtime used by the calendar visual harness.
+ * Mock for @wailsio/runtime used by visual harnesses only (VITE_RUNTIME_MOCK).
  * Auto-responds to common events with realistic data so the app
  * renders without a real Wails backend.
  */
 import { mockCalendar } from "../hub/calendar-visual-mock-data";
+import { licenseDebugWarn } from "./license-debug";
+import { setWailsRuntimeMockActive } from "./license-debug-log";
+
+setWailsRuntimeMockActive(true);
+licenseDebugWarn(
+  "wails-mock",
+  "wails-runtime-mock activo — license/reset NO usan el backend Go real",
+);
 
 const listeners = new Map<string, Set<(event: unknown) => void>>();
 
@@ -30,12 +38,33 @@ export const Events = {
 
     // Auto-respond to license validation
     if (name === "license:validate") {
+      licenseDebugWarn("wails-mock", "license:validate interceptado (mock)", {
+        email: "test@example.com",
+        entitlements: ["overlays"],
+      });
       setTimeout(() => {
         broadcast("license:changed", {
           state: "active",
           entitlements: ["overlays"],
+          userId: "mock-user",
           email: "test@example.com",
-          subscription: "lifetime",
+          deviceOK: true,
+          lastValidated: new Date().toISOString(),
+        });
+      }, 50);
+      return;
+    }
+
+    if (name === "license:reset-device") {
+      licenseDebugWarn("wails-mock", "license:reset-device interceptado (mock)");
+      setTimeout(() => {
+        broadcast("license:changed", {
+          state: "active",
+          entitlements: ["overlays"],
+          userId: "mock-user",
+          email: "test@example.com",
+          deviceOK: true,
+          lastValidated: new Date().toISOString(),
         });
       }, 50);
       return;

@@ -65,6 +65,8 @@ type Config struct {
 
 // LicenseWire is the JSON shape sent to the UI via Wails events. Field names
 // mirror the TypeScript LicenseResult type in frontend/src/lib/license.tsx.
+// LastValidated is an RFC3339 string (not time.Time) so WebView2 receives a
+// parseable value instead of an opaque Go struct object.
 type LicenseWire struct {
 	State         string        `json:"state"`
 	Entitlements  []Entitlement `json:"entitlements"`
@@ -72,7 +74,7 @@ type LicenseWire struct {
 	Email         string        `json:"email"`
 	DeviceOK      bool          `json:"deviceOK"`
 	GraceEndsAt   *time.Time    `json:"graceEndsAt,omitempty"`
-	LastValidated time.Time     `json:"lastValidated"`
+	LastValidated string        `json:"lastValidated,omitempty"`
 	Error         string        `json:"error,omitempty"`
 }
 
@@ -82,6 +84,10 @@ func (r *Result) ToWire() LicenseWire {
 	if r.Error != nil {
 		errMsg = r.Error.Error()
 	}
+	var lastValidated string
+	if !r.LastValidated.IsZero() {
+		lastValidated = r.LastValidated.UTC().Format(time.RFC3339Nano)
+	}
 	return LicenseWire{
 		State:         string(r.State),
 		Entitlements:  r.Entitlements,
@@ -89,7 +95,7 @@ func (r *Result) ToWire() LicenseWire {
 		Email:         r.Email,
 		DeviceOK:      r.DeviceOK,
 		GraceEndsAt:   r.GraceEndsAt,
-		LastValidated: r.LastValidated,
+		LastValidated: lastValidated,
 		Error:         errMsg,
 	}
 }

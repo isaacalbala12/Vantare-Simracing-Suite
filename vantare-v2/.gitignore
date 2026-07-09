@@ -40,4 +40,17 @@ frontend/scripts/widget-parity-harness.html
 frontend/src/topbar-visual-harness.tsx
 docs/superpowers/screenshots/
 frontend/.tmp/
+frontend/.temp/
 frontend/dev-server.log
+
+# Local env (never commit)
+.env.local
+frontend/.env.local
+
+# Supabase CLI / smoke scratch (may contain tokens)
+supabase/.temp/
+
+# Smoke session artifacts
+smoke-jwt.txt
+*.jwt
+**/smoke-session.json

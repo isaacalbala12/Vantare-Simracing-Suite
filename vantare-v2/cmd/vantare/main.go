@@ -582,6 +582,8 @@ func main() {
 		// Validate already emits license:changed internally via EmitChanged,
 		// so we must not emit again here to avoid duplicate events that can
 		// race with the frontend state machine.
+		log.Printf("license:validate request tokenLen=%d refreshLen=%d",
+			len(payload.SessionToken), len(payload.RefreshToken))
 		res, verr := licenseSvc.Validate(context.Background(), payload.SessionToken)
 		if verr != nil {
 			log.Printf("license:validate error: %v", verr)
@@ -589,8 +591,8 @@ func main() {
 			return
 		}
 		if res != nil {
-			log.Printf("license:validate result state=%s deviceOK=%v err=%v entitlements=%d",
-				res.State, res.DeviceOK, res.Error != nil, len(res.Entitlements))
+			log.Printf("license:validate result state=%s email=%s deviceOK=%v entitlements=%v err=%v",
+				res.State, res.Email, res.DeviceOK, res.Entitlements, res.Error)
 		}
 		// Emit auth:session so the frontend can persist the Supabase session
 		// in the WebView's localStorage. This survives app restarts.
@@ -611,6 +613,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
+		log.Printf("license:reset-device request tokenLen=%d", len(payload.SessionToken))
 		if payload.SessionToken == "" {
 			log.Printf("license:reset-device error: empty session token")
 			emitter.Emit("license:error", map[string]any{"message": "token de sesión requerido"})
@@ -622,6 +625,7 @@ func main() {
 			emitter.Emit("license:error", map[string]any{"message": err.Error()})
 			return
 		}
+		log.Printf("license:reset-device ok")
 	})
 
 	// Preset service for widget presets (WidgetStudio only)

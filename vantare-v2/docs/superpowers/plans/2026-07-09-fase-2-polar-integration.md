@@ -861,6 +861,24 @@ Datos históricos en `license_events` se conservan para soporte.
 
 **NO hacer:** Borrar tablas legacy (Fase 3)
 
+#### Launch-1C — production checkout smoke without payment (2026-07-10)
+
+Cerrado sin pago real (sin presupuesto test). Ver `docs/current-plan.md` nota **LAUNCH-1C**.
+
+| Check | Resultado |
+|-------|-----------|
+| `POLAR_PRODUCT_MAP` prod | Aplicado (IDs prod, sin sandbox) |
+| `launch_lifetime` checkout | OK — HTTP 200, URL `polar.sh/checkout/...` |
+| `pro_monthly` checkout | OK — HTTP 200, URL `polar.sh/checkout/...` |
+| Spoof `forbidden_field` | OK — HTTP 400 |
+| Webhook prod post-pago | **Pendiente** (no hubo compra) |
+| `user_entitlements` / `billing_subscriptions` prod | **Pendiente** |
+| Billing portal prod E2E | **Pendiente** |
+
+**Gates:** GO generar checkout prod. NO-GO venta publica hasta pago real controlado o riesgo aceptado.
+
+**Checklist pendiente (presupuesto ~4.99 EUR):** pago Pro Monthly real -> webhook 202 -> entitlements `bundle` -> `billing_subscriptions` -> portal prod -> cancel/refund -> revalidar app -> recien entonces `VITE_BILLING_ENABLED=true` en release.
+
 ---
 
 ## 19. Checklist antes de implementación

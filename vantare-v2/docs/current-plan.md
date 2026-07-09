@@ -1,3 +1,41 @@
+Nota LAUNCH-1C (2026-07-10):
+- Objetivo: cerrar smoke de checkout Polar **produccion** sin pago real (sin presupuesto test).
+- Proyecto Supabase: `ombjshwzqgeisazijduq` (oficial). Sin merge PR, sin tag, sin release publico.
+- Script smoke: `supabase/.temp/smoke-prod-billing.ps1` (gitignored). Mapping aplicado via `supabase/.temp/polar-prod-map.env` (gitignored, no commiteado).
+- `POLAR_PRODUCT_MAP` prod re-aplicado (minificado, ASCII, IDs prod):
+  - `launch_lifetime` -> `b1b1e348-acd6-4a81-ba67-db6d98aca2e6`
+  - `pro_monthly` -> `0f91f52f-f92f-4a7a-9782-da2ec44cf8b8`
+  - Sin IDs sandbox (`fd15a961...`, `41cffd72...`). Ambos -> entitlement `bundle`.
+- Resultados smoke prod (2026-07-10, sin abrir checkout ni comprar):
+  - Auth JWT: OK (`state_password_grant`, usuario `fase2g.smoke.1783629293344@gmail.com`)
+  - `launch_lifetime`: OK HTTP 200, URL `polar.sh/checkout/...` (prod, no sandbox)
+  - `pro_monthly`: OK HTTP 200, URL `polar.sh/checkout/...` (prod, no sandbox)
+  - Spoof `forbidden_field`: OK HTTP 400
+  - `mapping_invalid_json`: resuelto (ya no aparece)
+- **No validado** (requiere pago real): webhook prod `order.paid` 202, `user_entitlements`, `billing_subscriptions`, billing portal prod end-to-end.
+- Estado gates:
+  - **GO** generar checkout produccion (API + URLs Polar prod)
+  - **NO-GO** venta publica hasta smoke de pago real o aceptacion explicita del riesgo
+- `VITE_BILLING_ENABLED`: default en codigo sigue `false` (`billing-client.ts` solo activa con `=== "true"`). No activado en pipeline release publico este corte.
+- Secrets: no tocados en este cierre (solo documentacion). OAT/whsec/map ya aplicados en sesiones previas.
+- Checklist pendiente (cuando haya presupuesto ~4.99 EUR):
+  1. Pago real controlado **Pro Monthly** (4.99 EUR) con cuenta smoke dedicada
+  2. Verificar webhook Polar prod responde **202** y escribe `license_events`
+  3. Verificar `user_entitlements` -> `bundle` activo (mensual)
+  4. Verificar fila en `billing_subscriptions` coherente con Polar
+  5. Verificar billing portal produccion (abrir sesion, volver a app)
+  6. Cancelar suscripcion y/o refund en Polar si procede
+  7. Revalidar en app: Ajustes -> "Actualizar estado de licencia"
+  8. Solo entonces valorar `VITE_BILLING_ENABLED=true` en release (Fase 2H)
+- Plan Polar: `docs/superpowers/plans/2026-07-09-fase-2-polar-integration.md` seccion Fase 2H / Launch-1C.
+- Estado: ✅ CERRADO (checkout prod smoke sin pago)
+
+Nota LAUNCH-0.5-COMMIT (2026-07-09):
+- Branch: `launch/polar-billing` — commit `cc84a4b` (68 archivos, solo billing/licencia Polar Fase 1.6–2G).
+- Excluido del commit: calendar, launcher, marketing, pnpm-workspace, smoke scripts, temporales.
+- Push: **pendiente** (confirmar con humano).
+- Estado: ✅ CERRADO
+
 Nota LAUNCH-0-AUDIT (2026-07-09):
 - Objetivo: auditoría pre-producción billing Polar — sin deploy prod, sin activar `VITE_BILLING_ENABLED` en release.
 - Tests: `pnpm --dir frontend test` 164 files / 1570 PASS; `pnpm --dir frontend build` OK; `deno test supabase/functions` 79 PASS; `go test ./internal/license/...` PASS.

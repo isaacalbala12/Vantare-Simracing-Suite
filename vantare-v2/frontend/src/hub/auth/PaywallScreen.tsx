@@ -8,6 +8,10 @@ import {
 } from "../../lib/plan";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Browser } from "@wailsio/runtime";
+import {
+  BILLING_ENABLED,
+  createCheckoutSession,
+} from "../../lib/billing-client";
 
 type PaywallScreenProps = {
   email: string;
@@ -23,6 +27,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
   const { t } = useI18n();
   const [pendingPlan, setPendingPlan] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [comingSoon, setComingSoon] = useState(false);
 
   const summary = useMemo(
     () =>
@@ -31,36 +36,31 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
   );
 
   const handleSubscribe = useCallback(async (planKey: string) => {
-    setPendingPlan(planKey);
     setCheckoutError(null);
-    try {
-      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
-      const efUrl = `${supabaseUrl}/functions/v1/create-checkout-session`;
-      const res = await fetch(efUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          priceKey: planKey,
-          userId: result?.userId ?? "",
-          email,
-          successUrl: "http://127.0.0.1:39261/checkout/callback",
-          cancelUrl: "http://127.0.0.1:39261/checkout/callback",
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setCheckoutError(err.error ?? t("auth.serverError"));
+    setComingSoon(false);
+
+    if (!BILLING_ENABLED) {
+      setComingSoon(true);
+      return;
+    }
+
+    setPendingPlan(planKey);
+    const checkout = await createCheckoutSession({
+      productKey: planKey,
+      email,
+    });
+    if (!checkout.ok) {
+      setPendingPlan(null);
+      if (checkout.reason === "billing_not_available") {
+        setComingSoon(true);
         return;
       }
-      const data = await res.json();
-      if (data.url) {
-        setPendingPlan(null);
-        await Browser.OpenURL(data.url);
-      }
-    } catch {
       setCheckoutError(t("auth.serverError"));
+      return;
     }
-  }, [email, result?.userId, t]);
+    setPendingPlan(null);
+    await Browser.OpenURL(checkout.url);
+  }, [email, t]);
 
   return (
     <div
@@ -89,6 +89,11 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
         </p>
       ) : (
         <div className="mb-6" />
+      )}
+      {comingSoon && (
+        <div data-testid="paywall-coming-soon" className="mb-6 rounded border border-white/10 bg-[#111] px-4 py-2 font-mono text-[10px] text-vantare-textDim">
+          {t("paywall.comingSoon")}
+        </div>
       )}
       {checkoutError && (
         <div data-testid="paywall-error" className="mb-6 rounded border border-vantare-red-500/20 bg-vantare-red-500/10 px-4 py-2 font-mono text-[10px] text-vantare-red-400">

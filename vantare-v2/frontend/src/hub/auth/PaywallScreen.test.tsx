@@ -59,38 +59,15 @@ describe("PaywallScreen", () => {
     expect(screen.getByRole("button", { name: /continuar gratis/i })).toBeTruthy();
   });
 
-  it("calls fetch to create-checkout-session and opens Stripe URL when Suscribirse is clicked", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ url: "https://checkout.stripe.com/pay/cs_test" }),
-    } as Response);
-
+  it("shows coming soon when billing is disabled and does not fetch", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<PaywallScreen email="u@example.com" />);
     const buttons = screen.getAllByRole("button", { name: /suscribirse/i });
     fireEvent.click(buttons[0]);
-
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
-    const [url, opts] = fetchSpy.mock.calls[0];
-    expect(url).toContain("/functions/v1/create-checkout-session");
-    expect(opts?.method).toBe("POST");
-    expect(await mockOpenURL).toHaveBeenCalledWith("https://checkout.stripe.com/pay/cs_test");
-
-    fetchSpy.mockRestore();
-  });
-
-  it("shows error when checkout fetch fails", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: "Plan not found" }),
-    } as Response);
-
-    render(<PaywallScreen email="u@example.com" />);
-    const buttons = screen.getAllByRole("button", { name: /suscribirse/i });
-    fireEvent.click(buttons[0]);
-
-    expect(await screen.findByTestId("paywall-error")).toBeTruthy();
-    expect(screen.getByText(/Plan not found/)).toBeTruthy();
-
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("paywall-coming-soon")).toBeTruthy(),
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 

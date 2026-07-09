@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vantare Suite - Glassmorphism Pro (V2 & V3 Pedals)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #060608;
+      --accent-red: #e63946;
+      --accent-red-bright: #ff2a3b;
+      --accent-green: #22c55e;
+      --accent-yellow: #f59e0b;
+      --text-main: #ffffff;
+      --text-muted: #999999;
+      --text-dim: #555555;
+      
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      padding: 40px 24px 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(230, 57, 70, 0.12) 0%, transparent 60%),
+        linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+
+    .header { text-align: center; margin-bottom: 48px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(230, 57, 70, 0.15); color: var(--accent-red-bright);
+      border: 1px solid rgba(230, 57, 70, 0.35); padding: 5px 14px;
+      border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .title { font-family: var(--font-display); font-size: 36px; font-weight: 800; margin-bottom: 8px; }
+    .desc { font-size: 14px; color: var(--text-muted); max-width: 680px; margin: 0 auto; line-height: 1.5; }
+
+    /* SECCIONES Y GRID */
+    .section-title {
+      font-family: var(--font-display); font-size: 18px; font-weight: 800; color: #fff;
+      margin: 40px 0 20px; width: 100%; max-width: 1200px; display: flex; align-items: center; gap: 10px;
+    }
+    .section-title::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+
+    .widgets-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 32px; width: 100%; max-width: 1200px; align-items: flex-start; }
+
+    /* ESTILO GLASS PRO BASE */
+    .glass-card {
+      background: rgba(18, 18, 22, 0.82); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); overflow: hidden;
+    }
+    .card-header { padding: 10px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%); }
+    .badge-pill { background: rgba(230, 57, 70, 0.15); border: 1px solid rgba(230, 57, 70, 0.4); color: #fff; font-size: 9px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px; }
+
+    /* LOGO SVG */
+    .vantare-logo-box { display: flex; align-items: center; gap: 6px; }
+    .vantare-logo-svg { height: 18px; width: auto; filter: drop-shadow(0 0 6px rgba(230, 57, 70, 0.5)); }
+    .vantare-brand-text { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.12em; color: #ffffff; }
+
+    /* 1. RELATIVE Y STANDINGS VERTICALES — Proporciones realistas (ref: overlay simracing típico) */
+    .grid-relative { display: grid; grid-template-columns: 26px 4px 28px 1fr 58px 62px; align-items: center; column-gap: 6px; padding: 0 10px; }
+    .grid-standings { display: grid; grid-template-columns: 20px 20px 26px 1fr 76px 58px; align-items: center; column-gap: 6px; padding: 0 10px; }
+    .table-header { height: 24px; font-size: 9px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.08em; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); }
+    .row { height: 28px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
+    .row:nth-child(even) { background: rgba(255,255,255,0.015); }
+    .row:nth-child(odd) { background: rgba(0,0,0,0.25); }
+    .row.highlight { background: linear-gradient(90deg, rgba(255,42,59,0.22) 0%, rgba(230,57,70,0.05) 100%); border-top: 1px solid rgba(255,42,59,0.4); border-bottom: 1px solid rgba(255,42,59,0.4); position: relative; }
+    .row.highlight::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent-red-bright); box-shadow: 0 0 10px var(--accent-red-bright); }
+    .cell-center { text-align: center; justify-self: center; display: flex; align-items: center; justify-content: center; }
+    .cell-right { text-align: right; justify-self: end; font-family: var(--font-mono); font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: flex-end; }
+    .cell-left { text-align: left; justify-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; font-weight: 600; font-size: 11px; display: flex; align-items: center; }
+    .pos-num { font-family: var(--font-mono); font-weight: 700; font-size: 11px; width: 20px; text-align: center; }
+    .class-bar { width: 3px; height: 16px; border-radius: 2px; justify-self: center; }
+    .bg-hypercar { background: var(--accent-red-bright); box-shadow: 0 0 8px rgba(255, 42, 59, 0.5); }
+    .num-badge { color: #fff; font-size: 11px; font-weight: 900; font-family: var(--font-mono); width: 26px; text-align: center; position: relative; display: inline-block; }
+    .pit-tag { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: #000; font-size: 7px; font-weight: 800; padding: 1px 3px; border-radius: 2px; }
+    .brand-side-strip { font-size: 8px; font-weight: 800; justify-self: center; letter-spacing: 0.5px; width: 20px; text-align: center; }
+    .tire-wrapper { display: grid; grid-template-columns: 16px 1fr; gap: 6px; align-items: center; width: 100%; font-family: var(--font-mono); font-size: 10px; font-weight: 600; padding-left: 12px; }
+    .tire-badge { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 3px; font-size: 8px; font-weight: 800; color: #000; }
+    .tire-S { background: #ff4d4d; box-shadow: 0 0 6px rgba(255,77,77,0.4); }
+    .tire-M { background: #facc15; }
+    .card-footer { padding: 6px 12px; background: rgba(0,0,0,0.45); border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); font-weight: 600; }
+
+
+    /* 2. STANDINGS HORIZONTAL BROADCAST TOWER */
+    .broadcast-ticker {
+      width: 100%; display: flex; align-items: center;
+      background: rgba(12, 12, 16, 0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+      backdrop-filter: blur(24px); box-shadow: 0 20px 50px rgba(0,0,0,0.8); padding: 8px 12px; gap: 8px;
+    }
+    .broadcast-lap {
+      background: linear-gradient(180deg, #1f1f26 0%, #111116 100%); border: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 16px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 100px;
+    }
+    .broadcast-drivers-stream { display: flex; flex: 1; overflow-x: auto; gap: 6px; align-items: center; padding: 2px 0; }
+    .driver-box {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+      padding: 6px 10px; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; transition: transform 0.2s, background 0.2s;
+    }
+    .driver-box:hover { background: rgba(255,255,255,0.06); }
+    .driver-box.active {
+      background: linear-gradient(135deg, rgba(255,42,59,0.22) 0%, rgba(230,57,70,0.05) 100%);
+      border: 1px solid var(--accent-red-bright); box-shadow: 0 0 18px rgba(255,42,59,0.3);
+    }
+    .driver-pos-badge { background: #ffffff; color: #000; font-family: var(--font-mono); font-weight: 800; font-size: 13px; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+    .driver-box.active .driver-pos-badge { background: var(--accent-red-bright); color: #fff; box-shadow: 0 0 10px var(--accent-red-bright); }
+    .driver-class-line { width: 3px; height: 26px; border-radius: 2px; background: var(--accent-red-bright); }
+    .driver-info-col { display: flex; flex-direction: column; justify-content: center; flex: 1; overflow: hidden; }
+    .driver-top-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .driver-name-text { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .driver-brand-tag { font-size: 9px; font-weight: 800; background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 3px; color: #ccc; }
+    .driver-gap-text { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: #aaa; margin-top: 1px; }
+    .driver-box.active .driver-gap-text { color: #ff808b; font-weight: 700; }
+    .broadcast-weather { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 700; min-width: 90px; }
+
+    /* 3. FUEL CALCULATOR + LAP HISTORY COMPACTO */
+    .unified-fuel-card { width: 100%; max-width: 680px; display: grid; grid-template-columns: 1.2fr 1fr; }
+    .fuel-col-left { padding: 18px 22px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+    .fuel-col-right { padding: 18px 22px; display: flex; flex-direction: column; justify-content: space-between; background: rgba(0,0,0,0.25); }
+    .compact-fuel-bar { width: 100%; height: 14px; background: rgba(255,255,255,0.06); border-radius: 7px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+    .compact-fuel-fill { width: 31%; height: 100%; background: linear-gradient(90deg, #ff2a3b 0%, #ff7580 100%); box-shadow: 0 0 10px rgba(255,42,59,0.5); }
+    .quick-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+    .stat-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 8px 4px; border-radius: 8px; }
+    .stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: #fff; }
+    .stat-lbl { font-size: 9px; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
+    .history-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 12px; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); }
+
+    /* 4. TELEMETRÍA COMPARATIVA (V1 vs V2 vs V3) */
+    .telemetry-showcase { display: flex; flex-wrap: wrap; justify-content: center; gap: 36px; width: 100%; max-width: 1200px; align-items: flex-end; }
+    .telemetry-col { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .version-tag { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: var(--accent-red-bright); letter-spacing: 0.1em; background: rgba(230,57,70,0.15); padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(230,57,70,0.3); }
+
+    /* V1 CÁPSULA HUD ORIGINAL */
+    .hud-capsule-v1 {
+      background: rgba(15, 15, 18, 0.88); border: 1px solid rgba(255,255,255,0.12); border-radius: 60px;
+      padding: 12px 28px 12px 16px; display: flex; align-items: center; gap: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.15); backdrop-filter: blur(24px); position: relative;
+    }
+    .gear-ring-v1 {
+      width: 60px; height: 60px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #22c55e; border-right-color: #22c55e; display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 28px; font-weight: 800; color: #fff;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.3), inset 0 0 10px rgba(0,0,0,0.5); background: #0c0c0e;
+    }
+    .rpm-container { display: flex; flex-direction: column; gap: 6px; }
+    .rpm-leds { display: flex; gap: 4px; }
+    .led { width: 10px; height: 6px; border-radius: 2px; background: rgba(255,255,255,0.1); }
+    .led.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .led.red { background: #ff2a3b; box-shadow: 0 0 6px #ff2a3b; }
+    .telemetry-numbers { display: flex; gap: 20px; font-family: var(--font-mono); }
+    .tel-val { font-size: 18px; font-weight: 800; color: #fff; line-height: 1; }
+    .tel-lbl { font-size: 9px; font-weight: 700; color: var(--text-muted); margin-bottom: 2px; }
+
+    /* BARRAS COMUNES BASE */
+    .pedal-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+    .pedal-fill { width: 100%; border-radius: 3px; transition: height 0.1s; }
+    .fill-thr { height: 85%; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+    .fill-brk { height: 15%; background: #ff2a3b; box-shadow: 0 0 10px #ff2a3b; }
+    .fill-clu { height: 0%; background: #f59e0b; }
+    .pedal-lbl { font-family: var(--font-mono); font-size: 10px; font-weight: 800; color: #aaa; }
+
+    /* V2 RECTANGULAR DE PERFIL BAJO (MENOS ALTO) */
+    .cockpit-v2-low {
+      background: rgba(18, 18, 22, 0.9); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+      padding: 12px 22px; display: flex; align-items: center; gap: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.2); backdrop-filter: blur(28px);
+      border-top: 3px solid var(--accent-red-bright);
+    }
+    .pedals-group-sleek { display: flex; gap: 12px; align-items: flex-end; height: 62px; }
+    .pedal-track-sleek { width: 14px; height: 46px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; display: flex; align-items: flex-end; border: 1px solid rgba(255,255,255,0.1); }
+    .gear-core-sleek { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 85px; }
+    .shift-bar-top { display: flex; gap: 3px; width: 100%; justify-content: center; margin-bottom: 6px; }
+    .shift-dot { width: 8px; height: 5px; border-radius: 2px; background: rgba(255,255,255,0.1); }
+    .shift-dot.g { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .shift-dot.y { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+    .shift-dot.r { background: #ff2a3b; box-shadow: 0 0 8px #ff2a3b; }
+    .gear-num-sleek { font-family: var(--font-display); font-size: 40px; font-weight: 800; line-height: 0.85; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.4); }
+    .speed-lbl-sleek { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 5px; letter-spacing: 0.05em; }
+
+    /* V3 SOLO PEDALES (VERTICAL TALL - MÁS ALTO QUE ANCHO) */
+    .cockpit-v3-solo {
+      background: rgba(18, 18, 22, 0.9); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px;
+      padding: 16px 18px 12px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.2); backdrop-filter: blur(28px);
+      border-top: 3px solid #22c55e;
+    }
+    .pedals-group-tall { display: flex; gap: 14px; align-items: flex-end; height: 135px; }
+    .pedal-track-tall { width: 18px; height: 115px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; display: flex; align-items: flex-end; border: 1px solid rgba(255,255,255,0.12); }
+
+    /* 5. RACING FLAGS */
+    .flag-card {
+      background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px;
+      overflow: hidden; width: 280px; box-shadow: 0 20px 50px rgba(0,0,0,0.75); backdrop-filter: blur(24px);
+    }
+    .flag-top {
+      padding: 8px 16px; font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+      background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.06); text-align: center;
+    }
+    .flag-banner {
+      padding: 16px; display: flex; align-items: center; justify-content: center; gap: 12px;
+      font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: 0.05em;
+    }
+    .bg-flag-green { background: linear-gradient(135deg, rgba(34,197,94,0.25) 0%, rgba(34,197,94,0.05) 100%); color: #22c55e; border-top: 2px solid #22c55e; }
+    .bg-flag-yellow { background: linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.05) 100%); color: #f59e0b; border-top: 2px solid #f59e0b; }
+
+    /* 6. DELTA BAR (PREDICTIVE LAP TIMING) - CONCEPTO ORIGINAL COMPACTO */
+    .delta-bar-wrapper {
+      display: flex; flex-direction: column; align-items: center; gap: 6px; width: 440px;
+    }
+    .delta-top-pill {
+      background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px;
+      padding: 5px 18px; display: flex; align-items: center; gap: 14px; font-family: var(--font-mono); font-size: 13px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6); backdrop-filter: blur(24px);
+    }
+    .delta-lap-num { color: #f59e0b; font-weight: 800; letter-spacing: 0.05em; }
+    .delta-pred-time { color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: 0.05em; }
+    .delta-split { font-weight: 800; font-size: 14px; }
+    
+    .delta-track-container {
+      width: 100%; height: 22px; background: rgba(10, 10, 14, 0.9); border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 11px; position: relative; overflow: hidden; box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 10px 25px rgba(0,0,0,0.5);
+      backdrop-filter: blur(24px);
+    }
+    .delta-center-line {
+      position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #ffffff;
+      transform: translateX(-50%); z-index: 5; box-shadow: 0 0 6px #ffffff;
+    }
+    .delta-fill-bar {
+      position: absolute; top: 3px; bottom: 3px; border-radius: 5px; z-index: 2; transition: all 0.2s ease;
+    }
+    .delta-fill-green {
+      right: 50%; width: 28%; background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.7); border-top-left-radius: 6px; border-bottom-left-radius: 6px; border-top-right-radius: 0; border-bottom-right-radius: 0;
+    }
+    .delta-fill-red {
+      left: 50%; width: 35%; background: linear-gradient(90deg, #ff2a3b 0%, #ff6b7a 100%);
+      box-shadow: 0 0 12px rgba(255, 42, 59, 0.7); border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-top-left-radius: 0; border-bottom-left-radius: 0;
+    }
+    .delta-bottom-pill {
+      background: rgba(18, 18, 22, 0.9); border-radius: 16px; padding: 3px 20px; font-family: var(--font-mono); font-size: 15px; font-weight: 800;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.8); backdrop-filter: blur(24px); border: 1px solid;
+    }
+
+    /* SECCIÓN 7: DELTA TRACE & CORNER ANALYSIS (GLASS PRO) — Proporciones referencia */
+    .dt-container {
+      display: flex; flex-direction: column; gap: 0; width: 100%; max-width: 1000px; margin: 0 auto 60px auto;
+      font-family: var(--font-sans);
+      background: rgba(12, 12, 16, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1);
+      overflow: hidden;
+    }
+    .dt-top-row { display: flex; align-items: stretch; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .dt-panel { display: flex; flex-direction: column; justify-content: center; }
+    .dt-left-info { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-right: 1px solid rgba(255,255,255,0.08); min-width: 160px; }
+    .dt-left-label { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: #aaa; letter-spacing: 0.5px; }
+    .dt-left-icon { display: flex; align-items: center; gap: 4px; }
+    .dt-left-icon svg { width: 12px; height: 12px; fill: #888; }
+    .dt-left-val { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #666; }
+    .dt-left-time { font-family: var(--font-mono); font-size: 16px; font-weight: 800; color: #fff; margin-left: 4px; }
+    .dt-main-trace { flex: 1; min-width: 0; position: relative; }
+    .dt-right-info { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-left: 1px solid rgba(255,255,255,0.08); min-width: 160px; }
+    .dt-delta-display { position: absolute; top: 8px; right: 12px; font-family: var(--font-mono); font-size: 14px; font-weight: 800; }
+    .dt-graph-wrap { position: relative; height: 80px; width: 100%; }
+    .dt-turn-numbers { display: flex; justify-content: space-between; padding: 0 8px; font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.3); font-weight: 700; position: absolute; bottom: 2px; left: 0; right: 0; pointer-events: none; }
+    .dt-bottom-row { display: flex; align-items: stretch; }
+    .dt-sectors-col { flex: 1; padding: 6px 10px; border-right: 1px solid rgba(255,255,255,0.08); }
+    .dt-sectors-row { display: flex; gap: 3px; height: 14px; width: 100%; }
+    .dt-sector-block { flex: 1; background: rgba(255,255,255,0.05); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 8px; font-weight: 800; color: rgba(255,255,255,0.15); }
+    .dt-sector-block.green { background: rgba(34,197,94,0.2); border: 1px solid #22c55e; color: #fff; }
+    .dt-sector-block.purple { background: rgba(168,85,247,0.25); border: 1px solid #a855f7; color: #fff; }
+    .dt-sector-block.red { background: rgba(255,42,59,0.25); border: 1px solid #ff2a3b; color: #fff; }
+    .dt-turn-col { display: flex; align-items: center; gap: 12px; padding: 6px 16px; min-width: 200px; }
+    .dt-turn-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #666; letter-spacing: 1px; text-transform: uppercase; }
+    .dt-turn-big { font-size: 36px; font-weight: 900; font-family: var(--font-display); line-height: 1; color: #fff; }
+    .dt-turn-delta { font-family: var(--font-mono); font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 4px; }
+    .dt-turn-delta.red { background: rgba(255,42,59,0.2); color: #ff2a3b; border: 1px solid rgba(255,42,59,0.4); }
+    .dt-track-map { width: 100px; height: 50px; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(255,255,255,0.08); }
+    /* V2 WIDGETS — ESTILO GLASSMORPHISM (mismo estilo que relative/standings) */
+    .v2-section { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin: 40px auto; }
+    .v2-card {
+      background: rgba(12, 12, 16, 0.9); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
+      backdrop-filter: blur(24px); box-shadow: 0 20px 50px rgba(0,0,0,0.8); padding: 10px 12px;
+      font-family: var(--font-sans); color: #fff;
+    }
+    .v2-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px; }
+    .v2-title { font-family: var(--font-display); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; color: #fff; }
+    .v2-badge { font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(230, 57, 70, 0.15); color: var(--accent-red-bright); border: 1px solid rgba(230, 57, 70, 0.3); }
+    .v2-row { display: flex; align-items: center; height: 28px; gap: 8px; padding: 0 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .v2-row:last-child { border-bottom: none; }
+    .v2-row.highlight { background: linear-gradient(90deg, rgba(255,42,59,0.15) 0%, rgba(255,42,59,0.03) 100%); border-left: 3px solid var(--accent-red-bright); }
+    .v2-cell { font-family: var(--font-mono); font-size: 10px; font-weight: 600; }
+    .v2-cell.bold { font-weight: 800; }
+    .v2-cell.dim { color: #888; }
+    .v2-cell.green { color: #22c55e; }
+    .v2-cell.red { color: #ff2a3b; }
+    .v2-cell.yellow { color: #f59e0b; }
+    .v2-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; }
+    .v2-bar-fill { height: 100%; border-radius: 4px; }
+    .v2-footer { padding: 4px 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 9px; color: #666; font-weight: 600; display: flex; justify-content: space-between; }
+    .v2-sector { flex: 1; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 8px; font-weight: 800; }
+    .v2-sector.g { background: rgba(34,197,94,0.2); border: 1px solid #22c55e; color: #fff; }
+    .v2-sector.r { background: rgba(255,42,59,0.2); border: 1px solid #ff2a3b; color: #fff; }
+    .v2-sector.p { background: rgba(168,85,247,0.2); border: 1px solid #a855f7; color: #fff; }
+    .v2-sector.n { background: rgba(255,255,255,0.04); color: #555; }
+    .v2-grid { display: grid; gap: 6px; }
+    .v2-grid-2 { grid-template-columns: 1fr 1fr; }
+    .v2-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .v2-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+    /* RACE SCHEDULE WIDGET (Professional SimRacing Style - No Emojis) */
+    .rs-container { width: 780px; margin: 0 auto; background: var(--bg-glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; box-shadow: var(--shadow-glass); overflow: hidden; color: #fff; font-family: var(--font-sans); }
+    .rs-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .rs-title { font-family: var(--font-display); font-size: 14px; font-weight: 800; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; color: #fff; text-transform: uppercase; }
+    .rs-live-dot { display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e; animation: rs-pulse 1.5s infinite; }
+    @keyframes rs-pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    .rs-clock { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(56,189,248,0.3); }
+    .rs-subbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.06); font-family: var(--font-sans); font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; }
+    .rs-lic-group { display: flex; gap: 6px; }
+    .rs-lic { padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: #888; font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; transition: all 0.2s; }
+    .rs-lic.active { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+    .rs-list { display: flex; flex-direction: column; }
+    .rs-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); transition: background 0.2s; position: relative; }
+    .rs-row:last-child { border-bottom: none; }
+    .rs-row:hover { background: rgba(255,255,255,0.04); }
+    .rs-row.bronze { border-left: 4px solid #d97706; }
+    .rs-row.silver { border-left: 4px solid #94a3b8; }
+    .rs-row.gold { border-left: 4px solid #fbbf24; }
+    .rs-row.special { border-left: 4px solid #a855f7; background: linear-gradient(90deg, rgba(168,85,247,0.08) 0%, rgba(255,255,255,0) 100%); }
+    .rs-info { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+    .rs-sr-tag { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+    .rs-sr-tag.bronze { color: #f59e0b; }
+    .rs-sr-tag.silver { color: #cbd5e1; }
+    .rs-sr-tag.gold { color: #facc15; }
+    .rs-sr-tag.special { color: #c084fc; }
+    .rs-series { font-family: var(--font-sans); font-weight: 700; font-size: 15px; color: #fff; }
+    .rs-track { font-family: var(--font-sans); font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; }
+    .rs-meta { display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+    .rs-pill { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); color: #ccc; border: 1px solid rgba(255,255,255,0.1); }
+    .rs-badge { font-family: var(--font-mono); font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .rs-badge.hypercar { background: rgba(239,68,68,0.25); color: #f87171; border: 1px solid rgba(239,68,68,0.5); }
+    .rs-badge.lmp2 { background: rgba(59,130,246,0.25); color: #60a5fa; border: 1px solid rgba(59,130,246,0.5); }
+    .rs-badge.lmp3 { background: rgba(6,182,212,0.25); color: #22d3ee; border: 1px solid rgba(6,182,212,0.5); }
+    .rs-badge.gt3 { background: rgba(245,158,11,0.25); color: #fbbf24; border: 1px solid rgba(245,158,11,0.5); }
+    .rs-timing { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; padding-left: 20px; }
+    .rs-countdown { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: #fff; }
+    .rs-countdown.live { color: #22c55e; text-shadow: 0 0 10px rgba(34,197,94,0.5); }
+    .rs-status { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; font-family: var(--font-mono); letter-spacing: 0.5px; text-transform: uppercase; }
+    .rs-status.registered { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid #22c55e; }
+    .rs-status.open { background: rgba(255,255,255,0.06); color: #aaa; border: 1px solid rgba(255,255,255,0.15); }
+    .rs-status.special { background: rgba(168,85,247,0.2); color: #e9d5ff; border: 1px solid #a855f7; }
+
+    /* 09. HEAD 2 HEAD BATTLE TELEMETRY */
+    .h2h-container { width: 780px; margin: 0 auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; box-shadow: var(--shadow-glass); display: flex; overflow: hidden; }
+    .h2h-banner { background: linear-gradient(180deg, #ff2a3b 0%, #8b0000 100%); width: 36px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); font-family: var(--font-display); font-size: 13px; font-weight: 900; letter-spacing: 3px; color: #fff; padding: 16px 0; }
+    .h2h-content { flex: 1; display: flex; flex-direction: column; }
+    .h2h-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); font-family: var(--font-sans); }
+    .h2h-row:last-child { border-bottom: none; }
+    .h2h-row.active { background: rgba(255,255,255,0.04); }
+    .h2h-pos { font-family: var(--font-mono); font-size: 14px; font-weight: 800; background: #fff; color: #000; padding: 2px 8px; border-radius: 4px; margin-right: 12px; }
+    .h2h-driver { font-size: 16px; font-weight: 800; flex: 1; color: #fff; }
+    .h2h-lap { font-family: var(--font-mono); font-size: 16px; font-weight: 800; color: #fff; }
+    .h2h-gap { font-family: var(--font-mono); font-size: 14px; font-weight: 800; margin-right: 16px; color: rgba(255,255,255,0.7); }
+    .h2h-sectors { display: flex; gap: 6px; flex: 1; max-width: 380px; margin: 0 16px; }
+    .h2h-sec { flex: 1; height: 26px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+    .h2h-sec.g { background: rgba(34,197,94,0.3); border-color: #22c55e; }
+    .h2h-sec.r { background: rgba(239,68,68,0.3); border-color: #ef4444; }
+    .h2h-sec.n { background: rgba(255,255,255,0.08); color: #aaa; }
+    .h2h-arrows { font-family: var(--font-mono); font-size: 13px; font-weight: 900; }
+    .h2h-arrows.g { color: #22c55e; }
+    .h2h-arrows.r { color: #ef4444; }
+
+    /* 10A. SLEEK HORIZONTAL BLADE (F1 Style - Full Overlay Background) */
+    .in10a-container { width: 780px; height: 96px; margin: 0 auto 30px auto; background: linear-gradient(90deg, rgba(15,18,28,0.85) 0%, rgba(22,26,40,0.8) 55%, rgba(12,14,22,0.9) 100%); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; box-shadow: 0 12px 35px rgba(0,0,0,0.6); display: flex; align-items: center; overflow: hidden; position: relative; }
+    .in10a-banner { background: linear-gradient(180deg, #ff2a3b 0%, #a80010 100%); width: 34px; height: 100%; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--font-display); font-size: 11px; font-weight: 900; letter-spacing: 3px; color: #fff; z-index: 2; box-shadow: 4px 0 15px rgba(0,0,0,0.4); }
+    .in10a-graph { flex: 1; height: 100%; margin: 0; background: radial-gradient(circle at center, rgba(34,197,94,0.03) 0%, transparent 70%); border-right: 1px solid rgba(255,255,255,0.12); position: relative; overflow: hidden; }
+    .in10a-bars { display: flex; gap: 14px; height: 100%; align-items: center; padding: 0 24px; background: rgba(0,0,0,0.2); border-right: 1px solid rgba(255,255,255,0.12); }
+    .in10a-col { display: flex; flex-direction: column; align-items: center; gap: 6px; justify-content: center; height: 100%; }
+    .in10a-val { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: #fff; }
+    .in10a-track { width: 16px; height: 54px; background: rgba(255,255,255,0.06); border-radius: 2px; display: flex; align-items: flex-end; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+    .in10a-fill { width: 100%; border-radius: 1px; }
+    .in10a-cockpit { width: 140px; height: 100%; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0 20px; background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.06) 100%); box-shadow: inset 15px 0 25px rgba(0,0,0,0.2); }
+    .in10a-gear { font-family: var(--font-display); font-size: 46px; font-weight: 900; color: #fff; line-height: 1; text-shadow: 0 0 15px rgba(255,255,255,0.4); }
+    .in10a-spd-box { display: flex; flex-direction: column; }
+    .in10a-spd { font-family: var(--font-mono); font-size: 24px; font-weight: 900; color: #fff; line-height: 1; }
+    .in10a-unit { font-size: 10px; font-weight: 800; color: #888; letter-spacing: 2px; margin-top: 3px; }
+
+    /* 10B. SYMMETRICAL AERO CAPSULE (Hypercar Style) */
+    .in10b-container { width: 780px; height: 100px; margin: 0 auto 30px auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 24px; box-shadow: var(--shadow-glass); display: flex; align-items: center; overflow: hidden; padding-right: 20px; }
+    .in10b-banner { background: #ff2a3b; width: 36px; height: 100%; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--font-display); font-size: 11px; font-weight: 900; letter-spacing: 2px; color: #fff; }
+    .in10b-graph { flex: 1; height: 74px; margin: 0 18px; background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; }
+    .in10b-bars { display: flex; gap: 12px; height: 74px; align-items: flex-end; margin-right: 20px; }
+    .in10b-gauge { width: 130px; height: 80px; border-radius: 16px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 16px; box-shadow: inset 0 0 15px rgba(255,255,255,0.05); }
+
+    /* 10C. ULTRA-DENSE STRIP (Endurance Style) */
+    .in10c-container { width: 780px; height: 68px; margin: 0 auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 10px; box-shadow: var(--shadow-glass); display: flex; align-items: center; padding: 0 16px; gap: 16px; }
+    .in10c-tag { font-family: var(--font-display); font-size: 12px; font-weight: 900; background: #ff2a3b; color: #fff; padding: 4px 10px; border-radius: 4px; letter-spacing: 1.5px; }
+    .in10c-graph { flex: 1; height: 44px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); position: relative; overflow: hidden; }
+    .in10c-horiz { display: flex; flex-direction: column; gap: 6px; width: 140px; }
+    .in10c-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: #fff; }
+    .in10c-lbl { width: 14px; color: #888; }
+    .in10c-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+    .in10c-gearbox { display: flex; align-items: baseline; gap: 8px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.1); }
+
+    /* 11. MULTICLASS RELATIVE GAP HUD */
+    .mc-container { width: 780px; margin: 0 auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; box-shadow: var(--shadow-glass); display: flex; flex-direction: column; overflow: hidden; }
+    .mc-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); position: relative; }
+    .mc-row:last-child { border-bottom: none; }
+    .mc-row.player { background: rgba(255,255,255,0.08); border-left: 4px solid #fff; }
+    .mc-pos { font-family: var(--font-mono); font-size: 16px; font-weight: 800; width: 36px; color: #fff; }
+    .mc-class { font-family: var(--font-display); font-size: 12px; font-weight: 900; padding: 4px 10px; border-radius: 4px; width: 65px; text-align: center; margin-right: 16px; color: #000; }
+    .mc-class.lmp2 { background: #fbbf24; }
+    .mc-class.lmp3 { background: #38bdf8; }
+    .mc-class.gt4 { background: #f472b6; }
+    .mc-logo { font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.15); color: #fff; margin-right: 12px; letter-spacing: 1px; text-align: center; width: 42px; }
+    .mc-name { font-family: var(--font-sans); font-size: 16px; font-weight: 800; flex: 1; color: #fff; }
+    .mc-gap { font-family: var(--font-mono); font-size: 16px; font-weight: 900; color: #ff2a3b; }
+    .mc-divider { text-align: center; font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.15); letter-spacing: 2px; margin: -6px 0; pointer-events: none; }
+
+    /* 12. TRACK WEATHER & ENVIRONMENT */
+    .tw-container { width: 240px; margin: 0 auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; box-shadow: var(--shadow-glass); display: flex; flex-direction: column; overflow: hidden; }
+    .tw-box { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .tw-box:last-child { border-bottom: none; }
+    .tw-label { font-family: var(--font-display); font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+    .tw-val-row { display: flex; align-items: center; gap: 12px; }
+    .tw-icon { font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); color: #fff; letter-spacing: 1px; }
+    .tw-big { font-family: var(--font-mono); font-size: 24px; font-weight: 900; color: #fff; }
+    .tw-bar-wrap { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin: 4px 0; }
+    .tw-bar-fill { height: 100%; background: #38bdf8; width: 35%; box-shadow: 0 0 8px #38bdf8; }
+    .tw-sub { font-size: 12px; font-weight: 800; color: #38bdf8; text-align: center; }
+
+    /* 13. CAR DAMAGE VISUAL WIDGET (Car Damage.png) */
+    .w13-car-visual { width: 150px; height: 190px; margin: 0 auto 30px auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; box-shadow: var(--shadow-glass); display: flex; align-items: center; justify-content: center; position: relative; }
+    .w13-chassis { width: 70px; height: 136px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.4); border-radius: 12px; position: relative; display: flex; align-items: center; justify-content: center; }
+    .w13-tire { position: absolute; width: 20px; height: 36px; background: #22c55e; border-radius: 4px; box-shadow: 0 0 10px #22c55e; }
+    .w13-fl { top: 10px; left: -14px; }
+    .w13-fr { top: 10px; right: -14px; }
+    .w13-rl { bottom: 10px; left: -14px; }
+    .w13-rr { bottom: 10px; right: -14px; }
+    .w13-aero-f { position: absolute; top: -8px; width: 48px; height: 6px; background: #38bdf8; border-radius: 3px; }
+    .w13-aero-r { position: absolute; bottom: -8px; width: 52px; height: 8px; background: #38bdf8; border-radius: 3px; }
+    .w13-pct { font-family: var(--font-mono); font-size: 16px; font-weight: 900; color: #fff; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); z-index: 2; }
+
+    /* 14. CAR DAMAGE NUMBERS WIDGET (Car Damage Number.png) */
+    .w14-damage-nums { width: 140px; margin: 0 auto 30px auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; box-shadow: var(--shadow-glass); display: flex; flex-direction: column; gap: 4px; padding: 8px; }
+    .w14-row { background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-display); font-size: 14px; font-weight: 800; color: #ccc; }
+    .w14-val { font-family: var(--font-mono); font-weight: 900; color: #22c55e; }
+
+    /* 15. DELTA SIMPLE WIDGET (Delta Simple.png) */
+    .w15-delta-simple { width: 420px; margin: 0 auto 30px auto; display: flex; flex-direction: column; align-items: center; }
+    .w15-bar { width: 100%; height: 36px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
+    .w15-badge { margin-top: -4px; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); padding: 4px 18px; border-radius: 8px; font-family: var(--font-mono); font-size: 22px; font-weight: 900; color: #22c55e; text-shadow: 0 0 10px rgba(34,197,94,0.5); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+
+    /* 16. DELTA ADVANCED WIDGET (Delta advanced.png) */
+    .w16-delta-adv { width: 480px; margin: 0 auto 30px auto; background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; box-shadow: var(--shadow-glass); }
+    .w16-cell { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 4px; background: rgba(0,0,0,0.3); border-radius: 8px; }
+    .w16-tag { font-family: var(--font-display); font-size: 14px; font-weight: 900; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+    .w16-tag.b { background: #fff; color: #000; }
+    .w16-tag.s { background: #38bdf8; color: #000; }
+    .w16-tag.t { background: #eab308; color: #000; }
+    .w16-tag.l { background: #f43f5e; color: #fff; }
+    .w16-val { font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position:absolute;">
+    <defs>
+      <linearGradient id="vantare-grad" x1="0%" y1="100%" x2="50%" y2="0%">
+        <stop offset="0%" stop-color="#b3121f" /><stop offset="50%" stop-color="#e63946" /><stop offset="100%" stop-color="#ff4d5a" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="header">
+    <span class="badge">SUITE COMPLETA VANTARE</span>
+    <h1 class="title">Glassmorphism Pro</h1>
+    <p class="desc">Iteración 6: Comparativa triple para Pedals Telemetry con V3 Solo Pedales en formato clásico vertical (más alto que ancho).</p>
+  </div>
+
+  <!-- SECCIÓN 1: TABLAS VERTICALES -->
+  <div class="section-title"><span>01. TABLAS VERTICALES (STANDINGS & RELATIVE)</span></div>
+  <div class="widgets-row">
+    <div class="glass-card" style="width: 357px;">
+      <div class="card-header">
+        <div class="vantare-logo-box"><svg class="vantare-logo-svg" viewBox="0 0 100 90" fill="none"><path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#vantare-grad)"/></svg><span class="vantare-brand-text">VANTARE</span></div>
+        <span class="badge-pill"><span style="color:var(--accent-red-bright);">●</span> RELATIVE</span>
+      </div>
+      <div class="grid-relative table-header"><div class="cell-center">POS</div><div></div><div class="cell-center">#</div><div class="cell-left">PILOTO</div><div class="cell-right">GAP</div><div class="cell-right">BEST</div></div>
+      <div>
+        <div class="grid-relative row"><div class="cell-center pos-num">1</div><div class="class-bar bg-hypercar"></div><div class="cell-center"><span class="num-badge">50</span></div><div class="cell-left">Antonio Fuoco</div><div class="cell-right" style="color:#34d399;">-3.210</div><div class="cell-right" style="color:#aaa;">3:24.890</div></div>
+        <div class="grid-relative row"><div class="cell-center pos-num">2</div><div class="class-bar bg-hypercar"></div><div class="cell-center"><span class="num-badge">51</span></div><div class="cell-left">Miguel Molina</div><div class="cell-right" style="color:#34d399;">-1.840</div><div class="cell-right" style="color:#aaa;">3:25.120</div></div>
+        <div class="grid-relative row"><div class="cell-center pos-num">3</div><div class="class-bar bg-hypercar"></div><div class="cell-center"><span class="num-badge">6</span></div><div class="cell-left">Kévin Estre</div><div class="cell-right" style="color:#34d399;">-0.850</div><div class="cell-right" style="color:#aaa;">3:25.340</div></div>
+        <div class="grid-relative row highlight"><div class="cell-center pos-num" style="color:#fff;">4</div><div class="class-bar bg-hypercar"></div><div class="cell-center"><span class="num-badge">51</span></div><div class="cell-left" style="color:#fff;font-weight:700;">Isaac Albala (TÚ)</div><div class="cell-right" style="color:#fff;">—</div><div class="cell-right" style="color:#fff;font-weight:700;">3:25.400</div></div>
+        <div class="grid-relative row"><div class="cell-center pos-num">5</div><div class="class-bar bg-hypercar"></div><div class="cell-center"><span class="num-badge">91</span></div><div class="cell-left">André Lotterer</div><div class="cell-right" style="color:#ff4d4d;">+0.620</div><div class="cell-right" style="color:#aaa;">3:26.010</div></div>
+        <div class="grid-relative row"><div class="cell-center pos-num">6</div><div class="class-bar" style="background:#1a1aff;"></div><div class="cell-center"><span class="num-badge">8</span></div><div class="cell-left">Rui Andrade</div><div class="cell-right" style="color:#ff4d4d;">+1.340</div><div class="cell-right" style="color:#aaa;">3:26.230</div></div>
+        <div class="grid-relative row"><div class="cell-center pos-num">7</div><div class="class-bar" style="background:#1a1aff;"></div><div class="cell-center"><span class="num-badge">36</span></div><div class="cell-left">Alpine Milesi</div><div class="cell-right" style="color:#ff4d4d;">+2.180</div><div class="cell-right" style="color:#aaa;">3:26.580</div></div>
+      </div>
+      <div class="card-footer"><span><strong style="color:var(--accent-red-bright);">●</strong> LIVE TIMING</span><span>SOF: 2,450</span></div>
+    </div>
+
+    <div class="glass-card" style="width: 360px;">
+      <div class="card-header">
+        <div class="vantare-logo-box"><svg class="vantare-logo-svg" viewBox="0 0 100 90" fill="none"><path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#vantare-grad)"/></svg><span class="vantare-brand-text">VANTARE</span></div>
+        <div style="display:flex; gap:6px; align-items:center;"><span style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-size:9px; font-weight:700; padding:3px 8px; border-radius:12px;">HYPERCAR</span><span style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--accent-red-bright);">01:45:22</span></div>
+      </div>
+      <div class="grid-standings table-header"><div></div><div class="cell-center">POS</div><div class="cell-center">#</div><div class="cell-left">EQUIPO / PILOTO</div><div class="cell-right">GAP</div><div class="cell-right">LAST</div></div>
+      <div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#cc0000;">FE</div><div class="cell-center pos-num" style="color:var(--accent-red-bright);">1</div><div class="cell-center"><span class="num-badge">50</span></div><div class="cell-left">Ferrari AF Corse</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>Leader</div><div class="cell-right" style="color:#aaa;">3:24.890</div></div>
+        <div class="grid-standings row highlight"><div class="brand-side-strip" style="color:#ff2a3b;">FE</div><div class="cell-center pos-num" style="color:#fff;">2</div><div class="cell-center"><span class="num-badge">51</span></div><div class="cell-left" style="color:#fff;font-weight:700;">Ferrari AF Corse (TÚ)</div><div class="tire-wrapper" style="color:var(--accent-red-bright);"><span class="tire-badge tire-S">S</span>+3.450s</div><div class="cell-right" style="color:#fff;font-weight:700;">3:25.400</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#006600;">PO</div><div class="cell-center pos-num">3</div><div class="cell-center"><span class="num-badge">6</span></div><div class="cell-left">Porsche Penske</div><div class="tire-wrapper" style="color:#f59e0b;"><span class="tire-badge tire-M">M</span>+12.3s</div><div class="cell-right" style="color:#aaa;">3:26.230</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#1a1aff;">AL</div><div class="cell-center pos-num">4</div><div class="cell-center"><span class="num-badge">36</span></div><div class="cell-left">Alpine Endurance</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+18.7s</div><div class="cell-right" style="color:#aaa;">3:26.580</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#1a1aff;">AL</div><div class="cell-center pos-num">5</div><div class="cell-center"><span class="num-badge">8</span></div><div class="cell-left">Alpine Endurance</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+21.2s</div><div class="cell-right" style="color:#aaa;">3:26.840</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#9933cc;">CA</div><div class="cell-center pos-num">6</div><div class="cell-center"><span class="num-badge">7</span></div><div class="cell-left">Cadillac Racing</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+25.8s</div><div class="cell-right" style="color:#aaa;">3:27.290</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#2563eb;">BM</div><div class="cell-center pos-num">7</div><div class="cell-center"><span class="num-badge">35</span></div><div class="cell-left">BMW M Team WRT</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+32.1s</div><div class="cell-right" style="color:#aaa;">3:27.510</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#2563eb;">BM</div><div class="cell-center pos-num">8</div><div class="cell-center"><span class="num-badge">46</span></div><div class="cell-left">BMW M Team WRT</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+34.5s</div><div class="cell-right" style="color:#aaa;">3:27.720</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#d97706;">TY</div><div class="cell-center pos-num">9</div><div class="cell-center"><span class="num-badge">5</span></div><div class="cell-left">Toyota Gazoo Racing</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+38.9s</div><div class="cell-right" style="color:#aaa;">3:27.950</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#d97706;">TY</div><div class="cell-center pos-num">10</div><div class="cell-center"><span class="num-badge">8</span></div><div class="cell-left">Toyota Gazoo Racing</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+41.2s</div><div class="cell-right" style="color:#aaa;">3:28.240</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#dc2626;">LM</div><div class="cell-center pos-num">11</div><div class="cell-center"><span class="num-badge">50</span></div><div class="cell-left">Lamborghini Iron Lynx</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+48.7s</div><div class="cell-right" style="color:#aaa;">3:28.520</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#dc2626;">LM</div><div class="cell-center pos-num">12</div><div class="cell-center"><span class="num-badge">63</span></div><div class="cell-left">Lamborghini Iron Lynx</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+51.3s</div><div class="cell-right" style="color:#aaa;">3:28.870</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#7c3aed;">PG</div><div class="cell-center pos-num">13</div><div class="cell-center"><span class="num-badge">99</span></div><div class="cell-left">Peugeot TotalEnergies</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+58.4s</div><div class="cell-right" style="color:#aaa;">3:29.160</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#7c3aed;">PG</div><div class="cell-center pos-num">14</div><div class="cell-center"><span class="num-badge">94</span></div><div class="cell-left">Peugeot TotalEnergies</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+1:01.2</div><div class="cell-right" style="color:#aaa;">3:29.510</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#db2777;">PG</div><div class="cell-center pos-num">15</div><div class="cell-center"><span class="num-badge">11</span></div><div class="cell-left">Porsche GT Team</div><div class="tire-wrapper"><span class="tire-badge tire-S">S</span>+1:12.8</div><div class="cell-right" style="color:#aaa;">3:30.230</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#db2777;">PG</div><div class="cell-center pos-num">16</div><div class="cell-center"><span class="num-badge">92</span></div><div class="cell-left">Porsche GT Team</div><div class="tire-wrapper"><span class="tire-badge tire-S">S</span>+1:15.4</div><div class="cell-right" style="color:#aaa;">3:30.510</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#0891b2;">AM</div><div class="cell-center pos-num">17</div><div class="cell-center"><span class="num-badge">22</span></div><div class="cell-left">Aston Martin Racing</div><div class="tire-wrapper"><span class="tire-badge tire-S">S</span>+1:23.1</div><div class="cell-right" style="color:#aaa;">3:31.180</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#0891b2;">AM</div><div class="cell-center pos-num">18</div><div class="cell-center"><span class="num-badge">23</span></div><div class="cell-left">Aston Martin Racing</div><div class="tire-wrapper"><span class="tire-badge tire-S">S</span>+1:25.7</div><div class="cell-right" style="color:#aaa;">3:31.450</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#f59e0b;">IM</div><div class="cell-center pos-num">19</div><div class="cell-center"><span class="num-badge">77</span></div><div class="cell-left">Iron Lynx</div><div class="tire-wrapper"><span class="tire-badge tire-S">S</span>+1:32.4</div><div class="cell-right" style="color:#aaa;">3:32.100</div></div>
+        <div class="grid-standings row"><div class="brand-side-strip" style="color:#f59e0b;">IM</div><div class="cell-center pos-num">20</div><div class="cell-center"><span class="num-badge">78</span></div><div class="cell-left">Iron Lynx</div><div class="tire-wrapper"><span class="tire-badge tire-S">S</span>+1:35.8</div><div class="cell-right" style="color:#aaa;">3:32.450</div></div>
+      </div>
+      <div class="card-footer"><span>LE MANS ULTIMATE</span><span>TRACK TEMP: 28°C</span></div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 2: STANDINGS HORIZONTAL BROADCAST TOWER -->
+  <div class="section-title"><span>02. STANDINGS HORIZONTAL (BROADCAST TOWER)</span></div>
+  <div class="broadcast-ticker">
+    <div class="broadcast-lap">
+      <span style="font-size:10px; color:#aaa; font-weight:800; letter-spacing:0.1em;">VUELTA</span>
+      <span style="font-size:18px; font-weight:800; color:#fff; font-family:var(--font-mono);">12<span style="font-size:12px; color:var(--accent-red-bright);">/25</span></span>
+    </div>
+    <div class="broadcast-drivers-stream">
+      <div class="driver-box">
+        <div class="driver-pos-badge">1</div><div class="driver-class-line" style="background:#cc0000;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">R. Azeredo</span><span class="driver-brand-tag">AUDI</span></div><div class="driver-gap-text">LÍDER</div></div>
+      </div>
+      <div class="driver-box active">
+        <div class="driver-pos-badge">2</div><div class="driver-class-line"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text" style="color:#fff;">I. Albala (TÚ)</span><span class="driver-brand-tag" style="background:rgba(255,42,59,0.3);color:#fff;">FER</span></div><div class="driver-gap-text">+0.846s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">3</div><div class="driver-class-line" style="background:#3b82f6;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">F. Seischen</span><span class="driver-brand-tag">BMW</span></div><div class="driver-gap-text">+11.363s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">4</div><div class="driver-class-line" style="background:#10b981;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">S. Heras</span><span class="driver-brand-tag">MER</span></div><div class="driver-gap-text">+18.600s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">5</div><div class="driver-class-line" style="background:#f59e0b;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">R. Silva</span><span class="driver-brand-tag">POR</span></div><div class="driver-gap-text">+24.250s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">6</div><div class="driver-class-line" style="background:#8b5cf6;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">P. Okregl...</span><span class="driver-brand-tag">PEU</span></div><div class="driver-gap-text">+29.655s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">7</div><div class="driver-class-line" style="background:#06b6d4;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">M. Koontz</span><span class="driver-brand-tag">AST</span></div><div class="driver-gap-text">+32.800s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">8</div><div class="driver-class-line" style="background:#f43f5e;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">M. Mezra...</span><span class="driver-brand-tag">LAM</span></div><div class="driver-gap-text">+35.200s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">9</div><div class="driver-class-line" style="background:#22c55e;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">A. Villanueva</span><span class="driver-brand-tag">HYN</span></div><div class="driver-gap-text">+38.100s</div></div>
+      </div>
+      <div class="driver-box">
+        <div class="driver-pos-badge">10</div><div class="driver-class-line" style="background:#eab308;"></div>
+        <div class="driver-info-col"><div class="driver-top-row"><span class="driver-name-text">L. Fernandez</span><span class="driver-brand-tag">ALP</span></div><div class="driver-gap-text">+41.500s</div></div>
+      </div>
+    </div>
+    <div class="broadcast-weather"><span style="color:#fff;">ASFALTO 27°C</span><span style="font-size:10px; color:#aaa;">SOF 2,450</span></div>
+  </div>
+
+  <!-- SECCIÓN 3: ESTRATEGIA COMPACTA UNIFICADA -->
+  <div class="section-title"><span>03. FUEL CALCULATOR + LAP HISTORY (UNIFICADO COMPACTO)</span></div>
+  <div class="glass-card unified-fuel-card">
+    <div class="fuel-col-left">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span style="font-family:var(--font-display); font-weight:800; font-size:14px;">COMBUSTIBLE</span><span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--accent-red-bright);">12.4 L / 40L (31%)</span></div>
+        <div class="compact-fuel-bar"><div class="compact-fuel-fill"></div></div>
+      </div>
+      <div class="quick-stats-grid">
+        <div class="stat-box"><div class="stat-val">0.9 L</div><div class="stat-lbl">CONSUMO MEDIO</div></div>
+        <div class="stat-box"><div class="stat-val">12.9</div><div class="stat-lbl">VUELTAS REST.</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--accent-red-bright);">+17.4 L</div><div class="stat-lbl">REFUEL REQ.</div></div>
+      </div>
+      <div style="font-size:11px; color:#aaa; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px; font-family:var(--font-mono); font-weight:600;"><span>ESTIMACIÓN META:</span><span style="color:#22c55e;">+0.1 L SOBRANTE</span></div>
+    </div>
+    <div class="fuel-col-right">
+      <div style="font-family:var(--font-display); font-weight:800; font-size:12px; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:6px;">HISTORIAL RECIENTE</div>
+      <div class="history-list">
+        <div class="history-item"><span style="color:#ccc;">Vuelta #10</span><span style="font-weight:700;">1.0 L</span></div>
+        <div class="history-item"><span style="color:#ccc;">Vuelta #9</span><span style="font-weight:700;">1.0 L</span></div>
+        <div class="history-item"><span style="color:#ccc;">Vuelta #8</span><span style="font-weight:700;">1.0 L</span></div>
+        <div class="history-item"><span style="color:#ccc;">Vuelta #7</span><span style="font-weight:700;">1.0 L</span></div>
+      </div>
+      <div style="font-size:10px; color:#777; text-align:center; font-style:italic; margin-top:6px;">Ritmo estable confirmado</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 4: REVISIÓN PEDALS TELEMETRY (V1 vs V2 vs V3) -->
+  <div class="section-title"><span>04. PEDALS TELEMETRY: V1 CLÁSICO vs V2 PERFIL BAJO vs V3 SOLO PEDALES</span></div>
+  <div class="telemetry-showcase">
+    
+    <!-- COLUMNA V1 CLÁSICO -->
+    <div class="telemetry-col">
+      <span class="version-tag">V1: CÁPSULA HUD ORIGINAL</span>
+      <div>
+        <div class="hud-capsule-v1">
+          <div class="gear-ring-v1">6</div>
+          <div class="rpm-container">
+            <div class="rpm-leds">
+              <div class="led green"></div><div class="led green"></div><div class="led green"></div><div class="led green"></div>
+              <div class="led red"></div><div class="led red"></div><div class="led"></div><div class="led"></div><div class="led"></div>
+            </div>
+            <div class="telemetry-numbers">
+              <div><div class="tel-lbl">KPH</div><div class="tel-val">260</div></div>
+              <div><div class="tel-lbl">RPM</div><div class="tel-val" style="color:var(--accent-red-bright);">6432</div></div>
+            </div>
+          </div>
+          <div style="font-family:var(--font-display); font-size:24px; font-weight:800; color:#fff; padding-left:14px; border-left:1px solid rgba(255,255,255,0.1);">P12</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#aaa; max-width:280px; text-align:center;">Cápsula redondeada original.</div>
+    </div>
+
+    <!-- COLUMNA V2 PERFIL BAJO -->
+    <div class="telemetry-col">
+      <span class="version-tag" style="background:rgba(34,197,94,0.15); color:#22c55e; border-color:rgba(34,197,94,0.3);">V2: RECTANGULAR PERFIL BAJO</span>
+      <div class="cockpit-v2-low">
+        <!-- PEDALES VISUALIZADOR -->
+        <div class="pedals-group-sleek" style="padding-right: 18px; border-right: 1px solid rgba(255,255,255,0.1);">
+          <div class="pedal-bar-wrap"><div class="pedal-track-sleek"><div class="pedal-fill fill-thr"></div></div><span class="pedal-lbl" style="color:#22c55e;">THR</span></div>
+          <div class="pedal-bar-wrap"><div class="pedal-track-sleek"><div class="pedal-fill fill-brk"></div></div><span class="pedal-lbl" style="color:#ff2a3b;">BRK</span></div>
+          <div class="pedal-bar-wrap"><div class="pedal-track-sleek"><div class="pedal-fill fill-clu"></div></div><span class="pedal-lbl">CLU</span></div>
+        </div>
+
+        <!-- MARCHA Y SHIFT LIGHTS -->
+        <div class="gear-core-sleek">
+          <div class="shift-bar-top">
+            <div class="shift-dot g"></div><div class="shift-dot g"></div><div class="shift-dot g"></div>
+            <div class="shift-dot y"></div><div class="shift-dot y"></div>
+            <div class="shift-dot r"></div><div class="shift-dot r"></div>
+          </div>
+          <div class="gear-num-sleek">6</div>
+          <div class="speed-lbl-sleek">260 KM/H</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#aaa; max-width:280px; text-align:center;">Altura vertical reducida, más aerodinámico. Pedales + marcha + velocidad.</div>
+    </div>
+
+    <!-- COLUMNA V3 SOLO PEDALES (VERTICAL TALL) -->
+    <div class="telemetry-col">
+      <span class="version-tag" style="background:rgba(245,158,11,0.15); color:#f59e0b; border-color:rgba(245,158,11,0.3);">V3: SOLO PEDALES (VERTICAL)</span>
+      <div class="cockpit-v3-solo">
+        <div class="pedals-group-tall">
+          <div class="pedal-bar-wrap"><div class="pedal-track-tall"><div class="pedal-fill fill-thr"></div></div><span class="pedal-lbl" style="color:#22c55e;">THR</span></div>
+          <div class="pedal-bar-wrap"><div class="pedal-track-tall"><div class="pedal-fill fill-brk"></div></div><span class="pedal-lbl" style="color:#ff2a3b;">BRK</span></div>
+          <div class="pedal-bar-wrap"><div class="pedal-track-tall"><div class="pedal-fill fill-clu"></div></div><span class="pedal-lbl">CLU</span></div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#aaa; max-width:240px; text-align:center;">Formato clásico vertical (más alto que ancho). Barras de gran recorrido para máxima precisión.</div>
+    </div>
+
+  </div>
+
+  <!-- SECCIÓN 5: FLAGS -->
+  <div class="section-title" style="margin-top: 50px;"><span>05. RACING FLAGS</span></div>
+  <div style="display: flex; gap: 20px; justify-content: center;">
+    <div class="flag-card">
+      <div class="flag-top" style="color:#22c55e;">RESUME RACING</div>
+      <div class="flag-banner bg-flag-green"><span style="font-family:var(--font-mono); font-size:11px; font-weight:900; background:rgba(0,0,0,0.3); padding:3px 8px; border-radius:4px;">FLAG</span><span>GREEN FLAG</span></div>
+    </div>
+    <div class="flag-card">
+      <div class="flag-top" style="color:#f59e0b;">CAUTION SECTOR 2</div>
+      <div class="flag-banner bg-flag-yellow"><span style="font-family:var(--font-mono); font-size:11px; font-weight:900; background:rgba(0,0,0,0.3); padding:3px 8px; border-radius:4px;">SECTOR</span><span>YELLOW FLAG</span></div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 6: DELTA BAR (PREDICTIVE LAP TIMING - CONCEPTO ORIGINAL COMPACTO) -->
+  <div class="section-title" style="margin-top: 50px;"><span>06. DELTA BAR (PREDICTIVE LAP TIMING - CONCEPTO ORIGINAL COMPACTO)</span></div>
+  <div style="display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px;">
+    
+    <!-- VARIANTE 1: MEJORANDO (-0.24s VERDE) -->
+    <div class="delta-bar-wrapper">
+      <div class="delta-top-pill">
+        <span class="delta-lap-num">LAP 14</span>
+        <span style="color:rgba(255,255,255,0.2);">|</span>
+        <span class="delta-pred-time">2:44.659</span>
+        <span style="color:rgba(255,255,255,0.2);">|</span>
+        <span class="delta-split" style="color:#22c55e;">-0.24</span>
+      </div>
+      <div class="delta-track-container">
+        <div class="delta-center-line"></div>
+        <div class="delta-fill-bar delta-fill-green"></div>
+      </div>
+      <div class="delta-bottom-pill" style="color:#22c55e; border-color: rgba(34,197,94,0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.8), 0 0 12px rgba(34,197,94,0.25);">
+        -0.24
+      </div>
+    </div>
+
+    <!-- VARIANTE 2: PERDIENDO (+0.48s ROJO) -->
+    <div class="delta-bar-wrapper">
+      <div class="delta-top-pill">
+        <span class="delta-lap-num">LAP 14</span>
+        <span style="color:rgba(255,255,255,0.2);">|</span>
+        <span class="delta-pred-time">2:45.380</span>
+        <span style="color:rgba(255,255,255,0.2);">|</span>
+        <span class="delta-split" style="color:#ff2a3b;">+0.48</span>
+      </div>
+      <div class="delta-track-container">
+        <div class="delta-center-line"></div>
+        <div class="delta-fill-bar delta-fill-red"></div>
+      </div>
+      <div class="delta-bottom-pill" style="color:#ff2a3b; border-color: rgba(255,42,59,0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.8), 0 0 12px rgba(255,42,59,0.25);">
+        +0.48
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SECCIÓN 7: DELTA TRACE & TURN ANALYSIS (CORNER PERFORMANCE) -->
+  <div class="section-title" style="margin-top: 50px;"><span>07. DELTA TRACE & CORNER PERFORMANCE (MEJORADO CON COACHING & COLORES RACING)</span></div>
+  <div class="dt-container">
+    <!-- FILA SUPERIOR: Info izquierda + Graph + Info derecha -->
+    <div class="dt-top-row">
+      <div class="dt-left-info">
+        <span class="dt-left-label">ALL</span>
+        <div class="dt-left-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <span class="dt-left-val">85</span>
+        </div>
+        <span class="dt-left-time">01:32.500</span>
+      </div>
+      <div class="dt-main-trace">
+        <div class="dt-delta-display" style="color:#22c55e;">+0.04</div>
+        <div class="dt-graph-wrap">
+          <svg viewBox="0 0 600 80" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="trace-green-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(34,197,94,0.5)"/>
+                <stop offset="100%" stop-color="rgba(34,197,94,0.0)"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="40" x2="600" y2="40" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="3 3"/>
+            <rect x="60" y="0" width="25" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="120" y="0" width="40" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="200" y="0" width="20" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="250" y="0" width="18" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="290" y="0" width="18" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="350" y="0" width="30" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="450" y="0" width="25" height="80" fill="rgba(255,255,255,0.02)"/>
+            <rect x="520" y="0" width="35" height="80" fill="rgba(255,255,255,0.02)"/>
+            <path d="M 0,20 Q 80,65 150,45 T 300,20 T 450,65 T 600,25" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="4 4"/>
+            <path d="M 0,40 L 5,40 L 10,60 L 50,60 Q 80,50 110,55 L 150,70 L 150,40 Z" fill="url(#trace-green-grad)"/>
+            <path d="M 0,40 L 5,40 L 10,60 L 50,60 Q 80,50 110,55 L 150,70" fill="none" stroke="#22c55e" stroke-width="2"/>
+            <line x1="150" y1="0" x2="150" y2="80" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="2 2"/>
+            <line x1="150" y1="30" x2="150" y2="80" stroke="#fff" stroke-width="1.5" style="filter:drop-shadow(0 0 4px #fff);"/>
+            <circle cx="150" cy="70" r="3" fill="#fff" style="filter:drop-shadow(0 0 6px #22c55e);"/>
+          </svg>
+          <div class="dt-turn-numbers">
+            <span style="margin-left: 10%;">1</span>
+            <span style="margin-left: 6%;">3</span>
+            <span style="margin-left: 10%;">4</span>
+            <span style="margin-left: 4%;">5</span>
+            <span style="margin-left: 3%;">6</span>
+            <span style="margin-left: 3%;">7</span>
+            <span style="margin-left: 7%;">9</span>
+            <span style="margin-left: 10%;">10</span>
+            <span style="margin-left: 2%;">11</span>
+            <span style="margin-left: 2%;">12</span>
+            <span style="margin-left: 5%;">13</span>
+            <span style="margin-left: 2%;">14</span>
+            <span style="margin-left: 3%;">16</span>
+          </div>
+        </div>
+      </div>
+      <div class="dt-right-info">
+        <span class="dt-left-label">SB</span>
+        <div class="dt-left-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <span class="dt-left-val">70</span>
+        </div>
+        <span class="dt-left-time">01:32.823</span>
+      </div>
+    </div>
+    <!-- FILA INFERIOR: Sectores + Turn info + Track map -->
+    <div class="dt-bottom-row">
+      <div class="dt-sectors-col">
+        <div class="dt-sectors-row">
+          <div class="dt-sector-block purple" style="flex: 2.5;">-0.18</div>
+          <div class="dt-sector-block green"></div>
+          <div class="dt-sector-block green"></div>
+          <div class="dt-sector-block purple" style="flex: 2;">-0.24</div>
+          <div class="dt-sector-block"></div>
+          <div class="dt-sector-block"></div>
+          <div class="dt-sector-block"></div>
+          <div class="dt-sector-block" style="flex: 1.5;"></div>
+          <div class="dt-sector-block"></div>
+          <div class="dt-sector-block" style="flex: 0.5;"></div>
+          <div class="dt-sector-block" style="flex: 1.5;"></div>
+          <div class="dt-sector-block"></div>
+          <div class="dt-sector-block"></div>
+          <div class="dt-sector-block red" style="flex: 1.5;">+0.02</div>
+        </div>
+      </div>
+      <div class="dt-turn-col">
+        <div>
+          <div class="dt-turn-label">TURN</div>
+          <div class="dt-turn-big">16</div>
+        </div>
+        <div class="dt-turn-delta red">+0.18s</div>
+      </div>
+      <div class="dt-track-map">
+        <svg viewBox="0 0 100 50" width="100%" height="100%">
+          <path d="M 70,5 L 60,5 Q 50,5 50,15 L 50,30 Q 50,35 60,35 L 90,35 Q 95,35 95,40 L 95,45 Q 95,50 80,50 L 5,50" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 95,40 L 95,45 Q 95,50 80,50 L 40,50" fill="none" stroke="#ff2a3b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,42,59,0.8));"/>
+        </svg>
+      </div>
+    </div>
+ </div>
+  <!-- SECCIÓN 8: RACE SCHEDULE & UPCOMING EVENTS -->
+  <div class="section-title" style="margin-top: 50px;"><span>08. RACE SCHEDULE & UPCOMING EVENTS (OFFICIAL LMU WEEKLY CALENDAR)</span></div>
+  <div class="rs-container">
+    <div class="rs-header">
+      <div class="rs-title">
+        <span class="rs-live-dot"></span>
+        <span>LE MANS ULTIMATE • DAILY RACE SCHEDULE</span>
+      </div>
+      <div class="rs-clock">LIVE UTC 23:55</div>
+    </div>
+    <div class="rs-subbar">
+      <span>SCHEDULE FROM: 23 JUN 2026</span>
+      <div class="rs-lic-group">
+        <span class="rs-lic active">ALL LICENSES</span>
+        <span class="rs-lic">BRONZE SR</span>
+        <span class="rs-lic">SILVER SR</span>
+        <span class="rs-lic">GOLD SR</span>
+      </div>
+    </div>
+
+    <div class="rs-list">
+      
+      <!-- CARRERA 1: BEGINNER [BRONZE SR] -->
+      <div class="rs-row bronze">
+        <div class="rs-info">
+          <div class="rs-sr-tag bronze">BRONZE SR • BEGINNER</div>
+          <div class="rs-series">LMP3 Fixed Challenge</div>
+          <div class="rs-track">Spa-Francorchamps (WEC)</div>
+          <div class="rs-meta">
+            <span class="rs-badge lmp3">LMP3</span>
+            <span class="rs-pill">20M RACE</span>
+            <span class="rs-pill">EVERY 15M</span>
+            <span class="rs-pill">20 SPLITS</span>
+            <span class="rs-pill">WARMERS ON</span>
+            <span class="rs-pill">FIXED SETUP</span>
+          </div>
+        </div>
+        <div class="rs-timing">
+          <div class="rs-countdown live">STARTS IN 03:45</div>
+          <div class="rs-status registered">REGISTERED (SPLIT 1)</div>
+        </div>
+      </div>
+
+      <!-- CARRERA 2: INTERMEDIATE [SILVER SR] -->
+      <div class="rs-row silver">
+        <div class="rs-info">
+          <div class="rs-sr-tag silver">SILVER SR • INTERMEDIATE</div>
+          <div class="rs-series">LMGT3 Sprint Cup</div>
+          <div class="rs-track">Monza (Curva Grande)</div>
+          <div class="rs-meta">
+            <span class="rs-badge gt3">LMGT3</span>
+            <span class="rs-pill">30M RACE</span>
+            <span class="rs-pill">EVERY 20M</span>
+            <span class="rs-pill">38 SPLITS</span>
+            <span class="rs-pill">NO WARMERS</span>
+            <span class="rs-pill">OPEN SETUP</span>
+          </div>
+        </div>
+        <div class="rs-timing">
+          <div class="rs-countdown">NEXT @ 00:00 UTC</div>
+          <div class="rs-status open">REGISTRATION OPEN</div>
+        </div>
+      </div>
+
+      <!-- CARRERA 3: ADVANCED [GOLD SR] -->
+      <div class="rs-row gold">
+        <div class="rs-info">
+          <div class="rs-sr-tag gold">GOLD SR • ADVANCED</div>
+          <div class="rs-series">One Stint Sprint</div>
+          <div class="rs-track">Circuit of the Americas (WEC)</div>
+          <div class="rs-meta">
+            <span class="rs-badge hypercar">HYPERCAR</span>
+            <span class="rs-badge gt3">LMGT3</span>
+            <span class="rs-pill">40M RACE</span>
+            <span class="rs-pill">EVERY 30M</span>
+            <span class="rs-pill">8 TYRE LIMIT</span>
+            <span class="rs-pill">OPEN SETUP</span>
+          </div>
+        </div>
+        <div class="rs-timing">
+          <div class="rs-countdown">NEXT @ 00:00 UTC</div>
+          <div class="rs-status open">REGISTRATION OPEN</div>
+        </div>
+      </div>
+
+      <!-- CARRERA 4: SPECIAL EVENT -->
+      <div class="rs-row special">
+        <div class="rs-info">
+          <div class="rs-sr-tag special">SPECIAL EVENT • SR B2+</div>
+          <div class="rs-series">6 Hours of Le Mans</div>
+          <div class="rs-track">Circuit de la Sarthe (WEC)</div>
+          <div class="rs-meta">
+            <span class="rs-badge hypercar">HYPERCAR</span>
+            <span class="rs-badge lmp2">LMP2</span>
+            <span class="rs-badge gt3">LMGT3</span>
+            <span class="rs-pill">360M ENDURANCE</span>
+            <span class="rs-pill">44 SPLITS</span>
+            <span class="rs-pill">16 TYRE LIMIT</span>
+          </div>
+        </div>
+        <div class="rs-timing">
+          <div class="rs-countdown" style="color:#c084fc;">FRI-SUN @ 17:00 UTC</div>
+          <div class="rs-status special">TEAM REGISTRATION</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- =========================================================
+       09. HEAD 2 HEAD BATTLE TELEMETRY (ADAPTACIÓN DE 214204.png)
+       ========================================================= -->
+  <div class="section-title">09. Head 2 Head Battle Telemetry (Unified HUD)</div>
+  <div class="h2h-container">
+    <div class="h2h-banner">HEAD 2 HEAD</div>
+    <div class="h2h-content">
+      <div class="h2h-row">
+        <div style="display:flex; align-items:center; flex:1;">
+          <span class="h2h-pos">11</span>
+          <span class="h2h-driver">Rick Van Zwieten</span>
+        </div>
+        <div class="h2h-sectors" style="justify-content: flex-end; color: #888; font-size:12px;">S1 - S2 - S3 - S4</div>
+        <div style="display:flex; align-items:center;">
+          <span class="h2h-gap">0.3</span>
+          <span class="h2h-lap">01:23.990</span>
+        </div>
+      </div>
+      <div class="h2h-row active">
+        <div style="display:flex; align-items:center; flex:1;">
+          <span class="h2h-pos" style="background:#ff2a3b; color:#fff;">12</span>
+          <span class="h2h-driver" style="color:#ff2a3b;">Istvan Fodor</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="h2h-arrows r">&laquo; 0.1</span>
+          <div class="h2h-sectors">
+            <div class="h2h-sec g">0.0</div>
+            <div class="h2h-sec g">0.0</div>
+            <div class="h2h-sec r">0.0</div>
+            <div class="h2h-sec r">0.1</div>
+          </div>
+          <span class="h2h-arrows g">0.0 &raquo;</span>
+        </div>
+        <div style="display:flex; align-items:center;">
+          <span class="h2h-gap" style="color:#22c55e;">LEADER</span>
+          <span class="h2h-lap" style="color:#22c55e;">01:24.100</span>
+        </div>
+      </div>
+      <div class="h2h-row">
+        <div style="display:flex; align-items:center; flex:1;">
+          <span class="h2h-pos">13</span>
+          <span class="h2h-driver">Alexandr Fescov</span>
+        </div>
+        <div class="h2h-sectors" style="justify-content: flex-end; color: #888; font-size:12px;">+0.1 - +0.2 - +0.0 - +0.0</div>
+        <div style="display:flex; align-items:center;">
+          <span class="h2h-gap">0.3</span>
+          <span class="h2h-lap">01:24.130</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       10. COMPACT INPUT TELEMETRY BAR (ADAPTACIÓN DE 214211.png) - 3 ITERACIONES
+       ========================================================= -->
+  <div class="section-title">10A. Sleek Horizontal Blade (Estilo F1 / Rectangular Uniforme)</div>
+  <div class="in10a-container">
+    <div class="in10a-banner">TELEMETRY</div>
+    <div class="in10a-graph">
+      <svg width="100%" height="100%" viewBox="0 0 500 96" preserveAspectRatio="none" style="position:absolute; top:0; left:0;">
+        <!-- Rejilla de fondo integrada -->
+        <line x1="0" y1="24" x2="500" y2="24" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="4" />
+        <line x1="0" y1="48" x2="500" y2="48" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="4" />
+        <line x1="0" y1="72" x2="500" y2="72" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="4" />
+        <!-- Trazas de telemetría -->
+        <path d="M0,88 L80,88 L140,12 L180,12 L220,88 L500,88" fill="none" stroke="#22c55e" stroke-width="3" />
+        <path d="M0,88 L120,88 L150,30 L180,30 L210,88 L500,88" fill="none" stroke="#ef4444" stroke-width="3" />
+        <path d="M150,30 L165,18 L180,30" fill="none" stroke="#fbbf24" stroke-width="3" />
+      </svg>
+    </div>
+    <div class="in10a-bars">
+      <div class="in10a-col">
+        <span class="in10a-val" style="color:#888;">0</span>
+        <div class="in10a-track"><div class="in10a-fill" style="background:#3b82f6; height:0%;"></div></div>
+      </div>
+      <div class="in10a-col">
+        <span class="in10a-val" style="color:#ef4444;">6</span>
+        <div class="in10a-track"><div class="in10a-fill" style="background:#ef4444; height:6%;"></div></div>
+      </div>
+      <div class="in10a-col">
+        <span class="in10a-val" style="color:#22c55e;">100</span>
+        <div class="in10a-track"><div class="in10a-fill" style="background:#22c55e; height:100%; box-shadow:0 0 10px #22c55e;"></div></div>
+      </div>
+    </div>
+    <div class="in10a-cockpit">
+      <div class="in10a-gear">3</div>
+      <div class="in10a-spd-box">
+        <span class="in10a-spd">128</span>
+        <span class="in10a-unit">KPH</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">10B. Symmetrical Aero Capsule (Estilo Hypercar / Simétrico)</div>
+  <div class="in10b-container">
+    <div class="in10b-banner">INPUTS</div>
+    <div class="in10b-graph">
+      <svg width="100%" height="100%" viewBox="0 0 500 74" preserveAspectRatio="none" style="position:absolute; top:0; left:0;">
+        <path d="M0,70 L80,70 L140,5 L180,5 L220,70 L500,70" fill="none" stroke="#22c55e" stroke-width="3" />
+        <path d="M0,70 L120,70 L150,25 L180,25 L210,70 L500,70" fill="none" stroke="#ef4444" stroke-width="3" />
+        <path d="M150,25 L165,15 L180,25" fill="none" stroke="#fbbf24" stroke-width="3" />
+      </svg>
+    </div>
+    <div class="in10b-bars">
+      <div class="in10a-col">
+        <span class="in10a-val" style="color:#888;">0</span>
+        <div class="in10a-track"><div class="in10a-fill" style="background:#3b82f6; height:0%;"></div></div>
+      </div>
+      <div class="in10a-col">
+        <span class="in10a-val" style="color:#ef4444;">6</span>
+        <div class="in10a-track"><div class="in10a-fill" style="background:#ef4444; height:6%;"></div></div>
+      </div>
+      <div class="in10a-col">
+        <span class="in10a-val" style="color:#22c55e;">100</span>
+        <div class="in10a-track"><div class="in10a-fill" style="background:#22c55e; height:100%; box-shadow:0 0 10px #22c55e;"></div></div>
+      </div>
+    </div>
+    <div class="in10b-gauge">
+      <div class="in10a-gear">3</div>
+      <div class="in10a-spd-box">
+        <span class="in10a-spd">128</span>
+        <span class="in10a-unit">KPH</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">10C. Ultra-Dense Strip (Estilo Endurance / Alta Densidad)</div>
+  <div class="in10c-container">
+    <div class="in10c-tag">INP</div>
+    <div class="in10c-graph">
+      <svg width="100%" height="100%" viewBox="0 0 400 44" preserveAspectRatio="none" style="position:absolute; top:0; left:0;">
+        <path d="M0,40 L60,40 L100,4 L140,4 L180,40 L400,40" fill="none" stroke="#22c55e" stroke-width="2.5" />
+        <path d="M0,40 L90,40 L110,15 L130,15 L150,40 L400,40" fill="none" stroke="#ef4444" stroke-width="2.5" />
+      </svg>
+    </div>
+    <div class="in10c-horiz">
+      <div class="in10c-row"><span class="in10c-lbl" style="color:#22c55e;">T</span><div class="in10c-bar"><div style="width:100%; height:100%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></div></div><span>100</span></div>
+      <div class="in10c-row"><span class="in10c-lbl" style="color:#ef4444;">B</span><div class="in10c-bar"><div style="width:6%; height:100%; background:#ef4444;"></div></div><span>006</span></div>
+      <div class="in10c-row"><span class="in10c-lbl" style="color:#3b82f6;">C</span><div class="in10c-bar"><div style="width:0%; height:100%; background:#3b82f6;"></div></div><span>000</span></div>
+    </div>
+    <div class="in10c-gearbox">
+      <span style="font-family:var(--font-display); font-size:32px; font-weight:900; color:#fff;">3</span>
+      <span style="font-family:var(--font-mono); font-size:18px; font-weight:900; color:#fff;">128</span>
+      <span style="font-family:var(--font-mono); font-size:10px; font-weight:800; color:#888;">KPH</span>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       11. MULTICLASS RELATIVE GAP HUD (ADAPTACIÓN DE 214236.png)
+       ========================================================= -->
+  <div class="section-title">11. Multiclass Relative Gap HUD (Integrated & Gapless)</div>
+  <div class="mc-container">
+    <div class="mc-row">
+      <span class="mc-pos">14</span>
+      <span class="mc-class lmp2">LMP2</span>
+      <div class="mc-logo">PRE</div>
+      <span class="mc-name">Istvan FODOR</span>
+      <span class="mc-gap">+0.4</span>
+    </div>
+    <div class="mc-divider">••••••</div>
+    <div class="mc-row player">
+      <span class="mc-pos" style="color:#fbbf24;">15</span>
+      <span class="mc-class lmp2">LMP2</span>
+      <div class="mc-logo" style="background:#ff2a3b; color:#fff;">VNT</div>
+      <span class="mc-name" style="color:#fbbf24;">Yuki TSUNODA</span>
+      <span class="mc-gap" style="color:#fff;">0.0</span>
+    </div>
+    <div class="mc-divider">••••••</div>
+    <div class="mc-row">
+      <span class="mc-pos">24</span>
+      <span class="mc-class lmp3">LMP3</span>
+      <div class="mc-logo">AFC</div>
+      <span class="mc-name">Fernando ALONSO</span>
+      <span class="mc-gap">+1.7</span>
+    </div>
+    <div class="mc-divider">••••••</div>
+    <div class="mc-row">
+      <span class="mc-pos">30</span>
+      <span class="mc-class gt4">GT4</span>
+      <div class="mc-logo">WRT</div>
+      <span class="mc-name">Max VERSTAPPEN</span>
+      <span class="mc-gap">+3.3</span>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       12. TRACK WEATHER & ENVIRONMENT (ADAPTACIÓN DE 214249.png)
+       ========================================================= -->
+  <div class="section-title" style="margin-bottom: 40px;">12. Track Weather & Environment (Vertical Environmental Panel)</div>
+  <div class="tw-container" style="margin-bottom: 60px;">
+    <div class="tw-box">
+      <div class="tw-label">Track Temp</div>
+      <div class="tw-val-row">
+        <span class="tw-icon" style="background:rgba(245,158,11,0.2); color:#f59e0b;">TEMP</span>
+        <span class="tw-big">27.2 °C</span>
+      </div>
+      <div style="font-size:11px; color:#888;">Optimum Grip Range</div>
+    </div>
+    <div class="tw-box">
+      <div class="tw-label">Track Wetness</div>
+      <div class="tw-val-row" style="justify-content:space-between; width:100%;">
+        <span style="font-size:11px; font-family:var(--font-mono); font-weight:800; color:#aaa;">DRY</span>
+        <div class="tw-bar-wrap" style="flex:1; margin:0 8px;"><div class="tw-bar-fill"></div></div>
+        <span style="font-size:11px; font-family:var(--font-mono); font-weight:800; color:#38bdf8;">WET</span>
+      </div>
+      <div class="tw-sub">Lightly wet</div>
+    </div>
+    <div class="tw-box">
+      <div class="tw-label">Precipitation</div>
+      <div class="tw-val-row">
+        <span class="tw-icon" style="background:rgba(56,189,248,0.2); color:#38bdf8;">RAIN</span>
+        <span class="tw-big">0 %</span>
+      </div>
+      <div style="font-size:11px; color:#22c55e;">No rain forecasted</div>
+    </div>
+    <div class="tw-box">
+      <div class="tw-label">Wind</div>
+      <div class="tw-val-row">
+        <span class="tw-icon" style="background:rgba(168,85,247,0.2); color:#c084fc;">WIND</span>
+        <div>
+          <div class="tw-big" style="font-size:20px;">8 <span style="font-size:12px; font-weight:700; color:#888;">KPH</span></div>
+          <div style="font-size:11px; color:#38bdf8;">Tailwind SE &rarr; NW</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#888;">Braking T1 affected</div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       13. CAR DAMAGE VISUAL WIDGET (Car Damage.png)
+       ========================================================= -->
+  <div class="section-title">13. Car Damage Visual Widget (Separado - Tamaño compacto original)</div>
+  <div class="w13-car-visual">
+    <div class="w13-chassis">
+      <div class="w13-aero-f"></div>
+      <div class="w13-tire w13-fl"></div>
+      <div class="w13-tire w13-fr"></div>
+      <div class="w13-pct">100%</div>
+      <div class="w13-tire w13-rl"></div>
+      <div class="w13-tire w13-rr"></div>
+      <div class="w13-aero-r"></div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       14. CAR DAMAGE NUMBERS WIDGET (Car Damage Number.png)
+       ========================================================= -->
+  <div class="section-title">14. Car Damage Numbers Widget (Separado - Bloque vertical compacto)</div>
+  <div class="w14-damage-nums">
+    <div class="w14-row"><span>Aero</span><span class="w14-val">n/a</span></div>
+    <div class="w14-row"><span>Body</span><span class="w14-val">n/a</span></div>
+    <div class="w14-row"><span>Susp</span><span class="w14-val">n/a</span></div>
+    <div class="w14-row"><span>Tyre</span><span class="w14-val">n/a</span></div>
+  </div>
+
+  <!-- =========================================================
+       15. DELTA SIMPLE WIDGET (Delta Simple.png)
+       ========================================================= -->
+  <div class="section-title">15. Delta Simple Widget (Separado - Barra superior oscura con badge inferior)</div>
+  <div class="w15-delta-simple">
+    <div class="w15-bar"></div>
+    <div class="w15-badge">+0.000</div>
+  </div>
+
+  <!-- =========================================================
+       16. DELTA ADVANCED WIDGET (Delta advanced.png)
+       ========================================================= -->
+  <div class="section-title">16. Delta Advanced Widget (Separado - Franja horizontal de 4 bloques)</div>
+  <div class="w16-delta-adv">
+    <div class="w16-cell"><div class="w16-tag b">B</div><span class="w16-val">--.---</span></div>
+    <div class="w16-cell"><div class="w16-tag s">S</div><span class="w16-val" style="color:#38bdf8;">--.---</span></div>
+    <div class="w16-cell"><div class="w16-tag t">T</div><span class="w16-val" style="color:#eab308;">--.---</span></div>
+    <div class="w16-cell"><div class="w16-tag l">L</div><span class="w16-val">--.---</span></div>
+  </div>
+  <!-- =========================================================
+       V2 WIDGETS — ESTILO GLASSMORPHISM + ESENCIA ORIGINAL
+       ========================================================= -->
+  <div class="section-title" style="margin-top: 60px;"><span>V2. WIDGETS REESTILIZADOS (GLASSMORPHISM PRO)</span></div>
+  <div class="v2-section">
+    
+    <!-- V2-09: HEAD 2 HEAD — Esencia: comparación vertical lado a lado -->
+    <div class="v2-card" style="width: 340px;">
+      <div class="v2-header">
+        <span class="v2-title">HEAD 2 HEAD</span>
+        <span class="v2-badge">BATTLE</span>
+      </div>
+      <div style="display:flex; gap:2px; padding:6px 8px;">
+        <div style="flex:1; padding:8px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <span style="background:#fff; color:#000; font-family:var(--font-mono); font-weight:800; font-size:11px; width:20px; height:20px; border-radius:4px; display:flex; align-items:center; justify-content:center;">11</span>
+            <span class="v2-cell" style="font-size:11px; flex:1;">R. Van Zwieten</span>
+          </div>
+          <div style="display:flex; gap:3px; margin-bottom:4px;">
+            <div style="flex:1; height:12px; background:rgba(34,197,94,0.2); border:1px solid #22c55e; border-radius:3px;"></div>
+            <div style="flex:1; height:12px; background:rgba(34,197,94,0.2); border:1px solid #22c55e; border-radius:3px;"></div>
+            <div style="flex:1; height:12px; background:rgba(255,42,59,0.2); border:1px solid #ff2a3b; border-radius:3px;"></div>
+            <div style="flex:1; height:12px; background:rgba(255,42,59,0.2); border:1px solid #ff2a3b; border-radius:3px;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span class="v2-cell dim" style="font-size:9px;">0.3</span>
+            <span class="v2-cell dim" style="font-size:9px;">01:23.990</span>
+          </div>
+        </div>
+        <div style="width:1px; background:rgba(255,255,255,0.08); margin:4px 0;"></div>
+        <div style="flex:1; padding:8px; background:rgba(255,42,59,0.08); border-radius:8px; border:1px solid rgba(255,42,59,0.3);">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <span style="background:#ff2a3b; color:#fff; font-family:var(--font-mono); font-weight:800; font-size:11px; width:20px; height:20px; border-radius:4px; display:flex; align-items:center; justify-content:center;">12</span>
+            <span class="v2-cell" style="font-size:11px; flex:1; color:#ff2a3b;">I. Fodor (TÚ)</span>
+          </div>
+          <div style="display:flex; gap:3px; margin-bottom:4px;">
+            <div style="flex:1; height:12px; background:rgba(34,197,94,0.2); border:1px solid #22c55e; border-radius:3px;"></div>
+            <div style="flex:1; height:12px; background:rgba(34,197,94,0.2); border:1px solid #22c55e; border-radius:3px;"></div>
+            <div style="flex:1; height:12px; background:rgba(255,42,59,0.2); border:1px solid #ff2a3b; border-radius:3px;"></div>
+            <div style="flex:1; height:12px; background:rgba(255,42,59,0.2); border:1px solid #ff2a3b; border-radius:3px;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span class="v2-cell green" style="font-size:9px;">LEADER</span>
+            <span class="v2-cell green" style="font-size:9px;">01:24.100</span>
+          </div>
+        </div>
+      </div>
+      <div class="v2-footer"><span>DELTA: +0.1s</span><span>GAP: 0.3</span></div>
+    </div>
+    
+    <!-- V2-10A: INPUT TELEMETRY — Esencia: barras horizontales con graph -->
+    <div class="v2-card" style="width: 380px;">
+      <div class="v2-header">
+        <span class="v2-title">INPUT TELEMETRY</span>
+        <span class="v2-badge">LIVE</span>
+      </div>
+      <div style="display:flex; gap:10px; padding:8px;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="v2-cell dim" style="width:30px; font-size:8px;">THR</span>
+            <div class="v2-bar" style="flex:1; height:10px;"><div class="v2-bar-fill" style="width:100%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></div></div>
+            <span class="v2-cell green" style="width:28px; font-size:9px; text-align:right;">100</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="v2-cell dim" style="width:30px; font-size:8px;">BRK</span>
+            <div class="v2-bar" style="flex:1; height:10px;"><div class="v2-bar-fill" style="width:6%; background:#ff2a3b;"></div></div>
+            <span class="v2-cell red" style="width:28px; font-size:9px; text-align:right;">6</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="v2-cell dim" style="width:30px; font-size:8px;">CLU</span>
+            <div class="v2-bar" style="flex:1; height:10px;"><div class="v2-bar-fill" style="width:0%; background:#f59e0b;"></div></div>
+            <span class="v2-cell yellow" style="width:28px; font-size:9px; text-align:right;">0</span>
+          </div>
+        </div>
+        <div style="width:1px; background:rgba(255,255,255,0.08);"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:70px;">
+          <span class="v2-cell bold" style="font-size:28px; line-height:1;">3</span>
+          <span class="v2-cell" style="font-size:12px; font-weight:800;">128 <span class="v2-cell dim" style="font-size:9px;">KPH</span></span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- V2-11: MULTICLASS — Esencia: pilotos de diferentes clases con gaps -->
+    <div class="v2-card" style="width: 300px;">
+      <div class="v2-header">
+        <span class="v2-title">MULTICLASS</span>
+        <span class="v2-badge">GAP</span>
+      </div>
+      <div style="padding:4px 8px;">
+        <div class="v2-row" style="background:rgba(255,255,255,0.02);">
+          <span class="v2-cell bold" style="width:24px;">14</span>
+          <span style="width:40px; text-align:center; padding:2px 4px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:#fbbf24; color:#000;">LMP2</span>
+          <span class="v2-cell" style="flex:1; margin-left:6px;">I. FODOR</span>
+          <span class="v2-cell red" style="width:36px; text-align:right;">+0.4</span>
+        </div>
+        <div style="text-align:center; font-size:8px; color:rgba(255,255,255,0.2); letter-spacing:2px; padding:2px 0;">••••••</div>
+        <div class="v2-row highlight" style="border-left:3px solid #fbbf24;">
+          <span class="v2-cell bold" style="width:24px; color:#fbbf24;">15</span>
+          <span style="width:40px; text-align:center; padding:2px 4px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:#fbbf24; color:#000;">LMP2</span>
+          <span class="v2-cell" style="flex:1; margin-left:6px; color:#fbbf24;">Y. TSUNODA (TÚ)</span>
+          <span class="v2-cell" style="width:36px; text-align:right; color:#fff;">0.0</span>
+        </div>
+        <div style="text-align:center; font-size:8px; color:rgba(255,255,255,0.2); letter-spacing:2px; padding:2px 0;">••••••</div>
+        <div class="v2-row" style="background:rgba(255,255,255,0.02);">
+          <span class="v2-cell bold" style="width:24px;">24</span>
+          <span style="width:40px; text-align:center; padding:2px 4px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:#38bdf8; color:#000;">LMP3</span>
+          <span class="v2-cell" style="flex:1; margin-left:6px;">F. ALONSO</span>
+          <span class="v2-cell red" style="width:36px; text-align:right;">+1.7</span>
+        </div>
+        <div style="text-align:center; font-size:8px; color:rgba(255,255,255,0.2); letter-spacing:2px; padding:2px 0;">••••••</div>
+        <div class="v2-row" style="background:rgba(255,255,255,0.02);">
+          <span class="v2-cell bold" style="width:24px;">30</span>
+          <span style="width:40px; text-align:center; padding:2px 4px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:#f472b6; color:#000;">GT4</span>
+          <span class="v2-cell" style="flex:1; margin-left:6px;">M. VERSTAPPEN</span>
+          <span class="v2-cell red" style="width:36px; text-align:right;">+3.3</span>
+        </div>
+      </div>
+      <div class="v2-footer"><span>LMP2</span><span>SOF: 2,450</span></div>
+    </div>
+    
+    <!-- V2-12: TRACK WEATHER — Esencia: panel vertical con datos ambientales -->
+    <div class="v2-card" style="width: 180px;">
+      <div class="v2-header">
+        <span class="v2-title">WEATHER</span>
+        <span class="v2-badge">LIVE</span>
+      </div>
+      <div style="padding:6px 8px; display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="padding:2px 6px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:rgba(245,158,11,0.2); color:#f59e0b;">TEMP</span>
+          <span class="v2-cell bold" style="font-size:16px;">27.2°C</span>
+        </div>
+        <div style="font-size:9px; color:#888;">Optimum Grip Range</div>
+        <div style="height:1px; background:rgba(255,255,255,0.06);"></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="padding:2px 6px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:rgba(56,189,248,0.2); color:#38bdf8;">RAIN</span>
+          <span class="v2-cell" style="font-size:14px;">0%</span>
+        </div>
+        <div style="font-size:9px; color:#22c55e;">No rain forecasted</div>
+        <div style="height:1px; background:rgba(255,255,255,0.06);"></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="padding:2px 6px; border-radius:3px; font-family:var(--font-mono); font-size:8px; font-weight:800; background:rgba(168,85,247,0.2); color:#c084fc;">WIND</span>
+          <span class="v2-cell" style="font-size:12px;">8 KPH</span>
+        </div>
+        <div style="font-size:9px; color:#38bdf8;">Tailwind SE → NW</div>
+      </div>
+    </div>
+    
+    <!-- V2-13: CAR DAMAGE VISUAL — Esencia: diagrama del coche con neumáticos -->
+    <div class="v2-card" style="width: 120px;">
+      <div class="v2-header">
+        <span class="v2-title">DAMAGE</span>
+      </div>
+      <div style="padding:8px; display:flex; justify-content:center;">
+        <div style="position:relative; width:50px; height:80px;">
+          <div style="position:absolute; top:8px; left:-8px; width:10px; height:20px; background:#22c55e; border-radius:2px; box-shadow:0 0 6px #22c55e;"></div>
+          <div style="position:absolute; top:8px; right:-8px; width:10px; height:20px; background:#22c55e; border-radius:2px; box-shadow:0 0 6px #22c55e;"></div>
+          <div style="position:absolute; bottom:8px; left:-8px; width:10px; height:20px; background:#22c55e; border-radius:2px; box-shadow:0 0 6px #22c55e;"></div>
+          <div style="position:absolute; bottom:8px; right:-8px; width:10px; height:20px; background:#22c55e; border-radius:2px; box-shadow:0 0 6px #22c55e;"></div>
+          <div style="position:absolute; top:0; left:4px; right:4px; height:3px; background:#38bdf8; border-radius:2px;"></div>
+          <div style="position:absolute; bottom:0; left:2px; right:2px; height:4px; background:#38bdf8; border-radius:2px;"></div>
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:2px 4px; border-radius:3px; border:1px solid rgba(255,255,255,0.2);">
+            <span class="v2-cell bold" style="font-size:9px;">100%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- V2-14: CAR DAMAGE NUMBERS — Esencia: lista vertical de daños -->
+    <div class="v2-card" style="width: 120px;">
+      <div class="v2-header">
+        <span class="v2-title">DAMAGE</span>
+      </div>
+      <div style="padding:4px 8px; display:flex; flex-direction:column; gap:2px;">
+        <div class="v2-row" style="height:20px; padding:0 6px; background:rgba(0,0,0,0.2); border-radius:4px;">
+          <span class="v2-cell dim" style="font-size:9px; flex:1;">Aero</span>
+          <span class="v2-cell green" style="font-size:9px; font-weight:800;">n/a</span>
+        </div>
+        <div class="v2-row" style="height:20px; padding:0 6px; background:rgba(0,0,0,0.2); border-radius:4px;">
+          <span class="v2-cell dim" style="font-size:9px; flex:1;">Body</span>
+          <span class="v2-cell green" style="font-size:9px; font-weight:800;">n/a</span>
+        </div>
+        <div class="v2-row" style="height:20px; padding:0 6px; background:rgba(0,0,0,0.2); border-radius:4px;">
+          <span class="v2-cell dim" style="font-size:9px; flex:1;">Susp</span>
+          <span class="v2-cell green" style="font-size:9px; font-weight:800;">n/a</span>
+        </div>
+        <div class="v2-row" style="height:20px; padding:0 6px; background:rgba(0,0,0,0.2); border-radius:4px;">
+          <span class="v2-cell dim" style="font-size:9px; flex:1;">Tyre</span>
+          <span class="v2-cell green" style="font-size:9px; font-weight:800;">n/a</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- V2-15: DELTA SIMPLE — Esencia: barra + badge con delta -->
+    <div class="v2-card" style="width: 180px;">
+      <div class="v2-header">
+        <span class="v2-title">DELTA</span>
+        <span class="v2-badge">LIVE</span>
+      </div>
+      <div style="padding:8px;">
+        <div class="v2-bar" style="height:16px; border-radius:6px;">
+          <div class="v2-bar-fill" style="width:55%; background:linear-gradient(90deg, #22c55e 0%, #16a34a 100%); border-radius:6px;"></div>
+        </div>
+        <div style="display:flex; justify-content:center; margin-top:6px;">
+          <span class="v2-cell bold green" style="font-size:12px; padding:2px 10px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); border-radius:6px;">-0.24</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- V2-16: DELTA ADVANCED — Esencia: 4 bloques de sector -->
+    <div class="v2-card" style="width: 240px;">
+      <div class="v2-header">
+        <span class="v2-title">DELTA ADVANCED</span>
+      </div>
+      <div class="v2-grid v2-grid-4" style="padding:6px 8px; gap:3px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; background:rgba(0,0,0,0.3); border-radius:4px;">
+          <span style="width:14px; height:14px; background:#fff; color:#000; font-size:7px; font-weight:800; border-radius:2px; display:flex; align-items:center; justify-content:center;">B</span>
+          <span class="v2-cell dim" style="font-size:9px;">--.---</span>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; background:rgba(0,0,0,0.3); border-radius:4px;">
+          <span style="width:14px; height:14px; background:#38bdf8; color:#000; font-size:7px; font-weight:800; border-radius:2px; display:flex; align-items:center; justify-content:center;">S</span>
+          <span class="v2-cell" style="font-size:9px; color:#38bdf8;">--.---</span>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; background:rgba(0,0,0,0.3); border-radius:4px;">
+          <span style="width:14px; height:14px; background:#eab308; color:#000; font-size:7px; font-weight:800; border-radius:2px; display:flex; align-items:center; justify-content:center;">T</span>
+          <span class="v2-cell" style="font-size:9px; color:#eab308;">--.---</span>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; background:rgba(0,0,0,0.3); border-radius:4px;">
+          <span style="width:14px; height:14px; background:#f43f5e; color:#fff; font-size:7px; font-weight:800; border-radius:2px; display:flex; align-items:center; justify-content:center;">L</span>
+          <span class="v2-cell dim" style="font-size:9px;">--.---</span>
+        </div>
+      </div>
+      <div class="v2-footer"><span>BEST: --.---</span><span>LAST: --.---</span></div>
+    </div>
+    
+  </div>
+
+</body>
+</html>

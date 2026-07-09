@@ -41,11 +41,18 @@ dev_mode:
       - node_modules
       - frontend
       - bin
+      - terminals
+      - agent-tools
+      - mcps
     file:
       - .DS_Store
       - .gitignore
       - .gitkeep
       - "*_test.go"
+      # Generated transiently during windows:build:native; create/delete loops dev rebuilds.
+      - cmd/vantare/supabase_build.go
+      - cmd/vantare/wails_windows_amd64.syso
+      - tools/print-fingerprint/**
     watched_extension:
       - "*.go"
       - "*.js" # Watch for changes to JS/TS files included using the //wails:include directive.

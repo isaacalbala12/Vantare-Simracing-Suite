@@ -27,4 +27,6 @@ export type LicenseResult = {
   graceEndsAt?: string;
   lastValidated?: string;
   error?: string;
+  providerCustomerId?: string;
+  billingProvider?: string;
 };

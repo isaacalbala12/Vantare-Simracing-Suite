@@ -9,6 +9,7 @@ import {
   sortedEntitlements,
 } from "../../lib/plan";
 import { useI18n } from "../../i18n/I18nProvider";
+import { BILLING_ENABLED, openCustomerPortal } from "../../lib/billing-client";
 
 const STATUS_TONE: Record<string, string> = {
   active: "text-vantare-success",
@@ -40,23 +41,15 @@ export function AccountSettings() {
 
   const handleManageSubscription = useCallback(async () => {
     setPortalError(null);
-    try {
-      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-portal-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stripeCustomerId: result?.userId ?? "" }),
-      });
-      if (!res.ok) {
-        setPortalError(t("account.portalError"));
-        return;
-      }
-      const data = await res.json();
-      if (data.url) await Browser.OpenURL(data.url);
-    } catch {
+    const customerId = result?.providerCustomerId ?? "";
+    const portal = await openCustomerPortal({ providerCustomerId: customerId });
+    if (!portal.ok) {
+      if (portal.reason === "billing_not_available") return;
       setPortalError(t("account.portalError"));
+      return;
     }
-  }, [result?.userId, t]);
+    await Browser.OpenURL(portal.url);
+  }, [result?.providerCustomerId, t]);
 
   const summary = useMemo(
     () =>
@@ -136,13 +129,15 @@ export function AccountSettings() {
         <p className="font-mono text-[10px] text-vantare-red-400">{portalError}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={handleManageSubscription}
-          className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
-        >
-          {t("account.manageSubscription")}
-        </button>
+        {BILLING_ENABLED && result?.providerCustomerId ? (
+          <button
+            type="button"
+            onClick={handleManageSubscription}
+            className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
+          >
+            {t("account.manageSubscription")}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={handleResetDevice}

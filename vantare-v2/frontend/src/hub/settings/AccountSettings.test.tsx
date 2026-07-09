@@ -161,53 +161,16 @@ describe("AccountSettings", () => {
     ).toBeTruthy();
   });
 
-  // --- CHECKOUT-01 Task 3: Portal button ---
-
-  it("calls fetch to create-portal-session and opens portal URL when Gestionar suscripción is clicked", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ url: "https://billing.stripe.com/session/test" }),
-    } as Response);
-
-    mockUseLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u123",
-      email: "u@example.com",
-      deviceOK: true,
-    });
-    render(<AccountSettings />);
-    fireEvent.click(screen.getByRole("button", { name: /gestionar suscripción/i }));
-
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
-    const [url, opts] = fetchSpy.mock.calls[0];
-    expect(url).toContain("/functions/v1/create-portal-session");
-    expect(opts?.method).toBe("POST");
-    expect(mockOpenURL).toHaveBeenCalledWith("https://billing.stripe.com/session/test");
-
-    fetchSpy.mockRestore();
-  });
-
-  it("shows portal error when portal fetch fails", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: "No customer" }),
-    } as Response);
-
+  it("hides manage subscription when billing is disabled", () => {
     mockUseLicense({
       state: "active",
       entitlements: ["overlays"],
       userId: "u",
       email: "u@example.com",
       deviceOK: true,
+      providerCustomerId: "polar_cus_1",
     });
     render(<AccountSettings />);
-    fireEvent.click(screen.getByRole("button", { name: /gestionar suscripción/i }));
-
-    await waitFor(() =>
-      expect(screen.getByText(/no se pudo abrir el portal/i)).toBeTruthy(),
-    );
-
-    fetchSpy.mockRestore();
+    expect(screen.queryByRole("button", { name: /gestionar suscripción/i })).toBeNull();
   });
 });

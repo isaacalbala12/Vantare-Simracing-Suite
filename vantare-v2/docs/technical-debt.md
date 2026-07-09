@@ -50,12 +50,13 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Severidad: P3
 - Area: licensing/supabase
 - Origen: diagnostico P0 Free plan bloqueado (2026-06-29)
-- Estado: abierto
+- Estado: migracion local lista, pendiente `db push` humano (Fase 1.6E)
 - Release objetivo: `0.1.x` antes de activar pagos reales o antes de release publico (R15 o equivalente)
-- Motivo para diferir: el fix A+B+C aplicado hace que el binario Go reciba la config de Supabase via `generate_supabase_config.ps1` (genera `supabase_build.go` con `init()` base64) y que el estado `unconfigured` no bloquee al usuario. La función RPC `get_account_entitlements` debe existir en el proyecto Supabase para que la validación real funcione. Si no existe, `FetchAccount` devuelve error y, con `s.client != nil`, el estado cae a `authenticated-no-entitlement` (Free, NO `unconfigured`), lo cual es seguro y permite al usuario entrar al Hub. El estado `unconfigured` solo se devuelve cuando NO hay client Supabase configurado (`s.client == nil`).
-- Fix esperado: crear migracion SQL con `get_account_entitlements` y `reset_active_device` en el proyecto Supabase, o documentar los pasos manuales en el dashboard. La funcion debe devolver `{user_id, email, entitlements, active_device, expires_at}`.
-- Riesgo si se ignora: los usuarios Free entran al Hub (correcto, estado `authenticated-no-entitlement`), pero los usuarios pagados no reciben sus entitlements reales (siempre caen a `authenticated-no-entitlement` o a cache grace si existe cache válida).
-- Razon de severidad: no bloquea `v0.1.0.2` porque el objetivo inmediato es Google OAuth -> Free -> Hub. Con `s.client != nil`, el fallo RPC cae a Free (no bloqueo). Sube a P2 antes de activar cobros/entitlements reales.
+- Fix aplicado (local): `supabase/migrations/20260709120000_provider_agnostic_billing.sql` — tablas `user_entitlements`, `devices`, `license_events`, `billing_customers`, `billing_subscriptions` + RPCs `get_account_entitlements` y `reset_active_device` (device binding seguro). Archivo tracked en repo; **no aplicado al remoto** hasta gate humano Task 9.
+- Motivo para diferir push: additive schema sobre remoto con tablas viejas (`licenses`, `subscriptions`); requiere backup + revision PR + ventana controlada.
+- Fix pendiente: `supabase db push` (solo humano), smoke SQL con JWT test, insert manual `user_entitlements` para validar premium.
+- Riesgo si se ignora push: usuarios pagados no reciben entitlements reales (RPC sigue inexistente en remoto).
+- Razon de severidad: no bloquea beta Free -> Hub. Sube a P2 antes de activar cobros/entitlements reales o `VITE_BILLING_ENABLED=true`.
 
 ### TD-044 - Sesion Supabase no persiste en WebView tras OAuth externo
 

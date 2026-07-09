@@ -1,3 +1,10 @@
+Nota FASE-1-6-BILLING (2026-07-09):
+- Objetivo: billing/licensing provider-agnostic (Polar-ready) sin integrar Polar ni aplicar schema al remoto.
+- Completado: migración local `20260709120000_provider_agnostic_billing.sql`, `billing-client` (`BILLING_ENABLED=false`), PaywallScreen/AccountSettings sin endpoints fantasma, stripe-webhook en `_deprecated`, stub `billing-webhook`, `validate-license` marcada deprecated.
+- Pendiente humano (Task 9): backup remoto + `supabase db push` + smoke RPC. Ver `docs/superpowers/plans/2026-07-09-fase-1-6-billing-licensing-pre-polar.md`.
+- NO hecho: Polar, deploy EF, `db reset`, borrar tablas viejas.
+- Estado: 🟢 ACTIVO (push gated)
+
 Nota FEATURES-MANUAL-SOURCE (2026-07-08):
 - Objetivo: la pestaña 'Desarrollo por features' del Roadmap pasa a tener una fuente manual (JSON) igual que 'Roadmap actual', sin scripts de auto-generación.
 - Decisiones cerradas: (1) Fuente de verdad = docs/features-source.json (Isaac edita a mano). (2) App trae el JSON por fetch en runtime; sin red, usa FEATURES_FALLBACK. (3) 3 secciones en la pestaña: 'En desarrollo' / 'En investigación' / 'Próximamente'. (4) `status` ∈ in-development|research|future (campo explícito). (5) `tipo` ∈ feature|bugfix|improve|component (research deja de ser tipo y pasa a ser status). (6) `category` declarada en la fuente, sin CATEGORY_MAP hardcodeado. (7) `percent` único campo de progreso (escala 0/10/25/50/75/100), sin done/total. (8) `pickText` reusado de roadmap-data.ts.

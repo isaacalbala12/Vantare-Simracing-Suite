@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   STATUS_META,
   TIPO_META,
+  featurePercent,
   getActiveSections,
   getOverallFeatureProgress,
   groupFeaturesByCategory,
@@ -75,8 +76,8 @@ describe("getActiveSections", () => {
     for (const arr of [sections.inDevelopment, sections.research, sections.future]) {
       for (const cat of arr) {
         for (let i = 1; i < cat.features.length; i++) {
-          expect(cat.features[i - 1].percent).toBeGreaterThanOrEqual(
-            cat.features[i].percent,
+          expect(featurePercent(cat.features[i - 1])).toBeGreaterThanOrEqual(
+            featurePercent(cat.features[i]),
           );
         }
       }

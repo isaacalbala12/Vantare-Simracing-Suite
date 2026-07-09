@@ -1,3 +1,6 @@
+-- OBSOLETO: no ejecutar. Reemplazado por 20260709120000_provider_agnostic_billing.sql
+-- Razón: nombres Stripe, directorio no linkeado, conflicto con profiles remota.
+
 -- 0001_licensing_schema.sql
 -- Migración de licencias para Release 02. Idempotente.
 -- Incluye correcciones de rate-limit (last_reset_at) y stripe_customer_id

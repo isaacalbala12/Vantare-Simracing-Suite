@@ -186,6 +186,97 @@ describe("LayoutStudio", () => {
     expect(select.value).toBe("standings-vantare-crystal");
   });
 
+  it("shows mock session selector when standings widget is selected", () => {
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+      ],
+    };
+
+    render(
+      <LayoutStudio
+        {...defaultProps}
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+      />,
+    );
+
+    expect(screen.getByTestId("mock-session-selector")).toBeTruthy();
+    expect(screen.getByTestId("mock-session-race")).toBeTruthy();
+    expect(screen.getByTestId("mock-session-practice")).toBeTruthy();
+    expect(screen.getByTestId("mock-session-qual")).toBeTruthy();
+  });
+
+  it("does not show mock session selector for non-standings widgets", () => {
+    render(<LayoutStudio {...defaultProps} />);
+
+    expect(screen.queryByTestId("mock-session-selector")).toBeNull();
+  });
+
+  it("defaults mock session selector to Carrera", () => {
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+      ],
+    };
+
+    render(
+      <LayoutStudio
+        {...defaultProps}
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+      />,
+    );
+
+    expect(screen.getByTestId("mock-session-race").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("switches mock session scenario when clicking selector", () => {
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+      ],
+    };
+
+    render(
+      <LayoutStudio
+        {...defaultProps}
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("mock-session-practice"));
+
+    expect(screen.getByTestId("mock-session-practice").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("does not mark profile dirty when changing mock session scenario", () => {
+    const onChangeProfile = vi.fn();
+    const standingsProfile: ProfileConfig = {
+      ...profile,
+      widgets: [
+        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+      ],
+    };
+
+    render(
+      <LayoutStudio
+        {...defaultProps}
+        profile={standingsProfile}
+        selectedWidgetId="standings"
+        onChangeProfile={onChangeProfile}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("mock-session-practice"));
+
+    expect(onChangeProfile).not.toHaveBeenCalled();
+  });
+
   it("disables design selector when profile is synthetic", () => {
     const emptyProfile: ProfileConfig = {
       schemaVersion: 2,

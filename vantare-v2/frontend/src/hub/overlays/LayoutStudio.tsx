@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { ProfileConfig } from "../../lib/profile";
+import type { MockSessionScenario } from "../../overlay/widgets/mock-telemetry";
 import type { SaveState } from "./useOverlayStudioState";
 import { StudioWidgetList } from "./StudioWidgetList";
 import { PreviewCanvas } from "../preview/PreviewCanvas";
@@ -46,6 +48,7 @@ export function LayoutStudio({
   const selectedWidget = profile.widgets.find((widget) => widget.id === selectedWidgetId) ?? null;
   const activeDesignId = selectedWidget ? getActiveOfficialDesignId(selectedWidget) : null;
   const isSynthetic = isSyntheticProfile(profile);
+  const [mockSessionScenario, setMockSessionScenario] = useState<MockSessionScenario>("race");
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
@@ -137,6 +140,42 @@ export function LayoutStudio({
             : null}
         </select>
       </div>
+
+      {selectedWidget?.type === "standings" ? (
+        <div
+          className="flex flex-none items-center gap-2 border-b border-white/5 px-3 py-2"
+          data-testid="mock-session-selector"
+        >
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-vantare-textDim">
+            Mock
+          </span>
+          <div className="flex overflow-hidden rounded-md border border-white/10 bg-black/40">
+            {[
+              ["practice", "Práctica"],
+              ["qual", "Clasif"],
+              ["race", "Carrera"],
+            ].map(([value, label]) => {
+              const active = value === mockSessionScenario;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  data-testid={`mock-session-${value}`}
+                  aria-pressed={active}
+                  onClick={() => setMockSessionScenario(value as MockSessionScenario)}
+                  className={`border-r border-white/5 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors last:border-r-0 cursor-pointer ${
+                    active
+                      ? "bg-white/10 text-white"
+                      : "text-vantare-textMuted hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto xl:grid-cols-[280px_1fr_340px] xl:overflow-hidden">
         <StudioWidgetList

@@ -3,7 +3,6 @@ import { RECOMMENDED_PROFILES } from "./recommended-profiles";
 
 type V52OverlaysHomeProps = {
   profilesCount: number;
-  onOpenWidgets: () => void;
   onOpenOwnProfiles: () => void;
   onOpenRecommended: () => void;
   onOpenCommunity: () => void;
@@ -71,7 +70,6 @@ function EntryCard({
 
 export function V52OverlaysHome({
   profilesCount,
-  onOpenWidgets,
   onOpenOwnProfiles,
   onOpenRecommended,
   onOpenCommunity,
@@ -87,16 +85,6 @@ export function V52OverlaysHome({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="opacity-0 animate-fade-in-up delay-100">
-          <EntryCard
-            eyebrow="Editor de widgets"
-            title="Widgets"
-            body="Edita apariencia, comportamiento, visibilidad y estilo de los widgets disponibles."
-            meta="Widgets disponibles · configuración visual"
-            button="Configurar widgets"
-            onClick={onOpenWidgets}
-          />
-        </div>
         <div className="opacity-0 animate-fade-in-up delay-150">
           <EntryCard
             eyebrow={`${profilesCount} perfiles propios`}

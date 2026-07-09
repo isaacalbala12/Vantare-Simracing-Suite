@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { V52OverlaysHome } from "../overlays/V52OverlaysHome";
-import { WidgetStudio } from "../overlays/WidgetStudio";
 import { LayoutStudio } from "../overlays/LayoutStudio";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
@@ -13,9 +12,8 @@ import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile 
 import { runRecommendedFirstUse } from "../overlays/recommended-first-use";
 import { isRunningProfile, profileTarget, type OverlayStatus, type ProfileEntry } from "../state/overlay-workbench";
 import type { AppSettings } from "./SettingsPage";
-import { EMPTY_PROFILE } from "../overlays/widget-studio-empty-profile";
 
-type StudioMode = "home" | "widgets" | "ownProfiles" | "recommended" | "community" | "layout" | "obs";
+type StudioMode = "home" | "ownProfiles" | "recommended" | "community" | "layout" | "obs";
 
 type OverlaysStudioPageProps = {
   pendingRecommendedAutoStart?: "recommended-auto" | null;
@@ -120,12 +118,6 @@ export function OverlaysStudioPage({
     Events.Emit("hub:create", { name: name.trim() });
   }
 
-  function openWidgetStudio() {
-    setNotice(null);
-    setLayoutTarget(null);
-    setMode("widgets");
-  }
-
   function openProfile(_profile: ProfileEntry) {
     setLayoutTarget(_profile.id);
     Events.Emit("hub:activate", { file: _profile.file });
@@ -172,21 +164,6 @@ export function OverlaysStudioPage({
 
   function openActiveOverlay() {
     Events.Emit("overlay:start-active");
-  }
-
-  if (effectiveMode === "widgets") {
-    return (
-      <WidgetStudio
-        profile={studio.profile ?? EMPTY_PROFILE}
-        selectedWidgetId={studio.selectedWidgetId}
-        dirty={studio.profile ? studio.dirty : false}
-        saveState={studio.saveState}
-        onSelectWidget={studio.profile ? studio.setSelectedWidgetId : () => {}}
-        onChangeProfile={studio.profile ? studio.updateDraft : () => {}}
-        onSave={studio.profile ? studio.saveProfile : () => {}}
-        onBack={goHome}
-      />
-    );
   }
 
   if (effectiveMode === "layout") {
@@ -305,7 +282,6 @@ export function OverlaysStudioPage({
 
       <V52OverlaysHome
         profilesCount={studio.profiles.length}
-        onOpenWidgets={openWidgetStudio}
         onOpenOwnProfiles={() => setMode("ownProfiles")}
         onOpenRecommended={() => setMode("recommended")}
         onOpenCommunity={() => setMode("community")}

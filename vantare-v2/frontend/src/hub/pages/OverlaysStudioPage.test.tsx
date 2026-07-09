@@ -67,40 +67,9 @@ describe("OverlaysStudioPage", () => {
     });
 
     expect(await screen.findByRole("heading", { name: "Overlays Studio" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^Configurar widgets / })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Ver mis perfiles / })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Ver recomendados / })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Explorar comunidad / })).toBeTruthy();
-  });
-
-  it("opens Widget Studio after profiles and active profile load", async () => {
-    render(<OverlaysStudioPage />);
-
-    dispatch("hub:profiles", {
-      profiles: [
-        { id: "default-racing", file: "example-racing.json", name: "Default Racing", displayMode: "racing", widgets: 2 },
-      ],
-    });
-
-    dispatch("settings", { deltaMode: "self", cpuSampling: true, hotkeys: {}, activeOverlayProfileId: "default-racing" });
-
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        name: "Default Racing",
-        displayMode: "racing",
-        monitorIndex: 0,
-        widgets: [
-          { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
-          { id: "relative", type: "relative", enabled: false, updateHz: 15, position: { x: 40, y: 600, w: 320, h: 280 } },
-        ],
-      },
-    });
-
-    fireEvent.click(await screen.findByRole("button", { name: /^Configurar widgets / }));
-
-    expect(await screen.findAllByRole("heading", { name: "Widgets" })).toBeTruthy();
-    expect(screen.getByText("Sin cambios")).toBeTruthy();
   });
 
   it("shows loading while switching from profile A to profile B in layout studio", async () => {
@@ -451,24 +420,6 @@ describe("OverlaysStudioPage", () => {
     const urlInput = inputs.find((i) => i.value.includes("/overlay"));
     expect(urlInput).toBeDefined();
     expect(urlInput!.value).toContain("profile=example-racing.json");
-  });
-
-  it("renders WidgetStudio with empty profile when no profile loaded", async () => {
-    render(<OverlaysStudioPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /Configurar widgets/ }));
-    // Guard empty state should NOT appear
-    expect(screen.queryByText("Selecciona o crea un perfil para editar widgets.")).toBeNull();
-    // WidgetStudio should render (save button proves it)
-    expect(await screen.findByTestId("widget-studio-save-btn")).toBeTruthy();
-    // Save button should be disabled (no profile to save to)
-    expect(screen.getByTestId("widget-studio-save-btn")).toHaveProperty("disabled", true);
-  });
-
-  it("WidgetStudio shows honest save state when no profile loaded", async () => {
-    render(<OverlaysStudioPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /Configurar widgets/ }));
-    const badge = await screen.findByTestId("widget-studio-save-state");
-    expect(badge.textContent).toContain("Sin cambios");
   });
 
 });

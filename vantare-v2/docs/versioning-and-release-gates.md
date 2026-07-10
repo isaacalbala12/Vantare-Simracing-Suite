@@ -28,57 +28,28 @@ Significado:
 Tags recomendados:
 
 ```text
-v0.3.1.0
-v0.3.1.1
+v0.1.1.0
+v0.1.2.0
 v0.4.0.0
 v1.0.0.0
 ```
 
 ## Version actual
 
-`v0.3.10.0` marca el cierre del lote beta privada inicial B1-B6:
+`v0.1.0.5` es la versión vigente del código (fuentes de verdad: `VERSION`, `cmd/vantare/main.go`, `build/config.yml`, `build/windows/info.json`, `build/windows/nsis/project.nsi`).
 
-- Vantare Suite integra el modulo `Ingeniero` como seccion interna y widget de notificaciones.
-- Documentacion base para testers privados, known issues, feedback y OBS local.
-- Hotkeys basicas endurecidas en Windows con stubs multiplataforma.
-- URL de OBS en Ajustes corregida para apuntar a perfiles reales.
-- Delta best live implementado usando `DeltaBest` nativo de LMU cuando esta disponible.
-- `DeltaWidget` muestra `Target` y `Lap` desde telemetria real/mock en lugar de textos fijos.
-- Version runtime/build actualizada.
+Alcance de `v0.1.0.5`:
 
-Versiones previas relevantes:
+- **Launcher (Windows)**: descubrimiento de apps y encadenado (chain) reforzados; embebido de icono de Windows (`icon_windows.go`) con stub multiplataforma; script NSIS del instalador extendido.
+- **Hub / UI**: paneles del launcher (apps, perfiles, editor de perfiles, estado); componente `AppBadge`; cableado de páginas `HubApp`/`Calendar`/`Engineer`; hook de estado de overlay studio.
+- **Servicios internos**: servicio de ajustes y configuración de calendario LMU actualizada.
+- **Documentación y tooling**: guías de marca/diseño, spec técnico del launcher y planes; scripts de paridad visual, definiciones MCP, agent-tools y utilidad de fingerprint.
 
-`v0.3.9.2` marca el cierre de mock/live/demo UX y automatizacion Discord:
+Nota histórica: versiones anteriores de la línea `0.3.x` (p. ej. `v0.3.10.0`) correspondían a una numeración interna ya supersededa y no representan la versión actual del producto. La línea vigente es `0.1.x`.
 
-- Inventario mock/live/demo documentado.
-- Indicador global de fuente de telemetria con accesibilidad basica.
-- Selector mock de `Standings` verificado como preview-only.
-- Changelog publico y GitHub Action para publicar tags `v*` en Discord.
-- Version runtime/build actualizada.
+Versiones previas relevantes de la línea `0.1.x`:
 
-`v0.3.9.1` marca el cierre del lote de producto usable posterior a PREVIEW2:
-
-- `LayoutStudio` drag/resize/save estabilizado.
-- `Relative` y `Standings` redimensionan proporcionalmente en `LayoutStudio`, runtime desktop y OBS.
-- Los frames visuales se normalizan desde el primer render para perfiles legacy deformados, sin mutar ni guardar automaticamente.
-- Recomendados de Vantare pueden guardarse como copia propia editable.
-- `SaveProfileAsOwnCopy` genera IDs unicos, convierte a schema v2 y no muta el perfil de entrada.
-- Version runtime/build actualizada.
-- Validacion manual aprobada por el usuario.
-
-`v0.3.9.0` marca el cierre del rework visual acotado de `WidgetStudio` y PREVIEW2:
-
-- UI2 visual rework de `WidgetStudio`.
-- PREVIEW2 intrinsic width para `Relative` y `Standings` en la preview aislada.
-- Version runtime/build actualizada.
-- Validacion manual aprobada por el usuario.
-
-`v0.3.6.1` marca el cierre del primer corte configurable de `Standings`:
-
-- S4.5 mock scenarios `Práctica` / `Qualy` / `Carrera` en preview.
-- S4.6 guardado explicito en `WidgetStudio` sin autosave.
-- S5 UI de `Standings` en `WidgetStudio`.
-- S6 verificacion completa y documentacion.
+`v0.1.0.4` — hotfix crítico: el backend no emitía `hub:profiles` tras crear/copiar/eliminar perfiles, por lo que la UI no refrescaba la lista de perfiles propios.
 
 ## Regla de cierre por version
 
@@ -99,11 +70,8 @@ Al pushear un tag `v*`, `.github/workflows/discord-release.yml` lee la entrada d
 
 | Version | Tipo | Alcance |
 |---|---|---|
-| `v0.3.6.1` | Runtime/build | Cierre de Standings configurable S4.5-S6 |
-| `v0.3.9.0` | Runtime/build | UI2 WidgetStudio visual rework + PREVIEW2 intrinsic width |
-| `v0.3.9.1` | Runtime/build | LayoutStudio resize proporcional + recomendados editables |
-| `v0.3.9.2` | Runtime/build | Mock/live/demo UX + Discord release automation |
-| `v0.3.10.0` | Runtime/build | Beta privada B1-B6: Ingeniero foundation, tester docs, OBS URL, hotkeys y Delta live |
+| `v0.1.0.4` | Runtime/build | Hotfix emision `hub:profiles` tras crear/copiar/eliminar perfil |
+| `v0.1.0.5` | Runtime/build | Launcher Windows, UI hub/launcher, settings service, docs y tooling |
 
 ## Rango de versiones
 

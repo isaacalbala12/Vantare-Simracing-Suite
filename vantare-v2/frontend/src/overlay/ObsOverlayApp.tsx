@@ -25,6 +25,8 @@ import { EngineerNotificationsWidget } from "./widgets/EngineerNotificationsWidg
 import { BroadcastTowerWidget } from "./widgets/BroadcastTowerWidget";
 import { MulticlassRelativeWidget } from "./widgets/MulticlassRelativeWidget";
 import { applyOverlayDocumentMode } from "./overlay-document";
+import { ObsOverlayStudioPreview } from "./ObsOverlayStudioPreview";
+import { readOverlayRouteParams } from "./overlay-route-params";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
@@ -50,6 +52,9 @@ const WIDGETS: Record<string, ComponentType<WidgetProps>> = {
 const STREAMING_MODE_HINT = "obs-streaming";
 
 export function ObsOverlayApp() {
+  const [studioPreview] = useState(
+    () => readOverlayRouteParams(typeof window !== "undefined" ? window.location.search : "").studioPreview,
+  );
   const [profile, setProfile] = useState<ProfileConfig | null>(null);
   const [layoutOrigin, setLayoutOrigin] = useState<LayoutOrigin>({ x: 0, y: 0 });
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
@@ -72,8 +77,7 @@ export function ObsOverlayApp() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const profileName = params.get("profile") || "example-streaming.json";
+    const { profileName } = readOverlayRouteParams(window.location.search);
     let es: EventSource | null = null;
     let disposed = false;
 
@@ -128,9 +132,13 @@ export function ObsOverlayApp() {
     : widgets
   ).filter((w) => isRuntimeReadyWidget(w.type));
 
+  const statusShellClass = studioPreview
+    ? "obs-studio-preview flex items-center justify-center w-full h-full text-sm font-mono"
+    : "flex items-center justify-center w-full h-full text-sm font-mono";
+
   if (error) {
     return (
-      <div className="flex items-center justify-center w-full h-full text-red-400 text-sm font-mono">
+      <div className={`${statusShellClass} text-red-400`}>
         {error}
       </div>
     );
@@ -138,20 +146,20 @@ export function ObsOverlayApp() {
 
   if (!profile) {
     return (
-      <div className="flex items-center justify-center w-full h-full text-white/40 text-sm font-mono">
+      <div className={`${statusShellClass} ${studioPreview ? "text-white/60" : "text-white/40"}`}>
         Loading overlay...
       </div>
     );
   }
 
-  return (
-    <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
+  const widgetLayer = (
+    <>
       {visibleWidgets.map((w) => {
         const Component = WIDGETS[w.type];
         if (!Component) {
           return null;
         }
-        const localPos = toWindowLocal(w.position, layoutOrigin);
+        const localPos = studioPreview ? w.position : toWindowLocal(w.position, layoutOrigin);
         return (
           <WidgetHost key={w.id} id={w.id} position={localPos} widget={w} profile={profile}>
             <Component editMode={false} telemetryMode="live" updateHz={w.updateHz} props={{ ...enrichWidgetPropsWithVariant(profile, w), __engineerTransport: "sse" as const }} />
@@ -166,6 +174,22 @@ export function ObsOverlayApp() {
           className="absolute top-4 right-4 z-50"
         />
       )}
+    </>
+  );
+
+  if (studioPreview) {
+    return (
+      <ObsOverlayStudioPreview>
+        <div className="relative w-full h-full overflow-hidden" data-vantare-mode={STREAMING_MODE_HINT}>
+          {widgetLayer}
+        </div>
+      </ObsOverlayStudioPreview>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
+      {widgetLayer}
     </div>
   );
 }

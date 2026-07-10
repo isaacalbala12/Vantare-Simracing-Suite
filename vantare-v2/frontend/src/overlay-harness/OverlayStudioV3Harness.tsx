@@ -30,6 +30,7 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
         profiles={[{ id: "profile-harness", name: "Perfil harness", file: HARNESS_PROFILE_FILE }]}
         activeFile={HARNESS_PROFILE_FILE}
         viewportWidth={viewportWidth}
+        browserViewStudioPreview
         recoveryStorage={typeof window !== "undefined" ? window.sessionStorage : null}
         onRequestProfileChange={() => undefined}
         onOpenManageProfiles={() => undefined}

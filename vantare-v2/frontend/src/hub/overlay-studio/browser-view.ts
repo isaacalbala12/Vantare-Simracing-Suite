@@ -6,6 +6,7 @@ export type OpenBrowserViewInput = {
   dirty: boolean;
   profileFile: string;
   baseUrl: string;
+  studioPreview?: boolean;
   decide: () => Promise<BrowserViewDecision>;
   save: () => Promise<StudioSaveResult>;
   open: (url: string) => void;
@@ -13,13 +14,23 @@ export type OpenBrowserViewInput = {
 
 export type OpenBrowserViewResult = "opened" | "cancelled" | "failed";
 
-export function buildBrowserViewUrl(baseUrl: string, profileFile: string): string {
+export function buildBrowserViewUrl(
+  baseUrl: string,
+  profileFile: string,
+  options?: { studioPreview?: boolean },
+): string {
   const normalizedBase = baseUrl.replace(/\/$/, "");
-  return `${normalizedBase}/overlay?profile=${encodeURIComponent(profileFile)}`;
+  const params = new URLSearchParams({ profile: profileFile });
+  if (options?.studioPreview) {
+    params.set("studioPreview", "1");
+  }
+  return `${normalizedBase}/overlay?${params.toString()}`;
 }
 
 export async function openBrowserView(input: OpenBrowserViewInput): Promise<OpenBrowserViewResult> {
-  const url = buildBrowserViewUrl(input.baseUrl, input.profileFile);
+  const url = buildBrowserViewUrl(input.baseUrl, input.profileFile, {
+    studioPreview: input.studioPreview,
+  });
 
   if (!input.dirty) {
     input.open(url);

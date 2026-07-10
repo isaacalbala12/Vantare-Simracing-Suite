@@ -15,6 +15,7 @@ import { useStudioDocument } from "./state/studio-store";
 export type OverlayStudioV3Props = StudioHeaderProps & {
   viewportWidth?: number;
   recoveryStorage?: Storage | null;
+  browserViewStudioPreview?: boolean;
 };
 
 type RecoveryPromptState = {
@@ -26,6 +27,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const {
     viewportWidth: viewportWidthProp,
     recoveryStorage: recoveryStorageProp,
+    browserViewStudioPreview = false,
     onRequestProfileChange,
     activeFile,
     ...headerProps
@@ -168,6 +170,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
       dirty,
       profileFile: activeFile,
       baseUrl: window.location.origin,
+      studioPreview: browserViewStudioPreview,
       decide: () =>
         new Promise<BrowserViewDecision>((resolve) => {
           browserViewDecideRef.current = resolve;
@@ -190,7 +193,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
 
     setBrowserViewDialogOpen(true);
     setBrowserViewError("No se pudo guardar el perfil. Browser View solo usa el estado guardado.");
-  }, [activeFile, dirty, save]);
+  }, [activeFile, browserViewStudioPreview, dirty, save]);
 
   const handleBrowserViewSave = useCallback(() => {
     setBrowserViewSaving(true);

@@ -7,8 +7,14 @@ describe("buildBrowserViewUrl", () => {
       "http://localhost:5176/overlay?profile=profiles%2Fa.json",
     );
     expect(buildBrowserViewUrl("http://localhost:5176/", "profiles/racing #1.json")).toBe(
-      "http://localhost:5176/overlay?profile=profiles%2Fracing%20%231.json",
+      "http://localhost:5176/overlay?profile=profiles%2Fracing+%231.json",
     );
+  });
+
+  it("adds studioPreview when requested for harness browser view", () => {
+    expect(
+      buildBrowserViewUrl("http://localhost:5176", "profiles/harness.json", { studioPreview: true }),
+    ).toBe("http://localhost:5176/overlay?profile=profiles%2Fharness.json&studioPreview=1");
   });
 });
 
@@ -26,6 +32,22 @@ describe("openBrowserView", () => {
       }),
     ).resolves.toBe("opened");
     expect(open).toHaveBeenCalledWith("http://localhost:5176/overlay?profile=profiles%2Fa.json");
+  });
+
+  it("requests studio preview mode when opening from the harness", async () => {
+    const open = vi.fn();
+    await openBrowserView({
+      dirty: false,
+      profileFile: "profiles/harness.json",
+      baseUrl: "http://localhost:5176",
+      studioPreview: true,
+      decide: vi.fn(),
+      save: vi.fn(),
+      open,
+    });
+    expect(open).toHaveBeenCalledWith(
+      "http://localhost:5176/overlay?profile=profiles%2Fharness.json&studioPreview=1",
+    );
   });
 
   it("asks to save before opening when dirty and opens after a successful save", async () => {

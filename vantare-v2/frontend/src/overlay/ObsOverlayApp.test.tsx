@@ -175,6 +175,42 @@ describe("ObsOverlayApp", () => {
 
     expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
   });
+  it("renders the studio preview shell when studioPreview=1 is present", async () => {
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?profile=obs-preview.json&studioPreview=1",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            profile: {
+              id: "obs-preview",
+              displayMode: "streaming",
+              widgets: [
+                {
+                  id: "delta-preview",
+                  type: "delta",
+                  enabled: true,
+                  updateHz: 10,
+                  position: { x: 120, y: 96, w: 420, h: 180 },
+                },
+              ],
+            },
+            layoutOrigin: { x: 120, y: 96 },
+          }),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    await flush();
+
+    expect(screen.getByTestId("obs-studio-preview")).toBeTruthy();
+    expect(screen.getByTestId("obs-studio-preview-scene")).toBeTruthy();
+  });
+
   it("does not render widgets with runtimeReady:false (e.g. broadcast-tower)", () => {
     vi.stubGlobal(
       "fetch",

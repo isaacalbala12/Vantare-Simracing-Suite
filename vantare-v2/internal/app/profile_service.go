@@ -163,6 +163,11 @@ func (s *ProfileService) Profile() *config.ProfileConfig {
 	return s.profile
 }
 
+// Path returns the active profile file path.
+func (s *ProfileService) Path() string {
+	return s.path
+}
+
 // SetProfile replaces the in-memory profile (for fallback defaults).
 func (s *ProfileService) SetProfile(p *config.ProfileConfig) {
 	s.profile = p

@@ -3,10 +3,12 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Autoridad: ADR `docs/adr/0003-overlay-studio-v3-rebuild.md` y plan maestro `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md` (worktree `refactor`, rama `refactor`).
 - Worktree: `C:\Users\isaac\emdash\worktrees\vantare-v2\refactor` — rama `refactor`.
 - **Fase 0 ✅ CERRADA** (commits `b2326e3`..`4f340f5`): autoridad ADR, baseline, fixtures migración, caracterización 4 widgets, inventario consumidores.
+- **Fase 1 ✅ CERRADA** (commits `2f0b3f3`..`2dfb940`): tipos/validación/migración V3 Go, storage revision-aware + backup `.pre-v3.bak`, `StudioProfileService` paralelo, contrato TS `profile-document.ts`, librería diseños `WidgetDesignService` + `widget-design.ts`.
 - Evidencia baseline: `docs/overlay-studio-v3-baseline.md`, `docs/overlay-studio-v3-inventory.md`.
-- Tests focalizados Fase 0: `go test ./pkg/config/... -run OverlayStudioV3Legacy` PASS; `pnpm --dir frontend test -- widget-preview-fixtures.test.ts legacy-core-contract.test.tsx` → 38 PASS.
-- Preexistentes documentados (no regresión Fase 0): lint frontend 11 errores; `internal/server` nonce/port tests FAIL en `go test ./...`.
-- **Ningún código de producción V3 conmutado aún**; runtime legado congelado. Siguiente: **Fase 1** perfil V3 + persistencia Go.
+- Tests Fase 1: `go test ./pkg/config/... ./internal/app/... -run "ProfileDocumentStore|StudioProfileService|WidgetDesignService|MigrateProfile|ValidateProfileDocumentV3" -count=1` PASS; `pnpm --dir frontend test` → 166 files / 1584 PASS; `pnpm --dir frontend build` PASS.
+- Goldens migración: `pkg/config/testdata/profile-v3-core-widgets-from-v0.golden.json`, `profile-v3-core-widgets-from-v2.golden.json`; parser TS alineado en `profile-contract-fixture.test.ts`.
+- Preexistentes documentados (no regresión): lint frontend 11 errores; `internal/server` nonce/port tests FAIL en `go test ./...`; flaky ocasional `TestConcurrentSavesDontCorruptFile` en `internal/app` (Windows file lock).
+- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:*` solo en servicio Go + tests); runtime legado congelado. Siguiente: **Fase 2** según plan maestro / índice Luna.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

@@ -1,17 +1,9 @@
-import { createElement } from "react";
-import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/design-system-definition";
-
-function DeltaOriginalTestRenderer({ model }: WidgetRendererProps) {
-  return createElement(
-    "section",
-    {
-      "data-widget-system": "vantare-original",
-      "data-widget-renderer": "delta",
-      "data-status": model.status,
-    },
-    createElement("span", { "data-testid": "delta-original-test-renderer" }, model.type),
-  );
-}
+import type { ComponentType } from "react";
+import type {
+  DesignSystemDefinition,
+  WidgetRendererProps,
+} from "../../core/design-system-definition";
+import { DeltaOriginal } from "./delta/DeltaOriginal";
 
 const deltaRegistration = {
   widgetType: "delta" as const,
@@ -34,7 +26,7 @@ const deltaRegistration = {
       ...(input as Record<string, unknown>),
     };
   },
-  Renderer: DeltaOriginalTestRenderer,
+  Renderer: DeltaOriginal as ComponentType<WidgetRendererProps>,
 };
 
 export const vantareOriginalManifest: DesignSystemDefinition = {

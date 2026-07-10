@@ -1,8 +1,6 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-model";
-import "../tokens.css";
-
 export function DeltaCrystal({ model, settings }: WidgetRendererProps<DeltaViewModel>) {
   const showMeta = settings.showHeader !== false;
 

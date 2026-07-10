@@ -1,8 +1,6 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-model";
-import "../tokens.css";
-
 export function DeltaOriginal({ model, settings }: WidgetRendererProps<DeltaViewModel>) {
   const showHeader = settings.showHeader !== false;
 

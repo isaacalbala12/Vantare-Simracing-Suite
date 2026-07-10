@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { DesignSystemResolutionError } from "./design-system-definition";
 import {
-  DesignSystemResolutionError,
   designSystemRegistry,
   migrateConfigSettings,
   migrateSystemSettings,

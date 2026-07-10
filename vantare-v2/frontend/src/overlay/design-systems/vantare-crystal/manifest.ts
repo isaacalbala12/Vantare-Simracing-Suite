@@ -1,17 +1,9 @@
-import { createElement } from "react";
-import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/design-system-definition";
-
-function DeltaCrystalTestRenderer({ model }: WidgetRendererProps) {
-  return createElement(
-    "section",
-    {
-      "data-widget-system": "vantare-crystal",
-      "data-widget-renderer": "delta",
-      "data-status": model.status,
-    },
-    createElement("span", { "data-testid": "delta-crystal-test-renderer" }, model.type),
-  );
-}
+import type { ComponentType } from "react";
+import type {
+  DesignSystemDefinition,
+  WidgetRendererProps,
+} from "../../core/design-system-definition";
+import { DeltaCrystal } from "./delta/DeltaCrystal";
 
 const deltaRegistration = {
   widgetType: "delta" as const,
@@ -34,7 +26,7 @@ const deltaRegistration = {
       ...(input as Record<string, unknown>),
     };
   },
-  Renderer: DeltaCrystalTestRenderer,
+  Renderer: DeltaCrystal as ComponentType<WidgetRendererProps>,
 };
 
 export const vantareCrystalManifest: DesignSystemDefinition = {

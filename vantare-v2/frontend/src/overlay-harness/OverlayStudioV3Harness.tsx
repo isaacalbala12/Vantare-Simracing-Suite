@@ -16,7 +16,7 @@ function parseViewportWidth(search: string): number {
 }
 
 export function OverlayStudioV3HarnessPage({ search }: { search: string }): React.ReactElement {
-  const client = useMemo(() => createInMemoryStudioProfileClient(), []);
+  const client = useMemo(() => createInMemoryStudioProfileClient(HARNESS_PROFILE_FILE), []);
   const viewportWidth = parseViewportWidth(search);
 
   return (

@@ -51,6 +51,7 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
 
 type StudioDocumentContextValue = {
   document: ProfileDocumentV3 | null;
+  savedDocument: ProfileDocumentV3 | null;
   activeLayout: SessionLayoutV3 | null;
   activeSession: SessionLayoutType;
   selectedWidgetId: string | null;
@@ -252,6 +253,7 @@ export function StudioProvider(props: {
   const documentValue = useMemo<StudioDocumentContextValue>(
     () => ({
       document,
+      savedDocument: history?.saved ?? null,
       activeLayout,
       activeSession,
       selectedWidgetId,
@@ -272,6 +274,7 @@ export function StudioProvider(props: {
     }),
     [
       document,
+      history,
       activeLayout,
       activeSession,
       selectedWidgetId,

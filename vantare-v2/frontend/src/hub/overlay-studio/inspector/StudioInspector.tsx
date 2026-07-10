@@ -54,6 +54,7 @@ export function StudioInspector(): React.ReactElement {
     () => (selectedWidget ? resolveInspectorSections(selectedWidget) : []),
     [selectedWidget],
   );
+  const sectionIdsKey = useMemo(() => sections.map((section) => section.id).join(","), [sections]);
 
   useEffect(() => {
     if (selectedWidgetId !== previousWidgetIdRef.current) {
@@ -62,7 +63,7 @@ export function StudioInspector(): React.ReactElement {
       return;
     }
     setActiveSectionId((current) => resolveInitialSection(sections, current));
-  }, [selectedWidgetId, sections]);
+  }, [selectedWidgetId, sectionIdsKey, sections]);
 
   if (!selectedWidget) {
     return (

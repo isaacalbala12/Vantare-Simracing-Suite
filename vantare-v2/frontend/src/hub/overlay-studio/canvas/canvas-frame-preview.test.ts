@@ -4,7 +4,9 @@ import {
   clearStudioFrameLayoutPreview,
   findStudioFrameElement,
   getStudioFrameLayoutPreview,
+  registerStudioFrameElement,
   resetStudioFrameLayoutPreview,
+  resolveStudioFrameGeometry,
   studioFrameTestId,
 } from "./canvas-frame-preview";
 
@@ -40,5 +42,20 @@ describe("canvas-frame-preview", () => {
     applyStudioFrameLayoutPreview("delta-main", layout);
     resetStudioFrameLayoutPreview("delta-main", layout);
     expect(getStudioFrameLayoutPreview("delta-main")).toEqual(layout);
+  });
+
+  it("prefers registered frame refs over querySelector", () => {
+    const registered = document.createElement("div");
+    registerStudioFrameElement("delta-main", registered);
+    applyStudioFrameLayoutPreview("delta-main", layout);
+    expect(registered.style.left).toBe("120px");
+    registerStudioFrameElement("delta-main", null);
+  });
+
+  it("resolves preview geometry from cache while preview is active", () => {
+    applyStudioFrameLayoutPreview("delta-main", layout);
+    const committed = { ...layout, x: 10, y: 10 };
+    expect(resolveStudioFrameGeometry("delta-main", committed, true)).toEqual(layout);
+    expect(resolveStudioFrameGeometry("delta-main", committed, false)).toEqual(committed);
   });
 });

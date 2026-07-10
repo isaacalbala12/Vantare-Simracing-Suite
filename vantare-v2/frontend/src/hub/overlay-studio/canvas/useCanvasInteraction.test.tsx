@@ -177,6 +177,29 @@ describe("useCanvasInteraction", () => {
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
 
+  it("updates frame geometry on every pointer-move during drag", async () => {
+    renderInteractiveCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
+    mockSceneRect();
+
+    const frame = screen.getByTestId("studio-widget-frame-delta-main");
+    pointerDownFrame();
+    pointerMove(120, 110, 1, { altKey: true });
+    await waitFor(() => {
+      const left = Number.parseFloat(frame.style.left);
+      expect(left).toBeGreaterThan(100);
+      expect(left).toBeLessThan(130);
+    });
+
+    pointerMove(160, 140, 1, { altKey: true });
+    await waitFor(() => {
+      const left = Number.parseFloat(frame.style.left);
+      expect(left).toBeGreaterThan(140);
+      expect(left).toBeLessThan(180);
+    });
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+  });
+
   it("keeps imperative preview when telemetry publishes during drag", async () => {
     const mockStore = renderInteractiveCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());

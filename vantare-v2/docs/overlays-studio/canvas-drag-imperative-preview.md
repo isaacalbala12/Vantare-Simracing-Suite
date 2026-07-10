@@ -61,7 +61,7 @@ Escape / lostpointercapture → resetStudioFrameLayoutPreview(start) → idle
 | Fase | Quién controla `left/top/w/h` |
 |------|-------------------------------|
 | Idle | React (`StudioWidgetFrame` props desde `widget.layout`) |
-| Gesto activo (`previewActive`) | **DOM imperativo** — React solo pone `position` + `zIndex` |
+| Gesto activo (`previewActive`) | **Cache + DOM imperativo** — React pinta geometría desde `getStudioFrameLayoutPreview`, nunca desde `widget.layout` del documento |
 | Tras commit | React sincroniza desde el documento actualizado |
 
 ### 3.3 Archivos implicados
@@ -127,7 +127,7 @@ Para más alternativas y benchmark futuro, ver [arrastre-y-resize.md](./arrastre
 
 ## 8. Refuerzos anti-regresión (2026-07-10)
 
-Si el bug vuelve **más exagerado** (teleport fuerte, muchos fantasmas), casi siempre es porque **React re-renderizó el frame durante el gesto** y pisó `style.left/top/w/h` con un objeto que solo tiene `position` + `zIndex` (`previewActive`).
+Si las **guías se mueven pero el widget no** (o solo teletransporta al soltar), React re-renderizó el frame con `previewActive=true` pero **sin geometría en `style`** (o con `widget.layout` viejo del documento), borrando la preview imperativa.
 
 Causas típicas:
 

@@ -2,6 +2,8 @@ import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
 import {
   applyStudioFrameLayoutPreview,
   getStudioFrameLayoutPreview,
+  registerStudioFrameElement,
+  resolveStudioFrameGeometry,
 } from "./canvas-frame-preview";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
@@ -51,7 +53,13 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onResizePointerDown,
   } = props;
   const frameRef = useRef<HTMLDivElement>(null);
-  const intrinsic = resolveWidgetIntrinsicScale(layout, widget.type);
+  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const intrinsic = resolveWidgetIntrinsicScale(frameGeometry, widget.type);
+
+  useLayoutEffect(() => {
+    registerStudioFrameElement(widget.id, frameRef.current);
+    return () => registerStudioFrameElement(widget.id, null);
+  }, [widget.id]);
 
   useLayoutEffect(() => {
     if (!previewActive) {
@@ -64,19 +72,14 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     applyStudioFrameLayoutPreview(widget.id, previewLayout);
   });
 
-  const frameStyle: CSSProperties = previewActive
-    ? {
-        position: "absolute",
-        zIndex: layout.zIndex,
-      }
-    : {
-        position: "absolute",
-        left: `${layout.x}px`,
-        top: `${layout.y}px`,
-        width: `${layout.w}px`,
-        height: `${layout.h}px`,
-        zIndex: layout.zIndex,
-      };
+  const frameStyle: CSSProperties = {
+    position: "absolute",
+    left: `${frameGeometry.x}px`,
+    top: `${frameGeometry.y}px`,
+    width: `${frameGeometry.w}px`,
+    height: `${frameGeometry.h}px`,
+    zIndex: frameGeometry.zIndex,
+  };
 
   const frameClassName = [
     "osv3-widget-frame",

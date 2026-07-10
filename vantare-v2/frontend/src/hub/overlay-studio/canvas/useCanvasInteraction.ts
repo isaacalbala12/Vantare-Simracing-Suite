@@ -397,7 +397,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
-    inputRef.current.selectWidget(widgetId);
+    applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({
       kind: "move",
@@ -410,6 +410,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       preview: start,
       guides: [],
     });
+    inputRef.current.selectWidget(widgetId);
   }, [setInteractionState]);
 
   const beginResize = useCallback((
@@ -443,7 +444,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
-    inputRef.current.selectWidget(widgetId);
+    applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({
       kind: "resize",
@@ -457,13 +458,15 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       preview: start,
       guides: [],
     });
+    inputRef.current.selectWidget(widgetId);
   }, [setInteractionState]);
 
   const resolveLayout = useCallback((widget: WidgetInstanceV3): WidgetLayoutV3 => widget.layout, []);
 
   const isWidgetPreviewActive = useCallback((widgetId: string): boolean => {
-    return interaction.kind !== "idle" && interaction.widgetId === widgetId;
-  }, [interaction]);
+    const current = interactionRef.current;
+    return current.kind !== "idle" && current.widgetId === widgetId;
+  }, []);
 
   const guides = interaction.kind === "idle" ? [] : interaction.guides;
 

@@ -62,6 +62,7 @@ type LauncherAppEntry struct {
 	GradientFrom   string              `json:"gradientFrom"`
 	GradientTo     string              `json:"gradientTo"`
 	IsFavorite     bool                `json:"isFavorite,omitempty"`
+	IconURL        string              `json:"iconUrl,omitempty"`
 }
 
 // LaunchStep es un paso dentro de un perfil.

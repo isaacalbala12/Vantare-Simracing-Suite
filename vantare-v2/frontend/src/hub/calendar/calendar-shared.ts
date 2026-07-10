@@ -36,6 +36,11 @@ export function tierStyle(tier: string): TierStyle {
   return TIER_STYLES[tier] ?? { text: "#f5f5f5", bg: "rgba(245,245,245,.05)", border: "rgba(245,245,245,.1)", accent: "#f5f5f5" };
 }
 
+/** Inline style object for a tier badge (background, text color, border). Expects a 6-char hex accent. */
+export function tierBadgeStyle(color: string) {
+  return { background: `${color}18`, color, border: `1px solid ${color}40` } as const;
+}
+
 /**
  * Formats a Date in the calendar's declared timezone via Intl. This is the
  * single source of truth for time rendering so the calendar never silently

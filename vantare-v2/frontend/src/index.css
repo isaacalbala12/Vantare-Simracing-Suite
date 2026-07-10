@@ -71,6 +71,20 @@
   50% { opacity: 1; }
 }
 
+@keyframes login-spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.login-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #C1121F;
+  animation: login-spinner 1s linear infinite;
+}
+
 html, body, #root {
 	margin: 0;
 	padding: 0;
@@ -362,14 +376,6 @@ body:not(.hub) #root {
     border-color: rgba(245, 245, 245, 0.12);
     color: rgba(245, 245, 245, 0.4);
   }
-
-  .v52-cal-bar {
-    position: relative;
-    overflow: hidden;
-    height: 8px;
-    background: linear-gradient(90deg, #6b3f1c 0%, #cd7f32 50%, #f5c889 100%);
-    box-shadow: 0 0 18px rgba(205, 127, 50, 0.45);
-  }
 }
 
 [data-visual-mode="lite"] .glass-panel,
@@ -407,6 +413,11 @@ body:not(.hub) #root {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .login-spinner {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

@@ -1,7 +1,7 @@
 import { Events } from "@wailsio/runtime";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
-import { tierStyle } from "./calendar-shared";
+import { tierStyle, tierLabel, tierBadgeStyle } from "./calendar-shared";
 import type { CalendarFilter } from "./CalendarToolbar";
 import { useAccess } from "../../lib/access";
 import { canUseFeature } from "../../lib/access-policy";
@@ -12,6 +12,37 @@ type CalendarRaceRailProps = {
   activeFilter?: CalendarFilter;
   onSelectTier?: (filter: CalendarFilter) => void;
 };
+
+type TierRailStyle = { color: string; topBar: string; bgGrad: string };
+
+const TIER_RAIL_STYLES: Record<string, TierRailStyle> = {
+  beginner: {
+    color: tierStyle("beginner").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#6B3F1C 25%,#CD7F32 50%,#F5C889 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(205,127,50,.05) 0%,rgba(20,20,20,.65) 50%)",
+  },
+  intermediate: {
+    color: tierStyle("intermediate").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#3D4654 25%,#B8BFC8 50%,#F0F4F8 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(184,191,200,.04) 0%,rgba(20,20,20,.65) 50%)",
+  },
+  advanced: {
+    color: tierStyle("advanced").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#7A5C08 25%,#D4A017 50%,#EBB945 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(212,160,23,.05) 0%,rgba(20,20,20,.65) 50%)",
+  },
+  weekly: {
+    color: tierStyle("weekly").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#991b1b 25%,#ff3b3b 50%,#ff6b6b 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(255,59,59,.05) 0%,rgba(20,20,20,.65) 50%)",
+  },
+  special: {
+    color: tierStyle("special").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#92400e 25%,#f59e0b 50%,#fbbf24 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(245,158,11,.05) 0%,rgba(20,20,20,.65) 50%)",
+  },
+};
+
 
 function formatRailTime(dateStr: string | null, now: Date, _timeZone: string): string {
   if (!dateStr) return "N/A";
@@ -35,7 +66,8 @@ function tierKeyToFilter(key: string): CalendarFilter {
     case "intermediate": return "intermediate";
     case "advanced": return "advanced";
     case "weekly": return "weekly";
-    case "special": return "special";
+    case "special":
+    case "event": return "special";
     default: return "all";
   }
 }
@@ -51,7 +83,7 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
   canFollow: boolean;
   timeZone: string;
 }) {
-  const styles = tierStyle(tierKey);
+  const rail = TIER_RAIL_STYLES[tierKey] || TIER_RAIL_STYLES.beginner;
 
   if (!item) return null;
 
@@ -59,20 +91,22 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
 
   return (
     <div
-      className="card-sleek rounded-xl p-3 relative overflow-hidden group cursor-pointer"
+      className="rounded-xl overflow-hidden group cursor-pointer transition-all hover:-translate-y-0.5 relative"
+      style={{ background: rail.bgGrad, border: "1px solid rgba(255,255,255,.06)" }}
       data-testid={`rail-card-${tierKey}`}
+      role="button"
+      tabIndex={0}
       onClick={() => onSelectTier?.(tierKeyToFilter(tierKey))}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelectTier?.(tierKeyToFilter(tierKey)); }}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: styles.accent, boxShadow: `0 0 10px ${styles.accent}` }} />
-      <div className="flex flex-col gap-1.5 pl-2">
-        <div className="flex items-center justify-between">
-          <span
-            className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-[.22em]"
-            style={{ color: styles.text, background: styles.bg, border: `1px solid ${styles.border}` }}
-          >
-            {styles.text === "#f5f5f5" ? tierKey : ""}
-            {tierLabelShort(tierKey)}
-          </span>
+      {/* Top gradient bar */}
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: rail.topBar }} />
+      <div className="px-3 py-2.5 relative flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-xs text-white truncate" title={item.track}>{item.track}</p>
+          <p className="text-[10px] text-[#f5f5f5]/60 truncate mt-0.5" title={item.name}>{item.name}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {item.isActive ? (
             <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[.22em] text-accent">
               <span className="w-1.5 h-1.5 rounded-full bg-accent live-indicator"></span>
@@ -83,12 +117,6 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
               {timeStr}
             </span>
           )}
-        </div>
-        <div className="mt-1 flex items-end justify-between gap-2">
-          <div className="min-w-0">
-            <p className="font-semibold text-xs text-white truncate" title={item.track}>{item.track}</p>
-            <p className="text-[10px] text-[#f5f5f5]/60 truncate mt-0.5" title={item.name}>{item.name}</p>
-          </div>
           {item.id && canFollow && (
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (isFollowed) { onUnfollow(item); } else { onFollow(item); } }}
@@ -124,15 +152,18 @@ function RailCard({ item, tierKey, now, isFollowed, onFollow, onUnfollow, onSele
   );
 }
 
-function tierLabelShort(tier: string): string {
-  switch (tier) {
-    case "beginner": return "Bronce";
-    case "intermediate": return "Plata";
-    case "advanced": return "Oro";
-    case "weekly": return "Semanal";
-    case "special": return "Especial";
-    default: return tier;
+
+/** Group race items by tier in display order (beginner → advanced, then weekly → special). */
+function groupItemsByTier(items: UpcomingRaceItem[]): { tier: string; items: UpcomingRaceItem[] }[] {
+  const order = ["beginner", "intermediate", "advanced", "weekly", "special"];
+  const map = new Map<string, UpcomingRaceItem[]>();
+  for (const item of items) {
+    const key = item.tier === "event" ? "special" : item.tier;
+    const arr = map.get(key) ?? [];
+    arr.push(item);
+    map.set(key, arr);
   }
+  return order.filter((t) => map.has(t)).map((t) => ({ tier: t, items: map.get(t)! }));
 }
 
 export function CalendarRaceRail({ calendar, now, activeFilter = "all", onSelectTier }: CalendarRaceRailProps) {
@@ -182,7 +213,7 @@ export function CalendarRaceRail({ calendar, now, activeFilter = "all", onSelect
 
   return (
     <div className="glass-panel rounded-xl p-4 opacity-0 animate-fade-in-up delay-200" data-testid="calendar-race-rail">
-      <div className="py-1.5 mb-2 text-center">
+      <div className="py-1.5 mb-3 text-center">
         <span className="v52-eyebrow" style={{ fontSize: "9px" }}>Próximas carreras</span>
       </div>
 
@@ -192,22 +223,39 @@ export function CalendarRaceRail({ calendar, now, activeFilter = "all", onSelect
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {filteredItems.map((item) => (
-            <RailCard
-              key={item.id}
-              item={item}
-              tierKey={item.tier}
-              now={nowDate}
-              isFollowed={item.kind === "series"
-                ? (calendar.followedSeriesIds?.includes(item.id) ?? false)
-                : (calendar.followedEventIds?.includes(item.id) ?? false)}
-              onFollow={handleFollow}
-              onUnfollow={handleUnfollow}
-              onSelectTier={onSelectTier}
-              canFollow={canFollow}
-              timeZone={timeZone}
-            />
-          ))}
+          {groupItemsByTier(filteredItems).map(({ tier, items: tierItems }) => {
+            const rail = TIER_RAIL_STYLES[tier] || TIER_RAIL_STYLES.beginner;
+            return (
+              <div key={tier}>
+                {/* Tier section header */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-[.2em]" style={tierBadgeStyle(rail.color)}>
+                    {tierLabel(tier)}
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg,${rail.color}4d,transparent)` }} />
+                </div>
+                {/* Tier cards */}
+                <div className="flex flex-col gap-2">
+                  {tierItems.map((item) => (
+                    <RailCard
+                      key={item.id}
+                      item={item}
+                      tierKey={tier}
+                      now={nowDate}
+                      isFollowed={item.kind === "series"
+                        ? (calendar.followedSeriesIds?.includes(item.id) ?? false)
+                        : (calendar.followedEventIds?.includes(item.id) ?? false)}
+                      onFollow={handleFollow}
+                      onUnfollow={handleUnfollow}
+                      onSelectTier={onSelectTier}
+                      canFollow={canFollow}
+                      timeZone={timeZone}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

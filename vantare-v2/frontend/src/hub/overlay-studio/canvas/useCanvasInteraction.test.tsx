@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
-import { createTelemetryStore } from "../../../overlay/core/telemetry-store";
+import { createTelemetryStore, type TelemetryStore } from "../../../overlay/core/telemetry-store";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
@@ -38,7 +38,7 @@ function DispatchRecorder(): React.ReactElement {
   return <div data-testid="dirty-flag">{dirty ? "dirty" : "clean"}</div>;
 }
 
-function renderInteractiveCanvas(): void {
+function renderInteractiveCanvas(): TelemetryStore {
   const mockStore = createTelemetryStore(
     buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
   );
@@ -53,6 +53,7 @@ function renderInteractiveCanvas(): void {
       </StudioProvider>
     </div>,
   );
+  return mockStore;
 }
 
 function mockSceneRect(): void {
@@ -173,6 +174,28 @@ describe("useCanvasInteraction", () => {
     await waitFor(() =>
       expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px"),
     );
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+  });
+
+  it("keeps imperative preview when telemetry publishes during drag", async () => {
+    const mockStore = renderInteractiveCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
+    mockSceneRect();
+
+    pointerDownFrame();
+    pointerMove(140, 130, 1, { altKey: true });
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px"),
+    );
+
+    mockStore.publish(
+      buildMockTelemetry({ session: "practice", location: "pits", state: "ready" }),
+    );
+
+    await waitFor(() => {
+      const left = Number.parseFloat(screen.getByTestId("studio-widget-frame-delta-main").style.left);
+      expect(left).toBe(140);
+    });
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
 

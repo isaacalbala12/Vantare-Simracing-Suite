@@ -39,7 +39,8 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     dispatch,
   } = useStudioDocument();
   const { preview, setPreview } = useStudioPreview();
-  const snapshot = useStudioTelemetrySnapshot();
+  const liveSnapshot = useStudioTelemetrySnapshot();
+  const snapshotDuringInteractionRef = useRef(liveSnapshot);
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -95,6 +96,18 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     dispatch,
     selectWidget,
   });
+
+  const isCanvasInteracting = interaction.interaction.kind !== "idle";
+
+  useEffect(() => {
+    if (!isCanvasInteracting) {
+      snapshotDuringInteractionRef.current = liveSnapshot;
+    }
+  }, [isCanvasInteracting, liveSnapshot]);
+
+  const snapshot = isCanvasInteracting
+    ? snapshotDuringInteractionRef.current
+    : liveSnapshot;
 
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
 

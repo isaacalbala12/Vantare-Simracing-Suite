@@ -1,4 +1,8 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
+import {
+  applyStudioFrameLayoutPreview,
+  getStudioFrameLayoutPreview,
+} from "./canvas-frame-preview";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
@@ -46,7 +50,19 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onFramePointerDown,
     onResizePointerDown,
   } = props;
+  const frameRef = useRef<HTMLDivElement>(null);
   const intrinsic = resolveWidgetIntrinsicScale(layout, widget.type);
+
+  useLayoutEffect(() => {
+    if (!previewActive) {
+      return;
+    }
+    const previewLayout = getStudioFrameLayoutPreview(widget.id);
+    if (!previewLayout) {
+      return;
+    }
+    applyStudioFrameLayoutPreview(widget.id, previewLayout);
+  });
 
   const frameStyle: CSSProperties = previewActive
     ? {
@@ -72,7 +88,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
 
   return (
     <div
+      ref={frameRef}
       data-testid={`studio-widget-frame-${widget.id}`}
+      data-preview-active={previewActive ? "true" : undefined}
       className={frameClassName}
       style={frameStyle}
       onPointerDown={(event) => {

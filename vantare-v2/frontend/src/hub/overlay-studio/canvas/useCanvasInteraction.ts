@@ -8,6 +8,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import type { StudioCommand } from "../state/studio-command";
 import {
   applyStudioFrameLayoutPreview,
+  clearStudioFrameLayoutPreview,
   resetStudioFrameLayoutPreview,
 } from "./canvas-frame-preview";
 import {
@@ -251,6 +252,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       return;
     }
     if (!layoutGeometryChanged(current.start, current.preview)) {
+      clearStudioFrameLayoutPreview(current.widgetId);
       flushGuidesFrame();
       setInteractionState({ kind: "idle" });
       return;
@@ -262,6 +264,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       widgetIds: [current.widgetId],
       patch,
     });
+    clearStudioFrameLayoutPreview(current.widgetId);
     flushGuidesFrame();
     setInteractionState({ kind: "idle" });
   }, [flushGuidesFrame, setInteractionState]);

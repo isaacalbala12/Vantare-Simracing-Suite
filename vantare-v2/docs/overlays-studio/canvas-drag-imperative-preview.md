@@ -125,4 +125,38 @@ Para más alternativas y benchmark futuro, ver [arrastre-y-resize.md](./arrastre
 
 ---
 
+## 8. Refuerzos anti-regresión (2026-07-10)
+
+Si el bug vuelve **más exagerado** (teleport fuerte, muchos fantasmas), casi siempre es porque **React re-renderizó el frame durante el gesto** y pisó `style.left/top/w/h` con un objeto que solo tiene `position` + `zIndex` (`previewActive`).
+
+Causas típicas:
+
+- `useStudioTelemetrySnapshot()` publica un snapshot **nuevo por referencia** en cada tick.
+- Widgets más pesados (p. ej. Standings) aumentan re-renders del árbol.
+- Actualizaciones de guías (`setInteraction` por RAF) re-renderizan el canvas.
+
+### 8.1 Capas obligatorias (no quitar sin reemplazo equivalente)
+
+| Capa | Archivo | Qué hace |
+|------|---------|----------|
+| **Cache de preview** | `canvas-frame-preview.ts` | `getStudioFrameLayoutPreview` guarda el último layout imperativo por widget |
+| **Re-aplicación post-commit React** | `StudioWidgetFrame.tsx` | `useLayoutEffect` reescribe geometría si `previewActive` tras cada render |
+| **Snapshot congelado** | `StudioCanvas.tsx` | Mientras `interaction.kind !== "idle"`, no pasar snapshots nuevos a los frames |
+| **Tests** | `useCanvasInteraction.test.tsx` | Caso `keeps imperative preview when telemetry publishes during drag` |
+
+### 8.2 Test de regresión extra
+
+```bash
+pnpm --dir frontend test -- canvas-frame-preview.test.ts useCanvasInteraction.test.tsx
+```
+
+### 8.3 Si vuelve a fallar
+
+1. Confirmar que `previewActive` **no** vuelve a aplicar `left/top/w/h` desde props (sigue siendo DOM imperativo).
+2. Confirmar que **no** se reintroduce `resolveLayout() → preview` en React state.
+3. Revisar si un cambio nuevo pasa `snapshot` u otro prop inestable a `StudioWidgetFrame` durante el gesto.
+4. Ejecutar checklist manual §6 y el test de telemetría durante drag.
+
+---
+
 *Última actualización: 2026-07-10.*

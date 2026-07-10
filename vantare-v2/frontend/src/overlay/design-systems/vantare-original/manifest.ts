@@ -5,8 +5,10 @@ import type {
   WidgetRendererProps,
 } from "../../core/design-system-definition";
 import { DeltaOriginal } from "./delta/DeltaOriginal";
+import { PedalsOriginal } from "./pedals/PedalsOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
+import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 
 const deltaAppearanceControls = [
@@ -190,6 +192,64 @@ const relativeRegistration = {
   Renderer: RelativeOriginal as ComponentType<WidgetRendererProps>,
 };
 
+const pedalsAppearanceControls = [
+  {
+    kind: "toggle" as const,
+    id: "transparent-background",
+    labelKey: "overlay.inspector.pedals.transparentBackground",
+    path: "transparentBackground",
+    defaultValue: true,
+  },
+  {
+    kind: "color" as const,
+    id: "pedal-throttle-color",
+    labelKey: "overlay.inspector.pedals.pedalThrottleColor",
+    path: "pedalThrottleColor",
+    defaultValue: PEDALS_DEFAULT_APPEARANCE.pedalThrottleColor,
+  },
+  {
+    kind: "color" as const,
+    id: "pedal-brake-color",
+    labelKey: "overlay.inspector.pedals.pedalBrakeColor",
+    path: "pedalBrakeColor",
+    defaultValue: PEDALS_DEFAULT_APPEARANCE.pedalBrakeColor,
+  },
+  {
+    kind: "color" as const,
+    id: "pedal-clutch-color",
+    labelKey: "overlay.inspector.pedals.pedalClutchColor",
+    path: "pedalClutchColor",
+    defaultValue: PEDALS_DEFAULT_APPEARANCE.pedalClutchColor,
+  },
+];
+
+validateInspectorControls(pedalsAppearanceControls);
+
+const pedalsRegistration = {
+  widgetType: "pedals" as const,
+  configVersion: 1,
+  defaultSettings: { ...PEDALS_DEFAULT_APPEARANCE },
+  configMigrations: {
+    0: (settings: Record<string, unknown>) => ({
+      ...PEDALS_DEFAULT_APPEARANCE,
+      ...settings,
+    }),
+  },
+  parseSettings(input: unknown): Record<string, unknown> {
+    if (input == null || typeof input !== "object" || Array.isArray(input)) {
+      return { ...PEDALS_DEFAULT_APPEARANCE };
+    }
+    return {
+      ...PEDALS_DEFAULT_APPEARANCE,
+      ...(input as Record<string, unknown>),
+    };
+  },
+  inspector: {
+    appearance: pedalsAppearanceControls,
+  },
+  Renderer: PedalsOriginal as ComponentType<WidgetRendererProps>,
+};
+
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
   version: 1,
@@ -197,5 +257,5 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
   systemMigrations: {
     0: (_widgetType, settings) => ({ ...settings }),
   },
-  widgets: [deltaRegistration, standingsRegistration, relativeRegistration],
+  widgets: [deltaRegistration, standingsRegistration, relativeRegistration, pedalsRegistration],
 };

@@ -32,8 +32,13 @@ describe("designSystemRegistry", () => {
     );
   });
 
+  it("resolves Pedals for supported design systems", () => {
+    expect(designSystemRegistry.resolve("vantare-crystal", 1, "pedals").widgetType).toBe("pedals");
+    expect(designSystemRegistry.resolve("vantare-original", 1, "pedals").widgetType).toBe("pedals");
+  });
+
   it("rejects unsupported widget and system pairs", () => {
-    expect(() => designSystemRegistry.resolve("vantare-crystal", 1, "pedals")).toThrow(
+    expect(() => designSystemRegistry.resolve("vantare-crystal", 1, "unknown-widget")).toThrow(
       /unsupported/i,
     );
   });

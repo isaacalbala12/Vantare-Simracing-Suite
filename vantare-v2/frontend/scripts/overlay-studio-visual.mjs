@@ -13,8 +13,9 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FRONTEND_ROOT = path.resolve(__dirname, "..");
 const BASELINE_DIR = path.join(FRONTEND_ROOT, "testdata", "overlay-studio-visual");
-const PORT = 5176;
+const PREFERRED_PORT = 5176;
 const MAX_PIXEL_DELTA_RATIO = 0.005;
+const LOGICAL_CANVAS_ASPECT = 1920 / 1080;
 
 const STATE_FIXTURES = [
   { name: "original-ready", query: "system=vantare-original&state=ready" },
@@ -34,7 +35,28 @@ const SURFACE_FIXTURES = [
   { name: "surface-harness", query: "system=vantare-original&state=ready&surface=harness" },
 ];
 
-const FIXTURES = [...STATE_FIXTURES, ...SURFACE_FIXTURES];
+const STUDIO_SHELL_FIXTURES = [
+  {
+    name: "studio-wide",
+    browser: { width: 1920, height: 1080 },
+    viewportWidth: 1600,
+    layoutMode: "wide",
+  },
+  {
+    name: "studio-medium",
+    browser: { width: 1200, height: 800 },
+    viewportWidth: 1200,
+    layoutMode: "medium",
+  },
+  {
+    name: "studio-small",
+    browser: { width: 800, height: 700 },
+    viewportWidth: 800,
+    layoutMode: "compact",
+  },
+];
+
+const PARITY_FIXTURES = [...STATE_FIXTURES, ...SURFACE_FIXTURES];
 const updateMode = process.argv.includes("--update");
 
 function pngToDataUrl(filePath) {
@@ -105,56 +127,226 @@ async function comparePng(page, currentPath, baselinePath) {
   return result;
 }
 
+async function captureBaseline(page, fixture, currentPath, baselinePath, capture) {
+  await capture(page, currentPath);
+
+  if (updateMode) {
+    const { renameSync } = await import("node:fs");
+    renameSync(currentPath, baselinePath);
+    console.log(`updated baseline ${fixture.name}`);
+    return;
+  }
+
+  if (!existsSync(baselinePath)) {
+    throw new Error(`missing baseline: ${baselinePath}. Run with --update first.`);
+  }
+
+  const comparison = await comparePng(page, currentPath, baselinePath);
+  if (!comparison.ok) {
+    throw new Error(`${fixture.name}: ${comparison.reason}`);
+  }
+  console.log(`ok ${fixture.name} (${((comparison.ratio ?? 0) * 100).toFixed(3)}% delta)`);
+  unlinkSync(currentPath);
+}
+
+async function waitForStudioShell(page) {
+  await page.waitForSelector("[data-testid='overlay-studio-v3']");
+  await page.waitForSelector("[data-testid='studio-canvas-scene']");
+  await page.waitForSelector("[data-testid='studio-widget-frame-delta-main']");
+  await page.waitForSelector("[data-testid='studio-widget-visual-delta-main'] [data-widget-renderer='delta']");
+}
+
+async function assertStudioShellGeometry(page, fixture) {
+  await waitForStudioShell(page);
+
+  const layoutMode = await page
+    .locator("[data-testid='studio-responsive-grid']")
+    .getAttribute("data-layout-mode");
+  if (layoutMode !== fixture.layoutMode) {
+    throw new Error(`${fixture.name}: expected layout ${fixture.layoutMode}, got ${layoutMode ?? "null"}`);
+  }
+
+  const metrics = await page.evaluate((expectedAspect) => {
+    const stage = document.querySelector(".osv3-canvas-scene-stage");
+    const frame = document.querySelector("[data-testid='studio-widget-frame-delta-main']");
+    const visual = document.querySelector("[data-testid='studio-widget-visual-delta-main']");
+    const scene = document.querySelector("[data-testid='studio-canvas-scene']");
+    if (!stage || !frame || !visual || !scene) {
+      return { ok: false, reason: "missing studio shell nodes" };
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    const frameRect = frame.getBoundingClientRect();
+    const visualRect = visual.getBoundingClientRect();
+    const stageAspect = stageRect.width / stageRect.height;
+    const aspectDelta = Math.abs(stageAspect - expectedAspect);
+    const overflowX = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
+    const visualInsideFrame =
+      visualRect.left >= frameRect.left - 1
+      && visualRect.top >= frameRect.top - 1
+      && visualRect.right <= frameRect.right + 1
+      && visualRect.bottom <= frameRect.bottom + 1;
+
+    return {
+      ok: aspectDelta <= 0.03 && !overflowX && visualInsideFrame && stageRect.width > 0 && stageRect.height > 0,
+      reason: aspectDelta > 0.03
+        ? `stage aspect ${stageAspect.toFixed(4)} expected ~${expectedAspect.toFixed(4)}`
+        : overflowX
+          ? "horizontal page overflow"
+          : !visualInsideFrame
+            ? "widget visual host misaligned with frame"
+            : stageRect.width <= 0 || stageRect.height <= 0
+              ? "stage has zero size"
+              : null,
+      scale: scene.getAttribute("data-scale"),
+    };
+  }, LOGICAL_CANVAS_ASPECT);
+
+  if (!metrics.ok) {
+    throw new Error(`${fixture.name}: ${metrics.reason ?? "geometry check failed"}`);
+  }
+}
+
+async function assertStudioDragAndResize(page, baseUrl) {
+  const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=1600`;
+  await page.goto(url, { waitUntil: "networkidle" });
+  await waitForStudioShell(page);
+
+  const frame = page.locator("[data-testid='studio-widget-frame-delta-main']");
+  const leftBefore = await frame.evaluate((element) => element.style.left);
+
+  const box = await frame.boundingBox();
+  if (!box) {
+    throw new Error("studio-wide interactions: widget frame has no bounding box");
+  }
+
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 96, startY + 48, { steps: 8 });
+  await page.mouse.up();
+
+  await page.waitForFunction(
+    (previousLeft) => {
+      const element = document.querySelector("[data-testid='studio-widget-frame-delta-main']");
+      return Boolean(element && element.style.left && element.style.left !== previousLeft);
+    },
+    leftBefore,
+    { timeout: 5000 },
+  );
+
+  const interaction = await page
+    .locator("[data-testid='studio-canvas-viewport']")
+    .getAttribute("data-interaction");
+  if (interaction !== "idle") {
+    throw new Error(`studio-wide interactions: expected idle after drag, got ${interaction ?? "null"}`);
+  }
+
+  const widthBefore = await frame.evaluate((element) => element.style.width);
+  const heightBefore = await frame.evaluate((element) => element.style.height);
+  const ratioBefore = Number.parseFloat(widthBefore) / Number.parseFloat(heightBefore);
+
+  await frame.click();
+  const handle = page.locator("[data-testid='studio-resize-handle-se-delta-main']");
+  await handle.waitFor({ state: "visible" });
+
+  const handleBox = await handle.boundingBox();
+  if (!handleBox) {
+    throw new Error("studio-wide interactions: resize handle has no bounding box");
+  }
+
+  const resizeX = handleBox.x + handleBox.width / 2;
+  const resizeY = handleBox.y + handleBox.height / 2;
+  await page.mouse.move(resizeX, resizeY);
+  await page.mouse.down();
+  await page.mouse.move(resizeX + 64, resizeY + 32, { steps: 6 });
+  await page.mouse.up();
+
+  await page.waitForFunction(
+    (previousWidth) => {
+      const element = document.querySelector("[data-testid='studio-widget-frame-delta-main']");
+      return Boolean(element && element.style.width && element.style.width !== previousWidth);
+    },
+    widthBefore,
+    { timeout: 5000 },
+  );
+
+  const widthAfter = await frame.evaluate((element) => element.style.width);
+  const heightAfter = await frame.evaluate((element) => element.style.height);
+  const ratioAfter = Number.parseFloat(widthAfter) / Number.parseFloat(heightAfter);
+  if (!Number.isFinite(ratioBefore) || !Number.isFinite(ratioAfter)) {
+    throw new Error("studio-wide interactions: invalid resize dimensions");
+  }
+  if (Math.abs(ratioAfter - ratioBefore) > 0.05) {
+    throw new Error(
+      `studio-wide interactions: aspect ratio drift ${ratioBefore.toFixed(3)} -> ${ratioAfter.toFixed(3)}`,
+    );
+  }
+
+  const resizeInteraction = await page
+    .locator("[data-testid='studio-canvas-viewport']")
+    .getAttribute("data-interaction");
+  if (resizeInteraction !== "idle") {
+    throw new Error(`studio-wide interactions: expected idle after resize, got ${resizeInteraction ?? "null"}`);
+  }
+}
+
 async function startHarnessServer() {
   const { createServer } = await import("vite");
   const server = await createServer({
     configFile: path.join(FRONTEND_ROOT, "vite.overlay-studio-harness.config.ts"),
     server: {
       host: "127.0.0.1",
-      port: PORT,
-      strictPort: true,
+      port: PREFERRED_PORT,
+      strictPort: false,
     },
   });
   await server.listen();
-  return server;
+  const address = server.httpServer?.address();
+  const resolvedPort = typeof address === "object" && address ? address.port : PREFERRED_PORT;
+  const baseUrl = `http://127.0.0.1:${resolvedPort}`;
+  return { server, baseUrl };
 }
 
 async function main() {
   mkdirSync(BASELINE_DIR, { recursive: true });
   const { chromium } = await import("playwright");
 
-  const server = await startHarnessServer();
+  const { server, baseUrl } = await startHarnessServer();
 
   let browser;
   try {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 
-    for (const fixture of FIXTURES) {
+    for (const fixture of PARITY_FIXTURES) {
       const baselinePath = path.join(BASELINE_DIR, `${fixture.name}.png`);
       const currentPath = path.join(BASELINE_DIR, `${fixture.name}.current.png`);
-      const url = `http://127.0.0.1:${PORT}/overlay-studio-harness.html?${fixture.query}`;
+      const url = `${baseUrl}/overlay-studio-harness.html?${fixture.query}`;
       await page.goto(url, { waitUntil: "networkidle" });
       await page.waitForSelector("[data-overlay-parity-widget-frame] [data-widget-renderer='delta']");
-      await page.locator("[data-overlay-parity-widget-frame]").screenshot({ path: currentPath });
+      await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
+        await capturePage.locator("[data-overlay-parity-widget-frame]").screenshot({ path: outputPath });
+      });
+    }
 
-      if (updateMode) {
-        const { renameSync } = await import("node:fs");
-        renameSync(currentPath, baselinePath);
-        console.log(`updated baseline ${fixture.name}`);
-        continue;
-      }
+    for (const fixture of STUDIO_SHELL_FIXTURES) {
+      await page.setViewportSize(fixture.browser);
+      const baselinePath = path.join(BASELINE_DIR, `${fixture.name}.png`);
+      const currentPath = path.join(BASELINE_DIR, `${fixture.name}.current.png`);
+      const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=${fixture.viewportWidth}`;
+      await page.goto(url, { waitUntil: "networkidle" });
+      await assertStudioShellGeometry(page, fixture);
+      await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
+        await capturePage.locator("[data-testid='overlay-studio-v3']").screenshot({ path: outputPath });
+      });
+    }
 
-      if (!existsSync(baselinePath)) {
-        throw new Error(`missing baseline: ${baselinePath}. Run with --update first.`);
-      }
-
-      const comparison = await comparePng(page, currentPath, baselinePath);
-      if (!comparison.ok) {
-        throw new Error(`${fixture.name}: ${comparison.reason}`);
-      }
-      console.log(`ok ${fixture.name} (${((comparison.ratio ?? 0) * 100).toFixed(3)}% delta)`);
-      unlinkSync(currentPath);
+    if (!updateMode) {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await assertStudioDragAndResize(page, baseUrl);
+      console.log("ok studio-wide interactions");
     }
   } finally {
     if (browser) {

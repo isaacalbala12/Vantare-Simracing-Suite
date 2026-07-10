@@ -16,6 +16,10 @@ import {
   CANONICAL_BRAKE_VALUE,
   CANONICAL_CLUTCH_VALUE,
   applyCanonicalPreviewOverrides,
+  CORE_TELEMETRY_STATES,
+  createWidgetPreviewTelemetry,
+  createDisconnectedWidgetPreviewTelemetry,
+  createStaleWidgetPreviewTelemetry,
 } from "./widget-preview-fixtures";
 
 function makeWidget(type: string, variantId?: string): WidgetConfig {
@@ -282,6 +286,53 @@ describe("widget-preview-fixtures", () => {
           rowHeightMode: "fill",
         });
       }
+    });
+  });
+
+  describe("CORE_TELEMETRY_STATES", () => {
+    it("createWidgetPreviewTelemetry is deterministic across two calls", () => {
+      const first = createWidgetPreviewTelemetry("race");
+      const second = createWidgetPreviewTelemetry("race");
+      expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+    });
+
+    it("fresh calls do not share mutable vehicle references", () => {
+      const first = createWidgetPreviewTelemetry("race");
+      const second = createWidgetPreviewTelemetry("race");
+      first.vehicles[0].driverName = "MUTATED";
+      expect(second.vehicles[0].driverName).toBe("ALPINE");
+    });
+
+    it("readyRace exposes fields consumed by the four core widgets", () => {
+      const telemetry = CORE_TELEMETRY_STATES.readyRace;
+      expect(telemetry.connected).toBe(true);
+      expect(telemetry.deltaBest).toBe(CANONICAL_DELTA_VALUE);
+      expect(telemetry.throttle).toBe(CANONICAL_THROTTLE_VALUE);
+      expect(telemetry.brake).toBe(CANONICAL_BRAKE_VALUE);
+      expect(telemetry.clutch).toBe(CANONICAL_CLUTCH_VALUE);
+      expect(telemetry.vehicles.length).toBe(CANONICAL_STANDINGS_COUNT);
+      expect(telemetry.vehicles.some((vehicle) => vehicle.isPlayer)).toBe(true);
+      expect(telemetry.vehicles.some((vehicle) => vehicle.timeGapToPlayer != null)).toBe(true);
+    });
+
+    it("practice and qualifying scenarios change session metadata only", () => {
+      expect(CORE_TELEMETRY_STATES.readyPractice.sessionName).toBe("PRACTICE1");
+      expect(CORE_TELEMETRY_STATES.readyQualifying.sessionName).toBe("QUALIFY");
+      expect(CORE_TELEMETRY_STATES.readyRace.sessionName).toBe("RACE");
+    });
+
+    it("pits scenario marks the player as in pits", () => {
+      const player = CORE_TELEMETRY_STATES.pits.vehicles.find((vehicle) => vehicle.isPlayer);
+      expect(player?.inPits).toBe(true);
+      expect(player?.pitting).toBe(true);
+    });
+
+    it("disconnected and stale states are explicit", () => {
+      expect(createDisconnectedWidgetPreviewTelemetry().connected).toBe(false);
+      expect(createDisconnectedWidgetPreviewTelemetry().vehicles).toEqual([]);
+      expect(createStaleWidgetPreviewTelemetry().connected).toBe(true);
+      expect(createStaleWidgetPreviewTelemetry().vehicles).toEqual([]);
+      expect(createStaleWidgetPreviewTelemetry().playerHasVehicle).toBe(false);
     });
   });
 

@@ -132,6 +132,75 @@ describe("StudioCanvas", () => {
     expect(screen.getByTestId("studio-widget-frame-delta-front").style.zIndex).toBe("2");
   });
 
+  it("runs canvas action bar commands without clearing selection on pointer-down", async () => {
+    renderCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-back")).toBeTruthy());
+
+    fireEvent.pointerDown(screen.getByTestId("studio-widget-frame-delta-back"), {
+      pointerId: 1,
+      button: 0,
+      clientX: 80,
+      clientY: 80,
+      bubbles: true,
+    });
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-action-bar")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("studio-action-duplicate"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-widget-frame-delta-back-copy")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-selected-widget-id")).toBe(
+      "delta-back-copy",
+    );
+  });
+
+  it("keeps canvas scale stable when selecting a widget", async () => {
+    installViewportResizeObserver(960, 420);
+
+    function SelectionProbe(): React.ReactElement {
+      const { selectWidget } = useStudioDocument();
+      return (
+        <button
+          type="button"
+          data-testid="select-back"
+          onClick={() => selectWidget("delta-back")}
+        />
+      );
+    }
+
+    render(
+      <div style={{ width: 960, height: 540 }}>
+        <StudioProvider client={client} initialFile="profiles/a.json">
+          <StudioTelemetryProvider
+            mockStore={createTelemetryStore(
+              buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
+            )}
+            liveStore={createTelemetryStore(
+              buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
+            )}
+            liveAvailable={false}
+          >
+            <SelectionProbe />
+            <StudioCanvas />
+          </StudioTelemetryProvider>
+        </StudioProvider>
+      </div>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
+
+    const scaleBefore = screen.getByTestId("studio-canvas-scene").getAttribute("data-scale");
+    expect(screen.getByTestId("studio-canvas-action-bar-slot")).toBeTruthy();
+    expect(screen.getByTestId("studio-canvas-action-bar-placeholder")).toBeTruthy();
+    expect(screen.queryByTestId("studio-canvas-action-bar")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("select-back"));
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-action-bar")).toBeTruthy());
+
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-scale")).toBe(scaleBefore);
+  });
+
   it("clears selection when clicking the empty canvas viewport", async () => {
     function SelectionProbe(): React.ReactElement {
       const { selectedWidgetId, selectWidget } = useStudioDocument();

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./overlay-studio-v3.css";
 import { ConnectedStudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
@@ -48,17 +48,24 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const [dirtySaving, setDirtySaving] = useState(false);
   const [dirtyError, setDirtyError] = useState<string | null>(null);
   const [recoveryPrompt, setRecoveryPrompt] = useState<RecoveryPromptState | null>(null);
+  const recoveryCheckedProfileIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!document || !recoveryStorage) {
+    const profileId = document?.id;
+    if (!profileId || !recoveryStorage) {
       return;
     }
+    if (recoveryCheckedProfileIdRef.current === profileId) {
+      return;
+    }
+    recoveryCheckedProfileIdRef.current = profileId;
+
     const store = createStudioRecoveryStore(recoveryStorage);
-    const result = store.read(document.id, revision);
+    const result = store.read(profileId, revision);
     if (result.record) {
       setRecoveryPrompt({ record: result.record, warning: result.warning });
     }
-  }, [document, recoveryStorage, revision]);
+  }, [document?.id, recoveryStorage, revision]);
 
   useEffect(() => {
     if (!dirty) {

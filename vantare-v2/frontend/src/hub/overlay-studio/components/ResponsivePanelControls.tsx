@@ -47,8 +47,8 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [openDrawer, setOpenDrawer] = useState<StudioDrawerId>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
-  const listDrawerRef = useRef<HTMLElement | null>(null);
-  const inspectorDrawerRef = useRef<HTMLElement | null>(null);
+  const listDrawerRef = useRef<HTMLDivElement | null>(null);
+  const inspectorDrawerRef = useRef<HTMLDivElement | null>(null);
 
   const setDrawer = useCallback(
     (drawer: StudioDrawerId) => {

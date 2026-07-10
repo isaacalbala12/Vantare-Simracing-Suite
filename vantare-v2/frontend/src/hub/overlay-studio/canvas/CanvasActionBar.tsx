@@ -24,28 +24,40 @@ export type CanvasActionBarProps = {
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
   confirmDelete(message: string): boolean;
+  inert?: boolean;
 };
 
 export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement {
+  const { inert = false } = props;
+
   return (
-    <div data-testid="studio-canvas-action-bar" className="osv3-canvas-action-bar">
+    <div
+      data-testid={inert ? "studio-canvas-action-bar-placeholder" : "studio-canvas-action-bar"}
+      className={inert ? "osv3-canvas-action-bar osv3-canvas-action-bar--inert" : "osv3-canvas-action-bar"}
+      aria-hidden={inert}
+    >
       {ACTION_ITEMS.map((item) => (
         <button
           key={item.id}
           type="button"
-          data-testid={`studio-action-${item.id}`}
+          data-testid={inert ? undefined : `studio-action-${item.id}`}
           className="osv3-canvas-action-bar__button"
-          onClick={() =>
-            executeWidgetAction({
-              actionId: item.id,
-              session: props.session,
-              widgetIds: [props.widgetId],
-              widgets: props.widgets,
-              savedDocument: props.savedDocument,
-              dispatch: props.dispatch,
-              selectWidget: props.selectWidget,
-              confirmDelete: props.confirmDelete,
-            })
+          tabIndex={inert ? -1 : 0}
+          disabled={inert}
+          onClick={
+            inert
+              ? undefined
+              : () =>
+                  executeWidgetAction({
+                    actionId: item.id,
+                    session: props.session,
+                    widgetIds: [props.widgetId],
+                    widgets: props.widgets,
+                    savedDocument: props.savedDocument,
+                    dispatch: props.dispatch,
+                    selectWidget: props.selectWidget,
+                    confirmDelete: props.confirmDelete,
+                  })
           }
         >
           {item.label}

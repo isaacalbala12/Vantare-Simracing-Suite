@@ -1,9 +1,22 @@
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
 import type { ResizeHandle } from "./canvas-resize";
 import { resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
+
+const MemoWidgetVisualHost = memo(WidgetVisualHost);
+
+function layoutsEqual(left: WidgetLayoutV3, right: WidgetLayoutV3): boolean {
+  return (
+    left.x === right.x
+    && left.y === right.y
+    && left.w === right.w
+    && left.h === right.h
+    && left.zIndex === right.zIndex
+    && left.aspectLocked === right.aspectLocked
+  );
+}
 
 const RESIZE_HANDLES: readonly ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
@@ -21,7 +34,7 @@ export type StudioWidgetFrameProps = {
   ): void;
 };
 
-export function StudioWidgetFrame(props: StudioWidgetFrameProps): React.ReactElement {
+function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
   const {
     widget,
     layout,
@@ -88,8 +101,8 @@ export function StudioWidgetFrame(props: StudioWidgetFrameProps): React.ReactEle
             transformOrigin: "top left",
           }}
         >
-          <WidgetVisualHost
-            widget={{ ...widget, layout }}
+          <MemoWidgetVisualHost
+            widget={widget}
             snapshot={snapshot}
             renderMode="studio"
           />
@@ -98,3 +111,15 @@ export function StudioWidgetFrame(props: StudioWidgetFrameProps): React.ReactEle
     </div>
   );
 }
+
+export const StudioWidgetFrame = memo(
+  StudioWidgetFrameComponent,
+  (previous, next) =>
+    previous.widget === next.widget
+    && layoutsEqual(previous.layout, next.layout)
+    && previous.selected === next.selected
+    && previous.snapshot === next.snapshot
+    && previous.onSelect === next.onSelect
+    && previous.onFramePointerDown === next.onFramePointerDown
+    && previous.onResizePointerDown === next.onResizePointerDown,
+);

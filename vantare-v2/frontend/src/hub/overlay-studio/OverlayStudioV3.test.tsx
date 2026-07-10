@@ -119,6 +119,46 @@ describe("OverlayStudioV3", () => {
     expect(screen.getByTestId("studio-inspector-slot").getAttribute("data-selected-widget-id")).toBe("delta-main");
   });
 
+  it("keeps canvas scale stable when selecting a widget from the list", async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(element: Element): void {
+        Object.defineProperty(element, "clientWidth", { configurable: true, value: 960 });
+        Object.defineProperty(element, "clientHeight", { configurable: true, value: 420 });
+        this.callback([], this as unknown as ResizeObserver);
+      }
+
+      disconnect(): void {
+        return undefined;
+      }
+
+      unobserve(): void {
+        return undefined;
+      }
+    } as unknown as typeof ResizeObserver;
+
+    try {
+      renderWorkbench();
+      await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
+
+      const scaleBefore = screen.getByTestId("studio-canvas-scene").getAttribute("data-scale");
+      fireEvent.click(screen.getByTestId("studio-widget-row-delta-main"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("studio-canvas-action-bar")).toBeTruthy(),
+      );
+      expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-scale")).toBe(scaleBefore);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   it("requests guarded profile changes instead of loading directly", async () => {
     const onRequestProfileChange = vi.fn();
     renderWorkbench(createMockClient(), onRequestProfileChange);
@@ -302,6 +342,84 @@ describe("OverlayStudioV3", () => {
     renderWorkbench(createMockClient(), vi.fn(), { recoveryStorage: storage });
     await waitFor(() => expect(screen.getByTestId("studio-recovery-dialog")).toBeTruthy());
     expect(screen.getByTestId("studio-recovery-profile").textContent).toContain("Test Profile");
+  });
+
+  it("does not re-prompt recovery after dismissing and editing", async () => {
+    const storage = createMemoryStorage();
+    const document = buildDocument();
+    storage.setItem(
+      "vantare:overlay-studio:v3:recovery:profile-1",
+      JSON.stringify({
+        version: 1,
+        profileId: "profile-1",
+        baseRevision: "rev-1",
+        capturedAt: "2026-07-10T12:34:00.000Z",
+        document: {
+          ...document,
+          layouts: {
+            general: {
+              ...document.layouts.general,
+              widgets: [
+                {
+                  ...document.layouts.general.widgets[0],
+                  layout: { ...document.layouts.general.widgets[0].layout, x: 400 },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    function MakeDirtyButton() {
+      const { dispatch } = useStudioDocument();
+      return (
+        <button
+          type="button"
+          data-testid="make-dirty"
+          onClick={() =>
+            dispatch({
+              type: "widget/layout",
+              session: "general",
+              widgetIds: ["delta-main"],
+              patch: { x: 240 },
+            })
+          }
+        />
+      );
+    }
+
+    render(
+      <StudioProvider
+        client={createMockClient()}
+        initialFile="profiles/a.json"
+        recoveryStorage={storage}
+        recoveryWriteDelayMs={0}
+      >
+        <MakeDirtyButton />
+        <OverlayStudioV3
+          profiles={profiles}
+          activeFile="profiles/a.json"
+          viewportWidth={1600}
+          recoveryStorage={storage}
+          onRequestProfileChange={vi.fn()}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-recovery-dialog")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-recovery-discard"));
+    await waitFor(() => expect(screen.queryByTestId("studio-recovery-dialog")).toBeNull());
+
+    fireEvent.click(screen.getByTestId("make-dirty"));
+    await waitFor(() =>
+      expect(storage.getItem("vantare:overlay-studio:v3:recovery:profile-1")).toContain("\"x\":240"),
+    );
+    expect(screen.queryByTestId("studio-recovery-dialog")).toBeNull();
   });
 
   it("exposes responsive layout mode from the viewport width prop", async () => {

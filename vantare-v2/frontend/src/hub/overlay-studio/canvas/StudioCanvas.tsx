@@ -36,12 +36,13 @@ export function StudioCanvas(): React.ReactElement {
   const { preview, setPreview } = useStudioPreview();
   const snapshot = useStudioTelemetrySnapshot();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
   const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
 
   useEffect(() => {
-    const node = viewportRef.current;
+    const node = stageRef.current;
     if (!node) {
       return;
     }
@@ -69,6 +70,8 @@ export function StudioCanvas(): React.ReactElement {
     containerHeight: containerSize.height,
     zoom: preview.zoom,
   });
+  const displayWidth = Math.round(CANVAS_WIDTH * scale);
+  const displayHeight = Math.round(CANVAS_HEIGHT * scale);
 
   const widgets = useMemo(
     () => sortWidgetsByZIndex(activeLayout?.widgets ?? []),
@@ -89,6 +92,10 @@ export function StudioCanvas(): React.ReactElement {
   });
 
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
+
+  const stopViewportDeselect = useCallback((event: React.PointerEvent) => {
+    event.stopPropagation();
+  }, []);
 
   const runHotkeyAction = useCallback((event: KeyboardEvent) => {
     if (!selectedWidgetId || !savedDocument || interaction.interaction.kind !== "idle") {
@@ -207,63 +214,97 @@ export function StudioCanvas(): React.ReactElement {
         }
       }}
     >
-      <CanvasToolbar preview={preview} onPreviewChange={setPreview} />
-      {selectedWidgetId && savedDocument ? (
-        <CanvasActionBar
-          widgetId={selectedWidgetId}
-          session={activeSession}
-          widgets={widgets}
-          savedDocument={savedDocument}
-          dispatch={dispatch}
-          selectWidget={selectWidget}
-          confirmDelete={confirmDelete}
-        />
-      ) : null}
-      <div
-        ref={sceneRef}
-        data-testid="studio-canvas-scene"
-        className={`osv3-canvas-scene ${background.className}`}
-        data-scale={String(scale)}
-        style={{
-          width: `${CANVAS_WIDTH}px`,
-          height: `${CANVAS_HEIGHT}px`,
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
-        }}
-        onContextMenu={handleSceneContextMenu}
-      >
-        {preview.safeArea ? (
-          <div
-            data-testid="studio-safe-area-overlay"
-            className="osv3-safe-area-overlay"
-            style={{
-              top: `${safeInsets.top}px`,
-              right: `${safeInsets.right}px`,
-              bottom: `${safeInsets.bottom}px`,
-              left: `${safeInsets.left}px`,
-            }}
-          />
-        ) : null}
-        <CanvasGuides guides={interaction.guides} />
-        {widgets.map((widget) => (
-          <StudioWidgetFrame
-            key={widget.id}
-            widget={widget}
-            layout={interaction.resolveLayout(widget)}
-            selected={selectedWidgetId === widget.id}
-            snapshot={snapshot}
-            onSelect={selectWidget}
-            onFramePointerDown={interaction.onFramePointerDown}
-            onResizePointerDown={interaction.onResizePointerDown}
-          />
-        ))}
+      <div onPointerDown={stopViewportDeselect}>
+        <CanvasToolbar preview={preview} onPreviewChange={setPreview} />
       </div>
-      <PreviewSourceControls
-        preview={preview}
-        liveAvailable={false}
-        onPreviewChange={setPreview}
-        onOpenBrowserView={() => undefined}
-      />
+      <div
+        data-testid="studio-canvas-action-bar-slot"
+        className="osv3-canvas-action-bar-slot"
+        aria-hidden={!selectedWidgetId}
+        onPointerDown={stopViewportDeselect}
+      >
+        {savedDocument && widgets.length > 0 ? (
+          selectedWidgetId ? (
+            <CanvasActionBar
+              widgetId={selectedWidgetId}
+              session={activeSession}
+              widgets={widgets}
+              savedDocument={savedDocument}
+              dispatch={dispatch}
+              selectWidget={selectWidget}
+              confirmDelete={confirmDelete}
+            />
+          ) : (
+            <CanvasActionBar
+              inert
+              widgetId={widgets[0].id}
+              session={activeSession}
+              widgets={widgets}
+              savedDocument={savedDocument}
+              dispatch={dispatch}
+              selectWidget={selectWidget}
+              confirmDelete={confirmDelete}
+            />
+          )
+        ) : null}
+      </div>
+      <div ref={stageRef} className="osv3-canvas-stage">
+        <div
+          className="osv3-canvas-scene-stage"
+          style={{
+            width: `${displayWidth}px`,
+            height: `${displayHeight}px`,
+          }}
+        >
+          <div
+            ref={sceneRef}
+            data-testid="studio-canvas-scene"
+            className={`osv3-canvas-scene ${background.className}`}
+            data-scale={String(scale)}
+            style={{
+              width: `${CANVAS_WIDTH}px`,
+              height: `${CANVAS_HEIGHT}px`,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+            onContextMenu={handleSceneContextMenu}
+          >
+            {preview.safeArea ? (
+              <div
+                data-testid="studio-safe-area-overlay"
+                className="osv3-safe-area-overlay"
+                style={{
+                  top: `${safeInsets.top}px`,
+                  right: `${safeInsets.right}px`,
+                  bottom: `${safeInsets.bottom}px`,
+                  left: `${safeInsets.left}px`,
+                }}
+              />
+            ) : null}
+            <CanvasGuides guides={interaction.guides} />
+            {widgets.map((widget) => (
+              <StudioWidgetFrame
+                key={widget.id}
+                widget={widget}
+                layout={interaction.resolveLayout(widget)}
+                selected={selectedWidgetId === widget.id}
+                snapshot={snapshot}
+                onSelect={selectWidget}
+                onFramePointerDown={interaction.onFramePointerDown}
+                onResizePointerDown={interaction.onResizePointerDown}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div onPointerDown={stopViewportDeselect}>
+        <PreviewSourceControls
+          preview={preview}
+          liveAvailable={false}
+          onPreviewChange={setPreview}
+          onOpenBrowserView={() => undefined}
+        />
+      </div>
       {savedDocument ? (
         <WidgetContextMenu
           menu={contextMenu}

@@ -22,6 +22,7 @@ export type CanvasInteraction =
       widgetId: string;
       pointerId: number;
       pointerOrigin: Point;
+      sceneRect: DOMRectLike;
       start: WidgetLayoutV3;
       preview: WidgetLayoutV3;
       guides: SnapGuide[];
@@ -32,6 +33,7 @@ export type CanvasInteraction =
       pointerId: number;
       handle: ResizeHandle;
       pointerOrigin: Point;
+      sceneRect: DOMRectLike;
       start: WidgetLayoutV3;
       preview: WidgetLayoutV3;
       guides: SnapGuide[];
@@ -110,8 +112,9 @@ function toLogicalPoint(
   clientY: number,
   sceneRef: RefObject<HTMLElement | null>,
   scale: number,
+  sceneRect?: DOMRectLike | null,
 ): Point {
-  const rect = getSceneRect(sceneRef);
+  const rect = sceneRect ?? getSceneRect(sceneRef);
   if (!rect) {
     return { x: 0, y: 0 };
   }
@@ -171,16 +174,39 @@ export function applyResizePreview(input: {
 export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanvasInteractionResult {
   const [interaction, setInteraction] = useState<CanvasInteraction>({ kind: "idle" });
   const interactionRef = useRef<CanvasInteraction>({ kind: "idle" });
+  const interactionFrameRef = useRef<number | null>(null);
   const inputRef = useRef(input);
 
   useEffect(() => {
     inputRef.current = input;
   }, [input]);
 
+  const flushInteractionFrame = useCallback(() => {
+    if (interactionFrameRef.current !== null) {
+      cancelAnimationFrame(interactionFrameRef.current);
+      interactionFrameRef.current = null;
+    }
+  }, []);
+
   const setInteractionState = useCallback((next: CanvasInteraction) => {
     interactionRef.current = next;
-    setInteraction(next);
-  }, []);
+    if (next.kind === "idle") {
+      flushInteractionFrame();
+      setInteraction(next);
+      return;
+    }
+
+    if (interactionFrameRef.current !== null) {
+      return;
+    }
+
+    interactionFrameRef.current = requestAnimationFrame(() => {
+      interactionFrameRef.current = null;
+      setInteraction(interactionRef.current);
+    });
+  }, [flushInteractionFrame]);
+
+  useEffect(() => () => flushInteractionFrame(), [flushInteractionFrame]);
 
   const cancelInteraction = useCallback(() => {
     setInteractionState({ kind: "idle" });
@@ -218,7 +244,13 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       return;
     }
 
-    const pointerCurrent = toLogicalPoint(event.clientX, event.clientY, sceneRef, scale);
+    const pointerCurrent = toLogicalPoint(
+      event.clientX,
+      event.clientY,
+      sceneRef,
+      scale,
+      current.sceneRect,
+    );
     const siblings = siblingLayouts(widgets, current.widgetId);
     const disableSnap = event.altKey;
 
@@ -259,8 +291,9 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     if (current.kind === "idle" || event.pointerId !== current.pointerId) {
       return;
     }
+    flushInteractionFrame();
     commitInteraction();
-  }, [commitInteraction]);
+  }, [commitInteraction, flushInteractionFrame]);
 
   const onLostPointerCapture = useCallback((event: PointerEvent) => {
     const current = interactionRef.current;
@@ -309,11 +342,17 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     event.currentTarget.setPointerCapture(event.pointerId);
     inputRef.current.selectWidget(widgetId);
 
+    const sceneRect = getSceneRect(inputRef.current.sceneRef);
+    if (!sceneRect) {
+      return;
+    }
+
     const pointerOrigin = toLogicalPoint(
       event.clientX,
       event.clientY,
       inputRef.current.sceneRef,
       inputRef.current.scale,
+      sceneRect,
     );
     const start = structuredClone(widget.layout);
 
@@ -322,6 +361,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       widgetId,
       pointerId: event.pointerId,
       pointerOrigin,
+      sceneRect,
       start,
       preview: start,
       guides: [],
@@ -346,11 +386,17 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     event.currentTarget.setPointerCapture(event.pointerId);
     inputRef.current.selectWidget(widgetId);
 
+    const sceneRect = getSceneRect(inputRef.current.sceneRef);
+    if (!sceneRect) {
+      return;
+    }
+
     const pointerOrigin = toLogicalPoint(
       event.clientX,
       event.clientY,
       inputRef.current.sceneRef,
       inputRef.current.scale,
+      sceneRect,
     );
     const start = structuredClone(widget.layout);
 
@@ -360,6 +406,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       pointerId: event.pointerId,
       handle,
       pointerOrigin,
+      sceneRect,
       start,
       preview: start,
       guides: [],

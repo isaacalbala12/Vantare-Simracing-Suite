@@ -24,7 +24,12 @@ function sortWidgetsByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstan
   return [...widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex);
 }
 
-export function StudioCanvas(): React.ReactElement {
+export type StudioCanvasProps = {
+  onOpenBrowserView?(): void;
+};
+
+export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
+  const { onOpenBrowserView } = props;
   const {
     activeLayout,
     activeSession,
@@ -303,7 +308,7 @@ export function StudioCanvas(): React.ReactElement {
           preview={preview}
           liveAvailable={false}
           onPreviewChange={setPreview}
-          onOpenBrowserView={() => undefined}
+          onOpenBrowserView={onOpenBrowserView}
         />
       </div>
       {savedDocument ? (

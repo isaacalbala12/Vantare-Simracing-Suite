@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./overlay-studio-v3.css";
+import { openBrowserView, type BrowserViewDecision } from "./browser-view";
 import { ConnectedStudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
 import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
@@ -48,7 +49,11 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const [dirtySaving, setDirtySaving] = useState(false);
   const [dirtyError, setDirtyError] = useState<string | null>(null);
   const [recoveryPrompt, setRecoveryPrompt] = useState<RecoveryPromptState | null>(null);
+  const [browserViewDialogOpen, setBrowserViewDialogOpen] = useState(false);
+  const [browserViewSaving, setBrowserViewSaving] = useState(false);
+  const [browserViewError, setBrowserViewError] = useState<string | null>(null);
   const recoveryCheckedProfileIdRef = useRef<string | null>(null);
+  const browserViewDecideRef = useRef<((decision: BrowserViewDecision) => void) | null>(null);
 
   useEffect(() => {
     const profileId = document?.id;
@@ -145,6 +150,54 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     setRecoveryPrompt(null);
   }, [acceptRecovery, recoveryPrompt, recoveryStorage]);
 
+  const closeBrowserViewDialog = useCallback(() => {
+    browserViewDecideRef.current?.("cancel");
+    browserViewDecideRef.current = null;
+    setBrowserViewDialogOpen(false);
+    setBrowserViewSaving(false);
+    setBrowserViewError(null);
+  }, []);
+
+  const handleOpenBrowserView = useCallback(async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setBrowserViewError(null);
+    const result = await openBrowserView({
+      dirty,
+      profileFile: activeFile,
+      baseUrl: window.location.origin,
+      decide: () =>
+        new Promise<BrowserViewDecision>((resolve) => {
+          browserViewDecideRef.current = resolve;
+          setBrowserViewDialogOpen(true);
+        }),
+      save,
+      open: (url) => {
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+    });
+
+    setBrowserViewSaving(false);
+    browserViewDecideRef.current = null;
+
+    if (result === "opened" || result === "cancelled") {
+      setBrowserViewDialogOpen(false);
+      setBrowserViewError(null);
+      return;
+    }
+
+    setBrowserViewDialogOpen(true);
+    setBrowserViewError("No se pudo guardar el perfil. Browser View solo usa el estado guardado.");
+  }, [activeFile, dirty, save]);
+
+  const handleBrowserViewSave = useCallback(() => {
+    setBrowserViewSaving(true);
+    setBrowserViewError(null);
+    browserViewDecideRef.current?.("save");
+  }, []);
+
   return (
     <div data-testid="overlay-studio-v3" className="osv3-workbench">
       <StudioHeader
@@ -158,7 +211,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         listPanel={<WidgetListPanel />}
         canvasPanel={
           <ConnectedStudioTelemetryProvider>
-            <StudioCanvas />
+            <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} />
           </ConnectedStudioTelemetryProvider>
         }
         inspectorPanel={
@@ -182,6 +235,17 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         staleRevisionWarning={recoveryPrompt?.warning}
         onRecover={handleRecoveryRecover}
         onDiscard={handleRecoveryDiscard}
+      />
+      <DirtyChangesDialog
+        open={browserViewDialogOpen}
+        saving={browserViewSaving}
+        errorMessage={browserViewError}
+        dialogTestId="studio-browser-view-dialog"
+        title="Guardar antes de Browser View"
+        body="Browser View muestra el perfil guardado, no el borrador actual. Guarda los cambios o cancela."
+        showDiscard={false}
+        onSave={handleBrowserViewSave}
+        onCancel={closeBrowserViewDialog}
       />
     </div>
   );

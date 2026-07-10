@@ -32,6 +32,21 @@ describe("PreviewSourceControls", () => {
     expect(onPreviewChange).toHaveBeenCalledWith({ mockLocation: "pits" });
   });
 
+  it("invokes the Browser View callback from the footer control", () => {
+    const onOpenBrowserView = vi.fn();
+    render(
+      <PreviewSourceControls
+        preview={preview}
+        liveAvailable={false}
+        onPreviewChange={vi.fn()}
+        onOpenBrowserView={onOpenBrowserView}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("studio-browser-view-button"));
+    expect(onOpenBrowserView).toHaveBeenCalledOnce();
+  });
+
   it("disables live with an explanation when LMU is unavailable", () => {
     render(
       <PreviewSourceControls

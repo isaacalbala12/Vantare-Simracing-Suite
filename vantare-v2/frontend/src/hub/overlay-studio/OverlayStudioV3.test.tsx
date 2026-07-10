@@ -431,4 +431,122 @@ describe("OverlayStudioV3", () => {
     );
     expect(screen.getByTestId("studio-list-drawer-toggle")).toBeTruthy();
   });
+
+  it("opens Browser View from the saved profile file when the draft is clean", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderWorkbench();
+    await waitFor(() => expect(screen.getByTestId("studio-browser-view-button")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("studio-browser-view-button"));
+
+    await waitFor(() =>
+      expect(openSpy).toHaveBeenCalledWith(
+        `${window.location.origin}/overlay?profile=${encodeURIComponent("profiles/a.json")}`,
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    openSpy.mockRestore();
+  });
+
+  it("requires save before Browser View when the draft is dirty", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    function MakeDirtyButton() {
+      const { dispatch } = useStudioDocument();
+      return (
+        <button
+          type="button"
+          data-testid="make-dirty"
+          onClick={() =>
+            dispatch({
+              type: "widget/layout",
+              session: "general",
+              widgetIds: ["delta-main"],
+              patch: { x: 240 },
+            })
+          }
+        />
+      );
+    }
+
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <MakeDirtyButton />
+        <OverlayStudioV3
+          profiles={profiles}
+          activeFile="profiles/a.json"
+          viewportWidth={1600}
+          onRequestProfileChange={vi.fn()}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-browser-view-button")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("make-dirty"));
+    fireEvent.click(screen.getByTestId("studio-browser-view-button"));
+
+    expect(screen.getByTestId("studio-browser-view-dialog")).toBeTruthy();
+    expect(openSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("studio-dirty-save"));
+
+    await waitFor(() =>
+      expect(openSpy).toHaveBeenCalledWith(
+        `${window.location.origin}/overlay?profile=${encodeURIComponent("profiles/a.json")}`,
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    openSpy.mockRestore();
+  });
+
+  it("cancels Browser View without opening when the dirty prompt is dismissed", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    function MakeDirtyButton() {
+      const { dispatch } = useStudioDocument();
+      return (
+        <button
+          type="button"
+          data-testid="make-dirty"
+          onClick={() =>
+            dispatch({
+              type: "widget/layout",
+              session: "general",
+              widgetIds: ["delta-main"],
+              patch: { x: 240 },
+            })
+          }
+        />
+      );
+    }
+
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <MakeDirtyButton />
+        <OverlayStudioV3
+          profiles={profiles}
+          activeFile="profiles/a.json"
+          viewportWidth={1600}
+          onRequestProfileChange={vi.fn()}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-browser-view-button")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("make-dirty"));
+    fireEvent.click(screen.getByTestId("studio-browser-view-button"));
+    fireEvent.click(screen.getByTestId("studio-dirty-cancel"));
+
+    await waitFor(() => expect(screen.queryByTestId("studio-browser-view-dialog")).toBeNull());
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
 });

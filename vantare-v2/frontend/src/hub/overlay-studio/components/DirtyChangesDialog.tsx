@@ -2,13 +2,28 @@ export type DirtyChangesDialogProps = {
   open: boolean;
   saving?: boolean;
   errorMessage?: string | null;
+  title?: string;
+  body?: string;
+  showDiscard?: boolean;
+  dialogTestId?: string;
   onSave(): void;
-  onDiscard(): void;
+  onDiscard?(): void;
   onCancel(): void;
 };
 
 export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactElement | null {
-  const { open, saving = false, errorMessage, onSave, onDiscard, onCancel } = props;
+  const {
+    open,
+    saving = false,
+    errorMessage,
+    title = "Cambios sin guardar",
+    body = "Tienes cambios pendientes. ¿Qué quieres hacer antes de salir?",
+    showDiscard = true,
+    dialogTestId = "studio-dirty-dialog",
+    onSave,
+    onDiscard,
+    onCancel,
+  } = props;
   if (!open) {
     return null;
   }
@@ -16,17 +31,17 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
   return (
     <div
       className="osv3-dialog-backdrop"
-      data-testid="studio-dirty-dialog"
+      data-testid={dialogTestId}
       role="dialog"
       aria-modal="true"
       aria-labelledby="studio-dirty-dialog-title"
     >
       <div className="osv3-dialog-panel">
         <h2 id="studio-dirty-dialog-title" className="osv3-dialog-panel__title">
-          Cambios sin guardar
+          {title}
         </h2>
         <p className="osv3-dialog-panel__body">
-          Tienes cambios pendientes. ¿Qué quieres hacer antes de salir?
+          {body}
         </p>
         {errorMessage ? (
           <p data-testid="studio-dirty-error" className="osv3-dialog-panel__error" role="alert">
@@ -43,15 +58,17 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
           >
             Guardar
           </button>
-          <button
-            type="button"
-            data-testid="studio-dirty-discard"
-            className="osv3-dialog-panel__button"
-            disabled={saving}
-            onClick={onDiscard}
-          >
-            Descartar
-          </button>
+          {showDiscard && onDiscard ? (
+            <button
+              type="button"
+              data-testid="studio-dirty-discard"
+              className="osv3-dialog-panel__button"
+              disabled={saving}
+              onClick={onDiscard}
+            >
+              Descartar
+            </button>
+          ) : null}
           <button
             type="button"
             data-testid="studio-dirty-cancel"

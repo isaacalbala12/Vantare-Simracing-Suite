@@ -1,8 +1,13 @@
 Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Objetivo: reconstrucción paralela de Overlay Studio V3 (Delta, Standings, Relative, Pedals en `vantare-original` y `vantare-crystal`).
 - Autoridad: ADR `docs/adr/0003-overlay-studio-v3-rebuild.md` y plan maestro `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md` (worktree `refactor`, rama `refactor`).
-- Estado: Fase 0 en curso. **Ningún código de producción V3 conmutado aún**; el runtime sigue en legado congelado.
-- Índice de microcortes Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
+- Worktree: `C:\Users\isaac\emdash\worktrees\vantare-v2\refactor` — rama `refactor`.
+- **Fase 0 ✅ CERRADA** (commits `b2326e3`..`4f340f5`): autoridad ADR, baseline, fixtures migración, caracterización 4 widgets, inventario consumidores.
+- Evidencia baseline: `docs/overlay-studio-v3-baseline.md`, `docs/overlay-studio-v3-inventory.md`.
+- Tests focalizados Fase 0: `go test ./pkg/config/... -run OverlayStudioV3Legacy` PASS; `pnpm --dir frontend test -- widget-preview-fixtures.test.ts legacy-core-contract.test.tsx` → 38 PASS.
+- Preexistentes documentados (no regresión Fase 0): lint frontend 11 errores; `internal/server` nonce/port tests FAIL en `go test ./...`.
+- **Ningún código de producción V3 conmutado aún**; runtime legado congelado. Siguiente: **Fase 1** perfil V3 + persistencia Go.
+- Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):
 - Objetivo: cerrar smoke de checkout Polar **produccion** sin pago real (sin presupuesto test).

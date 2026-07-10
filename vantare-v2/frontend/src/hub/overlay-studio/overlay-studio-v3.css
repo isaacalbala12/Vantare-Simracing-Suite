@@ -163,9 +163,98 @@
 }
 
 .osv3-canvas-column {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   background: #0c0f19;
+}
+
+.osv3-canvas-viewport {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.osv3-canvas-scene {
+  position: relative;
+  flex-shrink: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    #0c0f19;
+  background-size: 80px 80px, 80px 80px, auto;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.osv3-canvas-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.osv3-canvas-guide {
+  position: absolute;
+  background: rgba(56, 189, 248, 0.85);
+}
+
+.osv3-canvas-guide--vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.osv3-canvas-guide--horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.osv3-widget-frame {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.osv3-widget-frame__chrome {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(56, 189, 248, 0.95);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.osv3-widget-frame__hidden-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.osv3-widget-frame__visual {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.osv3-widget-frame__scaler {
+  pointer-events: none;
 }
 
 .osv3-inspector-slot {

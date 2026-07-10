@@ -80,7 +80,7 @@ describe("OverlayStudioV3", () => {
 
     fireEvent.click(screen.getByTestId("studio-widget-row-delta-main"));
 
-    expect(screen.getByTestId("studio-canvas-slot").getAttribute("data-selected-widget-id")).toBe("delta-main");
+    expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-selected-widget-id")).toBe("delta-main");
     expect(screen.getByTestId("studio-inspector-slot").getAttribute("data-selected-widget-id")).toBe("delta-main");
   });
 

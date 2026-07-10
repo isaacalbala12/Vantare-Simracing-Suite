@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 2,
+  "id": "v2-core-widgets",
+  "name": "V2 Core Widgets Fixture",
+  "displayMode": "edit",
+  "monitorIndex": 0,
+  "widgets": [
+    {
+      "id": "delta-main",
+      "type": "delta",
+      "variantId": "variant-delta-main-default",
+      "enabled": true,
+      "updateHz": 10,
+      "position": { "x": 80, "y": 80, "w": 360, "h": 120 }
+    },
+    {
+      "id": "standings-main",
+      "type": "standings",
+      "variantId": "variant-standings-main-default",
+      "enabled": true,
+      "updateHz": 8,
+      "position": { "x": 80, "y": 240, "w": 420, "h": 360 }
+    },
+    {
+      "id": "relative-main",
+      "type": "relative",
+      "variantId": "variant-relative-main-default",
+      "enabled": true,
+      "updateHz": 12,
+      "position": { "x": 520, "y": 240, "w": 320, "h": 300 }
+    },
+    {
+      "id": "pedals-main",
+      "type": "pedals",
+      "variantId": "variant-pedals-main-default",
+      "enabled": true,
+      "updateHz": 20,
+      "position": { "x": 900, "y": 640, "w": 280, "h": 180 }
+    },
+    {
+      "id": "telemetry-aux",
+      "type": "telemetry",
+      "variantId": "variant-telemetry-aux-default",
+      "enabled": true,
+      "updateHz": 5,
+      "position": { "x": 1200, "y": 80, "w": 240, "h": 120 }
+    },
+    {
+      "id": "telemetry-vertical-aux",
+      "type": "telemetry-vertical",
+      "variantId": "variant-telemetry-vertical-aux-default",
+      "enabled": false,
+      "updateHz": 5,
+      "position": { "x": 1200, "y": 240, "w": 80, "h": 320 }
+    }
+  ],
+  "layouts": {
+    "general": {
+      "type": "general",
+      "widgets": [
+        {
+          "id": "delta-main",
+          "type": "delta",
+          "variantId": "variant-delta-main-default",
+          "enabled": true,
+          "updateHz": 10,
+          "position": { "x": 80, "y": 80, "w": 360, "h": 120 }
+        },
+        {
+          "id": "standings-main",
+          "type": "standings",
+          "variantId": "variant-standings-main-default",
+          "enabled": true,
+          "updateHz": 8,
+          "position": { "x": 80, "y": 240, "w": 420, "h": 360 }
+        },
+        {
+          "id": "relative-main",
+          "type": "relative",
+          "variantId": "variant-relative-main-default",
+          "enabled": true,
+          "updateHz": 12,
+          "position": { "x": 520, "y": 240, "w": 320, "h": 300 }
+        },
+        {
+          "id": "pedals-main",
+          "type": "pedals",
+          "variantId": "variant-pedals-main-default",
+          "enabled": true,
+          "updateHz": 20,
+          "position": { "x": 900, "y": 640, "w": 280, "h": 180 }
+        },
+        {
+          "id": "telemetry-aux",
+          "type": "telemetry",
+          "variantId": "variant-telemetry-aux-default",
+          "enabled": true,
+          "updateHz": 5,
+          "position": { "x": 1200, "y": 80, "w": 240, "h": 120 }
+        },
+        {
+          "id": "telemetry-vertical-aux",
+          "type": "telemetry-vertical",
+          "variantId": "variant-telemetry-vertical-aux-default",
+          "enabled": false,
+          "updateHz": 5,
+          "position": { "x": 1200, "y": 240, "w": 80, "h": 320 }
+        }
+      ]
+    }
+  },
+  "variants": [
+    {
+      "id": "variant-delta-main-default",
+      "widgetType": "delta",
+      "templateId": "delta-vantare-default",
+      "themeId": "vantare-racing",
+      "name": "Delta Original",
+      "props": { "style": "vantare-racing" }
+    },
+    {
+      "id": "variant-standings-main-default",
+      "widgetType": "standings",
+      "templateId": "standings-vantare-default",
+      "themeId": "vantare-racing",
+      "name": "Standings Original",
+      "columns": [
+        { "id": "position", "metricId": "position", "enabled": true, "width": 48 },
+        { "id": "name", "metricId": "name", "enabled": true, "width": 160 },
+        { "id": "bestLap", "metricId": "bestLap", "enabled": true, "width": 88 },
+        { "id": "lastLap", "metricId": "lastLap", "enabled": true, "width": 88 },
+        { "id": "interval", "metricId": "interval", "enabled": true, "width": 72 },
+        { "id": "currentLap", "metricId": "currentLap", "enabled": true, "width": 72 }
+      ]
+    },
+    {
+      "id": "variant-relative-main-default",
+      "widgetType": "relative",
+      "templateId": "relative-vantare-default",
+      "themeId": "vantare-crystal",
+      "name": "Relative Crystal",
+      "filters": {
+        "rangeAhead": 4,
+        "rangeBehind": 2,
+        "classScope": "sameClass",
+        "includePlayer": true,
+        "rowHeightMode": "comfortable"
+      },
+      "props": { "style": "glassmorphism-pro" }
+    },
+    {
+      "id": "variant-pedals-main-default",
+      "widgetType": "pedals",
+      "templateId": "pedals-vantare-default",
+      "themeId": "vantare-crystal",
+      "name": "Pedals Crystal",
+      "props": {
+        "style": "glassmorphism-pro",
+        "throttleColor": "#34d399",
+        "brakeColor": "#f87171",
+        "clutchColor": "#fbbf24"
+      }
+    },
+    {
+      "id": "variant-telemetry-aux-default",
+      "widgetType": "telemetry",
+      "templateId": "telemetry-vantare-default",
+      "themeId": "vantare-racing",
+      "name": "Telemetry Preserved"
+    },
+    {
+      "id": "variant-telemetry-vertical-aux-default",
+      "widgetType": "telemetry-vertical",
+      "templateId": "telemetry-vertical-vantare-default",
+      "themeId": "vantare-racing",
+      "name": "Telemetry Vertical Preserved"
+    }
+  ]
+}

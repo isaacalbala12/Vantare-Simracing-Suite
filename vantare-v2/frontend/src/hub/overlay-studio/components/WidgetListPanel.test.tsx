@@ -70,6 +70,23 @@ describe("WidgetListPanel", () => {
     expect(screen.getByTestId("studio-widget-row-delta-b").className).toContain("osv3-list-panel__row--selected");
   });
 
+  it("adds a widget from the derived catalog dialog", async () => {
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <WidgetListPanel />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-show-add-widget")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-show-add-widget"));
+    expect(screen.getByTestId("studio-add-widget-dialog")).toBeTruthy();
+    expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("studio-catalog-add-delta"));
+    await waitFor(() => expect(screen.getByTestId("studio-widget-row-delta-main")).toBeTruthy());
+    expect(screen.getByTestId("studio-widget-row-delta-main").className).toContain("osv3-list-panel__row--selected");
+  });
+
   it("shows preserved legacy widgets as read-only entries", async () => {
     render(
       <StudioProvider client={createMockClient()} initialFile="profiles/a.json">

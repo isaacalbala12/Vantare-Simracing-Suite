@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
+import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
+import type { CoreWidgetType } from "../../../overlay/core/profile-document";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { AddWidgetDialog } from "../catalog/AddWidgetDialog";
+import { buildAddWidgetCommand } from "../catalog/studio-catalog";
 import { useStudioDocument } from "../state/studio-store";
 
 function sortWidgets(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
@@ -11,8 +15,9 @@ function widgetLabel(widget: WidgetInstanceV3): string {
 }
 
 export function WidgetListPanel(): React.ReactElement {
-  const { activeLayout, selectedWidgetId, selectWidget } = useStudioDocument();
+  const { access, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } = useStudioDocument();
   const [query, setQuery] = useState("");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const widgets = useMemo(() => {
     const ordered = sortWidgets(activeLayout?.widgets ?? []);
@@ -25,6 +30,21 @@ export function WidgetListPanel(): React.ReactElement {
       return haystack.includes(normalized);
     });
   }, [activeLayout?.widgets, query]);
+
+  const handleAddWidget = (type: CoreWidgetType) => {
+    const definition = widgetTypeRegistry.get(type);
+    const command = buildAddWidgetCommand({
+      session: activeSession,
+      type,
+      widgets: activeLayout?.widgets ?? [],
+      definition,
+    });
+    dispatch(command);
+    if (command.type === "widget/add") {
+      selectWidget(command.widget.id);
+    }
+    setAddDialogOpen(false);
+  };
 
   return (
     <aside className="osv3-list-panel" data-testid="studio-widget-list-panel">
@@ -67,6 +87,22 @@ export function WidgetListPanel(): React.ReactElement {
           ))}
         </div>
       ) : null}
+      <div className="osv3-list-panel__footer">
+        <button
+          type="button"
+          data-testid="studio-show-add-widget"
+          className="osv3-list-panel__add"
+          onClick={() => setAddDialogOpen(true)}
+        >
+          + Añadir widget
+        </button>
+      </div>
+      <AddWidgetDialog
+        open={addDialogOpen}
+        access={access}
+        onClose={() => setAddDialogOpen(false)}
+        onAdd={handleAddWidget}
+      />
     </aside>
   );
 }

@@ -58,6 +58,7 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
 };
 
 type StudioDocumentContextValue = {
+  access: AccessContext;
   document: ProfileDocumentV3 | null;
   savedDocument: ProfileDocumentV3 | null;
   revision: string;
@@ -297,6 +298,7 @@ export function StudioProvider(props: {
 
   const documentValue = useMemo<StudioDocumentContextValue>(
     () => ({
+      access,
       document,
       savedDocument: history?.saved ?? null,
       revision,
@@ -319,6 +321,7 @@ export function StudioProvider(props: {
       acceptRecovery,
     }),
     [
+      access,
       document,
       history,
       revision,

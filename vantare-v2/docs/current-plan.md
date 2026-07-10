@@ -20,7 +20,7 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Task 5.8 Browser View (2026-07-10): `browser-view.ts` abre `/overlay?profile=` solo con perfil guardado; si dirty → guardar o cancelar (sin descartar). Cableado en `OverlayStudioV3` + `StudioCanvas`.
 - Harness Browser View (2026-07-10): middleware Vite (`overlay-studio-harness-vite-plugin.ts`) + preview studio (`studioPreview=1`, fondo gris/rejilla, escala fit). Commits `32bc433`..`39a1133`.
 - **Fase 5 ✅ CERRADA** (commits `96d7119`..`a606b21` + harness browser view): inspector por capacidades, catálogo, diseños, access policy, Browser View.
-- **Fase 6 en curso** — Task 6.1 ✅ (`feat(overlay): add safe shared widget content contracts`): `widget-column.ts`, `scoring-readers.ts`. Siguiente: **Task 6.2 Standings** — plan `2026-07-10-overlay-studio-rebuild-06-core-widget-migration.md`.
+- **Fase 6 en curso** — Standings ✅ (6.1–6.3, `074d389`..`ffd6c4f`); Relative modelo funcional ✅ Task 6.4. Siguiente: **Task 6.5 Relative Original/Crystal** — plan `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-06-core-widget-migration.md`.
 - **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes).
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

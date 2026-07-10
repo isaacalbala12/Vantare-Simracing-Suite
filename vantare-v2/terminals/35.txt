@@ -1,9 +1,0 @@
----
-pid: 29496
-cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
-command: "cd \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\"; $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=\"--remote-debugging-port=9222\"; $env:VANTARE_SUPABASE_URL=\"https://ombjshwzqgeisazijduq.supabase.co\"; $env:VANTARE_SUPABASE_ANON_KEY=(Get-Content \"frontend\\.env.local\" | Where-Object { $_ -match '^VITE_SUPABASE_ANON_KEY=' } | ForEach-Object { $_ -replace '^VITE_SUPABASE_ANON_KEY=','' }); wails dev"
-started_at: 2026-07-09T20:34:57.276Z
-running_for_ms: 15290003 
----
-wails: The term 'wails' is not recognized as a name of a cmdlet, function, script file, or executable program.
-Check the spelling of the name, or if a path was included, verify that the path is correct and try again.

@@ -1,7 +1,0 @@
----
-pid: 31188
-cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
-command: "powershell -NoProfile -Command \"Start-Sleep -Seconds 30\""
-started_at: 2026-07-09T21:11:54.969Z
-running_for_ms: 13054998 
----

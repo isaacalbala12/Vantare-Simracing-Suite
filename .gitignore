@@ -60,3 +60,6 @@ vantare-v2/configs/updater-settings.json
 *.bak
 *.syso
 vantare-v2/configs/license-cache.json
+
+# Local terminal session logs (tool noise, not source)
+terminals/

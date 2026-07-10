@@ -15,6 +15,8 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **Fase 4 ✅ CERRADA** (commits `b7bdec0`..`e80c612`): shell V10, geometría pura, canvas con `WidgetVisualHost`, drag/resize transaccional, preview controls, acciones unificadas, paneles responsive, modales dirty/recovery, harness V3 y visual geometry (wide/medium/compact + drag/resize).
 - Evidencia Fase 4: `pnpm --dir frontend test -- src/hub/overlay-studio` → 159 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 15 baselines 0.000% delta + interacciones wide; `pnpm --dir frontend build` PASS.
 - QA manual harness: `pnpm --dir frontend exec vite --config vite.overlay-studio-harness.config.ts --host 127.0.0.1` → `http://127.0.0.1:5176/overlay-studio-v3-harness.html`.
+- Docs vivos canvas/drag: `docs/overlays-studio/` (índice `README.md`; anti-regresión `canvas-drag-imperative-preview.md`; exploración `arrastre-y-resize.md`).
+- Fix drag teleport/rastro (2026-07-10): commit `dc382bf` — preview imperativa B1 (`canvas-frame-preview.ts`, `previewActive` en frame). Tests `useCanvasInteraction` 11/11; suite overlay-studio 233/233.
 - **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes). Siguiente: **Fase 5** (inspector real, catálogo, diseños, permisos premium) — plan `2026-07-10-overlay-studio-rebuild-05-inspector-catalog-designs.md`.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

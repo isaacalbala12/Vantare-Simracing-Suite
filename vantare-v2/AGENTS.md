@@ -16,6 +16,7 @@ Regla central: hacer el cambio seguro mas pequeno posible.
 - Lee este archivo antes de editar.
 - Lee `docs/current-plan.md` antes de empezar cualquier tarea.
 - Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
+- Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - No hagas features, refactors o limpieza general si no están en el alcance.
 - No redisenes arquitectura sin aprobacion explicita.
 - No anadas dependencias sin justificarlo y sin aprobacion.

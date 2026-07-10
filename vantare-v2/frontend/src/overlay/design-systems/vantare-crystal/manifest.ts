@@ -5,7 +5,9 @@ import type {
   WidgetRendererProps,
 } from "../../core/design-system-definition";
 import { DeltaCrystal } from "./delta/DeltaCrystal";
+import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
+import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 
 const deltaAppearanceControls = [
   {
@@ -95,6 +97,99 @@ const standingsRegistration = {
   Renderer: StandingsCrystal as ComponentType<WidgetRendererProps>,
 };
 
+const relativeAppearanceControls = [
+  {
+    kind: "toggle" as const,
+    id: "show-header",
+    labelKey: "overlay.inspector.relative.showHeader",
+    path: "showHeader",
+    defaultValue: true,
+  },
+  {
+    kind: "color" as const,
+    id: "accent-color",
+    labelKey: "overlay.inspector.relative.accentColor",
+    path: "accentColor",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.accentColor,
+  },
+  {
+    kind: "color" as const,
+    id: "gap-ahead-color",
+    labelKey: "overlay.inspector.relative.gapAheadColor",
+    path: "gapAheadColor",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.gapAheadColor,
+  },
+  {
+    kind: "color" as const,
+    id: "gap-behind-color",
+    labelKey: "overlay.inspector.relative.gapBehindColor",
+    path: "gapBehindColor",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.gapBehindColor,
+  },
+  {
+    kind: "color" as const,
+    id: "class-hypercar-color",
+    labelKey: "overlay.inspector.relative.classHypercarColor",
+    path: "classHypercarColor",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.classHypercarColor,
+  },
+  {
+    kind: "color" as const,
+    id: "class-lmp2-color",
+    labelKey: "overlay.inspector.relative.classLmp2Color",
+    path: "classLmp2Color",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.classLmp2Color,
+  },
+  {
+    kind: "color" as const,
+    id: "class-lmp3-color",
+    labelKey: "overlay.inspector.relative.classLmp3Color",
+    path: "classLmp3Color",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.classLmp3Color,
+  },
+  {
+    kind: "color" as const,
+    id: "class-gt3-color",
+    labelKey: "overlay.inspector.relative.classGt3Color",
+    path: "classGt3Color",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.classGt3Color,
+  },
+  {
+    kind: "color" as const,
+    id: "class-unknown-color",
+    labelKey: "overlay.inspector.relative.classUnknownColor",
+    path: "classUnknownColor",
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE.classUnknownColor,
+  },
+];
+
+validateInspectorControls(relativeAppearanceControls);
+
+const relativeRegistration = {
+  widgetType: "relative" as const,
+  configVersion: 1,
+  defaultSettings: { ...RELATIVE_DEFAULT_APPEARANCE },
+  configMigrations: {
+    0: (settings: Record<string, unknown>) => ({
+      ...RELATIVE_DEFAULT_APPEARANCE,
+      ...settings,
+    }),
+  },
+  parseSettings(input: unknown): Record<string, unknown> {
+    if (input == null || typeof input !== "object" || Array.isArray(input)) {
+      return { ...RELATIVE_DEFAULT_APPEARANCE };
+    }
+    return {
+      ...RELATIVE_DEFAULT_APPEARANCE,
+      ...(input as Record<string, unknown>),
+    };
+  },
+  inspector: {
+    appearance: relativeAppearanceControls,
+  },
+  Renderer: RelativeCrystal as ComponentType<WidgetRendererProps>,
+};
+
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
   version: 1,
@@ -102,5 +197,5 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
   systemMigrations: {
     0: (_widgetType, settings) => ({ ...settings }),
   },
-  widgets: [deltaRegistration, standingsRegistration],
+  widgets: [deltaRegistration, standingsRegistration, relativeRegistration],
 };

@@ -225,3 +225,121 @@
 [data-widget-system="vantare-original"][data-status="error"] .vo-standings-table {
   opacity: 0.45;
 }
+
+[data-widget-system="vantare-original"].vo-relative,
+[data-widget-system="vantare-original"] .vo-relative {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  color: var(--vo-text);
+  background: linear-gradient(180deg, #3a050a 0%, #0d0102 100%);
+  border: 1px solid var(--vo-border);
+  border-radius: 8px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem 0.35rem;
+  background: linear-gradient(180deg, #9b2226 0%, #3a050a 100%);
+  border-bottom: 2px solid #1a0104;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-brand {
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.2em;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--vo-muted);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-status-message {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.7rem;
+  color: var(--vo-muted);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0.25rem;
+  gap: 0;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 31px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-row-even {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-row:not([data-player="true"]):not(.vo-relative-row-even) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-row[data-player="true"] {
+  background: linear-gradient(90deg, rgba(230, 57, 70, 0.2) 0%, rgba(155, 34, 38, 0.4) 100%);
+  box-shadow: inset 3px 0 0 0 var(--vo-relative-accent, #e63946);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-cell,
+[data-widget-system="vantare-original"] .vo-relative-class-bar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-class-bar {
+  min-height: 100%;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-cell {
+  padding: 0 0.35rem;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-cell[data-metric="gap"] {
+  justify-content: flex-end;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+}
+
+[data-widget-system="vantare-original"] .vo-relative-row[data-tone="ahead"] .vo-relative-cell[data-metric="gap"] {
+  color: var(--vo-relative-gap-ahead, #f87171);
+}
+
+[data-widget-system="vantare-original"] .vo-relative-row[data-tone="behind"] .vo-relative-cell[data-metric="gap"] {
+  color: var(--vo-relative-gap-behind, #4ade80);
+}
+
+[data-widget-system="vantare-original"][data-row-height="fill"] .vo-relative-row {
+  flex: 1 1 0;
+  min-height: 20px;
+}
+
+[data-widget-system="vantare-original"][data-status="missing"] .vo-relative-rows,
+[data-widget-system="vantare-original"][data-status="stale"] .vo-relative-rows,
+[data-widget-system="vantare-original"][data-status="disconnected"] .vo-relative-rows,
+[data-widget-system="vantare-original"][data-status="error"] .vo-relative-rows {
+  opacity: 0.45;
+}

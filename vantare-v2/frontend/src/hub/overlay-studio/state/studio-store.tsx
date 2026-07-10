@@ -55,6 +55,8 @@ type StudioDocumentContextValue = {
   activeSession: SessionLayoutType;
   selectedWidgetId: string | null;
   dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
   saveState: StudioSaveState;
   lastError: string | null;
   visuallyMigratedWidgetIds: readonly string[];
@@ -148,6 +150,8 @@ export function StudioProvider(props: {
 
   const document = history?.present ?? null;
   const dirty = history ? isStudioHistoryDirty(history) : false;
+  const canUndo = (history?.past.length ?? 0) > 0;
+  const canRedo = (history?.future.length ?? 0) > 0;
 
   useEffect(() => {
     if (!recoveryStore || !history || !document || !dirty) {
@@ -252,6 +256,8 @@ export function StudioProvider(props: {
       activeSession,
       selectedWidgetId,
       dirty,
+      canUndo,
+      canRedo,
       saveState,
       lastError: loadError ?? lastError,
       visuallyMigratedWidgetIds,
@@ -270,6 +276,8 @@ export function StudioProvider(props: {
       activeSession,
       selectedWidgetId,
       dirty,
+      canUndo,
+      canRedo,
       saveState,
       loadError,
       lastError,

@@ -435,3 +435,4 @@ body:not(.hub) #root {
 
 @import "./overlay/design-systems/vantare-original/tokens.css";
 @import "./overlay/design-systems/vantare-crystal/tokens.css";
+@import "./hub/overlay-studio/overlay-studio-v3.css";

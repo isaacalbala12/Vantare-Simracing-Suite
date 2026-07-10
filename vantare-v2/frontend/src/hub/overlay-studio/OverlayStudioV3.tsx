@@ -161,7 +161,11 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
             <StudioCanvas />
           </ConnectedStudioTelemetryProvider>
         }
-        inspectorPanel={<InspectorSlot />}
+        inspectorPanel={
+          <ConnectedStudioTelemetryProvider>
+            <InspectorSlot />
+          </ConnectedStudioTelemetryProvider>
+        }
       />
       <DirtyChangesDialog
         open={dirtyDialogOpen}

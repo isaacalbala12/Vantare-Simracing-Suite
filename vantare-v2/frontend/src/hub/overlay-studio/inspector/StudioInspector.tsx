@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
+import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
 import { useStudioDocument } from "../state/studio-store";
+import { ActionsSection } from "./ActionsSection";
+import { AppearanceSection } from "./AppearanceSection";
+import { BehaviorSection } from "./BehaviorSection";
 import { InspectorRail } from "./InspectorRail";
 import { InspectorSectionFrame } from "./InspectorSectionFrame";
 import { InspectorSectionPlaceholder } from "./InspectorSectionPlaceholder";
+import { LayoutSection } from "./LayoutSection";
 import { resolveInspectorSections } from "./inspector-sections";
 
 function resolveInitialSection(
@@ -27,7 +32,10 @@ export function StudioInspector(): React.ReactElement {
     savedDocument,
     dirty,
     dispatch,
+    selectWidget,
+    discardAll,
   } = useStudioDocument();
+  const snapshot = useStudioTelemetrySnapshot();
   const [activeSectionId, setActiveSectionId] = useState<InspectorSectionId | null>(null);
   const previousWidgetIdRef = useRef<string | null>(null);
 
@@ -61,6 +69,66 @@ export function StudioInspector(): React.ReactElement {
   }
 
   const activeSection = sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null;
+
+  const sectionBody = (() => {
+    if (!activeSection || !selectedWidget || !activeLayout) {
+      return null;
+    }
+    if (activeSection.labelKey === "overlay.studio.inspector.sections.unsupported") {
+      return (
+        <div
+          data-testid="studio-inspector-section-design"
+          data-widget-id={selectedWidget.id}
+          className="osv3-inspector-unsupported"
+          role="alert"
+        >
+          Este widget no tiene un renderer compatible con el sistema visual seleccionado.
+        </div>
+      );
+    }
+    switch (activeSection.id) {
+      case "appearance":
+        return (
+          <AppearanceSection widget={selectedWidget} session={activeSession} dispatch={dispatch} />
+        );
+      case "behavior":
+        return (
+          <BehaviorSection
+            widget={selectedWidget}
+            session={activeSession}
+            snapshot={snapshot}
+            dispatch={dispatch}
+          />
+        );
+      case "layout":
+        return savedDocument ? (
+          <LayoutSection
+            widget={selectedWidget}
+            session={activeSession}
+            widgets={activeLayout.widgets}
+            savedDocument={savedDocument}
+            dispatch={dispatch}
+            selectWidget={selectWidget}
+          />
+        ) : null;
+      case "actions":
+        return savedDocument ? (
+          <ActionsSection
+            widget={selectedWidget}
+            session={activeSession}
+            widgets={activeLayout.widgets}
+            savedDocument={savedDocument}
+            dispatch={dispatch}
+            selectWidget={selectWidget}
+            discardAll={discardAll}
+          />
+        ) : null;
+      default:
+        return (
+          <InspectorSectionPlaceholder sectionId={activeSection.id} widgetId={selectedWidget.id} />
+        );
+    }
+  })();
 
   return (
     <div className="osv3-inspector-layout" data-testid="studio-inspector">
@@ -96,7 +164,7 @@ export function StudioInspector(): React.ReactElement {
                 : undefined
             }
           >
-            <InspectorSectionPlaceholder sectionId={activeSection.id} widgetId={selectedWidget.id} />
+            {sectionBody}
           </InspectorSectionFrame>
         ) : null}
       </div>

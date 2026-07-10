@@ -30,4 +30,10 @@ describe("widgetTypeRegistry", () => {
       aspectLocked: true,
     });
   });
+
+  it("exposes a view model builder for every registered widget", () => {
+    for (const definition of widgetTypeRegistry.list()) {
+      expect(typeof definition.buildViewModel).toBe("function");
+    }
+  });
 });

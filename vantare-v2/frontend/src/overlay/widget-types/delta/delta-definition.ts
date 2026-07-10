@@ -1,5 +1,7 @@
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
+import { buildDeltaViewModel } from "./delta-view-model";
+import type { DeltaViewModel } from "./delta-view-model";
 
 export type DeltaContent = Record<string, never>;
 
@@ -12,7 +14,7 @@ const DELTA_DEFAULT_LAYOUT = {
   aspectLocked: true,
 } as const;
 
-export const deltaDefinition: WidgetTypeDefinition<DeltaContent> = {
+export const deltaDefinition: WidgetTypeDefinition<DeltaContent, DeltaViewModel> = {
   type: "delta",
   labelKey: "overlay.widgets.delta",
   capabilities: {
@@ -50,4 +52,5 @@ export const deltaDefinition: WidgetTypeDefinition<DeltaContent> = {
     }
     return {};
   },
+  buildViewModel: buildDeltaViewModel,
 };

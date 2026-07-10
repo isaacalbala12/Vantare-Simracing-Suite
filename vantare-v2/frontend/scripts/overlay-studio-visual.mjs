@@ -292,6 +292,57 @@ async function assertStudioDragAndResize(page, baseUrl) {
   }
 }
 
+async function assertStudioZoomViewport(page, baseUrl) {
+  const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=1600`;
+  await page.goto(url, { waitUntil: "networkidle" });
+  await waitForStudioShell(page);
+
+  for (let index = 0; index < 5; index += 1) {
+    await page.locator("[data-testid='studio-zoom-plus']").click();
+  }
+
+  const zoomLabel = await page.locator("[data-testid='studio-zoom-label']").textContent();
+  if (zoomLabel !== "150%") {
+    throw new Error(`studio zoom: expected 150%, got ${zoomLabel ?? "null"}`);
+  }
+
+  const viewport = await page.evaluate(() => {
+    const stage = document.querySelector(".osv3-canvas-stage");
+    const scene = document.querySelector(".osv3-canvas-scene-stage");
+    if (!stage || !scene) {
+      return { ok: false, reason: "missing zoom viewport nodes" };
+    }
+    const stageRect = stage.getBoundingClientRect();
+    const sceneRect = scene.getBoundingClientRect();
+    return {
+      ok: stage.scrollWidth > stage.clientWidth
+        && stage.scrollHeight > stage.clientHeight
+        && sceneRect.left >= stageRect.left
+        && sceneRect.top >= stageRect.top,
+      reason: `scroll ${stage.scrollWidth}x${stage.scrollHeight} / ${stage.clientWidth}x${stage.clientHeight}; scene ${sceneRect.left},${sceneRect.top}; stage ${stageRect.left},${stageRect.top}`,
+    };
+  });
+  if (!viewport.ok) {
+    throw new Error(`studio zoom: inaccessible enlarged scene (${viewport.reason})`);
+  }
+
+  const frame = page.locator("[data-testid='studio-widget-frame-delta-main']");
+  const before = await frame.evaluate((element) => element.style.left);
+  const box = await frame.boundingBox();
+  if (!box) {
+    throw new Error("studio zoom: widget frame has no bounding box");
+  }
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 72, box.y + box.height / 2 + 36, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await frame.evaluate((element) => element.style.left);
+  if (!after || after === before) {
+    throw new Error("studio zoom: move did not commit at 150%");
+  }
+}
+
 async function startHarnessServer() {
   const { createServer } = await import("vite");
   const server = await createServer({
@@ -347,6 +398,8 @@ async function main() {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await assertStudioDragAndResize(page, baseUrl);
       console.log("ok studio-wide interactions");
+      await assertStudioZoomViewport(page, baseUrl);
+      console.log("ok studio zoom 150 viewport");
     }
   } finally {
     if (browser) {

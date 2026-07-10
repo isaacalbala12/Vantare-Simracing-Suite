@@ -43,7 +43,7 @@ export type StudioPreviewState = {
   source: "mock" | "live";
   mockSession: MockSessionScenario;
   mockLocation: MockLocationScenario;
-  zoom: "fit" | 50 | 75 | 100 | 125;
+  zoom: "fit" | 50 | 75 | 100 | 125 | 150;
   backgroundId: string;
   safeArea: boolean;
 };

@@ -88,6 +88,7 @@ export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactEle
       className="osv3-widget-context-menu"
       style={{ left: `${props.menu.x}px`, top: `${props.menu.y}px` }}
       role="menu"
+      onPointerDown={(event) => event.stopPropagation()}
     >
       {MENU_ACTIONS.map((item) => (
         <button

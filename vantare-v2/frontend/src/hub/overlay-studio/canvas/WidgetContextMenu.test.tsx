@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
@@ -96,5 +97,45 @@ describe("WidgetContextMenu", () => {
     expect(screen.getByTestId("studio-context-layer-submenu")).toBeTruthy();
     fireEvent.click(screen.getByTestId("studio-context-layer-delta-back"));
     expect(selectWidget).toHaveBeenCalledWith("delta-back");
+  });
+
+  it("selects a layer without letting the canvas pointer-down close the menu first", () => {
+    const back = deltaDefinition.createDefault("delta-back");
+    const front = deltaDefinition.createDefault("delta-front");
+
+    function MenuHarness(): React.ReactElement {
+      const [open, setOpen] = useState(true);
+      const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+      return (
+        <div onPointerDown={() => setOpen(false)}>
+          <output data-testid="selected-widget-id">{selectedWidgetId ?? ""}</output>
+          {open ? (
+            <WidgetContextMenu
+              menu={{
+                x: 120,
+                y: 80,
+                widgetId: "delta-front",
+                layerWidgetIds: ["delta-front", "delta-back"],
+              }}
+              session="general"
+              widgets={[back, front]}
+              savedDocument={buildSaved()}
+              dispatch={vi.fn()}
+              selectWidget={setSelectedWidgetId}
+              confirmDelete={() => true}
+              onClose={() => setOpen(false)}
+            />
+          ) : null}
+        </div>
+      );
+    }
+
+    render(<MenuHarness />);
+
+    const layer = screen.getByTestId("studio-context-layer-delta-back");
+    fireEvent.pointerDown(layer);
+    fireEvent.click(layer);
+
+    expect(screen.getByTestId("selected-widget-id").textContent).toBe("delta-back");
   });
 });

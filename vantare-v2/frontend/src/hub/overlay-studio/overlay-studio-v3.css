@@ -649,8 +649,6 @@
 .osv3-canvas-stage {
   display: flex;
   flex: 1;
-  align-items: center;
-  justify-content: center;
   min-height: 0;
   min-width: 0;
   overflow: auto;
@@ -659,6 +657,7 @@
 .osv3-canvas-scene-stage {
   position: relative;
   flex-shrink: 0;
+  margin: auto;
   overflow: hidden;
 }
 

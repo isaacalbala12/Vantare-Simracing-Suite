@@ -63,6 +63,10 @@ describe("CanvasToolbar", () => {
     fireEvent.click(screen.getByTestId("studio-zoom-plus"));
     expect(screen.getByTestId("studio-zoom-label").textContent).toBe("100%");
 
+    fireEvent.click(screen.getByTestId("studio-zoom-plus"));
+    fireEvent.click(screen.getByTestId("studio-zoom-plus"));
+    expect(screen.getByTestId("studio-zoom-label").textContent).toBe("150%");
+
     fireEvent.change(screen.getByTestId("studio-background-select"), {
       target: { value: "solid-black" },
     });

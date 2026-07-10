@@ -1,7 +1,7 @@
 import type { StudioPreviewState } from "../state/studio-store";
 import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
 
-const ZOOM_STEPS: readonly StudioPreviewState["zoom"][] = ["fit", 50, 75, 100, 125];
+const ZOOM_STEPS: readonly StudioPreviewState["zoom"][] = ["fit", 50, 75, 100, 125, 150];
 
 function nextZoom(current: StudioPreviewState["zoom"], direction: -1 | 1): StudioPreviewState["zoom"] {
   const index = ZOOM_STEPS.indexOf(current);

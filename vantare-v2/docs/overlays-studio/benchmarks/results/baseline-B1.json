@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-07-10T17:09:25.793Z",
+  "variant": "B1",
+  "harnessUrl": "http://127.0.0.1:5177/overlay-studio-v3-harness.html?viewport=1600",
+  "traces": [
+    {
+      "trace": "move-slow",
+      "kind": "move",
+      "metrics": {
+        "pointerLagMs_p50": 26.900000002235174,
+        "pointerLagMs_p95": 37.600000001490116,
+        "maxPointerLagMs": 37.600000001490116,
+        "avgFrameTimeMs": 16.43518518515759,
+        "p95FrameTimeMs": 16.720000000000027,
+        "droppedFramesPct": 0,
+        "jitterPx": 5.752182195094408,
+        "longTaskCount": 0,
+        "pointerMoveCount": 10,
+        "frameSampleCount": 54
+      },
+      "gates": {
+        "ok": true,
+        "failures": []
+      }
+    },
+    {
+      "trace": "move-fast",
+      "kind": "move",
+      "metrics": {
+        "pointerLagMs_p50": 24,
+        "pointerLagMs_p95": 41.80000000074506,
+        "maxPointerLagMs": 41.80000000074506,
+        "avgFrameTimeMs": 16.440983606545164,
+        "p95FrameTimeMs": 16.799999999999955,
+        "droppedFramesPct": 0,
+        "jitterPx": 7.821513056172132,
+        "longTaskCount": 0,
+        "pointerMoveCount": 19,
+        "frameSampleCount": 61
+      },
+      "gates": {
+        "ok": true,
+        "failures": []
+      }
+    },
+    {
+      "trace": "resize-se",
+      "kind": "resize",
+      "metrics": {
+        "pointerLagMs_p50": 23.699999999254942,
+        "pointerLagMs_p95": 43,
+        "maxPointerLagMs": 43,
+        "avgFrameTimeMs": 16.371052631598552,
+        "p95FrameTimeMs": 16.799999999999955,
+        "droppedFramesPct": 0,
+        "jitterPx": 7.921292507951643,
+        "longTaskCount": 0,
+        "pointerMoveCount": 8,
+        "frameSampleCount": 38
+      },
+      "gates": {
+        "ok": true,
+        "failures": []
+      }
+    }
+  ],
+  "aggregate": {
+    "pointerLagMs_p50": 24.866666667163372,
+    "pointerLagMs_p95": 40.80000000074506,
+    "maxPointerLagMs": 40.80000000074506,
+    "avgFrameTimeMs": 16.41574047443377,
+    "p95FrameTimeMs": 16.773333333333312,
+    "droppedFramesPct": 0,
+    "jitterPx": 7.164995919739394,
+    "longTaskCount": 0,
+    "compositeScore": -19.510728235142068
+  },
+  "compositeScore": -19.510728235142068
+}

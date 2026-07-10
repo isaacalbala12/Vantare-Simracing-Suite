@@ -9,7 +9,8 @@ Objetivo: evitar regresiones conocidas (especialmente en el canvas) y dejar deci
 | Documento | Para qué sirve |
 |-----------|----------------|
 | [canvas-drag-imperative-preview.md](./canvas-drag-imperative-preview.md) | **Leer primero** si tocas drag/resize. Síntoma, causa, solución obligatoria y anti-patrones. |
-| [arrastre-y-resize.md](./arrastre-y-resize.md) | Exploración de fluidez, alternativas (A/B/C), benchmark futuro y verificación manual. |
+| [arrastre-y-resize.md](./arrastre-y-resize.md) | Exploración de fluidez, alternativas (A/B/C), benchmark y verificación manual. |
+| [benchmarks/](./benchmarks/) | Trazas JSON, config, baseline B1 y resultados del harness Playwright. |
 
 ## Regla rápida (canvas)
 
@@ -42,7 +43,20 @@ Abrir `http://127.0.0.1:5176/overlay-studio-v3-harness.html` y arrastrar rápido
 
 ```bash
 pnpm --dir frontend test -- src/hub/overlay-studio/canvas/useCanvasInteraction
+pnpm --dir frontend test -- scripts/overlay-studio-drag-bench-metrics
 ```
+
+## Benchmark de fluidez (Playwright)
+
+```bash
+# Comparar con baseline B1 (falla si hay regresión de score o gates)
+pnpm --dir frontend bench:overlay-studio-drag
+
+# Fijar baseline tras un cambio aceptado
+pnpm --dir frontend bench:overlay-studio-drag:baseline
+```
+
+Config y trazas: `benchmarks/arrastre-y-resize.benchmark.json`, `benchmarks/traces/*.json`.
 
 ## Contexto más amplio
 

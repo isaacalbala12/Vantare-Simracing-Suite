@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "variant": "B1",
+  "description": "Benchmark de fluidez drag/resize en Overlay Studio V3 harness",
+  "harness": {
+    "urlPath": "/overlay-studio-v3-harness.html",
+    "query": "viewport=1600",
+    "widgetTestId": "studio-widget-frame-delta-main",
+    "widgetId": "delta-main",
+    "viewport": { "width": 1920, "height": 1080 },
+    "deviceScaleFactor": 1
+  },
+  "scoreWeights": {
+    "pointerLagMs_p95": 2.0,
+    "avgFrameTimeMs": 1.0,
+    "droppedFramesPct": 5.0,
+    "longTaskCount": 10.0,
+    "jitterPx": 3.0
+  },
+  "gates": {
+    "pointerLagMs_p95Max": 32,
+    "maxPointerLagMsMax": 50,
+    "avgFrameTimeMsMax": 20,
+    "droppedFramesPctMax": 5,
+    "longTaskCountMax": 3,
+    "jitterPxMax": 12,
+    "requireFunctionalGates": true
+  },
+  "traceGates": {
+    "move": {
+      "pointerLagMs_p95Max": 55,
+      "maxPointerLagMsMax": 72,
+      "avgFrameTimeMsMax": 24,
+      "droppedFramesPctMax": 0,
+      "longTaskCountMax": 3,
+      "jitterPxMax": 20
+    },
+    "resize": {
+      "pointerLagMs_p95Max": 52,
+      "maxPointerLagMsMax": 80,
+      "avgFrameTimeMsMax": 28,
+      "droppedFramesPctMax": 0,
+      "longTaskCountMax": 3,
+      "jitterPxMax": 24
+    }
+  },
+  "regression": {
+    "scoreDropTolerance": 8,
+    "compareMetric": "compositeScore"
+  },
+  "traces": ["move-slow", "move-fast", "resize-se"]
+}

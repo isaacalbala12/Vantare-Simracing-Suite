@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "visual:overlay-studio": "node scripts/overlay-studio-visual.mjs",
-    "visual:overlay-studio:update": "node scripts/overlay-studio-visual.mjs --update"
+    "visual:overlay-studio:update": "node scripts/overlay-studio-visual.mjs --update",
+    "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
+    "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

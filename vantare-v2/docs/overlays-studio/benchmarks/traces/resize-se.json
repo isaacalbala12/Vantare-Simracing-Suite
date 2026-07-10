@@ -1,0 +1,19 @@
+{
+  "name": "resize-se",
+  "kind": "resize",
+  "handle": "se",
+  "description": "Resize desde el handle sur-este con movimiento moderado",
+  "steps": [
+    { "type": "select" },
+    { "type": "pointerdown", "delayMs": 0, "target": "handle" },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointermove", "delayMs": 16, "dx": 8, "dy": 4 },
+    { "type": "pointerup", "delayMs": 32 }
+  ]
+}

@@ -17,7 +17,7 @@ Fuera de alcance: apariencia del widget (`WidgetStudio`), persistencia, recovery
 | Teleport / rastro con ratón rápido | ✅ Corregido con preview imperativa |
 | Fluidez percibida move | ~8.5–9/10 (estimado; sin benchmark automatizado aún) |
 | Fluidez resize | ~8/10 (sigue recalculando escala intrínseca) |
-| Benchmark autoiterable (§4) | Pendiente |
+| Benchmark autoiterable (§4) | ✅ Harness mínimo + baseline B1 |
 
 ---
 
@@ -163,14 +163,31 @@ Objetivo: que un agente pueda comparar variantes (A1, B3, …) con métricas obj
 - Sin teleport en primer `pointermove` rápido.
 - Tests `useCanvasInteraction.test.tsx` en verde.
 
-### 4.2 Ubicación futura del harness
+### 4.2 Harness implementado
 
 ```
 docs/overlays-studio/benchmarks/
-  arrastre-y-resize.benchmark.json
-  traces/move-slow.json, move-fast.json, resize-se.json
-  results/baseline-YYYY-MM-DD.json
+  arrastre-y-resize.benchmark.json    # pesos, gates por traza, regresión
+  traces/move-slow.json
+  traces/move-fast.json
+  traces/resize-se.json
+  results/baseline-B1.json            # referencia variante B1
+  results/run-*.json                  # ejecuciones locales (gitignored)
+
+frontend/scripts/
+  overlay-studio-drag-bench.mjs       # runner Playwright + Vite harness
+  overlay-studio-drag-bench-metrics.mjs
+  overlay-studio-drag-bench-metrics.test.ts
 ```
+
+Comandos:
+
+```bash
+pnpm --dir frontend bench:overlay-studio-drag
+pnpm --dir frontend bench:overlay-studio-drag:baseline
+```
+
+Nota: los umbrales están calibrados para **headless Playwright** (comparación relativa entre variantes en el mismo entorno). Los números absolutos en Wails/desktop pueden diferir.
 
 ### 4.3 Variantes a comparar (backlog)
 
@@ -210,9 +227,10 @@ Score no mejora en 3 iteraciones, o `pointerLagMs_p95 < 8 ms` en traza `move-fas
 
 ## 7. Próximo paso recomendado
 
-1. Implementar harness mínimo §4 + traza `move-fast`.
-2. Fijar baseline con B1 actual.
+1. ~~Implementar harness mínimo §4 + traza `move-fast`.~~ ✅
+2. ~~Fijar baseline con B1 actual.~~ ✅ (`results/baseline-B1.json`)
 3. Evaluar A1 o B3 solo si el benchmark lo justifica.
+4. Opcional: job CI `bench:overlay-studio-drag` en PRs que toquen canvas interaction.
 
 ---
 

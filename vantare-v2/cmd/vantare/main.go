@@ -636,6 +636,13 @@ func main() {
 	wailsApp.RegisterService(application.NewService(presetSvc))
 	presetSvc.RegisterHandlers(wailsApp)
 
+	// Widget design library for Overlay Studio V3
+	designSvc := app.NewWidgetDesignService(cfgDir, emitter)
+	if err := designSvc.Load(); err != nil {
+		log.Printf("warning: could not load widget designs: %v (using empty)", err)
+	}
+	designSvc.RegisterHandlers(wailsApp)
+
 	// Updater service
 	settingsPath := filepath.Join(cfgDir, "updater-settings.json")
 	updaterSvc, err := app.NewUpdaterService(version, settingsPath, emitter)

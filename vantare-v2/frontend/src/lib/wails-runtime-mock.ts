@@ -15,6 +15,37 @@ licenseDebugWarn(
 
 const listeners = new Map<string, Set<(event: unknown) => void>>();
 
+type HarnessWidgetDesign = {
+  id: string;
+  name: string;
+  widgetType: string;
+  systemId: string;
+  systemVersion: number;
+  configVersion: number;
+  visual: Record<string, unknown>;
+  content?: Record<string, unknown>;
+  includesContent: boolean;
+  origin: "vantare" | "user";
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+const harnessDesignLibrary: HarnessWidgetDesign[] = [];
+
+function createHarnessDesignId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `harness-design-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function readHarnessPayload(data: unknown): Record<string, unknown> {
+  if (data && typeof data === "object") {
+    return data as Record<string, unknown>;
+  }
+  return {};
+}
+
 function broadcast(name: string, data: unknown) {
 
   setTimeout(() => {
@@ -137,6 +168,88 @@ export const Events = {
           }),
         50,
       );
+      return;
+    }
+
+    // In-memory widget design library for Overlay Studio V3 harness
+    if (name === "design:list") {
+      const payload = readHarnessPayload(data);
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+      const widgetType = typeof payload.widgetType === "string" ? payload.widgetType : "";
+      const designs =
+        widgetType === ""
+          ? [...harnessDesignLibrary]
+          : harnessDesignLibrary.filter((design) => design.widgetType === widgetType);
+      setTimeout(() => {
+        broadcast("design:list:response", { requestId, designs });
+      }, 0);
+      return;
+    }
+
+    if (name === "design:save") {
+      const payload = readHarnessPayload(data);
+      const rawDesign = payload.design;
+      if (!rawDesign || typeof rawDesign !== "object") {
+        setTimeout(() => {
+          broadcast("design:error", { operation: "save", message: "missing design payload" });
+        }, 0);
+        return;
+      }
+      const incoming = rawDesign as HarnessWidgetDesign;
+      const now = new Date().toISOString();
+      const id = incoming.id?.trim() ? incoming.id : createHarnessDesignId();
+      const existingIndex = harnessDesignLibrary.findIndex((design) => design.id === id);
+      const saved: HarnessWidgetDesign = {
+        ...incoming,
+        id,
+        origin: "user",
+        createdAt: existingIndex >= 0 ? harnessDesignLibrary[existingIndex]?.createdAt ?? now : now,
+        updatedAt: now,
+      };
+      if (existingIndex >= 0) {
+        harnessDesignLibrary[existingIndex] = saved;
+      } else {
+        harnessDesignLibrary.push(saved);
+      }
+      setTimeout(() => {
+        broadcast("design:saved", { design: saved });
+      }, 0);
+      return;
+    }
+
+    if (name === "design:delete") {
+      const payload = readHarnessPayload(data);
+      const id = typeof payload.id === "string" ? payload.id : "";
+      const index = harnessDesignLibrary.findIndex((design) => design.id === id);
+      if (index < 0) {
+        setTimeout(() => {
+          broadcast("design:error", { operation: "delete", message: `design not found: ${id}` });
+        }, 0);
+        return;
+      }
+      harnessDesignLibrary.splice(index, 1);
+      setTimeout(() => {
+        broadcast("design:deleted", { id });
+      }, 0);
+      return;
+    }
+
+    if (name === "design:rename") {
+      const payload = readHarnessPayload(data);
+      const id = typeof payload.id === "string" ? payload.id : "";
+      const nextName = typeof payload.name === "string" ? payload.name.trim() : "";
+      const design = harnessDesignLibrary.find((entry) => entry.id === id);
+      if (!design || nextName === "") {
+        setTimeout(() => {
+          broadcast("design:error", { operation: "rename", message: "invalid rename payload" });
+        }, 0);
+        return;
+      }
+      design.name = nextName;
+      design.updatedAt = new Date().toISOString();
+      setTimeout(() => {
+        broadcast("design:renamed", { id, name: nextName });
+      }, 0);
       return;
     }
 

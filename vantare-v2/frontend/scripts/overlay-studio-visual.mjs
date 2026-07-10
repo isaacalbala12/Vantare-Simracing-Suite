@@ -6,7 +6,7 @@
  *   node scripts/overlay-studio-visual.mjs --update
  */
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -154,6 +154,7 @@ async function main() {
         throw new Error(`${fixture.name}: ${comparison.reason}`);
       }
       console.log(`ok ${fixture.name} (${((comparison.ratio ?? 0) * 100).toFixed(3)}% delta)`);
+      unlinkSync(currentPath);
     }
   } finally {
     if (browser) {

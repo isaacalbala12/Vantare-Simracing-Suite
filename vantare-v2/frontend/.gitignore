@@ -29,3 +29,6 @@ smoke-session.json
 *.njsproj
 *.sln
 *.sw?
+
+# Overlay Studio visual harness scratch captures
+testdata/overlay-studio-visual/*.current.png

@@ -1,3 +1,4 @@
+import type { FeatureId } from "../../lib/access-policy";
 import type { CoreWidgetType, DesignSystemId, WidgetInstanceV3 } from "./profile-document";
 
 export type WidgetDesignV1 = {
@@ -15,6 +16,10 @@ export type WidgetDesignV1 = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+export function resolveDesignRequiredFeature(design: WidgetDesignV1): FeatureId | undefined {
+  return design.requiredFeature;
+}
 
 export class WidgetDesignValidationError extends Error {
   readonly path: string;

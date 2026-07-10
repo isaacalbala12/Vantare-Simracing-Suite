@@ -1,9 +1,26 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { AccessContext } from "../../../lib/access-policy";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
-import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
+import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { StudioProfileClient } from "./studio-profile-client";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "./studio-store";
+
+const freeAccess: AccessContext = {
+  planLabel: "free",
+  planStatus: "active",
+  roles: [],
+  isBlocked: false,
+  isUnconfigured: false,
+};
+
+function buildRelativeWidget(id = "relative-main"): WidgetInstanceV3 {
+  return {
+    ...deltaDefinition.createDefault(id),
+    id,
+    type: "relative",
+  };
+}
 
 function buildDocument(visualOverrides: Partial<ProfileDocumentV3["layouts"]["general"]["widgets"][0]["visual"]> = {}): ProfileDocumentV3 {
   const widget = deltaDefinition.createDefault("delta-main");
@@ -73,7 +90,7 @@ function createMemoryStorage(): Storage {
 
 function wrapper(
   client: StudioProfileClient,
-  options?: { recoveryStorage?: Storage; recoveryWriteDelayMs?: number },
+  options?: { recoveryStorage?: Storage; recoveryWriteDelayMs?: number; access?: AccessContext },
 ) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return (
@@ -82,6 +99,7 @@ function wrapper(
         initialFile="profiles/test.json"
         recoveryStorage={options?.recoveryStorage ?? null}
         recoveryWriteDelayMs={options?.recoveryWriteDelayMs ?? 300}
+        access={options?.access}
       >
         {children}
       </StudioProvider>
@@ -300,5 +318,51 @@ describe("StudioProvider", () => {
     expect(previewHook.result.current.preview.source).toBe("live");
     expect(documentHook.result.current.dirty).toBe(false);
     expect(documentHook.result.current.document?.layouts.general.widgets[0].layout.x).toBe(64);
+  });
+
+  it("blocks dispatch mutations for premium widgets on free access", async () => {
+    const document = buildDocument();
+    document.layouts.general.widgets.push(buildRelativeWidget());
+    const client = createMockClient(document);
+    const { result } = renderHook(() => useStudioDocument(), {
+      wrapper: wrapper(client, { access: freeAccess }),
+    });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["relative-main"],
+        patch: { x: 400 },
+      });
+    });
+
+    expect(result.current.document?.layouts.general.widgets[1]?.layout.x).toBe(64);
+    expect(result.current.lastError).toContain("acceso");
+  });
+
+  it("rejects save when a premium widget changed under free access", async () => {
+    const savedDocument = buildDocument();
+    savedDocument.layouts.general.widgets.push(buildRelativeWidget());
+    const client = createMockClient(savedDocument);
+    const { result } = renderHook(() => useStudioDocument(), {
+      wrapper: wrapper(client, { access: freeAccess }),
+    });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    const tampered = structuredClone(result.current.document!);
+    tampered.layouts.general.widgets[0]!.layout.x = 180;
+    tampered.layouts.general.widgets[1]!.layout.x = 500;
+    act(() => {
+      result.current.acceptRecovery(tampered);
+    });
+
+    await act(async () => {
+      const saveResult = await result.current.save();
+      expect(saveResult.status).toBe("error");
+    });
+    expect(result.current.saveState).toBe("error");
+    expect(client.save).not.toHaveBeenCalled();
   });
 });

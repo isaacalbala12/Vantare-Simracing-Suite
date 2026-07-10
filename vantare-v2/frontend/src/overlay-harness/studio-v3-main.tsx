@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { LicenseProvider } from "../lib/license";
 import "../index.css";
 import { OverlayStudioV3HarnessPage } from "./OverlayStudioV3Harness";
 
@@ -8,6 +9,8 @@ document.body.classList.add("osv3-harness");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <OverlayStudioV3HarnessPage search={window.location.search} />
+    <LicenseProvider>
+      <OverlayStudioV3HarnessPage search={window.location.search} />
+    </LicenseProvider>
   </StrictMode>,
 );

@@ -1,6 +1,7 @@
 import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
+import { getWidgetRequiredFeature } from "../../core/widget-definition";
 import { buildDeltaViewModel } from "./delta-view-model";
 import type { DeltaViewModel } from "./delta-view-model";
 
@@ -29,6 +30,7 @@ export const deltaDefinition: WidgetTypeDefinition<DeltaContent, DeltaViewModel>
     supportsAspectUnlock: false,
     minimumSize: { width: 120, height: 48 },
     defaultSize: { width: 280, height: 96 },
+    requiredFeature: getWidgetRequiredFeature("delta"),
   },
   inspector: deltaInspector,
   createDefault(id: string): WidgetInstanceV3 {

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { OverlayStudioV3 } from "../hub/overlay-studio/OverlayStudioV3";
-import { StudioProvider } from "../hub/overlay-studio/state/studio-store";
+import { ConnectedStudioProvider } from "../hub/overlay-studio/state/studio-store";
 import { createInMemoryStudioProfileClient } from "./studio-profile-fixture";
 
 const HARNESS_PROFILE_FILE = "profiles/harness.json";
@@ -20,7 +20,7 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
   const viewportWidth = parseViewportWidth(search);
 
   return (
-    <StudioProvider
+    <ConnectedStudioProvider
       client={client}
       initialFile={HARNESS_PROFILE_FILE}
       recoveryStorage={typeof window !== "undefined" ? window.sessionStorage : null}
@@ -37,6 +37,6 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
         onOpenCommunity={() => undefined}
         onOpenObs={() => undefined}
       />
-    </StudioProvider>
+    </ConnectedStudioProvider>
   );
 }

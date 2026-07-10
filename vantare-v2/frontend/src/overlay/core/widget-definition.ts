@@ -1,6 +1,18 @@
+import type { FeatureId } from "../../lib/access-policy";
 import type { InspectorCapability } from "./inspector-control";
 import type { CoreWidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
+
+export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Record<CoreWidgetType, FeatureId> = {
+  delta: "overlays.basic",
+  standings: "overlays.basic",
+  pedals: "overlays.basic",
+  relative: "overlays.advanced",
+};
+
+export function getWidgetRequiredFeature(type: CoreWidgetType): FeatureId {
+  return WIDGET_REQUIRED_FEATURE_BY_TYPE[type];
+}
 
 export type InspectorSectionId =
   | "design"
@@ -23,6 +35,7 @@ export type WidgetCapabilities = {
   supportsAspectUnlock: boolean;
   minimumSize: { width: number; height: number };
   defaultSize: { width: number; height: number };
+  requiredFeature: FeatureId;
 };
 
 export type WidgetInspectorCapability = Pick<

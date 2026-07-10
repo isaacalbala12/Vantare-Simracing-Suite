@@ -7,12 +7,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAccess } from "../../../lib/access";
+import type { AccessContext } from "../../../lib/access-policy";
+import { DEFAULT_STUDIO_ACCESS } from "../access/studio-access";
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
   SessionLayoutV3,
 } from "../../../overlay/core/profile-document";
 import type { MockLocationScenario, MockSessionScenario } from "../../../overlay/core/mock-scenarios";
+import {
+  assertCommandAccess,
+  StudioAccessError,
+  validateDraftAccess,
+} from "../access/studio-access";
 import { upgradeProfileVisualConfigs } from "../../../overlay/core/visual-config-migration";
 import {
   commitStudioCommand,
@@ -101,8 +109,17 @@ export function StudioProvider(props: {
   children: ReactNode;
   recoveryStorage?: Storage | null;
   recoveryWriteDelayMs?: number;
+  access?: AccessContext;
 }): React.ReactElement {
-  const { client, initialFile, children, recoveryStorage = null, recoveryWriteDelayMs = 300 } = props;
+  const {
+    client,
+    initialFile,
+    children,
+    recoveryStorage = null,
+    recoveryWriteDelayMs = 300,
+    access: accessOverride,
+  } = props;
+  const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
   const [history, setHistory] = useState<StudioHistory | null>(null);
   const [revision, setRevision] = useState<string>("");
   const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
@@ -178,10 +195,31 @@ export function StudioProvider(props: {
     return resolveSessionLayout(document, activeSession);
   }, [document, activeSession]);
 
-  const dispatch = useCallback((command: StudioCommand) => {
-    setHistory((current) => (current ? commitStudioCommand(current, command) : current));
-    setSaveState("idle");
-  }, []);
+  const dispatch = useCallback(
+    (command: StudioCommand) => {
+      setHistory((current) => {
+        if (!current?.present) {
+          return current;
+        }
+        try {
+          assertCommandAccess(access, command, current.present);
+        } catch (error) {
+          const message =
+            error instanceof StudioAccessError
+              ? error.message
+              : error instanceof Error
+                ? error.message
+                : "studio access denied";
+          setLastError(message);
+          return current;
+        }
+        setLastError(null);
+        return commitStudioCommand(current, command);
+      });
+      setSaveState("idle");
+    },
+    [access],
+  );
 
   const undo = useCallback(() => {
     setHistory((current) => (current ? undoStudioHistory(current) : current));
@@ -219,8 +257,14 @@ export function StudioProvider(props: {
   );
 
   const save = useCallback(async (): Promise<StudioSaveResult> => {
-    if (!history || !document) {
+    if (!history || !document || !history.saved) {
       return { status: "error", message: "studio profile is not loaded" };
+    }
+    const draftValidation = validateDraftAccess(access, history.saved, document);
+    if (!draftValidation.allowed) {
+      setSaveState("error");
+      setLastError(draftValidation.reason);
+      return { status: "error", message: draftValidation.reason };
     }
     setSaveState("saving");
     setLastError(null);
@@ -245,7 +289,7 @@ export function StudioProvider(props: {
     setSaveState("error");
     setLastError(result.message);
     return result;
-  }, [client, document, history, recoveryStore, revision]);
+  }, [access, client, document, history, recoveryStore, revision]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
     setPreviewState((current) => ({ ...current, ...patch }));
@@ -326,4 +370,15 @@ export function useStudioPreview(): StudioPreviewContextValue {
     throw new Error("useStudioPreview must be used inside StudioProvider");
   }
   return context;
+}
+
+export function ConnectedStudioProvider(props: {
+  client: StudioProfileClient;
+  initialFile: string;
+  children: ReactNode;
+  recoveryStorage?: Storage | null;
+  recoveryWriteDelayMs?: number;
+}): React.ReactElement {
+  const access = useAccess();
+  return <StudioProvider {...props} access={access} />;
 }

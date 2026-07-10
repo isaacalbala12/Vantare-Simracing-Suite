@@ -51,14 +51,21 @@
     {
       "id": "payments-research",
       "category": "payments",
-      "label": { "es": "Pagos — Investigación", "en": "Payments — Research", "pt": "Pagamentos — Pesquisa", "it": "Pagamenti — Ricerca" },
-      "description": { "es": "Revisión completa del sistema de pagos.", "en": "Complete review of the payment system.", "pt": "Revisão completa do sistema de pagamentos.", "it": "Revisione completa del sistema di pagamenti." },
+      "label": { "es": "Pagos", "en": "Payments", "pt": "Pagamentos", "it": "Pagamenti" },
+      "description": { "es": "Esperando primer pago", "en": "Awaiting first payment", "pt": "Aguardando primeiro pagamento", "it": "In attesa del primo pagamento" },
       "tipo": "feature",
-      "status": "research",
+      "status": "in-development",
       "subtasks": [
-        { "label": { "es": "Revisión completa", "en": "Complete review", "pt": "Revisão completa", "it": "Revisione completa" } },
-        { "label": { "es": "¿Polar vs Stripe?", "en": "Polar vs Stripe?", "pt": "Polar vs Stripe?", "it": "Polar vs Stripe?" } },
-        { "label": { "es": "Reservar GPT 5.6", "en": "Reserve GPT 5.6", "pt": "Reservar GPT 5.6", "it": "Prenotare GPT 5.6" } }
+        { "label": { "es": "Revisión completa del sistema", "en": "Complete system review", "pt": "Revisão completa do sistema", "it": "Revisione completa del sistema" } },
+        { "label": { "es": "Evaluar Polar vs Stripe", "en": "Evaluate Polar vs Stripe", "pt": "Avaliar Polar vs Stripe", "it": "Valutare Polar vs Stripe" } },
+        { "label": { "es": "Configurar productos", "en": "Configure products", "pt": "Configurar produtos", "it": "Configurare prodotti" } },
+        { "label": { "es": "Webhook de pagos", "en": "Payment webhook", "pt": "Webhook de pagamentos", "it": "Webhook di pagamento" } },
+        { "label": { "es": "Flujo de checkout", "en": "Checkout flow", "pt": "Fluxo de checkout", "it": "Flusso di checkout" } },
+        { "label": { "es": "Gestión de suscripciones", "en": "Subscription management", "pt": "Gestão de assinaturas", "it": "Gestione abbonamenti" } },
+        { "label": { "es": "Tests de integración", "en": "Integration tests", "pt": "Testes de integração", "it": "Test di integrazione" } },
+        { "label": { "es": "Documentación", "en": "Documentation", "pt": "Documentação", "it": "Documentazione" } },
+        { "label": { "es": "Deploy a staging", "en": "Deploy to staging", "pt": "Deploy para staging", "it": "Deploy a staging" } },
+        { "label": { "es": "Smoke test completo", "en": "Full smoke test", "pt": "Smoke test completo", "it": "Smoke test completo" } }
       ]
     },
     {

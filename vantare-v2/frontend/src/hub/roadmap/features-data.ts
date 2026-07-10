@@ -11,7 +11,6 @@
 // Procedimiento y flujo manual: docs/roadmap-maintenance.md.
 
 import {
-  PROGRESS_SCALE,
   pickText,
   type LocalizedText,
 } from "./roadmap-data";
@@ -41,17 +40,11 @@ export type RoadmapFeature = {
   subtasks: RoadmapSubtask[];
 };
 
-/** % derivado del ratio done/total de las subtasks, redondeado a la escala. */
+/** % derivado del ratio done/total de las subtasks. */
 export function featurePercent(f: RoadmapFeature): number {
   if (f.subtasks.length === 0) return 0;
   const done = f.subtasks.filter((s) => s.done).length;
-  return nearestOnScale(Math.round((done / f.subtasks.length) * 100));
-}
-
-function nearestOnScale(value: number): number {
-  return PROGRESS_SCALE.reduce((prev, curr) =>
-    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev,
-  );
+  return Math.round((done / f.subtasks.length) * 100);
 }
 
 export type FeaturesDataset = {
@@ -203,13 +196,20 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
     },
     {
       id: "payments-research", category: "payments",
-      label: { es: "Pagos — Investigación", en: "Payments — Research", pt: "Pagamentos — Pesquisa", it: "Pagamenti — Ricerca" },
-      description: { es: "Revisión completa del sistema de pagos.", en: "Complete review of the payment system.", pt: "Revisão completa do sistema de pagamentos.", it: "Revisione completa del sistema di pagamenti." },
-      tipo: "feature", status: "research",
+      label: { es: "Pagos", en: "Payments", pt: "Pagamentos", it: "Pagamenti" },
+      description: { es: "Esperando primer pago", en: "Awaiting first payment", pt: "Aguardando primeiro pagamento", it: "In attesa del primo pagamento" },
+      tipo: "feature", status: "in-development",
       subtasks: [
-        { label: { es: "Revisión completa", en: "Complete review", pt: "Revisão completa", it: "Revisione completa" }, done: false },
-        { label: { es: "¿Polar vs Stripe?", en: "Polar vs Stripe?", pt: "Polar vs Stripe?", it: "Polar vs Stripe?" }, done: false },
-        { label: { es: "Reservar GPT 5.6", en: "Reserve GPT 5.6", pt: "Reservar GPT 5.6", it: "Prenotare GPT 5.6" }, done: false },
+        { label: { es: "Revisión completa del sistema", en: "Complete system review", pt: "Revisão completa do sistema", it: "Revisione completa del sistema" }, done: true },
+        { label: { es: "Evaluar Polar vs Stripe", en: "Evaluate Polar vs Stripe", pt: "Avaliar Polar vs Stripe", it: "Valutare Polar vs Stripe" }, done: true },
+        { label: { es: "Configurar productos", en: "Configure products", pt: "Configurar produtos", it: "Configurare prodotti" }, done: true },
+        { label: { es: "Webhook de pagos", en: "Payment webhook", pt: "Webhook de pagamentos", it: "Webhook di pagamento" }, done: true },
+        { label: { es: "Flujo de checkout", en: "Checkout flow", pt: "Fluxo de checkout", it: "Flusso di checkout" }, done: true },
+        { label: { es: "Gestión de suscripciones", en: "Subscription management", pt: "Gestão de assinaturas", it: "Gestione abbonamenti" }, done: true },
+        { label: { es: "Tests de integración", en: "Integration tests", pt: "Testes de integração", it: "Test di integrazione" }, done: true },
+        { label: { es: "Documentación", en: "Documentation", pt: "Documentação", it: "Documentazione" }, done: true },
+        { label: { es: "Deploy a staging", en: "Deploy to staging", pt: "Deploy para staging", it: "Deploy a staging" }, done: true },
+        { label: { es: "Smoke test completo", en: "Full smoke test", pt: "Smoke test completo", it: "Smoke test completo" }, done: false },
       ],
     },
     {

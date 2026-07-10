@@ -38,6 +38,7 @@ export type InspectorControl =
 export type CustomInspectorProps = {
   widget: WidgetInstanceV3;
   disabled?: boolean;
+  onContentChange?: (content: Record<string, unknown>) => void;
 };
 
 export type InspectorCapability = {

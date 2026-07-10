@@ -98,7 +98,7 @@ function createTestDesignSystem(widgetTypes: readonly CoreWidgetType[]): DesignS
 describe("deriveStudioCatalog", () => {
   it("returns only registered widget types from the canonical registry", () => {
     const catalog = deriveStudioCatalog();
-    expect(catalog.map((entry) => entry.type)).toEqual(["delta"]);
+    expect(catalog.map((entry) => entry.type)).toEqual(["delta", "standings"]);
     expect(catalog[0]).toMatchObject({
       labelKey: "overlay.widgets.delta",
       defaultSize: { width: 280, height: 96 },

@@ -6,6 +6,7 @@ import { createWailsWidgetDesignClient } from "../designs/widget-design-client";
 import { ActionsSection } from "./ActionsSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { BehaviorSection } from "./BehaviorSection";
+import { ContentSection } from "./ContentSection";
 import { DesignSection } from "./DesignSection";
 import { InspectorRail } from "./InspectorRail";
 import { InspectorSectionFrame } from "./InspectorSectionFrame";
@@ -96,6 +97,8 @@ export function StudioInspector(): React.ReactElement {
         return (
           <AppearanceSection widget={selectedWidget} session={activeSession} dispatch={dispatch} />
         );
+      case "content":
+        return <ContentSection widget={selectedWidget} session={activeSession} dispatch={dispatch} />;
       case "behavior":
         return (
           <BehaviorSection

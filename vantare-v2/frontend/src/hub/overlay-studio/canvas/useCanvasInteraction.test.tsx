@@ -95,6 +95,16 @@ function pointerUp(pointerId = 1): void {
   fireEvent.pointerUp(window, { pointerId, bubbles: true });
 }
 
+function readFrameVisualLeft(frame: HTMLElement): number {
+  const base = Number.parseFloat(frame.style.left || "0");
+  const transform = frame.style.transform;
+  const match = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+  if (!match) {
+    return base;
+  }
+  return base + Number.parseFloat(match[1]);
+}
+
 describe("applyMovePreview", () => {
   it("snaps unless Alt disables snapping", () => {
     const start = { x: 100, y: 100, w: 280, h: 96, zIndex: 0, aspectLocked: true };
@@ -171,9 +181,10 @@ describe("useCanvasInteraction", () => {
     expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("move");
 
     pointerMove(140, 130, 1, { altKey: true });
-    await waitFor(() =>
-      expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px"),
-    );
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(140);
+    });
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
 
@@ -186,14 +197,14 @@ describe("useCanvasInteraction", () => {
     pointerDownFrame();
     pointerMove(120, 110, 1, { altKey: true });
     await waitFor(() => {
-      const left = Number.parseFloat(frame.style.left);
+      const left = readFrameVisualLeft(frame);
       expect(left).toBeGreaterThan(100);
       expect(left).toBeLessThan(130);
     });
 
     pointerMove(160, 140, 1, { altKey: true });
     await waitFor(() => {
-      const left = Number.parseFloat(frame.style.left);
+      const left = readFrameVisualLeft(frame);
       expect(left).toBeGreaterThan(140);
       expect(left).toBeLessThan(180);
     });
@@ -207,17 +218,18 @@ describe("useCanvasInteraction", () => {
 
     pointerDownFrame();
     pointerMove(140, 130, 1, { altKey: true });
-    await waitFor(() =>
-      expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px"),
-    );
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(140);
+    });
 
     mockStore.publish(
       buildMockTelemetry({ session: "practice", location: "pits", state: "ready" }),
     );
 
     await waitFor(() => {
-      const left = Number.parseFloat(screen.getByTestId("studio-widget-frame-delta-main").style.left);
-      expect(left).toBe(140);
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(140);
     });
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
@@ -233,9 +245,8 @@ describe("useCanvasInteraction", () => {
     pointerDownFrame();
     pointerMove(112, 108, 1, { altKey: true });
 
-    await waitFor(() => expect(frame.style.left).not.toBe("100px"));
-    const left = Number.parseFloat(frame.style.left);
-    expect(left).toBeGreaterThan(100);
+    await waitFor(() => expect(readFrameVisualLeft(frame)).toBeGreaterThan(100));
+    const left = readFrameVisualLeft(frame);
     expect(left).toBeLessThan(130);
   });
 
@@ -246,9 +257,10 @@ describe("useCanvasInteraction", () => {
 
     pointerDownFrame();
     pointerMove(140, 130, 1, { altKey: true });
-    await waitFor(() =>
-      expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px"),
-    );
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(140);
+    });
     pointerUp();
 
     await waitFor(() => expect(screen.getByTestId("dirty-flag").textContent).toBe("dirty"));
@@ -277,9 +289,10 @@ describe("useCanvasInteraction", () => {
 
     pointerDownFrame();
     pointerMove(180, 160, 1, { altKey: true });
-    await waitFor(() =>
-      expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("180px"),
-    );
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(180);
+    });
 
     fireEvent.keyDown(window, { key: "Escape" });
 
@@ -296,9 +309,10 @@ describe("useCanvasInteraction", () => {
 
     pointerDownFrame();
     pointerMove(180, 160, 1, { altKey: true });
-    await waitFor(() =>
-      expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("180px"),
-    );
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(180);
+    });
     fireEvent.lostPointerCapture(window, { pointerId: 1, bubbles: true });
 
     await waitFor(() =>

@@ -8,6 +8,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import type { StudioCommand } from "../state/studio-command";
 import {
   applyStudioFrameLayoutPreview,
+  beginStudioFramePreview,
   clearStudioFrameLayoutPreview,
   resetStudioFrameLayoutPreview,
 } from "./canvas-frame-preview";
@@ -397,6 +398,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
+    beginStudioFramePreview(widgetId, "move", start);
     applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({
@@ -444,6 +446,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
+    beginStudioFramePreview(widgetId, "resize", start);
     applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({

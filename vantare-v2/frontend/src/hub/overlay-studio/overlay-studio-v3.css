@@ -783,8 +783,7 @@
 }
 
 .osv3-widget-frame--interacting {
-  will-change: left, top, width, height;
-  transform: translateZ(0);
+  will-change: left, top, width, height, transform;
 }
 
 .osv3-widget-frame__chrome {

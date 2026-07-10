@@ -203,7 +203,12 @@ export function StudioProvider(props: {
           return current;
         }
         try {
-          assertCommandAccess(access, command, current.present);
+          assertCommandAccess(
+            access,
+            command,
+            current.present,
+            command.type === "widget/apply-design" ? command.design : undefined,
+          );
         } catch (error) {
           const message =
             error instanceof StudioAccessError

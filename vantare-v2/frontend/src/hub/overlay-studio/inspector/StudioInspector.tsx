@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
 import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
 import { useStudioDocument } from "../state/studio-store";
+import { createWailsWidgetDesignClient } from "../designs/widget-design-client";
 import { ActionsSection } from "./ActionsSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { BehaviorSection } from "./BehaviorSection";
+import { DesignSection } from "./DesignSection";
 import { InspectorRail } from "./InspectorRail";
 import { InspectorSectionFrame } from "./InspectorSectionFrame";
 import { InspectorSectionPlaceholder } from "./InspectorSectionPlaceholder";
@@ -26,6 +28,7 @@ function resolveInitialSection(
 
 export function StudioInspector(): React.ReactElement {
   const {
+    access,
     activeLayout,
     activeSession,
     selectedWidgetId,
@@ -35,6 +38,7 @@ export function StudioInspector(): React.ReactElement {
     selectWidget,
     discardAll,
   } = useStudioDocument();
+  const designClient = useMemo(() => createWailsWidgetDesignClient(), []);
   const snapshot = useStudioTelemetrySnapshot();
   const [activeSectionId, setActiveSectionId] = useState<InspectorSectionId | null>(null);
   const previousWidgetIdRef = useRef<string | null>(null);
@@ -123,6 +127,17 @@ export function StudioInspector(): React.ReactElement {
             discardAll={discardAll}
           />
         ) : null;
+      case "design":
+        return (
+          <DesignSection
+            widget={selectedWidget}
+            session={activeSession}
+            widgets={activeLayout.widgets}
+            access={access}
+            dispatch={dispatch}
+            designClient={designClient}
+          />
+        );
       default:
         return (
           <InspectorSectionPlaceholder sectionId={activeSection.id} widgetId={selectedWidget.id} />

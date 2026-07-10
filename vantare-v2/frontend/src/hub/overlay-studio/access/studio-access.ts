@@ -170,6 +170,8 @@ export function resolveCommandMutations(command: StudioCommand): StudioMutation[
       return ["content"];
     case "widget/visual":
       return ["visual"];
+    case "widget/apply-design":
+      return command.widgetIds.length > 1 ? ["apply-all"] : ["apply-design"];
     case "widget/reset-section":
       return [resolveResetSectionMutation(command.section)];
     case "widget/restore-defaults":

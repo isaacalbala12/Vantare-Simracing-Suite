@@ -7,6 +7,7 @@ import {
   type WidgetLayoutV3,
   type WidgetVisualV3,
 } from "../../../overlay/core/profile-document";
+import { applyWidgetDesign, type WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { copySessionLayout, materializeSessionLayout, resolveSessionLayout } from "./session-layouts";
 import { normalizeWidgetOrder, reorderWidgets } from "./widget-order";
 
@@ -61,6 +62,13 @@ export type StudioCommand =
       session: SessionLayoutType;
       widgetIds: readonly string[];
       defaults: readonly WidgetInstanceV3[];
+    }
+  | {
+      type: "widget/apply-design";
+      session: SessionLayoutType;
+      widgetIds: readonly string[];
+      design: WidgetDesignV1;
+      appliedAt: string;
     }
   | { type: "session/copy"; source: SessionLayoutType; target: SessionLayoutType };
 
@@ -342,6 +350,22 @@ function applyWidgetRestoreDefaults(
   });
 }
 
+function applyWidgetApplyDesign(
+  document: ProfileDocumentV3,
+  command: Extract<StudioCommand, { type: "widget/apply-design" }>,
+) {
+  return withSessionLayout(document, command.session, (widgets) => {
+    requireKnownWidgetIds(widgets, command.widgetIds, command.type);
+    const targets = new Set(command.widgetIds);
+    return widgets.map((widget) => {
+      if (!targets.has(widget.id)) {
+        return widget;
+      }
+      return applyWidgetDesign(widget, command.design, command.appliedAt);
+    });
+  });
+}
+
 function applySessionCopy(document: ProfileDocumentV3, command: Extract<StudioCommand, { type: "session/copy" }>) {
   return copySessionLayout(structuredClone(document), command.source, command.target);
 }
@@ -378,6 +402,9 @@ export function applyStudioCommand(document: ProfileDocumentV3, command: StudioC
       break;
     case "widget/restore-defaults":
       next = applyWidgetRestoreDefaults(document, command);
+      break;
+    case "widget/apply-design":
+      next = applyWidgetApplyDesign(document, command);
       break;
     case "session/copy":
       next = applySessionCopy(document, command);

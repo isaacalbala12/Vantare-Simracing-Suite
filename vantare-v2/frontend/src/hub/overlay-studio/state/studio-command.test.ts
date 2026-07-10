@@ -279,6 +279,58 @@ describe("applyStudioCommand", () => {
     expect(next.layouts.general.widgets[0]).toEqual(defaults[0]);
   });
 
+  it("applies a design to multiple widgets in one command", () => {
+    const document = buildDocument([
+      widget("delta-1", {
+        visual: {
+          systemId: "vantare-original",
+          systemVersion: 1,
+          configVersion: 1,
+          baseSettings: { showHeader: true },
+          appearanceOverrides: { tint: "#111" },
+        },
+      }),
+      widget("delta-2", {
+        layout: { x: 40, y: 50, w: 280, h: 96, zIndex: 1, aspectLocked: true },
+        visual: {
+          systemId: "vantare-original",
+          systemVersion: 1,
+          configVersion: 1,
+          baseSettings: { showHeader: false },
+          appearanceOverrides: { tint: "#222" },
+        },
+      }),
+    ]);
+
+    const next = applyStudioCommand(document, {
+      type: "widget/apply-design",
+      session: "general",
+      widgetIds: ["delta-1", "delta-2"],
+      appliedAt: "2026-07-10T12:00:00Z",
+      design: {
+        id: "delta-crystal-base",
+        name: "Crystal Base",
+        widgetType: "delta",
+        systemId: "vantare-crystal",
+        systemVersion: 1,
+        configVersion: 1,
+        visual: { showHeader: true, accent: "cyan" },
+        includesContent: false,
+        origin: "vantare",
+      },
+    });
+
+    for (const applied of next.layouts.general.widgets) {
+      expect(applied.visual.systemId).toBe("vantare-crystal");
+      expect(applied.visual.baseSettings).toEqual({ showHeader: true, accent: "cyan" });
+      expect(applied.visual.appearanceOverrides).toEqual({});
+      expect(applied.visual.provenance?.designId).toBe("delta-crystal-base");
+    }
+    expect(next.layouts.general.widgets[0]?.layout).toEqual(document.layouts.general.widgets[0]?.layout);
+    expect(next.layouts.general.widgets[1]?.layout.x).toBe(40);
+    expect(next.layouts.general.widgets[1]?.layout.zIndex).toBe(1);
+  });
+
   it("copies one session layout onto another", () => {
     const document = buildDocument([widget("delta-1", { layout: { x: 12, y: 34, w: 280, h: 96, zIndex: 0, aspectLocked: true } })]);
     const withRace = applyStudioCommand(document, {

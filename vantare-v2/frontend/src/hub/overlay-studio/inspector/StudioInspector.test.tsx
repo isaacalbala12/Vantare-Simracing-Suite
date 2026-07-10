@@ -1,6 +1,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../designs/widget-design-client", () => ({
+  createWailsWidgetDesignClient: () => ({
+    list: vi.fn(async () => []),
+    save: vi.fn(async (design: unknown) => design),
+    delete: vi.fn(async () => undefined),
+    rename: vi.fn(async () => undefined),
+  }),
+}));
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { ConnectedStudioTelemetryProvider } from "../canvas/StudioTelemetryProvider";

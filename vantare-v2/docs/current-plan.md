@@ -12,10 +12,10 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Evidencia Fase 2: `pnpm --dir frontend test` → 179 files / 1642 PASS; `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` x2 PASS (0.000% delta); `rg` design-systems sin imports prohibidos (solo aserciones en tests).
 - **Fase 3 ✅ CERRADA** (commits `41df467`..`dd94e34` + fix build `studio-store`): session layouts, command reducer, widget order, bounded undo/redo, profile client Wails, `StudioProvider` global draft, crash recovery localStorage, dirty-navigation guard y hotkeys.
 - Evidencia Fase 3: `pnpm --dir frontend test -- overlay-studio/state` x2 → 67 PASS; `pnpm --dir frontend test` → 188 files / 1709 PASS; `pnpm --dir frontend build` PASS.
-- **Fase 4 en curso** (shell + geometry + canvas render): `OverlayStudioV3` con `StudioCanvas`/`StudioWidgetFrame`/`CanvasGuides`/`StudioTelemetryProvider`, telemetría mock/live inyectada, widgets Delta vía `WidgetVisualHost` (`renderMode=studio`), escena 1920×1080 con scale fit/zoom. Hub legado sin cablear aún.
-- Evidencia Task 4.2: `canvas-geometry/snap/resize` → 20 PASS (`aed025a`).
-- Evidencia Task 4.3: `StudioTelemetryProvider` + `StudioCanvas` + `StudioWidgetFrame` + `OverlayStudioV3` → 17 PASS; `pnpm --dir frontend build` PASS.
-- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes). Siguiente: **Task 4.4** (drag/resize transaccional).
+- **Fase 4 ✅ CERRADA** (commits `b7bdec0`..`e80c612`): shell V10, geometría pura, canvas con `WidgetVisualHost`, drag/resize transaccional, preview controls, acciones unificadas, paneles responsive, modales dirty/recovery, harness V3 y visual geometry (wide/medium/compact + drag/resize).
+- Evidencia Fase 4: `pnpm --dir frontend test -- src/hub/overlay-studio` → 159 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 15 baselines 0.000% delta + interacciones wide; `pnpm --dir frontend build` PASS.
+- QA manual harness: `pnpm --dir frontend exec vite --config vite.overlay-studio-harness.config.ts --host 127.0.0.1` → `http://127.0.0.1:5176/overlay-studio-v3-harness.html`.
+- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes). Siguiente: **Fase 5** (inspector real, catálogo, diseños, permisos premium) — plan `2026-07-10-overlay-studio-rebuild-05-inspector-catalog-designs.md`.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

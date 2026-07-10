@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { InspectorCapability } from "./inspector-control";
 import type { CoreWidgetType, DesignSystemId } from "./profile-document";
 import type { WidgetViewModelBase } from "./widget-definition";
 
@@ -8,6 +9,11 @@ export type WidgetRendererProps<TModel extends WidgetViewModelBase = WidgetViewM
   renderMode: "studio" | "desktop" | "obs" | "harness";
 };
 
+export type WidgetSystemInspectorCapability = Pick<
+  InspectorCapability,
+  "appearance" | "CustomAppearanceInspector"
+>;
+
 export type WidgetSystemRegistration = {
   widgetType: CoreWidgetType;
   configVersion: number;
@@ -16,6 +22,7 @@ export type WidgetSystemRegistration = {
     Record<number, (settings: Record<string, unknown>) => Record<string, unknown>>
   >;
   parseSettings(input: unknown): Record<string, unknown>;
+  inspector: WidgetSystemInspectorCapability;
   Renderer: ComponentType<WidgetRendererProps>;
 };
 

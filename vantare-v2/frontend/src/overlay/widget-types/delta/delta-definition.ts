@@ -1,3 +1,4 @@
+import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { buildDeltaViewModel } from "./delta-view-model";
@@ -14,6 +15,12 @@ const DELTA_DEFAULT_LAYOUT = {
   aspectLocked: true,
 } as const;
 
+const deltaInspector = {
+  content: [],
+} as const;
+
+validateInspectorControls(deltaInspector.content);
+
 export const deltaDefinition: WidgetTypeDefinition<DeltaContent, DeltaViewModel> = {
   type: "delta",
   labelKey: "overlay.widgets.delta",
@@ -23,6 +30,7 @@ export const deltaDefinition: WidgetTypeDefinition<DeltaContent, DeltaViewModel>
     minimumSize: { width: 120, height: 48 },
     defaultSize: { width: 280, height: 96 },
   },
+  inspector: deltaInspector,
   createDefault(id: string): WidgetInstanceV3 {
     return {
       id,

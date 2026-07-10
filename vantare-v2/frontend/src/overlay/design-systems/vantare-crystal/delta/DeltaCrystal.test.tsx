@@ -116,6 +116,15 @@ describe("DeltaCrystal", () => {
     expect(root.querySelector(".vc-delta-meta")).toBeNull();
   });
 
+  it("consumes the showHeader appearance control path", () => {
+    const hidden = renderCrystal(readyGaining, { showHeader: false });
+    expect(hidden.root.querySelector(".vc-delta-meta")).toBeNull();
+    cleanup();
+
+    const visible = renderCrystal(readyGaining, { showHeader: true });
+    expect(visible.root.querySelector(".vc-delta-meta")).toBeTruthy();
+  });
+
   it("does not render editor controls", () => {
     const { root } = renderCrystal(readyGaining);
     expect(root.querySelector("button")).toBeNull();

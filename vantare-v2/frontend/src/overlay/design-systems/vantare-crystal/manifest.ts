@@ -1,9 +1,22 @@
 import type { ComponentType } from "react";
+import { validateInspectorControls } from "../../core/inspector-control";
 import type {
   DesignSystemDefinition,
   WidgetRendererProps,
 } from "../../core/design-system-definition";
 import { DeltaCrystal } from "./delta/DeltaCrystal";
+
+const deltaAppearanceControls = [
+  {
+    kind: "toggle" as const,
+    id: "show-header",
+    labelKey: "overlay.inspector.delta.showHeader",
+    path: "showHeader",
+    defaultValue: true,
+  },
+];
+
+validateInspectorControls(deltaAppearanceControls);
 
 const deltaRegistration = {
   widgetType: "delta" as const,
@@ -25,6 +38,9 @@ const deltaRegistration = {
       showHeader: true,
       ...(input as Record<string, unknown>),
     };
+  },
+  inspector: {
+    appearance: deltaAppearanceControls,
   },
   Renderer: DeltaCrystal as ComponentType<WidgetRendererProps>,
 };

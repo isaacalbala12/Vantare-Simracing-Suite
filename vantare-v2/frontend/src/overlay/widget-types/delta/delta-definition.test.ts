@@ -27,4 +27,8 @@ describe("deltaDefinition", () => {
   it("rejects non-object content", () => {
     expect(() => deltaDefinition.parseContent("invalid")).toThrow(/content/i);
   });
+
+  it("declares no functional content inspector controls", () => {
+    expect(deltaDefinition.inspector.content).toEqual([]);
+  });
 });

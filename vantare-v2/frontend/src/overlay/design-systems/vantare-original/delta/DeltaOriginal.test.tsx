@@ -105,6 +105,15 @@ describe("DeltaOriginal", () => {
     expect(root.querySelector(".vo-delta-header")).toBeNull();
   });
 
+  it("consumes the showHeader appearance control path", () => {
+    const hidden = renderOriginal(readyGaining, { showHeader: false });
+    expect(hidden.root.querySelector(".vo-delta-header")).toBeNull();
+    cleanup();
+
+    const visible = renderOriginal(readyGaining, { showHeader: true });
+    expect(visible.root.querySelector(".vo-delta-header")).toBeTruthy();
+  });
+
   it("does not render editor controls", () => {
     const { root } = renderOriginal(readyGaining);
     expect(root.querySelector("button")).toBeNull();

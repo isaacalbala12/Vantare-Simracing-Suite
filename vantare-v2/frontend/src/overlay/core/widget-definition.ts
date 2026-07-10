@@ -1,3 +1,4 @@
+import type { InspectorCapability } from "./inspector-control";
 import type { CoreWidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
 
@@ -24,6 +25,11 @@ export type WidgetCapabilities = {
   defaultSize: { width: number; height: number };
 };
 
+export type WidgetInspectorCapability = Pick<
+  InspectorCapability,
+  "content" | "CustomContentInspector"
+>;
+
 export type WidgetTypeDefinition<
   TContent extends Record<string, unknown>,
   TModel extends WidgetViewModelBase = WidgetViewModelBase,
@@ -31,6 +37,7 @@ export type WidgetTypeDefinition<
   type: CoreWidgetType;
   labelKey: string;
   capabilities: WidgetCapabilities;
+  inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;
   parseContent(input: unknown): TContent;
   buildViewModel(snapshot: TelemetrySnapshot, content: TContent): TModel;

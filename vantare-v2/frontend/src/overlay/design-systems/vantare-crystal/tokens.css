@@ -1,0 +1,150 @@
+[data-widget-system="vantare-crystal"] {
+  --vc-surface: rgba(18, 20, 28, 0.72);
+  --vc-border: rgba(255, 255, 255, 0.14);
+  --vc-highlight: rgba(255, 255, 255, 0.08);
+  --vc-text: #f8fafc;
+  --vc-muted: rgba(226, 232, 240, 0.72);
+  --vc-gaining: #4ade80;
+  --vc-losing: #fb7185;
+  --vc-neutral: #e2e8f0;
+  --vc-glow-gaining: rgba(74, 222, 128, 0.35);
+  --vc-glow-losing: rgba(251, 113, 133, 0.35);
+  --vc-meter: rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-crystal"].vc-delta,
+[data-widget-system="vantare-crystal"] .vc-delta {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--vc-text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-glow {
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 20px;
+  filter: blur(18px);
+  opacity: 0.9;
+  z-index: 0;
+  background: var(--vc-glow-gaining);
+}
+
+[data-widget-system="vantare-crystal"][data-tone="losing"] .vc-delta-glow {
+  background: var(--vc-glow-losing);
+}
+
+[data-widget-system="vantare-crystal"][data-tone="neutral"] .vc-delta-glow,
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-delta-glow,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-delta-glow,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-delta-glow,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-delta-glow {
+  opacity: 0.35;
+  background: rgba(148, 163, 184, 0.25);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-material {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.125rem;
+  border-radius: 16px;
+  background: var(--vc-surface);
+  border: 1px solid var(--vc-border);
+  box-shadow:
+    inset 0 1px 0 var(--vc-highlight),
+    0 12px 32px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vc-muted);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-value {
+  font-size: clamp(2.25rem, 9vw, 3.75rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-value[data-tone="gaining"] {
+  color: var(--vc-gaining);
+  text-shadow: 0 0 24px var(--vc-glow-gaining);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-value[data-tone="losing"] {
+  color: var(--vc-losing);
+  text-shadow: 0 0 24px var(--vc-glow-losing);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-value[data-tone="neutral"] {
+  color: var(--vc-neutral);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-status-message {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--vc-muted);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-meter {
+  position: relative;
+  height: 0.5rem;
+  margin-top: auto;
+  border-radius: 999px;
+  background: var(--vc-meter);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-meter > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(abs(var(--delta-progress, 0)) * 50%);
+  border-radius: 999px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-meter[data-tone="gaining"] > span {
+  right: 50%;
+  left: auto;
+  background: linear-gradient(90deg, transparent, var(--vc-gaining));
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-meter[data-tone="losing"] > span {
+  left: 50%;
+  right: auto;
+  background: linear-gradient(270deg, transparent, var(--vc-losing));
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-meter[data-tone="neutral"] > span {
+  display: none;
+}
+
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-delta-value,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-delta-value,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-delta-value,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-delta-value {
+  color: var(--vc-muted);
+  text-shadow: none;
+}
+
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-delta-meter,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-delta-meter,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-delta-meter,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-delta-meter {
+  opacity: 0.4;
+}

@@ -3,7 +3,10 @@ import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { getStudioHotkey } from "../state/studio-hotkeys";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
 import { CANVAS_HEIGHT, CANVAS_WIDTH, clientToLogical, resolveCanvasScale } from "./canvas-geometry";
+import { resolveCanvasBackground, safeAreaInsets } from "./canvas-backgrounds";
 import { CanvasActionBar } from "./CanvasActionBar";
+import { CanvasToolbar } from "./CanvasToolbar";
+import { PreviewSourceControls } from "./PreviewSourceControls";
 import { CanvasGuides } from "./CanvasGuides";
 import { StudioWidgetFrame } from "./StudioWidgetFrame";
 import { useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
@@ -30,7 +33,7 @@ export function StudioCanvas(): React.ReactElement {
     selectWidget,
     dispatch,
   } = useStudioDocument();
-  const { preview } = useStudioPreview();
+  const { preview, setPreview } = useStudioPreview();
   const snapshot = useStudioTelemetrySnapshot();
   const viewportRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -71,6 +74,9 @@ export function StudioCanvas(): React.ReactElement {
     () => sortWidgetsByZIndex(activeLayout?.widgets ?? []),
     [activeLayout?.widgets],
   );
+
+  const background = resolveCanvasBackground(preview.backgroundId);
+  const safeInsets = safeAreaInsets(CANVAS_WIDTH, CANVAS_HEIGHT);
 
   const interaction = useCanvasInteraction({
     widgets,
@@ -201,6 +207,7 @@ export function StudioCanvas(): React.ReactElement {
         }
       }}
     >
+      <CanvasToolbar preview={preview} onPreviewChange={setPreview} />
       {selectedWidgetId && savedDocument ? (
         <CanvasActionBar
           widgetId={selectedWidgetId}
@@ -215,7 +222,7 @@ export function StudioCanvas(): React.ReactElement {
       <div
         ref={sceneRef}
         data-testid="studio-canvas-scene"
-        className="osv3-canvas-scene"
+        className={`osv3-canvas-scene ${background.className}`}
         data-scale={String(scale)}
         style={{
           width: `${CANVAS_WIDTH}px`,
@@ -225,6 +232,18 @@ export function StudioCanvas(): React.ReactElement {
         }}
         onContextMenu={handleSceneContextMenu}
       >
+        {preview.safeArea ? (
+          <div
+            data-testid="studio-safe-area-overlay"
+            className="osv3-safe-area-overlay"
+            style={{
+              top: `${safeInsets.top}px`,
+              right: `${safeInsets.right}px`,
+              bottom: `${safeInsets.bottom}px`,
+              left: `${safeInsets.left}px`,
+            }}
+          />
+        ) : null}
         <CanvasGuides guides={interaction.guides} />
         {widgets.map((widget) => (
           <StudioWidgetFrame
@@ -239,6 +258,12 @@ export function StudioCanvas(): React.ReactElement {
           />
         ))}
       </div>
+      <PreviewSourceControls
+        preview={preview}
+        liveAvailable={false}
+        onPreviewChange={setPreview}
+        onOpenBrowserView={() => undefined}
+      />
       {savedDocument ? (
         <WidgetContextMenu
           menu={contextMenu}

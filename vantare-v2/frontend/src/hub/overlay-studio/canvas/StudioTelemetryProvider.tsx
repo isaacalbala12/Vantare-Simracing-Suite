@@ -28,11 +28,11 @@ export type StudioTelemetryProviderProps = {
 export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): React.ReactElement {
   const { preview } = useStudioPreview();
   const store = useMemo(() => {
-    if (preview.source === "live" && props.liveAvailable) {
+    if (preview.source === "live") {
       return props.liveStore;
     }
     return props.mockStore;
-  }, [preview.source, props.liveAvailable, props.liveStore, props.mockStore]);
+  }, [preview.source, props.liveStore, props.mockStore]);
 
   const value = useMemo<StudioTelemetryContextValue>(() => ({ store }), [store]);
 

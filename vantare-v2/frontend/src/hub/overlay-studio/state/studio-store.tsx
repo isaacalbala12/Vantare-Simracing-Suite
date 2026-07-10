@@ -45,7 +45,7 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   mockSession: "practice",
   mockLocation: "track",
   zoom: "fit",
-  backgroundId: "vantare-grid",
+  backgroundId: "grid",
   safeArea: false,
 };
 

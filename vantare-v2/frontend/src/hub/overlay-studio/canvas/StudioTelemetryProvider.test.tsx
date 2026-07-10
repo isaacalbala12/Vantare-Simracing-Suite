@@ -1,9 +1,13 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryStore } from "../../../overlay/core/telemetry-store";
 import { StudioProvider, useStudioPreview } from "../state/studio-store";
-import { StudioTelemetryProvider, useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
+import {
+  ConnectedStudioTelemetryProvider,
+  StudioTelemetryProvider,
+  useStudioTelemetrySnapshot,
+} from "./StudioTelemetryProvider";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
@@ -90,12 +94,12 @@ describe("StudioTelemetryProvider", () => {
     });
   });
 
-  it("falls back to mock telemetry when live is unavailable", () => {
+  it("keeps live source on the live store when LMU is unavailable", async () => {
     const mockStore = createTelemetryStore(
       buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
     );
     const liveStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
+      buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
     );
 
     render(
@@ -107,7 +111,46 @@ describe("StudioTelemetryProvider", () => {
       </StudioProvider>,
     );
 
-    screen.getByTestId("use-live-source").click();
-    expect(screen.getByTestId("telemetry-probe").textContent).toBe("qualifying");
+    fireEvent.click(screen.getByTestId("use-live-source"));
+    await waitFor(() => {
+      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
+    });
+  });
+});
+
+describe("ConnectedStudioTelemetryProvider", () => {
+  afterEach(() => cleanup());
+
+  it("republishes mock telemetry when mock session or location changes", async () => {
+    function SessionProbe(): React.ReactElement {
+      const snapshot = useStudioTelemetrySnapshot();
+      return <div data-testid="session-type">{snapshot.session.type}</div>;
+    }
+
+    function PreviewChanger(): React.ReactElement {
+      const { setPreview } = useStudioPreview();
+      return (
+        <button
+          type="button"
+          data-testid="set-race"
+          onClick={() => setPreview({ mockSession: "race" })}
+        />
+      );
+    }
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <ConnectedStudioTelemetryProvider>
+          <PreviewChanger />
+          <SessionProbe />
+        </ConnectedStudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    expect(screen.getByTestId("session-type").textContent).toBe("practice");
+    fireEvent.click(screen.getByTestId("set-race"));
+    await waitFor(() => {
+      expect(screen.getByTestId("session-type").textContent).toBe("race");
+    });
   });
 });

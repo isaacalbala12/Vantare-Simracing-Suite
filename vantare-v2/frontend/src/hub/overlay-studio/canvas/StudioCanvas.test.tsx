@@ -6,8 +6,13 @@ import { createTelemetryStore } from "../../../overlay/core/telemetry-store";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
+import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 import { StudioCanvas } from "./StudioCanvas";
-import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
+import {
+  ConnectedStudioTelemetryProvider,
+  StudioTelemetryProvider,
+} from "./StudioTelemetryProvider";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -188,5 +193,103 @@ describe("StudioCanvas", () => {
     expect(
       screen.getByTestId("studio-widget-frame-delta-back").querySelector(".vo-delta-value")?.textContent,
     ).toBe("-0.150");
+  });
+
+  it("applies preview-only background and safe area overlays", async () => {
+    renderCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
+
+    const scene = screen.getByTestId("studio-canvas-scene");
+    expect(scene.className).toContain("osv3-bg-grid");
+    expect(screen.queryByTestId("studio-safe-area-overlay")).toBeNull();
+
+    fireEvent.change(screen.getByTestId("studio-background-select"), {
+      target: { value: "solid-black" },
+    });
+    fireEvent.click(screen.getByTestId("studio-safe-area-toggle"));
+
+    expect(screen.getByTestId("studio-canvas-scene").className).toContain("osv3-bg-black");
+    const overlay = screen.getByTestId("studio-safe-area-overlay");
+    expect(overlay.style.top).toBe(`${Math.round(CANVAS_HEIGHT * SAFE_AREA_INSET_RATIO)}px`);
+    expect(overlay.style.left).toBe(`${Math.round(CANVAS_WIDTH * SAFE_AREA_INSET_RATIO)}px`);
+  });
+
+  it("updates mock telemetry without dirtying the document", async () => {
+    function DirtyProbe(): React.ReactElement {
+      const { dirty } = useStudioDocument();
+      return <div data-testid="dirty-flag">{dirty ? "dirty" : "clean"}</div>;
+    }
+
+    render(
+      <div style={{ width: 960, height: 540 }}>
+        <StudioProvider client={client} initialFile="profiles/a.json">
+          <ConnectedStudioTelemetryProvider>
+            <DirtyProbe />
+            <StudioCanvas />
+          </ConnectedStudioTelemetryProvider>
+        </StudioProvider>
+      </div>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-back")).toBeTruthy());
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+
+    fireEvent.change(screen.getByTestId("studio-mock-session-select"), {
+      target: { value: "qualifying" },
+    });
+    fireEvent.change(screen.getByTestId("studio-mock-location-select"), {
+      target: { value: "pits" },
+    });
+
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+  });
+
+  it("renders disconnected delta when live source loses LMU", async () => {
+    const mockStore = createTelemetryStore(
+      buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
+    );
+    const liveStore = createTelemetryStore(
+      buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
+    );
+
+    function ForceLiveSource(): React.ReactElement {
+      const { setPreview } = useStudioPreview();
+      return (
+        <button
+          type="button"
+          data-testid="force-live"
+          onClick={() => setPreview({ source: "live" })}
+        />
+      );
+    }
+
+    render(
+      <div style={{ width: 960, height: 540 }}>
+        <StudioProvider client={client} initialFile="profiles/a.json">
+          <StudioTelemetryProvider
+            mockStore={mockStore}
+            liveStore={liveStore}
+            liveAvailable={false}
+          >
+            <ForceLiveSource />
+            <StudioCanvas />
+          </StudioTelemetryProvider>
+        </StudioProvider>
+      </div>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("force-live")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("force-live"));
+    await waitFor(() => {
+      const delta = screen
+        .getByTestId("studio-widget-frame-delta-back")
+        .querySelector(".vo-delta-value");
+      expect(delta?.textContent).toBe("—");
+      expect(
+        screen
+          .getByTestId("studio-widget-frame-delta-back")
+          .querySelector("[data-status='disconnected']"),
+      ).toBeTruthy();
+    });
   });
 });

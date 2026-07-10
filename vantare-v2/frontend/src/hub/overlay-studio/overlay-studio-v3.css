@@ -257,6 +257,70 @@
   pointer-events: none;
 }
 
+.osv3-resize-handle {
+  position: absolute;
+  z-index: 4;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid rgba(56, 189, 248, 0.95);
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.92);
+  cursor: pointer;
+}
+
+.osv3-resize-handle--nw {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.osv3-resize-handle--n {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.osv3-resize-handle--ne {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.osv3-resize-handle--e {
+  top: 50%;
+  right: -5px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.osv3-resize-handle--se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+
+.osv3-resize-handle--s {
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.osv3-resize-handle--sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+
+.osv3-resize-handle--w {
+  top: 50%;
+  left: -5px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
 .osv3-inspector-slot {
   min-height: 0;
   border-left: 1px solid var(--v-border);

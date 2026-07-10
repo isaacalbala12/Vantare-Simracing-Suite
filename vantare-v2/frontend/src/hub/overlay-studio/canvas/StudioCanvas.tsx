@@ -2,24 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
 import { CANVAS_HEIGHT, CANVAS_WIDTH, resolveCanvasScale } from "./canvas-geometry";
-import type { SnapGuide } from "./canvas-snap";
 import { CanvasGuides } from "./CanvasGuides";
 import { StudioWidgetFrame } from "./StudioWidgetFrame";
 import { useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
-
-export type StudioCanvasProps = {
-  guides?: readonly SnapGuide[];
-};
+import { useCanvasInteraction } from "./useCanvasInteraction";
 
 function sortWidgetsByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
   return [...widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex);
 }
 
-export function StudioCanvas({ guides = [] }: StudioCanvasProps): React.ReactElement {
-  const { activeLayout, selectedWidgetId, selectWidget } = useStudioDocument();
+export function StudioCanvas(): React.ReactElement {
+  const { activeLayout, activeSession, selectedWidgetId, selectWidget, dispatch } = useStudioDocument();
   const { preview } = useStudioPreview();
   const snapshot = useStudioTelemetrySnapshot();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
 
   useEffect(() => {
@@ -57,15 +54,31 @@ export function StudioCanvas({ guides = [] }: StudioCanvasProps): React.ReactEle
     [activeLayout?.widgets],
   );
 
+  const interaction = useCanvasInteraction({
+    widgets,
+    session: activeSession,
+    scale,
+    sceneRef,
+    selectedWidgetId,
+    dispatch,
+    selectWidget,
+  });
+
   return (
     <div
       ref={viewportRef}
       data-testid="studio-canvas-viewport"
       className="osv3-canvas-viewport"
       data-selected-widget-id={selectedWidgetId ?? ""}
-      onPointerDown={() => selectWidget(null)}
+      data-interaction={interaction.interaction.kind}
+      onPointerDown={() => {
+        if (interaction.interaction.kind === "idle") {
+          selectWidget(null);
+        }
+      }}
     >
       <div
+        ref={sceneRef}
         data-testid="studio-canvas-scene"
         className="osv3-canvas-scene"
         data-scale={String(scale)}
@@ -76,14 +89,17 @@ export function StudioCanvas({ guides = [] }: StudioCanvasProps): React.ReactEle
           transformOrigin: "top left",
         }}
       >
-        <CanvasGuides guides={guides} />
+        <CanvasGuides guides={interaction.guides} />
         {widgets.map((widget) => (
           <StudioWidgetFrame
             key={widget.id}
             widget={widget}
+            layout={interaction.resolveLayout(widget)}
             selected={selectedWidgetId === widget.id}
             snapshot={snapshot}
             onSelect={selectWidget}
+            onFramePointerDown={interaction.onFramePointerDown}
+            onResizePointerDown={interaction.onResizePointerDown}
           />
         ))}
       </div>

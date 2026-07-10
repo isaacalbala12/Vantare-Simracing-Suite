@@ -31,9 +31,11 @@ describe("StudioWidgetFrame", () => {
   afterEach(() => cleanup());
 
   it("positions the frame from layout x/y/w/h/zIndex", () => {
+    const widget = buildWidget();
     render(
       <StudioWidgetFrame
-        widget={buildWidget()}
+        widget={widget}
+        layout={widget.layout}
         selected={false}
         snapshot={snapshot}
         onSelect={vi.fn()}
@@ -51,12 +53,18 @@ describe("StudioWidgetFrame", () => {
   it("renders WidgetVisualHost in studio mode inside the visual surface", () => {
     const widget = buildWidget();
     render(
-      <StudioWidgetFrame widget={widget} selected={false} snapshot={snapshot} onSelect={vi.fn()} />,
+      <StudioWidgetFrame
+        widget={widget}
+        layout={widget.layout}
+        selected={false}
+        snapshot={snapshot}
+        onSelect={vi.fn()}
+      />,
     );
 
     expect(WidgetVisualHost).toHaveBeenCalledWith(
       expect.objectContaining({
-        widget,
+        widget: expect.objectContaining({ id: widget.id, layout: widget.layout }),
         snapshot,
         renderMode: "studio",
       }),
@@ -67,8 +75,15 @@ describe("StudioWidgetFrame", () => {
   });
 
   it("keeps selection chrome outside the visual host surface", () => {
+    const widget = buildWidget();
     render(
-      <StudioWidgetFrame widget={buildWidget()} selected snapshot={snapshot} onSelect={vi.fn()} />,
+      <StudioWidgetFrame
+        widget={widget}
+        layout={widget.layout}
+        selected
+        snapshot={snapshot}
+        onSelect={vi.fn()}
+      />,
     );
 
     const visual = screen.getByTestId("studio-widget-visual-delta-main");
@@ -78,9 +93,11 @@ describe("StudioWidgetFrame", () => {
 
   it("shows a hidden badge for disabled widgets while keeping the frame selectable", () => {
     const onSelect = vi.fn();
+    const widget = buildWidget({ behavior: { enabled: false, updateHz: 30 } });
     render(
       <StudioWidgetFrame
-        widget={buildWidget({ behavior: { enabled: false, updateHz: 30 } })}
+        widget={widget}
+        layout={widget.layout}
         selected={false}
         snapshot={snapshot}
         onSelect={onSelect}

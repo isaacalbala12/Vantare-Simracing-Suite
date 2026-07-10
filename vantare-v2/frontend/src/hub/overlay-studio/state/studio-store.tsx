@@ -97,7 +97,7 @@ export function StudioProvider(props: {
   children: ReactNode;
   recoveryStorage?: Storage | null;
   recoveryWriteDelayMs?: number;
-}): JSX.Element {
+}): React.ReactElement {
   const { client, initialFile, children, recoveryStorage = null, recoveryWriteDelayMs = 300 } = props;
   const [history, setHistory] = useState<StudioHistory | null>(null);
   const [revision, setRevision] = useState<string>("");

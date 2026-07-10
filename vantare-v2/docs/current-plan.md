@@ -10,7 +10,9 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Preexistentes documentados (no regresión): lint frontend 11 errores; `internal/server` nonce/port tests FAIL en `go test ./...`; flaky ocasional `TestConcurrentSavesDontCorruptFile` en `internal/app` (Windows file lock).
 - **Fase 2 ✅ CERRADA** (commits `6e471fe`..`d853b4c`): registry funcional Delta, telemetry store, view model, design-system registry + migración visual, renderers Original/Crystal, `WidgetVisualHost`, harness visual determinista (`visual:overlay-studio`).
 - Evidencia Fase 2: `pnpm --dir frontend test` → 179 files / 1642 PASS; `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` x2 PASS (0.000% delta); `rg` design-systems sin imports prohibidos (solo aserciones en tests).
-- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:*` solo en servicio Go + tests); runtime legado congelado. Siguiente: **Fase 3** (editor state y commands).
+- **Fase 3 ✅ CERRADA** (commits `41df467`..`dd94e34` + fix build `studio-store`): session layouts, command reducer, widget order, bounded undo/redo, profile client Wails, `StudioProvider` global draft, crash recovery localStorage, dirty-navigation guard y hotkeys.
+- Evidencia Fase 3: `pnpm --dir frontend test -- overlay-studio/state` x2 → 67 PASS; `pnpm --dir frontend test` → 188 files / 1709 PASS; `pnpm --dir frontend build` PASS.
+- **Ningún código de producción UI conmutado a V3 aún** (shell/hub legado intacto; `studio:profile:load/save` cliente TS listo, handlers Go pendientes Fase 4). Siguiente: **Fase 4** (shell UI).
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

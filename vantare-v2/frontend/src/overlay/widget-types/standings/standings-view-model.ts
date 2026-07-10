@@ -7,6 +7,7 @@ import { getEnabledStandingsColumns } from "./standings-content";
 import {
   formatRemainingTime,
   formatStandingsColumnValue,
+  formatStandingsPit,
   resolveStandingsSessionMode,
   type StandingsScoringRow,
 } from "./standings-formatting";
@@ -97,11 +98,43 @@ function buildRowViewModel(
     currentLapText: columnValues.currentLap ?? "",
     lastLapText: columnValues.lastLap ?? PLACEHOLDER,
     bestLapText: columnValues.bestLap ?? PLACEHOLDER,
-    pitText: columnValues.pit ?? "",
-    tireCompound: columnValues.tireCompound ?? "",
+    pitText: formatStandingsPit(row),
+    tireCompound: String(row.tireCompound ?? ""),
     isPlayer: readScoringBoolean(row, "isPlayer") ?? false,
     isLeader: index === 0,
   };
+}
+
+export function resolveStandingsCellValue(
+  row: StandingsRowViewModel,
+  metricId: string,
+): string {
+  switch (metricId) {
+    case "position":
+      return String(row.position);
+    case "driverNumber":
+      return row.driverNumber;
+    case "driverName":
+      return row.driverName;
+    case "vehicleClass":
+      return row.vehicleClass;
+    case "gap":
+      return row.gapText;
+    case "interval":
+      return row.intervalText;
+    case "currentLap":
+      return row.currentLapText;
+    case "lastLap":
+      return row.lastLapText;
+    case "bestLap":
+      return row.bestLapText;
+    case "pit":
+      return row.pitText;
+    case "tireCompound":
+      return row.tireCompound;
+    default:
+      return "—";
+  }
 }
 
 export function buildStandingsViewModel(

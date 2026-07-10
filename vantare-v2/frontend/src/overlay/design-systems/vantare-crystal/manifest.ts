@@ -5,6 +5,7 @@ import type {
   WidgetRendererProps,
 } from "../../core/design-system-definition";
 import { DeltaCrystal } from "./delta/DeltaCrystal";
+import { StandingsCrystal } from "./standings/StandingsCrystal";
 
 const deltaAppearanceControls = [
   {
@@ -45,6 +46,55 @@ const deltaRegistration = {
   Renderer: DeltaCrystal as ComponentType<WidgetRendererProps>,
 };
 
+const standingsAppearanceControls = [
+  {
+    kind: "toggle" as const,
+    id: "show-session-header",
+    labelKey: "overlay.inspector.standings.showSessionHeader",
+    path: "showSessionHeader",
+    defaultValue: true,
+  },
+  {
+    kind: "toggle" as const,
+    id: "compact-rows",
+    labelKey: "overlay.inspector.standings.compactRows",
+    path: "compactRows",
+    defaultValue: false,
+  },
+];
+
+validateInspectorControls(standingsAppearanceControls);
+
+const standingsRegistration = {
+  widgetType: "standings" as const,
+  configVersion: 1,
+  defaultSettings: {
+    showSessionHeader: true,
+    compactRows: false,
+  },
+  configMigrations: {
+    0: (settings: Record<string, unknown>) => ({
+      showSessionHeader: true,
+      compactRows: false,
+      ...settings,
+    }),
+  },
+  parseSettings(input: unknown): Record<string, unknown> {
+    if (input == null || typeof input !== "object" || Array.isArray(input)) {
+      return { showSessionHeader: true, compactRows: false };
+    }
+    return {
+      showSessionHeader: true,
+      compactRows: false,
+      ...(input as Record<string, unknown>),
+    };
+  },
+  inspector: {
+    appearance: standingsAppearanceControls,
+  },
+  Renderer: StandingsCrystal as ComponentType<WidgetRendererProps>,
+};
+
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
   version: 1,
@@ -52,5 +102,5 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
   systemMigrations: {
     0: (_widgetType, settings) => ({ ...settings }),
   },
-  widgets: [deltaRegistration],
+  widgets: [deltaRegistration, standingsRegistration],
 };

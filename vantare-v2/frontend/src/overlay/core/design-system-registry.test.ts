@@ -15,13 +15,19 @@ describe("designSystemRegistry", () => {
     expect(designSystemRegistry.list().every((system) => system.version === 1)).toBe(true);
   });
 
-  it("resolves Delta for supported design systems", () => {
+  it("resolves Delta and Standings for supported design systems", () => {
     expect(designSystemRegistry.resolve("vantare-crystal", 1, "delta").widgetType).toBe("delta");
     expect(designSystemRegistry.resolve("vantare-original", 1, "delta").widgetType).toBe("delta");
+    expect(designSystemRegistry.resolve("vantare-crystal", 1, "standings").widgetType).toBe(
+      "standings",
+    );
+    expect(designSystemRegistry.resolve("vantare-original", 1, "standings").widgetType).toBe(
+      "standings",
+    );
   });
 
   it("rejects unsupported widget and system pairs", () => {
-    expect(() => designSystemRegistry.resolve("vantare-crystal", 1, "standings")).toThrow(
+    expect(() => designSystemRegistry.resolve("vantare-crystal", 1, "pedals")).toThrow(
       /unsupported/i,
     );
   });

@@ -133,7 +133,7 @@ export function ObsOverlayApp() {
   ).filter((w) => isRuntimeReadyWidget(w.type));
 
   const statusShellClass = studioPreview
-    ? "obs-studio-preview flex items-center justify-center w-full h-full text-sm font-mono"
+    ? "obs-studio-preview flex items-center justify-center w-full h-full text-sm font-mono text-white/80"
     : "flex items-center justify-center w-full h-full text-sm font-mono";
 
   if (error) {

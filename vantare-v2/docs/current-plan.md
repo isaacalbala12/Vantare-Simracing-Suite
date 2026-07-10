@@ -2491,3 +2491,12 @@ Nota FEATURES-DATA (2026-07-08):
 - Tests: 157/157 files, 1503/1503 tests PASS (regresión 0). Lint 0 errores en archivos tocados.
 - Archivos modificados: ProfileEditor.tsx, ProfileEditor.test.tsx, launcher-state.ts (3 archivos).
 - Commit: 9efd6ee feat(launcher): ProfileEditor steps + hotkey + autostart (cut 3)
+
+Nota LAUNCHER-ICONS (2026-07-10):
+- Bug raiz corregido: en icon_windows.go, `DestroyIcon` estaba en shell32.dll (real: user32.dll) y `DeleteObject` en user32.dll (real: gdi32.dll). `NewProc` es perezoso -> la extraccion de iconos del backend panicaba en cualquier icono extraido con exito. Esto rompia TODOS los iconos extraidos del .exe, no solo 3.
+- Nuevo fallback de icono: si `ExtractIconExW` sobre el .exe no devuelve icono, se resuelve el acceso directo del escritorio/Start Menu (.lnk) via IShellLink y se extrae con `SHGetFileInfo` (el icono que muestra Windows, funciona aunque el target .exe no tenga icono embebido ni exista).
+- Frontend: KNOWN_ICONS (discord/motec/simhub) vaciado; esas 3 apps ahora van directo a la extraccion del backend (sin flash de imagen rota).
+- Validado en Windows con tests reales: notepad.exe (extraccion .exe), Discord.lnk resuelto y extraido, .lnk->notepad extraido via SHGetFileInfo.
+- Archivos: icon_windows.go, icon_stub.go, main.go (handler usa GetAppIconForAppBase64), AppBadge.tsx, icon_windows_test.go.
+- Riesgo: `go vet` emite 1 warning conocido (falso positivo) en el acceso a vtable COM; no rompe build ni tests. Sin CI de vet en el repo.
+- Estado: ICONOS OK. Discord/MoTeC/SimHub resuelven via .lnk del escritorio en la maquina del usuario (requiere acceso directo presente).

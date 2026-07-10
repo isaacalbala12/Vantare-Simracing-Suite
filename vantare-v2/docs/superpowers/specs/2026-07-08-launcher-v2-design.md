@@ -631,3 +631,72 @@ Cada corte compila, pasa sus tests, y se puede verificar manualmente antes del s
 - Notificación de "perfil listo" en el system tray (badge en dock cubre el caso de alt-tab).
 - Estadísticas de uso avanzadas (gráficos, top apps).
 - "Kill chain" (matar todos los procesos de una cadena). v1 registra PIDs; v2 lo implementa.
+
+---
+
+## 11. Gotchas técnicas resueltos
+
+### 11.1 `os.ExpandEnv` no expande `%VAR%` de Windows
+
+**Problema:** Go `os.ExpandEnv()` solo expande sintaxis `$VAR` / `${VAR}`. Las rutas de KnownApps usan `%PROGRAMFILES%`, `%LOCALAPPDATA%` etc. (sintaxis Windows), que quedan literales sin expandir.
+
+**Solución:** Función `expandWindowsEnv()` en `discovery.go` que primero aplica `os.ExpandEnv` (para `$VAR`) y luego parsea `%VAR%` manualmente con `os.LookupEnv`.
+
+**Código de referencia:**
+```go
+func expandWindowsEnv(s string) string {
+    result := os.ExpandEnv(s)
+    var buf strings.Builder
+    buf.Grow(len(result))
+    for i := 0; i < len(result); i++ {
+        if result[i] == '%' {
+            end := strings.IndexByte(result[i+1:], '%')
+            if end >= 0 {
+                key := result[i+1 : i+1+end]
+                if val, ok := os.LookupEnv(key); ok {
+                    buf.WriteString(val)
+                    i += 1 + end
+                    continue
+                }
+            }
+        }
+        buf.WriteByte(result[i])
+    }
+    return buf.String()
+}
+```
+
+**Regla:** Siempre usar `expandWindowsEnv` en vez de `os.ExpandEnv` cuando se expanden paths con `%VAR%` Windows.
+
+### 11.2 Apps que necesitan `cmd.Dir` = su propia carpeta
+
+**Problema:** `exec.Command(path).Start()` usa el working directory del proceso padre (Vantare `bin/`). Algunas apps como OBS buscan archivos relativos a su exe (locale, config) y fallan si el CWD no es su carpeta.
+
+**Solución:** Establecer `cmd.Dir = filepath.Dir(entry.ExecutablePath)` antes de `cmd.Start()` para todas las apps con launch method `"executable"`.
+
+**Código de referencia** en `chain.go`:
+```go
+cmd := r.exec(entry.ExecutablePath)
+cmd.Dir = filepath.Dir(entry.ExecutablePath)
+```
+
+**Causa conocida:** OBS busca `locale/en-US.ini` relativo a su exe. CrewChief, SimHub, MoTeC y otros podrían tener el mismo comportamiento. Si una app instalada falla al lanzar, verificar primero si necesita CWD propio.
+
+### 11.3 Patrón: nueva app en KnownApps
+
+Para añadir una app al discovery, seguir estos pasos:
+
+1. **Añadir entrada en `known.go`:**
+   - `ID`: identificador corto (e.g. `"obs"`)
+   - `DisplayName`: nombre visible
+   - `KnownPaths`: rutas con `%VAR%` de Windows (e.g. `"%PROGRAMFILES%\\obs-studio\\bin\\64bit"`)
+   - `ExecutableNames`: nombres de exe en orden de preferencia
+   - `DisplayNameMatchers`: substrings para matchear en el registro Windows
+   - `LaunchMethod`: `"executable"` o `"steam-uri"`
+   - `SteamAppID`: solo para `steam-uri`
+
+2. **La app se descubre automáticamente** vía `probeKnownPaths()` si no aparece en el registro.
+
+3. **Si la app necesita CWD propio**, el fix de `cmd.Dir` ya está aplicado globalmente a todas las apps `"executable"`. No requiere acción adicional.
+
+4. **Test:** Crear test en `discovery_test.go` que verifique que la app se detecta con path expandido.

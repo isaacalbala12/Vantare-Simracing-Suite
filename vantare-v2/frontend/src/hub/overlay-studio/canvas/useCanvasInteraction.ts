@@ -23,6 +23,7 @@ export type CanvasInteraction =
       pointerId: number;
       pointerOrigin: Point;
       sceneRect: DOMRectLike;
+      scale: number;
       start: WidgetLayoutV3;
       preview: WidgetLayoutV3;
       guides: SnapGuide[];
@@ -34,6 +35,7 @@ export type CanvasInteraction =
       handle: ResizeHandle;
       pointerOrigin: Point;
       sceneRect: DOMRectLike;
+      scale: number;
       start: WidgetLayoutV3;
       preview: WidgetLayoutV3;
       guides: SnapGuide[];
@@ -189,8 +191,16 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
   }, []);
 
   const setInteractionState = useCallback((next: CanvasInteraction) => {
+    const wasIdle = interactionRef.current.kind === "idle";
     interactionRef.current = next;
     if (next.kind === "idle") {
+      flushInteractionFrame();
+      setInteraction(next);
+      return;
+    }
+
+    // Entering move/resize must update React immediately so preview layout is not one frame behind.
+    if (wasIdle) {
       flushInteractionFrame();
       setInteraction(next);
       return;
@@ -237,7 +247,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       return;
     }
 
-    const { widgets, scale, sceneRef } = inputRef.current;
+    const { widgets, sceneRef } = inputRef.current;
     const widget = widgets.find((entry) => entry.id === current.widgetId);
     if (!widget) {
       cancelInteraction();
@@ -248,7 +258,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       event.clientX,
       event.clientY,
       sceneRef,
-      scale,
+      current.scale,
       current.sceneRect,
     );
     const siblings = siblingLayouts(widgets, current.widgetId);
@@ -340,21 +350,22 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
 
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
-    inputRef.current.selectWidget(widgetId);
 
     const sceneRect = getSceneRect(inputRef.current.sceneRef);
     if (!sceneRect) {
       return;
     }
 
+    const scale = inputRef.current.scale;
     const pointerOrigin = toLogicalPoint(
       event.clientX,
       event.clientY,
       inputRef.current.sceneRef,
-      inputRef.current.scale,
+      scale,
       sceneRect,
     );
     const start = structuredClone(widget.layout);
+    inputRef.current.selectWidget(widgetId);
 
     setInteractionState({
       kind: "move",
@@ -362,6 +373,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       pointerId: event.pointerId,
       pointerOrigin,
       sceneRect,
+      scale,
       start,
       preview: start,
       guides: [],
@@ -384,21 +396,22 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     event.stopPropagation();
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    inputRef.current.selectWidget(widgetId);
 
     const sceneRect = getSceneRect(inputRef.current.sceneRef);
     if (!sceneRect) {
       return;
     }
 
+    const scale = inputRef.current.scale;
     const pointerOrigin = toLogicalPoint(
       event.clientX,
       event.clientY,
       inputRef.current.sceneRef,
-      inputRef.current.scale,
+      scale,
       sceneRect,
     );
     const start = structuredClone(widget.layout);
+    inputRef.current.selectWidget(widgetId);
 
     setInteractionState({
       kind: "resize",
@@ -407,6 +420,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       handle,
       pointerOrigin,
       sceneRect,
+      scale,
       start,
       preview: start,
       guides: [],

@@ -151,22 +151,46 @@ describe("useCanvasInteraction", () => {
     vi.restoreAllMocks();
   });
 
+  it("enters move mode synchronously on pointer-down", async () => {
+    renderInteractiveCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
+    mockSceneRect();
+
+    pointerDownFrame();
+    expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("move");
+    expect(HTMLElement.prototype.setPointerCapture).toHaveBeenCalled();
+  });
+
   it("updates transient geometry on pointer-move without dirtying the document", async () => {
     renderInteractiveCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
     mockSceneRect();
 
     pointerDownFrame();
-    await waitFor(() =>
-      expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("move"),
-    );
-    expect(HTMLElement.prototype.setPointerCapture).toHaveBeenCalled();
+    expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("move");
 
     pointerMove(140, 130, 1, { altKey: true });
     await waitFor(() =>
       expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px"),
     );
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+  });
+
+  it("does not teleport on the first pointer-move after pointer-down", async () => {
+    renderInteractiveCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
+    mockSceneRect();
+
+    const frame = screen.getByTestId("studio-widget-frame-delta-main");
+    expect(frame.style.left).toBe("100px");
+
+    pointerDownFrame();
+    pointerMove(112, 108, 1, { altKey: true });
+
+    await waitFor(() => expect(frame.style.left).not.toBe("100px"));
+    const left = Number.parseFloat(frame.style.left);
+    expect(left).toBeGreaterThan(100);
+    expect(left).toBeLessThan(130);
   });
 
   it("dispatches exactly one widget/layout command on pointer-up after movement", async () => {

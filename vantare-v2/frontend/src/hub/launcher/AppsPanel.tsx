@@ -73,7 +73,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
             data-testid="apps-add-manual"
           >
             + {t("launcher.apps.addManual")}
@@ -81,7 +81,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
           <button
             type="button"
             onClick={() => Events.Emit("launcher:apps:discover")}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
             data-testid="apps-rescan"
           >
             {t("launcher.apps.rescan")}
@@ -160,7 +160,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
                       e.stopPropagation();
                       handleRemove(app.id);
                     }}
-                    className="text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:text-vantare-red-400 transition-colors"
+                    className="text-[10px] uppercase tracking-[.18em] text-vantare-red-400 hover:bg-vantare-red-400/10 px-2 py-0.5 rounded transition-colors"
                     data-testid={`app-remove-${app.id}`}
                   >
                     {t("launcher.profile.delete")}

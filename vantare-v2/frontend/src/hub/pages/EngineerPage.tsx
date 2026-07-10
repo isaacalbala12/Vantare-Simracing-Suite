@@ -28,11 +28,8 @@ export function EngineerPage() {
 
     const unsubNotification = Events.On('engineer:notification', (event: { data: EngineerNotification }) => {
       setNotifications((prev) => {
-        const next = [...prev, event.data];
-        if (next.length > 50) {
-          return next.slice(next.length - 50);
-        }
-        return next;
+        const next = [event.data, ...prev];
+        return next.length > 50 ? next.slice(0, 50) : next;
       });
     });
 
@@ -204,7 +201,7 @@ export function EngineerPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 min-h-[200px]">
-              {notifications.slice().reverse().map((msg) => (
+              {notifications.map((msg) => (
                 <div
                   key={msg.id}
                   data-testid={`notification-${msg.id}`}

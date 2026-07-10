@@ -20,6 +20,8 @@ export type LauncherAppEntry = {
   gradientFrom: string;
   gradientTo: string;
   isFavorite?: boolean;
+  /** Optional real app icon URL (Steam CDN for Steam apps, or data URI from backend). */
+  iconUrl?: string;
 };
 
 export type LaunchStep = { appId: string; delay: number };

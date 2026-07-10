@@ -20,18 +20,13 @@ export function ProfileEditor({
 }: ProfileEditorProps) {
   const [draft, setDraft] = useState(profile);
 
-  // Sync draft when profile identity changes (render-time, avoids cascading effect)
-  if (draft.id !== profile.id) {
-    setDraft(profile);
-  }
-
   return (
     <>
       <AnimatePresence>
         {open && (
           <motion.div
             key="overlay"
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -43,7 +38,7 @@ export function ProfileEditor({
         {open && (
           <motion.aside
             key="panel"
-            className="fixed right-0 top-0 bottom-0 w-[480px] z-50 card-sleek p-5 overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 w-[480px] z-[70] bg-[#0a0a0a] border-l border-white/10 p-5 overflow-y-auto shadow-2xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -51,6 +46,7 @@ export function ProfileEditor({
             data-testid="profile-editor-panel"
             role="dialog"
             aria-label="Editar perfil"
+            onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-bold text-white">Editar perfil</h2>
 
@@ -184,7 +180,7 @@ export function ProfileEditor({
                   })
                 }
                 data-testid="editor-step-add"
-                className="mt-2 px-3 py-1.5 rounded-lg border border-dashed border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40"
+                className="mt-2 px-3 py-1.5 rounded-lg border border-dashed border-white/20 text-[10px] uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
               >
                 + Añadir paso
               </button>

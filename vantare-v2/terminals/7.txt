@@ -1,0 +1,44 @@
+---
+pid: 22752
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "Set-Location \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\"; Get-Content \".env\" | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { Set-Item -Path \"env:$($matches[1].Trim())\" -Value $matches[2].Trim() } }; deno run --allow-env --allow-net --config supabase/functions/deno.json supabase/functions/scripts/poll-polar-event.ts \"4b6d8919-1c89-492d-a0e2-364124c17878\""
+started_at: 2026-07-09T17:49:55.985Z
+running_for_ms: 3279996  
+---
+waiting... (2026-07-09T17:49:56.748Z)
+waiting... (2026-07-09T17:50:01.828Z)
+waiting... (2026-07-09T17:50:06.888Z)
+waiting... (2026-07-09T17:50:11.958Z)
+waiting... (2026-07-09T17:50:17.069Z)
+waiting... (2026-07-09T17:50:22.130Z)
+waiting... (2026-07-09T17:50:27.254Z)
+waiting... (2026-07-09T17:50:32.322Z)
+waiting... (2026-07-09T17:50:37.392Z)
+waiting... (2026-07-09T17:50:42.465Z)
+waiting... (2026-07-09T17:50:47.530Z)
+waiting... (2026-07-09T17:50:52.603Z)
+waiting... (2026-07-09T17:50:57.678Z)
+waiting... (2026-07-09T17:51:02.754Z)
+waiting... (2026-07-09T17:51:07.825Z)
+waiting... (2026-07-09T17:51:12.894Z)
+waiting... (2026-07-09T17:51:17.957Z)
+waiting... (2026-07-09T17:51:23.076Z)
+waiting... (2026-07-09T17:51:28.136Z)
+waiting... (2026-07-09T17:51:33.208Z)
+waiting... (2026-07-09T17:51:38.271Z)
+waiting... (2026-07-09T17:51:43.346Z)
+waiting... (2026-07-09T17:51:48.424Z)
+waiting... (2026-07-09T17:51:53.485Z)
+waiting... (2026-07-09T17:51:58.550Z)
+waiting... (2026-07-09T17:52:03.668Z)
+waiting... (2026-07-09T17:52:08.736Z)
+waiting... (2026-07-09T17:52:13.794Z)
+waiting... (2026-07-09T17:52:18.859Z)
+waiting... (2026-07-09T17:52:23.929Z)
+waiting... (2026-07-09T17:52:28.986Z)
+waiting... (2026-07-09T17:52:34.053Z)
+waiting... (2026-07-09T17:52:39.127Z)
+waiting... (2026-07-09T17:52:44.197Z)
+waiting... (2026-07-09T17:52:49.261Z)
+waiting... (2026-07-09T17:52:54.328Z)
+TIMEOUT waiting for Polar webhook event

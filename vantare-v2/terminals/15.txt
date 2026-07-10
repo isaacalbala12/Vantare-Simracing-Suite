@@ -1,0 +1,42 @@
+---
+pid: 26184
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "node frontend/scripts/billing-gui-smoke.mjs"
+started_at: 2026-07-09T19:24:03.121Z
+running_for_ms: 19530004 
+---
+LOGIN_OK email=fase16.smoke.monthly@gmail.com user_id=3c26111c-9805-40f8-bd51-3be9fcf4e39f✗ Evaluation error: TypeError: Cannot set properties of undefined (setting 'fetchLog')
+    at <anonymous>:1:32
+
+SMOKE_BOOT ready=undefined error=none
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: agent-browser eval --base64 d2luZG93Ll9fYmlsbGluZ1Ntb2tlLmZldGNoTG9nID0gW107IHdpbmRvdy5fX2JpbGxpbmdTbW9rZS5vcGVuZWRVcmxzID0gW107
+✗ Evaluation error: TypeError: Cannot set properties of undefined (setting 'fetchLog')
+    at <anonymous>:1:32
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at ab (file:///C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/scripts/billing-gui-smoke.mjs:38:10)
+    at abEval (file:///C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/scripts/billing-gui-smoke.mjs:43:10)
+    at resetFetchLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/scripts/billing-gui-smoke.mjs:117:3)
+    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/scripts/billing-gui-smoke.mjs:122:1 {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    '',
+    "✗ Evaluation error: TypeError: Cannot set properties of undefined (setting 'fetchLog')\n" +
+      '    at <anonymous>:1:32\n'
+  ],
+  pid: 23236,
+  stdout: '',
+  stderr: "✗ Evaluation error: TypeError: Cannot set properties of undefined (setting 'fetchLog')\n" +
+    '    at <anonymous>:1:32\n'
+}
+
+Node.js v24.14.1

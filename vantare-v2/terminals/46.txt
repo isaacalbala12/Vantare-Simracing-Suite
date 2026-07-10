@@ -1,0 +1,68 @@
+---
+pid: 13016
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "powershell -NoProfile -ExecutionPolicy Bypass -File tools\\start-wails-dev.ps1"
+started_at: 2026-07-09T21:07:04.152Z
+running_for_ms: 13365004 
+---
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+(node:24360) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+Wails v3.0.0-alpha2.106 › Build11:07PM ERR blocking process failed exec="wails3 build DEV=true" err="exit status 1"
+
+Wails v3.0.0-alpha2.106 › Generate Bindings
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+ WARNING  [warn] -: no Go files in C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+ INFO  Processed: 1 Package, 0 Services, 0 Methods, 0 Enums, 0 Models, 0 Events in 546.5162ms.
+ INFO  Output directory: C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend\bindings
+ WARNING  1 warning emitted
+Scope: all 8 workspace projects
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 1.8s
+
+> vantare-overlay@0.1.0.2 build:dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> tsc -b && vite build --mode development
+
+src/lib/entitlements-refresh.ts(105,9): error TS2322: Type 'LicenseResult | null' is not assignable to type 'LicenseResult'.
+  Type 'null' is not assignable to type 'LicenseResult'.
+src/lib/entitlements-refresh.ts(106,46): error TS18047: 'data' is possibly 'null'.
+src/lib/entitlements-refresh.ts(107,37): error TS2345: Argument of type 'LicenseResult | null' is not assignable to parameter of type 'LicenseResult'.
+  Type 'null' is not assignable to type 'LicenseResult'.
+ ELIFECYCLE  Command failed with exit code 2.
+  ERROR   task: Failed to run task "windows:build": exit status 2
+  ERROR   starting processes: exit status 1

@@ -1,0 +1,11 @@
+---
+pid: 28028
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "node frontend/scripts/billing-gui-smoke-manual.mjs"
+started_at: 2026-07-09T19:35:41.888Z
+running_for_ms: 18830000 
+---
+STEP login⚠ Daemon version mismatch detected, restarting...
+
+LOGIN_OK user_id=3c26111c-9805-40f8-bd51-3be9fcf4e39f
+STEP open harness

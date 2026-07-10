@@ -1,0 +1,12 @@
+---
+pid: 21760
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "$env:VANTARE_SUPABASE_URL='https://ombjshwzqgeisazijduq.supabase.co'; $env:VANTARE_SUPABASE_ANON_KEY=(Get-Content 'frontend\\.env.local' | Where-Object { $_ -match '^VITE_SUPABASE_ANON_KEY=' } | ForEach-Object { $_ -replace '^VITE_SUPABASE_ANON_KEY=','' }); powershell -NoProfile -ExecutionPolicy Bypass -File 'tools\\generate_supabase_config.ps1'; wails3 dev -config ./build/config.yml -port 9245"
+started_at: 2026-07-09T21:04:51.575Z
+running_for_ms: 13495009 
+---
+ParserError: 
+Line |
+   1 |  . NTARE_SUPABASE_URL='https://ombjshwzqgeisazijduq.supabase.co'; $env:V .
+     |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Unexpected token '='https://ombjshwzqgeisazijduq.supabase.co'' in expression or statement.

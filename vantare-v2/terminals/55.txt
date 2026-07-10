@@ -1,0 +1,95 @@
+---
+pid: 22628
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\" && git checkout -b launch/polar-billing && git add \\
+  supabase/.gitignore \\
+  supabase/config.toml \\
+  supabase/functions/_shared/ \\
+  supabase/functions/billing-checkout/ \\
+  supabase/functions/billing-portal/ \\
+  supabase/functions/billing-webhook/ \\
+  supabase/functions/deno.json \\
+  supabase/functions/deno.lock \\
+  supabase/migrations/20260709160000_backfill_profiles_for_existing_auth_users.sql \\
+  vantare-v2/.gitignore \\
+  vantare-v2/frontend/.gitignore \\
+  vantare-v2/frontend/.env.example \\
+  vantare-v2/frontend/vite.config.ts \\
+  vantare-v2/frontend/src/lib/billing-client.ts \\
+  vantare-v2/frontend/src/lib/billing-client.test.ts \\
+  vantare-v2/frontend/src/lib/entitlements-refresh.ts \\
+  vantare-v2/frontend/src/lib/entitlements-refresh.test.ts \\
+  vantare-v2/frontend/src/lib/license.tsx \\
+  vantare-v2/frontend/src/lib/license.test.tsx \\
+  vantare-v2/frontend/src/lib/license-debug.ts \\
+  vantare-v2/frontend/src/lib/license-debug-log.ts \\
+  vantare-v2/frontend/src/lib/wails-runtime-mock.ts \\
+  vantare-v2/frontend/src/lib/version-compare.ts \\
+  vantare-v2/frontend/src/hub/auth/PaywallScreen.tsx \\
+  vantare-v2/frontend/src/hub/auth/PaywallScreen.test.tsx \\
+  vantare-v2/frontend/src/hub/auth/paywall-plans.ts \\
+  vantare-v2/frontend/src/hub/auth/LoginScreen.tsx \\
+  vantare-v2/frontend/src/hub/auth/LoginScreen.test.tsx \\
+  vantare-v2/frontend/src/hub/settings/AccountSettings.tsx \\
+  vantare-v2/frontend/src/hub/settings/AccountSettings.test.tsx \\
+  vantare-v2/frontend/src/hub/settings/LicenseDiagnosticsPanel.tsx \\
+  vantare-v2/frontend/src/hub/HubApp.tsx \\
+  vantare-v2/frontend/src/hub/HubApp.test.tsx \\
+  vantare-v2/frontend/src/hub/pages/SettingsPage.tsx \\
+  vantare-v2/frontend/src/i18n/locales/en.ts \\
+  vantare-v2/frontend/src/i18n/locales/es.ts \\
+  vantare-v2/frontend/src/i18n/locales/it.ts \\
+  vantare-v2/frontend/src/i18n/locales/pt.ts \\
+  vantare-v2/internal/license/ \\
+  vantare-v2/cmd/vantare/main.go \\
+  vantare-v2/internal/server/server.go \\
+  vantare-v2/configs/polar-product-mapping.example.json \\
+  vantare-v2/docs/current-plan.md \\
+  vantare-v2/docs/superpowers/plans/2026-07-09-fase-2-polar-integration.md \\
+  vantare-v2/docs/superpowers/plans/2026-07-09-fase-1-6-billing-licensing-pre-polar.md \\
+  vantare-v2/docs/superpowers/plans/2026-07-09-fase-2a-polar-dashboard-setup.md \\
+  vantare-v2/docs/superpowers/specs/2026-07-09-fase-2g-licensing-revalidation-spec.md \\
+  vantare-v2/tools/start-wails-dev.ps1 \\
+  vantare-v2/tools/start-wails-dev-visible.ps1 && echo \"===CACHED STAT===\" && git diff --cached --stat && echo \"===CACHED NAMES===\" && git diff --cached --name-only"
+started_at: 2026-07-09T21:33:28.398Z
+running_for_ms: 11764997 
+---
+Switched to a new branch 'launch/polar-billing'
+fatal: \: '\' is outside repository at 'C:/Users/isaac/Desktop/Vantare-Overlays'
+supabase/functions/_shared/: 
+Line |
+   4 |    supabase/functions/_shared/ \
+     |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The term 'supabase/functions/_shared/' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+supabase/functions/billing-checkout/: 
+Line |
+   5 |    supabase/functions/billing-checkout/ \
+     |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The term 'supabase/functions/billing-checkout/' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+supabase/functions/billing-portal/: 
+Line |
+   6 |    supabase/functions/billing-portal/ \
+     |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The term 'supabase/functions/billing-portal/' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+supabase/functions/billing-webhook/: 
+Line |
+   7 |    supabase/functions/billing-webhook/ \
+     |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The term 'supabase/functions/billing-webhook/' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+vantare-v2/internal/license/: 
+Line |
+  40 |    vantare-v2/internal/license/ \
+     |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The term 'vantare-v2/internal/license/' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+  ERROR   listen tcp 127.0.0.1:9245: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+vantare-v2/tools/start-wails-dev-visible.ps1: 
+Line |
+  50 |    vantare-v2/tools/start-wails-dev-visible.ps1 && echo "===CACHED STA .
+     |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The term 'vantare-v2/tools/start-wails-dev-visible.ps1' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.

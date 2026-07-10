@@ -1,0 +1,49 @@
+---
+pid: 35340
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "$env:VANTARE_SUPABASE_URL = \"https://ombjshwzqgeisazijduq.supabase.co\"
+$env:VANTARE_SUPABASE_ANON_KEY = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tYmpzaHd6cWdlaXNhemlqZHVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MjY0ODIsImV4cCI6MjA5ODMwMjQ4Mn0.UsfbnBw9oImE0aVU4SYUW4ozF-YsCy8h9erNJ8iqjIA\"
+cd C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2
+pwsh -NoProfile -File tools\\generate_supabase_config.ps1 -OutFile cmd\\vantare\\supabase_build.go
+$env:VITE_SUPABASE_URL = $env:VANTARE_SUPABASE_URL
+$env:VITE_SUPABASE_ANON_KEY = $env:VANTARE_SUPABASE_ANON_KEY
+corepack pnpm --dir frontend build 2>&1
+go test ./internal/license/... -count=1 2>&1
+corepack pnpm --dir frontend test -- --run 2>&1 | Select-Object -Last 15"
+started_at: 2026-07-09T14:56:37.311Z
+running_for_ms: 13680013 
+---
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> tsc -b && vite build
+
+vite v8.0.16 building client environment for production...
+transforming...✓ 647 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     1.82 kB │ gzip:   0.77 kB
+dist/assets/index-8wu7sOxw.css    112.86 kB │ gzip:  16.65 kB
+dist/assets/index-bcRSiUOk.js   1,043.59 kB │ gzip: 275.70 kB
+
+✓ built in 761ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+ok  github.com/vantare/overlays/v2/internal/license3.344s
+ ✓ src/overlay/widgets/widget-design-system.contract.test.ts (7 tests) 7ms
+ ✓ src/hub/settings/hotkey-capture.test.ts (10 tests) 9ms
+ ✓ src/overlay/widgets/mock-telemetry.test.ts (4 tests) 6ms
+ ✓ src/lib/telemetry-ref.test.ts (5 tests) 11ms
+ ✓ src/lib/profile.test.ts (3 tests) 5ms
+ ✓ src/hub/navigation.test.ts (4 tests) 6ms
+ ✓ src/hub/state/overlay-workbench.test.ts (3 tests) 6ms
+ ✓ src/lib/billing-client.test.ts (4 tests) 5ms
+ ✓ src/lib/html-escape.test.ts (2 tests) 5ms
+
+ Test Files  163 passed (163)
+      Tests  1539 passed (1539)
+   Start at  16:56:55
+   Duration  40.27s (transform 12.80s, setup 4.67s, import 123.27s, tests 36.45s, environment 320.17s)
+

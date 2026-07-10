@@ -1,0 +1,10 @@
+---
+pid: 24904
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "agent-browser close 2>&1; agent-browser open http://localhost:5173/billing-gui-smoke.html 2>&1"
+started_at: 2026-07-09T19:42:31.397Z
+running_for_ms: 18420012 
+---
+✓ Browser closed
+✓ Billing GUI Smoke (temp)
+  http://localhost:5173/billing-gui-smoke.html

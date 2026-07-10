@@ -1,0 +1,7 @@
+---
+pid: 26576
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "node frontend/scripts/billing-gui-smoke.mjs"
+started_at: 2026-07-09T19:25:49.009Z
+running_for_ms: 19425003 
+---

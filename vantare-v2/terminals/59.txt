@@ -1,0 +1,471 @@
+---
+pid: 28668
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir \"C:\\Users\\isaac\\Desktop\\vantare-launch-1a-test\\vantare-v2\\frontend\" test 2>&1"
+started_at: 2026-07-09T21:43:02.195Z
+running_for_ms: 11190011 
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\Desktop\vantare-launch-1a-test\vantare-v2\frontend
+> vitest run
+
+
+ RUN  v4.1.9 C:/Users/isaac/Desktop/vantare-launch-1a-test/vantare-v2/frontend
+
+ ✓ src/calendar/calendar-view-math.test.ts (29 tests) 48ms
+ ✓ src/hub/overlays/widget-config-model.test.ts (51 tests) 24ms
+ ✓ src/lib/widget-variants.test.ts (22 tests) 18ms
+ ✓ src/hub/widgets/widget-design-gallery.test.ts (33 tests) 19ms
+ ✓ src/overlay/widgets/widget-preview-fixtures.test.ts (28 tests) 21ms
+ ✓ src/hub/overlays/WidgetSettingsPanel.test.tsx (18 tests) 192ms
+ ✓ src/hub/overlays/WidgetVariantManager.test.tsx (23 tests) 164ms
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > registers license:changed listener and emits license:validate on mount
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > updates state when license:changed fires
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'overlays' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > refresh() re-emits license:validate
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > ignores stale anonymous license:changed while authenticated
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+[vantare:license] LicenseProvider: license:changed {
+  state: 'anonymous',
+  email: '',
+  entitlements: [],
+  deviceOK: false,
+  lastValidated: null
+}
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > clearLicense() forces anonymous state even after authentication
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+ ✓ src/hub/overlays/WidgetSandboxPreview.test.tsx (15 tests) 332ms
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > ignores license:validate changes for unrelated events
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > resolves loading when timeout fires (no backend response)
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > retries license:validate when timeout fires
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > timeout cancelled when license:changed arrives early
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'overlays' ],
+  deviceOK: true,
+  lastValidated: null
+}
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+ ✓ src/hub/calendar/CalendarDayView.test.tsx (14 tests) 1587ms
+stdout | src/lib/license.test.tsx > license module > LicenseProvider standalone mode > emits license:validate without session token in standalone mode
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+ ✓ src/hub/auth/LoginScreen.test.tsx (19 tests) 1564ms
+stdout | src/lib/license.test.tsx > license module > LicenseProvider standalone mode > emits license:validate with an empty payload in standalone mode
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > useLicense consumer pattern > works with multiple consumers sharing context
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'shared@example.com',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+ ✓ src/lib/license.test.tsx (17 tests) 2394ms
+       ✓ registers license:changed listener and emits license:validate on mount  607ms
+       ✓ ignores license:validate changes for unrelated events  559ms
+       ✓ emits license:validate without session token in standalone mode  563ms
+       ✓ emits license:validate with an empty payload in standalone mode  573ms
+ ✓ src/hub/pages/SettingsPage.test.tsx (28 tests) 1512ms
+ ✓ src/hub/overlays/useOverlayStudioState.test.tsx (11 tests) 69ms
+ ✓ src/hub/settings/AccountSettings.test.tsx (15 tests) 578ms
+ ✓ src/hub/overlays/widget-catalog.test.ts (29 tests) 20ms
+ ✓ src/hub/pages/OverlaysStudioPage.test.tsx (16 tests) 2626ms
+     ✓ opens own profiles, recommended profiles, and community subpages  349ms
+     ✓ starts and stops overlay from layout studio for the active profile  326ms
+     ✓ no autosavea en modo layout tras modificar/añadir widget, y requiere guardado explícito  481ms
+ ✓ src/hub/pages/CalendarPage.test.tsx (13 tests) 1274ms
+ ✓ src/hub/preview/widget-preview-size.test.ts (8 tests) 12ms
+ ✓ src/hub/overlays/WidgetStudio.test.tsx (24 tests) 3594ms
+     ✓ exposes the official design gallery inside WidgetStudio without position/tamaño controls  313ms
+ ✓ src/hub/roadmap/roadmap-data.test.ts (24 tests) 15ms
+ ✓ src/hub/overlays/StandingsSettingsSection.test.tsx (9 tests) 451ms
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements emits validate with session token
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] refresh: emit license:validate
+[vantare:license] refresh: license:changed recibido {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  fresh: true,
+  lastValidated: '2026-07-09T21:43:12.847Z'
+}
+[vantare:license] refresh: ok {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  hasBundle: true,
+  unlocked: true
+}
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements requires session
+[vantare:license] refresh: sin sesión Supabase (getSession vacío)
+
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements times out without license:changed
+[vantare:license] refresh: timeout esperando license:changed
+[vantare:license] refresh: falló { reason: 'timeout' }
+
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice requires session
+[vantare:license] reset-device: sin sesión Supabase (getSession vacío)
+
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice maps rate_limit errors
+[vantare:license] reset-device: license:error { message: 'rate_limit: solo 1 reset cada 24h' }
+[vantare:license] reset-device: falló { reason: 'rate_limit' }
+
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements ignores stale license:changed events
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] refresh: emit license:validate
+[vantare:license] refresh: license:changed recibido {
+  state: 'authenticated-no-entitlement',
+  email: 'u@example.com',
+  entitlements: [],
+  fresh: false,
+  lastValidated: '2026-07-09T21:42:12.858Z'
+}
+[vantare:license] refresh: license:changed recibido {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  fresh: true,
+  lastValidated: '2026-07-09T21:43:12.858Z'
+}
+[vantare:license] refresh: ok {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  hasBundle: true,
+  unlocked: true
+}
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements returns pending when bundle missing
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 15000 }
+[vantare:license] refresh: emit license:validate
+[vantare:license] refresh: license:changed recibido {
+  state: 'authenticated-no-entitlement',
+  email: 'u@example.com',
+  entitlements: [],
+  fresh: true,
+  lastValidated: '2026-07-09T21:43:12.863Z'
+}
+[vantare:license] refresh: ok {
+  state: 'authenticated-no-entitlement',
+  email: 'u@example.com',
+  entitlements: [],
+  hasBundle: false,
+  unlocked: false
+}
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements times out without license:changed
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 1000 }
+[vantare:license] refresh: emit license:validate
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice emits reset-device and resolves on fresh license:changed
+[vantare:license] reset-device: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] reset-device: emit license:reset-device
+[vantare:license] reset-device: license:changed recibido { state: 'active', email: 'u@example.com', fresh: true }
+[vantare:license] reset-device: ok
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice maps rate_limit errors
+[vantare:license] reset-device: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] reset-device: emit license:reset-device
+
+ ✓ src/lib/entitlements-refresh.test.ts (12 tests) 57ms
+ ✓ src/hub/overlays/RelativeSettingsSection.test.tsx (11 tests) 744ms
+ ✓ src/lib/access-policy.test.ts (57 tests) 18ms
+ ✓ src/hub/pages/RoadmapPage.test.tsx (20 tests) 1937ms
+ ✓ src/hub/HubApp.test.tsx (26 tests) 1392ms
+DOMException [AbortError]: The operation was aborted.
+    at Fetch.onAsyncTaskManagerAbort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:546:23)
+    at Object.<anonymous> (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:416:101)
+    at AsyncTaskManager.abortAll (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:292:30)
+    at AsyncTaskManager.abort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:52:21)
+    at DetachedBrowserFrame.abort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/browser/detached-browser/DetachedBrowserFrame.js:112:58)
+    at DetachedWindowAPI.abort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/window/DetachedWindowAPI.js:51:35)
+    at teardownWindow (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:331:22)
+    at Object.teardown (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:392:10)
+    at file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/base.BE3cXZj3.js:168:65
+    at Traces.$ (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+DOMException [AbortError]: The operation was aborted.
+    at Fetch.onAsyncTaskManagerAbort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:546:23)
+    at Object.<anonymous> (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:416:101)
+    at AsyncTaskManager.abortAll (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:292:30)
+    at AsyncTaskManager.abort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:52:21)
+    at DetachedBrowserFrame.abort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/browser/detached-browser/DetachedBrowserFrame.js:112:58)
+    at DetachedWindowAPI.abort (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/window/DetachedWindowAPI.js:51:35)
+    at teardownWindow (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:331:22)
+    at Object.teardown (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:392:10)
+    at file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/base.BE3cXZj3.js:168:65
+    at Traces.$ (file:///C:/Users/isaac/Desktop/vantare-launch-1a-test/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+ ✓ src/i18n/i18n.test.ts (25 tests) 103ms
+ ✓ src/hub/calendar/CalendarMonthView.test.tsx (11 tests) 918ms
+ ✓ src/lib/widget-presets.test.ts (14 tests) 13ms
+ ✓ src/overlay/CompositeApp.test.tsx (12 tests) 278ms
+ ✓ src/hub/calendar/CalendarWeekView.test.tsx (15 tests) 1047ms
+ ✓ src/lib/supabase-auth.test.ts (20 tests) 21ms
+ ✓ src/hub/components/ActiveOverlayCard.test.tsx (14 tests) 319ms
+ ✓ src/hub/components/Topbar.test.tsx (18 tests) 266ms
+ ✓ src/hub/calendar/CalendarRaceRail.test.tsx (9 tests) 117ms
+ ✓ src/hub/auth/PaywallScreen.test.tsx (14 tests) 540ms
+ ✓ src/lib/access-dev-modes.test.ts (23 tests) 14ms
+ ✓ src/hub/overlays/WidgetPresetSection.test.tsx (8 tests) 151ms
+ ✓ src/hub/launcher/AddNonSteamGameModal.test.tsx (17 tests) 885ms
+     ✓ caps results at 200 when more matches exist and shows footer  473ms
+ ✓ src/hub/overlays/PedalsSettingsSection.test.tsx (11 tests) 196ms
+ ✓ src/hub/launcher/launcher-state.test.ts (20 tests) 29ms
+ ✓ src/hub/widgets/WidgetDesignGallery.test.tsx (14 tests) 126ms
+ ✓ src/i18n/I18nProvider.test.tsx (10 tests) 139ms
+ ✓ src/hub/components/UpdateBanner.test.tsx (12 tests) 304ms
+ ✓ src/lib/billing-client.test.ts (9 tests) 31ms
+ ✓ src/hub/overlays/WidgetConfigSections.test.tsx (13 tests) 401ms
+ ✓ src/hub/pages/EngineerPage.test.tsx (15 tests) 450ms
+ ✓ src/overlay/widgets/RelativeWidget.test.tsx (4 tests) 79ms
+ ✓ src/hub/pages/PreviewPage.test.tsx (11 tests) 1650ms
+ ✓ src/hub/components/LauncherDock.test.tsx (8 tests) 172ms
+ ✓ src/hub/onboarding/OnboardingFlow.test.tsx (13 tests) 131ms
+ ✓ src/hub/overlays/OwnProfilesView.test.tsx (9 tests) 393ms
+ ✓ src/hub/preview/PreviewCanvas.test.tsx (4 tests) 149ms
+ ✓ src/overlay/widgets/standings-format.test.ts (19 tests) 11ms
+ ✓ src/hub/preview/PreviewWidgetFrame.test.tsx (7 tests) 123ms
+ ✓ src/lib/canvas-math.test.ts (15 tests) 10ms
+ ✓ src/overlay/WidgetEditFrame.test.tsx (6 tests) 76ms
+ ✓ src/overlay/ObsOverlayApp.test.tsx (4 tests) 85ms
+ ✓ src/hub/components/AccessGate.test.tsx (11 tests) 66ms
+ ✓ src/overlay/widgets/EngineerNotificationsWidget.test.tsx (7 tests) 83ms
+ ✓ src/hub/pages/HubPage.test.tsx (9 tests) 152ms
+ ✓ src/overlay/widgets/StandingsWidget.test.tsx (9 tests) 338ms
+ ✓ src/overlay/widgets/relative-format.test.ts (11 tests) 8ms
+ ✓ src/hub/overlays/LayoutStudio.test.tsx (9 tests) 795ms
+ ✓ src/lib/plan.test.ts (36 tests) 13ms
+ ✓ src/hub/roadmap/features-data.test.ts (13 tests) 15ms
+ ✓ src/hub/overlays/V52OverlaysHome.test.tsx (7 tests) 233ms
+ ✓ src/hub/launcher/ProfileCard.test.tsx (4 tests) 130ms
+ ✓ src/overlay/widgets/widget-appearance.test.ts (9 tests) 10ms
+ ✓ src/hub/launcher/chain-store.test.ts (8 tests) 12ms
+ ✓ src/hub/overlays/recommended-profiles.test.ts (9 tests) 10ms
+ ✓ src/hub/calendar/CalendarToolbar.test.tsx (10 tests) 220ms
+ ✓ src/overlay/widgets/widget-base-size.test.ts (9 tests) 10ms
+ ✓ src/hub/registry/widget-components.test.tsx (7 tests) 26ms
+ ✓ src/hub/preview/PreviewInspector.test.tsx (9 tests) 211ms
+ ✓ src/hub/calendar/calendar-upcoming.test.ts (4 tests) 8ms
+ ✓ src/hub/overlays/StudioWidgetList.test.tsx (9 tests) 173ms
+ ✓ src/hub/components/LastActivityCard.test.tsx (6 tests) 106ms
+ ✓ src/hub/launcher/ProfileEditor.test.tsx (6 tests) 178ms
+ ✓ src/overlay/widgets/standings-catalog.test.ts (8 tests) 12ms
+ ✓ src/hub/auth/LicenseBanner.test.tsx (8 tests) 95ms
+ ✓ src/hub/launcher/chain-store.subscribe.test.tsx (2 tests) 57ms
+ ✓ src/hub/preview/WidgetRenderer.test.tsx (6 tests) 106ms
+stdout | src/lib/access.test.tsx > useAccess > derives free access context from a free license
+[vantare:license] LicenseProvider: license:changed {
+  state: 'authenticated-no-entitlement',
+  email: 'driver@example.test',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > derives suite access context from a bundle license
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'driver@example.test',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > derives blocked access context from an expired license
+[vantare:license] LicenseProvider: license:changed {
+  state: 'expired',
+  email: 'driver@example.test',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > derives unconfigured access context
+[vantare:license] LicenseProvider: license:changed {
+  state: 'unconfigured',
+  email: 'driver@example.test',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > accepts roles parameter
+[vantare:license] LicenseProvider: license:changed {
+  state: 'authenticated-no-entitlement',
+  email: 'driver@example.test',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+ ✓ src/lib/access.test.tsx (6 tests) 60ms
+ ✓ src/overlay/widgets/widget-design-system.test.ts (9 tests) 10ms
+ ✓ src/hub/overlays/pedals-settings.test.ts (7 tests) 7ms
+ ✓ src/hub/onboarding/BetaWelcome.test.tsx (13 tests) 121ms
+ ✓ src/hub/calendar/CalendarHeroUpcomingPanel.test.tsx (3 tests) 113ms
+ ✓ src/hub/launcher/ProfileCard.timeline.test.tsx (3 tests) 81ms
+ ✓ src/overlay/widgets/DeltaWidget.test.tsx (10 tests) 77ms
+ ✓ src/hub/roadmap/roadmap-features.test.ts (9 tests) 12ms
+ ✓ src/hub/launcher/AppsPanel.test.tsx (5 tests) 141ms
+ ✓ src/hub/preview/profile-editor.test.ts (5 tests) 8ms
+ ✓ src/hub/pages/DashboardPage.test.tsx (8 tests) 286ms
+ ✓ src/lib/widget-presets-store.test.ts (2 tests) 14ms
+ ✓ src/hub/overlays/WidgetPreviewPanel.test.tsx (5 tests) 127ms
+ ✓ src/lib/theme.test.ts (6 tests) 20ms
+ ✓ src/overlay/widgets/relative-catalog.test.ts (7 tests) 12ms
+ ✓ src/overlay/widgets/relative-filters.test.ts (6 tests) 9ms
+ ✓ src/hub/preview/widget-preview-contract.test.ts (10 tests) 8ms
+ ✓ src/overlay/WidgetHost.test.tsx (5 tests) 59ms
+ ✓ src/overlay/OverlayCalendarReminderBanner.test.tsx (7 tests) 73ms
+ ❯ src/overlay/widgets/widget-design-system.contract.test.ts (0 test)
+ ✓ src/hub/registry/design-system-registry.test.ts (6 tests) 10ms
+ ✓ src/hub/HubErrorBoundary.test.tsx (5 tests) 79ms
+ ✓ src/calendar/calendar-store.test.ts (6 tests) 9ms
+ ✓ src/hub/state/style-catalog.test.ts (8 tests) 7ms
+ ✓ src/hub/components/V52Shell.test.tsx (3 tests) 107ms
+ ✓ src/hub/overlays/ProfilePreview.test.tsx (3 tests) 124ms
+ ✓ src/hub/overlays/recommended-first-use.test.ts (3 tests) 13ms
+ ✓ src/overlay/widgets/PedalsWidget.test.tsx (4 tests) 66ms
+ ✓ src/lib/visibility.test.ts (7 tests) 7ms
+ ✓ src/lib/useDemoMode.test.ts (5 tests) 36ms
+ ✓ src/hub/calendar/CalendarReminderBanner.test.tsx (6 tests) 78ms
+ ✓ src/lib/widget-factory.test.ts (5 tests) 9ms
+ ✓ src/hub/overlays/RecommendedProfilesView.test.tsx (4 tests) 252ms
+ ✓ src/hub/settings/hotkey-capture.test.ts (10 tests) 8ms
+ ✓ src/hub/preview/PreviewScaler.test.tsx (3 tests) 49ms
+ ✓ src/hub/pages/LauncherPage.test.tsx (4 tests) 149ms
+ ❯ src/hub/state/style-catalog.contract.test.ts (0 test)
+ ✓ src/hub/overlays/widget-studio-empty-profile.test.ts (6 tests) 9ms
+ ✓ src/hub/registry/builtin-systems.test.ts (5 tests) 12ms
+ ✓ src/hub/registry/_examples/vantare-v3-standings-header.test.tsx (3 tests) 53ms
+ ✓ src/hub/components/RecommendedQuickStart.test.tsx (4 tests) 51ms
+ ✓ src/lib/frame-budget.test.ts (4 tests) 13ms
+ ✓ src/hub/overlays/StudioHome.test.tsx (2 tests) 108ms
+ ✓ src/lib/dom-write.test.ts (4 tests) 14ms
+ ✓ src/hub/preview/WidgetList.test.tsx (3 tests) 111ms
+ ✓ src/i18n/LanguageSelector.test.tsx (5 tests) 62ms
+ ✓ src/hub/overlays/CommunityComingSoonView.test.tsx (4 tests) 93ms
+ ✓ src/hub/preview/AppearanceEditor.test.tsx (3 tests) 73ms
+ ✓ src/hub/overlays/ObsOverlaySetupView.test.tsx (3 tests) 77ms
+ ✓ src/hub/pages/TelemetryPage.test.tsx (3 tests) 79ms
+ ✓ src/overlay/widgets/mock-telemetry.test.ts (4 tests) 5ms
+ ✓ src/hub/components/OpsPanel.test.tsx (3 tests) 40ms
+stdout | src/hub/pages/HubApp.bridge.test.tsx > LicenseBridge > falls back to a blank validation when there is no session
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+ ✓ src/hub/pages/HubApp.bridge.test.tsx (2 tests) 649ms
+     ✓ falls back to a blank validation when there is no session  527ms
+ ✓ src/overlay/widgets/MulticlassRelativeWidget.test.tsx (4 tests) 76ms
+ ✓ src/hub/state/overlay-workbench.test.ts (3 tests) 7ms
+ ✓ src/hub/navigation.test.ts (4 tests) 7ms
+ ✓ src/hub/launcher/HubToast.test.tsx (2 tests) 63ms
+ ✓ src/hub/launcher/ProfileCard.timeline.a11y.test.tsx (2 tests) 67ms
+ ✓ src/hub/pages/WidgetsPage.test.tsx (2 tests) 61ms
+ ✓ src/overlay/EditOverlayApp.test.tsx (1 test) 62ms
+ ✓ src/overlay/widgets/pedals-format.test.ts (18 tests) 8ms
+ ✓ src/overlay/widgets/BroadcastTowerWidget.test.tsx (3 tests) 69ms
+ ✓ src/hub/overlays/studio-controls.test.tsx (3 tests) 42ms
+ ✓ src/hub/components/QuickActions.test.tsx (4 tests) 72ms
+ ✓ src/hub/preview/WidgetPreview.test.tsx (2 tests) 37ms
+ ✓ src/lib/telemetry-ref.test.ts (5 tests) 6ms
+ ✓ src/hub/overlays/RecommendedSuccessBanner.test.tsx (2 tests) 52ms
+ ✓ src/hub/components/AppBadge.test.tsx (1 test) 37ms
+ ✓ src/lib/profile.test.ts (3 tests) 6ms
+ ✓ src/hub/components/PlanStatusCard.test.tsx (4 tests) 55ms
+ ✓ src/hub/overlays/WidgetAccessBadge.test.tsx (4 tests) 38ms
+ ✓ src/hub/preview/StyleSelector.test.tsx (2 tests) 38ms
+ ✓ src/hub/overlays/WidgetDataStatusBadge.test.tsx (3 tests) 36ms
+ ✓ src/overlay/overlay-document.test.ts (1 test) 8ms
+ ✓ src/overlay/widgets/TelemetryWidget.test.tsx (2 tests) 58ms
+ ✓ src/hub/components/V52InfoCard.test.tsx (1 test) 33ms
+ ✓ src/hub/components/EmptyStates.test.tsx (2 tests) 36ms
+ ✓ src/hub/pages/ProfilesPage.test.tsx (1 test) 40ms
+ ✓ src/lib/html-escape.test.ts (2 tests) 3ms
+ ✓ src/hub/components/V52SectionHeader.test.tsx (1 test) 32ms
+ ✓ src/overlay/widgets/TelemetryVerticalWidget.test.tsx (1 test) 36ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  2 failed | 162 passed (164)
+      Tests  1551 passed (1551)
+   Start at  23:43:04
+   Duration  37.97s (transform 13.63s, setup 4.71s, import 116.31s, tests 37.73s, environment 295.83s)
+
+ FAIL  src/hub/state/style-catalog.contract.test.ts [ src/hub/state/style-catalog.contract.test.ts ]
+Error: Failed to resolve import "../../../../docs/overlay-glassmorphism-pro.html?raw" from "src/hub/state/style-catalog.contract.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/vantare-launch-1a-test/vantare-v2/frontend/src/hub/state/style-catalog.contract.test.ts:3:17
+  1  |  import { describe, it, expect } from "vitest";
+  2  |  import { getDefaultAppearance } from "./style-catalog";
+  3  |  import html from "../../../../docs/overlay-glassmorphism-pro.html?raw";
+     |                    ^
+  4  |  /**
+  5  |  * Contract test: asserts that the per-widget-type defaults for `vantare-crystal`
+ ❯ TransformPluginContext._formatLog ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39
+ ❯ TransformPluginContext.error ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18
+ ❯ ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+ ❯ TransformPluginContext.transform ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4
+ ❯ EnvironmentPluginContainer.transform ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/overlay/widgets/widget-design-system.contract.test.ts [ src/overlay/widgets/widget-design-system.contract.test.ts ]
+Error: Failed to resolve import "../../../../docs/overlay-glassmorphism-pro.html?raw" from "src/overlay/widgets/widget-design-system.contract.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/vantare-launch-1a-test/vantare-v2/frontend/src/overlay/widgets/widget-design-system.contract.test.ts:3:17
+  1  |  import { describe, it, expect } from "vitest";
+  2  |  import { resolveWidgetDesignSystem } from "./widget-design-system";
+  3  |  import html from "../../../../docs/overlay-glassmorphism-pro.html?raw";
+     |                    ^
+  4  |  /**
+  5  |  * Contract test: asserts that the runtime tokens for `vantare-crystal` match
+ ❯ TransformPluginContext._formatLog ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39
+ ❯ TransformPluginContext.error ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14
+ ❯ normalizeUrl ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18
+ ❯ ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+ ❯ TransformPluginContext.transform ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4
+ ❯ EnvironmentPluginContainer.transform ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ ELIFECYCLE  Test failed. See above for more details.

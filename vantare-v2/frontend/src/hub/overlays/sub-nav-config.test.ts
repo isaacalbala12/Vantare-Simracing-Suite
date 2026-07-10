@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getSectionsForWidget, type SubNavSectionId } from "./sub-nav-config";
+import { getSectionsForWidget } from "./sub-nav-config";
 
 describe("sub-nav-config", () => {
   it("returns Diseño + Apariencia + Columnas + Visibilidad + General for relative", () => {

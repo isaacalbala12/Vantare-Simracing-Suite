@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -144,8 +145,8 @@ func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 }
 
 // runChained executes every step of the profile sequentially. It returns true
-// when all steps succeed. Steps are emitted with "pending" before the delay,
-// then "launching" at Start, then "done" or "failed" after the liveness probe.
+// only when ALL steps succeed. Steps that fail are tracked but the chain
+// continues with the remaining steps. The caller gets a summary at the end.
 func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile) bool {
 	apps := make(map[string]app.LauncherAppEntry)
 	src := r.backend.GetLauncherApps()
@@ -153,6 +154,7 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 		apps[k] = v
 	}
 
+	allSucceeded := true
 	for i, step := range profile.Steps {
 		if ctx.Err() != nil {
 			return false
@@ -170,7 +172,8 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				FinishedAt: now.UnixMilli(),
 				Message:    fmt.Sprintf("app %q not found", step.AppID),
 			})
-			return false
+			allSucceeded = false
+			continue // continue to next step, don't stop
 		}
 
 		// Emit pending before the delay.
@@ -205,6 +208,7 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			if result.exitCode != 0 {
 				msg = fmt.Sprintf("el proceso terminó con código %d", result.exitCode)
 			}
+			allSucceeded = false
 		}
 
 		r.emit.Emit("launcher:chain:step", ChainProgress{
@@ -217,13 +221,9 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			Pid:        result.pid,
 			Message:    msg,
 		})
-
-		if !result.success {
-			return false
-		}
 	}
 
-	return true
+	return allSucceeded
 }
 
 // launchAndProbe starts the app and emits the "launching" event. For
@@ -263,6 +263,9 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if cmd == nil {
 			return chainStepResult{success: false}
 		}
+		// Set working directory to the executable's folder so apps like OBS
+		// can find their locale/config files relative to the exe.
+		cmd.Dir = filepath.Dir(entry.ExecutablePath)
 		if err := cmd.Start(); err != nil {
 			return chainStepResult{success: false}
 		}

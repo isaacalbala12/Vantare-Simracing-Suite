@@ -154,7 +154,14 @@ func handleAddApp(entry app.LauncherAppEntry, svc *launcher.Service, emitter app
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": svc.Settings().GetLauncherApps()})
+	// Convert map to slice for the frontend (expects array, not map).
+	appsMap := svc.Settings().GetLauncherApps()
+	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
+	for _, v := range appsMap {
+		appsList = append(appsList, v)
+	}
+	launcher.EnrichAppsWithIcons(appsList)
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 }
 
 // handleRemoveApp deletes an app (refusing when a profile still uses it) and
@@ -165,7 +172,13 @@ func handleRemoveApp(id string, svc *launcher.Service, emitter app.EventEmitter)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": svc.Settings().GetLauncherApps()})
+	appsMap := svc.Settings().GetLauncherApps()
+	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
+	for _, v := range appsMap {
+		appsList = append(appsList, v)
+	}
+	launcher.EnrichAppsWithIcons(appsList)
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 }
 
 // handleListProfiles emits launcher:profiles:updated with the current profiles.
@@ -253,7 +266,13 @@ func handleAppUpdate(id, args string, settingsSvc *app.SettingsService, emitter 
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": settingsSvc.GetLauncherApps()})
+	appsMap := settingsSvc.GetLauncherApps()
+	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
+	for _, v := range appsMap {
+		appsList = append(appsList, v)
+	}
+	launcher.EnrichAppsWithIcons(appsList)
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 }
 
 // handleChainError is invoked when the chain runner reports a step failure.
@@ -359,7 +378,13 @@ func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsServic
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": settingsSvc.GetLauncherApps()})
+	appsMap := settingsSvc.GetLauncherApps()
+	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
+	for _, v := range appsMap {
+		appsList = append(appsList, v)
+	}
+	launcher.EnrichAppsWithIcons(appsList)
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 }
 
 // handleLaunchFlag parses --launch=<profileID> from the command-line arguments.
@@ -1316,6 +1341,25 @@ func main() {
 			}
 		}
 		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
+	})
+
+	// App icon handler. Frontend emits launcher:app:icon with { id, executablePath }.
+	// Responds with launcher:app:icon:result containing a base64 data URI or empty string.
+	wailsApp.Event.On("launcher:app:icon", func(event *application.CustomEvent) {
+		var payload struct {
+			ID             string `json:"id"`
+			ExecutablePath string `json:"executablePath"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		dataURI := launcher.GetAppIconForAppBase64(payload.ID, payload.ExecutablePath)
+		emitter.Emit("launcher:app:icon:result", map[string]any{
+			"id":      payload.ID,
+			"iconUrl": dataURI,
+		})
 	})
 
 	// Chain error -> native question dialog asking whether to retry.

@@ -528,11 +528,18 @@ func TestHandleAddAppEmitsUpdated(t *testing.T) {
 		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
 	}
 	payload := emitter.data[0].(map[string]any)
-	apps, ok := payload["apps"].(map[string]app.LauncherAppEntry)
+	apps, ok := payload["apps"].([]app.LauncherAppEntry)
 	if !ok {
 		t.Fatalf("apps payload missing or wrong type: %+v", payload)
 	}
-	if _, ok := apps["obs"]; !ok {
+	found := false
+	for _, a := range apps {
+		if a.ID == "obs" {
+			found = true
+			break
+		}
+	}
+	if !found {
 		t.Fatal("added app missing from emitted apps")
 	}
 }

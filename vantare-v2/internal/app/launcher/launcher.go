@@ -59,15 +59,36 @@ func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
 // DiscoverApps detects installed apps, merges them with the persisted set
 // (preserving manual apps) and persists the result. It is named DiscoverApps
 // rather than Discover to avoid a name collision with the package-level
-// Discover() helper in discovery.go. Emits launcher:apps:detected.
-func (s *Service) DiscoverApps() (map[string]app.LauncherAppEntry, error) {
+// Discover() helper in discovery.go. Emits launcher:apps:detected with an
+// ARRAY (not a map) so the frontend can use .slice().
+func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	detected := Discover()
 	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
 	if err := s.settings.SetLauncherApps(merged); err != nil {
 		return nil, err
 	}
-	s.emit.Emit("launcher:apps:detected", map[string]any{"apps": merged})
-	return merged, nil
+	// Convert map to slice for the frontend (expects array, not map).
+	appsList := make([]app.LauncherAppEntry, 0, len(merged))
+	for _, v := range merged {
+		appsList = append(appsList, v)
+	}
+	// Enrich each app entry with the icon data URI so the frontend displays it
+	// immediately, without a separate round-trip event.
+	for i, a := range appsList {
+		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
+	}
+	s.emit.Emit("launcher:apps:detected", map[string]any{"apps": appsList})
+	return appsList, nil
+}
+
+// EnrichAppsWithIcons sets each app entry's IconURL to a data URI extracted
+// from its executable or desktop shortcut (.lnk). This lets the frontend
+// display the icon immediately without a round-trip event.
+func EnrichAppsWithIcons(apps []app.LauncherAppEntry) []app.LauncherAppEntry {
+	for i, a := range apps {
+		apps[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
+	}
+	return apps
 }
 
 // AddManualApp delegates to apps.go.

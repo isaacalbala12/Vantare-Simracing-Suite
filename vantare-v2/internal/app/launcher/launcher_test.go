@@ -78,10 +78,14 @@ func TestDiscoverAppsMergesAndEmits(t *testing.T) {
 		t.Fatalf("DiscoverApps: %v", err)
 	}
 	// Manual app preserved, detected apps merged in.
-	if _, ok := apps["custom"]; !ok {
+	appsByID := map[string]app.LauncherAppEntry{}
+	for _, a := range apps {
+		appsByID[a.ID] = a
+	}
+	if _, ok := appsByID["custom"]; !ok {
 		t.Fatal("manual app must be preserved across discovery")
 	}
-	if _, ok := apps["lmu"]; !ok {
+	if _, ok := appsByID["lmu"]; !ok {
 		t.Fatal("lmu must be present after discovery")
 	}
 	if !hasEvent(emitter, "launcher:apps:detected") {

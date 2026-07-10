@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,30 @@ type discoveredCandidate struct {
 	NoRemove        int    // DWORD: 1 = system-protected
 	ReleaseType     string // "Update", "Hotfix", "SecurityUpdate", "ServicePack"
 	UninstallString string
+}
+
+// expandWindowsEnv expands both Windows-style %VAR% and Go-style $VAR / ${VAR}
+// environment variables in s. Unknown variables are left as-is.
+func expandWindowsEnv(s string) string {
+	result := os.ExpandEnv(s) // handles $VAR and ${VAR}
+	// Now handle Windows %VAR% syntax
+	var buf strings.Builder
+	buf.Grow(len(result))
+	for i := 0; i < len(result); i++ {
+		if result[i] == '%' {
+			end := strings.IndexByte(result[i+1:], '%')
+			if end >= 0 {
+				key := result[i+1 : i+1+end]
+				if val, ok := os.LookupEnv(key); ok {
+					buf.WriteString(val)
+					i += 1 + end // skip %key%
+					continue
+				}
+			}
+		}
+		buf.WriteByte(result[i])
+	}
+	return buf.String()
 }
 
 // findFirstExisting returns the first name from the list whose path exists
@@ -113,32 +138,43 @@ func probeKnownPaths(found map[string]app.LauncherAppEntry) map[string]app.Launc
 		out[k] = v
 	}
 	for _, known := range KnownApps {
-		if _, ok := out[known.ID]; ok {
-			continue
-		}
 		if known.LaunchMethod != "executable" {
 			continue
 		}
+		if existing, ok := out[known.ID]; ok && existing.ExecutablePath != "" {
+			continue
+		}
+		log.Printf("LAUNCHER-DBG: probing %s paths=%v", known.ID, known.KnownPaths)
+		if known.ID == "obs" {
+			log.Printf("LAUNCHER-DBG: PROGRAMFILES=%q LOCALAPPDATA=%q", os.Getenv("PROGRAMFILES"), os.Getenv("LOCALAPPDATA"))
+		}
 		for _, p := range known.KnownPaths {
-			expanded := os.ExpandEnv(p)
+			expanded := expandWindowsEnv(p)
 			if expanded == "" {
 				continue
 			}
+			log.Printf("LAUNCHER-DBG: checking dir=%s names=%v", expanded, known.ExecutableNames)
 			exe := findFirstExisting(expanded, known.ExecutableNames)
 			if exe == "" {
 				exe = findExecutableRecursive(expanded, known.ExecutableNames, 2)
 			}
 			if exe != "" {
-				out[known.ID] = app.LauncherAppEntry{
-					ID:             known.ID,
-					DisplayName:    known.DisplayName,
-					Abbreviation:   known.Abbreviation,
-					Category:       app.LauncherAppCategory(known.Category),
-					LaunchMethod:   known.LaunchMethod,
-					ExecutablePath: exe,
-					Detected:       true,
-					GradientFrom:   known.GradientFrom,
-					GradientTo:     known.GradientTo,
+				log.Printf("LAUNCHER-DBG: FOUND %s at %s", known.ID, exe)
+				if existing, ok := out[known.ID]; ok {
+					existing.ExecutablePath = exe
+					out[known.ID] = existing
+				} else {
+					out[known.ID] = app.LauncherAppEntry{
+						ID:             known.ID,
+						DisplayName:    known.DisplayName,
+						Abbreviation:   known.Abbreviation,
+						Category:       app.LauncherAppCategory(known.Category),
+						LaunchMethod:   known.LaunchMethod,
+						ExecutablePath: exe,
+						Detected:       true,
+						GradientFrom:   known.GradientFrom,
+						GradientTo:     known.GradientTo,
+					}
 				}
 				break
 			}

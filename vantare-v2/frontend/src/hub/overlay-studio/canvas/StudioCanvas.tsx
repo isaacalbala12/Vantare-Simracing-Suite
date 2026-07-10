@@ -311,6 +311,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 onSelect={selectWidget}
                 onFramePointerDown={interaction.onFramePointerDown}
                 onResizePointerDown={interaction.onResizePointerDown}
+                onLostPointerCapture={interaction.onLostPointerCapture}
               />
             ))}
           </div>

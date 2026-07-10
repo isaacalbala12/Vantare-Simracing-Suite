@@ -756,7 +756,8 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 9999;
+  /* Las guías no deben pintar por encima del contenido del widget. */
+  z-index: 0;
 }
 
 .osv3-canvas-guide {

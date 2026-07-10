@@ -79,11 +79,37 @@ describe("canvas-frame-preview", () => {
     expect(element?.style.transform).toBe("translate(40px, 30px)");
   });
 
+  it("does not clear the committed scaler transform when a move preview ends", () => {
+    const frame = mountFrameWithScaler();
+    const scaler = frame.querySelector<HTMLElement>('[data-testid="studio-widget-intrinsic-scaler-delta-main"]');
+    expect(scaler).toBeTruthy();
+    scaler!.style.transform = "scale(1.5)";
+
+    beginStudioFramePreview("delta-main", "move", start, widgetType);
+    applyStudioFrameLayoutPreview("delta-main", start);
+    clearStudioFrameLayoutPreview("delta-main");
+
+    expect(scaler?.style.transform).toBe("scale(1.5)");
+  });
+
   it("clears cached preview layout on reset", () => {
     beginStudioFramePreview("delta-main", "resize", layout, widgetType);
     applyStudioFrameLayoutPreview("delta-main", layout);
     resetStudioFrameLayoutPreview("delta-main", layout);
     expect(getStudioFrameLayoutPreview("delta-main")).toBeUndefined();
+  });
+
+  it("restores the intrinsic scaler transform when resize preview is reset", () => {
+    const frame = mountFrameWithScaler();
+    const scaler = frame.querySelector<HTMLElement>('[data-testid="studio-widget-intrinsic-scaler-delta-main"]');
+    const scaledStart = { ...start, w: 420, h: 180 };
+    const scaledPreview = { ...scaledStart, w: 520, h: 223 };
+
+    beginStudioFramePreview("delta-main", "resize", scaledStart, widgetType);
+    applyStudioFrameLayoutPreview("delta-main", scaledPreview);
+    resetStudioFrameLayoutPreview("delta-main", scaledStart);
+
+    expect(scaler?.style.transform).toBe("scale(1.5)");
   });
 
   it("prefers registered frame refs over querySelector", () => {

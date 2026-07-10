@@ -55,18 +55,10 @@ function writeIntrinsicScalerScale(
   scaler.style.transform = `scale(${intrinsic.scale})`;
 }
 
-function clearIntrinsicScalerOverride(frame: HTMLElement, widgetId: string): void {
-  const scaler = findStudioIntrinsicScaler(frame, widgetId);
-  if (scaler) {
-    scaler.style.transform = "";
-  }
-}
-
 export function clearStudioFrameLayoutPreview(widgetId: string): void {
   const frame = findStudioFrameElement(widgetId);
   if (frame) {
     frame.style.transform = "";
-    clearIntrinsicScalerOverride(frame, widgetId);
   }
   previewSessions.delete(widgetId);
 }
@@ -133,11 +125,14 @@ export function resetStudioFrameLayoutPreview(
   widgetId: string,
   layout: WidgetLayoutV3,
 ): void {
+  const session = previewSessions.get(widgetId);
   const frame = findStudioFrameElement(widgetId);
   if (frame) {
     frame.style.transform = "";
     writeFrameGeometry(frame, layout);
-    clearIntrinsicScalerOverride(frame, widgetId);
+    if (session?.kind === "resize") {
+      writeIntrinsicScalerScale(frame, widgetId, layout, session.widgetType);
+    }
   }
   clearStudioFrameLayoutPreview(widgetId);
 }

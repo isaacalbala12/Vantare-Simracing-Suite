@@ -273,13 +273,17 @@ describe("useCanvasInteraction", () => {
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
     mockSceneRect();
 
+    const scaler = screen.getByTestId("studio-widget-intrinsic-scaler-delta-main");
+
     pointerDownFrame();
+    scaler.style.transform = "scale(1.5)";
     pointerUp();
 
     await waitFor(() =>
       expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle"),
     );
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+    expect(scaler.style.transform).toBe("scale(1.5)");
   });
 
   it("restores geometry and skips dispatch when Escape is pressed", async () => {
@@ -367,5 +371,30 @@ describe("useCanvasInteraction", () => {
     const width = Number.parseFloat(frame.style.width);
     const height = Number.parseFloat(frame.style.height);
     expect(width / height).toBeCloseTo(280 / 96, 2);
+  });
+
+  it("cancels resize and removes guides when the handle loses pointer capture", async () => {
+    renderInteractiveCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
+    mockSceneRect();
+
+    pointerDownFrame();
+    pointerUp();
+    await waitFor(() => expect(screen.getByTestId("studio-resize-handle-se-delta-main")).toBeTruthy());
+
+    const handle = screen.getByTestId("studio-resize-handle-se-delta-main");
+    fireEvent.pointerDown(handle, { pointerId: 2, button: 0, clientX: 380, clientY: 196, bubbles: true });
+    pointerMove(480, 236, 2, { altKey: true });
+    await waitFor(() => expect(Number.parseFloat(screen.getByTestId("studio-widget-frame-delta-main").style.width)).toBeGreaterThan(280));
+
+    fireEvent.lostPointerCapture(handle, { pointerId: 2, bubbles: true });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle");
+      expect(screen.getByTestId("studio-widget-frame-delta-main").style.width).toBe("280px");
+    });
+    expect(screen.getByTestId("studio-widget-intrinsic-scaler-delta-main").style.transform).toBe("scale(1)");
+    expect(screen.queryByTestId("studio-canvas-guides")).toBeNull();
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
 });

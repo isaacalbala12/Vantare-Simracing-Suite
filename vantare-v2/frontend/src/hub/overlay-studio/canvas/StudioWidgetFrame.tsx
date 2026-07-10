@@ -39,6 +39,7 @@ export type StudioWidgetFrameProps = {
     handle: ResizeHandle,
     event: React.PointerEvent<HTMLElement>,
   ): void;
+  onLostPointerCapture?(event: PointerEvent): void;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
@@ -51,6 +52,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
+    onLostPointerCapture,
   } = props;
   const frameRef = useRef<HTMLDivElement>(null);
   const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
@@ -104,7 +106,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
         event.stopPropagation();
         onSelect(widget.id);
       }}
-      onLostPointerCapture={() => undefined}
+      onLostPointerCapture={(event) => onLostPointerCapture?.(event.nativeEvent)}
     >
       {selected ? (
         <div data-testid={`studio-widget-frame-chrome-${widget.id}`} className="osv3-widget-frame__chrome" />
@@ -123,6 +125,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
               className={`osv3-resize-handle osv3-resize-handle--${handle}`}
               aria-label={`Resize ${handle}`}
               onPointerDown={(event) => onResizePointerDown(widget.id, handle, event)}
+              onLostPointerCapture={(event) => onLostPointerCapture?.(event.nativeEvent)}
             />
           ))
         : null}
@@ -158,5 +161,6 @@ export const StudioWidgetFrame = memo(
     && previous.snapshot === next.snapshot
     && previous.onSelect === next.onSelect
     && previous.onFramePointerDown === next.onFramePointerDown
-    && previous.onResizePointerDown === next.onResizePointerDown,
+    && previous.onResizePointerDown === next.onResizePointerDown
+    && previous.onLostPointerCapture === next.onLostPointerCapture,
 );

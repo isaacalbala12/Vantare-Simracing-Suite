@@ -72,6 +72,7 @@ export type UseCanvasInteractionResult = {
     handle: ResizeHandle,
     event: React.PointerEvent<HTMLElement>,
   ): void;
+  onLostPointerCapture(event: PointerEvent): void;
 };
 
 function layoutGeometryChanged(start: WidgetLayoutV3, preview: WidgetLayoutV3): boolean {
@@ -480,5 +481,6 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     resolveLayout,
     onFramePointerDown: beginMove,
     onResizePointerDown: beginResize,
+    onLostPointerCapture,
   };
 }

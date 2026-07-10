@@ -9,7 +9,9 @@
     "build:dev": "tsc -b && vite build --mode development",
     "test": "vitest run",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "visual:overlay-studio": "node scripts/overlay-studio-visual.mjs",
+    "visual:overlay-studio:update": "node scripts/overlay-studio-visual.mjs --update"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

@@ -1,5 +1,7 @@
 # LayoutStudio Sub-Nav Redesign Implementation Plan
 
+> **SUPERSEDED 2026-07-10:** No ejecutar. Conservado como referencia histórica del HTML v10. Overlay Studio V3 reemplaza el borrador local por widget y reconstruye inspector, preview, estado y runtime mediante el plan maestro `2026-07-10-overlay-studio-rebuild-master.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the current WidgetSettingsPanel's flat accordion layout with a unique sub-nav pattern (icon rail with mini-previews + content area) that matches the approved v10 HTML mockup, using bronze-style cards with red vantare accent.

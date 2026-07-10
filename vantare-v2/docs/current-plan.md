@@ -1,3 +1,9 @@
+Nota OVERLAY-STUDIO-V3 (2026-07-10):
+- Objetivo: reconstrucción paralela de Overlay Studio V3 (Delta, Standings, Relative, Pedals en `vantare-original` y `vantare-crystal`).
+- Autoridad: ADR `docs/adr/0003-overlay-studio-v3-rebuild.md` y plan maestro `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md` (worktree `refactor`, rama `refactor`).
+- Estado: Fase 0 en curso. **Ningún código de producción V3 conmutado aún**; el runtime sigue en legado congelado.
+- Índice de microcortes Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
+
 Nota LAUNCH-1C (2026-07-10):
 - Objetivo: cerrar smoke de checkout Polar **produccion** sin pago real (sin presupuesto test).
 - Proyecto Supabase: `ombjshwzqgeisazijduq` (oficial). Sin merge PR, sin tag, sin release publico.

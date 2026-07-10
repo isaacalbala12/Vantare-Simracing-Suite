@@ -35,7 +35,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.1.0.4"
+var version = "v0.1.0.5"
 
 // supabaseURL and supabaseAnonKey are injected at build time via ldflags
 // (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
@@ -406,7 +406,7 @@ func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *laun
 func main() {
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
-		udf := filepath.Join(appData, "Vantare", "webview_v0.3.10.0")
+		udf := filepath.Join(appData, "Vantare", "webview_v0.1.0.5")
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 

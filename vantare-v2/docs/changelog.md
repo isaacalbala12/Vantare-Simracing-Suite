@@ -2,6 +2,31 @@
 
 Changelog publico para testers y Discord. Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
+## v0.1.0.5
+
+Lote acumulado de launcher de Windows, UI del hub, servicios internos y documentación de marca/disseño.
+
+**Launcher (Windows)**
+
+- Descubrimiento de apps y encadenado (chain) del launcher reforzados.
+- Embebido de icono de Windows (`icon_windows.go`) con stub multiplataforma.
+- Script NSIS del instalador extendido.
+
+**Hub / UI**
+
+- Paneles del launcher: apps, perfiles, editor de perfiles y estado.
+- Componente `AppBadge` y cableado de páginas HubApp/Calendar/Engineer.
+- Hook de estado de overlay studio.
+
+**Servicios internos**
+
+- Servicio de ajustes y configuración de calendario LMU actualizada.
+
+**Documentación y tooling**
+
+- Guías de marca/diseño, spec técnico del launcher y planes.
+- Scripts de paridad visual, definiciones MCP, agent-tools y utilidad de fingerprint.
+
 ## v0.1.0.4
 
 Hotfix critico: el backend no emitia `hub:profiles` despues de `hub:create`, `hub:save-own-copy` o `hub:delete`, por lo que la lista de perfiles propios nunca se actualizaba en la UI aunque los perfiles se creasen correctamente en disco.

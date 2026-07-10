@@ -6,7 +6,7 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **Fase 1 ✅ CERRADA** (commits `2f0b3f3`..`2dfb940`): tipos/validación/migración V3 Go, storage revision-aware + backup `.pre-v3.bak`, `StudioProfileService` paralelo, contrato TS `profile-document.ts`, librería diseños `WidgetDesignService` + `widget-design.ts`.
 - Evidencia baseline: `docs/overlay-studio-v3-baseline.md`, `docs/overlay-studio-v3-inventory.md`.
 - Tests Fase 1: `go test ./pkg/config/... ./internal/app/... -run "ProfileDocumentStore|StudioProfileService|WidgetDesignService|MigrateProfile|ValidateProfileDocumentV3" -count=1` PASS; `pnpm --dir frontend test` → 166 files / 1584 PASS; `pnpm --dir frontend build` PASS.
-- Goldens migración: `pkg/config/testdata/profile-v3-core-widgets-from-v0.golden.json`, `profile-v3-core-widgets-from-v2.golden.json`; parser TS alineado en `profile-contract-fixture.test.ts`.
+- Goldens migración: `pkg/config/testdata/profile-v3-core-widgets-from-v0.golden.json`, `profile-v3-core-widgets-from-v2.golden.json`; parser TS alineado en `profile-contract-fixture.test.tsx` (parse + render de los 4 widgets del golden v2).
 - Preexistentes documentados (no regresión): lint frontend 11 errores; `internal/server` nonce/port tests FAIL en `go test ./...`; flaky ocasional `TestConcurrentSavesDontCorruptFile` en `internal/app` (Windows file lock).
 - **Fase 2 ✅ CERRADA** (commits `6e471fe`..`d853b4c`): registry funcional Delta, telemetry store, view model, design-system registry + migración visual, renderers Original/Crystal, `WidgetVisualHost`, harness visual determinista (`visual:overlay-studio`).
 - Evidencia Fase 2: `pnpm --dir frontend test` → 179 files / 1642 PASS; `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` x2 PASS (0.000% delta); `rg` design-systems sin imports prohibidos (solo aserciones en tests).
@@ -22,7 +22,9 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Task 5.8 Browser View (2026-07-10): `browser-view.ts` abre `/overlay?profile=` solo con perfil guardado; si dirty → guardar o cancelar (sin descartar). Cableado en `OverlayStudioV3` + `StudioCanvas`.
 - Harness Browser View (2026-07-10): middleware Vite (`overlay-studio-harness-vite-plugin.ts`) + preview studio (`studioPreview=1`, fondo gris/rejilla, escala fit). Commits `32bc433`..`39a1133`.
 - **Fase 5 ✅ CERRADA** (commits `96d7119`..`a606b21` + harness browser view): inspector por capacidades, catálogo, diseños, access policy, Browser View.
-- **Fase 6 en curso** — Standings ✅ (6.1–6.3, `074d389`..`ffd6c4f`); Relative modelo funcional ✅ Task 6.4. Siguiente: **Task 6.5 Relative Original/Crystal** — plan `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-06-core-widget-migration.md`.
+- **Fase 6 casi cerrada** — 6.1–6.8 ✅ (`074d389`..`f6050cf` + commit registry pendiente). Renderers Original/Crystal para Standings, Relative y Pedals; registry 4 widgets × 2 systems; official designs base; catálogo studio con 4 entradas; golden v2 renderiza sin diagnósticos.
+- **Pendiente revisión manual (6.9 + review gate):** matriz visual PNG (`visual:overlay-studio`), parity assertions ampliadas a los 4 widgets, QA visual “que se parezca al HTML” — plan `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-06-core-widget-migration.md` Task 6.9.
+- Evidencia Fase 6 (2026-07-11): `pnpm --dir frontend test -- src/overlay` → 69 files / 446 PASS; `pnpm --dir frontend build` PASS.
 - **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes).
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

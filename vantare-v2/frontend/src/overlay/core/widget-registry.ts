@@ -1,6 +1,7 @@
 import type { CoreWidgetType } from "./profile-document";
 import type { WidgetTypeDefinition } from "./widget-definition";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
+import { pedalsDefinition } from "../widget-types/pedals/pedals-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 
@@ -34,3 +35,4 @@ export const widgetTypeRegistry = new WidgetTypeRegistry();
 widgetTypeRegistry.register(deltaDefinition);
 widgetTypeRegistry.register(standingsDefinition);
 widgetTypeRegistry.register(relativeDefinition);
+widgetTypeRegistry.register(pedalsDefinition);

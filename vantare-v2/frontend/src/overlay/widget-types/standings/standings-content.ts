@@ -136,9 +136,16 @@ export function createDefaultStandingsContent(): StandingsContent {
   };
 }
 
+function normalizeLegacyMetricId(metricId: string): string {
+  if (metricId === "name") {
+    return "driverName";
+  }
+  return metricId;
+}
+
 function normalizeLegacyColumn(raw: Record<string, unknown>): WidgetColumnV3 {
-  const id = String(raw.id ?? "");
-  const metricId = String(raw.metricId ?? raw.id ?? "");
+  const id = normalizeLegacyMetricId(String(raw.id ?? ""));
+  const metricId = normalizeLegacyMetricId(String(raw.metricId ?? raw.id ?? ""));
   const enabled = raw.enabled !== false;
   const widthPreset =
     typeof raw.widthPreset === "string" &&

@@ -47,9 +47,45 @@ function createMockClient(loadedDocument: ProfileDocumentV3, revision = "rev-1")
   };
 }
 
-function wrapper(client: StudioProfileClient) {
+function createMemoryStorage(): Storage {
+  const storage = new Map<string, string>();
+  return {
+    get length() {
+      return storage.size;
+    },
+    clear() {
+      storage.clear();
+    },
+    getItem(key: string) {
+      return storage.get(key) ?? null;
+    },
+    key(index: number) {
+      return [...storage.keys()][index] ?? null;
+    },
+    removeItem(key: string) {
+      storage.delete(key);
+    },
+    setItem(key: string, value: string) {
+      storage.set(key, value);
+    },
+  };
+}
+
+function wrapper(
+  client: StudioProfileClient,
+  options?: { recoveryStorage?: Storage; recoveryWriteDelayMs?: number },
+) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return <StudioProvider client={client} initialFile="profiles/test.json">{children}</StudioProvider>;
+    return (
+      <StudioProvider
+        client={client}
+        initialFile="profiles/test.json"
+        recoveryStorage={options?.recoveryStorage ?? null}
+        recoveryWriteDelayMs={options?.recoveryWriteDelayMs ?? 300}
+      >
+        {children}
+      </StudioProvider>
+    );
   };
 }
 
@@ -185,6 +221,68 @@ describe("StudioProvider", () => {
     act(() => result.current.discardAll());
     expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(64);
     expect(result.current.dirty).toBe(false);
+  });
+
+  it("writes recovery drafts locally without calling profile save", async () => {
+    const storage = createMemoryStorage();
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), {
+      wrapper: wrapper(client, { recoveryStorage: storage, recoveryWriteDelayMs: 0 }),
+    });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 250 },
+      });
+    });
+    await waitFor(() =>
+      expect(storage.getItem("vantare:overlay-studio:v3:recovery:profile-1")).toContain("\"x\":250"),
+    );
+    expect(client.save).not.toHaveBeenCalled();
+  });
+
+  it("clears recovery drafts after a successful save or discard", async () => {
+    const storage = createMemoryStorage();
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), {
+      wrapper: wrapper(client, { recoveryStorage: storage, recoveryWriteDelayMs: 0 }),
+    });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 250 },
+      });
+    });
+    await waitFor(() =>
+      expect(storage.getItem("vantare:overlay-studio:v3:recovery:profile-1")).not.toBeNull(),
+    );
+
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(storage.getItem("vantare:overlay-studio:v3:recovery:profile-1")).toBeNull();
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 300 },
+      });
+    });
+    await waitFor(() =>
+      expect(storage.getItem("vantare:overlay-studio:v3:recovery:profile-1")).not.toBeNull(),
+    );
+    act(() => result.current.discardAll());
+    expect(storage.getItem("vantare:overlay-studio:v3:recovery:profile-1")).toBeNull();
   });
 
   it("keeps preview changes out of document history and dirty state", async () => {

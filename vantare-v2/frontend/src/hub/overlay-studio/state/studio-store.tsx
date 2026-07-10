@@ -27,6 +27,7 @@ import {
 import { resolveSessionLayout } from "./session-layouts";
 import type { StudioCommand } from "./studio-command";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
+import { buildHistoryFromRecovery, createStudioRecoveryStore } from "./studio-recovery";
 
 export type StudioSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 
@@ -64,6 +65,7 @@ type StudioDocumentContextValue = {
   undo(): void;
   redo(): void;
   discardAll(): void;
+  acceptRecovery(recoveredDocument: ProfileDocumentV3): void;
 };
 
 type StudioPreviewContextValue = {
@@ -93,8 +95,10 @@ export function StudioProvider(props: {
   client: StudioProfileClient;
   initialFile: string;
   children: ReactNode;
+  recoveryStorage?: Storage | null;
+  recoveryWriteDelayMs?: number;
 }): JSX.Element {
-  const { client, initialFile, children } = props;
+  const { client, initialFile, children, recoveryStorage = null, recoveryWriteDelayMs = 300 } = props;
   const [history, setHistory] = useState<StudioHistory | null>(null);
   const [revision, setRevision] = useState<string>("");
   const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
@@ -104,6 +108,10 @@ export function StudioProvider(props: {
   const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
   const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const recoveryStore = useMemo(
+    () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
+    [recoveryStorage],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -141,6 +149,22 @@ export function StudioProvider(props: {
   const document = history?.present ?? null;
   const dirty = history ? isStudioHistoryDirty(history) : false;
 
+  useEffect(() => {
+    if (!recoveryStore || !history || !document || !dirty) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      recoveryStore.write({
+        version: 1,
+        profileId: document.id,
+        baseRevision: revision,
+        capturedAt: new Date().toISOString(),
+        document,
+      });
+    }, recoveryWriteDelayMs);
+    return () => window.clearTimeout(timeout);
+  }, [recoveryStore, history, document, dirty, revision, recoveryWriteDelayMs]);
+
   const activeLayout = useMemo(() => {
     if (!document) {
       return null;
@@ -162,11 +186,31 @@ export function StudioProvider(props: {
   }, []);
 
   const discardAll = useCallback(() => {
-    setHistory((current) => (current ? discardStudioHistory(current) : current));
+    setHistory((current) => {
+      if (!current) {
+        return current;
+      }
+      if (recoveryStore && current.saved) {
+        recoveryStore.clear(current.saved.id);
+      }
+      return discardStudioHistory(current);
+    });
     setSaveState("idle");
     setLastError(null);
     setVisuallyMigratedWidgetIds([]);
-  }, []);
+  }, [recoveryStore]);
+
+  const acceptRecovery = useCallback(
+    (recoveredDocument: ProfileDocumentV3) => {
+      setHistory((current) => {
+        if (!current) {
+          return current;
+        }
+        return buildHistoryFromRecovery(current.saved, recoveredDocument);
+      });
+    },
+    [],
+  );
 
   const save = useCallback(async (): Promise<StudioSaveResult> => {
     if (!history || !document) {
@@ -179,6 +223,9 @@ export function StudioProvider(props: {
       setHistory((current) =>
         current ? markStudioHistorySaved({ ...current, present: result.document }, result.document) : current,
       );
+      if (recoveryStore) {
+        recoveryStore.clear(result.document.id);
+      }
       setRevision(result.revision);
       setSaveState("saved");
       setVisuallyMigratedWidgetIds([]);
@@ -192,7 +239,7 @@ export function StudioProvider(props: {
     setSaveState("error");
     setLastError(result.message);
     return result;
-  }, [client, document, history, revision]);
+  }, [client, document, history, recoveryStore, revision]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
     setPreviewState((current) => ({ ...current, ...patch }));
@@ -215,6 +262,7 @@ export function StudioProvider(props: {
       undo,
       redo,
       discardAll,
+      acceptRecovery,
     }),
     [
       document,
@@ -231,6 +279,7 @@ export function StudioProvider(props: {
       undo,
       redo,
       discardAll,
+      acceptRecovery,
     ],
   );
 

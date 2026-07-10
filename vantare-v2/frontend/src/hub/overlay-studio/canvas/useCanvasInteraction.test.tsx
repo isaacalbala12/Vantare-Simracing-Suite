@@ -356,6 +356,9 @@ describe("useCanvasInteraction", () => {
     await waitFor(() => {
       const frame = screen.getByTestId("studio-widget-frame-delta-main");
       expect(Number.parseFloat(frame.style.width)).toBeGreaterThan(280);
+      const scaler = screen.getByTestId("studio-widget-intrinsic-scaler-delta-main");
+      const scale = Number.parseFloat(scaler.style.transform.replace("scale(", "").replace(")", ""));
+      expect(scale).toBeGreaterThan(0.9);
     });
     fireEvent.pointerUp(window, { pointerId: 2, bubbles: true });
 

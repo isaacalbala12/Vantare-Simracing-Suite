@@ -1,4 +1,5 @@
-import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
+import type { CoreWidgetType, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
+import { resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
 
 type FramePreviewKind = "move" | "resize";
 
@@ -6,6 +7,7 @@ type FramePreviewSession = {
   kind: FramePreviewKind;
   start: WidgetLayoutV3;
   preview: WidgetLayoutV3;
+  widgetType: CoreWidgetType;
 };
 
 const previewSessions = new Map<string, FramePreviewSession>();
@@ -35,10 +37,36 @@ export function getStudioFramePreviewKind(widgetId: string): FramePreviewKind | 
   return previewSessions.get(widgetId)?.kind;
 }
 
+function findStudioIntrinsicScaler(frame: HTMLElement, widgetId: string): HTMLElement | null {
+  return frame.querySelector<HTMLElement>(`[data-testid="studio-widget-intrinsic-scaler-${widgetId}"]`);
+}
+
+function writeIntrinsicScalerScale(
+  frame: HTMLElement,
+  widgetId: string,
+  layout: Pick<WidgetLayoutV3, "w" | "h">,
+  widgetType: CoreWidgetType,
+): void {
+  const scaler = findStudioIntrinsicScaler(frame, widgetId);
+  if (!scaler) {
+    return;
+  }
+  const intrinsic = resolveWidgetIntrinsicScale(layout, widgetType);
+  scaler.style.transform = `scale(${intrinsic.scale})`;
+}
+
+function clearIntrinsicScalerOverride(frame: HTMLElement, widgetId: string): void {
+  const scaler = findStudioIntrinsicScaler(frame, widgetId);
+  if (scaler) {
+    scaler.style.transform = "";
+  }
+}
+
 export function clearStudioFrameLayoutPreview(widgetId: string): void {
   const frame = findStudioFrameElement(widgetId);
   if (frame) {
     frame.style.transform = "";
+    clearIntrinsicScalerOverride(frame, widgetId);
   }
   previewSessions.delete(widgetId);
 }
@@ -65,11 +93,13 @@ export function beginStudioFramePreview(
   widgetId: string,
   kind: FramePreviewKind,
   start: WidgetLayoutV3,
+  widgetType: CoreWidgetType,
 ): void {
   previewSessions.set(widgetId, {
     kind,
     start: structuredClone(start),
     preview: structuredClone(start),
+    widgetType,
   });
 }
 
@@ -79,24 +109,24 @@ export function applyStudioFrameLayoutPreview(
 ): void {
   const session = previewSessions.get(widgetId);
   if (!session) {
-    beginStudioFramePreview(widgetId, "resize", layout);
+    return;
   }
 
-  const active = previewSessions.get(widgetId)!;
-  active.preview = structuredClone(layout);
+  session.preview = structuredClone(layout);
 
   const frame = findStudioFrameElement(widgetId);
   if (!frame) {
     return;
   }
 
-  if (active.kind === "move") {
-    writeMovePreview(frame, active.start, active.preview);
+  if (session.kind === "move") {
+    writeMovePreview(frame, session.start, session.preview);
     return;
   }
 
   frame.style.transform = "";
-  writeFrameGeometry(frame, active.preview);
+  writeFrameGeometry(frame, session.preview);
+  writeIntrinsicScalerScale(frame, widgetId, session.preview, session.widgetType);
 }
 
 export function resetStudioFrameLayoutPreview(
@@ -107,6 +137,7 @@ export function resetStudioFrameLayoutPreview(
   if (frame) {
     frame.style.transform = "";
     writeFrameGeometry(frame, layout);
+    clearIntrinsicScalerOverride(frame, widgetId);
   }
   clearStudioFrameLayoutPreview(widgetId);
 }

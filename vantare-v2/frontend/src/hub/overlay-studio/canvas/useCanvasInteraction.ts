@@ -398,7 +398,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
-    beginStudioFramePreview(widgetId, "move", start);
+    beginStudioFramePreview(widgetId, "move", start, widget.type);
     applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({
@@ -446,7 +446,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
-    beginStudioFramePreview(widgetId, "resize", start);
+    beginStudioFramePreview(widgetId, "resize", start, widget.type);
     applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({

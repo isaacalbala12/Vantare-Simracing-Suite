@@ -13,12 +13,174 @@
   min-height: 0;
   grid-template-columns: 1fr;
   gap: 0;
+  position: relative;
 }
 
-@media (min-width: 1440px) {
-  .osv3-grid {
-    grid-template-columns: 240px minmax(640px, 1fr) 360px;
-  }
+.osv3-grid[data-layout-mode="wide"] {
+  grid-template-columns: 240px minmax(640px, 1fr) 360px;
+}
+
+.osv3-grid[data-layout-mode="medium"] {
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.osv3-grid[data-layout-mode="compact"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+.osv3-compact-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--v-border);
+  background: var(--v-panel);
+  grid-column: 1 / -1;
+}
+
+.osv3-compact-toolbar button,
+.osv3-medium-inspector-toggle {
+  padding: 6px 10px;
+  border: 1px solid var(--v-border);
+  border-radius: 8px;
+  background: var(--v-surface);
+  color: var(--v-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.osv3-medium-inspector-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+}
+
+.osv3-grid[data-layout-mode="medium"] .osv3-inspector-drawer-host {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(360px, 100%);
+  z-index: 11;
+  transform: translateX(100%);
+  transition: transform 160ms ease;
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.osv3-grid[data-layout-mode="medium"][data-inspector-open="true"] .osv3-inspector-drawer-host {
+  transform: translateX(0);
+}
+
+.osv3-grid[data-layout-mode="compact"] .osv3-list-drawer-host,
+.osv3-grid[data-layout-mode="compact"] .osv3-inspector-drawer-host {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: min(320px, 92vw);
+  z-index: 30;
+  transform: translateX(-110%);
+  transition: transform 160ms ease;
+  box-shadow: 12px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.osv3-grid[data-layout-mode="compact"] .osv3-inspector-drawer-host {
+  right: 0;
+  left: auto;
+  transform: translateX(110%);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.osv3-grid[data-layout-mode="compact"][data-open-drawer="list"] .osv3-list-drawer-host {
+  transform: translateX(0);
+}
+
+.osv3-grid[data-layout-mode="compact"][data-open-drawer="inspector"] .osv3-inspector-drawer-host {
+  transform: translateX(0);
+}
+
+.osv3-grid[data-layout-mode="compact"] .osv3-list-drawer-host,
+.osv3-grid[data-layout-mode="compact"] .osv3-inspector-drawer-host,
+.osv3-grid[data-layout-mode="compact"][data-open-drawer="none"] .osv3-list-drawer-host,
+.osv3-grid[data-layout-mode="compact"][data-open-drawer="none"] .osv3-inspector-drawer-host {
+  pointer-events: none;
+}
+
+.osv3-grid[data-layout-mode="compact"][data-open-drawer="list"] .osv3-list-drawer-host,
+.osv3-grid[data-layout-mode="compact"][data-open-drawer="inspector"] .osv3-inspector-drawer-host {
+  pointer-events: auto;
+}
+
+.osv3-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.osv3-dialog-panel {
+  width: min(420px, 100%);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--v-border);
+  background: var(--v-panel);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.osv3-dialog-panel__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.osv3-dialog-panel__body {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--v-text-muted);
+}
+
+.osv3-dialog-panel__warning,
+.osv3-dialog-panel__error {
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+
+.osv3-dialog-panel__warning {
+  color: #facc15;
+}
+
+.osv3-dialog-panel__error {
+  color: #f87171;
+}
+
+.osv3-dialog-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.osv3-dialog-panel__button {
+  padding: 8px 12px;
+  border: 1px solid var(--v-border);
+  border-radius: 8px;
+  background: var(--v-surface);
+  color: var(--v-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.osv3-dialog-panel__button--primary {
+  border-color: rgba(56, 189, 248, 0.8);
+}
+
+.osv3-dialog-panel__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .osv3-header {

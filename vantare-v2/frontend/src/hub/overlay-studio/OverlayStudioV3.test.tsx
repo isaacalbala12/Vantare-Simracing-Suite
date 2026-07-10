@@ -37,12 +37,47 @@ const profiles = [
   { id: "profile-2", name: "Perfil B", file: "profiles/b.json" },
 ];
 
-function renderWorkbench(client = createMockClient(), onRequestProfileChange = vi.fn()) {
+function createMemoryStorage(): Storage {
+  const map = new Map<string, string>();
+  return {
+    get length() {
+      return map.size;
+    },
+    clear() {
+      map.clear();
+    },
+    getItem(key: string) {
+      return map.get(key) ?? null;
+    },
+    key(index: number) {
+      return [...map.keys()][index] ?? null;
+    },
+    removeItem(key: string) {
+      map.delete(key);
+    },
+    setItem(key: string, value: string) {
+      map.set(key, value);
+    },
+  };
+}
+
+function renderWorkbench(
+  client = createMockClient(),
+  onRequestProfileChange = vi.fn(),
+  options?: { viewportWidth?: number; recoveryStorage?: Storage | null },
+) {
   return render(
-    <StudioProvider client={client} initialFile="profiles/a.json">
+    <StudioProvider
+      client={client}
+      initialFile="profiles/a.json"
+      recoveryStorage={options?.recoveryStorage ?? null}
+      recoveryWriteDelayMs={0}
+    >
       <OverlayStudioV3
         profiles={profiles}
         activeFile="profiles/a.json"
+        viewportWidth={options?.viewportWidth ?? 1600}
+        recoveryStorage={options?.recoveryStorage ?? null}
         onRequestProfileChange={onRequestProfileChange}
         onOpenManageProfiles={vi.fn()}
         onOpenRecommended={vi.fn()}
@@ -143,5 +178,138 @@ describe("OverlayStudioV3", () => {
     await waitFor(() => expectDisabled(screen.getByTestId("studio-undo-button")));
     fireEvent.click(screen.getByTestId("make-dirty"));
     await waitFor(() => expectEnabled(screen.getByTestId("studio-undo-button")));
+  });
+
+  it("opens the dirty dialog instead of switching profiles while dirty", async () => {
+    const onRequestProfileChange = vi.fn();
+    function MakeDirtyButton() {
+      const { dispatch } = useStudioDocument();
+      return (
+        <button
+          type="button"
+          data-testid="make-dirty"
+          onClick={() =>
+            dispatch({
+              type: "widget/layout",
+              session: "general",
+              widgetIds: ["delta-main"],
+              patch: { x: 240 },
+            })
+          }
+        />
+      );
+    }
+
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <MakeDirtyButton />
+        <OverlayStudioV3
+          profiles={profiles}
+          activeFile="profiles/a.json"
+          viewportWidth={1600}
+          onRequestProfileChange={onRequestProfileChange}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-profile-select")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("make-dirty"));
+    fireEvent.change(screen.getByTestId("studio-profile-select"), {
+      target: { value: "profiles/b.json" },
+    });
+
+    expect(screen.getByTestId("studio-dirty-dialog")).toBeTruthy();
+    expect(onRequestProfileChange).not.toHaveBeenCalled();
+  });
+
+  it("continues profile navigation after a successful dirty save", async () => {
+    const onRequestProfileChange = vi.fn();
+    function MakeDirtyButton() {
+      const { dispatch } = useStudioDocument();
+      return (
+        <button
+          type="button"
+          data-testid="make-dirty"
+          onClick={() =>
+            dispatch({
+              type: "widget/layout",
+              session: "general",
+              widgetIds: ["delta-main"],
+              patch: { x: 240 },
+            })
+          }
+        />
+      );
+    }
+
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <MakeDirtyButton />
+        <OverlayStudioV3
+          profiles={profiles}
+          activeFile="profiles/a.json"
+          viewportWidth={1600}
+          onRequestProfileChange={onRequestProfileChange}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-profile-select")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("make-dirty"));
+    fireEvent.change(screen.getByTestId("studio-profile-select"), {
+      target: { value: "profiles/b.json" },
+    });
+    fireEvent.click(screen.getByTestId("studio-dirty-save"));
+
+    await waitFor(() => expect(onRequestProfileChange).toHaveBeenCalledWith("profiles/b.json"));
+  });
+
+  it("prompts for recovery when a local draft exists", async () => {
+    const storage = createMemoryStorage();
+    const document = buildDocument();
+    storage.setItem(
+      "vantare:overlay-studio:v3:recovery:profile-1",
+      JSON.stringify({
+        version: 1,
+        profileId: "profile-1",
+        baseRevision: "rev-1",
+        capturedAt: "2026-07-10T12:34:00.000Z",
+        document: {
+          ...document,
+          layouts: {
+            general: {
+              ...document.layouts.general,
+              widgets: [
+                {
+                  ...document.layouts.general.widgets[0],
+                  layout: { ...document.layouts.general.widgets[0].layout, x: 400 },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    renderWorkbench(createMockClient(), vi.fn(), { recoveryStorage: storage });
+    await waitFor(() => expect(screen.getByTestId("studio-recovery-dialog")).toBeTruthy());
+    expect(screen.getByTestId("studio-recovery-profile").textContent).toContain("Test Profile");
+  });
+
+  it("exposes responsive layout mode from the viewport width prop", async () => {
+    renderWorkbench(createMockClient(), vi.fn(), { viewportWidth: 800 });
+    await waitFor(() => expect(screen.getByTestId("studio-responsive-grid")).toBeTruthy());
+    expect(screen.getByTestId("studio-responsive-grid").getAttribute("data-layout-mode")).toBe(
+      "compact",
+    );
+    expect(screen.getByTestId("studio-list-drawer-toggle")).toBeTruthy();
   });
 });

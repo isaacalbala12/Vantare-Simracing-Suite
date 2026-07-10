@@ -52,6 +52,7 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
 type StudioDocumentContextValue = {
   document: ProfileDocumentV3 | null;
   savedDocument: ProfileDocumentV3 | null;
+  revision: string;
   activeLayout: SessionLayoutV3 | null;
   activeSession: SessionLayoutType;
   selectedWidgetId: string | null;
@@ -254,6 +255,7 @@ export function StudioProvider(props: {
     () => ({
       document,
       savedDocument: history?.saved ?? null,
+      revision,
       activeLayout,
       activeSession,
       selectedWidgetId,
@@ -275,6 +277,7 @@ export function StudioProvider(props: {
     [
       document,
       history,
+      revision,
       activeLayout,
       activeSession,
       selectedWidgetId,

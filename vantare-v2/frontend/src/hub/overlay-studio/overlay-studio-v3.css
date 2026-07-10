@@ -782,6 +782,11 @@
   touch-action: none;
 }
 
+.osv3-widget-frame--interacting {
+  will-change: left, top, width, height;
+  transform: translateZ(0);
+}
+
 .osv3-widget-frame__chrome {
   position: absolute;
   inset: 0;

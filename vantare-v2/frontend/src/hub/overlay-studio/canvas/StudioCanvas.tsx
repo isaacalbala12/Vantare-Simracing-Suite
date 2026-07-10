@@ -287,6 +287,7 @@ export function StudioCanvas(): React.ReactElement {
                 key={widget.id}
                 widget={widget}
                 layout={interaction.resolveLayout(widget)}
+                previewActive={interaction.isWidgetPreviewActive(widget.id)}
                 selected={selectedWidgetId === widget.id}
                 snapshot={snapshot}
                 onSelect={selectWidget}

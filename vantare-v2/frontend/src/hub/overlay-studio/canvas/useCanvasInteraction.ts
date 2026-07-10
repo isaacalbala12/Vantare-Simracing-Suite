@@ -7,6 +7,10 @@ import type {
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import type { StudioCommand } from "../state/studio-command";
 import {
+  applyStudioFrameLayoutPreview,
+  resetStudioFrameLayoutPreview,
+} from "./canvas-frame-preview";
+import {
   clampRecoverableLayout,
   clientToLogical,
   type DOMRectLike,
@@ -25,7 +29,6 @@ export type CanvasInteraction =
       sceneRect: DOMRectLike;
       scale: number;
       start: WidgetLayoutV3;
-      preview: WidgetLayoutV3;
       guides: SnapGuide[];
     }
   | {
@@ -37,9 +40,14 @@ export type CanvasInteraction =
       sceneRect: DOMRectLike;
       scale: number;
       start: WidgetLayoutV3;
-      preview: WidgetLayoutV3;
       guides: SnapGuide[];
     };
+
+type ActiveCanvasInteraction = Exclude<CanvasInteraction, { kind: "idle" }> & {
+  preview: WidgetLayoutV3;
+};
+
+type CanvasInteractionRef = { kind: "idle" } | ActiveCanvasInteraction;
 
 export type UseCanvasInteractionInput = {
   widgets: readonly WidgetInstanceV3[];
@@ -54,6 +62,7 @@ export type UseCanvasInteractionInput = {
 export type UseCanvasInteractionResult = {
   interaction: CanvasInteraction;
   guides: SnapGuide[];
+  isWidgetPreviewActive(widgetId: string): boolean;
   resolveLayout(widget: WidgetInstanceV3): WidgetLayoutV3;
   onFramePointerDown(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown(
@@ -123,6 +132,14 @@ function toLogicalPoint(
   return clientToLogical({ x: clientX, y: clientY }, rect, scale);
 }
 
+function toPublicInteraction(current: CanvasInteractionRef): CanvasInteraction {
+  if (current.kind === "idle") {
+    return current;
+  }
+  const { preview: _preview, ...interaction } = current;
+  return interaction;
+}
+
 export function applyMovePreview(input: {
   start: WidgetLayoutV3;
   pointerOrigin: Point;
@@ -175,52 +192,58 @@ export function applyResizePreview(input: {
 
 export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanvasInteractionResult {
   const [interaction, setInteraction] = useState<CanvasInteraction>({ kind: "idle" });
-  const interactionRef = useRef<CanvasInteraction>({ kind: "idle" });
-  const interactionFrameRef = useRef<number | null>(null);
+  const interactionRef = useRef<CanvasInteractionRef>({ kind: "idle" });
+  const guidesFrameRef = useRef<number | null>(null);
   const inputRef = useRef(input);
 
   useEffect(() => {
     inputRef.current = input;
   }, [input]);
 
-  const flushInteractionFrame = useCallback(() => {
-    if (interactionFrameRef.current !== null) {
-      cancelAnimationFrame(interactionFrameRef.current);
-      interactionFrameRef.current = null;
+  const flushGuidesFrame = useCallback(() => {
+    if (guidesFrameRef.current !== null) {
+      cancelAnimationFrame(guidesFrameRef.current);
+      guidesFrameRef.current = null;
     }
   }, []);
 
-  const setInteractionState = useCallback((next: CanvasInteraction) => {
-    const wasIdle = interactionRef.current.kind === "idle";
+  const setInteractionState = useCallback((next: CanvasInteractionRef) => {
     interactionRef.current = next;
-    if (next.kind === "idle") {
-      flushInteractionFrame();
-      setInteraction(next);
+    setInteraction(toPublicInteraction(next));
+  }, []);
+
+  const scheduleGuidesUpdate = useCallback((guides: SnapGuide[]) => {
+    const current = interactionRef.current;
+    if (current.kind === "idle") {
       return;
     }
 
-    // Entering move/resize must update React immediately so preview layout is not one frame behind.
-    if (wasIdle) {
-      flushInteractionFrame();
-      setInteraction(next);
+    interactionRef.current = { ...current, guides };
+
+    if (guidesFrameRef.current !== null) {
       return;
     }
 
-    if (interactionFrameRef.current !== null) {
-      return;
-    }
-
-    interactionFrameRef.current = requestAnimationFrame(() => {
-      interactionFrameRef.current = null;
-      setInteraction(interactionRef.current);
+    guidesFrameRef.current = requestAnimationFrame(() => {
+      guidesFrameRef.current = null;
+      const latest = interactionRef.current;
+      if (latest.kind === "idle") {
+        return;
+      }
+      setInteraction(toPublicInteraction(latest));
     });
-  }, [flushInteractionFrame]);
+  }, []);
 
-  useEffect(() => () => flushInteractionFrame(), [flushInteractionFrame]);
+  useEffect(() => () => flushGuidesFrame(), [flushGuidesFrame]);
 
   const cancelInteraction = useCallback(() => {
+    const current = interactionRef.current;
+    if (current.kind !== "idle") {
+      resetStudioFrameLayoutPreview(current.widgetId, current.start);
+    }
+    flushGuidesFrame();
     setInteractionState({ kind: "idle" });
-  }, [setInteractionState]);
+  }, [flushGuidesFrame, setInteractionState]);
 
   const commitInteraction = useCallback(() => {
     const current = interactionRef.current;
@@ -228,6 +251,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       return;
     }
     if (!layoutGeometryChanged(current.start, current.preview)) {
+      flushGuidesFrame();
       setInteractionState({ kind: "idle" });
       return;
     }
@@ -238,8 +262,9 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       widgetIds: [current.widgetId],
       patch,
     });
+    flushGuidesFrame();
     setInteractionState({ kind: "idle" });
-  }, [setInteractionState]);
+  }, [flushGuidesFrame, setInteractionState]);
 
   const updatePointer = useCallback((event: PointerEvent) => {
     const current = interactionRef.current;
@@ -272,11 +297,13 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
         siblings,
         disableSnap,
       });
-      setInteractionState({
+      interactionRef.current = {
         ...current,
         preview: next.layout,
         guides: next.guides,
-      });
+      };
+      applyStudioFrameLayoutPreview(current.widgetId, next.layout);
+      scheduleGuidesUpdate(next.guides);
       return;
     }
 
@@ -289,21 +316,23 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       siblings,
       disableSnap,
     });
-    setInteractionState({
+    interactionRef.current = {
       ...current,
       preview: next.layout,
       guides: next.guides,
-    });
-  }, [cancelInteraction, setInteractionState]);
+    };
+    applyStudioFrameLayoutPreview(current.widgetId, next.layout);
+    scheduleGuidesUpdate(next.guides);
+  }, [cancelInteraction, scheduleGuidesUpdate]);
 
   const endPointer = useCallback((event: PointerEvent) => {
     const current = interactionRef.current;
     if (current.kind === "idle" || event.pointerId !== current.pointerId) {
       return;
     }
-    flushInteractionFrame();
+    flushGuidesFrame();
     commitInteraction();
-  }, [commitInteraction, flushInteractionFrame]);
+  }, [commitInteraction, flushGuidesFrame]);
 
   const onLostPointerCapture = useCallback((event: PointerEvent) => {
     const current = interactionRef.current;
@@ -427,11 +456,10 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     });
   }, [setInteractionState]);
 
-  const resolveLayout = useCallback((widget: WidgetInstanceV3): WidgetLayoutV3 => {
-    if (interaction.kind === "idle" || interaction.widgetId !== widget.id) {
-      return widget.layout;
-    }
-    return interaction.preview;
+  const resolveLayout = useCallback((widget: WidgetInstanceV3): WidgetLayoutV3 => widget.layout, []);
+
+  const isWidgetPreviewActive = useCallback((widgetId: string): boolean => {
+    return interaction.kind !== "idle" && interaction.widgetId === widgetId;
   }, [interaction]);
 
   const guides = interaction.kind === "idle" ? [] : interaction.guides;
@@ -439,6 +467,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
   return {
     interaction,
     guides,
+    isWidgetPreviewActive,
     resolveLayout,
     onFramePointerDown: beginMove,
     onResizePointerDown: beginResize,

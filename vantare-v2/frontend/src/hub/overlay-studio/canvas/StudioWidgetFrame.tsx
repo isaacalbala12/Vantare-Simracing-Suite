@@ -23,6 +23,7 @@ const RESIZE_HANDLES: readonly ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s"
 export type StudioWidgetFrameProps = {
   widget: WidgetInstanceV3;
   layout: WidgetLayoutV3;
+  previewActive?: boolean;
   selected: boolean;
   snapshot: TelemetrySnapshot;
   onSelect(widgetId: string): void;
@@ -38,6 +39,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   const {
     widget,
     layout,
+    previewActive = false,
     selected,
     snapshot,
     onSelect,
@@ -46,19 +48,32 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   } = props;
   const intrinsic = resolveWidgetIntrinsicScale(layout, widget.type);
 
-  const frameStyle: CSSProperties = {
-    position: "absolute",
-    left: `${layout.x}px`,
-    top: `${layout.y}px`,
-    width: `${layout.w}px`,
-    height: `${layout.h}px`,
-    zIndex: layout.zIndex,
-  };
+  const frameStyle: CSSProperties = previewActive
+    ? {
+        position: "absolute",
+        zIndex: layout.zIndex,
+      }
+    : {
+        position: "absolute",
+        left: `${layout.x}px`,
+        top: `${layout.y}px`,
+        width: `${layout.w}px`,
+        height: `${layout.h}px`,
+        zIndex: layout.zIndex,
+      };
+
+  const frameClassName = [
+    "osv3-widget-frame",
+    selected ? "osv3-widget-frame--selected" : "",
+    previewActive ? "osv3-widget-frame--interacting" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
       data-testid={`studio-widget-frame-${widget.id}`}
-      className={selected ? "osv3-widget-frame osv3-widget-frame--selected" : "osv3-widget-frame"}
+      className={frameClassName}
       style={frameStyle}
       onPointerDown={(event) => {
         if (onFramePointerDown) {
@@ -117,6 +132,7 @@ export const StudioWidgetFrame = memo(
   (previous, next) =>
     previous.widget === next.widget
     && layoutsEqual(previous.layout, next.layout)
+    && previous.previewActive === next.previewActive
     && previous.selected === next.selected
     && previous.snapshot === next.snapshot
     && previous.onSelect === next.onSelect

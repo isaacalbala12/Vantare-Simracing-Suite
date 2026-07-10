@@ -209,7 +209,7 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       id: "calendar-general-review", category: "calendar",
       label: { es: "Calendario — Revisión general", en: "Calendar — General review", pt: "Calendário — Revisão geral", it: "Calendario — Revisione generale" },
       description: { es: "Revisión general del calendario LMU.", en: "General review of the LMU calendar.", pt: "Revisão geral do calendário LMU.", it: "Revisione generale del calendario LMU." },
-      tipo: "feature", status: "in-development",
+      tipo: "feature", status: "future",
       subtasks: [
         { label: { es: "Revisión general", en: "General review", pt: "Revisão geral", it: "Revisione generale" }, done: false },
       ],
@@ -218,7 +218,7 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       id: "engineer-spotter", category: "engineer",
       label: { es: "Ingeniero — Spotter", en: "Engineer — Spotter", pt: "Engenheiro — Spotter", it: "Engineer — Spotter" },
       description: { es: "Spotter, responsive y cambiar valores desde voz.", en: "Spotter, responsive and change values from voice.", pt: "Spotter, responsivo e alterar valores por voz.", it: "Spotter, responsive e cambiare valori dalla voce." },
-      tipo: "feature", status: "in-development",
+      tipo: "feature", status: "future",
       subtasks: [
         { label: { es: "Spotter", en: "Spotter", pt: "Spotter", it: "Spotter" }, done: false },
         { label: { es: "Responsive", en: "Responsive", pt: "Responsivo", it: "Responsive" }, done: false },
@@ -238,7 +238,7 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       id: "payments-live", category: "payments",
       label: { es: "Pagos", en: "Payments", pt: "Pagamentos", it: "Pagamenti" },
       description: { es: "Esperando primer pago", en: "Awaiting first payment", pt: "Aguardando primeiro pagamento", it: "In attesa del primo pagamento" },
-      tipo: "feature", status: "in-development",
+      tipo: "feature", status: "future",
       subtasks: [
         { label: { es: "Revisión completa del sistema", en: "Complete system review", pt: "Revisão completa do sistema", it: "Revisione completa del sistema" }, done: true },
         { label: { es: "Evaluar Polar vs Stripe", en: "Evaluate Polar vs Stripe", pt: "Avaliar Polar vs Stripe", it: "Valutare Polar vs Stripe" }, done: true },

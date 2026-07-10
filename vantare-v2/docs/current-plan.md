@@ -18,7 +18,10 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Docs vivos canvas/drag: `docs/overlays-studio/` (índice `README.md`; anti-regresión `canvas-drag-imperative-preview.md`; exploración `arrastre-y-resize.md`; benchmark `benchmarks/` + `pnpm --dir frontend bench:overlay-studio-drag`).
 - Fix drag teleport/rastro (2026-07-10): commit `dc382bf` — preview imperativa B1 (`canvas-frame-preview.ts`, `previewActive` en frame). Tests `useCanvasInteraction` 11/11; suite overlay-studio 233/233.
 - Task 5.8 Browser View (2026-07-10): `browser-view.ts` abre `/overlay?profile=` solo con perfil guardado; si dirty → guardar o cancelar (sin descartar). Cableado en `OverlayStudioV3` + `StudioCanvas`.
-- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes). Siguiente: **Fase 5** (inspector real, catálogo, diseños, permisos premium) — plan `2026-07-10-overlay-studio-rebuild-05-inspector-catalog-designs.md`.
+- Harness Browser View (2026-07-10): middleware Vite (`overlay-studio-harness-vite-plugin.ts`) + preview studio (`studioPreview=1`, fondo gris/rejilla, escala fit). Commits `32bc433`..`39a1133`.
+- **Fase 5 ✅ CERRADA** (commits `96d7119`..`a606b21` + harness browser view): inspector por capacidades, catálogo, diseños, access policy, Browser View.
+- **Fase 6 en curso** — Task 6.1 ✅ (`feat(overlay): add safe shared widget content contracts`): `widget-column.ts`, `scoring-readers.ts`. Siguiente: **Task 6.2 Standings** — plan `2026-07-10-overlay-studio-rebuild-06-core-widget-migration.md`.
+- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes).
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

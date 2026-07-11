@@ -33,23 +33,13 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
   const dim = size === "sm" ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
   const title = `${app.displayName} · ${CATEGORY_LABEL[app.category]}`;
 
-  const [iconUrl, setIconUrl] = useState<string | null>(() => {
-    // 1. Explicit iconUrl from settings
-    if (app.iconUrl) return app.iconUrl;
-    // 2. In-memory cache
-    if (iconCache.has(app.id)) return iconCache.get(app.id) ?? null;
-    const local = resolveIconCandidates(app)[0];
-    if (local) return local;
-    const known = KNOWN_ICONS[app.id];
-    if (known) return known;
-    // Backend extraction is the next candidate for apps with an executable.
-    return null;
-  });
-
-  useEffect(() => {
-    const local = resolveIconCandidates(app)[0] ?? null;
-    setIconUrl(app.iconUrl && !/^https?:\/\//i.test(app.iconUrl) ? app.iconUrl : local);
-  }, [app.id, app.iconUrl]);
+  const [extractedIcon, setExtractedIcon] = useState<string | null>(() =>
+    iconCache.get(app.id) ?? null,
+  );
+  const localIcon = resolveIconCandidates(app)[0] ?? KNOWN_ICONS[app.id] ?? null;
+  const iconUrl = localIcon ?? extractedIcon;
+  const appId = app.id;
+  const executablePath = app.executablePath;
 
   // Request icon from Go backend and listen for the result in a single effect,
   // so the listener is always registered BEFORE the emit.
@@ -58,21 +48,21 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
       "launcher:app:icon:result",
       (event: { data?: { id?: string; iconUrl?: string } }) => {
         const data = event.data;
-        if (!data || data.id !== app.id || !data.iconUrl) return;
-        iconCache.set(app.id, data.iconUrl);
-        setIconUrl(data.iconUrl);
+        if (!data || data.id !== appId || !data.iconUrl) return;
+        iconCache.set(appId, data.iconUrl);
+        setExtractedIcon(data.iconUrl);
       },
     );
 
-    if (!iconUrl && app.executablePath && !iconCache.has(app.id)) {
+    if (!iconUrl && executablePath && !iconCache.has(appId)) {
       Events.Emit("launcher:app:icon", {
-        id: app.id,
-        executablePath: app.executablePath,
+        id: appId,
+        executablePath,
       });
     }
 
     return off;
-  }, [app.id, app.executablePath, iconUrl]);
+  }, [appId, executablePath, iconUrl]);
 
   return (
     <span
@@ -88,8 +78,8 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
           className={`${dim} rounded-lg object-cover`}
           onError={() => {
             // Image failed — try known icon or fallback to abbreviation
-            iconCache.delete(app.id);
-            setIconUrl(null);
+            iconCache.delete(appId);
+            setExtractedIcon(null);
           }}
         />
       ) : (

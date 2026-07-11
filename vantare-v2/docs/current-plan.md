@@ -43,7 +43,9 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **Fase 8.7A ✅ CERRADA** (commit `888ebda`, 2026-07-11): retirado editor legacy `hub/overlays` (34 archivos); conservados `OwnProfilesView`, `RecommendedProfilesView`, OBS/community. i18n: eliminados `studio.saveToWidget` y `studio.discard`.
 - **Fase 8.7B ✅ CERRADA** (2026-07-11): retirados `PreviewPage`, `WidgetsPage` y módulos preview legacy (`PreviewCanvas`, `PreviewInspector`, `WidgetList`, etc.). Conservados `PreviewWidgetFrame` + `WidgetRenderer` para miniaturas de perfiles (`ProfilePreview`). Contrato harness movido a `overlay-harness/widget-preview-contract.ts`.
 - Evidencia 8.7A–8.7B: `pnpm test -- StudioRoute ProfilePreview overlay-studio widget-preview-contract` → 306 PASS; `pnpm build` PASS.
-- **Siguiente 8.7C:** mapas `WIDGETS` runtime (`CompositeApp`, `ObsOverlayApp`, `EditOverlayApp`); push `refactor` pendiente.
+- **Fase 8.7C ✅ CERRADA** (2026-07-11): retirados `EditOverlayApp`, `WidgetEditFrame`, `shared-widget-map`, `WidgetHost` y ruta `/overlay/edit`. Runtime desktop/OBS ya usaba V3 (`DesktopOverlayRuntime`, `ObsOverlayRuntime`). Conservados `WidgetRenderer` + miniaturas de perfiles. `StartEditOverlay` en Go queda sin callers frontend (retiro Go diferido).
+- Evidencia 8.7C: `pnpm test -- CompositeApp ObsOverlayApp DesktopOverlayRuntime ObsOverlayRuntime ProfilePreview StudioRoute overlay-studio widget-preview-contract` → 309 PASS; `pnpm build` PASS.
+- **Siguiente:** push `refactor` pendiente; Fase 8.7D+ (widgets legacy `overlay/widgets/*` usados solo por thumbnails).
 - Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. No borrar legacy hasta Fase 8.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

@@ -42,6 +42,7 @@ export type LauncherAppEntry = Omit<LauncherApp, "availability"> & {
 export type LaunchStep = {
   appId: string;
   delay: number;
+  argsOverride?: string;
 };
 
 export type AlreadyRunningPolicy = "ask" | "reuse" | "restart";
@@ -72,6 +73,7 @@ export type LaunchProfile = {
   avgChainDurationMs?: number;
   launchOnWindowsStartup?: boolean;
   hotkey?: string;
+  advanced?: boolean;
   policy?: LaunchPolicy;
 };
 

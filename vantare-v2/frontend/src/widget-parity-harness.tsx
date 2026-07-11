@@ -25,7 +25,7 @@ import {
   getCanonicalPreviewMaxRows,
   getCanonicalPreviewTelemetry,
 } from "./overlay/widgets/widget-preview-fixtures";
-import { getWidgetPreviewContractSize } from "./hub/preview/widget-preview-contract";
+import { getWidgetPreviewContractSize } from "./overlay-harness/widget-preview-contract";
 import type { ProfileConfig } from "./lib/profile";
 
 // ── Canonical profile ─────────────────────────────────────────────────────────

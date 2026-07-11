@@ -40,9 +40,10 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **Fase 7.10 ✅ CERRADA** (commit `71867c6`): gates automatizados frontend + visual + Go app; smoke manual documentado en `docs/manual-verification.md` (requiere Wails + copia de perfil de prueba).
 - Evidencia 7.4–7.10 (2026-07-11): `pnpm --dir frontend test` → 258 files / 2084 PASS (1 fix live-disconnected en `StudioCanvas.test.tsx`); `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% delta + parity + studio QA; `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `go test ./...` mantiene preexistentes en `internal/server` (nonce/port bind).
 - **Post-7.10 hotfix ✅** (commit `32b24b3`, 2026-07-11): plan Free puede mover/redimensionar todos los widgets (layout libre; premium sigue en content/visual); avisos de acceso en banner; flujo crear perfil + carga Hub + standings defaults + harness E2E ruta studio. Smoke manual Wails en Desktop (`refactor`) **PASS** (usuario).
-- **Fase 8.7A 🚧 EN CURSO** (2026-07-11): retirado editor legacy `hub/overlays` (34 archivos: `LayoutStudio`, `useOverlayStudioState`, `WidgetSettingsPanel`, `V52OverlaysHome`, etc.); conservados `OwnProfilesView`, `RecommendedProfilesView`, OBS/community. i18n: eliminados `studio.saveToWidget` y `studio.discard`.
-- Evidencia 8.7A: `pnpm test -- StudioRoute overlay-studio i18n.test` → 317 PASS (1 flaky preexistente `useCanvasInteraction` pointer-down, PASS en rerun); `pnpm build` PASS.
-- **Siguiente 8.7B:** retirar `PreviewPage` + `hub/preview/*` legacy; **8.7C:** mapas `WIDGETS` en runtime; push `refactor` pendiente.
+- **Fase 8.7A ✅ CERRADA** (commit `888ebda`, 2026-07-11): retirado editor legacy `hub/overlays` (34 archivos); conservados `OwnProfilesView`, `RecommendedProfilesView`, OBS/community. i18n: eliminados `studio.saveToWidget` y `studio.discard`.
+- **Fase 8.7B ✅ CERRADA** (2026-07-11): retirados `PreviewPage`, `WidgetsPage` y módulos preview legacy (`PreviewCanvas`, `PreviewInspector`, `WidgetList`, etc.). Conservados `PreviewWidgetFrame` + `WidgetRenderer` para miniaturas de perfiles (`ProfilePreview`). Contrato harness movido a `overlay-harness/widget-preview-contract.ts`.
+- Evidencia 8.7A–8.7B: `pnpm test -- StudioRoute ProfilePreview overlay-studio widget-preview-contract` → 306 PASS; `pnpm build` PASS.
+- **Siguiente 8.7C:** mapas `WIDGETS` runtime (`CompositeApp`, `ObsOverlayApp`, `EditOverlayApp`); push `refactor` pendiente.
 - Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. No borrar legacy hasta Fase 8.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

@@ -131,7 +131,7 @@ export const it: Record<string, string> = {
   // Widget Studio - Draft actions
 
   // Widget Studio - New keys (P1 review fixes)
-  "studio.selectWidgetPreview": "Seleziona un widget per l'anteprima.",
+
   "studio.editMode": "Modalità modifica",
   "studio.addWidget": "+ Aggiungi widget",
 

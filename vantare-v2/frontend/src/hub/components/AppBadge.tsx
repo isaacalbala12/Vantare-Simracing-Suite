@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import type { LauncherAppEntry } from "../launcher/launcher-state";
+import { resolveIconCandidates } from "../launcher/app-icons";
 
 type AppBadgeProps = {
   app: LauncherAppEntry;
@@ -25,11 +26,6 @@ const CATEGORY_LABEL: Record<LauncherAppEntry["category"], string> = {
  */
 const KNOWN_ICONS: Record<string, string> = {};
 
-/** Steam CDN header image for Steam apps. */
-function steamIconUrl(steamAppId: number): string {
-  return `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
-}
-
 /** Cache for resolved icon data URIs (id → data URI) */
 const iconCache = new Map<string, string>();
 
@@ -42,19 +38,18 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
     if (app.iconUrl) return app.iconUrl;
     // 2. In-memory cache
     if (iconCache.has(app.id)) return iconCache.get(app.id) ?? null;
-    // 3. Steam CDN for steam-uri apps
-    if (app.launchMethod === "steam-uri" && app.steamAppId) {
-      return steamIconUrl(app.steamAppId);
-    }
-    // 4. Known icons for apps that can't be extracted from .exe
+    const local = resolveIconCandidates(app)[0];
+    if (local) return local;
     const known = KNOWN_ICONS[app.id];
-    if (known) {
-      iconCache.set(app.id, known);
-      return known;
-    }
-    // 5. Will try backend extraction via useEffect
+    if (known) return known;
+    // Backend extraction is the next candidate for apps with an executable.
     return null;
   });
+
+  useEffect(() => {
+    const local = resolveIconCandidates(app)[0] ?? null;
+    setIconUrl(app.iconUrl && !/^https?:\/\//i.test(app.iconUrl) ? app.iconUrl : local);
+  }, [app.id, app.iconUrl]);
 
   // Request icon from Go backend and listen for the result in a single effect,
   // so the listener is always registered BEFORE the emit.

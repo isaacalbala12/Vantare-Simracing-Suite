@@ -55,17 +55,7 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 			}
 			exe := findExecutableRecursive(common, known.ExecutableNames, 3)
 			if exe != "" {
-				found[known.ID] = app.LauncherAppEntry{
-					ID:             known.ID,
-					DisplayName:    known.DisplayName,
-					Abbreviation:   known.Abbreviation,
-					Category:       app.LauncherAppCategory(known.Category),
-					LaunchMethod:   known.LaunchMethod,
-					ExecutablePath: exe,
-					Detected:       true,
-					GradientFrom:   known.GradientFrom,
-					GradientTo:     known.GradientTo,
-				}
+				found[known.ID] = knownAppEntry(known, DetectionEvidence{Found: true}, exe, "steam")
 			}
 		}
 	}

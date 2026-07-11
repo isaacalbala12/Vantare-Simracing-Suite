@@ -10,6 +10,7 @@ package launcher
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
@@ -33,6 +34,7 @@ type Service struct {
 	settings LauncherSettingsBackend
 	emit     Emitter
 	chain    *ChainRunner
+	revision atomic.Uint64
 }
 
 // NewService builds the orchestrator. execFn defaults to defaultExecLauncher
@@ -55,6 +57,38 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 // use it to read the live app set when emitting launcher:apps:updated without
 // coupling to the concrete *app.SettingsService type.
 func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
+
+// Snapshot builds the complete launcher payload from the settings backend.
+// It is the only aggregate construction point for the frontend migration.
+func (s *Service) Snapshot() LauncherSnapshot {
+	appsMap := s.settings.GetLauncherApps()
+	apps := make([]app.LauncherAppEntry, 0, len(appsMap))
+	for _, entry := range appsMap {
+		apps = append(apps, entry)
+	}
+	sortApps(apps)
+
+	vantareProfiles := make([]app.LaunchProfile, 0)
+	userProfiles := make([]app.LaunchProfile, 0)
+	for _, profile := range s.settings.GetLauncherProfiles() {
+		if isOfficialProfile(profile.ID) {
+			vantareProfiles = append(vantareProfiles, profile)
+		} else {
+			userProfiles = append(userProfiles, profile)
+		}
+	}
+	sortProfiles(vantareProfiles)
+	sortProfiles(userProfiles)
+
+	return LauncherSnapshot{
+		Revision:        s.revision.Add(1),
+		Apps:            apps,
+		VantareProfiles: vantareProfiles,
+		UserProfiles:    userProfiles,
+		ActiveChains:    []LauncherActiveChain{},
+		Discovery:       LauncherDiscovery{Scanning: false, LastScanAt: nil, Error: nil},
+	}
+}
 
 // DiscoverApps detects installed apps, merges them with the persisted set
 // (preserving manual apps) and persists the result. It is named DiscoverApps

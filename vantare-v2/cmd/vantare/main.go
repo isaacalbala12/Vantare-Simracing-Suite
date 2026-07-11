@@ -143,7 +143,17 @@ func handleDiscoverApps(svc *launcher.Service, emitter app.EventEmitter) {
 	if _, err := svc.DiscoverApps(); err != nil {
 		log.Printf("launcher:discover error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		return
 	}
+	handleLauncherSnapshot(svc, emitter)
+}
+
+func emitLauncherSnapshot(svc *launcher.Service, emitter app.EventEmitter) {
+	emitter.Emit("launcher:snapshot", svc.Snapshot())
+}
+
+func handleLauncherSnapshot(svc *launcher.Service, emitter app.EventEmitter) {
+	emitLauncherSnapshot(svc, emitter)
 }
 
 // handleAddApp validates and persists a manually-added app, then emits
@@ -162,6 +172,7 @@ func handleAddApp(entry app.LauncherAppEntry, svc *launcher.Service, emitter app
 	}
 	launcher.EnrichAppsWithIcons(appsList)
 	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleRemoveApp deletes an app (refusing when a profile still uses it) and
@@ -179,12 +190,14 @@ func handleRemoveApp(id string, svc *launcher.Service, emitter app.EventEmitter)
 	}
 	launcher.EnrichAppsWithIcons(appsList)
 	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleListProfiles emits launcher:profiles:updated with the current profiles.
 func handleListProfiles(svc *launcher.Service, emitter app.EventEmitter) {
 	profiles := svc.ListProfiles()
 	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": profiles})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleSaveProfile validates and persists a profile, then re-emits the full
@@ -196,6 +209,7 @@ func handleSaveProfile(profile app.LaunchProfile, svc *launcher.Service, emitter
 		return
 	}
 	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleDeleteProfile removes a profile by ID and re-emits the remaining list.
@@ -206,6 +220,7 @@ func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmit
 		return
 	}
 	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleDuplicateProfile copies an existing profile into a new one with the
@@ -218,6 +233,7 @@ func handleDuplicateProfile(id, newID, newName string, svc *launcher.Service, em
 		return
 	}
 	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleLaunchProfile starts the launch chain for a profile. The chain runs on
@@ -312,6 +328,7 @@ func handleSetAppPath(id, path string, svc *launcher.Service, emitter app.EventE
 	}
 	launcher.EnrichAppsWithIcons(appsList)
 	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 func handlePreviewAppMerge(manualID string, svc *launcher.Service, emitter app.EventEmitter) {
@@ -372,6 +389,7 @@ func handleConfirmAppMerge(manualID, catalogID string, svc *launcher.Service, em
 		"manualId":  manualID,
 		"catalogId": catalogID,
 	})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleChainError is invoked when the chain runner reports a step failure.
@@ -1325,6 +1343,11 @@ func main() {
 		handleDiscoverApps(launcherSvc, emitter)
 	})
 
+	wailsApp.Event.On("launcher:snapshot:get", func(event *application.CustomEvent) {
+		_ = event
+		handleLauncherSnapshot(launcherSvc, emitter)
+	})
+
 	wailsApp.Event.On("launcher:app:add", func(event *application.CustomEvent) {
 		var entry app.LauncherAppEntry
 		if event.Data != nil {
@@ -1440,6 +1463,7 @@ func main() {
 			}
 		}
 		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
+		handleLauncherSnapshot(launcherSvc, emitter)
 	})
 
 	wailsApp.Event.On("launcher:app:path:set", func(event *application.CustomEvent) {

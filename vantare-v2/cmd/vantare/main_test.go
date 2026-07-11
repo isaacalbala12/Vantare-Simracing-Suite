@@ -514,8 +514,8 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:detected" {
-		t.Fatalf("expected launcher:apps:detected, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:detected" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy discovery plus snapshot, got %v", emitter.events)
 	}
 }
 
@@ -525,8 +525,8 @@ func TestHandleAddAppEmitsUpdated(t *testing.T) {
 		ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\obs.exe`,
 	}
 	handleAddApp(entry, svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy app update plus snapshot, got %v", emitter.events)
 	}
 	payload := emitter.data[0].(map[string]any)
 	apps, ok := payload["apps"].([]app.LauncherAppEntry)
@@ -557,8 +557,8 @@ func TestHandleAddAppEmitsErrorOnInvalid(t *testing.T) {
 func TestHandleRemoveAppEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleRemoveApp("lmu", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy app update plus snapshot, got %v", emitter.events)
 	}
 }
 
@@ -576,8 +576,8 @@ func TestHandleRemoveAppEmitsErrorWhenUsedByProfile(t *testing.T) {
 func TestHandleListProfilesEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleListProfiles(svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy profile list plus snapshot, got %v", emitter.events)
 	}
 }
 
@@ -585,8 +585,8 @@ func TestHandleSaveProfileEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	profile := app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}
 	handleSaveProfile(profile, svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy profile update plus snapshot, got %v", emitter.events)
 	}
 }
 
@@ -605,8 +605,8 @@ func TestHandleDeleteProfileEmitsUpdated(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	handleDeleteProfile("pro", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy profile update plus snapshot, got %v", emitter.events)
 	}
 }
 
@@ -616,8 +616,8 @@ func TestHandleDuplicateProfileEmitsUpdated(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	handleDuplicateProfile("creator", "creator-copy", "Creador (copia)", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("expected legacy profile update plus snapshot, got %v", emitter.events)
 	}
 	if got := svc.ListProfiles(); len(got) != 2 {
 		t.Fatalf("expected 2 profiles after duplicate, got %d", len(got))
@@ -807,8 +807,8 @@ func TestHandleSetAppPathPersistsValidatedOverride(t *testing.T) {
 	}
 	handleSetAppPath("obs", exe, svc, emitter)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("events=%v, want launcher:apps:updated", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:updated" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want legacy app update plus snapshot", emitter.events)
 	}
 	if got := svc.Settings().GetLauncherApps()["obs"]; got.ExecutablePath != exe || got.PathSource != "override" {
 		t.Fatalf("override not persisted: %+v", got)
@@ -857,14 +857,26 @@ func TestHandleConfirmAppMergePreservesProfileSteps(t *testing.T) {
 	}
 
 	handleConfirmAppMerge("manual-obs", "obs", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:app:merge:confirmed" {
-		t.Fatalf("events=%v, want merge confirmed", emitter.events)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:app:merge:confirmed" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want merge confirmed plus snapshot", emitter.events)
 	}
 	if _, ok := svc.Settings().GetLauncherApps()["manual-obs"]; ok {
 		t.Fatal("confirmed merge must remove manual app")
 	}
 	if got := svc.Settings().GetLauncherProfiles()[0].Steps[0].AppID; got != "obs" {
 		t.Fatalf("profile step was not rewired: %q", got)
+	}
+}
+
+func TestHandleLauncherSnapshotEmitsCanonicalPayload(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleLauncherSnapshot(svc, emitter)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want launcher:snapshot", emitter.events)
+	}
+	if _, ok := emitter.data[0].(launcher.LauncherSnapshot); !ok {
+		t.Fatalf("snapshot payload has wrong type: %T", emitter.data[0])
 	}
 }
 

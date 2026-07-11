@@ -1,3 +1,29 @@
+Nota STRATEGY-PLANS-01 (2026-07-11):
+- Creados tres documentos de planificación Strategy: Producto A ejecutable y exhaustivo; Productos B/C como guías generales condicionadas al DoD de la fase anterior.
+- A: `docs/superpowers/plans/2026-07-11-strategy-product-a-manual-calculator.md` — 9 fases, TDD, motor Go clean-room, Fuel+VE, pit model, tyres por rueda, solver/ranking, UI, calendario, export y verificación.
+- B: `docs/superpowers/plans/2026-07-11-strategy-product-b-telemetry-guide.md` — observaciones, calidad de muestras, confianza, propuestas y replay; requiere nuevo plan tras cerrar A.
+- C: `docs/superpowers/plans/2026-07-11-strategy-product-c-live-guide.md` — state machine, seguimiento, replanificación confirmable, integraciones y chaos/replay; requiere A+B cerrados.
+- TinyPedal queda exclusivamente como referencia funcional GPLv3; resultados matemáticos similares son esperables, pero código/fixtures/formatos se implementan clean-room.
+- Estado: PLANIFICADO; sin código implementado.
+
+Nota STRATEGY-RESEARCH-01 (2026-07-11):
+- Objetivo: auditar Fuel Calculator, Tyre Strategy Planner, consumo live e historial de stints de TinyPedal y definir una dirección propia para Vantare.
+- Fuente auditada: `TinyPedal/TinyPedal` commit `ca52517b68295d6e71fd650e132bad081f82de8c`, releases hasta `v2.48.0`.
+- Documento canónico: `docs/research/strategy-planner-tinypedal-analysis.md`.
+- Decisión propuesta: una arquitectura común y tres entregas independientes: A) calculador manual, B) telemetría asistida, C) estratega live. Se concreta y planifica A primero; B y C reservan contratos y se especifican tras medir la fase anterior.
+- Restricción legal: TinyPedal es GPLv3; referencia funcional clean-room, sin portar código. No se encontró licencia raíz de Vantare durante la auditoría.
+- Investigación sin código Strategy; el plan ejecutable de Producto A y las guías B/C se crearon después en `STRATEGY-PLANS-01`.
+- Estado: INVESTIGACIÓN DOCUMENTADA Y DECISIONES CERRADAS; ejecución gobernada por los tres documentos Strategy.
+
+Nota LAUNCHER-V3-PLAN (2026-07-11):
+- Objetivo: refactor contenido del subsistema Launcher para catálogo completo, detección reparable, logos offline, snapshot/store único, ejecución observable y control operativo.
+- Decisiones de producto cerradas con el usuario: 55 respuestas incorporadas; alcance final = Launcher secuencial con seguimiento, políticas configurables, close/restart, dock, hotkeys, autostart, trigger opcional LMU, onboarding y notificaciones.
+- Plan maestro: `docs/superpowers/plans/2026-07-11-launcher-v3-reliability.md`.
+- Estrategia: 8 fases con TDD, commits pequeños, gates por fase, smoke Wails/Playwright y retirada final de contratos legacy.
+- Fuera de alcance: import/export, cloud, plugins, scripts/comandos genéricos, historial persistente y rediseño visual.
+- La skill `vantare-core` no se usa como fuente de verdad por indicación expresa del usuario.
+- Estado: PLANIFICADO, sin cambios de código.
+
 Nota LAUNCH-1C (2026-07-10):
 - Objetivo: cerrar smoke de checkout Polar **produccion** sin pago real (sin presupuesto test).
 - Proyecto Supabase: `ombjshwzqgeisazijduq` (oficial). Sin merge PR, sin tag, sin release publico.
@@ -2500,3 +2526,27 @@ Nota LAUNCHER-ICONS (2026-07-10):
 - Archivos: icon_windows.go, icon_stub.go, main.go (handler usa GetAppIconForAppBase64), AppBadge.tsx, icon_windows_test.go.
 - Riesgo: `go vet` emite 1 warning conocido (falso positivo) en el acceso a vtable COM; no rompe build ni tests. Sin CI de vet en el repo.
 - Estado: ICONOS OK. Discord/MoTeC/SimHub resuelven via .lnk del escritorio en la maquina del usuario (requiere acceso directo presente).
+Nota LAUNCHER-V3-FASE-1 (2026-07-11):
+- Fase 1 cerrada: estados canónicos, catálogo oficial/readiness y contrato TypeScript espejo.
+- Commits: `cc1bd7f` (availability), `7b71db7` (official catalog), `762e962` (frontend contract).
+- Archivos funcionales: `internal/app/launcher/status.go`, `status_test.go`, `catalog.go`, `catalog_test.go`, `known.go`, `frontend/src/hub/launcher/launcher-contract.ts`, `launcher-contract.test.ts`, `launcher-state.ts`.
+- Gate 1: `go test ./internal/app/launcher/...` PASS; `pnpm --dir frontend test -- launcher-contract launcher-state` PASS (24 tests); `pnpm --dir frontend build` PASS; `git diff --check` PASS.
+- Checks globales: `go test ./...` sigue bloqueado por fallos preexistentes en `internal/server` (nonce y puerto); `pnpm --dir frontend lint` sigue bloqueado por 11 errores preexistentes fuera del alcance Launcher.
+- Playwright no aplica todavía: Fase 1 no modifica UI renderizada. Se requiere desde los cortes frontend/visuales posteriores.
+- Estado: FASE 1 CERRADA; siguiente paso exacto = Fase 2, Task 2.1 (discovery basado en evidencia).
+
+Nota LAUNCHER-V3-FASE-2 (2026-07-11):
+- Fase 2 cerrada: discovery basado en evidencia, reparación/fusión manual explícita, snapshot canónico, bridge/store único y consumidores migrados sin rediseñar el layout.
+- Commits: `63e9f33`, `91d2fb7`, `c4b8ca3`, `af4c483`, `5c247fb`.
+- Frontend: `LauncherStoreProvider` vive en `HubApp`; AppsPanel, ProfilesPanel y LauncherDock consumen el snapshot y no registran eventos Wails propios. El modal de registro registra antes de emitir.
+- Gate 2: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `pnpm --dir frontend test -- LauncherPage AppsPanel ProfilesPanel LauncherDock AddNonSteamGameModal launcher-store launcher-bridge` PASS (39 tests); `pnpm --dir frontend build` PASS; `git diff --check` PASS.
+- Playwright visual: revisión local a 1440x900 PASS; 7 apps, 2 perfiles y dock global visibles, sin errores de consola ni peticiones fallidas de la aplicación. Captura temporal fuera del repositorio: `C:\Users\isaac\AppData\Local\Temp\launcher-v3-playwright.png`.
+- Checks globales aún conocidos: `go test ./...` mantiene los fallos preexistentes de nonce/puerto en `internal/server`; `pnpm --dir frontend lint` mantiene 11 errores preexistentes fuera de Launcher.
+- Siguiente paso exacto = Fase 3, Task 3.1 (assets oficiales offline); requiere revisar/proporcionar los siete logos antes de incorporarlos.
+
+Nota LAUNCHER-V3-FASES-3-8 (2026-07-11):
+- Ejecutadas las tasks restantes compatibles sin incorporar logos oficiales: resolver offline/fallback, políticas y editor progresivo, perfiles separados, argumentos, identidad/readiness, decisiones de procesos, retry/cancel, sesión, dock, trigger LMU, recomendaciones efímeras, onboarding, notificaciones y retirada de eventos legacy de producción.
+- Nuevos bloques verificados: `go test ./internal/app/launcher/...`, tests frontend enfocados, `pnpm --dir frontend build` y smoke Playwright `node frontend/scripts/launcher-v3-smoke.mjs` (desktop 1440x900 y móvil 390x844).
+- Smoke Playwright observado: 7 apps, 2 perfiles, editor avanzado con args, sin errores de consola ni peticiones fallidas relevantes; captura temporal en `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
+- Documentación viva: `docs/launcher-v3-architecture.md`.
+- Limitación explícita: `frontend/src/assets/launcher/apps/` sigue sin los siete logos aprobados; el fallback local no descarga ni inventa marcas.

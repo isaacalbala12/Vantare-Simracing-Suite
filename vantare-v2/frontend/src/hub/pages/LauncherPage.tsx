@@ -1,6 +1,7 @@
 import { V52SectionHeader } from "../components/V52SectionHeader";
 import { AppsPanel } from "../launcher/AppsPanel";
 import { ProfilesPanel } from "../launcher/ProfilesPanel";
+import { LauncherSessionPanel } from "../launcher/LauncherSessionPanel";
 
 export function LauncherPage() {
   return (
@@ -19,6 +20,7 @@ export function LauncherPage() {
           <ProfilesPanel />
         </section>
       </div>
+      <LauncherSessionPanel />
     </div>
   );
 }

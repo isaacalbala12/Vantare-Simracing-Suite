@@ -79,8 +79,14 @@ export type LaunchProfile = {
 
 export type LauncherActiveChain = {
   profileId: string;
-  status: "running" | "done" | "error";
+  status: "pending" | "running" | "launching" | "ready" | "done" | "failed" | "stopped" | "error";
   startedAt?: string;
+  steps?: Array<{
+    appId: string;
+    status: "pending" | "launching" | "ready" | "failed" | "stopped" | "done";
+    pid?: number;
+    message?: string;
+  }>;
 };
 
 export type LauncherDiscovery = {

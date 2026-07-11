@@ -22,9 +22,9 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Task 5.8 Browser View (2026-07-10): `browser-view.ts` abre `/overlay?profile=` solo con perfil guardado; si dirty → guardar o cancelar (sin descartar). Cableado en `OverlayStudioV3` + `StudioCanvas`.
 - Harness Browser View (2026-07-10): middleware Vite (`overlay-studio-harness-vite-plugin.ts`) + preview studio (`studioPreview=1`, fondo gris/rejilla, escala fit). Commits `32bc433`..`39a1133`.
 - **Fase 5 ✅ CERRADA** (commits `96d7119`..`a606b21` + harness browser view): inspector por capacidades, catálogo, diseños, access policy, Browser View.
-- **Fase 6 casi cerrada** — 6.1–6.8 ✅ (`074d389`..`f6050cf` + commit registry pendiente). Renderers Original/Crystal para Standings, Relative y Pedals; registry 4 widgets × 2 systems; official designs base; catálogo studio con 4 entradas; golden v2 renderiza sin diagnósticos.
-- **Pendiente revisión manual (6.9 + review gate):** matriz visual PNG (`visual:overlay-studio`), parity assertions ampliadas a los 4 widgets, QA visual “que se parezca al HTML” — plan `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-06-core-widget-migration.md` Task 6.9.
-- Evidencia Fase 6 (2026-07-11): `pnpm --dir frontend test -- src/overlay` → 69 files / 446 PASS; `pnpm --dir frontend build` PASS.
+- **Fase 6 ✅ CERRADA** (commits `074d389`..`accd40d` + matriz visual 6.9): 6.1–6.8 migración funcional completa (Standings, Relative, Pedals Original/Crystal); registry 4 widgets × 2 systems; official designs; catálogo 4 entradas; golden v2 sin diagnósticos; fix chrome selección Relative (`fcf4989`).
+- **6.9 matriz visual + parity:** harness 4 widgets (`harness-fixtures.ts`), 59 baselines PNG (widget×system×surface ready + estados error + variantes stress60/fill/zero/full), assertions HTML parity studio/desktop/obs en Vitest + Playwright, chrome Relative en studio verificado.
+- Evidencia Fase 6 (2026-07-11): `pnpm --dir frontend test -- src/overlay` → 69 files / 456 PASS; `pnpm --dir frontend test -- OverlayParityHarness harness-fixtures` → 21 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 59 baselines 0.000% delta + parity 4 widgets + studio-relative-chrome + drag/resize + zoom; `pnpm --dir frontend build` PASS.
 - **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes).
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

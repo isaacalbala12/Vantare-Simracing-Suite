@@ -1,16 +1,22 @@
 import type { CSSProperties } from "react";
-import { buildMockTelemetry } from "../overlay/core/mock-scenarios";
 import type { DesignSystemId } from "../overlay/core/profile-document";
 import type {
   MockDataState,
   MockLocationScenario,
   MockSessionScenario,
 } from "../overlay/core/mock-scenarios";
-import { deltaDefinition } from "../overlay/widget-types/delta/delta-definition";
 import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
+import {
+  buildHarnessTelemetry,
+  buildHarnessWidget,
+  HARNESS_WIDGETS,
+  isHarnessVariant,
+  isHarnessWidget,
+  type HarnessVariant,
+  type HarnessWidget,
+} from "./harness-fixtures";
 
 export type HarnessSurface = "studio" | "desktop" | "obs" | "harness";
-export type HarnessWidget = "delta";
 export type HarnessSystem = DesignSystemId;
 
 export type HarnessQuery = {
@@ -20,6 +26,7 @@ export type HarnessQuery = {
   location: MockLocationScenario;
   state: MockDataState;
   surface: HarnessSurface;
+  variant: HarnessVariant;
 };
 
 const DEFAULT_QUERY: HarnessQuery = {
@@ -29,9 +36,9 @@ const DEFAULT_QUERY: HarnessQuery = {
   location: "track",
   state: "ready",
   surface: "harness",
+  variant: "default",
 };
 
-const WIDGETS = new Set<HarnessWidget>(["delta"]);
 const SYSTEMS = new Set<HarnessSystem>(["vantare-original", "vantare-crystal"]);
 const SESSIONS = new Set<MockSessionScenario>(["practice", "qualifying", "race"]);
 const LOCATIONS = new Set<MockLocationScenario>(["track", "pits"]);
@@ -46,8 +53,9 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   const location = (params.get("location") ?? DEFAULT_QUERY.location) as MockLocationScenario;
   const state = (params.get("state") ?? DEFAULT_QUERY.state) as MockDataState;
   const surface = (params.get("surface") ?? DEFAULT_QUERY.surface) as HarnessSurface;
+  const variant = (params.get("variant") ?? DEFAULT_QUERY.variant) as HarnessVariant;
 
-  if (!WIDGETS.has(widget)) {
+  if (!isHarnessWidget(widget)) {
     return { error: `invalid widget parameter: ${widget}` };
   }
   if (!SYSTEMS.has(system)) {
@@ -65,25 +73,39 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   if (!SURFACES.has(surface)) {
     return { error: `invalid surface parameter: ${surface}` };
   }
+  if (!isHarnessVariant(variant)) {
+    return { error: `invalid variant parameter: ${variant}` };
+  }
 
-  return { widget, system, session, location, state, surface };
+  if (variant === "relative-fill" && widget !== "relative") {
+    return { error: "relative-fill variant requires widget=relative" };
+  }
+  if (variant === "standings-stress60" && widget !== "standings") {
+    return { error: "standings-stress60 variant requires widget=standings" };
+  }
+  if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
+    return { error: `${variant} variant requires widget=pedals` };
+  }
+
+  return { widget, system, session, location, state, surface, variant };
 }
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
-  const snapshot = buildMockTelemetry({
+  const snapshot = buildHarnessTelemetry({
     session: query.session,
     location: query.location,
     state: query.state,
+    widget: query.widget,
+    variant: query.variant,
   });
-  const widget = deltaDefinition.createDefault("delta-harness");
-  widget.visual = {
-    ...widget.visual,
-    systemId: query.system,
-  };
+  const widget = buildHarnessWidget(query.widget, query.system, query.variant);
 
   return (
     <div
       data-overlay-parity-stage
+      data-overlay-parity-widget={query.widget}
+      data-overlay-parity-system={query.system}
+      data-overlay-parity-variant={query.variant}
       style={{
         width: 1920,
         height: 1080,
@@ -121,3 +143,5 @@ export function OverlayParityHarnessPage({ search }: { search: string }) {
   }
   return <OverlayParityHarness query={parsed} />;
 }
+
+export { HARNESS_WIDGETS };

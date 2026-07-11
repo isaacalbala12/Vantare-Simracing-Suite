@@ -17,23 +17,148 @@ const PREFERRED_PORT = 5176;
 const MAX_PIXEL_DELTA_RATIO = 0.005;
 const LOGICAL_CANVAS_ASPECT = 1920 / 1080;
 
-const STATE_FIXTURES = [
-  { name: "original-ready", query: "system=vantare-original&state=ready" },
-  { name: "original-stale", query: "system=vantare-original&state=stale" },
-  { name: "original-disconnected", query: "system=vantare-original&state=disconnected" },
-  { name: "original-error", query: "system=vantare-original&state=error" },
-  { name: "crystal-ready", query: "system=vantare-crystal&state=ready" },
-  { name: "crystal-stale", query: "system=vantare-crystal&state=stale" },
-  { name: "crystal-disconnected", query: "system=vantare-crystal&state=disconnected" },
-  { name: "crystal-error", query: "system=vantare-crystal&state=error" },
+const WIDGETS = ["delta", "standings", "relative", "pedals"];
+const SYSTEMS = [
+  { id: "vantare-original", short: "original" },
+  { id: "vantare-crystal", short: "crystal" },
 ];
+const READY_SURFACES = ["studio", "desktop", "obs"];
+const ERROR_STATES = ["stale", "disconnected", "error"];
 
-const SURFACE_FIXTURES = [
-  { name: "surface-studio", query: "system=vantare-original&state=ready&surface=studio" },
-  { name: "surface-desktop", query: "system=vantare-original&state=ready&surface=desktop" },
-  { name: "surface-obs", query: "system=vantare-original&state=ready&surface=obs" },
-  { name: "surface-harness", query: "system=vantare-original&state=ready&surface=harness" },
-];
+function buildHarnessQuery(params) {
+  return new URLSearchParams(params).toString();
+}
+
+function buildParityFixtures() {
+  const fixtures = [];
+
+  for (const widget of WIDGETS) {
+    for (const system of SYSTEMS) {
+      for (const surface of READY_SURFACES) {
+        fixtures.push({
+          name: `${widget}-${system.short}-ready-${surface}`,
+          query: buildHarnessQuery({
+            widget,
+            system: system.id,
+            state: "ready",
+            surface,
+          }),
+          widget,
+        });
+      }
+    }
+  }
+
+  for (const widget of WIDGETS) {
+    for (const system of SYSTEMS) {
+      for (const state of ERROR_STATES) {
+        fixtures.push({
+          name: `${widget}-${system.short}-${state}`,
+          query: buildHarnessQuery({
+            widget,
+            system: system.id,
+            state,
+            surface: "obs",
+          }),
+          widget,
+        });
+      }
+    }
+  }
+
+  const variantFixtures = [
+    {
+      name: "standings-original-stress60",
+      widget: "standings",
+      query: buildHarnessQuery({
+        widget: "standings",
+        system: "vantare-original",
+        state: "ready",
+        surface: "obs",
+        variant: "standings-stress60",
+      }),
+    },
+    {
+      name: "standings-crystal-stress60",
+      widget: "standings",
+      query: buildHarnessQuery({
+        widget: "standings",
+        system: "vantare-crystal",
+        state: "ready",
+        surface: "obs",
+        variant: "standings-stress60",
+      }),
+    },
+    {
+      name: "relative-original-fill",
+      widget: "relative",
+      query: buildHarnessQuery({
+        widget: "relative",
+        system: "vantare-original",
+        state: "ready",
+        surface: "obs",
+        variant: "relative-fill",
+      }),
+    },
+    {
+      name: "relative-crystal-fill",
+      widget: "relative",
+      query: buildHarnessQuery({
+        widget: "relative",
+        system: "vantare-crystal",
+        state: "ready",
+        surface: "obs",
+        variant: "relative-fill",
+      }),
+    },
+    {
+      name: "pedals-original-zero",
+      widget: "pedals",
+      query: buildHarnessQuery({
+        widget: "pedals",
+        system: "vantare-original",
+        state: "ready",
+        surface: "obs",
+        variant: "pedals-zero",
+      }),
+    },
+    {
+      name: "pedals-crystal-zero",
+      widget: "pedals",
+      query: buildHarnessQuery({
+        widget: "pedals",
+        system: "vantare-crystal",
+        state: "ready",
+        surface: "obs",
+        variant: "pedals-zero",
+      }),
+    },
+    {
+      name: "pedals-original-full",
+      widget: "pedals",
+      query: buildHarnessQuery({
+        widget: "pedals",
+        system: "vantare-original",
+        state: "ready",
+        surface: "obs",
+        variant: "pedals-full",
+      }),
+    },
+    {
+      name: "pedals-crystal-full",
+      widget: "pedals",
+      query: buildHarnessQuery({
+        widget: "pedals",
+        system: "vantare-crystal",
+        state: "ready",
+        surface: "obs",
+        variant: "pedals-full",
+      }),
+    },
+  ];
+
+  return [...fixtures, ...variantFixtures];
+}
 
 const STUDIO_SHELL_FIXTURES = [
   {
@@ -56,7 +181,7 @@ const STUDIO_SHELL_FIXTURES = [
   },
 ];
 
-const PARITY_FIXTURES = [...STATE_FIXTURES, ...SURFACE_FIXTURES];
+const PARITY_FIXTURES = buildParityFixtures();
 const updateMode = process.argv.includes("--update");
 
 function pngToDataUrl(filePath) {
@@ -364,6 +489,37 @@ async function assertRelativeStudioChrome(page, baseUrl) {
   }
 }
 
+async function assertRendererParityAcrossSurfaces(page, baseUrl, widget) {
+  const surfaces = ["studio", "desktop", "obs"];
+  const markups = [];
+
+  for (const surface of surfaces) {
+    const url = `${baseUrl}/overlay-studio-harness.html?widget=${widget}&system=vantare-original&state=ready&surface=${surface}`;
+    await page.goto(url, { waitUntil: "networkidle" });
+    await page.waitForSelector(`[data-overlay-parity-widget-frame] [data-widget-renderer="${widget}"]`);
+    const markup = await page.evaluate((widgetType) => {
+      const renderer = document.querySelector(`[data-widget-renderer="${widgetType}"]`);
+      if (!renderer) {
+        return null;
+      }
+      return renderer.outerHTML
+        .replace(/\sdata-render-mode="[^"]*"/g, "")
+        .replace(/\sdata-testid="[^"]*"/g, "")
+        .replace(/\sstyle="[^"]*"/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }, widget);
+    if (!markup) {
+      throw new Error(`parity-${widget}: missing renderer markup on ${surface}`);
+    }
+    markups.push(markup);
+  }
+
+  if (markups[0] !== markups[1] || markups[1] !== markups[2]) {
+    throw new Error(`parity-${widget}: renderer HTML differs across studio/desktop/obs`);
+  }
+}
+
 async function assertStudioZoomViewport(page, baseUrl) {
   const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=1600`;
   await page.goto(url, { waitUntil: "networkidle" });
@@ -439,16 +595,19 @@ async function main() {
   const { server, baseUrl } = await startHarnessServer();
 
   let browser;
+  let page;
   try {
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+    page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 
     for (const fixture of PARITY_FIXTURES) {
       const baselinePath = path.join(BASELINE_DIR, `${fixture.name}.png`);
       const currentPath = path.join(BASELINE_DIR, `${fixture.name}.current.png`);
       const url = `${baseUrl}/overlay-studio-harness.html?${fixture.query}`;
       await page.goto(url, { waitUntil: "networkidle" });
-      await page.waitForSelector("[data-overlay-parity-widget-frame] [data-widget-renderer='delta']");
+      await page.waitForSelector(
+        `[data-overlay-parity-widget-frame] [data-widget-renderer="${fixture.widget}"]`,
+      );
       await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
         await capturePage.locator("[data-overlay-parity-widget-frame]").screenshot({ path: outputPath });
       });
@@ -468,6 +627,10 @@ async function main() {
 
     if (!updateMode) {
       await page.setViewportSize({ width: 1920, height: 1080 });
+      for (const widget of WIDGETS) {
+        await assertRendererParityAcrossSurfaces(page, baseUrl, widget);
+        console.log(`ok parity-${widget}`);
+      }
       await assertRelativeStudioChrome(page, baseUrl);
       console.log("ok studio-relative-chrome");
       await assertStudioDragAndResize(page, baseUrl);
@@ -476,19 +639,30 @@ async function main() {
       console.log("ok studio zoom 150 viewport");
     }
   } finally {
-    if (browser) {
-      await browser.close();
+    if (page) {
+      await page.close().catch(() => undefined);
     }
+    if (browser) {
+      await browser.close().catch(() => undefined);
+    }
+    server.httpServer?.closeAllConnections?.();
     await Promise.race([
       server.close(),
       new Promise((resolve) => {
-        setTimeout(resolve, 3000);
+        setTimeout(resolve, 1000);
       }),
     ]);
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+let exitCode = 0;
+main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    exitCode = 1;
+  })
+  .finally(() => {
+    setImmediate(() => {
+      process.exit(exitCode);
+    });
+  });

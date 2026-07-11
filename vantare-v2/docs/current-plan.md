@@ -2550,3 +2550,8 @@ Nota LAUNCHER-V3-FASES-3-8 (2026-07-11):
 - Smoke Playwright observado: 7 apps, 2 perfiles, editor avanzado con args, sin errores de consola ni peticiones fallidas relevantes; captura temporal en `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
 - Documentación viva: `docs/launcher-v3-architecture.md`.
 - Limitación explícita: `frontend/src/assets/launcher/apps/` sigue sin los siete logos aprobados; el fallback local no descarga ni inventa marcas.
+
+Nota LAUNCHER-V3-VERIFICACION-FINAL (2026-07-11):
+- Gate final Launcher: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `pnpm --dir frontend test` PASS (173 archivos, 1590 tests); `pnpm --dir frontend build` PASS.
+- Smoke Playwright final PASS en 1440x900 y 390x844: 7 apps, 2 perfiles, onboarding/editor avanzado, sin overflow móvil, errores de consola ni peticiones fallidas relevantes. Captura temporal: `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
+- `go test ./...` sigue fallando solo en problemas preexistentes de `internal/server` (nonce/puerto); `go build ./...` falla en `build/ios` porque ese paquete no contiene `main`; `go test -race` no puede arrancar porque el entorno carece de `gcc`; lint global mantiene 4 errores preexistentes fuera de Launcher (Calendar y topbar mock).

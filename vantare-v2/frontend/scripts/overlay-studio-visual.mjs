@@ -479,7 +479,12 @@ async function main() {
     if (browser) {
       await browser.close();
     }
-    await server.close();
+    await Promise.race([
+      server.close(),
+      new Promise((resolve) => {
+        setTimeout(resolve, 3000);
+      }),
+    ]);
   }
 }
 

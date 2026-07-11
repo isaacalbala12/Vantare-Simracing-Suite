@@ -1,6 +1,9 @@
 package launcher
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/app"
@@ -180,4 +183,95 @@ func TestRemoveApp(t *testing.T) {
 			t.Errorf("expected ErrAppNotFound, got %v", err)
 		}
 	})
+}
+
+func TestValidateExecutableOverridePrioritizesOfficialPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "obs64.exe")
+	if err := os.WriteFile(path, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	entry := app.LauncherAppEntry{
+		ID:             "obs",
+		DisplayName:    "OBS Studio",
+		LaunchMethod:   "executable",
+		ExecutablePath: "C:\\old\\obs64.exe",
+		PathSource:     "registry",
+		Availability:   Availability{Catalogued: true, Found: true},
+	}
+	updated, err := ValidateExecutableOverride(entry, path)
+	if err != nil {
+		t.Fatalf("unexpected override error: %v", err)
+	}
+	if updated.ExecutablePath != path || updated.UserExecutablePath != path {
+		t.Fatalf("override path not applied consistently: %+v", updated)
+	}
+	if updated.PathSource != "override" {
+		t.Fatalf("expected override path source, got %q", updated.PathSource)
+	}
+	if !updated.Availability.Installed || !updated.Availability.Launchable {
+		t.Fatalf("valid override must be launchable, got %+v", updated.Availability)
+	}
+}
+
+func TestValidateExecutableOverrideRejectsMissingPath(t *testing.T) {
+	_, err := ValidateExecutableOverride(app.LauncherAppEntry{
+		ID:           "obs",
+		LaunchMethod: "executable",
+	}, filepath.Join(t.TempDir(), "missing.exe"))
+	if err == nil {
+		t.Fatal("expected missing override path to be rejected")
+	}
+	var appErr *LauncherAppError
+	if !errors.As(err, &appErr) || appErr.Code != "invalid_executable_override" {
+		t.Fatalf("expected typed override error, got %T %v", err, err)
+	}
+}
+
+func TestFindMergeCandidateDoesNotMergeAutomatically(t *testing.T) {
+	manual := app.LauncherAppEntry{
+		ID:           "manual-obs",
+		DisplayName:  "OBS Studio",
+		LaunchMethod: "executable",
+	}
+
+	candidateID, ok := FindMergeCandidate(manual, OfficialCatalog)
+	if !ok || candidateID != "obs" {
+		t.Fatalf("expected OBS merge candidate, got id=%q ok=%t", candidateID, ok)
+	}
+}
+
+func TestMergeManualIntoCatalogPreservesProfiles(t *testing.T) {
+	manual := app.LauncherAppEntry{
+		ID:             "manual-obs",
+		DisplayName:    "OBS Studio",
+		LaunchMethod:   "executable",
+		ExecutablePath: `C:\Users\Test\obs64.exe`,
+		Args:           "--profile=night",
+	}
+	catalog := app.LauncherAppEntry{
+		ID:           "obs",
+		DisplayName:  "OBS Studio",
+		LaunchMethod: "executable",
+		Detected:     true,
+	}
+	profiles := []app.LaunchProfile{{
+		ID:    "creator",
+		Name:  "Creator",
+		Steps: []app.LaunchStep{{AppID: "manual-obs", Delay: 2}},
+	}}
+
+	merged, updatedProfiles, err := MergeManualIntoCatalog(manual, catalog, profiles)
+	if err != nil {
+		t.Fatalf("unexpected merge error: %v", err)
+	}
+	if merged.ID != "obs" || merged.ExecutablePath != manual.ExecutablePath || merged.Args != manual.Args {
+		t.Fatalf("manual executable preferences not preserved: %+v", merged)
+	}
+	if len(updatedProfiles) != 1 || updatedProfiles[0].Name != "Creator" || updatedProfiles[0].Steps[0].AppID != "obs" {
+		t.Fatalf("profiles were not preserved and rewired: %+v", updatedProfiles)
+	}
+	if profiles[0].Steps[0].AppID != "manual-obs" {
+		t.Fatal("merge must not mutate the input profiles")
+	}
 }

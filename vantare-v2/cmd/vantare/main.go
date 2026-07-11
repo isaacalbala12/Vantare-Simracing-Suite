@@ -275,6 +275,105 @@ func handleAppUpdate(id, args string, settingsSvc *app.SettingsService, emitter 
 	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 }
 
+func emitLauncherCommandError(emitter app.EventEmitter, err error) {
+	payload := map[string]any{"message": err.Error()}
+	if appErr, ok := err.(*launcher.LauncherAppError); ok {
+		payload["code"] = appErr.Code
+		if appErr.AppID != "" {
+			payload["appId"] = appErr.AppID
+		}
+	}
+	emitter.Emit("launcher:error", payload)
+}
+
+func handleSetAppPath(id, path string, svc *launcher.Service, emitter app.EventEmitter) {
+	settings := svc.Settings()
+	apps := settings.GetLauncherApps()
+	entry, ok := apps[id]
+	if !ok {
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "app_not_found", Message: "launcher app was not found", AppID: id,
+		})
+		return
+	}
+	updated, err := launcher.ValidateExecutableOverride(entry, path)
+	if err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	apps[id] = updated
+	if err := settings.SetLauncherApps(apps); err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	appsList := make([]app.LauncherAppEntry, 0, len(apps))
+	for _, value := range apps {
+		appsList = append(appsList, value)
+	}
+	launcher.EnrichAppsWithIcons(appsList)
+	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
+}
+
+func handlePreviewAppMerge(manualID string, svc *launcher.Service, emitter app.EventEmitter) {
+	entry, ok := svc.Settings().GetLauncherApps()[manualID]
+	if !ok {
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "app_not_found", Message: "manual launcher app was not found", AppID: manualID,
+		})
+		return
+	}
+	candidateID, ok := launcher.FindMergeCandidate(entry, launcher.OfficialCatalog)
+	if !ok {
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "merge_candidate_not_found", Message: "no official merge candidate was found", AppID: manualID,
+		})
+		return
+	}
+	emitter.Emit("launcher:app:merge:preview", map[string]any{
+		"manualId":         manualID,
+		"mergeCandidateId": candidateID,
+	})
+}
+
+func handleConfirmAppMerge(manualID, catalogID string, svc *launcher.Service, emitter app.EventEmitter) {
+	settings := svc.Settings()
+	apps := settings.GetLauncherApps()
+	manual, manualOK := apps[manualID]
+	catalog, catalogOK := apps[catalogID]
+	if !catalogOK {
+		catalog, catalogOK = launcher.OfficialAppEntry(catalogID)
+	}
+	if !manualOK || !catalogOK {
+		missingID := manualID
+		if manualOK {
+			missingID = catalogID
+		}
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "app_not_found", Message: "manual or catalog launcher app was not found", AppID: missingID,
+		})
+		return
+	}
+	merged, profiles, err := launcher.MergeManualIntoCatalog(manual, catalog, settings.GetLauncherProfiles())
+	if err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	delete(apps, manualID)
+	apps[catalogID] = merged
+	if err := settings.SetLauncherApps(apps); err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	if err := settings.SetLauncherProfiles(profiles); err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	emitter.Emit("launcher:app:merge:confirmed", map[string]any{
+		"manualId":  manualID,
+		"catalogId": catalogID,
+	})
+}
+
 // handleChainError is invoked when the chain runner reports a step failure.
 // It first verifies the profile still exists (race-safe: the user may have
 // deleted it while the chain ran). When the profile is missing, it emits
@@ -1341,6 +1440,44 @@ func main() {
 			}
 		}
 		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:path:set", func(event *application.CustomEvent) {
+		var payload struct {
+			ID   string `json:"id"`
+			Path string `json:"path"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleSetAppPath(payload.ID, payload.Path, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:merge:preview", func(event *application.CustomEvent) {
+		var payload struct {
+			ManualID string `json:"manualId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handlePreviewAppMerge(payload.ManualID, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:merge:confirm", func(event *application.CustomEvent) {
+		var payload struct {
+			ManualID  string `json:"manualId"`
+			CatalogID string `json:"catalogId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleConfirmAppMerge(payload.ManualID, payload.CatalogID, launcherSvc, emitter)
 	})
 
 	// App icon handler. Frontend emits launcher:app:icon with { id, executablePath }.

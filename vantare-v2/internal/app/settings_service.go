@@ -48,21 +48,36 @@ const (
 	AppCategoryUtility   LauncherAppCategory = "utility"
 )
 
+// LauncherAvailability is the canonical availability contract for a
+// launcher app. The flags are independent facts/derivations and are not a
+// replacement for the legacy Detected field during migration.
+type LauncherAvailability struct {
+	Catalogued bool `json:"catalogued"`
+	Found      bool `json:"found"`
+	Installed  bool `json:"installed"`
+	Launchable bool `json:"launchable"`
+}
+
 // LauncherAppEntry representa una app detectada o añadida manualmente.
 type LauncherAppEntry struct {
-	ID             string              `json:"id"`
-	DisplayName    string              `json:"displayName"`
-	Abbreviation   string              `json:"abbreviation"`
-	Category       LauncherAppCategory `json:"category"`
-	LaunchMethod   string              `json:"launchMethod"`
-	SteamAppID     uint32              `json:"steamAppId,omitempty"`
-	ExecutablePath string              `json:"executablePath,omitempty"`
-	Args           string              `json:"args,omitempty"`
-	Detected       bool                `json:"detected"`
-	GradientFrom   string              `json:"gradientFrom"`
-	GradientTo     string              `json:"gradientTo"`
-	IsFavorite     bool                `json:"isFavorite,omitempty"`
-	IconURL        string              `json:"iconUrl,omitempty"`
+	ID                 string               `json:"id"`
+	DisplayName        string               `json:"displayName"`
+	Abbreviation       string               `json:"abbreviation"`
+	Category           LauncherAppCategory  `json:"category"`
+	LaunchMethod       string               `json:"launchMethod"`
+	SteamAppID         uint32               `json:"steamAppId,omitempty"`
+	ExecutablePath     string               `json:"executablePath,omitempty"`
+	Args               string               `json:"args,omitempty"`
+	Availability       LauncherAvailability `json:"availability"`
+	PathSource         string               `json:"pathSource,omitempty"`
+	UserExecutablePath string               `json:"userExecutablePath,omitempty"`
+	IconOverridePath   string               `json:"iconOverridePath,omitempty"`
+	// Deprecated: use Availability instead. Kept for settings migration.
+	Detected     bool   `json:"detected"`
+	GradientFrom string `json:"gradientFrom"`
+	GradientTo   string `json:"gradientTo"`
+	IsFavorite   bool   `json:"isFavorite,omitempty"`
+	IconURL      string `json:"iconUrl,omitempty"`
 }
 
 // LaunchStep es un paso dentro de un perfil.

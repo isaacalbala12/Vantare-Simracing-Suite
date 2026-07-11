@@ -636,6 +636,12 @@ func main() {
 	wailsApp.RegisterService(application.NewService(presetSvc))
 	presetSvc.RegisterHandlers(wailsApp)
 
+	// Overlay Studio V3 profile persistence (parallel to legacy ProfileService)
+	studioProfileSvc := app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
+		log.Printf("studio profile saved: %s revision=%s", saved.Path, saved.Revision)
+	})
+	studioProfileSvc.RegisterHandlers(wailsApp)
+
 	// Widget design library for Overlay Studio V3
 	designSvc := app.NewWidgetDesignService(cfgDir, emitter)
 	if err := designSvc.Load(); err != nil {

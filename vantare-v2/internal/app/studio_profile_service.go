@@ -1,10 +1,13 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/vantare/overlays/v2/pkg/config"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // StudioProfileSaved is delivered after a successful V3 profile save.
@@ -36,7 +39,6 @@ func NewStudioProfileService(emitter EventEmitter, onSaved func(StudioProfileSav
 func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error) {
 	loaded, err := s.store.Load(path)
 	if err != nil {
-		s.emitError("load", err)
 		return nil, err
 	}
 	s.path = path
@@ -45,10 +47,10 @@ func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error
 }
 
 // Save persists the supplied document using optimistic revision checks.
-func (s *StudioProfileService) Save(expectedRevision string, doc *config.ProfileDocumentV3) error {
+func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
 	if s.path == "" {
 		err := fmt.Errorf("profile path not configured")
-		s.emitError("save", err)
+		s.emitError(requestID, "save", err)
 		return err
 	}
 	migratedFrom := config.ProfileSchemaVersionV3
@@ -58,10 +60,10 @@ func (s *StudioProfileService) Save(expectedRevision string, doc *config.Profile
 	revision, err := s.store.Save(s.path, expectedRevision, doc, migratedFrom)
 	if err != nil {
 		if errors.Is(err, config.ErrProfileConflict) {
-			s.emitConflict(err)
+			s.emitConflict(requestID, err)
 			return err
 		}
-		s.emitError("save", err)
+		s.emitError(requestID, "save", err)
 		return err
 	}
 	s.loaded = &config.LoadedProfileV3{
@@ -70,8 +72,9 @@ func (s *StudioProfileService) Save(expectedRevision string, doc *config.Profile
 		MigratedFrom: config.ProfileSchemaVersionV3,
 	}
 	payload := map[string]any{
-		"document": s.loaded.Document,
-		"revision": revision,
+		"requestId": requestID,
+		"document":  s.loaded.Document,
+		"revision":  revision,
 	}
 	if s.emitter != nil {
 		s.emitter.Emit("studio:profile:saved", payload)
@@ -86,32 +89,120 @@ func (s *StudioProfileService) Save(expectedRevision string, doc *config.Profile
 	return nil
 }
 
+// RegisterHandlers registers Wails event listeners for Studio V3 profile operations.
+func (s *StudioProfileService) RegisterHandlers(app *application.App) {
+	app.Event.On("studio:profile:load", func(event *application.CustomEvent) {
+		s.HandleLoad(event.Data)
+	})
+	app.Event.On("studio:profile:save", func(event *application.CustomEvent) {
+		s.HandleSave(event.Data)
+	})
+}
+
+// HandleLoad decodes a correlated load request and emits studio:profile:loaded or studio:profile:error.
+func (s *StudioProfileService) HandleLoad(data any) {
+	requestID, file, err := decodeStudioProfileLoadPayload(data)
+	if err != nil {
+		s.emitError(requestID, "load", err)
+		return
+	}
+	if _, err := s.Load(file); err != nil {
+		s.emitError(requestID, "load", err)
+		return
+	}
+	s.EmitLoaded(requestID)
+}
+
+// HandleSave decodes a correlated save request and emits saved/conflict/error.
+func (s *StudioProfileService) HandleSave(data any) {
+	requestID, expectedRevision, doc, err := decodeStudioProfileSavePayload(data)
+	if err != nil {
+		s.emitError(requestID, "save", err)
+		return
+	}
+	_ = s.Save(requestID, expectedRevision, doc)
+}
+
 // EmitLoaded emits studio:profile:loaded for the current in-memory document.
-func (s *StudioProfileService) EmitLoaded() {
+func (s *StudioProfileService) EmitLoaded(requestID string) {
 	if s.emitter == nil || s.loaded == nil {
 		return
 	}
 	s.emitter.Emit("studio:profile:loaded", map[string]any{
+		"requestId":    requestID,
 		"document":     s.loaded.Document,
 		"revision":     s.loaded.Revision,
 		"migratedFrom": s.loaded.MigratedFrom,
 	})
 }
 
-func (s *StudioProfileService) emitConflict(err error) {
+func decodeStudioProfileLoadPayload(data any) (requestID, file string, err error) {
+	if data == nil {
+		return "", "", fmt.Errorf("missing load payload")
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return "", "", fmt.Errorf("encoding load payload: %w", err)
+	}
+	var payload struct {
+		RequestID string `json:"requestId"`
+		File      string `json:"file"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return "", "", fmt.Errorf("decoding load payload: %w", err)
+	}
+	if strings.TrimSpace(payload.File) == "" {
+		return payload.RequestID, "", fmt.Errorf("file is required")
+	}
+	return payload.RequestID, payload.File, nil
+}
+
+func decodeStudioProfileSavePayload(data any) (requestID, expectedRevision string, doc *config.ProfileDocumentV3, err error) {
+	if data == nil {
+		return "", "", nil, fmt.Errorf("missing save payload")
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("encoding save payload: %w", err)
+	}
+	var payload struct {
+		RequestID        string          `json:"requestId"`
+		ExpectedRevision string          `json:"expectedRevision"`
+		Document         json.RawMessage `json:"document"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return "", "", nil, fmt.Errorf("decoding save payload: %w", err)
+	}
+	if len(payload.Document) == 0 || string(payload.Document) == "null" {
+		return payload.RequestID, "", nil, fmt.Errorf("document is required")
+	}
+	var parsed config.ProfileDocumentV3
+	if err := json.Unmarshal(payload.Document, &parsed); err != nil {
+		return payload.RequestID, "", nil, fmt.Errorf("decoding document: %w", err)
+	}
+	normalized := config.NormalizeProfileDocumentV3(&parsed)
+	if err := config.ValidateProfileDocumentV3(normalized); err != nil {
+		return payload.RequestID, "", nil, err
+	}
+	return payload.RequestID, payload.ExpectedRevision, normalized, nil
+}
+
+func (s *StudioProfileService) emitConflict(requestID string, err error) {
 	if s.emitter == nil {
 		return
 	}
 	s.emitter.Emit("studio:profile:conflict", map[string]any{
-		"message": err.Error(),
+		"requestId": requestID,
+		"message":   err.Error(),
 	})
 }
 
-func (s *StudioProfileService) emitError(operation string, err error) {
+func (s *StudioProfileService) emitError(requestID, operation string, err error) {
 	if s.emitter == nil || err == nil {
 		return
 	}
 	s.emitter.Emit("studio:profile:error", map[string]any{
+		"requestId": requestID,
 		"operation": operation,
 		"message":   err.Error(),
 	})

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,7 +43,7 @@ func TestStudioProfileServiceLoadEmitsLoaded(t *testing.T) {
 	if loaded.MigratedFrom != 0 {
 		t.Fatalf("migratedFrom=%d want 0", loaded.MigratedFrom)
 	}
-	svc.EmitLoaded()
+	svc.EmitLoaded("req-load-1")
 
 	if len(spy.events) != 1 || spy.events[0] != "studio:profile:loaded" {
 		t.Fatalf("events=%v want studio:profile:loaded", spy.events)
@@ -50,6 +51,9 @@ func TestStudioProfileServiceLoadEmitsLoaded(t *testing.T) {
 	payload, ok := spy.data[0].(map[string]any)
 	if !ok {
 		t.Fatalf("payload type=%T", spy.data[0])
+	}
+	if payload["requestId"] != "req-load-1" {
+		t.Fatalf("requestId=%v want req-load-1", payload["requestId"])
 	}
 	if payload["revision"] == "" {
 		t.Fatal("expected revision in loaded payload")
@@ -89,7 +93,7 @@ func TestStudioProfileServiceSaveEmitsSavedAndCallback(t *testing.T) {
 	svc.path = path
 	svc.loaded = &config.LoadedProfileV3{Document: doc, Revision: "", MigratedFrom: config.ProfileSchemaVersionV3}
 
-	if err := svc.Save("", doc); err != nil {
+	if err := svc.Save("req-save-1", "", doc); err != nil {
 		t.Fatal(err)
 	}
 	if callbackCount != 1 {
@@ -107,6 +111,9 @@ func TestStudioProfileServiceSaveEmitsSavedAndCallback(t *testing.T) {
 		if event == "studio:profile:saved" {
 			foundSaved = true
 			payload := spy.data[i].(map[string]any)
+			if payload["requestId"] != "req-save-1" {
+				t.Fatalf("requestId=%v want req-save-1", payload["requestId"])
+			}
 			if payload["revision"] != callback.Revision {
 				t.Fatalf("saved revision=%v want %q", payload["revision"], callback.Revision)
 			}
@@ -135,16 +142,20 @@ func TestStudioProfileServiceSaveConflictEmitsConflict(t *testing.T) {
 	svc := NewStudioProfileService(spy, nil)
 	svc.path = path
 	svc.loaded = &config.LoadedProfileV3{Document: doc, Revision: "", MigratedFrom: config.ProfileSchemaVersionV3}
-	if err := svc.Save("", doc); err != nil {
+	if err := svc.Save("req-conflict-1", "", doc); err != nil {
 		t.Fatal(err)
 	}
 
-	err := svc.Save("stale-revision", doc)
+	err := svc.Save("req-conflict-2", "stale-revision", doc)
 	if err == nil {
 		t.Fatal("expected conflict error")
 	}
 	if len(spy.events) == 0 || spy.events[len(spy.events)-1] != "studio:profile:conflict" {
 		t.Fatalf("events=%v want terminal studio:profile:conflict", spy.events)
+	}
+	conflict := spy.data[len(spy.data)-1].(map[string]any)
+	if conflict["requestId"] != "req-conflict-2" {
+		t.Fatalf("requestId=%v want req-conflict-2", conflict["requestId"])
 	}
 }
 
@@ -163,13 +174,113 @@ func TestStudioProfileServiceSaveErrorEmitsError(t *testing.T) {
 	})
 	svc.loaded = &config.LoadedProfileV3{Document: doc, Revision: "abc", MigratedFrom: config.ProfileSchemaVersionV3}
 
-	if err := svc.Save("abc", doc); err == nil {
+	if err := svc.Save("req-error-1", "abc", doc); err == nil {
 		t.Fatal("expected save error without path")
 	}
 	found := false
 	for _, event := range spy.events {
 		if event == "studio:profile:error" {
 			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("events=%v want studio:profile:error", spy.events)
+	}
+}
+
+func TestStudioProfileServiceHandleLoadEchoesRequestId(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	source, err := os.ReadFile(filepath.Join("..", "..", "pkg", "config", "testdata", "profile-v0-core-widgets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, source, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	svc.HandleLoad(map[string]any{"requestId": "req-handler-load", "file": path})
+
+	foundLoaded := false
+	for i, event := range spy.events {
+		if event != "studio:profile:loaded" {
+			continue
+		}
+		foundLoaded = true
+		payload := spy.data[i].(map[string]any)
+		if payload["requestId"] != "req-handler-load" {
+			t.Fatalf("requestId=%v", payload["requestId"])
+		}
+	}
+	if !foundLoaded {
+		t.Fatalf("events=%v want studio:profile:loaded", spy.events)
+	}
+}
+
+func TestStudioProfileServiceHandleLoadMissingFileEmitsError(t *testing.T) {
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	svc.HandleLoad(map[string]any{"requestId": "req-missing-file"})
+
+	found := false
+	for i, event := range spy.events {
+		if event != "studio:profile:error" {
+			continue
+		}
+		found = true
+		payload := spy.data[i].(map[string]any)
+		if payload["requestId"] != "req-missing-file" {
+			t.Fatalf("requestId=%v", payload["requestId"])
+		}
+		if payload["operation"] != "load" {
+			t.Fatalf("operation=%v want load", payload["operation"])
+		}
+	}
+	if !found {
+		t.Fatalf("events=%v want studio:profile:error", spy.events)
+	}
+}
+
+func TestStudioProfileServiceHandleSaveMissingDocumentEmitsError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "studio-handler",
+		Name:          "Studio Handler",
+		DisplayMode:   config.ModeEdit,
+		MonitorIndex:  0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+		},
+	})
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	svc.path = path
+	svc.HandleSave(map[string]any{"requestId": "req-missing-doc", "expectedRevision": ""})
+
+	found := false
+	for i, event := range spy.events {
+		if event != "studio:profile:error" {
+			continue
+		}
+		found = true
+		payload := spy.data[i].(map[string]any)
+		if payload["requestId"] != "req-missing-doc" {
+			t.Fatalf("requestId=%v", payload["requestId"])
+		}
+		if payload["operation"] != "save" {
+			t.Fatalf("operation=%v want save", payload["operation"])
 		}
 	}
 	if !found {

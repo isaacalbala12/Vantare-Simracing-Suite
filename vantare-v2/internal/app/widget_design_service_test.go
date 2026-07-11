@@ -215,6 +215,50 @@ func TestWidgetDesignServiceListByWidgetType(t *testing.T) {
 	}
 }
 
+func TestWidgetDesignServiceHandleSaveMissingPayloadEmitsError(t *testing.T) {
+	dir := t.TempDir()
+	spy := &studioProfileSpy{}
+	svc := NewWidgetDesignService(dir, spy)
+	svc.handleSave(nil)
+
+	found := false
+	for i, event := range spy.events {
+		if event != "design:error" {
+			continue
+		}
+		found = true
+		payload := spy.data[i].(map[string]any)
+		if payload["operation"] != "save" {
+			t.Fatalf("operation=%v want save", payload["operation"])
+		}
+	}
+	if !found {
+		t.Fatalf("events=%v want design:error", spy.events)
+	}
+}
+
+func TestWidgetDesignServiceHandleDeleteInvalidIDEmitsError(t *testing.T) {
+	dir := t.TempDir()
+	spy := &studioProfileSpy{}
+	svc := NewWidgetDesignService(dir, spy)
+	svc.handleDelete(map[string]any{"id": "../escape"})
+
+	found := false
+	for i, event := range spy.events {
+		if event != "design:error" {
+			continue
+		}
+		found = true
+		payload := spy.data[i].(map[string]any)
+		if payload["operation"] != "delete" {
+			t.Fatalf("operation=%v want delete", payload["operation"])
+		}
+	}
+	if !found {
+		t.Fatalf("events=%v want design:error", spy.events)
+	}
+}
+
 func TestWidgetDesignServiceHandleListEmitsResponse(t *testing.T) {
 	dir := t.TempDir()
 	spy := &studioProfileSpy{}

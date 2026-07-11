@@ -122,6 +122,29 @@ func TestParseWindowsArgsRejectsInvalidInput(t *testing.T) {
 	}
 }
 
+func TestChainFailurePolicyControlsContinuation(t *testing.T) {
+	emit := &spyEmitter{}
+	backend := sampleBackend()
+	runner := NewChainRunner(backend, emit, stubFailingExec)
+	profile := app.LaunchProfile{
+		ID: "stop", Name: "Stop", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
+		Steps: []app.LaunchStep{{AppID: "obs"}, {AppID: "obs"}},
+	}
+	runner.RunChain(context.Background(), profile)
+	if emit.count("launcher:chain:step") > 2 {
+		t.Fatalf("stop policy should not launch the next step, got %d events", emit.count("launcher:chain:step"))
+	}
+
+	emit = &spyEmitter{}
+	runner = NewChainRunner(backend, emit, stubFailingExec)
+	profile.ID = "continue"
+	profile.Policy = &app.LaunchPolicy{Failure: app.FailureContinue}
+	runner.RunChain(context.Background(), profile)
+	if emit.count("launcher:chain:step") < 4 {
+		t.Fatalf("continue policy should visit both steps, got %d events", emit.count("launcher:chain:step"))
+	}
+}
+
 // sampleBackend returns a fakeProfilesBackend pre-loaded with sample apps and
 // an empty profile list.
 func sampleBackend() *fakeProfilesBackend {

@@ -156,6 +156,7 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 	}
 
 	allSucceeded := true
+	policy := app.NormalizeLaunchPolicy(profile.Policy)
 	for i, step := range profile.Steps {
 		if ctx.Err() != nil {
 			return false
@@ -199,7 +200,14 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 
 		// Launch the app.
 		startedAt := time.Now()
-		result := r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
+		result := chainStepResult{}
+		attempts := RetryAttempts(policy.Retry, policy.MaxRetries)
+		for attempt := 0; ; attempt++ {
+			result = r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
+			if result.success || attempt >= attempts || ctx.Err() != nil {
+				break
+			}
+		}
 
 		finishedAt := time.Now()
 		stepStatus := "done"
@@ -210,6 +218,9 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				msg = fmt.Sprintf("el proceso terminó con código %d", result.exitCode)
 			}
 			allSucceeded = false
+			if !ContinueAfterFailure(policy.Failure, false) {
+				return false
+			}
 		}
 
 		r.emit.Emit("launcher:chain:step", ChainProgress{

@@ -1,4 +1,3 @@
-import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   formatRelativeTime,
@@ -11,6 +10,7 @@ import {
 import { useChainState, useLastResult } from "./chain-store";
 import { AppBadge } from "../components/AppBadge";
 import { ProfileCardTimeline } from "./ProfileCard.timeline";
+import { dispatchLauncherCommand } from "./launcher-bridge";
 
 type ProfileCardProps = {
   profile: LaunchProfile;
@@ -45,7 +45,7 @@ export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardPro
       <ProfileCardTimeline
         chain={chain}
         apps={apps}
-        onCancel={() => Events.Emit("launcher:profile:cancel", { id: profile.id })}
+        onCancel={() => dispatchLauncherCommand("launcher:profile:cancel", { id: profile.id })}
       />
     );
   }
@@ -94,7 +94,7 @@ export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardPro
           )}
           <button
             type="button"
-            onClick={() => Events.Emit("launcher:profile:launch", { id: profile.id })}
+            onClick={() => dispatchLauncherCommand("launcher:profile:launch", { id: profile.id })}
             disabled={!launchable}
             title={launchable ? undefined : t("launcher.profile.unlaunchable")}
             className="px-3 py-1.5 rounded-lg bg-vantare-red-400 text-[10px] uppercase tracking-[.18em] font-bold text-white hover:bg-vantare-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -166,7 +166,7 @@ export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardPro
 
         <button
           type="button"
-          onClick={() => Events.Emit("launcher:profile:duplicate", {
+          onClick={() => dispatchLauncherCommand("launcher:profile:duplicate", {
             id: profile.id,
             newId: newProfileId("profile"),
             newName: `${profile.name} ${t("launcher.profiles.copy.suffix")}`.trim(),
@@ -179,7 +179,7 @@ export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardPro
 
         <button
           type="button"
-          onClick={() => Events.Emit("launcher:profile:delete", { id: profile.id })}
+          onClick={() => dispatchLauncherCommand("launcher:profile:delete", { id: profile.id })}
           className="px-3 py-1.5 rounded-lg border border-vantare-red-400/30 text-[10px] uppercase tracking-[.18em] text-vantare-red-400 hover:bg-vantare-red-400/10 transition-colors"
           data-testid={`profile-delete-${profile.id}`}
         >

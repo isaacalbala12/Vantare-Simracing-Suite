@@ -292,6 +292,72 @@ func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	}
 }
 
+func TestRefreshActiveOverlayAfterSaveRefreshesMatchingRunningProfile(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	emitter := &spyMainEmitter{}
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	var overlayRunning atomic.Bool
+	overlayRunning.Store(true)
+
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
+		t.Fatalf("start overlay: %v", err)
+	}
+
+	saved := app.StudioProfileSaved{
+		Path:     studioSvc.Path(),
+		Document: studioSvc.Document(),
+		Revision: studioSvc.Revision(),
+	}
+	refreshActiveOverlayAfterSave(controller, studioSvc, &overlayRunning, saved)
+
+	if factory.created != 2 {
+		t.Fatalf("created=%d, want 2 refresh restart", factory.created)
+	}
+	if len(emitter.events) != 1 || emitter.events[0] != "overlay:profile-v3-loaded" {
+		t.Fatalf("events=%v", emitter.events)
+	}
+}
+
+func TestRefreshActiveOverlayAfterSaveSkipsWhenStopped(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, nil)
+	var overlayRunning atomic.Bool
+
+	refreshActiveOverlayAfterSave(controller, studioSvc, &overlayRunning, app.StudioProfileSaved{
+		Path:     studioSvc.Path(),
+		Document: studioSvc.Document(),
+		Revision: studioSvc.Revision(),
+	})
+
+	if factory.created != 0 {
+		t.Fatalf("expected no overlay restart, created=%d", factory.created)
+	}
+}
+
+func TestRefreshActiveOverlayAfterSaveSkipsDifferentProfile(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, nil)
+	var overlayRunning atomic.Bool
+	overlayRunning.Store(true)
+
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
+		t.Fatal(err)
+	}
+
+	refreshActiveOverlayAfterSave(controller, studioSvc, &overlayRunning, app.StudioProfileSaved{
+		Path:     "/other/profile.json",
+		Document: studioSvc.Document(),
+		Revision: "rev-other",
+	})
+
+	if factory.created != 1 {
+		t.Fatalf("created=%d, want 1 without refresh", factory.created)
+	}
+}
+
 func TestBuildHotkeyActionMapToggleEditModeOpensStudio(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)

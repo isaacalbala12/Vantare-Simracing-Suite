@@ -124,6 +124,41 @@ func TestStudioProfileServiceSaveEmitsSavedAndCallback(t *testing.T) {
 	}
 }
 
+func TestStudioProfileServiceSaveConflictDoesNotCallOnSaved(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "studio-conflict-callback",
+		Name:          "Studio Conflict Callback",
+		DisplayMode:   config.ModeEdit,
+		MonitorIndex:  0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+		},
+	})
+
+	callbackCount := 0
+	svc := NewStudioProfileService(nil, func(saved StudioProfileSaved) {
+		callbackCount++
+	})
+	svc.path = path
+	svc.loaded = &config.LoadedProfileV3{Document: doc, Revision: "", MigratedFrom: config.ProfileSchemaVersionV3}
+	if err := svc.Save("req-conflict-initial", "", doc); err != nil {
+		t.Fatal(err)
+	}
+	if callbackCount != 1 {
+		t.Fatalf("callbackCount=%d want 1", callbackCount)
+	}
+
+	if err := svc.Save("req-conflict-stale", "stale-revision", doc); err == nil {
+		t.Fatal("expected conflict error")
+	}
+	if callbackCount != 1 {
+		t.Fatalf("callbackCount=%d want unchanged after conflict", callbackCount)
+	}
+}
+
 func TestStudioProfileServiceSaveConflictEmitsConflict(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

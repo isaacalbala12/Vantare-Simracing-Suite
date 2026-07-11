@@ -640,6 +640,7 @@ func main() {
 	// Overlay Studio V3 profile persistence (canonical runtime document owner)
 	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
 		log.Printf("studio profile saved: %s revision=%s", saved.Path, saved.Revision)
+		refreshActiveOverlayAfterSave(overlayController, studioProfileSvc, &overlayRunning, saved)
 	})
 	studioProfileSvc.SetProfilesDir(cfgDir)
 	if _, err := studioProfileSvc.Load(resolvedProfilePath); err != nil {
@@ -1686,6 +1687,35 @@ func readProfileTarget(event *application.CustomEvent) string {
 		return data.File
 	}
 	return data.ID
+}
+
+// refreshActiveOverlayAfterSave reloads the running desktop overlay when Studio
+// saves the same profile that is currently active in the runtime.
+func refreshActiveOverlayAfterSave(
+	overlayController *app.OverlayController,
+	studioProfileSvc *app.StudioProfileService,
+	overlayRunning *atomic.Bool,
+	saved app.StudioProfileSaved,
+) {
+	if overlayController == nil || studioProfileSvc == nil || !overlayRunning.Load() {
+		return
+	}
+	status := overlayController.Status()
+	if !status.Running {
+		return
+	}
+	if saved.Path == "" || studioProfileSvc.Path() != saved.Path {
+		return
+	}
+	if saved.Document == nil {
+		return
+	}
+	if _, err := overlayController.Start(saved.Document); err != nil {
+		log.Printf("overlay refresh after save error: %v", err)
+		return
+	}
+	studioProfileSvc.EmitRuntimeLoaded()
+	resetOverlayDisplayMode(overlayController, studioProfileSvc)
 }
 
 // handleOpenOverlayStudio requests Hub navigation to Overlay Studio for the

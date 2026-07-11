@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./overlay-studio-v3.css";
 import { openBrowserView, type BrowserViewDecision } from "./browser-view";
-import { ConnectedStudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
+import type { TelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
+import type { TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
+import { StudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
 import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
 import { InspectorSlot } from "./components/InspectorSlot";
@@ -13,6 +15,9 @@ import { createStudioRecoveryStore, type StudioRecoveryRecord } from "./state/st
 import { useStudioDocument } from "./state/studio-store";
 
 export type OverlayStudioV3Props = StudioHeaderProps & {
+  coordinator: TelemetryRateCoordinator;
+  telemetryAdapter?: TelemetryAdapter | null;
+  liveAvailable?: boolean;
   viewportWidth?: number;
   recoveryStorage?: Storage | null;
   browserViewStudioPreview?: boolean;
@@ -25,6 +30,9 @@ type RecoveryPromptState = {
 
 export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement {
   const {
+    coordinator,
+    telemetryAdapter = null,
+    liveAvailable = false,
     viewportWidth: viewportWidthProp,
     recoveryStorage: recoveryStorageProp,
     browserViewStudioPreview = false,
@@ -32,6 +40,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     activeFile,
     ...headerProps
   } = props;
+  const telemetryProps = { coordinator, telemetryAdapter, liveAvailable };
   const viewportWidth = viewportWidthProp ?? (typeof window !== "undefined" ? window.innerWidth : 1440);
   const recoveryStorage =
     recoveryStorageProp ?? (typeof window !== "undefined" ? window.sessionStorage : null);
@@ -213,14 +222,14 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         selectedWidgetId={selectedWidgetId}
         listPanel={<WidgetListPanel />}
         canvasPanel={
-          <ConnectedStudioTelemetryProvider>
+          <StudioTelemetryProvider {...telemetryProps}>
             <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} />
-          </ConnectedStudioTelemetryProvider>
+          </StudioTelemetryProvider>
         }
         inspectorPanel={
-          <ConnectedStudioTelemetryProvider>
+          <StudioTelemetryProvider {...telemetryProps}>
             <InspectorSlot />
-          </ConnectedStudioTelemetryProvider>
+          </StudioTelemetryProvider>
         }
       />
       <DirtyChangesDialog

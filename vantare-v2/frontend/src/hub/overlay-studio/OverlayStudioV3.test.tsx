@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { deltaDefinition } from "../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../overlay/core/profile-document";
 import { OverlayStudioV3 } from "./OverlayStudioV3";
-import { expectDisabled, expectEnabled } from "./test-helpers";
+import { createTestTelemetryCoordinator, expectDisabled, expectEnabled } from "./test-helpers";
 import { StudioProvider, useStudioDocument } from "./state/studio-store";
 import type { StudioProfileClient } from "./state/studio-profile-client";
 
@@ -76,6 +76,8 @@ function renderWorkbench(
       <OverlayStudioV3
         profiles={profiles}
         activeFile="profiles/a.json"
+        coordinator={createTestTelemetryCoordinator()}
+        liveAvailable={false}
         viewportWidth={options?.viewportWidth ?? 1600}
         recoveryStorage={options?.recoveryStorage ?? null}
         onRequestProfileChange={onRequestProfileChange}
@@ -207,6 +209,8 @@ describe("OverlayStudioV3", () => {
         <OverlayStudioV3
           profiles={profiles}
           activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
           onRequestProfileChange={vi.fn()}
           onOpenManageProfiles={vi.fn()}
           onOpenRecommended={vi.fn()}
@@ -247,6 +251,8 @@ describe("OverlayStudioV3", () => {
         <OverlayStudioV3
           profiles={profiles}
           activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
           viewportWidth={1600}
           onRequestProfileChange={onRequestProfileChange}
           onOpenManageProfiles={vi.fn()}
@@ -293,6 +299,8 @@ describe("OverlayStudioV3", () => {
         <OverlayStudioV3
           profiles={profiles}
           activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
           viewportWidth={1600}
           onRequestProfileChange={onRequestProfileChange}
           onOpenManageProfiles={vi.fn()}
@@ -401,6 +409,8 @@ describe("OverlayStudioV3", () => {
         <OverlayStudioV3
           profiles={profiles}
           activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
           viewportWidth={1600}
           recoveryStorage={storage}
           onRequestProfileChange={vi.fn()}
@@ -475,6 +485,8 @@ describe("OverlayStudioV3", () => {
         <OverlayStudioV3
           profiles={profiles}
           activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
           viewportWidth={1600}
           onRequestProfileChange={vi.fn()}
           onOpenManageProfiles={vi.fn()}
@@ -530,6 +542,8 @@ describe("OverlayStudioV3", () => {
         <OverlayStudioV3
           profiles={profiles}
           activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
           viewportWidth={1600}
           onRequestProfileChange={vi.fn()}
           onOpenManageProfiles={vi.fn()}

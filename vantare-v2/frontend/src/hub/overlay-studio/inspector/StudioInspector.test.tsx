@@ -13,7 +13,8 @@ vi.mock("../designs/widget-design-client", () => ({
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import { ConnectedStudioTelemetryProvider } from "../canvas/StudioTelemetryProvider";
+import { StudioTelemetryProvider } from "../canvas/StudioTelemetryProvider";
+import { createTestTelemetryCoordinator } from "../test-helpers";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioInspector } from "./StudioInspector";
@@ -131,11 +132,11 @@ function AutoSelectWidget(props: { widgetId: string }) {
 function renderInspector(document: ProfileDocumentV3, widgetId = "delta-main") {
   return render(
     <StudioProvider client={createMockClient(document)} initialFile="profiles/a.json">
-      <ConnectedStudioTelemetryProvider>
+      <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
         <AutoSelectWidget widgetId={widgetId} />
         <SelectWidgetButtons />
         <StudioInspector />
-      </ConnectedStudioTelemetryProvider>
+      </StudioTelemetryProvider>
     </StudioProvider>,
   );
 }
@@ -207,11 +208,11 @@ describe("StudioInspector", () => {
     const document = buildDocument([deltaDefinition.createDefault("delta-main")]);
     render(
       <StudioProvider client={createMockClient(document)} initialFile="profiles/a.json">
-        <ConnectedStudioTelemetryProvider>
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <AutoSelectWidget widgetId="delta-main" />
           <MakeDirtyButton />
           <StudioInspector />
-        </ConnectedStudioTelemetryProvider>
+        </StudioTelemetryProvider>
       </StudioProvider>,
     );
 
@@ -233,12 +234,12 @@ describe("StudioInspector", () => {
 
     render(
       <StudioProvider client={createMockClient(document)} initialFile="profiles/a.json">
-        <ConnectedStudioTelemetryProvider>
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <AutoSelectWidget widgetId="delta-main" />
           <DirtyAppearanceButton />
           <AppearanceProbe />
           <StudioInspector />
-        </ConnectedStudioTelemetryProvider>
+        </StudioTelemetryProvider>
       </StudioProvider>,
     );
 

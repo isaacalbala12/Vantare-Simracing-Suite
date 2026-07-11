@@ -8,9 +8,11 @@ import {
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
+import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
 import type { ResizeHandle } from "./canvas-resize";
 import { getStudioFramePreviewKind } from "./canvas-frame-preview";
 import { resolveStudioWidgetFrameGeometry, resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
+import { useStudioTelemetryCoordinator } from "./StudioTelemetryProvider";
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -32,7 +34,7 @@ export type StudioWidgetFrameProps = {
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
-  snapshot: TelemetrySnapshot;
+  snapshotOverride?: TelemetrySnapshot;
   onSelect(widgetId: string): void;
   onFramePointerDown?(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown?(
@@ -49,12 +51,15 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     layout,
     previewActive = false,
     selected,
-    snapshot,
+    snapshotOverride,
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
     onLostPointerCapture,
   } = props;
+  const coordinator = useStudioTelemetryCoordinator();
+  const rateLimitedSnapshot = useRateLimitedTelemetry(coordinator, widget.behavior.updateHz);
+  const snapshot = snapshotOverride ?? rateLimitedSnapshot;
   const frameRef = useRef<HTMLDivElement>(null);
   const rawFrameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
   const previewKind = previewActive ? getStudioFramePreviewKind(widget.id) : undefined;
@@ -161,7 +166,7 @@ export const StudioWidgetFrame = memo(
     && layoutsEqual(previous.layout, next.layout)
     && previous.previewActive === next.previewActive
     && previous.selected === next.selected
-    && previous.snapshot === next.snapshot
+    && previous.snapshotOverride === next.snapshotOverride
     && previous.onSelect === next.onSelect
     && previous.onFramePointerDown === next.onFramePointerDown
     && previous.onResizePointerDown === next.onResizePointerDown

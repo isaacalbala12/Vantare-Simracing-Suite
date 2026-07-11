@@ -9,7 +9,7 @@ import { CanvasToolbar } from "./CanvasToolbar";
 import { PreviewSourceControls } from "./PreviewSourceControls";
 import { CanvasGuides } from "./CanvasGuides";
 import { StudioWidgetFrame } from "./StudioWidgetFrame";
-import { useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
+import { useStudioTelemetryLiveAvailable, useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
 import { useCanvasInteraction } from "./useCanvasInteraction";
 import {
   buildWidgetAction,
@@ -39,6 +39,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     dispatch,
   } = useStudioDocument();
   const { preview, setPreview } = useStudioPreview();
+  const liveAvailable = useStudioTelemetryLiveAvailable();
   const liveSnapshot = useStudioTelemetrySnapshot();
   const snapshotDuringInteractionRef = useRef(liveSnapshot);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -105,9 +106,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     }
   }, [isCanvasInteracting, liveSnapshot]);
 
-  const snapshot = isCanvasInteracting
-    ? snapshotDuringInteractionRef.current
-    : liveSnapshot;
+  const snapshotOverride = isCanvasInteracting ? snapshotDuringInteractionRef.current : undefined;
 
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
 
@@ -307,7 +306,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 layout={interaction.resolveLayout(widget)}
                 previewActive={interaction.isWidgetPreviewActive(widget.id)}
                 selected={selectedWidgetId === widget.id}
-                snapshot={snapshot}
+                snapshotOverride={snapshotOverride}
                 onSelect={selectWidget}
                 onFramePointerDown={interaction.onFramePointerDown}
                 onResizePointerDown={interaction.onResizePointerDown}
@@ -320,7 +319,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
       <div onPointerDown={stopViewportDeselect}>
         <PreviewSourceControls
           preview={preview}
-          liveAvailable={false}
+          liveAvailable={liveAvailable}
           onPreviewChange={setPreview}
           onOpenBrowserView={onOpenBrowserView}
         />

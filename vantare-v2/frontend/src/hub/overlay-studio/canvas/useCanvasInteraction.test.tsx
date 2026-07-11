@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
-import { createTelemetryStore, type TelemetryStore } from "../../../overlay/core/telemetry-store";
+import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
+import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
@@ -38,22 +39,20 @@ function DispatchRecorder(): React.ReactElement {
   return <div data-testid="dirty-flag">{dirty ? "dirty" : "clean"}</div>;
 }
 
-function renderInteractiveCanvas(): TelemetryStore {
-  const mockStore = createTelemetryStore(
-    buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-  );
+function renderInteractiveCanvas(): TelemetryRateCoordinator {
+  const coordinator = createTestTelemetryCoordinator();
 
   render(
     <div style={{ width: 960, height: 540 }}>
       <StudioProvider client={client} initialFile="profiles/a.json">
-        <StudioTelemetryProvider mockStore={mockStore} liveStore={mockStore} liveAvailable={false}>
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
           <DispatchRecorder />
           <StudioCanvas />
         </StudioTelemetryProvider>
       </StudioProvider>
     </div>,
   );
-  return mockStore;
+  return coordinator;
 }
 
 function mockSceneRect(): void {
@@ -212,7 +211,7 @@ describe("useCanvasInteraction", () => {
   });
 
   it("keeps imperative preview when telemetry publishes during drag", async () => {
-    const mockStore = renderInteractiveCanvas();
+    const coordinator = renderInteractiveCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
     mockSceneRect();
 
@@ -223,7 +222,7 @@ describe("useCanvasInteraction", () => {
       expect(readFrameVisualLeft(frame)).toBe(140);
     });
 
-    mockStore.publish(
+    coordinator.publish(
       buildMockTelemetry({ session: "practice", location: "pits", state: "ready" }),
     );
 

@@ -1,18 +1,16 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
-import { createTelemetryStore } from "../../../overlay/core/telemetry-store";
+import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 import { StudioCanvas } from "./StudioCanvas";
-import {
-  ConnectedStudioTelemetryProvider,
-  StudioTelemetryProvider,
-} from "./StudioTelemetryProvider";
+import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
+import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
+import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -72,12 +70,7 @@ const client: StudioProfileClient = {
 };
 
 function renderCanvas(zoom: "fit" | 50 | 75 | 100 | 125 = "fit") {
-  const mockStore = createTelemetryStore(
-    buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-  );
-  const liveStore = createTelemetryStore(
-    buildMockTelemetry({ session: "practice", location: "pits", state: "ready" }),
-  );
+  const coordinator = createTestTelemetryCoordinator();
 
   function ZoomSetter(): React.ReactElement | null {
     const { setPreview } = useStudioPreview();
@@ -92,7 +85,7 @@ function renderCanvas(zoom: "fit" | 50 | 75 | 100 | 125 = "fit") {
   return render(
     <div style={{ width: 960, height: 540 }}>
       <StudioProvider client={client} initialFile="profiles/a.json">
-        <StudioTelemetryProvider mockStore={mockStore} liveStore={liveStore} liveAvailable={false}>
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
           <ZoomSetter />
           <StudioCanvas />
         </StudioTelemetryProvider>
@@ -172,15 +165,7 @@ describe("StudioCanvas", () => {
     render(
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
-          <StudioTelemetryProvider
-            mockStore={createTelemetryStore(
-              buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-            )}
-            liveStore={createTelemetryStore(
-              buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-            )}
-            liveAvailable={false}
-          >
+          <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
             <SelectionProbe />
             <StudioCanvas />
           </StudioTelemetryProvider>
@@ -212,18 +197,10 @@ describe("StudioCanvas", () => {
       );
     }
 
-    const mockStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-    );
-
     render(
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
-          <StudioTelemetryProvider
-            mockStore={mockStore}
-            liveStore={mockStore}
-            liveAvailable={false}
-          >
+          <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
             <SelectionProbe />
             <StudioCanvas />
           </StudioTelemetryProvider>
@@ -240,18 +217,10 @@ describe("StudioCanvas", () => {
   });
 
   it("feeds widgets telemetry from the shared provider snapshot", async () => {
-    const mockStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-    );
-
     render(
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
-          <StudioTelemetryProvider
-            mockStore={mockStore}
-            liveStore={mockStore}
-            liveAvailable={false}
-          >
+          <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
             <StudioCanvas />
           </StudioTelemetryProvider>
         </StudioProvider>
@@ -292,10 +261,10 @@ describe("StudioCanvas", () => {
     render(
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
-          <ConnectedStudioTelemetryProvider>
+          <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
             <DirtyProbe />
             <StudioCanvas />
-          </ConnectedStudioTelemetryProvider>
+          </StudioTelemetryProvider>
         </StudioProvider>
       </div>,
     );
@@ -314,12 +283,21 @@ describe("StudioCanvas", () => {
   });
 
   it("renders disconnected delta when live source loses LMU", async () => {
-    const mockStore = createTelemetryStore(
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
       buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
     );
-    const liveStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
-    );
+    const telemetryAdapter = {
+      coordinator,
+      start() {
+        coordinator.publish(
+          buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
+        );
+      },
+      stop() {
+        return undefined;
+      },
+    };
 
     function ForceLiveSource(): React.ReactElement {
       const { setPreview } = useStudioPreview();
@@ -336,9 +314,9 @@ describe("StudioCanvas", () => {
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
           <StudioTelemetryProvider
-            mockStore={mockStore}
-            liveStore={liveStore}
+            coordinator={coordinator}
             liveAvailable={false}
+            telemetryAdapter={telemetryAdapter}
           >
             <ForceLiveSource />
             <StudioCanvas />

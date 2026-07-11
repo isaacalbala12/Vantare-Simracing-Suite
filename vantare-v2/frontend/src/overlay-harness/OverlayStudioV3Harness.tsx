@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { buildMockTelemetry } from "../overlay/core/mock-scenarios";
+import { createTelemetryRateCoordinator } from "../overlay/core/telemetry-rate-coordinator";
 import { OverlayStudioV3 } from "../hub/overlay-studio/OverlayStudioV3";
 import { ConnectedStudioProvider } from "../hub/overlay-studio/state/studio-store";
 import {
@@ -39,6 +41,11 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
     [harnessSearch.primaryWidget, harnessSearch.relativeLegacyLayout],
   );
   const viewportWidth = parseViewportWidth(search);
+  const coordinator = useMemo(() => {
+    const next = createTelemetryRateCoordinator();
+    next.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    return next;
+  }, [harnessSearch.primaryWidget, harnessSearch.relativeLegacyLayout]);
 
   return (
     <ConnectedStudioProvider
@@ -50,6 +57,8 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
       <OverlayStudioV3
         profiles={[{ id: "profile-harness", name: "Perfil harness", file: HARNESS_PROFILE_FILE }]}
         activeFile={HARNESS_PROFILE_FILE}
+        coordinator={coordinator}
+        liveAvailable={false}
         viewportWidth={viewportWidth}
         browserViewStudioPreview
         recoveryStorage={typeof window !== "undefined" ? window.sessionStorage : null}

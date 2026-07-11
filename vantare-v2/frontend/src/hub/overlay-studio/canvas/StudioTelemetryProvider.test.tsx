@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
-import { createTelemetryStore } from "../../../overlay/core/telemetry-store";
+import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import { StudioProvider, useStudioPreview } from "../state/studio-store";
 import {
   ConnectedStudioTelemetryProvider,
@@ -52,17 +52,15 @@ function SourceSwitcher(): React.ReactElement {
 describe("StudioTelemetryProvider", () => {
   afterEach(() => cleanup());
 
-  it("serves the mock store snapshot while preview source is mock", () => {
-    const mockStore = createTelemetryStore(
+  it("serves mock telemetry while preview source is mock", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
       buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
-    );
-    const liveStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "pits", state: "ready" }),
     );
 
     render(
       <StudioProvider client={client} initialFile="profiles/a.json">
-        <StudioTelemetryProvider mockStore={mockStore} liveStore={liveStore} liveAvailable>
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable>
           <SnapshotProbe />
         </StudioTelemetryProvider>
       </StudioProvider>,
@@ -71,63 +69,13 @@ describe("StudioTelemetryProvider", () => {
     expect(screen.getByTestId("telemetry-probe").textContent).toBe("qualifying");
   });
 
-  it("serves the live store snapshot when preview source is live and live is available", async () => {
-    const mockStore = createTelemetryStore(
+  it("republishes mock telemetry when mock session changes", async () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
       buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
     );
-    const liveStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "pits", state: "ready" }),
-    );
 
-    render(
-      <StudioProvider client={client} initialFile="profiles/a.json">
-        <StudioTelemetryProvider mockStore={mockStore} liveStore={liveStore} liveAvailable>
-          <SourceSwitcher />
-          <SnapshotProbe />
-        </StudioTelemetryProvider>
-      </StudioProvider>,
-    );
-
-    screen.getByTestId("use-live-source").click();
-    await waitFor(() => {
-      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
-    });
-  });
-
-  it("keeps live source on the live store when LMU is unavailable", async () => {
-    const mockStore = createTelemetryStore(
-      buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
-    );
-    const liveStore = createTelemetryStore(
-      buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
-    );
-
-    render(
-      <StudioProvider client={client} initialFile="profiles/a.json">
-        <StudioTelemetryProvider mockStore={mockStore} liveStore={liveStore} liveAvailable={false}>
-          <SourceSwitcher />
-          <SnapshotProbe />
-        </StudioTelemetryProvider>
-      </StudioProvider>,
-    );
-
-    fireEvent.click(screen.getByTestId("use-live-source"));
-    await waitFor(() => {
-      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
-    });
-  });
-});
-
-describe("ConnectedStudioTelemetryProvider", () => {
-  afterEach(() => cleanup());
-
-  it("republishes mock telemetry when mock session or location changes", async () => {
-    function SessionProbe(): React.ReactElement {
-      const snapshot = useStudioTelemetrySnapshot();
-      return <div data-testid="session-type">{snapshot.session.type}</div>;
-    }
-
-    function PreviewChanger(): React.ReactElement {
+    function SessionChanger(): React.ReactElement {
       const { setPreview } = useStudioPreview();
       return (
         <button
@@ -140,17 +88,77 @@ describe("ConnectedStudioTelemetryProvider", () => {
 
     render(
       <StudioProvider client={client} initialFile="profiles/a.json">
-        <ConnectedStudioTelemetryProvider>
-          <PreviewChanger />
-          <SessionProbe />
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <SessionChanger />
+          <SnapshotProbe />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
+    fireEvent.click(screen.getByTestId("set-race"));
+    await waitFor(() => {
+      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
+    });
+  });
+
+  it("starts the live adapter only when preview source is live", async () => {
+    const coordinator = createTelemetryRateCoordinator();
+    let started = 0;
+    let stopped = 0;
+    const telemetryAdapter = {
+      coordinator,
+      start() {
+        started += 1;
+        coordinator.publish(
+          buildMockTelemetry({ session: "race", location: "pits", state: "ready" }),
+        );
+      },
+      stop() {
+        stopped += 1;
+      },
+    };
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <StudioTelemetryProvider
+          coordinator={coordinator}
+          liveAvailable
+          telemetryAdapter={telemetryAdapter}
+        >
+          <SourceSwitcher />
+          <SnapshotProbe />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    expect(started).toBe(0);
+    fireEvent.click(screen.getByTestId("use-live-source"));
+    await waitFor(() => {
+      expect(started).toBe(1);
+      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
+    });
+    expect(stopped).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("ConnectedStudioTelemetryProvider", () => {
+  afterEach(() => cleanup());
+
+  it("wires coordinator and live availability through the connected provider", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
+      buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
+    );
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <ConnectedStudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <SnapshotProbe />
         </ConnectedStudioTelemetryProvider>
       </StudioProvider>,
     );
 
-    expect(screen.getByTestId("session-type").textContent).toBe("practice");
-    fireEvent.click(screen.getByTestId("set-race"));
-    await waitFor(() => {
-      expect(screen.getByTestId("session-type").textContent).toBe("race");
-    });
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("qualifying");
   });
 });

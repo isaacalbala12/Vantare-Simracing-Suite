@@ -129,8 +129,7 @@ export const pt: Record<string, string> = {
   "studio.type": "Tipo",
 
   // Widget Studio - Draft actions
-  "studio.saveToWidget": "Salvar no widget",
-  "studio.discard": "Descartar",
+
   // Widget Studio - New keys (P1 review fixes)
   "studio.selectWidgetPreview": "Selecione um widget para visualizar.",
   "studio.editMode": "Modo de edição",

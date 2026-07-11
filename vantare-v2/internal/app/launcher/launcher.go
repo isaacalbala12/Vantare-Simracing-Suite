@@ -10,7 +10,10 @@ package launcher
 import (
 	"context"
 	"fmt"
+	"sort"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
@@ -35,6 +38,21 @@ type Service struct {
 	emit     Emitter
 	chain    *ChainRunner
 	revision atomic.Uint64
+	activeMu sync.Mutex
+	active   map[string]LauncherActiveChain
+}
+
+type serviceEmitter struct {
+	service    *Service
+	downstream Emitter
+}
+
+func (e serviceEmitter) Emit(name string, data any) {
+	e.service.recordChainEvent(name, data)
+	e.downstream.Emit(name, data)
+	if name == "launcher:chain:step" || name == "launcher:chain:done" || name == "launcher:chain:error" {
+		e.downstream.Emit("launcher:snapshot", e.service.Snapshot())
+	}
 }
 
 // NewService builds the orchestrator. execFn defaults to defaultExecLauncher
@@ -48,9 +66,39 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 	s := &Service{
 		settings: settings,
 		emit:     emit,
+		active:   make(map[string]LauncherActiveChain),
 	}
-	s.chain = NewChainRunner(s.settings, emit, execFn)
+	s.chain = NewChainRunner(s.settings, serviceEmitter{service: s, downstream: emit}, execFn)
 	return s
+}
+
+func (s *Service) recordChainEvent(name string, data any) {
+	progress, ok := data.(ChainProgress)
+	if !ok {
+		return
+	}
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	chain := s.active[progress.ProfileID]
+	if chain.ProfileID == "" {
+		chain = LauncherActiveChain{ProfileID: progress.ProfileID, Status: "running", StartedAt: time.UnixMilli(progress.StartedAt)}
+	}
+	if name == "launcher:chain:done" {
+		if progress.Success {
+			chain.Status = "done"
+		} else {
+			chain.Status = "failed"
+		}
+	} else if name == "launcher:chain:error" {
+		chain.Status = "failed"
+	} else {
+		chain.Status = progress.Status
+		for len(chain.Steps) <= progress.StepIndex {
+			chain.Steps = append(chain.Steps, LauncherActiveStep{})
+		}
+		chain.Steps[progress.StepIndex] = LauncherActiveStep{AppID: progress.AppID, Status: progress.Status, PID: progress.Pid, Message: progress.Message}
+	}
+	s.active[progress.ProfileID] = chain
 }
 
 // Settings returns the backend the orchestrator was constructed with. Handlers
@@ -80,12 +128,21 @@ func (s *Service) Snapshot() LauncherSnapshot {
 	sortProfiles(vantareProfiles)
 	sortProfiles(userProfiles)
 
+	s.activeMu.Lock()
+	activeChains := make([]LauncherActiveChain, 0, len(s.active))
+	for _, chain := range s.active {
+		chain.Steps = append([]LauncherActiveStep(nil), chain.Steps...)
+		activeChains = append(activeChains, chain)
+	}
+	s.activeMu.Unlock()
+	sort.SliceStable(activeChains, func(i, j int) bool { return activeChains[i].ProfileID < activeChains[j].ProfileID })
+
 	return LauncherSnapshot{
 		Revision:        s.revision.Add(1),
 		Apps:            apps,
 		VantareProfiles: vantareProfiles,
 		UserProfiles:    userProfiles,
-		ActiveChains:    []LauncherActiveChain{},
+		ActiveChains:    activeChains,
 		Discovery:       LauncherDiscovery{Scanning: false, LastScanAt: nil, Error: nil},
 	}
 }
@@ -177,7 +234,17 @@ func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
 
 // CancelChain cancels the active launch chain for a profile, if any.
 func (s *Service) CancelChain(profileID string) bool {
-	return s.chain.CancelChain(profileID)
+	cancelled := s.chain.CancelChain(profileID)
+	if cancelled {
+		s.activeMu.Lock()
+		if chain, ok := s.active[profileID]; ok {
+			chain.Status = "stopped"
+			s.active[profileID] = chain
+		}
+		s.activeMu.Unlock()
+		s.emit.Emit("launcher:snapshot", s.Snapshot())
+	}
+	return cancelled
 }
 
 // CancelAll cancels every active launch chain. Used by the Wails shutdown hook

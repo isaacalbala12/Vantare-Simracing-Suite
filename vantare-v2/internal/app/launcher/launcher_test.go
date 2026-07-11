@@ -93,6 +93,19 @@ func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	}
 }
 
+func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
+	backend := newBackendWithLMU()
+	svc := NewService(backend, &spyEmitter{}, nil)
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "ready", Pid: 42})
+	snapshot := svc.Snapshot()
+	if len(snapshot.ActiveChains) != 1 {
+		t.Fatalf("expected one active chain, got %+v", snapshot.ActiveChains)
+	}
+	if snapshot.ActiveChains[0].Steps[0].PID != 42 || snapshot.ActiveChains[0].Status != "ready" {
+		t.Fatalf("unexpected active chain state: %+v", snapshot.ActiveChains[0])
+	}
+}
+
 func TestAddManualAppPersistsAndIsVisible(t *testing.T) {
 	backend := newBackendWithLMU()
 	emitter := &spyEmitter{}

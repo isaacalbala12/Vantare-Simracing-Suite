@@ -8,9 +8,17 @@ import (
 )
 
 type LauncherActiveChain struct {
-	ProfileID string    `json:"profileId"`
-	Status    string    `json:"status"`
-	StartedAt time.Time `json:"startedAt"`
+	ProfileID string               `json:"profileId"`
+	Status    string               `json:"status"`
+	StartedAt time.Time            `json:"startedAt"`
+	Steps     []LauncherActiveStep `json:"steps,omitempty"`
+}
+
+type LauncherActiveStep struct {
+	AppID   string `json:"appId"`
+	Status  string `json:"status"`
+	PID     int    `json:"pid,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 type LauncherDiscovery struct {

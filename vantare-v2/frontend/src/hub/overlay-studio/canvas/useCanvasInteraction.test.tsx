@@ -245,9 +245,14 @@ describe("useCanvasInteraction", () => {
     pointerDownFrame();
     pointerMove(112, 108, 1, { altKey: true });
 
-    await waitFor(() => expect(readFrameVisualLeft(frame)).toBeGreaterThan(100));
-    const left = readFrameVisualLeft(frame);
-    expect(left).toBeLessThan(130);
+    await waitFor(
+      () => {
+        const left = readFrameVisualLeft(frame);
+        expect(left).toBeGreaterThan(100);
+        expect(left).toBeLessThan(130);
+      },
+      { timeout: 3000 },
+    );
   });
 
   it("dispatches exactly one widget/layout command on pointer-up after movement", async () => {

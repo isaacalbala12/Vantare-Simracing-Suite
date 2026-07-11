@@ -11,6 +11,7 @@ vi.mock("../designs/widget-design-client", () => ({
   }),
 }));
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { ConnectedStudioTelemetryProvider } from "../canvas/StudioTelemetryProvider";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
@@ -50,8 +51,8 @@ function SelectWidgetButtons() {
       <button type="button" data-testid="select-delta-copy" onClick={() => selectWidget("delta-copy")}>
         Delta copy
       </button>
-      <button type="button" data-testid="select-legacy" onClick={() => selectWidget("legacy-standings")}>
-        Legacy
+      <button type="button" data-testid="select-standings" onClick={() => selectWidget("standings-main")}>
+        Standings
       </button>
     </>
   );
@@ -174,19 +175,16 @@ describe("StudioInspector", () => {
 
   it("removes unavailable sections immediately when capability disappears", async () => {
     const deltaMain = deltaDefinition.createDefault("delta-main");
-    const legacyWidget: WidgetInstanceV3 = {
-      ...deltaDefinition.createDefault("legacy-standings"),
-      id: "legacy-standings",
-      type: "standings",
-    };
-    renderInspector(buildDocument([deltaMain, legacyWidget]));
+    const standingsMain = standingsDefinition.createDefault("standings-main");
+    renderInspector(buildDocument([deltaMain, standingsMain]));
 
     await waitFor(() => expect(screen.getByTestId("studio-inspector")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("studio-inspector-rail-item-appearance"));
-    expect(screen.getByTestId("studio-inspector-section-appearance")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("select-standings"));
+    fireEvent.click(screen.getByTestId("studio-inspector-rail-item-content"));
+    expect(screen.getByTestId("studio-inspector-section-content")).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId("select-legacy"));
-    await waitFor(() => expect(screen.queryByTestId("studio-inspector-rail-item-appearance")).toBeNull());
+    fireEvent.click(screen.getByTestId("select-delta-main"));
+    await waitFor(() => expect(screen.queryByTestId("studio-inspector-rail-item-content")).toBeNull());
     expect(screen.getByTestId("studio-inspector-rail-item-design")).toBeTruthy();
     expect(screen.getByTestId("studio-inspector-section-design")).toBeTruthy();
   });

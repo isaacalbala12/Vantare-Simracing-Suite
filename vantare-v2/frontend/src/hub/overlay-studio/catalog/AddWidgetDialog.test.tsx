@@ -33,23 +33,13 @@ describe("AddWidgetDialog", () => {
   });
 
   it("shows lock explanation for premium entries while keeping them visible", () => {
-    const widgetRegistryCatalog = [
-      ...deriveStudioCatalog(),
-      {
-        type: "relative" as const,
-        labelKey: "overlay.widgets.relative",
-        defaultSize: { width: 430, height: 300 },
-        inspectorSections: ["design", "behavior", "layout", "actions"] as const,
-        compatibleSystems: [{ systemId: "vantare-original" as const, systemVersion: 1, label: "Vantare Original" }],
-        requiredFeature: "overlays.advanced" as const,
-      },
-    ];
+    const catalog = deriveStudioCatalog();
 
     render(
       <AddWidgetDialog
         open
         access={freeAccess}
-        catalog={widgetRegistryCatalog}
+        catalog={catalog}
         onAdd={vi.fn()}
         onClose={vi.fn()}
       />,

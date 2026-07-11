@@ -31,7 +31,15 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **Fase 6 ✅ CERRADA** (commits `074d389`..`5f44acb`): 6.1–6.8 migración funcional completa (Standings, Relative, Pedals Original/Crystal); registry 4 widgets × 2 systems; official designs; catálogo 4 entradas; golden v2 sin diagnósticos; fix chrome selección Relative (`fcf4989`).
 - **6.9 matriz visual + parity:** harness 4 widgets (`harness-fixtures.ts`), 59 baselines PNG (widget×system×surface ready + estados error + variantes stress60/fill/zero/full), assertions HTML parity studio/desktop/obs en Vitest + Playwright, chrome Relative en studio verificado.
 - Evidencia Fase 6 (2026-07-11): `pnpm --dir frontend test -- src/overlay` → 69 files / 456 PASS; `pnpm --dir frontend test -- OverlayParityHarness harness-fixtures` → 21 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 59 baselines 0.000% delta + parity 4 widgets + studio-relative-chrome + drag/resize + zoom; `pnpm --dir frontend build` PASS.
-- **Ningún código de producción UI conmutado a V3 aún** (handlers Go + runtime surface listos; cableado CompositeApp/ObsOverlayApp pendiente fase 7.5+).
+- **Fase 7.4 ✅ CERRADA** (commit `960838a`): `GET /api/profile-v3` migration-aware para OBS.
+- **Fase 7.5 ✅ CERRADA** (commit `a5f31c4`): lifecycle Go V3 (`StudioProfileService` canónico, hotkeys, `overlay:profile-v3-loaded`, navegación Hub).
+- **Fase 7.6 ✅ CERRADA** (commit `2b1c6e5`): `DesktopOverlayRuntime` + `CompositeApp` con adaptador Wails y evento `overlay:profile-v3-loaded`.
+- **Fase 7.7 ✅ CERRADA** (commit `5a407f1`): `ObsOverlayRuntime` + `ObsOverlayApp` con `/api/profile-v3` y SSE.
+- **Fase 7.8 ✅ CERRADA** (commit `ddf73ab`): refresh del overlay activo solo tras save exitoso del mismo perfil.
+- **Fase 7.9 ✅ CERRADA** (commit `6ba0d0a`): `StudioRoute` entra directo al editor V3 con perfil activo; `NoActiveProfileState`; telemetría live por coordinador + `useRateLimitedTelemetry` en frames; sin `V52OverlaysHome` ni `EMPTY_PROFILE`.
+- **Fase 7.10 ✅ CERRADA** (commit `71867c6`): gates automatizados frontend + visual + Go app; smoke manual documentado en `docs/manual-verification.md` (requiere Wails + copia de perfil de prueba).
+- Evidencia 7.4–7.10 (2026-07-11): `pnpm --dir frontend test` → 258 files / 2084 PASS (1 fix live-disconnected en `StudioCanvas.test.tsx`); `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% delta + parity + studio QA; `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `go test ./...` mantiene preexistentes en `internal/server` (nonce/port bind).
+- Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. No borrar legacy hasta Fase 8.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

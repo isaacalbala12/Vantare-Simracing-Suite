@@ -315,7 +315,7 @@ describe("StudioCanvas", () => {
         <StudioProvider client={client} initialFile="profiles/a.json">
           <StudioTelemetryProvider
             coordinator={coordinator}
-            liveAvailable={false}
+            liveAvailable
             telemetryAdapter={telemetryAdapter}
           >
             <ForceLiveSource />

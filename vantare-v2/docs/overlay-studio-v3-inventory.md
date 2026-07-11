@@ -3,6 +3,19 @@
 Worktree: `refactor` @ inventario generado tras Fase 0 Task 0.5.  
 Autoridad: ADR 0003 + plan maestro `2026-07-10-overlay-studio-rebuild-master.md`.
 
+## Estado post-Fase 8.7 (2026-07-11)
+
+Retirement cerrado. Auditoría: `overlay-studio-v3-retirement-audit.md`.
+
+| Clasificación en tablas inferiores | Estado |
+|-----------------------------------|--------|
+| Retirement (editor, preview, mapas, presets, gallery) | **Retirado** en 8.7A–8.7F |
+| Adapter retenido (`widget-factory`, `widget-design-system.ts`, `profile_service.go`) | **Activo** — bridge/migración; ver auditoría |
+| Reusable V3 (`widget-preview-fixtures`, goldens Go) | **Activo** |
+| Producción V3 (`overlay-studio`, `DesktopOverlayRuntime`, `official-designs`) | **Canónico** |
+
+Búsqueda 8.7G: cero consumidores legacy en `frontend/src` salvo nombres de tipo V3 (`WidgetRendererProps`) y roadmap i18n histórico.
+
 ## Resumen
 
 El legado mantiene **tres mapas de widgets** independientes, **dos rutas de telemetría** (Wails + SSE), **guardado de perfil acoplado a `layout:save`** y **diseños/presets duplicados** (galería oficial + presets Go). V3 concentra render en `WidgetVisualHost`, persistencia en perfil V3 y un único borrador de Studio.

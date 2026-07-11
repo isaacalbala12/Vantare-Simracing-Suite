@@ -51,8 +51,11 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Evidencia 8.7E: `pnpm test -- overlay-studio official-designs widget-preview-fixtures` → 316 PASS; `pnpm build` PASS.
 - **Fase 8.7F ✅ CERRADA** (2026-07-11): retirado Go `PresetService` y handlers Wails `preset:*` (sin callers tras 8.7E). Migración one-shot `widget-presets.json` → `widget-designs.json` conservada en `WidgetDesignService` con tipos legacy internos.
 - Evidencia 8.7F: `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `pnpm test -- widget-design-client` → 11 PASS.
-- **Siguiente:** push `refactor` pendiente; Fase 8.7G (limpieza docs/inventario legacy y gates finales Fase 8).
-- Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. No borrar legacy hasta Fase 8.
+- **Fase 8.7G ✅ CERRADA** (2026-07-11): auditoría retirement `docs/overlay-studio-v3-retirement-audit.md`; inventario actualizado; búsqueda consumidores legacy → cero en producción.
+- **Fase 8.8 ✅ CERRADA** (2026-07-11): auditoría final `docs/overlay-studio-v3-final-audit.md`; gates: `pnpm test` 1561/1562 PASS (1 flaky `useCanvasInteraction` bajo suite completa), `pnpm build` PASS, `visual:overlay-studio` 59 baselines 0.000% delta, `go test ./internal/app/... ./cmd/vantare/...` PASS.
+- **Fase 8 (cutover V3) ✅ CERRADA** para merge: retirement 8.7 completo. Tasks 8.1–8.6 (i18n/a11y/perf/diagnostics/authoring kit/docs sweep) **diferidas** a expansión post-merge — riesgo aceptado documentado en auditoría final.
+- **Siguiente:** push `refactor`; merge cuando usuario apruebe; expansión widgets + hardening 8.1–8.6.
+- Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. Legacy editor/renderer retirado en Fase 8.7.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

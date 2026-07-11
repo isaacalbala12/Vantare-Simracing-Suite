@@ -85,6 +85,43 @@ func sampleApps() map[string]app.LauncherAppEntry {
 	}
 }
 
+func TestParseWindowsArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{name: "plain", in: `--profile creator --count 2`, want: []string{"--profile", "creator", "--count", "2"}},
+		{name: "quoted path", in: `--path "C:\Program Files\Vantare"`, want: []string{"--path", `C:\Program Files\Vantare`}},
+		{name: "empty quoted", in: `--value ""`, want: []string{"--value", ""}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseWindowsArgs(tt.in)
+			if err != nil {
+				t.Fatalf("parseWindowsArgs: %v", err)
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %#v want %#v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("arg %d: got %q want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestParseWindowsArgsRejectsInvalidInput(t *testing.T) {
+	if _, err := parseWindowsArgs("--bad\x00value"); err == nil {
+		t.Fatal("expected NUL argument to be rejected")
+	}
+	if _, err := parseWindowsArgs(`--path "unterminated`); err == nil {
+		t.Fatal("expected unterminated quote to be rejected")
+	}
+}
+
 // sampleBackend returns a fakeProfilesBackend pre-loaded with sample apps and
 // an empty profile list.
 func sampleBackend() *fakeProfilesBackend {

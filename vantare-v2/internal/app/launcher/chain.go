@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -259,7 +260,15 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if !fileExists(entry.ExecutablePath) {
 			return chainStepResult{success: false}
 		}
-		cmd := r.exec(entry.ExecutablePath)
+		argsText := entry.Args
+		if step.ArgsOverride != "" {
+			argsText = step.ArgsOverride
+		}
+		args, err := parseWindowsArgs(argsText)
+		if err != nil {
+			return chainStepResult{success: false}
+		}
+		cmd := r.exec(entry.ExecutablePath, args...)
 		if cmd == nil {
 			return chainStepResult{success: false}
 		}
@@ -291,6 +300,70 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 	default:
 		return chainStepResult{success: false}
 	}
+}
+
+// parseWindowsArgs tokenizes an argument string without invoking a shell. It
+// follows the quoting rules used by Windows process command lines closely
+// enough for launcher arguments: whitespace separates tokens outside quotes,
+// quotes group text and backslashes before quotes are handled in pairs.
+func parseWindowsArgs(raw string) ([]string, error) {
+	if strings.IndexByte(raw, 0) >= 0 {
+		return nil, fmt.Errorf("launcher: arguments contain NUL")
+	}
+	var args []string
+	var current strings.Builder
+	inQuotes := false
+	tokenStarted := false
+	backslashes := 0
+	flushSlashes := func() {
+		for i := 0; i < backslashes; i++ {
+			current.WriteByte('\\')
+		}
+		backslashes = 0
+	}
+	flush := func() {
+		flushSlashes()
+		if tokenStarted {
+			args = append(args, current.String())
+			current.Reset()
+			tokenStarted = false
+		}
+	}
+	for i := 0; i < len(raw); i++ {
+		switch raw[i] {
+		case '\\':
+			backslashes++
+			tokenStarted = true
+		case '"':
+			tokenStarted = true
+			if backslashes%2 == 0 {
+				flushSlashes()
+				inQuotes = !inQuotes
+			} else {
+				backslashes = (backslashes - 1) / 2
+				flushSlashes()
+				current.WriteByte('"')
+			}
+		case ' ', '\t':
+			if inQuotes {
+				flushSlashes()
+				current.WriteByte(raw[i])
+				tokenStarted = true
+			} else {
+				flush()
+			}
+		default:
+			flushSlashes()
+			current.WriteByte(raw[i])
+			tokenStarted = true
+		}
+	}
+	flushSlashes()
+	if inQuotes {
+		return nil, fmt.Errorf("launcher: unterminated quoted argument")
+	}
+	flush()
+	return args, nil
 }
 
 // livenessProbe waits for a process to exit within the given timeout. If the

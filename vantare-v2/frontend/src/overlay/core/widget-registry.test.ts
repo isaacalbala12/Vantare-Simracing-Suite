@@ -1,4 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { getEnabledRelativeColumns } from "../widget-types/relative/relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "../widget-types/relative/relative-renderer-helpers";
 import { widgetTypeRegistry } from "./widget-registry";
 
 describe("widgetTypeRegistry", () => {
@@ -35,7 +41,18 @@ describe("widgetTypeRegistry", () => {
       aspectLocked: true,
     });
     expect(widgetTypeRegistry.get("standings").createDefault("standings-1").layout.w).toBe(520);
-    expect(widgetTypeRegistry.get("relative").createDefault("relative-1").layout.w).toBe(430);
+    const relative = widgetTypeRegistry.get("relative").createDefault("relative-1");
+    const relativeContent = widgetTypeRegistry.get("relative").parseContent(relative.content);
+    const relativeColumns = getEnabledRelativeColumns(relativeContent);
+    const relativeRows = computeRelativeConfiguredRowCount(relativeContent);
+    expect(relative.layout).toEqual({
+      x: 64,
+      y: 64,
+      w: computeRelativeIntrinsicWidth(relativeColumns),
+      h: computeRelativeIntrinsicHeight(relativeContent.rowHeightMode, relativeRows),
+      zIndex: 0,
+      aspectLocked: true,
+    });
     expect(widgetTypeRegistry.get("pedals").createDefault("pedals-1").layout).toEqual({
       x: 64,
       y: 64,

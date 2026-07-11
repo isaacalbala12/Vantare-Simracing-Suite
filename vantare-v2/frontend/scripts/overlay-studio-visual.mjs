@@ -292,6 +292,78 @@ async function assertStudioDragAndResize(page, baseUrl) {
   }
 }
 
+async function assertRelativeStudioChrome(page, baseUrl) {
+  const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=1600&widget=relative&layout=legacy`;
+  await page.goto(url, { waitUntil: "networkidle" });
+  await page.waitForSelector("[data-testid='overlay-studio-v3']");
+  await page.waitForSelector("[data-testid='studio-widget-frame-relative-main']");
+  await page.locator("[data-testid='studio-widget-frame-relative-main']").click();
+  await page.waitForSelector("[data-testid='studio-widget-frame-chrome-relative-main']");
+  await page.waitForSelector("[data-testid='studio-widget-visual-relative-main'] [data-widget-renderer='relative']");
+
+  const metrics = await page.evaluate(() => {
+    const frame = document.querySelector("[data-testid='studio-widget-frame-relative-main']");
+    const chrome = document.querySelector("[data-testid='studio-widget-frame-chrome-relative-main']");
+    const renderer = document.querySelector(
+      "[data-testid='studio-widget-visual-relative-main'] [data-widget-renderer='relative']",
+    );
+    const classBar = document.querySelector(
+      '[data-testid="studio-widget-visual-relative-main"] .vo-relative-class-bar',
+    );
+    if (!frame || !chrome || !renderer) {
+      return { ok: false, reason: "missing relative studio nodes" };
+    }
+
+    const frameRect = frame.getBoundingClientRect();
+    const chromeRect = chrome.getBoundingClientRect();
+    const rendererRect = renderer.getBoundingClientRect();
+    const classBarRect = classBar?.getBoundingClientRect();
+
+    const chromeMatchesFrame =
+      Math.abs(chromeRect.width - frameRect.width) <= 2
+      && Math.abs(chromeRect.height - frameRect.height) <= 2;
+    const emptyRight = frameRect.right - rendererRect.right;
+    const emptyBottom = frameRect.bottom - rendererRect.bottom;
+    const widthFillRatio = rendererRect.width / frameRect.width;
+    const rowElement = classBar?.closest(".vo-relative-row");
+    const rowRect = rowElement?.getBoundingClientRect();
+    const classBarLooksVertical =
+      !classBarRect
+      || (
+        classBarRect.width <= 12
+        && rowRect
+        && Math.abs(classBarRect.height - rowRect.height) <= 4
+      );
+
+    return {
+      ok:
+        chromeMatchesFrame
+        && emptyRight <= 6
+        && emptyBottom <= 8
+        && widthFillRatio >= 0.95
+        && widthFillRatio <= 1.02
+        && classBarLooksVertical,
+      reason: !chromeMatchesFrame
+        ? "chrome does not match frame"
+        : emptyRight > 6
+          ? `renderer leaves ${emptyRight.toFixed(1)}px empty on the right`
+          : emptyBottom > 8
+            ? `renderer leaves ${emptyBottom.toFixed(1)}px empty at the bottom`
+            : widthFillRatio < 0.95 || widthFillRatio > 1.02
+              ? `width fill ratio ${widthFillRatio.toFixed(3)}`
+              : !classBarLooksVertical
+                ? `class bar ${classBarRect?.width ?? 0}x${classBarRect?.height ?? 0} expected narrow vertical strip`
+                : null,
+      frame: { width: frameRect.width, height: frameRect.height },
+      renderer: { width: rendererRect.width, height: rendererRect.height },
+    };
+  });
+
+  if (!metrics.ok) {
+    throw new Error(`studio-relative-chrome: ${metrics.reason ?? "geometry check failed"}`);
+  }
+}
+
 async function assertStudioZoomViewport(page, baseUrl) {
   const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=1600`;
   await page.goto(url, { waitUntil: "networkidle" });
@@ -396,6 +468,8 @@ async function main() {
 
     if (!updateMode) {
       await page.setViewportSize({ width: 1920, height: 1080 });
+      await assertRelativeStudioChrome(page, baseUrl);
+      console.log("ok studio-relative-chrome");
       await assertStudioDragAndResize(page, baseUrl);
       console.log("ok studio-wide interactions");
       await assertStudioZoomViewport(page, baseUrl);

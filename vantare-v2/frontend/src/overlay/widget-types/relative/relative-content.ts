@@ -52,7 +52,7 @@ type RelativeColumnTemplate = {
 
 export const RELATIVE_COLUMN_TEMPLATES: readonly RelativeColumnTemplate[] = [
   { id: "position", metricId: "position", label: "Posición", defaultEnabled: true, defaultWidth: 24, style: { align: "center" } },
-  { id: "class", metricId: "class", label: "Clase", defaultEnabled: true, defaultWidth: 36, style: { align: "center" } },
+  { id: "class", metricId: "class", label: "Clase", defaultEnabled: true, defaultWidth: 6, style: { align: "center" } },
   { id: "carNumber", metricId: "carNumber", label: "Número", defaultEnabled: true, defaultWidth: 28, style: { align: "center" } },
   {
     id: "driverName",
@@ -132,7 +132,7 @@ export function createDefaultRelativeContent(): RelativeContent {
       id: template.id,
       metricId: template.metricId,
       enabled: template.defaultEnabled,
-      widthPreset: nearestWidthPreset(template.defaultWidth),
+      widthPreset: template.metricId === "class" ? "auto" : nearestWidthPreset(template.defaultWidth),
       ...(template.format ? { format: structuredClone(template.format) } : {}),
       ...(template.style ? { style: structuredClone(template.style) } : {}),
     })),

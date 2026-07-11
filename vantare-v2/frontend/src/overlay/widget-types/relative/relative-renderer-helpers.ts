@@ -4,6 +4,13 @@ import { RELATIVE_COLUMN_TEMPLATES } from "./relative-content";
 
 const HORIZONTAL_PADDING = 32;
 
+export const RELATIVE_COMPACT_ROW_HEIGHT = 31;
+export const RELATIVE_COMPACT_NON_ROW_HEIGHT = 68;
+export const RELATIVE_FILL_HEADER_HEIGHT = 40;
+export const RELATIVE_FILL_CLASS_HEIGHT = 24;
+export const RELATIVE_FILL_FOOTER_PADDING = 14;
+export const RELATIVE_FILL_ROW_MIN = 24;
+
 export const RELATIVE_DEFAULT_APPEARANCE = {
   showHeader: true,
   accentColor: "#e63946",
@@ -28,6 +35,30 @@ export function computeRelativeIntrinsicWidth(columns: readonly WidgetColumnV3[]
     0,
   );
   return columnWidth + HORIZONTAL_PADDING;
+}
+
+export function computeRelativeConfiguredRowCount(content: {
+  rangeAhead: number;
+  rangeBehind: number;
+  includePlayer: boolean;
+}): number {
+  return content.rangeAhead + content.rangeBehind + (content.includePlayer ? 1 : 0);
+}
+
+export function computeRelativeIntrinsicHeight(
+  rowHeightMode: "compact" | "fill",
+  rowCount: number,
+): number {
+  const safeRows = Number.isFinite(rowCount) ? Math.max(0, Math.round(rowCount)) : 0;
+  if (rowHeightMode === "compact") {
+    return RELATIVE_COMPACT_NON_ROW_HEIGHT + safeRows * RELATIVE_COMPACT_ROW_HEIGHT;
+  }
+  return (
+    RELATIVE_FILL_HEADER_HEIGHT
+    + RELATIVE_FILL_CLASS_HEIGHT
+    + RELATIVE_FILL_FOOTER_PADDING
+    + safeRows * RELATIVE_FILL_ROW_MIN
+  );
 }
 
 export function resolveRelativeClassColor(

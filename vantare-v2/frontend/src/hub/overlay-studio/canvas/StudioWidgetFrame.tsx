@@ -9,7 +9,8 @@ import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/pro
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
 import type { ResizeHandle } from "./canvas-resize";
-import { resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
+import { getStudioFramePreviewKind } from "./canvas-frame-preview";
+import { resolveStudioWidgetFrameGeometry, resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -55,8 +56,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onLostPointerCapture,
   } = props;
   const frameRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
-  const intrinsic = resolveWidgetIntrinsicScale(frameGeometry, widget.type);
+  const rawFrameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const previewKind = previewActive ? getStudioFramePreviewKind(widget.id) : undefined;
+  const frameGeometry = resolveStudioWidgetFrameGeometry(widget, previewKind, rawFrameGeometry);
+  const intrinsic = resolveWidgetIntrinsicScale(frameGeometry, widget);
 
   useLayoutEffect(() => {
     registerStudioFrameElement(widget.id, frameRef.current);

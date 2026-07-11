@@ -1,4 +1,4 @@
-import type { CoreWidgetType, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
+import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import { resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
 
 type FramePreviewKind = "move" | "resize";
@@ -7,7 +7,7 @@ type FramePreviewSession = {
   kind: FramePreviewKind;
   start: WidgetLayoutV3;
   preview: WidgetLayoutV3;
-  widgetType: CoreWidgetType;
+  widget: WidgetInstanceV3;
 };
 
 const previewSessions = new Map<string, FramePreviewSession>();
@@ -45,13 +45,13 @@ function writeIntrinsicScalerScale(
   frame: HTMLElement,
   widgetId: string,
   layout: Pick<WidgetLayoutV3, "w" | "h">,
-  widgetType: CoreWidgetType,
+  widget: WidgetInstanceV3,
 ): void {
   const scaler = findStudioIntrinsicScaler(frame, widgetId);
   if (!scaler) {
     return;
   }
-  const intrinsic = resolveWidgetIntrinsicScale(layout, widgetType);
+  const intrinsic = resolveWidgetIntrinsicScale(layout, widget);
   scaler.style.transform = `scale(${intrinsic.scale})`;
 }
 
@@ -85,13 +85,13 @@ export function beginStudioFramePreview(
   widgetId: string,
   kind: FramePreviewKind,
   start: WidgetLayoutV3,
-  widgetType: CoreWidgetType,
+  widget: WidgetInstanceV3,
 ): void {
   previewSessions.set(widgetId, {
     kind,
     start: structuredClone(start),
     preview: structuredClone(start),
-    widgetType,
+    widget,
   });
 }
 
@@ -118,7 +118,7 @@ export function applyStudioFrameLayoutPreview(
 
   frame.style.transform = "";
   writeFrameGeometry(frame, session.preview);
-  writeIntrinsicScalerScale(frame, widgetId, session.preview, session.widgetType);
+  writeIntrinsicScalerScale(frame, widgetId, session.preview, session.widget);
 }
 
 export function resetStudioFrameLayoutPreview(
@@ -131,7 +131,7 @@ export function resetStudioFrameLayoutPreview(
     frame.style.transform = "";
     writeFrameGeometry(frame, layout);
     if (session?.kind === "resize") {
-      writeIntrinsicScalerScale(frame, widgetId, layout, session.widgetType);
+      writeIntrinsicScalerScale(frame, widgetId, layout, session.widget);
     }
   }
   clearStudioFrameLayoutPreview(widgetId);

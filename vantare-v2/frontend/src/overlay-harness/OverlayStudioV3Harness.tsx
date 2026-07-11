@@ -1,9 +1,23 @@
 import { useMemo } from "react";
 import { OverlayStudioV3 } from "../hub/overlay-studio/OverlayStudioV3";
 import { ConnectedStudioProvider } from "../hub/overlay-studio/state/studio-store";
-import { createInMemoryStudioProfileClient } from "./studio-profile-fixture";
+import {
+  createInMemoryStudioProfileClient,
+  type StudioHarnessPrimaryWidget,
+} from "./studio-profile-fixture";
 
 const HARNESS_PROFILE_FILE = "profiles/harness.json";
+
+function parseHarnessSearch(search: string): {
+  primaryWidget: StudioHarnessPrimaryWidget;
+  relativeLegacyLayout: boolean;
+} {
+  const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
+  return {
+    primaryWidget: params.get("widget") === "relative" ? "relative" : "delta",
+    relativeLegacyLayout: params.get("layout") === "legacy",
+  };
+}
 
 function parseViewportWidth(search: string): number {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
@@ -16,7 +30,14 @@ function parseViewportWidth(search: string): number {
 }
 
 export function OverlayStudioV3HarnessPage({ search }: { search: string }): React.ReactElement {
-  const client = useMemo(() => createInMemoryStudioProfileClient(HARNESS_PROFILE_FILE), []);
+  const harnessSearch = parseHarnessSearch(search);
+  const client = useMemo(
+    () =>
+      createInMemoryStudioProfileClient(HARNESS_PROFILE_FILE, harnessSearch.primaryWidget, {
+        relativeLegacyLayout: harnessSearch.relativeLegacyLayout,
+      }),
+    [harnessSearch.primaryWidget, harnessSearch.relativeLegacyLayout],
+  );
   const viewportWidth = parseViewportWidth(search);
 
   return (

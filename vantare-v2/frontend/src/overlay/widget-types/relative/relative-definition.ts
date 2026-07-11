@@ -4,9 +4,15 @@ import { getWidgetRequiredFeature } from "../../core/widget-definition";
 import { RelativeContentInspector } from "./RelativeContentInspector";
 import {
   createDefaultRelativeContent,
+  getEnabledRelativeColumns,
   parseRelativeContent,
   type RelativeContent,
 } from "./relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "./relative-renderer-helpers";
 import { buildRelativeViewModel, type RelativeViewModel } from "./relative-view-model";
 
 const RELATIVE_DEFAULT_LAYOUT = {
@@ -33,12 +39,20 @@ export const relativeDefinition: WidgetTypeDefinition<RelativeContent, RelativeV
     CustomContentInspector: RelativeContentInspector,
   },
   createDefault(id: string): WidgetInstanceV3 {
+    const content = createDefaultRelativeContent();
+    const columns = getEnabledRelativeColumns(content);
+    const rowCount = computeRelativeConfiguredRowCount(content);
+    const intrinsicLayout = {
+      ...RELATIVE_DEFAULT_LAYOUT,
+      w: computeRelativeIntrinsicWidth(columns),
+      h: computeRelativeIntrinsicHeight(content.rowHeightMode, rowCount),
+    };
     return {
       id,
       type: "relative",
-      layout: { ...RELATIVE_DEFAULT_LAYOUT },
+      layout: intrinsicLayout,
       behavior: { enabled: true, updateHz: 15 },
-      content: createDefaultRelativeContent(),
+      content,
       visual: {
         systemId: "vantare-original",
         systemVersion: 1,

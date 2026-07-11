@@ -629,14 +629,6 @@ func main() {
 		log.Printf("license:reset-device ok")
 	})
 
-	// Preset service for widget presets (WidgetStudio only)
-	presetSvc := app.NewPresetService(cfgDir, emitter)
-	if err := presetSvc.Load(); err != nil {
-		log.Printf("warning: could not load presets: %v (using empty)", err)
-	}
-	wailsApp.RegisterService(application.NewService(presetSvc))
-	presetSvc.RegisterHandlers(wailsApp)
-
 	// Overlay Studio V3 profile persistence (canonical runtime document owner)
 	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
 		log.Printf("studio profile saved: %s revision=%s", saved.Path, saved.Revision)

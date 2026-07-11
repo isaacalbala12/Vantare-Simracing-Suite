@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,6 +13,34 @@ import (
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+// legacyWidgetPreset is the on-disk shape of widget-presets.json (read-only migration).
+type legacyWidgetPreset struct {
+	ID         string               `json:"id"`
+	Name       string               `json:"name"`
+	WidgetType string               `json:"widgetType"`
+	Appearance map[string]any       `json:"appearance,omitempty"`
+	Variant    *legacyPresetVariant `json:"variant,omitempty"`
+	Props      map[string]any       `json:"props,omitempty"`
+	CreatedAt  string               `json:"createdAt"`
+	UpdatedAt  string               `json:"updatedAt"`
+}
+
+type legacyPresetVariant struct {
+	TemplateID   string           `json:"templateId,omitempty"`
+	ThemeID      string           `json:"themeId,omitempty"`
+	Name         string           `json:"name,omitempty"`
+	Columns      []map[string]any `json:"columns,omitempty"`
+	ColumnGroups []map[string]any `json:"columnGroups,omitempty"`
+	Filters      map[string]any   `json:"filters,omitempty"`
+	Formats      map[string]any   `json:"formats,omitempty"`
+	Slots        []map[string]any `json:"slots,omitempty"`
+}
+
+type legacyPresetFile struct {
+	Version int                  `json:"version"`
+	Presets []legacyWidgetPreset `json:"presets"`
+}
 
 const (
 	widgetDesignLibraryVersion = 1
@@ -94,7 +123,7 @@ func (s *WidgetDesignService) Load() error {
 		}
 		return fmt.Errorf("reading legacy presets: %w", err)
 	}
-	var file presetFile
+	var file legacyPresetFile
 	if err := json.Unmarshal(data, &file); err != nil {
 		return fmt.Errorf("parsing legacy presets: %w", err)
 	}
@@ -451,7 +480,7 @@ func isValidDesignID(id string) bool {
 	return true
 }
 
-func migratePresetsToDesigns(presets []WidgetPreset) []WidgetDesignV1 {
+func migratePresetsToDesigns(presets []legacyWidgetPreset) []WidgetDesignV1 {
 	designs := make([]WidgetDesignV1, 0, len(presets))
 	for _, preset := range presets {
 		designs = append(designs, migratePresetToDesign(preset))
@@ -459,7 +488,7 @@ func migratePresetsToDesigns(presets []WidgetPreset) []WidgetDesignV1 {
 	return designs
 }
 
-func migratePresetToDesign(preset WidgetPreset) WidgetDesignV1 {
+func migratePresetToDesign(preset legacyWidgetPreset) WidgetDesignV1 {
 	style := ""
 	if preset.Variant != nil && preset.Variant.ThemeID != "" {
 		style = preset.Variant.ThemeID
@@ -544,4 +573,15 @@ func resolveDesignSystemID(style string) (string, string) {
 		}
 		return string(config.DesignSystemVantareOriginal), style
 	}
+}
+
+func generateUUID() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	bytes[6] = (bytes[6] & 0x0f) | 0x40
+	bytes[8] = (bytes[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x",
+		bytes[0:4], bytes[4:6], bytes[6:8], bytes[8:10], bytes[10:16]), nil
 }

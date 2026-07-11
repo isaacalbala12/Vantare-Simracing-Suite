@@ -49,7 +49,9 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Evidencia 8.7D: `pnpm test -- ProfilePreview overlay-studio widget-preview-contract CompositeApp ObsOverlayApp` → 327 PASS; `pnpm build` PASS; `go test ./internal/app/...` PASS.
 - **Fase 8.7E ✅ CERRADA** (2026-07-11): retirados `widget-design-gallery`, `WidgetDesignGallery`, `widget-presets`, `widget-presets-store` y `widget-variants` (frontend legacy). Diseños oficiales V3 siguen en `official-designs.ts`; tests de fixtures migrados sin dependencia del modelo legacy de variants.
 - Evidencia 8.7E: `pnpm test -- overlay-studio official-designs widget-preview-fixtures` → 316 PASS; `pnpm build` PASS.
-- **Siguiente:** push `refactor` pendiente; Fase 8.7F (retiro Go `PresetService` / handlers `preset:*` si sin callers).
+- **Fase 8.7F ✅ CERRADA** (2026-07-11): retirado Go `PresetService` y handlers Wails `preset:*` (sin callers tras 8.7E). Migración one-shot `widget-presets.json` → `widget-designs.json` conservada en `WidgetDesignService` con tipos legacy internos.
+- Evidencia 8.7F: `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `pnpm test -- widget-design-client` → 11 PASS.
+- **Siguiente:** push `refactor` pendiente; Fase 8.7G (limpieza docs/inventario legacy y gates finales Fase 8).
 - Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. No borrar legacy hasta Fase 8.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 

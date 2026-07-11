@@ -11,9 +11,9 @@ import (
 func TestWidgetDesignServiceMigratesLegacyPresetsInMemory(t *testing.T) {
 	dir := t.TempDir()
 	presetsPath := filepath.Join(dir, "widget-presets.json")
-	presets := presetFile{
+	presets := legacyPresetFile{
 		Version: 1,
-		Presets: []WidgetPreset{{
+		Presets: []legacyWidgetPreset{{
 			ID:         "preset-delta",
 			Name:       "Delta Preset",
 			WidgetType: "delta",
@@ -52,13 +52,13 @@ func TestWidgetDesignServiceMigratesLegacyPresetsInMemory(t *testing.T) {
 func TestWidgetDesignServiceMigratesCrystalAlias(t *testing.T) {
 	dir := t.TempDir()
 	presetsPath := filepath.Join(dir, "widget-presets.json")
-	presets := presetFile{
+	presets := legacyPresetFile{
 		Version: 1,
-		Presets: []WidgetPreset{{
+		Presets: []legacyWidgetPreset{{
 			ID:         "preset-crystal",
 			Name:       "Crystal Preset",
 			WidgetType: "relative",
-			Variant: &PresetVariant{
+			Variant: &legacyPresetVariant{
 				ThemeID: "glassmorphism-pro",
 			},
 			CreatedAt: "2026-07-10T00:00:00Z",

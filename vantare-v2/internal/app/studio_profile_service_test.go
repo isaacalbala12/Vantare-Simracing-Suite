@@ -223,6 +223,41 @@ func TestStudioProfileServiceSaveErrorEmitsError(t *testing.T) {
 	}
 }
 
+func TestStudioProfileServiceHandleLoadResolvesBasenameFromProfilesDir(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "custom-race-hud.json")
+	source, err := os.ReadFile(filepath.Join("..", "..", "pkg", "config", "testdata", "profile-v0-core-widgets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, source, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	svc.SetProfilesDir(dir)
+	svc.HandleLoad(map[string]any{"requestId": "req-basename-load", "file": "custom-race-hud.json"})
+
+	foundLoaded := false
+	for i, event := range spy.events {
+		if event != "studio:profile:loaded" {
+			continue
+		}
+		foundLoaded = true
+		payload := spy.data[i].(map[string]any)
+		if payload["requestId"] != "req-basename-load" {
+			t.Fatalf("requestId=%v", payload["requestId"])
+		}
+	}
+	if !foundLoaded {
+		t.Fatalf("events=%v want studio:profile:loaded", spy.events)
+	}
+	if svc.Path() != path {
+		t.Fatalf("path=%q want %q", svc.Path(), path)
+	}
+}
+
 func TestStudioProfileServiceHandleLoadEchoesRequestId(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

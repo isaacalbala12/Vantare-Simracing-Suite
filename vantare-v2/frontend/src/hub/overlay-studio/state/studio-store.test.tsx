@@ -320,7 +320,7 @@ describe("StudioProvider", () => {
     expect(documentHook.result.current.document?.layouts.general.widgets[0].layout.x).toBe(64);
   });
 
-  it("blocks dispatch mutations for premium widgets on free access", async () => {
+  it("allows layout dispatch for premium widgets on free access", async () => {
     const document = buildDocument();
     document.layouts.general.widgets.push(buildRelativeWidget());
     const client = createMockClient(document);
@@ -338,11 +338,12 @@ describe("StudioProvider", () => {
       });
     });
 
-    expect(result.current.document?.layouts.general.widgets[1]?.layout.x).toBe(64);
-    expect(result.current.lastError).toContain("acceso");
+    expect(result.current.document?.layouts.general.widgets[1]?.layout.x).toBe(400);
+    expect(result.current.accessNotice).toBeNull();
+    expect(result.current.lastError).toBeNull();
   });
 
-  it("rejects save when a premium widget changed under free access", async () => {
+  it("allows save when only premium widget layout changed under free access", async () => {
     const savedDocument = buildDocument();
     savedDocument.layouts.general.widgets.push(buildRelativeWidget());
     const client = createMockClient(savedDocument);
@@ -360,9 +361,9 @@ describe("StudioProvider", () => {
 
     await act(async () => {
       const saveResult = await result.current.save();
-      expect(saveResult.status).toBe("error");
+      expect(saveResult.status).toBe("saved");
     });
-    expect(result.current.saveState).toBe("error");
-    expect(client.save).not.toHaveBeenCalled();
+    expect(result.current.saveState).toBe("saved");
+    expect(client.save).toHaveBeenCalled();
   });
 });

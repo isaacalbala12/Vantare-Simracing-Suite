@@ -69,7 +69,9 @@ type StudioDocumentContextValue = {
   canUndo: boolean;
   canRedo: boolean;
   saveState: StudioSaveState;
+  /** Fatal profile load failure only — do not use for access or save errors. */
   lastError: string | null;
+  accessNotice: string | null;
   visuallyMigratedWidgetIds: readonly string[];
   dispatch(command: StudioCommand): void;
   selectWidget(id: string | null): void;
@@ -79,6 +81,8 @@ type StudioDocumentContextValue = {
   redo(): void;
   discardAll(): void;
   acceptRecovery(recoveredDocument: ProfileDocumentV3): void;
+  dismissAccessNotice(): void;
+  notifyAccessDenied(message: string): void;
 };
 
 type StudioPreviewContextValue = {
@@ -126,7 +130,7 @@ export function StudioProvider(props: {
   const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<StudioSaveState>("idle");
-  const [lastError, setLastError] = useState<string | null>(null);
+  const [accessNotice, setAccessNotice] = useState<string | null>(null);
   const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
   const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -138,7 +142,7 @@ export function StudioProvider(props: {
   useEffect(() => {
     let cancelled = false;
     setSaveState("idle");
-    setLastError(null);
+    setAccessNotice(null);
     setLoadError(null);
 
     void client.load(initialFile).then(
@@ -210,16 +214,16 @@ export function StudioProvider(props: {
             command.type === "widget/apply-design" ? command.design : undefined,
           );
         } catch (error) {
+          if (error instanceof StudioAccessError) {
+            setAccessNotice(error.message);
+            return current;
+          }
           const message =
-            error instanceof StudioAccessError
-              ? error.message
-              : error instanceof Error
-                ? error.message
-                : "studio access denied";
-          setLastError(message);
+            error instanceof Error ? error.message : "studio access denied";
+          setAccessNotice(message);
           return current;
         }
-        setLastError(null);
+        setAccessNotice(null);
         return commitStudioCommand(current, command);
       });
       setSaveState("idle");
@@ -246,9 +250,17 @@ export function StudioProvider(props: {
       return discardStudioHistory(current);
     });
     setSaveState("idle");
-    setLastError(null);
+    setAccessNotice(null);
     setVisuallyMigratedWidgetIds([]);
   }, [recoveryStore]);
+
+  const dismissAccessNotice = useCallback(() => {
+    setAccessNotice(null);
+  }, []);
+
+  const notifyAccessDenied = useCallback((message: string) => {
+    setAccessNotice(message);
+  }, []);
 
   const acceptRecovery = useCallback(
     (recoveredDocument: ProfileDocumentV3) => {
@@ -269,11 +281,11 @@ export function StudioProvider(props: {
     const draftValidation = validateDraftAccess(access, history.saved, document);
     if (!draftValidation.allowed) {
       setSaveState("error");
-      setLastError(draftValidation.reason);
+      setAccessNotice(draftValidation.reason);
       return { status: "error", message: draftValidation.reason };
     }
     setSaveState("saving");
-    setLastError(null);
+    setAccessNotice(null);
     const result = await client.save({ document, expectedRevision: revision });
     if (result.status === "saved") {
       setHistory((current) =>
@@ -289,11 +301,11 @@ export function StudioProvider(props: {
     }
     if (result.status === "conflict") {
       setSaveState("conflict");
-      setLastError(result.message);
+      setAccessNotice(result.message);
       return result;
     }
     setSaveState("error");
-    setLastError(result.message);
+    setAccessNotice(result.message);
     return result;
   }, [access, client, document, history, recoveryStore, revision]);
 
@@ -314,7 +326,8 @@ export function StudioProvider(props: {
       canUndo,
       canRedo,
       saveState,
-      lastError: loadError ?? lastError,
+      lastError: loadError,
+      accessNotice,
       visuallyMigratedWidgetIds,
       dispatch,
       selectWidget: setSelectedWidgetId,
@@ -324,6 +337,8 @@ export function StudioProvider(props: {
       redo,
       discardAll,
       acceptRecovery,
+      dismissAccessNotice,
+      notifyAccessDenied,
     }),
     [
       access,
@@ -338,7 +353,7 @@ export function StudioProvider(props: {
       canRedo,
       saveState,
       loadError,
-      lastError,
+      accessNotice,
       visuallyMigratedWidgetIds,
       dispatch,
       save,
@@ -346,6 +361,8 @@ export function StudioProvider(props: {
       redo,
       discardAll,
       acceptRecovery,
+      dismissAccessNotice,
+      notifyAccessDenied,
     ],
   );
 

@@ -59,6 +59,8 @@ export type UseCanvasInteractionInput = {
   selectedWidgetId: string | null;
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
+  canMutateLayout?(widget: WidgetInstanceV3): boolean;
+  onLayoutBlocked?(): void;
 };
 
 export type UseCanvasInteractionResult = {
@@ -381,6 +383,10 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     if (!widget) {
       return;
     }
+    if (inputRef.current.canMutateLayout && !inputRef.current.canMutateLayout(widget)) {
+      inputRef.current.onLayoutBlocked?.();
+      return;
+    }
 
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -426,6 +432,10 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     }
     const widget = inputRef.current.widgets.find((entry) => entry.id === widgetId);
     if (!widget) {
+      return;
+    }
+    if (inputRef.current.canMutateLayout && !inputRef.current.canMutateLayout(widget)) {
+      inputRef.current.onLayoutBlocked?.();
       return;
     }
 

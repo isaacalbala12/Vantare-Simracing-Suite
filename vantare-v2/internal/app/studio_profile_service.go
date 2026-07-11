@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/vantare/overlays/v2/internal/window"
@@ -109,11 +111,41 @@ func (s *StudioProfileService) HandleLoad(data any) {
 		s.emitError(requestID, "load", err)
 		return
 	}
-	if _, err := s.Load(file); err != nil {
+	path, err := s.resolveProfilePath(file)
+	if err != nil {
+		s.emitError(requestID, "load", err)
+		return
+	}
+	if _, err := s.Load(path); err != nil {
 		s.emitError(requestID, "load", err)
 		return
 	}
 	s.EmitLoaded(requestID)
+}
+
+func (s *StudioProfileService) resolveProfilePath(file string) (string, error) {
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return "", fmt.Errorf("file is required")
+	}
+	if filepath.IsAbs(file) {
+		return file, nil
+	}
+	if s.profilesDir == "" {
+		return "", fmt.Errorf("profiles directory not configured")
+	}
+	basename := filepath.Base(file)
+	if basename != file || strings.Contains(basename, "..") {
+		return "", fmt.Errorf("invalid profile file")
+	}
+	if !strings.HasSuffix(basename, ".json") {
+		basename += ".json"
+	}
+	path := filepath.Join(s.profilesDir, basename)
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf("profile not found: %s", basename)
+	}
+	return path, nil
 }
 
 // HandleSave decodes a correlated save request and emits saved/conflict/error.

@@ -30,6 +30,8 @@ export type StudioMutation =
   | "apply-all"
   | "save";
 
+export const STUDIO_WIDGET_ACCESS_MESSAGE = "No tienes acceso para modificar este widget.";
+
 export class StudioAccessError extends Error {
   readonly mutation: StudioMutation;
   readonly widgetIds: readonly string[];
@@ -65,13 +67,23 @@ function collectRequiredFeatures(
   return [...features];
 }
 
+function hasFullWidgetAccess(access: AccessContext, widget: WidgetInstanceV3): boolean {
+  return getFeatureGate(access, getWidgetRequiredFeature(widget.type)).allowed;
+}
+
+function widgetNonLayoutEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean {
+  const { layout: _leftLayout, ...leftRest } = left;
+  const { layout: _rightLayout, ...rightRest } = right;
+  return JSON.stringify(leftRest) === JSON.stringify(rightRest);
+}
+
 export function getStudioMutationGate(input: {
   access: AccessContext;
   mutation: StudioMutation;
   widget?: WidgetInstanceV3;
   design?: WidgetDesignV1;
 }): FeatureGate {
-  if (input.mutation === "save") {
+  if (input.mutation === "save" || input.mutation === "layout") {
     return { allowed: true };
   }
 
@@ -105,21 +117,31 @@ export function validateDraftAccess(
     const savedLayout = resolveSessionLayout(saved, session);
 
     for (const widget of draftLayout.widgets) {
-      if (canMutateWidget(access, widget)) {
+      const savedWidget = savedLayout.widgets.find((entry) => entry.id === widget.id);
+      if (!savedWidget) {
+        if (!hasFullWidgetAccess(access, widget)) {
+          blockedIds.add(widget.id);
+        }
         continue;
       }
-      const savedWidget = savedLayout.widgets.find((entry) => entry.id === widget.id);
-      if (!savedWidget || !widgetsEqual(widget, savedWidget)) {
-        blockedIds.add(widget.id);
+      if (widgetsEqual(widget, savedWidget)) {
+        continue;
       }
+      if (hasFullWidgetAccess(access, widget)) {
+        continue;
+      }
+      if (widgetNonLayoutEqual(widget, savedWidget)) {
+        continue;
+      }
+      blockedIds.add(widget.id);
     }
 
     for (const widget of savedLayout.widgets) {
-      if (canMutateWidget(access, widget)) {
+      const draftWidget = draftLayout.widgets.find((entry) => entry.id === widget.id);
+      if (draftWidget) {
         continue;
       }
-      const draftWidget = draftLayout.widgets.find((entry) => entry.id === widget.id);
-      if (!draftWidget) {
+      if (!hasFullWidgetAccess(access, widget)) {
         blockedIds.add(widget.id);
       }
     }
@@ -218,7 +240,7 @@ export function assertCommandAccess(
         throw new StudioAccessError(
           mutation,
           widgetIds,
-          "No tienes acceso para modificar este widget.",
+          STUDIO_WIDGET_ACCESS_MESSAGE,
         );
       }
     }

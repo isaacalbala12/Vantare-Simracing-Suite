@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { canMutateWidget, STUDIO_WIDGET_ACCESS_MESSAGE } from "../access/studio-access";
 import { getStudioHotkey } from "../state/studio-hotkeys";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
 import { CANVAS_HEIGHT, CANVAS_WIDTH, clientToLogical, resolveCanvasScale } from "./canvas-geometry";
@@ -31,12 +32,14 @@ export type StudioCanvasProps = {
 export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
   const { onOpenBrowserView } = props;
   const {
+    access,
     activeLayout,
     activeSession,
     selectedWidgetId,
     savedDocument,
     selectWidget,
     dispatch,
+    notifyAccessDenied,
   } = useStudioDocument();
   const { preview, setPreview } = useStudioPreview();
   const liveAvailable = useStudioTelemetryLiveAvailable();
@@ -88,6 +91,14 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const background = resolveCanvasBackground(preview.backgroundId);
   const safeInsets = safeAreaInsets(CANVAS_WIDTH, CANVAS_HEIGHT);
 
+  const canMutateLayout = useCallback(
+    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
+    [access],
+  );
+  const onLayoutBlocked = useCallback(() => {
+    notifyAccessDenied(STUDIO_WIDGET_ACCESS_MESSAGE);
+  }, [notifyAccessDenied]);
+
   const interaction = useCanvasInteraction({
     widgets,
     session: activeSession,
@@ -96,6 +107,8 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     selectedWidgetId,
     dispatch,
     selectWidget,
+    canMutateLayout,
+    onLayoutBlocked,
   });
 
   const isCanvasInteracting = interaction.interaction.kind !== "idle";

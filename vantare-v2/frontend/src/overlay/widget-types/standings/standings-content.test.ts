@@ -14,6 +14,11 @@ describe("standings-content", () => {
     expect(enabled).toEqual(["position", "driverNumber", "driverName", "gap", "bestLap"]);
   });
 
+  it("falls back to defaults when columns are missing", () => {
+    const parsed = parseStandingsContent({});
+    expect(parsed.columns).toEqual(createDefaultStandingsContent().columns);
+  });
+
   it("maps legacy numeric widths to the nearest preset", () => {
     expect(nearestWidthPreset(28)).toBe("sm");
     expect(nearestWidthPreset(132)).toBe("lg");

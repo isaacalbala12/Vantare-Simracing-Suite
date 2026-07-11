@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { deltaDefinition } from "../../overlay/widget-types/delta/delta-definition";
@@ -174,5 +174,49 @@ describe("StudioRoute", () => {
     bootProfiles();
     await screen.findByTestId("overlay-studio-v3");
     expect(client.load).toHaveBeenCalledWith("example-racing.json");
+  });
+
+  it("creates a profile from the in-app dialog and activates it in the editor", async () => {
+    const client = createMockClient({
+      "custom-race-hud.json": buildDocument("custom-race-hud"),
+    });
+    render(<StudioRoute client={client} coordinator={createTelemetryRateCoordinator()} liveAvailable={false} />);
+    dispatch("hub:profiles", { profiles: [] });
+    dispatch("settings", {
+      deltaMode: "self",
+      cpuSampling: true,
+      hotkeys: {},
+      activeOverlayProfileId: null,
+    });
+
+    await screen.findByTestId("no-active-profile-state");
+    fireEvent.click(screen.getByRole("button", { name: "Crear perfil" }));
+    expect(await screen.findByTestId("studio-create-profile-dialog")).toBeTruthy();
+
+    fireEvent.change(screen.getByTestId("studio-create-profile-dialog-input"), {
+      target: { value: "Race HUD" },
+    });
+    fireEvent.click(screen.getByTestId("studio-create-profile-dialog-confirm"));
+
+    expect(Events.Emit).toHaveBeenCalledWith("hub:create", { name: "Race HUD" });
+
+    dispatch("hub:profiles", {
+      profiles: [
+        {
+          id: "custom-race-hud",
+          file: "custom-race-hud.json",
+          name: "Race HUD",
+          displayMode: "edit",
+          widgets: 3,
+        },
+      ],
+    });
+
+    expect(await screen.findByTestId("overlay-studio-v3")).toBeTruthy();
+    expect(Events.Emit).toHaveBeenCalledWith("hub:set-active", {
+      id: "custom-race-hud",
+      file: "custom-race-hud.json",
+    });
+    expect(screen.queryByTestId("no-active-profile-state")).toBeNull();
   });
 });

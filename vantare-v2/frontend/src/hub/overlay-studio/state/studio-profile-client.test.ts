@@ -69,6 +69,23 @@ describe("createStudioProfileClient", () => {
     vi.useRealTimers();
   });
 
+  it("unwraps Wails array payloads when correlating load responses", async () => {
+    const loadPromise = client.load("custom-race-hud.json");
+    const requestId = (transport.emitted[0].payload as { requestId: string }).requestId;
+
+    transport.emit("studio:profile:loaded", [{
+      requestId,
+      document: buildDocument(),
+      revision: "rev-wails",
+    }]);
+
+    await expect(loadPromise).resolves.toEqual({
+      document: buildDocument(),
+      revision: "rev-wails",
+      migratedFrom: undefined,
+    });
+  });
+
   it("correlates load responses by request id", async () => {
     const loadPromise = client.load("profiles/test.json");
     const request = transport.emitted[0];

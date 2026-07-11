@@ -4,6 +4,14 @@
  * renders without a real Wails backend.
  */
 import { mockCalendar } from "../hub/calendar-visual-mock-data";
+import {
+  createHubProfile,
+  getHubMockSettings,
+  listHubProfiles,
+  loadHubDocument,
+  saveHubDocument,
+  setActiveHubProfile,
+} from "../overlay-harness/hub-profile-mock-state";
 import { licenseDebugWarn } from "./license-debug";
 import { setWailsRuntimeMockActive } from "./license-debug-log";
 
@@ -132,22 +140,122 @@ export const Events = {
 
     // Auto-respond to settings request
     if (name === "settings:get") {
-      setTimeout(
-        () =>
-          broadcast("settings", {
-            betaWelcomeCompleted: true,
-            betaUserRole: "racer",
-            activeOverlayProfileId: null,
-            deltaMode: "relative",
-          }),
-        50,
-      );
+      setTimeout(() => broadcast("settings", getHubMockSettings()), 50);
       return;
     }
 
     // Auto-respond to hub profiles list
     if (name === "hub:list") {
-      setTimeout(() => broadcast("hub:profiles", { profiles: [] }), 50);
+      setTimeout(() => broadcast("hub:profiles", { profiles: listHubProfiles() }), 50);
+      return;
+    }
+
+    if (name === "hub:create") {
+      const payload = readHarnessPayload(data);
+      const profileName = typeof payload.name === "string" ? payload.name : "";
+      const created = createHubProfile(profileName);
+      setTimeout(() => {
+        if ("error" in created) {
+          broadcast("hub:error", { message: created.error });
+          return;
+        }
+        broadcast("hub:profile-created", { id: created.id, file: created.file });
+        broadcast("hub:profiles", { profiles: listHubProfiles() });
+      }, 50);
+      return;
+    }
+
+    if (name === "hub:set-active") {
+      const payload = readHarnessPayload(data);
+      const id = typeof payload.id === "string" ? payload.id : "";
+      const file = typeof payload.file === "string" ? payload.file : "";
+      if (id && file) {
+        setActiveHubProfile(id, file);
+        setTimeout(() => {
+          broadcast("hub:profile-activated", { activeProfileId: id });
+          broadcast("settings", getHubMockSettings());
+        }, 50);
+      }
+      return;
+    }
+
+    if (name === "studio:profile:load") {
+      const payload = readHarnessPayload(data);
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+      const file = typeof payload.file === "string" ? payload.file : "";
+      const loaded = loadHubDocument(file);
+      setTimeout(() => {
+        if (!loaded) {
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "load",
+            message: `profile not found: ${file}`,
+          });
+          return;
+        }
+        broadcast("studio:profile:loaded", {
+          requestId,
+          document: loaded.document,
+          revision: loaded.revision,
+          migratedFrom: 3,
+        });
+      }, 0);
+      return;
+    }
+
+    if (name === "studio:profile:save") {
+      const payload = readHarnessPayload(data);
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+      const expectedRevision = typeof payload.expectedRevision === "string" ? payload.expectedRevision : "";
+      const document = payload.document;
+      const documentId =
+        document && typeof document === "object" && "id" in document && typeof document.id === "string"
+          ? document.id
+          : "";
+      const fileFromPath = listHubProfiles().find((profile) => profile.id === documentId)?.file ?? "";
+      if (!document || typeof document !== "object" || !fileFromPath) {
+        setTimeout(() => {
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "save",
+            message: "invalid studio profile save payload",
+          });
+        }, 0);
+        return;
+      }
+      const result = saveHubDocument(
+        fileFromPath,
+        document as import("../overlay/core/profile-document").ProfileDocumentV3,
+        expectedRevision,
+      );
+      setTimeout(() => {
+        if (!result.ok) {
+          if (result.kind === "conflict") {
+            broadcast("studio:profile:conflict", { requestId, message: result.message });
+            return;
+          }
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "save",
+            message: result.message,
+          });
+          return;
+        }
+        const stored = loadHubDocument(fileFromPath);
+        if (!stored) {
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "save",
+            message: "profile missing after save",
+          });
+          return;
+        }
+        broadcast("studio:profile:saved", {
+          requestId,
+          document: stored.document,
+          revision: stored.revision,
+        });
+      }, 0);
       return;
     }
 

@@ -297,6 +297,11 @@ func (s *HubService) SetActiveProfile(idOrFile string) error {
 	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
 		return fmt.Errorf("loading active profile: %w", err)
 	}
+	if s.studioProfileSvc != nil {
+		if err := s.studioProfileSvc.LoadActiveProfile(path); err != nil {
+			return fmt.Errorf("loading active studio profile: %w", err)
+		}
+	}
 	profile := s.profileSvc.GetProfile()
 	if profile == nil || profile.ID == "" {
 		return fmt.Errorf("loaded profile has no id")

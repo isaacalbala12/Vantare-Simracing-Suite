@@ -37,12 +37,19 @@ function createRequestId(): string {
 }
 
 function readEventPayload(payload: unknown): Record<string, unknown> {
-  const wrapped = payload as { data?: Record<string, unknown> };
-  if (wrapped?.data && typeof wrapped.data === "object") {
-    return wrapped.data;
+  const wrapped = payload as { data?: unknown };
+  let value = wrapped?.data;
+  if (Array.isArray(value)) {
+    value = value[0];
   }
-  if (payload && typeof payload === "object") {
-    return payload as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const direct = payload as Record<string, unknown>;
+    if (!("data" in direct)) {
+      return direct;
+    }
   }
   return {};
 }

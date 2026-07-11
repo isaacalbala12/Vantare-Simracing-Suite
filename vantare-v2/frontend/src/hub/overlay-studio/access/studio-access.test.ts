@@ -105,11 +105,11 @@ describe("getStudioMutationGate", () => {
   }> = [
     { name: "free mutates delta layout", access: freeAccess, widget: delta, mutation: "layout", allowed: true },
     {
-      name: "free cannot mutate relative layout",
+      name: "free can mutate relative layout",
       access: freeAccess,
       widget: relative,
       mutation: "layout",
-      allowed: false,
+      allowed: true,
     },
     {
       name: "paid mutates relative layout",
@@ -175,10 +175,18 @@ describe("validateDraftAccess", () => {
     expect(validateDraftAccess(freeAccess, saved, draft)).toEqual({ allowed: true });
   });
 
-  it("blocks free users from saving premium widget edits", () => {
+  it("allows free users to save premium widget layout edits", () => {
     const saved = buildDocument([deltaDefinition.createDefault("delta-main"), buildRelativeWidget()]);
     const draft = structuredClone(saved);
     draft.layouts.general.widgets[1]!.layout.x = 500;
+
+    expect(validateDraftAccess(freeAccess, saved, draft)).toEqual({ allowed: true });
+  });
+
+  it("blocks free users from saving premium widget content edits", () => {
+    const saved = buildDocument([deltaDefinition.createDefault("delta-main"), buildRelativeWidget()]);
+    const draft = structuredClone(saved);
+    draft.layouts.general.widgets[1]!.content = { mode: "gap" };
 
     const result = validateDraftAccess(freeAccess, saved, draft);
     expect(result.allowed).toBe(false);
@@ -201,13 +209,30 @@ describe("validateDraftAccess", () => {
 });
 
 describe("assertCommandAccess", () => {
-  it("throws when a free user dispatches a blocked relative layout command", () => {
+  it("allows free users to dispatch relative layout commands", () => {
     const document = buildDocument([buildRelativeWidget()]);
     const command: StudioCommand = {
       type: "widget/layout",
       session: "general",
       widgetIds: ["relative-main"],
       patch: { x: 120 },
+    };
+
+    expect(() => assertCommandAccess(freeAccess, command, document)).not.toThrow();
+    expect(() => assertCommandAccess(paidAccess, command, document)).not.toThrow();
+  });
+
+  it("throws when a free user dispatches a blocked relative visual command", () => {
+    const relative = buildRelativeWidget();
+    const document = buildDocument([relative]);
+    const command: StudioCommand = {
+      type: "widget/visual",
+      session: "general",
+      widgetIds: ["relative-main"],
+      visual: {
+        ...relative.visual,
+        appearanceOverrides: { showHeader: false },
+      },
     };
 
     expect(() => assertCommandAccess(freeAccess, command, document)).toThrow(StudioAccessError);
@@ -230,9 +255,9 @@ describe("resolveCommandMutations", () => {
 });
 
 describe("canMutateWidget", () => {
-  it("mirrors layout mutation access for widget tiers", () => {
+  it("allows layout mutation for every widget tier", () => {
     expect(canMutateWidget(freeAccess, deltaDefinition.createDefault("delta-main"))).toBe(true);
-    expect(canMutateWidget(freeAccess, buildRelativeWidget())).toBe(false);
+    expect(canMutateWidget(freeAccess, buildRelativeWidget())).toBe(true);
     expect(canMutateWidget(paidAccess, buildRelativeWidget())).toBe(true);
   });
 });

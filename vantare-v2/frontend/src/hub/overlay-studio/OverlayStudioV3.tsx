@@ -53,6 +53,8 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     document,
     revision,
     selectedWidgetId,
+    accessNotice,
+    dismissAccessNotice,
   } = useStudioDocument();
 
   const [pendingProfileFile, setPendingProfileFile] = useState<string | null>(null);
@@ -217,6 +219,22 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         activeFile={activeFile}
         onRequestProfileChange={guardedProfileChange}
       />
+      {accessNotice ? (
+        <div
+          data-testid="studio-access-notice"
+          className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+          role="alert"
+        >
+          <span>{accessNotice}</span>
+          <button
+            type="button"
+            className="rounded-md border border-white/15 px-2 py-1 text-xs font-semibold text-white"
+            onClick={dismissAccessNotice}
+          >
+            Cerrar
+          </button>
+        </div>
+      ) : null}
       <ResponsivePanelControls
         viewportWidth={viewportWidth}
         selectedWidgetId={selectedWidgetId}

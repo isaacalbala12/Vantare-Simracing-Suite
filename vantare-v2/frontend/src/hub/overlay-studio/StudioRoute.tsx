@@ -17,6 +17,7 @@ import {
 } from "../state/overlay-workbench";
 import type { AppSettings } from "../pages/SettingsPage";
 import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
+import { ProfileNameDialog } from "./components/ProfileNameDialog";
 import { NoActiveProfileState } from "./NoActiveProfileState";
 import { OverlayStudioV3 } from "./OverlayStudioV3";
 
@@ -77,6 +78,16 @@ function resolveActiveFile(activeProfileId: string | null, profiles: ProfileEntr
     return null;
   }
   return profiles.find((profile) => profile.id === activeProfileId)?.file ?? null;
+}
+
+function findProfileByName(profiles: ProfileEntry[], name: string): ProfileEntry | null {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  return (
+    profiles.find((profile) => (profile.name?.trim() || profile.id).toLowerCase() === normalized) ?? null
+  );
 }
 
 function toStudioProfiles(profiles: ProfileEntry[]): StudioProfileEntry[] {
@@ -371,8 +382,13 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   const [navigationDialogOpen, setNavigationDialogOpen] = useState(false);
   const [navigationSaving, setNavigationSaving] = useState(false);
   const [navigationError, setNavigationError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogSaving, setCreateDialogSaving] = useState(false);
+  const [createDialogError, setCreateDialogError] = useState<string | null>(null);
+  const [recommendedCopyTarget, setRecommendedCopyTarget] = useState<RecommendedProfile | null>(null);
 
   const dirtyRef = useRef(false);
+  const pendingCreateNameRef = useRef<string | null>(null);
   const studioActionsRef = useRef<{
     save(): ReturnType<ReturnType<typeof useStudioDocument>["save"]>;
     discardAll(): void;
@@ -413,10 +429,20 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
         setActiveProfileId(event.data.activeOverlayProfileId);
       }
     });
-    const unsubActivated = Events.On("hub:profile-activated", (event: { data?: { activeProfileId?: string } }) => {
-      if (event.data?.activeProfileId) {
-        setActiveProfileId(event.data.activeProfileId);
+    const unsubActivated = Events.On("hub:profile-activated", (event: { data: unknown }) => {
+      const payload = getPayload<{ activeProfileId?: string }>(event);
+      if (payload?.activeProfileId) {
+        setActiveProfileId(payload.activeProfileId);
       }
+    });
+    const unsubError = Events.On("hub:error", (event: { data: unknown }) => {
+      const payload = getPayload<{ message?: string }>(event);
+      if (!pendingCreateNameRef.current) {
+        return;
+      }
+      pendingCreateNameRef.current = null;
+      setCreateDialogSaving(false);
+      setCreateDialogError(payload?.message ?? "No se pudo crear el perfil");
     });
 
     Events.Emit("hub:list");
@@ -428,8 +454,28 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       unsubOverlayStatus();
       unsubSettings();
       unsubActivated();
+      unsubError();
     };
   }, []);
+
+  useEffect(() => {
+    const pendingName = pendingCreateNameRef.current;
+    if (!pendingName || !profilesLoaded) {
+      return;
+    }
+    const created = findProfileByName(profiles, pendingName);
+    if (!created) {
+      return;
+    }
+    pendingCreateNameRef.current = null;
+    setCreateDialogSaving(false);
+    setCreateDialogOpen(false);
+    setCreateDialogError(null);
+    Events.Emit("hub:set-active", { id: created.id, file: created.file });
+    setActiveProfileId(created.id);
+    setEditorFile(created.file);
+    setMode("editor");
+  }, [profiles, profilesLoaded]);
 
   useEffect(() => {
     return () => {
@@ -532,11 +578,24 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   }, []);
 
   function createProfile() {
-    const name = window.prompt("Nombre del nuevo perfil");
-    if (!name?.trim()) {
+    setCreateDialogError(null);
+    setCreateDialogOpen(true);
+  }
+
+  function confirmCreateProfile(name: string) {
+    setCreateDialogError(null);
+    setCreateDialogSaving(true);
+    pendingCreateNameRef.current = name;
+    Events.Emit("hub:create", { name });
+  }
+
+  function closeCreateDialog() {
+    if (createDialogSaving) {
       return;
     }
-    Events.Emit("hub:create", { name: name.trim() });
+    pendingCreateNameRef.current = null;
+    setCreateDialogOpen(false);
+    setCreateDialogError(null);
   }
 
   function openProfile(profile: ProfileEntry) {
@@ -546,11 +605,15 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   }
 
   function saveRecommended(profile: RecommendedProfile) {
-    const defaultName = `${profile.name} (copia)`;
-    const name = window.prompt("Nombre del perfil propio", defaultName);
-    if (!name?.trim()) {
+    setRecommendedCopyTarget(profile);
+  }
+
+  function confirmRecommendedCopy(name: string) {
+    const profile = recommendedCopyTarget;
+    if (!profile) {
       return;
     }
+    setRecommendedCopyTarget(null);
 
     if (autoActivateAndStart) {
       runRecommendedFirstUse({
@@ -569,7 +632,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       return;
     }
 
-    Events.Emit("hub:save-own-copy", { profile: cloneRecommendedProfile(profile, name.trim()) });
+    Events.Emit("hub:save-own-copy", { profile: cloneRecommendedProfile(profile, name) });
   }
 
   function startOverlay(profile: ProfileEntry) {
@@ -588,89 +651,132 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     Events.Emit("overlay:start-active");
   }
 
+  const profileDialogs = (
+    <>
+      <ProfileNameDialog
+        open={createDialogOpen}
+        title="Crear perfil"
+        description="Elige un nombre para tu overlay. Al crearlo se abrirá directamente en el editor."
+        confirmLabel="Crear"
+        placeholder="Mi overlay de carrera"
+        saving={createDialogSaving}
+        errorMessage={createDialogError}
+        dialogTestId="studio-create-profile-dialog"
+        onClose={closeCreateDialog}
+        onConfirm={confirmCreateProfile}
+      />
+      <ProfileNameDialog
+        open={recommendedCopyTarget !== null}
+        title="Guardar como perfil propio"
+        description="Guarda este preset recomendado en tus perfiles con el nombre que quieras."
+        defaultName={recommendedCopyTarget ? `${recommendedCopyTarget.name} (copia)` : ""}
+        confirmLabel="Guardar"
+        placeholder="Mi copia"
+        dialogTestId="studio-save-recommended-dialog"
+        onClose={() => setRecommendedCopyTarget(null)}
+        onConfirm={confirmRecommendedCopy}
+      />
+    </>
+  );
+
   if (!profilesLoaded) {
     return (
-      <div
-        data-testid="studio-route-loading"
-        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
-      >
-        <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-          Cargando perfiles...
+      <>
+        <div
+          data-testid="studio-route-loading"
+          className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
+        >
+          <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
+            Cargando perfiles...
+          </div>
         </div>
-      </div>
+        {profileDialogs}
+      </>
     );
   }
 
   if (!activeProfileId || !editorFile) {
     if (effectiveMode === "recommended") {
       return (
-        <div>
-          {notice ? (
-            <div className="mx-auto mt-4 max-w-[1800px] px-6">
-              <div
-                data-testid="recommended-error-banner"
-                className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
-              >
-                {notice}
+        <>
+          <div>
+            {notice ? (
+              <div className="mx-auto mt-4 max-w-[1800px] px-6">
+                <div
+                  data-testid="recommended-error-banner"
+                  className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+                >
+                  {notice}
+                </div>
               </div>
-            </div>
-          ) : null}
-          <RecommendedProfilesView
-            profiles={RECOMMENDED_PROFILES}
-            onSaveRecommended={saveRecommended}
-            onBack={() => {
-              setMode("editor");
-              onAutoStartHandled?.();
-            }}
-            autoActivateAndStart={autoActivateAndStart}
-          />
-        </div>
+            ) : null}
+            <RecommendedProfilesView
+              profiles={RECOMMENDED_PROFILES}
+              onSaveRecommended={saveRecommended}
+              onBack={() => {
+                setMode("editor");
+                onAutoStartHandled?.();
+              }}
+              autoActivateAndStart={autoActivateAndStart}
+            />
+          </div>
+          {profileDialogs}
+        </>
       );
     }
     if (mode === "ownProfiles") {
       return (
-        <OwnProfilesView
-          profiles={profiles}
-          overlayStatus={overlayStatus}
-          activeProfileId={activeProfileId}
-          onStartOverlay={startOverlay}
-          onStopOverlay={stopOverlay}
-          onOpenProfile={openProfile}
-          onCreateProfile={createProfile}
-          onSetActiveProfile={setActiveProfile}
-          onOpenActiveOverlay={openActiveOverlay}
-          onBack={() => setMode("editor")}
-        />
+        <>
+          <OwnProfilesView
+            profiles={profiles}
+            overlayStatus={overlayStatus}
+            activeProfileId={activeProfileId}
+            onStartOverlay={startOverlay}
+            onStopOverlay={stopOverlay}
+            onOpenProfile={openProfile}
+            onCreateProfile={createProfile}
+            onSetActiveProfile={setActiveProfile}
+            onOpenActiveOverlay={openActiveOverlay}
+            onBack={() => setMode("editor")}
+          />
+          {profileDialogs}
+        </>
       );
     }
     if (mode === "recommended") {
       return (
-        <div>
-          {notice ? (
-            <div className="mx-auto mt-4 max-w-[1800px] px-6">
-              <div
-                data-testid="recommended-error-banner"
-                className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
-              >
-                {notice}
+        <>
+          <div>
+            {notice ? (
+              <div className="mx-auto mt-4 max-w-[1800px] px-6">
+                <div
+                  data-testid="recommended-error-banner"
+                  className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+                >
+                  {notice}
+                </div>
               </div>
-            </div>
-          ) : null}
-          <RecommendedProfilesView
-            profiles={RECOMMENDED_PROFILES}
-            onSaveRecommended={saveRecommended}
-            onBack={() => setMode("editor")}
-            autoActivateAndStart={autoActivateAndStart}
-          />
-        </div>
+            ) : null}
+            <RecommendedProfilesView
+              profiles={RECOMMENDED_PROFILES}
+              onSaveRecommended={saveRecommended}
+              onBack={() => setMode("editor")}
+              autoActivateAndStart={autoActivateAndStart}
+            />
+          </div>
+          {profileDialogs}
+        </>
       );
     }
     return (
-      <NoActiveProfileState
-        onCreateProfile={createProfile}
-        onSelectProfile={() => setMode("ownProfiles")}
-        onOpenRecommended={() => setMode("recommended")}
-      />
+      <>
+        <NoActiveProfileState
+          onCreateProfile={createProfile}
+          onSelectProfile={() => setMode("ownProfiles")}
+          onOpenRecommended={() => setMode("recommended")}
+        />
+        {profileDialogs}
+      </>
     );
   }
 
@@ -678,6 +784,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   const activeOverlayRunning = activeEntry ? isRunningProfile(activeEntry, overlayStatus) : Boolean(overlayStatus?.running);
 
   return (
+    <>
     <ConnectedStudioProvider key={editorFile} client={client} initialFile={editorFile}>
       <StudioRouteNavigationBridge
         onDirtyChange={(dirty) => {
@@ -728,5 +835,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
         </span>
       ) : null}
     </ConnectedStudioProvider>
+    {profileDialogs}
+    </>
   );
 }

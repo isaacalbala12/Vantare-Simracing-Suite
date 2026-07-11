@@ -240,6 +240,24 @@ func TestConvertProfileToV2CreatesGeneralLayoutAndVariants(t *testing.T) {
 	}
 }
 
+func TestConvertProfileToV2AddsStandingsColumnsToDefaultVariant(t *testing.T) {
+	legacy := &config.ProfileConfig{
+		ID:   "legacy-standings",
+		Name: "Legacy Standings",
+		Widgets: []config.WidgetConfig{
+			{ID: "standings", Type: "standings", Enabled: true, UpdateHz: 15},
+		},
+	}
+
+	converted := config.ConvertProfileToV2(legacy)
+	if len(converted.Variants) != 1 {
+		t.Fatalf("variants len=%d, want 1", len(converted.Variants))
+	}
+	if len(converted.Variants[0].Columns) == 0 {
+		t.Fatal("expected default standings columns in variant")
+	}
+}
+
 func TestConvertProfileToV2PreservesExistingLayoutsAndVariants(t *testing.T) {
 	v2 := &config.ProfileConfig{
 		SchemaVersion: config.ProfileSchemaVersionV2,

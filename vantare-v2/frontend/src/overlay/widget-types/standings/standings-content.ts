@@ -176,9 +176,10 @@ export function parseStandingsContent(input: unknown): StandingsContent {
   if (typeof input !== "object" || Array.isArray(input)) {
     throw new Error("standings content must be an object");
   }
+  const defaults = createDefaultStandingsContent();
   const rawColumns = (input as Record<string, unknown>).columns;
   if (!Array.isArray(rawColumns)) {
-    throw new Error("standings content requires columns");
+    return defaults;
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {

@@ -6,6 +6,7 @@ import {
   setServerHarnessBrowserViewProfile,
 } from "./src/overlay-harness/harness-browser-view-store.server";
 import { buildHarnessProfileApiResponse } from "./src/overlay-harness/harness-profile-api";
+import { resetHubMockState, type HubMockSeed } from "./src/overlay-harness/hub-profile-mock-state";
 
 function requestPathname(url: string): string {
   return new URL(url, "http://127.0.0.1").pathname;
@@ -48,6 +49,20 @@ export function overlayStudioHarnessBrowserViewPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? "";
         const pathname = requestPathname(url);
+
+        if (req.method === "POST" && pathname === "/api/harness/hub-reset") {
+          try {
+            const body = (await readJsonBody(req)) as { seed?: HubMockSeed };
+            const seed = body.seed === "active" ? "active" : "empty";
+            resetHubMockState(seed);
+            res.statusCode = 204;
+            res.end();
+          } catch {
+            res.statusCode = 400;
+            res.end("invalid json");
+          }
+          return;
+        }
 
         if (req.method === "POST" && pathname === "/api/harness/browser-view-profile") {
           try {

@@ -362,16 +362,44 @@ func buildDefaultVariants(widgets []WidgetConfig) []WidgetVariantConfig {
 			continue
 		}
 		seen[variantID] = true
-		variants = append(variants, WidgetVariantConfig{
+		variant := WidgetVariantConfig{
 			ID:         variantID,
 			WidgetType: widget.Type,
 			TemplateID: defaultTemplateID(widget.Type),
 			ThemeID:    defaultThemeID(widget),
 			Name:       defaultVariantName(widget),
 			Props:      copyMap(widget.Props),
-		})
+		}
+		switch widget.Type {
+		case "standings":
+			variant.Columns = defaultStandingsColumns()
+		case "relative":
+			variant.Filters = defaultRelativeFilters()
+		}
+		variants = append(variants, variant)
 	}
 	return variants
+}
+
+func defaultStandingsColumns() []ColumnConfig {
+	return []ColumnConfig{
+		{ID: "position", MetricID: "position", Enabled: true, Width: 48},
+		{ID: "name", MetricID: "name", Enabled: true, Width: 160},
+		{ID: "bestLap", MetricID: "bestLap", Enabled: true, Width: 88},
+		{ID: "lastLap", MetricID: "lastLap", Enabled: true, Width: 88},
+		{ID: "interval", MetricID: "interval", Enabled: true, Width: 72},
+		{ID: "currentLap", MetricID: "currentLap", Enabled: true, Width: 72},
+	}
+}
+
+func defaultRelativeFilters() map[string]any {
+	return map[string]any{
+		"rangeAhead":    3,
+		"rangeBehind":   3,
+		"classScope":    "all",
+		"includePlayer": true,
+		"rowHeightMode": "compact",
+	}
 }
 
 func defaultVariantID(widget WidgetConfig) string {

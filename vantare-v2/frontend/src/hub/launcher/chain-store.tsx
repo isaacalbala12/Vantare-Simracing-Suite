@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Events } from "@wailsio/runtime";
 import { HubToast, type HubToastVariant } from "./HubToast";
+import { notifyLaunchResult } from "./launch-notification";
 
 export type ChainStepStatus = "pending" | "launching" | "done" | "failed";
 export type ChainStepState = {
@@ -298,7 +299,9 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
           message = `Perfil ${data.profileId} · no se pudo iniciar`;
         }
 
-        setToastInfo({ variant: result, message, profileId: data.profileId });
+        if (!notifyLaunchResult(data.profileId, result)) {
+          setToastInfo({ variant: result, message, profileId: data.profileId });
+        }
       }
     });
     const offError = Events.On("launcher:chain:error", (event: unknown) => {

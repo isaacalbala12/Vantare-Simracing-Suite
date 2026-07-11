@@ -22,12 +22,16 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Task 5.8 Browser View (2026-07-10): `browser-view.ts` abre `/overlay?profile=` solo con perfil guardado; si dirty → guardar o cancelar (sin descartar). Cableado en `OverlayStudioV3` + `StudioCanvas`.
 - Harness Browser View (2026-07-10): middleware Vite (`overlay-studio-harness-vite-plugin.ts`) + preview studio (`studioPreview=1`, fondo gris/rejilla, escala fit). Commits `32bc433`..`39a1133`.
 - **Fase 5 ✅ CERRADA** (commits `96d7119`..`a606b21` + harness browser view): inspector por capacidades, catálogo, diseños, access policy, Browser View.
-- **Fase 7.1 ✅ CERRADA** (commit pendiente): handlers Wails `studio:profile:load/save` con `requestId` correlacionado; `WidgetDesignService` handlers ya registrados; `StudioProfileService.RegisterHandlers` en `main.go`.
+- **Fase 7.1 ✅ CERRADA** (commit `39f864a`): handlers Wails `studio:profile:load/save` con `requestId` correlacionado; `WidgetDesignService` handlers ya registrados; `StudioProfileService.RegisterHandlers` en `main.go`.
 - Evidencia 7.1: `go test ./internal/app/... -run "StudioProfileService|WidgetDesignService" -count=1` PASS.
+- **Fase 7.2 ✅ CERRADA** (commit `9ab6bd7`): `normalizeLegacyTelemetry`, `TelemetryRateCoordinator`, adaptadores Wails (`telemetry:update`) y SSE (`/telemetry/stream`); stale/disconnected/error publican inmediato; buckets compartidos por Hz.
+- Evidencia 7.2: `pnpm --dir frontend test -- telemetry-adapter telemetry-rate-coordinator wails-telemetry sse-telemetry` → 16 PASS; `pnpm --dir frontend test -- src/overlay` → 76 files / 486 PASS; `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% delta + parity + studio QA, exit 0.
+- **Fase 7.3 ✅ CERRADA** (commit pendiente): `resolve-runtime-layout`, `RuntimeWidgetFrame`, `RuntimeOverlaySurface`, `useRateLimitedTelemetry`; layout runtime sin materializar sesiones; widgets filtrados por enabled/visibility/z-index; preserved legacy con diagnóstico no fatal.
+- Evidencia 7.3: `pnpm --dir frontend test -- resolve-runtime-layout RuntimeWidgetFrame RuntimeOverlaySurface` → 14 PASS; `pnpm --dir frontend visual:overlay-studio` exit 0.
 - **Fase 6 ✅ CERRADA** (commits `074d389`..`5f44acb`): 6.1–6.8 migración funcional completa (Standings, Relative, Pedals Original/Crystal); registry 4 widgets × 2 systems; official designs; catálogo 4 entradas; golden v2 sin diagnósticos; fix chrome selección Relative (`fcf4989`).
 - **6.9 matriz visual + parity:** harness 4 widgets (`harness-fixtures.ts`), 59 baselines PNG (widget×system×surface ready + estados error + variantes stress60/fill/zero/full), assertions HTML parity studio/desktop/obs en Vitest + Playwright, chrome Relative en studio verificado.
 - Evidencia Fase 6 (2026-07-11): `pnpm --dir frontend test -- src/overlay` → 69 files / 456 PASS; `pnpm --dir frontend test -- OverlayParityHarness harness-fixtures` → 21 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 59 baselines 0.000% delta + parity 4 widgets + studio-relative-chrome + drag/resize + zoom; `pnpm --dir frontend build` PASS.
-- **Ningún código de producción UI conmutado a V3 aún** (`studio:profile:load/save` cliente TS listo, handlers Go pendientes).
+- **Ningún código de producción UI conmutado a V3 aún** (handlers Go + runtime surface listos; cableado CompositeApp/ObsOverlayApp pendiente fase 7.5+).
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
 Nota LAUNCH-1C (2026-07-10):

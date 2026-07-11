@@ -638,31 +638,28 @@ async function main() {
       await assertStudioZoomViewport(page, baseUrl);
       console.log("ok studio zoom 150 viewport");
     }
+    console.log("visual review complete");
+    process.exit(0);
   } finally {
-    if (page) {
-      await page.close().catch(() => undefined);
-    }
-    if (browser) {
-      await browser.close().catch(() => undefined);
-    }
-    server.httpServer?.closeAllConnections?.();
-    await Promise.race([
-      server.close(),
-      new Promise((resolve) => {
-        setTimeout(resolve, 1000);
-      }),
-    ]);
+    void (async () => {
+      if (page) {
+        await page.close().catch(() => undefined);
+      }
+      if (browser) {
+        await browser.close().catch(() => undefined);
+      }
+      server.httpServer?.closeAllConnections?.();
+      await Promise.race([
+        server.close(),
+        new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        }),
+      ]);
+    })();
   }
 }
 
-let exitCode = 0;
-main()
-  .catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
-    exitCode = 1;
-  })
-  .finally(() => {
-    setImmediate(() => {
-      process.exit(exitCode);
-    });
-  });
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});

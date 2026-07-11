@@ -56,6 +56,17 @@ function dispatchProfiles(profiles: Array<Record<string, unknown>>) {
   });
 }
 
+function dispatchActiveChain() {
+  dispatch("launcher:snapshot", {
+    revision: 2,
+    apps: [],
+    vantareProfiles: [],
+    userProfiles: [],
+    activeChains: [{ profileId: "creator", status: "running" }],
+    discovery: { scanning: false, lastScanAt: null, error: null },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Mock chain-store hooks – each test sets its own return values
 // ---------------------------------------------------------------------------
@@ -189,5 +200,12 @@ describe("LauncherDock", () => {
     expect(buttons[0].getAttribute("data-testid")).toBe("dock-profile-alpha");
     expect(buttons[1].getAttribute("data-testid")).toBe("dock-profile-beta");
     expect(buttons[2].getAttribute("data-testid")).toBe("dock-profile-zulu");
+  });
+
+  it("shows active chain status outside the Launcher page", () => {
+    renderDock();
+    dispatchActiveChain();
+    expect(screen.getByTestId("dock-active-creator")).toBeTruthy();
+    expect(screen.getByLabelText("Cadena creator running")).toBeTruthy();
   });
 });

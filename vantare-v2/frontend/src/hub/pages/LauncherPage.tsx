@@ -23,7 +23,7 @@ export function LauncherPage() {
     } catch {
       // Restricted browser storage is not a blocker for the launcher.
     }
-    dispatchLauncherCommand("settings:save", { launcherOnboardingCompleted: true });
+    dispatchLauncherCommand("launcher:onboarding:complete");
   };
   return (
     <div className="flex flex-col gap-5">

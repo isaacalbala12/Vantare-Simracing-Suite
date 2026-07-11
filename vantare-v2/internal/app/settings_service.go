@@ -37,6 +37,7 @@ type AppSettings struct {
 	LauncherProfiles            []LaunchProfile             `json:"launcherProfiles,omitempty"`
 	LauncherLMUTriggerEnabled   bool                        `json:"launcherLmuTriggerEnabled,omitempty"`
 	LauncherLMUTriggerProfileID string                      `json:"launcherLmuTriggerProfileId,omitempty"`
+	LauncherOnboardingCompleted bool                        `json:"launcherOnboardingCompleted,omitempty"`
 }
 
 // LauncherAppCategory clasifica una app para la UI.
@@ -491,6 +492,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		BetaUserRole:                loaded.BetaUserRole,
 		LauncherLMUTriggerEnabled:   loaded.LauncherLMUTriggerEnabled,
 		LauncherLMUTriggerProfileID: loaded.LauncherLMUTriggerProfileID,
+		LauncherOnboardingCompleted: loaded.LauncherOnboardingCompleted,
 	}
 	if loaded.Hotkeys != nil {
 		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))

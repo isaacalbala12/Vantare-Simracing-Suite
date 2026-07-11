@@ -286,6 +286,16 @@ func handleResolveLauncherDecision(decisionID, action string, remember bool, emi
 	})
 }
 
+func handleLauncherOnboardingComplete(settingsSvc *app.SettingsService, emitter app.EventEmitter) {
+	settings := settingsSvc.Settings()
+	settings.LauncherOnboardingCompleted = true
+	if err := settingsSvc.Save(settings); err != nil {
+		emitter.Emit("launcher:error", map[string]any{"code": "onboarding_save_failed", "message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:onboarding:completed", map[string]any{"completed": true})
+}
+
 func launcherProcessIdentity(id string, pid int, svc *launcher.Service) (launcher.ProcessIdentity, error) {
 	if pid <= 0 {
 		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: confirmed PID is required")
@@ -1462,6 +1472,11 @@ func main() {
 			}
 		}
 		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, emitter)
+	})
+
+	wailsApp.Event.On("launcher:onboarding:complete", func(event *application.CustomEvent) {
+		_ = event
+		handleLauncherOnboardingComplete(settingsSvc, emitter)
 	})
 
 	for _, command := range []string{"launcher:app:close", "launcher:app:restart"} {

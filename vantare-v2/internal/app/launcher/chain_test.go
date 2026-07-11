@@ -131,7 +131,7 @@ func TestChainFailurePolicyControlsContinuation(t *testing.T) {
 		Steps: []app.LaunchStep{{AppID: "obs"}, {AppID: "obs"}},
 	}
 	runner.RunChain(context.Background(), profile)
-	if emit.count("launcher:chain:step") > 2 {
+	if emit.count("launcher:chain:step") > 3 {
 		t.Fatalf("stop policy should not launch the next step, got %d events", emit.count("launcher:chain:step"))
 	}
 

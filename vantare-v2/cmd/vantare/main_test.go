@@ -514,8 +514,8 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:detected" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy discovery plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical discovery snapshot, got %v", emitter.events)
 	}
 }
 
@@ -525,14 +525,14 @@ func TestHandleAddAppEmitsUpdated(t *testing.T) {
 		ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\obs.exe`,
 	}
 	handleAddApp(entry, svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy app update plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical app snapshot, got %v", emitter.events)
 	}
-	payload := emitter.data[0].(map[string]any)
-	apps, ok := payload["apps"].([]app.LauncherAppEntry)
+	payload, ok := emitter.data[0].(launcher.LauncherSnapshot)
 	if !ok {
-		t.Fatalf("apps payload missing or wrong type: %+v", payload)
+		t.Fatalf("snapshot payload missing or wrong type: %#v", emitter.data[0])
 	}
+	apps := payload.Apps
 	found := false
 	for _, a := range apps {
 		if a.ID == "obs" {
@@ -557,8 +557,8 @@ func TestHandleAddAppEmitsErrorOnInvalid(t *testing.T) {
 func TestHandleRemoveAppEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleRemoveApp("lmu", svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy app update plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical app snapshot, got %v", emitter.events)
 	}
 }
 
@@ -576,8 +576,8 @@ func TestHandleRemoveAppEmitsErrorWhenUsedByProfile(t *testing.T) {
 func TestHandleListProfilesEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleListProfiles(svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy profile list plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 }
 
@@ -585,8 +585,8 @@ func TestHandleSaveProfileEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	profile := app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}
 	handleSaveProfile(profile, svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy profile update plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 }
 
@@ -605,8 +605,8 @@ func TestHandleDeleteProfileEmitsUpdated(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	handleDeleteProfile("pro", svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy profile update plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 }
 
@@ -616,8 +616,8 @@ func TestHandleDuplicateProfileEmitsUpdated(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	handleDuplicateProfile("creator", "creator-copy", "Creador (copia)", svc, emitter)
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:profiles:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("expected legacy profile update plus snapshot, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 	if got := svc.ListProfiles(); len(got) != 2 {
 		t.Fatalf("expected 2 profiles after duplicate, got %d", len(got))
@@ -732,9 +732,12 @@ func TestHandleRegistryListEmitsListed(t *testing.T) {
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:registry:listed" {
 		t.Fatalf("expected launcher:registry:listed, got %v", emitter.events)
 	}
-	payload := emitter.data[0].(map[string]any)
+	payload, ok := emitter.data[0].(map[string]any)
+	if !ok {
+		t.Fatal("expected registry payload")
+	}
 	if _, ok := payload["apps"]; !ok {
-		t.Fatal("expected apps key in payload")
+		t.Fatal("expected apps in registry payload")
 	}
 }
 
@@ -764,11 +767,11 @@ func TestHandleAppUpdateEmitsUpdated(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	handleAppUpdate("obs", "--new-args", settingsSvc2, emitter)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
 	}
-	payload := emitter.data[0].(map[string]any)
-	if _, ok := payload["apps"]; !ok {
+	payload, ok := emitter.data[0].(launcher.LauncherSnapshot)
+	if !ok || payload.Apps == nil {
 		t.Fatal("expected apps key in payload")
 	}
 }
@@ -807,8 +810,8 @@ func TestHandleSetAppPathPersistsValidatedOverride(t *testing.T) {
 	}
 	handleSetAppPath("obs", exe, svc, emitter)
 
-	if len(emitter.events) != 2 || emitter.events[0] != "launcher:apps:updated" || emitter.events[1] != "launcher:snapshot" {
-		t.Fatalf("events=%v, want legacy app update plus snapshot", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want canonical snapshot", emitter.events)
 	}
 	if got := svc.Settings().GetLauncherApps()["obs"]; got.ExecutablePath != exe || got.PathSource != "override" {
 		t.Fatalf("override not persisted: %+v", got)
@@ -1050,8 +1053,8 @@ func TestHandleAppFavorite(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	handleAppFavorite("obs", true, settingsSvc2, emitter)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
 	}
 	// Verify the app is marked as favorite.
 	apps := settingsSvc2.GetLauncherApps()

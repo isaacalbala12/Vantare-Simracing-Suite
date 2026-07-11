@@ -137,7 +137,7 @@ func installerURL(release updater.Release) string {
 }
 
 // handleDiscoverApps runs discovery, persists the merged app set and emits the
-// canonical launcher:apps:detected event. On error it falls back to
+// canonical launcher snapshot. On error it falls back to
 // launcher:error so the UI can surface a message.
 func handleDiscoverApps(svc *launcher.Service, emitter app.EventEmitter) {
 	if _, err := svc.DiscoverApps(); err != nil {
@@ -156,47 +156,29 @@ func handleLauncherSnapshot(svc *launcher.Service, emitter app.EventEmitter) {
 	emitLauncherSnapshot(svc, emitter)
 }
 
-// handleAddApp validates and persists a manually-added app, then emits
-// launcher:apps:updated with the full app set so the UI refreshes.
+// handleAddApp validates and persists a manually-added app, then emits a snapshot.
 func handleAddApp(entry app.LauncherAppEntry, svc *launcher.Service, emitter app.EventEmitter) {
 	if err := svc.AddManualApp(entry); err != nil {
 		log.Printf("launcher:addApp error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	// Convert map to slice for the frontend (expects array, not map).
-	appsMap := svc.Settings().GetLauncherApps()
-	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
-	for _, v := range appsMap {
-		appsList = append(appsList, v)
-	}
-	launcher.EnrichAppsWithIcons(appsList)
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleRemoveApp deletes an app (refusing when a profile still uses it) and
-// emits launcher:apps:updated with the remaining set.
+// emits a snapshot with the remaining set.
 func handleRemoveApp(id string, svc *launcher.Service, emitter app.EventEmitter) {
 	if err := svc.RemoveApp(id); err != nil {
 		log.Printf("launcher:removeApp error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	appsMap := svc.Settings().GetLauncherApps()
-	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
-	for _, v := range appsMap {
-		appsList = append(appsList, v)
-	}
-	launcher.EnrichAppsWithIcons(appsList)
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 	handleLauncherSnapshot(svc, emitter)
 }
 
-// handleListProfiles emits launcher:profiles:updated with the current profiles.
+// handleListProfiles emits the current launcher snapshot.
 func handleListProfiles(svc *launcher.Service, emitter app.EventEmitter) {
-	profiles := svc.ListProfiles()
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": profiles})
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -208,7 +190,6 @@ func handleSaveProfile(profile app.LaunchProfile, svc *launcher.Service, emitter
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -219,7 +200,6 @@ func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmit
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -232,7 +212,6 @@ func handleDuplicateProfile(id, newID, newName string, svc *launcher.Service, em
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -274,21 +253,14 @@ func handleRegistryList(emitter app.EventEmitter) {
 }
 
 // handleAppUpdate updates the Args field of a launcher app entry identified by
-// id. On success it emits launcher:apps:updated with the full app set so the
-// UI refreshes. On error it emits launcher:error with the failure reason.
+// id. The caller emits the canonical snapshot after this succeeds.
 func handleAppUpdate(id, args string, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
 	if err := settingsSvc.UpdateLauncherAppArgs(id, args); err != nil {
 		log.Printf("launcher:app:update error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	appsMap := settingsSvc.GetLauncherApps()
-	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
-	for _, v := range appsMap {
-		appsList = append(appsList, v)
-	}
-	launcher.EnrichAppsWithIcons(appsList)
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
+	handleLauncherSnapshot(launcher.NewService(settingsSvc, emitter, nil), emitter)
 }
 
 func emitLauncherCommandError(emitter app.EventEmitter, err error) {
@@ -322,12 +294,6 @@ func handleSetAppPath(id, path string, svc *launcher.Service, emitter app.EventE
 		emitLauncherCommandError(emitter, err)
 		return
 	}
-	appsList := make([]app.LauncherAppEntry, 0, len(apps))
-	for _, value := range apps {
-		appsList = append(appsList, value)
-	}
-	launcher.EnrichAppsWithIcons(appsList)
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -495,13 +461,7 @@ func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsServic
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	appsMap := settingsSvc.GetLauncherApps()
-	appsList := make([]app.LauncherAppEntry, 0, len(appsMap))
-	for _, v := range appsMap {
-		appsList = append(appsList, v)
-	}
-	launcher.EnrichAppsWithIcons(appsList)
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": appsList})
+	handleLauncherSnapshot(launcher.NewService(settingsSvc, emitter, nil), emitter)
 }
 
 // handleLaunchFlag parses --launch=<profileID> from the command-line arguments.
@@ -1463,7 +1423,6 @@ func main() {
 			}
 		}
 		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
-		handleLauncherSnapshot(launcherSvc, emitter)
 	})
 
 	wailsApp.Event.On("launcher:app:path:set", func(event *application.CustomEvent) {

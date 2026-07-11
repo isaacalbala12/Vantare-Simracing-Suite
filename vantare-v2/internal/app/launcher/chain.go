@@ -218,9 +218,6 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				msg = fmt.Sprintf("el proceso terminó con código %d", result.exitCode)
 			}
 			allSucceeded = false
-			if !ContinueAfterFailure(policy.Failure, false) {
-				return false
-			}
 		}
 
 		r.emit.Emit("launcher:chain:step", ChainProgress{
@@ -233,6 +230,9 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			Pid:        result.pid,
 			Message:    msg,
 		})
+		if !result.success && !ContinueAfterFailure(policy.Failure, false) {
+			return false
+		}
 	}
 
 	return allSucceeded

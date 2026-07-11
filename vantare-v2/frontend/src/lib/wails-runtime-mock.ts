@@ -148,59 +148,6 @@ export const Events = {
       return;
     }
 
-    // Auto-respond to launcher apps discovery
-    if (name === "launcher:apps:discover") {
-      setTimeout(
-        () =>
-          broadcast("launcher:apps:detected", {
-            apps: [
-              { id: "lmu", displayName: "Le Mans Ultimate", abbreviation: "LMU", category: "simulator", launchMethod: "steam-uri", steamAppId: 2399420, detected: true, gradientFrom: "#ff3b3b", gradientTo: "#9a0606" },
-              { id: "obs", displayName: "OBS Studio", abbreviation: "OBS", category: "streaming", launchMethod: "executable", detected: true, gradientFrom: "#302e31", gradientTo: "#0a0a0a" },
-              { id: "crewchief", displayName: "CrewChief", abbreviation: "CC", category: "utility", launchMethod: "executable", detected: true, gradientFrom: "#3b82f6", gradientTo: "#1d4ed8" },
-              { id: "discord", displayName: "Discord", abbreviation: "DC", category: "utility", launchMethod: "executable", detected: true, gradientFrom: "#5865F2", gradientTo: "#404EED" },
-              { id: "spotify", displayName: "Spotify", abbreviation: "Sp", category: "audio", launchMethod: "executable", detected: true, gradientFrom: "#10b981", gradientTo: "#059669" },
-              { id: "motec", displayName: "MoTeC", abbreviation: "MT", category: "telemetry", launchMethod: "executable", detected: true, gradientFrom: "#f59e0b", gradientTo: "#b45309" },
-              { id: "simhub", displayName: "SimHub", abbreviation: "SH", category: "telemetry", launchMethod: "executable", detected: true, gradientFrom: "#8b5cf6", gradientTo: "#6d28d9" },
-            ],
-          }),
-        50,
-      );
-      return;
-    }
-
-    // Auto-respond to launcher profiles list
-    if (name === "launcher:profiles:list") {
-      setTimeout(
-        () =>
-          broadcast("launcher:profiles:updated", {
-            profiles: [
-              {
-                id: "creator",
-                name: "Creador de Contenido",
-                description: "LMU + OBS + Spotify",
-                steps: [
-                  { appId: "lmu", delay: 0 },
-                  { appId: "obs", delay: 2 },
-                  { appId: "spotify", delay: 2 },
-                ],
-              },
-              {
-                id: "pro",
-                name: "Pro",
-                steps: [
-                  { appId: "lmu", delay: 0 },
-                  { appId: "crewchief", delay: 2 },
-                  { appId: "spotify", delay: 2 },
-                  { appId: "motec", delay: 2 },
-                ],
-              },
-            ],
-          }),
-        50,
-      );
-      return;
-    }
-
     // Broadcast any other event to listeners
     broadcast(name, data);
   },

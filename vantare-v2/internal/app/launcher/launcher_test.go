@@ -67,7 +67,7 @@ func newBackendWithLMU() *fakeSettingsBackend {
 	}
 }
 
-func TestDiscoverAppsMergesAndEmits(t *testing.T) {
+func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	backend := newBackendWithLMU()
 	backend.apps["custom"] = app.LauncherAppEntry{ID: "custom", DisplayName: "My App", Detected: false}
 	emitter := &spyEmitter{}
@@ -88,8 +88,8 @@ func TestDiscoverAppsMergesAndEmits(t *testing.T) {
 	if _, ok := appsByID["lmu"]; !ok {
 		t.Fatal("lmu must be present after discovery")
 	}
-	if !hasEvent(emitter, "launcher:apps:detected") {
-		t.Fatalf("expected launcher:apps:detected, got %v", emitter.events)
+	if len(emitter.events) != 0 {
+		t.Fatalf("discovery service should not emit legacy events, got %v", emitter.events)
 	}
 }
 

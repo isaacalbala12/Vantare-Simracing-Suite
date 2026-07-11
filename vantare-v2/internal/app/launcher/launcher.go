@@ -54,7 +54,7 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 }
 
 // Settings returns the backend the orchestrator was constructed with. Handlers
-// use it to read the live app set when emitting launcher:apps:updated without
+// use it to read the live app set when building a snapshot without
 // coupling to the concrete *app.SettingsService type.
 func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
 
@@ -93,15 +93,14 @@ func (s *Service) Snapshot() LauncherSnapshot {
 // DiscoverApps detects installed apps, merges them with the persisted set
 // (preserving manual apps) and persists the result. It is named DiscoverApps
 // rather than Discover to avoid a name collision with the package-level
-// Discover() helper in discovery.go. Emits launcher:apps:detected with an
-// ARRAY (not a map) so the frontend can use .slice().
+// Discover() helper in discovery.go. The caller emits the canonical snapshot.
 func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	detected := Discover()
 	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
 	if err := s.settings.SetLauncherApps(merged); err != nil {
 		return nil, err
 	}
-	// Convert map to slice for the frontend (expects array, not map).
+	// Convert map to slice for the legacy return value.
 	appsList := make([]app.LauncherAppEntry, 0, len(merged))
 	for _, v := range merged {
 		appsList = append(appsList, v)
@@ -111,7 +110,6 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	for i, a := range appsList {
 		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
 	}
-	s.emit.Emit("launcher:apps:detected", map[string]any{"apps": appsList})
 	return appsList, nil
 }
 
@@ -158,8 +156,7 @@ func (s *Service) DuplicateProfile(id, newID, newName string) error {
 }
 
 // LaunchProfile starts the launch chain for the given profile. It looks up the
-// profile, emits launcher:profiles:updated? No — per contract only chain
-// progress events are emitted by the runner; the caller decides on success.
+// profile; per contract only chain progress events are emitted by the runner.
 // Returns ErrProfileNotFound when there is no profile with the given ID. The
 // chain runs on a goroutine (StartChain), so this call returns immediately.
 func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {

@@ -28,6 +28,45 @@ type ProcessInspector interface {
 	Find(context.Context, ProcessIdentity) (ProcessInfo, bool)
 }
 
+type processTerminator interface {
+	Terminate(context.Context, int) error
+}
+
+type taskkillTerminator struct{}
+
+func (taskkillTerminator) Terminate(ctx context.Context, pid int) error {
+	if runtime.GOOS != "windows" {
+		return ErrUnsupported
+	}
+	return exec.CommandContext(ctx, "taskkill", "/PID", strconv.Itoa(pid), "/T").Run()
+}
+
+func CloseProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity) error {
+	if identity.PID == 0 {
+		return fmt.Errorf("launcher: process identity requires a PID")
+	}
+	info, ok := inspector.Find(ctx, identity)
+	if !ok || !ProcessIsReady(identity, info) {
+		return fmt.Errorf("launcher: process identity no longer matches")
+	}
+	return taskkillTerminator{}.Terminate(ctx, info.PID)
+}
+
+func RestartProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity, executable string, args []string) error {
+	if err := CloseProcess(ctx, inspector, identity); err != nil {
+		return err
+	}
+	if executable == "" {
+		return fmt.Errorf("launcher: executable path is empty")
+	}
+	cmd := exec.CommandContext(ctx, executable, args...)
+	cmd.Dir = filepath.Dir(executable)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("launcher: restart process: %w", err)
+	}
+	return nil
+}
+
 func NormalizeExecutablePath(path string) string {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {

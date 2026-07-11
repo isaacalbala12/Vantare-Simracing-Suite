@@ -43,3 +43,13 @@ func TestWaitForReadyUsesInjectedClockBoundaries(t *testing.T) {
 		t.Fatal("expected cancelled readiness wait")
 	}
 }
+
+func TestCloseProcessRequiresConfirmedIdentity(t *testing.T) {
+	err := CloseProcess(context.Background(), fakeInspector{}, ProcessIdentity{PID: 42, ProcessName: "obs.exe"})
+	if err == nil {
+		t.Fatal("close must reject an unconfirmed process")
+	}
+	if err := CloseProcess(context.Background(), fakeInspector{}, ProcessIdentity{}); err == nil {
+		t.Fatal("close must reject an identity without PID")
+	}
+}

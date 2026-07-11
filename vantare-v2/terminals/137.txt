@@ -1,0 +1,75 @@
+---
+pid: 14692
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir frontend test -- CompositeApp ObsOverlayApp DesktopOverlayRuntime ObsOverlayRuntime ProfilePreview StudioRoute overlay-studio widget-preview-contract 2>&1"
+started_at: 2026-07-11T02:22:49.283Z
+running_for_ms: 3664991  
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vitest run "CompositeApp" "ObsOverlayApp" "DesktopOverlayRuntime" "ObsOverlayRuntime" "ProfilePreview" "StudioRoute" "overlay-studio" "widget-preview-contract"
+
+
+ RUN  v4.1.9 C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend
+
+ ✓ src/hub/overlays/ProfilePreview.test.tsx (3 tests) 165ms
+ ✓ src/hub/overlay-studio/catalog/AddWidgetDialog.test.tsx (3 tests) 86ms
+ ✓ src/hub/overlay-studio/components/StudioHeader.test.tsx (3 tests) 147ms
+ ✓ src/hub/overlay-studio/components/WidgetListPanel.test.tsx (4 tests) 163ms
+ ✓ src/hub/overlay-studio/canvas/StudioTelemetryProvider.test.tsx (4 tests) 111ms
+ ✓ src/overlay/CompositeApp.test.tsx (8 tests) 164ms
+ ✓ src/hub/overlay-studio/inspector/DesignSection.test.tsx (6 tests) 229ms
+ ✓ src/hub/overlay-studio/components/RecoveryDialog.test.tsx (2 tests) 102ms
+ ✓ src/overlay/ObsOverlayApp.test.tsx (6 tests) 221ms
+ ✓ src/hub/overlay-studio/inspector/StudioInspector.test.tsx (6 tests) 505ms
+ ✓ src/hub/overlay-studio/canvas/StudioCanvas.test.tsx (9 tests) 572ms
+ ✓ src/hub/overlay-studio/state/studio-store.test.tsx (12 tests) 1293ms
+ ✓ src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx (14 tests) 928ms
+ ✓ src/hub/overlay-studio/StudioRoute.test.tsx (8 tests) 1107ms
+     ✓ guards profile changes with save/discard/cancel while dirty  321ms
+ ✓ src/hub/overlay-studio/OverlayStudioV3.test.tsx (15 tests) 1409ms
+ ✓ src/hub/overlay-studio/inspector/BehaviorSection.test.tsx (4 tests) 116ms
+ ✓ src/hub/overlay-studio/designs/SaveDesignDialog.test.tsx (3 tests) 89ms
+ ✓ src/hub/overlay-studio/components/ResponsivePanelControls.test.tsx (6 tests) 78ms
+ ✓ src/hub/overlay-studio/components/ProfileNameDialog.test.tsx (2 tests) 69ms
+ ✓ src/hub/overlay-studio/inspector/AppearanceSection.test.tsx (2 tests) 45ms
+ ✓ src/hub/overlay-studio/inspector/InspectorRail.test.tsx (3 tests) 72ms
+ ✓ src/hub/overlay-studio/components/DirtyChangesDialog.test.tsx (4 tests) 76ms
+ ✓ src/hub/overlay-studio/canvas/CanvasActionBar.test.tsx (1 test) 41ms
+ ✓ src/hub/overlay-studio/canvas/canvas-frame-preview.test.ts (10 tests) 29ms
+ ✓ src/hub/overlay-studio/canvas/CanvasToolbar.test.tsx (1 test) 80ms
+ ✓ src/hub/overlay-studio/catalog/studio-catalog.test.ts (6 tests) 65ms
+ ✓ src/hub/overlay-studio/inspector/LayoutSection.test.tsx (3 tests) 98ms
+ ✓ src/hub/overlay-studio/canvas/WidgetContextMenu.test.tsx (3 tests) 76ms
+ ✓ src/hub/overlay-studio/canvas/StudioWidgetFrame.test.tsx (5 tests) 140ms
+ ✓ src/hub/overlay-studio/inspector/ActionsSection.test.tsx (4 tests) 73ms
+ ✓ src/hub/overlay-studio/canvas/PreviewSourceControls.test.tsx (3 tests) 72ms
+ ✓ src/hub/overlay-studio/state/studio-profile-client.test.ts (8 tests) 21ms
+ ✓ src/hub/overlay-studio/canvas/canvas-geometry.test.ts (9 tests) 10ms
+ ✓ src/hub/overlay-studio/canvas/canvas-snap.test.ts (6 tests) 9ms
+ ✓ src/hub/overlay-studio/state/studio-command.test.ts (15 tests) 19ms
+ ✓ src/hub/overlay-studio/access/studio-access.test.ts (17 tests) 14ms
+ ✓ src/hub/overlay-studio/state/studio-history.test.ts (10 tests) 25ms
+ ✓ src/hub/overlay-studio/NoActiveProfileState.test.tsx (1 test) 52ms
+ ✓ src/hub/overlay-studio/state/studio-hotkeys.test.ts (4 tests) 9ms
+ ✓ src/hub/overlay-studio/designs/widget-design-client.test.ts (8 tests) 18ms
+ ✓ src/hub/overlay-studio/browser-view.test.ts (8 tests) 12ms
+ ✓ src/hub/overlay-studio/inspector/inspector-sections.test.ts (5 tests) 9ms
+ ✓ src/hub/overlay-studio/canvas/widget-actions.test.ts (7 tests) 8ms
+ ✓ src/overlay-harness/widget-preview-contract.test.ts (10 tests) 8ms
+ ✓ src/hub/overlay-studio/state/studio-recovery.test.ts (6 tests) 11ms
+ ✓ src/hub/overlay-studio/state/session-layouts.test.ts (7 tests) 9ms
+ ✓ src/hub/overlay-studio/state/studio-navigation-guard.test.ts (4 tests) 10ms
+ ✓ src/overlay/runtime/ObsOverlayRuntime.test.tsx (1 test) 52ms
+ ✓ src/hub/overlay-studio/canvas/widget-content-base-size.test.ts (3 tests) 9ms
+ ✓ src/hub/overlay-studio/state/widget-order.test.ts (5 tests) 7ms
+ ✓ src/hub/overlay-studio/canvas/canvas-resize.test.ts (5 tests) 6ms
+ ✓ scripts/overlay-studio-drag-bench-metrics.test.ts (3 tests) 6ms
+ ✓ src/hub/overlay-studio/canvas/canvas-backgrounds.test.ts (3 tests) 5ms
+ ✓ src/overlay/runtime/DesktopOverlayRuntime.test.tsx (1 test) 39ms
+
+ Test Files  54 passed (54)
+      Tests  309 passed (309)
+   Start at  04:22:51
+   Duration  14.76s (transform 14.27s, setup 1.52s, import 51.02s, tests 8.79s, environment 109.00s)
+

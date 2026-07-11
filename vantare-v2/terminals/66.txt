@@ -1,0 +1,84 @@
+---
+pid: 13184
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend lint"
+started_at: 2026-07-10T12:25:28.867Z
+running_for_ms: 26819997 
+---
+(node:25408) ESLintIgnoreWarning: The ".eslintignore" file is no longer supported. Switch to using the "ignores" property in "eslint.config.js": https://eslint.org/docs/latest/use/configure/migration-guide#ignore-files
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> vantare-overlay@0.1.0.2 lint C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> eslint .
+
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\calendar\CalendarDayView.tsx
+  109:19  error  '_onFilterSelect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\calendar\CalendarRaceRail.tsx
+  47:60  error  '_timeZone' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\calendar\CalendarWeekView.tsx
+  108:19  error  '_onFilterSelect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx
+   90:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-refresh/only-export-components
+  257:8   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:257:8
+  255 | export function ChainRunnerProvider({ children }: { children: ReactNode }) {
+  256 |   const storeRef = useRef<ChainRunnerStore | null>(null);
+> 257 |   if (!storeRef.current) {
+      |        ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+  260 |   const store = storeRef.current;
+
+To initialize a ref only once, check that the ref is null with the pattern `if (ref.current == null) { ref.current = ... }`  react-hooks/refs
+  260:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:260:17
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+> 260 |   const store = storeRef.current;
+      |                 ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  261 |
+  262 |   const [toastInfo, setToastInfo] = useState<{
+  263 |     variant: HubToastVariant;                                                                                                                                                                                                          react-hooks/refs
+  260:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:260:17
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+> 260 |   const store = storeRef.current;
+      |                 ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  261 |
+  262 |   const [toastInfo, setToastInfo] = useState<{
+  263 |     variant: HubToastVariant;                                                                                                                                                                                                          react-hooks/refs
+  260:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:260:17
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+> 260 |   const store = storeRef.current;
+      |                 ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  261 |
+  262 |   const [toastInfo, setToastInfo] = useState<{
+  263 |     variant: HubToastVariant;                                                                                                                                                                                                          react-hooks/refs
+  354:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-refresh/only-export-components
+  367:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-refresh/only-export-components
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\lib\wails-runtime-topbar-mock.ts
+  86:13  error  '_url' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 11 problems (11 errors, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

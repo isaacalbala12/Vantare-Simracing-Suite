@@ -1,0 +1,23 @@
+---
+pid: 26364
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "$env:PAYMENT_DONE=\"1\"; node \"C:\\Users\\isaac\\AppData\\Local\\Temp\\vantare-fase2g-orchestrator.mjs\" 2>&1"
+started_at: 2026-07-09T20:50:20.481Z
+running_for_ms: 19875008 
+---
+CHECKOUT_URL_READY
+{"checkoutOk":"OK","urlHost":"sandbox.polar.sh","bodyOk":"OK"}
+POST_PAYMENT_API_DONE
+{
+  "login": "OK",
+  "noBundleBefore": "FAIL",
+  "checkoutBodyOnlyProductKey": "OK",
+  "checkoutHttp": "OK",
+  "webhookEventDetected": "FAIL",
+  "entitlementBundle": "OK",
+  "entitlementSourcePolar": "OK",
+  "entitlementLifetime": "OK",
+  "entitlementExpiresNull": "OK",
+  "rpcBundleAfterPayment": "FAIL",
+  "portalHttp": "OK"
+}

@@ -1,0 +1,222 @@
+---
+pid: 22452
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir frontend test"
+started_at: 2026-07-09T19:12:47.561Z
+running_for_ms: 74999    
+---
+DOMException [AbortError]: The operation was aborted.
+    at Fetch.onAsyncTaskManagerAbort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:546:23)
+    at Object.<anonymous> (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:416:101)
+    at AsyncTaskManager.abortAll (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:292:30)
+    at AsyncTaskManager.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:52:21)
+    at DetachedBrowserFrame.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/browser/detached-browser/DetachedBrowserFrame.js:112:58)
+    at DetachedWindowAPI.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/window/DetachedWindowAPI.js:51:35)
+    at teardownWindow (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:331:22)
+    at Object.teardown (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:392:10)
+    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/base.BE3cXZj3.js:168:65
+    at Traces.$ (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+DOMException [AbortError]: The operation was aborted.
+    at Fetch.onAsyncTaskManagerAbort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:546:23)
+    at Object.<anonymous> (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:416:101)
+    at AsyncTaskManager.abortAll (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:292:30)
+    at AsyncTaskManager.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:52:21)
+    at DetachedBrowserFrame.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/browser/detached-browser/DetachedBrowserFrame.js:112:58)
+    at DetachedWindowAPI.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/window/DetachedWindowAPI.js:51:35)
+    at teardownWindow (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:331:22)
+    at Object.teardown (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:392:10)
+    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/base.BE3cXZj3.js:168:65
+    at Traces.$ (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vitest run
+
+
+ RUN  v4.1.9 C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend
+
+ ✓ src/hub/overlays/RelativeSettingsSection.test.tsx (11 tests) 509ms
+ ✓ src/hub/calendar/CalendarMonthView.test.tsx (11 tests) 1006ms
+     ✓ renders monthly grid with 42 cells  517ms
+ ✓ src/hub/pages/CalendarPage.test.tsx (13 tests) 1014ms
+ ✓ src/hub/calendar/CalendarWeekView.test.tsx (15 tests) 1375ms
+     ✓ renders 7 columns of week view  516ms
+ ✓ src/hub/pages/SettingsPage.test.tsx (28 tests) 1140ms
+ ✓ src/hub/auth/LoginScreen.test.tsx (19 tests) 1346ms
+ ✓ src/hub/calendar/CalendarDayView.test.tsx (14 tests) 1626ms
+     ✓ shows date title of selected day in Spanish  566ms
+ ✓ src/hub/overlays/LayoutStudio.test.tsx (9 tests) 830ms
+ ✓ src/hub/pages/RoadmapPage.test.tsx (20 tests) 1700ms
+ ✓ src/lib/license.test.tsx (15 tests) 1980ms
+       ✓ registers license:changed listener and emits license:validate on mount  481ms
+       ✓ ignores license:validate changes for unrelated events  457ms
+       ✓ emits license:validate without session token in standalone mode  467ms
+       ✓ emits license:validate with an empty payload in standalone mode  515ms
+ ✓ src/hub/pages/PreviewPage.test.tsx (11 tests) 1650ms
+     ✓ only reports saved after backend confirms layout:saved  311ms
+     ✓ starts and stops the selected profile from preview  300ms
+ ✓ src/hub/pages/OverlaysStudioPage.test.tsx (16 tests) 2740ms
+     ✓ shows loading while switching from profile A to profile B in layout studio  376ms
+     ✓ opens own profiles, recommended profiles, and community subpages  371ms
+     ✓ starts and stops overlay from layout studio for the active profile  309ms
+     ✓ no autosavea en modo layout tras modificar/añadir widget, y requiere guardado explícito  595ms
+ ✓ src/hub/launcher/AddNonSteamGameModal.test.tsx (17 tests) 1020ms
+     ✓ caps results at 200 when more matches exist and shows footer  551ms
+ ✓ src/hub/overlays/WidgetStudio.test.tsx (24 tests) 3364ms
+     ✓ exposes the official design gallery inside WidgetStudio without position/tamaño controls  356ms
+ ✓ src/hub/overlays/StandingsSettingsSection.test.tsx (9 tests) 432ms
+ ✓ src/hub/overlays/WidgetConfigSections.test.tsx (13 tests) 362ms
+ ✓ src/hub/pages/DashboardPage.test.tsx (8 tests) 260ms
+ ✓ src/overlay/widgets/StandingsWidget.test.tsx (9 tests) 360ms
+ ✓ src/hub/overlays/OwnProfilesView.test.tsx (9 tests) 297ms
+ ✓ src/hub/pages/EngineerPage.test.tsx (15 tests) 562ms
+ ✓ src/hub/pages/HubApp.bridge.test.tsx (2 tests) 646ms
+     ✓ falls back to a blank validation when there is no session  543ms
+ ✓ src/hub/preview/PreviewInspector.test.tsx (9 tests) 271ms
+ ✓ src/hub/overlays/RecommendedProfilesView.test.tsx (4 tests) 403ms
+ ✓ src/overlay/CompositeApp.test.tsx (12 tests) 390ms
+ ✓ src/hub/HubApp.test.tsx (26 tests) 1602ms
+     ✓ renders Roadmap page when roadmap section is selected  440ms
+ ✓ src/hub/auth/PaywallScreen.test.tsx (8 tests) 220ms
+ ✓ src/hub/components/Topbar.test.tsx (18 tests) 225ms
+ ✓ src/hub/overlays/WidgetSandboxPreview.test.tsx (15 tests) 410ms
+ ✓ src/hub/calendar/CalendarToolbar.test.tsx (10 tests) 175ms
+ ✓ src/hub/overlays/V52OverlaysHome.test.tsx (7 tests) 380ms
+ ✓ src/hub/components/UpdateBanner.test.tsx (12 tests) 203ms
+ ✓ src/hub/overlays/StudioWidgetList.test.tsx (9 tests) 215ms
+ ✓ src/hub/overlays/WidgetPresetSection.test.tsx (8 tests) 119ms
+ ✓ src/hub/overlays/WidgetSettingsPanel.test.tsx (18 tests) 246ms
+ ✓ src/hub/onboarding/OnboardingFlow.test.tsx (13 tests) 156ms
+ ✓ src/hub/components/V52Shell.test.tsx (3 tests) 116ms
+ ✓ src/hub/components/LauncherDock.test.tsx (8 tests) 138ms
+ ✓ src/hub/preview/PreviewWidgetFrame.test.tsx (7 tests) 120ms
+ ✓ src/hub/calendar/CalendarRaceRail.test.tsx (9 tests) 113ms
+ ✓ src/hub/calendar/CalendarHeroUpcomingPanel.test.tsx (3 tests) 121ms
+ ✓ src/hub/widgets/WidgetDesignGallery.test.tsx (14 tests) 148ms
+ ✓ src/hub/overlays/WidgetVariantManager.test.tsx (23 tests) 152ms
+ ✓ src/hub/settings/AccountSettings.test.tsx (10 tests) 268ms
+ ✓ src/hub/launcher/ProfileEditor.test.tsx (6 tests) 190ms
+ ✓ src/hub/components/ActiveOverlayCard.test.tsx (14 tests) 146ms
+ ✓ src/hub/onboarding/BetaWelcome.test.tsx (13 tests) 133ms
+ ✓ src/hub/pages/HubPage.test.tsx (9 tests) 220ms
+ ✓ src/hub/overlays/WidgetPreviewPanel.test.tsx (5 tests) 130ms
+ ✓ src/hub/launcher/ProfileCard.timeline.test.tsx (3 tests) 85ms
+ ✓ src/hub/overlays/ObsOverlaySetupView.test.tsx (3 tests) 82ms
+ ✓ src/hub/overlays/PedalsSettingsSection.test.tsx (11 tests) 156ms
+ ✓ src/hub/overlays/CommunityComingSoonView.test.tsx (4 tests) 104ms
+ ✓ src/hub/overlays/ProfilePreview.test.tsx (3 tests) 126ms
+ ✓ src/hub/pages/LauncherPage.test.tsx (4 tests) 137ms
+ ✓ src/hub/launcher/AppsPanel.test.tsx (5 tests) 164ms
+ ✓ src/hub/preview/WidgetList.test.tsx (3 tests) 105ms
+ ✓ src/overlay/widgets/MulticlassRelativeWidget.test.tsx (4 tests) 86ms
+ ✓ src/overlay/widgets/BroadcastTowerWidget.test.tsx (3 tests) 65ms
+ ✓ src/hub/auth/LicenseBanner.test.tsx (8 tests) 80ms
+ ✓ src/hub/preview/AppearanceEditor.test.tsx (3 tests) 89ms
+ ✓ src/i18n/i18n.test.ts (25 tests) 94ms
+ ✓ src/hub/preview/PreviewCanvas.test.tsx (4 tests) 124ms
+ ✓ src/hub/pages/TelemetryPage.test.tsx (3 tests) 77ms
+ ✓ src/hub/HubErrorBoundary.test.tsx (5 tests) 77ms
+ ✓ src/hub/launcher/ProfileCard.test.tsx (4 tests) 110ms
+ ✓ src/hub/components/LastActivityCard.test.tsx (6 tests) 94ms
+ ✓ src/hub/preview/WidgetRenderer.test.tsx (6 tests) 84ms
+ ✓ src/overlay/OverlayCalendarReminderBanner.test.tsx (7 tests) 91ms
+ ✓ src/hub/overlays/StudioHome.test.tsx (2 tests) 95ms
+ ✓ src/i18n/I18nProvider.test.tsx (10 tests) 93ms
+ ✓ src/hub/registry/_examples/vantare-v3-standings-header.test.tsx (3 tests) 47ms
+ ✓ src/overlay/ObsOverlayApp.test.tsx (4 tests) 83ms
+ ✓ src/overlay/WidgetEditFrame.test.tsx (6 tests) 82ms
+ ✓ src/overlay/widgets/DeltaWidget.test.tsx (10 tests) 81ms
+ ✓ src/hub/launcher/ProfileCard.timeline.a11y.test.tsx (2 tests) 86ms
+ ✓ src/hub/calendar/CalendarReminderBanner.test.tsx (6 tests) 80ms
+ ✓ src/i18n/LanguageSelector.test.tsx (5 tests) 60ms
+ ✓ src/hub/launcher/chain-store.subscribe.test.tsx (2 tests) 69ms
+ ✓ src/overlay/widgets/RelativeWidget.test.tsx (4 tests) 65ms
+ ✓ src/overlay/widgets/EngineerNotificationsWidget.test.tsx (7 tests) 77ms
+ ✓ src/hub/launcher/HubToast.test.tsx (2 tests) 72ms
+ ✓ src/hub/components/QuickActions.test.tsx (4 tests) 65ms
+ ✓ src/hub/components/AccessGate.test.tsx (11 tests) 68ms
+ ✓ src/overlay/widgets/TelemetryWidget.test.tsx (2 tests) 63ms
+ ✓ src/overlay/widgets/PedalsWidget.test.tsx (4 tests) 65ms
+ ✓ src/hub/overlays/studio-controls.test.tsx (3 tests) 38ms
+ ✓ src/hub/components/PlanStatusCard.test.tsx (4 tests) 62ms
+ ✓ src/hub/pages/WidgetsPage.test.tsx (2 tests) 61ms
+ ✓ src/hub/overlays/useOverlayStudioState.test.tsx (11 tests) 69ms
+ ✓ src/hub/overlays/RecommendedSuccessBanner.test.tsx (2 tests) 43ms
+ ✓ src/hub/components/OpsPanel.test.tsx (3 tests) 40ms
+ ✓ src/hub/components/RecommendedQuickStart.test.tsx (4 tests) 52ms
+ ✓ src/overlay/widgets/TelemetryVerticalWidget.test.tsx (1 test) 55ms
+ ✓ src/overlay/WidgetHost.test.tsx (5 tests) 63ms
+ ✓ src/lib/access.test.tsx (6 tests) 50ms
+ ✓ src/calendar/calendar-view-math.test.ts (29 tests) 47ms
+ ✓ src/hub/preview/PreviewScaler.test.tsx (3 tests) 61ms
+ ✓ src/hub/components/V52SectionHeader.test.tsx (1 test) 46ms
+ ✓ src/hub/pages/ProfilesPage.test.tsx (1 test) 41ms
+ ✓ src/hub/components/AppBadge.test.tsx (1 test) 45ms
+ ✓ src/overlay/EditOverlayApp.test.tsx (1 test) 47ms
+ ✓ src/lib/useDemoMode.test.ts (5 tests) 42ms
+ ✓ src/hub/preview/WidgetPreview.test.tsx (2 tests) 38ms
+ ✓ src/hub/preview/StyleSelector.test.tsx (2 tests) 39ms
+ ✓ src/hub/overlays/WidgetAccessBadge.test.tsx (4 tests) 38ms
+ ✓ src/hub/components/V52InfoCard.test.tsx (1 test) 35ms
+ ✓ src/overlay/widgets/standings-catalog.test.ts (8 tests) 13ms
+ ✓ src/hub/components/EmptyStates.test.tsx (2 tests) 40ms
+ ✓ src/hub/launcher/launcher-state.test.ts (20 tests) 28ms
+ ✓ src/hub/registry/widget-components.test.tsx (7 tests) 30ms
+ ✓ src/hub/overlays/WidgetDataStatusBadge.test.tsx (3 tests) 37ms
+ ✓ src/lib/supabase-auth.test.ts (20 tests) 21ms
+ ✓ src/lib/frame-budget.test.ts (4 tests) 12ms
+ ✓ src/hub/overlays/widget-config-model.test.ts (51 tests) 29ms
+ ✓ src/hub/roadmap/roadmap-features.test.ts (9 tests) 13ms
+ ✓ src/hub/widgets/widget-design-gallery.test.ts (33 tests) 23ms
+ ✓ src/hub/overlays/widget-catalog.test.ts (29 tests) 17ms
+ ✓ src/lib/widget-variants.test.ts (22 tests) 18ms
+ ✓ src/lib/access-policy.test.ts (57 tests) 18ms
+ ✓ src/lib/theme.test.ts (6 tests) 21ms
+ ✓ src/hub/roadmap/roadmap-data.test.ts (24 tests) 17ms
+ ✓ src/overlay/widgets/widget-preview-fixtures.test.ts (28 tests) 24ms
+ ✓ src/lib/plan.test.ts (36 tests) 13ms
+ ✓ src/hub/overlays/recommended-first-use.test.ts (3 tests) 12ms
+ ✓ src/overlay/widgets/pedals-format.test.ts (18 tests) 8ms
+ ✓ src/lib/dom-write.test.ts (4 tests) 15ms
+ ✓ src/hub/overlays/recommended-profiles.test.ts (9 tests) 11ms
+ ✓ src/hub/launcher/chain-store.test.ts (8 tests) 12ms
+ ✓ src/lib/access-dev-modes.test.ts (23 tests) 15ms
+ ✓ src/lib/widget-presets.test.ts (14 tests) 16ms
+ ✓ src/lib/widget-presets-store.test.ts (2 tests) 16ms
+ ✓ src/hub/roadmap/features-data.test.ts (13 tests) 16ms
+ ✓ src/hub/preview/widget-preview-size.test.ts (8 tests) 11ms
+ ✓ src/overlay/widgets/relative-catalog.test.ts (7 tests) 12ms
+ ✓ src/hub/registry/builtin-systems.test.ts (5 tests) 10ms
+ ✓ src/lib/canvas-math.test.ts (15 tests) 11ms
+ ✓ src/overlay/widgets/widget-design-system.test.ts (9 tests) 13ms
+ ✓ src/hub/registry/design-system-registry.test.ts (6 tests) 11ms
+ ✓ src/overlay/widgets/widget-base-size.test.ts (9 tests) 11ms
+ ✓ src/overlay/widgets/standings-format.test.ts (19 tests) 11ms
+ ✓ src/overlay/widgets/relative-format.test.ts (11 tests) 11ms
+ ✓ src/hub/settings/hotkey-capture.test.ts (10 tests) 7ms
+ ✓ src/lib/widget-factory.test.ts (5 tests) 9ms
+ ✓ src/calendar/calendar-store.test.ts (6 tests) 9ms
+ ✓ src/overlay/widgets/widget-appearance.test.ts (9 tests) 9ms
+ ✓ src/hub/state/style-catalog.contract.test.ts (12 tests) 8ms
+ ✓ src/overlay/widgets/relative-filters.test.ts (6 tests) 9ms
+ ✓ src/overlay/overlay-document.test.ts (1 test) 8ms
+ ✓ src/hub/preview/profile-editor.test.ts (5 tests) 8ms
+ ✓ src/hub/preview/widget-preview-contract.test.ts (10 tests) 9ms
+ ✓ src/hub/calendar/calendar-upcoming.test.ts (4 tests) 7ms
+ ✓ src/hub/overlays/widget-studio-empty-profile.test.ts (6 tests) 7ms
+ ✓ src/hub/state/style-catalog.test.ts (8 tests) 8ms
+ ✓ src/lib/visibility.test.ts (7 tests) 6ms
+ ✓ src/overlay/widgets/mock-telemetry.test.ts (4 tests) 7ms
+ ✓ src/hub/navigation.test.ts (4 tests) 7ms
+ ✓ src/overlay/widgets/widget-design-system.contract.test.ts (7 tests) 6ms
+ ✓ src/lib/html-escape.test.ts (2 tests) 3ms
+ ✓ src/hub/overlays/pedals-settings.test.ts (7 tests) 6ms
+ ✓ src/hub/state/overlay-workbench.test.ts (3 tests) 5ms
+ ✓ src/lib/billing-client.test.ts (9 tests) 27ms
+ ✓ src/lib/telemetry-ref.test.ts (5 tests) 4ms
+ ✓ src/lib/profile.test.ts (3 tests) 3ms
+
+ Test Files  163 passed (163)
+      Tests  1545 passed (1545)
+   Start at  21:12:55
+   Duration  34.89s (transform 22.18s, setup 7.50s, import 120.54s, tests 36.29s, environment 264.43s)
+

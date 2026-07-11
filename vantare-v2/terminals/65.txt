@@ -1,0 +1,61 @@
+---
+pid: 14780
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "go test ./pkg/config/... ./internal/app/... ./internal/server/... ./internal/window/..."
+started_at: 2026-07-10T12:25:28.868Z
+running_for_ms: 26815000 
+---
+ok  github.com/vantare/overlays/v2/pkg/config0.126s
+ok  github.com/vantare/overlays/v2/internal/app5.302s
+ok  github.com/vantare/overlays/v2/internal/app/launcher4.401s
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+--- FAIL: TestAuthTokenRejectsMissingNonce (0.00s)
+    server_test.go:458: POST /auth/token missing nonce = 200, want 401
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+--- FAIL: TestAuthTokenRejectsInvalidNonce (0.00s)
+    server_test.go:476: POST /auth/token invalid nonce = 200, want 401
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+--- FAIL: TestAuthTokenRejectsReusedNonce (0.00s)
+    server_test.go:505: reused nonce = 200, want 401
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/10 14:25:47 HTTP server: listening on 127.0.0.1:54447
+2026/07/10 14:25:47 HTTP server: FAILED to listen on 127.0.0.1:54449: listen tcp 127.0.0.1:54449: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+FAIL
+FAILgithub.com/vantare/overlays/v2/internal/server1.500s
+ok  github.com/vantare/overlays/v2/internal/window0.020s
+FAIL

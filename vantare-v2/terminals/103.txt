@@ -1,0 +1,36 @@
+---
+pid: 20100
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor && pnpm --dir vantare-v2/frontend visual:overlay-studio"
+started_at: 2026-07-11T00:57:36.942Z
+running_for_ms: 8780007  
+---
+
+> vantare-overlay@0.1.0.2 visual:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-visual.mjs
+
+Port 5176 is in use, trying another one...
+ok delta-original-ready-studio (0.000% delta)
+ok delta-original-ready-desktop (0.000% delta)
+ok delta-original-ready-obs (0.000% delta)
+ok delta-crystal-ready-studio (0.000% delta)
+ok delta-crystal-ready-desktop (0.000% delta)
+ok delta-crystal-ready-obs (0.000% delta)
+ok standings-original-ready-studio (0.000% delta)
+ok standings-original-ready-desktop (0.000% delta)
+ok standings-original-ready-obs (0.000% delta)
+ok standings-crystal-ready-studio (0.000% delta)
+ok standings-crystal-ready-desktop (0.000% delta)
+ok standings-crystal-ready-obs (0.000% delta)
+ok relative-original-ready-studio (0.000% delta)
+ok relative-original-ready-desktop (0.000% delta)
+ok relative-original-ready-obs (0.000% delta)
+ok relative-crystal-ready-studio (0.000% delta)
+ok relative-crystal-ready-desktop (0.000% delta)
+ok relative-crystal-ready-obs (0.000% delta)
+ok pedals-original-ready-studio (0.000% delta)
+ok pedals-original-ready-desktop (0.000% delta)
+ok pedals-original-ready-obs (0.000% delta)
+ok pedals-crystal-ready-studio (0.000% delta)
+ok pedals-crystal-ready-desktop (0.000% delta)
+ ELIFECYCLE  Command failed with exit code 1.

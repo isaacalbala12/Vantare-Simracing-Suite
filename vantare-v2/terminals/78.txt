@@ -1,0 +1,29 @@
+---
+pid: 26672
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir \"C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor\\vantare-v2\\frontend\" bench:overlay-studio-drag:baseline && pnpm --dir \"C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor\\vantare-v2\\frontend\" bench:overlay-studio-drag"
+started_at: 2026-07-10T17:09:17.417Z
+running_for_ms: 9790006  
+---
+
+> vantare-overlay@0.1.0.2 bench:overlay-studio-drag:baseline C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-drag-bench.mjs --update-baseline
+
+Port 5176 is in use, trying another one...
+ok move-slow lag_p95=37.60ms score=-8.9
+ok move-fast lag_p95=41.80ms score=-23.5
+ok resize-se lag_p95=43.00ms score=-26.1
+wrote C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\docs\overlays-studio\benchmarks\results\run-2026-07-10T17-09-25-793Z.json
+compositeScore=-19.51
+updated baseline C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\docs\overlays-studio\benchmarks\results\baseline-B1.json
+
+> vantare-overlay@0.1.0.2 bench:overlay-studio-drag C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-drag-bench.mjs
+
+Port 5176 is in use, trying another one...
+ok move-slow lag_p95=31.10ms score=12.8
+ok move-fast lag_p95=40.30ms score=-16.6
+ok resize-se lag_p95=41.00ms score=-20.5
+wrote C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\docs\overlays-studio\benchmarks\results\run-2026-07-10T17-09-34-198Z.json
+compositeScore=-8.12
+regression ok (delta -11.39 <= 8)

@@ -1,0 +1,12 @@
+---
+pid: 27100
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "node frontend/scripts/billing-gui-smoke-quick.mjs"
+started_at: 2026-07-09T19:31:28.379Z
+running_for_ms: 24605007 
+---
+LOGIN_OK 3c26111c-9805-40f8-bd51-3be9fcf4e39f
+✓ Billing GUI Smoke (temp)
+  http://localhost:5173/billing-gui-smoke.html
+STATE "{\"openedUrls\":[],\"fetchLog\":[],\"ready\":false,\"error\":null}"
+PLANS "{\"free\":false,\"launch\":false,\"pro\":false}"

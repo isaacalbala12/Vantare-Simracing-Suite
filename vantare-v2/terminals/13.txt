@@ -1,0 +1,582 @@
+---
+pid: 2116
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir frontend dev"
+started_at: 2026-07-09T19:23:06.399Z
+running_for_ms: 25125000 
+---
+21:23:48 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:23:48 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:24:03 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:24:03 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:24:07 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:24:07 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:24:07 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+      at async viteTransformMiddleware (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24440:20)
+21:24:07 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:24:07 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:25:27 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:27 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:25:44 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:44 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:44 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:44 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:25:49 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:49 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:52 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:52 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:52 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:25:52 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:28:52 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:28:52 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:28:55 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:28:55 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:28:55 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:28:55 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:31:21 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:21 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:28 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:28 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:28 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:28 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:31:30 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:30 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:31:30 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:30 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:31 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:31 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:31 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:31 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:31:32 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:32 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:32 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:31:32 [vite] Internal server error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+      at TransformPluginContext._formatLog (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30602:39)
+      at TransformPluginContext.error (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30599:14)
+      at normalizeUrl (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27842:18)
+      at async file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27905:30
+      at async Promise.all (index 2)
+      at async TransformPluginContext.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:27873:4)
+      at async EnvironmentPluginContainer.transform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:14)
+      at async loadAndTransform (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+21:32:54 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+21:32:54 [vite] (client) Pre-transform error: Failed to resolve import "../index.css" from "src/billing-gui-smoke.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend/src/billing-gui-smoke.tsx:3:7
+  1  |  import { StrictMode, useCallback, useState } from "react";
+  2  |  import { createRoot } from "react-dom/client";
+  3  |  import "../index.css";
+     |          ^
+  4  |  import { I18nProvider } from "./i18n/I18nProvider";
+  5  |  import { PaywallScreen } from "./hub/auth/PaywallScreen";
+
+> vantare-overlay@0.1.0.2 dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vite
+
+21:23:11 [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v8.0.16  ready in 2967 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+21:25:44 [vite] (client) page reload src/billing-gui-smoke.tsx
+21:25:44 [vite] (client) page reload billing-gui-smoke.html
+21:31:28 [vite] (client) page reload scripts/billing-gui-smoke-quick.mjs
+21:33:00 [vite] (client) page reload src/billing-gui-smoke.tsx
+21:42:04 [vite] .env.local changed, restarting server...
+21:42:04 [vite] server restarted.
+ ELIFECYCLE  Command failed with exit code 4294967295.

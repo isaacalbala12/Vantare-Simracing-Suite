@@ -1,0 +1,49 @@
+---
+pid: 14332
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "go run ./cmd/vantare -live=false -profile configs/example-racing.json"
+started_at: 2026-07-11T01:34:56.846Z
+running_for_ms: 6555000  
+---
+Jul 11 03:34:59.268 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc
+Jul 11 03:34:59.270 INF AssetServer Info: middleware=true handler=true
+Jul 11 03:34:59.270 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/11 03:34:59 HTTP server: listening on 127.0.0.1:39261
+2026/07/11 03:34:59 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 03:34:59 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/11 03:34:59 global hotkeys active (4 registered)
+2026/07/11 03:34:59 [WebView2] Environment created successfully
+Jul 11 03:34:59.645 INF [AssetFileServerFS] Handling request url=/ file=.
+Jul 11 03:34:59.704 INF [AssetFileServerFS] Handling request url=/assets/index-DWwHDFMF.js file=assets/index-DWwHDFMF.js
+Jul 11 03:34:59.704 INF [AssetFileServerFS] Handling request url=/assets/index-Dfi8Dk4e.css file=assets/index-Dfi8Dk4e.css
+Jul 11 03:34:59.856 INF [AssetFileServerFS] Handling request url=/favicon.svg file=favicon.svg
+2026/07/11 03:35:00 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 03:35:00 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 03:35:02 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 03:35:02 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 03:35:09 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:35:09 license:validate request tokenLen=1350 refreshLen=12
+2026/07/11 03:35:10 license:validate result state=authenticated-no-entitlement email=vantareapp@gmail.com deviceOK=true entitlements=[] err=<nil>
+2026/07/11 03:35:26 LAUNCHER-DBG: probing obs paths=[%PROGRAMFILES%\obs-studio\bin\64bit %PROGRAMFILES(X86)%\obs-studio\bin\64bit]
+2026/07/11 03:35:26 LAUNCHER-DBG: PROGRAMFILES="C:\\Program Files" LOCALAPPDATA="C:\\Users\\isaac\\AppData\\Local"
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Program Files\obs-studio\bin\64bit names=[obs64.exe obs32.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: probing obs paths=[%PROGRAMFILES%\obs-studio\bin\64bit %PROGRAMFILES(X86)%\obs-studio\bin\64bit]
+2026/07/11 03:35:26 LAUNCHER-DBG: PROGRAMFILES="C:\\Program Files" LOCALAPPDATA="C:\\Users\\isaac\\AppData\\Local"
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Program Files\obs-studio\bin\64bit names=[obs64.exe obs32.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: FOUND obs at C:\Program Files\obs-studio\bin\64bit\obs64.exe
+2026/07/11 03:35:26 LAUNCHER-DBG: probing crewchief paths=[%LOCALAPPDATA%\CrewChief]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Users\isaac\AppData\Local\CrewChief names=[CrewChiefV4.exe CrewChief.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: FOUND obs at C:\Program Files\obs-studio\bin\64bit\obs64.exe
+2026/07/11 03:35:26 LAUNCHER-DBG: probing crewchief paths=[%LOCALAPPDATA%\CrewChief]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Users\isaac\AppData\Local\CrewChief names=[CrewChiefV4.exe CrewChief.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: probing motec paths=[%PROGRAMFILES%\MoTeC]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Program Files\MoTeC names=[MoTeC.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: probing motec paths=[%PROGRAMFILES%\MoTeC]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Program Files\MoTeC names=[MoTeC.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: probing simhub paths=[%PROGRAMFILES%\SimHub %LOCALAPPDATA%\SimHub]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Program Files\SimHub names=[SimHub.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Users\isaac\AppData\Local\SimHub names=[SimHub.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: probing simhub paths=[%PROGRAMFILES%\SimHub %LOCALAPPDATA%\SimHub]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Program Files\SimHub names=[SimHub.exe]
+2026/07/11 03:35:26 LAUNCHER-DBG: checking dir=C:\Users\isaac\AppData\Local\SimHub names=[SimHub.exe]
+exit status 0xffffffff

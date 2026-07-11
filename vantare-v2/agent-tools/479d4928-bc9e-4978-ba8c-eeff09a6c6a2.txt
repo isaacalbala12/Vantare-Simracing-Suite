@@ -1,0 +1,854 @@
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+
+ FAIL  src/hub/overlay-studio/inspector/StudioInspector.test.tsx > StudioInspector > mounts only the active section panel
+TestingLibraryElementError: Unable to find an element by: [data-testid="studio-inspector-section-appearance"]
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <button
+      data-testid="select-delta-main"
+      type="button"
+    >
+      Delta main
+    </button>
+    <button
+      data-testid="select-delta-copy"
+      type="button"
+    >
+      Delta copy
+    </button>
+    <button
+      data-testid="select-standings"
+      type="button"
+    >
+      Standings
+    </button>
+    <div
+      class="osv3-inspector-layout"
+      data-testid="studio-inspector"
+    >
+      <nav
+        aria-label="Secciones del inspector"
+        class="osv3-inspector-rail"
+        data-testid="studio-inspector-rail"
+      >
+        <div
+          class="osv3-inspector-rail__header"
+          data-testid="studio-inspector-rail-header"
+        >
+          <div
+            class="osv3-inspector-rail__name"
+          >
+            delta-main
+          </div>
+          <div
+            class="osv3-inspector-rail__status osv3-inspector-rail__status--active"
+          >
+            Activo
+          </div>
+          <button
+            aria-label="Ocultar widget"
+            aria-pressed="true"
+            class="osv3-inspector-visibility osv3-inspector-visibility--on"
+            data-testid="studio-inspector-visibility-toggle"
+            type="button"
+          />
+        </div>
+        <div
+          class="osv3-inspector-rail__items"
+          data-testid="studio-inspector-rail-items"
+        >
+          <button
+            aria-current="true"
+            aria-label="Diseño"
+            class="osv3-inspector-rail__item osv3-inspector-rail__item--active"
+            data-accent="default"
+            data-testid="studio-inspector-rail-item-design"
+            title="Diseño"
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              class="osv3-inspector-rail__preview"
+            >
+              <span
+                class="osv3-inspector-rail__preview-mark"
+                data-section="design"
+              />
+            </span>
+            <span
+              class="osv3-inspector-rail__tip"
+            >
+              Diseño
+            </span>
+          </button>
+          <button
+            aria-label="Apariencia"
+            class="osv3-inspector-rail__item"
+            data-accent="purple"
+            data-testid="studio-inspector-rail-item-appearance"
+            title="Apariencia"
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              class="osv3-inspector-rail__preview"
+            >
+              <span
+                class="osv3-inspector-rail__preview-mark"
+                data-section="appearance"
+              />
+            </span>
+            <span
+              class="osv3-inspector-rail__tip"
+            >
+              Apariencia
+            </span>
+          </button>
+          <button
+            aria-label="Comportamiento"
+            class="osv3-inspector-rail__item"
+            data-accent="amber"
+            data-testid="studio-inspector-rail-item-behavior"
+            title="Comportamiento"
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              class="osv3-inspector-rail__preview"
+            >
+              <span
+                class="osv3-inspector-rail__preview-mark"
+                data-section="behavior"
+              />
+            </span>
+            <span
+              class="osv3-inspector-rail__tip"
+            >
+              Comportamiento
+            </span>
+          </button>
+          <button
+            aria-label="Layout"
+            class="osv3-inspector-rail__item"
+            data-accent="blue"
+            data-testid="studio-inspector-rail-item-layout"
+            title="Layout"
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              class="osv3-inspector-rail__preview"
+            >
+              <span
+                class="osv3-inspector-rail__preview-mark"
+                data-section="layout"
+              />
+            </span>
+            <span
+              class="osv3-inspector-rail__tip"
+            >
+              Layout
+            </span>
+          </button>
+          <button
+            aria-label="Acciones"
+            class="osv3-inspector-rail__item"
+            data-accent="cyan"
+            data-testid="studio-inspector-rail-item-actions"
+            title="Acciones"
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              class="osv3-inspector-rail__preview"
+            >
+              <span
+                class="osv3-inspector-rail__preview-mark"
+                data-section="actions"
+              />
+            </span>
+            <span
+              class="osv3-inspector-rail__tip"
+            >
+              Acciones
+            </span>
+          </button>
+        </div>
+        <footer
+          class="osv3-inspector-rail__footer"
+          data-dirty="false"
+          data-testid="studio-inspector-footer"
+        >
+          <span
+            aria-hidden="true"
+            class="osv3-inspector-rail__dirty-dot"
+          />
+          <span
+            data-testid="studio-inspector-dirty-indicator"
+          >
+            Sin cambios
+          </span>
+        </footer>
+      </nav>
+      <div
+        class="osv3-inspector-content"
+        data-testid="studio-inspector-content"
+      >
+        <section
+          class="osv3-inspector-section-frame"
+          data-section-id="design"
+          data-testid="studio-inspector-section-frame"
+        >
+          <header
+            class="osv3-inspector-section-frame__header"
+          >
+            <div
+              class="osv3-inspector-section-frame__title"
+            >
+              <span
+                aria-hidden="true"
+                class="osv3-inspector-section-frame__title-dot"
+                data-accent="default"
+              />
+              <span
+                class="osv3-inspector-section-frame__title-text"
+              >
+                Diseño
+              </span>
+            </div>
+            <button
+              aria-label="Restablecer Diseño"
+              class="osv3-inspector-section-frame__reset"
+              data-testid="studio-inspector-section-reset"
+              type="button"
+            >
+              Reset
+            </button>
+          </header>
+          <div
+            class="osv3-inspector-section-frame__body"
+          >
+            <div
+              data-testid="studio-inspector-section-design"
+              data-widget-id="delta-main"
+            >
+              <section
+                class="osv3-design-section"
+                data-testid="studio-design-official-section"
+              >
+                <div
+                  class="osv3-design-section__header"
+                >
+                  <h3
+                    class="osv3-design-section__title"
+                  >
+                    Diseños de Vantare
+                  </h3>
+                  <span
+                    class="osv3-design-section__count"
+                  >
+                    3
+                  </span>
+                </div>
+                <ul
+                  class="osv3-design-list"
+                >
+                  <li
+                    class="osv3-design-list__item"
+                    data-design-active="false"
+                    data-design-origin="vantare"
+                    data-testid="studio-design-item-delta-original-base"
+                  >
+                    <div
+                      class="osv3-design-list__meta"
+                    >
+                      <span
+                        class="osv3-design-list__name"
+                      >
+                        Original Base
+                      </span>
+                      <span
+                        class="osv3-design-list__system"
+                      >
+                        vantare-original
+                      </span>
+                    </div>
+                    <div
+                      class="osv3-design-list__actions"
+                    >
+                      <button
+                        data-testid="studio-design-apply-delta-original-base"
+                        type="button"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                  </li>
+                  <li
+                    class="osv3-design-list__item"
+                    data-design-active="false"
+                    data-design-origin="vantare"
+                    data-testid="studio-design-item-delta-crystal-base"
+                  >
+                    <div
+                      class="osv3-design-list__meta"
+                    >
+                      <span
+                        class="osv3-design-list__name"
+                      >
+                        Crystal Base
+                      </span>
+                      <span
+                        class="osv3-design-list__system"
+                      >
+                        vantare-crystal
+                      </span>
+                    </div>
+                    <div
+                      class="osv3-design-list__actions"
+                    >
+                      <button
+                        data-testid="studio-design-apply-delta-crystal-base"
+                        type="button"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                  </li>
+                  <li
+                    class="osv3-design-list__item"
+                    data-design-active="false"
+                    data-design-origin="vantare"
+                    data-testid="studio-design-item-delta-time-attack"
+                  >
+                    <div
+                      class="osv3-design-list__meta"
+                    >
+                      <span
+                        class="osv3-design-list__name"
+                      >
+                        Time Attack
+                      </span>
+                      <span
+                        class="osv3-design-list__system"
+                      >
+                        vantare-original
+                      </span>
+                    </div>
+                    <div
+                      class="osv3-design-list__actions"
+                    >
+                      <button
+                        data-testid="studio-design-apply-delta-time-attack"
+                        type="button"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+              </section>
+              <section
+                class="osv3-design-section"
+                data-testid="studio-design-user-section"
+              >
+                <div
+                  class="osv3-design-section__header"
+                >
+                  <h3
+                    class="osv3-design-section__title"
+                  >
+                    Mis diseños
+                  </h3>
+                  <button
+                    class="osv3-design-section__save"
+                    data-testid="studio-design-save-open"antare-overlay@0.1.0.2 test C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vitest run "overlay-studio" "official-designs" "widget-preview-fixtures"
+
+
+ RUN  v4.1.9 C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend
+
+ ✓ src/hub/overlay-studio/components/ResponsivePanelControls.test.tsx (6 tests) 86ms
+ ✓ src/hub/overlay-studio/inspector/BehaviorSection.test.tsx (4 tests) 112ms
+ ✓ src/hub/overlay-studio/components/RecoveryDialog.test.tsx (2 tests) 75ms
+ ✓ src/hub/overlay-studio/canvas/WidgetContextMenu.test.tsx (3 tests) 64ms
+ ✓ src/hub/overlay-studio/inspector/DesignSection.test.tsx (6 tests) 201ms
+ ✓ src/hub/overlay-studio/canvas/StudioTelemetryProvider.test.tsx (4 tests) 122ms
+ ✓ src/hub/overlay-studio/canvas/CanvasToolbar.test.tsx (1 test) 105ms
+ ✓ src/hub/overlay-studio/components/StudioHeader.test.tsx (3 tests) 221ms
+ ✓ src/hub/overlay-studio/components/WidgetListPanel.test.tsx (4 tests) 172ms
+ ✓ src/hub/overlay-studio/canvas/StudioCanvas.test.tsx (9 tests) 640ms
+ ✓ src/hub/overlay-studio/state/studio-store.test.tsx (12 tests) 1207ms
+ ✓ src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx (14 tests) 994ms
+ ✓ src/hub/overlay-studio/StudioRoute.test.tsx (8 tests) 1158ms
+     ✓ guards profile changes with save/discard/cancel while dirty  360ms
+ ✓ src/hub/overlay-studio/OverlayStudioV3.test.tsx (15 tests) 1321ms
+ ❯ src/hub/overlay-studio/inspector/StudioInspector.test.tsx (6 tests | 1 failed) 1572ms
+     × mounts only the active section panel 1209ms
+     ✓ resets the active section to the first available section when the widget changes 80ms
+     ✓ removes unavailable sections immediately when capability disappears 97ms
+     ✓ toggles enabled state through the rail visibility control 43ms
+     ✓ reports global dirty state in the footer without a local section save action 83ms
+     ✓ dispatches widget/reset-section with the saved snapshot 58ms
+ ✓ src/overlay/design-systems/official-designs.test.ts (6 tests) 12ms
+ ✓ src/hub/overlay-studio/canvas/canvas-frame-preview.test.ts (10 tests) 25ms
+ ✓ src/hub/overlay-studio/inspector/InspectorRail.test.tsx (3 tests) 58ms
+ ✓ src/hub/overlay-studio/canvas/StudioWidgetFrame.test.tsx (5 tests) 79ms
+ ✓ src/hub/overlay-studio/NoActiveProfileState.test.tsx (1 test) 57ms
+ ✓ src/hub/overlay-studio/inspector/ActionsSection.test.tsx (4 tests) 53ms
+ ✓ src/hub/overlay-studio/catalog/AddWidgetDialog.test.tsx (3 tests) 90ms
+ ✓ src/hub/overlay-studio/canvas/PreviewSourceControls.test.tsx (3 tests) 58ms
+ ✓ src/hub/overlay-studio/catalog/studio-catalog.test.ts (6 tests) 27ms
+ ✓ src/hub/overlay-studio/components/DirtyChangesDialog.test.tsx (4 tests) 50ms
+ ✓ src/hub/overlay-studio/designs/SaveDesignDialog.test.tsx (3 tests) 69ms
+ ✓ src/hub/overlay-studio/inspector/LayoutSection.test.tsx (3 tests) 84ms
+ ✓ src/hub/overlay-studio/components/ProfileNameDialog.test.tsx (2 tests) 79ms
+ ✓ src/hub/overlay-studio/designs/widget-design-client.test.ts (8 tests) 18ms
+ ✓ src/hub/overlay-studio/state/studio-history.test.ts (10 tests) 26ms
+ ✓ src/hub/overlay-studio/state/studio-profile-client.test.ts (8 tests) 23ms
+ ✓ src/hub/overlay-studio/inspector/AppearanceSection.test.tsx (2 tests) 53ms
+ ✓ src/overlay/widgets/widget-preview-fixtures.test.ts (30 tests) 16ms
+ ✓ src/hub/overlay-studio/access/studio-access.test.ts (17 tests) 14ms
+ ✓ src/hub/overlay-studio/state/studio-command.test.ts (15 tests) 19ms
+ ✓ src/hub/overlay-studio/canvas/canvas-geometry.test.ts (9 tests) 9ms
+ ✓ src/hub/overlay-studio/browser-view.test.ts (8 tests) 12ms
+ ✓ src/hub/overlay-studio/canvas/CanvasActionBar.test.tsx (1 test) 42ms
+ ✓ src/hub/overlay-studio/state/studio-recovery.test.ts (6 tests) 11ms
+ ✓ src/hub/overlay-studio/state/studio-hotkeys.test.ts (4 tests) 10ms
+ ✓ src/hub/overlay-studio/inspector/inspector-sections.test.ts (5 tests) 8ms
+ ✓ src/hub/overlay-studio/state/studio-navigation-guard.test.ts (4 tests) 9ms
+ ✓ src/hub/overlay-studio/state/session-layouts.test.ts (7 tests) 8ms
+ ✓ src/hub/overlay-studio/canvas/canvas-snap.test.ts (6 tests) 7ms
+ ✓ src/hub/overlay-studio/state/widget-order.test.ts (5 tests) 7ms
+ ✓ src/hub/overlay-studio/canvas/widget-content-base-size.test.ts (3 tests) 8ms
+ ✓ src/hub/overlay-studio/canvas/canvas-resize.test.ts (5 tests) 6ms
+ ✓ src/hub/overlay-studio/canvas/widget-actions.test.ts (7 tests) 6ms
+ ✓ scripts/overlay-studio-drag-bench-metrics.test.ts (3 tests) 4ms
+ ✓ src/hub/overlay-studio/canvas/canvas-backgrounds.test.ts (3 tests) 4ms
+
+ Test Files  1 failed | 49 passed (50)
+      Tests  1 failed | 315 passed (316)
+   Start at  04:30:56
+   Duration  10.52s (transform 9.98s, setup 1.37s, import 31.16s, tests 9.11s, environment 79.82s)
+
+ ELIFECYCLE  Test failed. See above for more details.
+9m
+                    type="button"
+                  >
+                    Guardar actual
+                  </button>
+                </div>
+                <p
+                  class="osv3-inspector-field__hint"
+                  data-testid="studio-design-user-empty"
+                >
+                  Aún no tienes diseños guardados para este widget.
+                </p>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <button
+        data-testid="select-delta-main"
+        type="button"
+      >
+        Delta main
+      </button>
+      <button
+        data-testid="select-delta-copy"
+        type="button"
+      >
+        Delta copy
+      </button>
+      <button
+        data-testid="select-standings"
+        type="button"
+      >
+        Standings
+      </button>
+      <div
+        class="osv3-inspector-layout"
+        data-testid="studio-inspector"
+      >
+        <nav
+          aria-label="Secciones del inspector"
+          class="osv3-inspector-rail"
+          data-testid="studio-inspector-rail"
+        >
+          <div
+            class="osv3-inspector-rail__header"
+            data-testid="studio-inspector-rail-header"
+          >
+            <div
+              class="osv3-inspector-rail__name"
+            >
+              delta-main
+            </div>
+            <div
+              class="osv3-inspector-rail__status osv3-inspector-rail__status--active"
+            >
+              Activo
+            </div>
+            <button
+              aria-label="Ocultar widget"
+              aria-pressed="true"
+              class="osv3-inspector-visibility osv3-inspector-visibility--on"
+              data-testid="studio-inspector-visibility-toggle"
+              type="button"
+            />
+          </div>
+          <div
+            class="osv3-inspector-rail__items"
+            data-testid="studio-inspector-rail-items"
+          >
+            <button
+              aria-current="true"
+              aria-label="Diseño"
+              class="osv3-inspector-rail__item osv3-inspector-rail__item--active"
+              data-accent="default"
+              data-testid="studio-inspector-rail-item-design"
+              title="Diseño"
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                class="osv3-inspector-rail__preview"
+              >
+                <span
+                  class="osv3-inspector-rail__preview-mark"
+                  data-section="design"
+                />
+              </span>
+              <span
+                class="osv3-inspector-rail__tip"
+              >
+                Diseño
+              </span>
+            </button>
+            <button
+              aria-label="Apariencia"
+              class="osv3-inspector-rail__item"
+              data-accent="purple"
+              data-testid="studio-inspector-rail-item-appearance"
+              title="Apariencia"
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                class="osv3-inspector-rail__preview"
+              >
+                <span
+                  class="osv3-inspector-rail__preview-mark"
+                  data-section="appearance"
+                />
+              </span>
+              <span
+                class="osv3-inspector-rail__tip"
+              >
+                Apariencia
+              </span>
+            </button>
+            <button
+              aria-label="Comportamiento"
+              class="osv3-inspector-rail__item"
+              data-accent="amber"
+              data-testid="studio-inspector-rail-item-behavior"
+              title="Comportamiento"
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                class="osv3-inspector-rail__preview"
+              >
+                <span
+                  class="osv3-inspector-rail__preview-mark"
+                  data-section="behavior"
+                />
+              </span>
+              <span
+                class="osv3-inspector-rail__tip"
+              >
+                Comportamiento
+              </span>
+            </button>
+            <button
+              aria-label="Layout"
+              class="osv3-inspector-rail__item"
+              data-accent="blue"
+              data-testid="studio-inspector-rail-item-layout"
+              title="Layout"
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                class="osv3-inspector-rail__preview"
+              >
+                <span
+                  class="osv3-inspector-rail__preview-mark"
+                  data-section="layout"
+                />
+              </span>
+              <span
+                class="osv3-inspector-rail__tip"
+              >
+                Layout
+              </span>
+            </button>
+            <button
+              aria-label="Acciones"
+              class="osv3-inspector-rail__item"
+              data-accent="cyan"
+              data-testid="studio-inspector-rail-item-actions"
+              title="Acciones"
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                class="osv3-inspector-rail__preview"
+              >
+                <span
+                  class="osv3-inspector-rail__preview-mark"
+                  data-section="actions"
+                />
+              </span>
+              <span
+                class="osv3-inspector-rail__tip"
+              >
+                Acciones
+              </span>
+            </button>
+          </div>
+          <footer
+            class="osv3-inspector-rail__footer"
+            data-dirty="false"
+            data-testid="studio-inspector-footer"
+          >
+            <span
+              aria-hidden="true"
+              class="osv3-inspector-rail__dirty-dot"
+            />
+            <span
+              data-testid="studio-inspector-dirty-indicator"
+            >
+              Sin cambios
+            </span>
+          </footer>
+        </nav>
+        <div
+          class="osv3-inspector-content"
+          data-testid="studio-inspector-content"
+        >
+          <section
+            class="osv3-inspector-section-frame"
+            data-section-id="design"
+            data-testid="studio-inspector-section-frame"
+          >
+            <header
+              class="osv3-inspector-section-frame__header"
+            >
+              <div
+                class="osv3-inspector-section-frame__title"
+              >
+                <span
+                  aria-hidden="true"
+                  class="osv3-inspector-section-frame__title-dot"
+                  data-accent="default"
+                />
+                <span
+                  class="osv3-inspector-section-frame__title-text"
+                >
+                  Diseño
+                </span>
+              </div>
+              <button
+                aria-label="Restablecer Diseño"
+                class="osv3-inspector-section-frame__reset"
+                data-testid="studio-inspector-section-reset"
+                type="button"
+              >
+                Reset
+              </button>
+            </header>
+            <div
+              class="osv3-inspector-section-frame__body"
+            >
+              <div
+                data-testid="studio-inspector-section-design"
+                data-widget-id="delta-main"
+              >
+                <section
+                  class="osv3-design-section"
+                  data-testid="studio-design-official-section"
+                >
+                  <div
+                    class="osv3-design-section__header"
+                  >
+                    <h3
+                      class="osv3-design-section__title"
+                    >
+                      Diseños de Vantare
+                    </h3>
+                    <span
+                      class="osv3-design-section__count"
+                    >
+                      3
+                    </span>
+                  </div>
+                  <ul
+                    class="osv3-design-list"
+                  >
+                    <li
+                      class="osv3-design-list__item"
+                      data-design-active="false"
+                      data-design-origin="vantare"
+                      data-testid="studio-design-item-delta-original-base"
+                    >
+                      <div
+                        class="osv3-design-list__meta"
+                      >
+                        <span
+                          class="osv3-design-list__name"
+                        >
+                          Original Base
+                        </span>
+                        <span
+                          class="osv3-design-list__system"
+                        >
+                          vantare-original
+                        </span>
+                      </div>
+                      <div
+                        class="osv3-design-list__actions"
+                      >
+                        <button
+                          data-testid="studio-design-apply-delta-original-base"
+                          type="button"
+                        >
+                          Aplicar
+                        </button>
+                      </div>
+                    </li>
+                    <li
+                      class="osv3-design-list__item"
+                      data-design-active="false"
+                      data-design-origin="vantare"
+                      data-testid="studio-design-item-delta-crystal-base"
+                    >
+                      <div
+                        class="osv3-design-list__meta"
+                      >
+                        <span
+                          class="osv3-design-list__name"
+                        >
+                          Crystal Base
+                        </span>
+                        <span
+                          class="osv3-design-list__system"
+                        >
+                          vantare-crystal
+                        </span>
+                      </div>
+                      <div
+                        class="osv3-design-list__actions"
+                      >
+                        <button
+                          data-testid="studio-design-apply-delta-crystal-base"
+                          type="button"
+                        >
+                          Aplicar
+                        </button>
+                      </div>
+                    </li>
+                    <li
+                      class="osv3-design-list__item"
+                      data-design-active="false"
+                      data-design-origin="vantare"
+                      data-testid="studio-design-item-delta-time-attack"
+                    >
+                      <div
+                        class="osv3-design-list__meta"
+                      >
+                        <span
+                          class="osv3-design-list__name"
+                        >
+                          Time Attack
+                        </span>
+                        <span
+                          class="osv3-design-list__system"
+                        >
+                          vantare-original
+                        </span>
+                      </div>
+                      <div
+                        class="osv3-design-list__actions"
+                      >
+                        <button
+                          data-testid="studio-design-apply-delta-time-attack"
+                          type="button"
+                        >
+                          Aplicar
+                        </button>
+                      </div>
+                    </li>
+                  </ul>
+                </section>
+                <section
+                  class="osv3-design-section"
+                  data-testid="studio-design-user-section"
+                >
+                  <div
+                    class="osv3-design-section__header"
+                  >
+                    <h3
+                      class="osv3-design-section__title"
+                    >
+                      Mis diseños
+                    </h3>
+                    <button
+                      class="osv3-design-section__save"
+                      data-testid="studio-design-save-open"
+                      type="button"
+                    >
+                      Guardar actual
+                    </button>
+                  </div>
+                  <p
+                    class="osv3-inspector-field__hint"
+                    data-testid="studio-design-user-empty"
+                  >
+                    Aún no tienes diseños guardados para este widget.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+ ❯ Proxy.waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/inspector/StudioInspector.test.tsx:156:11
+    154|
+    155|     fireEvent.click(screen.getByTestId("studio-inspector-rail-item-app…
+    156|     await waitFor(() => expect(screen.getByTestId("studio-inspector-se…
+       |           ^
+    157|     expect(screen.queryByTestId("studio-inspector-section-design")).to…
+    158|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

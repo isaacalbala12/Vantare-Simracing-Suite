@@ -1,0 +1,25 @@
+---
+pid: 13100
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor && pnpm --dir vantare-v2/frontend exec node scripts/overlay-studio-visual.mjs 2>&1"
+started_at: 2026-07-11T00:05:54.129Z
+running_for_ms: 11879996 
+---
+2:05:57 [vite] (client) Re-optimizing dependencies because vite config has changed
+Port 5176 is in use, trying another one...
+ok original-ready (0.000% delta)
+ok original-stale (0.000% delta)
+ok original-disconnected (0.000% delta)
+ok original-error (0.000% delta)
+ok crystal-ready (0.000% delta)
+ok crystal-stale (0.000% delta)
+ok crystal-disconnected (0.000% delta)
+ok crystal-error (0.000% delta)
+ok surface-studio (0.000% delta)
+ok surface-desktop (0.000% delta)
+ok surface-obs (0.000% delta)
+ok surface-harness (0.000% delta)
+ok studio-wide (0.194% delta)
+ok studio-medium (0.108% delta)
+ok studio-small (0.000% delta)
+studio-relative-chrome: class bar 7.089630126953125x38.54998779296875 expected narrow vertical strip

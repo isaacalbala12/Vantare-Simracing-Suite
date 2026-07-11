@@ -1,0 +1,47 @@
+---
+pid: 28796
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\frontend\" test 2>&1 | Select-Object -Last 40"
+started_at: 2026-07-09T21:43:55.881Z
+running_for_ms: 16660011 
+---
+ ✓ src/hub/overlays/recommended-first-use.test.ts (3 tests) 12ms
+ ✓ src/overlay/widgets/relative-catalog.test.ts (7 tests) 11ms
+ ✓ src/overlay/widgets/standings-format.test.ts (19 tests) 10ms
+ ✓ src/hub/overlays/recommended-profiles.test.ts (9 tests) 12ms
+ ✓ src/hub/roadmap/roadmap-features.test.ts (9 tests) 14ms
+ ✓ src/hub/registry/builtin-systems.test.ts (5 tests) 11ms
+ ✓ src/hub/registry/design-system-registry.test.ts (6 tests) 9ms
+ ✓ src/lib/canvas-math.test.ts (15 tests) 10ms
+ ✓ src/overlay/widgets/widget-base-size.test.ts (9 tests) 11ms
+ ✓ src/overlay/widgets/widget-design-system.test.ts (9 tests) 11ms
+ ✓ src/hub/launcher/chain-store.test.ts (8 tests) 12ms
+ ✓ src/overlay/widgets/pedals-format.test.ts (18 tests) 8ms
+ ✓ src/overlay/widgets/widget-appearance.test.ts (9 tests) 8ms
+ ✓ src/hub/preview/widget-preview-contract.test.ts (10 tests) 8ms
+ ✓ src/overlay/widgets/relative-filters.test.ts (6 tests) 8ms
+ ✓ src/lib/widget-factory.test.ts (5 tests) 10ms
+ ✓ src/overlay/widgets/relative-format.test.ts (11 tests) 9ms
+ ✓ src/hub/overlays/widget-studio-empty-profile.test.ts (6 tests) 7ms
+ ✓ src/lib/visibility.test.ts (7 tests) 7ms
+ ✓ src/calendar/calendar-store.test.ts (6 tests) 9ms
+ ✓ src/hub/state/style-catalog.test.ts (8 tests) 7ms
+ ✓ src/overlay/overlay-document.test.ts (1 test) 7ms
+ ✓ src/overlay/widgets/mock-telemetry.test.ts (4 tests) 7ms
+ ✓ src/hub/preview/profile-editor.test.ts (5 tests) 8ms
+ ✓ src/hub/state/style-catalog.contract.test.ts (12 tests) 8ms
+ ✓ src/hub/calendar/calendar-upcoming.test.ts (4 tests) 7ms
+ ✓ src/hub/settings/hotkey-capture.test.ts (10 tests) 7ms
+ ✓ src/hub/overlays/pedals-settings.test.ts (7 tests) 7ms
+ ✓ src/hub/state/overlay-workbench.test.ts (3 tests) 6ms
+ ✓ src/hub/navigation.test.ts (4 tests) 6ms
+ ✓ src/overlay/widgets/widget-design-system.contract.test.ts (7 tests) 4ms
+ ✓ src/lib/profile.test.ts (3 tests) 6ms
+ ✓ src/lib/html-escape.test.ts (2 tests) 4ms
+ ✓ src/lib/telemetry-ref.test.ts (5 tests) 4ms
+
+ Test Files  164 passed (164)
+      Tests  1570 passed (1570)
+   Start at  23:43:57
+   Duration  32.94s (transform 13.95s, setup 4.66s, import 99.97s, tests 34.33s, environment 257.21s)
+

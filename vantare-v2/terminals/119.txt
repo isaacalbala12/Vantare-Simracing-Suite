@@ -1,0 +1,14 @@
+---
+pid: 8792
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend build"
+started_at: 2026-07-11T01:43:30.826Z
+running_for_ms: 6015001  
+---
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+src/hub/overlay-studio/StudioRoute.tsx(433,64): error TS2345: Argument of type '{ data?: { activeProfileId?: string | undefined; } | undefined; }' is not assignable to parameter of type '{ data: unknown; }'.
+  Property 'data' is optional in type '{ data?: { activeProfileId?: string | undefined; } | undefined; }' but required in type '{ data: unknown; }'.
+ ELIFECYCLE  Command failed with exit code 2.

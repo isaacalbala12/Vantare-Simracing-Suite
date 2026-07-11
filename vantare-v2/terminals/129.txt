@@ -1,0 +1,12 @@
+---
+pid: 22556
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "Set-Location \"C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor\\vantare-v2\"; $env:VANTARE_SUPABASE_URL = \"https://ombjshwzqgeisazijduq.supabase.co\"; $anonLine = Get-Content \"frontend\\.env.local\" | Where-Object { $_ -match '^VITE_SUPABASE_ANON_KEY=' } | Select-Object -First 1; $env:VANTARE_SUPABASE_ANON_KEY = $anonLine -replace '^VITE_SUPABASE_ANON_KEY=', ''; powershell -NoProfile -ExecutionPolicy Bypass -File \"tools\\generate_supabase_config.ps1\"; Get-Process vantare -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; go run ./cmd/vantare -live=false -profile configs/example-racing.json"
+started_at: 2026-07-11T02:01:17.940Z
+running_for_ms: 4969988  
+---
+ParserError: 
+Line |
+   1 |  . \Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"; $env:V .
+     |                                                                 ~
+     | Missing closing ')' in expression.

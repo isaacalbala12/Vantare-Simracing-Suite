@@ -1,0 +1,8 @@
+---
+pid: 27192
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "node frontend/scripts/billing-gui-smoke-steps.mjs launch"
+started_at: 2026-07-09T19:40:52.014Z
+running_for_ms: 24040009 
+---
+CHECKOUT_launch_lifetime ok=false fetch=false body=false polar=false leak=false bodyRaw= url=

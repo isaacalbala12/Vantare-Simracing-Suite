@@ -1,0 +1,27 @@
+---
+pid: 21284
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "go run ./cmd/vantare -live=false -profile configs/example-racing.json"
+started_at: 2026-07-11T01:34:00.064Z
+running_for_ms: 6610004  
+---
+Jul 11 03:34:02.299 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64
+Jul 11 03:34:02.303 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+Jul 11 03:34:02.303 INF AssetServer Info: middleware=true handler=true
+2026/07/11 03:34:02 license: supabase env vars missing, running in offline-grace mode
+2026/07/11 03:34:02 HTTP server: listening on 127.0.0.1:39261
+2026/07/11 03:34:02 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 03:34:02 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/11 03:34:02 global hotkeys active (4 registered)
+2026/07/11 03:34:02 [WebView2] Environment created successfully
+Jul 11 03:34:02.998 INF [AssetFileServerFS] Handling request url=/ file=.
+Jul 11 03:34:03.098 INF [AssetFileServerFS] Handling request url=/assets/index-DQyOEEPD.js file=assets/index-DQyOEEPD.js
+Jul 11 03:34:03.098 INF [AssetFileServerFS] Handling request url=/assets/index-CBy3mkv0.css file=assets/index-CBy3mkv0.css
+Jul 11 03:34:03.246 INF [AssetFileServerFS] Handling request url=/favicon.svg file=favicon.svg
+2026/07/11 03:34:03 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 03:34:03 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 03:34:06 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 03:34:06 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 03:34:45 hotkey: message loop did not stop within 2s; continuing shutdown
+Jul 11 03:34:45.430 WRN Window #1 not found
+[0711/033445.451:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412

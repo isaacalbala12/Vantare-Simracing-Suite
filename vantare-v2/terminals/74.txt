@@ -1,0 +1,48 @@
+---
+pid: 26728
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "corepack pnpm --dir vantare-v2/frontend exec vite --config vite.overlay-studio-harness.config.ts --host 127.0.0.1"
+started_at: 2026-07-10T15:44:11.740Z
+running_for_ms: 14910007 
+---
+19:33:55 [vite] (client) Pre-transform error: Transform failed with 1 error:
+
+[PARSE_ERROR] Expected `:` but found `Identifier`
+    ╭─[ src/overlay/design-systems/vantare-original/manifest.ts:56:7 ]
+    │
+ 56 │ const standingsAppearanceControls = [
+    │       ─────────────┬─────────────  
+    │                    ╰─────────────── `:` expected
+────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend/src/overlay/design-systems/vantare-original/manifest.ts
+19:33:55 [vite] (client) Pre-transform error: Transform failed with 1 error:
+
+[PARSE_ERROR] Expected `:` but found `Identifier`
+    ╭─[ src/overlay/design-systems/vantare-original/manifest.ts:56:7 ]
+    │
+ 56 │ const standingsAppearanceControls = [
+    │       ─────────────┬─────────────  
+    │                    ╰─────────────── `:` expected
+────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend/src/overlay/design-systems/vantare-original/manifest.ts
+19:33:55 [vite] Internal server error: Transform failed with 1 error:
+
+[PARSE_ERROR] Expected `:` but found `Identifier`
+    ╭─[ src/overlay/design-systems/vantare-original/manifest.ts:56:7 ]
+    │
+ 56 │ const standingsAppearanceControls = [
+    │       ─────────────┬─────────────  
+    │                    ╰─────────────── `:` expected
+────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend/src/overlay/design-systems/vantare-original/manifest.ts
+      at transformWithOxc (file:///C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:3344:19)
+      at TransformPluginContext.transform (file:///C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:3415:26)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:30387:51)
+      at async loadAndTransform (file:///C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24646:26)
+      at async viteTransformMiddleware (file:///C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/node_modules/.pnpm/vite@8.0.16_@types+node@24.13.2_jiti@2.7.0/node_modules/vite/dist/node/chunks/node.js:24440:20)

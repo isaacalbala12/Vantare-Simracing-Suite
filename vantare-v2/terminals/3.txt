@@ -1,0 +1,16 @@
+---
+pid: 12684
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd C:\\Users\\isaac\\Desktop\\Vantare-Overlays && supabase db query --linked -o table \"SELECT proname, pg_get_function_identity_arguments(p.oid) AS args FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND proname IN ('get_account_entitlements','reset_active_device');\""
+started_at: 2026-07-09T14:19:04.461Z
+running_for_ms: 15930001 
+---
+Initialising login role...
+┌──────────────────────────┬─────────────────────────┐
+│         proname          │          args           │
+├──────────────────────────┼─────────────────────────┤
+│ get_account_entitlements │ device_fingerprint text │
+│ reset_active_device      │ device_fingerprint text │
+└──────────────────────────┴─────────────────────────┘
+A new version of Supabase CLI is available: v2.109.1 (currently installed v2.105.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

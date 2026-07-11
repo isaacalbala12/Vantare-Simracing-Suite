@@ -1,0 +1,13 @@
+---
+pid: 25608
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend build"
+started_at: 2026-07-11T00:49:13.436Z
+running_for_ms: 9279994  
+---
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+src/overlay/core/telemetry-rate-coordinator.ts(52,24): error TS6133: 'now' is declared but its value is never read.
+ ELIFECYCLE  Command failed with exit code 2.

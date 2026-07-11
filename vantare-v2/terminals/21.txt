@@ -1,0 +1,7 @@
+---
+pid: 27864
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "node --trace-warnings frontend/scripts/billing-gui-smoke.mjs 2>&1 | Select-Object -First 20"
+started_at: 2026-07-09T19:35:12.909Z
+running_for_ms: 24380001 
+---

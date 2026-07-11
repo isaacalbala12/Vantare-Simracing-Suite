@@ -1,0 +1,39 @@
+---
+pid: 4252
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "pnpm --dir frontend visual:overlay-studio && pnpm --dir frontend visual:overlay-studio"
+started_at: 2026-07-10T13:08:46.589Z
+running_for_ms: 24219992 
+---
+
+> vantare-overlay@0.1.0.2 visual:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-visual.mjs
+
+ok original-ready (0.000% delta)
+ok original-stale (0.000% delta)
+ok original-disconnected (0.000% delta)
+ok original-error (0.000% delta)
+ok crystal-ready (0.000% delta)
+ok crystal-stale (0.000% delta)
+ok crystal-disconnected (0.000% delta)
+ok crystal-error (0.000% delta)
+ok surface-studio (0.000% delta)
+ok surface-desktop (0.000% delta)
+ok surface-obs (0.000% delta)
+ok surface-harness (0.000% delta)
+
+> vantare-overlay@0.1.0.2 visual:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-visual.mjs
+
+ok original-ready (0.000% delta)
+ok original-stale (0.000% delta)
+ok original-disconnected (0.000% delta)
+ok original-error (0.000% delta)
+ok crystal-ready (0.000% delta)
+ok crystal-stale (0.000% delta)
+ok crystal-disconnected (0.000% delta)
+ok crystal-error (0.000% delta)
+ok surface-studio (0.000% delta)
+ok surface-desktop (0.000% delta)
+ok surface-obs (0.000% delta)
+ok surface-harness (0.000% delta)

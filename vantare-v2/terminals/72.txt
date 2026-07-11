@@ -1,0 +1,100 @@
+---
+pid: 21112
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend test -- studio-recovery.test.ts studio-store.test.tsx studio-navigation-guard.test.ts studio-hotkeys.test.ts 2>&1"
+started_at: 2026-07-10T13:20:26.187Z
+running_for_ms: 23519992 
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "studio-recovery.test.ts" "studio-store.test.tsx" "studio-navigation-guard.test.ts" "studio-hotkeys.test.ts"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/hub/overlay-studio/state/studio-navigation-guard.test.ts (4 tests) 6ms
+ ❯ src/hub/overlay-studio/state/studio-hotkeys.test.ts (4 tests | 1 failed) 9ms
+     ✓ maps the studio keyboard policy 2ms
+     ✓ does not treat ctrl+y as redo 0ms
+     × ignores hotkeys while typing in editable fields 4ms
+     ✓ uses 1px for arrows and 8px with shift 0ms
+ ✓ src/hub/overlay-studio/state/studio-recovery.test.ts (6 tests) 7ms
+ ❯ src/hub/overlay-studio/state/studio-store.test.tsx (10 tests | 3 failed) 15568ms
+     ✓ loads the profile and exposes the active layout 84ms
+     ✓ dispatches commands, tracks dirty state and supports undo/redo 79ms
+     ✓ switches sessions and selection without mutating unrelated layouts 76ms
+     ✓ marks migrated visuals as dirty while keeping the disk snapshot as saved 77ms
+     ✓ saves explicitly and clears migration markers on success 78ms
+     ✓ preserves the draft when save fails or conflicts 77ms
+     ✓ discards all changes back to the saved snapshot 76ms
+     × writes recovery drafts locally without calling profile save 5010ms
+     × clears recovery drafts after a successful save or discard 5005ms
+     × keeps preview changes out of document history and dirty state 5003ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hub/overlay-studio/state/studio-hotkeys.test.ts > getStudioHotkey > ignores hotkeys while typing in editable fields
+AssertionError: expected 'save' to be null
+
+- Expected:
+null
+
++ Received:
+"save"
+
+ ❯ src/hub/overlay-studio/state/studio-hotkeys.test.ts:35:80
+     33|   it("ignores hotkeys while typing in editable fields", () => {
+     34|     const input = document.createElement("input");
+     35|     expect(getStudioHotkey(keyboardEvent({ key: "s", ctrlKey: true }),…
+       |                                                                                ^
+     36|     expect(getStudioHotkey(keyboardEvent({ key: "Delete" }), input)).t…
+     37|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/hub/overlay-studio/state/studio-store.test.tsx > StudioProvider > writes recovery drafts locally without calling profile save
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/hub/overlay-studio/state/studio-store.test.tsx:226:3
+    224|   });
+    225|
+    226|   it("writes recovery drafts locally without calling profile save", as…
+       |   ^
+    227|     vi.useFakeTimers();
+    228|     const storage = createMemoryStorage();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/hub/overlay-studio/state/studio-store.test.tsx > StudioProvider > clears recovery drafts after a successful save or discard
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/hub/overlay-studio/state/studio-store.test.tsx:252:3
+    250|   });
+    251|
+    252|   it("clears recovery drafts after a successful save or discard", asyn…
+       |   ^
+    253|     vi.useFakeTimers();
+    254|     const storage = createMemoryStorage();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/hub/overlay-studio/state/studio-store.test.tsx > StudioProvider > keeps preview changes out of document history and dirty state
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/hub/overlay-studio/state/studio-store.test.tsx:295:3
+    293|   });
+    294|
+    295|   it("keeps preview changes out of document history and dirty state", …
+       |   ^
+    296|     const client = createMockClient(buildDocument());
+    297|     const documentHook = renderHook(() => useStudioDocument(), { wrapp…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  4 failed | 20 passed (24)
+   Start at  15:20:27
+   Duration  16.67s (transform 309ms, setup 123ms, import 522ms, tests 15.59s, environment 2.29s)
+
+ ELIFECYCLE  Test failed. See above for more details.

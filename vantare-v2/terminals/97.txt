@@ -1,0 +1,93 @@
+---
+pid: 22300
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend test -- src/overlay"
+started_at: 2026-07-11T00:48:01.413Z
+running_for_ms: 9354999  
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "src/overlay"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/overlay/design-systems/vantare-crystal/delta/DeltaCrystal.test.tsx (9 tests) 120ms
+ ✓ src/overlay/design-systems/vantare-original/standings/StandingsOriginal.test.tsx (9 tests) 249ms
+ ✓ src/overlay/design-systems/vantare-original/delta/DeltaOriginal.test.tsx (8 tests) 89ms
+ ✓ src/overlay/widget-types/relative/RelativeContentInspector.test.tsx (2 tests) 169ms
+ ✓ src/overlay/design-systems/vantare-crystal/standings/StandingsCrystal.test.tsx (10 tests) 290ms
+ ✓ src/overlay/design-systems/vantare-crystal/relative/RelativeCrystal.test.tsx (12 tests) 304ms
+ ✓ src/overlay/design-systems/vantare-original/pedals/PedalsOriginal.test.tsx (7 tests) 121ms
+ ✓ src/overlay/design-systems/vantare-crystal/pedals/PedalsCrystal.test.tsx (8 tests) 121ms
+ ✓ src/overlay-harness/legacy-core-contract.test.tsx (4 tests) 116ms
+ ✓ src/overlay-harness/OverlayParityHarness.test.tsx (16 tests) 313ms
+ ✓ src/overlay/design-systems/vantare-original/relative/RelativeOriginal.test.tsx (11 tests) 296ms
+ ✓ src/overlay/widgets/StandingsWidget.test.tsx (9 tests) 459ms
+ ✓ src/overlay/widget-types/standings/StandingsContentInspector.test.tsx (2 tests) 211ms
+ ✓ src/overlay/CompositeApp.test.tsx (12 tests) 321ms
+ ✓ src/overlay/ObsOverlayApp.test.tsx (5 tests) 120ms
+ ✓ src/overlay/widgets/EngineerNotificationsWidget.test.tsx (7 tests) 73ms
+ ✓ src/overlay/OverlayCalendarReminderBanner.test.tsx (7 tests) 96ms
+ ✓ src/overlay/widgets/MulticlassRelativeWidget.test.tsx (4 tests) 109ms
+ ✓ src/overlay/WidgetEditFrame.test.tsx (6 tests) 86ms
+ ✓ src/overlay/widgets/TelemetryWidget.test.tsx (2 tests) 64ms
+ ✓ src/overlay/core/profile-contract-fixture.test.tsx (4 tests) 89ms
+ ✓ src/overlay/widgets/PedalsWidget.test.tsx (4 tests) 89ms
+ ✓ src/overlay/core/WidgetRenderBoundary.test.tsx (2 tests) 47ms
+ ✓ src/overlay/WidgetHost.test.tsx (5 tests) 65ms
+ ✓ src/overlay/EditOverlayApp.test.tsx (1 test) 71ms
+ ✓ src/overlay/widgets/DeltaWidget.test.tsx (10 tests) 96ms
+ ✓ src/overlay/widgets/RelativeWidget.test.tsx (4 tests) 73ms
+ ✓ src/overlay/core/WidgetVisualHost.test.tsx (6 tests) 126ms
+ ✓ src/overlay/widgets/TelemetryVerticalWidget.test.tsx (1 test) 60ms
+ ✓ src/overlay-harness/harness-fixtures.test.ts (5 tests) 15ms
+ ✓ src/overlay/widgets/BroadcastTowerWidget.test.tsx (3 tests) 145ms
+ ✓ src/overlay/widgets/widget-preview-fixtures.test.ts (34 tests) 23ms
+ ✓ src/overlay/widgets/widget-base-size.test.ts (9 tests) 12ms
+ ✓ src/overlay/core/widget-design.test.ts (7 tests) 10ms
+ ✓ src/overlay/widgets/widget-design-system.test.ts (9 tests) 11ms
+ ✓ src/overlay/widgets/standings-catalog.test.ts (8 tests) 15ms
+ ✓ src/overlay/widgets/relative-catalog.test.ts (7 tests) 11ms
+ ✓ src/overlay/design-systems/official-designs.test.ts (6 tests) 14ms
+ ✓ src/overlay/core/widget-registry.test.ts (5 tests) 15ms
+ ✓ src/overlay/widget-types/relative/relative-content.test.ts (5 tests) 12ms
+ ✓ src/overlay/core/inspector-control.test.ts (11 tests) 12ms
+ ✓ src/overlay/core/profile-document.test.ts (13 tests) 13ms
+ ✓ src/overlay/core/design-system-registry.test.ts (7 tests) 9ms
+ ✓ src/overlay/widget-types/relative/relative-view-model.test.ts (5 tests) 10ms
+ ✓ src/overlay/widgets/relative-format.test.ts (11 tests) 10ms
+ ✓ src/overlay/widgets/widget-appearance.test.ts (9 tests) 12ms
+ ✓ src/overlay/widget-types/shared/widget-column.test.ts (7 tests) 10ms
+ ✓ src/overlay/widgets/standings-format.test.ts (19 tests) 11ms
+ ✓ src/overlay/widget-types/standings/standings-content.test.ts (4 tests) 10ms
+ ✓ src/overlay/widget-types/standings/standings-view-model.test.ts (4 tests) 12ms
+ ✓ src/overlay/widget-types/pedals/pedals-view-model.test.ts (5 tests) 12ms
+ ✓ src/overlay/widget-types/pedals/pedals-definition.test.ts (5 tests) 10ms
+ ✓ src/overlay/widgets/relative-filters.test.ts (6 tests) 11ms
+ ✓ src/overlay/core/visual-config-migration.test.ts (2 tests) 8ms
+ ✓ src/overlay/widget-types/delta/delta-view-model.test.ts (8 tests) 9ms
+ ✓ src/overlay/transports/wails-telemetry-adapter.test.ts (3 tests) 12ms
+ ✓ src/overlay/widgets/pedals-format.test.ts (18 tests) 8ms
+ ✓ src/overlay/core/telemetry-rate-coordinator.test.ts (5 tests) 12ms
+ ✓ src/overlay/widget-types/relative/relative-definition.test.ts (3 tests) 7ms
+ ✓ src/overlay/overlay-document.test.ts (1 test) 8ms
+ ✓ src/overlay/transports/sse-telemetry-adapter.test.ts (2 tests) 13ms
+ ✓ src/overlay/widget-types/standings/standings-definition.test.ts (3 tests) 8ms
+ ✓ src/overlay-harness/harness-profile-api.test.ts (2 tests) 7ms
+ ✓ src/overlay/widget-types/delta/delta-definition.test.ts (4 tests) 8ms
+ ✓ src/overlay/core/widget-visual-settings.test.ts (2 tests) 7ms
+ ✓ src/overlay/core/telemetry-adapter.test.ts (6 tests) 11ms
+ ✓ src/overlay/widgets/mock-telemetry.test.ts (4 tests) 6ms
+ ✓ src/overlay/widgets/widget-design-system.contract.test.ts (7 tests) 7ms
+ ✓ src/overlay/core/mock-scenarios.test.ts (2 tests) 6ms
+ ✓ src/overlay/core/telemetry-store.test.ts (2 tests) 7ms
+ ✓ src/overlay/widget-types/shared/scoring-readers.test.ts (3 tests) 3ms
+ ✓ src/overlay/core/widget-visibility.test.ts (3 tests) 4ms
+ ✓ src/overlay/overlay-route-params.test.ts (1 test) 4ms
+
+ Test Files  73 passed (73)
+      Tests  472 passed (472)
+   Start at  02:48:04
+   Duration  16.24s (transform 4.63s, setup 1.72s, import 32.51s, tests 5.03s, environment 146.66s)
+

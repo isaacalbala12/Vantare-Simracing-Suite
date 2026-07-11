@@ -1,0 +1,15 @@
+---
+pid: 4648
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\frontend\" test 2>&1 | Select-Object -Last 8"
+started_at: 2026-07-09T21:49:17.950Z
+running_for_ms: 16335005 
+---
+ ✓ src/overlay/widgets/widget-design-system.contract.test.ts (7 tests) 4ms
+ ✓ src/lib/html-escape.test.ts (2 tests) 3ms
+
+ Test Files  164 passed (164)
+      Tests  1570 passed (1570)
+   Start at  23:49:20
+   Duration  33.57s (transform 18.62s, setup 4.82s, import 121.13s, tests 41.41s, environment 241.44s)
+

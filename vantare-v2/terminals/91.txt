@@ -1,0 +1,78 @@
+---
+pid: 20664
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend visual:overlay-studio"
+started_at: 2026-07-11T00:32:00.780Z
+running_for_ms: 10315006 
+---
+
+> vantare-overlay@0.1.0.2 visual:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-visual.mjs
+
+Port 5176 is in use, trying another one...
+ok delta-original-ready-studio (0.000% delta)
+ok delta-original-ready-desktop (0.000% delta)
+ok delta-original-ready-obs (0.000% delta)
+ok delta-crystal-ready-studio (0.000% delta)
+ok delta-crystal-ready-desktop (0.000% delta)
+ok delta-crystal-ready-obs (0.000% delta)
+ok standings-original-ready-studio (0.000% delta)
+ok standings-original-ready-desktop (0.000% delta)
+ok standings-original-ready-obs (0.000% delta)
+ok standings-crystal-ready-studio (0.000% delta)
+ok standings-crystal-ready-desktop (0.000% delta)
+ok standings-crystal-ready-obs (0.000% delta)
+ok relative-original-ready-studio (0.000% delta)
+ok relative-original-ready-desktop (0.000% delta)
+ok relative-original-ready-obs (0.000% delta)
+ok relative-crystal-ready-studio (0.000% delta)
+ok relative-crystal-ready-desktop (0.000% delta)
+ok relative-crystal-ready-obs (0.000% delta)
+ok pedals-original-ready-studio (0.000% delta)
+ok pedals-original-ready-desktop (0.000% delta)
+ok pedals-original-ready-obs (0.000% delta)
+ok pedals-crystal-ready-studio (0.000% delta)
+ok pedals-crystal-ready-desktop (0.000% delta)
+ok pedals-crystal-ready-obs (0.000% delta)
+ok delta-original-stale (0.000% delta)
+ok delta-original-disconnected (0.000% delta)
+ok delta-original-error (0.000% delta)
+ok delta-crystal-stale (0.000% delta)
+ok delta-crystal-disconnected (0.000% delta)
+ok delta-crystal-error (0.000% delta)
+ok standings-original-stale (0.000% delta)
+ok standings-original-disconnected (0.000% delta)
+ok standings-original-error (0.000% delta)
+ok standings-crystal-stale (0.000% delta)
+ok standings-crystal-disconnected (0.000% delta)
+ok standings-crystal-error (0.000% delta)
+ok relative-original-stale (0.000% delta)
+ok relative-original-disconnected (0.000% delta)
+ok relative-original-error (0.000% delta)
+ok relative-crystal-stale (0.000% delta)
+ok relative-crystal-disconnected (0.000% delta)
+ok relative-crystal-error (0.000% delta)
+ok pedals-original-stale (0.000% delta)
+ok pedals-original-disconnected (0.000% delta)
+ok pedals-original-error (0.000% delta)
+ok pedals-crystal-stale (0.000% delta)
+ok pedals-crystal-disconnected (0.000% delta)
+ok pedals-crystal-error (0.000% delta)
+ok standings-original-stress60 (0.000% delta)
+ok standings-crystal-stress60 (0.000% delta)
+ok relative-original-fill (0.000% delta)
+ok relative-crystal-fill (0.000% delta)
+ok pedals-original-zero (0.000% delta)
+ok pedals-crystal-zero (0.000% delta)
+ok pedals-original-full (0.000% delta)
+ok pedals-crystal-full (0.000% delta)
+ok studio-wide (0.000% delta)
+ok studio-medium (0.000% delta)
+ok studio-small (0.000% delta)
+ok parity-delta
+ok parity-standings
+ok parity-relative
+ok parity-pedals
+ok studio-relative-chrome
+ok studio-wide interactions
+ok studio zoom 150 viewport

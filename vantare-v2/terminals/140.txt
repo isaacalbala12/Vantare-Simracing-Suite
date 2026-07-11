@@ -1,0 +1,22 @@
+---
+pid: 28156
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir frontend test 2>&1 | Select-Object -Last 15"
+started_at: 2026-07-11T02:36:16.944Z
+running_for_ms: 2859999  
+---
+    356|         "delta-main",
+    357|       ),
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 206 passed (207)
+      Tests  1 failed | 1561 passed (1562)
+   Start at  04:36:18
+   Duration  38.89s (transform 15.66s, setup 5.24s, import 105.42s, tests 34.49s, environment 317.87s)
+
+ ELIFECYCLE  Test failed. See above for more details.

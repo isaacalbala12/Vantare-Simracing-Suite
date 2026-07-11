@@ -1,0 +1,814 @@
+---
+pid: 26836
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir frontend test"
+started_at: 2026-07-11T02:38:20.450Z
+running_for_ms: 2734994  
+---
+DOMException [AbortError]: The operation was aborted.
+    at Fetch.onAsyncTaskManagerAbort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:546:23)
+    at Object.<anonymous> (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:416:101)
+    at AsyncTaskManager.abortAll (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:292:30)
+    at AsyncTaskManager.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:52:21)
+    at DetachedBrowserFrame.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/browser/detached-browser/DetachedBrowserFrame.js:112:58)
+    at DetachedWindowAPI.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/window/DetachedWindowAPI.js:51:35)
+    at teardownWindow (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:331:22)
+    at Object.teardown (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:392:10)
+    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/base.BE3cXZj3.js:168:65
+    at Traces.$ (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+DOMException [AbortError]: The operation was aborted.
+    at Fetch.onAsyncTaskManagerAbort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:546:23)
+    at Object.<anonymous> (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/fetch/Fetch.js:416:101)
+    at AsyncTaskManager.abortAll (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:292:30)
+    at AsyncTaskManager.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/async-task-manager/AsyncTaskManager.js:52:21)
+    at DetachedBrowserFrame.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/browser/detached-browser/DetachedBrowserFrame.js:112:58)
+    at DetachedWindowAPI.abort (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/happy-dom@20.10.2/node_modules/happy-dom/lib/window/DetachedWindowAPI.js:51:35)
+    at teardownWindow (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:331:22)
+    at Object.teardown (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/index.DC7d2Pf8.js:392:10)
+    at file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/base.BE3cXZj3.js:168:65
+    at Traces.$ (file:///C:/Users/isaac/Desktop/Vantare-Overlays/node_modules/.pnpm/vitest@4.1.9_@types+node@24.13.2_happy-dom@20.10.2_jsdom@29.1.1_vite@8.0.16_@types+node@24.13.2_jiti@2.7.0_/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements requires session
+[vantare:license] refresh: sin sesión Supabase (getSession vacío)
+
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements times out without license:changed
+[vantare:license] refresh: timeout esperando license:changed
+[vantare:license] refresh: falló { reason: 'timeout' }
+
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice requires session
+[vantare:license] reset-device: sin sesión Supabase (getSession vacío)
+
+stderr | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice maps rate_limit errors
+[vantare:license] reset-device: license:error { message: 'rate_limit: solo 1 reset cada 24h' }
+[vantare:license] reset-device: falló { reason: 'rate_limit' }
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+
+ FAIL  src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx > useCanvasInteraction > keeps imperative preview when telemetry publishes during drag
+AssertionError: expected 100 to be 140 // Object.is equality
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        style="width: 960px; height: 540px;"
+      >
+        <div
+          data-testid="dirty-flag"
+        >
+          clean
+        </div>
+        <div
+          class="osv3-canvas-viewport"
+          data-interaction="idle"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-viewport"
+        >
+          <div>
+            <div
+              class="osv3-canvas-toolbar"
+              data-testid="studio-canvas-toolbar"
+            >
+              <button
+                class="osv3-canvas-toolbar__button"
+                data-testid="studio-zoom-fit"
+                type="button"
+              >
+                Ajustar
+              </button>
+              <button
+                class="osv3-canvas-toolbar__button"
+                data-testid="studio-zoom-minus"
+                type="button"
+              >
+                -
+              </button>
+              <span
+                class="osv3-canvas-toolbar__label"
+                data-testid="studio-zoom-label"
+              >
+                Fit
+              </span>
+              <button
+                class="osv3-canvas-toolbar__button"
+                data-testid="studio-zoom-plus"
+                type="button"
+              >
+                +
+              </button>
+              <select
+                class="osv3-canvas-toolbar__select"
+                data-testid="studio-background-select"
+              >
+                <option
+                  value="grid"
+                >
+                  grid
+                </option>
+                <option
+                  value="solid-black"
+                >
+                  solid-black
+                </option>
+              </select>
+              <label
+                class="osv3-canvas-toolbar__toggle"
+              >
+                <input
+                  data-testid="studio-safe-area-toggle"
+                  type="checkbox"
+                />
+                Área segura
+              </label>
+            </div>
+          </div>
+          <div
+            aria-hidden="true"
+            class="osv3-canvas-action-bar-slot"
+            data-testid="studio-canvas-action-bar-slot"
+          >
+            <div
+              aria-hidden="true"
+              class="osv3-canvas-action-bar osv3-canvas-action-bar--inert"
+              data-testid="studio-canvas-action-bar-placeholder"
+            >
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Duplicar
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Eliminar
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Centrar
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Restablecer layout
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Al frente
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Adelante
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Atrás
+              </button>
+              <button
+                class="osv3-canvas-action-bar__button"
+                disabled=""
+                tabindex="-1"
+                type="button"
+              >
+                Al fondo
+              </button>
+            </div>
+          </div>
+          <div
+            class="osv3-canvas-stage"
+          >
+            <div
+              class="osv3-canvas-scene-stage"
+              style="width: 1920px; height: 1080px;"
+            >
+              <div
+                class="osv3-canvas-scene osv3-bg-grid"
+                data-scale="1"
+                data-testid="studio-canvas-scene"
+                style="width: 1920px; height: 1080px; transform: scale(1); transform-origin: top left;"
+              >
+                <div
+                  class="osv3-widget-frame"
+                  data-testid="studio-widget-frame-delta-main"
+                  style="position: absolute; left: 100px; top: 100px; width: 280px; height: 96px; z-index: 0;"
+                >
+                  <div
+                    class="osv3-widget-frame__visual"
+                    data-testid="studio-widget-visual-delta-main"
+                  >
+                    <div
+                      class="osv3-widget-frame__scaler"
+                      data-testid="studio-widget-intrinsic-scaler-delta-main"
+                      style="width: 280px; height:> vantare-overlay@0.1.0.2 test C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vitest run
+
+
+ RUN  v4.1.9 C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/frontend
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > registers license:changed listener and emits license:validate on mount
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > updates state when license:changed fires
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'overlays' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > refresh() re-emits license:validate
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > ignores stale anonymous license:changed while authenticated
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+[vantare:license] LicenseProvider: license:changed {
+  state: 'anonymous',
+  email: '',
+  entitlements: [],
+  deviceOK: false,
+  lastValidated: null
+}
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > clearLicense() forces anonymous state even after authentication
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > ignores license:validate changes for unrelated events
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > resolves loading when timeout fires (no backend response)
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > retries license:validate when timeout fires
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > LicenseProvider > timeout cancelled when license:changed arrives early
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'overlays' ],
+  deviceOK: true,
+  lastValidated: null
+}
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+ ✓ src/hub/calendar/CalendarWeekView.test.tsx (15 tests) 850ms
+ ✓ src/hub/pages/CalendarPage.test.tsx (13 tests) 854ms
+stdout | src/lib/license.test.tsx > license module > LicenseProvider standalone mode > emits license:validate without session token in standalone mode
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+ ✓ src/hub/overlay-studio/canvas/StudioCanvas.test.tsx (9 tests) 627ms
+ ✓ src/hub/launcher/AddNonSteamGameModal.test.tsx (17 tests) 869ms
+     ✓ caps results at 200 when more matches exist and shows footer  511ms
+ ✓ src/hub/pages/SettingsPage.test.tsx (28 tests) 1297ms
+ ✓ src/hub/auth/LoginScreen.test.tsx (19 tests) 1508ms
+ ✓ src/hub/pages/RoadmapPage.test.tsx (20 tests) 1666ms
+ ✓ src/hub/overlay-studio/state/studio-store.test.tsx (12 tests) 1214ms
+stdout | src/lib/license.test.tsx > license module > LicenseProvider standalone mode > emits license:validate with an empty payload in standalone mode
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+stdout | src/lib/license.test.tsx > license module > useLicense consumer pattern > works with multiple consumers sharing context
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'shared@example.com',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+ ✓ src/lib/license.test.tsx (17 tests) 2354ms
+       ✓ registers license:changed listener and emits license:validate on mount  578ms
+       ✓ ignores license:validate changes for unrelated events  558ms
+       ✓ emits license:validate without session token in standalone mode  584ms
+       ✓ emits license:validate with an empty payload in standalone mode  556ms
+ ✓ src/hub/calendar/CalendarDayView.test.tsx (14 tests) 1878ms
+stdout | src/hub/pages/HubApp.bridge.test.tsx > LicenseBridge > falls back to a blank validation when there is no session
+[vantare:license] LicenseProvider: emit license:validate { hasToken: false, tokenLen: 0 }
+
+ ✓ src/hub/pages/HubApp.bridge.test.tsx (2 tests) 682ms
+     ✓ falls back to a blank validation when there is no session  582ms
+ ✓ src/hub/overlay-studio/StudioRoute.test.tsx (8 tests) 1125ms
+     ✓ guards profile changes with save/discard/cancel while dirty  359ms
+ ✓ src/hub/overlay-studio/OverlayStudioV3.test.tsx (15 tests) 1286ms
+ ❯ src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx (14 tests | 1 failed) 2035ms
+     ✓ snaps unless Alt disables snapping 4ms
+     ✓ preserves aspect ratio for locked delta resize 1ms
+     ✓ enters move mode synchronously on pointer-down 128ms
+     ✓ updates transient geometry on pointer-move without dirtying the document 90ms
+     ✓ updates frame geometry on every pointer-move during drag 115ms
+     × keeps imperative preview when telemetry publishes during drag 1052ms
+     ✓ does not teleport on the first pointer-move after pointer-down 60ms
+     ✓ dispatches exactly one widget/layout command on pointer-up after movement 81ms
+     ✓ does not dispatch when pointer-up happens without movement 51ms
+     ✓ restores geometry and skips dispatch when Escape is pressed 52ms
+     ✓ cancels safely on lost pointer capture 64ms
+     ✓ shows guides only during interaction 92ms
+     ✓ resizes from a handle with aspect lock 94ms
+     ✓ cancels resize and removes guides when the handle loses pointer capture 148ms
+ ✓ src/hub/HubApp.test.tsx (26 tests) 1359ms
+ ✓ src/hub/auth/PaywallScreen.test.tsx (14 tests) 437ms
+ ✓ src/hub/overlays/RecommendedProfilesView.test.tsx (4 tests) 339ms
+ ✓ src/hub/components/UpdateBanner.test.tsx (12 tests) 200ms
+ ✓ src/hub/calendar/CalendarMonthView.test.tsx (11 tests) 779ms
+ ✓ src/hub/overlay-studio/inspector/StudioInspector.test.tsx (6 tests) 491ms
+ ✓ src/hub/settings/AccountSettings.test.tsx (15 tests) 472ms
+ ✓ src/hub/pages/EngineerPage.test.tsx (15 tests) 490ms
+ ✓ src/hub/pages/OverlaysStudioPage.test.tsx (2 tests) 286ms
+ ✓ src/overlay-harness/OverlayParityHarness.test.tsx (16 tests) 273ms
+ ✓ src/hub/pages/DashboardPage.test.tsx (8 tests) 287ms
+ ✓ src/hub/overlays/OwnProfilesView.test.tsx (9 tests) 274ms
+ ✓ src/hub/components/Topbar.test.tsx (18 tests) 243ms
+ ✓ src/overlay/design-systems/vantare-crystal/relative/RelativeCrystal.test.tsx (12 tests) 295ms
+ ✓ src/hub/components/ActiveOverlayCard.test.tsx (14 tests) 266ms
+ ✓ src/hub/calendar/CalendarToolbar.test.tsx (10 tests) 197ms
+ ✓ src/hub/overlay-studio/inspector/DesignSection.test.tsx (6 tests) 236ms
+ ✓ src/overlay/design-systems/vantare-crystal/standings/StandingsCrystal.test.tsx (10 tests) 200ms
+ ✓ src/overlay/widget-types/relative/RelativeContentInspector.test.tsx (2 tests) 187ms
+ ✓ src/overlay/design-systems/vantare-original/relative/RelativeOriginal.test.tsx (11 tests) 280ms
+ ✓ src/overlay/design-systems/vantare-original/standings/StandingsOriginal.test.tsx (9 tests) 327ms
+ ✓ src/hub/pages/HubPage.test.tsx (9 tests) 176ms
+ ✓ src/hub/overlay-studio/components/WidgetListPanel.test.tsx (4 tests) 254ms
+ ✓ src/hub/calendar/CalendarRaceRail.test.tsx (14 tests) 217ms
+ ✓ src/overlay/CompositeApp.test.tsx (8 tests) 171ms
+ ✓ src/overlay/widget-types/standings/StandingsContentInspector.test.tsx (2 tests) 165ms
+ ✓ src/hub/auth/LicenseBanner.test.tsx (8 tests) 108ms
+ ✓ src/overlay/ObsOv 96px; transform: scale(1); transform-origin: top left;"
+                    >
+                      <section
+                        class="vo-delta"
+                        data-status="ready"
+                        data-tone="gaining"
+                        data-widget-renderer="delta"
+                        data-widget-system="vantare-original"
+                      >
+                        <header
+                          class="vo-delta-header"
+                        >
+                          <span
+                            class="vo-delta-label"
+                          >
+                            DELTA
+                          </span>
+                          <span
+                            class="vo-delta-last-lap"
+                          >
+                            1:31.221
+                          </span>
+                        </header>
+                        <strong
+                          class="vo-delta-value"
+                          data-tone="gaining"
+                        >
+                          -0.150
+                        </strong>
+                        <div
+                          aria-hidden="true"
+                          class="vo-delta-track"
+                          data-tone="gaining"
+                        >
+                          <span
+                            class="vo-delta-center"
+                          />
+                          <span
+                            class="vo-delta-fill"
+                            style="--delta-progress: -0.075;"
+                          />
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div
+              class="osv3-preview-source-controls"
+              data-testid="studio-preview-source-controls"
+            >
+              <div
+                aria-label="Fuente de preview"
+                class="osv3-preview-source-controls__group"
+                role="radiogroup"
+              >
+                <button
+                  class="is-active"
+                  data-testid="studio-preview-source-mock"
+                  type="button"
+                >
+                  Mock
+                </button>
+                <button
+                  data-testid="studio-preview-source-live"
+                  disabled=""
+                  title="LMU no disponible en este entorno"
+                  type="button"
+                >
+                  Live
+                </button>
+              </div>
+              <p
+                class="osv3-preview-source-controls__hint"
+                data-testid="studio-preview-live-unavailable"
+              >
+                LMU no disponible en este entorno
+              </p>
+              <select
+                data-testid="studio-mock-session-select"
+              >
+                <option
+                  value="practice"
+                >
+                  practice
+                </option>
+                <option
+                  value="qualifying"
+                >
+                  qualifying
+                </option>
+                <option
+                  value="race"
+                >
+                  race
+                </option>
+              </select>
+              <select
+                data-testid="studio-mock-location-select"
+              >
+                <option
+                  value="track"
+                >
+                  track
+                </option>
+                <option
+                  value="pits"
+                >
+                  pits
+                </option>
+              </select>
+              <button
+                class="osv3-preview-source-controls__browser"
+                data-testid="studio-browser-view-button"
+                type="button"
+              >
+                Browser View
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+- Expected
++ Received
+
+- 140
++ 100
+
+ ❯ src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx:222:42
+    220|     await waitFor(() => {
+    221|       const frame = screen.getByTestId("studio-widget-frame-delta-main…
+    222|       expect(readFrameVisualLeft(frame)).toBe(140);
+       |                                          ^
+    223|     });
+    224|
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+erlayApp.test.tsx (6 tests) 137ms
+ ✓ src/hub/overlay-studio/components/StudioHeader.test.tsx (3 tests) 162ms
+ ✓ src/hub/launcher/ProfileEditor.test.tsx (6 tests) 187ms
+ ✓ src/hub/overlays/CommunityComingSoonView.test.tsx (4 tests) 112ms
+ ✓ src/hub/onboarding/OnboardingFlow.test.tsx (13 tests) 173ms
+ ✓ src/hub/onboarding/BetaWelcome.test.tsx (13 tests) 147ms
+ ✓ src/hub/calendar/CalendarReminderBanner.test.tsx (6 tests) 106ms
+ ✓ src/hub/components/LauncherDock.test.tsx (8 tests) 144ms
+ ✓ src/overlay/runtime/RuntimeOverlaySurface.test.tsx (4 tests) 104ms
+ ✓ src/hub/calendar/CalendarHeroUpcomingPanel.test.tsx (3 tests) 108ms
+ ✓ src/i18n/i18n.test.ts (24 tests) 92ms
+ ✓ src/overlay/design-systems/vantare-original/pedals/PedalsOriginal.test.tsx (7 tests) 138ms
+ ✓ src/hub/overlay-studio/canvas/StudioTelemetryProvider.test.tsx (4 tests) 199ms
+ ✓ src/overlay/design-systems/vantare-crystal/pedals/PedalsCrystal.test.tsx (8 tests) 100ms
+ ✓ src/i18n/I18nProvider.test.tsx (10 tests) 107ms
+ ✓ src/hub/launcher/AppsPanel.test.tsx (5 tests) 193ms
+ ✓ src/hub/pages/LauncherPage.test.tsx (4 tests) 118ms
+ ✓ src/hub/overlays/ProfilePreview.test.tsx (3 tests) 119ms
+ ✓ src/hub/components/V52Shell.test.tsx (3 tests) 109ms
+ ✓ src/overlay/core/WidgetVisualHost.test.tsx (6 tests) 91ms
+ ✓ src/hub/overlays/ObsOverlaySetupView.test.tsx (3 tests) 88ms
+ ✓ src/hub/overlay-studio/canvas/StudioWidgetFrame.test.tsx (5 tests) 105ms
+ ✓ src/hub/overlay-studio/inspector/BehaviorSection.test.tsx (4 tests) 106ms
+ ✓ src/overlay/OverlayCalendarReminderBanner.test.tsx (7 tests) 94ms
+ ✓ src/overlay/core/profile-contract-fixture.test.tsx (4 tests) 83ms
+ ✓ src/hub/pages/TelemetryPage.test.tsx (3 tests) 94ms
+ ✓ src/overlay/design-systems/vantare-crystal/delta/DeltaCrystal.test.tsx (9 tests) 86ms
+ ✓ src/hub/components/LastActivityCard.test.tsx (6 tests) 80ms
+ ✓ src/hub/components/PlanStatusCard.test.tsx (4 tests) 51ms
+ ✓ src/hub/overlay-studio/designs/SaveDesignDialog.test.tsx (3 tests) 133ms
+ ✓ src/hub/overlay-studio/components/ResponsivePanelControls.test.tsx (6 tests) 90ms
+ ✓ src/hub/overlay-studio/catalog/AddWidgetDialog.test.tsx (3 tests) 75ms
+ ✓ src/hub/launcher/ProfileCard.test.tsx (4 tests) 95ms
+ ✓ src/hub/overlay-studio/components/RecoveryDialog.test.tsx (2 tests) 80ms
+ ✓ src/hub/HubErrorBoundary.test.tsx (5 tests) 75ms
+ ✓ src/overlay/design-systems/vantare-original/delta/DeltaOriginal.test.tsx (8 tests) 74ms
+ ✓ src/hub/overlay-studio/canvas/CanvasToolbar.test.tsx (1 test) 90ms
+ ✓ src/hub/components/QuickActions.test.tsx (4 tests) 62ms
+ ✓ src/hub/overlay-studio/canvas/PreviewSourceControls.test.tsx (3 tests) 63ms
+ ✓ src/hub/overlay-studio/components/ProfileNameDialog.test.tsx (2 tests) 56ms
+ ✓ src/hub/overlay-studio/canvas/WidgetContextMenu.test.tsx (3 tests) 75ms
+ ✓ src/i18n/LanguageSelector.test.tsx (5 tests) 70ms
+ ✓ src/overlay/runtime/ObsOverlayRuntime.test.tsx (1 test) 51ms
+ ✓ src/hub/launcher/ProfileCard.timeline.test.tsx (3 tests) 81ms
+ ✓ src/hub/launcher/ProfileCard.timeline.a11y.test.tsx (2 tests) 61ms
+ ✓ src/hub/launcher/chain-store.subscribe.test.tsx (2 tests) 70ms
+ ✓ src/hub/components/AccessGate.test.tsx (11 tests) 64ms
+ ✓ src/hub/overlay-studio/inspector/LayoutSection.test.tsx (3 tests) 59ms
+stdout | src/lib/access.test.tsx > useAccess > derives free access context from a free license
+[vantare:license] LicenseProvider: license:changed {
+  state: 'authenticated-no-entitlement',
+  email: 'driver@example.test',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > derives suite access context from a bundle license
+[vantare:license] LicenseProvider: license:changed {
+  state: 'active',
+  email: 'driver@example.test',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > derives blocked access context from an expired license
+[vantare:license] LicenseProvider: license:changed {
+  state: 'expired',
+  email: 'driver@example.test',
+  entitlements: [ 'bundle' ],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > derives unconfigured access context
+[vantare:license] LicenseProvider: license:changed {
+  state: 'unconfigured',
+  email: 'driver@example.test',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+stdout | src/lib/access.test.tsx > useAccess > accepts roles parameter
+[vantare:license] LicenseProvider: license:changed {
+  state: 'authenticated-no-entitlement',
+  email: 'driver@example.test',
+  entitlements: [],
+  deviceOK: true,
+  lastValidated: null
+}
+
+ ✓ src/lib/access.test.tsx (6 tests) 69ms
+ ✓ src/hub/launcher/HubToast.test.tsx (2 tests) 67ms
+ ✓ src/hub/overlay-studio/NoActiveProfileState.test.tsx (1 test) 51ms
+ ✓ src/hub/overlay-studio/inspector/ActionsSection.test.tsx (4 tests) 49ms
+ ✓ src/calendar/calendar-view-math.test.ts (29 tests) 50ms
+ ✓ src/hub/overlay-studio/components/DirtyChangesDialog.test.tsx (4 tests) 47ms
+ ✓ src/hub/overlay-studio/inspector/InspectorRail.test.tsx (3 tests) 52ms
+ ✓ src/hub/components/RecommendedQuickStart.test.tsx (4 tests) 50ms
+ ✓ src/hub/overlay-studio/inspector/AppearanceSection.test.tsx (2 tests) 50ms
+ ✓ src/overlay/runtime/DesktopOverlayRuntime.test.tsx (1 test) 43ms
+ ✓ src/hub/registry/_examples/vantare-v3-standings-header.test.tsx (3 tests) 64ms
+ ✓ src/hub/components/V52SectionHeader.test.tsx (1 test) 40ms
+ ✓ src/hub/overlays/RecommendedSuccessBanner.test.tsx (2 tests) 53ms
+ ✓ src/overlay/runtime/RuntimeWidgetFrame.test.tsx (2 tests) 48ms
+ ✓ src/overlay/core/WidgetRenderBoundary.test.tsx (2 tests) 42ms
+ ✓ src/hub/overlay-studio/canvas/CanvasActionBar.test.tsx (1 test) 40ms
+ ✓ src/hub/pages/ProfilesPage.test.tsx (1 test) 41ms
+ ✓ src/hub/components/AppBadge.test.tsx (1 test) 36ms
+ ✓ src/hub/components/EmptyStates.test.tsx (2 tests) 36ms
+ ✓ src/lib/useDemoMode.test.ts (5 tests) 35ms
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements emits validate with session token
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] refresh: emit license:validate
+[vantare:license] refresh: license:changed recibido {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  fresh: true,
+  lastValidated: '2026-07-11T02:38:49.483Z'
+}
+[vantare:license] refresh: ok {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  hasBundle: true,
+  unlocked: true
+}
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements ignores stale license:changed events
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] refresh: emit license:validate
+[vantare:license] refresh: license:changed recibido {
+  state: 'authenticated-no-entitlement',
+  email: 'u@example.com',
+  entitlements: [],
+  fresh: false,
+  lastValidated: '2026-07-11T02:37:49.488Z'
+}
+[vantare:license] refresh: license:changed recibido {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  fresh: true,
+  lastValidated: '2026-07-11T02:38:49.488Z'
+}
+[vantare:license] refresh: ok {
+  state: 'active',
+  email: 'u@example.com',
+  entitlements: [ 'bundle' ],
+  hasBundle: true,
+  unlocked: true
+}
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements returns pending when bundle missing
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 15000 }
+[vantare:license] refresh: emit license:validate
+[vantare:license] refresh: license:changed recibido {
+  state: 'authenticated-no-entitlement',
+  email: 'u@example.com',
+  entitlements: [],
+  fresh: true,
+  lastValidated: '2026-07-11T02:38:49.490Z'
+}
+[vantare:license] refresh: ok {
+  state: 'authenticated-no-entitlement',
+  email: 'u@example.com',
+  entitlements: [],
+  hasBundle: false,
+  unlocked: false
+}
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > refreshCurrentUserEntitlements times out without license:changed
+[vantare:license] refresh: inicio { tokenLen: 5, timeoutMs: 1000 }
+[vantare:license] refresh: emit license:validate
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice emits reset-device and resolves on fresh license:changed
+[vantare:license] reset-device: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] reset-device: emit license:reset-device
+[vantare:license] reset-device: license:changed recibido { state: 'active', email: 'u@example.com', fresh: true }
+[vantare:license] reset-device: ok
+
+stdout | src/lib/entitlements-refresh.test.ts > entitlements-refresh > resetActiveDevice maps rate_limit errors
+[vantare:license] reset-device: inicio { tokenLen: 5, timeoutMs: 5000 }
+[vantare:license] reset-device: emit license:reset-device
+
+ ✓ src/lib/entitlements-refresh.test.ts (12 tests) 33ms
+ ✓ src/hub/components/OpsPanel.test.tsx (3 tests) 37ms
+ ✓ src/hub/launcher/launcher-state.test.ts (20 tests) 27ms
+ ✓ src/hub/overlays/studio-controls.test.tsx (3 tests) 38ms
+ ✓ src/hub/overlay-studio/canvas/canvas-frame-preview.test.ts (10 tests) 27ms
+ ✓ src/hub/overlay-studio/catalog/studio-catalog.test.ts (6 tests) 28ms
+ ✓ src/hub/components/V52InfoCard.test.tsx (1 test) 32ms
+ ✓ src/lib/billing-client.test.ts (9 tests) 31ms
+ ✓ src/hub/registry/widget-components.test.tsx (7 tests) 26ms
+ ✓ src/hub/overlay-studio/state/studio-history.test.ts (10 tests) 23ms
+ ✓ src/lib/supabase-auth.test.ts (20 tests) 20ms
+ ✓ src/hub/overlay-studio/state/studio-profile-client.test.ts (8 tests) 21ms
+ ✓ src/hub/overlay-studio/designs/widget-design-client.test.ts (8 tests) 21ms
+ ✓ src/hub/overlay-studio/state/studio-command.test.ts (15 tests) 21ms
+ ✓ src/lib/theme.test.ts (6 tests) 19ms
+ ✓ src/hub/roadmap/roadmap-data.test.ts (24 tests) 14ms
+ ✓ src/overlay/widgets/widget-preview-fixtures.test.ts (30 tests) 14ms
+ ✓ src/lib/access-policy.test.ts (57 tests) 16ms
+ ✓ src/lib/access-dev-modes.test.ts (23 tests) 14ms
+ ✓ src/lib/dom-write.test.ts (4 tests) 14ms
+ ✓ src/hub/overlay-studio/state/studio-recovery.test.ts (6 tests) 11ms
+ ✓ src/overlay/design-systems/official-designs.test.ts (6 tests) 12ms
+ ✓ src/lib/frame-budget.test.ts (4 tests) 12ms
+ ✓ src/overlay/core/profile-document.test.ts (13 tests) 10ms
+ ✓ src/hub/roadmap/features-data.test.ts (13 tests) 15ms
+ ✓ src/hub/overlay-studio/access/studio-access.test.ts (17 tests) 13ms
+ ✓ src/hub/roadmap/roadmap-features.test.ts (9 tests) 13ms
+ ✓ src/overlay-harness/harness-fixtures.test.ts (5 tests) 13ms
+ ✓ src/hub/overlays/recommended-first-use.test.ts (3 tests) 13ms
+ ✓ src/overlay/core/telemetry-rate-coordinator.test.ts (5 tests) 11ms
+ ✓ src/overlay/core/widget-registry.test.ts (5 tests) 13ms
+ ✓ src/overlay/transports/wails-telemetry-adapter.test.ts (3 tests) 13ms
+ ✓ src/overlay/widgets/standings-catalog.test.ts (8 tests) 14ms
+ ✓ src/lib/plan.test.ts (36 tests) 14ms
+ ✓ src/overlay/widget-types/shared/widget-column.test.ts (7 tests) 10ms
+ ✓ src/hub/overlay-studio/browser-view.test.ts (8 tests) 14ms
+ ✓ src/hub/overlays/profile-preview-document.test.ts (4 tests) 10ms
+ ✓ src/hub/overlays/recommended-profiles.test.ts (9 tests) 12ms
+ ✓ src/overlay/core/widget-design.test.ts (7 tests) 10ms
+ ✓ src/overlay/widgets/relative-catalog.test.ts (7 tests) 11ms
+ ✓ src/overlay/core/inspector-control.test.ts (11 tests) 11ms
+ ✓ src/hub/registry/builtin-systems.test.ts (5 tests) 10ms
+ ✓ src/hub/launcher/chain-store.test.ts (8 tests) 19ms
+ ✓ src/overlay/transports/sse-telemetry-adapter.test.ts (2 tests) 11ms
+ ✓ src/lib/canvas-math.test.ts (15 tests) 11ms
+ ✓ src/hub/registry/design-system-registry.test.ts (6 tests) 10ms
+ ✓ src/overlay/core/telemetry-adapter.test.ts (6 tests) 10ms
+ ✓ src/hub/overlay-studio/state/session-layouts.test.ts (7 tests) 9ms
+ ✓ src/overlay/widget-types/relative/relative-content.test.ts (5 tests) 9ms
+ ✓ src/overlay/widget-types/standings/standings-view-model.test.ts (4 tests) 10ms
+ ✓ src/overlay-harness/hub-profile-mock-state.test.ts (2 tests) 12ms
+ ✓ src/overlay/runtime/resolve-runtime-layout.test.ts (8 tests) 10ms
+ ✓ src/overlay/widget-types/standings/standings-content.test.ts (5 tests) 10ms
+ ✓ src/overlay/widget-types/relative/relative-view-model.test.ts (5 tests) 10ms
+ ✓ src/overlay/widgets/widget-design-system.test.ts (9 tests) 10ms
+ ✓ src/overlay/widget-types/pedals/pedals-definition.test.ts (5 tests) 10ms
+ ✓ src/hub/overlay-studio/canvas/canvas-geometry.test.ts (9 tests) 9ms
+ ✓ src/hub/overlay-studio/canvas/widget-actions.test.ts (7 tests) 9ms
+ ✓ src/hub/overlay-studio/canvas/canvas-snap.test.ts (6 tests) 7ms
+ ✓ src/overlay/widget-types/pedals/pedals-view-model.test.ts (5 tests) 9ms
+ ✓ src/overlay/widget-types/delta/delta-view-model.test.ts (8 tests) 9ms
+ ✓ src/hub/calendar/calendar-upcoming.test.ts (4 tests) 8ms
+ ✓ src/hub/overlay-studio/state/studio-hotkeys.test.ts (4 tests) 10ms
+ ✓ src/lib/widget-factory.test.ts (5 tests) 8ms
+ ✓ src/overlay/widget-types/standings/standings-definition.test.ts (3 tests) 9ms
+ ✓ src/overlay/widgets/relative-filters.test.ts (6 tests) 8ms
+ ✓ src/overlay/core/design-system-registry.test.ts (7 tests) 9ms
+ ✓ src/hub/overlay-studio/canvas/widget-content-base-size.test.ts (3 tests) 9ms
+ ✓ src/hub/overlay-studio/state/studio-navigation-guard.test.ts (4 tests) 10ms
+ ✓ src/hub/settings/hotkey-capture.test.ts (10 tests) 7ms
+ ✓ src/calendar/calendar-store.test.ts (6 tests) 9ms
+ ✓ src/overlay-harness/widget-preview-contract.test.ts (10 tests) 8ms
+ ✓ src/overlay/core/visual-config-migration.test.ts (2 tests) 8ms
+ ✓ src/hub/overlay-studio/state/widget-order.test.ts (5 tests) 7ms
+ ✓ src/hub/state/style-catalog.test.ts (8 tests) 9ms
+ ✓ src/hub/overlay-studio/inspector/inspector-sections.test.ts (5 tests) 8ms
+ ✓ src/overlay/overlay-document.test.ts (1 test) 7ms
+ ✓ src/overlay-harness/harness-profile-api.test.ts (2 tests) 8ms
+ ✓ src/lib/telemetry-ref.test.ts (5 tests) 5ms
+ ✓ src/overlay/core/mock-scenarios.test.ts (2 tests) 7ms
+ ✓ src/overlay/widget-types/relative/relative-definition.test.ts (3 tests) 8ms
+ ✓ src/hub/overlay-studio/canvas/canvas-resize.test.ts (5 tests) 7ms
+ ✓ src/overlay/widgets/mock-telemetry.test.ts (4 tests) 6ms
+ ✓ src/hub/overlay-studio/canvas/canvas-backgrounds.test.ts (3 tests) 6ms
+ ✓ src/overlay/core/telemetry-store.test.ts (2 tests) 6ms
+ ✓ scripts/overlay-studio-drag-bench-metrics.test.ts (3 tests) 6ms
+ ✓ src/hub/state/style-catalog.contract.test.ts (12 tests) 7ms
+ ✓ src/hub/state/overlay-workbench.test.ts (3 tests) 6ms
+ ✓ src/hub/navigation.test.ts (4 tests) 7ms
+ ✓ src/overlay/widget-types/shared/scoring-readers.test.ts (3 tests) 5ms
+ ✓ src/overlay/widget-types/delta/delta-definition.test.ts (4 tests) 7ms
+ ✓ src/overlay/widgets/widget-design-system.contract.test.ts (7 tests) 7ms
+ ✓ src/overlay/core/widget-visual-settings.test.ts (2 tests) 7ms
+ ✓ src/lib/visibility.test.ts (7 tests) 4ms
+ ✓ src/overlay/core/widget-visibility.test.ts (3 tests) 4ms
+ ✓ src/lib/profile.test.ts (3 tests) 5ms
+ ✓ src/lib/html-escape.test.ts (2 tests) 5ms
+ ✓ src/overlay/overlay-route-params.test.ts (1 test) 3ms
+
+ Test Files  1 failed | 206 passed (207)
+      Tests  1 failed | 1561 passed (1562)
+   Start at  04:38:22
+   Duration  40.75s (transform 14.19s, setup 5.19s, import 108.20s, tests 34.27s, environment 340.63s)
+
+ ELIFECYCLE  Test failed. See above for more details.

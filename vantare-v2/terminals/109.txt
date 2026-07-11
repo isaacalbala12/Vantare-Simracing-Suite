@@ -1,0 +1,41 @@
+---
+pid: 20104
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd \"C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor\\vantare-v2\" && pnpm --dir frontend test -- ObsOverlayApp.test.tsx ObsOverlayRuntime.test.tsx RuntimeOverlaySurface.test.tsx && pnpm --dir frontend build 2>&1"
+started_at: 2026-07-11T01:17:40.702Z
+running_for_ms: 7575012  
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "ObsOverlayApp.test.tsx" "ObsOverlayRuntime.test.tsx" "RuntimeOverlaySurface.test.tsx"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/overlay/runtime/ObsOverlayRuntime.test.tsx (1 test) 61ms
+ ✓ src/overlay/runtime/RuntimeOverlaySurface.test.tsx (4 tests) 118ms
+ ✓ src/overlay/ObsOverlayApp.test.tsx (6 tests) 138ms
+
+ Test Files  3 passed (3)
+      Tests  11 passed (11)
+   Start at  03:17:42
+   Duration  2.39s (transform 1.80s, setup 101ms, import 3.19s, tests 316ms, environment 2.42s)
+
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+vite v8.0.16 building client environment for production...
+transforming...✓ 696 modules transformed.
+rendering chunks...
+computing gzip size...
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/index.html                     1.79 kB │ gzip:   0.76 kB
+dist/assets/index-jUcEiRyo.css    156.88 kB │ gzip:  23.27 kB
+dist/assets/index-5wCXNkb8.js   1,108.00 kB │ gzip: 290.33 kB
+
+✓ built in 906ms

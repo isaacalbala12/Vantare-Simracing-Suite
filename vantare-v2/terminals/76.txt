@@ -1,0 +1,41 @@
+---
+pid: 7320
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend visual:overlay-studio && pnpm --dir vantare-v2/frontend build"
+started_at: 2026-07-10T16:22:35.771Z
+running_for_ms: 12590000 
+---
+
+> vantare-overlay@0.1.0.2 visual:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-visual.mjs
+
+Port 5176 is in use, trying another one...
+ok original-ready (0.000% delta)
+ok original-stale (0.000% delta)
+ok original-disconnected (0.000% delta)
+ok original-error (0.000% delta)
+ok crystal-ready (0.000% delta)
+ok crystal-stale (0.000% delta)
+ok crystal-disconnected (0.000% delta)
+ok crystal-error (0.000% delta)
+ok surface-studio (0.000% delta)
+ok surface-desktop (0.000% delta)
+ok surface-obs (0.000% delta)
+ok surface-harness (0.000% delta)
+ok studio-wide (0.000% delta)
+ok studio-medium (0.000% delta)
+ok studio-small (0.000% delta)
+ok studio-wide interactions
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+src/hub/overlay-studio/components/ResponsivePanelControls.tsx(153,9): error TS2322: Type 'RefObject<HTMLElement | null>' is not assignable to type 'Ref<HTMLDivElement> | undefined'.
+  Type 'RefObject<HTMLElement | null>' is not assignable to type 'RefObject<HTMLDivElement | null>'.
+    Type 'HTMLElement | null' is not assignable to type 'HTMLDivElement | null'.
+      Property 'align' is missing in type 'HTMLElement' but required in type 'HTMLDivElement'.
+src/hub/overlay-studio/components/ResponsivePanelControls.tsx(163,9): error TS2322: Type 'RefObject<HTMLElement | null>' is not assignable to type 'Ref<HTMLDivElement> | undefined'.
+  Type 'RefObject<HTMLElement | null>' is not assignable to type 'RefObject<HTMLDivElement | null>'.
+    Type 'HTMLElement | null' is not assignable to type 'HTMLDivElement | null'.
+      Property 'align' is missing in type 'HTMLElement' but required in type 'HTMLDivElement'.
+ ELIFECYCLE  Command failed with exit code 2.

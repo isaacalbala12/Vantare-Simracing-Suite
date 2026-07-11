@@ -1,0 +1,1703 @@
+---
+pid: 30300
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "Get-Process vantare,wails3 -ErrorAction SilentlyContinue | Stop-Process -Force; $p = Get-NetTCPConnection -LocalPort 9245 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { $p | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }; Start-Sleep -Seconds 2; powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\tools\\start-wails-dev.ps1\""
+started_at: 2026-07-09T21:18:33.713Z
+running_for_ms: 18195003 
+---
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+Wails v3.0.0-alpha2.106 › Generate Bindings
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+ WARNING  [warn] -: no Go files in C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+ INFO  Processed: 1 Package, 0 Services, 0 Methods, 0 Enums, 0 Models, 0 Events in 476.7151ms.
+ INFO  Output directory: C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend\bindings
+ WARNING  1 warning emitted
+Scope: all 8 workspace projects
+(node:7928) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 1.6s
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+
+> vantare-overlay@0.1.0.2 build:dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> tsc -b && vite build --mode development
+
+vite v8.0.16 building client environment for development...
+transforming...✓ 649 modules transformed.
+rendering chunks...
+computing gzip size...
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/index.html                     1.82 kB │ gzip:   0.77 kB
+dist/assets/index-CtIiBMYi.css    112.94 kB │ gzip:  16.68 kB
+dist/assets/index-ZSZiR--V.js   1,058.91 kB │ gzip: 279.58 kB
+
+✓ built in 558ms
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+task: [windows:run] bin/vantare.exe
+task: [common:install:frontend:deps:pnpm] pnpm install
+Scope: all 8 workspace projects
+(node:31228) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:18:55 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:18:55 live LMU source opened
+2026/07/09 23:18:55 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:18:55 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:18:55.477 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:18:55.479 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:18:55.478 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:18:55 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:18:55 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:18:55 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:18:55 global hotkeys active (4 registered)
+Jul  9 23:18:55.486 INF Waiting for frontend dev server to start... url=http://localhost:9245
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Jul  9 23:18:55.988 INF Retrying...
+Done in 1.7s
+task: [common:frontend:dev:pnpm] pnpm dev --host 127.0.0.1 --port 9245 --strictPort
+
+> vantare-overlay@0.1.0.2 dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vite "--host" "127.0.0.1" "--port" "9245" "--strictPort"
+
+Jul  9 23:18:56.991 INF Retrying...
+
+  VITE v8.0.16  ready in 363 ms
+
+  ➜  Local:   http://127.0.0.1:9245/
+Jul  9 23:18:58.214 INF Connected to frontend dev server!
+2026/07/09 23:18:58 [WebView2] Environment created successfully
+2026/07/09 23:18:59 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:18:59 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/09 23:19:00 startup update check error: github api rate limit or access denied (403)
+2026/07/09 23:19:01 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:19:01 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+23:20:18 [vite] (client) hmr update /src/lib/license.tsx, /src/hub/auth/PaywallScreen.tsx, /src/hub/settings/AccountSettings.tsx, /src/index.css
+23:20:19 [vite] (client) hmr invalidate /src/lib/license.tsx Could not Fast Refresh ("useLicense" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+23:20:19 [vite] (client) hmr update /src/hub/HubApp.tsx, /src/hub/auth/LicenseBanner.tsx, /src/hub/pages/RoadmapPage.tsx, /src/hub/components/Topbar.tsx, /src/hub/calendar/CalendarRaceDetailPanel.tsx, /src/hub/calendar/CalendarRaceRail.tsx, /src/hub/overlays/WidgetSettingsPanel.tsx, /src/hub/settings/AccountSettings.tsx
+2026/07/09 23:20:19 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:20:19 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/09 23:20:22 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:20:22 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+23:20:31 [vite] (client) hmr update /src/hub/settings/AccountSettings.tsx, /src/index.css
+23:20:32 [vite] (client) hmr update /src/hub/settings/AccountSettings.tsx, /src/index.css
+23:20:32 [vite] (client) hmr update /src/hub/settings/AccountSettings.tsx, /src/index.css
+2026/07/09 23:20:46 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:20:46 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/09 23:20:48 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:20:48 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/09 23:20:53 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:20:53 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/09 23:20:55 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:20:55 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/09 23:21:07 license:validate request tokenLen=843 refreshLen=12
+2026/07/09 23:21:07 license:validate result state=active email=fase2g.smoke.1783629293344@gmail.com deviceOK=true entitlements=[bundle] err=<nil>
+2026/07/09 23:21:12 updater:check error: github api rate limit or access denied (403)
+2026/07/09 23:21:12 updater:check error: github api rate limit or access denied (403)
+2026/07/09 23:21:30 license:validate request tokenLen=843 refreshLen=0
+2026/07/09 23:21:30 license:validate result state=active email=fase2g.smoke.1783629293344@gmail.com deviceOK=true entitlements=[bundle] err=<nil>
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+Synchronizing version 0.1.0.4 across files...
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+Version sync completed successfully.
+Wails v3.0.0-alpha2.106 › Generate Bindings
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+ WARNING  [warn] -: no Go files in C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+ INFO  Processed: 1 Package, 0 Services, 0 Methods, 0 Enums, 0 Models, 0 Events in 644.9041ms.
+ INFO  Output directory: C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend\bindings
+ WARNING  1 warning emitted
+Scope: all 8 workspace projects
+(node:23200) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 1.9s
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+
+> vantare-overlay@0.1.0.2 build:dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> tsc -b && vite build --mode development
+
+vite v8.0.16 building client environment for development...
+transforming...✓ 651 modules transformed.
+rendering chunks...
+computing gzip size...
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/index.html                     1.82 kB │ gzip:   0.77 kB
+dist/assets/index-Dfi8Dk4e.css    113.31 kB │ gzip:  16.73 kB
+dist/assets/index-CpNZC9oG.js   1,061.16 kB │ gzip: 280.26 kB
+
+✓ built in 648ms
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+Scope: all 8 workspace projects
+(node:29420) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:33:46 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:33:46 live LMU source opened
+2026/07/09 23:33:46 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:33:46 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:33:46.746 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc
+Jul  9 23:33:46.748 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:33:46.748 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:33:46 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:33:46 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:33:46 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:33:46 global hotkeys active (4 registered)
+Jul  9 23:33:46.757 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:33:46.771 INF Connected to frontend dev server!
+2026/07/09 23:33:46 [WebView2] Environment created successfully
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.1s
+2026/07/09 23:33:48 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:33:48 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:33:50 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:33:50 live LMU source opened
+2026/07/09 23:33:50 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:33:50 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:33:50.493 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows
+Jul  9 23:33:50.495 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:33:50.495 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:33:50 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:33:50 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:33:50 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:33:50 global hotkeys active (4 registered)
+Jul  9 23:33:50.506 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:33:50.517 INF Connected to frontend dev server!
+2026/07/09 23:33:50 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:33:52 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:33:52 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:24040) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+2026/07/09 23:33:54 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:33:54 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:33:56 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:33:56 live LMU source opened
+2026/07/09 23:33:56 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:33:56 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:33:56.891 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1
+Jul  9 23:33:56.894 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:33:56.894 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:33:56 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:33:56 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:33:56 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:33:56 global hotkeys active (4 registered)
+Jul  9 23:33:56.909 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:33:56.919 INF Connected to frontend dev server!
+2026/07/09 23:33:56 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:33:58 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:33:58 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:27908) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+2026/07/09 23:34:00 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:00 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:34:03 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:34:03 live LMU source opened
+2026/07/09 23:34:03 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:34:03 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:34:03.151 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0
+Jul  9 23:34:03.155 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:34:03.155 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:34:03 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:34:03 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:34:03 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:34:03 global hotkeys active (4 registered)
+Jul  9 23:34:03.172 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:34:03.196 INF Connected to frontend dev server!
+2026/07/09 23:34:03 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:34:05 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:05 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:27948) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:34:07 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:07 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 4.5s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+2026/07/09 23:34:20 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:34:20 live LMU source opened
+2026/07/09 23:34:20 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:34:20 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:34:20.094 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe
+Jul  9 23:34:20.096 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:34:20.096 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:34:20 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:34:20 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:34:20 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:34:20 global hotkeys active (4 registered)
+Jul  9 23:34:20.121 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:34:20.147 INF Connected to frontend dev server!
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:34:20 [WebView2] Environment created successfully
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+2026/07/09 23:34:23 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:23 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:18152) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:34:25 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:25 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 4.8s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+2026/07/09 23:34:38 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:34:38 live LMU source opened
+2026/07/09 23:34:38 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:34:38 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:34:38.207 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows
+Jul  9 23:34:38.214 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+2026/07/09 23:34:38 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:34:38 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+task: Task "windows:common:generate:icons" is up to date
+Jul  9 23:34:38.217 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:34:38 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:34:38 global hotkeys active (4 registered)
+Jul  9 23:34:38.230 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:34:38.271 INF Connected to frontend dev server!
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:34:38 [WebView2] Environment created successfully
+task: [windows:common:version:sync] go run build/sync_version.go
+[WebView2 Error] error creating controller with 800700aa: The requested resource is in use.
+task: [windows:common:go:mod:tidy] go mod tidy
+
+Stack trace:
+  ERROR   task: Failed to run task "run": exit status 1
+2026/07/09 23:34:38 1: github.com/wailsapp/wails/webview2/pkg/edge.(*Chromium).errorCallback
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/webview2@v1.0.24/pkg/edge/chromium.go:151
+2026/07/09 23:34:38 2: github.com/wailsapp/wails/webview2/pkg/edge.(*Chromium).CreateCoreWebView2ControllerCompleted
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/webview2@v1.0.24/pkg/edge/chromium.go:332
+2026/07/09 23:34:38 3: github.com/wailsapp/wails/webview2/pkg/edge._ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerInvoke
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/webview2@v1.0.24/pkg/edge/ICoreWebView2CreateCoreWebView2ControllerCompletedHandler.go:38
+2026/07/09 23:34:38 4: runtime.callbackWrap
+C:/Program Files/Go/src/runtime/syscall_windows.go:388
+2026/07/09 23:34:38 5: runtime.cgocallbackg1
+C:/Program Files/Go/src/runtime/cgocall.go:466
+2026/07/09 23:34:38 6: runtime.cgocallbackg
+C:/Program Files/Go/src/runtime/cgocall.go:362
+2026/07/09 23:34:38 7: runtime.cgocallback
+C:/Program Files/Go/src/runtime/asm_amd64.s:1160
+2026/07/09 23:34:38 8: runtime.systemstack_switch
+C:/Program Files/Go/src/runtime/asm_amd64.s:516
+2026/07/09 23:34:38 9: runtime.cgocall
+C:/Program Files/Go/src/runtime/cgocall.go:185
+2026/07/09 23:34:38 10: syscall.syscalln
+C:/Program Files/Go/src/runtime/syscall_windows.go:431
+2026/07/09 23:34:38 11: syscall.SyscallN
+C:/Program Files/Go/src/syscall/dll_windows.go:99
+2026/07/09 23:34:38 12: golang.org/x/sys/windows.(*Proc).Call
+C:/Users/isaac/go/pkg/mod/golang.org/x/sys@v0.43.0/windows/dll_windows.go:166
+2026/07/09 23:34:38 13: golang.org/x/sys/windows.(*LazyProc).Call
+C:/Users/isaac/go/pkg/mod/golang.org/x/sys@v0.43.0/windows/dll_windows.go:316
+2026/07/09 23:34:38 14: github.com/wailsapp/wails/webview2/pkg/edge.(*Chromium).Embed
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/webview2@v1.0.24/pkg/edge/chromium.go:209
+2026/07/09 23:34:38 15: github.com/wailsapp/wails/v3/pkg/application.(*windowsWebviewWindow).setupChromium
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/webview_window_windows.go:2099
+2026/07/09 23:34:38 16: github.com/wailsapp/wails/v3/pkg/application.(*windowsWebviewWindow).run
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/webview_window_windows.go:457
+2026/07/09 23:34:38 17: github.com/wailsapp/wails/v3/pkg/application.InvokeSync.func1
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/mainthread.go:28
+2026/07/09 23:34:38 18: github.com/wailsapp/wails/v3/pkg/application.(*windowsApp).invokeCallback
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/mainthread_windows.go:125
+2026/07/09 23:34:38 19: github.com/wailsapp/wails/v3/pkg/application.(*windowsApp).wndProc
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/application_windows.go:232
+2026/07/09 23:34:38 20: runtime.callbackWrap
+C:/Program Files/Go/src/runtime/syscall_windows.go:388
+2026/07/09 23:34:38 21: runtime.cgocallbackg1
+C:/Program Files/Go/src/runtime/cgocall.go:466
+2026/07/09 23:34:38 22: runtime.cgocallbackg
+C:/Program Files/Go/src/runtime/cgocall.go:362
+2026/07/09 23:34:38 23: runtime.cgocallback
+C:/Program Files/Go/src/runtime/asm_amd64.s:1160
+2026/07/09 23:34:38 24: runtime.systemstack_switch
+C:/Program Files/Go/src/runtime/asm_amd64.s:516
+2026/07/09 23:34:38 25: runtime.cgocall
+C:/Program Files/Go/src/runtime/cgocall.go:185
+2026/07/09 23:34:38 26: syscall.syscalln
+C:/Program Files/Go/src/runtime/syscall_windows.go:431
+2026/07/09 23:34:38 27: syscall.SyscallN
+C:/Program Files/Go/src/syscall/dll_windows.go:99
+2026/07/09 23:34:38 28: syscall.(*Proc).Call
+C:/Program Files/Go/src/syscall/dll_windows.go:256
+2026/07/09 23:34:38 29: syscall.(*LazyProc).Call
+C:/Program Files/Go/src/syscall/dll_windows.go:376
+2026/07/09 23:34:38 30: github.com/wailsapp/wails/v3/pkg/w32.DispatchMessage
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/w32/user32.go:518
+2026/07/09 23:34:38 31: github.com/wailsapp/wails/v3/pkg/application.(*windowsApp).runMainLoop
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/mainthread_windows.go:64
+2026/07/09 23:34:38 32: github.com/wailsapp/wails/v3/pkg/application.(*windowsApp).run
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/application_windows.go:190
+2026/07/09 23:34:38 33: github.com/wailsapp/wails/v3/pkg/application.(*App).Run
+C:/Users/isaac/go/pkg/mod/github.com/wailsapp/wails/v3@v3.0.0-alpha.98-tui/pkg/application/application.go:666
+2026/07/09 23:34:38 34: main.main
+C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/cmd/vantare/main.go:1514
+2026/07/09 23:34:38 35: runtime.main
+C:/Program Files/Go/src/runtime/proc.go:290
+[0709/233438.615:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+Scope: all 8 workspace projects
+(node:8040) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 3.3s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:34:47 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:34:47 live LMU source opened
+2026/07/09 23:34:47 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:34:47 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:34:47.845 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1
+Jul  9 23:34:47.847 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:34:47.847 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:34:47 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:34:47 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:34:47 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:34:47 global hotkeys active (4 registered)
+Jul  9 23:34:47.874 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:34:47.890 INF Connected to frontend dev server!
+2026/07/09 23:34:47 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:34:49 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:49 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:22300) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+2026/07/09 23:34:51 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:51 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:34:55 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:34:55 live LMU source opened
+2026/07/09 23:34:55 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:34:55 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:34:55.390 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:34:55.392 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:34:55.392 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:34:55 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:34:55 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:34:55 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:34:55 global hotkeys active (4 registered)
+Jul  9 23:34:55.440 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:34:55.486 INF Connected to frontend dev server!
+2026/07/09 23:34:55 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+Version sync completed successfully.
+2026/07/09 23:34:57 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:34:57 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:22976) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.6s
+2026/07/09 23:35:00 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:00 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:35:04 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:04 live LMU source opened
+2026/07/09 23:35:04 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:04 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:04.276 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64
+Jul  9 23:35:04.279 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:04.279 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:04 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:04 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:04 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:04 global hotkeys active (4 registered)
+Jul  9 23:35:04.300 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:04.321 INF Connected to frontend dev server!
+2026/07/09 23:35:04 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:35:06 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:06 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:30988) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+2026/07/09 23:35:08 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:08 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+Scope: all 8 workspace projects
+(node:18812) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:35:13 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:13 live LMU source opened
+2026/07/09 23:35:13 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:13 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:13.739 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64
+Jul  9 23:35:13.741 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:13.741 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:13 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:13 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:13 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:13 global hotkeys active (4 registered)
+Jul  9 23:35:13.749 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:13.757 INF Connected to frontend dev server!
+2026/07/09 23:35:13 [WebView2] Environment created successfully
+2026/07/09 23:35:15 license:validate request tokenLen=0 refreshLen=0
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+2026/07/09 23:35:15 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Done in 2.2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+2026/07/09 23:35:17 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:17 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+Scope: all 8 workspace projects
+(node:14160) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:35:20 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:20 live LMU source opened
+2026/07/09 23:35:20 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:20 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:20.594 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:35:20.596 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:20.596 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:20 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:20 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:20 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:20 global hotkeys active (4 registered)
+Jul  9 23:35:20.604 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:20.612 INF Connected to frontend dev server!
+2026/07/09 23:35:20 [WebView2] Environment created successfully
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+2026/07/09 23:35:21 license:validate request tokenLen=0 refreshLen=0
+Done in 2.1s
+2026/07/09 23:35:21 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:35:24 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:24 live LMU source opened
+2026/07/09 23:35:24 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:24 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:24.170 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc
+Jul  9 23:35:24.172 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:24.172 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:24 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:24 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:24 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:24 global hotkeys active (4 registered)
+Jul  9 23:35:24.191 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:24.204 INF Connected to frontend dev server!
+2026/07/09 23:35:24 [WebView2] Environment created successfully
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+Wails v3.0.0-alpha2.106 › Generate Bindings
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+ WARNING  [warn] -: no Go files in C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+ INFO  Processed: 1 Package, 0 Services, 0 Methods, 0 Enums, 0 Models, 0 Events in 876.0126ms.
+ INFO  Output directory: C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend\bindings
+ WARNING  1 warning emitted
+2026/07/09 23:35:26 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:26 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:23732) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+2026/07/09 23:35:28 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:28 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+Scope: all 8 workspace projects
+(node:30552) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/09 23:35:33 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:33 live LMU source opened
+2026/07/09 23:35:33 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:33 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:33.723 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1
+Jul  9 23:35:33.725 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:33.725 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:33 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:33 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:33 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:33 global hotkeys active (4 registered)
+Jul  9 23:35:33.734 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:33.740 INF Connected to frontend dev server!
+2026/07/09 23:35:33 [WebView2] Environment created successfully
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+2026/07/09 23:35:35 license:validate request tokenLen=0 refreshLen=0
+Done in 2.1s
+2026/07/09 23:35:35 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:35:37 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:37 live LMU source opened
+2026/07/09 23:35:37 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:37 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:37.525 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l
+Jul  9 23:35:37.528 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:37.528 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:37 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:37 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:37 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:37 global hotkeys active (4 registered)
+Jul  9 23:35:37.537 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:37.547 INF Connected to frontend dev server!
+2026/07/09 23:35:37 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:35:39 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:39 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:31144) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+2026/07/09 23:35:41 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:41 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:35:43 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:43 live LMU source opened
+2026/07/09 23:35:43 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:43 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:43.732 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:35:43.736 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:43.736 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:43 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:43 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:43 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:43 global hotkeys active (4 registered)
+Jul  9 23:35:43.746 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:43.755 INF Connected to frontend dev server!
+2026/07/09 23:35:43 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:35:45 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:45 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:10564) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.2s
+2026/07/09 23:35:47 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:47 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:35:49 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:49 live LMU source opened
+2026/07/09 23:35:49 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:49 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:49.921 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:35:49.924 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:49.924 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:49 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:49 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:49 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:49 global hotkeys active (4 registered)
+Jul  9 23:35:49.936 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:49.946 INF Connected to frontend dev server!
+2026/07/09 23:35:49 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:35:51 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:51 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:1916) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.1s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+2026/07/09 23:35:54 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:54 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:35:55 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:35:55 live LMU source opened
+2026/07/09 23:35:55 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:35:55 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:35:55.696 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc
+Jul  9 23:35:55.699 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:35:55.699 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:35:55 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:35:55 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:35:55 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:35:55 global hotkeys active (4 registered)
+Jul  9 23:35:55.708 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:35:55.718 INF Connected to frontend dev server!
+2026/07/09 23:35:55 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:35:57 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:57 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:12360) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+2026/07/09 23:35:59 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:35:59 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:36:01 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:36:01 live LMU source opened
+2026/07/09 23:36:01 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:36:01 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:36:01.699 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows
+Jul  9 23:36:01.703 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:36:01.703 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:36:01 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:36:01 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:36:01 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:36:01 global hotkeys active (4 registered)
+Jul  9 23:36:01.722 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:36:01.731 INF Connected to frontend dev server!
+2026/07/09 23:36:01 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:36:03 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:36:03 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:6552) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+2026/07/09 23:36:05 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:36:05 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:36:07 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:36:07 live LMU source opened
+2026/07/09 23:36:07 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:36:07 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:36:07.851 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:36:07.855 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:36:07.855 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:36:07 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:36:07 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:36:07 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:36:07 global hotkeys active (4 registered)
+Jul  9 23:36:07.874 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:36:07.885 INF Connected to frontend dev server!
+2026/07/09 23:36:07 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:36:09 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:36:09 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:8996) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 1.9s
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+2026/07/09 23:36:11 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:36:11 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+2026/07/09 23:36:13 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:36:13 live LMU source opened
+2026/07/09 23:36:13 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:36:13 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:36:13.607 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:36:13.609 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0
+Jul  9 23:36:13.610 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:36:13 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:36:13 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:36:13 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:36:13 global hotkeys active (4 registered)
+Jul  9 23:36:13.619 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul  9 23:36:13.633 INF Connected to frontend dev server!
+2026/07/09 23:36:13 [WebView2] Environment created successfully
+task: Task "generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all=\"-l\")" is up to date
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+2026/07/09 23:36:15 license:validate request tokenLen=0 refreshLen=0
+2026/07/09 23:36:15 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+Scope: all 8 workspace projects
+(node:8092) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2.8s

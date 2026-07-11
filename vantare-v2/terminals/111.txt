@@ -1,0 +1,293 @@
+---
+pid: 12972
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend lint"
+started_at: 2026-07-11T01:23:22.686Z
+running_for_ms: 7230009  
+---
+(node:27124) ESLintIgnoreWarning: The ".eslintignore" file is no longer supported. Switch to using the "ignores" property in "eslint.config.js": https://eslint.org/docs/latest/use/configure/migration-guide#ignore-files
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> vantare-overlay@0.1.0.2 lint C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> eslint .
+
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\calendar\CalendarDayView.tsx
+  109:19  error  '_onFilterSelect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\calendar\CalendarRaceRail.tsx
+  47:60  error  '_timeZone' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\calendar\CalendarWeekView.tsx
+  108:19  error  '_onFilterSelect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx
+   90:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-refresh/only-export-components
+  257:8   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:257:8
+  255 | export function ChainRunnerProvider({ children }: { children: ReactNode }) {
+  256 |   const storeRef = useRef<ChainRunnerStore | null>(null);
+> 257 |   if (!storeRef.current) {
+      |        ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+  260 |   const store = storeRef.current;
+
+To initialize a ref only once, check that the ref is null with the pattern `if (ref.current == null) { ref.current = ... }`  react-hooks/refs
+  260:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:260:17
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+> 260 |   const store = storeRef.current;
+      |                 ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  261 |
+  262 |   const [toastInfo, setToastInfo] = useState<{
+  263 |     variant: HubToastVariant;                                                                                                                                                                                                          react-hooks/refs
+  260:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:260:17
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+> 260 |   const store = storeRef.current;
+      |                 ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  261 |
+  262 |   const [toastInfo, setToastInfo] = useState<{
+  263 |     variant: HubToastVariant;                                                                                                                                                                                                          react-hooks/refs
+  260:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\launcher\chain-store.tsx:260:17
+  258 |     storeRef.current = createChainStore();
+  259 |   }
+> 260 |   const store = storeRef.current;
+      |                 ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  261 |
+  262 |   const [toastInfo, setToastInfo] = useState<{
+  263 |     variant: HubToastVariant;                                                                                                                                                                                                          react-hooks/refs
+  354:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-refresh/only-export-components
+  367:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-refresh/only-export-components
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\OverlayStudioV3.tsx
+  82:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\OverlayStudioV3.tsx:82:7
+  80 |     const result = store.read(profileId, revision);
+  81 |     if (result.record) {
+> 82 |       setRecoveryPrompt({ record: result.record, warning: result.warning });
+     |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  83 |     }
+  84 |   }, [document?.id, recoveryStorage, revision]);
+  85 |  react-hooks/set-state-in-effect
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\StudioRoute.test.tsx
+  1:46  error  'waitFor' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\StudioRoute.tsx
+  389:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\StudioRoute.tsx:389:7
+  387 |   useEffect(() => {
+  388 |     if (liveAvailableProp !== undefined) {
+> 389 |       setLiveAvailable(liveAvailableProp);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  390 |       return;
+  391 |     }
+  392 |     const unsub = Events.On("telemetry:source-status", (event: { data: { live?: boolean; available?: boolean } }) => {  react-hooks/set-state-in-effect
+  444:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\StudioRoute.tsx:444:9
+  442 |     if (!profilesLoaded || !activeProfileId) {
+  443 |       if (!activeProfileId) {
+> 444 |         setEditorFile(null);
+      |         ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  445 |       }
+  446 |       return;
+  447 |     }                                                                                                                  react-hooks/set-state-in-effect
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\StudioCanvas.test.tsx
+  2:43  error  'vi' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\StudioCanvas.tsx
+  302:26  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\StudioCanvas.tsx:302:26
+  300 |             ) : null}
+  301 |             <CanvasGuides guides={interaction.guides} />
+> 302 |             {widgets.map((widget) => (
+      |                          ^^^^^^^^^^^^^
+> 303 |               <StudioWidgetFrame
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 304 |                 key={widget.id}
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 314 |               />
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 315 |             ))}
+      | ^^^^^^^^^^^^^^ Cannot access ref value during render
+  316 |           </div>
+  317 |         </div>
+  318 |       </div>  react-hooks/refs
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\StudioTelemetryProvider.tsx
+  72:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  80:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  88:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\WidgetContextMenu.tsx
+  64:6  warning  React Hook useEffect has a missing dependency: 'props'. Either include it or remove the dependency array. However, 'props' will change when *any* prop changes, so the preferred fix is to destructure the 'props' object outside of the useEffect call and refer to those specific props inside useEffect  react-hooks/exhaustive-deps
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\canvas-geometry.ts
+  52:7  error  'w' is never reassigned. Use 'const' instead  prefer-const
+  53:7  error  'h' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\canvas-resize.ts
+  39:7  error  'nextH' is never reassigned. Use 'const' instead  prefer-const
+  51:7  error  'nextW' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\canvas\useCanvasInteraction.ts
+  142:20  error  '_preview' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\components\ResponsivePanelControls.tsx
+   6:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-refresh/only-export-components
+  63:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\components\ResponsivePanelControls.tsx:63:7
+  61 |   useEffect(() => {
+  62 |     if (layoutMode !== "compact") {
+> 63 |       setDrawer(null);
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  64 |       setInspectorOpen(false);
+  65 |       return;
+  66 |     }  react-hooks/set-state-in-effect
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\designs\SaveDesignDialog.tsx
+  16:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\designs\SaveDesignDialog.tsx:16:7
+  14 |   useEffect(() => {
+  15 |     if (!open) {
+> 16 |       setName("");
+     |       ^^^^^^^ Avoid calling setState() directly within an effect
+  17 |       setIncludesContent(false);
+  18 |     }
+  19 |   }, [open]);  react-hooks/set-state-in-effect
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\inspector\ActionsSection.tsx
+  16:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\inspector\DesignSection.tsx
+  75:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\inspector\DesignSection.tsx:75:10
+  73 |
+  74 |   useEffect(() => {
+> 75 |     void refreshUserDesigns();
+     |          ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  76 |   }, [refreshUserDesigns]);
+  77 |
+  78 |   const officialDesigns = useMemo(  react-hooks/set-state-in-effect
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\state\studio-store.tsx
+  140:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\overlay-studio\state\studio-store.tsx:140:5
+  138 |   useEffect(() => {
+  139 |     let cancelled = false;
+> 140 |     setSaveState("idle");
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  141 |     setLastError(null);
+  142 |     setLoadError(null);
+  143 |  react-hooks/set-state-in-effect
+  367:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-refresh/only-export-components
+  375:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-refresh/only-export-components
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\hub\pages\OverlaysStudioPage.test.tsx
+  3:10  error  'Events' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\lib\wails-runtime-topbar-mock.ts
+  86:13  error  '_url' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay-harness\OverlayParityHarness.tsx
+  48:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay-harness\OverlayStudioV3Harness.tsx
+  48:6  warning  React Hook useMemo has unnecessary dependencies: 'harnessSearch.primaryWidget' and 'harnessSearch.relativeLegacyLayout'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\core\WidgetRenderBoundary.tsx
+  25:35  error  '_info' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\core\telemetry-rate-coordinator.ts
+  91:17  error  '_hz' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\runtime\resolve-runtime-layout.test.ts
+  101:11  error  'document' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\transports\sse-telemetry-adapter.test.ts
+  58:9  error  'now' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\transports\wails-telemetry-adapter.test.ts
+  31:9  error  'now' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\widget-types\delta\delta-view-model.ts
+  76:3  error  '_content' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend\src\overlay\widget-types\pedals\pedals-view-model.ts
+  45:3  error  '_content' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 44 problems (42 errors, 2 warnings)
+  6 errors and 0 warnings potentially fixable with the `--fix` option.
+
+ ELIFECYCLE  Command failed with exit code 1.

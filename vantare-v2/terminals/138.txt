@@ -1,0 +1,769 @@
+---
+pid: 23756
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\tools\\start-wails-dev.ps1\""
+started_at: 2026-07-11T02:27:47.378Z
+running_for_ms: 3379991  
+---
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+(node:14900) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:run] bin/vantare.exe
+task: [common:install:frontend:deps:pnpm] pnpm install
+(node:20380) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/11 04:28:15 LMU: live source attached
+2026/07/11 04:28:15 live LMU source opened
+Jul 11 04:28:15.294 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l
+Jul 11 04:28:15.296 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+Jul 11 04:28:15.296 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+2026/07/11 04:28:15 HTTP server: listening on 127.0.0.1:39261
+2026/07/11 04:28:15 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 04:28:15 telemetry source: kind=lmu name=Le Mans Ultimate live=true available=true
+2026/07/11 04:28:15 global hotkeys active (4 registered)
+2026/07/11 04:28:15 LMU REST standings error: EOF
+Jul 11 04:28:15.311 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul 11 04:28:15.813 INF Retrying...
+task: [common:frontend:dev:pnpm] pnpm dev --host 127.0.0.1 --port 9245 --strictPort
+Jul 11 04:28:16.816 INF Retrying...
+Jul 11 04:28:18.485 INF Connected to frontend dev server!
+2026/07/11 04:28:18 [WebView2] Environment created successfully
+2026/07/11 04:28:20 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:28:20 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:28:20 LMU REST standings error: EOF
+2026/07/11 04:28:22 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:28:22 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:28:25 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 04:28:25 license:validate request tokenLen=1350 refreshLen=12
+2026/07/11 04:28:25 LMU REST standings error: EOF
+2026/07/11 04:28:25 license:validate result state=authenticated-no-entitlement email=vantareapp@gmail.com deviceOK=true entitlements=[] err=<nil>
+2026/07/11 04:28:30 LMU REST standings error: EOF
+2026/07/11 04:28:35 LMU REST standings error: EOF
+2026/07/11 04:28:40 [WebView2] Environment created successfully
+2026/07/11 04:28:40 LMU REST standings error: EOF
+2026/07/11 04:28:45 LMU REST standings error: EOF
+2026/07/11 04:28:50 LMU REST standings error: EOF
+2026/07/11 04:28:55 LMU REST standings error: EOF
+2026/07/11 04:29:00 LMU REST standings error: EOF
+2026/07/11 04:29:06 LMU REST standings error: EOF
+2026/07/11 04:29:11 LMU REST standings error: EOF
+2026/07/11 04:29:16 LMU REST standings error: EOF
+2026/07/11 04:29:21 LMU REST standings error: EOF
+2026/07/11 04:29:26 LMU REST standings error: EOF
+2026/07/11 04:29:31 LMU REST standings error: EOF
+2026/07/11 04:29:36 LMU REST standings error: EOF
+2026/07/11 04:29:41 LMU REST standings error: EOF
+2026/07/11 04:29:47 LMU REST standings error: EOF
+2026/07/11 04:29:52 LMU REST standings error: EOF
+2026/07/11 04:29:57 LMU REST standings error: EOF
+2026/07/11 04:30:02 LMU REST standings error: EOF
+2026/07/11 04:30:07 LMU REST standings error: EOF
+2026/07/11 04:30:12 LMU REST standings error: EOF
+2026/07/11 04:30:17 LMU REST standings error: EOF
+2026/07/11 04:30:23 LMU REST standings error: EOF
+2026/07/11 04:30:28 LMU REST standings error: EOF
+2026/07/11 04:30:33 LMU REST standings error: EOF
+2026/07/11 04:30:38 LMU REST standings error: EOF
+2026/07/11 04:30:43 LMU REST standings error: EOF
+2026/07/11 04:30:49 LMU REST standings error: EOF
+2026/07/11 04:30:51 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:30:51 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:30:54 LMU REST standings error: EOF
+2026/07/11 04:30:54 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:30:54 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:30:59 LMU REST standings error: EOF
+2026/07/11 04:31:04 LMU REST standings error: EOF
+2026/07/11 04:31:09 LMU REST standings error: EOF
+2026/07/11 04:31:14 LMU REST standings error: EOF
+2026/07/11 04:31:19 LMU REST standings error: EOF
+2026/07/11 04:31:24 LMU REST standings error: EOF
+2026/07/11 04:31:29 LMU REST standings error: EOF
+2026/07/11 04:31:35 LMU REST standings error: EOF
+2026/07/11 04:31:40 LMU REST standings error: EOF
+2026/07/11 04:31:45 LMU REST standings error: EOF
+2026/07/11 04:31:50 LMU REST standings error: EOF
+2026/07/11 04:31:55 LMU REST standings error: EOF
+2026/07/11 04:32:00 LMU REST standings error: EOF
+2026/07/11 04:32:05 LMU REST standings error: EOF
+2026/07/11 04:32:11 LMU REST standings error: EOF
+2026/07/11 04:32:16 LMU REST standings error: EOF
+2026/07/11 04:32:21 LMU REST standings error: EOF
+2026/07/11 04:32:26 LMU REST standings error: EOF
+2026/07/11 04:32:31 LMU REST standings error: EOF
+2026/07/11 04:32:36 LMU REST standings error: EOF
+2026/07/11 04:32:41 LMU REST standings error: EOF
+2026/07/11 04:32:47 LMU REST standings error: EOF
+2026/07/11 04:32:52 LMU REST standings error: EOF
+2026/07/11 04:32:57 LMU REST standings error: EOF
+2026/07/11 04:33:02 LMU REST standings error: EOF
+2026/07/11 04:33:07 LMU REST standings error: EOF
+2026/07/11 04:33:12 LMU REST standings error: EOF
+2026/07/11 04:33:17 LMU REST standings error: EOF
+2026/07/11 04:33:22 LMU REST standings error: EOF
+2026/07/11 04:33:27 LMU REST standings error: EOF
+2026/07/11 04:33:33 LMU REST standings error: EOF
+2026/07/11 04:33:38 LMU REST standings error: EOF
+2026/07/11 04:33:43 LMU REST standings error: EOF
+2026/07/11 04:33:48 LMU REST standings error: EOF
+2026/07/11 04:33:53 LMU REST standings error: EOF
+2026/07/11 04:33:58 LMU REST standings error: EOF
+2026/07/11 04:34:03 LMU REST standings error: EOF
+2026/07/11 04:34:09 LMU REST standings error: EOF
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+2026/07/11 04:34:14 LMU REST standings error: EOF
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+(node:27848) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+2026/07/11 04:34:19 LMU REST standings error: EOF
+2026/07/11 04:34:24 LMU REST standings error: EOF
+2026/07/11 04:34:29 LMU REST standings error: EOF
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:run] bin/vantare.exe
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+(node:28196) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+2026/07/11 04:34:36 LMU: live source attached
+2026/07/11 04:34:36 live LMU source opened
+Jul 11 04:34:36.359 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc -gcflags=all=-l
+Jul 11 04:34:36.362 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul 11 04:34:36.362 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/11 04:34:36 HTTP server: listening on 127.0.0.1:39261
+2026/07/11 04:34:36 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 04:34:36 LMU REST standings error: EOF
+2026/07/11 04:34:36 telemetry source: kind=lmu name=Le Mans Ultimate live=true available=true
+2026/07/11 04:34:36 global hotkeys active (4 registered)
+Jul 11 04:34:36.385 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul 11 04:34:36.398 INF Connected to frontend dev server!
+2026/07/11 04:34:36 [WebView2] Environment created successfully
+task: Task "build:frontend (DEV=true RUNNER=pnpm)" is up to date
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+2026/07/11 04:34:38 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:34:38 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+task: [windows:run] bin/vantare.exe
+2026/07/11 04:34:39 LMU: live source attached
+2026/07/11 04:34:39 live LMU source opened
+Jul 11 04:34:39.615 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc
+Jul 11 04:34:39.617 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul 11 04:34:39.617 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/11 04:34:39 HTTP server: listening on 127.0.0.1:39261
+2026/07/11 04:34:39 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 04:34:39 LMU REST standings error: EOF
+2026/07/11 04:34:39 telemetry source: kind=lmu name=Le Mans Ultimate live=true available=true
+2026/07/11 04:34:39 global hotkeys active (4 registered)
+Jul 11 04:34:39.637 INF Waiting for frontend dev server to start... url=http://localhost:9245
+Jul 11 04:34:39.645 INF Connected to frontend dev server!
+2026/07/11 04:34:39 [WebView2] Environment created successfully
+2026/07/11 04:34:41 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:34:41 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:34:43 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:34:43 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:34:44 LMU REST standings error: EOF
+2026/07/11 04:34:49 LMU REST standings error: EOF
+2026/07/11 04:34:54 LMU REST standings error: EOF
+2026/07/11 04:34:59 LMU REST standings error: EOF
+2026/07/11 04:35:05 LMU REST standings error: EOF
+2026/07/11 04:35:10 LMU REST standings error: EOF
+2026/07/11 04:35:15 LMU REST standings error: EOF
+2026/07/11 04:35:20 LMU REST standings error: EOF
+2026/07/11 04:35:26 LMU REST standings error: EOF
+2026/07/11 04:35:31 LMU REST standings error: EOF
+2026/07/11 04:35:36 LMU REST standings error: EOF
+2026/07/11 04:35:41 LMU REST standings error: EOF
+2026/07/11 04:35:46 LMU REST standings error: EOF
+2026/07/11 04:35:51 LMU REST standings error: EOF
+2026/07/11 04:35:56 LMU REST standings error: EOF
+2026/07/11 04:36:02 LMU REST standings error: EOF
+2026/07/11 04:36:07 LMU REST standings error: EOF
+2026/07/11 04:36:12 LMU REST standings error: EOF
+2026/07/11 04:36:17 LMU REST standings error: EOF
+2026/07/11 04:36:22 LMU REST standings error: EOF
+2026/07/11 04:36:27 LMU REST standings error: EOF
+2026/07/11 04:36:32 LMU REST standings error: EOF
+2026/07/11 04:36:37 LMU REST standings error: EOF
+2026/07/11 04:36:42 LMU REST standings error: EOF
+2026/07/11 04:36:47 LMU REST standings error: EOF
+2026/07/11 04:36:53 LMU REST standings error: EOF
+2026/07/11 04:36:58 LMU REST standings error: EOF
+2026/07/11 04:37:03 LMU REST standings error: EOF
+2026/07/11 04:37:08 LMU REST standings error: EOF
+2026/07/11 04:37:13 LMU REST standings error: EOF
+2026/07/11 04:37:18 LMU REST standings error: EOF
+2026/07/11 04:37:24 LMU REST standings error: EOF
+2026/07/11 04:37:29 LMU REST standings error: EOF
+2026/07/11 04:37:34 LMU REST standings error: EOF
+2026/07/11 04:37:39 LMU REST standings error: EOF
+2026/07/11 04:37:44 LMU REST standings error: EOF
+2026/07/11 04:37:49 LMU REST standings error: EOF
+2026/07/11 04:37:55 LMU REST standings error: EOF
+2026/07/11 04:38:00 LMU REST standings error: EOF
+2026/07/11 04:38:05 LMU REST standings error: EOF
+2026/07/11 04:38:10 LMU REST standings error: EOF
+2026/07/11 04:38:15 LMU REST standings error: EOF
+2026/07/11 04:38:20 LMU REST standings error: EOF
+2026/07/11 04:38:25 LMU REST standings error: EOF
+2026/07/11 04:38:30 LMU REST standings error: EOF
+2026/07/11 04:38:36 LMU REST standings error: EOF
+2026/07/11 04:38:41 LMU REST standings error: EOF
+2026/07/11 04:38:46 LMU REST standings error: EOF
+2026/07/11 04:38:51 LMU REST standings error: EOF
+2026/07/11 04:38:56 LMU REST standings error: EOF
+2026/07/11 04:39:01 LMU REST standings error: EOF
+2026/07/11 04:39:06 LMU REST standings error: EOF
+2026/07/11 04:39:11 LMU REST standings error: EOF
+2026/07/11 04:39:16 LMU REST standings error: EOF
+2026/07/11 04:39:22 LMU REST standings error: EOF
+2026/07/11 04:39:27 LMU REST standings error: EOF
+2026/07/11 04:39:32 LMU REST standings error: EOF
+2026/07/11 04:39:37 LMU REST standings error: EOF
+2026/07/11 04:39:42 LMU REST standings error: EOF
+2026/07/11 04:39:47 LMU REST standings error: EOF
+2026/07/11 04:39:53 LMU REST standings error: EOF
+2026/07/11 04:39:58 LMU REST standings error: EOF
+2026/07/11 04:40:03 LMU REST standings error: EOF
+2026/07/11 04:40:08 LMU REST standings error: EOF
+2026/07/11 04:40:13 LMU REST standings error: EOF
+2026/07/11 04:40:19 LMU REST standings error: EOF
+2026/07/11 04:40:24 LMU REST standings error: EOF
+2026/07/11 04:40:29 LMU REST standings error: EOF
+2026/07/11 04:40:34 LMU REST standings error: EOF
+2026/07/11 04:40:39 LMU REST standings error: EOF
+2026/07/11 04:40:44 LMU REST standings error: EOF
+2026/07/11 04:40:49 LMU REST standings error: EOF
+2026/07/11 04:40:54 LMU REST standings error: EOF
+2026/07/11 04:41:00 LMU REST standings error: EOF
+2026/07/11 04:41:05 LMU REST standings error: EOF
+2026/07/11 04:41:10 LMU REST standings error: EOF
+2026/07/11 04:41:15 LMU REST standings error: EOF
+2026/07/11 04:41:20 LMU REST standings error: EOF
+2026/07/11 04:41:25 LMU REST standings error: EOF
+2026/07/11 04:41:31 LMU REST standings error: EOF
+2026/07/11 04:41:36 LMU REST standings error: EOF
+2026/07/11 04:41:41 LMU REST standings error: EOF
+2026/07/11 04:41:46 LMU REST standings error: EOF
+2026/07/11 04:41:51 LMU REST standings error: EOF
+2026/07/11 04:41:57 LMU REST standings error: EOF
+2026/07/11 04:42:02 LMU REST standings error: EOF
+2026/07/11 04:42:07 LMU REST standings error: EOF
+2026/07/11 04:42:12 LMU REST standings error: EOF
+2026/07/11 04:42:17 LMU REST standings error: EOF
+2026/07/11 04:42:22 LMU REST standings error: EOF
+2026/07/11 04:42:27 LMU REST standings error: EOF
+2026/07/11 04:42:33 LMU REST standings error: EOF
+2026/07/11 04:42:38 LMU REST standings error: EOF
+2026/07/11 04:42:43 LMU REST standings error: EOF
+2026/07/11 04:42:48 LMU REST standings error: EOF
+2026/07/11 04:42:53 LMU REST standings error: EOF
+2026/07/11 04:42:58 LMU REST standings error: EOF
+2026/07/11 04:43:03 LMU REST standings error: EOF
+2026/07/11 04:43:09 LMU REST standings error: EOF
+2026/07/11 04:43:14 LMU REST standings error: EOF
+2026/07/11 04:43:19 LMU REST standings error: EOF
+2026/07/11 04:43:24 LMU REST standings error: EOF
+2026/07/11 04:43:29 LMU REST standings error: EOF
+2026/07/11 04:43:35 LMU REST standings error: EOF
+2026/07/11 04:43:40 LMU REST standings error: EOF
+2026/07/11 04:43:45 LMU REST standings error: EOF
+2026/07/11 04:43:50 LMU REST standings error: EOF
+2026/07/11 04:43:55 LMU REST standings error: EOF
+2026/07/11 04:44:01 LMU REST standings error: EOF
+2026/07/11 04:44:06 LMU REST standings error: EOF
+2026/07/11 04:44:11 LMU REST standings error: EOF
+2026/07/11 04:44:16 LMU REST standings error: EOF
+2026/07/11 04:44:21 LMU REST standings error: EOF
+2026/07/11 04:44:27 LMU REST standings error: EOF
+2026/07/11 04:44:32 LMU REST standings error: EOF
+2026/07/11 04:44:37 LMU REST standings error: EOF
+2026/07/11 04:44:42 LMU REST standings error: EOF
+2026/07/11 04:44:47 LMU REST standings error: EOF
+2026/07/11 04:44:53 LMU REST standings error: EOF
+2026/07/11 04:44:58 LMU REST standings error: EOF
+2026/07/11 04:45:03 LMU REST standings error: EOF
+2026/07/11 04:45:08 LMU REST standings error: EOF
+2026/07/11 04:45:13 LMU REST standings error: EOF
+2026/07/11 04:45:18 LMU REST standings error: EOF
+2026/07/11 04:45:23 LMU REST standings error: EOF
+2026/07/11 04:45:28 LMU REST standings error: EOF
+2026/07/11 04:45:34 LMU REST standings error: EOF
+2026/07/11 04:45:39 LMU REST standings error: EOF
+2026/07/11 04:45:44 LMU REST standings error: EOF
+2026/07/11 04:45:49 LMU REST standings error: EOF
+2026/07/11 04:45:54 LMU REST standings error: EOF
+2026/07/11 04:45:59 LMU REST standings error: EOF
+2026/07/11 04:46:05 LMU REST standings error: EOF
+2026/07/11 04:46:10 LMU REST standings error: EOF
+2026/07/11 04:46:15 LMU REST standings error: EOF
+2026/07/11 04:46:20 LMU REST standings error: EOF
+2026/07/11 04:46:25 LMU REST standings error: EOF
+2026/07/11 04:46:30 LMU REST standings error: EOF
+2026/07/11 04:46:35 LMU REST standings error: EOF
+2026/07/11 04:46:41 LMU REST standings error: EOF
+2026/07/11 04:46:46 LMU REST standings error: EOF
+2026/07/11 04:46:51 LMU REST standings error: EOF
+2026/07/11 04:46:56 LMU REST standings error: EOF
+2026/07/11 04:47:01 LMU REST standings error: EOF
+2026/07/11 04:47:06 LMU REST standings error: EOF
+2026/07/11 04:47:11 LMU REST standings error: EOF
+2026/07/11 04:47:17 LMU REST standings error: EOF
+2026/07/11 04:47:22 LMU REST standings error: EOF
+2026/07/11 04:47:27 LMU REST standings error: EOF
+2026/07/11 04:47:32 LMU REST standings error: EOF
+2026/07/11 04:47:37 LMU REST standings error: EOF
+2026/07/11 04:47:42 LMU REST standings error: EOF
+2026/07/11 04:47:47 LMU REST standings error: EOF
+2026/07/11 04:47:52 LMU REST standings error: EOF
+2026/07/11 04:47:57 LMU REST standings error: EOF
+2026/07/11 04:48:02 LMU REST standings error: EOF
+2026/07/11 04:48:07 LMU REST standings error: EOF
+2026/07/11 04:48:13 LMU REST standings error: EOF
+2026/07/11 04:48:18 LMU REST standings error: EOF
+2026/07/11 04:48:23 LMU REST standings error: EOF
+2026/07/11 04:48:28 LMU REST standings error: EOF
+2026/07/11 04:48:33 LMU REST standings error: EOF
+2026/07/11 04:48:38 LMU REST standings error: EOF
+2026/07/11 04:48:43 LMU REST standings error: EOF
+2026/07/11 04:48:48 LMU REST standings error: EOF
+2026/07/11 04:48:54 LMU REST standings error: EOF
+2026/07/11 04:48:59 LMU REST standings error: EOF
+2026/07/11 04:49:04 LMU REST standings error: EOF
+2026/07/11 04:49:09 LMU REST standings error: EOF
+2026/07/11 04:49:14 LMU REST standings error: EOF
+2026/07/11 04:49:20 LMU REST standings error: EOF
+2026/07/11 04:49:25 LMU REST standings error: EOF
+2026/07/11 04:49:30 LMU REST standings error: EOF
+2026/07/11 04:49:35 LMU REST standings error: EOF
+2026/07/11 04:49:40 LMU REST standings error: EOF
+2026/07/11 04:49:45 LMU REST standings error: EOF
+2026/07/11 04:49:50 LMU REST standings error: EOF
+2026/07/11 04:49:56 LMU REST standings error: EOF
+2026/07/11 04:50:01 LMU REST standings error: EOF
+2026/07/11 04:50:06 LMU REST standings error: EOF
+2026/07/11 04:50:11 LMU REST standings error: EOF
+2026/07/11 04:50:17 LMU REST standings error: EOF
+2026/07/11 04:50:22 LMU REST standings error: EOF
+2026/07/11 04:50:27 LMU REST standings error: EOF
+2026/07/11 04:50:32 LMU REST standings error: EOF
+2026/07/11 04:50:37 LMU REST standings error: EOF
+2026/07/11 04:50:43 LMU REST standings error: EOF
+2026/07/11 04:50:48 LMU REST standings error: EOF
+2026/07/11 04:50:53 LMU REST standings error: EOF
+2026/07/11 04:50:58 LMU REST standings error: EOF
+2026/07/11 04:51:03 LMU REST standings error: EOF
+2026/07/11 04:51:08 LMU REST standings error: EOF
+2026/07/11 04:51:13 LMU REST standings error: EOF
+2026/07/11 04:51:18 LMU REST standings error: EOF
+2026/07/11 04:51:24 LMU REST standings error: EOF
+2026/07/11 04:51:29 LMU REST standings error: EOF
+2026/07/11 04:51:34 LMU REST standings error: EOF
+2026/07/11 04:51:39 LMU REST standings error: EOF
+2026/07/11 04:51:44 LMU REST standings error: EOF
+2026/07/11 04:51:49 LMU REST standings error: EOF
+2026/07/11 04:51:54 LMU REST standings error: EOF
+2026/07/11 04:51:59 LMU REST standings error: EOF
+2026/07/11 04:52:05 LMU REST standings error: EOF
+2026/07/11 04:52:10 LMU REST standings error: EOF
+2026/07/11 04:52:15 LMU REST standings error: EOF
+2026/07/11 04:52:20 LMU REST standings error: EOF
+2026/07/11 04:52:25 LMU REST standings error: EOF
+2026/07/11 04:52:30 LMU REST standings error: EOF
+2026/07/11 04:52:36 LMU REST standings error: EOF
+2026/07/11 04:52:41 LMU REST standings error: EOF
+2026/07/11 04:52:46 LMU REST standings error: EOF
+2026/07/11 04:52:51 LMU REST standings error: EOF
+2026/07/11 04:52:56 LMU REST standings error: EOF
+2026/07/11 04:53:01 LMU REST standings error: EOF
+2026/07/11 04:53:07 LMU REST standings error: EOF
+2026/07/11 04:53:12 LMU REST standings error: EOF
+2026/07/11 04:53:17 LMU REST standings error: EOF
+2026/07/11 04:53:22 LMU REST standings error: EOF
+2026/07/11 04:53:27 LMU REST standings error: EOF
+2026/07/11 04:53:32 LMU REST standings error: EOF
+2026/07/11 04:53:38 LMU REST standings error: EOF
+2026/07/11 04:53:43 LMU REST standings error: EOF
+2026/07/11 04:53:48 LMU REST standings error: EOF
+2026/07/11 04:53:53 LMU REST standings error: EOF
+2026/07/11 04:53:58 LMU REST standings error: EOF
+2026/07/11 04:54:04 LMU REST standings error: EOF
+2026/07/11 04:54:09 LMU REST standings error: EOF
+2026/07/11 04:54:14 LMU REST standings error: EOF
+2026/07/11 04:54:19 LMU REST standings error: EOF
+2026/07/11 04:54:24 LMU REST standings error: EOF
+2026/07/11 04:54:29 LMU REST standings error: EOF
+2026/07/11 04:54:34 LMU REST standings error: EOF
+2026/07/11 04:54:39 LMU REST standings error: EOF
+2026/07/11 04:54:44 LMU REST standings error: EOF
+2026/07/11 04:54:49 LMU REST standings error: EOF
+2026/07/11 04:54:55 LMU REST standings error: EOF
+2026/07/11 04:55:00 LMU REST standings error: EOF
+2026/07/11 04:55:05 LMU REST standings error: EOF
+2026/07/11 04:55:10 LMU REST standings error: EOF
+2026/07/11 04:55:15 LMU REST standings error: EOF
+2026/07/11 04:55:20 LMU REST standings error: EOF
+2026/07/11 04:55:25 LMU REST standings error: EOF
+2026/07/11 04:55:31 LMU REST standings error: EOF
+2026/07/11 04:55:36 LMU REST standings error: EOF
+2026/07/11 04:55:41 LMU REST standings error: EOF
+2026/07/11 04:55:46 LMU REST standings error: EOF
+2026/07/11 04:55:51 LMU REST standings error: EOF
+2026/07/11 04:55:57 LMU REST standings error: EOF
+2026/07/11 04:56:02 LMU REST standings error: EOF
+2026/07/11 04:56:07 LMU REST standings error: EOF
+2026/07/11 04:56:12 LMU REST standings error: EOF
+2026/07/11 04:56:17 LMU REST standings error: EOF
+2026/07/11 04:56:22 LMU REST standings error: EOF
+2026/07/11 04:56:27 LMU REST standings error: EOF
+2026/07/11 04:56:32 LMU REST standings error: EOF
+2026/07/11 04:56:38 LMU REST standings error: EOF
+2026/07/11 04:56:43 LMU REST standings error: EOF
+2026/07/11 04:56:48 LMU REST standings error: EOF
+2026/07/11 04:56:53 LMU REST standings error: EOF
+2026/07/11 04:56:59 LMU REST standings error: EOF
+2026/07/11 04:57:04 LMU REST standings error: EOF
+2026/07/11 04:57:09 LMU REST standings error: EOF
+2026/07/11 04:57:14 LMU REST standings error: EOF
+2026/07/11 04:57:19 LMU REST standings error: EOF
+2026/07/11 04:57:24 LMU REST standings error: EOF
+2026/07/11 04:57:29 LMU REST standings error: EOF
+2026/07/11 04:57:34 LMU REST standings error: EOF
+2026/07/11 04:57:40 LMU REST standings error: EOF
+2026/07/11 04:57:45 LMU REST standings error: EOF
+2026/07/11 04:57:50 LMU REST standings error: EOF
+2026/07/11 04:57:55 LMU REST standings error: EOF
+2026/07/11 04:58:00 LMU REST standings error: EOF
+2026/07/11 04:58:05 LMU REST standings error: EOF
+2026/07/11 04:58:11 LMU REST standings error: EOF
+2026/07/11 04:58:16 LMU REST standings error: EOF
+2026/07/11 04:58:21 LMU REST standings error: EOF
+2026/07/11 04:58:26 LMU REST standings error: EOF
+2026/07/11 04:58:31 LMU REST standings error: EOF
+2026/07/11 04:58:36 LMU REST standings error: EOF
+2026/07/11 04:58:41 LMU REST standings error: EOF
+2026/07/11 04:58:47 LMU REST standings error: EOF
+2026/07/11 04:58:52 LMU REST standings error: EOF
+2026/07/11 04:58:57 LMU REST standings error: EOF
+2026/07/11 04:59:02 LMU REST standings error: EOF
+2026/07/11 04:59:07 LMU REST standings error: EOF
+2026/07/11 04:59:12 LMU REST standings error: EOF
+2026/07/11 04:59:17 LMU REST standings error: EOF
+2026/07/11 04:59:22 LMU REST standings error: EOF
+2026/07/11 04:59:27 LMU REST standings error: EOF
+2026/07/11 04:59:33 LMU REST standings error: EOF
+2026/07/11 04:59:38 LMU REST standings error: EOF
+2026/07/11 04:59:43 LMU REST standings error: EOF
+2026/07/11 04:59:48 LMU REST standings error: EOF
+2026/07/11 04:59:53 LMU REST standings error: EOF
+2026/07/11 04:59:58 LMU REST standings error: EOF
+2026/07/11 05:00:04 LMU REST standings error: EOF
+2026/07/11 05:00:09 LMU REST standings error: EOF
+2026/07/11 05:00:14 LMU REST standings error: EOF
+2026/07/11 05:00:19 LMU REST standings error: EOF
+2026/07/11 05:00:24 LMU REST standings error: EOF
+2026/07/11 05:00:29 LMU REST standings error: EOF
+2026/07/11 05:00:34 LMU REST standings error: EOF
+2026/07/11 05:00:40 LMU REST standings error: EOF
+2026/07/11 05:00:45 LMU REST standings error: EOF
+2026/07/11 05:00:50 LMU REST standings error: EOF
+2026/07/11 05:00:55 LMU REST standings error: EOF
+2026/07/11 05:01:01 LMU REST standings error: EOF
+2026/07/11 05:01:06 LMU REST standings error: EOF
+2026/07/11 05:01:11 LMU REST standings error: EOF
+2026/07/11 05:01:16 LMU REST standings error: EOF
+2026/07/11 05:01:21 LMU REST standings error: EOF
+2026/07/11 05:01:27 LMU REST standings error: EOF
+2026/07/11 05:01:32 LMU REST standings error: EOF
+2026/07/11 05:01:37 LMU REST standings error: EOF
+2026/07/11 05:01:42 LMU REST standings error: EOF
+2026/07/11 05:01:47 LMU REST standings error: EOF
+2026/07/11 05:01:53 LMU REST standings error: EOF
+2026/07/11 05:01:58 LMU REST standings error: EOF
+2026/07/11 05:02:03 LMU REST standings error: EOF
+2026/07/11 05:02:08 LMU REST standings error: EOF
+2026/07/11 05:02:13 LMU REST standings error: EOF
+2026/07/11 05:02:19 LMU REST standings error: EOF
+2026/07/11 05:02:24 LMU REST standings error: EOF
+2026/07/11 05:02:29 LMU REST standings error: EOF
+2026/07/11 05:02:34 LMU REST standings error: EOF
+2026/07/11 05:02:39 LMU REST standings error: EOF
+2026/07/11 05:02:44 LMU REST standings error: EOF
+2026/07/11 05:02:49 LMU REST standings error: EOF
+2026/07/11 05:02:55 LMU REST standings error: EOF
+2026/07/11 05:03:00 LMU REST standings error: EOF
+2026/07/11 05:03:05 LMU REST standings error: EOF
+2026/07/11 05:03:10 LMU REST standings error: EOF
+2026/07/11 05:03:15 LMU REST standings error: EOF
+2026/07/11 05:03:20 LMU REST standings error: EOF
+2026/07/11 05:03:26 LMU REST standings error: EOF
+2026/07/11 05:03:31 LMU REST standings error: EOF
+2026/07/11 05:03:36 LMU REST standings error: EOF
+2026/07/11 05:03:41 LMU REST standings error: EOF
+2026/07/11 05:03:46 LMU REST standings error: EOF
+2026/07/11 05:03:52 LMU REST standings error: EOF
+2026/07/11 05:03:57 LMU REST standings error: EOF
+2026/07/11 05:04:02 LMU REST standings error: EOF
+2026/07/11 05:04:07 LMU REST standings error: EOF
+2026/07/11 05:04:12 LMU REST standings error: EOF
+2026/07/11 05:04:18 LMU REST standings error: EOF
+2026/07/11 05:04:23 LMU REST standings error: EOF
+2026/07/11 05:04:28 LMU REST standings error: EOF
+2026/07/11 05:04:33 LMU REST standings error: EOF
+2026/07/11 05:04:38 LMU REST standings error: EOF
+2026/07/11 05:04:43 LMU REST standings error: EOF
+2026/07/11 05:04:48 LMU REST standings error: EOF
+2026/07/11 05:04:54 LMU REST standings error: EOF
+2026/07/11 05:04:59 LMU REST standings error: EOF
+2026/07/11 05:05:04 LMU REST standings error: EOF
+2026/07/11 05:05:09 LMU REST standings error: EOF
+2026/07/11 05:05:14 LMU REST standings error: EOF
+2026/07/11 05:05:19 LMU REST standings error: EOF
+2026/07/11 05:05:25 LMU REST standings error: EOF
+2026/07/11 05:05:30 LMU REST standings error: EOF
+2026/07/11 05:05:35 LMU REST standings error: EOF
+2026/07/11 05:05:40 LMU REST standings error: EOF
+2026/07/11 05:05:46 LMU REST standings error: EOF
+2026/07/11 05:05:51 LMU REST standings error: EOF
+2026/07/11 05:05:56 LMU REST standings error: EOF
+2026/07/11 05:06:01 LMU REST standings error: EOF
+2026/07/11 05:06:06 LMU REST standings error: EOF
+2026/07/11 05:06:11 LMU REST standings error: EOF
+2026/07/11 05:06:16 LMU REST standings error: EOF
+2026/07/11 05:06:21 LMU REST standings error: EOF
+2026/07/11 05:06:26 LMU REST standings error: EOF
+2026/07/11 05:06:31 LMU REST standings error: EOF
+2026/07/11 05:06:36 LMU REST standings error: EOF
+2026/07/11 05:06:41 LMU REST standings error: EOF
+2026/07/11 05:06:47 LMU REST standings error: EOF
+2026/07/11 05:06:52 LMU REST standings error: EOF
+2026/07/11 05:06:57 LMU REST standings error: EOF
+2026/07/11 05:07:02 LMU REST standings error: EOF
+2026/07/11 05:07:07 LMU REST standings error: EOF
+2026/07/11 05:07:12 LMU REST standings error: EOF
+2026/07/11 05:07:18 LMU REST standings error: EOF
+2026/07/11 05:07:23 LMU REST standings error: EOF
+2026/07/11 05:07:28 LMU REST standings error: EOF
+2026/07/11 05:07:33 LMU REST standings error: EOF
+2026/07/11 05:07:38 LMU REST standings error: EOF
+2026/07/11 05:07:44 LMU REST standings error: EOF
+2026/07/11 05:07:49 LMU REST standings error: EOF
+2026/07/11 05:07:54 LMU REST standings error: EOF
+2026/07/11 05:07:59 LMU REST standings error: EOF
+2026/07/11 05:08:04 LMU REST standings error: EOF
+2026/07/11 05:08:09 LMU REST standings error: EOF
+2026/07/11 05:08:14 LMU REST standings error: EOF
+2026/07/11 05:08:19 LMU REST standings error: EOF
+2026/07/11 05:08:25 LMU REST standings error: EOF
+2026/07/11 05:08:30 LMU REST standings error: EOF
+2026/07/11 05:08:35 LMU REST standings error: EOF
+2026/07/11 05:08:40 LMU REST standings error: EOF
+2026/07/11 05:08:45 LMU REST standings error: EOF
+2026/07/11 05:08:50 LMU REST standings error: EOF
+2026/07/11 05:08:56 LMU REST standings error: EOF
+2026/07/11 05:09:01 LMU REST standings error: EOF
+2026/07/11 05:09:06 LMU REST standings error: EOF
+2026/07/11 05:09:11 LMU REST standings error: EOF
+2026/07/11 05:09:16 LMU REST standings error: EOF
+2026/07/11 05:09:21 LMU REST standings error: EOF
+2026/07/11 05:09:26 LMU REST standings error: EOF
+2026/07/11 05:09:31 LMU REST standings error: EOF
+2026/07/11 05:09:37 LMU REST standings error: EOF
+2026/07/11 05:09:42 LMU REST standings error: EOF
+2026/07/11 05:09:47 LMU REST standings error: EOF
+2026/07/11 05:09:52 LMU REST standings error: EOF
+2026/07/11 05:09:57 LMU REST standings error: EOF
+2026/07/11 05:10:02 LMU REST standings error: EOF
+2026/07/11 05:10:07 LMU REST standings error: EOF
+2026/07/11 05:10:12 LMU REST standings error: EOF
+2026/07/11 05:10:18 LMU REST standings error: EOF
+2026/07/11 05:10:23 LMU REST standings error: EOF
+2026/07/11 05:10:28 LMU REST standings error: EOF
+2026/07/11 05:10:33 LMU REST standings error: EOF
+2026/07/11 05:10:38 LMU REST standings error: EOF
+2026/07/11 05:10:43 LMU REST standings error: EOF
+2026/07/11 05:10:48 LMU REST standings error: EOF
+2026/07/11 05:10:53 LMU REST standings error: EOF
+2026/07/11 05:10:59 LMU REST standings error: EOF
+2026/07/11 05:11:04 LMU REST standings error: EOF
+2026/07/11 05:11:09 LMU REST standings error: EOF
+2026/07/11 05:11:14 LMU REST standings error: EOF
+2026/07/11 05:11:19 LMU REST standings error: EOF
+2026/07/11 05:11:24 LMU REST standings error: EOF
+2026/07/11 05:11:30 LMU REST standings error: EOF
+2026/07/11 05:11:35 LMU REST standings error: EOF
+2026/07/11 05:11:40 LMU REST standings error: EOF
+2026/07/11 05:11:45 LMU REST standings error: EOF
+2026/07/11 05:11:50 LMU REST standings error: EOF
+2026/07/11 05:11:56 LMU REST standings error: EOF
+2026/07/11 05:12:01 LMU REST standings error: EOF
+2026/07/11 05:12:06 LMU REST standings error: EOF
+2026/07/11 05:12:11 LMU REST standings error: EOF
+2026/07/11 05:12:16 LMU REST standings error: EOF
+2026/07/11 05:12:21 LMU REST standings error: EOF
+2026/07/11 05:12:26 LMU REST standings error: EOF
+2026/07/11 05:12:31 LMU REST standings error: EOF
+2026/07/11 05:12:37 LMU REST standings error: EOF
+2026/07/11 05:12:42 LMU REST standings error: EOF
+2026/07/11 05:12:47 LMU REST standings error: EOF
+2026/07/11 05:12:52 LMU REST standings error: EOF
+2026/07/11 05:12:57 LMU REST standings error: EOF
+2026/07/11 05:13:02 LMU REST standings error: EOF
+2026/07/11 05:13:07 LMU REST standings error: EOF
+2026/07/11 05:13:12 LMU REST standings error: EOF
+2026/07/11 05:13:18 LMU REST standings error: EOF
+2026/07/11 05:13:23 LMU REST standings error: EOF
+2026/07/11 05:13:28 LMU REST standings error: EOF
+2026/07/11 05:13:33 LMU REST standings error: EOF
+2026/07/11 05:13:38 LMU REST standings error: EOF
+2026/07/11 05:13:43 LMU REST standings error: EOF
+2026/07/11 05:13:48 LMU REST standings error: EOF
+2026/07/11 05:13:53 LMU REST standings error: EOF
+2026/07/11 05:13:58 LMU REST standings error: EOF
+2026/07/11 05:14:03 LMU REST standings error: EOF
+2026/07/11 05:14:08 LMU REST standings error: EOF
+2026/07/11 05:14:14 LMU REST standings error: EOF
+2026/07/11 05:14:19 LMU REST standings error: EOF
+2026/07/11 05:14:24 LMU REST standings error: EOF
+2026/07/11 05:14:29 LMU REST standings error: EOF
+2026/07/11 05:14:34 LMU REST standings error: EOF
+2026/07/11 05:14:40 LMU REST standings error: EOF
+2026/07/11 05:14:45 LMU REST standings error: EOF
+2026/07/11 05:14:50 LMU REST standings error: EOF
+2026/07/11 05:14:55 LMU REST standings error: EOF
+2026/07/11 05:15:00 LMU REST standings error: EOF
+2026/07/11 05:15:05 LMU REST standings error: EOF
+2026/07/11 05:15:10 LMU REST standings error: EOF
+2026/07/11 05:15:15 LMU REST standings error: EOF
+2026/07/11 05:15:20 LMU REST standings error: EOF
+2026/07/11 05:15:26 LMU REST standings error: EOF
+2026/07/11 05:15:31 LMU REST standings error: EOF
+2026/07/11 05:15:36 LMU REST standings error: EOF
+2026/07/11 05:15:41 LMU REST standings error: EOF
+2026/07/11 05:15:46 LMU REST standings error: EOF
+2026/07/11 05:15:51 LMU REST standings error: EOF
+2026/07/11 05:15:56 LMU REST standings error: EOF
+2026/07/11 05:16:02 LMU REST standings error: EOF
+2026/07/11 05:16:07 LMU REST standings error: EOF
+2026/07/11 05:16:12 LMU REST standings error: EOF
+2026/07/11 05:16:17 LMU REST standings error: EOF
+2026/07/11 05:16:22 LMU REST standings error: EOF
+2026/07/11 05:16:27 LMU REST standings error: EOF
+2026/07/11 05:16:32 LMU REST standings error: EOF
+2026/07/11 05:16:37 LMU REST standings error: EOF
+2026/07/11 05:16:43 LMU REST standings error: EOF
+2026/07/11 05:16:48 LMU REST standings error: EOF
+2026/07/11 05:16:53 LMU REST standings error: EOF
+2026/07/11 05:16:58 LMU REST standings error: EOF
+2026/07/11 05:17:03 LMU REST standings error: EOF
+2026/07/11 05:17:09 LMU REST standings error: EOF
+2026/07/11 05:17:14 LMU REST standings error: EOF
+2026/07/11 05:17:19 LMU REST standings error: EOF
+2026/07/11 05:17:24 LMU REST standings error: EOF
+2026/07/11 05:17:29 LMU REST standings error: EOF
+2026/07/11 05:17:34 LMU REST standings error: EOF
+2026/07/11 05:17:40 LMU REST standings error: EOF
+2026/07/11 05:17:45 LMU REST standings error: EOF
+2026/07/11 05:17:50 LMU REST standings error: EOF
+2026/07/11 05:17:55 LMU REST standings error: EOF
+2026/07/11 05:18:00 LMU REST standings error: EOF
+2026/07/11 05:18:05 LMU REST standings error: EOF
+2026/07/11 05:18:11 LMU REST standings error: EOF
+2026/07/11 05:18:16 LMU REST standings error: EOF
+2026/07/11 05:18:21 LMU REST standings error: EOF
+2026/07/11 05:18:26 LMU REST standings error: EOF
+2026/07/11 05:18:32 LMU REST standings error: EOF
+2026/07/11 05:18:37 LMU REST standings error: EOF
+2026/07/11 05:18:42 LMU REST standings error: EOF
+2026/07/11 05:18:47 LMU REST standings error: EOF
+2026/07/11 05:18:52 LMU REST standings error: EOF
+2026/07/11 05:18:57 LMU REST standings error: EOF
+2026/07/11 05:19:02 LMU REST standings error: EOF
+2026/07/11 05:19:08 LMU REST standings error: EOF
+2026/07/11 05:19:13 LMU REST standings error: EOF
+2026/07/11 05:19:18 LMU REST standings error: EOF
+2026/07/11 05:19:23 LMU REST standings error: EOF
+2026/07/11 05:19:28 LMU REST standings error: EOF
+2026/07/11 05:19:33 LMU REST standings error: EOF
+2026/07/11 05:19:39 LMU REST standings error: EOF
+2026/07/11 05:19:44 LMU REST standings error: EOF
+2026/07/11 05:19:49 LMU REST standings error: EOF
+2026/07/11 05:19:54 LMU REST standings error: EOF
+2026/07/11 05:19:59 LMU REST standings error: EOF
+2026/07/11 05:20:05 LMU REST standings error: EOF
+2026/07/11 05:20:10 LMU REST standings error: EOF
+2026/07/11 05:20:15 LMU REST standings error: EOF
+2026/07/11 05:20:20 LMU REST standings error: EOF
+2026/07/11 05:20:25 LMU REST standings error: EOF
+2026/07/11 05:20:30 LMU REST standings error: EOF
+2026/07/11 05:20:36 LMU REST standings error: EOF
+2026/07/11 05:20:41 LMU REST standings error: EOF
+2026/07/11 05:20:46 LMU REST standings error: EOF
+2026/07/11 05:20:51 LMU REST standings error: EOF
+2026/07/11 05:20:56 LMU REST standings error: EOF
+2026/07/11 05:21:01 LMU REST standings error: EOF
+2026/07/11 05:21:06 LMU REST standings error: EOF
+2026/07/11 05:21:11 LMU REST standings error: EOF
+2026/07/11 05:21:17 LMU REST standings error: EOF
+2026/07/11 05:21:22 LMU REST standings error: EOF
+2026/07/11 05:21:27 LMU REST standings error: EOF
+2026/07/11 05:21:32 LMU REST standings error: EOF
+2026/07/11 05:21:37 LMU REST standings error: EOF
+2026/07/11 05:21:42 LMU REST standings error: EOF
+2026/07/11 05:21:47 LMU REST standings error: EOF
+2026/07/11 05:21:53 LMU REST standings error: EOF
+2026/07/11 05:21:58 LMU REST standings error: EOF
+2026/07/11 05:22:03 LMU REST standings error: EOF
+2026/07/11 05:22:08 LMU REST standings error: EOF
+2026/07/11 05:22:13 LMU REST standings error: EOF
+2026/07/11 05:22:18 LMU REST standings error: EOF
+2026/07/11 05:22:23 LMU REST standings error: EOF
+2026/07/11 05:22:29 LMU REST standings error: EOF
+2026/07/11 05:22:34 LMU REST standings error: EOF
+2026/07/11 05:22:39 LMU REST standings error: EOF
+2026/07/11 05:22:44 LMU REST standings error: EOF
+2026/07/11 05:22:49 LMU REST standings error: EOF
+2026/07/11 05:22:54 LMU REST standings error: EOF
+2026/07/11 05:22:59 LMU REST standings error: EOF
+2026/07/11 05:23:04 LMU REST standings error: EOF
+2026/07/11 05:23:09 LMU REST standings error: EOF
+2026/07/11 05:23:14 LMU REST standings error: EOF
+2026/07/11 05:23:20 LMU REST standings error: EOF
+2026/07/11 05:23:25 LMU REST standings error: EOF
+2026/07/11 05:23:30 LMU REST standings error: EOF
+2026/07/11 05:23:35 LMU REST standings error: EOF
+2026/07/11 05:23:40 LMU REST standings error: EOF
+2026/07/11 05:23:45 LMU REST standings error: EOF
+2026/07/11 05:23:51 LMU REST standings error: EOF
+2026/07/11 05:23:56 LMU REST standings error: EOF
+2026/07/11 05:24:01 LMU REST standings error: EOF
+2026/07/11 05:24:06 LMU REST standings error: EOF
+2026/07/11 05:24:11 LMU REST standings error: EOF

@@ -1,0 +1,27 @@
+---
+pid: 25884
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "go run ./cmd/vantare -live=false -profile configs/example-racing.json"
+started_at: 2026-07-11T02:06:04.422Z
+running_for_ms: 4685001  
+---
+Jul 11 04:06:06.771 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64
+Jul 11 04:06:06.773 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+Jul 11 04:06:06.773 INF AssetServer Info: middleware=true handler=true
+2026/07/11 04:06:06 HTTP server: FAILED to listen on 127.0.0.1:39261: listen tcp 127.0.0.1:39261: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+2026/07/11 04:06:06 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 04:06:06 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/11 04:06:06 global hotkeys active (4 registered)
+2026/07/11 04:06:06 hotkey: RegisterHotKey failed for id=1 combo="ctrl+shift+v" mods=0x6 vk=0x56
+2026/07/11 04:06:06 hotkey: RegisterHotKey failed for id=2 combo="ctrl+shift+right" mods=0x6 vk=0x27
+2026/07/11 04:06:06 hotkey: RegisterHotKey failed for id=3 combo="ctrl+shift+left" mods=0x6 vk=0x25
+2026/07/11 04:06:06 hotkey: RegisterHotKey failed for id=4 combo="ctrl+shift+e" mods=0x6 vk=0x45
+2026/07/11 04:06:06 [WebView2] Environment created successfully
+Jul 11 04:06:06.915 INF [AssetFileServerFS] Handling request url=/ file=.
+Jul 11 04:06:06.985 INF [AssetFileServerFS] Handling request url=/assets/index-hJbdNEmm.js file=assets/index-hJbdNEmm.js
+Jul 11 04:06:06.987 INF [AssetFileServerFS] Handling request url=/assets/index-CBy3mkv0.css file=assets/index-CBy3mkv0.css
+2026/07/11 04:06:07 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:06:07 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 04:06:10 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 04:06:10 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+exit status 1

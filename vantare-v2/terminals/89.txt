@@ -1,0 +1,12 @@
+---
+pid: 12952
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor && pnpm --dir vantare-v2/frontend test -- src/overlay src/hub/overlay-studio 2>&1 | Select-String -Pattern \"FAIL |Test Files|Tests \""
+started_at: 2026-07-11T00:20:40.519Z
+running_for_ms: 10994998 
+---
+
+ Test Files  112 passed (112)
+      Tests  702 passed (702)
+   Duration  26.99s (transform 13.09s, setup 3.61s, import 68.69s, tests 12.89s, environment 233.81s)
+

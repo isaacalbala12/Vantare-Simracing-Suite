@@ -1,0 +1,71 @@
+---
+pid: 21220
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend visual:overlay-studio:update"
+started_at: 2026-07-11T00:29:27.381Z
+running_for_ms: 10465000 
+---
+
+> vantare-overlay@0.1.0.2 visual:overlay-studio:update C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-visual.mjs --update
+
+Port 5176 is in use, trying another one...
+updated baseline delta-original-ready-studio
+updated baseline delta-original-ready-desktop
+updated baseline delta-original-ready-obs
+updated baseline delta-crystal-ready-studio
+updated baseline delta-crystal-ready-desktop
+updated baseline delta-crystal-ready-obs
+updated baseline standings-original-ready-studio
+updated baseline standings-original-ready-desktop
+updated baseline standings-original-ready-obs
+updated baseline standings-crystal-ready-studio
+updated baseline standings-crystal-ready-desktop
+updated baseline standings-crystal-ready-obs
+updated baseline relative-original-ready-studio
+updated baseline relative-original-ready-desktop
+updated baseline relative-original-ready-obs
+updated baseline relative-crystal-ready-studio
+updated baseline relative-crystal-ready-desktop
+updated baseline relative-crystal-ready-obs
+updated baseline pedals-original-ready-studio
+updated baseline pedals-original-ready-desktop
+updated baseline pedals-original-ready-obs
+updated baseline pedals-crystal-ready-studio
+updated baseline pedals-crystal-ready-desktop
+updated baseline pedals-crystal-ready-obs
+updated baseline delta-original-stale
+updated baseline delta-original-disconnected
+updated baseline delta-original-error
+updated baseline delta-crystal-stale
+updated baseline delta-crystal-disconnected
+updated baseline delta-crystal-error
+updated baseline standings-original-stale
+updated baseline standings-original-disconnected
+updated baseline standings-original-error
+updated baseline standings-crystal-stale
+updated baseline standings-crystal-disconnected
+updated baseline standings-crystal-error
+updated baseline relative-original-stale
+updated baseline relative-original-disconnected
+updated baseline relative-original-error
+updated baseline relative-crystal-stale
+updated baseline relative-crystal-disconnected
+updated baseline relative-crystal-error
+updated baseline pedals-original-stale
+updated baseline pedals-original-disconnected
+updated baseline pedals-original-error
+updated baseline pedals-crystal-stale
+updated baseline pedals-crystal-disconnected
+updated baseline pedals-crystal-error
+updated baseline standings-original-stress60
+updated baseline standings-crystal-stress60
+updated baseline relative-original-fill
+updated baseline relative-crystal-fill
+updated baseline pedals-original-zero
+updated baseline pedals-crystal-zero
+updated baseline pedals-original-full
+updated baseline pedals-crystal-full
+updated baseline studio-wide
+updated baseline studio-medium
+updated baseline studio-small

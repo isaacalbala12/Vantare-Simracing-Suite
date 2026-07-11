@@ -1,0 +1,27 @@
+---
+pid: 7372
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "go run ./cmd/vantare -live=false -profile configs/example-racing.json"
+started_at: 2026-07-11T01:46:31.608Z
+running_for_ms: 5859994  
+---
+Jul 11 03:46:33.533 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc
+Jul 11 03:46:33.535 INF AssetServer Info: middleware=true handler=true
+Jul 11 03:46:33.535 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/11 03:46:33 HTTP server: listening on 127.0.0.1:39261
+2026/07/11 03:46:33 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/11 03:46:33 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/11 03:46:33 global hotkeys active (4 registered)
+2026/07/11 03:46:33 [WebView2] Environment created successfully
+Jul 11 03:46:33.978 INF [AssetFileServerFS] Handling request url=/ file=.
+Jul 11 03:46:34.042 INF [AssetFileServerFS] Handling request url=/assets/index-Cs-jYz2k.js file=assets/index-Cs-jYz2k.js
+Jul 11 03:46:34.050 INF [AssetFileServerFS] Handling request url=/assets/index-CBy3mkv0.css file=assets/index-CBy3mkv0.css
+Jul 11 03:46:34.164 INF [AssetFileServerFS] Handling request url=/favicon.svg file=favicon.svg
+2026/07/11 03:46:34 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 03:46:34 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 03:46:37 license:validate request tokenLen=0 refreshLen=0
+2026/07/11 03:46:37 license:validate result state=anonymous email= deviceOK=false entitlements=[] err=no session token provided
+2026/07/11 03:47:36 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:47:36 license:validate request tokenLen=1350 refreshLen=12
+2026/07/11 03:47:37 license:validate result state=authenticated-no-entitlement email=vantareapp@gmail.com deviceOK=true entitlements=[] err=<nil>
+exit status 0xffffffff

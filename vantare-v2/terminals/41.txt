@@ -1,0 +1,47 @@
+---
+pid: 24360
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "agent-browser click \"@e200\" 2>&1; Start-Sleep -Seconds 1; agent-browser snapshot 2>&1 | Select-String \"required|Spain|Country\" ; agent-browser click \"@e14\" 2>&1; agent-browser press Tab 2>&1; agent-browser type \"4242424242424242\" 2>&1; agent-browser press Tab 2>&1; agent-browser type \"1230\" 2>&1; agent-browser press Tab 2>&1; agent-browser type \"123\" 2>&1; agent-browser click \"@e10\" 2>&1; Start-Sleep -Seconds 20; agent-browser get url 2>&1; agent-browser snapshot 2>&1 | Select-Object -First 25"
+started_at: 2026-07-09T20:45:06.307Z
+running_for_ms: 20189994 
+---
+✓ Done
+
+    - combobox [expanded=false, ref=e7]: Country
+      - StaticText "Country"
+      - StaticText "This field is required"
+✓ Done
+✓ Done
+✓ Done
+✓ Done
+✓ Done
+✓ Done
+✓ Done
+✓ Done
+https://sandbox.polar.sh/checkout/polar_c_8ojhYo4toHlJw3gHmMy1Ar7JO1gnvPdJsDeO21OEMxz
+- generic
+  - listbox [ref=e1]
+    - generic
+      - option "Afghanistan" [ref=e2]
+        - StaticText "Afghanistan"
+      - option "Åland Islands" [ref=e3]
+        - StaticText "Åland Islands"
+      - option "Albania" [ref=e4]
+        - StaticText "Albania"
+      - option "Algeria" [ref=e5]
+        - StaticText "Algeria"
+      - option "American Samoa" [ref=e6]
+        - StaticText "American Samoa"
+      - option "Andorra" [ref=e7]
+        - StaticText "Andorra"
+      - option "Angola" [ref=e8]
+        - StaticText "Angola"
+      - option "Anguilla" [ref=e9]
+        - StaticText "Anguilla"
+      - option "Antarctica" [ref=e10]
+        - StaticText "Antarctica"
+      - option "Antigua & Barbuda" [ref=e11]
+        - StaticText "Antigua & Barbuda"
+      - option "Argentina" [ref=e12]
+        - StaticText "Argentina"
+

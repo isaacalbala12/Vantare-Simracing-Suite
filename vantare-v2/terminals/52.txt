@@ -1,0 +1,215 @@
+---
+pid: 26172
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "Stop-Process -Id 26788,8720 -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\tools\\start-wails-dev.ps1\""
+started_at: 2026-07-09T21:16:09.327Z
+running_for_ms: 18339991 
+---
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [windows:common:version:sync] go run build/sync_version.go
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+Wails v3.0.0-alpha2.106 › Generate Bindings
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+ WARNING  [warn] -: no Go files in C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+ INFO  Processed: 1 Package, 0 Services, 0 Methods, 0 Enums, 0 Models, 0 Events in 479.2659ms.
+ INFO  Output directory: C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend\bindings
+ WARNING  1 warning emitted
+Scope: all 8 workspace projects
+(node:12416) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 1.6s
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+
+> vantare-overlay@0.1.0.2 build:dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> tsc -b && vite build --mode development
+
+vite v8.0.16 building client environment for development...
+transforming...✓ 627 modules transformed.
+rendering chunks...
+computing gzip size...
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/index.html                     1.82 kB │ gzip:   0.77 kB
+dist/assets/index-DQ_HRKwV.css    112.90 kB │ gzip:  16.66 kB
+dist/assets/index-VDFOqWzv.js   1,054.33 kB │ gzip: 277.03 kB
+
+✓ built in 554ms
+task: [windows:generate:syso] wails3 generate syso -arch amd64 -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../cmd/vantare/wails_windows_amd64.syso
+task: [windows:build:native] powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\tools\generate_supabase_config.ps1" -OutFile "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\cmd\vantare\supabase_build.go"
+task: [windows:build:native] go build -buildvcs=false -gcflags=all="-l" -o "bin/vantare.exe" ./cmd/vantare
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/wails_windows_amd64.syso -ErrorAction SilentlyContinue; exit 0"
+task: [windows:build:native] powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"
+
+Need documentation? Run: wails3 docs
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project: wails3 sponsor
+task: [windows:run] bin/vantare.exe
+2026/07/09 23:16:26 LMU: live source not yet available: open LMU_Data: The system cannot find the file specified. (is Le Mans Ultimate running?) (will retry on read)
+2026/07/09 23:16:27 live LMU source opened
+2026/07/09 23:16:27 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/09 23:16:27 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+Jul  9 23:16:27.016 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -buildmode=exe -compiler=gc -gcflags=all=-l DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows GOAMD64=v1
+Jul  9 23:16:27.018 INF AssetServer Info: middleware=true handler=true devServerURL=http://localhost:9245
+Jul  9 23:16:27.018 INF Platform Info: Go-WebView2Loader=true WebView2=150.0.4078.48 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+2026/07/09 23:16:27 HTTP server: listening on 127.0.0.1:39261
+2026/07/09 23:16:27 OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026/07/09 23:16:27 telemetry source: kind=mock name=Mock telemetry live=false available=true
+2026/07/09 23:16:27 global hotkeys active (4 registered)
+Jul  9 23:16:27.026 INF Waiting for frontend dev server to start... url=http://localhost:9245
+task: [common:install:frontend:deps:pnpm] pnpm install
+Jul  9 23:16:27.528 INF Retrying...
+Scope: all 8 workspace projects
+(node:31680) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Jul  9 23:16:28.531 INF Retrying...
+Jul  9 23:16:29.533 INF Retrying...
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 2s
+task: [common:frontend:dev:pnpm] pnpm dev --host 127.0.0.1 --port 9245 --strictPort
+Jul  9 23:16:30.536 INF Retrying...
+
+> vantare-overlay@0.1.0.2 dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> vite "--host" "127.0.0.1" "--port" "9245" "--strictPort"
+
+
+  VITE v8.0.16  ready in 353 ms
+
+  ➜  Local:   http://127.0.0.1:9245/
+Jul  9 23:16:31.539 INF Retrying...
+Jul  9 23:16:31.583 INF Connected to frontend dev server!
+2026/07/09 23:16:31 [WebView2] Environment created successfully
+2026/07/09 23:16:32 startup update check error: github api rate limit or access denied (403)
+23:18:03 [vite] vite.config.ts changed, restarting server...
+23:18:03 [vite] (client) Re-optimizing dependencies because vite config has changed
+23:18:03 [vite] server restarted.
+Wails v3.0.0-alpha2.106 › Build
+task: [windows:common:version:sync] go run build/sync_version.go
+task: [windows:common:go:mod:tidy] go mod tidy
+task: Task "windows:common:generate:icons" is up to date
+task: [windows:common:go:mod:tidy] go mod tidy
+task: [generate:bindings (BUILD_FLAGS=-buildvcs=false -gcflags=all="-l")] wails3 generate bindings -f '-buildvcs=false -gcflags=all="-l"' -clean=true
+Wails v3.0.0-alpha2.106 › Generate Bindings
+Synchronizing version 0.1.0.4 across files...
+Version sync completed successfully.
+task: [windows:common:install:frontend:deps:pnpm] pnpm install
+ WARNING  [warn] -: no Go files in C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2
+ INFO  Processed: 1 Package, 0 Services, 0 Methods, 0 Enums, 0 Models, 0 Events in 480.2538ms.
+ INFO  Output directory: C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend\bindings
+ WARNING  1 warning emitted
+Scope: all 8 workspace projects
+(node:3860) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+dependencies:
++ @supabase/supabase-js 2.106.2
++ @wailsio/runtime 3.0.0-alpha.79
++ motion 12.42.2
++ react 19.2.7
++ react-dom 19.2.7
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/vite 4.3.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/node 24.13.2
++ @types/react 19.2.16
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 6.0.2
++ eslint 10.5.0
++ eslint-plugin-react-hooks 7.1.1
++ eslint-plugin-react-refresh 0.5.3
++ globals 17.6.0
++ happy-dom 20.10.2
++ playwright 1.60.0
++ tailwindcss 4.3.0
++ typescript 6.0.3
++ typescript-eslint 8.61.1
++ vite 8.0.16
++ vitest 4.1.9
+
+Done in 1.6s
+task: [windows:common:frontend:run:pnpm] pnpm run build:dev
+
+> vantare-overlay@0.1.0.2 build:dev C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\frontend
+> tsc -b && vite build --mode development
+
+vite v8.0.16 building client environment for development...
+transforming...✓ 649 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     1.82 kB │ gzip:   0.77 kB
+dist/assets/index-CtIiBMYi.css    112.94 kB │ gzip:  16.68 kB
+dist/assets/index-ZSZiR--V.js   1,058.91 kB │ gzip: 279.58 kB
+
+✓ built in 587ms
+ ELIFECYCLE  Command failed with exit code 4294967295.
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

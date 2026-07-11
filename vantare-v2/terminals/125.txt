@@ -1,0 +1,40 @@
+---
+pid: 16172
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd \"C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor\\vantare-v2\\frontend\" && pnpm run e2e:overlay-studio && pnpm test -- StudioRoute ProfileNameDialog standings-content studio-profile-client hub-profile-mock-state && pnpm build"
+started_at: 2026-07-11T01:53:55.413Z
+running_for_ms: 5400004  
+---
+
+> vantare-overlay@0.1.0.2 e2e:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-e2e-smoke.mjs
+
+ok empty-state
+ok create-profile
+ok active-profile
+overlay studio e2e smoke complete
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "StudioRoute" "ProfileNameDialog" "standings-content" "studio-profile-client" "hub-profile-mock-state"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/overlay/widget-types/standings/standings-content.test.ts (5 tests) 10ms
+ ✓ src/hub/overlay-studio/state/studio-profile-client.test.ts (8 tests) 16ms
+ ✓ src/overlay-harness/hub-profile-mock-state.test.ts (2 tests) 10ms
+ ✓ src/hub/overlay-studio/components/ProfileNameDialog.test.tsx (2 tests) 48ms
+ ✓ src/hub/overlay-studio/StudioRoute.test.tsx (8 tests) 654ms
+
+ Test Files  5 passed (5)
+      Tests  25 passed (25)
+   Start at  03:54:04
+   Duration  3.54s (transform 1.70s, setup 180ms, import 2.69s, tests 739ms, environment 3.83s)
+
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+src/lib/wails-runtime-mock.ts(12,3): error TS6133: 'resetHubMockState' is declared but its value is never read.
+src/overlay-harness/studio-route-main.tsx(5,34): error TS2459: Module '"./hub-profile-mock-state"' declares 'HubMockSeed' locally, but it is not exported.
+ ELIFECYCLE  Command failed with exit code 2.

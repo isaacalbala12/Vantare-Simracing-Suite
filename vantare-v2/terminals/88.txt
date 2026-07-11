@@ -1,0 +1,22 @@
+---
+pid: 22828
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor && pnpm --dir vantare-v2/frontend test -- src/overlay src/hub/overlay-studio 2>&1 | Select-String -Pattern \"FAIL |Test Files|Tests \""
+started_at: 2026-07-11T00:18:24.089Z
+running_for_ms: 11130009 
+---
+
+ ❯ src/hub/overlay-studio/catalog/AddWidgetDialog.test.tsx (3 tests | 1 failed) 144ms
+ ❯ src/hub/overlay-studio/inspector/StudioInspector.test.tsx (6 tests | 1 failed) 1740ms
+ ❯ src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx (14 tests | 1 failed) 2291ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx > useCanvasInteraction > does not teleport on the 
+first pointer-move after pointer-down
+ FAIL  src/hub/overlay-studio/catalog/AddWidgetDialog.test.tsx > AddWidgetDialog > shows lock explanation for premium 
+entries while keeping them visible
+ FAIL  src/hub/overlay-studio/inspector/StudioInspector.test.tsx > StudioInspector > removes unavailable sections 
+immediately when capability disappears
+ Test Files  3 failed | 109 passed (112)
+      Tests  3 failed | 699 passed (702)
+   Duration  27.93s (transform 27.26s, setup 4.74s, import 81.81s, tests 15.23s, environment 232.82s)
+

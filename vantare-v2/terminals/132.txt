@@ -1,0 +1,12 @@
+---
+pid: 27604
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "Get-Process vantare -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; go run ./cmd/vantare -live=false -profile configs/example-racing.json"
+started_at: 2026-07-11T02:05:28.568Z
+running_for_ms: 4720007  
+---
+ParserError: 
+Line |
+   1 |  . yContinue | Stop-Process -Force -ErrorAction SilentlyContinue; go run .
+     |                                                                 ~
+     | Missing closing ')' in expression.

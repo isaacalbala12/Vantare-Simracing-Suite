@@ -1,0 +1,114 @@
+---
+pid: 14692
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2"
+command: "go test ./..."
+started_at: 2026-07-11T01:23:22.686Z
+running_for_ms: 7229999  
+---
+ok  github.com/vantare/overlays/v2/build(cached)
+?   github.com/vantare/overlays/v2/build/android/scripts/deps[no test files]
+?   github.com/vantare/overlays/v2/build/ios[no test files]
+?   github.com/vantare/overlays/v2/build/ios/scripts/deps[no test files]
+?   github.com/vantare/overlays/v2/cmd/lmu-api-probe[no test files]
+?   github.com/vantare/overlays/v2/cmd/lmu-debug[no test files]
+?   github.com/vantare/overlays/v2/cmd/lmu-dump[no test files]
+?   github.com/vantare/overlays/v2/cmd/lmu-test[no test files]
+ok  github.com/vantare/overlays/v2/cmd/vantare0.759s
+ok  github.com/vantare/overlays/v2/cmd/vantare-admin(cached)
+?   github.com/vantare/overlays/v2/configs[no test files]
+?   github.com/vantare/overlays/v2/frontend[no test files]
+2026/07/11 03:23:31 PresetService: error saving preset: preset name is required
+2026/07/11 03:23:31 PresetService: error deleting preset: preset not found: "missing-id"
+2026/07/11 03:23:31 PresetService: error renaming preset: preset not found: "missing-id"
+2026/07/11 03:23:31 warning: live LMU source unavailable: lmu unavailable in unit test (falling back to mock)
+2026/07/11 03:23:31 warning: live LMU source unavailable: lmu unavailable (falling back to mock)
+2026/07/11 03:23:31 live LMU source opened
+2026/07/11 03:23:31 LMU REST standings error: lmu api /rest/watch/standings: Get "http://localhost:6397/rest/watch/standings": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/11 03:23:31 LMU REST sessionInfo error: lmu api /rest/watch/sessionInfo: Get "http://localhost:6397/rest/watch/sessionInfo": dial tcp [::1]:6397: connectex: No connection could be made because the target machine actively refused it.
+2026/07/11 03:23:32 ERROR settings main and .bak both corrupted, using defaults — USER DATA LOST path=C:\Users\isaac\AppData\Local\Temp\TestSettingsServiceLoadDefaultsOnCorruptFile1599754680\001\corrupt.json
+2026/07/11 03:23:34 INFO stale sidecar removed path=C:\Users\isaac\AppData\Local\Temp\TestSidecarStaleIsIgnored3580970873\001\app-settings.json
+2026/07/11 03:23:35 WARN settings main file corrupted, recovered from .bak path=C:\Users\isaac\AppData\Local\Temp\TestLoadToleratesCorruptedJSONFallsBackToBak682052897\001\app-settings.json
+2026/07/11 03:23:35 ERROR settings main and .bak both corrupted, using defaults — USER DATA LOST path=C:\Users\isaac\AppData\Local\Temp\TestLoadFallsBackToDefaultsOnTotalCorruption2581583385\001\app-settings.json
+2026/07/11 03:23:35 WARN settings recovered from sidecar path=C:\Users\isaac\AppData\Local\Temp\TestSidecarAppliedOnStartup502794449\001\app-settings.json
+--- FAIL: TestConcurrentSavesDontCorruptFile (2.39s)
+    settings_service_test.go:763: concurrent save: save failed after retries: rename tmp: rename C:\Users\isaac\AppData\Local\Temp\TestConcurrentSavesDontCorruptFile3987349045\001\app-settings.json.tmp C:\Users\isaac\AppData\Local\Temp\TestConcurrentSavesDontCorruptFile3987349045\001\app-settings.json: Access is denied.
+    settings_service_test.go:763: concurrent save: save failed after retries: write tmp: open C:\Users\isaac\AppData\Local\Temp\TestConcurrentSavesDontCorruptFile3987349045\001\app-settings.json.tmp: The process cannot access the file because it is being used by another process.
+    settings_service_test.go:763: concurrent save: save failed after retries: rename tmp: rename C:\Users\isaac\AppData\Local\Temp\TestConcurrentSavesDontCorruptFile3987349045\001\app-settings.json.tmp C:\Users\isaac\AppData\Local\Temp\TestConcurrentSavesDontCorruptFile3987349045\001\app-settings.json: Access is denied.
+FAIL
+FAILgithub.com/vantare/overlays/v2/internal/app10.821s
+ok  github.com/vantare/overlays/v2/internal/app/launcher6.171s
+ok  github.com/vantare/overlays/v2/internal/calendar(cached)
+ok  github.com/vantare/overlays/v2/internal/core(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/audio(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/core(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/replay(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/service(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/simulator(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/spotter(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/telemetry(cached)
+ok  github.com/vantare/overlays/v2/internal/engineer/telemetry/service(cached)
+ok  github.com/vantare/overlays/v2/internal/license(cached)
+ok  github.com/vantare/overlays/v2/internal/ops(cached)
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+--- FAIL: TestAuthTokenRejectsMissingNonce (0.00s)
+    server_test.go:458: POST /auth/token missing nonce = 200, want 401
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+--- FAIL: TestAuthTokenRejectsInvalidNonce (0.00s)
+    server_test.go:476: POST /auth/token invalid nonce = 200, want 401
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+--- FAIL: TestAuthTokenRejectsReusedNonce (0.00s)
+    server_test.go:505: reused nonce = 200, want 401
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 auth: received OAuth token via local callback, forwarding to license:validate
+2026/07/11 03:23:51 HTTP server: listening on 127.0.0.1:52048
+2026/07/11 03:23:51 HTTP server: FAILED to listen on 127.0.0.1:52050: listen tcp 127.0.0.1:52050: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+FAIL
+FAILgithub.com/vantare/overlays/v2/internal/server2.107s
+ok  github.com/vantare/overlays/v2/internal/telemetry/delta(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/diff(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/fusion(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/gap(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/lmu(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/lmuapi(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/normalizer(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/pipeline(cached)
+ok  github.com/vantare/overlays/v2/internal/telemetry/service(cached)
+ok  github.com/vantare/overlays/v2/internal/updater(cached)
+ok  github.com/vantare/overlays/v2/internal/window0.248s
+ok  github.com/vantare/overlays/v2/pkg/config0.652s
+ok  github.com/vantare/overlays/v2/pkg/models(cached)
+FAIL

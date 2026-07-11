@@ -1,0 +1,32 @@
+---
+pid: 13508
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd \"C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor\\vantare-v2\\frontend\" && pnpm test -- hub-profile-mock-state && pnpm run e2e:overlay-studio"
+started_at: 2026-07-11T01:51:17.269Z
+running_for_ms: 5554989  
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "hub-profile-mock-state"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/overlay-harness/hub-profile-mock-state.test.ts (2 tests) 8ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  03:51:19
+   Duration  1.31s (transform 204ms, setup 43ms, import 234ms, tests 8ms, environment 733ms)
+
+
+> vantare-overlay@0.1.0.2 e2e:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-e2e-smoke.mjs
+
+ok empty-state
+ok create-profile
+page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('[data-testid=\'overlay-studio-v3\']') to be visible
+
+ ELIFECYCLE  Command failed with exit code 1.

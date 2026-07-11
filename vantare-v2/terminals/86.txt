@@ -1,0 +1,26 @@
+---
+pid: 25804
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "cd C:\\Users\\isaac\\emdash\\worktrees\\vantare-v2\\refactor && pnpm --dir vantare-v2/frontend exec node scripts/overlay-studio-visual.mjs 2>&1"
+started_at: 2026-07-11T00:14:05.547Z
+running_for_ms: 11389996 
+---
+Port 5176 is in use, trying another one...
+ok original-ready (0.000% delta)
+ok original-stale (0.000% delta)
+ok original-disconnected (0.000% delta)
+ok original-error (0.000% delta)
+ok crystal-ready (0.000% delta)
+ok crystal-stale (0.000% delta)
+ok crystal-disconnected (0.000% delta)
+ok crystal-error (0.000% delta)
+ok surface-studio (0.000% delta)
+ok surface-desktop (0.000% delta)
+ok surface-obs (0.000% delta)
+ok surface-harness (0.000% delta)
+ok studio-wide (0.194% delta)
+ok studio-medium (0.108% delta)
+ok studio-small (0.000% delta)
+ok studio-relative-chrome
+ok studio-wide interactions
+ok studio zoom 150 viewport

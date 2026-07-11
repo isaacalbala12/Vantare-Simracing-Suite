@@ -1,0 +1,9 @@
+---
+pid: 28104
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\tools\\start-wails-dev.ps1\""
+started_at: 2026-07-09T21:14:27.780Z
+running_for_ms: 18440001 
+---
+Stopping existing Vantare/Wails processes...
+  ERROR   listen tcp 127.0.0.1:9245: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.

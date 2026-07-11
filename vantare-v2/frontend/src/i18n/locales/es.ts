@@ -1,3 +1,5 @@
+import { studioV3Es } from "./studio-v3/es";
+
 export const es: Record<string, string> = {
   // Onboarding
   "onboarding.welcome": "Bienvenido a Vantare",
@@ -445,4 +447,6 @@ export const es: Record<string, string> = {
   "license.unconfiguredTitle": "Configuración incompleta",
   "license.unconfiguredDesc1": "La app no puede validar tu licencia porque faltan los valores públicos de Supabase en esta build. Esto es un problema de configuración del instalador, no de tu cuenta.",
   "license.unconfiguredDesc2": "Descarga la versión más reciente desde el canal de beta o contacta con soporte si el problema persiste.",
+  // Overlay Studio V3
+  ...studioV3Es,
 };

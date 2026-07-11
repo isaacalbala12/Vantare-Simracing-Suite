@@ -1,0 +1,65 @@
+---
+pid: 4220
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor"
+command: "pnpm --dir vantare-v2/frontend test -- src/hub/overlay-studio && pnpm --dir vantare-v2/frontend build"
+started_at: 2026-07-10T16:41:27.148Z
+running_for_ms: 11460000 
+---
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "src/hub/overlay-studio"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/hub/overlay-studio/components/ResponsivePanelControls.test.tsx (6 tests) 80ms
+ ✓ src/hub/overlay-studio/canvas/WidgetContextMenu.test.tsx (2 tests) 48ms
+ ✓ src/hub/overlay-studio/inspector/LayoutSection.test.tsx (3 tests) 52ms
+ ✓ src/hub/overlay-studio/components/RecoveryDialog.test.tsx (2 tests) 63ms
+ ✓ src/hub/overlay-studio/inspector/BehaviorSection.test.tsx (4 tests) 84ms
+ ✓ src/hub/overlay-studio/canvas/StudioWidgetFrame.test.tsx (4 tests) 57ms
+ ✓ src/hub/overlay-studio/canvas/StudioTelemetryProvider.test.tsx (4 tests) 77ms
+ ✓ src/hub/overlay-studio/canvas/CanvasToolbar.test.tsx (1 test) 77ms
+ ✓ src/hub/overlay-studio/components/StudioHeader.test.tsx (3 tests) 110ms
+ ✓ src/hub/overlay-studio/components/WidgetListPanel.test.tsx (4 tests) 149ms
+ ✓ src/hub/overlay-studio/inspector/StudioInspector.test.tsx (6 tests) 346ms
+ ✓ src/hub/overlay-studio/canvas/StudioCanvas.test.tsx (9 tests) 515ms
+ ✓ src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx (9 tests) 535ms
+ ✓ src/hub/overlay-studio/state/studio-store.test.tsx (12 tests) 883ms
+ ✓ src/hub/overlay-studio/OverlayStudioV3.test.tsx (12 tests) 1009ms
+ ✓ src/hub/overlay-studio/canvas/PreviewSourceControls.test.tsx (2 tests) 57ms
+ ✓ src/hub/overlay-studio/components/DirtyChangesDialog.test.tsx (4 tests) 49ms
+ ✓ src/hub/overlay-studio/inspector/InspectorRail.test.tsx (3 tests) 61ms
+ ✓ src/hub/overlay-studio/inspector/AppearanceSection.test.tsx (2 tests) 49ms
+ ✓ src/hub/overlay-studio/inspector/ActionsSection.test.tsx (4 tests) 51ms
+ ✓ src/hub/overlay-studio/state/studio-command.test.ts (14 tests) 18ms
+ ✓ src/hub/overlay-studio/canvas/CanvasActionBar.test.tsx (1 test) 42ms
+ ✓ src/hub/overlay-studio/state/studio-history.test.ts (10 tests) 28ms
+ ✓ src/hub/overlay-studio/state/studio-profile-client.test.ts (7 tests) 30ms
+ ✓ src/hub/overlay-studio/catalog/AddWidgetDialog.test.tsx (3 tests) 69ms
+ ✓ src/hub/overlay-studio/catalog/studio-catalog.test.ts (6 tests) 27ms
+ ✓ src/hub/overlay-studio/access/studio-access.test.ts (15 tests) 13ms
+ ✓ src/hub/overlay-studio/state/studio-recovery.test.ts (6 tests) 11ms
+ ✓ src/hub/overlay-studio/canvas/canvas-geometry.test.ts (9 tests) 19ms
+ ✓ src/hub/overlay-studio/state/studio-navigation-guard.test.ts (4 tests) 10ms
+ ✓ src/hub/overlay-studio/canvas/widget-actions.test.ts (7 tests) 8ms
+ ✓ src/hub/overlay-studio/state/studio-hotkeys.test.ts (4 tests) 9ms
+ ✓ src/hub/overlay-studio/inspector/inspector-sections.test.ts (5 tests) 7ms
+ ✓ src/hub/overlay-studio/state/session-layouts.test.ts (7 tests) 6ms
+ ✓ src/hub/overlay-studio/canvas/canvas-snap.test.ts (6 tests) 7ms
+ ✓ src/hub/overlay-studio/state/widget-order.test.ts (5 tests) 5ms
+ ✓ src/hub/overlay-studio/canvas/canvas-resize.test.ts (5 tests) 8ms
+ ✓ src/hub/overlay-studio/canvas/canvas-backgrounds.test.ts (3 tests) 6ms
+
+ Test Files  38 passed (38)
+      Tests  213 passed (213)
+   Start at  18:41:28
+   Duration  6.00s (transform 5.37s, setup 1.08s, import 15.45s, tests 4.67s, environment 45.48s)
+
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+src/hub/overlay-studio/components/WidgetListPanel.tsx(43,26): error TS2339: Property 'widget' does not exist on type 'StudioCommand'.
+  Property 'widget' does not exist on type '{ type: "widget/duplicate"; session: SessionLayoutType; widgetIds: readonly string[]; newIds: readonly string[]; }'.
+ ELIFECYCLE  Command failed with exit code 2.

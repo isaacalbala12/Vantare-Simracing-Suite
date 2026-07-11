@@ -1,0 +1,4685 @@
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "OverlayStudioV3.test.tsx" "StudioHeader.test.tsx" "WidgetListPanel.test.tsx"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ❯ src/hub/overlay-studio/components/WidgetListPanel.test.tsx (3 tests | 2 failed) 1049ms
+     ✓ lists widgets by z-index with status badges and supports search 36ms
+     × selects a widget when its row is clicked 8ms
+     × shows preserved legacy widgets as read-only entries 1003ms
+ ❯ src/hub/overlay-studio/components/StudioHeader.test.tsx (3 tests | 3 failed) 3054ms
+     × enables save only when dirty and wires undo/redo capabilities 1040ms
+     × switches sessions without requiring save 1005ms
+     × calls save through the header button 1007ms
+ ❯ src/hub/overlay-studio/OverlayStudioV3.test.tsx (6 tests | 5 failed) 5088ms
+     ✓ renders the modular workbench without an outer Vantare shell 37ms
+     × does not expose WidgetStudio chrome or local save-to-widget actions 1014ms
+     × reflects widget selection across list, canvas slot and inspector 1007ms
+     × requests guarded profile changes instead of loading directly 1010ms
+     × exposes navigation entries in the header menu 1010ms
+     × enables undo after a committed document edit 1009ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hub/overlay-studio/OverlayStudioV3.test.tsx > OverlayStudioV3 > does not expose WidgetStudio chrome or local save-to-widget actions
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-header"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<header
+  class="osv3-header"
+  data-testid="studio-header"
+>
+  <div
+    class="osv3-header__left"
+  >
+    <select
+      aria-label="Perfil activo"
+      class="osv3-header__profile-select"
+      data-testid="studio-profile-select"
+    >
+      <option
+        value="profiles/a.json"
+      >
+        Perfil A
+      </option>
+      <option
+        value="profiles/b.json"
+      >
+        Perfil B
+      </option>
+    </select>
+    <select
+      aria-label="Sesión de layout"
+      class="osv3-header__session-select"
+      data-testid="studio-session-select"
+    >
+      <option
+        value="general"
+      >
+        General
+      </option>
+      <option
+        value="practice"
+      >
+        Práctica
+      </option>
+      <option
+        value="qualifying"
+      >
+        Clasificación
+      </option>
+      <option
+        value="race"
+      >
+        Carrera
+      </option>
+      <option
+        value="endurance"
+      >
+        Resistencia
+      </option>
+    </select>
+    <span
+      class="osv3-header__status"
+      data-testid="studio-save-status"
+    >
+      Sin cambios
+    </span>
+  </div>
+  <div
+    class="osv3-header__right"
+  >
+    <button
+      class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+      data-testid="studio-save-button"
+      disabled=""
+      type="button"
+    >
+      Guardar
+    </button>
+    <button
+      class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+      data-testid="studio-undo-button"
+      disabled=""
+      type="button"
+    >
+      Deshacer
+    </button>
+    <button
+      class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+      data-testid="studio-redo-button"
+      disabled=""
+      type="button"
+    >
+      Rehacer
+    </button>
+    <div
+      class="osv3-header__menu"
+    >
+      <button
+        class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+        data-testid="studio-menu-button"
+        type="button"
+      >
+        Menú
+      </button>
+    </div>
+  </div>
+</header>
+
+Ignored nodes: comments, script, style
+<header
+  class="osv3-header"
+  data-testid="studio-header"
+>
+  <div
+    class="osv3-header__left"
+  >
+    <select
+      aria-label="Perfil activo"
+      class="osv3-header__profile-select"
+      data-testid="studio-profile-select"
+    >
+      <option
+        value="profiles/a.json"
+      >
+        Perfil A
+      </option>
+      <option
+        value="profiles/b.json"
+      >
+        Perfil B
+      </option>
+    </select>
+    <select
+      aria-label="Sesión de layout"
+      class="osv3-header__session-select"
+      data-testid="studio-session-select"
+    >
+      <option
+        value="general"
+      >
+        General
+      </option>
+      <option
+        value="practice"
+      >
+        Práctica
+      </option>
+      <option
+        value="qualifying"
+      >
+        Clasificación
+      </option>
+      <option
+        value="race"
+      >
+        Carrera
+      </option>
+      <option
+        value="endurance"
+      >
+        Resistencia
+      </option>
+    </select>
+    <span
+      class="osv3-header__status"
+      data-testid="studio-save-status"
+    >
+      Sin cambios
+    </span>
+  </div>
+  <div
+    class="osv3-header__right"
+  >
+    <button
+      class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+      data-testid="studio-save-button"
+      disabled=""
+      type="button"
+    >
+      Guardar
+    </button>
+    <button
+      class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+      data-testid="studio-undo-button"
+      disabled=""
+      type="button"
+    >
+      Deshacer
+    </button>
+    <button
+      class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+      data-testid="studio-redo-button"
+      disabled=""
+      type="button"
+    >
+      Rehacer
+    </button>
+    <div
+      class="osv3-header__menu"
+    >
+      <button
+        class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+        data-testid="studio-menu-button"
+        type="button"
+      >
+        Menú
+      </button>
+    </div>
+  </div>
+</header>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="osv3-workbench"
+      data-testid="overlay-studio-v3"
+    >
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+            <option
+              value="profiles/b.json"
+            >
+              Perfil B
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        class="osv3-grid"
+      >
+        <aside
+          class="osv3-list-panel"
+          data-testid="studio-widget-list-panel"
+        >
+          <input
+            aria-label="Buscar widgets"
+            class="osv3-list-panel__search"
+            data-testid="studio-widget-search"
+            placeholder="Buscar widgets..."
+            type="search"
+            value=""
+          />
+          <div
+            class="osv3-list-panel__list"
+          >
+            <button
+              class="osv3-list-panel__row"
+              data-testid="studio-widget-row-delta-main"
+              data-widget-id="delta-main"
+              type="button"
+            >
+              <span>
+                delta-main
+              </span>
+              <span
+                class="osv3-list-panel__badge"
+              >
+                activo
+                 · 
+                vantare-original
+              </span>
+            </button>
+          </div>
+          <div
+            class="osv3-list-panel__preserved"
+            data-testid="studio-preserved-widgets"
+          >
+            <div
+              class="osv3-list-panel__preserved-title"
+            >
+              Widgets legados preservados
+            </div>
+            <div
+              class="osv3-list-panel__preserved-row"
+              data-preserved-id="legacy-1"
+            >
+              standings
+               · 
+              legacy-1
+            </div>
+          </div>
+        </aside>
+        <section
+          class="osv3-canvas-column"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-slot"
+        />
+        <aside
+          class="osv3-inspector-slot"
+          data-selected-widget-id=""
+          data-testid="studio-inspector-slot"
+        >
+          <p
+            class="osv3-inspector-slot__empty"
+          >
+            Selecciona un widget para editar sus propiedades.
+          </p>
+        </aside>
+      </main>
+    </div>
+  </div>
+  <div>
+    <div
+      class="osv3-workbench"
+      data-testid="overlay-studio-v3"
+    >
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+            <option
+              value="profiles/b.json"
+            >
+              Perfil B
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        class="osv3-grid"
+      >
+        <aside
+          class="osv3-list-panel"
+          data-testid="studio-widget-list-panel"
+        >
+          <input
+            aria-label="Buscar widgets"
+            class="osv3-list-panel__search"
+            data-testid="studio-widget-search"
+            placeholder="Buscar widgets..."
+            type="search"
+            value=""
+          />
+          <div
+            class="osv3-list-panel__list"
+          >
+            <button
+              class="osv3-list-panel__row"
+              data-testid="studio-widget-row-delta-main"
+              data-widget-id="delta-main"
+              type="button"
+            >
+              <span>
+                delta-main
+              </span>
+              <span
+                class="osv3-list-panel__badge"
+              >
+                activo
+                 · 
+                vantare-original
+              </span>
+            </button>
+          </div>
+          <div
+            class="osv3-list-panel__preserved"
+            data-testid="studio-preserved-widgets"
+          >
+            <div
+              class="osv3-list-panel__preserved-title"
+            >
+              Widgets legados preservados
+            </div>
+            <div
+              class="osv3-list-panel__preserved-row"
+              data-preserved-id="legacy-1"
+            >
+              standings
+               · 
+              legacy-1
+            </div>
+          </div>
+        </aside>
+        <section
+          class="osv3-canvas-column"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-slot"
+        />
+        <aside
+          class="osv3-inspector-slot"
+          data-selected-widget-id=""
+          data-testid="studio-inspector-slot"
+        >
+          <p
+            class="osv3-inspector-slot__empty"
+          >
+            Selecciona un widget para editar sus propiedades.
+          </p>
+        </aside>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="osv3-workbench"
+        data-testid="overlay-studio-v3"
+      >
+        <header
+          class="osv3-header"
+          data-testid="studio-header"
+        >
+          <div
+            class="osv3-header__left"
+          >
+            <select
+              aria-label="Perfil activo"
+              class="osv3-header__profile-select"
+              data-testid="studio-profile-select"
+            >
+              <option
+                value="profiles/a.json"
+              >
+                Perfil A
+              </option>
+              <option
+                value="profiles/b.json"
+              >
+                Perfil B
+              </option>
+            </select>
+            <select
+              aria-label="Sesión de layout"
+              class="osv3-header__session-select"
+              data-testid="studio-session-select"
+            >
+              <option
+                value="general"
+              >
+                General
+              </option>
+              <option
+                value="practice"
+              >
+                Práctica
+              </option>
+              <option
+                value="qualifying"
+              >
+                Clasificación
+              </option>
+              <option
+                value="race"
+              >
+                Carrera
+              </option>
+              <option
+                value="endurance"
+              >
+                Resistencia
+              </option>
+            </select>
+            <span
+              class="osv3-header__status"
+              data-testid="studio-save-status"
+            >
+              Sin cambios
+            </span>
+          </div>
+          <div
+            class="osv3-header__right"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-save-button"
+              disabled=""
+              type="button"
+            >
+              Guardar
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-undo-button"
+              disabled=""
+              type="button"
+            >
+              Deshacer
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-redo-button"
+              disabled=""
+              type="button"
+            >
+              Rehacer
+            </button>
+            <div
+              class="osv3-header__menu"
+            >
+              <button
+                class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                data-testid="studio-menu-button"
+                type="button"
+              >
+                Menú
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          class="osv3-grid"
+        >
+          <aside
+            class="osv3-list-panel"
+            data-testid="studio-widget-list-panel"
+          >
+            <input
+              aria-label="Buscar widgets"
+              class="osv3-list-panel__search"
+              data-testid="studio-widget-search"
+              placeholder="Buscar widgets..."
+              type="search"
+              value=""
+            />
+            <div
+              class="osv3-list-panel__list"
+            >
+              <button
+                class="osv3-list-panel__row"
+                data-testid="studio-widget-row-delta-main"
+                data-widget-id="delta-main"
+                type="button"
+              >
+                <span>
+                  delta-main
+                </span>
+                <span
+                  class="osv3-list-panel__badge"
+                >
+                  activo
+                   · 
+                  vantare-original
+                </span>
+              </button>
+            </div>
+            <div
+              class="osv3-list-panel__preserved"
+              data-testid="studio-preserved-widgets"
+            >
+              <div
+                class="osv3-list-panel__preserved-title"
+              >
+                Widgets legados preservados
+              </div>
+              <div
+                class="osv3-list-panel__preserved-row"
+                data-preserved-id="legacy-1"
+              >
+                standings
+                 · 
+                legacy-1
+              </div>
+            </div>
+          </aside>
+          <section
+            class="osv3-canvas-column"
+            data-selected-widget-id=""
+            data-testid="studio-canvas-slot"
+          />
+          <aside
+            class="osv3-inspector-slot"
+            data-selected-widget-id=""
+            data-testid="studio-inspector-slot"
+          >
+            <p
+              class="osv3-inspector-slot__empty"
+            >
+              Selecciona un widget para editar sus propiedades.
+            </p>
+          </aside>
+        </main>
+      </div>
+    </div>
+    <div>
+      <div
+        class="osv3-workbench"
+        data-testid="overlay-studio-v3"
+      >
+        <header
+          class="osv3-header"
+          data-testid="studio-header"
+        >
+          <div
+            class="osv3-header__left"
+          >
+            <select
+              aria-label="Perfil activo"
+              class="osv3-header__profile-select"
+              data-testid="studio-profile-select"
+            >
+              <option
+                value="profiles/a.json"
+              >
+                Perfil A
+              </option>
+              <option
+                value="profiles/b.json"
+              >
+                Perfil B
+              </option>
+            </select>
+            <select
+              aria-label="Sesión de layout"
+              class="osv3-header__session-select"
+              data-testid="studio-session-select"
+            >
+              <option
+                value="general"
+              >
+                General
+              </option>
+              <option
+                value="practice"
+              >
+                Práctica
+              </option>
+              <option
+                value="qualifying"
+              >
+                Clasificación
+              </option>
+              <option
+                value="race"
+              >
+                Carrera
+              </option>
+              <option
+                value="endurance"
+              >
+                Resistencia
+              </option>
+            </select>
+            <span
+              class="osv3-header__status"
+              data-testid="studio-save-status"
+            >
+              Sin cambios
+            </span>
+          </div>
+          <div
+            class="osv3-header__right"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-save-button"
+              disabled=""
+              type="button"
+            >
+              Guardar
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-undo-button"
+              disabled=""
+              type="button"
+            >
+              Deshacer
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-redo-button"
+              disabled=""
+              type="button"
+            >
+              Rehacer
+            </button>
+            <div
+              class="osv3-header__menu"
+            >
+              <button
+                class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                data-testid="studio-menu-button"
+                type="button"
+              >
+                Menú
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          class="osv3-grid"
+        >
+          <aside
+            class="osv3-list-panel"
+            data-testid="studio-widget-list-panel"
+          >
+            <input
+              aria-label="Buscar widgets"
+              class="osv3-list-panel__search"
+              data-testid="studio-widget-search"
+              placeholder="Buscar widgets..."
+              type="search"
+              value=""
+            />
+            <div
+              class="osv3-list-panel__list"
+            >
+              <button
+                class="osv3-list-panel__row"
+                data-testid="studio-widget-row-delta-main"
+                data-widget-id="delta-main"
+                type="button"
+              >
+                <span>
+                  delta-main
+                </span>
+                <span
+                  class="osv3-list-panel__badge"
+                >
+                  activo
+                   · 
+                  vantare-original
+                </span>
+              </button>
+            </div>
+            <div
+              class="osv3-list-panel__preserved"
+              data-testid="studio-preserved-widgets"
+            >
+              <div
+                class="osv3-list-panel__preserved-title"
+              >
+                Widgets legados preservados
+              </div>
+              <div
+                class="osv3-list-panel__preserved-row"
+                data-preserved-id="legacy-1"
+              >
+                standings
+                 · 
+                legacy-1
+              </div>
+            </div>
+          </aside>
+          <section
+            class="osv3-canvas-column"
+            data-selected-widget-id=""
+            data-testid="studio-canvas-slot"
+          />
+          <aside
+            class="osv3-inspector-slot"
+            data-selected-widget-id=""
+            data-testid="studio-inspector-slot"
+          >
+            <p
+              class="osv3-inspector-slot__empty"
+            >
+              Selecciona un widget para editar sus propiedades.
+            </p>
+          </aside>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
+ ❯ waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/OverlayStudioV3.test.tsx:68:11
+     66|   it("does not expose WidgetStudio chrome or local save-to-widget acti…
+     67|     renderWorkbench();
+     68|     await waitFor(() => expect(screen.getByTestId("studio-header")).to…
+       |           ^
+     69|     expect(screen.queryByText(/widget studio/i)).toBeNull();
+     70|     expect(screen.queryByText(/save to widget/i)).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  src/hub/overlay-studio/OverlayStudioV3.test.tsx > OverlayStudioV3 > reflects widget selection across list, canvas slot and inspector
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-widget-row-delta-main"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<button
+  class="osv3-list-panel__row"
+  data-testid="studio-widget-row-delta-main"
+  data-widget-id="delta-main"
+  type="button"
+>
+  <span>
+    delta-main
+  </span>
+  <span
+    class="osv3-list-panel__badge"
+  >
+    activo
+     · 
+    vantare-original
+  </span>
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="osv3-list-panel__row"
+  data-testid="studio-widget-row-delta-main"
+  data-widget-id="delta-main"
+  type="button"
+>
+  <span>
+    delta-main
+  </span>
+  <span
+    class="osv3-list-panel__badge"
+  >
+    activo
+     · 
+    vantare-original
+  </span>
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="osv3-list-panel__row"
+  data-testid="studio-widget-row-delta-main"
+  data-widget-id="delta-main"
+  type="button"
+>
+  <span>
+    delta-main
+  </span>
+  <span
+    class="osv3-list-panel__badge"
+  >
+    activo
+     · 
+    vantare-original
+  </span>
+</button>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="osv3-workbench"
+      data-testid="overlay-studio-v3"
+    >
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+            <option
+              value="profiles/b.json"
+            >
+              Perfil B
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        class="osv3-grid"
+      >
+        <aside
+          class="osv3-list-panel"
+          data-testid="studio-widget-list-panel"
+        >
+          <input
+            aria-label="Buscar widgets"
+            class="osv3-list-panel__search"
+            data-testid="studio-widget-search"
+            placeholder="Buscar widgets..."
+            type="search"
+            value=""
+          />
+          <div
+            class="osv3-list-panel__list"
+          >
+            <button
+              class="osv3-list-panel__row"
+              data-testid="studio-widget-row-delta-main"
+              data-widget-id="delta-main"
+              type="button"
+            >
+              <span>
+                delta-main
+              </span>
+              <span
+                class="osv3-list-panel__badge"
+              >
+                activo
+                 · 
+                vantare-original
+              </span>
+            </button>
+          </div>
+          <div
+            class="osv3-list-panel__preserved"
+            data-testid="studio-preserved-widgets"
+          >
+            <div
+              class="osv3-list-panel__preserved-title"
+            >
+              Widgets legados preservados
+            </div>
+            <div
+              class="osv3-list-panel__preserved-row"
+              data-preserved-id="legacy-1"
+            >
+              standings
+               · 
+              legacy-1
+            </div>
+          </div>
+        </aside>
+        <section
+          class="osv3-canvas-column"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-slot"
+        />
+        <aside
+          class="osv3-inspector-slot"
+          data-selected-widget-id=""
+          data-testid="studio-inspector-sl...
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="osv3-workbench"
+        data-testid="overlay-studio-v3"
+      >
+        <header
+          class="osv3-header"
+          data-testid="studio-header"
+        >
+          <div
+            class="osv3-header__left"
+          >
+            <select
+              aria-label="Perfil activo"
+              class="osv3-header__profile-select"
+              data-testid="studio-profile-select"
+            >
+              <option
+                value="profiles/a.json"
+              >
+                Perfil A
+              </option>
+              <option
+                value="profiles/b.json"
+              >
+                Perfil B
+              </option>
+            </select>
+            <select
+              aria-label="Sesión de layout"
+              class="osv3-header__session-select"
+              data-testid="studio-session-select"
+            >
+              <option
+                value="general"
+              >
+                General
+              </option>
+              <option
+                value="practice"
+              >
+                Práctica
+              </option>
+              <option
+                value="qualifying"
+              >
+                Clasificación
+              </option>
+              <option
+                value="race"
+              >
+                Carrera
+              </option>
+              <option
+                value="endurance"
+              >
+                Resistencia
+              </option>
+            </select>
+            <span
+              class="osv3-header__status"
+              data-testid="studio-save-status"
+            >
+              Sin cambios
+            </span>
+          </div>
+          <div
+            class="osv3-header__right"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-save-button"
+              disabled=""
+              type="button"
+            >
+              Guardar
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-undo-button"
+              disabled=""
+              type="button"
+            >
+              Deshacer
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-redo-button"
+              disabled=""
+              type="button"
+            >
+              Rehacer
+            </button>
+            <div
+              class="osv3-header__menu"
+            >
+              <button
+                class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                data-testid="studio-menu-button"
+                type="button"
+              >
+                Menú
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          class="osv3-grid"
+        >
+          <aside
+            class="osv3-list-panel"
+            data-testid="studio-widget-list-panel"
+          >
+            <input
+              aria-label="Buscar widgets"
+              class="osv3-list-panel__search"
+              data-testid="studio-widget-search"
+              placeholder="Buscar widgets..."
+              type="search"
+              value=""
+            />
+            <div
+              class="osv3-list-panel__list"
+            >
+              <button
+                class="osv3-list-panel__row"
+                data-testid="studio-widget-row-delta-main"
+                data-widget-id="delta-main"
+                type="button"
+              >
+                <span>
+                  delta-main
+                </span>
+                <span
+                  class="osv3-list-panel__badge"
+                >
+                  activo
+                   · 
+                  vantare-original
+                </span>
+              </button>
+            </div>
+            <div
+              class="osv3-list-panel__preserved"
+              data-testid="studio-preserved-widgets"
+            >
+              <div
+                class="osv3-list-panel__preserved-title"
+              >
+                Widgets legados preservados
+              </div>
+              <div
+                class="osv3-list-panel__preserved-row"
+                data-preserved-id="legacy-1"
+              >
+                standings
+                 · 
+                legacy-1
+              </div>
+            </div>
+          </aside>
+          <section
+            class=
+aitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/OverlayStudioV3.test.tsx:78:11
+     76|   it("reflects widget selection across list, canvas slot and inspector…
+     77|     renderWorkbench();
+     78|     await waitFor(() => expect(screen.getByTestId("studio-widget-row-d…
+       |           ^
+     79|
+     80|     fireEvent.click(screen.getByTestId("studio-widget-row-delta-main")…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  src/hub/overlay-studio/OverlayStudioV3.test.tsx > OverlayStudioV3 > requests guarded profile changes instead of loading directly
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-profile-select"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<select
+  aria-label="Perfil activo"
+  class="osv3-header__profile-select"
+  data-testid="studio-profile-select"
+>
+  <option
+    value="profiles/a.json"
+  >
+    Perfil A
+  </option>
+  <option
+    value="profiles/b.json"
+  >
+    Perfil B
+  </option>
+</select>
+
+Ignored nodes: comments, script, style
+<select
+  aria-label="Perfil activo"
+  class="osv3-header__profile-select"
+  data-testid="studio-profile-select"
+>
+  <option
+    value="profiles/a.json"
+  >
+    Perfil A
+  </option>
+  <option
+    value="profiles/b.json"
+  >
+    Perfil B
+  </option>
+</select>
+
+Ignored nodes: comments, script, style
+<select
+  aria-label="Perfil activo"
+  class="osv3-header__profile-select"
+  data-testid="studio-profile-select"
+>
+  <option
+    value="profiles/a.json"
+  >
+    Perfil A
+  </option>
+  <option
+    value="profiles/b.json"
+  >
+    Perfil B
+  </option>
+</select>
+
+Ignored nodes: comments, script, style
+<select
+  aria-label="Perfil activo"
+  class="osv3-header__profile-select"
+  data-testid="studio-profile-select"
+>
+  <option
+    value="profiles/a.json"
+  >
+    Perfil A
+  </option>
+  <option
+    value="profiles/b.json"
+  >
+    Perfil B
+  </option>
+</select>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="osv3-workbench"
+      data-testid="overlay-studio-v3"
+    >
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+            <option
+              value="profiles/b.json"
+            >
+              Perfil B
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        class="osv3-grid"
+      >
+        <aside
+          class="osv3-list-panel"
+          data-testid="studio-widget-list-panel"
+        >
+          <input
+            aria-label="Buscar widgets"
+            class="osv3-list-panel__search"
+            data-testid="studio-widget-search"
+            placeholder="Buscar widgets..."
+            type="search"
+            value=""
+          />
+          <div
+            class="osv3-list-panel__list"
+          >
+            <button
+              class="osv3-list-panel__row"
+              data-testid="studio-widget-row-delta-main"
+              data-widget-id="delta-main"
+              type="button"
+            >
+              <span>
+                delta-main
+              </span>
+              <span
+                class="osv3-list-panel__badge"
+              >
+                activo
+                 · 
+                vantare-original
+              </span>
+            </button>
+          </div>
+          <div
+            class="osv3-list-panel__preserved"
+            data-testid="studio-preserved-widgets"
+          >
+            <div
+              class="osv3-list-panel__preserved-title"
+            >
+              Widgets legados preservados
+            </div>
+            <div
+              class="osv3-list-panel__preserved-row"
+              data-preserved-id="legacy-1"
+            >
+              standings
+               · 
+              legacy-1
+            </div>
+          </div>
+        </aside>
+        <section
+          class="osv3-canvas-column"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-slot"
+        />
+        <aside
+          class="osv3-inspector-slot"
+          data-selected-widget-id=""
+          data-testid="studio-inspector-sl...
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="osv3-workbench"
+        data-testid="overlay-studio-v3"
+      >
+        <header
+          class="osv3-header"
+          data-testid="studio-header"
+        >
+          <div
+            class="osv3-header__left"
+          >
+            <select
+              aria-label="Perfil activo"
+              class="osv3-header__profile-select"
+              data-testid="studio-profile-select"
+            >
+              <option
+                value="profiles/a.json"
+              >
+                Perfil A
+              </option>
+              <option
+                value="profiles/b.json"
+              >
+                Perfil B
+              </option>
+            </select>
+            <select
+              aria-label="Sesión de layout"
+              class="osv3-header__session-select"
+              data-testid="studio-session-select"
+            >
+              <option
+                value="general"
+              >
+                General
+              </option>
+              <option
+                value="practice"
+              >
+                Práctica
+              </option>
+              <option
+                value="qualifying"
+              >
+                Clasificación
+              </option>
+              <option
+                value="race"
+              >
+                Carrera
+              </option>
+              <option
+                value="endurance"
+              >
+                Resistencia
+              </option>
+            </select>
+            <span
+              class="osv3-header__status"
+              data-testid="studio-save-status"
+            >
+              Sin cambios
+            </span>
+          </div>
+          <div
+            class="osv3-header__right"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-save-button"
+              disabled=""
+              type="button"
+            >
+              Guardar
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-undo-button"
+              disabled=""
+              type="button"
+            >
+              Deshacer
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-redo-button"
+              disabled=""
+              type="button"
+            >
+              Rehacer
+            </button>
+            <div
+              class="osv3-header__menu"
+            >
+              <button
+                class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                data-testid="studio-menu-button"
+                type="button"
+              >
+                Menú
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          class="osv3-grid"
+        >
+          <aside
+            class="osv3-list-panel"
+            data-testid="studio-widget-list-panel"
+          >
+            <input
+              aria-label="Buscar widgets"
+              class="osv3-list-panel__search"
+              data-testid="studio-widget-search"
+              placeholder="Buscar widgets..."
+              type="search"
+              value=""
+            />
+            <div
+              class="osv3-list-panel__list"
+            >
+              <button
+                class="osv3-list-panel__row"
+                data-testid="studio-widget-row-delta-main"
+                data-widget-id="delta-main"
+                type="button"
+              >
+                <span>
+                  delta-main
+                </span>
+                <span
+                  class="osv3-list-panel__badge"
+                >
+                  activo
+                   · 
+                  vantare-original
+                </span>
+              </button>
+            </div>
+            <div
+              class="osv3-list-panel__preserved"
+              data-testid="studio-preserved-widgets"
+            >
+              <div
+                class="osv3-list-panel__preserved-title"
+              >
+                Widgets legados preservados
+              </div>
+              <div
+                class="osv3-list-panel__preserved-row"
+                data-preserved-id="legacy-1"
+              >
+                standings
+                 · 
+                legacy-1
+              </div>
+            </div>
+          </aside>
+          <section
+            class=
+aitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/OverlayStudioV3.test.tsx:89:11
+     87|     const onRequestProfileChange = vi.fn();
+     88|     renderWorkbench(createMockClient(), onRequestProfileChange);
+     89|     await waitFor(() => expect(screen.getByTestId("studio-profile-sele…
+       |           ^
+     90|
+     91|     fireEvent.change(screen.getByTestId("studio-profile-select"), {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  src/hub/overlay-studio/OverlayStudioV3.test.tsx > OverlayStudioV3 > exposes navigation entries in the header menu
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-menu-button"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+  data-testid="studio-menu-button"
+  type="button"
+>
+  Menú
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+  data-testid="studio-menu-button"
+  type="button"
+>
+  Menú
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+  data-testid="studio-menu-button"
+  type="button"
+>
+  Menú
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+  data-testid="studio-menu-button"
+  type="button"
+>
+  Menú
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+  data-testid="studio-menu-button"
+  type="button"
+>
+  Menú
+</button>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="osv3-workbench"
+      data-testid="overlay-studio-v3"
+    >
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+            <option
+              value="profiles/b.json"
+            >
+              Perfil B
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        class="osv3-grid"
+      >
+        <aside
+          class="osv3-list-panel"
+          data-testid="studio-widget-list-panel"
+        >
+          <input
+            aria-label="Buscar widgets"
+            class="osv3-list-panel__search"
+            data-testid="studio-widget-search"
+            placeholder="Buscar widgets..."
+            type="search"
+            value=""
+          />
+          <div
+            class="osv3-list-panel__list"
+          >
+            <button
+              class="osv3-list-panel__row"
+              data-testid="studio-widget-row-delta-main"
+              data-widget-id="delta-main"
+              type="button"
+            >
+              <span>
+                delta-main
+              </span>
+              <span
+                class="osv3-list-panel__badge"
+              >
+                activo
+                 · 
+                vantare-original
+              </span>
+            </button>
+          </div>
+          <div
+            class="osv3-list-panel__preserved"
+            data-testid="studio-preserved-widgets"
+          >
+            <div
+              class="osv3-list-panel__preserved-title"
+            >
+              Widgets legados preservados
+            </div>
+            <div
+              class="osv3-list-panel__preserved-row"
+              data-preserved-id="legacy-1"
+            >
+              standings
+               · 
+              legacy-1
+            </div>
+          </div>
+        </aside>
+        <section
+          class="osv3-canvas-column"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-slot"
+        />
+        <aside
+          class="osv3-inspector-slot"
+          data-selected-widget-id=""
+          data-testid="studio-inspector-sl...
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="osv3-workbench"
+        data-testid="overlay-studio-v3"
+      >
+        <header
+          class="osv3-header"
+          data-testid="studio-header"
+        >
+          <div
+            class="osv3-header__left"
+          >
+            <select
+              aria-label="Perfil activo"
+              class="osv3-header__profile-select"
+              data-testid="studio-profile-select"
+            >
+              <option
+                value="profiles/a.json"
+              >
+                Perfil A
+              </option>
+              <option
+                value="profiles/b.json"
+              >
+                Perfil B
+              </option>
+            </select>
+            <select
+              aria-label="Sesión de layout"
+              class="osv3-header__session-select"
+              data-testid="studio-session-select"
+            >
+              <option
+                value="general"
+              >
+                General
+              </option>
+              <option
+                value="practice"
+              >
+                Práctica
+              </option>
+              <option
+                value="qualifying"
+              >
+                Clasificación
+              </option>
+              <option
+                value="race"
+              >
+                Carrera
+              </option>
+              <option
+                value="endurance"
+              >
+                Resistencia
+              </option>
+            </select>
+            <span
+              class="osv3-header__status"
+              data-testid="studio-save-status"
+            >
+              Sin cambios
+            </span>
+          </div>
+          <div
+            class="osv3-header__right"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-save-button"
+              disabled=""
+              type="button"
+            >
+              Guardar
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-undo-button"
+              disabled=""
+              type="button"
+            >
+              Deshacer
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-redo-button"
+              disabled=""
+              type="button"
+            >
+              Rehacer
+            </button>
+            <div
+              class="osv3-header__menu"
+            >
+              <button
+                class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                data-testid="studio-menu-button"
+                type="button"
+              >
+                Menú
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          class="osv3-grid"
+        >
+          <aside
+            class="osv3-list-panel"
+            data-testid="studio-widget-list-panel"
+          >
+            <input
+              aria-label="Buscar widgets"
+              class="osv3-list-panel__search"
+              data-testid="studio-widget-search"
+              placeholder="Buscar widgets..."
+              type="search"
+              value=""
+            />
+            <div
+              class="osv3-list-panel__list"
+            >
+              <button
+                class="osv3-list-panel__row"
+                data-testid="studio-widget-row-delta-main"
+                data-widget-id="delta-main"
+                type="button"
+              >
+                <span>
+                  delta-main
+                </span>
+                <span
+                  class="osv3-list-panel__badge"
+                >
+                  activo
+                   · 
+                  vantare-original
+                </span>
+              </button>
+            </div>
+            <div
+              class="osv3-list-panel__preserved"
+              data-testid="studio-preserved-widgets"
+            >
+              <div
+                class="osv3-list-panel__preserved-title"
+              >
+                Widgets legados preservados
+              </div>
+              <div
+                class="osv3-list-panel__preserved-row"
+                data-preserved-id="legacy-1"
+              >
+                standings
+                 · 
+                legacy-1
+              </div>
+            </div>
+          </aside>
+          <section
+            class=
+aitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/OverlayStudioV3.test.tsx:100:11
+     98|   it("exposes navigation entries in the header menu", async () => {
+     99|     renderWorkbench();
+    100|     await waitFor(() => expect(screen.getByTestId("studio-menu-button"…
+       |           ^
+    101|     fireEvent.click(screen.getByTestId("studio-menu-button"));
+    102|     expect(screen.getByText("Gestionar perfiles")).toBeTruthy();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  src/hub/overlay-studio/OverlayStudioV3.test.tsx > OverlayStudioV3 > enables undo after a committed document edit
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-undo-button"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+  data-testid="studio-undo-button"
+  disabled=""
+  type="button"
+>
+  Deshacer
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+  data-testid="studio-undo-button"
+  disabled=""
+  type="button"
+>
+  Deshacer
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+  data-testid="studio-undo-button"
+  disabled=""
+  type="button"
+>
+  Deshacer
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+  data-testid="studio-undo-button"
+  disabled=""
+  type="button"
+>
+  Deshacer
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+  data-testid="studio-undo-button"
+  disabled=""
+  type="button"
+>
+  Deshacer
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+  data-testid="studio-undo-button"
+  disabled=""
+  type="button"
+>
+  Deshacer
+</button>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="osv3-workbench"
+      data-testid="overlay-studio-v3"
+    >
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+            <option
+              value="profiles/b.json"
+            >
+              Perfil B
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        class="osv3-grid"
+      >
+        <aside
+          class="osv3-list-panel"
+          data-testid="studio-widget-list-panel"
+        >
+          <input
+            aria-label="Buscar widgets"
+            class="osv3-list-panel__search"
+            data-testid="studio-widget-search"
+            placeholder="Buscar widgets..."
+            type="search"
+            value=""
+          />
+          <div
+            class="osv3-list-panel__list"
+          >
+            <button
+              class="osv3-list-panel__row"
+              data-testid="studio-widget-row-delta-main"
+              data-widget-id="delta-main"
+              type="button"
+            >
+              <span>
+                delta-main
+              </span>
+              <span
+                class="osv3-list-panel__badge"
+              >
+                activo
+                 · 
+                vantare-original
+              </span>
+            </button>
+          </div>
+          <div
+            class="osv3-list-panel__preserved"
+            data-testid="studio-preserved-widgets"
+          >
+            <div
+              class="osv3-list-panel__preserved-title"
+            >
+              Widgets legados preservados
+            </div>
+            <div
+              class="osv3-list-panel__preserved-row"
+              data-preserved-id="legacy-1"
+            >
+              standings
+               · 
+              legacy-1
+            </div>
+          </div>
+        </aside>
+        <section
+          class="osv3-canvas-column"
+          data-selected-widget-id=""
+          data-testid="studio-canvas-slot"
+        />
+        <aside
+          class="osv3-inspector-slot"
+          data-selected-widget-id=""
+          data-testid="studio-inspector-sl...
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="osv3-workbench"
+        data-testid="overlay-studio-v3"
+      >
+        <header
+          class="osv3-header"
+          data-testid="studio-header"
+        >
+          <div
+            class="osv3-header__left"
+          >
+            <select
+              aria-label="Perfil activo"
+              class="osv3-header__profile-select"
+              data-testid="studio-profile-select"
+            >
+              <option
+                value="profiles/a.json"
+              >
+                Perfil A
+              </option>
+              <option
+                value="profiles/b.json"
+              >
+                Perfil B
+              </option>
+            </select>
+            <select
+              aria-label="Sesión de layout"
+              class="osv3-header__session-select"
+              data-testid="studio-session-select"
+            >
+              <option
+                value="general"
+              >
+                General
+              </option>
+              <option
+                value="practice"
+              >
+                Práctica
+              </option>
+              <option
+                value="qualifying"
+              >
+                Clasificación
+              </option>
+              <option
+                value="race"
+              >
+                Carrera
+              </option>
+              <option
+                value="endurance"
+              >
+                Resistencia
+              </option>
+            </select>
+            <span
+              class="osv3-header__status"
+              data-testid="studio-save-status"
+            >
+              Sin cambios
+            </span>
+          </div>
+          <div
+            class="osv3-header__right"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-save-button"
+              disabled=""
+              type="button"
+            >
+              Guardar
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-undo-button"
+              disabled=""
+              type="button"
+            >
+              Deshacer
+            </button>
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              data-testid="studio-redo-button"
+              disabled=""
+              type="button"
+            >
+              Rehacer
+            </button>
+            <div
+              class="osv3-header__menu"
+            >
+              <button
+                class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                data-testid="studio-menu-button"
+                type="button"
+              >
+                Menú
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          class="osv3-grid"
+        >
+          <aside
+            class="osv3-list-panel"
+            data-testid="studio-widget-list-panel"
+          >
+            <input
+              aria-label="Buscar widgets"
+              class="osv3-list-panel__search"
+              data-testid="studio-widget-search"
+              placeholder="Buscar widgets..."
+              type="search"
+              value=""
+            />
+            <div
+              class="osv3-list-panel__list"
+            >
+              <button
+                class="osv3-list-panel__row"
+                data-testid="studio-widget-row-delta-main"
+                data-widget-id="delta-main"
+                type="button"
+              >
+                <span>
+                  delta-main
+                </span>
+                <span
+                  class="osv3-list-panel__badge"
+                >
+                  activo
+                   · 
+                  vantare-original
+                </span>
+              </button>
+            </div>
+            <div
+              class="osv3-list-panel__preserved"
+              data-testid="studio-preserved-widgets"
+            >
+              <div
+                class="osv3-list-panel__preserved-title"
+              >
+                Widgets legados preservados
+              </div>
+              <div
+                class="osv3-list-panel__preserved-row"
+                data-preserved-id="legacy-1"
+              >
+                standings
+                 · 
+                legacy-1
+              </div>
+            </div>
+          </aside>
+          <section
+            class=
+aitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/OverlayStudioV3.test.tsx:142:11
+    140|     );
+    141|
+    142|     await waitFor(() => expectDisabled(screen.getByTestId("studio-undo…
+       |           ^
+    143|     fireEvent.click(screen.getByTestId("make-dirty"));
+    144|     await waitFor(() => expectEnabled(screen.getByTestId("studio-undo-…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  src/hub/overlay-studio/components/StudioHeader.test.tsx > StudioHeader > enables save only when dirty and wires undo/redo capabilities
+ReferenceError: expect is not defined
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <button
+        data-testid="make-dirty"
+        type="button"
+      >
+        Editar
+      </button>
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+  </body>
+</html>
+ ❯ expectDisabled src/hub/overlay-studio/test-helpers.ts:2:3
+      1| export function expectDisabled(element: Element): void {
+      2|   expect((element as HTMLButtonElement).disabled).toBe(true);
+       |   ^
+      3| }
+      4|
+ ❯ src/hub/overlay-studio/components/StudioHeader.test.tsx:70:25
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  src/hub/overlay-studio/components/StudioHeader.test.tsx > StudioHeader > switches sessions without requiring save
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-session-select"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<select
+  aria-label="Sesión de layout"
+  class="osv3-header__session-select"
+  data-testid="studio-session-select"
+>
+  <option
+    value="general"
+  >
+    General
+  </option>
+  <option
+    value="practice"
+  >
+    Práctica
+  </option>
+  <option
+    value="qualifying"
+  >
+    Clasificación
+  </option>
+  <option
+    value="race"
+  >
+    Carrera
+  </option>
+  <option
+    value="endurance"
+  >
+    Resistencia
+  </option>
+</select>
+
+Ignored nodes: comments, script, style
+<select
+  aria-label="Sesión de layout"
+  class="osv3-header__session-select"
+  data-testid="studio-session-select"
+>
+  <option
+    value="general"
+  >
+    General
+  </option>
+  <option
+    value="practice"
+  >
+    Práctica
+  </option>
+  <option
+    value="qualifying"
+  >
+    Clasificación
+  </option>
+  <option
+    value="race"
+  >
+    Carrera
+  </option>
+  <option
+    value="endurance"
+  >
+    Resistencia
+  </option>
+</select>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <button
+      data-testid="make-dirty"
+      type="button"
+    >
+      Editar
+    </button>
+    <header
+      class="osv3-header"
+      data-testid="studio-header"
+    >
+      <div
+        class="osv3-header__left"
+      >
+        <select
+          aria-label="Perfil activo"
+          class="osv3-header__profile-select"
+          data-testid="studio-profile-select"
+        >
+          <option
+            value="profiles/a.json"
+          >
+            Perfil A
+          </option>
+        </select>
+        <select
+          aria-label="Sesión de layout"
+          class="osv3-header__session-select"
+          data-testid="studio-session-select"
+        >
+          <option
+            value="general"
+          >
+            General
+          </option>
+          <option
+            value="practice"
+          >
+            Práctica
+          </option>
+          <option
+            value="qualifying"
+          >
+            Clasificación
+          </option>
+          <option
+            value="race"
+          >
+            Carrera
+          </option>
+          <option
+            value="endurance"
+          >
+            Resistencia
+          </option>
+        </select>
+        <span
+          class="osv3-header__status"
+          data-testid="studio-save-status"
+        >
+          Sin cambios
+        </span>
+      </div>
+      <div
+        class="osv3-header__right"
+      >
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-save-button"
+          disabled=""
+          type="button"
+        >
+          Guardar
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-undo-button"
+          disabled=""
+          type="button"
+        >
+          Deshacer
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-redo-button"
+          disabled=""
+          type="button"
+        >
+          Rehacer
+        </button>
+        <div
+          class="osv3-header__menu"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+            data-testid="studio-menu-button"
+            type="button"
+          >
+            Menú
+          </button>
+        </div>
+      </div>
+    </header>
+  </div>
+  <div>
+    <header
+      class="osv3-header"
+      data-testid="studio-header"
+    >
+      <div
+        class="osv3-header__left"
+      >
+        <select
+          aria-label="Perfil activo"
+          class="osv3-header__profile-select"
+          data-testid="studio-profile-select"
+        >
+          <option
+            value="profiles/a.json"
+          >
+            Perfil A
+          </option>
+        </select>
+        <select
+          aria-label="Sesión de layout"
+          class="osv3-header__session-select"
+          data-testid="studio-session-select"
+        >
+          <option
+            value="general"
+          >
+            General
+          </option>
+          <option
+            value="practice"
+          >
+            Práctica
+          </option>
+          <option
+            value="qualifying"
+          >
+            Clasificación
+          </option>
+          <option
+            value="race"
+          >
+            Carrera
+          </option>
+          <option
+            value="endurance"
+          >
+            Resistencia
+          </option>
+        </select>
+        <span
+          class="osv3-header__status"
+          data-testid="studio-save-status"
+        >
+          Sin cambios
+        </span>
+      </div>
+      <div
+        class="osv3-header__right"
+      >
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-save-button"
+          disabled=""
+          type="button"
+        >
+          Guardar
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-undo-button"
+          disabled=""
+          type="button"
+        >
+          Deshacer
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-redo-button"
+          disabled=""
+          type="button"
+        >
+          Rehacer
+        </button>
+        <div
+          class="osv3-header__menu"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+            data-testid="studio-menu-button"
+            type="button"
+          >
+            Menú
+          </button>
+        </div>
+      </div>
+    </header>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <button
+        data-testid="make-dirty"
+        type="button"
+      >
+        Editar
+      </button>
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+    <div>
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+  </body>
+</html>
+ ❯ waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/components/StudioHeader.test.tsx:102:11
+    100|     );
+    101|
+    102|     await waitFor(() => expect(screen.getByTestId("studio-session-sele…
+       |           ^
+    103|     fireEvent.change(screen.getByTestId("studio-session-select"), { ta…
+    104|     expect((screen.getByTestId("studio-session-select") as HTMLSelectE…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+ FAIL  src/hub/overlay-studio/components/StudioHeader.test.tsx > StudioHeader > calls save through the header button
+TestingLibraryElementError: Found multiple elements by: [data-testid="make-dirty"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<button
+  data-testid="make-dirty"
+  type="button"
+>
+  Editar
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  data-testid="make-dirty"
+  type="button"
+>
+  Editar
+</button>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <button
+      data-testid="make-dirty"
+      type="button"
+    >
+      Editar
+    </button>
+    <header
+      class="osv3-header"
+      data-testid="studio-header"
+    >
+      <div
+        class="osv3-header__left"
+      >
+        <select
+          aria-label="Perfil activo"
+          class="osv3-header__profile-select"
+          data-testid="studio-profile-select"
+        >
+          <option
+            value="profiles/a.json"
+          >
+            Perfil A
+          </option>
+        </select>
+        <select
+          aria-label="Sesión de layout"
+          class="osv3-header__session-select"
+          data-testid="studio-session-select"
+        >
+          <option
+            value="general"
+          >
+            General
+          </option>
+          <option
+            value="practice"
+          >
+            Práctica
+          </option>
+          <option
+            value="qualifying"
+          >
+            Clasificación
+          </option>
+          <option
+            value="race"
+          >
+            Carrera
+          </option>
+          <option
+            value="endurance"
+          >
+            Resistencia
+          </option>
+        </select>
+        <span
+          class="osv3-header__status"
+          data-testid="studio-save-status"
+        >
+          Sin cambios
+        </span>
+      </div>
+      <div
+        class="osv3-header__right"
+      >
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-save-button"
+          disabled=""
+          type="button"
+        >
+          Guardar
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-undo-button"
+          disabled=""
+          type="button"
+        >
+          Deshacer
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-redo-button"
+          disabled=""
+          type="button"
+        >
+          Rehacer
+        </button>
+        <div
+          class="osv3-header__menu"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+            data-testid="studio-menu-button"
+            type="button"
+          >
+            Menú
+          </button>
+        </div>
+      </div>
+    </header>
+  </div>
+  <div>
+    <header
+      class="osv3-header"
+      data-testid="studio-header"
+    >
+      <div
+        class="osv3-header__left"
+      >
+        <select
+          aria-label="Perfil activo"
+          class="osv3-header__profile-select"
+          data-testid="studio-profile-select"
+        >
+          <option
+            value="profiles/a.json"
+          >
+            Perfil A
+          </option>
+        </select>
+        <select
+          aria-label="Sesión de layout"
+          class="osv3-header__session-select"
+          data-testid="studio-session-select"
+        >
+          <option
+            value="general"
+          >
+            General
+          </option>
+          <option
+            value="practice"
+          >
+            Práctica
+          </option>
+          <option
+            value="qualifying"
+          >
+            Clasificación
+          </option>
+          <option
+            value="race"
+          >
+            Carrera
+          </option>
+          <option
+            value="endurance"
+          >
+            Resistencia
+          </option>
+        </select>
+        <span
+          class="osv3-header__status"
+          data-testid="studio-save-status"
+        >
+          Sin cambios
+        </span>
+      </div>
+      <div
+        class="osv3-header__right"
+      >
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-save-button"
+          disabled=""
+          type="button"
+        >
+          Guardar
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-undo-button"
+          disabled=""
+          type="button"
+        >
+          Deshacer
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-redo-button"
+          disabled=""
+          type="button"
+        >
+          Rehacer
+        </button>
+        <div
+          class="osv3-header__menu"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+            data-testid="studio-menu-button"
+            type="button"
+          >
+            Menú
+          </button>
+        </div>
+      </div>
+    </header>
+  </div>
+  <div>
+    <button
+      data-testid="make-dirty"
+      type="button"
+    >
+      Editar
+    </button>
+    <header
+      class="osv3-header"
+      data-testid="studio-header"
+    >
+      <div
+        class="osv3-header__left"
+      >
+        <select
+          aria-label="Perfil activo"
+          class="osv3-header__profile-select"
+          data-testid="studio-profile-select"
+        >
+          <option
+            value="profiles/a.json"
+          >
+            Perfil A
+          </option>
+        </select>
+        <select
+          aria-label="Sesión de layout"
+          class="osv3-header__session-select"
+          data-testid="studio-session-select"
+        >
+          <option
+            value="general"
+          >
+            General
+          </option>
+          <option
+            value="practice"
+          >
+            Práctica
+          </option>
+          <option
+            value="qualifying"
+          >
+            Clasificación
+          </option>
+          <option
+            value="race"
+          >
+            Carrera
+          </option>
+          <option
+            value="endurance"
+          >
+            Resistencia
+          </option>
+        </select>
+        <span
+          class="osv3-header__status"
+          data-testid="studio-save-status"
+        >
+          Sin cambios
+        </span>
+      </div>
+      <div
+        class="osv3-header__right"
+      >
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-save-button"
+          disabled=""
+          type="button"
+        >
+          Guardar
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-undo-button"
+          disabled=""
+          type="button"
+        >
+          Deshacer
+        </button>
+        <button
+          class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          data-testid="studio-redo-button"
+          disabled=""
+          type="button"
+        >
+          Rehacer
+        </button>
+        <div
+          class="osv3-header__menu"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+            data-testid="studio-menu-button"
+            type="button"
+          >
+            Menú
+          </button>
+        </div>
+      </div>
+    </header>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <button
+        data-testid="make-dirty"
+        type="button"
+      >
+        Editar
+      </button>
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+    <div>
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+    <div>
+      <button
+        data-testid="make-dirty"
+        type="button"
+      >
+        Editar
+      </button>
+      <header
+        class="osv3-header"
+        data-testid="studio-header"
+      >
+        <div
+          class="osv3-header__left"
+        >
+          <select
+            aria-label="Perfil activo"
+            class="osv3-header__profile-select"
+            data-testid="studio-profile-select"
+          >
+            <option
+              value="profiles/a.json"
+            >
+              Perfil A
+            </option>
+          </select>
+          <select
+            aria-label="Sesión de layout"
+            class="osv3-header__session-select"
+            data-testid="studio-session-select"
+          >
+            <option
+              value="general"
+            >
+              General
+            </option>
+            <option
+              value="practice"
+            >
+              Práctica
+            </option>
+            <option
+              value="qualifying"
+            >
+              Clasificación
+            </option>
+            <option
+              value="race"
+            >
+              Carrera
+            </option>
+            <option
+              value="endurance"
+            >
+              Resistencia
+            </option>
+          </select>
+          <span
+            class="osv3-header__status"
+            data-testid="studio-save-status"
+          >
+            Sin cambios
+          </span>
+        </div>
+        <div
+          class="osv3-header__right"
+        >
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-save-button"
+            disabled=""
+            type="button"
+          >
+            Guardar
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-undo-button"
+            disabled=""
+            type="button"
+          >
+            Deshacer
+          </button>
+          <button
+            class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            data-testid="studio-redo-button"
+            disabled=""
+            type="button"
+          >
+            Rehacer
+          </button>
+          <div
+            class="osv3-header__menu"
+          >
+            <button
+              class="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+              data-testid="studio-menu-button"
+              type="button"
+            >
+              Menú
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+  </body>
+</html>
+ ❯ waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/components/StudioHeader.test.tsx:125:11
+    123|     );
+    124|
+    125|     await waitFor(() => expect(screen.getByTestId("make-dirty")).toBeT…
+       |           ^
+    126|     fireEvent.click(screen.getByTestId("make-dirty"));
+    127|     await act(async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+
+ FAIL  src/hub/overlay-studio/components/WidgetListPanel.test.tsx > WidgetListPanel > selects a widget when its row is clicked
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-widget-row-delta-b"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<button
+  class="osv3-list-panel__row"
+  data-testid="studio-widget-row-delta-b"
+  data-widget-id="delta-b"
+  type="button"
+>
+  <span>
+    delta-b
+  </span>
+  <span
+    class="osv3-list-panel__badge"
+  >
+    activo
+     · 
+    vantare-crystal
+  </span>
+</button>
+
+Ignored nodes: comments, script, style
+<button
+  class="osv3-list-panel__row"
+  data-testid="studio-widget-row-delta-b"
+  data-widget-id="delta-b"
+  type="button"
+>
+  <span>
+    delta-b
+  </span>
+  <span
+    class="osv3-list-panel__badge"
+  >
+    activo
+     · 
+    vantare-crystal
+  </span>
+</button>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <aside
+      class="osv3-list-panel"
+      data-testid="studio-widget-list-panel"
+    >
+      <input
+        aria-label="Buscar widgets"
+        class="osv3-list-panel__search"
+        data-testid="studio-widget-search"
+        placeholder="Buscar widgets..."
+        type="search"
+        value="delta-b"
+      />
+      <div
+        class="osv3-list-panel__list"
+      >
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-b"
+          data-widget-id="delta-b"
+          type="button"
+        >
+          <span>
+            delta-b
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-crystal
+          </span>
+        </button>
+      </div>
+      <div
+        class="osv3-list-panel__preserved"
+        data-testid="studio-preserved-widgets"
+      >
+        <div
+          class="osv3-list-panel__preserved-title"
+        >
+          Widgets legados preservados
+        </div>
+        <div
+          class="osv3-list-panel__preserved-row"
+          data-preserved-id="legacy-1"
+        >
+          standings
+           · 
+          legacy-1
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div>
+    <aside
+      class="osv3-list-panel"
+      data-testid="studio-widget-list-panel"
+    >
+      <input
+        aria-label="Buscar widgets"
+        class="osv3-list-panel__search"
+        data-testid="studio-widget-search"
+        placeholder="Buscar widgets..."
+        type="search"
+        value=""
+      />
+      <div
+        class="osv3-list-panel__list"
+      >
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-a"
+          data-widget-id="delta-a"
+          type="button"
+        >
+          <span>
+            delta-a
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-original
+          </span>
+        </button>
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-c"
+          data-widget-id="delta-c"
+          type="button"
+        >
+          <span>
+            delta-c
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            oculto
+             · 
+            vantare-original
+          </span>
+        </button>
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-b"
+          data-widget-id="delta-b"
+          type="button"
+        >
+          <span>
+            delta-b
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-crystal
+          </span>
+        </button>
+      </div>
+      <div
+        class="osv3-list-panel__preserved"
+        data-testid="studio-preserved-widgets"
+      >
+        <div
+          class="osv3-list-panel__preserved-title"
+        >
+          Widgets legados preservados
+        </div>
+        <div
+          class="osv3-list-panel__preserved-row"
+          data-preserved-id="legacy-1"
+        >
+          standings
+           · 
+          legacy-1
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+ ❯ Object.getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ ❯ getMultipleElementsFoundError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:55:13
+ ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/hub/overlay-studio/components/WidgetListPanel.test.tsx:68:28
+     66|
+     67|     await waitFor(() => expect(screen.getByTestId("studio-widget-row-d…
+     68|     fireEvent.click(screen.getByTestId("studio-widget-row-delta-b"));
+       |                            ^
+     69|     expect(screen.getByTestId("studio-widget-row-delta-b").className).…
+     70|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/10]⎯
+
+ FAIL  src/hub/overlay-studio/components/WidgetListPanel.test.tsx > WidgetListPanel > shows preserved legacy widgets as read-only entries
+TestingLibraryElementError: Found multiple elements by: [data-testid="studio-preserved-widgets"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<div
+  class="osv3-list-panel__preserved"
+  data-testid="studio-preserved-widgets"
+>
+  <div
+    class="osv3-list-panel__preserved-title"
+  >
+    Widgets legados preservados
+  </div>
+  <div
+    class="osv3-list-panel__preserved-row"
+    data-preserved-id="legacy-1"
+  >
+    standings
+     · 
+    legacy-1
+  </div>
+</div>
+
+Ignored nodes: comments, script, style
+<div
+  class="osv3-list-panel__preserved"
+  data-testid="studio-preserved-widgets"
+>
+  <div
+    class="osv3-list-panel__preserved-title"
+  >
+    Widgets legados preservados
+  </div>
+  <div
+    class="osv3-list-panel__preserved-row"
+    data-preserved-id="legacy-1"
+  >
+    standings
+     · 
+    legacy-1
+  </div>
+</div>
+
+Ignored nodes: comments, script, style
+<div
+  class="osv3-list-panel__preserved"
+  data-testid="studio-preserved-widgets"
+>
+  <div
+    class="osv3-list-panel__preserved-title"
+  >
+    Widgets legados preservados
+  </div>
+  <div
+    class="osv3-list-panel__preserved-row"
+    data-preserved-id="legacy-1"
+  >
+    standings
+     · 
+    legacy-1
+  </div>
+</div>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <aside
+      class="osv3-list-panel"
+      data-testid="studio-widget-list-panel"
+    >
+      <input
+        aria-label="Buscar widgets"
+        class="osv3-list-panel__search"
+        data-testid="studio-widget-search"
+        placeholder="Buscar widgets..."
+        type="search"
+        value="delta-b"
+      />
+      <div
+        class="osv3-list-panel__list"
+      >
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-b"
+          data-widget-id="delta-b"
+          type="button"
+        >
+          <span>
+            delta-b
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-crystal
+          </span>
+        </button>
+      </div>
+      <div
+        class="osv3-list-panel__preserved"
+        data-testid="studio-preserved-widgets"
+      >
+        <div
+          class="osv3-list-panel__preserved-title"
+        >
+          Widgets legados preservados
+        </div>
+        <div
+          class="osv3-list-panel__preserved-row"
+          data-preserved-id="legacy-1"
+        >
+          standings
+           · 
+          legacy-1
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div>
+    <aside
+      class="osv3-list-panel"
+      data-testid="studio-widget-list-panel"
+    >
+      <input
+        aria-label="Buscar widgets"
+        class="osv3-list-panel__search"
+        data-testid="studio-widget-search"
+        placeholder="Buscar widgets..."
+        type="search"
+        value=""
+      />
+      <div
+        class="osv3-list-panel__list"
+      >
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-a"
+          data-widget-id="delta-a"
+          type="button"
+        >
+          <span>
+            delta-a
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-original
+          </span>
+        </button>
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-c"
+          data-widget-id="delta-c"
+          type="button"
+        >
+          <span>
+            delta-c
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            oculto
+             · 
+            vantare-original
+          </span>
+        </button>
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-b"
+          data-widget-id="delta-b"
+          type="button"
+        >
+          <span>
+            delta-b
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-crystal
+          </span>
+        </button>
+      </div>
+      <div
+        class="osv3-list-panel__preserved"
+        data-testid="studio-preserved-widgets"
+      >
+        <div
+          class="osv3-list-panel__preserved-title"
+        >
+          Widgets legados preservados
+        </div>
+        <div
+          class="osv3-list-panel__preserved-row"
+          data-preserved-id="legacy-1"
+        >
+          standings
+           · 
+          legacy-1
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div>
+    <aside
+      class="osv3-list-panel"
+      data-testid="studio-widget-list-panel"
+    >
+      <input
+        aria-label="Buscar widgets"
+        class="osv3-list-panel__search"
+        data-testid="studio-widget-search"
+        placeholder="Buscar widgets..."
+        type="search"
+        value=""
+      />
+      <div
+        class="osv3-list-panel__list"
+      >
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-a"
+          data-widget-id="delta-a"
+          type="button"
+        >
+          <span>
+            delta-a
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-original
+          </span>
+        </button>
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-c"
+          data-widget-id="delta-c"
+          type="button"
+        >
+          <span>
+            delta-c
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            oculto
+             · 
+            vantare-original
+          </span>
+        </button>
+        <button
+          class="osv3-list-panel__row"
+          data-testid="studio-widget-row-delta-b"
+          data-widget-id="delta-b"
+          type="button"
+        >
+          <span>
+            delta-b
+          </span>
+          <span
+            class="osv3-list-panel__badge"
+          >
+            activo
+             · 
+            vantare-crystal
+          </span>
+        </button>
+      </div>
+      <div
+        class="osv3-list-panel__preserved"
+        data-testid="studio-preserved-widgets"
+      >
+        <div
+          class="osv3-list-panel__preserved-title"
+        >
+          Widgets legados preservados
+        </div>
+        <div
+          class="osv3-list-panel__preserved-row"
+          data-preserved-id="legacy-1"
+        >
+          standings
+           · 
+          legacy-1
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <aside
+        class="osv3-list-panel"
+        data-testid="studio-widget-list-panel"
+      >
+        <input
+          aria-label="Buscar widgets"
+          class="osv3-list-panel__search"
+          data-testid="studio-widget-search"
+          placeholder="Buscar widgets..."
+          type="search"
+          value="delta-b"
+        />
+        <div
+          class="osv3-list-panel__list"
+        >
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-b"
+            data-widget-id="delta-b"
+            type="button"
+          >
+            <span>
+              delta-b
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              activo
+               · 
+              vantare-crystal
+            </span>
+          </button>
+        </div>
+        <div
+          class="osv3-list-panel__preserved"
+          data-testid="studio-preserved-widgets"
+        >
+          <div
+            class="osv3-list-panel__preserved-title"
+          >
+            Widgets legados preservados
+          </div>
+          <div
+            class="osv3-list-panel__preserved-row"
+            data-preserved-id="legacy-1"
+          >
+            standings
+             · 
+            legacy-1
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div>
+      <aside
+        class="osv3-list-panel"
+        data-testid="studio-widget-list-panel"
+      >
+        <input
+          aria-label="Buscar widgets"
+          class="osv3-list-panel__search"
+          data-testid="studio-widget-search"
+          placeholder="Buscar widgets..."
+          type="search"
+          value=""
+        />
+        <div
+          class="osv3-list-panel__list"
+        >
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-a"
+            data-widget-id="delta-a"
+            type="button"
+          >
+            <span>
+              delta-a
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              activo
+               · 
+              vantare-original
+            </span>
+          </button>
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-c"
+            data-widget-id="delta-c"
+            type="button"
+          >
+            <span>
+              delta-c
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              oculto
+               · 
+              vantare-original
+            </span>
+          </button>
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-b"
+            data-widget-id="delta-b"
+            type="button"
+          >
+            <span>
+              delta-b
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              activo
+               · 
+              vantare-crystal
+            </span>
+          </button>
+        </div>
+        <div
+          class="osv3-list-panel__preserved"
+          data-testid="studio-preserved-widgets"
+        >
+          <div
+            class="osv3-list-panel__preserved-title"
+          >
+            Widgets legados preservados
+          </div>
+          <div
+            class="osv3-list-panel__preserved-row"
+            data-preserved-id="legacy-1"
+          >
+            standings
+             · 
+            legacy-1
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div>
+      <aside
+        class="osv3-list-panel"
+        data-testid="studio-widget-list-panel"
+      >
+        <input
+          aria-label="Buscar widgets"
+          class="osv3-list-panel__search"
+          data-testid="studio-widget-search"
+          placeholder="Buscar widgets..."
+          type="search"
+          value=""
+        />
+        <div
+          class="osv3-list-panel__list"
+        >
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-a"
+            data-widget-id="delta-a"
+            type="button"
+          >
+            <span>
+              delta-a
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              activo
+               · 
+              vantare-original
+            </span>
+          </button>
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-c"
+            data-widget-id="delta-c"
+            type="button"
+          >
+            <span>
+              delta-c
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              oculto
+               · 
+              vantare-original
+            </span>
+          </button>
+          <button
+            class="osv3-list-panel__row"
+            data-testid="studio-widget-row-delta-b"
+            data-widget-id="delta-b"
+            type="button"
+          >
+            <span>
+              delta-b
+            </span>
+            <span
+              class="osv3-list-panel__badge"
+            >
+              activo
+               · 
+              vantare-crystal
+            </span>
+          </button>
+        </div>
+        <div
+          class="osv3-list-panel__preserved"
+          data-testid="studio-preserved-widgets"
+        >
+          <div
+            class="osv3-list-panel__preserved-title"
+          >
+            Widgets legados preservados
+          </div>
+          <div
+            class="osv3-list-panel__preserved-row"
+            data-preserved-id="legacy-1"
+          >
+            standings
+             · 
+            legacy-1
+          </div>
+        </div>
+      </aside>
+    </div>
+  </body>
+</html>
+ ❯ waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ src/hub/overlay-studio/components/WidgetListPanel.test.tsx:79:11
+     77|     );
+     78|
+     79|     await waitFor(() => expect(screen.getByTestId("studio-preserved-wi…
+       |           ^
+     80|     expect(screen.getByTestId("studio-preserved-widgets").textContent)…
+     81|     expect(screen.getByTestId("studio-preserved-widgets").textContent)…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/10]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  10 failed | 2 passed (12)
+   Start at  15:25:53
+   Duration  6.38s (transform 575ms, setup 117ms, import 1.26s, tests 9.19s, environment 1.81s)
+
+ ELIFECYCLE  Test failed. See above for more details.

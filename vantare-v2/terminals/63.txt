@@ -1,0 +1,13 @@
+---
+pid: 16180
+cwd: "C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2"
+command: "pnpm --dir \"C:\\Users\\isaac\\Desktop\\Vantare-Overlays\\vantare-v2\\frontend\" test 2>&1 | Select-Object -Last 6"
+started_at: 2026-07-09T22:05:01.880Z
+running_for_ms: 15390006 
+---
+
+ Test Files  164 passed (164)
+      Tests  1570 passed (1570)
+   Start at  00:05:03
+   Duration  30.29s (transform 13.85s, setup 4.45s, import 98.72s, tests 35.89s, environment 226.88s)
+

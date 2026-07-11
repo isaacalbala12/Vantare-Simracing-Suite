@@ -1,0 +1,48 @@
+---
+pid: 24044
+cwd: "C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend"
+command: "pnpm build && pnpm test -- studio-store && pnpm run e2e:overlay-studio"
+started_at: 2026-07-11T02:04:08.665Z
+running_for_ms: 4785007  
+---
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+> vantare-overlay@0.1.0.2 build C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> tsc -b && vite build
+
+vite v8.0.16 building client environment for production...
+
+transforming...✓ 729 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     1.79 kB │ gzip:   0.76 kB
+dist/assets/index-CBy3mkv0.css    157.41 kB │ gzip:  23.28 kB
+dist/assets/index-hJbdNEmm.js   1,118.60 kB │ gzip: 298.20 kB
+
+✓ built in 732ms
+
+> vantare-overlay@0.1.0.2 test C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> vitest run "studio-store"
+
+
+ RUN  v4.1.9 C:/Users/isaac/emdash/worktrees/vantare-v2/refactor/vantare-v2/frontend
+
+ ✓ src/hub/overlay-studio/state/studio-store.test.tsx (12 tests) 1166ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  04:04:20
+   Duration  2.77s (transform 496ms, setup 37ms, import 786ms, tests 1.17s, environment 557ms)
+
+
+> vantare-overlay@0.1.0.2 e2e:overlay-studio C:\Users\isaac\emdash\worktrees\vantare-v2\refactor\vantare-v2\frontend
+> node scripts/overlay-studio-e2e-smoke.mjs
+
+ok empty-state
+ok create-profile
+ok active-profile
+overlay studio e2e smoke complete

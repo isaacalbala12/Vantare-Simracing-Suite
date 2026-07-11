@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Events } from "@wailsio/runtime";
+import { useMemo, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   appSortOrder,
@@ -7,6 +6,7 @@ import {
   type LauncherAppEntry,
   type LaunchProfile,
 } from "./launcher-state";
+import { useLauncherSnapshot, useLauncherStore } from "./launcher-store";
 import { ProfileCard } from "./ProfileCard";
 import { ProfileEditor } from "./ProfileEditor";
 
@@ -16,39 +16,24 @@ type ProfilesPanelProps = {
 
 export function ProfilesPanel({ className }: ProfilesPanelProps) {
   const { t } = useI18n();
-  const [apps, setApps] = useState<LauncherAppEntry[]>([]);
-  const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
+  const snapshot = useLauncherSnapshot();
+  const { dispatchLauncherCommand } = useLauncherStore();
+  const apps = useMemo<LauncherAppEntry[]>(
+    () =>
+      (snapshot?.apps ?? []).map((app) => ({
+        ...app,
+        detected: app.detected ?? app.availability.found,
+      })).sort(appSortOrder),
+    [snapshot],
+  );
+  const profiles = useMemo<LaunchProfile[]>(
+    () => [
+      ...(snapshot?.vantareProfiles ?? []),
+      ...(snapshot?.userProfiles ?? []),
+    ],
+    [snapshot],
+  );
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
-
-  useEffect(() => {
-    Events.Emit("launcher:apps:discover");
-    Events.Emit("launcher:profiles:list");
-
-    const offApps = Events.On(
-      "launcher:apps:detected",
-      (event: { data?: { apps?: LauncherAppEntry[] } }) => {
-        setApps((event.data?.apps ?? []).slice().sort(appSortOrder));
-      },
-    );
-    const offAppsUpdated = Events.On(
-      "launcher:apps:updated",
-      (event: { data?: { apps?: LauncherAppEntry[] } }) => {
-        setApps((event.data?.apps ?? []).slice().sort(appSortOrder));
-      },
-    );
-    const offProfiles = Events.On(
-      "launcher:profiles:updated",
-      (event: { data?: { profiles?: LaunchProfile[] } }) => {
-        setProfiles(event.data?.profiles ?? []);
-      },
-    );
-
-    return () => {
-      offApps();
-      offAppsUpdated();
-      offProfiles();
-    };
-  }, []);
 
   const handleCreate = () => {
     const id = newProfileId("profile");
@@ -58,7 +43,7 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
       description: "",
       steps: [],
     };
-    Events.Emit("launcher:profile:save", { profile: blank });
+    dispatchLauncherCommand("launcher:profile:save", { profile: blank });
   };
 
   const orderedProfiles = useMemo(
@@ -76,7 +61,7 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
     : null;
 
   const handleSave = (updated: LaunchProfile) =>
-    Events.Emit("launcher:profile:save", { profile: updated });
+    dispatchLauncherCommand("launcher:profile:save", { profile: updated });
 
   return (
     <section

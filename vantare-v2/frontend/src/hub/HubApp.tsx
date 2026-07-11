@@ -22,6 +22,7 @@ import { CalendarReminderBanner } from './calendar/CalendarReminderBanner';
 import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
 import { ChainRunnerProvider } from './launcher/chain-store';
+import { LauncherStoreProvider } from './launcher/launcher-store';
 
 type SourceStatus = {
   kind: string;
@@ -186,7 +187,9 @@ export function HubApp() {
         <LicenseGate>
           <HubErrorBoundary>
             <ChainRunnerProvider>
-              <HubShell />
+              <LauncherStoreProvider>
+                <HubShell />
+              </LauncherStoreProvider>
             </ChainRunnerProvider>
           </HubErrorBoundary>
         </LicenseGate>

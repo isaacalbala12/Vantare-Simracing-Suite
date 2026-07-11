@@ -83,12 +83,13 @@ var invalidProfileNameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 // ProfileEntry is a lightweight profile descriptor for hub listing.
 type ProfileEntry struct {
-	ID          string                `json:"id"`
-	File        string                `json:"file"` // basename on disk (e.g. example-racing.json)
-	Name        string                `json:"name,omitempty"`
-	DisplayMode config.DisplayMode    `json:"displayMode"`
-	Widgets     int                   `json:"widgets"`
-	Profile     *config.ProfileConfig `json:"profile,omitempty"`
+	ID              string                    `json:"id"`
+	File            string                    `json:"file"` // basename on disk (e.g. example-racing.json)
+	Name            string                    `json:"name,omitempty"`
+	DisplayMode     config.DisplayMode        `json:"displayMode"`
+	Widgets         int                       `json:"widgets"`
+	Profile         *config.ProfileConfig     `json:"profile,omitempty"`
+	PreviewDocument *config.ProfileDocumentV3 `json:"previewDocument,omitempty"`
 }
 
 // OverlayRuntime is the interface HubService uses to start/stop the desktop overlay.
@@ -165,6 +166,10 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 			continue
 		}
 		fullPath := filepath.Join(s.profilesDir, e.Name())
+		raw, readErr := os.ReadFile(fullPath)
+		if readErr != nil {
+			continue
+		}
 		p, err := config.LoadFile(fullPath)
 		if err != nil {
 			continue
@@ -176,14 +181,18 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 		if id == "" {
 			id = strings.TrimSuffix(e.Name(), ".json")
 		}
-		profiles = append(profiles, ProfileEntry{
+		entry := ProfileEntry{
 			ID:          id,
 			File:        e.Name(),
 			Name:        p.Name,
 			DisplayMode: p.DisplayMode,
 			Widgets:     len(p.Widgets),
 			Profile:     p,
-		})
+		}
+		if previewDoc, _, migErr := config.MigrateProfileJSONToV3(raw); migErr == nil {
+			entry.PreviewDocument = previewDoc
+		}
+		profiles = append(profiles, entry)
 	}
 	return profiles, nil
 }
@@ -388,36 +397,6 @@ func (s *HubService) StartActiveOverlay() (OverlayStatus, error) {
 		s.studioProfileSvc.EmitRuntimeLoaded()
 	}
 	return status, nil
-}
-
-// StartEditOverlay opens the desktop overlay in edit mode for the active profile.
-// It closes any running overlay window first to avoid ghost windows or racing renderers.
-func (s *HubService) StartEditOverlay(idOrFile string) (OverlayStatus, error) {
-	if err := s.ActivateProfile(idOrFile); err != nil {
-		return OverlayStatus{}, err
-	}
-	document, err := s.activeOverlayDocument()
-	if err != nil {
-		return OverlayStatus{}, err
-	}
-	if s.studioProfileSvc != nil {
-		if err := s.studioProfileSvc.SetDisplayMode(config.ModeEdit); err != nil {
-			return OverlayStatus{}, err
-		}
-		document = s.studioProfileSvc.Document()
-	} else {
-		editDocument := *document
-		editDocument.DisplayMode = config.ModeEdit
-		document = &editDocument
-	}
-	if s.overlay != nil {
-		s.overlay.Stop()
-	}
-	status, err := s.overlay.Start(document)
-	if s.studioProfileSvc != nil {
-		s.studioProfileSvc.EmitRuntimeLoaded()
-	}
-	return status, err
 }
 
 // SaveProfile persists the provided profile to disk via the profile service.

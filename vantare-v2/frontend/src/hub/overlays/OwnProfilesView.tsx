@@ -79,8 +79,8 @@ export function OwnProfilesView({
             const previewProfile = Array.isArray(profile.profile?.widgets) ? profile.profile : null;
             return (
               <article key={profile.file} className="card-sleek rounded-xl p-5">
-                {previewProfile ? (
-                  <ProfilePreview profile={previewProfile} />
+                {previewProfile || profile.previewDocument ? (
+                  <ProfilePreview profile={previewProfile} previewDocument={profile.previewDocument} />
                 ) : (
                   <div className="flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-black/25 text-xs text-vantare-textMuted">
                     Preview no disponible

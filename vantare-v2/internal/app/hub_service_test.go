@@ -45,6 +45,12 @@ func TestHubServiceCreateAndList(t *testing.T) {
 	if profiles[0].Widgets != 3 {
 		t.Fatalf("expected 3 widgets, got %d", profiles[0].Widgets)
 	}
+	if profiles[0].PreviewDocument == nil {
+		t.Fatal("expected previewDocument in list entry")
+	}
+	if profiles[0].PreviewDocument.SchemaVersion != config.ProfileSchemaVersionV3 {
+		t.Fatalf("preview schema=%d want %d", profiles[0].PreviewDocument.SchemaVersion, config.ProfileSchemaVersionV3)
+	}
 }
 
 func TestHubServiceActivateProfile(t *testing.T) {

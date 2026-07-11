@@ -1,11 +1,64 @@
 import type { WidgetColumnV3 } from "../shared/widget-column";
-import { formatStandingsDriverName, formatStandingsLapTime } from "../../widgets/standings-format";
 
 export type StandingsSessionMode = "practice" | "qual" | "race" | "other";
 
 export type StandingsScoringRow = Record<string, unknown>;
 
 const PLACEHOLDER = "—";
+const DEFAULT_NAME_MAX_CHARS = 16;
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function clampDecimals(value: unknown): 0 | 1 | 2 | 3 {
+  const n = readNumber(value);
+  if (n === 0 || n === 1 || n === 2 || n === 3) return n;
+  return 3;
+}
+
+function truncateText(value: string, maxChars: number): string {
+  if (maxChars <= 1) return "…";
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars - 1)}…`;
+}
+
+function formatStandingsDriverName(name: string | undefined, column: WidgetColumnV3): string {
+  const value = name ?? "?";
+  const format = column.format;
+  const mode = readString(format?.mode);
+  if (mode !== "truncate") return value;
+
+  const configuredMax = readNumber(format?.maxChars);
+  if (configuredMax != null && configuredMax < 2) return "…";
+  const maxChars = Math.max(2, Math.min(64, Math.round(configuredMax ?? DEFAULT_NAME_MAX_CHARS)));
+  return truncateText(value, maxChars);
+}
+
+function formatStandingsLapTime(seconds: number | undefined, column: WidgetColumnV3): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "-";
+
+  const format = column.format;
+  const display = readString(format?.display) === "compact" ? "compact" : "full";
+  const decimals = clampDecimals(format?.decimals);
+
+  let minutes = Math.floor(seconds / 60);
+  const remaining = seconds - minutes * 60;
+  let roundedRemaining = Number(remaining.toFixed(decimals));
+  if (roundedRemaining >= 60) {
+    minutes += 1;
+    roundedRemaining -= 60;
+  }
+
+  if (display === "compact") {
+    return roundedRemaining.toFixed(decimals);
+  }
+  return `${minutes}:${roundedRemaining.toFixed(decimals).padStart(decimals === 0 ? 2 : 3 + decimals, "0")}`;
+}
 
 export function resolveStandingsSessionMode(sessionType: string | undefined): StandingsSessionMode {
   const normalized = (sessionType ?? "").toLowerCase();
@@ -106,7 +159,7 @@ export function formatStandingsColumnValue(
     case "driverName":
       return formatStandingsDriverName(
         typeof row.driverName === "string" ? row.driverName : undefined,
-        column as Parameters<typeof formatStandingsDriverName>[1],
+        column,
       );
     case "vehicleClass":
       return String(row.vehicleClass ?? "");
@@ -124,12 +177,12 @@ export function formatStandingsColumnValue(
     case "lastLap":
       return formatStandingsLapTime(
         typeof row.lastLapTime === "number" ? row.lastLapTime : undefined,
-        column as Parameters<typeof formatStandingsLapTime>[1],
+        column,
       );
     case "bestLap":
       return formatStandingsLapTime(
         typeof row.bestLapTime === "number" ? row.bestLapTime : undefined,
-        column as Parameters<typeof formatStandingsLapTime>[1],
+        column,
       );
     case "pit":
       return formatStandingsPit(row);

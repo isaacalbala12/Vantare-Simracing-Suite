@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ProfileDocumentV3 } from "./core/profile-document";
 import { ObsOverlayApp } from "./ObsOverlayApp";
-import { resetTelemetryRef } from "../lib/telemetry-ref";
+import { deltaDefinition } from "./widget-types/delta/delta-definition";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -26,8 +27,6 @@ vi.mock("@wailsio/runtime", () => ({
 
 class MockEventSource {
   static instances: MockEventSource[] = [];
-  onopen: (() => void) | null = null;
-  onerror: (() => void) | null = null;
   addEventListener = vi.fn();
   close = vi.fn();
   constructor(_url: string) {
@@ -50,17 +49,19 @@ async function flush() {
   });
 }
 
-function tick(ms: number) {
-  act(() => {
-    vi.advanceTimersByTime(ms);
-  });
+function buildApiResponse(document: ProfileDocumentV3, layoutOrigin = { x: 0, y: 0 }) {
+  return {
+    document,
+    revision: "rev-obs-1",
+    layoutOrigin,
+  };
 }
 
 describe("ObsOverlayApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
     runtimeMock.emit.mockClear();
-    resetTelemetryRef();
+    MockEventSource.instances = [];
     vi.useFakeTimers();
     vi.stubGlobal("EventSource", MockEventSource);
   });
@@ -71,35 +72,44 @@ describe("ObsOverlayApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("accepts engineer-notifications widget without crash", () => {
+  it("loads profile-v3 and starts one SSE adapter", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve(
+          buildApiResponse({
+            schemaVersion: 3,
+            id: "obs-test",
+            name: "OBS Test",
+            displayMode: "streaming",
+            monitorIndex: 0,
+            layouts: { general: { type: "general", widgets: [] } },
+          }),
+        ),
+    } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ObsOverlayApp />);
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
+    expect(MockEventSource.instances).toHaveLength(1);
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+  });
+
+  it("shows fetch errors", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            profile: {
-              id: "obs-engineer-test",
-              displayMode: "streaming",
-              widgets: [
-                {
-                  id: "eng-obs",
-                  type: "engineer-notifications",
-                  enabled: true,
-                  updateHz: 5,
-                  position: { x: 50, y: 50, w: 300, h: 80 },
-                },
-              ],
-            },
-            layoutOrigin: { x: 0, y: 0 },
-          }),
+        ok: false,
+        status: 404,
       } as Response),
     );
 
     render(<ObsOverlayApp />);
-    tick(100);
+    await flush();
 
-    expect(screen.queryByText("Failed to load profile")).toBeNull();
+    expect(screen.getByText(/Failed to load profile/i)).toBeTruthy();
   });
 
   it("shows calendar reminder banner on calendar:reminder event", async () => {
@@ -108,21 +118,21 @@ describe("ObsOverlayApp", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
-          Promise.resolve({
-            profile: {
+          Promise.resolve(
+            buildApiResponse({
+              schemaVersion: 3,
               id: "obs-test",
+              name: "OBS Test",
               displayMode: "streaming",
-              widgets: [],
-            },
-            layoutOrigin: { x: 0, y: 0 },
-          }),
+              monitorIndex: 0,
+              layouts: { general: { type: "general", widgets: [] } },
+            }),
+          ),
       } as Response),
     );
 
     render(<ObsOverlayApp />);
     await flush();
-
-    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
 
     dispatch("calendar:reminder", {
       eventId: "evt-1",
@@ -144,14 +154,16 @@ describe("ObsOverlayApp", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
-          Promise.resolve({
-            profile: {
+          Promise.resolve(
+            buildApiResponse({
+              schemaVersion: 3,
               id: "obs-test",
+              name: "OBS Test",
               displayMode: "streaming",
-              widgets: [],
-            },
-            layoutOrigin: { x: 0, y: 0 },
-          }),
+              monitorIndex: 0,
+              layouts: { general: { type: "general", widgets: [] } },
+            }),
+          ),
       } as Response),
     );
 
@@ -168,39 +180,36 @@ describe("ObsOverlayApp", () => {
     });
     await flush();
 
-    expect(screen.getByTestId("overlay-calendar-reminder-banner")).toBeTruthy();
-
     fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
     await flush();
 
     expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
   });
+
   it("renders the studio preview shell when studioPreview=1 is present", async () => {
     vi.stubGlobal("location", {
       ...window.location,
       search: "?profile=obs-preview.json&studioPreview=1",
     });
+    const delta = deltaDefinition.createDefault("delta-preview");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
-          Promise.resolve({
-            profile: {
-              id: "obs-preview",
-              displayMode: "streaming",
-              widgets: [
-                {
-                  id: "delta-preview",
-                  type: "delta",
-                  enabled: true,
-                  updateHz: 10,
-                  position: { x: 120, y: 96, w: 420, h: 180 },
-                },
-              ],
-            },
-            layoutOrigin: { x: 120, y: 96 },
-          }),
+          Promise.resolve(
+            buildApiResponse(
+              {
+                schemaVersion: 3,
+                id: "obs-preview",
+                name: "OBS Preview",
+                displayMode: "streaming",
+                monitorIndex: 0,
+                layouts: { general: { type: "general", widgets: [delta] } },
+              },
+              { x: 120, y: 96 },
+            ),
+          ),
       } as Response),
     );
 
@@ -209,37 +218,37 @@ describe("ObsOverlayApp", () => {
 
     expect(screen.getByTestId("obs-studio-preview")).toBeTruthy();
     expect(screen.getByTestId("obs-studio-preview-scene")).toBeTruthy();
+    expect(screen.getByTestId("runtime-widget-frame")).toBeTruthy();
   });
 
-  it("does not render widgets with runtimeReady:false (e.g. broadcast-tower)", () => {
+  it("skips preserved legacy widgets at runtime", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
-          Promise.resolve({
-            profile: {
+          Promise.resolve(
+            buildApiResponse({
+              schemaVersion: 3,
               id: "obs-runtime-test",
+              name: "OBS Runtime Test",
               displayMode: "streaming",
-              widgets: [
-                {
-                  id: "bt-obs",
-                  type: "broadcast-tower",
-                  enabled: true,
-                  updateHz: 15,
-                  position: { x: 0, y: 0, w: 300, h: 100 },
+              monitorIndex: 0,
+              layouts: {
+                general: {
+                  type: "general",
+                  widgets: [],
+                  preservedWidgets: [{ id: "bt-obs", type: "broadcast-tower", source: { id: "bt-obs" } }],
                 },
-              ],
-            },
-            layoutOrigin: { x: 0, y: 0 },
-          }),
+              },
+            }),
+          ),
       } as Response),
     );
 
     render(<ObsOverlayApp />);
-    tick(100);
+    await flush();
 
-    // broadcast-tower has runtimeReady:false — must not render in OBS overlay
-    expect(screen.queryByTestId("broadcast-tower-widget")).toBeNull();
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
   });
 });

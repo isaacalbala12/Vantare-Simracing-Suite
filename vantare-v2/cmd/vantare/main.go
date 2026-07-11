@@ -274,6 +274,61 @@ func emitLauncherCommandError(emitter app.EventEmitter, err error) {
 	emitter.Emit("launcher:error", payload)
 }
 
+func handleResolveLauncherDecision(decisionID, action string, remember bool, emitter app.EventEmitter) {
+	if decisionID == "" || action == "" {
+		emitter.Emit("launcher:error", map[string]any{"code": "invalid_decision", "message": "decision id and action are required"})
+		return
+	}
+	emitter.Emit("launcher:decision:resolved", map[string]any{
+		"decisionId": decisionID,
+		"action":     action,
+		"remember":   remember,
+	})
+}
+
+func launcherProcessIdentity(id string, pid int, svc *launcher.Service) (launcher.ProcessIdentity, error) {
+	if pid <= 0 {
+		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: confirmed PID is required")
+	}
+	entry, ok := svc.Settings().GetLauncherApps()[id]
+	if !ok {
+		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: app %q not found", id)
+	}
+	identity := launcher.ProcessIdentity{PID: pid, ExecutablePath: entry.ExecutablePath}
+	if known, ok := launcher.KnownAppsByID[id]; ok && len(known.ProcessNames) > 0 {
+		identity.ProcessName = known.ProcessNames[0]
+	}
+	return identity, nil
+}
+
+func handleCloseLauncherApp(id string, pid int, svc *launcher.Service, emitter app.EventEmitter, ctx context.Context) {
+	identity, err := launcherProcessIdentity(id, pid, svc)
+	if err == nil {
+		err = launcher.CloseProcess(ctx, launcher.DefaultProcessInspector(), identity)
+	}
+	if err != nil {
+		emitter.Emit("launcher:error", map[string]any{"code": "process_close_failed", "message": err.Error(), "appId": id})
+		return
+	}
+	handleLauncherSnapshot(svc, emitter)
+}
+
+func handleRestartLauncherApp(id string, pid int, svc *launcher.Service, emitter app.EventEmitter, ctx context.Context) {
+	identity, err := launcherProcessIdentity(id, pid, svc)
+	entry, ok := svc.Settings().GetLauncherApps()[id]
+	if err == nil && !ok {
+		err = fmt.Errorf("launcher: app %q not found", id)
+	}
+	if err == nil {
+		err = launcher.RestartProcess(ctx, launcher.DefaultProcessInspector(), identity, entry.ExecutablePath, nil)
+	}
+	if err != nil {
+		emitter.Emit("launcher:error", map[string]any{"code": "process_restart_failed", "message": err.Error(), "appId": id})
+		return
+	}
+	handleLauncherSnapshot(svc, emitter)
+}
+
 func handleSetAppPath(id, path string, svc *launcher.Service, emitter app.EventEmitter) {
 	settings := svc.Settings()
 	apps := settings.GetLauncherApps()
@@ -1394,6 +1449,40 @@ func main() {
 		}
 		handleCancelProfile(payload.ID, launcherSvc)
 	})
+
+	wailsApp.Event.On("launcher:decision:resolve", func(event *application.CustomEvent) {
+		var payload struct {
+			DecisionID string `json:"decisionId"`
+			Action     string `json:"action"`
+			Remember   bool   `json:"remember"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, emitter)
+	})
+
+	for _, command := range []string{"launcher:app:close", "launcher:app:restart"} {
+		command := command
+		wailsApp.Event.On(command, func(event *application.CustomEvent) {
+			var payload struct {
+				ID  string `json:"id"`
+				PID int    `json:"pid"`
+			}
+			if event.Data != nil {
+				if raw, err := json.Marshal(event.Data); err == nil {
+					_ = json.Unmarshal(raw, &payload)
+				}
+			}
+			if command == "launcher:app:close" {
+				handleCloseLauncherApp(payload.ID, payload.PID, launcherSvc, emitter, ctx)
+				return
+			}
+			handleRestartLauncherApp(payload.ID, payload.PID, launcherSvc, emitter, ctx)
+		})
+	}
 
 	// File picker for manual apps. Wails v3 alpha.98-tui has no native dialog
 	// API, so this emits a fallback error and lets the frontend's HTML file

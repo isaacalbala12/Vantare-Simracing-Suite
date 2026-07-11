@@ -15,8 +15,8 @@ describe("LauncherSessionPanel", () => {
     render(<LauncherSessionPanel />);
     expect(screen.getByTestId("launcher-session-step-creator-0")).toBeTruthy();
     fireEvent.click(screen.getByTestId("launcher-session-close-creator"));
-    expect(dispatchLauncherCommand).toHaveBeenCalledWith("launcher:app:close", { profileId: "creator" });
+    expect(dispatchLauncherCommand).toHaveBeenCalledWith("launcher:app:close", { id: "creator", pid: 0 });
     fireEvent.click(screen.getByTestId("launcher-session-restart-creator"));
-    expect(dispatchLauncherCommand).toHaveBeenCalledWith("launcher:app:restart", { profileId: "creator" });
+    expect(dispatchLauncherCommand).toHaveBeenCalledWith("launcher:app:restart", { id: "creator", pid: 0 });
   });
 });

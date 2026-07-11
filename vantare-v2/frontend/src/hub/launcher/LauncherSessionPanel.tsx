@@ -24,8 +24,8 @@ export function LauncherSessionPanel() {
                 <span className="ml-2 text-[10px] uppercase tracking-[.16em] text-vantare-textMuted">{chain.status}</span>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => dispatchLauncherCommand("launcher:app:close", { profileId: chain.profileId })} data-testid={`launcher-session-close-${chain.profileId}`} className="rounded border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[.16em] text-white/70">Cerrar</button>
-                <button type="button" onClick={() => dispatchLauncherCommand("launcher:app:restart", { profileId: chain.profileId })} data-testid={`launcher-session-restart-${chain.profileId}`} className="rounded border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[.16em] text-white/70">Reiniciar</button>
+                <button type="button" onClick={() => dispatchLauncherCommand("launcher:app:close", { id: chain.steps?.find((step) => step.pid)?.appId ?? chain.profileId, pid: chain.steps?.find((step) => step.pid)?.pid ?? 0 })} data-testid={`launcher-session-close-${chain.profileId}`} className="rounded border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[.16em] text-white/70">Cerrar</button>
+                <button type="button" onClick={() => dispatchLauncherCommand("launcher:app:restart", { id: chain.steps?.find((step) => step.pid)?.appId ?? chain.profileId, pid: chain.steps?.find((step) => step.pid)?.pid ?? 0 })} data-testid={`launcher-session-restart-${chain.profileId}`} className="rounded border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[.16em] text-white/70">Reiniciar</button>
               </div>
             </div>
             {chain.steps && chain.steps.length > 0 && (

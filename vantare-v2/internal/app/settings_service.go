@@ -26,15 +26,17 @@ var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millise
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
-	SchemaVersion          int                         `json:"schemaVersion"`
-	DeltaMode              string                      `json:"deltaMode"`
-	CpuSampling            bool                        `json:"cpuSampling"`
-	Hotkeys                map[string]string           `json:"hotkeys"`
-	ActiveOverlayProfileID string                      `json:"activeOverlayProfileId,omitempty"`
-	BetaWelcomeCompleted   bool                        `json:"betaWelcomeCompleted,omitempty"`
-	BetaUserRole           string                      `json:"betaUserRole,omitempty"`
-	LauncherApps           map[string]LauncherAppEntry `json:"launcherApps,omitempty"`
-	LauncherProfiles       []LaunchProfile             `json:"launcherProfiles,omitempty"`
+	SchemaVersion               int                         `json:"schemaVersion"`
+	DeltaMode                   string                      `json:"deltaMode"`
+	CpuSampling                 bool                        `json:"cpuSampling"`
+	Hotkeys                     map[string]string           `json:"hotkeys"`
+	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted        bool                        `json:"betaWelcomeCompleted,omitempty"`
+	BetaUserRole                string                      `json:"betaUserRole,omitempty"`
+	LauncherApps                map[string]LauncherAppEntry `json:"launcherApps,omitempty"`
+	LauncherProfiles            []LaunchProfile             `json:"launcherProfiles,omitempty"`
+	LauncherLMUTriggerEnabled   bool                        `json:"launcherLmuTriggerEnabled,omitempty"`
+	LauncherLMUTriggerProfileID string                      `json:"launcherLmuTriggerProfileId,omitempty"`
 }
 
 // LauncherAppCategory clasifica una app para la UI.
@@ -481,12 +483,14 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		return
 	}
 	merged := &AppSettings{
-		SchemaVersion:          loaded.SchemaVersion,
-		DeltaMode:              loaded.DeltaMode,
-		CpuSampling:            loaded.CpuSampling,
-		ActiveOverlayProfileID: loaded.ActiveOverlayProfileID,
-		BetaWelcomeCompleted:   loaded.BetaWelcomeCompleted,
-		BetaUserRole:           loaded.BetaUserRole,
+		SchemaVersion:               loaded.SchemaVersion,
+		DeltaMode:                   loaded.DeltaMode,
+		CpuSampling:                 loaded.CpuSampling,
+		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
+		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
+		BetaUserRole:                loaded.BetaUserRole,
+		LauncherLMUTriggerEnabled:   loaded.LauncherLMUTriggerEnabled,
+		LauncherLMUTriggerProfileID: loaded.LauncherLMUTriggerProfileID,
 	}
 	if loaded.Hotkeys != nil {
 		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))

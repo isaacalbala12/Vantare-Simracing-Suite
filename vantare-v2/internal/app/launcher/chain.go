@@ -288,7 +288,7 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		})
 
 		// Liveness probe: wait up to 3s for the process to exit.
-		res := livenessProbe(cmd, 3*time.Second)
+		res := livenessProbe(cmd, readinessGrace(entry.ID))
 		if res.cmdErr != nil {
 			return chainStepResult{success: false, pid: pid}
 		}

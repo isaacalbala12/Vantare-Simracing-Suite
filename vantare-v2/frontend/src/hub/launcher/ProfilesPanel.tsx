@@ -33,6 +33,8 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
     ],
     [snapshot],
   );
+  const vantareProfiles = snapshot?.vantareProfiles ?? [];
+  const userProfiles = snapshot?.userProfiles ?? [];
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
   const handleCreate = () => {
@@ -45,15 +47,6 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
     };
     dispatchLauncherCommand("launcher:profile:save", { profile: blank });
   };
-
-  const orderedProfiles = useMemo(
-    () => [...profiles].sort((a, b) => {
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      return a.name.localeCompare(b.name);
-    }),
-    [profiles],
-  );
 
   // Find the profile being edited (if any)
   const editingProfile = editingProfileId
@@ -80,22 +73,39 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
         </button>
       </div>
 
-      <div className="flex flex-col gap-3" data-testid="profiles-list">
+      <div className="flex flex-col gap-4" data-testid="profiles-list">
         {profiles.length === 0 && (
           <article className="card-sleek rounded-xl p-5" data-testid="profiles-empty">
-            <p className="text-xs text-vantare-textMuted">
-              {t("launcher.profiles.empty")}
-            </p>
+            <p className="text-xs text-vantare-textMuted">{t("launcher.profiles.empty")}</p>
           </article>
         )}
-        {orderedProfiles.map((profile) => (
-          <ProfileCard
-            key={profile.id}
-            profile={profile}
-            apps={apps}
-            onEdit={(id) => setEditingProfileId(id)}
-          />
-        ))}
+        {[
+          { id: "vantare", title: "Perfiles Vantare", items: vantareProfiles },
+          { id: "user", title: "Mis perfiles", items: userProfiles },
+        ].map((section) => {
+          const sectionProfiles = [...section.items].sort((a, b) => {
+            if (a.isFavorite && !b.isFavorite) return -1;
+            if (!a.isFavorite && b.isFavorite) return 1;
+            return a.name.localeCompare(b.name);
+          });
+          return (
+            <section key={section.id} data-testid={`profiles-section-${section.id}`}>
+              <h2 className="mb-2 text-[10px] uppercase tracking-[.22em] text-vantare-textDim">
+                {section.title}
+              </h2>
+              <div className="flex flex-col gap-3">
+                {sectionProfiles.map((profile) => (
+                  <ProfileCard
+                    key={profile.id}
+                    profile={profile}
+                    apps={apps}
+                    onEdit={(id) => setEditingProfileId(id)}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       {/* Profile Editor — rendered ONCE at panel level, only when editing */}

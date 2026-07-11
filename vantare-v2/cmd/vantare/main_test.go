@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -13,48 +12,57 @@ import (
 	"github.com/vantare/overlays/v2/pkg/config"
 )
 
-// fakeOverlayFactory creates fake overlay windows for testing.
-type fakeOverlayFactory struct {
-	created int
-	last    *fakeOverlayWindow
-}
-
 type fakeOverlayWindow struct {
 	appliedModes []config.DisplayMode
 }
 
 func (f *fakeOverlayWindow) Close() {}
 
-func (f *fakeOverlayWindow) ApplyProfileMode(profile *config.ProfileConfig) error {
-	f.appliedModes = append(f.appliedModes, profile.DisplayMode)
+func (f *fakeOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
+	if document != nil {
+		f.appliedModes = append(f.appliedModes, document.DisplayMode)
+	}
 	return nil
 }
 
-func (f *fakeOverlayFactory) NewOverlayWindow(profile *config.ProfileConfig, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
+type fakeOverlayFactory struct {
+	created int
+	last    *fakeOverlayWindow
+}
+
+func (f *fakeOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	f.created++
 	f.last = &fakeOverlayWindow{}
 	return f.last, nil
 }
 
-// fakeOverlayStarter is a test double for the overlay starter used by the
-// toggle-edit-mode hotkey handler.
-type fakeOverlayStarter struct {
-	started    int
-	status     app.OverlayStatus
-	err        error
-	controller *app.OverlayController
-	profile    *config.ProfileConfig
+type fakeOverlayRuntime struct {
+	started int
+	stopped int
+	err     error
 }
 
-func (f *fakeOverlayStarter) StartActiveOverlay() (app.OverlayStatus, error) {
+func (f *fakeOverlayRuntime) Start(document *config.ProfileDocumentV3) (app.OverlayStatus, error) {
 	f.started++
-	if f.controller != nil && f.profile != nil {
-		return f.controller.Start(f.profile)
+	if f.err != nil {
+		return app.OverlayStatus{Running: false}, f.err
 	}
-	return f.status, f.err
+	mode := config.ModeRacing
+	if document != nil {
+		mode = document.DisplayMode
+	}
+	return app.OverlayStatus{Running: true, Mode: mode}, nil
 }
 
-// fakeWindowHandle implements window.WindowHandle for testing.
+func (f *fakeOverlayRuntime) Stop() app.OverlayStatus {
+	f.stopped++
+	return app.OverlayStatus{Running: false}
+}
+
+func (f *fakeOverlayRuntime) Status() app.OverlayStatus {
+	return app.OverlayStatus{Running: f.started > f.stopped}
+}
+
 type fakeWindowHandle struct {
 	ignoreMouse bool
 	resizable   bool
@@ -69,7 +77,6 @@ func (f *fakeWindowHandle) SetResizable(b bool)               { f.resizable = b 
 func (f *fakeWindowHandle) Fullscreen()                       { f.fullscreen = true }
 func (f *fakeWindowHandle) UnFullscreen()                     { f.fullscreen = false }
 
-// spyEmitter records emitted events.
 type spyMainEmitter struct {
 	events []string
 	data   []any
@@ -80,13 +87,14 @@ func (s *spyMainEmitter) Emit(name string, data any) {
 	s.data = append(s.data, data)
 }
 
-func newTestProfileService(t *testing.T, mode config.DisplayMode, emitter app.EventEmitter) *app.ProfileService {
+func newTestStudioProfileService(t *testing.T, mode config.DisplayMode, emitter app.EventEmitter) *app.StudioProfileService {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")
 	profile := &config.ProfileConfig{
 		ID:          "test",
-		DisplayMode: config.ModeRacing,
+		Name:        "Test",
+		DisplayMode: mode,
 		Widgets: []config.WidgetConfig{
 			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 100, Y: 100, W: 200, H: 100}},
 		},
@@ -94,16 +102,12 @@ func newTestProfileService(t *testing.T, mode config.DisplayMode, emitter app.Ev
 	if err := config.SaveFile(path, profile); err != nil {
 		t.Fatalf("save profile: %v", err)
 	}
-	fw := &fakeWindowHandle{}
-	mgr := window.NewManager(fw, 0)
-	svc := app.NewProfileService(path, mgr, emitter)
-	if err := svc.Load(); err != nil {
+	svc := app.NewStudioProfileService(emitter, nil)
+	if _, err := svc.Load(path); err != nil {
 		t.Fatalf("load profile: %v", err)
 	}
-	if mode != config.ModeRacing {
-		if err := svc.SetDisplayMode(mode); err != nil {
-			t.Fatalf("set display mode: %v", err)
-		}
+	if mode != config.ModeRacing && svc.Document() != nil {
+		svc.Document().DisplayMode = mode
 	}
 	return svc
 }
@@ -123,129 +127,43 @@ func TestBuildHotkeyActionMapIncludesToggleEditMode(t *testing.T) {
 	}
 }
 
-func TestHandleToggleEditModeTogglesDisplayMode(t *testing.T) {
-	factory := &fakeOverlayFactory{}
-	controller := app.NewOverlayController(factory)
+func TestHandleOpenOverlayStudioEmitsNavigationEvent(t *testing.T) {
 	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
 
-	if _, err := controller.Start(profileSvc.Profile()); err != nil {
-		t.Fatalf("start overlay: %v", err)
-	}
+	handleOpenOverlayStudio(studioSvc, emitter)
 
-	handleToggleEditMode(controller, profileSvc, nil, nil, emitter)
-
-	if profileSvc.Profile().DisplayMode != config.ModeEdit {
-		t.Fatalf("expected edit mode, got %q", profileSvc.Profile().DisplayMode)
+	if len(emitter.events) != 1 || emitter.events[0] != "hub:open-overlay-studio" {
+		t.Fatalf("events=%v, want [hub:open-overlay-studio]", emitter.events)
 	}
-	if len(emitter.events) != 2 || emitter.events[0] != "profile:loaded" || emitter.events[1] != "overlay:edit-mode-changed" {
-		t.Fatalf("events=%v, want [profile:loaded overlay:edit-mode-changed]", emitter.events)
-	}
-	if factory.last == nil || len(factory.last.appliedModes) != 1 || factory.last.appliedModes[0] != config.ModeEdit {
-		t.Fatalf("expected window to apply ModeEdit, got modes=%v", factory.last.appliedModes)
-	}
-
-	handleToggleEditMode(controller, profileSvc, nil, nil, emitter)
-
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(factory.last.appliedModes) != 2 || factory.last.appliedModes[1] != config.ModeRacing {
-		t.Fatalf("expected window to apply ModeRacing second, got modes=%v", factory.last.appliedModes)
-	}
-}
-
-func TestHandleToggleEditModeOpensOverlayWhenNotRunning(t *testing.T) {
-	controller := app.NewOverlayController(&fakeOverlayFactory{
-		last: &fakeOverlayWindow{},
-	})
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-	starter := &fakeOverlayStarter{
-		controller: controller,
-		profile:    profileSvc.Profile(),
-	}
-	var overlayRunning atomic.Bool
-
-	handleToggleEditMode(controller, profileSvc, starter, &overlayRunning, emitter)
-
-	if starter.started != 1 {
-		t.Fatalf("expected overlay to be started once, got %d", starter.started)
-	}
-	if !overlayRunning.Load() {
-		t.Fatal("expected overlayRunning to be true")
-	}
-	if profileSvc.Profile().DisplayMode != config.ModeEdit {
-		t.Fatalf("expected edit mode after open, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
-		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
-	}
-	win, ok := controller.CurrentWindow().(*fakeOverlayWindow)
+	payload, ok := emitter.data[0].(map[string]any)
 	if !ok {
-		t.Fatal("expected fake overlay window")
+		t.Fatalf("payload type=%T", emitter.data[0])
 	}
-	if len(win.appliedModes) != 1 || win.appliedModes[0] != config.ModeEdit {
-		t.Fatalf("expected window to apply ModeEdit after start, got modes=%v", win.appliedModes)
-	}
-}
-
-func TestHandleToggleEditModeNoOverlayAndNoStarter(t *testing.T) {
-	controller := app.NewOverlayController(&fakeOverlayFactory{
-		last: &fakeOverlayWindow{},
-	})
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-
-	handleToggleEditMode(controller, profileSvc, nil, nil, emitter)
-
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode unchanged, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(emitter.events) != 0 {
-		t.Fatalf("expected no events, got %v", emitter.events)
+	if payload["profileId"] != "test" {
+		t.Fatalf("profileId=%v", payload["profileId"])
 	}
 }
 
-func TestHandleToggleEditModeRespectsRunningStatusForStreaming(t *testing.T) {
-	controller := app.NewOverlayController(&fakeOverlayFactory{
-		last: &fakeOverlayWindow{},
-	})
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-	starter := &fakeOverlayStarter{status: app.OverlayStatus{Running: false}}
-	var overlayRunning atomic.Bool
-
-	handleToggleEditMode(controller, profileSvc, starter, &overlayRunning, emitter)
-
-	if overlayRunning.Load() {
-		t.Fatal("expected overlayRunning to remain false for non-running status")
-	}
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode unchanged when no desktop window, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(emitter.events) != 0 {
-		t.Fatalf("expected no events when no desktop window, got %v", emitter.events)
-	}
+func TestHandleOpenOverlayStudioNoEmitter(t *testing.T) {
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, nil)
+	handleOpenOverlayStudio(studioSvc, nil)
 }
 
 func TestResetOverlayDisplayModeResetsToRacing(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
+	studioSvc := newTestStudioProfileService(t, config.ModeEdit, nil)
 
-	if _, err := controller.Start(profileSvc.Profile()); err != nil {
+	document := studioSvc.Document()
+	if _, err := controller.Start(document); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
 
-	resetOverlayDisplayMode(controller, profileSvc, emitter)
+	resetOverlayDisplayMode(controller, studioSvc)
 
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode after reset, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(emitter.events) != 2 || emitter.events[0] != "profile:loaded" || emitter.events[1] != "overlay:edit-mode-changed" {
-		t.Fatalf("events=%v, want [profile:loaded overlay:edit-mode-changed]", emitter.events)
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("expected racing mode after reset, got %q", studioSvc.Document().DisplayMode)
 	}
 	if factory.last == nil || len(factory.last.appliedModes) < 1 || factory.last.appliedModes[len(factory.last.appliedModes)-1] != config.ModeRacing {
 		t.Fatalf("expected window to apply ModeRacing, got modes=%v", factory.last.appliedModes)
@@ -253,17 +171,14 @@ func TestResetOverlayDisplayModeResetsToRacing(t *testing.T) {
 }
 
 func TestResetOverlayDisplayModeIdempotentWhenRacing(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-
-	resetOverlayDisplayMode(nil, profileSvc, emitter)
-
-	if len(emitter.events) != 0 {
-		t.Fatalf("expected no events when already racing, got %v", emitter.events)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, nil)
+	resetOverlayDisplayMode(nil, studioSvc)
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("expected racing mode unchanged")
 	}
 }
 
-func TestNewOverlayWindowAppliesProfileMode(t *testing.T) {
+func TestApplyProfileV3WindowModes(t *testing.T) {
 	tests := []struct {
 		name           string
 		mode           config.DisplayMode
@@ -291,14 +206,16 @@ func TestNewOverlayWindowAppliesProfileMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			handle := &fakeWindowHandle{}
 			mgr := window.NewManager(handle, 0)
-			profile := &config.ProfileConfig{
-				DisplayMode: tt.mode,
-				Widgets: []config.WidgetConfig{
-					{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 100, Y: 100, W: 200, H: 100}},
+			document := &config.ProfileDocumentV3{
+				SchemaVersion: config.ProfileSchemaVersionV3,
+				ID:            "test",
+				DisplayMode:   tt.mode,
+				Layouts: map[config.LayoutType]config.SessionLayoutV3{
+					config.LayoutGeneral: {Type: config.LayoutGeneral},
 				},
 			}
 
-			mgr.ApplyProfile(profile, false)
+			mgr.ApplyProfileV3(document, false)
 
 			if handle.ignoreMouse != tt.wantIgnore {
 				t.Errorf("ignoreMouse=%v, want %v", handle.ignoreMouse, tt.wantIgnore)
@@ -313,41 +230,12 @@ func TestNewOverlayWindowAppliesProfileMode(t *testing.T) {
 	}
 }
 
-// failingApplyProfileModeWindow is a fake overlay window whose ApplyProfileMode
-// always returns an error, used to verify the edit-mode-changed event is NOT
-// emitted when applying the mode to the real window fails.
-type failingApplyProfileModeWindow struct {
-	closed bool
-}
-
-func (f *failingApplyProfileModeWindow) Close() { f.closed = true }
-
-func (f *failingApplyProfileModeWindow) ApplyProfileMode(profile *config.ProfileConfig) error {
-	return fmt.Errorf("simulated window mode apply failure")
-}
-
-// failingApplyProfileModeFactory creates failingApplyProfileModeWindow instances.
-type failingApplyProfileModeFactory struct {
-	last *failingApplyProfileModeWindow
-}
-
-func (f *failingApplyProfileModeFactory) NewOverlayWindow(profile *config.ProfileConfig, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
-	f.last = &failingApplyProfileModeWindow{}
-	return f.last, nil
-}
-
-// TestStopOverlayClosureClearsOverlayRunningAndResetsMode simulates the
-// external window-close path (Alt+F4): the Wails WindowClosing handler calls
-// Stop() then, while overlayRunning is still true, resets the display mode and
-// clears the flag. This mirrors the body of the stopOverlay closure wired in
-// main.go's wailsOverlayFactory.
 func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
+	studioSvc := newTestStudioProfileService(t, config.ModeEdit, nil)
 
-	if _, err := controller.Start(profileSvc.Profile()); err != nil {
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
 	var overlayRunning atomic.Bool
@@ -355,28 +243,24 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 
 	controller.Stop()
 	if overlayRunning.Load() {
-		resetOverlayDisplayMode(controller, profileSvc, emitter)
+		resetOverlayDisplayMode(controller, studioSvc)
 		overlayRunning.Store(false)
 	}
 
 	if overlayRunning.Load() {
 		t.Fatal("expected overlayRunning to be false after external close")
 	}
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode after close, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
-		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("expected racing mode after close, got %q", studioSvc.Document().DisplayMode)
 	}
 }
 
 func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, nil)
 
-	if _, err := controller.Start(profileSvc.Profile()); err != nil {
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
 		t.Fatalf("start overlay: %v", err)
 	}
 	var overlayRunning atomic.Bool
@@ -384,83 +268,39 @@ func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 
 	controller.Stop()
 	if overlayRunning.Load() {
-		resetOverlayDisplayMode(controller, profileSvc, emitter)
+		resetOverlayDisplayMode(controller, studioSvc)
 		overlayRunning.Store(false)
 	}
 
 	if overlayRunning.Load() {
 		t.Fatal("expected overlayRunning to remain false")
 	}
-	if len(emitter.events) != 0 {
-		t.Fatalf("expected no events when already stopped, got %v", emitter.events)
-	}
-}
-
-func TestHandleToggleEditModeStartActiveOverlayFailureClearsOverlayRunning(t *testing.T) {
-	controller := app.NewOverlayController(&fakeOverlayFactory{
-		last: &fakeOverlayWindow{},
-	})
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-	starter := &fakeOverlayStarter{
-		status: app.OverlayStatus{Running: false},
-		err:    fmt.Errorf("simulated start failure"),
-	}
-	var overlayRunning atomic.Bool
-	overlayRunning.Store(true)
-
-	handleToggleEditMode(controller, profileSvc, starter, &overlayRunning, emitter)
-
-	if overlayRunning.Load() {
-		t.Fatal("expected overlayRunning to be false after start failure")
-	}
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode unchanged, got %q", profileSvc.Profile().DisplayMode)
-	}
-	for _, e := range emitter.events {
-		if e == "overlay:edit-mode-changed" {
-			t.Fatal("must not emit overlay:edit-mode-changed on start failure")
-		}
-	}
-}
-
-func TestHandleToggleEditModeNoEditModeChangedWhenApplyProfileModeFails(t *testing.T) {
-	factory := &failingApplyProfileModeFactory{}
-	controller := app.NewOverlayController(factory)
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeRacing, emitter)
-
-	if _, err := controller.Start(profileSvc.Profile()); err != nil {
-		t.Fatalf("start overlay: %v", err)
-	}
-	var overlayRunning atomic.Bool
-	overlayRunning.Store(true)
-
-	handleToggleEditMode(controller, profileSvc, nil, &overlayRunning, emitter)
-
-	for _, e := range emitter.events {
-		if e == "overlay:edit-mode-changed" {
-			t.Fatal("must not emit overlay:edit-mode-changed when ApplyProfileMode fails")
-		}
-	}
 }
 
 func TestResetOverlayDisplayModeSkipsWindowApplyWhenNoWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	emitter := &spyMainEmitter{}
-	profileSvc := newTestProfileService(t, config.ModeEdit, emitter)
+	studioSvc := newTestStudioProfileService(t, config.ModeEdit, nil)
 
-	resetOverlayDisplayMode(controller, profileSvc, emitter)
+	resetOverlayDisplayMode(controller, studioSvc)
 
-	if profileSvc.Profile().DisplayMode != config.ModeRacing {
-		t.Fatalf("expected racing mode after reset, got %q", profileSvc.Profile().DisplayMode)
-	}
-	if len(emitter.events) != 2 || emitter.events[1] != "overlay:edit-mode-changed" {
-		t.Fatalf("events=%v, want ending with overlay:edit-mode-changed", emitter.events)
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("expected racing mode after reset, got %q", studioSvc.Document().DisplayMode)
 	}
 	if factory.last != nil {
 		t.Fatalf("expected no window to be created, got %v", factory.last)
+	}
+}
+
+func TestBuildHotkeyActionMapToggleEditModeOpensStudio(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	actionMap := buildHotkeyActionMap(nil, studioSvc, nil, nil, emitter)
+
+	actionMap["toggleEditMode"]()
+
+	if len(emitter.events) != 1 || emitter.events[0] != "hub:open-overlay-studio" {
+		t.Fatalf("events=%v", emitter.events)
 	}
 }
 
@@ -509,7 +349,6 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 	emitter := &spyMainEmitter{}
 	return launcher.NewService(backend, emitter, nil), emitter
 }
-
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)

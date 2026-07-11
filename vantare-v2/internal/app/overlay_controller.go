@@ -16,12 +16,12 @@ type OverlayStatus struct {
 // OverlayWindow is the minimal interface the controller needs from a desktop overlay window.
 type OverlayWindow interface {
 	Close()
-	ApplyProfileMode(profile *config.ProfileConfig) error
+	ApplyProfileMode(document *config.ProfileDocumentV3) error
 }
 
 // OverlayWindowFactory creates a new desktop overlay window for a profile.
 type OverlayWindowFactory interface {
-	NewOverlayWindow(profile *config.ProfileConfig, origin config.Rect, bounds config.Rect) (OverlayWindow, error)
+	NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (OverlayWindow, error)
 }
 
 // OverlayController owns the lifetime of the desktop overlay window.
@@ -40,7 +40,7 @@ func NewOverlayController(factory OverlayWindowFactory) *OverlayController {
 
 // Start loads the profile, closes any existing overlay window, and creates a clean one.
 // For streaming profiles it returns a non-running status without creating a desktop window.
-func (c *OverlayController) Start(profile *config.ProfileConfig) (OverlayStatus, error) {
+func (c *OverlayController) Start(document *config.ProfileDocumentV3) (OverlayStatus, error) {
 	// Close previous window and decide whether a desktop window is needed.
 	// Keep the critical section short; window creation can be slow.
 	c.mu.Lock()
@@ -49,38 +49,36 @@ func (c *OverlayController) Start(profile *config.ProfileConfig) (OverlayStatus,
 		c.current = nil
 	}
 
-	if profile == nil {
+	if document == nil {
 		c.status = OverlayStatus{}
 		c.mu.Unlock()
 		return c.status, nil
 	}
 
-	mode := profile.DisplayMode
+	mode := document.DisplayMode
 	if mode == config.ModeStreaming {
-		c.status = OverlayStatus{Running: false, ProfileID: profile.ID, Mode: config.ModeStreaming}
+		c.status = OverlayStatus{Running: false, ProfileID: document.ID, Mode: config.ModeStreaming}
 		c.mu.Unlock()
 		return c.status, nil
 	}
 
-	// Keep the mode as-is (could be config.ModeRacing or config.ModeEdit)
-	runtimeProfile := *profile
-	c.status = OverlayStatus{Running: false, ProfileID: profile.ID, Mode: mode}
+	c.status = OverlayStatus{Running: false, ProfileID: document.ID, Mode: mode}
 	c.mu.Unlock()
 
 	// Create the window outside the lock so concurrent Status() calls are not blocked.
 	bounds := config.Rect{}
 	origin := config.Rect{}
-	win, err := c.factory.NewOverlayWindow(&runtimeProfile, origin, bounds)
+	win, err := c.factory.NewOverlayWindow(document, origin, bounds)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err != nil {
-		c.status = OverlayStatus{Running: false, ProfileID: profile.ID, Mode: mode}
+		c.status = OverlayStatus{Running: false, ProfileID: document.ID, Mode: mode}
 		return c.status, err
 	}
 
 	c.current = win
-	c.status = OverlayStatus{Running: true, ProfileID: profile.ID, Mode: mode}
+	c.status = OverlayStatus{Running: true, ProfileID: document.ID, Mode: mode}
 	return c.status, nil
 }
 

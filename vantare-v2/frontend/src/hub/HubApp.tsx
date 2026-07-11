@@ -107,6 +107,9 @@ function HubShell() {
     const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
       setReminder(event.data ?? null);
     });
+    const unsubOverlayStudio = Events.On('hub:open-overlay-studio', () => {
+      setSection('profiles');
+    });
     Events.Emit('app:version:get');
     Events.Emit('telemetry:source-status:get');
     Events.Emit('settings:get');
@@ -116,6 +119,7 @@ function HubShell() {
       unsubSource?.();
       unsubSettings?.();
       unsubReminder?.();
+      unsubOverlayStudio?.();
     };
   }, []);
 

@@ -69,6 +69,11 @@ export function isProfileLaunchable(
   );
 }
 
+export function hasDuplicateSteps(profile: LaunchProfile): boolean {
+  const ids = profile.steps.map((step) => step.appId).filter(Boolean);
+  return new Set(ids).size !== ids.length;
+}
+
 // estimateChainDuration estima la duración total de una cadena en ms.
 // Si el profile ya tiene avgChainDurationMs (telemetría real), se prefiere.
 // Si no hay steps, devuelve 0. En otro caso suma delay*1000 + overhead por app

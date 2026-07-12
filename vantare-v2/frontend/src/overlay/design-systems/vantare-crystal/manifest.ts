@@ -5,6 +5,7 @@ import type {
   WidgetRendererProps,
 } from "../../core/design-system-definition";
 import { DeltaCrystal } from "./delta/DeltaCrystal";
+import { migrateDeltaSettingsV1, parseDeltaSettings } from "./delta/delta-settings";
 import { PedalsCrystal } from "./pedals/PedalsCrystal";
 import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
@@ -27,23 +28,16 @@ const deltaRegistration = {
   widgetType: "delta" as const,
   configVersion: 1,
   defaultSettings: {
+    templateId: "delta-bar",
     showHeader: true,
   },
   configMigrations: {
     0: (settings: Record<string, unknown>) => ({
+      ...migrateDeltaSettingsV1(settings),
       showHeader: true,
-      ...settings,
     }),
   },
-  parseSettings(input: unknown): Record<string, unknown> {
-    if (input == null || typeof input !== "object" || Array.isArray(input)) {
-      return { showHeader: true };
-    }
-    return {
-      showHeader: true,
-      ...(input as Record<string, unknown>),
-    };
-  },
+  parseSettings: parseDeltaSettings,
   inspector: {
     appearance: deltaAppearanceControls,
   },

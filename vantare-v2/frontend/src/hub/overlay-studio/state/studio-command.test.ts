@@ -309,7 +309,7 @@ describe("applyStudioCommand", () => {
       widgetIds: ["delta-1", "delta-2"],
       appliedAt: "2026-07-10T12:00:00Z",
       design: {
-        id: "delta-crystal-base",
+        id: "delta-crystal-bar",
         name: "Crystal Base",
         widgetType: "delta",
         systemId: "vantare-crystal",
@@ -326,7 +326,7 @@ describe("applyStudioCommand", () => {
       expect(applied.visual.systemId).toBe("vantare-crystal");
       expect(applied.visual.baseSettings).toEqual({ showHeader: true, accent: "cyan" });
       expect(applied.visual.appearanceOverrides).toEqual({});
-      expect(applied.visual.provenance?.designId).toBe("delta-crystal-base");
+      expect(applied.visual.provenance?.designId).toBe("delta-crystal-bar");
     }
     expect(next.layouts.general.widgets[0]?.layout).toEqual(document.layouts.general.widgets[0]?.layout);
     expect(next.layouts.general.widgets[1]?.layout.x).toBe(40);
@@ -348,7 +348,7 @@ describe("applyStudioCommand", () => {
     });
     const document = buildDocument([source]);
     const crystalDesign: WidgetDesignV1 = {
-      id: "delta-crystal-base",
+        id: "delta-crystal-bar",
       name: "Crystal Base",
       widgetType: "delta",
       systemId: "vantare-crystal",
@@ -414,7 +414,7 @@ describe("applyStudioCommand", () => {
       },
     ).layouts.general.widgets[0]!;
     expect(restoredCrystal.visual.baseSettings).toEqual({ showHeader: true });
-    expect(restoredCrystal.visual.provenance?.designId).toBe("delta-crystal-base");
+      expect(restoredCrystal.visual.provenance?.designId).toBe("delta-crystal-bar");
     expect(restoredCrystal.content).toEqual({ keep: "functional" });
   });
 

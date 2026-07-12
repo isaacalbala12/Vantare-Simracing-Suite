@@ -1,6 +1,7 @@
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
 import type { DeltaContent } from "./delta-definition";
+import { readScoringBoolean, readScoringNumber } from "../shared/scoring-readers";
 
 const DELTA_PROGRESS_SCALE_SECONDS = 2;
 const PLACEHOLDER = "—";
@@ -14,6 +15,9 @@ export type DeltaViewModel = WidgetViewModelBase & {
   lastLapText: string;
   bestLapText: string;
   progress: number;
+  lapText?: string;
+  predictedLapText?: string;
+  splitText?: string;
 };
 
 function formatDeltaText(deltaSeconds: number): string {
@@ -53,6 +57,25 @@ function clampProgress(deltaSeconds: number): number {
     return 0;
   }
   return Math.max(-1, Math.min(1, deltaSeconds / DELTA_PROGRESS_SCALE_SECONDS));
+}
+
+function buildOptionalFields(
+  snapshot: TelemetrySnapshot,
+  deltaSeconds: number | undefined,
+): Pick<DeltaViewModel, "lapText" | "predictedLapText" | "splitText"> {
+  const playerScoring = snapshot.scoring.find((entry) => readScoringBoolean(entry, "isPlayer") === true);
+  const lapNumber = snapshot.player.lapNumber ?? readScoringNumber(playerScoring ?? {}, "totalLaps");
+  const predictedLapSeconds =
+    snapshot.player.predictedLapSeconds ?? readScoringNumber(playerScoring ?? {}, "estimatedLapTime");
+  return {
+    ...(lapNumber != null && lapNumber >= 0 ? { lapText: `LAP ${Math.round(lapNumber)}` } : {}),
+    ...(predictedLapSeconds != null
+      ? { predictedLapText: formatLapTime(predictedLapSeconds) }
+      : {}),
+    ...(deltaSeconds != null && Number.isFinite(deltaSeconds)
+      ? { splitText: formatDeltaText(deltaSeconds) }
+      : {}),
+  };
 }
 
 function buildUnavailableModel(
@@ -98,6 +121,7 @@ export function buildDeltaViewModel(
       lastLapText: formatLapTime(snapshot.player.lastLapSeconds),
       bestLapText: formatLapTime(snapshot.player.bestLapSeconds),
       progress: 0,
+      ...buildOptionalFields(snapshot, undefined),
     };
   }
 
@@ -109,5 +133,6 @@ export function buildDeltaViewModel(
     lastLapText: formatLapTime(snapshot.player.lastLapSeconds),
     bestLapText: formatLapTime(snapshot.player.bestLapSeconds),
     progress: clampProgress(deltaSeconds),
+    ...buildOptionalFields(snapshot, deltaSeconds),
   };
 }

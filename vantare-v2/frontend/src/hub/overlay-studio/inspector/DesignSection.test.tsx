@@ -125,14 +125,14 @@ describe("DesignSection", () => {
     await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
     expect(screen.getByTestId("studio-design-system-vantare-original").getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("studio-design-item-delta-original-base")).toBeTruthy();
-    expect(screen.queryByTestId("studio-design-item-delta-crystal-base")).toBeNull();
+    expect(screen.queryByTestId("studio-design-item-delta-crystal-bar")).toBeNull();
     expect(screen.getByTestId("studio-design-item-user-original")).toBeTruthy();
     expect(screen.queryByTestId("studio-design-item-user-crystal")).toBeNull();
 
     const crystalButton = screen.getByTestId("studio-design-system-vantare-crystal");
     fireEvent.keyDown(crystalButton, { key: " " });
     expect(crystalButton.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByTestId("studio-design-item-delta-crystal-base")).toBeTruthy();
+    expect(screen.getByTestId("studio-design-item-delta-crystal-bar")).toBeTruthy();
     expect(screen.queryByTestId("studio-design-item-delta-time-attack")).toBeNull();
     expect(screen.getByTestId("studio-design-item-user-crystal")).toBeTruthy();
     expect(screen.queryByTestId("studio-design-item-user-original")).toBeNull();
@@ -162,18 +162,18 @@ describe("DesignSection", () => {
 
     fireEvent.click(screen.getByTestId("studio-design-system-vantare-crystal"));
     await waitFor(() => {
-      expect(screen.getByTestId("studio-design-apply-delta-crystal-base")).toBeTruthy();
+      expect(screen.getByTestId("studio-design-apply-delta-crystal-bar")).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByTestId("studio-design-apply-delta-crystal-base"));
+    fireEvent.click(screen.getByTestId("studio-design-apply-delta-crystal-bar"));
 
     expect(dispatch).toHaveBeenCalledTimes(1);
     const command = dispatch.mock.calls[0]?.[0];
     expect(command?.type).toBe("widget/apply-design");
     if (command?.type === "widget/apply-design") {
       expect(command.widgetIds).toEqual(["delta-main"]);
-      expect(command.design.id).toBe("delta-crystal-base");
-      expect(command.design.visual).toEqual({ showHeader: true });
+      expect(command.design.id).toBe("delta-crystal-bar");
+      expect(command.design.visual).toEqual({ templateId: "delta-bar", showHeader: true });
     }
   });
 

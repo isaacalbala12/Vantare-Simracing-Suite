@@ -98,6 +98,8 @@ function snapshotFromRef(ref: TelemetryRefState, capturedAt: number): TelemetryS
       deltaSeconds: ref.deltaBest,
       lastLapSeconds: playerVehicle?.lastLapTime,
       bestLapSeconds: playerVehicle?.bestLapTime,
+      lapNumber: playerVehicle?.totalLaps,
+      predictedLapSeconds: playerVehicle?.estimatedLapTime,
       throttle: normalizePedalInput(ref.throttle),
       brake: normalizePedalInput(ref.brake),
       clutch: normalizePedalInput(ref.clutch),

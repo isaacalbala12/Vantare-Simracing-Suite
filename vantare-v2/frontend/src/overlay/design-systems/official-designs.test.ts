@@ -33,6 +33,19 @@ describe("official-designs", () => {
     });
   });
 
+  it("registers both canonical Delta Crystal compositions", () => {
+    expect(getOfficialDesign("delta-crystal-bar")).toMatchObject({
+      widgetType: "delta",
+      systemId: "vantare-crystal",
+      visual: { templateId: "delta-bar" },
+    });
+    expect(getOfficialDesign("delta-crystal-simple")).toMatchObject({
+      widgetType: "delta",
+      systemId: "vantare-crystal",
+      visual: { templateId: "delta-simple" },
+    });
+  });
+
   it("uses manifest-compatible visual defaults for every official design", () => {
     for (const design of listOfficialDesigns()) {
       const registration = designSystemRegistry.resolve(
@@ -47,7 +60,7 @@ describe("official-designs", () => {
   it("covers all eight widget/system registrations with a base official design", () => {
     const pairs = new Set<string>();
     for (const design of listOfficialDesigns()) {
-      if (design.id.endsWith("-base")) {
+      if (design.isDefault || design.id === "delta-crystal-bar") {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }

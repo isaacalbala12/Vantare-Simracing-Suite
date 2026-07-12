@@ -18,6 +18,9 @@ const readyGaining: DeltaViewModel = {
   lastLapText: "1:31.221",
   bestLapText: "1:30.876",
   progress: -0.1225,
+  lapText: "LAP 14",
+  predictedLapText: "2:44.659",
+  splitText: "-0.245",
 };
 
 const readyLosing: DeltaViewModel = {
@@ -64,35 +67,44 @@ describe("DeltaCrystal", () => {
 
   it("uses a structurally distinct Crystal composition", () => {
     const { root } = renderCrystal(readyGaining);
-    expect(root.querySelector(".vc-delta-glow")).toBeTruthy();
-    expect(root.querySelector(".vc-delta-material")).toBeTruthy();
-    expect(root.querySelector(".vc-delta-meta")).toBeTruthy();
-    expect(root.querySelector(".vc-delta-meter")).toBeTruthy();
+    expect(root.querySelector(".vc-delta-bar")).toBeTruthy();
+    expect(root.querySelector(".vc-delta-bar-top")).toBeTruthy();
+    expect(root.querySelector(".vc-delta-bar-track")).toBeTruthy();
     expect(root.querySelector(".vo-delta-header")).toBeNull();
     expect(root.querySelector(".vo-delta-track")).toBeNull();
   });
 
+  it("selects the canonical bar or simple composition from Crystal settings", () => {
+    const bar = renderCrystal(readyGaining, { templateId: "delta-bar" });
+    expect(bar.root.querySelector(".vc-delta-bar")).toBeTruthy();
+    cleanup();
+
+    const simple = renderCrystal(readyGaining, { templateId: "delta-simple" });
+    expect(simple.root.querySelector(".vc-delta-simple")).toBeTruthy();
+    expect(simple.root.querySelector(".vc-delta-bar")).toBeNull();
+  });
+
   it("renders gaining losing and neutral delta text from the model", () => {
     const gaining = renderCrystal(readyGaining);
-    expect(gaining.root.querySelector(".vc-delta-value")?.textContent).toBe("-0.245");
-    expect(gaining.root.querySelector(".vc-delta-value")?.getAttribute("data-tone")).toBe("gaining");
+    expect(gaining.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("-0.245");
+    expect(gaining.root.querySelector(".vc-delta-bar-value")?.getAttribute("data-tone")).toBe("gaining");
     cleanup();
 
     const losing = renderCrystal(readyLosing);
-    expect(losing.root.querySelector(".vc-delta-value")?.textContent).toBe("+0.380");
-    expect(losing.root.querySelector(".vc-delta-value")?.getAttribute("data-tone")).toBe("losing");
+    expect(losing.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("+0.380");
+    expect(losing.root.querySelector(".vc-delta-bar-value")?.getAttribute("data-tone")).toBe("losing");
     cleanup();
 
     const neutral = renderCrystal(readyNeutral);
-    expect(neutral.root.querySelector(".vc-delta-value")?.textContent).toBe("0.000");
-    expect(neutral.root.querySelector(".vc-delta-value")?.getAttribute("data-tone")).toBe("neutral");
+    expect(neutral.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("0.000");
+    expect(neutral.root.querySelector(".vc-delta-bar-value")?.getAttribute("data-tone")).toBe("neutral");
   });
 
   it("shows deterministic unavailable presentations", () => {
     for (const status of ["missing", "stale", "disconnected"] as const) {
       const { root } = renderCrystal(unavailable(status));
       expect(root.getAttribute("data-status")).toBe(status);
-      expect(root.querySelector(".vc-delta-value")?.textContent).toBe("—");
+      expect(root.querySelector(".vc-delta-bar-value")?.textContent).toBe("—");
       cleanup();
     }
 
@@ -103,26 +115,27 @@ describe("DeltaCrystal", () => {
 
   it("renders best lap in meta and applies progress to the meter fill", () => {
     const { root } = renderCrystal(readyGaining);
-    const meta = root.querySelector(".vc-delta-meta");
-    expect(meta?.querySelector("span")?.textContent).toBe("DELTA");
-    expect(meta?.querySelector("span:last-child")?.textContent).toBe("1:30.876");
-    const fill = root.querySelector(".vc-delta-meter > span") as HTMLElement;
+    const meta = root.querySelector(".vc-delta-bar-top");
+    expect(meta?.querySelector(".vc-delta-bar-lap")?.textContent).toBe("LAP 14");
+    expect(meta?.querySelector(".vc-delta-bar-predicted")?.textContent).toBe("2:44.659");
+    expect(meta?.querySelector(".vc-delta-bar-split")?.textContent).toBe("-0.245");
+    const fill = root.querySelector(".vc-delta-bar-fill") as HTMLElement;
     expect(fill.style.getPropertyValue("--delta-progress")).toBe("-0.1225");
   });
 
   it("keeps functional text stable when cosmetic settings change", () => {
     const { root } = renderCrystal(readyGaining, { showHeader: false, glowIntensity: 0.8 });
-    expect(root.querySelector(".vc-delta-value")?.textContent).toBe("-0.245");
-    expect(root.querySelector(".vc-delta-meta")).toBeNull();
+    expect(root.querySelector(".vc-delta-bar-value")?.textContent).toBe("-0.245");
+    expect(root.querySelector(".vc-delta-bar-top")).toBeNull();
   });
 
   it("consumes the showHeader appearance control path", () => {
     const hidden = renderCrystal(readyGaining, { showHeader: false });
-    expect(hidden.root.querySelector(".vc-delta-meta")).toBeNull();
+    expect(hidden.root.querySelector(".vc-delta-bar-top")).toBeNull();
     cleanup();
 
     const visible = renderCrystal(readyGaining, { showHeader: true });
-    expect(visible.root.querySelector(".vc-delta-meta")).toBeTruthy();
+    expect(visible.root.querySelector(".vc-delta-bar-top")).toBeTruthy();
   });
 
   it("does not render editor controls", () => {

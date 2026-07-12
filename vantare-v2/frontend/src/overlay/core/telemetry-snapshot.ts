@@ -10,6 +10,8 @@ export type TelemetrySnapshot = {
     deltaSeconds?: number;
     lastLapSeconds?: number;
     bestLapSeconds?: number;
+    lapNumber?: number;
+    predictedLapSeconds?: number;
     throttle?: number;
     brake?: number;
     clutch?: number;

@@ -93,6 +93,25 @@ describe("buildDeltaViewModel", () => {
     expect(model.progress).toBeCloseTo(-0.1225, 4);
   });
 
+  it("reads optional lap, predicted and split fields from available scoring data", () => {
+    const snapshot: TelemetrySnapshot = {
+      ...negative,
+      scoring: [
+        {
+          isPlayer: true,
+          totalLaps: 14,
+          estimatedLapTime: 164.659,
+        },
+      ],
+    };
+
+    expect(buildDeltaViewModel(snapshot, {})).toMatchObject({
+      lapText: "LAP 14",
+      predictedLapText: "2:44.659",
+      splitText: "-0.245",
+    });
+  });
+
   it("does not mutate snapshot or content", () => {
     const snapshot = structuredClone(negative);
     const content = {};

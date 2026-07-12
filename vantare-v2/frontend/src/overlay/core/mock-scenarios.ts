@@ -13,7 +13,17 @@ const SESSION_REMAINING_SECONDS: Record<MockSessionScenario, number> = {
 };
 
 const CANONICAL_SCORING: readonly Record<string, unknown>[] = [
-  { id: 4, driverName: "TOYOTA GAZOO", place: 5, isPlayer: true, inPits: false, bestLapTime: 90.876, lastLapTime: 91.221 },
+  {
+    id: 4,
+    driverName: "TOYOTA GAZOO",
+    place: 5,
+    isPlayer: true,
+    inPits: false,
+    bestLapTime: 90.876,
+    lastLapTime: 91.221,
+    totalLaps: 14,
+    estimatedLapTime: 164.659,
+  },
   { id: 2, driverName: "FERRARI AF", place: 3, isPlayer: false, inPits: false, bestLapTime: 89.455, lastLapTime: 90.332 },
 ];
 

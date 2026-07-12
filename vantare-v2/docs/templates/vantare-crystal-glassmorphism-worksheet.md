@@ -27,3 +27,7 @@ Esta worksheet congela la fuente visual del reemplazo Crystal. La autoridad es e
 | delta-advanced | delta-advanced | delta-advanced-crystal | 16 | `.w16-delta-adv` | 480 × 43 |
 
 La captura estable añadirá a cada entrada el hash SHA-256 y el bounding box medido en Chromium con viewport 1920×1080, DPR 1, fuentes listas y animaciones desactivadas.
+
+## Contrato de fuentes
+
+No hay archivos de fuentes locales licenciados en el repositorio. Crystal declara `Inter`, `Plus Jakarta Sans` y `JetBrains Mono` con fallback explícito; las capturas de referencia usan las fuentes web resueltas cuando están disponibles y registran que el fallback local puede desplazar píxeles de glifos. No se descargan fuentes durante la implementación.

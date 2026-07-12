@@ -3,6 +3,10 @@
   "source": "docs/overlay-glassmorphism-pro.html",
   "sourceAuthority": "numbered sections 01-16",
   "excludedSource": "final V2. WIDGETS REESTILIZADOS block",
+  "fontContract": {
+    "resolution": "fallback-declared-no-local-font-files",
+    "pixelDelta": "reference PNGs use resolved web fonts when available; local fallback may shift glyph pixels"
+  },
   "entries": [
     {
       "id": "relative",

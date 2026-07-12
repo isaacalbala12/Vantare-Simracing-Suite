@@ -97,7 +97,7 @@ function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSyste
 }
 
 describe("deriveStudioCatalog", () => {
-  it("keeps the final 18-type cardinality as a fixture without registering placeholders", () => {
+  it("keeps the final 18-type inventory while exposing implemented registrations", () => {
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(18);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions.delta).toEqual(["delta-simple", "delta-bar"]);
@@ -106,13 +106,26 @@ describe("deriveStudioCatalog", () => {
       "input-crystal-capsule",
       "input-crystal-dense",
     ]);
-    expect(deriveStudioCatalog()).toHaveLength(4);
-    expect(deriveStudioCatalog().map((entry) => entry.type)).not.toContain("input-telemetry");
+    expect(deriveStudioCatalog()).toHaveLength(12);
+    expect(deriveStudioCatalog().map((entry) => entry.type)).toContain("input-telemetry");
   });
 
   it("returns only registered widget types from the canonical registry", () => {
     const catalog = deriveStudioCatalog();
-    expect(catalog.map((entry) => entry.type)).toEqual(["delta", "pedals", "relative", "standings"]);
+    expect(catalog.map((entry) => entry.type)).toEqual([
+      "delta",
+      "standings",
+      "relative",
+      "pedals",
+      "broadcast-tower",
+      "pedals-telemetry",
+      "pedals-telemetry-compact",
+      "racing-flags",
+      "head-to-head",
+      "delta-advanced",
+      "input-telemetry",
+      "multiclass-relative",
+    ]);
     expect(catalog[0]).toMatchObject({
       labelKey: "overlay.widgets.delta",
       defaultSize: { width: 280, height: 96 },
@@ -135,7 +148,7 @@ describe("deriveStudioCatalog", () => {
     designRegistry.register(createTestDesignSystem(["delta", "standings", "relative", "pedals"]));
 
     const catalog = deriveStudioCatalog(createIsolatedCatalogDeps(widgetRegistry, designRegistry));
-    expect(catalog.map((entry) => entry.type)).toEqual(["delta", "pedals", "relative", "standings"]);
+    expect(catalog.map((entry) => entry.type)).toEqual(["delta", "standings", "relative", "pedals"]);
     expect(catalog.find((entry) => entry.type === "relative")?.requiredFeature).toBe("overlays.advanced");
     expect(catalog.find((entry) => entry.type === "standings")?.inspectorSections).toContain("layout");
   });

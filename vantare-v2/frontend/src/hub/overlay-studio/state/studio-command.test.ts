@@ -419,17 +419,17 @@ describe("applyStudioCommand", () => {
   });
 
   it("fails atomically when a target system has no official default", () => {
-    const document = buildDocument([widget("broadcast-1", { type: "broadcast-tower" })]);
+    const document = buildDocument([widget("fuel-1", { type: "fuel-strategy" })]);
     const before = structuredClone(document);
     expect(() =>
       applyStudioCommand(document, {
         type: "widget/apply-design",
         session: "general",
-        widgetIds: ["broadcast-1"],
+        widgetIds: ["fuel-1"],
         design: {
           id: "broadcast-crystal",
           name: "Broadcast Crystal",
-          widgetType: "broadcast-tower",
+          widgetType: "fuel-strategy",
           systemId: "vantare-crystal",
           systemVersion: 1,
           configVersion: 1,

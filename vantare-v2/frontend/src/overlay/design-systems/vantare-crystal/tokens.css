@@ -51,7 +51,7 @@
   border: 1px solid var(--vc-glass-border);
   border-radius: var(--vc-radius-lg);
   box-shadow: var(--vc-glass-shadow);
-  backdrop-filter: blur(var(--vc-blur-glass));
+  backdrop-filter: none;
 }
 
 [data-widget-system="vantare-crystal"] .vc-delta-bar-top {
@@ -141,7 +141,7 @@
   border: 1px solid var(--vc-glass-border);
   border-radius: var(--vc-radius-md);
   box-shadow: var(--vc-glass-shadow);
-  backdrop-filter: blur(var(--vc-blur-glass));
+  backdrop-filter: none;
 }
 
 [data-widget-system="vantare-crystal"] .vc-delta-simple-bar[data-tone="gaining"] {
@@ -684,7 +684,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 60px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(var(--vc-blur-glass));
 }
 
 [data-widget-system="vantare-crystal"] .vc-pedals-telemetry-gear {
@@ -748,7 +748,7 @@
   border-radius: 16px;
   background: rgba(18, 18, 22, 0.9);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(28px);
+  backdrop-filter: blur(var(--vc-blur-glass));
 }
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-bars { display: flex; align-items: flex-end; gap: 0.65rem; height: 3.1rem; }
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-channel { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
@@ -765,7 +765,7 @@
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-speed,
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-rpm { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 700; }
 
-[data-widget-system="vantare-crystal"].vc-racing-flags { width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); font-family: var(--vc-font-sans); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: blur(24px); }
+[data-widget-system="vantare-crystal"].vc-racing-flags { width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); font-family: var(--vc-font-sans); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
 [data-widget-system="vantare-crystal"] .vc-racing-flags-top { padding: 0.45rem 0.8rem; color: var(--vc-muted); background: rgba(0, 0, 0, 0.4); border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-family: var(--vc-font-mono); font-size: 0.55rem; font-weight: 800; letter-spacing: 0.08em; text-align: center; }
 [data-widget-system="vantare-crystal"] .vc-racing-flags-banner { display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.8rem; font-family: var(--vc-font-display); font-size: 1.1rem; font-weight: 800; letter-spacing: 0.05em; }
 [data-widget-system="vantare-crystal"] .vc-racing-flags-light { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--vc-muted); }
@@ -775,7 +775,7 @@
 [data-widget-system="vantare-crystal"] .vc-racing-flags-sectors { display: flex; justify-content: center; gap: 0.6rem; padding: 0 0.7rem 0.6rem; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
 [data-widget-system="vantare-crystal"] .vc-racing-flags[data-hidden="true"] { display: none; }
 
-[data-widget-system="vantare-crystal"].vc-broadcast-tower { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: blur(24px); }
+[data-widget-system="vantare-crystal"].vc-broadcast-tower { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
 [data-widget-system="vantare-crystal"] .vc-broadcast-tower header { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.9rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 [data-widget-system="vantare-crystal"] .vc-broadcast-tower header strong { font-family: var(--vc-font-display); font-size: 0.8rem; letter-spacing: 0.12em; }
 [data-widget-system="vantare-crystal"] .vc-broadcast-tower header strong span { color: var(--vc-muted); font-size: 0.55rem; }
@@ -787,7 +787,7 @@
 [data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows small, [data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows em { color: var(--vc-muted); font-size: 0.48rem; font-style: normal; }
 [data-widget-system="vantare-crystal"] .vc-broadcast-tower footer { padding: 0.5rem 0.8rem; background: rgba(0, 0, 0, 0.35); border-top: 1px solid rgba(255, 255, 255, 0.06); }
 
-[data-widget-system="vantare-crystal"].vc-head-to-head { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.8rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: blur(24px); }
+[data-widget-system="vantare-crystal"].vc-head-to-head { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.8rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
 [data-widget-system="vantare-crystal"] .vc-head-to-head header { display: flex; justify-content: space-between; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.55rem; }
 [data-widget-system="vantare-crystal"] .vc-head-to-head-entries { display: flex; flex-direction: column; justify-content: center; flex: 1; gap: 0.5rem; }
 [data-widget-system="vantare-crystal"] .vc-head-to-head-entries div { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0.55rem; background: rgba(255, 255, 255, 0.04); }
@@ -795,7 +795,7 @@
 [data-widget-system="vantare-crystal"] .vc-head-to-head-entries strong { font-family: var(--vc-font-display); font-size: 0.7rem; }
 [data-widget-system="vantare-crystal"] .vc-head-to-head-entries em { align-self: center; color: #f59e0b; font-family: var(--vc-font-mono); font-size: 0.7rem; font-style: normal; }
 
-[data-widget-system="vantare-crystal"].vc-input-telemetry { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.75rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: blur(24px); }
+[data-widget-system="vantare-crystal"].vc-input-telemetry { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.75rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
 [data-widget-system="vantare-crystal"] .vc-input-telemetry header, [data-widget-system="vantare-crystal"] .vc-input-telemetry footer { display: flex; justify-content: space-between; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
 [data-widget-system="vantare-crystal"] .vc-input-telemetry-content { display: flex; align-items: center; flex: 1; gap: 1rem; }
 [data-widget-system="vantare-crystal"] .vc-input-telemetry-bars { display: flex; flex: 1; flex-direction: column; gap: 0.5rem; }
@@ -811,7 +811,7 @@
 [data-widget-system="vantare-crystal"] .vc-input-telemetry-dense { padding: 0.4rem 0.7rem; border-radius: 5px; }
 [data-widget-system="vantare-crystal"] .vc-input-telemetry-dense .vc-input-telemetry-content { gap: 0.5rem; }
 
-[data-widget-system="vantare-crystal"].vc-multiclass-relative { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: blur(24px); }
+[data-widget-system="vantare-crystal"].vc-multiclass-relative { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
 [data-widget-system="vantare-crystal"] .vc-multiclass-relative header { display: flex; justify-content: space-between; padding: 0.7rem 0.8rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 [data-widget-system="vantare-crystal"] .vc-multiclass-relative header strong { font-family: var(--vc-font-display); font-size: 0.75rem; letter-spacing: 0.1em; }
 [data-widget-system="vantare-crystal"] .vc-multiclass-relative header span { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
@@ -821,7 +821,7 @@
 [data-widget-system="vantare-crystal"] .vc-multiclass-relative > div i { width: 0.25rem; height: 1rem; }
 [data-widget-system="vantare-crystal"] .vc-multiclass-relative > div em, [data-widget-system="vantare-crystal"] .vc-multiclass-relative > div small { color: var(--vc-muted); font-size: 0.48rem; font-style: normal; }
 
-[data-widget-system="vantare-crystal"].vc-delta-advanced { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.8rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: blur(24px); }
+[data-widget-system="vantare-crystal"].vc-delta-advanced { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.8rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
 [data-widget-system="vantare-crystal"] .vc-delta-advanced header { display: flex; justify-content: space-between; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
 [data-widget-system="vantare-crystal"] .vc-delta-advanced-best { display: flex; flex: 1; flex-direction: column; justify-content: center; }
 [data-widget-system="vantare-crystal"] .vc-delta-advanced-best small, [data-widget-system="vantare-crystal"] .vc-delta-advanced-grid small { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }

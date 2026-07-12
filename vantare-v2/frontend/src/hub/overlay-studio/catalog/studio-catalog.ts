@@ -1,6 +1,6 @@
 import type { AccessContext, FeatureGate, FeatureId } from "../../../lib/access-policy";
 import { DesignSystemRegistry, designSystemRegistry } from "../../../overlay/core/design-system-registry";
-import type { DesignSystemId } from "../../../overlay/core/profile-document";
+import { ALL_WIDGET_TYPES, type DesignSystemId } from "../../../overlay/core/profile-document";
 import type { WidgetType, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
@@ -69,7 +69,7 @@ export function deriveStudioCatalog(deps: StudioCatalogDeps = defaultDeps()): St
       compatibleSystems: deps.listCompatibleSystems(definition.type),
       requiredFeature: definition.capabilities.requiredFeature,
     }))
-    .sort((left, right) => left.type.localeCompare(right.type));
+    .sort((left, right) => ALL_WIDGET_TYPES.indexOf(left.type) - ALL_WIDGET_TYPES.indexOf(right.type));
 }
 
 export function getCatalogAddGate(access: AccessContext, entry: StudioCatalogEntry): FeatureGate {

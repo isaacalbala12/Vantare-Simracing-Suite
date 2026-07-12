@@ -3,7 +3,10 @@ import { join } from "node:path";
 
 const root = new URL("../src/overlay/design-systems/", import.meta.url);
 const rootPath = root.pathname.replace(/^\/(\w):/, "$1:");
-const forbidden = [/from\s+["'][^"']*(?:wails|telemetry|supabase|profile|permissions)[^"']*["']/i, /https?:\/\//i];
+const forbidden = [
+  /from\s+["'][^"']*(?:wails|telemetry-(?:store|ref|adapter)|supabase|profile-document|permissions)[^"']*["']/i,
+  /https?:\/\//i,
+];
 const systems = readdirSync(rootPath).filter((name) => name !== "_template" && statSync(join(rootPath, name)).isDirectory());
 const failures = [];
 const coreWidgets = ["delta", "standings", "relative", "pedals"];

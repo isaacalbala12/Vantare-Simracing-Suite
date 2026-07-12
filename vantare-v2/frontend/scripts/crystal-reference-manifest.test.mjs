@@ -1,13 +1,12 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const scriptPath = fileURLToPath(new URL('./extract-crystal-reference.mjs', import.meta.url));
-const manifestPath = fileURLToPath(new URL('../testdata/crystal-reference/manifest.json', import.meta.url));
-const sourcePath = fileURLToPath(new URL('../../docs/overlay-glassmorphism-pro.html', import.meta.url));
+const frontendRoot = path.basename(process.cwd()) === 'frontend' ? process.cwd() : path.join(process.cwd(), 'frontend');
+const scriptPath = path.join(frontendRoot, 'scripts', 'extract-crystal-reference.mjs');
+const manifestPath = path.join(frontendRoot, 'testdata', 'crystal-reference', 'manifest.json');
+const sourcePath = path.join(frontendRoot, '..', 'docs', 'overlay-glassmorphism-pro.html');
 
 const expectedEntries = [
   ['relative', 'relative-crystal-vertical', 1],
@@ -33,7 +32,7 @@ const expectedEntries = [
   ['delta-advanced', 'delta-advanced-crystal', 16],
 ];
 
-test('the canonical reference extractor freezes the 21-entry inventory', async () => {
+const canonicalInventoryTest = async () => {
   const result = spawnSync(process.execPath, [scriptPath, '--check'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout.trim(), 'crystal-reference: 21 canonical crops OK');
@@ -60,9 +59,9 @@ test('the canonical reference extractor freezes the 21-entry inventory', async (
     ids.add(entry.id);
     selectors.add(entry.referenceSelector);
   }
-});
+};
 
-test('the source boundary excludes the final V2 block', async () => {
+const sourceBoundaryTest = async () => {
   const source = await readFile(sourcePath, 'utf8');
   const marker = 'V2. WIDGETS REESTILIZADOS (GLASSMORPHISM PRO)';
   const markerIndex = source.indexOf(marker);
@@ -71,5 +70,16 @@ test('the source boundary excludes the final V2 block', async () => {
   assert.equal(canonicalSource.includes('class="v2-section"'), false);
   assert.equal(canonicalSource.includes('V2-'), false);
   assert.equal(source.slice(markerIndex).includes('V2-'), true);
-});
+};
 
+if (process.env.VITEST) {
+  const { describe, it } = await import('vitest');
+  describe('Crystal canonical reference manifest', () => {
+    it('freezes the 21-entry inventory', canonicalInventoryTest);
+    it('excludes the final V2 block', sourceBoundaryTest);
+  });
+} else {
+  const { test } = await import('node:test');
+  test('the canonical reference extractor freezes the 21-entry inventory', canonicalInventoryTest);
+  test('the source boundary excludes the final V2 block', sourceBoundaryTest);
+}

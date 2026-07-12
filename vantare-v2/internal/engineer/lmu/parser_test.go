@@ -68,6 +68,8 @@ func writeScoringSlot(buf []byte, idx int, id int32, name string, isPlayer, inPi
 	off := vehicleScoringOffset + idx*vehicleScoringStride
 	binary.LittleEndian.PutUint32(buf[off+vehicleScoringID:], uint32(id))
 	copy(buf[off+vehicleScoringDriverName:], name)
+	copy(buf[off+vehicleScoringVehicleName:], "LMU_HYPERCAR_001")
+	copy(buf[off+vehicleScoringVehicleClass:], "HYPERCAR")
 	if isPlayer {
 		buf[off+vehicleScoringIsPlayer] = 1
 	}
@@ -75,6 +77,7 @@ func writeScoringSlot(buf []byte, idx int, id int32, name string, isPlayer, inPi
 		buf[off+vehicleScoringInPits] = 1
 	}
 	binary.LittleEndian.PutUint64(buf[off+vehicleScoringLapDistance:], math.Float64bits(lapDist))
+	binary.LittleEndian.PutUint64(buf[off+vehicleScoringBestLapTime:], math.Float64bits(102.345))
 	writeVec3(buf, off+vehicleScoringPosition, pos)
 	writeOrientation(buf, off+vehicleScoringOrientation, orient)
 	binary.LittleEndian.PutUint64(buf[off+vehicleScoringPathLateral:], math.Float64bits(0.5))
@@ -119,6 +122,15 @@ func TestParseEngineerFrame_VehicleScoringGeometry(t *testing.T) {
 	}
 	if opp.LapDistance != 5050 {
 		t.Errorf("opponent LapDistance = %v, want 5050", opp.LapDistance)
+	}
+	if opp.VehicleName != "LMU_HYPERCAR_001" {
+		t.Errorf("opponent VehicleName = %q, want LMU_HYPERCAR_001", opp.VehicleName)
+	}
+	if opp.VehicleClass != "HYPERCAR" {
+		t.Errorf("opponent VehicleClass = %q, want HYPERCAR", opp.VehicleClass)
+	}
+	if opp.BestLapTime != 102.345 {
+		t.Errorf("opponent BestLapTime = %v, want 102.345", opp.BestLapTime)
 	}
 	if opp.PathLateral != 0.5 {
 		t.Errorf("opponent PathLateral = %v, want 0.5", opp.PathLateral)
@@ -183,10 +195,103 @@ func TestParseEngineerFrame_DoesNotMutateBuffer(t *testing.T) {
 	}
 }
 
-// TestParseEngineerFrame_GamePhase: el parser debe leer mGamePhase (offset 1740
-// dentro de LMUScoringInfo) en el frame de ingeniero para alimentar el gate
-// FCY del spotter (LMU-15) y el FlagsMonitor (G1.1).
-// Paridad CC: RF2Data.cs:68 enum rF2GamePhase. GamePhase==6 = FullCourseYellow.
+// TestParseEngineerFrame_PlayerTemperatures: el parser debe leer engine water/oil
+// temp, tyre temp (4 ruedas), brake temp (4 ruedas) y tyre wear (4 ruedas)
+// desde el bloque vehicleTelemetry del jugador.
+//
+// Offsets identificados en la 2ª captura driving (docs/lmu-capture/driving/,
+// 200 muestras a 10 Hz, LMP2_ELMS acelerando de 31 a 56 m/s).
+// Cada campo es u8 (1 byte), Celsius o 0-100% wear.
+func TestParseEngineerFrame_PlayerTemperatures(t *testing.T) {
+	buf := newSyntheticBuffer(0)
+	po := telemetryTelemOffset
+
+	// Engine water temp = 95 C, oil = 120 C.
+	buf[po+engineWaterTempOff] = 95
+	buf[po+engineOilTempOff] = 120
+
+	// Tyre temps (FL=80, FR=82, RL=85, RR=87).
+	buf[po+tyreTempFLOffset] = 80
+	buf[po+tyreTempFROffset] = 82
+	buf[po+tyreTempRLOffset] = 85
+	buf[po+tyreTempRROffset] = 87
+
+	// Brake temps (FL=144, FR=154, RL=136, RR=138 — all in u8 range).
+	buf[po+brakeTempFLOffset] = 144
+	buf[po+brakeTempFROffset] = 154
+	buf[po+brakeTempRLOffset] = 136
+	buf[po+brakeTempRROffset] = 138
+
+	// Tyre wear (FL=42%, FR=45%, RL=50%, RR=48%).
+	buf[po+tyreWearFLOffset] = 42
+	buf[po+tyreWearFROffset] = 45
+	buf[po+tyreWearRLOffset] = 50
+	buf[po+tyreWearRROffset] = 48
+
+	frame := ParseEngineerFrame(buf)
+	if frame == nil || frame.Player == nil {
+		t.Fatal("expected frame and player")
+	}
+	p := frame.Player
+	if p.EngineWaterTemp != 95 {
+		t.Errorf("EngineWaterTemp = %d, want 95", p.EngineWaterTemp)
+	}
+	if p.EngineOilTemp != 120 {
+		t.Errorf("EngineOilTemp = %d, want 120", p.EngineOilTemp)
+	}
+	if p.TyreTempFL != 80 || p.TyreTempFR != 82 || p.TyreTempRL != 85 || p.TyreTempRR != 87 {
+		t.Errorf("TyreTemps = FL=%d FR=%d RL=%d RR=%d, want 80/82/85/87",
+			p.TyreTempFL, p.TyreTempFR, p.TyreTempRL, p.TyreTempRR)
+	}
+	if p.BrakeTempFL != 144 || p.BrakeTempFR != 154 || p.BrakeTempRL != 136 || p.BrakeTempRR != 138 {
+		t.Errorf("BrakeTemps = FL=%d FR=%d RL=%d RR=%d, want 144/154/136/138",
+			p.BrakeTempFL, p.BrakeTempFR, p.BrakeTempRL, p.BrakeTempRR)
+	}
+	if p.TyreWearFL != 42 || p.TyreWearFR != 45 || p.TyreWearRL != 50 || p.TyreWearRR != 48 {
+		t.Errorf("TyreWear = FL=%d FR=%d RL=%d RR=%d, want 42/45/50/48",
+			p.TyreWearFL, p.TyreWearFR, p.TyreWearRL, p.TyreWearRR)
+	}
+}
+
+// TestParseEngineerFrame_BrakeTempTruncation: documenta que brake temps
+// >255°C se truncan (wrap-around a valor mod 256). Esto es una limitación
+// conocida del struct rF2/LMU que almacena brake temp en 1 byte. El
+// TyreMonitor dispara warning antes de los 250°C para mitigar.
+func TestParseEngineerFrame_BrakeTempTruncation(t *testing.T) {
+	buf := newSyntheticBuffer(0)
+	po := telemetryTelemOffset
+
+	// Write 300°C to FL brake temp. Expected: 300 % 256 = 44.
+	buf[po+brakeTempFLOffset] = 300 % 256
+
+	frame := ParseEngineerFrame(buf)
+	if frame == nil || frame.Player == nil {
+		t.Fatal("expected frame and player")
+	}
+	if frame.Player.BrakeTempFL != 44 {
+		t.Errorf("BrakeTempFL = %d, want 44 (300 mod 256)", frame.Player.BrakeTempFL)
+	}
+}
+
+// TestParseEngineerFrame_PlayerTemperaturesZero: cuando los offsets no están
+// poblados (coche en boxes, mmap sin inicializar), los campos deben ser 0,
+// no valores aleatorios del buffer.
+func TestParseEngineerFrame_PlayerTemperaturesZero(t *testing.T) {
+	buf := newSyntheticBuffer(0)
+	frame := ParseEngineerFrame(buf)
+	if frame == nil || frame.Player == nil {
+		t.Fatal("expected frame and player")
+	}
+	p := frame.Player
+	if p.EngineWaterTemp != 0 || p.EngineOilTemp != 0 {
+		t.Errorf("engine temps should be 0 in fresh buffer, got water=%d oil=%d",
+			p.EngineWaterTemp, p.EngineOilTemp)
+	}
+	if p.TyreWearFL != 0 || p.TyreWearFR != 0 || p.TyreWearRL != 0 || p.TyreWearRR != 0 {
+		t.Errorf("tyre wear should be 0 in fresh buffer, got %d/%d/%d/%d",
+			p.TyreWearFL, p.TyreWearFR, p.TyreWearRL, p.TyreWearRR)
+	}
+}
 func TestParseEngineerFrame_GamePhase(t *testing.T) {
 	cases := []struct {
 		name string

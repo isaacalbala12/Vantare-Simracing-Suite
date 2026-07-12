@@ -18,39 +18,39 @@ func TestMachine_LeftScenario(t *testing.T) {
 	if events[0].Type != EventCarLeft {
 		t.Errorf("expected EventCarLeft, got %s", events[0].Type)
 	}
-	if events[0].ExpiresAt != 2000 {
-		t.Errorf("expected ExpiresAt 2000, got %d", events[0].ExpiresAt)
+	if events[0].ExpiresAt != 1000 { // CC: holdMessageExpiresAfter=1000
+		t.Errorf("expected ExpiresAt 1000, got %d", events[0].ExpiresAt)
 	}
 	if m.state != StateLeft {
 		t.Errorf("expected state to be StateLeft, got %s", m.state)
 	}
 
-	// 2. Stay in Left at T = 500 (less than repeat interval 2500ms)
+	// 2. Stay in Left at T = 500 (less than repeat interval 3000ms)
 	events = m.Process(500, zones)
 	if len(events) != 0 {
 		t.Errorf("expected 0 events (anti-spam), got %d: %v", len(events), events)
 	}
 
-	// 3. Stay in Left at T = 2000 (less than repeat interval 2500ms)
-	events = m.Process(2000, zones)
+	// 3. Stay in Left at T = 2500 (less than repeat interval 3000ms)
+	events = m.Process(2500, zones)
 	if len(events) != 0 {
-		t.Errorf("expected 0 events (2000 < 2500 repeat), got %d: %v", len(events), events)
+		t.Errorf("expected 0 events (2500 < 3000 repeat), got %d: %v", len(events), events)
 	}
 
-	// 3b. Stay in Left at T = 2500 (exactly repeat interval)
-	events = m.Process(2500, zones)
+	// 3b. Stay in Left at T = 3000 (exactly repeat interval)
+	events = m.Process(3000, zones)
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(events))
 	}
 	if events[0].Type != EventStillThere {
 		t.Errorf("expected EventStillThere, got %s", events[0].Type)
 	}
-	if events[0].ExpiresAt != 4500 { // 2500 + 2000
-		t.Errorf("expected ExpiresAt 4500, got %d", events[0].ExpiresAt)
+	if events[0].ExpiresAt != 4000 { // 3000 + 1000 (messageExpiryMS)
+		t.Errorf("expected ExpiresAt 4000, got %d", events[0].ExpiresAt)
 	}
 
-	// 4. Transition attempt at T = 2700 — debounce holds (200ms < 350ms holdExpiry)
-	events = m.Process(2700, nil)
+	// 4. Transition attempt at T = 3200 — debounce holds (200ms < 350ms holdExpiry)
+	events = m.Process(3200, nil)
 	if len(events) != 0 {
 		t.Errorf("expected 0 events (debounce holds), got %d: %v", len(events), events)
 	}
@@ -58,8 +58,8 @@ func TestMachine_LeftScenario(t *testing.T) {
 		t.Errorf("expected state StateLeft (debounce), got %s", m.state)
 	}
 
-	// 5. At T = 2851, debounce expires (351ms > 350ms) → Left→None, clear_left scheduled
-	events = m.Process(2851, nil)
+	// 5. At T = 3351, debounce expires (351ms > 350ms) → Left→None, clear_left scheduled
+	events = m.Process(3351, nil)
 	if len(events) != 0 {
 		t.Fatalf("expected 0 events (clear_left scheduled), got %d: %v", len(events), events)
 	}
@@ -67,16 +67,16 @@ func TestMachine_LeftScenario(t *testing.T) {
 		t.Errorf("expected state to remain StateLeft while clear is pending, got %s", m.state)
 	}
 
-	// 6. At T = 3001 (hold 350 + clearDelay 150), pending clear fires.
-	events = m.Process(3001, nil)
+	// 6. At T = 3501 (hold 350 + clearDelay 150), pending clear fires.
+	events = m.Process(3501, nil)
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event (clear_left), got %d: %v", len(events), events)
 	}
 	if events[0].Type != EventClearLeft {
 		t.Errorf("expected EventClearLeft, got %s", events[0].Type)
 	}
-	if events[0].ExpiresAt != 5001 { // 3001 + 2000
-		t.Errorf("expected ExpiresAt 5001, got %d", events[0].ExpiresAt)
+	if events[0].ExpiresAt != 5501 { // 3501 + 2000 (clearExpiryMS)
+		t.Errorf("expected ExpiresAt 5501, got %d", events[0].ExpiresAt)
 	}
 	if m.state != StateNone {
 		t.Errorf("expected state to be StateNone after clear, got %s", m.state)
@@ -96,8 +96,8 @@ func TestMachine_RightScenario(t *testing.T) {
 	if events[0].Type != EventCarRight {
 		t.Errorf("expected EventCarRight, got %s", events[0].Type)
 	}
-	if events[0].ExpiresAt != base+2000 {
-		t.Errorf("expected ExpiresAt %d, got %d", base+2000, events[0].ExpiresAt)
+	if events[0].ExpiresAt != base+1000 { // CC: holdMessageExpiresAfter=1000
+		t.Errorf("expected ExpiresAt %d, got %d", base+1000, events[0].ExpiresAt)
 	}
 	if m.state != StateRight {
 		t.Errorf("expected state to be StateRight, got %s", m.state)
@@ -109,32 +109,32 @@ func TestMachine_RightScenario(t *testing.T) {
 		t.Errorf("expected 0 events, got %d", len(events))
 	}
 
-	// 3. Stay in Right at T = 2000 (less than repeat interval 2500ms)
-	events = m.Process(base+2000, zones)
+	// 3. Stay in Right at T = 2500 (less than repeat interval 3000ms)
+	events = m.Process(base+2500, zones)
 	if len(events) != 0 {
-		t.Errorf("expected 0 events (2000 < 2500 repeat), got %d", len(events))
+		t.Errorf("expected 0 events (2500 < 3000 repeat), got %d", len(events))
 	}
 
-	// 3b. Stay in Right at T = 2500 (exactly repeat interval)
-	events = m.Process(base+2500, zones)
+	// 3b. Stay in Right at T = 3000 (exactly repeat interval)
+	events = m.Process(base+3000, zones)
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(events))
 	}
 	if events[0].Type != EventStillThere {
 		t.Errorf("expected EventStillThere, got %s", events[0].Type)
 	}
-	if events[0].ExpiresAt != base+4500 {
-		t.Errorf("expected ExpiresAt %d, got %d", base+4500, events[0].ExpiresAt)
+	if events[0].ExpiresAt != base+4000 { // 3000 + 1000 (messageExpiryMS)
+		t.Errorf("expected ExpiresAt %d, got %d", base+4000, events[0].ExpiresAt)
 	}
 
-	// 4. Transition attempt at T = 2700 — debounce holds (200ms < 350ms)
-	events = m.Process(base+2700, nil)
+	// 4. Transition attempt at T = 3200 — debounce holds (200ms < 350ms)
+	events = m.Process(base+3200, nil)
 	if len(events) != 0 {
 		t.Errorf("expected 0 events (debounce holds), got %d: %v", len(events), events)
 	}
 
-	// 5. At T = 2851, debounce expires → Right→None, clear_right scheduled
-	events = m.Process(base+2851, nil)
+	// 5. At T = 3351, debounce expires → Right→None, clear_right scheduled
+	events = m.Process(base+3351, nil)
 	if len(events) != 0 {
 		t.Fatalf("expected 0 events (clear_right scheduled), got %d: %v", len(events), events)
 	}
@@ -142,8 +142,8 @@ func TestMachine_RightScenario(t *testing.T) {
 		t.Errorf("expected state to remain StateRight while clear is pending, got %s", m.state)
 	}
 
-	// 6. At T = base+3001 (hold 350 + clearDelay 150), pending clear fires.
-	events = m.Process(base+3001, nil)
+	// 6. At T = base+3501 (hold 350 + clearDelay 150), pending clear fires.
+	events = m.Process(base+3501, nil)
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event (clear_right), got %d: %v", len(events), events)
 	}
@@ -602,7 +602,7 @@ func TestMachine_LateralClearLeftIsDelayed(t *testing.T) {
 	}
 }
 
-func TestMachine_StillThereRepeatsAfter2500MSLeft(t *testing.T) {
+func TestMachine_StillThereRepeatsAfter3000MSLeft(t *testing.T) {
 	m := NewMachine()
 
 	events := m.Process(1000, []Zone{{Side: SideLeft, VehicleID: 2}})
@@ -610,21 +610,23 @@ func TestMachine_StillThereRepeatsAfter2500MSLeft(t *testing.T) {
 		t.Fatalf("expected initial car_left, got %+v", events)
 	}
 
-	events = m.Process(3499, []Zone{{Side: SideLeft, VehicleID: 2}})
+	// At T=3999ms (2999ms after initial), just before 3000ms repeat
+	events = m.Process(3999, []Zone{{Side: SideLeft, VehicleID: 2}})
 	if len(events) != 0 {
-		t.Fatalf("expected no still_there before 2500ms repeat, got %+v", events)
+		t.Fatalf("expected no still_there before 3000ms repeat, got %+v", events)
 	}
 
-	events = m.Process(3500, []Zone{{Side: SideLeft, VehicleID: 2}})
+	// At T=4000ms (3000ms after initial), exactly repeat interval
+	events = m.Process(4000, []Zone{{Side: SideLeft, VehicleID: 2}})
 	if len(events) != 1 || events[0].Type != EventStillThere {
-		t.Fatalf("expected still_there at 2500ms repeat, got %+v", events)
+		t.Fatalf("expected still_there at 3000ms repeat, got %+v", events)
 	}
-	if events[0].ExpiresAt != 5500 {
-		t.Fatalf("expected still_there expiry 5500, got %d", events[0].ExpiresAt)
+	if events[0].ExpiresAt != 5000 { // 4000 + 1000 (messageExpiryMS)
+		t.Fatalf("expected still_there expiry 5000, got %d", events[0].ExpiresAt)
 	}
 }
 
-func TestMachine_StillThereRepeatsAfter2500MSRight(t *testing.T) {
+func TestMachine_StillThereRepeatsAfter3000MSRight(t *testing.T) {
 	m := NewMachine()
 
 	events := m.Process(1000, []Zone{{Side: SideRight, VehicleID: 2}})
@@ -632,17 +634,17 @@ func TestMachine_StillThereRepeatsAfter2500MSRight(t *testing.T) {
 		t.Fatalf("expected initial car_right, got %+v", events)
 	}
 
-	events = m.Process(3499, []Zone{{Side: SideRight, VehicleID: 2}})
+	events = m.Process(3999, []Zone{{Side: SideRight, VehicleID: 2}})
 	if len(events) != 0 {
-		t.Fatalf("expected no still_there before 2500ms repeat, got %+v", events)
+		t.Fatalf("expected no still_there before 3000ms repeat, got %+v", events)
 	}
 
-	events = m.Process(3500, []Zone{{Side: SideRight, VehicleID: 2}})
+	events = m.Process(4000, []Zone{{Side: SideRight, VehicleID: 2}})
 	if len(events) != 1 || events[0].Type != EventStillThere {
-		t.Fatalf("expected still_there at 2500ms repeat, got %+v", events)
+		t.Fatalf("expected still_there at 3000ms repeat, got %+v", events)
 	}
-	if events[0].ExpiresAt != 5500 {
-		t.Fatalf("expected still_there expiry 5500, got %d", events[0].ExpiresAt)
+	if events[0].ExpiresAt != 5000 { // 4000 + 1000 (messageExpiryMS)
+		t.Fatalf("expected still_there expiry 5000, got %d", events[0].ExpiresAt)
 	}
 }
 

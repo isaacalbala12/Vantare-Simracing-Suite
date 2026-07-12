@@ -10,14 +10,27 @@
 // ("new drive-through" / "new stop-and-go"). The full mapping is G2.x
 // scope and requires live capture of mLastHistoryMessage sub-strings
 // in LMU (NO_VERIFICADO — see audit 2026-06-27).
+//
+// Con ExtendedReader opcional, el monitor puede leer el mensaje de
+// historial (mLastHistoryMessage) del buffer Extended de LMU para
+// clasificar con precision el tipo de penalizacion y detectar
+// "penalty served" (cuando el contador vuelve a cero tras cumplirla).
 package penalties
 
-import "github.com/vantare/overlays/v2/internal/engineer/telemetry"
+import (
+	"log"
+	"strings"
+	"sync"
+
+	"github.com/vantare/overlays/v2/internal/engineer/lmu"
+	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+)
 
 // Event types emitted by Monitor.
 const (
 	EventNewDriveThrough = "penalties.new_drivethrough"
-	EventNewStopAndGo     = "penalties.new_stopgo"
+	EventNewStopAndGo    = "penalties.new_stopgo"
+	EventPenaltyServed   = "penalties.penalty_served"
 )
 
 // Event is the monitor's output.
@@ -44,14 +57,44 @@ const (
 
 // Monitor tracks penalty counter transitions.
 type Monitor struct {
+	mu sync.Mutex
+
 	lastPenalties int32
 	lastEmitMS    int64
 	initialized   bool
+
+	// Opcional: lector del buffer Extended para clasificar penalizaciones
+	// mediante mLastHistoryMessage.
+	extendedReader *lmu.ExtendedReader
+	// Ultimo mensaje de historial procesado para evitar re-procesamiento.
+	lastHistoryMsg string
 }
 
 // NewMonitor creates a Monitor.
 func NewMonitor() *Monitor {
 	return &Monitor{}
+}
+
+// SetExtendedReader asigna un ExtendedReader opcional para leer mensajes
+// de historial del buffer Extended de LMU. Si se asigna, Trigger() puede
+// clasificar con mas precision el tipo de penalizacion.
+func (m *Monitor) SetExtendedReader(reader *lmu.ExtendedReader) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.extendedReader = reader
+}
+
+// classifyFromHistoryMessage analiza el mensaje de historial del buffer
+// Extended para determinar el tipo de penalizacion.
+// Devuelve el tipo de evento, o "" si no se puede clasificar.
+func classifyFromHistoryMessage(msg string) string {
+	if strings.HasPrefix(msg, "Stop/Go Penalty: ") {
+		return EventNewStopAndGo
+	}
+	if strings.HasPrefix(msg, "Drive-Thru Penalty: ") {
+		return EventNewDriveThrough
+	}
+	return ""
 }
 
 // Trigger inspects the current frame and returns events for penalty
@@ -78,16 +121,55 @@ func (m *Monitor) Trigger(nowMS int64, prev, curr *telemetry.Frame) []Event {
 		m.initialized = true
 	}
 
+	var out []Event
+
 	cooldownStart := m.lastEmitMS
 	if cooldownStart == 0 {
 		cooldownStart = nowMS - defaultCooldownMS
 	}
 
+	// --- Deteccion de nueva penalizacion (rising edge) ---
 	if player.Penalties > 0 && m.lastPenalties == 0 && nowMS-cooldownStart >= defaultCooldownMS {
 		m.lastEmitMS = nowMS
 		m.lastPenalties = player.Penalties
-		return []Event{{Type: defaultEventType, ExpiresAt: nowMS + 5000}}
+
+		// Intentar clasificar mediante el mensaje de historial.
+		eventType := m.readHistoryMessageType()
+		if eventType == "" {
+			eventType = defaultEventType
+		}
+		out = append(out, Event{Type: eventType, ExpiresAt: nowMS + 5000})
 	}
+
+	// --- Deteccion de penalty servido (falling edge: penalties >0 → 0) ---
+	if player.Penalties == 0 && m.lastPenalties > 0 {
+		m.lastPenalties = player.Penalties
+		out = append(out, Event{Type: EventPenaltyServed, ExpiresAt: nowMS + 5000})
+		return out
+	}
+
 	m.lastPenalties = player.Penalties
-	return nil
+	return out
+}
+
+// readHistoryMessageType intenta leer el mensaje de historial del buffer
+// Extended. Si el reader no esta configurado o falla la lectura, devuelve "".
+func (m *Monitor) readHistoryMessageType() string {
+	m.mu.Lock()
+	reader := m.extendedReader
+	m.mu.Unlock()
+	if reader == nil {
+		return ""
+	}
+	data, err := reader.Read()
+	if err != nil {
+		log.Printf("penalties: extendedReader.Read() error: %v", err)
+		return ""
+	}
+	// Evitar re-procesar el mismo mensaje.
+	if data.LastHistoryMessage == m.lastHistoryMsg {
+		return ""
+	}
+	m.lastHistoryMsg = data.LastHistoryMessage
+	return classifyFromHistoryMessage(data.LastHistoryMessage)
 }

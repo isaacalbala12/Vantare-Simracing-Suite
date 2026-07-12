@@ -453,3 +453,82 @@ func TestNoopAudioResolver_ReturnsEmpty(t *testing.T) {
 		t.Errorf("NoopAudioResolver.Resolve should return empty, got %q", got)
 	}
 }
+
+// TestEngineerService_EndToEnd_MonitorEventViaSSE: verifies that an
+// event emitted by a non-spotter monitor (engine water temp high) flows
+// through the full pipeline: runtime → queue → queueLoop → SSE subscriber.
+// This is the canary test that confirms the 14-monitor runtime wiring
+// actually delivers events to subscribers.
+func TestEngineerService_EndToEnd_MonitorEventViaSSE(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+
+	// Subscribe to SSE stream.
+	sub, unsub := svc.Subscribe()
+	defer unsub()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	// Build a synthetic LMU buffer with high water temp (106°C) so the
+	// engine monitor fires. Use Green phase (5) so the engine monitor
+	// doesn't skip (CC parity gate from iter-3).
+	const objectOutSize = 324820
+	buf := make([]byte, objectOutSize)
+	buf[128466] = 1 // player has vehicle
+	buf[128465] = 0 // player idx 0
+	binary.LittleEndian.PutUint32(buf[1736:], 2)
+	buf[1740] = 5 // GamePhase = Green
+
+	po := 128468
+	binary.LittleEndian.PutUint32(buf[po:], 11)
+	binary.LittleEndian.PutUint64(buf[po+160:], math.Float64bits(100))
+	binary.LittleEndian.PutUint64(buf[po+168:], math.Float64bits(0))
+	binary.LittleEndian.PutUint64(buf[po+176:], math.Float64bits(200))
+	buf[po+191] = 106 // engine water temp = 106°C → fires EventWaterTempHigh
+
+	off0 := 2192
+	binary.LittleEndian.PutUint32(buf[off0:], 11)
+	copy(buf[off0+4:], "Player")
+	buf[off0+196] = 1
+	binary.LittleEndian.PutUint64(buf[off0+104:], math.Float64bits(5000))
+	binary.LittleEndian.PutUint64(buf[off0+264:], math.Float64bits(100))
+
+	svc.SetBufferProvider(fakeBufferProvider{buf: buf}, true)
+	if err := svc.SetSource("lmu"); err != nil {
+		t.Fatalf("SetSource(lmu) error: %v", err)
+	}
+
+	// Wait for the monitor event to arrive on the SSE channel.
+	deadline := time.Now().Add(3 * time.Second)
+	var found *service.EngineerNotification
+	for time.Now().Before(deadline) {
+		select {
+		case n := <-sub:
+			if n.TextKey == "engine.water_temp_high" {
+				found = &n
+				break
+			}
+		case <-time.After(100 * time.Millisecond):
+			// keep polling
+		}
+		if found != nil {
+			break
+		}
+	}
+
+	if found == nil {
+		t.Fatal("expected engine.water_temp_high notification on SSE, got none")
+	}
+	if found.Category != "engine" {
+		t.Errorf("expected Category=engine, got %q", found.Category)
+	}
+	if found.Severity != "info" {
+		t.Errorf("expected Severity=info, got %q", found.Severity)
+	}
+	if found.Text == "" || found.Text == found.TextKey {
+		t.Errorf("expected translated text, got raw key %q", found.Text)
+	}
+}

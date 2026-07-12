@@ -22,10 +22,10 @@ func TestRuntime_SpotterFlow(t *testing.T) {
 	// Timestamps spaced to trigger events:
 	// Frame 0 (0ms): no overlap -> none, 0 events
 	// Frame 1 (1000ms): left opponent -> car_left
-	// Frame 2 (3500ms): left opponent -> still_there (3500-1000=2500 >= 2500 repeat)
-	// Frame 3 (5500ms): no overlap -> debounce: 5500-3500=2000 >= 1000 holdExpiry
+	// Frame 2 (4000ms): left opponent -> still_there (4000-1000=3000 >= 3000 repeat)
+	// Frame 3 (5500ms): no overlap -> debounce: 5500-4000=1500 >= 1000 holdExpiry
 	//   → clear_left scheduled (fires after clearDelay)
-	timestamps := []int64{0, 1000, 3500, 5500}
+	timestamps := []int64{0, 1000, 4000, 5500}
 
 	for i, ts := range timestamps {
 		rt.ProcessFrame(ts, &frames[i])
@@ -217,5 +217,144 @@ func TestRuntime_Disabled(t *testing.T) {
 
 	if queue.Len() > 0 {
 		t.Errorf("expected queue to be empty when runtime is disabled, got %d messages", queue.Len())
+	}
+}
+
+// TestProcessFrame_NoPlayerDoesNotCorruptPrevFrame verifies that a frame
+// without a player does NOT overwrite prevFrame. If prevFrame were updated
+// on no-player frames, the opponents monitor would lose the transition
+// detection (e.g., opponent pitted) when crossing a no-player gap.
+func TestProcessFrame_NoPlayerDoesNotCorruptPrevFrame(t *testing.T) {
+	queue := audio.NewQueue()
+	rt := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+
+	// Frame A: player + opponent not in pits.
+	frameA := telemetry.Frame{
+		Connected: true,
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, DriverName: "Player", IsPlayer: true},
+			{ID: 2, DriverName: "Rival", IsPlayer: false, InPits: false},
+		},
+		Player: &telemetry.PlayerTelemetry{ID: 1},
+	}
+
+	// Frame B: no player at all (empty vehicles, nil Player).
+	frameB := telemetry.Frame{
+		Connected: true,
+	}
+
+	// Frame C: opponent now in pits — should fire opponents.pitted.
+	frameC := telemetry.Frame{
+		Connected: true,
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, DriverName: "Player", IsPlayer: true},
+			{ID: 2, DriverName: "Rival", IsPlayer: false, InPits: true},
+		},
+		Player: &telemetry.PlayerTelemetry{ID: 1},
+	}
+
+	// Process A → B → C.
+	rt.ProcessFrame(1000, &frameA)
+	rt.ProcessFrame(2000, &frameB)
+	rt.ProcessFrame(3000, &frameC)
+
+	var foundPitted bool
+	for {
+		msg, ok := queue.Next(0)
+		if !ok {
+			break
+		}
+		if msg.TextKey == "opponents.pitted" {
+			foundPitted = true
+		}
+	}
+
+	if !foundPitted {
+		t.Error("opponents.pitted not fired after no-player gap — prevFrame was likely corrupted")
+	}
+}
+
+// TestMonitorEvent_CategoryAndSeverity verifies that monitor events carry
+// the correct Category and Severity derived from their event type.
+func TestMonitorEvent_CategoryAndSeverity(t *testing.T) {
+	queue := audio.NewQueue()
+	rt := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+
+	// Frame with high water temp to trigger engine.water_temp_high.
+	frame := telemetry.Frame{
+		Connected: true,
+		Session:   &telemetry.SessionInfo{GamePhase: 5}, // Green
+		Player: &telemetry.PlayerTelemetry{
+			ID:              1,
+			EngineWaterTemp: 106,
+		},
+	}
+
+	rt.ProcessFrame(1000, &frame)
+
+	var found bool
+	for {
+		msg, ok := queue.Next(0)
+		if !ok {
+			break
+		}
+		if msg.TextKey == "engine.water_temp_high" {
+			found = true
+			if string(msg.Category) != "engine" {
+				t.Errorf("Category = %q, want %q", msg.Category, "engine")
+			}
+			if string(msg.Severity) != "info" {
+				t.Errorf("Severity = %q, want %q", msg.Severity, "info")
+			}
+		}
+	}
+
+	if !found {
+		t.Fatal("engine.water_temp_high not enqueued")
+	}
+}
+
+// TestMonitorEvent_PayloadPropagated verifies that a monitor's Payload
+// reaches the audio.Message ValidationData field.
+func TestMonitorEvent_PayloadPropagated(t *testing.T) {
+	queue := audio.NewQueue()
+	rt := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+
+	// Frame with water temp 106 to trigger engine.water_temp_high,
+	// whose Payload contains "waterTemp": 106.
+	frame := telemetry.Frame{
+		Connected: true,
+		Session:   &telemetry.SessionInfo{GamePhase: 5}, // Green
+		Player: &telemetry.PlayerTelemetry{
+			ID:              1,
+			EngineWaterTemp: 106,
+		},
+	}
+
+	rt.ProcessFrame(1000, &frame)
+
+	var found bool
+	for {
+		msg, ok := queue.Next(0)
+		if !ok {
+			break
+		}
+		if msg.TextKey == "engine.water_temp_high" {
+			found = true
+			if msg.ValidationData == nil {
+				t.Fatal("expected ValidationData to be populated from monitor Payload")
+			}
+			temp, ok := msg.ValidationData["waterTemp"]
+			if !ok {
+				t.Fatal("expected ValidationData[\"waterTemp\"] to be set")
+			}
+			if temp != int32(106) {
+				t.Errorf("waterTemp = %v, want 106", temp)
+			}
+		}
+	}
+
+	if !found {
+		t.Fatal("engine.water_temp_high not enqueued")
 	}
 }

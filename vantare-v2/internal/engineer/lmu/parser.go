@@ -35,13 +35,16 @@ const (
 
 // Offsets de scoring ya leídos por el parser público (necesarios también aquí
 // para construir el VehicleScoring de ingeniero con los campos que el spotter
-// consume: ID, IsPlayer, InPits, LapDistance).
+// consume: ID, IsPlayer, InPits, LapDistance, BestLapTime, VehicleClass).
 const (
-	vehicleScoringID          = 0
-	vehicleScoringDriverName  = 4
-	vehicleScoringIsPlayer    = 196
-	vehicleScoringInPits      = 198
-	vehicleScoringLapDistance = 104
+	vehicleScoringID           = 0
+	vehicleScoringDriverName   = 4
+	vehicleScoringVehicleName  = 36
+	vehicleScoringLapDistance  = 104
+	vehicleScoringBestLapTime  = 144
+	vehicleScoringIsPlayer     = 196
+	vehicleScoringInPits       = 198
+	vehicleScoringVehicleClass = 200
 )
 
 // readFloat64 lee un float64 little-endian en off. Devuelve 0 si el offset queda
@@ -71,6 +74,23 @@ func readByte(buf []byte, off int) byte {
 
 // readVec3 lee un Vec3 (3 float64 consecutivos) en off. Devuelve cero si fuera
 // de rango, sin panic.
+func pitStateStr(v byte) string {
+	switch v {
+	case 0:
+		return "NONE"
+	case 1:
+		return "REQUEST"
+	case 2:
+		return "ENTERING"
+	case 3:
+		return "STOPPED"
+	case 4:
+		return "EXITING"
+	default:
+		return ""
+	}
+}
+
 func readVec3(buf []byte, off int) engineertelemetry.Vec3 {
 	if off < 0 || off+24 > len(buf) {
 		return engineertelemetry.Vec3{}
@@ -168,6 +188,28 @@ func parsePlayerEngineerTelemetry(buf []byte, po int) *engineertelemetry.PlayerT
 		Position:      readVec3(buf, po+vehicleTelemetryPosition),
 		LocalVelocity: readVec3(buf, po+vehicleTelemetryLocalVel),
 		Orientation:   readOrientation(buf, po+vehicleTelemetryOrientation),
+		// Temperaturas y desgaste (u8, Celsius / 0-100% wear).
+		// Offsets identificados en 2ª captura driving — ver offsets.go.
+		EngineWaterTemp: int32(readByte(buf, po+engineWaterTempOff)),
+		EngineOilTemp:   int32(readByte(buf, po+engineOilTempOff)),
+		TyreTempFL:      int32(readByte(buf, po+tyreTempFLOffset)),
+		TyreTempFR:      int32(readByte(buf, po+tyreTempFROffset)),
+		TyreTempRL:      int32(readByte(buf, po+tyreTempRLOffset)),
+		TyreTempRR:      int32(readByte(buf, po+tyreTempRROffset)),
+		BrakeTempFL:     int32(readByte(buf, po+brakeTempFLOffset)),
+		BrakeTempFR:     int32(readByte(buf, po+brakeTempFROffset)),
+		BrakeTempRL:     int32(readByte(buf, po+brakeTempRLOffset)),
+		BrakeTempRR:     int32(readByte(buf, po+brakeTempRROffset)),
+		TyreWearFL:      readByte(buf, po+tyreWearFLOffset),
+		TyreWearFR:      readByte(buf, po+tyreWearFROffset),
+		TyreWearRL:      readByte(buf, po+tyreWearRLOffset),
+		TyreWearRR:      readByte(buf, po+tyreWearRROffset),
+		// Wheel data from LMUWheel struct (decoded as doubles via DecodeWheels).
+		WheelBrakeTempFL: kelvinToCelsius(readFloat64(buf, po+WheelArrayBaseOffset+0*WheelStride+WheelBrakeTemp)),
+		WheelBrakeTempFR: kelvinToCelsius(readFloat64(buf, po+WheelArrayBaseOffset+1*WheelStride+WheelBrakeTemp)),
+		WheelBrakeTempRL: kelvinToCelsius(readFloat64(buf, po+WheelArrayBaseOffset+2*WheelStride+WheelBrakeTemp)),
+		WheelBrakeTempRR: kelvinToCelsius(readFloat64(buf, po+WheelArrayBaseOffset+3*WheelStride+WheelBrakeTemp)),
+		WheelSurfaceType: readByte(buf, po+WheelArrayBaseOffset+0*WheelStride+WheelSurfaceType),
 	}
 }
 
@@ -175,10 +217,18 @@ func parseSessionEngineer(buf []byte) *engineertelemetry.SessionInfo {
 	if len(buf) < scoringInfoOffset+scoringInfoSize {
 		return nil
 	}
+	sessionLaps := readInt32(buf, scoringSessionLaps)
+	if sessionLaps < 0 || sessionLaps > 9999 {
+		sessionLaps = 0
+	}
 	return &engineertelemetry.SessionInfo{
-		TrackName:   readString(buf, 1632, 64),
-		NumVehicles: readInt32(buf, scoringNumVehicles),
-		TrackLength: readFloat64(buf, scoringTrackLength),
+		TrackName:                readString(buf, 1632, 64),
+		SessionType:              readInt32(buf, scoringSessionType),
+		SessionTime:              readFloat64(buf, scoringCurrentET),
+		TimeRemainingInGamePhase: readFloat64(buf, scoringSessionTime),
+		NumVehicles:              readInt32(buf, scoringNumVehicles),
+		TrackLength:              readFloat64(buf, scoringTrackLength),
+		SessionLapsTotal:         int32(sessionLaps),
 		// GamePhase: 0=Garage, 1=WarmUp, 2=GridWalk, 3=Formation,
 		// 4=Countdown, 5=GreenFlag, 6=FullCourseYellow/SC, 7=SessionStopped,
 		// 8=SessionOver, 9=Paused. Same enum as CC rF2GamePhase (RF2Data.cs:68).
@@ -207,16 +257,52 @@ func parseVehicleEngineerScoring(buf []byte, count int) []engineertelemetry.Vehi
 		if id < 0 || name == "" {
 			continue
 		}
+		pitState := readByte(buf, off+vehicleScoringPitState)
+		finishStatus := readByte(buf, off+vehicleScoringFinishStatus)
+		finishStr := ""
+		switch finishStatus {
+		case 1:
+			finishStr = "FINISHED"
+		case 2:
+			finishStr = "DNF"
+		case 3:
+			finishStr = "DSQ"
+		}
+		sector := readByte(buf, off+vehicleScoringSector)
+		sectorStr := ""
+		switch sector {
+		case 0:
+			sectorStr = "SECTOR1"
+		case 1:
+			sectorStr = "SECTOR2"
+		case 2:
+			sectorStr = "SECTOR3"
+		}
 		out = append(out, engineertelemetry.VehicleScoring{
-			ID:          id,
-			DriverName:  name,
-			IsPlayer:    readByte(buf, off+vehicleScoringIsPlayer) != 0,
-			InPits:      readByte(buf, off+vehicleScoringInPits) != 0,
-			LapDistance: readFloat64(buf, off+vehicleScoringLapDistance),
-			Position:    readVec3(buf, off+vehicleScoringPosition),
-			Orientation: readOrientation(buf, off+vehicleScoringOrientation),
-			PathLateral: readFloat64(buf, off+vehicleScoringPathLateral),
-			TrackEdge:   readFloat64(buf, off+vehicleScoringTrackEdge),
+			ID:               id,
+			DriverName:       name,
+			VehicleName:      readString(buf, off+vehicleScoringVehicleName, 64),
+			VehicleClass:     readString(buf, off+vehicleScoringVehicleClass, 32),
+			Place:            readByte(buf, off+vehicleScoringPlace),
+			TotalLaps:        int16(readInt32(buf, off+vehicleScoringTotalLaps)),
+			IsPlayer:         readByte(buf, off+vehicleScoringIsPlayer) != 0,
+			InPits:           readByte(buf, off+vehicleScoringInPits) != 0 || (pitState != 0 && pitState != 1),
+			PitState:         pitStateStr(pitState),
+			Sector:           sectorStr,
+			FinishStatus:     finishStr,
+			LapDistance:      readFloat64(buf, off+vehicleScoringLapDistance),
+			BestLapTime:      readFloat64(buf, off+vehicleScoringBestLapTime),
+			LastLapTime:      readFloat64(buf, off+vehicleScoringLastLapTime),
+			EstimatedLapTime: readFloat64(buf, off+vehicleScoringEstimatedLapTime),
+			TimeBehindLeader: readFloat64(buf, off+vehicleScoringTimeBehindLeader),
+			TimeBehindNext:   readFloat64(buf, off+vehicleScoringTimeBehindNext),
+			LapsBehindLeader: readInt32(buf, off+vehicleScoringLapsBehindLeader),
+			LapsBehindNext:   readInt32(buf, off+vehicleScoringLapsBehindNext),
+			Position:         readVec3(buf, off+vehicleScoringPosition),
+			Orientation:      readOrientation(buf, off+vehicleScoringOrientation),
+			PathLateral:      readFloat64(buf, off+vehicleScoringPathLateral),
+			TrackEdge:        readFloat64(buf, off+vehicleScoringTrackEdge),
+			FuelFraction:     float64(readByte(buf, off+vehicleScoringFuelFraction)),
 		})
 	}
 	return out

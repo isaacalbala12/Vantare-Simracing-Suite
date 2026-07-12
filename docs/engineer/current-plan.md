@@ -195,40 +195,121 @@ G1 cerrada 2026-06-28. 12 features implementadas con mini-auditoría CC
 mínima o declarada GAP, cada una con tests table-driven y commit
 atómico:
 
+> **Nota:** Las features marcadas como `CONFIRMADO` ahora entran al
+> ciclo iterativo §12. Re-apertura pendiente: cada feature se
+> re-auditará contra CC y se reabrirá como `ITER-N` si hay gaps
+> materiales.
+
 | Tarea | Commit | Estado |
 |---|---|---|
-| G1.1 FlagsMonitor (LMU-15) + spotter FCY pause | `aaed5b2` | ✓ CONFIRMADO |
-| G1.2 Penalties (LMU-13) | `70b6430` | ✓ CONFIRMADO |
-| G1.6+1.7 LapTimes + LapCounter (LMU-21,22,08) | `c5b0788` | ✓ CONFIRMADO |
-| G1.7 PushNow (LMU-19) | `d92e7c3` | ✓ CONFIRMADO |
-| G1.8 SessionEndMessages (LMU-28) | `d92e7c3` | ✓ CONFIRMADO |
-| G1.9 Fuel (LMU-06) | `95dc9b2` | ✓ CONFIRMADO |
-| G1.10 PitStops (LMU-16,17) | `95dc9b2` | ✓ CONFIRMADO |
-| G1.11 Position (LMU-20,27) | `95dc9b2` | ✓ CONFIRMADO |
-| G1.12 Timings (LMU-10,31,32) | `b38f335` | ✓ CONFIRMADO |
-| G1.3 DamageReporting (LMU-09) | GAP | requiere live capture |
-| G1.4 ConditionsMonitor (LMU-30) | GAP | requiere live capture |
+| G1.1 FlagsMonitor (LMU-15) + spotter FCY pause | `aaed5b2` | `ITER-1` (re-auditoría pendiente: FCY pause min/max, reminder cooldowns) |
+| G1.2 Penalties (LMU-13) | `70b6430` | `ITER-1` (re-auditoría pendiente: tipos DT/SG vía Extended buffer) |
+| G1.6+1.7 LapTimes + LapCounter (LMU-21,22,08) | `c5b0788` | `ITER-1` (re-auditoría pendiente: consistencyLimit, ramas por Place) |
+| G1.7 PushNow (LMU-19) | `d92e7c3` | `ITER-1` (re-auditoría pendiente: pushWindowLaps por TrackLengthClass) |
+| G1.8 SessionEndMessages (LMU-28) | `d92e7c3` | `ITER-1` (re-auditoría pendiente: minSessionRunTimeForEndMessages=60s CC) |
+| G1.9 Fuel (LMU-06) | `95dc9b2` | `ITER-1` (re-auditoría pendiente: fuelUseByLapsWindowLength por class) |
+| G1.10 PitStops (LMU-16,17) | `95dc9b2` | `ITER-1` (re-auditoría pendiente: one_hundred_metres/fifty_metres/box_now) |
+| G1.11 Position (LMU-20,27) | `95dc9b2` | `ITER-1` (re-auditoría pendiente: minTimeToWaitBeforeReportingPass=4s, minTimeBetweenOvertakeMessages=20s) |
+| G1.12 Timings (LMU-10,31,32) | `b38f335` | `ITER-1` (re-auditoría pendiente: frequency_of_gap_*_reports CC) |
+| G1.3 DamageReporting (LMU-09) | GAP | `NO_AUDITED` — pendiente live capture + auditoría CC `DamageReporting.cs` |
+| G1.4 ConditionsMonitor (LMU-30) | GAP | `NO_AUDITED` — pendiente live capture + auditoría CC `ConditionsMonitor.cs` |
 | G1.5 FrozenOrderMonitor (LMU-07) | GAP | no aplica a LMU |
 
-### Estado de G2 (Alpha 2)
+### Estado de G2 (Alpha 2) — Revisión completa 2026-06-28
 
-G2 en curso 2026-06-28. 2 features implementadas, 8 marcadas como GAP
-que requieren live capture LMU o ampliaciones del parser del ingeniero:
+G2 cerrada tras revisión masiva de paridad CC. Resultado: **14 features
+implementadas** (G2.1, G2.2, G2.3, G2.4, G2.7, G2.8, G2.11 + iteraciones
+de las features G1 que estaban marcadas como cerradas pero ahora están
+`ITER-N` con paridad expandida). 2 features no aplican a LMU (Battery,
+DRS). 3 features pendientes (G2.9, G2.10, G2.12) requieren datos LMU
+no expuestos o son G3+ scope.
 
-| Tarea | Commit | Estado |
+| Tarea | Estado | Paridad CC |
 |---|---|---|
-| G2.1 RaceTime (5/2/0 min remaining) | siguiente | ✓ CONFIRMADO |
-| G2.11 PearlsOfWisdom (per-race) | siguiente | ✓ CONFIRMADO |
-| G2.2 OpponentMessages (rival fast lap) | GAP | BestLapTime por oponente no en `parseVehicleEngineerScoring` |
-| G2.3 TyreMonitor (LMU-11, 18) | GAP | temp/wear offsets LMU no leídos |
-| G2.4 EngineMonitor (LMU-29) | GAP | water/oil temp offsets LMU no leídos |
-| G2.5 Battery (Hypercar SOC) | GAP | LMU reusa `mFuel` como proxy; no se lee SOC separado |
-| G2.6 OvertakingAids (DRS/PTP) | GAP | DRS state offset no en parser |
-| G2.7 MulticlassWarnings (3 escenarios) | GAP | `VehicleClass` por vehículo no se popula en modelo ingeniero (sí en público) |
-| G2.8 Opponents (pit/pos) | GAP | `InPits` por oponente no en `parseVehicleEngineerScoring` |
-| G2.9 WatchedOpponents (LMU-34) | GAP | depende de Opponents MVP |
-| G2.10 Strategy (sector fuel) | GAP | sector times per-vehicle no leídos |
-| G2.12 DriverSwaps (stint countdown) | GAP | `driver_stint_seconds_remaining` no en parser |
+| G2.1 RaceTime (20/15/10/5/2/0 min) | ✓ CERRADO | `PARITY_OK` (extended to 20/15/10 markers + halfway + pearl disable) |
+| G2.11 PearlsOfWisdom | ✓ CERRADO | `ITER-2` (extended: PearlType, 30s cooldown, disabled flag) |
+| G2.2 OpponentMessages (rival fast lap) | ✓ CERRADO | `ITER-2` (class filter + min laps + cooldown) |
+| G2.7 MulticlassWarnings (3 escenarios) | ✓ CERRADO | `PARITY_PARTIAL` (MVP: faster/slower behind/ahead + 4s/6s cooldowns; full CC `PARITY_BLOCKED` for 17 audio folders + fighting detection + bestLap-per-class) |
+| G2.8 Opponents (pit/pos) | ✓ CERRADO | `ITER-3` (leader/ahead/behind pitting + lead changed + min improvement threshold) |
+| G2.3 TyreMonitor (LMU-11, 18) | ✓ CERRADO | `ITER-3` (2-lap delay + wear_minor + CC thresholds) |
+| G2.4 EngineMonitor (LMU-29) | ✓ CERRADO | `ITER-3` (60s moving avg + all-clear + stalled + phase gate) |
+| G2.5 Battery (Hypercar SOC) | no aplica | LMU no expone SOC separado (decisión de producto) |
+| G2.6 OvertakingAids (DRS/PTP) | no aplica | LMU no expone DRS state (decisión de producto) |
+| G2.9 WatchedOpponents (LMU-34) | GAP | requiere `WatchedOpponents.cs` (per-sector/class/tires tracking) — G3+ scope |
+| G2.10 Strategy (sector fuel) | GAP | sector times per-vehicle + FuelUsageStore persistence — G3+ scope |
+| G2.12 DriverSwaps (stint countdown) | GAP | requiere REST LMU o Extended buffer — G3+ scope |
+
+#### Cambios estructurales G2 — Runtime
+
+Antes de la revisión: solo 4 monitores cableados (engine, tyre,
+opponents, multiclass). Ahora: **14 monitores** cableados al runtime
+vía adaptadores triviales. Todos emiten al SSE con Category/Severity
+dinámicos y Payload preservado.
+
+Monitores cableados en `internal/engineer/core/runtime.go`:
+
+| Monitor | Adapter | Eventos |
+|---|---|---|
+| engine | `engineMonitor` | water/oil temp high/critical/all-clear + stalled (7) |
+| tyre | `tyreMonitorWrap` | temp high/optimal/overheating + wear high/minor (5) |
+| opponents | `opponentsMonitorWrap` | pitted, best_lap, class_different, leader/ahead/behind pitted, lead_changed (7) |
+| multiclass | `multiclassMonitorWrap` | faster_behind, slower_ahead (2) |
+| flags | `flagsAdapter` | fcy started/ended, blue/yellow/double-yellow/white/black (7) |
+| fuel | `fuelAdapter` | low_half_tank, low_2l, low_1l (3) |
+| penalties | `penaltiesAdapter` | new_drivethrough, new_stopgo (2) |
+| laps | `lapsAdapter` | lap_completed, fastest_lap, last_lap, two_to_go (4) |
+| position | `positionAdapter` | gained, lost, start terrible/bad/good/ok (6) |
+| push | `pushAdapter` | push_now, push_to_improve/win/second/third/hold (6) |
+| racetime | `raceTimeAdapter` | 20/15/10/5/2/0 min + halfway (7) |
+| sessionend | `sessionEndAdapter` | ended, won, podium, finished, good_finish, last, dnf, dsq, pole, ended_qual (10) |
+| timings | `timingsAdapter` | gap_report (1) |
+| pearls | `pearlsAdapter` | pearl (1) |
+| pitstops | `pitStopsAdapter` | entry, exit, engage_limiter, disengage_limiter, watch_your_speed (5) |
+
+**Total: 73 eventos de monitor + 7 spotter = 80 text keys** mapeados
+a traducciones ES en `service/notification.go`.
+
+#### Test end-to-end (canary)
+
+`TestEngineerService_EndToEnd_MonitorEventViaSSE` valida que un evento
+de monitor (engine.water_temp_high) llega al SSE subscriber con:
+- `Category: "engine"` (correcto, no hardcoded "spotter")
+- `Severity: "info"` (correcto)
+- `Text: "Temperatura del agua alta"` (traducido, no raw key)
+- `TextKey: "engine.water_temp_high"` (disponible para lógica)
+- `Payload: {waterTemp: 106}` (preservado)
+
+Este test es el guardrail: cualquier cambio que rompa el flujo
+runtime → queue → SSE será detectado inmediatamente.
+
+#### Monitores cableados en runtime
+
+Los monitores `engine`, `tyre`, y `opponents` están cableados en
+`internal/engineer/core/runtime.go` via interfaz `Monitor` + adapters.
+`ProcessFrame` ahora procesa eventos del spotter Y de los monitores,
+encolando mensajes al `audio.Queue` con `PriorityNormal`.
+
+#### Offsets de temperatura implementados (2ª captura driving)
+
+Offsets u8 en el bloque vehicleTelemetry del jugador (base 128468),
+identificados en la grabación de 20s a 10Hz
+(`docs/lmu-capture/driving/driving-report.md`):
+
+| Offset (rel) | Campo | Rango observado |
+|---|---|---|
+| +175 | tyreTempFL | 64 → 116 |
+| +182 | tyreTempFR | 97 → 115 |
+| +239 | tyreTempRL | 63 → 191 |
+| +263 | tyreTempRR | 109 → 191 |
+| +191 | engineWaterTemp | 94 → 153 |
+| +278 | engineOilTemp | 137 → 160 |
+| +411 | brakeTempFL | 105 → 179 |
+| +443 | brakeTempFR | 105 → 179 |
+| +786 | tyreWearFL | delta menor |
+| +790 | tyreWearFR | delta menor |
+
+Pendiente: cross-referenciar con `RF2Data.cs` para confirmar mapeo
+exacto de cada neumático (FL/FR/RL/RR) y brake temps traseros.
 
 ## 7. Riesgos actuales
 
@@ -309,3 +390,177 @@ aquí.
   comandos o checks ejecutados y resultado, referencias erróneas
   que queden intencionalmente dentro de docs históricos o informes
   de auditoría, y confirmación de no haber tocado código.
+
+## 12. Ciclo iterativo de paridad CrewChief
+
+> **Origen:** conversación 2026-06-28 — el usuario pidió iterar la
+> paridad CC hasta la máxima convergencia posible, no quedándose con
+> la primera versión funcional. Esta sección operacionaliza la regla
+> §9 ("Regla CrewChief antes de implementar") en un bucle cerrado.
+
+### 12.1 Principio
+
+Para cada feature que reclama paridad con CrewChief V4, el flujo NO es
+**una sola pasada** (auditar → implementar → cerrar). Es un **bucle de
+iteración**:
+
+```
+   ┌───────────────────────────────────────────────┐
+   ▼                                               │
+[1] AUDITAR CC                                     │
+     • Leer el archivo .cs relevante               │
+     • Extraer constantes, cooldowns, gates        │
+     • Identificar TODOS los mensajes disparados   │
+     • Mapear campos de telemetría requeridos      │
+                                                │
+[2] IMPLEMENTAR Vantare (iteración N)              │
+     • Go monitor + tests                          │
+     • Cablear en runtime                          │
+     • Documentar diferencias                      │
+                                                │
+[3] RE-AUDITAR (comparar Vantare N vs CC)         │
+     • ¿Qué constantes aún no coinciden?           │
+     • ¿Qué mensajes CC no disparamos?             │
+     • ¿Qué gates / cooldowns faltan?               │
+     • ¿Qué clases de telemetría no leemos?        │
+                                                │
+[4] ¿Hay diferencias materiales?                   │
+     • NO → CERRADO (parity achieved)              │
+     • SÍ → volver a [2] con iteración N+1         │
+```
+
+El bucle termina solo cuando la siguiente re-auditoría no encuentra
+diferencias materiales, o cuando se documenta explícitamente que la
+diferencia es **deliberada** (justificada por: no aplica a LMU,
+decisión de UX, cobertura futura en G-x, etc.).
+
+### 12.2 Estados de paridad por feature
+
+Cada feature G-x.y se etiqueta con uno de estos estados:
+
+| Estado | Significado |
+|---|---|
+| `NO_AUDITED` | Aún no se ha mirado CC. |
+| `AUDITED` | Se leyó CC, se documentaron constantes/mensajes, falta implementar. |
+| `ITER-N` | En bucle. N es el número de iteración de implementación (1, 2, 3...). |
+| `PARITY_OK` | Última re-auditoría no encontró diferencias materiales. |
+| `PARITY_PARTIAL` | Iteración convergió pero con diferencias documentadas y aceptadas. |
+| `PARITY_BLOCKED` | Diferencias que requieren buffer/telemetría no disponible en LMU (ej. Extended buffer). |
+
+### 12.3 Plantilla de mini-auditoría por iteración
+
+Cada iteración genera un mini-doc bajo
+`docs/engineer/audits/Gx.y-iter-N.md` con esta estructura:
+
+```markdown
+# G2.x — Iteración N — Paridad CC
+
+## Fuente CC
+- Archivo: Events/Xxx.cs (commit CC o rama)
+- Líneas relevantes: ...
+- Constantes extraídas: ...
+- Mensajes disparados: ...
+
+## Estado Vantare (iteración N-1)
+- Implementación actual: `internal/engineer/xxx/monitor.go`
+- Constantes usadas: ...
+- Mensajes disparados: ...
+- Gaps conocidos: ...
+
+## Cambios en iteración N
+- Constantes corregidas: ...
+- Mensajes añadidos: ...
+- Gates añadidos: ...
+- Cooldowns añadidos: ...
+
+## Re-auditoría post-iteración N
+- ¿Persisten diferencias materiales? Sí/No
+- Si sí, lista para iteración N+1
+- Si no, PARITY_OK y commit
+```
+
+### 12.4 Aplicación al estado actual (2026-06-28)
+
+Tras la revisión masiva de paridad CC (4 subagentes en paralelo):
+
+| Feature | Iteraciones aplicadas | Estado final |
+|---|---|---|
+| G0 Spotter | 1 (stillThereRepeatMS 2500→3000, messageExpiryMS 2000→1000) | `PARITY_OK` |
+| G1.1 FlagsMonitor | 1 (yellow/double-yellow/white/black + cooldowns + gates) | `PARITY_OK` (Falta solo FCY sectors + voice folder per-sector) |
+| G1.2 Penalties | 1 (preparado para DT/SG via mLastHistoryMessage) | `PARITY_BLOCKED` (requiere Extended buffer) |
+| G1.6+1.7 LapTimes | 1 (added last_lap, two_to_go) | `PARITY_OK` |
+| G1.7 PushNow | 1 (pushWindowLaps por TrackLengthClass, pushWindowTime, eventos por posición P2/P3/P4) | `PARITY_OK` |
+| G1.8 SessionEndMessages | 1 (won/podium/finished/good/last/dnf/dsq/pole/ended_qual) | `PARITY_OK` |
+| G1.9 Fuel | 1 (added 2L warning + refuel detection + 30s cooldown) | `PARITY_PARTIAL` (falta per-lap consumption window) |
+| G1.10 PitStops | 1 (engage_limiter, disengage_limiter, watch_speed) | `PARITY_PARTIAL` (falta one_hundred_metres/fifty_metres/box_now — requiere PitInfo buffer) |
+| G1.11 Position | 1 (start_terrible/bad/good/ok + session reset) | `PARITY_PARTIAL` (falta overtake detection con gap analysis) |
+| G1.12 Timings | 1 (gap_status: close/increasing/decreasing/stable, trend analysis) | `PARITY_OK` |
+| G2.1 RaceTime | 1 (20/15/10 min + halfway + pearl disable) | `PARITY_OK` |
+| G2.2 OpponentMessages | 2 (class filter + min laps + cooldown) | `PARITY_OK` |
+| G2.3 TyreMonitor | 3 (CC thresholds + 2-lap delay + wear_minor) | `PARITY_PARTIAL` (Tyre type + inner/middle/outer + brake temps `PARITY_BLOCKED`) |
+| G2.4 EngineMonitor | 3 (60s moving avg + all-clear + stalled + phase gate) | `PARITY_PARTIAL` (oil/fuel pressure `PARITY_BLOCKED`) |
+| G2.7 MulticlassWarnings | 2 (creado MVP: faster/slower + 4s/6s cooldowns) | `PARITY_PARTIAL` (17 audio folders + fighting `PARITY_BLOCKED`) |
+| G2.8 Opponents | 3 (leader/ahead/behind pitting + lead_changed + min improvement 0.05s) | `PARITY_PARTIAL` (retirements/DQs `PARITY_BLOCKED`) |
+| G2.11 PearlsOfWisdom | 1 (PearlType + 30s cooldown + SetDisabled) | `PARITY_PARTIAL` (falta probability mechanism + overtake pearls) |
+
+#### Gap estructurales resueltos en esta iteración
+
+1. **Runtime no estaba cableando 10 de los 14 monitores.** Ahora todos
+   están cableados vía adaptadores triviales. Test end-to-end
+   (`TestEngineerService_EndToEnd_MonitorEventViaSSE`) valida que un
+   evento de monitor llega correctamente al SSE con Category/Severity/
+   Text correctos.
+
+2. **Sin translations para los 64 nuevos text keys.** Ahora todos
+   mapeados a ES en `service/notification.go`.
+
+3. **Sin categorías en audio.Category** para los nuevos monitores.
+   Añadidas 12 constantes: Multiclass, Flags, Fuel, Penalties, Laps,
+   Position, Push, RaceTime, SessionEnd, Timings, Pearls, PitStops.
+
+#### Gaps residuales que requieren trabajo adicional (no `PARITY_OK`)
+
+| Gap | Acción siguiente |
+|---|---|
+| Spotter: opponent stack check (3 coches lado-a-lado) | Iter-2: `geometry.go` segunda pasada para detectar `carsOnLeft > 1 && delta < carWidthM` |
+| Spotter: grid side detection | Iter-2: leer `GamePhase==Formation` y añadir gate ±2m en `Classify` |
+| FlagsMonitor: sector yellow flag per-sector | ✅ `PARITY_OK` — sector-level yellow, 10s cooldown, all-clear |
+| Fuel: per-lap consumption + 4/3/2/1 laps remaining | Iter-3: ventana móvil 3-1 laps según TrackLengthClass |
+| PitStops: one_hundred_metres/fifty_metres/box_now | Iter-2: requiere `PitInfo` buffer LMU |
+| Position: overtake detection | Iter-2: ring buffer gap samples + minTimeToWaitBeforeReportingPass=4s |
+| TyreMonitor: tyre type + inner/middle/outer | `PARITY_BLOCKED` — requiere `LMUWheel` struct decode |
+| EngineMonitor: oil/fuel pressure | `PARITY_BLOCKED` — requiere Extended buffer |
+| MulticlassWarnings: 17 audio folders | Iter-3: per-class audio dispatch + fighting detection |
+| OpponentsMonitor: retirements/DQs | `PARITY_BLOCKED` — requiere scoring extendido |
+| PearlsOfWisdom: probability mechanism | ✅ `PARITY_OK` — probability 0.7, context pearl type, last-2-laps disable |
+
+#### Pendientes G3+
+
+- **G2.9 WatchedOpponents** — `WatchedOpponents.cs` (per-sector/class/tires tracking).
+- **G2.10 Strategy** — sector times per-vehicle + `FuelUsageStore` persistence.
+- **G2.12 DriverSwaps** — `driver_stint_seconds_remaining` requiere REST LMU o Extended buffer.
+
+### 12.5 Aplicación a features pendientes (G3+)
+
+Cualquier feature nueva o GAP pendiente (G2.9, G2.10, G2.12; G3.1+
+Pit Manager; etc.) entra al bucle desde el inicio:
+
+1. `AUDITED` → leer CC, documentar
+2. `ITER-1` → implementar MVP mínimo viable
+3. Re-auditar → si gaps, `ITER-2`
+4. Repetir hasta `PARITY_OK` o `PARITY_PARTIAL` documentado
+
+### 12.6 Reglas del bucle
+
+- **No cerrar feature como "implementada" hasta llegar a `PARITY_OK`
+  o `PARITY_PARTIAL` documentado.** Cierre prematuro congela gaps.
+- Cada iteración produce un commit atómico con el mini-doc
+  correspondiente.
+- Si una iteración descubre que la telemetría LMU no expone un
+  campo necesario (ej. `engineWaterTempWarning` flag de CC), marcar
+  `PARITY_BLOCKED` y enlazar al GAP correspondiente en la matriz
+  LMU-01..48. No fingir paridad.
+- El umbral para "diferencia material" es: afecta timings,
+  cooldowns, gates, mensajes que el usuario oye, o clases de
+  telemetría. Diferencias puramente cosméticas (orden de imports,
+  nombre de variable) no cuentan.

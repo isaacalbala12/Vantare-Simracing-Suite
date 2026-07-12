@@ -59,6 +59,8 @@ type EngineerService struct {
 	// listo el cambio cuando internal/tts/ entre.
 	audioPlayer    AudioPlayer
 	audioResolver  AudioResolver
+	audioConfig    *audio.AudioConfig
+	audioRouter    *audio.AudioRouter
 	lastWasSpotter bool
 
 	// skipAudioUntilMS evita reproducir el mismo spotter de nuevo si llegó
@@ -119,6 +121,25 @@ func (s *EngineerService) SetAudioResolver(r AudioResolver) {
 		r = NoopAudioResolver{}
 	}
 	s.audioResolver = r
+}
+
+// SetAudioConfig inyecta la configuración de audio multi-idioma.
+// Si ya hay un AudioRouter configurado, se reenvía la configuración
+// automáticamente. Debe llamarse antes de Start() para evitar carreras.
+func (s *EngineerService) SetAudioConfig(cfg *audio.AudioConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audioConfig = cfg
+	if s.audioRouter != nil {
+		s.audioRouter.SetConfig(cfg)
+	}
+}
+
+// SetAudioRouter inyecta el enrutador de audio con resolucion por canal.
+func (s *EngineerService) SetAudioRouter(r *audio.AudioRouter) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audioRouter = r
 }
 
 // NewEngineerService creates a new instance of EngineerService.
@@ -367,7 +388,9 @@ func (s *EngineerService) telemetryLoop(ctx context.Context) {
 
 	defer func() {
 		if source != nil {
-			_ = source.Close()
+			if err := source.Close(); err != nil {
+				log.Printf("EngineerService: error closing telemetry source: %v", err)
+			}
 		}
 	}()
 
@@ -477,8 +500,8 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 			// Map spotter message to EngineerNotification
 			notif := EngineerNotification{
 				ID:        msg.ID,
-				Category:  "spotter",
-				Severity:  "info",
+				Category:  string(msg.Category),
+				Severity:  string(msg.Severity),
 				TextKey:   msg.TextKey,
 				Text:      Translate(msg.TextKey),
 				Priority:  int(msg.Priority),
@@ -503,31 +526,50 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 			}
 			s.mu.Unlock()
 
-			// Reproducir audio si hay player y resolver configurados y el
-			// mensaje es de prioridad spotter. Skip silencioso si el resolver
-			// no encuentra cache (no hay internal/tts/ aún).
+			// Reproducir audio: primero con AudioRouter (channel-aware),
+			// fallback al resolver legacy si AudioRouter no está configurado.
 			s.mu.Lock()
 			player := s.audioPlayer
 			resolver := s.audioResolver
 			skipUntil := s.skipAudioUntilMS
-			s.mu.Unlock()
 
-			if player != nil && resolver != nil && msg.Priority >= audio.PrioritySpotter && now >= skipUntil {
-				if path := resolver.Resolve(msg.TextKey); path != "" {
-					// No bloqueamos la cola esperando el play (Play puede tardar
-					// segundos). El Player internamente interrumpe lo previo.
-					go func(p string) { _ = player.Play(p) }(path)
-					s.mu.Lock()
-					s.lastWasSpotter = true
-					// Cooldown simple: no spamear el mismo spotter en <2500ms
-					s.skipAudioUntilMS = now + 2500
-					s.mu.Unlock()
+			// NEW: channel-aware audio routing
+			if player != nil && s.audioRouter != nil && now >= skipUntil {
+				ch := audio.ChannelEngineer
+				if msg.Priority >= audio.PrioritySpotter {
+					ch = audio.ChannelSpotter
 				}
-			} else if msg.Priority < audio.PrioritySpotter {
-				s.mu.Lock()
-				s.lastWasSpotter = false
-				s.mu.Unlock()
+				path := s.audioRouter.Resolve(msg.TextKey, ch)
+				if path != "" {
+					s.skipAudioUntilMS = now + 2500
+					s.lastWasSpotter = msg.Priority >= audio.PrioritySpotter
+					s.wg.Add(1)
+					s.mu.Unlock()
+					go func(p string) {
+						defer s.wg.Done()
+						if err := player.Play(p); err != nil {
+							log.Printf("audio play error: %v", err)
+						}
+					}(path)
+					continue
+				}
+			} else if player != nil && resolver != nil && msg.Priority >= audio.PrioritySpotter && now >= skipUntil {
+				// Legacy fallback: old resolver interface
+				if path := resolver.Resolve(msg.TextKey); path != "" {
+					s.skipAudioUntilMS = now + 2500
+					s.lastWasSpotter = true
+					s.wg.Add(1)
+					s.mu.Unlock()
+					go func(p string) {
+						defer s.wg.Done()
+						if err := player.Play(p); err != nil {
+							log.Printf("audio play error: %v", err)
+						}
+					}(path)
+					continue
+				}
 			}
+			s.mu.Unlock()
 		}
 	}
 }

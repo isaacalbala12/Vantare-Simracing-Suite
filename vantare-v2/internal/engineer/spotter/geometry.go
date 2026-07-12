@@ -62,6 +62,27 @@ func overlapConfigForSensitivity(s Sensitivity) OverlapConfig {
 	return cfg
 }
 
+// GridSide detects which side of the grid the player is on during the
+// Formation phase. Returns "left", "right", or "" (not in formation or
+// centered). Paridad CC: Spotter.cs:67-94 — usa getGridSideInternal con
+// threshold ±2m, solo durante Formation phase (GamePhase==3).
+func GridSide(frame *telemetry.Frame) string {
+	if frame == nil || frame.Session == nil || frame.Session.GamePhase != FormationGamePhase {
+		return ""
+	}
+	player := telemetry.FindPlayerVehicle(frame)
+	if player == nil {
+		return ""
+	}
+	if player.PathLateral > 2.0 {
+		return "right"
+	}
+	if player.PathLateral < -2.0 {
+		return "left"
+	}
+	return ""
+}
+
 // Classify determines lateral overlap zones around the player vehicle using CrewChief geometry.
 func Classify(frame *telemetry.Frame, sensitivity Sensitivity) []Zone {
 	return ClassifyWithActiveSides(frame, sensitivity, ActiveSides{})
@@ -118,6 +139,9 @@ func ClassifyWithActiveSides(frame *telemetry.Frame, sensitivity Sensitivity, ac
 		return nil
 	}
 
+	// Grid side detection (CC: Spotter.cs:67-94, solo durante Formation phase).
+	// La funcion GridSide() esta disponible para monitores externos.
+
 	playerPos := player.Position
 	playerYaw := YawFromRF2Orientation(player.Orientation)
 
@@ -165,6 +189,45 @@ func ClassifyWithActiveSides(frame *telemetry.Frame, sensitivity Sensitivity, ac
 			})
 		}
 	}
+
+	// Collapse stacked opponents on the same side.
+	// Paridad CC: NoisyCartesianCoordinateSpotter.cs:414-434 — cuando hay 2+
+	// oponentes en el MISMO lado y su separación lateral (aligned.X) es <
+	// carWidth, están "line astern" (apilados, no side-by-side). Colapsamos
+	// a 1 zona, quedándonos con el más cercano al jugador (menor ForwardM).
+	zonesBySide := make(map[Side][]tempZone)
+	for _, tz := range results {
+		zonesBySide[tz.zone.Side] = append(zonesBySide[tz.zone.Side], tz)
+	}
+	var collapsed []tempZone
+	for _, zones := range zonesBySide {
+		if len(zones) >= 2 {
+			minLat, maxLat := zones[0].lateral, zones[0].lateral
+			for _, z := range zones[1:] {
+				if z.lateral < minLat {
+					minLat = z.lateral
+				}
+				if z.lateral > maxLat {
+					maxLat = z.lateral
+				}
+			}
+			if maxLat-minLat < cfg.CarWidthM {
+				// Colapsar: mantener solo el más cercano (menor ForwardM).
+				closest := zones[0]
+				for _, z := range zones[1:] {
+					if z.zone.ForwardM < closest.zone.ForwardM {
+						closest = z
+					}
+				}
+				collapsed = append(collapsed, closest)
+			} else {
+				collapsed = append(collapsed, zones...)
+			}
+		} else {
+			collapsed = append(collapsed, zones...)
+		}
+	}
+	results = collapsed
 
 	// Sort deterministically: by lateral (signed projection), then vehicle ID.
 	sort.Slice(results, func(i, j int) bool {

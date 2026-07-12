@@ -97,6 +97,10 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.design.saveDialog.cancel": "Cancelar",
   "studio.v3.design.saveDialog.confirm": "Guardar",
   "studio.v3.design.officialSection.title": "Designs Vantare",
+  "studio.v3.design.systemSection.title": "Sistema visual",
+  "studio.v3.design.systemSection.aria": "Sistema visual",
+  "studio.v3.design.system.original": "Vantare Original",
+  "studio.v3.design.system.crystal": "Vantare Crystal",
   "studio.v3.inspector.empty": "Seleciona um widget para editar as suas propriedades.",
   "studio.v3.inspector.unsupportedRenderer":
     "Este widget não tem um renderer compatível com o sistema visual selecionado.",

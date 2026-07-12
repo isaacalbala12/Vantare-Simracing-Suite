@@ -4,7 +4,7 @@ import type { AccessContext } from "../../../lib/access-policy";
 import {
   listOfficialDesigns,
 } from "../../../overlay/design-systems/official-designs";
-import type { SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { DesignSystemId, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { getStudioMutationGate } from "../access/studio-access";
 import { SaveDesignDialog } from "../designs/SaveDesignDialog";
@@ -36,6 +36,11 @@ function designLockMessage(design: WidgetDesignV1): string {
   return "studio.v3.design.lock.generic";
 }
 
+const VISUAL_SYSTEM_OPTIONS: readonly { id: DesignSystemId; labelKey: string }[] = [
+  { id: "vantare-original", labelKey: "studio.v3.design.system.original" },
+  { id: "vantare-crystal", labelKey: "studio.v3.design.system.crystal" },
+];
+
 export function DesignSection(props: DesignSectionProps): React.ReactElement {
   const {
     widget,
@@ -56,6 +61,12 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [busyDesignId, setBusyDesignId] = useState<string | null>(null);
+  const [selectedSystem, setSelectedSystem] = useState<{ widgetId: string; systemId: DesignSystemId }>({
+    widgetId: widget.id,
+    systemId: widget.visual.systemId,
+  });
+  const selectedSystemId = selectedSystem.widgetId === widget.id ? selectedSystem.systemId : widget.visual.systemId;
+  const selectSystem = (systemId: DesignSystemId) => setSelectedSystem({ widgetId: widget.id, systemId });
 
   const refreshUserDesigns = useCallback(async () => {
     setLoading(true);
@@ -78,12 +89,18 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
   }, [refreshUserDesigns]);
 
   const officialDesigns = useMemo(
-    () => listOfficialDesigns(widget.type).filter((design) => isDesignCompatibleWithWidget(design, widget)),
-    [widget],
+    () =>
+      listOfficialDesigns(widget.type).filter(
+        (design) => design.systemId === selectedSystemId && isDesignCompatibleWithWidget(design, widget),
+      ),
+    [selectedSystemId, widget],
   );
   const compatibleUserDesigns = useMemo(
-    () => userDesigns.filter((design) => isDesignCompatibleWithWidget(design, widget)),
-    [userDesigns, widget],
+    () =>
+      userDesigns.filter(
+        (design) => design.systemId === selectedSystemId && isDesignCompatibleWithWidget(design, widget),
+      ),
+    [selectedSystemId, userDesigns, widget],
   );
 
   const canApply = getStudioMutationGate({ access, mutation: "apply-design", widget }).allowed;
@@ -216,7 +233,6 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
       >
         <div className="osv3-design-list__meta">
           <span className="osv3-design-list__name">{design.name}</span>
-          <span className="osv3-design-list__system">{design.systemId}</span>
         </div>
         {active ? (
           <span className="osv3-design-list__active" data-testid={`studio-design-active-${design.id}`}>
@@ -284,6 +300,40 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
           {error}
         </p>
       ) : null}
+
+      <section className="osv3-design-section osv3-design-system-section" data-testid="studio-design-system-section">
+        <div className="osv3-design-section__header">
+          <h3 className="osv3-design-section__title">{t("studio.v3.design.systemSection.title")}</h3>
+        </div>
+        <div
+          className="osv3-design-system-selector"
+          role="group"
+          aria-label={t("studio.v3.design.systemSection.aria")}
+          data-testid="studio-design-system-selector"
+        >
+          {VISUAL_SYSTEM_OPTIONS.map((option) => {
+            const active = selectedSystemId === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                className={`osv3-design-system-selector__option${active ? " osv3-design-system-selector__option--active" : ""}`}
+                aria-pressed={active}
+                data-testid={`studio-design-system-${option.id}`}
+                onClick={() => selectSystem(option.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    selectSystem(option.id);
+                  }
+                }}
+              >
+                {t(option.labelKey)}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="osv3-design-section" data-testid="studio-design-official-section">
         <div className="osv3-design-section__header">

@@ -105,6 +105,45 @@ describe("DesignSection", () => {
     expect(screen.getByTestId("studio-design-item-user-design-1")).toBeTruthy();
   });
 
+  it("filters designs hierarchically by visual system and supports keyboard selection", async () => {
+    const widget = deltaDefinition.createDefault("delta-main");
+    const designClient = createDesignClient([
+      userDesign({ id: "user-original", name: "Original user" }),
+      userDesign({ id: "user-crystal", name: "Crystal user", systemId: "vantare-crystal" }),
+    ]);
+    render(
+      <DesignSection
+        widget={widget}
+        session="general"
+        widgets={[widget]}
+        access={freeAccess}
+        dispatch={vi.fn()}
+        designClient={designClient}
+      />,
+    );
+
+    await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
+    expect(screen.getByTestId("studio-design-system-vantare-original").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("studio-design-item-delta-original-base")).toBeTruthy();
+    expect(screen.queryByTestId("studio-design-item-delta-crystal-base")).toBeNull();
+    expect(screen.getByTestId("studio-design-item-user-original")).toBeTruthy();
+    expect(screen.queryByTestId("studio-design-item-user-crystal")).toBeNull();
+
+    const crystalButton = screen.getByTestId("studio-design-system-vantare-crystal");
+    fireEvent.keyDown(crystalButton, { key: " " });
+    expect(crystalButton.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("studio-design-item-delta-crystal-base")).toBeTruthy();
+    expect(screen.queryByTestId("studio-design-item-delta-time-attack")).toBeNull();
+    expect(screen.getByTestId("studio-design-item-user-crystal")).toBeTruthy();
+    expect(screen.queryByTestId("studio-design-item-user-original")).toBeNull();
+    expect(screen.getByTestId("studio-design-official-section").textContent).not.toContain("vantare-crystal");
+
+    const originalButton = screen.getByTestId("studio-design-system-vantare-original");
+    fireEvent.keyDown(originalButton, { key: "Enter" });
+    expect(originalButton.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("studio-design-item-delta-time-attack")).toBeTruthy();
+  });
+
   it("dispatches apply-design for a single widget", async () => {
     const widget = deltaDefinition.createDefault("delta-main");
     const dispatch = vi.fn<(command: StudioCommand) => void>();
@@ -121,6 +160,7 @@ describe("DesignSection", () => {
       />,
     );
 
+    fireEvent.click(screen.getByTestId("studio-design-system-vantare-crystal"));
     await waitFor(() => {
       expect(screen.getByTestId("studio-design-apply-delta-crystal-base")).toBeTruthy();
     });

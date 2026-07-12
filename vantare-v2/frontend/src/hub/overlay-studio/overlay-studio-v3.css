@@ -528,6 +528,39 @@
   color: var(--v-text-muted);
 }
 
+.osv3-design-system-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.osv3-design-system-selector__option {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--v-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.osv3-design-system-selector__option:hover,
+.osv3-design-system-selector__option:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.osv3-design-system-selector__option--active {
+  color: #fff;
+  border-color: rgba(255, 83, 83, 0.65);
+  background: rgba(255, 61, 61, 0.12);
+}
+
 .osv3-design-section__save {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
@@ -575,11 +608,6 @@
 .osv3-design-list__name {
   font-size: 12px;
   color: #fff;
-}
-
-.osv3-design-list__system {
-  font-size: 10px;
-  color: var(--v-text-muted);
 }
 
 .osv3-design-list__active {

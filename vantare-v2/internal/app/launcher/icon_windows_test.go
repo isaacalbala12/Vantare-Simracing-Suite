@@ -22,6 +22,24 @@ func TestGetAppIconNotepad(t *testing.T) {
 	}
 }
 
+func TestGetAppIconForManualExecutable(t *testing.T) {
+	p := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+	if !fileExists(p) {
+		t.Skip("notepad.exe not found")
+	}
+	b := GetAppIconForApp("manual-notepad", p)
+	if len(b) == 0 {
+		t.Fatalf("expected non-empty icon bytes for manual executable %s", p)
+	}
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("decode manual executable icon: %v", err)
+	}
+	if img.Bounds().Dx() < 48 || img.Bounds().Dy() < 48 {
+		t.Fatalf("manual executable icon too small: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+	}
+}
+
 func TestResolveDiscordLnk(t *testing.T) {
 	desktop := filepath.Join(os.Getenv("USERPROFILE"), "Desktop")
 	lnk := filepath.Join(desktop, "Discord.lnk")
@@ -81,7 +99,7 @@ func TestGetIconHighResDimensions(t *testing.T) {
 	}
 	b, err := getIconHighRes(p)
 	if err != nil {
-		t.Skipf("high-res not available on this system: %v", err)
+		t.Fatalf("high-res extraction failed: %v", err)
 	}
 	if len(b) == 0 {
 		t.Fatalf("expected high-res icon bytes")

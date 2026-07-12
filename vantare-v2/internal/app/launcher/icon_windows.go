@@ -45,12 +45,12 @@ type shFileInfo struct {
 
 // IImageList GUID for SHGetImageList.
 var iidIImageList = syscall.GUID{
-	Data1: 0x46EBB4FA, Data2: 0x2009, Data3: 0x4C39,
-	Data4: [8]byte{0x8B, 0x2E, 0x2F, 0x2A, 0xCA, 0x6B, 0xAE, 0x36},
+	Data1: 0x46EB5926, Data2: 0x582E, Data3: 0x4017,
+	Data4: [8]byte{0x9F, 0xDF, 0xE8, 0x99, 0x8D, 0xAA, 0x09, 0x50},
 }
 var iidIImageList2 = syscall.GUID{
-	Data1: 0x192B9D83, Data2: 0x80FC, Data3: 0x4E64,
-	Data4: [8]byte{0x8C, 0x30, 0x7C, 0x42, 0x35, 0xE4, 0x90, 0xA8},
+	Data1: 0x192B9D83, Data2: 0x50FC, Data3: 0x457B,
+	Data4: [8]byte{0x90, 0xA0, 0x2B, 0x82, 0xA8, 0xB5, 0xDA, 0xE1},
 }
 
 const (
@@ -560,8 +560,8 @@ func getIconHighRes(path string) ([]byte, error) {
 			defer comRelease(pIL)
 
 			var hIcon uintptr
-			// IImageList::GetIcon(this, iImage, uFlags, ppIcon)
-			if gr, _, _ := syscall.Syscall6(vfunc(pIL, 3), 4, pIL, uintptr(index), uintptr(ildTransparent), uintptr(unsafe.Pointer(&hIcon)), 0, 0); gr != 0 {
+			// IImageList::GetIcon(this, iImage, uFlags, ppIcon) is vtable slot 10.
+			if gr, _, _ := syscall.Syscall6(vfunc(pIL, 10), 4, pIL, uintptr(index), uintptr(ildTransparent), uintptr(unsafe.Pointer(&hIcon)), 0, 0); gr != 0 {
 				continue
 			}
 			if hIcon == 0 {

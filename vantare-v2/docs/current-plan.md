@@ -1,3 +1,10 @@
+Nota ISA-9 (2026-07-13) — Launcher logos:
+- Causa raíz: `getIconHighRes` usaba GUID incorrectos para `IImageList`/`IImageList2` y el slot vtable `Add` (3) en lugar de `GetIcon` (10); `SHIL_JUMBO` fallaba y todos los iconos caían a PNG de `32x32`.
+- Fix mínimo: GUID oficiales + `GetIcon` vtable 10. El smoke Windows real pasa a `256x256` para LMU/Steam, OBS, MoTeC, SimHub, CrewChief, Discord/shortcut y Spotify; el resolver manual también queda cubierto.
+- Frontend: `AppBadge` prueba candidatos en orden y, tras un error, solicita extracción backend antes del fallback de abreviatura; `object-contain` conserva proporción.
+- Checks: `go test ./internal/app/launcher/...`, `go test ./cmd/vantare/...`, `pnpm --dir frontend test` (177 archivos/1614 tests), build frontend, lint focalizado y smoke Playwright 100/125/150/200% equivalentes sin overflow/errores. `wails3 build DEV=true` PASS.
+- Riesgos restantes: los assets oficiales locales siguen vacíos por decisión previa; el mock visual muestra abreviaturas. Falta validación manual de Isaac al 100%; no hacer merge a `develop` sin esa aprobación.
+
 Nota LAUNCHER-V3-SHELL-ICONLOCATION-FIX (2026-07-12):
 - Corregido el caso de shortcuts con `TargetPath` genérico (Discord `Update.exe`): el resolver lee `IShellLinkW.GetIconLocation`, extrae el recurso indicado sin la flecha del `.lnk` y solo después usa el ejecutable objetivo/Shell.
 - Smoke Windows: Discord pasó de icono genérico (`551` bytes) a recurso de shortcut válido (`1213` bytes); MoTeC, SimHub, LMU, OBS, Spotify y CrewChief siguen resolviendo iconos.

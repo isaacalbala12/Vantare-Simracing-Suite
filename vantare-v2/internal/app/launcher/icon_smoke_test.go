@@ -3,9 +3,19 @@
 package launcher
 
 import (
+	"bytes"
 	"fmt"
+	"image/png"
 	"testing"
 )
+
+func pngDimensions(data []byte) string {
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Sprintf("decode-error:%v", err)
+	}
+	return fmt.Sprintf("%dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+}
 
 // TestDiscoverIconsSmoke exercises the exact path the running app uses to
 // populate AppBadge icons: discover installed apps, then extract each icon.
@@ -20,8 +30,8 @@ func TestDiscoverIconsSmoke(t *testing.T) {
 		exeExists := app.ExecutablePath != "" && fileExists(app.ExecutablePath)
 		icon := GetAppIconForApp(id, app.ExecutablePath)
 		iconLen := len(icon)
-		fmt.Printf("APP id=%-10s name=%-22s detected=%v exe=%q exeExists=%v iconBytes=%d\n",
-			id, app.DisplayName, app.Detected, app.ExecutablePath, exeExists, iconLen)
+		fmt.Printf("APP id=%-10s name=%-22s detected=%v exe=%q exeExists=%v iconBytes=%d sourceDims=%s\n",
+			id, app.DisplayName, app.Detected, app.ExecutablePath, exeExists, iconLen, pngDimensions(icon))
 	}
 	// Spotlight the three apps from the previous session.
 	for _, id := range []string{"discord", "motec", "simhub"} {
@@ -35,6 +45,6 @@ func TestDiscoverIconsSmoke(t *testing.T) {
 		if len(icon) > 0 {
 			status = fmt.Sprintf("ICON OK (%d bytes)", len(icon))
 		}
-		fmt.Printf("SPOTLIGHT %s -> %s (exe=%q exists=%v)\n", id, status, app.ExecutablePath, fileExists(app.ExecutablePath))
+		fmt.Printf("SPOTLIGHT %s -> %s (exe=%q exists=%v sourceDims=%s)\n", id, status, app.ExecutablePath, fileExists(app.ExecutablePath), pngDimensions(icon))
 	}
 }

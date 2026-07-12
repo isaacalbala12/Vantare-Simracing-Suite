@@ -103,3 +103,6 @@ Aun asi, el worker debe indicar pasos manuales concretos.
 3. Indicar si parece fallo propio o preexistente.
 4. No arreglar problemas no relacionados sin permiso.
 5. Si bloquea la tarea, parar y pedir decision.
+# Gates vigentes de Overlay Studio V3 (2026-07-11)
+
+Para cambios V3 ejecutar el test enfocado, `pnpm --dir frontend build`, `pnpm --dir frontend visual:overlay-studio`, `pnpm --dir frontend design-system:check` y `git diff --check`. La matriz cubre cuatro widgets, Original/Crystal, Studio/Desktop/OBS y estados ready/missing/stale/disconnected/error. Las referencias a WidgetStudio/LayoutStudio de este documento son históricas.

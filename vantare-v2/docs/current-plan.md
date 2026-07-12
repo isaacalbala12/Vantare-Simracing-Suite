@@ -52,9 +52,9 @@ Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **Fase 8.7F ✅ CERRADA** (2026-07-11): retirado Go `PresetService` y handlers Wails `preset:*` (sin callers tras 8.7E). Migración one-shot `widget-presets.json` → `widget-designs.json` conservada en `WidgetDesignService` con tipos legacy internos.
 - Evidencia 8.7F: `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `pnpm test -- widget-design-client` → 11 PASS.
 - **Fase 8.7G ✅ CERRADA** (2026-07-11): auditoría retirement `docs/overlay-studio-v3-retirement-audit.md`; inventario actualizado; búsqueda consumidores legacy → cero en producción.
-- **Fase 8.8 ✅ CERRADA** (2026-07-11): auditoría final `docs/overlay-studio-v3-final-audit.md`; gates: `pnpm test` 1561/1562 PASS (1 flaky `useCanvasInteraction` bajo suite completa), `pnpm build` PASS, `visual:overlay-studio` 59 baselines 0.000% delta, `go test ./internal/app/... ./cmd/vantare/...` PASS.
-- **Fase 8 (cutover V3) ✅ CERRADA** para merge: retirement 8.7 completo. Tasks 8.1–8.6 (i18n/a11y/perf/diagnostics/authoring kit/docs sweep) **diferidas** a expansión post-merge — riesgo aceptado documentado en auditoría final.
-- **Siguiente:** push `refactor`; merge cuando usuario apruebe; expansión widgets + hardening 8.1–8.6.
+- **Fase 8.8 ✅ CERRADA** (2026-07-12): auditoría final `docs/overlay-studio-v3-final-audit.md` actualizada; gates frescos: `pnpm test` 213 archivos / 1578 tests PASS, `pnpm build` PASS, `visual:overlay-studio` 59 baselines 0.000% delta + parity + QA responsive/teclado PASS, `design-system:check` 2 sistemas PASS, `go test ./internal/app/... -run StudioProfileService` PASS.
+- **Fase 8 (cutover V3) ✅ CERRADA** para merge: retirement 8.7 y hardening 8.1–8.6 completos. El lint frontend y `go test ./...` mantienen fallos preexistentes fuera del alcance; quedan documentados como gates de mantenimiento separados.
+- **Siguiente:** push `refactor`; merge cuando usuario apruebe; expansión de widgets y resolución de los gates preexistentes de lint/`internal/server`.
 - Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. Legacy editor/renderer retirado en Fase 8.7.
 - Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
 
@@ -2551,3 +2551,28 @@ Nota FEATURES-DATA (2026-07-08):
 - Tests: 157/157 files, 1503/1503 tests PASS (regresión 0). Lint 0 errores en archivos tocados.
 - Archivos modificados: ProfileEditor.tsx, ProfileEditor.test.tsx, launcher-state.ts (3 archivos).
 - Commit: 9efd6ee feat(launcher): ProfileEditor steps + hotkey + autostart (cut 3)
+# Nota OVERLAY-STUDIO-V3-QUALITY (2026-07-12)
+
+- Rama de trabajo: `refactor`.
+- 8.4 cerrado en este corte: `widget-diagnostics.ts` separa el contrato y añade `createWidgetDiagnosticCollector` con límite, conteos y limpieza; los renderizadores reciben ViewModels y diagnósticos acotados sin payloads de telemetría/perfil. `StudioProfileService` registra solo metadata segura en errores.
+- 8.5 cerrado en este corte: template no registrado, contrato compilable, `design-system:check`, guía de authoring, guía HTML→sistema y worksheet; Crystal queda cubierto por presupuesto de blur y contrato visual.
+- 8.6 cerrado: los seis documentos vivos contienen el contrato canónico V3 y los comandos actuales.
+- Evidencia: `pnpm --dir frontend test -- ...` → 7 archivos / 20 PASS; `pnpm --dir frontend design-system:check` → 2 sistemas PASS; `pnpm --dir frontend build` → PASS; `go test ./internal/app/... -run StudioProfileService -count=1` → PASS; `git diff --check` → PASS.
+- 8.1 cerrado: paridad de claves y frontera de literales en los cuatro idiomas; componentes V3 usan `useI18n` para copy visible.
+- 8.2 cerrado: suite `overlay-studio-a11y.test.tsx`, nombres accesibles de zoom/frames, foco visible, restauración Escape de drawers y browser gate wide/compact.
+- 8.3 cerrado: regresión determinista de buckets 15/30 Hz para 20 instancias, presupuesto Crystal blur ≤16px y reduced-motion; no se usan thresholds de tiempo de pared.
+- Gates finales de este corte: `pnpm --dir frontend test` → 213 archivos / 1578 PASS; `pnpm --dir frontend build` → PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% + parity + drag/resize + zoom + teclado PASS; `pnpm --dir frontend design-system:check` → 2 sistemas PASS; `git diff --check` → PASS.
+- Lint: no gate verde; permanece bloqueado por 44 errores preexistentes y 2 warnings del repositorio, incluyendo calendar/launcher y reglas React existentes en Overlay Studio. No se introdujeron errores nuevos de TypeScript/build.
+- Go completo: `go test ./...` sigue bloqueado por fallos preexistentes de nonce/puerto en `internal/server` y por el directorio no relacionado `vantare-v2/` presente en el working tree; los paquetes de aplicación/cmd y el foco de Studio pasan.
+Nota CRYSTAL-DIRECT-REPLACEMENT-PLAN (2026-07-12):
+- Autoridad vigente para el próximo trabajo Crystal; sustituye cualquier inventario/agrupación histórica anterior basada en `visualTemplate` para Pedals, Damage o Delta Advanced.
+- Objetivo: sustituir directamente la implementación visual actual `vantare-crystal` por el glassmorphism canónico de `docs/overlay-glassmorphism-pro.html`, manteniendo el mismo ID público y retirando Crystal v1.
+- Plan: `docs/superpowers/plans/2026-07-12-vantare-crystal-glassmorphism-direct-replacement.md`.
+- Inventario corregido: referencia numerada 01–16 mapeada a 18 tipos funcionales y 21 diseños Crystal. Solo Input 10A/B/C y Delta 06/15 son variantes del mismo tipo; Pedals V1/V2/V3, Damage 13/14 y Delta Advanced 16 son tipos independientes.
+- Exclusión explícita: el bloque final `V2. WIDGETS REESTILIZADOS` (`.v2-section`) no forma parte del producto ni de la referencia visual.
+- UI acordada: el inspector separa `Sistema visual` (Original/Crystal), `Diseños de Vantare` filtrados por tipo+sistema y `Mis diseños` filtrados por tipo+sistema; AddWidget muestra tipos funcionales, no composiciones.
+- Alcance: tipos/ViewModels/inspectores, Original fallback, Crystal 1:1, migraciones v1→v2, catálogo Studio, perfiles/diseños, runtime Studio/Desktop/OBS, Playwright HTML↔renderer, rendimiento, a11y e i18n.
+- Regla: sustitución directa bajo `systemId="vantare-crystal"`; no coexistencia ni fallback oculto del Crystal actual.
+- Estado: PLANIFICADO, sin código implementado por este corte.
+- Paquete de ejecución Luna creado: índice `docs/superpowers/plans/2026-07-12-crystal-luna-execution-index.md` + seis microplanes ordenados (contratos/UI, referencia/base, core, widgets live, widgets derivados y cutover).
+- Los microplanes fijan disponibilidad de datos: weather/damage permanecen `missing` en live hasta contrato real; histories se derivan de forma acotada; Calendar usa adapter read-only; no se permite inventar telemetría.

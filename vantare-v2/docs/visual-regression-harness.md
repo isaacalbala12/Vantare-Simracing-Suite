@@ -178,3 +178,6 @@ pnpm --dir frontend test:visual
 ```
 
 El archivo de especificación de pruebas propuesto (`frontend/e2e/preview-regression.spec.ts`) verificará de manera robusta la geometría del sandbox, el centrado de los widgets y la ausencia de controles de edición de posición en `WidgetStudio`.
+# Harness canónico V3 (2026-07-11)
+
+El comando vigente es `pnpm --dir frontend visual:overlay-studio`. Las capturas y parity checks usan `WidgetVisualHost`, los cuatro widgets core y los sistemas Original/Crystal. Fit/porcentaje/botones son el zoom soportado; wheel zoom y pan quedan documentados como expansión.

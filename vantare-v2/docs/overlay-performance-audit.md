@@ -73,3 +73,8 @@ Este documento contiene un análisis profundo del rendimiento en tiempo real (ru
 | **PERF-H3** | Concurrencia de múltiples rAF concurrentes | **P3** (Menor) | Cada widget ejecuta su propio bucle rAF, lo que puede causar desalineación de fotogramas. | Centralizar los bucles de dibujado en un único bucle rAF global compartido en el layout (Unificado Paint Loop). |
 
 Se formula un miniplan técnico de optimización a continuación para corregir estos problemas en la fase de pulido de rendimiento.
+# V3 quality gate (2026-07-11)
+
+El coordinador comparte una suscripción por cada frecuencia activa y publica estados stale/disconnected/error inmediatamente. El CSS Crystal queda limitado a blur de 16px en OBS/Desktop y contiene una regla de reduced motion. `overlay-performance.test.tsx` y el harness visual deben aportar cualquier medición posterior; no se convierten tiempos de máquina en thresholds deterministas de CI.
+
+La regresión determinista cubre 20 instancias a 15 Hz y una a 30 Hz sobre 120 publicaciones: cada listener recibe únicamente sus ticks de bucket. Runtime y Studio consumen `useRateLimitedTelemetry` con `widget.behavior.updateHz`, y `StudioWidgetFrame` memoiza el host visual; no hay un scheduler por widget.

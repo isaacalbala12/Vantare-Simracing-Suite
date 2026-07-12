@@ -324,3 +324,6 @@ La personalizacion beta tiene exito si:
 - Confirmacion de metricas disponibles por REST API de LMU.
 - Detalle visual final de formatos, colores y alineaciones.
 - Que parte de reordenacion de columnas puede vivir en `tester`.
+# Personalización vigente en Overlay Studio V3 (2026-07-11)
+
+La personalización se realiza en el editor único V3 mediante Design, Appearance, Content, Behavior, Layout y Actions. Los diseños se copian al borrador global y se guardan explícitamente. Free puede previsualizar, pero no mutar ni guardar cambios premium. Los escenarios mock actuales son Practice/Qualifying/Race y Track/Pits; lluvia, safety car, daños, tráfico y banderas son expansión.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,7 @@ type StudioProfileService struct {
 	loaded      *config.LoadedProfileV3
 	store       config.ProfileDocumentStore
 	emitter     EventEmitter
+	logger      *slog.Logger
 	onSaved     func(StudioProfileSaved)
 	profilesDir string
 	mgr         *window.Manager
@@ -36,6 +38,7 @@ func NewStudioProfileService(emitter EventEmitter, onSaved func(StudioProfileSav
 	return &StudioProfileService{
 		store:   config.ProfileDocumentStore{},
 		emitter: emitter,
+		logger:  slog.Default(),
 		onSaved: onSaved,
 	}
 }
@@ -223,6 +226,7 @@ func decodeStudioProfileSavePayload(data any) (requestID, expectedRevision strin
 }
 
 func (s *StudioProfileService) emitConflict(requestID string, err error) {
+	s.logFailure("conflict", requestID, err)
 	if s.emitter == nil {
 		return
 	}
@@ -233,6 +237,7 @@ func (s *StudioProfileService) emitConflict(requestID string, err error) {
 }
 
 func (s *StudioProfileService) emitError(requestID, operation string, err error) {
+	s.logFailure(operation, requestID, err)
 	if s.emitter == nil || err == nil {
 		return
 	}
@@ -241,4 +246,22 @@ func (s *StudioProfileService) emitError(requestID, operation string, err error)
 		"operation": operation,
 		"message":   err.Error(),
 	})
+}
+
+func (s *StudioProfileService) logFailure(operation, requestID string, err error) {
+	if s.logger == nil || err == nil {
+		return
+	}
+	profileID := ""
+	expectedRevisionSet := false
+	if s.loaded != nil && s.loaded.Document != nil {
+		profileID = s.loaded.Document.ID
+		expectedRevisionSet = s.loaded.Revision != ""
+	}
+	s.logger.Warn("studio profile operation failed",
+		"operation", operation,
+		"requestId", requestID,
+		"profileId", profileID,
+		"expectedRevisionSet", expectedRevisionSet,
+	)
 }

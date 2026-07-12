@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { WidgetInstanceV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
-import type { WidgetDiagnostic } from "../core/WidgetVisualHost";
+import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
 
@@ -11,10 +11,11 @@ export type RuntimeWidgetFrameProps = {
   renderMode: "desktop" | "obs";
   layoutOrigin?: { x: number; y: number };
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
+  diagnostics?: WidgetDiagnosticCollector;
 };
 
 export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic } = props;
+  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics } = props;
   const snapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
@@ -36,6 +37,7 @@ export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactE
         snapshot={snapshot}
         renderMode={renderMode}
         onDiagnostic={onDiagnostic}
+        diagnostics={diagnostics}
       />
     </div>
   );

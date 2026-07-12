@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import { createWidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
@@ -112,6 +113,28 @@ describe("RuntimeOverlaySurface", () => {
     );
     expect(view.getAllByTestId("widget-host-diagnostic")).toHaveLength(1);
     expect(view.container.querySelector('[data-widget-renderer="standings"]')).toBeTruthy();
+    coordinator.dispose();
+  });
+
+  it("keeps surface diagnostics bounded and separate from the callback", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    const diagnostics = createWidgetDiagnosticCollector(2);
+    const onDiagnostic = vi.fn();
+
+    render(
+      <RuntimeOverlaySurface
+        document={buildDocument()}
+        telemetry={coordinator}
+        renderMode="obs"
+        diagnostics={diagnostics}
+        onDiagnostic={onDiagnostic}
+      />,
+    );
+
+    expect(diagnostics.counts()).toEqual({ "preserved-widgets-skipped": 1 });
+    expect(onDiagnostic).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(diagnostics.list())).not.toMatch(/profile|telemetry|driver/i);
     coordinator.dispose();
   });
 });

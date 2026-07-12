@@ -5,22 +5,16 @@ import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import { widgetTypeRegistry } from "./widget-registry";
 import { prepareWidgetVisualSettings } from "./widget-visual-settings";
 import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
+import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
-export type WidgetDiagnostic = {
-  code: string;
-  widgetId?: string;
-  widgetType?: string;
-  systemId?: string;
-  surface: "studio" | "desktop" | "obs" | "harness";
-  message: string;
-  occurredAt: string;
-};
+export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
 export type WidgetVisualHostProps = {
   widget: WidgetInstanceV3;
   snapshot: TelemetrySnapshot;
   renderMode: "studio" | "desktop" | "obs" | "harness";
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
+  diagnostics?: WidgetDiagnosticCollector;
 };
 
 function reportDiagnostic(
@@ -28,7 +22,7 @@ function reportDiagnostic(
   code: string,
   message: string,
 ): void {
-  props.onDiagnostic?.({
+  const diagnostic = {
     code,
     widgetId: props.widget.id,
     widgetType: props.widget.type,
@@ -36,7 +30,9 @@ function reportDiagnostic(
     surface: props.renderMode,
     message,
     occurredAt: new Date(0).toISOString(),
-  });
+  } satisfies WidgetDiagnostic;
+  props.diagnostics?.report(diagnostic);
+  props.onDiagnostic?.(diagnostic);
 }
 
 function HostDiagnostic(props: {

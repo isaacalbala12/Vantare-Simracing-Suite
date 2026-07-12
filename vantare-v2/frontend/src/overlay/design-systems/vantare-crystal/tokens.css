@@ -312,7 +312,7 @@
   background: rgba(20, 20, 20, 0.55);
   border: 1px solid var(--vc-border);
   border-radius: var(--vc-radius-lg);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(16px);
   box-shadow: var(--vc-glow-accent);
 }
 
@@ -449,6 +449,15 @@
   border-color: transparent;
   backdrop-filter: none;
   box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-crystal"] *,
+  [data-widget-system="vantare-crystal"] *::before,
+  [data-widget-system="vantare-crystal"] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 [data-widget-system="vantare-crystal"] .vc-pedals-status-message {

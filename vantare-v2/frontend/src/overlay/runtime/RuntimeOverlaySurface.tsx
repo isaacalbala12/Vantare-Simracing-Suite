@@ -1,7 +1,7 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
-import type { WidgetDiagnostic } from "../core/WidgetVisualHost";
+import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
 import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
@@ -14,10 +14,12 @@ export type RuntimeOverlaySurfaceProps = {
   renderMode: "desktop" | "obs";
   layoutOrigin?: { x: number; y: number };
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
+  diagnostics?: WidgetDiagnosticCollector;
 };
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp } = props;
+  const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
   const layout = resolveRuntimeLayout(document, snapshot);
   const widgets = selectRuntimeWidgets(layout, snapshot);
@@ -29,13 +31,15 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       return;
     }
     preservedDiagnosticSent.current = true;
-    onDiagnostic?.({
+    const diagnostic = {
       code: "preserved-widgets-skipped",
       surface: renderMode,
       message: `Skipping ${preserved.length} preserved legacy widget(s) at runtime`,
       occurredAt: new Date(0).toISOString(),
-    });
-  }, [layout.preservedWidgets, onDiagnostic, renderMode]);
+    } satisfies WidgetDiagnostic;
+    diagnostics.report(diagnostic);
+    onDiagnostic?.(diagnostic);
+  }, [diagnostics, layout.preservedWidgets, onDiagnostic, renderMode]);
 
   const surfaceStyle: CSSProperties = {
     position: "relative",
@@ -55,6 +59,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
           renderMode={renderMode}
           layoutOrigin={layoutOrigin}
           onDiagnostic={onDiagnostic}
+          diagnostics={diagnostics}
         />
       ))}
     </div>

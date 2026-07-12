@@ -1,13 +1,40 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestStudioProfileServiceFailureLogUsesSafeMetadata(t *testing.T) {
+	var logs bytes.Buffer
+	svc := NewStudioProfileService(nil, nil)
+	svc.logger = slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	svc.loaded = &config.LoadedProfileV3{
+		Document: &config.ProfileDocumentV3{ID: "profile-1"},
+		Revision: "revision-1",
+	}
+
+	svc.logFailure("save", "request-1", errors.New("secret path C:/profiles/profile.json token=abc"))
+	output := logs.String()
+	for _, expected := range []string{"operation=save", "requestId=request-1", "profileId=profile-1", "expectedRevisionSet=true"} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("log output=%q missing %q", output, expected)
+		}
+	}
+	for _, forbidden := range []string{"secret path", "profile.json", "token=abc"} {
+		if strings.Contains(output, forbidden) {
+			t.Fatalf("log output=%q leaked %q", output, forbidden)
+		}
+	}
+}
 
 type studioProfileSpy struct {
 	events []string

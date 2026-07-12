@@ -9,7 +9,7 @@
 
 Esta especificación es la autoridad de producto y arquitectura para Product B. El documento `docs/analysis/tyre-strategy-planner-analysis.md` queda como antecedente histórico y no debe utilizarse como contrato canónico: describe un alcance anterior, una arquitectura limitada y reglas que han cambiado.
 
-Product A ya está implementado y validado manualmente. Product B no lo extiende de forma incremental en su UI: crea el nuevo workspace público y reutiliza únicamente piezas de lógica que superen una auditoría total. Product C se apoya en los contratos validados de Product B, pero podrá realizar reworks o refactors profundos si sus necesidades de optimización, publicación o ejecución live lo exigen.
+Product A ya está implementado y validado manualmente. Product B no lo extiende de forma incremental en su UI: crea el nuevo workspace público y reutiliza únicamente piezas de lógica que superen una auditoría total. Product C se apoya en los contratos validados de Product B y podrá realizar reworks/refactors internos profundos, conservando dirección de dependencias y migraciones explícitas para contratos persistidos.
 
 ## 2. Resultado de producto
 
@@ -34,7 +34,7 @@ Product B no incluye:
 - Sincronización cloud ni publicación de planes privados.
 - Estrategias presentadas como óptimas.
 - Vigilancia permanente de la carpeta de LMU.
-- Seguimiento live, replanificación, overlays o spotter.
+- Seguimiento estratégico live del plan, replanificación y widgets/avisos de estrategia. El refactor previo sí incluye mantener overlays y hacer funcional el Engineer/Spotter base con telemetría LMU real.
 - Construcción de una herramienta completa de análisis de telemetría.
 - Uso de un LLM para generar decisiones de estrategia.
 
@@ -51,16 +51,20 @@ No se conservarán contratos, algoritmos o UI por compatibilidad sentimental. La
 
 ## 4. Telemetría como capacidad transversal
 
-El parser de LMU no pertenece al Strategy Planner. Debe ser una capacidad compartida:
+La telemetría de LMU no pertenece al Strategy Planner. Debe ser una capacidad compartida. LMU shared memory y LMU REST local son las dos fuentes principales y complementarias del runtime live; ninguna se trata como un accesorio secundario. DuckDB es la fuente histórica/offline:
 
 ```text
-DuckDB LMU
-    -> lector DuckDB
-    -> adaptador de esquema LMU
-    -> modelo canónico de telemetría Vantare
-       -> proyección Strategy Planner
-       -> futura proyección de análisis de telemetría
-       -> futuros consumidores
+LMU shared memory ---\
+                       -> fusión live -> Telemetry Core
+LMU REST local -------/                    |
+                                            +-> proyección Overlay
+                                            +-> proyección Engineer/Spotter
+                                            +-> futura ejecución Strategy live
+
+DuckDB LMU -> adaptador offline -> catálogo/consultas
+                                      |
+                                      +-> proyección Strategy Planner
+                                      +-> futura proyección de análisis
 ```
 
 ### 4.1 Responsabilidades
@@ -74,10 +78,13 @@ El núcleo compartido:
 - Expone las capacidades disponibles.
 - Permite consultas por sesión, vuelta, canal y rango temporal.
 - Carga muestras de alta frecuencia solo bajo demanda.
+- Conserva procedencia, frescura y disponibilidad por fuente/campo.
 
 El núcleo no contiene reglas de stints, combustible, neumáticos ni estrategias. React no ejecuta SQL ni importa DuckDB.
 
 La proyección de Strategy Planner obtiene resúmenes por vuelta: ritmo, consumo, Virtual Energy, desgaste, condición y datos necesarios para el plan. Una futura sección de análisis podrá consultar trazas de alta frecuencia sin rehacer el lector.
+
+Shared memory y REST local se fusionan mediante reglas explícitas y probadas por campo. La auditoría dinámica determinará frecuencia, autoridad y degradación exactas, pero el contrato debe conservar siempre qué fuente produjo cada valor y cuándo dejó de estar fresco. Wails, SSE, Desktop, OBS, Studio y Engineer se suscriben al mismo core; ninguno abre por su cuenta una tercera captura LMU.
 
 ### 4.2 Acceso DuckDB
 
@@ -103,6 +110,41 @@ La investigación inicial comparará el driver oficial Go y el CLI oficial. La e
 Antes de fijar consultas se necesitan archivos reales anonimizados de práctica, clasificación y carrera. La investigación debe documentar tablas, columnas, tipos, relaciones, versiones y disponibilidad de circuito, coche, clase, clima, vueltas, validez, combustible, Virtual Energy y neumáticos.
 
 No se asumirá que LMU expone todos los campos. Los fixtures de contrato deben representar también archivos incompletos, bloqueados, incompatibles y de versiones diferentes.
+
+### 4.4 Convergencia live y Engineer en producción
+
+Antes de añadir DuckDB se realizará un refactor transversal de telemetría live. La auditoría estática de 2026-07-13 confirma una sola captura LMU real compartida por Wails/SSE, pero también un pipeline separado del Engineer que actualmente reproduce escenarios sintéticos/replay, modelos Go/frontend duplicados, fallback mock implícito y adaptadores legacy.
+
+La convergencia es obligatoria:
+
+- Una única autoridad live para identidad, epoch, secuencia, tiempo, unidades, disponibilidad y lifecycle.
+- Proyecciones puras para Overlay, Engineer/Spotter y futuros consumidores.
+- Migración de Desktop/OBS/Studio mediante shadow comparison y paridad visual antes del cutover.
+- Engineer/Spotter conectado a shared memory + REST reales mediante una proyección espacial canónica.
+- Investigación previa de posición, orientación y velocidad de jugador/rivales en las fuentes reales de LMU.
+- Replay conservado como adaptador de pruebas determinista, no como fuente normal visible en producción.
+- Eliminación del simulador sintético de producción, del servicio/modelo duplicado del Engineer y de los shims legacy tras quedar sin consumidores.
+- Mock permitido solo mediante harness/flag explícito; ausencia de LMU en producción significa `disconnected`, nunca datos ficticios.
+
+El Engineer base (spotter real conectado a LMU, toggles, sensibilidad, notificaciones y lifecycle) debe quedar funcional en producción dentro de este refactor. Product C añadirá después el seguimiento del plan, desviaciones y recomendaciones estratégicas; no reconstruirá la captura live.
+
+El frontend puede conservar `TelemetrySnapshot` como ViewModel de overlays. No es otra fuente de verdad: debe derivarse del core y no reconstruir sesión, unidades o disponibilidad mediante heurísticas propias.
+
+### 4.5 Fronteras preparadas para Product C
+
+Product B no implementa seguimiento estratégico live, pero deja contratos explícitos para evitar otro refactor transversal:
+
+- `RecordedTelemetry` y `LiveTelemetry` son contratos de acceso distintos, alineados mediante identidades, unidades, calidad y capabilities comunes; no forman un objeto gigante lleno de opcionales.
+- El editor trabaja con `PlanDraft`. Publicar crea una `PlanRevision` inmutable; activar reemplaza atómicamente un puntero `ActivePlan` con `planId`, `variantId`, `revisionId` y `activationId` distintos.
+- Un futuro `StrategyExecutionEngine` consumirá `ActivePlan` + observaciones live ordenadas y producirá un `StrategyExecutionState` tipado/versionado. Planner, Overlay y Engineer no implementarán comparaciones propias.
+- Frames duplicados, antiguos, fuera de orden, stale, desconectados o pertenecientes a otro epoch tienen reglas de idempotencia y reinicialización comunes.
+- Las métricas derivadas conservan `algorithmId`, versión, referencias/hashes de inputs, unidades y política de filtrado. Una revisión activa no cambia de significado por una actualización silenciosa del algoritmo.
+- Las consultas históricas son cancelables, paginadas/por cursor, seleccionan canales/rangos, permiten downsampling y aplican límites de memoria/puntos antes de cruzar Wails.
+- `SimulatorCapabilities`, `EventRuleSet` y `CompatibilityDecision` son contratos versionados. Datos ausentes se expresan como ausentes; no se inventan.
+- Fuentes inmutables, correcciones durables, cachés reconstruibles, biblioteca de planes, puntero activo y estado efímero de ejecución tienen almacenes/ciclos de vida separados.
+- Operaciones que guardan revisión, actualizan galería y activan plan usan un protocolo local coherente con temporales, publicación atómica, índices reconstruibles y recuperación tras cierre.
+
+La UI puede seguir utilizando el término `stint`, pero el dominio no debe confundir `RaceSegment`, `PitStopPlan`, `TyreUsage`, futura `DriverStint` y `ConditionWindow`. La identidad física planificada de un neumático permanece separada de lo que puede observarse realmente en telemetría.
 
 ## 5. Capas de datos y trazabilidad
 
@@ -241,7 +283,7 @@ Casos obligatorios:
 
 ## 12. Product C
 
-Product C queda como roadmap e investigaciones separadas. Puede introducir reworks y refactors profundos; Product B es una base validada, no una restricción arquitectónica permanente.
+Product C queda como roadmap e investigaciones separadas. Puede introducir reworks y refactors internos profundos, pero no reabrir silenciosamente la multiplicidad de fuentes live ni romper contratos persistidos sin versión y migración. La dirección de dependencias Telemetry Core -> proyecciones -> consumidores es una invariante; las implementaciones internas no lo son.
 
 Áreas previstas:
 
@@ -253,32 +295,49 @@ Product C queda como roadmap e investigaciones separadas. Puede introducir rewor
 - Detección de desviaciones y replanificación con confirmación.
 - Contrato versionado reducido para overlays, widgets y spotter.
 
+El Engineer/Spotter base ya estará conectado a la telemetría LMU canónica desde el refactor previo a Product B. Product C amplía ese runtime con `ActivePlan`, `StrategyExecutionEngine` y alertas estratégicas; no crea otro lector LMU ni otro modelo canónico paralelo.
+
 Una actualización oficial nunca sobrescribe una copia privada. La investigación de publicación debe definir producción, validación, firma, distribución y actualización sin utilizar telemetría privada del usuario.
 
 ## 13. Desarrollo incremental y gates
 
-Orden de microcortes previsto:
+Orden de bloques previsto:
 
-1. Auditoría total de Product A.
-2. Investigación DuckDB con archivos reales.
-3. Contrato transversal de telemetría.
-4. Baseline visual estático del flujo completo.
-5. Galería y persistencia.
-6. Descubrimiento e indexación LMU.
-7. Normalización de sesiones/vueltas.
-8. Correcciones básicas.
-9. Tabla avanzada por vuelta.
-10. Modelos derivados, procedencia y confianza.
-11. Workspace con datos reales.
-12. Inventario y drag and drop.
-13. Combustible y Virtual Energy.
-14. Fuel saving.
-15. Auditoría/sustitución de escenarios básicos.
-16. Comparación y variantes.
-17. Responsive.
-18. Accesibilidad, i18n y rendimiento.
-19. Migración útil y retirada controlada de Product A.
-20. Cierre público de Product B.
+### Bloque previo — Telemetry Core, cutover y eliminación
+
+1. Auditoría dinámica de shared memory, REST, handles, goroutines, Wails/SSE y Engineer actual.
+2. Caracterización contractual y visual de overlays Desktop/OBS/Studio.
+3. Primitivas canónicas de identidad, tiempo, epoch, secuencia, unidades, calidad y capabilities.
+4. Fusión versionada de shared memory + REST con procedencia/frescura por campo.
+5. Proyección Overlay en shadow mode y comparación old/new.
+6. Cutover Overlay con rollback y validación manual.
+7. Investigación espacial real de LMU y proyección Engineer.
+8. Cutover Engineer/Spotter a telemetría real y validación de replay/eventos.
+9. Retirada de pipeline sintético, modelos/servicios duplicados, fallback mock y frontend legacy.
+10. Auditoría de consumidores cero, código muerto, rendimiento y cierre del core live.
+
+### Product B — Planner público
+
+11. Auditoría total de Product A.
+12. Investigación DuckDB con archivos reales y decisión driver/CLI.
+13. Adaptador offline, catálogo y consultas cancelables/limitadas.
+14. Baseline visual estático del flujo completo.
+15. Galería y persistencia.
+16. Descubrimiento e indexación LMU.
+17. Normalización de sesiones/vueltas.
+18. Correcciones básicas.
+19. Tabla avanzada por vuelta.
+20. Modelos derivados, procedencia y confianza.
+21. Workspace con datos reales.
+22. Inventario y drag and drop.
+23. Combustible y Virtual Energy.
+24. Fuel saving.
+25. Auditoría/sustitución de escenarios básicos.
+26. Comparación y variantes.
+27. Responsive.
+28. Accesibilidad, i18n y rendimiento.
+29. Migración útil, cutover y eliminación completa de la UI Product A.
+30. Cierre público de Product B.
 
 Cada microcorte termina en una pausa y exige tests, Playwright cuando aplique, comparación visual cuando aplique, build, code review, evidencia documentada y validación manual de Isaac. Nada entra en `develop` hasta estar probado al 100% por Isaac y recibir aprobación explícita.
 
@@ -299,6 +358,12 @@ Cada issue ejecutable con cambios en repo utiliza una rama Linear, un worktree y
 
 Product B se considera completado cuando:
 
+- Shared memory y REST local alimentan un único Telemetry Core live con procedencia y frescura explícitas.
+- Wails y SSE transportan proyecciones del mismo core; no existen lectores LMU adicionales en consumidores.
+- Overlays Desktop/OBS/Studio conservan paridad funcional y visual después del cutover.
+- Engineer/Spotter base funciona en producción con telemetría LMU real, no escenarios sintéticos.
+- Mock, simulator/replay visible y modelos/servicios legacy han sido retirados de producción o confinados a tests/harness.
+- La auditoría final demuestra consumidores cero y ausencia de código muerto del pipeline reemplazado.
 - El flujo completo funciona con telemetría real y entrada manual.
 - La fuente original y las correcciones son auditables y no destructivas.
 - Varias sesiones compatibles producen resultados trazables.
@@ -318,5 +383,6 @@ Product B se considera completado cuando:
 - Driver Go o CLI hasta validar empaquetado y licencia.
 - Umbrales exactos de confianza hasta analizar distribución de datos reales.
 - Presupuestos numéricos de rendimiento hasta obtener baseline.
-- Algoritmos óptimos, publicación oficial, LLM y runtime live hasta Product C.
+- Algoritmos óptimos, publicación oficial, LLM y runtime de ejecución estratégica del plan hasta Product C.
 - Reworks/refactors concretos de Product C hasta conocer sus contratos finales.
+- Reglas estratégicas del Engineer de Product C; el Spotter base y su conexión LMU no se difieren.

@@ -92,13 +92,17 @@ export type WidgetDesignProvenanceV3 = {
   appliedAt: string;
 };
 
-export type WidgetVisualV3 = {
-  systemId: DesignSystemId;
+export type WidgetVisualSelectionV3 = {
   systemVersion: number;
   configVersion: number;
   baseSettings: Record<string, unknown>;
   appearanceOverrides: Record<string, unknown>;
   provenance?: WidgetDesignProvenanceV3;
+};
+
+export type WidgetVisualV3 = WidgetVisualSelectionV3 & {
+  systemId: DesignSystemId;
+  systemMemories?: Partial<Record<DesignSystemId, WidgetVisualSelectionV3>>;
 };
 
 export type WidgetInstanceV3 = {
@@ -136,6 +140,7 @@ export type ProfileDocumentV3 = {
   displayMode: DisplayMode;
   monitorIndex: number;
   layouts: Partial<Record<SessionLayoutType, SessionLayoutV3>> & { general: SessionLayoutV3 };
+  defaultVisualSystemId?: DesignSystemId;
   source?: ProfileSourceMeta;
 };
 
@@ -228,6 +233,16 @@ function validateVisual(path: string, visual: WidgetVisualV3): void {
   if (!DESIGN_SYSTEM_IDS.has(visual.systemId)) {
     validationError(`${path}.systemId`, "unsupported design system");
   }
+  validateVisualSelection(path, visual);
+  for (const [systemId, memory] of Object.entries(visual.systemMemories ?? {})) {
+    if (!DESIGN_SYSTEM_IDS.has(systemId as DesignSystemId)) {
+      validationError(`${path}.systemMemories.${systemId}`, "unsupported design system");
+    }
+    validateVisualSelection(`${path}.systemMemories.${systemId}`, memory);
+  }
+}
+
+function validateVisualSelection(path: string, visual: WidgetVisualSelectionV3): void {
   if (visual.systemVersion < 1) {
     validationError(`${path}.systemVersion`, "must be at least 1");
   }
@@ -236,6 +251,13 @@ function validateVisual(path: string, visual: WidgetVisualV3): void {
   }
   validatePayloadSize(`${path}.baseSettings`, visual.baseSettings);
   validatePayloadSize(`${path}.appearanceOverrides`, visual.appearanceOverrides);
+  validatePayloadSize(path, {
+    baseSettings: visual.baseSettings,
+    appearanceOverrides: visual.appearanceOverrides,
+  });
+  if (visual.provenance && visual.provenance.origin !== "vantare" && visual.provenance.origin !== "user") {
+    validationError(`${path}.provenance.origin`, "unsupported origin");
+  }
 }
 
 function parseWidgetLayout(input: unknown, path: string): WidgetLayoutV3 {
@@ -293,11 +315,14 @@ function parseWidgetBehavior(input: unknown, path: string): WidgetBehaviorV3 {
   return behavior;
 }
 
-function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
+function parseWidgetVisualSelection(input: unknown, path: string): WidgetVisualSelectionV3 {
   const raw = readRecord(input, path);
-  const systemId = readString(raw.systemId, `${path}.systemId`) as DesignSystemId;
-  const visual: WidgetVisualV3 = {
-    systemId,
+  for (const field of ["content", "behavior", "layout"]) {
+    if (raw[field] !== undefined) {
+      validationError(`${path}.${field}`, "functional fields are not allowed in visual memory");
+    }
+  }
+  const visual: WidgetVisualSelectionV3 = {
     systemVersion: readNumber(raw.systemVersion, `${path}.systemVersion`),
     configVersion: readNumber(raw.configVersion, `${path}.configVersion`),
     baseSettings: readRecord(raw.baseSettings, `${path}.baseSettings`),
@@ -314,6 +339,30 @@ function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
     if (visual.provenance.origin !== "vantare" && visual.provenance.origin !== "user") {
       validationError(`${path}.provenance.origin`, "unsupported origin");
     }
+  }
+  return visual;
+}
+
+function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
+  const raw = readRecord(input, path);
+  const systemId = readString(raw.systemId, `${path}.systemId`) as DesignSystemId;
+  const visual: WidgetVisualV3 = {
+    systemId,
+    ...parseWidgetVisualSelection(raw, path),
+  };
+  if (raw.systemMemories !== undefined) {
+    const memoriesRaw = readRecord(raw.systemMemories, `${path}.systemMemories`);
+    const memories: Partial<Record<DesignSystemId, WidgetVisualSelectionV3>> = {};
+    for (const [memorySystemId, memory] of Object.entries(memoriesRaw)) {
+      if (!DESIGN_SYSTEM_IDS.has(memorySystemId as DesignSystemId)) {
+        validationError(`${path}.systemMemories.${memorySystemId}`, "unsupported design system");
+      }
+      memories[memorySystemId as DesignSystemId] = parseWidgetVisualSelection(
+        memory,
+        `${path}.systemMemories.${memorySystemId}`,
+      );
+    }
+    visual.systemMemories = memories;
   }
   return visual;
 }
@@ -436,6 +485,13 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     validationError("displayMode", "unsupported display mode");
   }
   const monitorIndex = readNumber(raw.monitorIndex, "monitorIndex");
+  const defaultVisualSystemId =
+    raw.defaultVisualSystemId === undefined
+      ? "vantare-original"
+      : (readString(raw.defaultVisualSystemId, "defaultVisualSystemId") as DesignSystemId);
+  if (!DESIGN_SYSTEM_IDS.has(defaultVisualSystemId)) {
+    validationError("defaultVisualSystemId", "unsupported design system");
+  }
   const layoutsRaw = readRecord(raw.layouts, "layouts");
   if (layoutsRaw.general === undefined) {
     validationError("layouts.general", "missing required general layout");
@@ -457,6 +513,7 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     displayMode,
     monitorIndex,
     layouts,
+    defaultVisualSystemId,
   };
   if (raw.source !== undefined) {
     const sourceRaw = readRecord(raw.source, "source");

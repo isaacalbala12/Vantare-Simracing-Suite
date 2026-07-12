@@ -45,6 +45,116 @@ function expectPath(error: unknown, path: string) {
 }
 
 describe("parseProfileDocumentV3", () => {
+  it("defaults older documents to the Original visual system", () => {
+    expect(parseProfileDocumentV3(minimalDocument()).defaultVisualSystemId).toBe("vantare-original");
+  });
+
+  it("round-trips visual memory without functional document fields", () => {
+    const document = parseProfileDocumentV3({
+      ...minimalDocument(),
+      defaultVisualSystemId: "vantare-crystal",
+      layouts: {
+        general: {
+          type: "general",
+          widgets: [
+            {
+              ...validWidget("delta-1", "delta"),
+              visual: {
+                ...validWidget("delta-1", "delta").visual,
+                systemMemories: {
+                  "vantare-crystal": {
+                    systemVersion: 2,
+                    configVersion: 3,
+                    baseSettings: { accentColor: "#8cf" },
+                    appearanceOverrides: { opacity: 0.9 },
+                    provenance: {
+                      designId: "delta-crystal",
+                      designName: "Delta Crystal",
+                      origin: "vantare",
+                      appliedAt: "2026-07-12T00:00:00Z",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const memory = document.layouts.general.widgets[0]?.visual.systemMemories?.["vantare-crystal"];
+    expect(memory?.provenance?.designId).toBe("delta-crystal");
+    const cloned = cloneProfileDocumentV3(document);
+    cloned.layouts.general.widgets[0]!.visual.systemMemories!["vantare-crystal"]!.baseSettings.accentColor = "#f88";
+    expect(memory?.baseSettings.accentColor).toBe("#8cf");
+  });
+
+  it.each([
+    ["unknown system", { "unknown-system": {} }, "layouts.general.widgets[0].visual.systemMemories.unknown-system"],
+    [
+      "version below one",
+      { "vantare-crystal": { systemVersion: 0, configVersion: 1, baseSettings: {}, appearanceOverrides: {} } },
+      "layouts.general.widgets[0].visual.systemMemories.vantare-crystal.systemVersion",
+    ],
+  ])("rejects invalid visual memory: %s", (_label, systemMemories, path) => {
+    const doc = {
+      ...minimalDocument(),
+      layouts: {
+        general: {
+          type: "general" as const,
+          widgets: [
+            {
+              ...validWidget("delta-1", "delta"),
+              visual: { ...validWidget("delta-1", "delta").visual, systemMemories },
+            },
+          ],
+        },
+      },
+    };
+
+    try {
+      parseProfileDocumentV3(doc);
+      throw new Error("expected validation error");
+    } catch (error) {
+      expectPath(error, path);
+    }
+  });
+
+  it("rejects functional fields in visual memory", () => {
+    const doc = {
+      ...minimalDocument(),
+      layouts: {
+        general: {
+          type: "general" as const,
+          widgets: [
+            {
+              ...validWidget("delta-1", "delta"),
+              visual: {
+                ...validWidget("delta-1", "delta").visual,
+                systemMemories: {
+                  "vantare-crystal": {
+                    systemVersion: 1,
+                    configVersion: 1,
+                    baseSettings: {},
+                    appearanceOverrides: {},
+                    content: { mustNotPersist: true },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    try {
+      parseProfileDocumentV3(doc);
+      throw new Error("expected validation error");
+    } catch (error) {
+      expectPath(error, "layouts.general.widgets[0].visual.systemMemories.vantare-crystal.content");
+    }
+  });
+
   it.each([
     "delta",
     "standings",

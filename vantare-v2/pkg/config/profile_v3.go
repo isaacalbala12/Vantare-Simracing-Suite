@@ -37,13 +37,14 @@ const (
 )
 
 type ProfileDocumentV3 struct {
-	SchemaVersion int                            `json:"schemaVersion"`
-	ID            string                         `json:"id"`
-	Name          string                         `json:"name"`
-	DisplayMode   DisplayMode                    `json:"displayMode"`
-	MonitorIndex  int                            `json:"monitorIndex"`
-	Layouts       map[LayoutType]SessionLayoutV3 `json:"layouts"`
-	Source        *ProfileSourceMeta             `json:"source,omitempty"`
+	SchemaVersion         int                            `json:"schemaVersion"`
+	ID                    string                         `json:"id"`
+	Name                  string                         `json:"name"`
+	DisplayMode           DisplayMode                    `json:"displayMode"`
+	MonitorIndex          int                            `json:"monitorIndex"`
+	Layouts               map[LayoutType]SessionLayoutV3 `json:"layouts"`
+	DefaultVisualSystemID *DesignSystemID                `json:"defaultVisualSystemId,omitempty"`
+	Source                *ProfileSourceMeta             `json:"source,omitempty"`
 }
 
 type SessionLayoutV3 struct {
@@ -89,7 +90,16 @@ type WidgetVisibilityV3 struct {
 }
 
 type WidgetVisualV3 struct {
-	SystemID            DesignSystemID            `json:"systemId"`
+	SystemID            DesignSystemID                             `json:"systemId"`
+	SystemVersion       int                                        `json:"systemVersion"`
+	ConfigVersion       int                                        `json:"configVersion"`
+	BaseSettings        map[string]any                             `json:"baseSettings"`
+	AppearanceOverrides map[string]any                             `json:"appearanceOverrides"`
+	Provenance          *WidgetDesignProvenanceV3                  `json:"provenance,omitempty"`
+	SystemMemories      map[DesignSystemID]WidgetVisualSelectionV3 `json:"systemMemories,omitempty"`
+}
+
+type WidgetVisualSelectionV3 struct {
 	SystemVersion       int                       `json:"systemVersion"`
 	ConfigVersion       int                       `json:"configVersion"`
 	BaseSettings        map[string]any            `json:"baseSettings"`

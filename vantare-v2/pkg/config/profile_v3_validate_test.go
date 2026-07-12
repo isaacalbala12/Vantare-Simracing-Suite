@@ -222,6 +222,46 @@ func TestWidgetTypeV3Vocabulary(t *testing.T) {
 }
 
 func TestNormalizeProfileDocumentV3(t *testing.T) {
+	t.Run("defaults and clones visual system memory", func(t *testing.T) {
+		w := validWidget("delta-1", WidgetTypeDelta)
+		w.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+			DesignSystemVantareCrystal: {
+				SystemVersion:       2,
+				ConfigVersion:       3,
+				BaseSettings:        map[string]any{"accentColor": "#8cf"},
+				AppearanceOverrides: map[string]any{"opacity": 0.9},
+				Provenance: &WidgetDesignProvenanceV3{
+					DesignID: "delta-crystal", DesignName: "Delta Crystal", Origin: "vantare", AppliedAt: "2026-07-12T00:00:00Z",
+				},
+			},
+		}
+		doc := validProfileV3(w)
+		defaultSystem := DesignSystemVantareCrystal
+		doc.DefaultVisualSystemID = &defaultSystem
+		normalized := NormalizeProfileDocumentV3(doc)
+		if normalized.DefaultVisualSystemID == nil || *normalized.DefaultVisualSystemID != DesignSystemVantareCrystal {
+			t.Fatalf("default system=%v want %q", normalized.DefaultVisualSystemID, DesignSystemVantareCrystal)
+		}
+		memory := normalized.Layouts[LayoutGeneral].Widgets[0].Visual.SystemMemories[DesignSystemVantareCrystal]
+		memory.BaseSettings["accentColor"] = "#f88"
+		if doc.Layouts[LayoutGeneral].Widgets[0].Visual.SystemMemories[DesignSystemVantareCrystal].BaseSettings["accentColor"] != "#8cf" {
+			t.Fatal("normalization should deep-copy visual memory")
+		}
+	})
+
+	t.Run("rejects invalid visual memory", func(t *testing.T) {
+		w := validWidget("delta-1", WidgetTypeDelta)
+		w.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+			DesignSystemID("unknown-system"): {},
+		}
+		assertValidationPath(t, ValidateProfileDocumentV3(validProfileV3(w)), "layouts.general.widgets[0].visual.systemMemories.unknown-system")
+
+		w.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+			DesignSystemVantareCrystal: {SystemVersion: 0, ConfigVersion: 1},
+		}
+		assertValidationPath(t, ValidateProfileDocumentV3(validProfileV3(w)), "layouts.general.widgets[0].visual.systemMemories.vantare-crystal.systemVersion")
+	})
+
 	t.Run("nil maps become empty maps", func(t *testing.T) {
 		w := validWidget("delta-1", WidgetTypeDelta)
 		w.Content = nil

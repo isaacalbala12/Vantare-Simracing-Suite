@@ -48,6 +48,9 @@ func ValidateProfileDocumentV3(p *ProfileDocumentV3) error {
 	if len(p.Name) > maxProfileNameLength {
 		return validationError("name", "exceeds maximum length")
 	}
+	if p.DefaultVisualSystemID != nil && !isSupportedDesignSystemID(*p.DefaultVisualSystemID) {
+		return validationError("defaultVisualSystemId", "unsupported design system")
+	}
 	if p.Layouts == nil {
 		return validationError("layouts.general", "missing required general layout")
 	}
@@ -178,6 +181,28 @@ func validateWidgetVisualV3(path string, visual WidgetVisualV3) error {
 	if !isSupportedDesignSystemID(visual.SystemID) {
 		return validationError(path+".systemId", "unsupported design system")
 	}
+	if err := validateWidgetVisualSelectionV3(path, WidgetVisualSelectionV3{
+		SystemVersion:       visual.SystemVersion,
+		ConfigVersion:       visual.ConfigVersion,
+		BaseSettings:        visual.BaseSettings,
+		AppearanceOverrides: visual.AppearanceOverrides,
+		Provenance:          visual.Provenance,
+	}); err != nil {
+		return err
+	}
+	for systemID, memory := range visual.SystemMemories {
+		memoryPath := path + ".systemMemories." + string(systemID)
+		if !isSupportedDesignSystemID(systemID) {
+			return validationError(memoryPath, "unsupported design system")
+		}
+		if err := validateWidgetVisualSelectionV3(memoryPath, memory); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateWidgetVisualSelectionV3(path string, visual WidgetVisualSelectionV3) error {
 	if visual.SystemVersion < 1 {
 		return validationError(path+".systemVersion", "must be at least 1")
 	}
@@ -189,6 +214,15 @@ func validateWidgetVisualV3(path string, visual WidgetVisualV3) error {
 	}
 	if err := validatePayloadSize(path+".appearanceOverrides", visual.AppearanceOverrides); err != nil {
 		return err
+	}
+	if err := validatePayloadSize(path, map[string]any{
+		"baseSettings":        visual.BaseSettings,
+		"appearanceOverrides": visual.AppearanceOverrides,
+	}); err != nil {
+		return err
+	}
+	if visual.Provenance != nil && visual.Provenance.Origin != "vantare" && visual.Provenance.Origin != "user" {
+		return validationError(path+".provenance.origin", "unsupported origin")
 	}
 	return nil
 }
@@ -221,6 +255,10 @@ func NormalizeProfileDocumentV3(p *ProfileDocumentV3) *ProfileDocumentV3 {
 		return nil
 	}
 	next := *p
+	if p.DefaultVisualSystemID != nil {
+		defaultSystem := *p.DefaultVisualSystemID
+		next.DefaultVisualSystemID = &defaultSystem
+	}
 	if p.Source != nil {
 		source := *p.Source
 		next.Source = &source
@@ -293,9 +331,29 @@ func normalizeWidgetInstanceV3(widget WidgetInstanceV3) WidgetInstanceV3 {
 		BaseSettings:        copyMapOrEmpty(widget.Visual.BaseSettings),
 		AppearanceOverrides: copyMapOrEmpty(widget.Visual.AppearanceOverrides),
 	}
+	if widget.Visual.SystemMemories != nil {
+		next.Visual.SystemMemories = make(map[DesignSystemID]WidgetVisualSelectionV3, len(widget.Visual.SystemMemories))
+		for systemID, memory := range widget.Visual.SystemMemories {
+			next.Visual.SystemMemories[systemID] = normalizeWidgetVisualSelectionV3(memory)
+		}
+	}
 	if widget.Visual.Provenance != nil {
 		provenance := *widget.Visual.Provenance
 		next.Visual.Provenance = &provenance
+	}
+	return next
+}
+
+func normalizeWidgetVisualSelectionV3(selection WidgetVisualSelectionV3) WidgetVisualSelectionV3 {
+	next := WidgetVisualSelectionV3{
+		SystemVersion:       selection.SystemVersion,
+		ConfigVersion:       selection.ConfigVersion,
+		BaseSettings:        copyMapOrEmpty(selection.BaseSettings),
+		AppearanceOverrides: copyMapOrEmpty(selection.AppearanceOverrides),
+	}
+	if selection.Provenance != nil {
+		provenance := *selection.Provenance
+		next.Provenance = &provenance
 	}
 	return next
 }

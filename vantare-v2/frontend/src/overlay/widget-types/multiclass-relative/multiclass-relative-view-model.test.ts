@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { buildMockTelemetry } from "../../core/mock-scenarios";
+import { buildMulticlassRelativeViewModel } from "./multiclass-relative-view-model";
+describe("buildMulticlassRelativeViewModel", () => { it("centers the player and includes other classes", () => { const snapshot = buildMockTelemetry({ session: "race", location: "track" }); const rows = [...snapshot.scoring, { id: 55, place: 4, driverNumber: "55", driverName: "GT3 RIVAL", vehicleClass: "GT3", isPlayer: false }]; const model = buildMulticlassRelativeViewModel({ ...snapshot, scoring: rows }, { rowCount: 5, classMode: "all", showClassDivider: true }); expect(model.rows.some((row) => row.isPlayer)).toBe(true); expect(model.rows.some((row) => row.classId === "GT3")).toBe(true); expect(model.rows.length).toBeLessThanOrEqual(7); }); });

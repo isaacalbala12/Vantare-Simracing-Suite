@@ -21,6 +21,7 @@ describe("widgetTypeRegistry", () => {
       "broadcast-tower",
       "head-to-head",
       "input-telemetry",
+      "multiclass-relative",
     ]);
   });
 

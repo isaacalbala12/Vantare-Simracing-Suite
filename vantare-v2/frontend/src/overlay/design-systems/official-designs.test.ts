@@ -73,6 +73,8 @@ describe("official-designs", () => {
       "head-to-head:vantare-original",
       "input-telemetry:vantare-crystal",
       "input-telemetry:vantare-original",
+      "multiclass-relative:vantare-crystal",
+      "multiclass-relative:vantare-original",
       "pedals-telemetry-compact:vantare-crystal",
       "pedals-telemetry-compact:vantare-original",
       "pedals-telemetry:vantare-crystal",

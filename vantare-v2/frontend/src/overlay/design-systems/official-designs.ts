@@ -204,6 +204,8 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "input-telemetry-crystal-blade", name: "Crystal Input Blade", widgetType: "input-telemetry", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: { templateId: "input-blade" }, includesContent: false, origin: "vantare", isDefault: true },
   { id: "input-telemetry-crystal-capsule", name: "Crystal Input Capsule", widgetType: "input-telemetry", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: { templateId: "input-capsule" }, includesContent: false, origin: "vantare" },
   { id: "input-telemetry-crystal-dense", name: "Crystal Input Dense", widgetType: "input-telemetry", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: { templateId: "input-dense" }, includesContent: false, origin: "vantare" },
+  { id: "multiclass-relative-original", name: "Original Multiclass Relative", widgetType: "multiclass-relative", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "multiclass-relative-crystal", name: "Crystal Multiclass Relative", widgetType: "multiclass-relative", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

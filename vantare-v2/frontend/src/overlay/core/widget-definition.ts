@@ -17,6 +17,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "broadcast-tower": "overlays.advanced",
   "head-to-head": "overlays.advanced",
   "input-telemetry": "overlays.advanced",
+  "multiclass-relative": "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

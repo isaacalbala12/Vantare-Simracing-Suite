@@ -8,6 +8,7 @@ import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags
 import { broadcastTowerDefinition } from "../widget-types/broadcast-tower/broadcast-tower-definition";
 import { headToHeadDefinition } from "../widget-types/head-to-head/head-to-head-definition";
 import { inputTelemetryDefinition } from "../widget-types/input-telemetry/input-telemetry-definition";
+import { multiclassRelativeDefinition } from "../widget-types/multiclass-relative/multiclass-relative-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 
@@ -68,3 +69,4 @@ widgetTypeRegistry.register(racingFlagsDefinition);
 widgetTypeRegistry.register(broadcastTowerDefinition);
 widgetTypeRegistry.register(headToHeadDefinition);
 widgetTypeRegistry.register(inputTelemetryDefinition);
+widgetTypeRegistry.register(multiclassRelativeDefinition);

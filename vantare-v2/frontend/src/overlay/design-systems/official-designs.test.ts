@@ -69,6 +69,8 @@ describe("official-designs", () => {
       "broadcast-tower:vantare-original",
       "delta:vantare-crystal",
       "delta:vantare-original",
+      "head-to-head:vantare-crystal",
+      "head-to-head:vantare-original",
       "pedals-telemetry-compact:vantare-crystal",
       "pedals-telemetry-compact:vantare-original",
       "pedals-telemetry:vantare-crystal",

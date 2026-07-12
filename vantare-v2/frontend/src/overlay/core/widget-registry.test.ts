@@ -19,6 +19,7 @@ describe("widgetTypeRegistry", () => {
       "pedals-telemetry-compact",
       "racing-flags",
       "broadcast-tower",
+      "head-to-head",
     ]);
   });
 

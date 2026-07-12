@@ -198,6 +198,8 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   },
   { id: "broadcast-tower-original", name: "Original Broadcast Tower", widgetType: "broadcast-tower", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "broadcast-tower-crystal", name: "Crystal Broadcast Tower", widgetType: "broadcast-tower", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "head-to-head-original", name: "Original Head to Head", widgetType: "head-to-head", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "head-to-head-crystal", name: "Crystal Head to Head", widgetType: "head-to-head", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

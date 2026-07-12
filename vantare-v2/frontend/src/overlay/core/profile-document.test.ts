@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ProfileDocumentValidationError,
   cloneProfileDocumentV3,
+  getDefaultVisualSystemId,
   parseProfileDocumentV3,
   type ProfileDocumentV3,
 } from "./profile-document";
@@ -46,7 +47,7 @@ function expectPath(error: unknown, path: string) {
 
 describe("parseProfileDocumentV3", () => {
   it("defaults older documents to the Original visual system", () => {
-    expect(parseProfileDocumentV3(minimalDocument()).defaultVisualSystemId).toBe("vantare-original");
+    expect(getDefaultVisualSystemId(parseProfileDocumentV3(minimalDocument()))).toBe("vantare-original");
   });
 
   it("round-trips visual memory without functional document fields", () => {

@@ -454,11 +454,14 @@ function parseSessionLayout(input: unknown, path: string, expectedType: SessionL
   if (total > MAX_WIDGETS_PER_LAYOUT) {
     validationError(`${path}.widgets`, "exceeds maximum widget count");
   }
-  return {
+  const layout: SessionLayoutV3 = {
     type,
     widgets,
-    preservedWidgets,
   };
+  if (preservedWidgets !== undefined) {
+    layout.preservedWidgets = preservedWidgets;
+  }
+  return layout;
 }
 
 export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
@@ -486,12 +489,12 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     validationError("displayMode", "unsupported display mode");
   }
   const monitorIndex = readNumber(raw.monitorIndex, "monitorIndex");
-  const defaultVisualSystemId =
-    raw.defaultVisualSystemId === undefined
-      ? "vantare-original"
-      : (readString(raw.defaultVisualSystemId, "defaultVisualSystemId") as DesignSystemId);
-  if (!DESIGN_SYSTEM_IDS.has(defaultVisualSystemId)) {
-    validationError("defaultVisualSystemId", "unsupported design system");
+  let defaultVisualSystemId: DesignSystemId | undefined;
+  if (raw.defaultVisualSystemId !== undefined) {
+    defaultVisualSystemId = readString(raw.defaultVisualSystemId, "defaultVisualSystemId") as DesignSystemId;
+    if (!DESIGN_SYSTEM_IDS.has(defaultVisualSystemId)) {
+      validationError("defaultVisualSystemId", "unsupported design system");
+    }
   }
   const layoutsRaw = readRecord(raw.layouts, "layouts");
   if (layoutsRaw.general === undefined) {
@@ -514,8 +517,10 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     displayMode,
     monitorIndex,
     layouts,
-    defaultVisualSystemId,
   };
+  if (defaultVisualSystemId !== undefined) {
+    document.defaultVisualSystemId = defaultVisualSystemId;
+  }
   if (raw.source !== undefined) {
     const sourceRaw = readRecord(raw.source, "source");
     document.source = {
@@ -526,6 +531,10 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     };
   }
   return document;
+}
+
+export function getDefaultVisualSystemId(document: ProfileDocumentV3): DesignSystemId {
+  return document.defaultVisualSystemId ?? "vantare-original";
 }
 
 export function cloneProfileDocumentV3(document: ProfileDocumentV3): ProfileDocumentV3 {

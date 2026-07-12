@@ -3,7 +3,7 @@
 **Fecha:** 2026-07-13
 **Issue:** ISA-9
 **Rama:** `vantareapp/isa-9-launcher`
-**Estado:** diseño visual y enfoque híbrido aprobados; pendiente revisión final del documento.
+**Estado:** aprobado por Isaac; listo para implementación mediante el plan asociado.
 
 ## Objetivo
 

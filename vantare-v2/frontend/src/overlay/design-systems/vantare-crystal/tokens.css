@@ -553,34 +553,30 @@
 }
 
 /* End canonical relative composition. */
-[data-widget-system="vantare-crystal"].vc-pedals,
-[data-widget-system="vantare-crystal"] .vc-pedals {
+[data-widget-system="vantare-crystal"].vc-pedals {
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   font-family: var(--vc-font-sans);
   overflow: hidden;
-}
-
-[data-widget-system="vantare-crystal"] .vc-pedals-glow {
-  position: absolute;
-  inset: -20% -10%;
-  background: radial-gradient(circle at 50% 100%, rgba(46, 204, 113, 0.12), transparent 65%);
-  pointer-events: none;
 }
 
 [data-widget-system="vantare-crystal"] .vc-pedals-frame {
   position: relative;
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-height: 0;
   height: 100%;
-  padding: 0.4rem;
-  background: rgba(20, 20, 20, 0.55);
-  border: 1px solid var(--vc-border);
+  padding: 0.5rem;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
   border-radius: var(--vc-radius-lg);
-  backdrop-filter: blur(16px);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: blur(var(--vc-blur-glass));
 }
 
 [data-widget-system="vantare-crystal"][data-transparent="true"] .vc-pedals-frame {
@@ -601,8 +597,8 @@
 
 [data-widget-system="vantare-crystal"] .vc-pedals-status-message {
   margin: 0 0 0.35rem;
-  font-size: 0.65rem;
   color: var(--vc-muted);
+  font-size: 0.65rem;
 }
 
 [data-widget-system="vantare-crystal"] .vc-pedals-channels {
@@ -610,7 +606,7 @@
   flex: 1;
   align-items: flex-end;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.75rem;
   min-height: 0;
 }
 
@@ -618,13 +614,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 28px;
+  width: 34px;
   height: 100%;
-  gap: 0.2rem;
+  gap: 0.3rem;
 }
 
 [data-widget-system="vantare-crystal"] .vc-pedals-label {
-  font-size: 0.5rem;
+  font-size: 0.54rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--vc-muted);
@@ -634,9 +630,10 @@
   position: relative;
   flex: 1;
   width: 100%;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--vc-radius-sm);
+  min-height: 4rem;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--vc-radius-md);
   overflow: hidden;
 }
 
@@ -645,7 +642,8 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  border-radius: 0 0 var(--vc-radius-sm) var(--vc-radius-sm);
+  border-radius: 0 0 var(--vc-radius-md) var(--vc-radius-md);
+  box-shadow: 0 0 8px currentColor;
 }
 
 [data-widget-system="vantare-crystal"] .vc-pedals-value {

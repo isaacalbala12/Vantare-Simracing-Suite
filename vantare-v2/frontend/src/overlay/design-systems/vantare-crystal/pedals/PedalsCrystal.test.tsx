@@ -47,10 +47,14 @@ describe("PedalsCrystal", () => {
 
   it("uses a structurally distinct Crystal composition", () => {
     const { root } = renderCrystal(readyModel);
-    expect(root.querySelector(".vc-pedals-glow")).toBeTruthy();
+    expect(root.classList.contains("vc-pedals-v3")).toBe(true);
     expect(root.querySelector(".vc-pedals-frame")).toBeTruthy();
     expect(root.querySelector(".vc-pedals-channel")).toBeTruthy();
     expect(root.querySelector(".vo-pedals-bars")).toBeNull();
+    expect(root.querySelector("[data-pedal='throttle']")).toBeTruthy();
+    expect(root.querySelector("[data-pedal='brake']")).toBeTruthy();
+    expect(root.querySelector("[data-pedal='clutch']")).toBeTruthy();
+    expect(root.textContent).not.toMatch(/gear|rpm|speed/i);
   });
 
   it("renders three pedal channels with exact percentages", () => {
@@ -58,9 +62,9 @@ describe("PedalsCrystal", () => {
     const fills = [...root.querySelectorAll(".vc-pedals-fill")];
     expect(fills).toHaveLength(3);
     expect(root.querySelector('[data-pedal="throttle"] .vc-pedals-value')?.textContent).toBe("78%");
-    expect((fills[2] as HTMLElement).style.height).toBe("78%");
+    expect((fills[0] as HTMLElement).style.height).toBe("78%");
     expect((fills[1] as HTMLElement).style.height).toBe("12%");
-    expect((fills[0] as HTMLElement).style.height).toBe("0%");
+    expect((fills[2] as HTMLElement).style.height).toBe("0%");
   });
 
   it("handles zero and full pedal extremes", () => {

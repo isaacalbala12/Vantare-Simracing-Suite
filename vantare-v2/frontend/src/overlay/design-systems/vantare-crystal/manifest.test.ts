@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { widgetTypeRegistry } from "../../core/widget-registry";
-import type { ProfileDocumentV3, WidgetType } from "../../core/profile-document";
 import { upgradeProfileVisualConfigs } from "../../core/visual-config-migration";
 import { designSystemRegistry, migrateConfigSettings } from "../../core/design-system-registry";
 import { vantareCrystalManifest } from "./manifest";
 
+type WidgetType = "delta" | "pedals" | "relative" | "standings";
 const widgetTypes: readonly WidgetType[] = ["delta", "pedals", "relative", "standings"];
 
-function buildLegacyDocument(): ProfileDocumentV3 {
+function buildLegacyDocument() {
   const widgets = widgetTypes.map((type) => {
     const widget = widgetTypeRegistry.get(type).createDefault(`${type}-legacy`);
     widget.visual = {

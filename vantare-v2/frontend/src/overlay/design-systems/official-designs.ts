@@ -200,6 +200,10 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "broadcast-tower-crystal", name: "Crystal Broadcast Tower", widgetType: "broadcast-tower", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "head-to-head-original", name: "Original Head to Head", widgetType: "head-to-head", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "head-to-head-crystal", name: "Crystal Head to Head", widgetType: "head-to-head", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "input-telemetry-original", name: "Original Input Telemetry", widgetType: "input-telemetry", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "input-telemetry-crystal-blade", name: "Crystal Input Blade", widgetType: "input-telemetry", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: { templateId: "input-blade" }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "input-telemetry-crystal-capsule", name: "Crystal Input Capsule", widgetType: "input-telemetry", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: { templateId: "input-capsule" }, includesContent: false, origin: "vantare" },
+  { id: "input-telemetry-crystal-dense", name: "Crystal Input Dense", widgetType: "input-telemetry", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: { templateId: "input-dense" }, includesContent: false, origin: "vantare" },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

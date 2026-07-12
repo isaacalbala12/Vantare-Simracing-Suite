@@ -71,6 +71,8 @@ describe("official-designs", () => {
       "delta:vantare-original",
       "head-to-head:vantare-crystal",
       "head-to-head:vantare-original",
+      "input-telemetry:vantare-crystal",
+      "input-telemetry:vantare-original",
       "pedals-telemetry-compact:vantare-crystal",
       "pedals-telemetry-compact:vantare-original",
       "pedals-telemetry:vantare-crystal",

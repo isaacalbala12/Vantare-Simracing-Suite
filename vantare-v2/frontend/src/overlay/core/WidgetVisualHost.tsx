@@ -6,6 +6,8 @@ import { widgetTypeRegistry } from "./widget-registry";
 import { prepareWidgetVisualSettings } from "./widget-visual-settings";
 import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
+import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
+import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -75,7 +77,15 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="invalid-content" message={message} />;
   }
 
-  const model = definition.buildViewModel(snapshot, content as never);
+  let model = definition.buildViewModel(snapshot, content as never);
+  if (widget.type === "input-telemetry") {
+    const inputContent = content as { historySeconds: number };
+    recordInputTelemetrySample(widget.id, snapshot);
+    model = {
+      ...model,
+      history: readInputTelemetryHistory(widget.id, snapshot, inputContent.historySeconds),
+    } as InputTelemetryViewModel;
+  }
 
   let registration;
   let settings: Record<string, unknown>;

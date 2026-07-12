@@ -20,6 +20,7 @@ describe("widgetTypeRegistry", () => {
       "racing-flags",
       "broadcast-tower",
       "head-to-head",
+      "input-telemetry",
     ]);
   });
 

@@ -12,6 +12,7 @@ export type WidgetDesignV1 = {
   content?: Record<string, unknown>;
   includesContent: boolean;
   origin: "vantare" | "user";
+  isDefault?: boolean;
   requiredFeature?: "overlays.basic" | "overlays.advanced";
   createdAt?: string;
   updatedAt?: string;
@@ -110,6 +111,9 @@ export function validateWidgetDesign(input: unknown): WidgetDesignV1 {
     includesContent,
     origin,
   };
+  if (raw.isDefault !== undefined) {
+    design.isDefault = readBoolean(raw.isDefault, "isDefault");
+  }
   if (raw.content !== undefined) {
     design.content = readRecord(raw.content, "content");
   }
@@ -154,7 +158,9 @@ export function applyWidgetDesign(
       systemVersion: design.systemVersion,
       configVersion: design.configVersion,
       baseSettings: cloneRecord(design.visual),
-      appearanceOverrides: {},
+      appearanceOverrides:
+        widget.visual.systemId === design.systemId ? cloneRecord(widget.visual.appearanceOverrides) : {},
+      systemMemories: widget.visual.systemMemories ? structuredClone(widget.visual.systemMemories) : undefined,
       provenance: {
         designId: design.id,
         designName: design.name,

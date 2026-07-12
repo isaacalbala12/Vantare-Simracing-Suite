@@ -5,9 +5,11 @@ import {
   type WidgetBehaviorV3,
   type WidgetInstanceV3,
   type WidgetLayoutV3,
+  type WidgetVisualSelectionV3,
   type WidgetVisualV3,
 } from "../../../overlay/core/profile-document";
 import { applyWidgetDesign, type WidgetDesignV1 } from "../../../overlay/core/widget-design";
+import { getDefaultOfficialDesign } from "../designs/design-utils";
 import { copySessionLayout, materializeSessionLayout, resolveSessionLayout } from "./session-layouts";
 import { normalizeWidgetOrder, reorderWidgets } from "./widget-order";
 
@@ -361,7 +363,63 @@ function applyWidgetApplyDesign(
       if (!targets.has(widget.id)) {
         return widget;
       }
-      return applyWidgetDesign(widget, command.design, command.appliedAt);
+      if (widget.visual.systemId === command.design.systemId) {
+        return applyWidgetDesign(widget, command.design, command.appliedAt);
+      }
+
+      if (widget.type !== command.design.widgetType) {
+        return applyWidgetDesign(widget, command.design, command.appliedAt);
+      }
+
+      const outgoingSelection: WidgetVisualSelectionV3 = {
+        systemVersion: widget.visual.systemVersion,
+        configVersion: widget.visual.configVersion,
+        baseSettings: structuredClone(widget.visual.baseSettings),
+        appearanceOverrides: structuredClone(widget.visual.appearanceOverrides),
+        provenance: widget.visual.provenance ? structuredClone(widget.visual.provenance) : undefined,
+      };
+      const systemMemories = {
+        ...(widget.visual.systemMemories ? structuredClone(widget.visual.systemMemories) : {}),
+        [widget.visual.systemId]: outgoingSelection,
+      };
+      const rememberedSelection = widget.visual.systemMemories?.[command.design.systemId];
+      if (rememberedSelection) {
+        return {
+          ...widget,
+          visual: {
+            systemId: command.design.systemId,
+            ...structuredClone(rememberedSelection),
+            systemMemories,
+          },
+        };
+      }
+
+      const defaultDesign = command.design.isDefault
+        ? command.design
+        : getDefaultOfficialDesign(widget.type, command.design.systemId);
+      if (!defaultDesign) {
+        throw new StudioCommandError(
+          command.type,
+          `no official default design for widget type ${widget.type} and system ${command.design.systemId}`,
+        );
+      }
+      return {
+        ...widget,
+        visual: {
+          systemId: command.design.systemId,
+          systemVersion: defaultDesign.systemVersion,
+          configVersion: defaultDesign.configVersion,
+          baseSettings: structuredClone(defaultDesign.visual),
+          appearanceOverrides: {},
+          provenance: {
+            designId: defaultDesign.id,
+            designName: defaultDesign.name,
+            origin: defaultDesign.origin,
+            appliedAt: command.appliedAt,
+          },
+          systemMemories,
+        },
+      };
     });
   });
 }

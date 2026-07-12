@@ -2,6 +2,7 @@ import { designSystemRegistry } from "../../../overlay/core/design-system-regist
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { prepareWidgetVisualSettings } from "../../../overlay/core/widget-visual-settings";
+import { listOfficialDesigns } from "../../../overlay/design-systems/official-designs";
 
 export function isDesignCompatibleWithWidget(design: WidgetDesignV1, widget: WidgetInstanceV3): boolean {
   if (design.widgetType !== widget.type) {
@@ -50,4 +51,11 @@ export function buildUserDesignFromWidget(
 
 export function isActiveDesign(widget: WidgetInstanceV3, design: WidgetDesignV1): boolean {
   return widget.visual.provenance?.designId === design.id;
+}
+
+export function getDefaultOfficialDesign(
+  widgetType: WidgetInstanceV3["type"],
+  systemId: WidgetInstanceV3["visual"]["systemId"],
+): WidgetDesignV1 | undefined {
+  return listOfficialDesigns(widgetType).find((design) => design.systemId === systemId && design.isDefault);
 }

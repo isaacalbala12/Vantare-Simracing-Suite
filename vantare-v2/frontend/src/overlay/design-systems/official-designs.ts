@@ -16,6 +16,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { showHeader: true },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "delta-crystal-base",
@@ -27,6 +28,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { showHeader: true },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "delta-time-attack",
@@ -49,6 +51,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { showSessionHeader: true, compactRows: false },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "standings-crystal-base",
@@ -60,6 +63,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { showSessionHeader: true, compactRows: false },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "relative-original-base",
@@ -71,6 +75,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { ...RELATIVE_DEFAULT_APPEARANCE },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "relative-crystal-base",
@@ -82,6 +87,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { ...RELATIVE_DEFAULT_APPEARANCE },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "pedals-original-base",
@@ -93,6 +99,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { ...PEDALS_DEFAULT_APPEARANCE },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
   {
     id: "pedals-crystal-base",
@@ -104,6 +111,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { ...PEDALS_DEFAULT_APPEARANCE },
     includesContent: false,
     origin: "vantare",
+    isDefault: true,
   },
 ];
 

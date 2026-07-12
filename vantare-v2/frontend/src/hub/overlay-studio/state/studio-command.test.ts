@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { applyStudioCommand, StudioCommandError, type StudioCommand } from "./studio-command";
 
 function buildDocument(widgets: WidgetInstanceV3[] = [deltaDefinition.createDefault("delta-1")]): ProfileDocumentV3 {
@@ -317,6 +318,7 @@ describe("applyStudioCommand", () => {
         visual: { showHeader: true, accent: "cyan" },
         includesContent: false,
         origin: "vantare",
+        isDefault: true,
       },
     });
 
@@ -329,6 +331,116 @@ describe("applyStudioCommand", () => {
     expect(next.layouts.general.widgets[0]?.layout).toEqual(document.layouts.general.widgets[0]?.layout);
     expect(next.layouts.general.widgets[1]?.layout.x).toBe(40);
     expect(next.layouts.general.widgets[1]?.layout.zIndex).toBe(1);
+  });
+
+  it("switches visual systems atomically and restores each system memory", () => {
+    const source = widget("delta-1", {
+      layout: { x: 77, y: 88, w: 280, h: 96, zIndex: 3, aspectLocked: false },
+      behavior: { enabled: false, updateHz: 12 },
+      content: { keep: "functional" },
+      visual: {
+        systemId: "vantare-original",
+        systemVersion: 1,
+        configVersion: 1,
+        baseSettings: { originalOnly: true },
+        appearanceOverrides: { tint: "#fff" },
+      },
+    });
+    const document = buildDocument([source]);
+    const crystalDesign: WidgetDesignV1 = {
+      id: "delta-crystal-base",
+      name: "Crystal Base",
+      widgetType: "delta",
+      systemId: "vantare-crystal",
+      systemVersion: 1,
+      configVersion: 1,
+      visual: { showHeader: true },
+      includesContent: true,
+      content: { mustNotReplace: true },
+      origin: "vantare",
+      isDefault: true,
+    };
+    const originalDesign: WidgetDesignV1 = {
+      id: "delta-original-base",
+      name: "Original Base",
+      widgetType: "delta",
+      systemId: "vantare-original",
+      systemVersion: 1,
+      configVersion: 1,
+      visual: { showHeader: true },
+      includesContent: false,
+      origin: "vantare",
+    };
+
+    const crystal = applyStudioCommand(document, {
+      type: "widget/apply-design",
+      session: "general",
+      widgetIds: ["delta-1"],
+      design: crystalDesign,
+      appliedAt: "2026-07-12T00:00:00Z",
+    }).layouts.general.widgets[0]!;
+    expect(crystal.visual.systemId).toBe("vantare-crystal");
+    expect(crystal.visual.baseSettings).toEqual({ showHeader: true });
+    expect(crystal.visual.systemMemories?.["vantare-original"]).toMatchObject({
+      baseSettings: { originalOnly: true },
+      appearanceOverrides: { tint: "#fff" },
+    });
+    expect(crystal.content).toEqual({ keep: "functional" });
+    expect(crystal.layout).toEqual(source.layout);
+    expect(crystal.behavior).toEqual(source.behavior);
+
+    const original = applyStudioCommand(
+      { ...document, layouts: { general: { ...document.layouts.general, widgets: [crystal] } } },
+      {
+        type: "widget/apply-design",
+        session: "general",
+        widgetIds: ["delta-1"],
+        design: originalDesign,
+        appliedAt: "2026-07-12T00:01:00Z",
+      },
+    ).layouts.general.widgets[0]!;
+    expect(original.visual.baseSettings).toEqual({ originalOnly: true });
+    expect(original.visual.appearanceOverrides).toEqual({ tint: "#fff" });
+    expect(original.visual.provenance?.designId).toBeUndefined();
+
+    const restoredCrystal = applyStudioCommand(
+      { ...document, layouts: { general: { ...document.layouts.general, widgets: [original] } } },
+      {
+        type: "widget/apply-design",
+        session: "general",
+        widgetIds: ["delta-1"],
+        design: crystalDesign,
+        appliedAt: "2026-07-12T00:02:00Z",
+      },
+    ).layouts.general.widgets[0]!;
+    expect(restoredCrystal.visual.baseSettings).toEqual({ showHeader: true });
+    expect(restoredCrystal.visual.provenance?.designId).toBe("delta-crystal-base");
+    expect(restoredCrystal.content).toEqual({ keep: "functional" });
+  });
+
+  it("fails atomically when a target system has no official default", () => {
+    const document = buildDocument([widget("broadcast-1", { type: "broadcast-tower" })]);
+    const before = structuredClone(document);
+    expect(() =>
+      applyStudioCommand(document, {
+        type: "widget/apply-design",
+        session: "general",
+        widgetIds: ["broadcast-1"],
+        design: {
+          id: "broadcast-crystal",
+          name: "Broadcast Crystal",
+          widgetType: "broadcast-tower",
+          systemId: "vantare-crystal",
+          systemVersion: 1,
+          configVersion: 1,
+          visual: {},
+          includesContent: false,
+          origin: "vantare",
+        },
+        appliedAt: "2026-07-12T00:00:00Z",
+      }),
+    ).toThrow(/no official default/i);
+    expect(document).toEqual(before);
   });
 
   it("copies one session layout onto another", () => {

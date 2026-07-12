@@ -60,6 +60,15 @@ describe("applyWidgetDesign", () => {
     });
   });
 
+  it("preserves appearance overrides when applying another design in the same system", () => {
+    const applied = applyWidgetDesign(
+      baseWidget(),
+      baseDesign({ systemId: "vantare-original", visual: { accentColor: "#abc" } }),
+      "t1",
+    );
+    expect(applied.visual.appearanceOverrides).toEqual({ tint: "#fff" });
+  });
+
   it("replaces content only when includesContent is true", () => {
     const withContent = applyWidgetDesign(baseWidget(), baseDesign({ includesContent: true }), "t1");
     expect(withContent.content).toEqual({ columns: [{ id: "position" }] });

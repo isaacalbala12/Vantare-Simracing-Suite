@@ -63,6 +63,16 @@ describe("official-designs", () => {
     ]);
   });
 
+  it("marks exactly one default design for every widget/system pair", () => {
+    for (const type of ["delta", "standings", "relative", "pedals"] as const) {
+      for (const systemId of ["vantare-original", "vantare-crystal"] as const) {
+        expect(
+          listOfficialDesigns(type).filter((design) => design.systemId === systemId && design.isDefault),
+        ).toHaveLength(1);
+      }
+    }
+  });
+
   it("aligns official designs with registered widget capabilities", () => {
     for (const design of listOfficialDesigns()) {
       const definition = widgetTypeRegistry.get(design.widgetType);

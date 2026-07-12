@@ -148,6 +148,30 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     origin: "vantare",
     isDefault: true,
   },
+  {
+    id: "pedals-telemetry-compact-original",
+    name: "Original Compact Telemetry",
+    widgetType: "pedals-telemetry-compact",
+    systemId: "vantare-original",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
+    id: "pedals-telemetry-compact-crystal-v2",
+    name: "Crystal V2 Low Profile",
+    widgetType: "pedals-telemetry-compact",
+    systemId: "vantare-crystal",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

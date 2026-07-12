@@ -728,6 +728,43 @@
 [data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-pedals-telemetry-frame,
 [data-widget-system="vantare-crystal"][data-status="error"] .vc-pedals-telemetry-frame { opacity: 0.5; }
 
+[data-widget-system="vantare-crystal"].vc-pedals-telemetry-compact {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+}
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-frame {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 1rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 3px solid var(--vc-accent-red-bright, #ff3b3b);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  background: rgba(18, 18, 22, 0.9);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(28px);
+}
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-bars { display: flex; align-items: flex-end; gap: 0.65rem; height: 3.1rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-channel { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-label { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 800; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-track { position: relative; display: block; width: 14px; flex: 1; min-height: 2.3rem; overflow: hidden; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-track i { position: absolute; right: 0; bottom: 0; left: 0; display: block; background: #22c55e; }
+[data-widget-system="vantare-crystal"] [data-pedal="brake"] .vc-pedals-compact-track i { background: #ff2a3b; }
+[data-widget-system="vantare-crystal"] [data-pedal="clutch"] .vc-pedals-compact-track i { background: #f59e0b; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-core { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 5.3rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift { display: flex; gap: 3px; width: 100%; justify-content: center; margin-bottom: 4px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift i { width: 7px; height: 5px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift i.is-on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-gear { font-family: var(--vc-font-display); font-size: 2rem; line-height: 0.85; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-speed,
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-rpm { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 700; }
+
 [data-widget-system="vantare-crystal"][data-crystal-primitive="surface"] {
   display: flex;
   flex-direction: column;

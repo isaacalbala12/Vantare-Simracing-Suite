@@ -16,6 +16,7 @@ describe("widgetTypeRegistry", () => {
       "relative",
       "pedals",
       "pedals-telemetry",
+      "pedals-telemetry-compact",
     ]);
   });
 

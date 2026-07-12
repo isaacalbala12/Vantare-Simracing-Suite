@@ -67,6 +67,8 @@ describe("official-designs", () => {
     expect([...pairs].sort()).toEqual([
       "delta:vantare-crystal",
       "delta:vantare-original",
+      "pedals-telemetry-compact:vantare-crystal",
+      "pedals-telemetry-compact:vantare-original",
       "pedals-telemetry:vantare-crystal",
       "pedals-telemetry:vantare-original",
       "pedals:vantare-crystal",

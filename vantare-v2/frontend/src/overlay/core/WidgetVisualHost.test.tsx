@@ -46,7 +46,7 @@ describe("WidgetVisualHost", () => {
     const crystal = render(
       <WidgetVisualHost widget={buildWidget("vantare-crystal")} snapshot={snapshot} renderMode="harness" />,
     );
-    const crystalValue = crystal.container.querySelector(".vc-delta-value")?.textContent;
+    const crystalValue = crystal.container.querySelector(".vc-delta-bar-value")?.textContent;
     expect(originalValue).toBe("-0.150");
     expect(crystalValue).toBe("-0.150");
   });

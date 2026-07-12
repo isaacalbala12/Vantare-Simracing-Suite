@@ -4,6 +4,7 @@ import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { pedalsDefinition } from "../widget-types/pedals/pedals-definition";
 import { pedalsTelemetryDefinition } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
 import { pedalsTelemetryCompactDefinition } from "../widget-types/pedals-telemetry-compact/pedals-telemetry-compact-definition";
+import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 
@@ -60,3 +61,4 @@ widgetTypeRegistry.register(relativeDefinition);
 widgetTypeRegistry.register(pedalsDefinition);
 widgetTypeRegistry.register(pedalsTelemetryDefinition);
 widgetTypeRegistry.register(pedalsTelemetryCompactDefinition);
+widgetTypeRegistry.register(racingFlagsDefinition);

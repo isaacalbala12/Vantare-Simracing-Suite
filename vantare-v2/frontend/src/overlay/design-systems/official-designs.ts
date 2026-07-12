@@ -172,6 +172,30 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     origin: "vantare",
     isDefault: true,
   },
+  {
+    id: "racing-flags-original",
+    name: "Original Racing Flags",
+    widgetType: "racing-flags",
+    systemId: "vantare-original",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
+    id: "racing-flags-crystal",
+    name: "Crystal Racing Flags",
+    widgetType: "racing-flags",
+    systemId: "vantare-crystal",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

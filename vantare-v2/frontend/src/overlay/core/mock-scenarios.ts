@@ -106,6 +106,8 @@ export function buildMockTelemetry(input: {
     session: {
       type: input.session,
       remainingSeconds: SESSION_REMAINING_SECONDS[input.session],
+      globalFlag: "green",
+      sectorFlags: ["green", "green", "green"],
     },
     player: buildReadyPlayer(input.location),
     scoring: CANONICAL_SCORING.map((entry) => ({ ...entry })),

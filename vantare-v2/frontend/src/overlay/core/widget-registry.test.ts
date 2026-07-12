@@ -17,6 +17,7 @@ describe("widgetTypeRegistry", () => {
       "pedals",
       "pedals-telemetry",
       "pedals-telemetry-compact",
+      "racing-flags",
     ]);
   });
 

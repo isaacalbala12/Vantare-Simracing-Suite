@@ -9,6 +9,7 @@ import { migrateDeltaSettingsV1, parseDeltaSettings } from "./delta/delta-settin
 import { PedalsCrystal } from "./pedals/PedalsCrystal";
 import { PedalsTelemetryCrystal } from "./pedals-telemetry/PedalsTelemetryCrystal";
 import { PedalsTelemetryCompactCrystal } from "./pedals-telemetry-compact/PedalsTelemetryCompactCrystal";
+import { RacingFlagsCrystal } from "./racing-flags/RacingFlagsCrystal";
 import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -291,6 +292,8 @@ const pedalsTelemetryCompactRegistration = {
   Renderer: PedalsTelemetryCompactCrystal as ComponentType<WidgetRendererProps>,
 };
 
+const racingFlagsRegistration = { widgetType: "racing-flags" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: RacingFlagsCrystal as ComponentType<WidgetRendererProps> };
+
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
   version: 1,
@@ -305,5 +308,6 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
     pedalsRegistration,
     pedalsTelemetryRegistration,
     pedalsTelemetryCompactRegistration,
+    racingFlagsRegistration,
   ],
 };

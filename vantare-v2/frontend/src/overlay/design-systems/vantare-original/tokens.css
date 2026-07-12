@@ -532,3 +532,11 @@
 [data-widget-system="vantare-original"] .vo-pedals-compact-channel i { display: block; width: 10px; min-height: 2px; margin-top: auto; background: #2ecc71; border: 1px solid #303038; }
 [data-widget-system="vantare-original"] .vo-pedals-compact-channel[data-pedal="brake"] i { background: #e74c3c; }
 [data-widget-system="vantare-original"] .vo-pedals-compact-channel[data-pedal="clutch"] i { background: #f59e0b; }
+
+[data-widget-system="vantare-original"].vo-racing-flags { display: flex; flex-direction: column; justify-content: center; width: 100%; height: 100%; box-sizing: border-box; padding: 0.6rem 0.9rem; color: var(--vo-text); background: #17171b; border: 1px solid #35353d; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+[data-widget-system="vantare-original"] .vo-racing-flags-banner { font-size: 1.1rem; letter-spacing: 0.08em; }
+[data-widget-system="vantare-original"] .vo-racing-flags-green .vo-racing-flags-banner { color: #2ecc71; }
+[data-widget-system="vantare-original"] .vo-racing-flags-yellow .vo-racing-flags-banner { color: #f59e0b; }
+[data-widget-system="vantare-original"] .vo-racing-flags-red .vo-racing-flags-banner { color: #e74c3c; }
+[data-widget-system="vantare-original"] .vo-racing-flags-sectors { display: flex; gap: 0.5rem; margin-top: 0.45rem; color: var(--vo-muted); font-size: 0.55rem; }
+[data-widget-system="vantare-original"] .vo-racing-flags[data-hidden="true"] { display: none; }

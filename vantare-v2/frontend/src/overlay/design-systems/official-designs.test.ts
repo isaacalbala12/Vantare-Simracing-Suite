@@ -73,6 +73,8 @@ describe("official-designs", () => {
       "pedals-telemetry:vantare-original",
       "pedals:vantare-crystal",
       "pedals:vantare-original",
+      "racing-flags:vantare-crystal",
+      "racing-flags:vantare-original",
       "relative:vantare-crystal",
       "relative:vantare-original",
       "standings:vantare-crystal",

@@ -8,6 +8,7 @@ import { DeltaOriginal } from "./delta/DeltaOriginal";
 import { PedalsOriginal } from "./pedals/PedalsOriginal";
 import { PedalsTelemetryOriginal } from "./pedals-telemetry/PedalsTelemetryOriginal";
 import { PedalsTelemetryCompactOriginal } from "./pedals-telemetry-compact/PedalsTelemetryCompactOriginal";
+import { RacingFlagsOriginal } from "./racing-flags/RacingFlagsOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -280,6 +281,8 @@ const pedalsTelemetryCompactRegistration = {
   Renderer: PedalsTelemetryCompactOriginal as ComponentType<WidgetRendererProps>,
 };
 
+const racingFlagsRegistration = { widgetType: "racing-flags" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: RacingFlagsOriginal as ComponentType<WidgetRendererProps> };
+
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
   version: 1,
@@ -294,5 +297,6 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
     pedalsRegistration,
     pedalsTelemetryRegistration,
     pedalsTelemetryCompactRegistration,
+    racingFlagsRegistration,
   ],
 };

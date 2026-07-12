@@ -5,6 +5,7 @@ import { pedalsDefinition } from "../widget-types/pedals/pedals-definition";
 import { pedalsTelemetryDefinition } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
 import { pedalsTelemetryCompactDefinition } from "../widget-types/pedals-telemetry-compact/pedals-telemetry-compact-definition";
 import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags-definition";
+import { broadcastTowerDefinition } from "../widget-types/broadcast-tower/broadcast-tower-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 
@@ -62,3 +63,4 @@ widgetTypeRegistry.register(pedalsDefinition);
 widgetTypeRegistry.register(pedalsTelemetryDefinition);
 widgetTypeRegistry.register(pedalsTelemetryCompactDefinition);
 widgetTypeRegistry.register(racingFlagsDefinition);
+widgetTypeRegistry.register(broadcastTowerDefinition);

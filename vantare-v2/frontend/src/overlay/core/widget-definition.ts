@@ -14,6 +14,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "pedals-telemetry": "overlays.advanced",
   "pedals-telemetry-compact": "overlays.advanced",
   "racing-flags": "overlays.advanced",
+  "broadcast-tower": "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

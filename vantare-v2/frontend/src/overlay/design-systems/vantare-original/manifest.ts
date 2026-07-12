@@ -9,6 +9,7 @@ import { PedalsOriginal } from "./pedals/PedalsOriginal";
 import { PedalsTelemetryOriginal } from "./pedals-telemetry/PedalsTelemetryOriginal";
 import { PedalsTelemetryCompactOriginal } from "./pedals-telemetry-compact/PedalsTelemetryCompactOriginal";
 import { RacingFlagsOriginal } from "./racing-flags/RacingFlagsOriginal";
+import { BroadcastTowerOriginal } from "./broadcast-tower/BroadcastTowerOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -282,6 +283,7 @@ const pedalsTelemetryCompactRegistration = {
 };
 
 const racingFlagsRegistration = { widgetType: "racing-flags" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: RacingFlagsOriginal as ComponentType<WidgetRendererProps> };
+const broadcastTowerRegistration = { widgetType: "broadcast-tower" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: BroadcastTowerOriginal as ComponentType<WidgetRendererProps> };
 
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
@@ -298,5 +300,6 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
     pedalsTelemetryRegistration,
     pedalsTelemetryCompactRegistration,
     racingFlagsRegistration,
+    broadcastTowerRegistration,
   ],
 };

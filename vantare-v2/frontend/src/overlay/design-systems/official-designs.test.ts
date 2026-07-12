@@ -65,6 +65,8 @@ describe("official-designs", () => {
       }
     }
     expect([...pairs].sort()).toEqual([
+      "broadcast-tower:vantare-crystal",
+      "broadcast-tower:vantare-original",
       "delta:vantare-crystal",
       "delta:vantare-original",
       "pedals-telemetry-compact:vantare-crystal",

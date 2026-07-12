@@ -1,20 +1,20 @@
 import type { ProfileConfig } from "../../lib/profile";
 import {
   parseProfileDocumentV3,
-  type CoreWidgetType,
+  type WidgetType,
   type ProfileDocumentV3,
   type WidgetInstanceV3,
 } from "../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../overlay/core/widget-registry";
 
-const CORE_WIDGET_TYPES = new Set<CoreWidgetType>(["delta", "standings", "relative", "pedals"]);
+const WIDGET_TYPES = new Set<WidgetType>(["delta", "standings", "relative", "pedals"]);
 
-function isCoreWidgetType(type: string): type is CoreWidgetType {
-  return CORE_WIDGET_TYPES.has(type as CoreWidgetType);
+function isWidgetType(type: string): type is WidgetType {
+  return WIDGET_TYPES.has(type as WidgetType);
 }
 
 function mapLegacyWidget(widget: ProfileConfig["widgets"][number], zIndex: number): WidgetInstanceV3 | null {
-  if (!isCoreWidgetType(widget.type)) {
+  if (!isWidgetType(widget.type)) {
     return null;
   }
 

@@ -1,10 +1,10 @@
 import type { FeatureId } from "../../lib/access-policy";
-import type { CoreWidgetType, DesignSystemId, WidgetInstanceV3 } from "./profile-document";
+import type { WidgetType, DesignSystemId, WidgetInstanceV3 } from "./profile-document";
 
 export type WidgetDesignV1 = {
   id: string;
   name: string;
-  widgetType: CoreWidgetType;
+  widgetType: WidgetType;
   systemId: DesignSystemId;
   systemVersion: number;
   configVersion: number;
@@ -31,7 +31,7 @@ export class WidgetDesignValidationError extends Error {
   }
 }
 
-const CORE_WIDGET_TYPES = new Set<CoreWidgetType>(["delta", "standings", "relative", "pedals"]);
+const WIDGET_TYPES = new Set<WidgetType>(["delta", "standings", "relative", "pedals"]);
 const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -77,8 +77,8 @@ export function validateWidgetDesign(input: unknown): WidgetDesignV1 {
   if (name.trim() === "") {
     validationError("name", "must not be empty");
   }
-  const widgetType = readString(raw.widgetType, "widgetType") as CoreWidgetType;
-  if (!CORE_WIDGET_TYPES.has(widgetType)) {
+  const widgetType = readString(raw.widgetType, "widgetType") as WidgetType;
+  if (!WIDGET_TYPES.has(widgetType)) {
     validationError("widgetType", "unsupported widget type");
   }
   const systemId = readString(raw.systemId, "systemId") as DesignSystemId;

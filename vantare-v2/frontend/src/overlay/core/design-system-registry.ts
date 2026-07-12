@@ -1,4 +1,4 @@
-import type { CoreWidgetType, DesignSystemId } from "./profile-document";
+import type { WidgetType, DesignSystemId } from "./profile-document";
 import {
   DesignSystemResolutionError,
   type DesignSystemDefinition,
@@ -21,7 +21,7 @@ export function migrateSettingsSequential(
   settings: Record<string, unknown>,
   errorContext: {
     systemId: DesignSystemId;
-    widgetType: CoreWidgetType;
+    widgetType: WidgetType;
     kind: "system" | "config";
   },
 ): Record<string, unknown> {
@@ -47,7 +47,7 @@ export function migrateSettingsSequential(
 
 export function migrateSystemSettings(
   definition: DesignSystemDefinition,
-  widgetType: CoreWidgetType,
+  widgetType: WidgetType,
   fromVersion: number,
   toVersion: number,
   settings: Record<string, unknown>,
@@ -110,7 +110,7 @@ export class DesignSystemRegistry {
     return [...this.definitions.values()];
   }
 
-  resolve(id: DesignSystemId, version: number, widgetType: CoreWidgetType): ResolvedWidgetSystem {
+  resolve(id: DesignSystemId, version: number, widgetType: WidgetType): ResolvedWidgetSystem {
     const definition = this.get(id, version);
     const registration = definition.widgets.find((widget) => widget.widgetType === widgetType);
     if (!registration) {

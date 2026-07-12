@@ -9,10 +9,24 @@ const StudioMinimumVisible = 32
 type WidgetTypeV3 string
 
 const (
-	WidgetTypeDelta     WidgetTypeV3 = "delta"
-	WidgetTypeStandings WidgetTypeV3 = "standings"
-	WidgetTypeRelative  WidgetTypeV3 = "relative"
-	WidgetTypePedals    WidgetTypeV3 = "pedals"
+	WidgetTypeDelta                  WidgetTypeV3 = "delta"
+	WidgetTypeStandings              WidgetTypeV3 = "standings"
+	WidgetTypeRelative               WidgetTypeV3 = "relative"
+	WidgetTypePedals                 WidgetTypeV3 = "pedals"
+	WidgetTypeBroadcastTower         WidgetTypeV3 = "broadcast-tower"
+	WidgetTypeFuelStrategy           WidgetTypeV3 = "fuel-strategy"
+	WidgetTypePedalsTelemetry        WidgetTypeV3 = "pedals-telemetry"
+	WidgetTypePedalsTelemetryCompact WidgetTypeV3 = "pedals-telemetry-compact"
+	WidgetTypeRacingFlags            WidgetTypeV3 = "racing-flags"
+	WidgetTypeDeltaTrace             WidgetTypeV3 = "delta-trace"
+	WidgetTypeRaceSchedule           WidgetTypeV3 = "race-schedule"
+	WidgetTypeHeadToHead             WidgetTypeV3 = "head-to-head"
+	WidgetTypeDeltaAdvanced          WidgetTypeV3 = "delta-advanced"
+	WidgetTypeInputTelemetry         WidgetTypeV3 = "input-telemetry"
+	WidgetTypeMulticlassRelative     WidgetTypeV3 = "multiclass-relative"
+	WidgetTypeTrackWeather           WidgetTypeV3 = "track-weather"
+	WidgetTypeCarDamageVisual        WidgetTypeV3 = "car-damage-visual"
+	WidgetTypeCarDamageNumbers       WidgetTypeV3 = "car-damage-numbers"
 )
 
 type DesignSystemID string

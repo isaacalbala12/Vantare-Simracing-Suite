@@ -1,6 +1,6 @@
 import type { AccessContext } from "../../../lib/access-policy";
 import { useI18n } from "../../../i18n/I18nProvider";
-import type { CoreWidgetType } from "../../../overlay/core/profile-document";
+import type { WidgetType } from "../../../overlay/core/profile-document";
 import {
   canAddCatalogEntry,
   deriveStudioCatalog,
@@ -13,7 +13,7 @@ export type AddWidgetDialogProps = {
   access: AccessContext;
   catalog?: readonly StudioCatalogEntry[];
   onClose(): void;
-  onAdd(type: CoreWidgetType): void;
+  onAdd(type: WidgetType): void;
 };
 
 function lockMessage(entry: StudioCatalogEntry, access: AccessContext, t: (key: string) => string): string {

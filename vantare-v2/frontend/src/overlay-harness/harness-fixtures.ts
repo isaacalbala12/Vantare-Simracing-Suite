@@ -4,12 +4,12 @@ import type {
   MockLocationScenario,
   MockSessionScenario,
 } from "../overlay/core/mock-scenarios";
-import type { CoreWidgetType, DesignSystemId, WidgetInstanceV3 } from "../overlay/core/profile-document";
+import type { WidgetType, DesignSystemId, WidgetInstanceV3 } from "../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../overlay/core/telemetry-snapshot";
 import { widgetTypeRegistry } from "../overlay/core/widget-registry";
 import { parseRelativeContent, updateRelativeFilters } from "../overlay/widget-types/relative/relative-content";
 
-export type HarnessWidget = CoreWidgetType;
+export type HarnessWidget = WidgetType;
 export type HarnessVariant =
   | "default"
   | "relative-fill"

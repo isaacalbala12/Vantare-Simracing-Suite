@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
-import type { CoreWidgetType } from "../../../overlay/core/profile-document";
+import type { WidgetType } from "../../../overlay/core/profile-document";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { AddWidgetDialog } from "../catalog/AddWidgetDialog";
 import { buildAddWidgetCommand } from "../catalog/studio-catalog";
@@ -33,7 +33,7 @@ export function WidgetListPanel(): React.ReactElement {
     });
   }, [activeLayout?.widgets, query]);
 
-  const handleAddWidget = (type: CoreWidgetType) => {
+  const handleAddWidget = (type: WidgetType) => {
     const definition = widgetTypeRegistry.get(type);
     const command = buildAddWidgetCommand({
       session: activeSession,

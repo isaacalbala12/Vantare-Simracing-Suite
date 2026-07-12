@@ -45,6 +45,58 @@ function expectPath(error: unknown, path: string) {
 }
 
 describe("parseProfileDocumentV3", () => {
+  it.each([
+    "delta",
+    "standings",
+    "relative",
+    "pedals",
+    "broadcast-tower",
+    "fuel-strategy",
+    "pedals-telemetry",
+    "pedals-telemetry-compact",
+    "racing-flags",
+    "delta-trace",
+    "race-schedule",
+    "head-to-head",
+    "delta-advanced",
+    "input-telemetry",
+    "multiclass-relative",
+    "track-weather",
+    "car-damage-visual",
+    "car-damage-numbers",
+  ] as const)("accepts widget type %s", (type) => {
+    const doc = {
+      ...minimalDocument(),
+      layouts: {
+        general: {
+          type: "general" as const,
+          widgets: [{ ...validWidget("widget-1", "delta"), type }],
+        },
+      },
+    };
+
+    expect(parseProfileDocumentV3(doc).layouts.general.widgets[0]?.type).toBe(type);
+  });
+
+  it.each(["pedals-v1", "car-damage", "delta-simple"])("rejects non-canonical widget type %s", (type) => {
+    const doc = {
+      ...minimalDocument(),
+      layouts: {
+        general: {
+          type: "general" as const,
+          widgets: [{ ...validWidget("widget-1", "delta"), type }],
+        },
+      },
+    };
+
+    try {
+      parseProfileDocumentV3(doc);
+      throw new Error("expected validation error");
+    } catch (error) {
+      expectPath(error, "layouts.general.widgets[0].type");
+    }
+  });
+
   it("accepts valid empty general layout", () => {
     expect(parseProfileDocumentV3(minimalDocument()).id).toBe("minimal-v3");
   });

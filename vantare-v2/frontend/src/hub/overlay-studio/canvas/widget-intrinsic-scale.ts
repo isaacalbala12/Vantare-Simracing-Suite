@@ -1,4 +1,4 @@
-import type { CoreWidgetType, WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
+import type { WidgetType, WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import {
   resolveStudioWidgetDisplayLayout,
@@ -11,7 +11,7 @@ export type WidgetIntrinsicScale = {
   scale: number;
 };
 
-function resolveRegistryDefaultBaseSize(widgetType: CoreWidgetType): WidgetContentBaseSize {
+function resolveRegistryDefaultBaseSize(widgetType: WidgetType): WidgetContentBaseSize {
   const { defaultSize } = widgetTypeRegistry.get(widgetType).capabilities;
   return { width: defaultSize.width, height: defaultSize.height };
 }
@@ -26,11 +26,11 @@ export function resolveWidgetIntrinsicScale(
 ): WidgetIntrinsicScale;
 export function resolveWidgetIntrinsicScale(
   layout: Pick<WidgetLayoutV3, "w" | "h">,
-  widgetType: CoreWidgetType,
+  widgetType: WidgetType,
 ): WidgetIntrinsicScale;
 export function resolveWidgetIntrinsicScale(
   layout: Pick<WidgetLayoutV3, "w" | "h">,
-  widgetOrType: WidgetInstanceV3 | CoreWidgetType,
+  widgetOrType: WidgetInstanceV3 | WidgetType,
 ): WidgetIntrinsicScale {
   const baseSize =
     typeof widgetOrType === "string"

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import type { InspectorCapability } from "./inspector-control";
-import type { CoreWidgetType, DesignSystemId } from "./profile-document";
+import type { WidgetType, DesignSystemId } from "./profile-document";
 import type { WidgetViewModelBase } from "./widget-definition";
 
 export type WidgetRendererProps<TModel extends WidgetViewModelBase = WidgetViewModelBase> = {
@@ -15,7 +15,7 @@ export type WidgetSystemInspectorCapability = Pick<
 >;
 
 export type WidgetSystemRegistration = {
-  widgetType: CoreWidgetType;
+  widgetType: WidgetType;
   configVersion: number;
   defaultSettings: Readonly<Record<string, unknown>>;
   configMigrations: Readonly<
@@ -33,7 +33,7 @@ export type DesignSystemDefinition = {
   systemMigrations: Readonly<
     Record<
       number,
-      (widgetType: CoreWidgetType, settings: Record<string, unknown>) => Record<string, unknown>
+      (widgetType: WidgetType, settings: Record<string, unknown>) => Record<string, unknown>
     >
   >;
   widgets: readonly WidgetSystemRegistration[];
@@ -47,9 +47,9 @@ export type ResolvedWidgetSystem = WidgetSystemRegistration & {
 export class DesignSystemResolutionError extends Error {
   readonly systemId: DesignSystemId;
   readonly version: number;
-  readonly widgetType: CoreWidgetType;
+  readonly widgetType: WidgetType;
 
-  constructor(systemId: DesignSystemId, version: number, widgetType: CoreWidgetType, message: string) {
+  constructor(systemId: DesignSystemId, version: number, widgetType: WidgetType, message: string) {
     super(message);
     this.name = "DesignSystemResolutionError";
     this.systemId = systemId;

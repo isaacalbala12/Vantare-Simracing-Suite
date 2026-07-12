@@ -1,7 +1,7 @@
 import type { AccessContext, FeatureGate, FeatureId } from "../../../lib/access-policy";
 import { DesignSystemRegistry, designSystemRegistry } from "../../../overlay/core/design-system-registry";
 import type { DesignSystemId } from "../../../overlay/core/profile-document";
-import type { CoreWidgetType, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { WidgetType, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import { WidgetTypeRegistry, widgetTypeRegistry } from "../../../overlay/core/widget-registry";
@@ -15,7 +15,7 @@ export type CompatibleSystemRef = {
 };
 
 export type StudioCatalogEntry = {
-  type: CoreWidgetType;
+  type: WidgetType;
   labelKey: string;
   defaultSize: { width: number; height: number };
   inspectorSections: readonly InspectorSectionId[];
@@ -25,7 +25,7 @@ export type StudioCatalogEntry = {
 
 export type StudioCatalogDeps = {
   listWidgetDefinitions(): readonly WidgetTypeDefinition<Record<string, unknown>>[];
-  listCompatibleSystems(widgetType: CoreWidgetType): readonly CompatibleSystemRef[];
+  listCompatibleSystems(widgetType: WidgetType): readonly CompatibleSystemRef[];
 };
 
 function defaultDeps(): StudioCatalogDeps {
@@ -40,7 +40,7 @@ function defaultDeps(): StudioCatalogDeps {
 }
 
 export function resolveCompatibleSystems(
-  widgetType: CoreWidgetType,
+  widgetType: WidgetType,
   registry: DesignSystemRegistry,
 ): CompatibleSystemRef[] {
   const systems: CompatibleSystemRef[] = [];
@@ -84,7 +84,7 @@ export function canAddCatalogEntry(access: AccessContext, entry: StudioCatalogEn
   return getCatalogAddGate(access, entry).allowed;
 }
 
-export function createNextWidgetId(type: CoreWidgetType, existingIds: ReadonlySet<string>): string {
+export function createNextWidgetId(type: WidgetType, existingIds: ReadonlySet<string>): string {
   let candidate = `${type}-main`;
   let suffix = 2;
   while (existingIds.has(candidate)) {
@@ -103,7 +103,7 @@ export function computeNextZIndex(widgets: readonly WidgetInstanceV3[]): number 
 
 export function buildAddWidgetCommand(input: {
   session: SessionLayoutType;
-  type: CoreWidgetType;
+  type: WidgetType;
   widgets: readonly WidgetInstanceV3[];
   definition: WidgetTypeDefinition<Record<string, unknown>>;
 }): StudioCommand {

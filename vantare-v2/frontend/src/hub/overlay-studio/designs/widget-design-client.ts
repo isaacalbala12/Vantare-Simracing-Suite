@@ -1,10 +1,10 @@
 import { Events } from "@wailsio/runtime";
-import type { CoreWidgetType } from "../../../overlay/core/profile-document";
+import type { WidgetType } from "../../../overlay/core/profile-document";
 import { validateWidgetDesign, type WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import type { StudioEventTransport } from "../state/studio-profile-client";
 
 export interface WidgetDesignClient {
-  list(widgetType?: CoreWidgetType): Promise<WidgetDesignV1[]>;
+  list(widgetType?: WidgetType): Promise<WidgetDesignV1[]>;
   save(design: WidgetDesignV1): Promise<WidgetDesignV1>;
   delete(id: string): Promise<void>;
   rename(id: string, name: string): Promise<void>;

@@ -197,6 +197,30 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 	})
 }
 
+func TestWidgetTypeV3Vocabulary(t *testing.T) {
+	supported := []string{
+		"delta", "standings", "relative", "pedals", "broadcast-tower", "fuel-strategy",
+		"pedals-telemetry", "pedals-telemetry-compact", "racing-flags", "delta-trace",
+		"race-schedule", "head-to-head", "delta-advanced", "input-telemetry",
+		"multiclass-relative", "track-weather", "car-damage-visual", "car-damage-numbers",
+	}
+	for _, widgetType := range supported {
+		t.Run(widgetType, func(t *testing.T) {
+			doc := validProfileV3(validWidget("widget-1", WidgetTypeV3(widgetType)))
+			if err := ValidateProfileDocumentV3(doc); err != nil {
+				t.Fatalf("widget type %q rejected: %v", widgetType, err)
+			}
+		})
+	}
+
+	for _, widgetType := range []string{"pedals-v1", "car-damage", "delta-simple"} {
+		t.Run("reject-"+widgetType, func(t *testing.T) {
+			doc := validProfileV3(validWidget("widget-1", WidgetTypeV3(widgetType)))
+			assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets[0].type")
+		})
+	}
+}
+
 func TestNormalizeProfileDocumentV3(t *testing.T) {
 	t.Run("nil maps become empty maps", func(t *testing.T) {
 		w := validWidget("delta-1", WidgetTypeDelta)

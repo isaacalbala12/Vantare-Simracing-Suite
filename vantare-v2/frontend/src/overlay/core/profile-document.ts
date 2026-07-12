@@ -4,12 +4,49 @@ export const STUDIO_CANVAS_WIDTH = 1920;
 export const STUDIO_CANVAS_HEIGHT = 1080;
 export const STUDIO_MINIMUM_VISIBLE = 32;
 
-export type CoreWidgetType = "delta" | "standings" | "relative" | "pedals";
+export type WidgetType =
+  | "delta"
+  | "standings"
+  | "relative"
+  | "pedals"
+  | "broadcast-tower"
+  | "fuel-strategy"
+  | "pedals-telemetry"
+  | "pedals-telemetry-compact"
+  | "racing-flags"
+  | "delta-trace"
+  | "race-schedule"
+  | "head-to-head"
+  | "delta-advanced"
+  | "input-telemetry"
+  | "multiclass-relative"
+  | "track-weather"
+  | "car-damage-visual"
+  | "car-damage-numbers";
 export type DesignSystemId = "vantare-original" | "vantare-crystal";
 export type SessionLayoutType = "general" | "practice" | "qualifying" | "race" | "endurance";
 export type DisplayMode = "racing" | "edit" | "streaming";
 
-const CORE_WIDGET_TYPES = new Set<CoreWidgetType>(["delta", "standings", "relative", "pedals"]);
+export const WIDGET_TYPES = new Set<WidgetType>([
+  "delta",
+  "standings",
+  "relative",
+  "pedals",
+  "broadcast-tower",
+  "fuel-strategy",
+  "pedals-telemetry",
+  "pedals-telemetry-compact",
+  "racing-flags",
+  "delta-trace",
+  "race-schedule",
+  "head-to-head",
+  "delta-advanced",
+  "input-telemetry",
+  "multiclass-relative",
+  "track-weather",
+  "car-damage-visual",
+  "car-damage-numbers",
+]);
 const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal"]);
 const SESSION_LAYOUT_TYPES = new Set<SessionLayoutType>([
   "general",
@@ -66,7 +103,7 @@ export type WidgetVisualV3 = {
 
 export type WidgetInstanceV3 = {
   id: string;
-  type: CoreWidgetType;
+  type: WidgetType;
   name?: string;
   layout: WidgetLayoutV3;
   behavior: WidgetBehaviorV3;
@@ -283,8 +320,8 @@ function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
 
 function parseWidgetInstance(input: unknown, path: string): WidgetInstanceV3 {
   const raw = readRecord(input, path);
-  const type = readString(raw.type, `${path}.type`) as CoreWidgetType;
-  if (!CORE_WIDGET_TYPES.has(type)) {
+  const type = readString(raw.type, `${path}.type`) as WidgetType;
+  if (!WIDGET_TYPES.has(type)) {
     validationError(`${path}.type`, "unsupported widget type");
   }
   const widget: WidgetInstanceV3 = {

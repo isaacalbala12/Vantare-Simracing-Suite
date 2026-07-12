@@ -3,7 +3,7 @@ import type { AccessContext } from "../../../lib/access-policy";
 import { DesignSystemRegistry } from "../../../overlay/core/design-system-registry";
 import type { DesignSystemDefinition } from "../../../overlay/core/design-system-definition";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
-import type { CoreWidgetType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { WidgetType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import { getWidgetRequiredFeature } from "../../../overlay/core/widget-definition";
 import { WidgetTypeRegistry } from "../../../overlay/core/widget-registry";
@@ -36,7 +36,7 @@ function stubRenderer(): React.ReactElement {
   return null;
 }
 
-function createStubDefinition(type: CoreWidgetType): WidgetTypeDefinition<Record<string, never>> {
+function createStubDefinition(type: WidgetType): WidgetTypeDefinition<Record<string, never>> {
   return {
     type,
     labelKey: `overlay.widgets.${type}`,
@@ -73,7 +73,7 @@ function createStubDefinition(type: CoreWidgetType): WidgetTypeDefinition<Record
   };
 }
 
-function createTestDesignSystem(widgetTypes: readonly CoreWidgetType[]): DesignSystemDefinition {
+function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSystemDefinition {
   return {
     id: "vantare-original",
     version: 1,

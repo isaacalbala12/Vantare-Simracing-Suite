@@ -1,4 +1,4 @@
-import type { CoreWidgetType } from "../core/profile-document";
+import type { WidgetType } from "../core/profile-document";
 import { validateWidgetDesign, type WidgetDesignV1 } from "../core/widget-design";
 import { PEDALS_DEFAULT_APPEARANCE } from "../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../widget-types/relative/relative-renderer-helpers";
@@ -113,7 +113,7 @@ const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((desi
 
 const OFFICIAL_BY_ID = new Map(OFFICIAL_DESIGNS.map((design) => [design.id, design]));
 
-export function listOfficialDesigns(widgetType?: CoreWidgetType): WidgetDesignV1[] {
+export function listOfficialDesigns(widgetType?: WidgetType): WidgetDesignV1[] {
   if (!widgetType) {
     return [...OFFICIAL_DESIGNS];
   }

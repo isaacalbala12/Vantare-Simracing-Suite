@@ -9,6 +9,7 @@ export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
 
   register<TContent extends Record<string, unknown>>(definition: WidgetTypeDefinition<TContent>): void {
+    assertCompleteWidgetDefinition(definition);
     if (this.definitions.has(definition.type)) {
       throw new Error(`widget type already registered: ${definition.type}`);
     }
@@ -28,6 +29,25 @@ export class WidgetTypeRegistry {
 
   list(): readonly WidgetTypeDefinition<Record<string, unknown>>[] {
     return [...this.definitions.values()];
+  }
+}
+
+function assertCompleteWidgetDefinition<TContent extends Record<string, unknown>>(
+  definition: WidgetTypeDefinition<TContent>,
+): void {
+  const capabilities = definition.capabilities;
+  if (
+    typeof definition.labelKey !== "string" ||
+    definition.labelKey.trim() === "" ||
+    typeof definition.createDefault !== "function" ||
+    typeof definition.parseContent !== "function" ||
+    typeof definition.buildViewModel !== "function" ||
+    !definition.inspector ||
+    !capabilities ||
+    !Array.isArray(capabilities.inspectorSections) ||
+    typeof capabilities.requiredFeature !== "string"
+  ) {
+    throw new Error(`incomplete widget type definition: ${definition.type}`);
   }
 }
 

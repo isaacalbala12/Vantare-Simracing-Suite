@@ -3,7 +3,7 @@ import type { AccessContext } from "../../../lib/access-policy";
 import { DesignSystemRegistry } from "../../../overlay/core/design-system-registry";
 import type { DesignSystemDefinition } from "../../../overlay/core/design-system-definition";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
-import type { WidgetType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { ALL_WIDGET_TYPES, type WidgetType, type WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import { getWidgetRequiredFeature } from "../../../overlay/core/widget-definition";
 import { WidgetTypeRegistry } from "../../../overlay/core/widget-registry";
@@ -15,6 +15,7 @@ import {
   createNextWidgetId,
   deriveStudioCatalog,
 } from "./studio-catalog";
+import { FINAL_WIDGET_CATALOG_CARDINALITY } from "./studio-catalog-cardinality-fixture";
 
 const freeAccess: AccessContext = {
   planLabel: "free",
@@ -96,6 +97,19 @@ function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSyste
 }
 
 describe("deriveStudioCatalog", () => {
+  it("keeps the final 18-type cardinality as a fixture without registering placeholders", () => {
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES);
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(18);
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions.delta).toEqual(["delta-simple", "delta-bar"]);
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions["input-telemetry"]).toEqual([
+      "input-crystal-blade",
+      "input-crystal-capsule",
+      "input-crystal-dense",
+    ]);
+    expect(deriveStudioCatalog()).toHaveLength(4);
+    expect(deriveStudioCatalog().map((entry) => entry.type)).not.toContain("input-telemetry");
+  });
+
   it("returns only registered widget types from the canonical registry", () => {
     const catalog = deriveStudioCatalog();
     expect(catalog.map((entry) => entry.type)).toEqual(["delta", "pedals", "relative", "standings"]);

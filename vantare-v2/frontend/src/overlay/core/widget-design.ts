@@ -1,5 +1,5 @@
 import type { FeatureId } from "../../lib/access-policy";
-import type { WidgetType, DesignSystemId, WidgetInstanceV3 } from "./profile-document";
+import { WIDGET_TYPES, type WidgetType, type DesignSystemId, type WidgetInstanceV3 } from "./profile-document";
 
 export type WidgetDesignV1 = {
   id: string;
@@ -32,7 +32,6 @@ export class WidgetDesignValidationError extends Error {
   }
 }
 
-const WIDGET_TYPES = new Set<WidgetType>(["delta", "standings", "relative", "pedals"]);
 const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

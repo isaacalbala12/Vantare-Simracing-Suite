@@ -5,7 +5,8 @@ import {
   computeRelativeIntrinsicHeight,
   computeRelativeIntrinsicWidth,
 } from "../widget-types/relative/relative-renderer-helpers";
-import { widgetTypeRegistry } from "./widget-registry";
+import type { WidgetTypeDefinition } from "./widget-definition";
+import { WidgetTypeRegistry, widgetTypeRegistry } from "./widget-registry";
 
 describe("widgetTypeRegistry", () => {
   it("registers the four core widget definitions", () => {
@@ -29,6 +30,13 @@ describe("widgetTypeRegistry", () => {
 
   it("rejects unregistered widget types", () => {
     expect(() => widgetTypeRegistry.get("telemetry" as "delta")).toThrow(/not registered/i);
+  });
+
+  it("rejects incomplete definitions before they enter a registry", () => {
+    const registry = new WidgetTypeRegistry();
+    expect(() =>
+      registry.register({ type: "delta" } as unknown as WidgetTypeDefinition<Record<string, unknown>>),
+    ).toThrow(/incomplete widget type definition/i);
   });
 
   it("creates tested defaults for each core widget", () => {

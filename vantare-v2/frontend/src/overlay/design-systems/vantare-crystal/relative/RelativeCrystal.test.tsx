@@ -76,9 +76,11 @@ describe("RelativeCrystal", () => {
 
   it("uses a structurally distinct Crystal composition", () => {
     const { root } = renderCrystal(readyModel);
-    expect(root.querySelector(".vc-relative-glow")).toBeTruthy();
     expect(root.querySelector(".vc-relative-frame")).toBeTruthy();
-    expect(root.querySelector(".vc-relative-row-card")).toBeTruthy();
+    expect(root.querySelector(".vc-relative-table-header")).toBeTruthy();
+    expect(root.querySelector(".vc-relative-row")).toBeTruthy();
+    expect(root.querySelector("[data-crystal-primitive='brand']")).toBeTruthy();
+    expect(root.querySelector("[data-crystal-primitive='footer']")).toBeTruthy();
     expect(root.querySelector(".vo-relative-row")).toBeNull();
   });
 

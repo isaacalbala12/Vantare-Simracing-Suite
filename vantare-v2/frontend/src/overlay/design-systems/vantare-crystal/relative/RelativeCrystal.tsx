@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
-import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-column";
-import { RELATIVE_COLUMN_TEMPLATES } from "../../../widget-types/relative/relative-content";
+import { CrystalBrand, CrystalFooter, CrystalPill } from "../crystal-primitives";
 import {
   buildRelativeAppearanceStyle,
   computeRelativeIntrinsicWidth,
@@ -13,12 +12,6 @@ import {
   type RelativeRowViewModel,
   type RelativeViewModel,
 } from "../../../widget-types/relative/relative-view-model";
-
-function columnFallbackWidth(metricId: string): number {
-  return (
-    RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === metricId)?.defaultWidth ?? 60
-  );
-}
 
 function renderCell(
   row: RelativeRowViewModel,
@@ -45,6 +38,9 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
   const showHeader = settings.showHeader !== false;
   const intrinsicWidth = computeRelativeIntrinsicWidth(model.columns);
   const fillRows = model.rowHeightMode === "fill";
+  const canonicalColumns = model.columns.filter((column) =>
+    ["position", "class", "carNumber", "driverName", "gap", "bestLap"].includes(column.metricId),
+  );
 
   return (
     <section
@@ -59,12 +55,11 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
         width: fillRows ? "100%" : `${intrinsicWidth}px`,
       }}
     >
-      <div className="vc-relative-glow" aria-hidden="true" />
       <div className="vc-relative-frame">
         {showHeader ? (
           <header className="vc-relative-header">
-            <span className="vc-relative-brand">VANTARE</span>
-            <span className="vc-relative-title">RELATIVE</span>
+            <CrystalBrand>VANTARE</CrystalBrand>
+            <CrystalPill>RELATIVE</CrystalPill>
           </header>
         ) : null}
         {model.statusMessage ? (
@@ -72,18 +67,34 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
             {model.statusMessage}
           </p>
         ) : null}
+        <div className="vc-relative-table-header" role="row">
+          {canonicalColumns.map((column) => (
+            <span key={column.id} data-metric={column.metricId}>
+              {column.metricId === "position"
+                ? "POS"
+                : column.metricId === "class"
+                  ? ""
+                  : column.metricId === "carNumber"
+                    ? "#"
+                    : column.metricId === "driverName"
+                      ? "PILOTO"
+                      : column.metricId === "gap"
+                        ? "GAP"
+                        : "BEST"}
+            </span>
+          ))}
+        </div>
         <div className="vc-relative-rows">
           {model.rows.map((row) => (
-            <article
+            <div
               key={row.id}
               data-relative-row={row.id}
               data-player={row.isPlayer ? "true" : undefined}
               data-tone={row.tone}
               data-class={row.vehicleClass || undefined}
-              className={row.isPlayer ? "vc-relative-row-card vc-relative-player" : "vc-relative-row-card"}
+              className={row.isPlayer ? "vc-relative-row vc-relative-player" : "vc-relative-row"}
             >
-              {model.columns.map((column) => {
-                const width = resolveColumnWidthPixels(column, columnFallbackWidth(column.metricId));
+              {canonicalColumns.map((column) => {
                 const cell = renderCell(row, column.metricId, settings);
                 return (
                   <span
@@ -94,21 +105,19 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
                         ? "vc-relative-class-bar"
                         : "vc-relative-cell"
                     }
-                    style={
-                      {
-                        flexBasis: `${width}px`,
-                        textAlign: column.style?.align ?? "center",
-                        ...cell.style,
-                      } as CSSProperties
-                    }
+                    style={{ textAlign: column.style?.align ?? "center", ...cell.style } as CSSProperties}
                   >
                     {cell.content}
                   </span>
                 );
               })}
-            </article>
+            </div>
           ))}
         </div>
+        <CrystalFooter>
+          <span><strong>●</strong> LIVE TIMING</span>
+          <span>SOF: —</span>
+        </CrystalFooter>
       </div>
     </section>
   );

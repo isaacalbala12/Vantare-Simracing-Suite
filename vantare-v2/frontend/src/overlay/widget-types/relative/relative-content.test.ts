@@ -22,6 +22,7 @@ describe("relative content", () => {
       "carNumber",
       "driverName",
       "gap",
+      "bestLap",
     ]);
   });
 
@@ -62,7 +63,7 @@ describe("relative content", () => {
   it("supports column reorder and filter updates", () => {
     const content = createDefaultRelativeContent();
     const toggled = toggleRelativeColumn(content, "bestLap");
-    expect(toggled.columns.find((column) => column.id === "bestLap")?.enabled).toBe(true);
+    expect(toggled.columns.find((column) => column.id === "bestLap")?.enabled).toBe(false);
 
     const moved = moveRelativeColumn(content, "driverName", "up");
     expect(moved.columns[2]?.metricId).toBe("driverName");

@@ -68,7 +68,7 @@ export const RELATIVE_COLUMN_TEMPLATES: readonly RelativeColumnTemplate[] = [
     id: "bestLap",
     metricId: "bestLap",
     label: "Mejor vuelta",
-    defaultEnabled: false,
+    defaultEnabled: true,
     defaultWidth: 62,
     format: { display: "full", decimals: 3 },
     style: { align: "right" },

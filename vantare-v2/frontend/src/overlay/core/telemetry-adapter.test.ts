@@ -67,6 +67,49 @@ describe("normalizeLegacyTelemetry", () => {
     expect(parseTelemetryPayload(payload).snapshot.connected).toBe(true);
   });
 
+  it("exposes additive live widget fields and preserves absent values", () => {
+    const payload = {
+      seq: 12,
+      snapshot: {
+        connected: true,
+        sessionEpoch: 7,
+        sessionKey: "race-7",
+        player: {
+          speed: 214.5,
+          gear: 5,
+          engineRPM: 8750,
+          fuel: 42.3,
+          throttle: 78,
+          brake: 12,
+          clutch: 0,
+        },
+        session: {
+          trackName: "Le Mans",
+          sessionName: "RACE",
+          yellowFlagState: "GREEN",
+          sectorFlags: ["GREEN", "YELLOW", "GREEN"],
+        },
+        vehicles: [{ id: 1, driverName: "Driver", totalLaps: 14, isPlayer: true }],
+      },
+    };
+    const snapshot = normalizeLegacyTelemetry(payload, CAPTURED_AT);
+    expect(snapshot.session).toMatchObject({
+      key: "race-7",
+      epoch: 7,
+      trackName: "Le Mans",
+      globalFlag: "GREEN",
+      sectorFlags: ["GREEN", "YELLOW", "GREEN"],
+    });
+    expect(snapshot.player).toMatchObject({
+      speedKph: 214.5,
+      rpm: 8750,
+      gear: 5,
+      fuelLiters: 42.3,
+      totalLaps: 14,
+    });
+    expect(snapshot.player.deltaSeconds).toBeUndefined();
+  });
+
   it("returns explicit disconnected snapshot when legacy ref is offline", () => {
     const ref: TelemetryRefState = {
       ...getCanonicalPreviewTelemetry(),

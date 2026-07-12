@@ -6,6 +6,7 @@ import {
   type VehicleScoring,
 } from "../../lib/telemetry-ref";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
+import { readNonNegativeNumber, readNormalizedInput } from "../widget-types/shared/input-readers";
 
 function isTelemetryRefState(input: unknown): input is TelemetryRefState {
   if (!input || typeof input !== "object") {
@@ -15,15 +16,7 @@ function isTelemetryRefState(input: unknown): input is TelemetryRefState {
   return "vehicles" in candidate && "connected" in candidate && !("snapshot" in candidate);
 }
 
-function normalizePedalInput(value: unknown): number | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return undefined;
-  }
-  if (value > 1) {
-    return Math.max(0, Math.min(1, value / 100));
-  }
-  return Math.max(0, Math.min(1, value));
-}
+const normalizePedalInput = readNormalizedInput;
 
 function mapSessionType(
   sessionType?: number,
@@ -92,17 +85,27 @@ function snapshotFromRef(ref: TelemetryRefState, capturedAt: number): TelemetryS
     session: {
       type: mapSessionType(ref.sessionType, ref.sessionName),
       remainingSeconds: ref.timeRemaining,
+      key: ref.sessionKey || undefined,
+      epoch: ref.sessionEpoch || undefined,
+      trackName: ref.trackName || undefined,
+      globalFlag: ref.globalFlag,
+      sectorFlags: ref.sectorFlags ? [...ref.sectorFlags] : undefined,
     },
     player: {
       inPit: playerVehicle?.inPits ?? false,
-      deltaSeconds: ref.deltaBest,
+      speedKph: ref.availability?.speed === false ? undefined : readNonNegativeNumber(ref.speed),
+      rpm: ref.availability?.rpm === false ? undefined : readNonNegativeNumber(ref.rpm),
+      gear: ref.availability?.gear === false ? undefined : readNonNegativeNumber(ref.gear),
+      fuelLiters: ref.availability?.fuel === false ? undefined : readNonNegativeNumber(ref.fuel),
+      totalLaps: playerVehicle?.totalLaps,
+      deltaSeconds: ref.availability?.deltaBest === false ? undefined : ref.deltaBest,
       lastLapSeconds: playerVehicle?.lastLapTime,
       bestLapSeconds: playerVehicle?.bestLapTime,
       lapNumber: playerVehicle?.totalLaps,
       predictedLapSeconds: playerVehicle?.estimatedLapTime,
-      throttle: normalizePedalInput(ref.throttle),
-      brake: normalizePedalInput(ref.brake),
-      clutch: normalizePedalInput(ref.clutch),
+      throttle: ref.availability?.throttle === false ? undefined : normalizePedalInput(ref.throttle),
+      brake: ref.availability?.brake === false ? undefined : normalizePedalInput(ref.brake),
+      clutch: ref.availability?.clutch === false ? undefined : normalizePedalInput(ref.clutch),
     },
     scoring: cloneScoring(ref.vehicles),
   };
@@ -125,39 +128,77 @@ function buildRefFromPayload(payload: TelemetryPayload): TelemetryRefState {
     fuel: snapshot?.player?.fuel ?? 0,
     deltaBest: snapshot?.player?.deltaBest ?? 0,
     trackName: snapshot?.session?.trackName ?? "",
+    globalFlag: snapshot?.session?.yellowFlagState,
+    sectorFlags: snapshot?.session?.sectorFlags ? [...snapshot.session.sectorFlags] : undefined,
     throttle: normalizePedalInput(snapshot?.player?.throttle) ?? 0,
     brake: normalizePedalInput(snapshot?.player?.brake) ?? 0,
     clutch: normalizePedalInput(snapshot?.player?.clutch) ?? 0,
     timeRemaining: snapshot?.session?.timeRemainingInGamePhase ?? 0,
     vehicles: snapshot?.vehicles ? [...snapshot.vehicles] : [],
+    availability: {
+      speed: snapshot?.player?.speed !== undefined,
+      gear: snapshot?.player?.gear !== undefined,
+      rpm: snapshot?.player?.engineRPM !== undefined,
+      fuel: snapshot?.player?.fuel !== undefined,
+      deltaBest: snapshot?.player?.deltaBest !== undefined,
+      throttle: snapshot?.player?.throttle !== undefined,
+      brake: snapshot?.player?.brake !== undefined,
+      clutch: snapshot?.player?.clutch !== undefined,
+    },
   };
 
   const diff = payload.diff?.d;
   if (diff) {
     const playerDiff = diff.player as Record<string, unknown> | undefined;
     if (playerDiff) {
-      if (typeof playerDiff.speed === "number") state.speed = playerDiff.speed;
-      if (typeof playerDiff.rpm === "number") state.rpm = playerDiff.rpm;
-      if (typeof playerDiff.gear === "number") state.gear = playerDiff.gear;
-      if (typeof playerDiff.fuel === "number") state.fuel = playerDiff.fuel;
-      if (typeof playerDiff.deltaBest === "number") state.deltaBest = playerDiff.deltaBest;
+      if (typeof playerDiff.speed === "number") {
+        state.speed = playerDiff.speed;
+        state.availability!.speed = true;
+      }
+      if (typeof playerDiff.rpm === "number") {
+        state.rpm = playerDiff.rpm;
+        state.availability!.rpm = true;
+      }
+      if (typeof playerDiff.gear === "number") {
+        state.gear = playerDiff.gear;
+        state.availability!.gear = true;
+      }
+      if (typeof playerDiff.fuel === "number") {
+        state.fuel = playerDiff.fuel;
+        state.availability!.fuel = true;
+      }
+      if (typeof playerDiff.deltaBest === "number") {
+        state.deltaBest = playerDiff.deltaBest;
+        state.availability!.deltaBest = true;
+      }
       if (typeof playerDiff.throttle === "number") {
         state.throttle = normalizePedalInput(playerDiff.throttle) ?? state.throttle;
+        state.availability!.throttle = true;
       }
       if (typeof playerDiff.brake === "number") {
         state.brake = normalizePedalInput(playerDiff.brake) ?? state.brake;
+        state.availability!.brake = true;
       }
       if (typeof playerDiff.clutch === "number") {
         state.clutch = normalizePedalInput(playerDiff.clutch) ?? state.clutch;
+        state.availability!.clutch = true;
       }
     }
     const sessionDiff = diff.session as Record<string, unknown> | undefined;
     if (sessionDiff) {
+      if (typeof sessionDiff.sessionKey === "string") state.sessionKey = sessionDiff.sessionKey;
+      if (typeof sessionDiff.sessionEpoch === "number") state.sessionEpoch = sessionDiff.sessionEpoch;
       if (typeof sessionDiff.trackName === "string") state.trackName = sessionDiff.trackName;
       if (typeof sessionDiff.sessionType === "number") state.sessionType = sessionDiff.sessionType;
       if (typeof sessionDiff.sessionName === "string") state.sessionName = sessionDiff.sessionName;
       if (typeof sessionDiff.timeRemainingInGamePhase === "number") {
         state.timeRemaining = sessionDiff.timeRemainingInGamePhase;
+      }
+      if (typeof sessionDiff.yellowFlagState === "string") state.globalFlag = sessionDiff.yellowFlagState;
+      if (Array.isArray(sessionDiff.sectorFlags)) {
+        state.sectorFlags = sessionDiff.sectorFlags.filter(
+          (flag): flag is string => typeof flag === "string",
+        );
       }
     }
     if (Array.isArray(diff.vehicles)) {

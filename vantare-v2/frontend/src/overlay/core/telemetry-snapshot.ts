@@ -4,9 +4,19 @@ export type TelemetrySnapshot = {
   session: {
     type: "practice" | "qualifying" | "race" | "warmup" | "endurance";
     remainingSeconds?: number;
+    key?: string;
+    epoch?: number;
+    trackName?: string;
+    globalFlag?: string;
+    sectorFlags?: readonly string[];
   };
   player: {
     inPit: boolean;
+    speedKph?: number;
+    rpm?: number;
+    gear?: number;
+    fuelLiters?: number;
+    totalLaps?: number;
     deltaSeconds?: number;
     lastLapSeconds?: number;
     bestLapSeconds?: number;

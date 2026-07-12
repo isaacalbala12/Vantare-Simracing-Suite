@@ -17,7 +17,6 @@ type PrimitiveProps = {
 function primitiveClass(baseClass: string, className?: string): string {
   return className ? `${baseClass} ${className}` : baseClass;
 }
-
 export function CrystalSurface({ children, className, "aria-label": ariaLabel }: PrimitiveProps) {
   return (
     <section
@@ -131,4 +130,3 @@ export function CrystalStatusFrame({ children, className, message, status }: Cry
     </div>
   );
 }
-

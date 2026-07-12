@@ -45,4 +45,3 @@ describe("Crystal canonical glass contract", () => {
     });
   });
 });
-

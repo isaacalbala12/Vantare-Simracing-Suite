@@ -26,7 +26,7 @@ validateInspectorControls(deltaAppearanceControls);
 
 const deltaRegistration = {
   widgetType: "delta" as const,
-  configVersion: 1,
+  configVersion: 2,
   defaultSettings: {
     templateId: "delta-bar",
     showHeader: true,
@@ -36,6 +36,7 @@ const deltaRegistration = {
       ...migrateDeltaSettingsV1(settings),
       showHeader: true,
     }),
+    1: (settings: Record<string, unknown>) => migrateDeltaSettingsV1(settings),
   },
   parseSettings: parseDeltaSettings,
   inspector: {
@@ -65,10 +66,11 @@ validateInspectorControls(standingsAppearanceControls);
 
 const standingsRegistration = {
   widgetType: "standings" as const,
-  configVersion: 1,
+  configVersion: 2,
   defaultSettings: {
     showSessionHeader: true,
     compactRows: false,
+    templateId: "standings-vertical",
   },
   configMigrations: {
     0: (settings: Record<string, unknown>) => ({
@@ -76,14 +78,19 @@ const standingsRegistration = {
       compactRows: false,
       ...settings,
     }),
+    1: (settings: Record<string, unknown>) => ({
+      ...settings,
+      templateId: "standings-vertical",
+    }),
   },
   parseSettings(input: unknown): Record<string, unknown> {
     if (input == null || typeof input !== "object" || Array.isArray(input)) {
-      return { showSessionHeader: true, compactRows: false };
+      return { showSessionHeader: true, compactRows: false, templateId: "standings-vertical" };
     }
     return {
       showSessionHeader: true,
       compactRows: false,
+      templateId: "standings-vertical",
       ...(input as Record<string, unknown>),
     };
   },
@@ -163,20 +170,25 @@ validateInspectorControls(relativeAppearanceControls);
 
 const relativeRegistration = {
   widgetType: "relative" as const,
-  configVersion: 1,
-  defaultSettings: { ...RELATIVE_DEFAULT_APPEARANCE },
+  configVersion: 2,
+  defaultSettings: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-vertical" },
   configMigrations: {
     0: (settings: Record<string, unknown>) => ({
       ...RELATIVE_DEFAULT_APPEARANCE,
       ...settings,
     }),
+    1: (settings: Record<string, unknown>) => ({
+      ...settings,
+      templateId: "relative-vertical",
+    }),
   },
   parseSettings(input: unknown): Record<string, unknown> {
     if (input == null || typeof input !== "object" || Array.isArray(input)) {
-      return { ...RELATIVE_DEFAULT_APPEARANCE };
+      return { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-vertical" };
     }
     return {
       ...RELATIVE_DEFAULT_APPEARANCE,
+      templateId: "relative-vertical",
       ...(input as Record<string, unknown>),
     };
   },
@@ -221,20 +233,25 @@ validateInspectorControls(pedalsAppearanceControls);
 
 const pedalsRegistration = {
   widgetType: "pedals" as const,
-  configVersion: 1,
-  defaultSettings: { ...PEDALS_DEFAULT_APPEARANCE },
+  configVersion: 2,
+  defaultSettings: { ...PEDALS_DEFAULT_APPEARANCE, templateId: "pedals" },
   configMigrations: {
     0: (settings: Record<string, unknown>) => ({
       ...PEDALS_DEFAULT_APPEARANCE,
       ...settings,
     }),
+    1: (settings: Record<string, unknown>) => ({
+      ...settings,
+      templateId: "pedals",
+    }),
   },
   parseSettings(input: unknown): Record<string, unknown> {
     if (input == null || typeof input !== "object" || Array.isArray(input)) {
-      return { ...PEDALS_DEFAULT_APPEARANCE };
+      return { ...PEDALS_DEFAULT_APPEARANCE, templateId: "pedals" };
     }
     return {
       ...PEDALS_DEFAULT_APPEARANCE,
+      templateId: "pedals",
       ...(input as Record<string, unknown>),
     };
   },

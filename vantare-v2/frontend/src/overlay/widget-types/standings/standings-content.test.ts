@@ -11,7 +11,7 @@ describe("standings-content", () => {
   it("creates default columns with the planned enabled metrics", () => {
     const content = createDefaultStandingsContent();
     const enabled = content.columns.filter((column) => column.enabled).map((column) => column.metricId);
-    expect(enabled).toEqual(["position", "driverNumber", "driverName", "gap", "bestLap"]);
+    expect(enabled).toEqual(["position", "driverNumber", "driverName", "gap", "lastLap"]);
   });
 
   it("falls back to defaults when columns are missing", () => {

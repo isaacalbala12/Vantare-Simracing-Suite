@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useI18n } from "../../../i18n/I18nProvider";
 
 export type StudioLayoutMode = "wide" | "medium" | "compact";
 export type StudioDrawerId = "list" | "inspector" | null;
@@ -43,6 +44,7 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
     inspectorPanel,
     onDrawerChange,
   } = props;
+  const { t } = useI18n();
   const layoutMode = resolveStudioLayoutMode(viewportWidth);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [openDrawer, setOpenDrawer] = useState<StudioDrawerId>(null);
@@ -128,14 +130,14 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
       {layoutMode === "compact" ? (
         <div className="osv3-compact-toolbar" data-testid="studio-panel-drawer-toggle">
           <button type="button" data-testid="studio-list-drawer-toggle" onClick={openListDrawer}>
-            Widgets
+            {t("studio.v3.layout.widgetsPanel")}
           </button>
           <button
             type="button"
             data-testid="studio-inspector-drawer-toggle"
             onClick={openInspectorDrawer}
           >
-            Inspector
+            {t("studio.v3.layout.inspectorPanel")}
           </button>
         </div>
       ) : null}
@@ -146,7 +148,7 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
           className="osv3-medium-inspector-toggle"
           onClick={openInspectorDrawer}
         >
-          Inspector
+          {t("studio.v3.layout.inspectorPanel")}
         </button>
       ) : null}
       <div

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { AccessContext } from "../../../lib/access-policy";
 import {
   listOfficialDesigns,
-  OFFICIAL_DESIGNS_SECTION_LABEL,
 } from "../../../overlay/design-systems/official-designs";
 import type { SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
@@ -31,9 +31,9 @@ export type DesignSectionProps = {
 
 function designLockMessage(design: WidgetDesignV1): string {
   if (design.requiredFeature === "overlays.advanced") {
-    return "Requiere licencia Overlays avanzados.";
+    return "studio.v3.design.lock.advanced";
   }
-  return "No tienes acceso para aplicar este diseño.";
+  return "studio.v3.design.lock.generic";
 }
 
 export function DesignSection(props: DesignSectionProps): React.ReactElement {
@@ -46,8 +46,10 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     designClient,
     confirmApplyAll = (message) => window.confirm(message),
     confirmDelete = (message) => window.confirm(message),
-    promptRename = (currentName) => window.prompt("Nuevo nombre del diseño", currentName),
+    promptRename,
   } = props;
+  const { t } = useI18n();
+  const requestRename = promptRename ?? ((currentName: string) => window.prompt(t("studio.v3.design.renamePrompt"), currentName));
 
   const [userDesigns, setUserDesigns] = useState<WidgetDesignV1[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,13 +65,13 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
       setUserDesigns(designs.filter((design) => design.origin === "user"));
     } catch (refreshError) {
       const message =
-        refreshError instanceof Error ? refreshError.message : "No se pudieron cargar los diseños guardados.";
+        refreshError instanceof Error ? refreshError.message : t("studio.v3.design.loadFailed");
       setError(message);
       setUserDesigns([]);
     } finally {
       setLoading(false);
     }
-  }, [designClient, widget.type]);
+  }, [designClient, t, widget.type]);
 
   useEffect(() => {
     void refreshUserDesigns();
@@ -117,9 +119,14 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     if (compatibleIds.length === 0) {
       return;
     }
-    const message = `Aplicar "${design.name}" a ${compatibleIds.length} widget(s) compatible(s) en esta sesión${
-      skippedCount > 0 ? ` (${skippedCount} omitido(s) por incompatibilidad)` : ""
-    }.`;
+    const message = t("studio.v3.design.applyAll.confirm")
+      .replace("{name}", design.name)
+      .replace("{count}", String(compatibleIds.length))
+      .replace(
+        "{skipped}",
+        skippedCount > 0 ? ` ${t("studio.v3.design.applyAll.skippedSuffix").replace("{count}", String(skippedCount))}` : "",
+      )
+      .replace(/\s*$/, ".");
     if (confirmApplyAll(message)) {
       applyDesign(design, compatibleIds);
     }
@@ -144,7 +151,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
       });
       setSaveOpen(false);
     } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : "No se pudo guardar el diseño.";
+      const message = saveError instanceof Error ? saveError.message : t("studio.v3.design.saveFailed");
       setError(message);
     } finally {
       setBusyDesignId(null);
@@ -152,7 +159,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
   };
 
   const handleDelete = async (design: WidgetDesignV1) => {
-    if (!canSave || !confirmDelete(`¿Eliminar el diseño "${design.name}"?`)) {
+    if (!canSave || !confirmDelete(t("studio.v3.design.deleteConfirm").replace("{name}", design.name))) {
       return;
     }
     setBusyDesignId(design.id);
@@ -161,7 +168,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
       await designClient.delete(design.id);
       setUserDesigns((current) => current.filter((entry) => entry.id !== design.id));
     } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : "No se pudo eliminar el diseño.";
+      const message = deleteError instanceof Error ? deleteError.message : t("studio.v3.design.deleteFailed");
       setError(message);
     } finally {
       setBusyDesignId(null);
@@ -172,7 +179,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     if (!canSave) {
       return;
     }
-    const nextName = promptRename(design.name)?.trim();
+    const nextName = requestRename(design.name)?.trim();
     if (!nextName || nextName === design.name) {
       return;
     }
@@ -184,7 +191,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
         current.map((entry) => (entry.id === design.id ? { ...entry, name: nextName } : entry)),
       );
     } catch (renameError) {
-      const message = renameError instanceof Error ? renameError.message : "No se pudo renombrar el diseño.";
+      const message = renameError instanceof Error ? renameError.message : t("studio.v3.design.renameFailed");
       setError(message);
     } finally {
       setBusyDesignId(null);
@@ -217,7 +224,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
           </span>
         ) : locked ? (
           <span className="osv3-design-list__lock" data-testid={`studio-design-lock-${design.id}`}>
-            {designLockMessage(design)}
+            {t(designLockMessage(design))}
           </span>
         ) : (
           <div className="osv3-design-list__actions">
@@ -269,7 +276,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     <div data-testid="studio-inspector-section-design" data-widget-id={widget.id}>
       {!canApply ? (
         <p className="osv3-inspector-field__hint osv3-design-section__lock" data-testid="studio-design-access-lock">
-          No tienes acceso para aplicar diseños en este widget.
+          {t("studio.v3.design.accessLock")}
         </p>
       ) : null}
       {error ? (
@@ -280,7 +287,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
 
       <section className="osv3-design-section" data-testid="studio-design-official-section">
         <div className="osv3-design-section__header">
-          <h3 className="osv3-design-section__title">{OFFICIAL_DESIGNS_SECTION_LABEL}</h3>
+          <h3 className="osv3-design-section__title">{t("studio.v3.design.officialSection.title")}</h3>
           <span className="osv3-design-section__count">{officialDesigns.length}</span>
         </div>
         <ul className="osv3-design-list">
@@ -290,7 +297,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
 
       <section className="osv3-design-section" data-testid="studio-design-user-section">
         <div className="osv3-design-section__header">
-          <h3 className="osv3-design-section__title">Mis diseños</h3>
+          <h3 className="osv3-design-section__title">{t("studio.v3.design.userSection.title")}</h3>
           <button
             type="button"
             data-testid="studio-design-save-open"
@@ -298,16 +305,16 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
             disabled={!canSave || busyDesignId !== null}
             onClick={() => setSaveOpen(true)}
           >
-            Guardar actual
+            {t("studio.v3.design.userSection.saveCurrent")}
           </button>
         </div>
         {loading ? (
           <p className="osv3-inspector-field__hint" data-testid="studio-design-user-loading">
-            Cargando diseños guardados…
+            {t("studio.v3.design.userSection.loading")}
           </p>
         ) : compatibleUserDesigns.length === 0 ? (
           <p className="osv3-inspector-field__hint" data-testid="studio-design-user-empty">
-            Aún no tienes diseños guardados para este widget.
+            {t("studio.v3.design.userSection.empty")}
           </p>
         ) : (
           <ul className="osv3-design-list">

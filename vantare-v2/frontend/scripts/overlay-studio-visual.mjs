@@ -571,6 +571,97 @@ async function assertStudioZoomViewport(page, baseUrl) {
   }
 }
 
+async function assertStudioKeyboardNavigation(page, baseUrl) {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(`${baseUrl}/overlay-studio-v3-harness.html?viewport=1600`, { waitUntil: "networkidle" });
+  await waitForStudioShell(page);
+
+  const profileSelect = page.locator("[data-testid='studio-profile-select']");
+  const sessionSelect = page.locator("[data-testid='studio-session-select']");
+  const listSearch = page.locator("[data-testid='studio-widget-search']");
+  const canvasFrame = page.locator("[data-testid='studio-widget-frame-delta-main']");
+  const inspectorRail = page.locator("[data-testid='studio-inspector-rail']");
+
+  await profileSelect.focus();
+  if (!(await profileSelect.evaluate((node) => document.activeElement === node))) {
+    throw new Error("keyboard-wide: profile select did not receive focus");
+  }
+  await sessionSelect.focus();
+  if (!(await sessionSelect.evaluate((node) => document.activeElement === node))) {
+    throw new Error("keyboard-wide: session select did not receive focus");
+  }
+  await listSearch.focus();
+  await page.keyboard.type("delta");
+  if ((await listSearch.inputValue()) !== "delta") {
+    throw new Error("keyboard-wide: widget list search did not accept keyboard input");
+  }
+  await canvasFrame.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.querySelector("[data-selected-widget-id='delta-main']"));
+  if (!(await inspectorRail.isVisible())) {
+    throw new Error("keyboard-wide: inspector did not remain available after canvas selection");
+  }
+  const designRailItem = page.locator("[data-testid='studio-inspector-rail-item-design']");
+  await designRailItem.focus();
+  await page.keyboard.press("Enter");
+  if ((await designRailItem.getAttribute("aria-current")) !== "true") {
+    throw new Error("keyboard-wide: inspector design section was not keyboard-selectable");
+  }
+
+  const canvasBox = await canvasFrame.boundingBox();
+  if (!canvasBox) {
+    throw new Error("keyboard-wide: canvas frame has no bounding box for Escape check");
+  }
+  await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(canvasBox.x + canvasBox.width / 2 + 48, canvasBox.y + canvasBox.height / 2 + 24, { steps: 2 });
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  await page.waitForFunction(
+    () => document.querySelector("[data-testid='studio-canvas-viewport']")?.getAttribute("data-interaction") === "idle",
+  );
+
+  await page.setViewportSize({ width: 800, height: 700 });
+  await page.goto(`${baseUrl}/overlay-studio-v3-harness.html?viewport=800`, { waitUntil: "networkidle" });
+  await page.waitForSelector("[data-testid='studio-responsive-grid'][data-layout-mode='compact']");
+
+  const listToggle = page.locator("[data-testid='studio-list-drawer-toggle']");
+  await listToggle.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.activeElement?.getAttribute("data-testid") === "studio-widget-search");
+  await page.keyboard.press("Escape");
+  if (!(await listToggle.evaluate((node) => document.activeElement === node))) {
+    throw new Error("keyboard-small: Escape did not restore focus to list drawer toggle");
+  }
+
+  const compactFrame = page.locator("[data-testid='studio-widget-frame-delta-main']");
+  await compactFrame.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.querySelector("[data-selected-widget-id='delta-main']"));
+
+  const inspectorToggle = page.locator("[data-testid='studio-inspector-drawer-toggle']");
+  await page.keyboard.press("Escape");
+  await inspectorToggle.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForSelector("[data-testid='studio-inspector-visibility-toggle']");
+  const visibilityToggle = page.locator("[data-testid='studio-inspector-visibility-toggle']");
+  await visibilityToggle.focus();
+  const visibilityBefore = await visibilityToggle.getAttribute("aria-pressed");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(
+    (before) => document.querySelector("[data-testid='studio-inspector-visibility-toggle']")?.getAttribute("aria-pressed") !== before,
+    visibilityBefore,
+  );
+  await visibilityToggle.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  if (!(await inspectorToggle.evaluate((node) => document.activeElement === node))) {
+    throw new Error("keyboard-small: Escape did not restore focus to inspector drawer toggle");
+  }
+
+  console.log("ok studio keyboard navigation wide/compact");
+}
+
 async function startHarnessServer() {
   const { createServer } = await import("vite");
   const server = await createServer({
@@ -637,6 +728,7 @@ async function main() {
       console.log("ok studio-wide interactions");
       await assertStudioZoomViewport(page, baseUrl);
       console.log("ok studio zoom 150 viewport");
+      await assertStudioKeyboardNavigation(page, baseUrl);
     }
     console.log("visual review complete");
     process.exit(0);

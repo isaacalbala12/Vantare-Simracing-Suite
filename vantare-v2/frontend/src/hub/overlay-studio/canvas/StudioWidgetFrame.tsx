@@ -7,8 +7,10 @@ import {
 } from "./canvas-frame-preview";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
+import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
 import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { ResizeHandle } from "./canvas-resize";
 import { getStudioFramePreviewKind } from "./canvas-frame-preview";
 import { resolveStudioWidgetFrameGeometry, resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
@@ -43,6 +45,7 @@ export type StudioWidgetFrameProps = {
     event: React.PointerEvent<HTMLElement>,
   ): void;
   onLostPointerCapture?(event: PointerEvent): void;
+  diagnostics?: WidgetDiagnosticCollector;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
@@ -56,7 +59,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onFramePointerDown,
     onResizePointerDown,
     onLostPointerCapture,
+    diagnostics,
   } = props;
+  const { t } = useI18n();
   const coordinator = useStudioTelemetryCoordinator();
   const rateLimitedSnapshot = useRateLimitedTelemetry(coordinator, widget.behavior.updateHz);
   const snapshot = snapshotOverride ?? rateLimitedSnapshot;
@@ -106,6 +111,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       data-preview-active={previewActive ? "true" : undefined}
       className={frameClassName}
       style={frameStyle}
+      role="button"
+      tabIndex={0}
+      aria-label={`${widget.name?.trim() || widget.type} (${widget.type}, ${widget.visual.systemId}, ${widget.behavior.enabled ? t("studio.v3.widgetList.status.active") : t("studio.v3.widgetList.status.hidden")})`}
       onPointerDown={(event) => {
         if (onFramePointerDown) {
           onFramePointerDown(widget.id, event);
@@ -115,13 +123,19 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
         onSelect(widget.id);
       }}
       onLostPointerCapture={(event) => onLostPointerCapture?.(event.nativeEvent)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(widget.id);
+        }
+      }}
     >
       {selected ? (
         <div data-testid={`studio-widget-frame-chrome-${widget.id}`} className="osv3-widget-frame__chrome" />
       ) : null}
       {!widget.behavior.enabled ? (
         <span data-testid={`studio-widget-hidden-badge-${widget.id}`} className="osv3-widget-frame__hidden-badge">
-          Oculto
+          {t("studio.v3.canvas.widgetHidden")}
         </span>
       ) : null}
       {selected && onResizePointerDown
@@ -131,7 +145,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
               type="button"
               data-testid={`studio-resize-handle-${handle}-${widget.id}`}
               className={`osv3-resize-handle osv3-resize-handle--${handle}`}
-              aria-label={`Resize ${handle}`}
+              aria-label={t("studio.v3.canvas.resizeHandleAria").replace("{handle}", handle)}
               onPointerDown={(event) => onResizePointerDown(widget.id, handle, event)}
               onLostPointerCapture={(event) => onLostPointerCapture?.(event.nativeEvent)}
             />
@@ -152,6 +166,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
             widget={widget}
             snapshot={snapshot}
             renderMode="studio"
+            diagnostics={diagnostics}
           />
         </div>
       </div>
@@ -170,5 +185,6 @@ export const StudioWidgetFrame = memo(
     && previous.onSelect === next.onSelect
     && previous.onFramePointerDown === next.onFramePointerDown
     && previous.onResizePointerDown === next.onResizePointerDown
-    && previous.onLostPointerCapture === next.onLostPointerCapture,
+    && previous.onLostPointerCapture === next.onLostPointerCapture
+    && previous.diagnostics === next.diagnostics,
 );

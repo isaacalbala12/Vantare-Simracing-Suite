@@ -1,4 +1,5 @@
 import type { AccessContext } from "../../../lib/access-policy";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { CoreWidgetType } from "../../../overlay/core/profile-document";
 import {
   canAddCatalogEntry,
@@ -15,19 +16,20 @@ export type AddWidgetDialogProps = {
   onAdd(type: CoreWidgetType): void;
 };
 
-function lockMessage(entry: StudioCatalogEntry, access: AccessContext): string {
+function lockMessage(entry: StudioCatalogEntry, access: AccessContext, t: (key: string) => string): string {
   const gate = getCatalogAddGate(access, entry);
   if (gate.reason === "blocked-license") {
-    return "Licencia bloqueada. Renueva tu acceso para añadir este widget.";
+    return t("studio.v3.catalog.lock.blockedLicense");
   }
   if (entry.requiredFeature === "overlays.advanced") {
-    return "Requiere licencia Overlays avanzados. Puedes previsualizarlo en el lienzo.";
+    return t("studio.v3.catalog.lock.advancedOverlays");
   }
-  return "Requiere una licencia superior para añadir este widget.";
+  return t("studio.v3.catalog.lock.generic");
 }
 
 export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement | null {
   const { open, access, catalog = deriveStudioCatalog(), onClose, onAdd } = props;
+  const { t } = useI18n();
   if (!open) {
     return null;
   }
@@ -42,10 +44,10 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
     >
       <div className="osv3-dialog-panel osv3-catalog-dialog">
         <h2 id="studio-add-widget-dialog-title" className="osv3-dialog-panel__title">
-          Añadir widget
+          {t("studio.v3.catalog.title")}
         </h2>
         <p className="osv3-dialog-panel__body">
-          El catálogo se deriva del registro V3. Los widgets premium siguen visibles para previsualizar.
+          {t("studio.v3.catalog.description")}
         </p>
         <div className="osv3-catalog-dialog__list">
           {catalog.map((entry) => {
@@ -59,7 +61,10 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
                 <div className="osv3-catalog-dialog__entry-main">
                   <span className="osv3-catalog-dialog__entry-type">{entry.type}</span>
                   <span className="osv3-catalog-dialog__entry-meta">
-                    {entry.defaultSize.width}×{entry.defaultSize.height} · {entry.compatibleSystems.length} sistemas
+                    {t("studio.v3.catalog.entryMeta")
+                      .replace("{width}", String(entry.defaultSize.width))
+                      .replace("{height}", String(entry.defaultSize.height))
+                      .replace("{count}", String(entry.compatibleSystems.length))}
                   </span>
                 </div>
                 {canAdd ? (
@@ -69,12 +74,12 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
                     className="osv3-dialog-panel__button osv3-dialog-panel__button--primary"
                     onClick={() => onAdd(entry.type)}
                   >
-                    Añadir
+                    {t("studio.v3.catalog.add")}
                   </button>
                 ) : (
                   <div className="osv3-catalog-dialog__locked" data-testid={`studio-catalog-lock-${entry.type}`}>
-                    <span className="osv3-catalog-dialog__lock-label">Bloqueado</span>
-                    <span className="osv3-catalog-dialog__lock-hint">{lockMessage(entry, access)}</span>
+                    <span className="osv3-catalog-dialog__lock-label">{t("studio.v3.catalog.locked")}</span>
+                    <span className="osv3-catalog-dialog__lock-hint">{lockMessage(entry, access, t)}</span>
                   </div>
                 )}
               </div>
@@ -88,7 +93,7 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
             className="osv3-dialog-panel__button"
             onClick={onClose}
           >
-            Cerrar
+            {t("studio.v3.catalog.close")}
           </button>
         </div>
       </div>

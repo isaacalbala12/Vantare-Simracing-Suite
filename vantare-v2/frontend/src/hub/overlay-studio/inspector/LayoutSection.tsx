@@ -14,6 +14,7 @@ export type LayoutSectionProps = {
 
 export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
   const { widget, session, widgets, savedDocument, dispatch, selectWidget } = props;
+  const { t } = useI18n();
   const definition = widgetTypeRegistry.get(widget.type);
   const canUnlock = definition.capabilities.supportsAspectUnlock;
 
@@ -32,7 +33,7 @@ export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
   return (
     <div data-testid="studio-inspector-section-layout" data-widget-id={widget.id}>
       <label className="osv3-inspector-field">
-        <span className="osv3-inspector-field__label">Bloquear proporción</span>
+        <span className="osv3-inspector-field__label">{t("studio.v3.layout.aspectLock")}</span>
         <input
           type="checkbox"
           data-testid="studio-layout-aspect-lock"
@@ -49,34 +50,35 @@ export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
         />
         {!canUnlock ? (
           <p className="osv3-inspector-field__hint" data-testid="studio-layout-aspect-lock-hint">
-            Este widget mantiene su proporción fija.
+            {t("studio.v3.layout.aspectLockFixedHint")}
           </p>
         ) : null}
       </label>
 
       <div className="osv3-inspector-action-row">
         <button type="button" data-testid="studio-layout-center" onClick={() => runAction("center")}>
-          Centrar
+          {t("studio.v3.layout.center")}
         </button>
         <button type="button" data-testid="studio-layout-reset" onClick={() => runAction("reset-layout")}>
-          Restablecer layout
+          {t("studio.v3.layout.reset")}
         </button>
       </div>
 
       <div className="osv3-inspector-action-row" data-testid="studio-layout-z-order">
         <button type="button" data-testid="studio-layout-front" onClick={() => runAction("front")}>
-          Al frente
+          {t("studio.v3.layout.zOrder.front")}
         </button>
         <button type="button" data-testid="studio-layout-forward" onClick={() => runAction("forward")}>
-          Adelante
+          {t("studio.v3.layout.zOrder.forward")}
         </button>
         <button type="button" data-testid="studio-layout-backward" onClick={() => runAction("backward")}>
-          Atrás
+          {t("studio.v3.layout.zOrder.backward")}
         </button>
         <button type="button" data-testid="studio-layout-back" onClick={() => runAction("back")}>
-          Al fondo
+          {t("studio.v3.layout.zOrder.back")}
         </button>
       </div>
     </div>
   );
 }
+import { useI18n } from "../../../i18n/I18nProvider";

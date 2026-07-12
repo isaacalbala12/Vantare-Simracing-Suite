@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { StudioCommand } from "../state/studio-command";
 import {
@@ -6,15 +7,15 @@ import {
   type WidgetActionId,
 } from "./widget-actions";
 
-const MENU_ACTIONS: readonly { id: WidgetActionId; label: string }[] = [
-  { id: "duplicate", label: "Duplicar" },
-  { id: "delete", label: "Eliminar" },
-  { id: "center", label: "Centrar" },
-  { id: "reset-layout", label: "Restablecer layout" },
-  { id: "front", label: "Al frente" },
-  { id: "forward", label: "Adelante" },
-  { id: "backward", label: "Atrás" },
-  { id: "back", label: "Al fondo" },
+const MENU_ACTIONS: readonly { id: WidgetActionId; labelKey: string }[] = [
+  { id: "duplicate", labelKey: "studio.v3.widgetActions.duplicate" },
+  { id: "delete", labelKey: "studio.v3.widgetActions.delete" },
+  { id: "center", labelKey: "studio.v3.widgetActions.center" },
+  { id: "reset-layout", labelKey: "studio.v3.widgetActions.resetLayout" },
+  { id: "front", labelKey: "studio.v3.widgetActions.front" },
+  { id: "forward", labelKey: "studio.v3.widgetActions.forward" },
+  { id: "backward", labelKey: "studio.v3.widgetActions.backward" },
+  { id: "back", labelKey: "studio.v3.widgetActions.back" },
 ];
 
 export type WidgetContextMenuState = {
@@ -37,6 +38,7 @@ export type WidgetContextMenuProps = {
 
 export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactElement | null {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!props.menu) {
@@ -77,6 +79,7 @@ export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactEle
       dispatch: props.dispatch,
       selectWidget: props.selectWidget,
       confirmDelete: props.confirmDelete,
+      deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
     });
     props.onClose();
   };
@@ -99,12 +102,12 @@ export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactEle
           className="osv3-widget-context-menu__item"
           onClick={() => runAction(item.id, [props.menu!.widgetId])}
         >
-          {item.label}
+          {t(item.labelKey)}
         </button>
       ))}
       {props.menu.layerWidgetIds.length > 1 ? (
         <div data-testid="studio-context-layer-submenu" className="osv3-widget-context-menu__submenu">
-          <div className="osv3-widget-context-menu__submenu-title">Seleccionar capa</div>
+          <div className="osv3-widget-context-menu__submenu-title">{t("studio.v3.contextMenu.selectLayer")}</div>
           {props.menu.layerWidgetIds.map((widgetId) => {
             const widget = props.widgets.find((entry) => entry.id === widgetId);
             return (

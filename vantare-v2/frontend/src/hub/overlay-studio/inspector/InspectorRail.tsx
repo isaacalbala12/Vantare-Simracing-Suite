@@ -1,4 +1,5 @@
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
 import {
   INSPECTOR_SECTION_ACCENTS,
@@ -22,9 +23,11 @@ export type InspectorRailProps = {
 
 export function InspectorRail(props: InspectorRailProps): React.ReactElement {
   const { widget, sections, activeSectionId, dirty, onSelectSection, onToggleVisibility } = props;
+  const { t } = useI18n();
+  const sectionLabel = (value: string) => value.startsWith("studio.v3.") ? t(value) : value;
 
   return (
-    <nav className="osv3-inspector-rail" data-testid="studio-inspector-rail" aria-label="Secciones del inspector">
+    <nav className="osv3-inspector-rail" data-testid="studio-inspector-rail" aria-label={t("studio.v3.inspector.rail.aria")}>
       <div className="osv3-inspector-rail__header" data-testid="studio-inspector-rail-header">
         <div className="osv3-inspector-rail__name">{widgetDisplayName(widget)}</div>
         <div
@@ -34,7 +37,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
               : "osv3-inspector-rail__status"
           }
         >
-          {widget.behavior.enabled ? "Activo" : "Oculto"}
+          {widget.behavior.enabled ? t("studio.v3.inspector.rail.status.active") : t("studio.v3.inspector.rail.status.hidden")}
         </div>
         <button
           type="button"
@@ -45,7 +48,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
               : "osv3-inspector-visibility"
           }
           aria-pressed={widget.behavior.enabled}
-          aria-label={widget.behavior.enabled ? "Ocultar widget" : "Mostrar widget"}
+          aria-label={widget.behavior.enabled ? t("studio.v3.inspector.rail.hideWidgetAria") : t("studio.v3.inspector.rail.showWidgetAria")}
           onClick={onToggleVisibility}
         />
       </div>
@@ -53,7 +56,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
       <div className="osv3-inspector-rail__items" data-testid="studio-inspector-rail-items">
         {sections.map((section) => {
           const accent = INSPECTOR_SECTION_ACCENTS[section.id];
-          const label = resolveInspectorSectionTitle(section.id, section.labelKey);
+          const label = sectionLabel(resolveInspectorSectionTitle(section.id, section.labelKey));
           const active = section.id === activeSectionId;
           return (
             <button
@@ -73,7 +76,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
                   <span className="osv3-inspector-rail__badge">{section.badge}</span>
                 ) : null}
               </span>
-              <span className="osv3-inspector-rail__tip">{INSPECTOR_SECTION_DISPLAY_LABELS[section.id] ?? label}</span>
+              <span className="osv3-inspector-rail__tip">{sectionLabel(INSPECTOR_SECTION_DISPLAY_LABELS[section.id] ?? label)}</span>
             </button>
           );
         })}
@@ -85,7 +88,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
           aria-hidden="true"
         />
         <span data-testid="studio-inspector-dirty-indicator">
-          {dirty ? "Cambios sin guardar" : "Sin cambios"}
+          {dirty ? t("studio.v3.inspector.rail.dirty") : t("studio.v3.inspector.rail.clean")}
         </span>
       </footer>
     </nav>

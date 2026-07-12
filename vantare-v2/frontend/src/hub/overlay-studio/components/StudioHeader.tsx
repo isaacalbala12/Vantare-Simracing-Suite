@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { SessionLayoutType } from "../../../overlay/core/profile-document";
 import { useStudioDocument } from "../state/studio-store";
 
@@ -9,11 +10,11 @@ export type StudioProfileEntry = {
 };
 
 const SESSION_OPTIONS: Array<{ value: SessionLayoutType; label: string }> = [
-  { value: "general", label: "General" },
-  { value: "practice", label: "Práctica" },
-  { value: "qualifying", label: "Clasificación" },
-  { value: "race", label: "Carrera" },
-  { value: "endurance", label: "Resistencia" },
+  { value: "general", label: "studio.v3.session.general" },
+  { value: "practice", label: "studio.v3.session.practice" },
+  { value: "qualifying", label: "studio.v3.session.qualifying" },
+  { value: "race", label: "studio.v3.session.race" },
+  { value: "endurance", label: "studio.v3.session.endurance" },
 ];
 
 export type StudioHeaderProps = {
@@ -27,12 +28,12 @@ export type StudioHeaderProps = {
 };
 
 function saveStatusLabel(saveState: string, dirty: boolean): string {
-  if (saveState === "saving") return "Guardando...";
-  if (saveState === "saved") return "Guardado";
-  if (saveState === "error") return "Error al guardar";
-  if (saveState === "conflict") return "Conflicto de revisión";
-  if (dirty) return "Cambios sin guardar";
-  return "Sin cambios";
+  if (saveState === "saving") return "studio.v3.saveStatus.saving";
+  if (saveState === "saved") return "studio.v3.saveStatus.saved";
+  if (saveState === "error") return "studio.v3.saveStatus.error";
+  if (saveState === "conflict") return "studio.v3.saveStatus.conflict";
+  if (dirty) return "studio.v3.saveStatus.dirty";
+  return "studio.v3.saveStatus.clean";
 }
 
 export function StudioHeader({
@@ -56,6 +57,7 @@ export function StudioHeader({
     redo,
   } = useStudioDocument();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <header className="osv3-header" data-testid="studio-header">
@@ -65,7 +67,7 @@ export function StudioHeader({
           className="osv3-header__profile-select"
           value={activeFile}
           onChange={(event) => onRequestProfileChange(event.target.value)}
-          aria-label="Perfil activo"
+          aria-label={t("studio.v3.header.activeProfileAria")}
         >
           {profiles.map((profile) => (
             <option key={profile.id} value={profile.file}>
@@ -78,16 +80,16 @@ export function StudioHeader({
           className="osv3-header__session-select"
           value={activeSession}
           onChange={(event) => selectSession(event.target.value as SessionLayoutType)}
-          aria-label="Sesión de layout"
+          aria-label={t("studio.v3.header.sessionAria")}
         >
           {SESSION_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {t(option.label)}
             </option>
           ))}
         </select>
         <span className="osv3-header__status" data-testid="studio-save-status">
-          {saveStatusLabel(saveState, dirty)}
+          {t(saveStatusLabel(saveState, dirty))}
         </span>
       </div>
       <div className="osv3-header__right">
@@ -98,7 +100,7 @@ export function StudioHeader({
           disabled={!dirty || saveState === "saving"}
           onClick={() => void save()}
         >
-          Guardar
+          {t("studio.v3.header.save")}
         </button>
         <button
           type="button"
@@ -107,7 +109,7 @@ export function StudioHeader({
           disabled={!canUndo}
           onClick={undo}
         >
-          Deshacer
+          {t("studio.v3.header.undo")}
         </button>
         <button
           type="button"
@@ -116,7 +118,7 @@ export function StudioHeader({
           disabled={!canRedo}
           onClick={redo}
         >
-          Rehacer
+          {t("studio.v3.header.redo")}
         </button>
         <div className="osv3-header__menu">
           <button
@@ -125,18 +127,18 @@ export function StudioHeader({
             className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
             onClick={() => setMenuOpen((open) => !open)}
           >
-            Menú
+            {t("studio.v3.header.menu")}
           </button>
           {menuOpen ? (
             <div className="osv3-header__menu-panel" data-testid="studio-menu-panel">
               <button type="button" className="osv3-header__menu-item" onClick={onOpenManageProfiles}>
-                Gestionar perfiles
+                {t("studio.v3.header.manageProfiles")}
               </button>
               <button type="button" className="osv3-header__menu-item" onClick={onOpenRecommended}>
-                Recomendados
+                {t("studio.v3.header.recommended")}
               </button>
               <button type="button" className="osv3-header__menu-item" onClick={onOpenCommunity}>
-                Comunidad
+                {t("studio.v3.header.community")}
               </button>
               <button type="button" className="osv3-header__menu-item" onClick={onOpenObs}>
                 OBS

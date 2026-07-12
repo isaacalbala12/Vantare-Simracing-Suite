@@ -17,6 +17,7 @@ function formatCapturedAt(capturedAt: string): string {
 
 export function RecoveryDialog(props: RecoveryDialogProps): React.ReactElement | null {
   const { open, profileName, capturedAt, staleRevisionWarning, onRecover, onDiscard } = props;
+  const { t } = useI18n();
   if (!open) {
     return null;
   }
@@ -31,16 +32,16 @@ export function RecoveryDialog(props: RecoveryDialogProps): React.ReactElement |
     >
       <div className="osv3-dialog-panel">
         <h2 id="studio-recovery-dialog-title" className="osv3-dialog-panel__title">
-          Borrador recuperable
+          {t("studio.v3.recovery.title")}
         </h2>
         <p className="osv3-dialog-panel__body">
-          Encontramos un borrador local para{" "}
+          {t("studio.v3.recovery.bodyPrefix")} {" "}
           <strong data-testid="studio-recovery-profile">{profileName}</strong> guardado el{" "}
-          <span data-testid="studio-recovery-time">{formatCapturedAt(capturedAt)}</span>.
+          {t("studio.v3.recovery.bodySavedOn")} <span data-testid="studio-recovery-time">{formatCapturedAt(capturedAt)}</span>.
         </p>
         {staleRevisionWarning ? (
           <p data-testid="studio-recovery-stale-warning" className="osv3-dialog-panel__warning" role="alert">
-            La revisión del borrador no coincide con el archivo en disco. Revisa antes de recuperar.
+            {staleRevisionWarning ? t("studio.v3.recovery.staleWarning") : null}
           </p>
         ) : null}
         <div className="osv3-dialog-panel__actions">
@@ -50,7 +51,7 @@ export function RecoveryDialog(props: RecoveryDialogProps): React.ReactElement |
             className="osv3-dialog-panel__button osv3-dialog-panel__button--primary"
             onClick={onRecover}
           >
-            Recuperar
+            {t("studio.v3.recovery.recover")}
           </button>
           <button
             type="button"
@@ -58,10 +59,11 @@ export function RecoveryDialog(props: RecoveryDialogProps): React.ReactElement |
             className="osv3-dialog-panel__button"
             onClick={onDiscard}
           >
-            Descartar borrador
+            {t("studio.v3.recovery.discard")}
           </button>
         </div>
       </div>
     </div>
   );
 }
+import { useI18n } from "../../../i18n/I18nProvider";

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
+import { resolveStudioV3Text } from "./studio-v3-i18n";
 import "./overlay-studio-v3.css";
 import { openBrowserView, type BrowserViewDecision } from "./browser-view";
 import type { TelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
+import { createWidgetDiagnosticCollector } from "../../overlay/core/widget-diagnostics";
 import type { TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
 import { StudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
@@ -40,10 +43,12 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     activeFile,
     ...headerProps
   } = props;
+  const { t } = useI18n();
   const telemetryProps = { coordinator, telemetryAdapter, liveAvailable };
   const viewportWidth = viewportWidthProp ?? (typeof window !== "undefined" ? window.innerWidth : 1440);
   const recoveryStorage =
     recoveryStorageProp ?? (typeof window !== "undefined" ? window.sessionStorage : null);
+  const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);
 
   const {
     dirty,
@@ -203,7 +208,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     }
 
     setBrowserViewDialogOpen(true);
-    setBrowserViewError("No se pudo guardar el perfil. Browser View solo usa el estado guardado.");
+    setBrowserViewError("studio.v3.browserView.saveFailed");
   }, [activeFile, browserViewStudioPreview, dirty, save]);
 
   const handleBrowserViewSave = useCallback(() => {
@@ -225,7 +230,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
           className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
           role="alert"
         >
-          <span>{accessNotice}</span>
+          <span>{resolveStudioV3Text(accessNotice, t)}</span>
           <button
             type="button"
             className="rounded-md border border-white/15 px-2 py-1 text-xs font-semibold text-white"
@@ -241,7 +246,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         listPanel={<WidgetListPanel />}
         canvasPanel={
           <StudioTelemetryProvider {...telemetryProps}>
-            <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} />
+            <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} diagnostics={diagnostics} />
           </StudioTelemetryProvider>
         }
         inspectorPanel={
@@ -260,7 +265,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
       />
       <RecoveryDialog
         open={recoveryPrompt !== null}
-        profileName={recoveryPrompt?.record.document.name ?? document?.name ?? "Perfil"}
+        profileName={recoveryPrompt?.record.document.name ?? document?.name ?? t("studio.v3.recovery.profileFallback")}
         capturedAt={recoveryPrompt?.record.capturedAt ?? ""}
         staleRevisionWarning={recoveryPrompt?.warning}
         onRecover={handleRecoveryRecover}
@@ -269,10 +274,10 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
       <DirtyChangesDialog
         open={browserViewDialogOpen}
         saving={browserViewSaving}
-        errorMessage={browserViewError}
+        errorMessage={browserViewError ? resolveStudioV3Text(browserViewError, t) : null}
         dialogTestId="studio-browser-view-dialog"
-        title="Guardar antes de Browser View"
-        body="Browser View muestra el perfil guardado, no el borrador actual. Guarda los cambios o cancela."
+        title={t("studio.v3.browserView.dialog.title")}
+        body={t("studio.v3.browserView.dialog.body")}
         showDiscard={false}
         onSave={handleBrowserViewSave}
         onCancel={closeBrowserViewDialog}

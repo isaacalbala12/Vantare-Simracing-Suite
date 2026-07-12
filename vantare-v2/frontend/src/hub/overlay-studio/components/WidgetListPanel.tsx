@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useI18n } from "../../../i18n/I18nProvider";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import type { CoreWidgetType } from "../../../overlay/core/profile-document";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -18,6 +19,7 @@ export function WidgetListPanel(): React.ReactElement {
   const { access, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } = useStudioDocument();
   const [query, setQuery] = useState("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const { t } = useI18n();
 
   const widgets = useMemo(() => {
     const ordered = sortWidgets(activeLayout?.widgets ?? []);
@@ -52,10 +54,10 @@ export function WidgetListPanel(): React.ReactElement {
         type="search"
         data-testid="studio-widget-search"
         className="osv3-list-panel__search"
-        placeholder="Buscar widgets..."
+        placeholder={t("studio.v3.widgetList.searchPlaceholder")}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        aria-label="Buscar widgets"
+        aria-label={t("studio.v3.widgetList.searchAria")}
       />
       <div className="osv3-list-panel__list">
         {widgets.map((widget) => {
@@ -71,7 +73,7 @@ export function WidgetListPanel(): React.ReactElement {
             >
               <span>{widgetLabel(widget)}</span>
               <span className="osv3-list-panel__badge">
-                {widget.behavior.enabled ? "activo" : "oculto"} · {widget.visual.systemId}
+                {widget.behavior.enabled ? t("studio.v3.widgetList.status.active") : t("studio.v3.widgetList.status.hidden")} · {widget.visual.systemId}
               </span>
             </button>
           );
@@ -79,7 +81,7 @@ export function WidgetListPanel(): React.ReactElement {
       </div>
       {(activeLayout?.preservedWidgets?.length ?? 0) > 0 ? (
         <div className="osv3-list-panel__preserved" data-testid="studio-preserved-widgets">
-          <div className="osv3-list-panel__preserved-title">Widgets legados preservados</div>
+          <div className="osv3-list-panel__preserved-title">{t("studio.v3.widgetList.preservedTitle")}</div>
           {activeLayout?.preservedWidgets?.map((widget) => (
             <div key={widget.id} className="osv3-list-panel__preserved-row" data-preserved-id={widget.id}>
               {widget.type} · {widget.id}
@@ -94,7 +96,7 @@ export function WidgetListPanel(): React.ReactElement {
           className="osv3-list-panel__add"
           onClick={() => setAddDialogOpen(true)}
         >
-          + Añadir widget
+          {t("studio.v3.widgetList.addWidget")}
         </button>
       </div>
       <AddWidgetDialog

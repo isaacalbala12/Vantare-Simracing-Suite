@@ -165,6 +165,8 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.actions.restoreDefaults": "Ripristina valori",
   "studio.v3.actions.discardAll": "Scarta tutto",
   "studio.v3.canvas.zoom.fit": "Adatta",
+  "studio.v3.canvas.zoom.decrease": "Riduci zoom",
+  "studio.v3.canvas.zoom.increase": "Aumenta zoom",
   "studio.v3.canvas.zoom.fitLabel": "Fit",
   "studio.v3.canvas.safeArea": "Area sicura",
   "studio.v3.preview.sourceAria": "Fonte preview",

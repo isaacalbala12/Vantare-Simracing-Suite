@@ -17,6 +17,7 @@ export type CanvasToolbarProps = {
 
 export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
   const { preview, onPreviewChange } = props;
+  const { t } = useI18n();
 
   return (
     <div data-testid="studio-canvas-toolbar" className="osv3-canvas-toolbar">
@@ -26,12 +27,13 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
         className="osv3-canvas-toolbar__button"
         onClick={() => onPreviewChange({ zoom: "fit" })}
       >
-        Ajustar
+        {t("studio.v3.canvas.zoom.fit")}
       </button>
       <button
         type="button"
         data-testid="studio-zoom-minus"
         className="osv3-canvas-toolbar__button"
+        aria-label={t("studio.v3.canvas.zoom.decrease")}
         onClick={() => onPreviewChange({ zoom: nextZoom(preview.zoom, -1) })}
       >
         -
@@ -43,6 +45,7 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
         type="button"
         data-testid="studio-zoom-plus"
         className="osv3-canvas-toolbar__button"
+        aria-label={t("studio.v3.canvas.zoom.increase")}
         onClick={() => onPreviewChange({ zoom: nextZoom(preview.zoom, 1) })}
       >
         +
@@ -66,8 +69,9 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
           checked={preview.safeArea}
           onChange={(event) => onPreviewChange({ safeArea: event.target.checked })}
         />
-        Área segura
+        {t("studio.v3.canvas.safeArea")}
       </label>
     </div>
   );
 }
+import { useI18n } from "../../../i18n/I18nProvider";

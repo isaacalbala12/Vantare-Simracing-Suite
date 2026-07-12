@@ -16,14 +16,15 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
     open,
     saving = false,
     errorMessage,
-    title = "Cambios sin guardar",
-    body = "Tienes cambios pendientes. ¿Qué quieres hacer antes de salir?",
+    title,
+    body,
     showDiscard = true,
     dialogTestId = "studio-dirty-dialog",
     onSave,
     onDiscard,
     onCancel,
   } = props;
+  const { t } = useI18n();
   if (!open) {
     return null;
   }
@@ -38,10 +39,10 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
     >
       <div className="osv3-dialog-panel">
         <h2 id="studio-dirty-dialog-title" className="osv3-dialog-panel__title">
-          {title}
+          {title ?? t("studio.v3.dirtyDialog.title")}
         </h2>
         <p className="osv3-dialog-panel__body">
-          {body}
+          {body ?? t("studio.v3.dirtyDialog.body")}
         </p>
         {errorMessage ? (
           <p data-testid="studio-dirty-error" className="osv3-dialog-panel__error" role="alert">
@@ -56,7 +57,7 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
             disabled={saving}
             onClick={onSave}
           >
-            Guardar
+            {t("studio.v3.dirtyDialog.save")}
           </button>
           {showDiscard && onDiscard ? (
             <button
@@ -66,7 +67,7 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
               disabled={saving}
               onClick={onDiscard}
             >
-              Descartar
+              {t("studio.v3.dirtyDialog.discard")}
             </button>
           ) : null}
           <button
@@ -76,10 +77,11 @@ export function DirtyChangesDialog(props: DirtyChangesDialogProps): React.ReactE
             disabled={saving}
             onClick={onCancel}
           >
-            Cancelar
+            {t("studio.v3.dirtyDialog.cancel")}
           </button>
         </div>
       </div>
     </div>
   );
 }
+import { useI18n } from "../../../i18n/I18nProvider";

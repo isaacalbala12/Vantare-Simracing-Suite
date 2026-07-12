@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
+import { useI18n } from "../../i18n/I18nProvider";
 import { createTelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
 import { createWailsTelemetryAdapter, type TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
@@ -162,6 +163,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationDiscard,
     onNavigationCancel,
   } = props;
+  const { t } = useI18n();
 
   const { document, lastError } = useStudioDocument();
 
@@ -172,7 +174,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
       >
         <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-          Cargando perfil...
+          {t("studio.v3.route.loadingProfile")}
         </div>
       </div>
     );
@@ -348,6 +350,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     pendingRecommendedAutoStart = null,
     onAutoStartHandled,
   } = props;
+  const { t } = useI18n();
 
   const client = useMemo(
     () => clientProp ?? createStudioProfileClient(createWailsStudioEventTransport()),
@@ -442,7 +445,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       }
       pendingCreateNameRef.current = null;
       setCreateDialogSaving(false);
-      setCreateDialogError(payload?.message ?? "No se pudo crear el perfil");
+      setCreateDialogError(payload?.message ?? t("studio.v3.profile.createFailed"));
     });
 
     Events.Emit("hub:list");
@@ -456,7 +459,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       unsubActivated();
       unsubError();
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const pendingName = pendingCreateNameRef.current;
@@ -544,9 +547,9 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     setNavigationError(
       saveResult.status === "conflict" || saveResult.status === "error"
         ? saveResult.message
-        : "No se pudo guardar el perfil",
+        : t("studio.v3.profile.saveFailed"),
     );
-  }, [continueNavigation]);
+  }, [continueNavigation, t]);
 
   const onOpenManagement = useCallback((nextMode: Exclude<StudioRouteMode, "editor">) => {
     void guardedNavigate(nextMode);
@@ -655,10 +658,10 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     <>
       <ProfileNameDialog
         open={createDialogOpen}
-        title="Crear perfil"
-        description="Elige un nombre para tu overlay. Al crearlo se abrirá directamente en el editor."
-        confirmLabel="Crear"
-        placeholder="Mi overlay de carrera"
+        title={t("studio.v3.profile.create.title")}
+        description={t("studio.v3.profile.create.description")}
+        confirmLabel={t("studio.v3.profile.create.confirm")}
+        placeholder={t("studio.v3.profile.create.placeholder")}
         saving={createDialogSaving}
         errorMessage={createDialogError}
         dialogTestId="studio-create-profile-dialog"
@@ -667,11 +670,11 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       />
       <ProfileNameDialog
         open={recommendedCopyTarget !== null}
-        title="Guardar como perfil propio"
-        description="Guarda este preset recomendado en tus perfiles con el nombre que quieras."
+        title={t("studio.v3.profile.saveRecommended.title")}
+        description={t("studio.v3.profile.saveRecommended.description")}
         defaultName={recommendedCopyTarget ? `${recommendedCopyTarget.name} (copia)` : ""}
-        confirmLabel="Guardar"
-        placeholder="Mi copia"
+        confirmLabel={t("studio.v3.profile.saveRecommended.confirm")}
+        placeholder={t("studio.v3.profile.saveRecommended.placeholder")}
         dialogTestId="studio-save-recommended-dialog"
         onClose={() => setRecommendedCopyTarget(null)}
         onConfirm={confirmRecommendedCopy}
@@ -687,7 +690,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
           className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
         >
           <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-            Cargando perfiles...
+            {t("studio.v3.route.loadingProfiles")}
           </div>
         </div>
         {profileDialogs}

@@ -1,19 +1,20 @@
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { StudioCommand } from "../state/studio-command";
 import {
   executeWidgetAction,
   type WidgetActionId,
 } from "./widget-actions";
 
-const ACTION_ITEMS: readonly { id: WidgetActionId; label: string }[] = [
-  { id: "duplicate", label: "Duplicar" },
-  { id: "delete", label: "Eliminar" },
-  { id: "center", label: "Centrar" },
-  { id: "reset-layout", label: "Restablecer layout" },
-  { id: "front", label: "Al frente" },
-  { id: "forward", label: "Adelante" },
-  { id: "backward", label: "Atrás" },
-  { id: "back", label: "Al fondo" },
+const ACTION_ITEMS: readonly { id: WidgetActionId; labelKey: string }[] = [
+  { id: "duplicate", labelKey: "studio.v3.widgetActions.duplicate" },
+  { id: "delete", labelKey: "studio.v3.widgetActions.delete" },
+  { id: "center", labelKey: "studio.v3.widgetActions.center" },
+  { id: "reset-layout", labelKey: "studio.v3.widgetActions.resetLayout" },
+  { id: "front", labelKey: "studio.v3.widgetActions.front" },
+  { id: "forward", labelKey: "studio.v3.widgetActions.forward" },
+  { id: "backward", labelKey: "studio.v3.widgetActions.backward" },
+  { id: "back", labelKey: "studio.v3.widgetActions.back" },
 ];
 
 export type CanvasActionBarProps = {
@@ -29,6 +30,7 @@ export type CanvasActionBarProps = {
 
 export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement {
   const { inert = false } = props;
+  const { t } = useI18n();
 
   return (
     <div
@@ -57,10 +59,11 @@ export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement
                     dispatch: props.dispatch,
                     selectWidget: props.selectWidget,
                     confirmDelete: props.confirmDelete,
+                    deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
                   })
           }
         >
-          {item.label}
+          {t(item.labelKey)}
         </button>
       ))}
     </div>

@@ -4,6 +4,10 @@ import {
   type FeatureGate,
   type FeatureId,
 } from "../../../lib/access-policy";
+import {
+  STUDIO_PREMIUM_SAVE_DENIED_KEY,
+  STUDIO_WIDGET_ACCESS_MESSAGE_KEY,
+} from "../studio-v3-i18n";
 
 export const DEFAULT_STUDIO_ACCESS: AccessContext = {
   planLabel: "free",
@@ -29,8 +33,6 @@ export type StudioMutation =
   | "apply-design"
   | "apply-all"
   | "save";
-
-export const STUDIO_WIDGET_ACCESS_MESSAGE = "No tienes acceso para modificar este widget.";
 
 export class StudioAccessError extends Error {
   readonly mutation: StudioMutation;
@@ -154,7 +156,7 @@ export function validateDraftAccess(
   return {
     allowed: false,
     widgetIds: [...blockedIds],
-    reason: "No puedes guardar cambios en widgets premium sin la licencia adecuada.",
+    reason: STUDIO_PREMIUM_SAVE_DENIED_KEY,
   };
 }
 
@@ -240,7 +242,7 @@ export function assertCommandAccess(
         throw new StudioAccessError(
           mutation,
           widgetIds,
-          STUDIO_WIDGET_ACCESS_MESSAGE,
+          STUDIO_WIDGET_ACCESS_MESSAGE_KEY,
         );
       }
     }

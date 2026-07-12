@@ -782,6 +782,14 @@
   touch-action: none;
 }
 
+.osv3-widget-frame:focus-visible,
+.osv3-canvas-toolbar__button:focus-visible,
+.osv3-dialog-panel__button:focus-visible,
+.osv3-list-panel__row:focus-visible {
+  outline: 2px solid var(--v-accent, #ff3b3b);
+  outline-offset: 2px;
+}
+
 .osv3-widget-frame--interacting {
   will-change: left, top, width, height, transform;
 }

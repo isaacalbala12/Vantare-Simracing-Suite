@@ -33,6 +33,8 @@ export type WidgetActionBuildResult = {
   requiresConfirmation: boolean;
 };
 
+export const DELETE_WIDGET_CONFIRM_KEY = "studio.v3.widgetActions.deleteConfirm";
+
 export type WidgetOrderDirection = "front" | "forward" | "backward" | "back";
 
 const ORDER_DIRECTIONS: Record<Extract<WidgetActionId, WidgetOrderDirection>, WidgetOrderDirection> = {
@@ -230,6 +232,7 @@ export function executeWidgetAction(input: {
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
   confirmDelete?(message: string): boolean;
+  deleteMessage?: string;
 }): boolean {
   const built = buildWidgetAction({
     actionId: input.actionId,
@@ -244,7 +247,7 @@ export function executeWidgetAction(input: {
   }
 
   if (built.requiresConfirmation) {
-    const confirmed = input.confirmDelete?.("¿Eliminar el widget seleccionado?") ?? false;
+    const confirmed = input.confirmDelete?.(input.deleteMessage ?? DELETE_WIDGET_CONFIRM_KEY) ?? false;
     if (!confirmed) {
       return false;
     }

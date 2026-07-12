@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useI18n } from "../../../i18n/I18nProvider";
 
 export type SaveDesignDialogProps = {
   open: boolean;
@@ -8,6 +9,7 @@ export type SaveDesignDialogProps = {
 
 export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactElement | null {
   const { open, onClose, onSave } = props;
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [includesContent, setIncludesContent] = useState(false);
 
@@ -35,20 +37,20 @@ export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactEleme
     >
       <div className="osv3-dialog-panel osv3-design-dialog">
         <h2 id="studio-save-design-dialog-title" className="osv3-dialog-panel__title">
-          Guardar diseño
+          {t("studio.v3.design.saveDialog.title")}
         </h2>
         <p className="osv3-dialog-panel__body">
-          Guarda solo apariencia y datos visuales resueltos. Nunca incluye layout, comportamiento, ID, sesión ni z-order.
+          {t("studio.v3.design.saveDialog.body")}
         </p>
         <label className="osv3-design-dialog__field">
-          <span className="osv3-design-dialog__label">Nombre</span>
+          <span className="osv3-design-dialog__label">{t("studio.v3.design.saveDialog.nameLabel")}</span>
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
             data-testid="studio-save-design-name"
             className="osv3-design-dialog__input"
-            placeholder="Mi diseño delta"
+            placeholder={t("studio.v3.design.saveDialog.namePlaceholder")}
           />
         </label>
         <label className="osv3-design-dialog__checkbox">
@@ -58,11 +60,11 @@ export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactEleme
             onChange={(event) => setIncludesContent(event.target.checked)}
             data-testid="studio-save-design-include-content"
           />
-          <span>Incluir contenido del widget</span>
+          <span>{t("studio.v3.design.saveDialog.includeContent")}</span>
         </label>
         {includesContent ? (
           <p className="osv3-dialog-panel__warning" data-testid="studio-save-design-content-warning">
-            También se guardará la configuración de contenido actual del widget.
+            {t("studio.v3.design.saveDialog.includeContentWarning")}
           </p>
         ) : null}
         <div className="osv3-dialog-panel__actions">
@@ -72,7 +74,7 @@ export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactEleme
             className="osv3-dialog-panel__button"
             onClick={onClose}
           >
-            Cancelar
+            {t("studio.v3.design.saveDialog.cancel")}
           </button>
           <button
             type="button"
@@ -81,7 +83,7 @@ export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactEleme
             disabled={!canSave}
             onClick={() => onSave({ name: trimmedName, includesContent })}
           >
-            Guardar
+            {t("studio.v3.design.saveDialog.confirm")}
           </button>
         </div>
       </div>

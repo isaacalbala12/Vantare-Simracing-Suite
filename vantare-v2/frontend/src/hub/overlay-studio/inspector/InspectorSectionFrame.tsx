@@ -1,4 +1,5 @@
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
+import { useI18n } from "../../../i18n/I18nProvider";
 import { INSPECTOR_SECTION_ACCENTS, resolveInspectorSectionTitle } from "./inspector-section-labels";
 import type { ResolvedInspectorSection } from "./inspector-sections";
 
@@ -18,7 +19,9 @@ export type InspectorSectionFrameProps = {
 
 export function InspectorSectionFrame(props: InspectorSectionFrameProps): React.ReactElement {
   const { section, children, onResetSection } = props;
-  const title = resolveInspectorSectionTitle(section.id, section.labelKey);
+  const { t } = useI18n();
+  const titleKey = resolveInspectorSectionTitle(section.id, section.labelKey);
+  const title = titleKey.startsWith("studio.v3.") ? t(titleKey) : titleKey;
   const accent = INSPECTOR_SECTION_ACCENTS[section.id];
   const canReset =
     Boolean(onResetSection)
@@ -45,10 +48,10 @@ export function InspectorSectionFrame(props: InspectorSectionFrameProps): React.
             type="button"
             data-testid="studio-inspector-section-reset"
             className="osv3-inspector-section-frame__reset"
-            aria-label={`Restablecer ${title}`}
+            aria-label={`${t("studio.v3.inspector.section.reset")} ${title}`}
             onClick={onResetSection}
           >
-            Reset
+            {t("studio.v3.inspector.section.reset")}
           </button>
         ) : null}
       </header>

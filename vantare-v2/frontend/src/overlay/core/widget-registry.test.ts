@@ -22,6 +22,7 @@ describe("widgetTypeRegistry", () => {
       "head-to-head",
       "input-telemetry",
       "multiclass-relative",
+      "delta-advanced",
     ]);
   });
 

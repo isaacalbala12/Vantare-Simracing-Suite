@@ -67,6 +67,8 @@ describe("official-designs", () => {
     expect([...pairs].sort()).toEqual([
       "broadcast-tower:vantare-crystal",
       "broadcast-tower:vantare-original",
+      "delta-advanced:vantare-crystal",
+      "delta-advanced:vantare-original",
       "delta:vantare-crystal",
       "delta:vantare-original",
       "head-to-head:vantare-crystal",

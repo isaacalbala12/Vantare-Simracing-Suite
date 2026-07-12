@@ -14,6 +14,7 @@ import { BroadcastTowerCrystal } from "./broadcast-tower/BroadcastTowerCrystal";
 import { HeadToHeadCrystal } from "./head-to-head/HeadToHeadCrystal";
 import { InputTelemetryCrystal } from "./input-telemetry/InputTelemetryCrystal";
 import { MulticlassRelativeCrystal } from "./multiclass-relative/MulticlassRelativeCrystal";
+import { DeltaAdvancedCrystal } from "./delta-advanced/DeltaAdvancedCrystal";
 import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -301,6 +302,7 @@ const broadcastTowerRegistration = { widgetType: "broadcast-tower" as const, con
 const headToHeadRegistration = { widgetType: "head-to-head" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: HeadToHeadCrystal as ComponentType<WidgetRendererProps> };
 const inputTelemetryRegistration = { widgetType: "input-telemetry" as const, configVersion: 1, defaultSettings: { templateId: "input-blade" }, configMigrations: { 0: (settings: Record<string, unknown>) => ({ templateId: "input-blade", ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { templateId: "input-blade", ...(input as Record<string, unknown>) } : { templateId: "input-blade" }; }, inspector: { appearance: [] }, Renderer: InputTelemetryCrystal as ComponentType<WidgetRendererProps> };
 const multiclassRelativeRegistration = { widgetType: "multiclass-relative" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: MulticlassRelativeCrystal as ComponentType<WidgetRendererProps> };
+const deltaAdvancedRegistration = { widgetType: "delta-advanced" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaAdvancedCrystal as ComponentType<WidgetRendererProps> };
 
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
@@ -321,5 +323,6 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
     headToHeadRegistration,
     inputTelemetryRegistration,
     multiclassRelativeRegistration,
+    deltaAdvancedRegistration,
   ],
 };

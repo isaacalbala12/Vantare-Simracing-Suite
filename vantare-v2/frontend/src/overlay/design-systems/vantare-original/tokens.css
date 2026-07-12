@@ -574,3 +574,8 @@
 [data-widget-system="vantare-original"] .vo-multiclass-relative > div.is-player { background: rgba(230, 57, 70, 0.25); }
 [data-widget-system="vantare-original"] .vo-multiclass-relative > div i { width: 0.25rem; height: 1rem; }
 [data-widget-system="vantare-original"] .vo-multiclass-relative > div em { color: var(--vo-muted); font-size: 0.5rem; font-style: normal; }
+
+[data-widget-system="vantare-original"].vo-delta-advanced { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.7rem; color: var(--vo-text); background: #121216; border: 1px solid #35353d; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+[data-widget-system="vantare-original"] .vo-delta-advanced header { color: var(--vo-muted); font-size: 0.55rem; }
+[data-widget-system="vantare-original"] .vo-delta-advanced > strong { flex: 1; padding-top: 0.5rem; color: #2ecc71; font-size: 2.2rem; }
+[data-widget-system="vantare-original"] .vo-delta-advanced > div { display: flex; justify-content: space-between; gap: 0.4rem; color: var(--vo-muted); font-size: 0.5rem; }

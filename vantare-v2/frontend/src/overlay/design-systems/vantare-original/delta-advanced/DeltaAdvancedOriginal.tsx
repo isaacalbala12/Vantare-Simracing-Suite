@@ -1,0 +1,4 @@
+import type { WidgetRendererProps } from "../../../core/design-system-definition";
+import type { DeltaAdvancedViewModel } from "../../../widget-types/delta-advanced/delta-advanced-view-model";
+function value(value: number | undefined): string { return value === undefined ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(3)}`; }
+export function DeltaAdvancedOriginal({ model }: WidgetRendererProps<DeltaAdvancedViewModel>) { return <section data-widget-system="vantare-original" data-widget-renderer="delta-advanced" data-status={model.status} className="vo-delta-advanced"><header>DELTA ADVANCED</header><strong>{value(model.best)}</strong><div><span>BEST</span><span>SECTOR {model.showUnavailableFields ? value(model.sector) : ""}</span><span>THEORETICAL {model.showUnavailableFields ? value(model.theoretical) : ""}</span><span>LAST {model.showUnavailableFields ? value(model.last) : ""}</span></div></section>; }

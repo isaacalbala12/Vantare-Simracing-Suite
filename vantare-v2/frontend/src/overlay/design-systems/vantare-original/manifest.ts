@@ -13,6 +13,7 @@ import { BroadcastTowerOriginal } from "./broadcast-tower/BroadcastTowerOriginal
 import { HeadToHeadOriginal } from "./head-to-head/HeadToHeadOriginal";
 import { InputTelemetryOriginal } from "./input-telemetry/InputTelemetryOriginal";
 import { MulticlassRelativeOriginal } from "./multiclass-relative/MulticlassRelativeOriginal";
+import { DeltaAdvancedOriginal } from "./delta-advanced/DeltaAdvancedOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -290,6 +291,7 @@ const broadcastTowerRegistration = { widgetType: "broadcast-tower" as const, con
 const headToHeadRegistration = { widgetType: "head-to-head" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: HeadToHeadOriginal as ComponentType<WidgetRendererProps> };
 const inputTelemetryRegistration = { widgetType: "input-telemetry" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: InputTelemetryOriginal as ComponentType<WidgetRendererProps> };
 const multiclassRelativeRegistration = { widgetType: "multiclass-relative" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: MulticlassRelativeOriginal as ComponentType<WidgetRendererProps> };
+const deltaAdvancedRegistration = { widgetType: "delta-advanced" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaAdvancedOriginal as ComponentType<WidgetRendererProps> };
 
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
@@ -310,5 +312,6 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
     headToHeadRegistration,
     inputTelemetryRegistration,
     multiclassRelativeRegistration,
+    deltaAdvancedRegistration,
   ],
 };

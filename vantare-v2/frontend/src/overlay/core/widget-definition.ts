@@ -18,6 +18,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "head-to-head": "overlays.advanced",
   "input-telemetry": "overlays.advanced",
   "multiclass-relative": "overlays.advanced",
+  "delta-advanced": "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

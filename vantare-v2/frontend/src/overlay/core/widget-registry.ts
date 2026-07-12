@@ -9,6 +9,7 @@ import { broadcastTowerDefinition } from "../widget-types/broadcast-tower/broadc
 import { headToHeadDefinition } from "../widget-types/head-to-head/head-to-head-definition";
 import { inputTelemetryDefinition } from "../widget-types/input-telemetry/input-telemetry-definition";
 import { multiclassRelativeDefinition } from "../widget-types/multiclass-relative/multiclass-relative-definition";
+import { deltaAdvancedDefinition } from "../widget-types/delta-advanced/delta-advanced-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 
@@ -70,3 +71,4 @@ widgetTypeRegistry.register(broadcastTowerDefinition);
 widgetTypeRegistry.register(headToHeadDefinition);
 widgetTypeRegistry.register(inputTelemetryDefinition);
 widgetTypeRegistry.register(multiclassRelativeDefinition);
+widgetTypeRegistry.register(deltaAdvancedDefinition);

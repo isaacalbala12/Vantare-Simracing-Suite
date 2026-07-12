@@ -84,6 +84,8 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.inspector.multiclassRelative.same": "Stessa classe",
   "studio.v3.inspector.multiclassRelative.other": "Altre classi",
   "studio.v3.inspector.multiclassRelative.showClassDivider": "Mostra separatore classe",
+  "studio.v3.widgetTypes.deltaAdvanced": "Delta avanzato",
+  "studio.v3.inspector.deltaAdvanced.showUnavailableFields": "Mostra campi non disponibili",
   "studio.v3.dirtyDialog.title": "Modifiche non salvate",
   "studio.v3.dirtyDialog.body": "Hai modifiche in sospeso. Cosa vuoi fare prima di uscire?",
   "studio.v3.dirtyDialog.save": "Salva",

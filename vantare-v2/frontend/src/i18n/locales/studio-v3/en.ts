@@ -84,6 +84,8 @@ export const studioV3En: Record<string, string> = {
   "studio.v3.inspector.multiclassRelative.same": "Same class",
   "studio.v3.inspector.multiclassRelative.other": "Other classes",
   "studio.v3.inspector.multiclassRelative.showClassDivider": "Show class divider",
+  "studio.v3.widgetTypes.deltaAdvanced": "Advanced delta",
+  "studio.v3.inspector.deltaAdvanced.showUnavailableFields": "Show unavailable fields",
   "studio.v3.dirtyDialog.title": "Unsaved changes",
   "studio.v3.dirtyDialog.body": "You have pending changes. What do you want to do before leaving?",
   "studio.v3.dirtyDialog.save": "Save",

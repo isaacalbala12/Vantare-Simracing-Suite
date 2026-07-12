@@ -17,28 +17,28 @@ import (
 )
 
 var (
-	modShell32          = syscall.NewLazyDLL("shell32.dll")
-	procExtractIconExW  = modShell32.NewProc("ExtractIconExW")
-	procSHGetFileInfoW  = modShell32.NewProc("SHGetFileInfoW")
-	procSHGetImageList  = modShell32.NewProc("SHGetImageList")
-	modUser32           = syscall.NewLazyDLL("user32.dll")
-	procDestroyIcon     = modUser32.NewProc("DestroyIcon")
-	procGetIconInfo     = modUser32.NewProc("GetIconInfo")
-	modGdi32            = syscall.NewLazyDLL("gdi32.dll")
-	procDeleteObject    = modGdi32.NewProc("DeleteObject")
-	procGetObjectW      = modGdi32.NewProc("GetObjectW")
-	procGetDIBits       = modGdi32.NewProc("GetDIBits")
+	modShell32             = syscall.NewLazyDLL("shell32.dll")
+	procExtractIconExW     = modShell32.NewProc("ExtractIconExW")
+	procSHGetFileInfoW     = modShell32.NewProc("SHGetFileInfoW")
+	procSHGetImageList     = modShell32.NewProc("SHGetImageList")
+	modUser32              = syscall.NewLazyDLL("user32.dll")
+	procDestroyIcon        = modUser32.NewProc("DestroyIcon")
+	procGetIconInfo        = modUser32.NewProc("GetIconInfo")
+	modGdi32               = syscall.NewLazyDLL("gdi32.dll")
+	procDeleteObject       = modGdi32.NewProc("DeleteObject")
+	procGetObjectW         = modGdi32.NewProc("GetObjectW")
+	procGetDIBits          = modGdi32.NewProc("GetDIBits")
 	procCreateCompatibleDC = modGdi32.NewProc("CreateCompatibleDC")
-	procSelectObject    = modGdi32.NewProc("SelectObject")
-	procGetDeviceCaps   = modGdi32.NewProc("GetDeviceCaps")
-	procDeleteDC        = modGdi32.NewProc("DeleteDC")
+	procSelectObject       = modGdi32.NewProc("SelectObject")
+	procGetDeviceCaps      = modGdi32.NewProc("GetDeviceCaps")
+	procDeleteDC           = modGdi32.NewProc("DeleteDC")
 )
 
 // shFileInfo matches the Windows SHFILEINFOW layout used by SHGetFileInfoW.
 type shFileInfo struct {
-	hIcon        uintptr
-	iIcon        int32
-	dwAttributes uint32
+	hIcon         uintptr
+	iIcon         int32
+	dwAttributes  uint32
 	szDisplayName [260]uint16
 	szTypeName    [260]uint16
 }
@@ -61,11 +61,11 @@ const (
 )
 
 type iconInfo struct {
-	_fIcon    uint32
-	xHotspot  uint32
-	yHotspot  uint32
-	hbmMask   uintptr
-	hbmColor  uintptr
+	_fIcon   uint32
+	xHotspot uint32
+	yHotspot uint32
+	hbmMask  uintptr
+	hbmColor uintptr
 }
 
 type bitmapInfoHeader struct {
@@ -131,6 +131,10 @@ func GetAppIconBase64(exePath string) string {
 }
 
 func extractIconAsPNG(exePath string) ([]byte, error) {
+	return extractIconAsPNGAtIndex(exePath, 0)
+}
+
+func extractIconAsPNGAtIndex(exePath string, index int32) ([]byte, error) {
 	pathPtr, err := syscall.UTF16PtrFromString(exePath)
 	if err != nil {
 		return nil, err
@@ -140,7 +144,7 @@ func extractIconAsPNG(exePath string) ([]byte, error) {
 	var hIcons [1]uintptr
 	n, _, _ := procExtractIconExW.Call(
 		uintptr(unsafe.Pointer(pathPtr)),
-		0,
+		uintptr(index),
 		uintptr(unsafe.Pointer(&hIcons[0])),
 		0,
 		1,
@@ -294,14 +298,19 @@ var (
 )
 
 var (
-	clsidShellLink = syscall.GUID{Data1: 0x00021401, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
-	iidIShellLinkW = syscall.GUID{Data1: 0x000214F9, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
+	clsidShellLink  = syscall.GUID{Data1: 0x00021401, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
+	iidIShellLinkW  = syscall.GUID{Data1: 0x000214F9, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
 	iidIPersistFile = syscall.GUID{Data1: 0x0000010B, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
 )
 
 // lnkMu serialises COM usage. Icon extraction is cached and not perf-critical,
 // so a single global lock is acceptable and avoids per-thread apartment issues.
 var lnkMu sync.Mutex
+
+var shortcutCache = struct {
+	sync.RWMutex
+	items map[string]string
+}{items: make(map[string]string)}
 
 // vfunc returns the i-th slot of an object's vtable.
 func vfunc(p uintptr, index int) uintptr {
@@ -340,7 +349,7 @@ func resolveLnkTarget(lnkPath string) string {
 	defer lnkMu.Unlock()
 
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2) // COINIT_APARTMENTTHREADED
-	if ret == 0 || ret == 1 {                     // S_OK or S_FALSE
+	if ret == 0 || ret == 1 {                    // S_OK or S_FALSE
 		defer procCoUninitialize.Call()
 	}
 
@@ -373,6 +382,56 @@ func resolveLnkTarget(lnkPath string) string {
 	return syscall.UTF16ToString(buf)
 }
 
+// resolveLnkIconLocation returns the icon resource path and index explicitly
+// stored by the shortcut. Reading this location avoids rendering the .lnk
+// overlay and preserves custom shortcut artwork without using the shortcut
+// itself as the rendered image.
+func resolveLnkIconLocation(lnkPath string) (string, int32) {
+	lnkMu.Lock()
+	defer lnkMu.Unlock()
+
+	ret, _, _ := procCoInitializeEx.Call(0, 0x2)
+	if ret == 0 || ret == 1 {
+		defer procCoUninitialize.Call()
+	}
+
+	sl, ok := coCreateInstance(&clsidShellLink, &iidIShellLinkW)
+	if !ok || sl == 0 {
+		return "", 0
+	}
+	defer comRelease(sl)
+
+	persist, ok := queryInterface(sl, &iidIPersistFile)
+	if !ok || persist == 0 {
+		return "", 0
+	}
+	defer comRelease(persist)
+
+	pathPtr, err := syscall.UTF16PtrFromString(lnkPath)
+	if err != nil {
+		return "", 0
+	}
+	if r, _, _ := syscall.Syscall(vfunc(persist, 5), 3, persist, uintptr(unsafe.Pointer(pathPtr)), 0); r != 0 {
+		return "", 0
+	}
+
+	buf := make([]uint16, 260)
+	var index int32
+	if r, _, _ := syscall.Syscall6(
+		vfunc(sl, 16),
+		4,
+		sl,
+		uintptr(unsafe.Pointer(&buf[0])),
+		260,
+		uintptr(unsafe.Pointer(&index)),
+		0,
+		0,
+	); r != 0 {
+		return "", 0
+	}
+	return syscall.UTF16ToString(buf), index
+}
+
 // shortcutSearchDirs returns folders where an app shortcut is likely to live.
 func shortcutSearchDirs() []string {
 	var dirs []string
@@ -401,31 +460,60 @@ func findDesktopShortcut(candidateExes []string) string {
 	for i, c := range candidateExes {
 		lower[i] = strings.ToLower(c)
 	}
+	cacheKey := strings.Join(lower, "\x00")
+	shortcutCache.RLock()
+	cached, ok := shortcutCache.items[cacheKey]
+	shortcutCache.RUnlock()
+	if ok {
+		return cached
+	}
+
+	var result string
 	for _, dir := range shortcutSearchDirs() {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
+		var match string
+		walkErr := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+			if err != nil || match != "" {
+				return nil
 			}
-			if !strings.HasSuffix(strings.ToLower(e.Name()), ".lnk") {
-				continue
+			relative, relErr := filepath.Rel(dir, path)
+			if relErr != nil {
+				return nil
 			}
-			target := resolveLnkTarget(filepath.Join(dir, e.Name()))
+			depth := strings.Count(relative, string(os.PathSeparator))
+			if entry.IsDir() {
+				if depth >= 4 {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if depth > 4 || !strings.EqualFold(filepath.Ext(entry.Name()), ".lnk") {
+				return nil
+			}
+			target := resolveLnkTarget(path)
 			if target == "" {
-				continue
+				return nil
 			}
 			base := strings.ToLower(filepath.Base(target))
 			for _, c := range lower {
 				if base == c {
-					return filepath.Join(dir, e.Name())
+					match = path
+					return nil
 				}
 			}
+			return nil
+		})
+		if walkErr != nil {
+			continue
+		}
+		if match != "" {
+			result = match
+			break
 		}
 	}
-	return ""
+	shortcutCache.Lock()
+	shortcutCache.items[cacheKey] = result
+	shortcutCache.Unlock()
+	return result
 }
 
 // getIconHighRes returns a high-resolution (up to 256x256) icon for a file,
@@ -487,25 +575,54 @@ func getIconHighRes(path string) ([]byte, error) {
 }
 
 // GetAppIconForApp extracts an app icon at the best available resolution.
-// Priority: high-res from exe, high-res from .lnk shortcut, 32x32 from exe,
-// 32x32 from .lnk shortcut.
+// A shortcut is used only for discovery: its explicit IconLocation is tried
+// without the .lnk overlay, then its TargetPath is rendered through the
+// Windows Shell image list, matching the taskbar identity.
 func GetAppIconForApp(id, exePath string) []byte {
-	if exePath != "" {
-		if b, err := getIconHighRes(exePath); err == nil && b != nil {
-			return b
-		}
-		if b, err := extractIconAsPNG(exePath); err == nil && b != nil {
-			return b
+	target := exePath
+	shortcut := ""
+	if known, ok := KnownAppsByID[id]; ok {
+		shortcut = findDesktopShortcut(known.ExecutableNames)
+	}
+
+	if shortcut != "" {
+		iconPath, iconIndex := resolveLnkIconLocation(shortcut)
+		iconPath = strings.Trim(iconPath, `"`)
+		if iconPath != "" {
+			iconPath = os.ExpandEnv(iconPath)
+			if !filepath.IsAbs(iconPath) {
+				iconPath = filepath.Join(filepath.Dir(shortcut), iconPath)
+			}
+			if iconIndex == 0 {
+				if b, err := getIconHighRes(iconPath); err == nil && b != nil {
+					return b
+				}
+				if b, err := getIconViaSHGetFileInfo(iconPath); err == nil && b != nil {
+					return b
+				}
+			}
+			if b, err := extractIconAsPNGAtIndex(iconPath, iconIndex); err == nil && b != nil {
+				return b
+			}
 		}
 	}
-	if known, ok := KnownAppsByID[id]; ok {
-		if lnk := findDesktopShortcut(known.ExecutableNames); lnk != "" {
-			if b, err := getIconHighRes(lnk); err == nil && b != nil {
-				return b
+
+	if target == "" || !fileExists(target) {
+		if shortcut != "" {
+			if resolved := resolveLnkTarget(shortcut); resolved != "" && fileExists(resolved) {
+				target = resolved
 			}
-			if b, err := getIconViaSHGetFileInfo(lnk); err == nil && b != nil {
-				return b
-			}
+		}
+	}
+	if target != "" {
+		if b, err := getIconHighRes(target); err == nil && b != nil {
+			return b
+		}
+		if b, err := getIconViaSHGetFileInfo(target); err == nil && b != nil {
+			return b
+		}
+		if b, err := extractIconAsPNG(target); err == nil && b != nil {
+			return b
 		}
 	}
 	return nil

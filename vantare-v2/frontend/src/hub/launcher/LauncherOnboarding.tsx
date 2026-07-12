@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { LauncherApp } from "./launcher-contract";
+import { AppBadge } from "../components/AppBadge";
 
 type Props = {
   apps: LauncherApp[];
@@ -18,6 +19,18 @@ export function LauncherOnboarding({ apps, onComplete }: Props) {
           <>
             <p className="mt-3 text-sm text-vantare-textMuted">Vantare detectará tus aplicaciones y mostrará qué está listo para lanzar.</p>
             <p className="mt-3 text-xs text-white/70">{launchable.length} aplicaciones listas. Las apps no instaladas no se añadirán a perfiles.</p>
+            {launchable.length > 0 && (
+              <ul className="mt-3 grid grid-cols-1 gap-1.5" aria-label="Aplicaciones detectadas">
+                {launchable.map((app) => (
+                  <li key={app.id} className="rounded-lg bg-black/25 px-2.5 py-2">
+                    <AppBadge
+                      app={{ ...app, detected: app.detected ?? app.availability.found }}
+                      size="sm"
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </>
         ) : (
           <p className="mt-3 text-sm text-vantare-textMuted">Puedes usar los perfiles sugeridos o crear uno propio. Nada se lanza automáticamente durante este asistente.</p>

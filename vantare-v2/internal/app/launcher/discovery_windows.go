@@ -47,17 +47,50 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 	for _, lib := range readSteamLibraryFolders() {
 		common := filepath.Join(lib, "steamapps", "common")
 		for _, known := range KnownApps {
-			if _, ok := found[known.ID]; ok {
+			if existing, ok := found[known.ID]; ok && existing.ExecutablePath != "" {
 				continue
 			}
-			if known.LaunchMethod != "executable" || len(known.ExecutableNames) == 0 {
+			if len(known.ExecutableNames) == 0 {
 				continue
 			}
 			exe := findExecutableRecursive(common, known.ExecutableNames, 3)
 			if exe != "" {
-				found[known.ID] = knownAppEntry(known, DetectionEvidence{Found: true}, exe, "steam")
+				evidence := DetectionEvidence{Found: true, ExecutableExists: true}
+				if known.LaunchMethod == "steam-uri" {
+					// The Steam library proves the install and supplies the icon
+					// executable, while legacy Detected remains tied to registry
+					// evidence for compatibility with older settings consumers.
+					evidence.Found = false
+					evidence.SteamInstalled = true
+					evidence.SteamAppID = known.SteamAppID
+				}
+				found[known.ID] = knownAppEntry(known, evidence, exe, "steam")
 			}
 		}
+	}
+
+	// Match shortcuts as Windows Explorer does when an uninstall entry or
+	// known install path is unavailable. The resolved target becomes the
+	// launch/icon path, while the Shell path remains available to the icon
+	// resolver for the exact shortcut artwork.
+	for _, known := range KnownApps {
+		if existing, ok := found[known.ID]; ok && existing.ExecutablePath != "" {
+			continue
+		}
+		shortcut := findDesktopShortcut(known.ExecutableNames)
+		if shortcut == "" {
+			continue
+		}
+		target := resolveLnkTarget(shortcut)
+		if target == "" || !fileExists(target) {
+			continue
+		}
+		evidence := DetectionEvidence{Found: true, ExecutableExists: true}
+		if known.LaunchMethod == "steam-uri" {
+			evidence.SteamInstalled = true
+			evidence.SteamAppID = known.SteamAppID
+		}
+		found[known.ID] = knownAppEntry(known, evidence, target, "shortcut")
 	}
 	return found
 }

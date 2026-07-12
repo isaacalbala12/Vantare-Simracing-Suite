@@ -75,7 +75,7 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
           src={iconUrl}
           alt=""
           loading="lazy"
-          className={`${dim} rounded-lg object-cover`}
+          className={`${dim} rounded-lg object-contain`}
           onError={() => {
             // Image failed — try known icon or fallback to abbreviation
             iconCache.delete(appId);

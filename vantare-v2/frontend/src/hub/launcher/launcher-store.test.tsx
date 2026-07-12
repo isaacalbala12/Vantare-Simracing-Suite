@@ -18,7 +18,7 @@ const snapshot: LauncherSnapshot = {
 };
 
 describe("launcher store", () => {
-  it("requests one snapshot for two mounted consumers and cleans up", () => {
+  it("discovers once, requests one snapshot for two consumers, and cleans up", () => {
     let receiveSnapshot: ((value: LauncherSnapshot) => void) | undefined;
     const unsubscribe = vi.fn();
     const bridge: LauncherBridgeLike = {
@@ -44,6 +44,9 @@ describe("launcher store", () => {
     );
 
     expect(bridge.requestSnapshot).toHaveBeenCalledTimes(1);
+    expect(bridge.dispatchLauncherCommand).toHaveBeenCalledWith(
+      "launcher:apps:discover",
+    );
     act(() => receiveSnapshot?.(snapshot));
     expect(screen.getByTestId("one").textContent).toBe("1");
     expect(screen.getByTestId("two").textContent).toBe("1");

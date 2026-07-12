@@ -91,6 +91,9 @@ func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	if len(emitter.events) != 0 {
 		t.Fatalf("discovery service should not emit legacy events, got %v", emitter.events)
 	}
+	if snapshot := svc.Snapshot(); snapshot.Discovery.LastScanAt == nil || snapshot.Discovery.Scanning {
+		t.Fatalf("discovery snapshot must be complete after a successful scan: %+v", snapshot.Discovery)
+	}
 }
 
 func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {

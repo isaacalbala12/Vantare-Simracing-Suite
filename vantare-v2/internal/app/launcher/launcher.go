@@ -34,12 +34,14 @@ type LauncherSettingsBackend interface {
 // shared mutable state is wrapped by ChainRunner (its own mutex) and every
 // LauncherSettingsBackend is the slice of SettingsService the launcher needs.
 type Service struct {
-	settings LauncherSettingsBackend
-	emit     Emitter
-	chain    *ChainRunner
-	revision atomic.Uint64
-	activeMu sync.Mutex
-	active   map[string]LauncherActiveChain
+	settings    LauncherSettingsBackend
+	emit        Emitter
+	chain       *ChainRunner
+	revision    atomic.Uint64
+	activeMu    sync.Mutex
+	active      map[string]LauncherActiveChain
+	discoveryMu sync.RWMutex
+	discovery   LauncherDiscovery
 }
 
 type serviceEmitter struct {
@@ -64,9 +66,10 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		execFn = defaultExecLauncher
 	}
 	s := &Service{
-		settings: settings,
-		emit:     emit,
-		active:   make(map[string]LauncherActiveChain),
+		settings:  settings,
+		emit:      emit,
+		active:    make(map[string]LauncherActiveChain),
+		discovery: LauncherDiscovery{},
 	}
 	s.chain = NewChainRunner(s.settings, serviceEmitter{service: s, downstream: emit}, execFn)
 	return s
@@ -115,6 +118,7 @@ func (s *Service) Snapshot() LauncherSnapshot {
 		apps = append(apps, entry)
 	}
 	sortApps(apps)
+	apps = EnrichAppsWithIcons(apps)
 
 	vantareProfiles := make([]app.LaunchProfile, 0)
 	userProfiles := make([]app.LaunchProfile, 0)
@@ -137,14 +141,26 @@ func (s *Service) Snapshot() LauncherSnapshot {
 	s.activeMu.Unlock()
 	sort.SliceStable(activeChains, func(i, j int) bool { return activeChains[i].ProfileID < activeChains[j].ProfileID })
 
+	s.discoveryMu.RLock()
+	discovery := s.discovery
+	s.discoveryMu.RUnlock()
+
 	return LauncherSnapshot{
 		Revision:        s.revision.Add(1),
 		Apps:            apps,
 		VantareProfiles: vantareProfiles,
 		UserProfiles:    userProfiles,
 		ActiveChains:    activeChains,
-		Discovery:       LauncherDiscovery{Scanning: false, LastScanAt: nil, Error: nil},
+		Discovery:       discovery,
 	}
+}
+
+// BeginDiscovery marks the start of a discovery pass so the UI can keep the
+// first-run assistant closed until the resulting snapshot is complete.
+func (s *Service) BeginDiscovery() {
+	s.discoveryMu.Lock()
+	s.discovery = LauncherDiscovery{Scanning: true}
+	s.discoveryMu.Unlock()
 }
 
 // DiscoverApps detects installed apps, merges them with the persisted set
@@ -152,9 +168,14 @@ func (s *Service) Snapshot() LauncherSnapshot {
 // rather than Discover to avoid a name collision with the package-level
 // Discover() helper in discovery.go. The caller emits the canonical snapshot.
 func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
+	s.BeginDiscovery()
 	detected := Discover()
 	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
 	if err := s.settings.SetLauncherApps(merged); err != nil {
+		message := err.Error()
+		s.discoveryMu.Lock()
+		s.discovery = LauncherDiscovery{Error: &message}
+		s.discoveryMu.Unlock()
 		return nil, err
 	}
 	// Convert map to slice for the legacy return value.
@@ -167,6 +188,10 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	for i, a := range appsList {
 		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
 	}
+	now := time.Now()
+	s.discoveryMu.Lock()
+	s.discovery = LauncherDiscovery{LastScanAt: &now}
+	s.discoveryMu.Unlock()
 	return appsList, nil
 }
 

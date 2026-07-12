@@ -1,3 +1,30 @@
+Nota LAUNCHER-V3-SHELL-ICONLOCATION-FIX (2026-07-12):
+- Corregido el caso de shortcuts con `TargetPath` genérico (Discord `Update.exe`): el resolver lee `IShellLinkW.GetIconLocation`, extrae el recurso indicado sin la flecha del `.lnk` y solo después usa el ejecutable objetivo/Shell.
+- Smoke Windows: Discord pasó de icono genérico (`551` bytes) a recurso de shortcut válido (`1213` bytes); MoTeC, SimHub, LMU, OBS, Spotify y CrewChief siguen resolviendo iconos.
+- Checks: Go Launcher/Wails PASS; smoke de iconos PASS; frontend build PASS; `go build` PASS; `git diff --check` PASS.
+
+Nota LAUNCHER-V3-HYBRID-ICON-RESOLVER (2026-07-12):
+- Implementado resolver híbrido: el `.lnk` solo sirve para discovery y `TargetPath`; el icono se obtiene del ejecutable objetivo mediante Shell/Jumbo, sin flecha de acceso directo. Fallbacks: Shell del ejecutable, recurso del `.exe` y Shell del shortcut personalizado.
+- La capa frontend conserva la prioridad de assets oficiales locales cuando existan; actualmente no se añaden assets de marca no proporcionados, por lo que las instalaciones reales usan el resolver Windows.
+- Checks: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; smoke Windows PASS para 7 apps; frontend build PASS; `go build` PASS; `git diff --check` PASS.
+
+Nota LAUNCHER-V3-SHELL-ICON-PATH (2026-07-12):
+- El resolver Windows prioriza el mismo path de Explorer: `.lnk` recursivo → `SHGetImageList(SHIL_JUMBO)`/Shell → ejecutable. Discovery usa el destino del shortcut cuando no hay registro ni ruta conocida.
+- Se añadió caché de shortcuts para evitar repetir escaneos COM durante discovery y renderizado. Smoke real: CrewChief detectado por shortcut; LMU, OBS, Spotify, MoTeC, SimHub, CrewChief y Discord con icono resuelto.
+- Checks: frontend build PASS; `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `go build` PASS; `git diff --check` PASS. Suite Playwright y suite frontend completa permanecen verdes de la iteración anterior; lint conserva 4 errores preexistentes fuera de scope.
+
+Nota LAUNCHER-V3-ICON-RESOLUTION-FIX (2026-07-11):
+- Corregidas las rutas reales de instalación: MoTeC (`app.exe`, `i2.exe`, `MoTeC.exe`, incluyendo `Program Files (x86)`) y SimHub (`SimHubWPF.exe`, `SimHub.exe`, incluyendo `Program Files (x86)`).
+- La búsqueda de `.lnk` ahora recorre de forma limitada Desktop y Start Menu, y el resolver prueba iconos de alta resolución del ejecutable y del acceso directo antes del fallback de baja resolución.
+- Smoke Windows: MoTeC resuelto en `C:\Program Files\MoTeC\app.exe` con icono; SimHub resuelto en `C:\Program Files (x86)\SimHub\SimHubWPF.exe` con icono; Discord/Spotify/LMU/OBS también con icono.
+- Checks: Go Launcher/Wails PASS; smoke de iconos PASS; frontend Launcher 13/13 PASS; suite frontend 173 archivos / 1591 PASS; build frontend y `go build` PASS; Playwright smoke PASS (7 apps, 2 perfiles, desktop/mobile). `go test ./...` no terminó dentro del timeout de 120s en esta iteración; los fallos globales conocidos de `internal/server` quedan fuera de scope.
+
+Nota LAUNCHER-V3-RELIABILITY-FIX (2026-07-11):
+- Corregido el primer escaneo: `LauncherStore` dispara `launcher:apps:discover` al montar y el onboarding espera al snapshot con `lastScanAt` o error antes de mostrarse.
+- El onboarding lista las apps launchable detectadas con sus badges; el snapshot incorpora iconos extraídos offline. LMU resuelve también el ejecutable instalado en las librerías Steam para mostrar su icono real sin CDN.
+- Checks: tests focalizados frontend 9/9 PASS; `pnpm --dir frontend test` 173 archivos / 1591 PASS; `pnpm --dir frontend build` PASS; `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; Playwright smoke PASS (7 apps, 2 perfiles, desktop/mobile); build Wails `bin/vantare.exe` PASS.
+- `pnpm --dir frontend lint` mantiene 4 errores preexistentes fuera de scope en Calendar y `wails-runtime-topbar-mock.ts`. `go test ./...` mantiene fallos preexistentes en `internal/server` (nonce/puerto dinámico).
+
 Nota STRATEGY-PLANS-01 (2026-07-11):
 - Creados tres documentos de planificación Strategy: Producto A ejecutable y exhaustivo; Productos B/C como guías generales condicionadas al DoD de la fase anterior.
 - A: `docs/superpowers/plans/2026-07-11-strategy-product-a-manual-calculator.md` — 9 fases, TDD, motor Go clean-room, Fuel+VE, pit model, tyres por rueda, solver/ranking, UI, calendario, export y verificación.

@@ -43,7 +43,7 @@ function dispatch(name: string, data: unknown) {
   });
 }
 
-function dispatchSnapshot() {
+function dispatchSnapshot(lastScanAt: string | null = null) {
   dispatch("launcher:snapshot", {
     revision: 1,
     apps: [
@@ -75,7 +75,7 @@ function dispatchSnapshot() {
     ],
     userProfiles: [],
     activeChains: [],
-    discovery: { scanning: false, lastScanAt: null, error: null },
+    discovery: { scanning: false, lastScanAt, error: null },
   });
 }
 
@@ -94,7 +94,8 @@ describe("LauncherPage", () => {
 
   it("requests one shared snapshot and lists apps from it", () => {
     renderPage();
-    expect(Events.Emit).toHaveBeenCalledTimes(1);
+    expect(Events.Emit).toHaveBeenCalledTimes(2);
+    expect(Events.Emit).toHaveBeenNthCalledWith(1, "launcher:apps:discover");
     expect(Events.Emit).toHaveBeenCalledWith("launcher:snapshot:get");
     dispatchSnapshot();
     expect(screen.getByTestId("app-row-lmu")).toBeTruthy();
@@ -107,5 +108,14 @@ describe("LauncherPage", () => {
     expect(
       screen.getByTestId("profile-launch-creator"),
     ).toBeTruthy();
+  });
+
+  it("waits for the initial discovery before opening onboarding", () => {
+    renderPage();
+    dispatchSnapshot();
+    expect(screen.queryByTestId("launcher-onboarding")).toBeNull();
+
+    dispatchSnapshot("2026-07-11T16:00:00.000Z");
+    expect(screen.getByTestId("launcher-onboarding")).toBeTruthy();
   });
 });

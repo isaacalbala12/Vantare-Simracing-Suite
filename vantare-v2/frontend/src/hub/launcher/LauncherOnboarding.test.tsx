@@ -7,6 +7,7 @@ describe("LauncherOnboarding", () => {
     const onComplete = vi.fn();
     render(<LauncherOnboarding apps={[{ id: "lmu", displayName: "LMU", abbreviation: "LMU", category: "simulator", launchMethod: "steam-uri", availability: { catalogued: true, found: true, installed: true, launchable: true }, gradientFrom: "#111", gradientTo: "#222" }]} onComplete={onComplete} />);
     expect(screen.getByText(/1 aplicaciones listas/)).toBeTruthy();
+    expect(screen.getByTestId("app-badge-lmu")).toBeTruthy();
     fireEvent.click(screen.getByTestId("launcher-onboarding-skip"));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });

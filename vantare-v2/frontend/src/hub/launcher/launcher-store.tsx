@@ -54,6 +54,7 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
         snapshot = nextSnapshot;
         notify();
       });
+      bridge.dispatchLauncherCommand("launcher:apps:discover");
       bridge.requestSnapshot();
     },
     stop: () => {

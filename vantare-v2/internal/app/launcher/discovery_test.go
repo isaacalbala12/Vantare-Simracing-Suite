@@ -117,6 +117,34 @@ func TestProbeKnownPathsRepairsAvailabilityPreservingPreferences(t *testing.T) {
 	}
 }
 
+func TestProbeKnownPathsUsesInstalledExecutableAliases(t *testing.T) {
+	root := t.TempDir()
+	motecDir := filepath.Join(root, "MoTeC")
+	simhubDir := filepath.Join(root, "SimHub")
+	if err := os.MkdirAll(motecDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(simhubDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(motecDir, "app.exe"), []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(simhubDir, "SimHubWPF.exe"), []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PROGRAMFILES", root)
+	t.Setenv("PROGRAMFILES(X86)", root)
+
+	got := probeKnownPaths(nil)
+	if got["motec"].ExecutablePath != filepath.Join(motecDir, "app.exe") {
+		t.Fatalf("MoTeC executable alias was not resolved: %+v", got["motec"])
+	}
+	if got["simhub"].ExecutablePath != filepath.Join(simhubDir, "SimHubWPF.exe") {
+		t.Fatalf("SimHub executable alias was not resolved: %+v", got["simhub"])
+	}
+}
+
 func TestProbeKnownPathsDoesNotMutateInput(t *testing.T) {
 	in := map[string]app.LauncherAppEntry{
 		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate"},

@@ -143,6 +143,7 @@ func handleDiscoverApps(svc *launcher.Service, emitter app.EventEmitter) {
 	if _, err := svc.DiscoverApps(); err != nil {
 		log.Printf("launcher:discover error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		handleLauncherSnapshot(svc, emitter)
 		return
 	}
 	handleLauncherSnapshot(svc, emitter)

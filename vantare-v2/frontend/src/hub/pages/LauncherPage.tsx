@@ -25,9 +25,13 @@ export function LauncherPage() {
     }
     dispatchLauncherCommand("launcher:onboarding:complete");
   };
+  const discoveryReady = Boolean(
+    snapshot &&
+      (snapshot.discovery.lastScanAt !== null || snapshot.discovery.error !== null),
+  );
   return (
     <div className="flex flex-col gap-5">
-      {onboardingOpen && snapshot && (
+      {onboardingOpen && discoveryReady && snapshot && (
         <LauncherOnboarding apps={snapshot.apps} onComplete={completeOnboarding} />
       )}
       <div className="opacity-0 animate-fade-in-up">

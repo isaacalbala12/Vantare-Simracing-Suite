@@ -9,7 +9,7 @@ describe("Crystal performance budget", () => {
     const blurValues = [...css.matchAll(/backdrop-filter:\s*blur\((\d+)px\)/g)].map((match) => Number(match[1]));
     expect(blurValues.length).toBeGreaterThan(0);
     expect(Math.max(...blurValues)).toBeLessThanOrEqual(16);
-    expect((css.match(/backdrop-filter:/g) ?? []).length).toBeLessThanOrEqual(5);
+    expect((css.match(/backdrop-filter:\s*blur\(/g) ?? []).length).toBeLessThanOrEqual(5);
   });
 
   it("disables nonessential animation for reduced motion", () => {

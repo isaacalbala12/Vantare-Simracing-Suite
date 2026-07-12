@@ -158,8 +158,7 @@
   font-size: 0.7rem;
 }
 
-[data-widget-system="vantare-crystal"].vc-standings,
-[data-widget-system="vantare-crystal"] .vc-standings {
+[data-widget-system="vantare-crystal"].vc-standings {
   position: relative;
   display: flex;
   width: 100%;
@@ -170,121 +169,186 @@
   font-size: 0.75rem;
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-glow {
-  position: absolute;
-  inset: 8% 6%;
-  border-radius: 22px;
-  filter: blur(20px);
-  opacity: 0.55;
-  z-index: 0;
-  background: rgba(96, 165, 250, 0.28);
-}
-
 [data-widget-system="vantare-crystal"] .vc-standings-frame {
   position: relative;
-  z-index: 1;
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.5rem;
   min-height: 0;
-  padding: 0.875rem 1rem;
-  border-radius: 18px;
-  background: var(--vc-surface);
-  border: 1px solid var(--vc-border);
-  box-shadow:
-    inset 0 1px 0 var(--vc-highlight),
-    0 12px 32px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(16px);
+  height: 100%;
+  overflow: hidden;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-lg);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: blur(var(--vc-blur-glass));
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-meta {
+[data-widget-system="vantare-crystal"] .vc-standings-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-remaining {
+  color: var(--vc-accent);
+  font-family: var(--vc-font-mono);
   font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--vc-muted);
+  font-weight: 700;
 }
 
 [data-widget-system="vantare-crystal"] .vc-standings-status-message {
   margin: 0;
-  font-size: 0.72rem;
+  padding: 0.5rem 0.75rem;
   color: var(--vc-muted);
+  font-size: 0.68rem;
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-columns {
-  display: flex;
-  gap: 0.35rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
+[data-widget-system="vantare-crystal"] .vc-standings-table-header,
+[data-widget-system="vantare-crystal"] .vc-standings-row {
+  display: grid;
+  grid-template-columns: 20px 20px 26px minmax(0, 1fr) 76px 58px;
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 0.75rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header {
+  min-height: 24px;
   color: var(--vc-muted);
-  font-size: 0.62rem;
-  font-weight: 600;
+  font-size: 0.56rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-column {
-  flex: 0 0 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+[data-widget-system="vantare-crystal"] .vc-standings-table-header > span:not(.vc-standings-driver-heading),
+[data-widget-system="vantare-crystal"] .vc-standings-position,
+[data-widget-system="vantare-crystal"] .vc-standings-number {
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header > span:nth-last-child(-n + 2),
+[data-widget-system="vantare-crystal"] .vc-standings-last,
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value {
+  text-align: right;
 }
 
 [data-widget-system="vantare-crystal"] .vc-standings-rows {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.3rem;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-row-card {
+[data-widget-system="vantare-crystal"] .vc-standings-row {
+  min-height: 28px;
+  color: var(--vc-text);
+  font-size: 0.66rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-class-bar {
   display: flex;
-  gap: 0.35rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.48rem;
+  font-weight: 800;
+  border-radius: 2px;
+  background: var(--vc-standings-class-color);
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-cell {
-  flex: 0 0 auto;
+[data-widget-system="vantare-crystal"] .vc-standings-driver,
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value,
+[data-widget-system="vantare-crystal"] .vc-standings-last {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-row-card[data-player="true"] {
-  background: rgba(251, 113, 133, 0.14);
-  border-color: rgba(251, 113, 133, 0.45);
-  box-shadow: 0 0 18px rgba(251, 113, 133, 0.2);
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value,
+[data-widget-system="vantare-crystal"] .vc-standings-last,
+[data-widget-system="vantare-crystal"] .vc-standings-number,
+[data-widget-system="vantare-crystal"] .vc-standings-position {
+  font-family: var(--vc-font-mono);
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-row-card[data-leader="true"] .vc-standings-cell[data-metric="gap"] {
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-tire-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  color: #111;
+  font-size: 0.5rem;
+  font-weight: 900;
+  border-radius: 50%;
+  background: #ddd;
+}
+
+[data-widget-system="vantare-crystal"] .vc-tire-soft { background: #ef4444; color: #fff; }
+[data-widget-system="vantare-crystal"] .vc-tire-med { background: #facc15; }
+[data-widget-system="vantare-crystal"] .vc-tire-medium { background: #facc15; }
+[data-widget-system="vantare-crystal"] .vc-tire-hard { background: #f8fafc; }
+
+[data-widget-system="vantare-crystal"] .vc-standings-pit-tag {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-player="true"] {
+  background: linear-gradient(90deg, rgba(255, 42, 59, 0.22), rgba(230, 57, 70, 0.05));
+  border-top: 1px solid rgba(255, 42, 59, 0.4);
+  border-bottom: 1px solid rgba(255, 42, 59, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-leader="true"] .vc-standings-gap-value {
   color: var(--vc-gaining);
   font-weight: 700;
 }
 
-[data-widget-system="vantare-crystal"] .vc-standings-row-card[data-pit="true"] .vc-standings-cell[data-metric="pit"] {
-  color: #fbbf24;
-  font-weight: 700;
+[data-widget-system="vantare-crystal"][data-compact="true"] .vc-standings-row {
+  min-height: 24px;
 }
 
-[data-widget-system="vantare-crystal"][data-compact="true"] .vc-standings-row-card {
-  padding: 0.2rem 0.4rem;
-  border-radius: 8px;
-}
-
-[data-widget-system="vantare-crystal"][data-compact="true"] .vc-standings-rows {
-  gap: 0.15rem;
+[data-widget-system="vantare-crystal"] .vc-standings-frame > [data-crystal-primitive="footer"] {
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 [data-widget-system="vantare-crystal"][data-status="missing"] .vc-standings-rows,
@@ -292,6 +356,12 @@
 [data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-standings-rows,
 [data-widget-system="vantare-crystal"][data-status="error"] .vc-standings-rows {
   opacity: 0.4;
+}
+
+/* The old configurable table is intentionally not part of the canonical composition. */
+[data-widget-system="vantare-crystal"] .vc-standings-columns,
+[data-widget-system="vantare-crystal"] .vc-standings-row-card {
+  display: none;
 }
 
 [data-widget-system="vantare-crystal"].vc-relative {

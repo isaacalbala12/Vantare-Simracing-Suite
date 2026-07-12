@@ -34,6 +34,7 @@ export type StandingsRowViewModel = {
 
 export type StandingsViewModel = WidgetViewModelBase & {
   type: "standings";
+  activeClass: string;
   sessionLabel: string;
   remainingText: string;
   columns: readonly WidgetColumnV3[];
@@ -49,6 +50,7 @@ function buildUnavailableModel(
     type: "standings",
     status,
     statusMessage,
+    activeClass: PLACEHOLDER,
     sessionLabel: PLACEHOLDER,
     remainingText: PLACEHOLDER,
     columns: getEnabledStandingsColumns(content),
@@ -174,6 +176,7 @@ export function buildStandingsViewModel(
   return {
     type: "standings",
     status: "ready",
+    activeClass,
     sessionLabel: sessionLabelFromSnapshot(snapshot),
     remainingText: formatRemainingTime(snapshot.session.remainingSeconds),
     columns,

@@ -22,6 +22,7 @@ const unavailable = (status: StandingsViewModel["status"], statusMessage?: strin
   type: "standings",
   status,
   statusMessage,
+  activeClass: "—",
   sessionLabel: "—",
   remainingText: "—",
   columns: readyModel.columns,
@@ -47,29 +48,24 @@ describe("StandingsCrystal", () => {
 
   it("uses a structurally distinct Crystal composition", () => {
     const { root } = renderCrystal(readyModel);
-    expect(root.querySelector(".vc-standings-glow")).toBeTruthy();
     expect(root.querySelector(".vc-standings-frame")).toBeTruthy();
-    expect(root.querySelector(".vc-standings-columns")).toBeTruthy();
-    expect(root.querySelector(".vc-standings-row-card")).toBeTruthy();
+    expect(root.querySelector(".vc-standings-table-header")).toBeTruthy();
+    expect(root.querySelector(".vc-standings-row")).toBeTruthy();
+    expect(root.querySelector("[data-crystal-primitive='brand']")).toBeTruthy();
+    expect(root.querySelector("[data-crystal-primitive='footer']")).toBeTruthy();
     expect(root.querySelector(".vo-standings-table")).toBeNull();
     expect(root.querySelector("table")).toBeNull();
   });
 
-  it("renders enabled columns in configured order", () => {
+  it("renders the canonical standings slots", () => {
     const { root } = renderCrystal(readyModel);
-    const headers = [...root.querySelectorAll(".vc-standings-column")].map((cell) =>
-      cell.getAttribute("data-metric"),
-    );
-    expect(headers).toEqual(readyModel.columns.map((column) => column.metricId));
-
-    const firstRow = root.querySelector(".vc-standings-row-card") as HTMLElement;
-    const cells = [...firstRow.querySelectorAll(".vc-standings-cell")].map((cell) =>
-      cell.getAttribute("data-metric"),
-    );
-    expect(cells).toEqual(readyModel.columns.map((column) => column.metricId));
+    expect(root.querySelector(".vc-standings-table-header")?.textContent).toContain("POS");
+    expect(root.querySelector(".vc-standings-table-header")?.textContent).toContain("LAST");
+    expect(root.querySelector(".vc-standings-class-bar")).toBeTruthy();
+    expect(root.querySelector(".vc-standings-last")).toBeTruthy();
   });
 
-  it("omits disabled columns from row cards", () => {
+  it("does not render obsolete configurable columns", () => {
     const content = createDefaultStandingsContent();
     const disabledBestLap = {
       ...content,
@@ -85,7 +81,7 @@ describe("StandingsCrystal", () => {
     expect(root.querySelector('[data-metric="bestLap"]')).toBeNull();
   });
 
-  it("marks player leader pit and tire states on row cards", () => {
+  it("marks player leader pit and tire states on canonical rows", () => {
     const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
     const model = buildStandingsViewModel(
       {
@@ -104,6 +100,8 @@ describe("StandingsCrystal", () => {
     expect(player.getAttribute("data-player")).toBe("true");
     expect(player.getAttribute("data-pit")).toBe("true");
     expect(player.getAttribute("data-tire")).toBe("MED");
+    expect(player.querySelector(".vc-standings-tire-badge")?.textContent).toBe("M");
+    expect(player.querySelector(".vc-standings-pit-tag")?.textContent).toBe("PIT");
   });
 
   it("keeps stable row keys for 60-row stress input", () => {
@@ -139,12 +137,12 @@ describe("StandingsCrystal", () => {
 
   it("consumes showSessionHeader and compactRows appearance settings", () => {
     const hidden = renderCrystal(readyModel, { showSessionHeader: false, compactRows: false });
-    expect(hidden.root.querySelector(".vc-standings-meta")).toBeNull();
+    expect(hidden.root.querySelector(".vc-standings-header")).toBeNull();
     expect(hidden.root.getAttribute("data-compact")).not.toBe("true");
     cleanup();
 
     const compact = renderCrystal(readyModel, { showSessionHeader: true, compactRows: true });
-    expect(compact.root.querySelector(".vc-standings-meta")).toBeTruthy();
+    expect(compact.root.querySelector(".vc-standings-header")).toBeTruthy();
     expect(compact.root.getAttribute("data-compact")).toBe("true");
   });
 

@@ -659,6 +659,75 @@
   opacity: 0.4;
 }
 
+[data-widget-system="vantare-crystal"].vc-pedals-telemetry {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+  --vc-pedals-telemetry-throttle: #22c55e;
+  --vc-pedals-telemetry-brake: #ff2a3b;
+  --vc-pedals-telemetry-clutch: #f59e0b;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-frame {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
+  background: rgba(15, 15, 18, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 60px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(24px);
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-gear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 3.75rem;
+  width: 3.75rem;
+  height: 3.75rem;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #22c55e;
+  border-right-color: #22c55e;
+  border-radius: 50%;
+  background: #0c0c0e;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-gear-value {
+  font-family: var(--vc-font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-center { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 0.35rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-leds { display: flex; gap: 3px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led { width: 9px; height: 5px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led.is-on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led.is-on.is-red { background: #ff2a3b; box-shadow: 0 0 6px #ff2a3b; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values { display: flex; gap: 1rem; font-family: var(--vc-font-mono); }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values div { display: flex; flex-direction: column; gap: 2px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values strong { font-size: 1rem; line-height: 1; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values small { color: var(--vc-muted); font-size: 0.48rem; font-weight: 700; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-bars { display: flex; align-items: flex-end; gap: 0.5rem; height: 3.5rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-channel { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-pedal-label,
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-pedal-value { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 800; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-track { position: relative; width: 10px; flex: 1; min-height: 2.6rem; overflow: hidden; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 3px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-fill { position: absolute; right: 0; bottom: 0; left: 0; border-radius: 3px; box-shadow: 0 0 8px currentColor; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-status { margin: 0; color: var(--vc-muted); font-size: 0.55rem; }
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-pedals-telemetry-frame,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-pedals-telemetry-frame,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-pedals-telemetry-frame,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-pedals-telemetry-frame { opacity: 0.5; }
+
 [data-widget-system="vantare-crystal"][data-crystal-primitive="surface"] {
   display: flex;
   flex-direction: column;

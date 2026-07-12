@@ -124,6 +124,30 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     origin: "vantare",
     isDefault: true,
   },
+  {
+    id: "pedals-telemetry-original",
+    name: "Original Telemetry",
+    widgetType: "pedals-telemetry",
+    systemId: "vantare-original",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
+    id: "pedals-telemetry-crystal-v1",
+    name: "Crystal V1 Capsule",
+    widgetType: "pedals-telemetry",
+    systemId: "vantare-crystal",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

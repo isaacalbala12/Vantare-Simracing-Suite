@@ -7,6 +7,7 @@ import type {
 import { DeltaCrystal } from "./delta/DeltaCrystal";
 import { migrateDeltaSettingsV1, parseDeltaSettings } from "./delta/delta-settings";
 import { PedalsCrystal } from "./pedals/PedalsCrystal";
+import { PedalsTelemetryCrystal } from "./pedals-telemetry/PedalsTelemetryCrystal";
 import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -261,6 +262,22 @@ const pedalsRegistration = {
   Renderer: PedalsCrystal as ComponentType<WidgetRendererProps>,
 };
 
+const pedalsTelemetryRegistration = {
+  widgetType: "pedals-telemetry" as const,
+  configVersion: 1,
+  defaultSettings: {},
+  configMigrations: {
+    0: (settings: Record<string, unknown>) => ({ ...settings }),
+  },
+  parseSettings(input: unknown): Record<string, unknown> {
+    return input && typeof input === "object" && !Array.isArray(input)
+      ? { ...(input as Record<string, unknown>) }
+      : {};
+  },
+  inspector: { appearance: [] },
+  Renderer: PedalsTelemetryCrystal as ComponentType<WidgetRendererProps>,
+};
+
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
   version: 1,
@@ -268,5 +285,11 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
   systemMigrations: {
     0: (_widgetType, settings) => ({ ...settings }),
   },
-  widgets: [deltaRegistration, standingsRegistration, relativeRegistration, pedalsRegistration],
+  widgets: [
+    deltaRegistration,
+    standingsRegistration,
+    relativeRegistration,
+    pedalsRegistration,
+    pedalsTelemetryRegistration,
+  ],
 };

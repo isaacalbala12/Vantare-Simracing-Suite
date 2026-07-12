@@ -57,7 +57,7 @@ describe("official-designs", () => {
     }
   });
 
-  it("covers all eight widget/system registrations with a base official design", () => {
+  it("covers every implemented widget/system registration with a base official design", () => {
     const pairs = new Set<string>();
     for (const design of listOfficialDesigns()) {
       if (design.isDefault || design.id === "delta-crystal-bar") {
@@ -67,6 +67,8 @@ describe("official-designs", () => {
     expect([...pairs].sort()).toEqual([
       "delta:vantare-crystal",
       "delta:vantare-original",
+      "pedals-telemetry:vantare-crystal",
+      "pedals-telemetry:vantare-original",
       "pedals:vantare-crystal",
       "pedals:vantare-original",
       "relative:vantare-crystal",

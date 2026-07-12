@@ -9,12 +9,13 @@ import type { WidgetTypeDefinition } from "./widget-definition";
 import { WidgetTypeRegistry, widgetTypeRegistry } from "./widget-registry";
 
 describe("widgetTypeRegistry", () => {
-  it("registers the four core widget definitions", () => {
+  it("registers the implemented widget definitions", () => {
     expect(widgetTypeRegistry.list().map((item) => item.type)).toEqual([
       "delta",
       "standings",
       "relative",
       "pedals",
+      "pedals-telemetry",
     ]);
   });
 

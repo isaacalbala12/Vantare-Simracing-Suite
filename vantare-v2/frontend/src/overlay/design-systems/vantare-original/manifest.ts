@@ -6,6 +6,7 @@ import type {
 } from "../../core/design-system-definition";
 import { DeltaOriginal } from "./delta/DeltaOriginal";
 import { PedalsOriginal } from "./pedals/PedalsOriginal";
+import { PedalsTelemetryOriginal } from "./pedals-telemetry/PedalsTelemetryOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
@@ -250,6 +251,22 @@ const pedalsRegistration = {
   Renderer: PedalsOriginal as ComponentType<WidgetRendererProps>,
 };
 
+const pedalsTelemetryRegistration = {
+  widgetType: "pedals-telemetry" as const,
+  configVersion: 1,
+  defaultSettings: {},
+  configMigrations: {
+    0: (settings: Record<string, unknown>) => ({ ...settings }),
+  },
+  parseSettings(input: unknown): Record<string, unknown> {
+    return input && typeof input === "object" && !Array.isArray(input)
+      ? { ...(input as Record<string, unknown>) }
+      : {};
+  },
+  inspector: { appearance: [] },
+  Renderer: PedalsTelemetryOriginal as ComponentType<WidgetRendererProps>,
+};
+
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
   version: 1,
@@ -257,5 +274,11 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
   systemMigrations: {
     0: (_widgetType, settings) => ({ ...settings }),
   },
-  widgets: [deltaRegistration, standingsRegistration, relativeRegistration, pedalsRegistration],
+  widgets: [
+    deltaRegistration,
+    standingsRegistration,
+    relativeRegistration,
+    pedalsRegistration,
+    pedalsTelemetryRegistration,
+  ],
 };

@@ -11,6 +11,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   standings: "overlays.basic",
   pedals: "overlays.basic",
   relative: "overlays.advanced",
+  "pedals-telemetry": "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

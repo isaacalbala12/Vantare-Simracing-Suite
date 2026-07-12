@@ -422,3 +422,87 @@
 [data-widget-system="vantare-original"][data-status="error"] .vo-pedals-bars {
   opacity: 0.45;
 }
+
+[data-widget-system="vantare-original"].vo-pedals-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.8rem;
+  color: var(--vo-text);
+  background: #101014;
+  border: 1px solid #35353d;
+  border-radius: 2rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --vo-pedals-telemetry-throttle: #2ecc71;
+  --vo-pedals-telemetry-brake: #e74c3c;
+  --vo-pedals-telemetry-clutch: #f59e0b;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-gear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 4px solid #33333a;
+  border-top-color: #2ecc71;
+  border-right-color: #2ecc71;
+  border-radius: 50%;
+  background: #0b0b0e;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-gear-value {
+  font-family: var(--vo-font-display, sans-serif);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 0.8rem;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-rpm,
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-values,
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-bars {
+  display: flex;
+  align-items: center;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-rpm {
+  gap: 3px;
+  align-self: flex-start;
+  padding-top: 0.1rem;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-led {
+  width: 8px;
+  height: 5px;
+  border-radius: 2px;
+  background: #303038;
+}
+
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-led.is-on { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-led.is-on.is-red { background: #ff2a3b; box-shadow: 0 0 5px #ff2a3b; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-values { gap: 0.8rem; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-values div { display: flex; flex-direction: column; gap: 2px; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-values strong { font-size: 0.95rem; line-height: 1; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-values small { color: var(--vo-muted); font-size: 0.48rem; font-weight: 700; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-bars { gap: 0.45rem; align-self: stretch; margin-left: auto; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-channel { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-pedal-label,
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-pedal-value { color: var(--vo-muted); font-size: 0.48rem; font-weight: 800; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-track { position: relative; width: 10px; flex: 1; min-height: 2.2rem; overflow: hidden; background: #08080a; border: 1px solid #35353d; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-fill { position: absolute; right: 0; bottom: 0; left: 0; }
+[data-widget-system="vantare-original"] .vo-pedals-telemetry-status { margin: 0; color: var(--vo-muted); font-size: 0.55rem; }
+
+[data-widget-system="vantare-original"][data-status="missing"] .vo-pedals-telemetry-main,
+[data-widget-system="vantare-original"][data-status="stale"] .vo-pedals-telemetry-main,
+[data-widget-system="vantare-original"][data-status="disconnected"] .vo-pedals-telemetry-main,
+[data-widget-system="vantare-original"][data-status="error"] .vo-pedals-telemetry-main { opacity: 0.5; }

@@ -15,7 +15,10 @@ const SESSION_REMAINING_SECONDS: Record<MockSessionScenario, number> = {
 const CANONICAL_SCORING: readonly Record<string, unknown>[] = [
   {
     id: 4,
+    driverNumber: "5",
     driverName: "TOYOTA GAZOO",
+    teamName: "TOYOTA GAZOO",
+    vehicleClass: "HYPERCAR",
     place: 5,
     isPlayer: true,
     inPits: false,
@@ -24,7 +27,54 @@ const CANONICAL_SCORING: readonly Record<string, unknown>[] = [
     totalLaps: 14,
     estimatedLapTime: 164.659,
   },
-  { id: 2, driverName: "FERRARI AF", place: 3, isPlayer: false, inPits: false, bestLapTime: 89.455, lastLapTime: 90.332 },
+  {
+    id: 2,
+    driverNumber: "3",
+    driverName: "FERRARI AF",
+    teamName: "FERRARI AF",
+    vehicleClass: "HYPERCAR",
+    place: 3,
+    isPlayer: false,
+    inPits: false,
+    bestLapTime: 89.455,
+    lastLapTime: 90.332,
+  },
+  {
+    id: 7,
+    driverNumber: "7",
+    driverName: "PORSCHE PENSKE",
+    teamName: "PORSCHE PENSKE",
+    vehicleClass: "HYPERCAR",
+    place: 1,
+    isPlayer: false,
+    inPits: false,
+    bestLapTime: 89.004,
+    lastLapTime: 89.641,
+  },
+  {
+    id: 8,
+    driverNumber: "8",
+    driverName: "CADILLAC RACING",
+    teamName: "CADILLAC RACING",
+    vehicleClass: "HYPERCAR",
+    place: 2,
+    isPlayer: false,
+    inPits: false,
+    bestLapTime: 89.201,
+    lastLapTime: 89.900,
+  },
+  {
+    id: 11,
+    driverNumber: "31",
+    driverName: "BMW M TEAM",
+    teamName: "BMW M TEAM",
+    vehicleClass: "HYPERCAR",
+    place: 6,
+    isPlayer: false,
+    inPits: false,
+    bestLapTime: 91.102,
+    lastLapTime: 91.502,
+  },
 ];
 
 function buildReadyPlayer(location: MockLocationScenario) {
@@ -36,6 +86,11 @@ function buildReadyPlayer(location: MockLocationScenario) {
     throttle: 0.78,
     brake: 0.12,
     clutch: 0,
+    speedKph: 242,
+    rpm: 8120,
+    gear: 6,
+    fuelLiters: 58.4,
+    totalLaps: 14,
   };
 }
 

@@ -14,11 +14,13 @@ const listeners = new Map<
   ((event: { data: unknown }) => void)[]
 >();
 const emitCalls: { name: string; data: unknown }[] = [];
+const order: string[] = [];
 
 afterEach(() => {
   cleanup();
   listeners.clear();
   emitCalls.length = 0;
+  order.length = 0;
   vi.clearAllMocks();
 });
 
@@ -26,6 +28,7 @@ vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: vi.fn(
       (name: string, cb: (event: { data: unknown }) => void) => {
+        order.push(`on:${name}`);
         const existing = listeners.get(name) ?? [];
         existing.push(cb);
         listeners.set(name, existing);
@@ -33,6 +36,7 @@ vi.mock("@wailsio/runtime", () => ({
       },
     ),
     Emit: vi.fn((name: string, data: unknown) => {
+      order.push(`emit:${name}`);
       emitCalls.push({ name, data });
     }),
   },
@@ -77,6 +81,19 @@ describe("AddNonSteamGameModal", () => {
     );
     expect(Events.Emit).toHaveBeenCalledWith("launcher:registry:list");
     expect(screen.getByText("Cargando...")).toBeTruthy();
+  });
+
+  it("registers the registry listener before requesting it", () => {
+    render(
+      <AddNonSteamGameModal
+        open={true}
+        onClose={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    expect(order.indexOf("on:launcher:registry:listed")).toBeLessThan(
+      order.indexOf("emit:launcher:registry:list"),
+    );
   });
 
   it("renders apps received via event", async () => {

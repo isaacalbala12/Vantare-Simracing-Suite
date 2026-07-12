@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vantare — Style Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  /* ============== Vantare tokens (extraídos del código real) ============== */
+  :root {
+    --v-bg: #0a0a0a;
+    --v-surface: #141414;
+    --v-panel: #141414;
+    --v-border: rgba(245,245,245,.08);
+    --v-border-hover: #2A2A2A;
+    --v-text: #f5f5f5;
+    --v-text-muted: rgba(245,245,245,.6);
+    --v-text-dim: rgba(245,245,245,.35);
+    --v-red-400: #ff3b3b;
+    --v-red-500: #C1121F;
+    --v-red-600: #9B2226;
+    --v-red-700: #800020;
+    --v-red-900: #4A0012;
+    --v-red-950: #2A000A;
+    --v-wine: #722F37;
+    --v-burgundy: #4A0E16;
+    --v-blood: #8B0000;
+    --v-success: #34D399;
+    --v-warning: #FFD700;
+    --v-card-shadow: 0 24px 60px rgba(255,59,59,.18), 0 0 100px rgba(255,59,59,.1);
+    --v-font-sans: 'Inter', sans-serif;
+    --v-font-display: 'Rajdhani', sans-serif;
+    --v-font-mono: 'Space Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--v-bg);
+    color: var(--v-text);
+    font-family: var(--v-font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Background con radial gradients rojos (v52-shell-bg vibe) */
+  .shell-bg {
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(193,18,31,.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(193,18,31,.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(193,18,31,.04) 0%, transparent 70%),
+      #0a0a0a;
+  }
+  /* ============== Layout ============== */
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  nav.side {
+    position: sticky; top: 0; height: 100vh;
+    border-right: 1px solid var(--v-border);
+    padding: 24px 16px;
+    background: rgba(10,10,10,.6);
+    backdrop-filter: blur(12px);
+  }
+  nav.side .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; padding: 0 8px; }
+  nav.side .brand-mark { width: 28px; height: 28px; flex-shrink: 0; }
+  nav.side .brand-name { font-family: var(--v-font-sans); font-weight: 700; font-size: 18px; letter-spacing: .02em; }
+  nav.side h6 { font-size: 10px; text-transform: uppercase; letter-spacing: .22em; color: var(--v-text-dim); font-weight: 700; margin: 20px 8px 8px; }
+  nav.side a {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--v-text-muted);
+    text-decoration: none;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  nav.side a:hover { color: var(--v-text); background: rgba(255,255,255,.05); }
+  nav.side a.active { color: var(--v-text); background: rgba(193,18,31,.10); border-left: 2px solid var(--v-red-500); padding-left: 10px; }
+  main.content { padding: 48px 56px 96px; max-width: 1100px; }
+  /* ============== Typography ============== */
+  h1, h2, h3, h4 { font-family: var(--v-font-display); font-weight: 600; letter-spacing: .02em; margin: 0; }
+  h1 { font-size: 48px; line-height: 1.1; }
+  h2 { font-size: 28px; margin-bottom: 8px; }
+  h3 { font-size: 18px; text-transform: uppercase; letter-spacing: .2em; color: var(--v-text); margin-top: 56px; margin-bottom: 12px; }
+  h3 small { display: block; font-family: var(--v-font-sans); font-size: 12px; color: var(--v-text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; margin-top: 4px; }
+  .lead { font-size: 16px; color: var(--v-text-muted); margin: 0 0 32px; max-width: 720px; }
+  .meta { font-size: 10px; text-transform: uppercase; letter-spacing: .22em; color: var(--v-text-dim); font-weight: 700; }
+  /* ============== Hero ============== */
+  .hero { padding: 32px 0 48px; border-bottom: 1px solid var(--v-border); margin-bottom: 32px; }
+  .hero h1 {
+    background: linear-gradient(180deg, #ffffff 0%, #c5c5c5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 4px 30px rgba(193,18,31,.2);
+  }
+  .hero .meta { color: var(--v-red-400); }
+  /* ============== Section ============== */
+  section { margin-bottom: 64px; }
+  /* ============== Swatches ============== */
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+  .swatch {
+    border: 1px solid var(--v-border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--v-surface);
+  }
+  .swatch .chip { height: 88px; }
+  .swatch .info { padding: 12px 14px; }
+  .swatch .info .name { font-size: 12px; font-weight: 700; }
+  .swatch .info .hex { font-family: var(--v-font-mono); font-size: 11px; color: var(--v-text-muted); margin-top: 4px; }
+  .swatch .info .var { font-family: var(--v-font-mono); font-size: 10px; color: var(--v-text-dim); margin-top: 2px; word-break: break-all; }
+  /* ============== Typography specimens ============== */
+  .type-row { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--v-border); }
+  .type-row:last-child { border-bottom: none; }
+  .type-label { font-family: var(--v-font-mono); font-size: 11px; color: var(--v-text-dim); text-transform: uppercase; letter-spacing: .1em; }
+  .type-specimen { color: var(--v-text); }
+  /* ============== Cards ============== */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+  .card-sleek {
+    background: rgba(20,20,20,.55);
+    border: 1px solid var(--v-border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .card-sleek:hover { transform: translateY(-2px); box-shadow: var(--v-card-shadow); border-color: rgba(193,18,31,.5); }
+  .card-glass {
+    background: rgba(255,255,255,.02);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--v-border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-accent {
+    background: rgba(42,0,10,.4);
+    border: 1px solid rgba(193,18,31,.3);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 30px rgba(193,18,31,.15);
+  }
+  .card h4 { font-size: 14px; text-transform: uppercase; letter-spacing: .18em; margin-bottom: 8px; }
+  .card p { margin: 0; color: var(--v-text-muted); font-size: 13px; }
+  /* ============== Buttons ============== */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-family: var(--v-font-sans);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    border: 1px solid rgba(255,255,255,.10);
+    cursor: pointer;
+    transition: filter 150ms ease, transform 100ms ease, border-color 150ms ease;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #ff3b3b 0%, #9a0606 100%);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(193,18,31,.25);
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:active { transform: scale(.98); }
+  .btn-secondary {
+    background: rgba(245,245,245,.05);
+    color: var(--v-text);
+  }
+  .btn-secondary:hover { background: rgba(193,18,31,.15); border-color: rgba(193,18,31,.5); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--v-text-muted);
+    border-color: transparent;
+  }
+  .btn-ghost:hover { color: var(--v-text); background: rgba(255,255,255,.05); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+  /* ============== Badges ============== */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: var(--v-font-sans);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    border: 1px solid var(--v-border);
+    background: rgba(255,255,255,.05);
+    color: var(--v-text-muted);
+  }
+  .badge-pro {
+    color: var(--v-red-400);
+    background: rgba(193,18,31,.15);
+    border-color: rgba(193,18,31,.3);
+  }
+  .badge-success { color: #4ade80; background: rgba(52,211,153,.15); border-color: rgba(52,211,153,.3); }
+  .badge-warning { color: #fbbf24; background: rgba(251,191,36,.15); border-color: rgba(251,191,36,.3); }
+  .badge-info { color: #60a5fa; background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.3); }
+  .badge-purple { color: #c084fc; background: rgba(168,85,247,.15); border-color: rgba(168,85,247,.3); }
+  /* ============== Inputs ============== */
+  .input-row { display: grid; grid-template-columns: 1fr; gap: 12px; max-width: 400px; margin-top: 16px; }
+  .input {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.20);
+    border-radius: 6px;
+    color: var(--v-text);
+    font-family: var(--v-font-sans);
+    font-size: 13px;
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+  .input::placeholder { color: var(--v-text-dim); }
+  .input:focus { outline: none; border-color: rgba(193,18,31,.5); background: rgba(255,255,255,.10); }
+  .input:disabled { opacity: .4; cursor: not-allowed; }
+  /* ============== Stat cards ============== */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+  .stat {
+    background: var(--v-surface);
+    border: 1px solid var(--v-border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stat .label { font-size: 10px; text-transform: uppercase; letter-spacing: .2em; color: var(--v-text-dim); font-weight: 700; }
+  .stat .value { font-family: var(--v-font-mono); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; }
+  .stat .delta { font-family: var(--v-font-mono); font-size: 12px; margin-top: 4px; }
+  .delta.pos { color: #22c55e; }
+  .delta.neg { color: var(--v-red-400); }
+  /* ============== Telemetry specimen (overlay feel) ============== */
+  .telemetry {
+    background: rgba(0,0,0,.55);
+    border: 1px solid var(--v-border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 24px;
+    text-align: center;
+  }
+  .telemetry .cell .num { font-family: var(--v-font-mono); font-size: 48px; font-weight: 800; letter-spacing: -0.02em; }
+  .telemetry .cell .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .22em; color: var(--v-text-dim); font-weight: 700; margin-top: 4px; }
+  /* ============== Do / Don't ============== */
+  .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .do, .dont { border-radius: 12px; padding: 16px; border: 1px solid var(--v-border); }
+  .do { background: rgba(52,211,153,.05); border-color: rgba(52,211,153,.3); }
+  .dont { background: rgba(193,18,31,.05); border-color: rgba(193,18,31,.3); }
+  .do h5, .dont h5 { font-size: 10px; text-transform: uppercase; letter-spacing: .22em; font-weight: 700; margin: 0 0 8px; }
+  .do h5 { color: #4ade80; }
+  .dont h5 { color: var(--v-red-400); }
+  .do code, .dont code { font-family: var(--v-font-mono); font-size: 12px; color: var(--v-text); }
+  /* ============== Code blocks ============== */
+  pre {
+    background: var(--v-surface);
+    border: 1px solid var(--v-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--v-font-mono);
+    font-size: 12px;
+    color: var(--v-text);
+    line-height: 1.6;
+    margin: 12px 0 0;
+  }
+  pre .c { color: var(--v-text-dim); }
+  pre .k { color: #ff7b7b; }
+  pre .s { color: #4ade80; }
+  pre .p { color: #c084fc; }
+  /* ============== Logo specimen ============== */
+  .logo-cell {
+    background: var(--v-surface);
+    border: 1px solid var(--v-border);
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .logo-mark { width: 56px; height: 56px; }
+  .logo-name {
+    font-family: var(--v-font-sans);
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: .02em;
+  }
+  /* ============== Footer ============== */
+  footer { margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--v-border); color: var(--v-text-dim); font-size: 12px; }
+  /* ============== Misc ============== */
+  hr.rule { border: none; border-top: 1px solid var(--v-border); margin: 32px 0; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255,255,255,.05);
+    border: 1px solid var(--v-border);
+    color: var(--v-text-muted);
+  }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--v-red-500); box-shadow: 0 0 8px rgba(193,18,31,.6); }
+  .dot.green { background: var(--v-success); box-shadow: 0 0 8px rgba(52,211,153,.6); }
+  .dot.amber { background: var(--v-warning); box-shadow: 0 0 8px rgba(255,215,0,.6); }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: static; height: auto; }
+    main.content { padding: 32px 20px 80px; }
+    .do-dont { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body class="shell-bg">
+<div class="layout">
+
+  <!-- ============ Sidebar ============ -->
+  <nav class="side">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#ff4d4d"/>
+            <stop offset=".55" stop-color="#e21b1b"/>
+            <stop offset="1" stop-color="#9a0606"/>
+          </linearGradient>
+        </defs>
+        <path d="M16 2 L30 9 L30 23 L16 30 L2 23 L2 9 Z" fill="url(#lg)" stroke="#fff" stroke-opacity=".15" stroke-width="1"/>
+        <path d="M16 9 L22 12 L22 20 L16 23 L10 20 L10 12 Z" fill="#0a0a0a" fill-opacity=".5"/>
+        <path d="M16 9 L22 12 L22 20 L16 23 L10 20 L10 12 Z" stroke="#fff" stroke-opacity=".4" stroke-width=".8" fill="none"/>
+      </svg>
+      <span class="brand-name">VANTARE</span>
+    </div>
+
+    <h6>Marca</h6>
+    <a href="#marca">Visión general</a>
+    <a href="#logo">Logo</a>
+
+    <h6>Tokens</h6>
+    <a href="#color">Color</a>
+    <a href="#tipografia">Tipografía</a>
+    <a href="#espaciado">Espaciado y radios</a>
+    <a href="#efectos">Glass y efectos</a>
+
+    <h6>Componentes</h6>
+    <a href="#botones">Botones</a>
+    <a href="#cards">Cards</a>
+    <a href="#badges">Badges</a>
+    <a href="#inputs">Inputs</a>
+    <a href="#stats">Stats / hero</a>
+    <a href="#telemetry">Telemetría (overlay)</a>
+
+    <h6>Reglas</h6>
+    <a href="#estados">Estados</a>
+    <a href="#do-dont">Do / Don't</a>
+    <a href="#codigo">Snippet de código</a>
+  </nav>
+
+  <!-- ============ Content ============ -->
+  <main class="content">
+
+    <!-- Hero -->
+    <div class="hero">
+      <span class="meta">Vantare · Design System</span>
+      <h1 style="margin-top:8px;">Style guide</h1>
+      <p class="lead">Tokens, componentes y reglas de UI extraídos directamente del código de la app. Esta página es una referencia visual viva: si un valor cambia en el repo, actualízalo aquí también.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span class="pill"><span class="dot"></span> Rojo Vantare · <code style="font-family:var(--v-font-mono);">#C1121F</code></span>
+        <span class="pill"><span class="dot green"></span> Verde éxito · <code style="font-family:var(--v-font-mono);">#34D399</code></span>
+        <span class="pill"><span class="dot amber"></span> Oro warning · <code style="font-family:var(--v-font-mono);">#FFD700</code></span>
+      </div>
+    </div>
+
+    <!-- ============ Marca ============ -->
+    <section id="marca">
+      <h3>Visión general de marca<small>Para el detalle conceptual (valores, tono, vocabulario), ver <a href="./BRAND.md" style="color:var(--v-red-400);">docs/BRAND.md</a>.</small></h3>
+      <p class="lead" style="margin-top:0;">Estética que evoca el motorsport profesional: limpio, técnico, rápido, preciso. ADN visual: paneles translúcidos sobre fondo casi-negro, con rojo Vantare como acento único. Chrome de UI siempre en mayúsculas con tracking amplio.</p>
+      <div class="do-dont" style="grid-template-columns: 1fr 1fr;">
+        <div class="do">
+          <h5>Tono de marca</h5>
+          <p style="margin:0; font-size:13px;">"Beta nueva. Overlays más rápidos, más personalizables, y sin el lag de siempre."</p>
+        </div>
+        <div class="dont">
+          <h5>Evitar</h5>
+          <p style="margin:0; font-size:13px;">"Nos complace anunciar la disponibilidad de la nueva versión beta de nuestra suite de overlays."</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Logo ============ -->
+    <section id="logo">
+      <h3>Logo<small>SVG inline en <code style="color:var(--v-red-400);">Topbar.tsx</code> · líneas 85-113</small></h3>
+      <div class="card-grid">
+        <div class="logo-cell">
+          <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="lg2" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#ff4d4d"/>
+                <stop offset=".55" stop-color="#e21b1b"/>
+                <stop offset="1" stop-color="#9a0606"/>
+              </linearGradient>
+            </defs>
+            <path d="M16 2 L30 9 L30 23 L16 30 L2 23 L2 9 Z" fill="url(#lg2)" stroke="#fff" stroke-opacity=".15" stroke-width="1"/>
+            <path d="M16 9 L22 12 L22 20 L16 23 L10 20 L10 12 Z" fill="#0a0a0a" fill-opacity=".5"/>
+            <path d="M16 9 L22 12 L22 20 L16 23 L10 20 L10 12 Z" stroke="#fff" stroke-opacity=".4" stroke-width=".8" fill="none"/>
+          </svg>
+          <span class="logo-name">VANTARE</span>
+        </div>
+      </div>
+      <p class="meta" style="margin-top:12px;">Construcción: rombo/estrella de 6 lados con gradiente <code style="color:var(--v-text-muted);">#ff4d4d → #e21b1b → #9a0606</code>, hueco interior translúcido, drop-shadow rojo. Texto acompañante en Inter Bold 18-28px según contexto.</p>
+    </section>
+
+    <!-- ============ Color ============ -->
+    <section id="color">
+      <h3>Color<small>Tokens CSS del código real (variables <code style="color:var(--v-red-400);">--v-*</code> y Tailwind)</small></h3>
+
+      <p class="meta" style="margin-top:8px;">Fondos</p>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:#0a0a0a;"></div><div class="info"><div class="name">BG</div><div class="hex">#0a0a0a</div><div class="var">--v-bg</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#141414;"></div><div class="info"><div class="name">Surface</div><div class="hex">#141414</div><div class="var">--v-surface</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#1a1a1a;"></div><div class="info"><div class="name">Surface alt</div><div class="hex">#1a1a1a</div><div class="var">uso común</div></div></div>
+        <div class="swatch"><div class="chip" style="background:rgba(255,255,255,.05); border:1px solid var(--v-border);"></div><div class="info"><div class="name">White 5%</div><div class="hex">rgba(255,255,255,.05)</div><div class="var">chrome hover</div></div></div>
+        <div class="swatch"><div class="chip" style="background:rgba(255,255,255,.10);"></div><div class="info"><div class="name">White 10%</div><div class="hex">rgba(255,255,255,.10)</div><div class="var">badges, glass</div></div></div>
+        <div class="swatch"><div class="chip" style="background:rgba(20,20,20,.55); border:1px solid var(--v-border);"></div><div class="info"><div class="name">Card sleek</div><div class="hex">rgba(20,20,20,.55)</div><div class="var">.card-sleek</div></div></div>
+      </div>
+
+      <p class="meta" style="margin-top:32px;">Acento · Rojo Vantare</p>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:#ff3b3b;"></div><div class="info"><div class="name">Red 400</div><div class="hex">#ff3b3b</div><div class="var">--v-red-400</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#C1121F;"></div><div class="info"><div class="name">Red 500 ★</div><div class="hex">#C1121F</div><div class="var">--v-red-500 (PRINCIPAL)</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#9B2226;"></div><div class="info"><div class="name">Red 600</div><div class="hex">#9B2226</div><div class="var">--v-red-600</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#800020;"></div><div class="info"><div class="name">Red 700</div><div class="hex">#800020</div><div class="var">--v-red-700</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#4A0012;"></div><div class="info"><div class="name">Red 900</div><div class="hex">#4A0012</div><div class="var">--v-red-900</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#2A000A;"></div><div class="info"><div class="name">Red 950</div><div class="hex">#2A000A</div><div class="var">--v-red-950</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#722F37;"></div><div class="info"><div class="name">Wine</div><div class="hex">#722F37</div><div class="var">--v-wine</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#4A0E16;"></div><div class="info"><div class="name">Burgundy</div><div class="hex">#4A0E16</div><div class="var">--v-burgundy</div></div></div>
+      </div>
+
+      <p class="meta" style="margin-top:32px;">Estados</p>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:#34D399;"></div><div class="info"><div class="name">Success</div><div class="hex">#34D399</div><div class="var">--v-success</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#FFD700;"></div><div class="info"><div class="name">Warning</div><div class="hex">#FFD700</div><div class="var">--v-warning</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#22c55e;"></div><div class="info"><div class="name">Positivo (throttle)</div><div class="hex">#22c55e</div><div class="var">Tailwind green-500</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#3b82f6;"></div><div class="info"><div class="name">Info / RPM blue</div><div class="hex">#3b82f6</div><div class="var">Tailwind blue-500</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#a855f7;"></div><div class="info"><div class="name">Experimental</div><div class="hex">#a855f7</div><div class="var">purple-500</div></div></div>
+      </div>
+
+      <p class="meta" style="margin-top:32px;">Texto</p>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:#f5f5f5;"></div><div class="info"><div class="name">Text primary</div><div class="hex">#f5f5f5</div><div class="var">--v-text</div></div></div>
+        <div class="swatch"><div class="chip" style="background:rgba(245,245,245,.6);"></div><div class="info"><div class="name">Text muted</div><div class="hex">rgba(245,245,245,.6)</div><div class="var">--v-text-muted</div></div></div>
+        <div class="swatch"><div class="chip" style="background:rgba(245,245,245,.35);"></div><div class="info"><div class="name">Text dim</div><div class="hex">rgba(245,245,245,.35)</div><div class="var">--v-text-dim</div></div></div>
+      </div>
+    </section>
+
+    <!-- ============ Tipografía ============ -->
+    <section id="tipografia">
+      <h3>Tipografía<small>Inter (sans) · Rajdhani (display) · Space Mono (datos) — mono canónica desde BRAND-MONO-FONT-01</small></h3>
+
+      <div class="type-row">
+        <div class="type-label">Display / Hero<br/>Rajdhani 600</div>
+        <div class="type-specimen" style="font-family:var(--v-font-display); font-size:48px; font-weight:600; letter-spacing:.02em; line-height:1;">VANTARE</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">H2 · Rajdhani 600<br/>28px</div>
+        <div class="type-specimen" style="font-family:var(--v-font-display); font-size:28px; font-weight:600;">Sobrevive a la carrera, no a la UI.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">H3 · Rajdhani 600<br/>18px · tracking .2em</div>
+        <div class="type-specimen" style="font-family:var(--v-font-display); font-size:18px; font-weight:600; text-transform:uppercase; letter-spacing:.2em;">Telemetría en vivo</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Body · Inter 400<br/>14px</div>
+        <div class="type-specimen" style="font-size:14px; font-weight:400;">Overlays que no te hacen querer tirar el PC por la ventana.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Body bold · Inter 700<br/>14px</div>
+        <div class="type-specimen" style="font-size:14px; font-weight:700;">Overlays que no te hacen querer tirar el PC por la ventana.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Caption · Inter 700<br/>10px · tracking .22em</div>
+        <div class="type-specimen" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.22em; color:var(--v-text-dim);">LE MANS ULTIMATE · TRACK TEMP</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Dato · Mono 700<br/>48px · tracking tight</div>
+        <div class="type-specimen" style="font-family:var(--v-font-mono); font-size:48px; font-weight:700; letter-spacing:-0.02em;">312.4 <span style="font-size:18px; color:var(--v-text-dim);">km/h</span></div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Delta · Mono 800<br/>75px · tracking tight</div>
+        <div class="type-specimen" style="font-family:var(--v-font-mono); font-size:75px; font-weight:800; letter-spacing:-0.02em; color:var(--v-red-400);">+0.847</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Gear · Mono 800<br/>60px</div>
+        <div class="type-specimen" style="font-family:var(--v-font-mono); font-size:60px; font-weight:800; letter-spacing:-0.02em;">5</div>
+      </div>
+    </section>
+
+    <!-- ============ Espaciado ============ -->
+    <section id="espaciado">
+      <h3>Espaciado y radios<small>Tailwind spacing scale + radios dominantes del código</small></h3>
+      <p class="meta" style="margin-top:8px;">Padding · gap</p>
+      <pre><span class="c">// Frecuentes en el código</span>
+p-3 · p-4 · p-5 · p-6 · p-8
+px-3 py-2 · px-4 py-2 · px-2 py-1
+gap-1.5 · gap-2 · gap-3 · gap-4 · gap-5
+space-y-4 · space-y-5</pre>
+
+      <p class="meta" style="margin-top:24px;">Border radius</p>
+      <div class="card-grid">
+        <div class="card-glass" style="text-align:center;">
+          <div style="width:80px; height:80px; background:var(--v-red-500); border-radius:4px; margin:0 auto 12px;"></div>
+          <code style="font-size:11px;">rounded-sm · 4px</code>
+        </div>
+        <div class="card-glass" style="text-align:center;">
+          <div style="width:80px; height:80px; background:var(--v-red-500); border-radius:6px; margin:0 auto 12px;"></div>
+          <code style="font-size:11px;">rounded-md · 6-8px</code>
+        </div>
+        <div class="card-glass" style="text-align:center;">
+          <div style="width:80px; height:80px; background:var(--v-red-500); border-radius:10px; margin:0 auto 12px;"></div>
+          <code style="font-size:11px;">rounded-lg · 8-12px ★ default</code>
+        </div>
+        <div class="card-glass" style="text-align:center;">
+          <div style="width:80px; height:80px; background:var(--v-red-500); border-radius:14px; margin:0 auto 12px;"></div>
+          <code style="font-size:11px;">rounded-xl · 12-16px</code>
+        </div>
+        <div class="card-glass" style="text-align:center;">
+          <div style="width:80px; height:80px; background:var(--v-red-500); border-radius:18px; margin:0 auto 12px;"></div>
+          <code style="font-size:11px;">rounded-2xl · 16px+</code>
+        </div>
+        <div class="card-glass" style="text-align:center;">
+          <div style="width:80px; height:80px; background:var(--v-red-500); border-radius:9999px; margin:0 auto 12px;"></div>
+          <code style="font-size:11px;">rounded-full · chips/avatars</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Glass y efectos ============ -->
+    <section id="efectos">
+      <h3>Glass y efectos<small>Patrones dominantes del CSS y Tailwind</small></h3>
+      <p class="meta" style="margin-top:8px;">Glass panels</p>
+      <div class="card-grid">
+        <div class="card-sleek">
+          <h4>.card-sleek</h4>
+          <p>bg <code>rgba(20,20,20,.55)</code> · border <code>rgba(245,245,245,.08)</code> · hover translateY(-2px) + shadow rojo.</p>
+        </div>
+        <div class="card-glass">
+          <h4>.card-glass</h4>
+          <p>bg <code>rgba(255,255,255,.02)</code> · backdrop-blur(8px) · border <code>rgba(245,245,245,.08)</code>.</p>
+        </div>
+        <div class="card-accent">
+          <h4>.card-accent</h4>
+          <p>bg <code>rgba(42,0,10,.4)</code> · border <code>rgba(193,18,31,.3)</code> · glow rojo.</p>
+        </div>
+      </div>
+
+      <p class="meta" style="margin-top:32px;">Sombras</p>
+      <div class="swatch-grid">
+        <div class="card-glass" style="text-align:center;"><div style="height:60px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px rgba(0,0,0,.3); border-radius:6px; margin-bottom:12px;"><code style="font-size:11px;">shadow</code></div><code style="font-size:11px;">shadow-lg (default chrome)</code></div>
+        <div class="card-glass" style="text-align:center;"><div style="height:60px; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(193,18,31,.25); border-radius:6px; margin-bottom:12px;"><code style="font-size:11px;">shadow-vantare-red-900/20</code></div><code style="font-size:11px;">botón primario</code></div>
+        <div class="card-glass" style="text-align:center;"><div style="height:60px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 2px 4px rgba(0,0,0,.5); border-radius:6px; margin-bottom:12px;"><code style="font-size:11px;">shadow-inner</code></div><code style="font-size:11px;">widgets telemetría</code></div>
+        <div class="card-glass" style="text-align:center;"><div style="height:60px; display:flex; align-items:center; justify-content:center; box-shadow:0 24px 60px rgba(255,59,59,.18), 0 0 100px rgba(255,59,59,.1); border-radius:6px; margin-bottom:12px;"><code style="font-size:11px;">--v-card-shadow</code></div><code style="font-size:11px;">card-sleek hover</code></div>
+      </div>
+    </section>
+
+    <!-- ============ Botones ============ -->
+    <section id="botones">
+      <h3>Botones<small>Primario · secundario · ghost · disabled</small></h3>
+      <p class="meta" style="margin-top:8px;">Variantes</p>
+      <div class="btn-row">
+        <button class="btn btn-primary">Acción principal</button>
+        <button class="btn btn-secondary">Acción secundaria</button>
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+      </div>
+
+      <p class="meta" style="margin-top:32px;">Con icono</p>
+      <div class="btn-row">
+        <button class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Nuevo overlay
+        </button>
+        <button class="btn btn-secondary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M12 8v4l3 2"/></svg>
+          Beta abierta
+        </button>
+      </div>
+    </section>
+
+    <!-- ============ Cards ============ -->
+    <section id="cards">
+      <h3>Cards<small>Estándar · glass · accent · sleek</small></h3>
+      <div class="card-grid">
+        <div class="card-sleek">
+          <span class="badge" style="margin-bottom:8px;">FEATURE</span>
+          <h4 style="margin-top:8px;">Card estándar</h4>
+          <p>Hover con translateY y glow rojo. Para listas, dashboards, items clicables.</p>
+        </div>
+        <div class="card-glass">
+          <span class="badge badge-info" style="margin-bottom:8px;">PRO</span>
+          <h4 style="margin-top:8px;">Card glass</h4>
+          <p>Transparencia + blur sutil. Para paneles secundarios, info cards, modales.</p>
+        </div>
+        <div class="card-accent">
+          <span class="badge badge-pro" style="margin-bottom:8px;">PRO · ACTIVE</span>
+          <h4 style="margin-top:8px;">Card accent</h4>
+          <p>Fondo rojo oscuro + borde rojo. Para features destacadas, banners, CTAs principales.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Badges ============ -->
+    <section id="badges">
+      <h3>Badges y pills<small>Tiers · estados · categorías</small></h3>
+      <p class="meta" style="margin-top:8px;">Tiers</p>
+      <div class="btn-row">
+        <span class="badge">FREE</span>
+        <span class="badge badge-pro">PRO</span>
+        <span class="badge badge-purple">EXPERIMENTAL</span>
+        <span class="badge" style="background:rgba(168,85,247,.15); color:#c084fc; border-color:rgba(168,85,247,.3);">TESTER</span>
+      </div>
+
+      <p class="meta" style="margin-top:32px;">Estados</p>
+      <div class="btn-row">
+        <span class="badge badge-success"><span class="dot green" style="margin-right:4px;"></span>CONECTADO</span>
+        <span class="badge badge-warning"><span class="dot amber" style="margin-right:4px;"></span>ESPERANDO</span>
+        <span class="badge" style="color:var(--v-red-400); background:rgba(193,18,31,.15); border-color:rgba(193,18,31,.3);"><span class="dot" style="margin-right:4px;"></span>ERROR</span>
+        <span class="badge">PENDIENTE</span>
+      </div>
+    </section>
+
+    <!-- ============ Inputs ============ -->
+    <section id="inputs">
+      <h3>Inputs<small>Default · focus · disabled</small></h3>
+      <div class="input-row">
+        <input class="input" placeholder="Buscar overlay..." />
+        <input class="input" value="LMU · 24h Le Mans" />
+        <input class="input" placeholder="Disabled" disabled />
+      </div>
+    </section>
+
+    <!-- ============ Stats ============ -->
+    <section id="stats">
+      <h3>Stats y hero<small>Para dashboard y secciones numéricas</small></h3>
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="label">FPS</div>
+          <div class="value" style="color:var(--v-success);">144</div>
+          <div class="delta pos">+12 vs RaceLabs</div>
+        </div>
+        <div class="stat">
+          <div class="label">Latency</div>
+          <div class="value">12ms</div>
+          <div class="delta pos">-3ms</div>
+        </div>
+        <div class="stat">
+          <div class="label">CPU</div>
+          <div class="value">8%</div>
+          <div class="delta">estable</div>
+        </div>
+        <div class="stat">
+          <div class="label">Gap ahead</div>
+          <div class="value" style="color:var(--v-red-400);">-0.847</div>
+          <div class="delta neg">+0.1</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Telemetría ============ -->
+    <section id="telemetry">
+      <h3>Telemetría (overlay)<small>Fondo transparente · datos grandes mono · header uppercase</small></h3>
+      <div class="telemetry">
+        <div class="cell">
+          <div class="num" style="color:var(--v-text);">312</div>
+          <div class="lbl">SPEED · KM/H</div>
+        </div>
+        <div class="cell">
+          <div class="num" style="color:var(--v-text);">5</div>
+          <div class="lbl">GEAR</div>
+        </div>
+        <div class="cell">
+          <div class="num" style="color:var(--v-success);">98%</div>
+          <div class="lbl">THROTTLE</div>
+        </div>
+        <div class="cell">
+          <div class="num" style="color:var(--v-red-400);">62%</div>
+          <div class="lbl">BRAKE</div>
+        </div>
+      </div>
+      <p class="meta" style="margin-top:12px;">Patrón overlay: fondo semi-transparente, números en Space Mono 700-800, labels en Inter 700 10px tracking .22em uppercase.</p>
+    </section>
+
+    <!-- ============ Estados ============ -->
+    <section id="estados">
+      <h3>Estados<small>Default · hover · focus · active · disabled</small></h3>
+      <div class="card-grid">
+        <div class="card-sleek" style="text-align:center;">
+          <span class="meta">Default</span>
+          <div style="margin-top:12px;"><button class="btn btn-primary">Botón</button></div>
+        </div>
+        <div class="card-sleek" style="text-align:center;">
+          <span class="meta">Hover (pasa por encima)</span>
+          <div style="margin-top:12px;"><button class="btn btn-primary" style="filter:brightness(1.1); box-shadow:0 0 24px rgba(193,18,31,.45);">Botón</button></div>
+        </div>
+        <div class="card-sleek" style="text-align:center;">
+          <span class="meta">Active (seleccionado)</span>
+          <div style="margin-top:12px;"><button class="btn btn-secondary" style="background:rgba(193,18,31,.15); border-color:rgba(193,18,31,.5); color:var(--v-text);">Activo</button></div>
+        </div>
+        <div class="card-sleek" style="text-align:center;">
+          <span class="meta">Disabled</span>
+          <div style="margin-top:12px;"><button class="btn btn-primary" disabled>No disponible</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Do / Don't ============ -->
+    <section id="do-dont">
+      <h3>Do / Don't<small>Reglas críticas para mantener consistencia</small></h3>
+
+      <div class="do-dont">
+        <div class="do">
+          <h5>✓ Hacer</h5>
+          <code>text-white/60</code> para texto secundario.
+        </div>
+        <div class="dont">
+          <h5>✗ Evitar</h5>
+          <code>text-gray-400</code> para texto secundario (Tailwind gray).
+        </div>
+      </div>
+
+      <div class="do-dont" style="margin-top:12px;">
+        <div class="do">
+          <h5>✓ Hacer</h5>
+          Acento rojo: <code>bg-vantare-red-500/15 text-vantare-red-400</code>.
+        </div>
+        <div class="dont">
+          <h5>✗ Evitar</h5>
+          Acento naranja <code>#FF6B35</code> en producción (no es la marca).
+        </div>
+      </div>
+
+      <div class="do-dont" style="margin-top:12px;">
+        <div class="do">
+          <h5>✓ Hacer</h5>
+          Chrome UI en <code>uppercase tracking-widest text-xs font-bold</code>.
+        </div>
+        <div class="dont">
+          <h5>✗ Evitar</h5>
+          Chrome UI en <code>text-base font-normal</code> sin tracking.
+        </div>
+      </div>
+
+      <div class="do-dont" style="margin-top:12px;">
+        <div class="do">
+          <h5>✓ Hacer</h5>
+          Datos numéricos en <code>font-mono font-black tracking-tight</code>.
+        </div>
+        <div class="dont">
+          <h5>✗ Evitar</h5>
+          Datos numéricos con <code>font-tech</code> (no existe) o sans-serif.
+        </div>
+      </div>
+
+      <div class="do-dont" style="margin-top:12px;">
+        <div class="do">
+          <h5>✓ Hacer</h5>
+          Botón primario con gradiente <code>from-vantare-red-500 to-[#9a0606]</code>.
+        </div>
+        <div class="dont">
+          <h5>✗ Evitar</h5>
+          Botón primario con <code>bg-blue-500</code> o cualquier color fuera de la paleta.
+        </div>
+      </div>
+
+      <div class="do-dont" style="margin-top:12px;">
+        <div class="do">
+          <h5>✓ Hacer</h5>
+          Glass via <code>bg-white/[0.02] border-white/10 backdrop-blur-sm</code>.
+        </div>
+        <div class="dont">
+          <h5>✗ Evitar</h5>
+          <code>backdrop-blur</code> global en <code>body</code> (consume FPS en OBS).
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Snippet de código ============ -->
+    <section id="codigo">
+      <h3>Snippet de código<small>Para copiar y pegar en componentes nuevos</small></h3>
+
+      <p class="meta" style="margin-top:8px;">Botón primario</p>
+      <pre><span class="c">&lt;!-- Reutilizar la clase utilitaria .btn-primary definida en index.css --&gt;</span>
+<span class="p">&lt;button</span> <span class="k">class</span>=<span class="s">"btn-primary px-4 py-2 rounded-lg font-bold uppercase tracking-widest text-xs"</span><span class="p">&gt;</span>
+  Acción principal
+<span class="p">&lt;/button&gt;</span>
+
+<span class="c">&lt;!-- O con Tailwind puro: --&gt;</span>
+<span class="p">&lt;button</span> <span class="k">class</span>=<span class="s">"px-4 py-2 rounded-lg font-bold uppercase tracking-widest text-xs
+  bg-gradient-to-br from-vantare-red-500 to-[#9a0606]
+  border border-white/10 shadow-vantare-red-900/20
+  hover:from-vantare-red-400 hover:to-vantare-red-600
+  transition-colors"</span><span class="p">&gt;</span>
+  Acción principal
+<span class="p">&lt;/button&gt;</span></pre>
+
+      <p class="meta" style="margin-top:24px;">Card glass</p>
+      <pre><span class="p">&lt;div</span> <span class="k">class</span>=<span class="s">"rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm p-5"</span><span class="p">&gt;</span>
+  <span class="c">&lt;!-- contenido --&gt;</span>
+<span class="p">&lt;/div&gt;</span></pre>
+
+      <p class="meta" style="margin-top:24px;">Section header</p>
+      <pre><span class="p">&lt;header</span> <span class="k">class</span>=<span class="s">"flex items-center justify-between mb-4"</span><span class="p">&gt;</span>
+  <span class="p">&lt;h2</span> <span class="k">class</span>=<span class="s">"font-display text-lg uppercase tracking-widest text-white"</span><span class="p">&gt;</span>Sección<span class="p">&lt;/h2&gt;</span>
+  <span class="p">&lt;span</span> <span class="k">class</span>=<span class="s">"text-[10px] uppercase tracking-widest text-white/40"</span><span class="p">&gt;</span>metadata<span class="p">&lt;/span&gt;</span>
+<span class="p">&lt;/header&gt;</span></pre>
+    </section>
+
+    <footer>
+      <p>Vantare Style Guide · generado a partir del código real del repo. Si un token cambia, actualízalo aquí también.</p>
+      <p style="margin-top:6px;">Documentos relacionados: <a href="./BRAND.md" style="color:var(--v-red-400);">BRAND.md</a> · <a href="./DESIGN.md" style="color:var(--v-red-400);">DESIGN.md</a> · <a href="./marketing/02-brand-strategy.md" style="color:var(--v-red-400);">brand-strategy</a></p>
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>

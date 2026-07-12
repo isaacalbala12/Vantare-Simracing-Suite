@@ -2,6 +2,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { ChainRunnerProvider } from "../launcher/chain-store";
+import { LauncherStoreProvider } from "../launcher/launcher-store";
 import { LauncherPage } from "./LauncherPage";
 
 const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
@@ -27,7 +28,9 @@ vi.mock("@wailsio/runtime", () => ({
 function renderPage() {
   return render(
     <ChainRunnerProvider>
-      <LauncherPage />
+      <LauncherStoreProvider>
+        <LauncherPage />
+      </LauncherStoreProvider>
     </ChainRunnerProvider>,
   );
 }
@@ -37,6 +40,42 @@ function dispatch(name: string, data: unknown) {
     for (const handler of listeners.get(name) ?? []) {
       handler({ data });
     }
+  });
+}
+
+function dispatchSnapshot(lastScanAt: string | null = null) {
+  dispatch("launcher:snapshot", {
+    revision: 1,
+    apps: [
+      {
+        id: "lmu",
+        displayName: "Le Mans Ultimate",
+        abbreviation: "LMU",
+        category: "simulator",
+        launchMethod: "steam-uri",
+        steamAppId: 2399420,
+        detected: true,
+        gradientFrom: "#ff3b3b",
+        gradientTo: "#9a0606",
+        availability: {
+          catalogued: true,
+          found: true,
+          installed: true,
+          launchable: true,
+        },
+      },
+    ],
+    vantareProfiles: [
+      {
+        id: "creator",
+        name: "Creador de Contenido",
+        description: "LMU + OBS + Spotify",
+        steps: [{ appId: "lmu", delay: 0 }],
+      },
+    ],
+    userProfiles: [],
+    activeChains: [],
+    discovery: { scanning: false, lastScanAt, error: null },
   });
 }
 
@@ -53,43 +92,30 @@ describe("LauncherPage", () => {
     expect(screen.queryByText(/próximamente/i)).toBeNull();
   });
 
-  it("discovers apps and lists detected apps from the backend", () => {
+  it("requests one shared snapshot and lists apps from it", () => {
     renderPage();
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:apps:discover");
-    dispatch("launcher:apps:detected", {
-      apps: [
-        {
-          id: "lmu",
-          displayName: "Le Mans Ultimate",
-          abbreviation: "LMU",
-          category: "simulator",
-          launchMethod: "steam-uri",
-          steamAppId: 2399420,
-          detected: true,
-          gradientFrom: "#ff3b3b",
-          gradientTo: "#9a0606",
-        },
-      ],
-    });
+    expect(Events.Emit).toHaveBeenCalledTimes(2);
+    expect(Events.Emit).toHaveBeenNthCalledWith(1, "launcher:apps:discover");
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:snapshot:get");
+    dispatchSnapshot();
     expect(screen.getByTestId("app-row-lmu")).toBeTruthy();
   });
 
-  it("lists profiles from the backend", () => {
+  it("lists profiles from the shared snapshot", () => {
     renderPage();
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:profiles:list");
-    dispatch("launcher:profiles:updated", {
-      profiles: [
-        {
-          id: "creator",
-          name: "Creador de Contenido",
-          description: "LMU + OBS + Spotify",
-          steps: [{ appId: "lmu", delay: 0 }],
-        },
-      ],
-    });
+    dispatchSnapshot();
     expect(screen.getByTestId("profile-card-creator")).toBeTruthy();
     expect(
       screen.getByTestId("profile-launch-creator"),
     ).toBeTruthy();
+  });
+
+  it("waits for the initial discovery before opening onboarding", () => {
+    renderPage();
+    dispatchSnapshot();
+    expect(screen.queryByTestId("launcher-onboarding")).toBeNull();
+
+    dispatchSnapshot("2026-07-11T16:00:00.000Z");
+    expect(screen.getByTestId("launcher-onboarding")).toBeTruthy();
   });
 });

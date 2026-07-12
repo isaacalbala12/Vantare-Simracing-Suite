@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { V52Shell } from "./V52Shell";
+import { LauncherStoreProvider } from "../launcher/launcher-store";
 
 const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
 
@@ -51,14 +52,16 @@ afterEach(() => cleanup());
 describe("V52Shell", () => {
   it("renders top navigation and children", () => {
     render(
-      <V52Shell
+      <LauncherStoreProvider>
+        <V52Shell
         activeSection="dashboard"
         onNavigate={vi.fn()}
         version="v0.1.0.3"
         sourceStatus={null}
       >
         <div data-testid="child-content">content</div>
-      </V52Shell>,
+        </V52Shell>
+      </LauncherStoreProvider>,
     );
     expect(screen.getByText("Hub")).toBeTruthy();
     expect(screen.getByText("Launcher")).toBeTruthy();
@@ -67,34 +70,43 @@ describe("V52Shell", () => {
 
   it("keeps the quick access dock with dynamic profile buttons", () => {
     render(
-      <V52Shell
+      <LauncherStoreProvider>
+        <V52Shell
         activeSection="dashboard"
         onNavigate={vi.fn()}
         version="v0.1.0.3"
         sourceStatus={null}
       >
         <div />
-      </V52Shell>,
+        </V52Shell>
+      </LauncherStoreProvider>,
     );
     // Botón de navegación a la página Launcher
     expect(screen.getByLabelText("Ir a Launcher")).toBeTruthy();
     // El dock pide perfiles y renderiza uno por perfil (auto-suscripción)
-    dispatch("launcher:profiles:updated", {
-      profiles: [{ id: "creator", name: "Creador de Contenido", steps: [] }],
+    dispatch("launcher:snapshot", {
+      revision: 1,
+      apps: [],
+      vantareProfiles: [{ id: "creator", name: "Creador de Contenido", steps: [] }],
+      userProfiles: [],
+      activeChains: [],
+      discovery: { scanning: false, lastScanAt: null, error: null },
     });
     expect(screen.getByTestId("dock-profile-creator")).toBeTruthy();
   });
 
   it("does not render a sidebar navigation panel", () => {
     render(
-      <V52Shell
+      <LauncherStoreProvider>
+        <V52Shell
         activeSection="dashboard"
         onNavigate={vi.fn()}
         version="v0.1.0.3"
         sourceStatus={null}
       >
         <div />
-      </V52Shell>,
+        </V52Shell>
+      </LauncherStoreProvider>,
     );
     expect(screen.queryByText("Navegación")).toBeNull();
     expect(screen.queryByTestId("v52-sidebar-dashboard")).toBeNull();

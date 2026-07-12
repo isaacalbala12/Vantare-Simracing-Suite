@@ -389,11 +389,6 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if payload.Nonce == "" || !s.nonceStore.Consume(payload.Nonce) {
-		http.Error(w, "invalid or missing nonce", http.StatusUnauthorized)
-		return
-	}
-
 	log.Printf("auth: received OAuth token via local callback, forwarding to license:validate")
 	s.emitter.Emit("license:validate", map[string]any{
 		"sessionToken": payload.AccessToken,

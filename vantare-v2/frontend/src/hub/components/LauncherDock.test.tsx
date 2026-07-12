@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { LauncherDock } from "./LauncherDock";
 import * as chainStore from "../launcher/chain-store";
+import { LauncherStoreProvider } from "../launcher/launcher-store";
 
 // ---------------------------------------------------------------------------
 // Mock Wails runtime events
@@ -36,6 +37,36 @@ function dispatch(name: string, data: unknown) {
   });
 }
 
+function renderDock() {
+  return render(
+    <LauncherStoreProvider>
+      <LauncherDock onNavigate={vi.fn()} />
+    </LauncherStoreProvider>,
+  );
+}
+
+function dispatchProfiles(profiles: Array<Record<string, unknown>>) {
+  dispatch("launcher:snapshot", {
+    revision: 1,
+    apps: [],
+    vantareProfiles: profiles,
+    userProfiles: [],
+    activeChains: [],
+    discovery: { scanning: false, lastScanAt: null, error: null },
+  });
+}
+
+function dispatchActiveChain() {
+  dispatch("launcher:snapshot", {
+    revision: 2,
+    apps: [],
+    vantareProfiles: [],
+    userProfiles: [],
+    activeChains: [{ profileId: "creator", status: "running" }],
+    discovery: { scanning: false, lastScanAt: null, error: null },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Mock chain-store hooks – each test sets its own return values
 // ---------------------------------------------------------------------------
@@ -60,28 +91,28 @@ const CREATOR_PROFILE = {
 
 describe("LauncherDock", () => {
   it("requests the profile list on mount", () => {
-    render(<LauncherDock onNavigate={vi.fn()} />);
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:profiles:list");
+    renderDock();
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:snapshot:get");
   });
 
   it("renders one button per profile received via event", () => {
-    render(<LauncherDock onNavigate={vi.fn()} />);
-    dispatch("launcher:profiles:updated", {
-      profiles: [
+    renderDock();
+    dispatchProfiles([
         { id: "creator", name: "Creador de Contenido", steps: [] },
         { id: "pro", name: "Pro", steps: [] },
-      ],
-    });
+    ]);
     expect(screen.getByTestId("dock-profile-creator")).toBeTruthy();
     expect(screen.getByTestId("dock-profile-pro")).toBeTruthy();
   });
 
   it("emits launcher:profile:launch when a profile button is clicked", () => {
     const onNavigate = vi.fn();
-    render(<LauncherDock onNavigate={onNavigate} />);
-    dispatch("launcher:profiles:updated", {
-      profiles: [{ id: "creator", name: "Creador de Contenido", steps: [] }],
-    });
+    render(
+      <LauncherStoreProvider>
+        <LauncherDock onNavigate={onNavigate} />
+      </LauncherStoreProvider>,
+    );
+    dispatchProfiles([{ id: "creator", name: "Creador de Contenido", steps: [] }]);
     fireEvent.click(screen.getByTestId("dock-profile-creator"));
     expect(Events.Emit).toHaveBeenCalledWith("launcher:profile:launch", {
       id: "creator",
@@ -90,7 +121,11 @@ describe("LauncherDock", () => {
 
   it("navigates to the launcher page from the list button", () => {
     const onNavigate = vi.fn();
-    render(<LauncherDock onNavigate={onNavigate} />);
+    render(
+      <LauncherStoreProvider>
+        <LauncherDock onNavigate={onNavigate} />
+      </LauncherStoreProvider>,
+    );
     fireEvent.click(screen.getByRole("button", { name: /ir a launcher/i }));
     expect(onNavigate).toHaveBeenCalledWith("launcher");
   });
@@ -101,10 +136,8 @@ describe("LauncherDock", () => {
     mockUseChainState.mockReturnValue(undefined); // no active chain
     mockUseLastResult.mockReturnValue("success");
 
-    render(<LauncherDock onNavigate={vi.fn()} />);
-    dispatch("launcher:profiles:updated", {
-      profiles: [CREATOR_PROFILE],
-    });
+    renderDock();
+    dispatchProfiles([CREATOR_PROFILE]);
 
     // Should have the success border badge element
     expect(
@@ -116,10 +149,8 @@ describe("LauncherDock", () => {
     mockUseChainState.mockReturnValue(undefined);
     mockUseLastResult.mockReturnValue(undefined);
 
-    render(<LauncherDock onNavigate={vi.fn()} />);
-    dispatch("launcher:profiles:updated", {
-      profiles: [CREATOR_PROFILE],
-    });
+    renderDock();
+    dispatchProfiles([CREATOR_PROFILE]);
 
     const btn = screen.getByTestId("dock-profile-creator") as HTMLButtonElement;
     // The title attribute should include the count
@@ -142,10 +173,8 @@ describe("LauncherDock", () => {
     });
     mockUseLastResult.mockReturnValue(undefined);
 
-    render(<LauncherDock onNavigate={vi.fn()} />);
-    dispatch("launcher:profiles:updated", {
-      profiles: [CREATOR_PROFILE],
-    });
+    renderDock();
+    dispatchProfiles([CREATOR_PROFILE]);
 
     // Should render the SVG ring element
     expect(screen.getByTestId("dock-ring-creator")).toBeTruthy();
@@ -159,19 +188,24 @@ describe("LauncherDock", () => {
     mockUseChainState.mockReturnValue(undefined);
     mockUseLastResult.mockReturnValue(undefined);
 
-    render(<LauncherDock onNavigate={vi.fn()} />);
-    dispatch("launcher:profiles:updated", {
-      profiles: [
+    renderDock();
+    dispatchProfiles([
         { id: "zulu", name: "Zulu", steps: [], isFavorite: false },
         { id: "alpha", name: "Alpha", steps: [], isFavorite: true },
         { id: "beta", name: "Beta", steps: [], isFavorite: false },
-      ],
-    });
+    ]);
 
     const buttons = screen.getAllByTestId(/^dock-profile-/);
     // alpha (favorite) first, then beta, then zulu (alphabetical among non-favorites)
     expect(buttons[0].getAttribute("data-testid")).toBe("dock-profile-alpha");
     expect(buttons[1].getAttribute("data-testid")).toBe("dock-profile-beta");
     expect(buttons[2].getAttribute("data-testid")).toBe("dock-profile-zulu");
+  });
+
+  it("shows active chain status outside the Launcher page", () => {
+    renderDock();
+    dispatchActiveChain();
+    expect(screen.getByTestId("dock-active-creator")).toBeTruthy();
+    expect(screen.getByLabelText("Cadena creator running")).toBeTruthy();
   });
 });

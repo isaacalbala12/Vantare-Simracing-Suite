@@ -1,42 +1,27 @@
 import type { AppSettings } from "../pages/SettingsPage";
+import type {
+  LaunchProfile,
+  LauncherAppEntry,
+} from "./launcher-contract";
 
-export type LauncherAppCategory =
-  | "simulator"
-  | "streaming"
-  | "audio"
-  | "telemetry"
-  | "utility";
-
-export type LauncherAppEntry = {
-  id: string;
-  displayName: string;
-  abbreviation: string;
-  category: LauncherAppCategory;
-  launchMethod: "steam-uri" | "executable";
-  steamAppId?: number;
-  executablePath?: string;
-  args?: string;
-  detected: boolean;
-  gradientFrom: string;
-  gradientTo: string;
-  isFavorite?: boolean;
-};
-
-export type LaunchStep = { appId: string; delay: number };
-
-export type LaunchProfile = {
-  id: string;
-  name: string;
-  description?: string;
-  steps: LaunchStep[];
-  isFavorite?: boolean;
-  notes?: string;
-  launchCount?: number;
-  lastLaunchedAt?: string | null;
-  avgChainDurationMs?: number;
-  launchOnWindowsStartup?: boolean;
-  hotkey?: string;
-};
+export type {
+  AlreadyRunningPolicy,
+  CancelPolicy,
+  ExitPolicy,
+  FailurePolicy,
+  LaunchPolicy,
+  LaunchProfile,
+  LaunchStep,
+  LauncherApp,
+  LauncherAppCategory,
+  LauncherAppEntry,
+  LauncherAvailability,
+  LauncherCommandError,
+  LauncherDiscovery,
+  LauncherActiveChain,
+  LauncherSnapshot,
+  RetryPolicy,
+} from "./launcher-contract";
 
 // Helpers puros
 
@@ -82,6 +67,11 @@ export function isProfileLaunchable(
     profile.steps.length > 0 &&
     profile.steps.every((s) => appIds.has(s.appId))
   );
+}
+
+export function hasDuplicateSteps(profile: LaunchProfile): boolean {
+  const ids = profile.steps.map((step) => step.appId).filter(Boolean);
+  return new Set(ids).size !== ids.length;
 }
 
 // estimateChainDuration estima la duración total de una cadena en ms.

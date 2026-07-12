@@ -1,3 +1,131 @@
+Nota LAUNCHER-V3-SHELL-ICONLOCATION-FIX (2026-07-12):
+- Corregido el caso de shortcuts con `TargetPath` genérico (Discord `Update.exe`): el resolver lee `IShellLinkW.GetIconLocation`, extrae el recurso indicado sin la flecha del `.lnk` y solo después usa el ejecutable objetivo/Shell.
+- Smoke Windows: Discord pasó de icono genérico (`551` bytes) a recurso de shortcut válido (`1213` bytes); MoTeC, SimHub, LMU, OBS, Spotify y CrewChief siguen resolviendo iconos.
+- Checks: Go Launcher/Wails PASS; smoke de iconos PASS; frontend build PASS; `go build` PASS; `git diff --check` PASS.
+
+Nota LAUNCHER-V3-HYBRID-ICON-RESOLVER (2026-07-12):
+- Implementado resolver híbrido: el `.lnk` solo sirve para discovery y `TargetPath`; el icono se obtiene del ejecutable objetivo mediante Shell/Jumbo, sin flecha de acceso directo. Fallbacks: Shell del ejecutable, recurso del `.exe` y Shell del shortcut personalizado.
+- La capa frontend conserva la prioridad de assets oficiales locales cuando existan; actualmente no se añaden assets de marca no proporcionados, por lo que las instalaciones reales usan el resolver Windows.
+- Checks: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; smoke Windows PASS para 7 apps; frontend build PASS; `go build` PASS; `git diff --check` PASS.
+
+Nota LAUNCHER-V3-SHELL-ICON-PATH (2026-07-12):
+- El resolver Windows prioriza el mismo path de Explorer: `.lnk` recursivo → `SHGetImageList(SHIL_JUMBO)`/Shell → ejecutable. Discovery usa el destino del shortcut cuando no hay registro ni ruta conocida.
+- Se añadió caché de shortcuts para evitar repetir escaneos COM durante discovery y renderizado. Smoke real: CrewChief detectado por shortcut; LMU, OBS, Spotify, MoTeC, SimHub, CrewChief y Discord con icono resuelto.
+- Checks: frontend build PASS; `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `go build` PASS; `git diff --check` PASS. Suite Playwright y suite frontend completa permanecen verdes de la iteración anterior; lint conserva 4 errores preexistentes fuera de scope.
+
+Nota LAUNCHER-V3-ICON-RESOLUTION-FIX (2026-07-11):
+- Corregidas las rutas reales de instalación: MoTeC (`app.exe`, `i2.exe`, `MoTeC.exe`, incluyendo `Program Files (x86)`) y SimHub (`SimHubWPF.exe`, `SimHub.exe`, incluyendo `Program Files (x86)`).
+- La búsqueda de `.lnk` ahora recorre de forma limitada Desktop y Start Menu, y el resolver prueba iconos de alta resolución del ejecutable y del acceso directo antes del fallback de baja resolución.
+- Smoke Windows: MoTeC resuelto en `C:\Program Files\MoTeC\app.exe` con icono; SimHub resuelto en `C:\Program Files (x86)\SimHub\SimHubWPF.exe` con icono; Discord/Spotify/LMU/OBS también con icono.
+- Checks: Go Launcher/Wails PASS; smoke de iconos PASS; frontend Launcher 13/13 PASS; suite frontend 173 archivos / 1591 PASS; build frontend y `go build` PASS; Playwright smoke PASS (7 apps, 2 perfiles, desktop/mobile). `go test ./...` no terminó dentro del timeout de 120s en esta iteración; los fallos globales conocidos de `internal/server` quedan fuera de scope.
+
+Nota LAUNCHER-V3-RELIABILITY-FIX (2026-07-11):
+- Corregido el primer escaneo: `LauncherStore` dispara `launcher:apps:discover` al montar y el onboarding espera al snapshot con `lastScanAt` o error antes de mostrarse.
+- El onboarding lista las apps launchable detectadas con sus badges; el snapshot incorpora iconos extraídos offline. LMU resuelve también el ejecutable instalado en las librerías Steam para mostrar su icono real sin CDN.
+- Checks: tests focalizados frontend 9/9 PASS; `pnpm --dir frontend test` 173 archivos / 1591 PASS; `pnpm --dir frontend build` PASS; `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; Playwright smoke PASS (7 apps, 2 perfiles, desktop/mobile); build Wails `bin/vantare.exe` PASS.
+- `pnpm --dir frontend lint` mantiene 4 errores preexistentes fuera de scope en Calendar y `wails-runtime-topbar-mock.ts`. `go test ./...` mantiene fallos preexistentes en `internal/server` (nonce/puerto dinámico).
+
+Nota STRATEGY-PLANS-01 (2026-07-11):
+- Creados tres documentos de planificación Strategy: Producto A ejecutable y exhaustivo; Productos B/C como guías generales condicionadas al DoD de la fase anterior.
+- A: `docs/superpowers/plans/2026-07-11-strategy-product-a-manual-calculator.md` — 9 fases, TDD, motor Go clean-room, Fuel+VE, pit model, tyres por rueda, solver/ranking, UI, calendario, export y verificación.
+- B: `docs/superpowers/plans/2026-07-11-strategy-product-b-telemetry-guide.md` — observaciones, calidad de muestras, confianza, propuestas y replay; requiere nuevo plan tras cerrar A.
+- C: `docs/superpowers/plans/2026-07-11-strategy-product-c-live-guide.md` — state machine, seguimiento, replanificación confirmable, integraciones y chaos/replay; requiere A+B cerrados.
+- TinyPedal queda exclusivamente como referencia funcional GPLv3; resultados matemáticos similares son esperables, pero código/fixtures/formatos se implementan clean-room.
+- Estado: PLANIFICADO; sin código implementado.
+
+Nota STRATEGY-RESEARCH-01 (2026-07-11):
+- Objetivo: auditar Fuel Calculator, Tyre Strategy Planner, consumo live e historial de stints de TinyPedal y definir una dirección propia para Vantare.
+- Fuente auditada: `TinyPedal/TinyPedal` commit `ca52517b68295d6e71fd650e132bad081f82de8c`, releases hasta `v2.48.0`.
+- Documento canónico: `docs/research/strategy-planner-tinypedal-analysis.md`.
+- Decisión propuesta: una arquitectura común y tres entregas independientes: A) calculador manual, B) telemetría asistida, C) estratega live. Se concreta y planifica A primero; B y C reservan contratos y se especifican tras medir la fase anterior.
+- Restricción legal: TinyPedal es GPLv3; referencia funcional clean-room, sin portar código. No se encontró licencia raíz de Vantare durante la auditoría.
+- Investigación sin código Strategy; el plan ejecutable de Producto A y las guías B/C se crearon después en `STRATEGY-PLANS-01`.
+- Estado: INVESTIGACIÓN DOCUMENTADA Y DECISIONES CERRADAS; ejecución gobernada por los tres documentos Strategy.
+
+Nota LAUNCHER-V3-PLAN (2026-07-11):
+- Objetivo: refactor contenido del subsistema Launcher para catálogo completo, detección reparable, logos offline, snapshot/store único, ejecución observable y control operativo.
+- Decisiones de producto cerradas con el usuario: 55 respuestas incorporadas; alcance final = Launcher secuencial con seguimiento, políticas configurables, close/restart, dock, hotkeys, autostart, trigger opcional LMU, onboarding y notificaciones.
+- Plan maestro: `docs/superpowers/plans/2026-07-11-launcher-v3-reliability.md`.
+- Estrategia: 8 fases con TDD, commits pequeños, gates por fase, smoke Wails/Playwright y retirada final de contratos legacy.
+- Fuera de alcance: import/export, cloud, plugins, scripts/comandos genéricos, historial persistente y rediseño visual.
+- La skill `vantare-core` no se usa como fuente de verdad por indicación expresa del usuario.
+- Estado: PLANIFICADO, sin cambios de código.
+
+Nota LAUNCH-1C (2026-07-10):
+- Objetivo: cerrar smoke de checkout Polar **produccion** sin pago real (sin presupuesto test).
+- Proyecto Supabase: `ombjshwzqgeisazijduq` (oficial). Sin merge PR, sin tag, sin release publico.
+- Script smoke: `supabase/.temp/smoke-prod-billing.ps1` (gitignored). Mapping aplicado via `supabase/.temp/polar-prod-map.env` (gitignored, no commiteado).
+- `POLAR_PRODUCT_MAP` prod re-aplicado (minificado, ASCII, IDs prod):
+  - `launch_lifetime` -> `b1b1e348-acd6-4a81-ba67-db6d98aca2e6`
+  - `pro_monthly` -> `0f91f52f-f92f-4a7a-9782-da2ec44cf8b8`
+  - Sin IDs sandbox (`fd15a961...`, `41cffd72...`). Ambos -> entitlement `bundle`.
+- Resultados smoke prod (2026-07-10, sin abrir checkout ni comprar):
+  - Auth JWT: OK (`state_password_grant`, usuario `fase2g.smoke.1783629293344@gmail.com`)
+  - `launch_lifetime`: OK HTTP 200, URL `polar.sh/checkout/...` (prod, no sandbox)
+  - `pro_monthly`: OK HTTP 200, URL `polar.sh/checkout/...` (prod, no sandbox)
+  - Spoof `forbidden_field`: OK HTTP 400
+  - `mapping_invalid_json`: resuelto (ya no aparece)
+- **No validado** (requiere pago real): webhook prod `order.paid` 202, `user_entitlements`, `billing_subscriptions`, billing portal prod end-to-end.
+- Estado gates:
+  - **GO** generar checkout produccion (API + URLs Polar prod)
+  - **NO-GO** venta publica hasta smoke de pago real o aceptacion explicita del riesgo
+- `VITE_BILLING_ENABLED`: default en codigo sigue `false` (`billing-client.ts` solo activa con `=== "true"`). No activado en pipeline release publico este corte.
+- Secrets: no tocados en este cierre (solo documentacion). OAT/whsec/map ya aplicados en sesiones previas.
+- Checklist pendiente (cuando haya presupuesto ~4.99 EUR):
+  1. Pago real controlado **Pro Monthly** (4.99 EUR) con cuenta smoke dedicada
+  2. Verificar webhook Polar prod responde **202** y escribe `license_events`
+  3. Verificar `user_entitlements` -> `bundle` activo (mensual)
+  4. Verificar fila en `billing_subscriptions` coherente con Polar
+  5. Verificar billing portal produccion (abrir sesion, volver a app)
+  6. Cancelar suscripcion y/o refund en Polar si procede
+  7. Revalidar en app: Ajustes -> "Actualizar estado de licencia"
+  8. Solo entonces valorar `VITE_BILLING_ENABLED=true` en release (Fase 2H)
+- Plan Polar: `docs/superpowers/plans/2026-07-09-fase-2-polar-integration.md` seccion Fase 2H / Launch-1C.
+- Estado: ✅ CERRADO (checkout prod smoke sin pago)
+
+Nota LAUNCH-0.5-COMMIT (2026-07-09):
+- Branch: `launch/polar-billing` — commit `cc84a4b` (68 archivos, solo billing/licencia Polar Fase 1.6–2G).
+- Excluido del commit: calendar, launcher, marketing, pnpm-workspace, smoke scripts, temporales.
+- Push: **pendiente** (confirmar con humano).
+- Estado: ✅ CERRADO
+
+Nota LAUNCH-0-AUDIT (2026-07-09):
+- Objetivo: auditoría pre-producción billing Polar — sin deploy prod, sin activar `VITE_BILLING_ENABLED` en release.
+- Tests: `pnpm --dir frontend test` 164 files / 1570 PASS; `pnpm --dir frontend build` OK; `deno test supabase/functions` 79 PASS; `go test ./internal/license/...` PASS.
+- Secretos: `.env` / `apps/desktop/.env` locales con service role (gitignored); nada trackeado en `git ls-files` (`.env.local`, `smoke-jwt`, `smoke-session.json`).
+- Playwright E2E: no hay `playwright.config.ts`; checklist billing cubierto por Vitest (`billing-client`, `PaywallScreen`, `AccountSettings`, `entitlements-refresh`).
+- Riesgo bloqueante pre-prod: working tree sucio (billing untracked + mezcla launcher/calendar); commits ordenados pendientes antes de Launch-1.
+- Launch-1 (humano): Polar prod org + productos, webhook prod, `supabase secrets set` prod, deploy EF, `VITE_BILLING_ENABLED=true` solo en pipeline release, smoke post-deploy, rollback = `VITE_BILLING_ENABLED=false` + revert secrets.
+- Recomendación Launch-0: **no-go a producción** hasta commit limpio billing + Launch-1 checklist humano.
+- Estado: ✅ CERRADO (auditoría)
+
+Nota FASE-2G-SMOKE (2026-07-09):
+- Objetivo: smoke GUI post-pago Polar — login → premium activo → Hub desbloqueado → refresh/reset PC en Ajustes.
+- Usuario smoke: `fase2g.smoke.1783629293344@gmail.com` (credenciales en `%TEMP%\vantare-fase2g-state.json`, gitignored).
+- Supabase oficial `ombjshwzqgeisazijduq`: `user_entitlements` con `bundle` + `active` (Polar lifetime); RPC `get_account_entitlements` OK con huella real del PC.
+- **Smoke GUI PASS (2026-07-09):** `wails3 dev` + login email → Ajustes → “Actualizar estado de licencia” → **“Acceso lifetime activo.”** Diagnóstico: `mock_runtime=false`, `state=active`, `entitlements=["bundle"]`, `deviceOK=true`, `tokenLen=843`, refresh `unlocked=true`.
+- Bugs corregidos en este corte:
+  1. `frontend/vite.config.ts`: el mock `@wailsio/runtime` solo con `VITE_RUNTIME_MOCK` (harnesses); `wails3 dev` usa runtime real → Go.
+  2. `internal/license/types.go` + `service.go`: `lastValidated` como RFC3339 string en wire.
+  3. `frontend/src/lib/entitlements-refresh.ts`: correlación refresh/reset + logs.
+  4. `frontend/src/lib/license-debug.ts`, `license-debug-log.ts`, `hub/settings/LicenseDiagnosticsPanel.tsx` (panel dev en Ajustes).
+  5. `tools/start-wails-dev-visible.ps1` (terminal visible opcional).
+- Comando dev: `powershell -File tools\start-wails-dev.ps1` (inyecta `VANTARE_SUPABASE_*` desde `frontend/.env.local`).
+- Tests: `go test ./internal/license/...` PASS; `pnpm --dir frontend test -- entitlements-refresh AccountSettings license` PASS.
+- Pendiente Fase 2H: `VITE_BILLING_ENABLED=true` en release prod, secrets prod, monitor webhooks. `BILLING_ENABLED` sigue `false` en dev por defecto.
+- Spec técnico completo: `docs/superpowers/specs/2026-07-09-fase-2g-licensing-revalidation-spec.md`
+- Estado 2G: ✅ CERRADO (smoke GUI PASS)
+
+Nota FASE-2-POLAR (2026-07-09):
+- Plan maestro: `docs/superpowers/plans/2026-07-09-fase-2-polar-integration.md`
+- Fase 2A: `docs/superpowers/plans/2026-07-09-fase-2a-polar-dashboard-setup.md` — docs Polar + mapping example.
+- Fase 2B: skeleton EF billing + tests Deno.
+- Fase 2C: `billing-checkout` checkout real Polar sandbox (`POST /v1/checkouts/`, mapping `product_id_to_checkout_key`, sin `polar_price_id`). Tests Deno 35 PASS. Sin deploy, sin `VITE_BILLING_ENABLED`.
+- Fase 2G: smoke GUI post-pago + revalidación — ver nota **FASE-2G-SMOKE** arriba (✅ CERRADO).
+- Secrets en Supabase (humano): `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_MAP`, `CHECKOUT_*`, `PORTAL_RETURN_URL`.
+- Gate: no deploy EF hasta E2E sandbox manual post-deploy.
+- Estado 2C: ✅ CERRADO EN REPO — listo para deploy sandbox `billing-checkout`
+
 Nota LAUNCHER-BUGFIX (2026-07-09):
 - Bug 1: `os.ExpandEnv` no expande `%VAR%` Windows. Fix: `expandWindowsEnv()` en `discovery.go`.
 - Bug 2: Apps como OBS necesitan `cmd.Dir` = su carpeta para encontrar archivos relativos (locale, config). Fix: `cmd.Dir = filepath.Dir(entry.ExecutablePath)` en `chain.go`.
@@ -6,11 +134,14 @@ Nota LAUNCHER-BUGFIX (2026-07-09):
 
 Nota FASE-1-6-BILLING (2026-07-09):
 - Objetivo: billing/licensing provider-agnostic (Polar-ready) sin integrar Polar.
-- Completado: `20260709120000` + hotfix `20260709150000` aplicados en remoto `olhwhfaczmrmooeaoqqf`; `billing-client` (`BILLING_ENABLED=false`); Paywall/AccountSettings sin endpoints fantasma; Go decoder PostgREST array; smoke RPC device binding + entitlements OK (usuario `fase16-smoke@vantare.dev`).
-- Pendiente: smoke manual app Wails con `VANTARE_SUPABASE_*` + frontend build alineado a `olhwhfaczmrmooeaoqqf`; backup CLI (Docker); `validate-license` legacy deployada (Fase 3).
-- NO hecho: Polar, deploy EF nuevas, `db reset`, borrar tablas viejas.
-- Smoke local app: `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` en runtime (Go); `VITE_SUPABASE_*` en build time (frontend). Binario embebido puede apuntar a otro proyecto si se compiló con `.env.local` viejo.
-- Estado: 🟡 CASI CERRADO (smoke app manual)
+- Proyecto Supabase **oficial**: `ombjshwzqgeisazijduq` (`https://ombjshwzqgeisazijduq.supabase.co`). Auth/Google operativo; migraciones aplicadas 2026-07-09.
+- Proyecto **equivocado** (solo pruebas): `olhwhfaczmrmooeaoqqf` — Fase 1.6 se aplicó allí por error antes de la corrección. Queda como staging/test o abandonado; **no usar en app/CI**.
+- Completado en proyecto correcto: migraciones `20260605140000`, `20260709120000`, `20260709150000`, `20260709160000` (backfill profiles); `billing-client` (`BILLING_ENABLED=false`); Paywall/AccountSettings sin endpoints fantasma; Go decoder PostgREST array; smoke RPC + device binding + entitlement manual; smoke GUI Wails (`bin/vantare-smoke-correct.exe`) PASS.
+- Env locales alineados (gitignored): `.env` raíz, `vantare-v2/frontend/.env.local`, `apps/desktop/.env`. Build Wails: `tools/generate_supabase_config.ps1` lee `VANTARE_SUPABASE_*` en compile-time.
+- Pendiente humano: GitHub Actions secrets `VITE_SUPABASE_*` deben apuntar a `ombjshwzqgeisazijduq` antes del próximo release tag; backup CLI pre-push (Docker); `validate-license` legacy deployada (Fase 3).
+- NO hecho: Polar, deploy EF nuevas, `db reset`, borrar tablas viejas (`licenses`/`subscriptions` siguen en schema por trigger `handle_new_user`; runtime app usa `user_entitlements` vía RPC).
+- Tablas legacy: sin dependencia activa en Go/frontend (solo trigger SQL signup + EF `validate-license` deprecated).
+- Estado: ✅ CERRADO (proyecto correcto)
 
 Nota FEATURES-MANUAL-SOURCE (2026-07-08):
 - Objetivo: la pestaña 'Desarrollo por features' del Roadmap pasa a tener una fuente manual (JSON) igual que 'Roadmap actual', sin scripts de auto-generación.
@@ -2413,3 +2544,41 @@ Nota FEATURES-DATA (2026-07-08):
 - Tests: 157/157 files, 1503/1503 tests PASS (regresión 0). Lint 0 errores en archivos tocados.
 - Archivos modificados: ProfileEditor.tsx, ProfileEditor.test.tsx, launcher-state.ts (3 archivos).
 - Commit: 9efd6ee feat(launcher): ProfileEditor steps + hotkey + autostart (cut 3)
+
+Nota LAUNCHER-ICONS (2026-07-10):
+- Bug raiz corregido: en icon_windows.go, `DestroyIcon` estaba en shell32.dll (real: user32.dll) y `DeleteObject` en user32.dll (real: gdi32.dll). `NewProc` es perezoso -> la extraccion de iconos del backend panicaba en cualquier icono extraido con exito. Esto rompia TODOS los iconos extraidos del .exe, no solo 3.
+- Nuevo fallback de icono: si `ExtractIconExW` sobre el .exe no devuelve icono, se resuelve el acceso directo del escritorio/Start Menu (.lnk) via IShellLink y se extrae con `SHGetFileInfo` (el icono que muestra Windows, funciona aunque el target .exe no tenga icono embebido ni exista).
+- Frontend: KNOWN_ICONS (discord/motec/simhub) vaciado; esas 3 apps ahora van directo a la extraccion del backend (sin flash de imagen rota).
+- Validado en Windows con tests reales: notepad.exe (extraccion .exe), Discord.lnk resuelto y extraido, .lnk->notepad extraido via SHGetFileInfo.
+- Archivos: icon_windows.go, icon_stub.go, main.go (handler usa GetAppIconForAppBase64), AppBadge.tsx, icon_windows_test.go.
+- Riesgo: `go vet` emite 1 warning conocido (falso positivo) en el acceso a vtable COM; no rompe build ni tests. Sin CI de vet en el repo.
+- Estado: ICONOS OK. Discord/MoTeC/SimHub resuelven via .lnk del escritorio en la maquina del usuario (requiere acceso directo presente).
+Nota LAUNCHER-V3-FASE-1 (2026-07-11):
+- Fase 1 cerrada: estados canónicos, catálogo oficial/readiness y contrato TypeScript espejo.
+- Commits: `cc1bd7f` (availability), `7b71db7` (official catalog), `762e962` (frontend contract).
+- Archivos funcionales: `internal/app/launcher/status.go`, `status_test.go`, `catalog.go`, `catalog_test.go`, `known.go`, `frontend/src/hub/launcher/launcher-contract.ts`, `launcher-contract.test.ts`, `launcher-state.ts`.
+- Gate 1: `go test ./internal/app/launcher/...` PASS; `pnpm --dir frontend test -- launcher-contract launcher-state` PASS (24 tests); `pnpm --dir frontend build` PASS; `git diff --check` PASS.
+- Checks globales: `go test ./...` sigue bloqueado por fallos preexistentes en `internal/server` (nonce y puerto); `pnpm --dir frontend lint` sigue bloqueado por 11 errores preexistentes fuera del alcance Launcher.
+- Playwright no aplica todavía: Fase 1 no modifica UI renderizada. Se requiere desde los cortes frontend/visuales posteriores.
+- Estado: FASE 1 CERRADA; siguiente paso exacto = Fase 2, Task 2.1 (discovery basado en evidencia).
+
+Nota LAUNCHER-V3-FASE-2 (2026-07-11):
+- Fase 2 cerrada: discovery basado en evidencia, reparación/fusión manual explícita, snapshot canónico, bridge/store único y consumidores migrados sin rediseñar el layout.
+- Commits: `63e9f33`, `91d2fb7`, `c4b8ca3`, `af4c483`, `5c247fb`.
+- Frontend: `LauncherStoreProvider` vive en `HubApp`; AppsPanel, ProfilesPanel y LauncherDock consumen el snapshot y no registran eventos Wails propios. El modal de registro registra antes de emitir.
+- Gate 2: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `pnpm --dir frontend test -- LauncherPage AppsPanel ProfilesPanel LauncherDock AddNonSteamGameModal launcher-store launcher-bridge` PASS (39 tests); `pnpm --dir frontend build` PASS; `git diff --check` PASS.
+- Playwright visual: revisión local a 1440x900 PASS; 7 apps, 2 perfiles y dock global visibles, sin errores de consola ni peticiones fallidas de la aplicación. Captura temporal fuera del repositorio: `C:\Users\isaac\AppData\Local\Temp\launcher-v3-playwright.png`.
+- Checks globales aún conocidos: `go test ./...` mantiene los fallos preexistentes de nonce/puerto en `internal/server`; `pnpm --dir frontend lint` mantiene 11 errores preexistentes fuera de Launcher.
+- Siguiente paso exacto = Fase 3, Task 3.1 (assets oficiales offline); requiere revisar/proporcionar los siete logos antes de incorporarlos.
+
+Nota LAUNCHER-V3-FASES-3-8 (2026-07-11):
+- Ejecutadas las tasks restantes compatibles sin incorporar logos oficiales: resolver offline/fallback, políticas y editor progresivo, perfiles separados, argumentos, identidad/readiness, decisiones de procesos, retry/cancel, sesión, dock, trigger LMU, recomendaciones efímeras, onboarding, notificaciones y retirada de eventos legacy de producción.
+- Nuevos bloques verificados: `go test ./internal/app/launcher/...`, tests frontend enfocados, `pnpm --dir frontend build` y smoke Playwright `node frontend/scripts/launcher-v3-smoke.mjs` (desktop 1440x900 y móvil 390x844).
+- Smoke Playwright observado: 7 apps, 2 perfiles, editor avanzado con args, sin errores de consola ni peticiones fallidas relevantes; captura temporal en `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
+- Documentación viva: `docs/launcher-v3-architecture.md`.
+- Limitación explícita: `frontend/src/assets/launcher/apps/` sigue sin los siete logos aprobados; el fallback local no descarga ni inventa marcas.
+
+Nota LAUNCHER-V3-VERIFICACION-FINAL (2026-07-11):
+- Gate final Launcher: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `pnpm --dir frontend test` PASS (173 archivos, 1590 tests); `pnpm --dir frontend build` PASS.
+- Smoke Playwright final PASS en 1440x900 y 390x844: 7 apps, 2 perfiles, onboarding/editor avanzado, sin overflow móvil, errores de consola ni peticiones fallidas relevantes. Captura temporal: `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
+- `go test ./...` sigue fallando solo en problemas preexistentes de `internal/server` (nonce/puerto); `go build ./...` falla en `build/ios` porque ese paquete no contiene `main`; `go test -race` no puede arrancar porque el entorno carece de `gcc`; lint global mantiene 4 errores preexistentes fuera de Launcher (Calendar y topbar mock).

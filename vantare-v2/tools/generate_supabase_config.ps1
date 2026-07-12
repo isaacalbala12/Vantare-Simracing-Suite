@@ -35,4 +35,11 @@ func init() {
 }
 "@
 
+if (Test-Path -LiteralPath $OutFile) {
+  $existing = Get-Content -LiteralPath $OutFile -Raw
+  if ($existing -eq $content) {
+    exit 0
+  }
+}
+
 Set-Content -NoNewline -LiteralPath $OutFile -Value $content

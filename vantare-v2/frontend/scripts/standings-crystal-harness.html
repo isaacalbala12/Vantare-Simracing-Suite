@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Standings Widget Crystal - Playwright Harness</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #060608; display: flex; justify-content: center; padding: 20px; }
+    #root { width: 400px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    // This harness will be built by vite and served at localhost:5173
+    // For Playwright comparison, we use the standalone HTML reference instead.
+    document.getElementById('root').innerHTML = '<p style="color:#999;text-align:center;padding:40px">Use the HTML reference for comparison</p>';
+  </script>
+</body>
+</html>

@@ -15,10 +15,14 @@ const topbarMockPath = path.resolve(
 );
 
 export default defineConfig(({ mode }) => {
-  const useTopbarMock = process.env.VITE_RUNTIME_MOCK === "topbar";
+  const runtimeMock = process.env.VITE_RUNTIME_MOCK;
+  const useTopbarMock = runtimeMock === "topbar";
+  const useWailsMock = runtimeMock === "mock" || runtimeMock === "calendar";
   const isProduction = mode === "production";
   const alias: Record<string, string> = {};
-  if (!isProduction) {
+  // Only harnesses opt into the mock runtime. wails3 dev must use the real
+  // @wailsio/runtime package so license:validate hits the Go backend.
+  if (!isProduction && (useTopbarMock || useWailsMock)) {
     alias["@wailsio/runtime"] = useTopbarMock ? topbarMockPath : wailsMockPath;
   }
   return {

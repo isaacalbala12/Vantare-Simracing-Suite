@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { LaunchProfile, LauncherAppEntry } from "./launcher-state";
-import { isHotkeyAllowed } from "./launcher-state";
+import { hasDuplicateSteps, isHotkeyAllowed, isProfileLaunchable } from "./launcher-state";
 
 type ProfileEditorProps = {
   profile: LaunchProfile;
@@ -19,11 +19,16 @@ export function ProfileEditor({
   apps,
 }: ProfileEditorProps) {
   const [draft, setDraft] = useState(profile);
-
-  // Sync draft when profile identity changes (render-time, avoids cascading effect)
-  if (draft.id !== profile.id) {
-    setDraft(profile);
-  }
+  const advanced = draft.advanced === true;
+  const launchable = useMemo(
+    () => isProfileLaunchable(draft, apps),
+    [draft, apps],
+  );
+  const invalidSteps = draft.steps.some((step) => !step.appId || step.delay < 0);
+  const duplicateSteps = hasDuplicateSteps(draft);
+  const canSave = !invalidSteps && (
+    draft.steps.length === 0 || (launchable && (advanced || !duplicateSteps))
+  );
 
   return (
     <>
@@ -31,7 +36,7 @@ export function ProfileEditor({
         {open && (
           <motion.div
             key="overlay"
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -43,7 +48,7 @@ export function ProfileEditor({
         {open && (
           <motion.aside
             key="panel"
-            className="fixed right-0 top-0 bottom-0 w-[480px] z-50 card-sleek p-5 overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 w-[480px] z-[70] bg-[#0a0a0a] border-l border-white/10 p-5 overflow-y-auto shadow-2xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -51,6 +56,7 @@ export function ProfileEditor({
             data-testid="profile-editor-panel"
             role="dialog"
             aria-label="Editar perfil"
+            onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-bold text-white">Editar perfil</h2>
 
@@ -99,9 +105,18 @@ export function ProfileEditor({
 
             {/* ── Steps editor ── */}
             <div className="mt-4">
-              <span className="text-[10px] uppercase tracking-[.18em] text-vantare-textDim">
-                Pasos
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-[.18em] text-vantare-textDim">Pasos</span>
+                <button
+                  type="button"
+                  aria-expanded={advanced}
+                  data-testid="profile-editor-advanced-toggle"
+                  onClick={() => setDraft({ ...draft, advanced: !advanced })}
+                  className="text-[10px] uppercase tracking-[.18em] text-white/60 hover:text-white"
+                >
+                  {advanced ? "Básico" : "Avanzado"}
+                </button>
+              </div>
               {draft.steps.map((step, i) => (
                 <div
                   key={i}
@@ -137,6 +152,21 @@ export function ProfileEditor({
                     data-testid={`editor-step-delay-${i}`}
                     className="w-16 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
                   />
+                  {advanced && (
+                    <input
+                      type="text"
+                      value={step.argsOverride ?? ""}
+                      onChange={(e) => {
+                        const next = [...draft.steps];
+                        next[i] = { ...step, argsOverride: e.target.value || undefined };
+                        setDraft({ ...draft, steps: next });
+                      }}
+                      placeholder="Args"
+                      aria-label={`Argumentos del paso ${i + 1}`}
+                      data-testid={`editor-step-args-${i}`}
+                      className="w-28 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
+                    />
+                  )}
                   <button
                     onClick={() => {
                       if (i === 0) return;
@@ -184,10 +214,20 @@ export function ProfileEditor({
                   })
                 }
                 data-testid="editor-step-add"
-                className="mt-2 px-3 py-1.5 rounded-lg border border-dashed border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40"
+                className="mt-2 px-3 py-1.5 rounded-lg border border-dashed border-white/20 text-[10px] uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
               >
                 + Añadir paso
               </button>
+              {!launchable && draft.steps.length > 0 && (
+                <p className="mt-2 text-xs text-vantare-red-400" data-testid="profile-editor-unlaunchable">
+                  El perfil contiene apps no disponibles.
+                </p>
+              )}
+              {duplicateSteps && !advanced && (
+                <p className="mt-2 text-xs text-vantare-red-400" data-testid="profile-editor-duplicate-warning">
+                  Activa el modo avanzado para repetir apps.
+                </p>
+              )}
             </div>
 
             {/* ── Hotkey ── */}
@@ -245,6 +285,7 @@ export function ProfileEditor({
               </button>
               <button
                 onClick={() => onSave(draft)}
+                disabled={!canSave}
                 data-testid="profile-editor-save"
                 className="px-3 py-1.5 rounded-lg bg-accent text-[10px] uppercase tracking-[.18em] font-bold text-black hover:opacity-90"
               >

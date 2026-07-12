@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -513,8 +514,8 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:detected" {
-		t.Fatalf("expected launcher:apps:detected, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical discovery snapshot, got %v", emitter.events)
 	}
 }
 
@@ -524,15 +525,22 @@ func TestHandleAddAppEmitsUpdated(t *testing.T) {
 		ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\obs.exe`,
 	}
 	handleAddApp(entry, svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical app snapshot, got %v", emitter.events)
 	}
-	payload := emitter.data[0].(map[string]any)
-	apps, ok := payload["apps"].(map[string]app.LauncherAppEntry)
+	payload, ok := emitter.data[0].(launcher.LauncherSnapshot)
 	if !ok {
-		t.Fatalf("apps payload missing or wrong type: %+v", payload)
+		t.Fatalf("snapshot payload missing or wrong type: %#v", emitter.data[0])
 	}
-	if _, ok := apps["obs"]; !ok {
+	apps := payload.Apps
+	found := false
+	for _, a := range apps {
+		if a.ID == "obs" {
+			found = true
+			break
+		}
+	}
+	if !found {
 		t.Fatal("added app missing from emitted apps")
 	}
 }
@@ -549,8 +557,8 @@ func TestHandleAddAppEmitsErrorOnInvalid(t *testing.T) {
 func TestHandleRemoveAppEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleRemoveApp("lmu", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical app snapshot, got %v", emitter.events)
 	}
 }
 
@@ -568,8 +576,8 @@ func TestHandleRemoveAppEmitsErrorWhenUsedByProfile(t *testing.T) {
 func TestHandleListProfilesEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleListProfiles(svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 }
 
@@ -577,8 +585,8 @@ func TestHandleSaveProfileEmitsUpdated(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	profile := app.LaunchProfile{ID: "creator", Name: "Creador", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}
 	handleSaveProfile(profile, svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 }
 
@@ -597,8 +605,8 @@ func TestHandleDeleteProfileEmitsUpdated(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	handleDeleteProfile("pro", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 }
 
@@ -608,8 +616,8 @@ func TestHandleDuplicateProfileEmitsUpdated(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	handleDuplicateProfile("creator", "creator-copy", "Creador (copia)", svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profiles:updated" {
-		t.Fatalf("expected launcher:profiles:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected canonical profile snapshot, got %v", emitter.events)
 	}
 	if got := svc.ListProfiles(); len(got) != 2 {
 		t.Fatalf("expected 2 profiles after duplicate, got %d", len(got))
@@ -724,9 +732,12 @@ func TestHandleRegistryListEmitsListed(t *testing.T) {
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:registry:listed" {
 		t.Fatalf("expected launcher:registry:listed, got %v", emitter.events)
 	}
-	payload := emitter.data[0].(map[string]any)
+	payload, ok := emitter.data[0].(map[string]any)
+	if !ok {
+		t.Fatal("expected registry payload")
+	}
 	if _, ok := payload["apps"]; !ok {
-		t.Fatal("expected apps key in payload")
+		t.Fatal("expected apps in registry payload")
 	}
 }
 
@@ -756,11 +767,11 @@ func TestHandleAppUpdateEmitsUpdated(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	handleAppUpdate("obs", "--new-args", settingsSvc2, emitter)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
 	}
-	payload := emitter.data[0].(map[string]any)
-	if _, ok := payload["apps"]; !ok {
+	payload, ok := emitter.data[0].(launcher.LauncherSnapshot)
+	if !ok || payload.Apps == nil {
 		t.Fatal("expected apps key in payload")
 	}
 }
@@ -778,6 +789,97 @@ func TestHandleAppUpdateEmitsErrorOnUnknown(t *testing.T) {
 
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
 		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+}
+
+func TestHandleSetAppPathPersistsValidatedOverride(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	apps := svc.Settings().GetLauncherApps()
+	apps["obs"] = app.LauncherAppEntry{
+		ID:           "obs",
+		DisplayName:  "OBS Studio",
+		LaunchMethod: "executable",
+	}
+	if err := svc.Settings().SetLauncherApps(apps); err != nil {
+		t.Fatalf("seed app: %v", err)
+	}
+
+	exe := filepath.Join(t.TempDir(), "obs64.exe")
+	if err := os.WriteFile(exe, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	handleSetAppPath("obs", exe, svc, emitter)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want canonical snapshot", emitter.events)
+	}
+	if got := svc.Settings().GetLauncherApps()["obs"]; got.ExecutablePath != exe || got.PathSource != "override" {
+		t.Fatalf("override not persisted: %+v", got)
+	}
+}
+
+func TestHandlePreviewAppMergeEmitsCandidateWithoutChangingApps(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	apps := svc.Settings().GetLauncherApps()
+	apps["manual-obs"] = app.LauncherAppEntry{
+		ID:           "manual-obs",
+		DisplayName:  "OBS Studio",
+		LaunchMethod: "executable",
+	}
+	if err := svc.Settings().SetLauncherApps(apps); err != nil {
+		t.Fatalf("seed app: %v", err)
+	}
+
+	handlePreviewAppMerge("manual-obs", svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:app:merge:preview" {
+		t.Fatalf("events=%v, want merge preview", emitter.events)
+	}
+	payload := emitter.data[0].(map[string]any)
+	if payload["mergeCandidateId"] != "lmu" && payload["mergeCandidateId"] != "obs" {
+		t.Fatalf("unexpected merge candidate payload: %+v", payload)
+	}
+	if _, ok := svc.Settings().GetLauncherApps()["manual-obs"]; !ok {
+		t.Fatal("preview must not mutate apps")
+	}
+}
+
+func TestHandleConfirmAppMergePreservesProfileSteps(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	apps := svc.Settings().GetLauncherApps()
+	apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", Detected: true}
+	apps["manual-obs"] = app.LauncherAppEntry{
+		ID: "manual-obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\obs.exe`, Args: "--profile=night",
+	}
+	if err := svc.Settings().SetLauncherApps(apps); err != nil {
+		t.Fatalf("seed apps: %v", err)
+	}
+	if err := svc.Settings().SetLauncherProfiles([]app.LaunchProfile{{
+		ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "manual-obs", Delay: 2}},
+	}}); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+
+	handleConfirmAppMerge("manual-obs", "obs", svc, emitter)
+	if len(emitter.events) != 2 || emitter.events[0] != "launcher:app:merge:confirmed" || emitter.events[1] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want merge confirmed plus snapshot", emitter.events)
+	}
+	if _, ok := svc.Settings().GetLauncherApps()["manual-obs"]; ok {
+		t.Fatal("confirmed merge must remove manual app")
+	}
+	if got := svc.Settings().GetLauncherProfiles()[0].Steps[0].AppID; got != "obs" {
+		t.Fatalf("profile step was not rewired: %q", got)
+	}
+}
+
+func TestHandleLauncherSnapshotEmitsCanonicalPayload(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleLauncherSnapshot(svc, emitter)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("events=%v, want launcher:snapshot", emitter.events)
+	}
+	if _, ok := emitter.data[0].(launcher.LauncherSnapshot); !ok {
+		t.Fatalf("snapshot payload has wrong type: %T", emitter.data[0])
 	}
 }
 
@@ -951,8 +1053,8 @@ func TestHandleAppFavorite(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	handleAppFavorite("obs", true, settingsSvc2, emitter)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:apps:updated" {
-		t.Fatalf("expected launcher:apps:updated, got %v", emitter.events)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
 	}
 	// Verify the app is marked as favorite.
 	apps := settingsSvc2.GetLauncherApps()

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,8 +146,8 @@ func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 }
 
 // runChained executes every step of the profile sequentially. It returns true
-// when all steps succeed. Steps are emitted with "pending" before the delay,
-// then "launching" at Start, then "done" or "failed" after the liveness probe.
+// only when ALL steps succeed. Steps that fail are tracked but the chain
+// continues with the remaining steps. The caller gets a summary at the end.
 func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile) bool {
 	apps := make(map[string]app.LauncherAppEntry)
 	src := r.backend.GetLauncherApps()
@@ -153,6 +155,8 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 		apps[k] = v
 	}
 
+	allSucceeded := true
+	policy := app.NormalizeLaunchPolicy(profile.Policy)
 	for i, step := range profile.Steps {
 		if ctx.Err() != nil {
 			return false
@@ -170,7 +174,8 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				FinishedAt: now.UnixMilli(),
 				Message:    fmt.Sprintf("app %q not found", step.AppID),
 			})
-			return false
+			allSucceeded = false
+			continue // continue to next step, don't stop
 		}
 
 		// Emit pending before the delay.
@@ -195,7 +200,14 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 
 		// Launch the app.
 		startedAt := time.Now()
-		result := r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
+		result := chainStepResult{}
+		attempts := RetryAttempts(policy.Retry, policy.MaxRetries)
+		for attempt := 0; ; attempt++ {
+			result = r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
+			if result.success || attempt >= attempts || ctx.Err() != nil {
+				break
+			}
+		}
 
 		finishedAt := time.Now()
 		stepStatus := "done"
@@ -205,6 +217,7 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			if result.exitCode != 0 {
 				msg = fmt.Sprintf("el proceso terminó con código %d", result.exitCode)
 			}
+			allSucceeded = false
 		}
 
 		r.emit.Emit("launcher:chain:step", ChainProgress{
@@ -217,13 +230,12 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			Pid:        result.pid,
 			Message:    msg,
 		})
-
-		if !result.success {
+		if !result.success && !ContinueAfterFailure(policy.Failure, false) {
 			return false
 		}
 	}
 
-	return true
+	return allSucceeded
 }
 
 // launchAndProbe starts the app and emits the "launching" event. For
@@ -259,10 +271,21 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if !fileExists(entry.ExecutablePath) {
 			return chainStepResult{success: false}
 		}
-		cmd := r.exec(entry.ExecutablePath)
+		argsText := entry.Args
+		if step.ArgsOverride != "" {
+			argsText = step.ArgsOverride
+		}
+		args, err := parseWindowsArgs(argsText)
+		if err != nil {
+			return chainStepResult{success: false}
+		}
+		cmd := r.exec(entry.ExecutablePath, args...)
 		if cmd == nil {
 			return chainStepResult{success: false}
 		}
+		// Set working directory to the executable's folder so apps like OBS
+		// can find their locale/config files relative to the exe.
+		cmd.Dir = filepath.Dir(entry.ExecutablePath)
 		if err := cmd.Start(); err != nil {
 			return chainStepResult{success: false}
 		}
@@ -276,7 +299,7 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		})
 
 		// Liveness probe: wait up to 3s for the process to exit.
-		res := livenessProbe(cmd, 3*time.Second)
+		res := livenessProbe(cmd, readinessGrace(entry.ID))
 		if res.cmdErr != nil {
 			return chainStepResult{success: false, pid: pid}
 		}
@@ -288,6 +311,70 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 	default:
 		return chainStepResult{success: false}
 	}
+}
+
+// parseWindowsArgs tokenizes an argument string without invoking a shell. It
+// follows the quoting rules used by Windows process command lines closely
+// enough for launcher arguments: whitespace separates tokens outside quotes,
+// quotes group text and backslashes before quotes are handled in pairs.
+func parseWindowsArgs(raw string) ([]string, error) {
+	if strings.IndexByte(raw, 0) >= 0 {
+		return nil, fmt.Errorf("launcher: arguments contain NUL")
+	}
+	var args []string
+	var current strings.Builder
+	inQuotes := false
+	tokenStarted := false
+	backslashes := 0
+	flushSlashes := func() {
+		for i := 0; i < backslashes; i++ {
+			current.WriteByte('\\')
+		}
+		backslashes = 0
+	}
+	flush := func() {
+		flushSlashes()
+		if tokenStarted {
+			args = append(args, current.String())
+			current.Reset()
+			tokenStarted = false
+		}
+	}
+	for i := 0; i < len(raw); i++ {
+		switch raw[i] {
+		case '\\':
+			backslashes++
+			tokenStarted = true
+		case '"':
+			tokenStarted = true
+			if backslashes%2 == 0 {
+				flushSlashes()
+				inQuotes = !inQuotes
+			} else {
+				backslashes = (backslashes - 1) / 2
+				flushSlashes()
+				current.WriteByte('"')
+			}
+		case ' ', '\t':
+			if inQuotes {
+				flushSlashes()
+				current.WriteByte(raw[i])
+				tokenStarted = true
+			} else {
+				flush()
+			}
+		default:
+			flushSlashes()
+			current.WriteByte(raw[i])
+			tokenStarted = true
+		}
+	}
+	flushSlashes()
+	if inQuotes {
+		return nil, fmt.Errorf("launcher: unterminated quoted argument")
+	}
+	flush()
+	return args, nil
 }
 
 // livenessProbe waits for a process to exit within the given timeout. If the

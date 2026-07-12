@@ -1,0 +1,13 @@
+# Minimal Supabase config for Vantare billing Edge Functions (Fase 2B).
+# Linked project: ombjshwzqgeisazijduq
+
+project_id = "ombjshwzqgeisazijduq"
+
+[functions.billing-checkout]
+verify_jwt = true
+
+[functions.billing-portal]
+verify_jwt = true
+
+[functions.billing-webhook]
+verify_jwt = false

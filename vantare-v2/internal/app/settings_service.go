@@ -26,15 +26,18 @@ var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millise
 
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
-	SchemaVersion          int                         `json:"schemaVersion"`
-	DeltaMode              string                      `json:"deltaMode"`
-	CpuSampling            bool                        `json:"cpuSampling"`
-	Hotkeys                map[string]string           `json:"hotkeys"`
-	ActiveOverlayProfileID string                      `json:"activeOverlayProfileId,omitempty"`
-	BetaWelcomeCompleted   bool                        `json:"betaWelcomeCompleted,omitempty"`
-	BetaUserRole           string                      `json:"betaUserRole,omitempty"`
-	LauncherApps           map[string]LauncherAppEntry `json:"launcherApps,omitempty"`
-	LauncherProfiles       []LaunchProfile             `json:"launcherProfiles,omitempty"`
+	SchemaVersion               int                         `json:"schemaVersion"`
+	DeltaMode                   string                      `json:"deltaMode"`
+	CpuSampling                 bool                        `json:"cpuSampling"`
+	Hotkeys                     map[string]string           `json:"hotkeys"`
+	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
+	BetaWelcomeCompleted        bool                        `json:"betaWelcomeCompleted,omitempty"`
+	BetaUserRole                string                      `json:"betaUserRole,omitempty"`
+	LauncherApps                map[string]LauncherAppEntry `json:"launcherApps,omitempty"`
+	LauncherProfiles            []LaunchProfile             `json:"launcherProfiles,omitempty"`
+	LauncherLMUTriggerEnabled   bool                        `json:"launcherLmuTriggerEnabled,omitempty"`
+	LauncherLMUTriggerProfileID string                      `json:"launcherLmuTriggerProfileId,omitempty"`
+	LauncherOnboardingCompleted bool                        `json:"launcherOnboardingCompleted,omitempty"`
 }
 
 // LauncherAppCategory clasifica una app para la UI.
@@ -48,41 +51,130 @@ const (
 	AppCategoryUtility   LauncherAppCategory = "utility"
 )
 
+// LauncherAvailability is the canonical availability contract for a
+// launcher app. The flags are independent facts/derivations and are not a
+// replacement for the legacy Detected field during migration.
+type LauncherAvailability struct {
+	Catalogued bool `json:"catalogued"`
+	Found      bool `json:"found"`
+	Installed  bool `json:"installed"`
+	Launchable bool `json:"launchable"`
+}
+
 // LauncherAppEntry representa una app detectada o añadida manualmente.
 type LauncherAppEntry struct {
-	ID             string              `json:"id"`
-	DisplayName    string              `json:"displayName"`
-	Abbreviation   string              `json:"abbreviation"`
-	Category       LauncherAppCategory `json:"category"`
-	LaunchMethod   string              `json:"launchMethod"`
-	SteamAppID     uint32              `json:"steamAppId,omitempty"`
-	ExecutablePath string              `json:"executablePath,omitempty"`
-	Args           string              `json:"args,omitempty"`
-	Detected       bool                `json:"detected"`
-	GradientFrom   string              `json:"gradientFrom"`
-	GradientTo     string              `json:"gradientTo"`
-	IsFavorite     bool                `json:"isFavorite,omitempty"`
+	ID                 string               `json:"id"`
+	DisplayName        string               `json:"displayName"`
+	Abbreviation       string               `json:"abbreviation"`
+	Category           LauncherAppCategory  `json:"category"`
+	LaunchMethod       string               `json:"launchMethod"`
+	SteamAppID         uint32               `json:"steamAppId,omitempty"`
+	ExecutablePath     string               `json:"executablePath,omitempty"`
+	Args               string               `json:"args,omitempty"`
+	Availability       LauncherAvailability `json:"availability"`
+	PathSource         string               `json:"pathSource,omitempty"`
+	UserExecutablePath string               `json:"userExecutablePath,omitempty"`
+	IconOverridePath   string               `json:"iconOverridePath,omitempty"`
+	// Deprecated: use Availability instead. Kept for settings migration.
+	Detected     bool   `json:"detected"`
+	GradientFrom string `json:"gradientFrom"`
+	GradientTo   string `json:"gradientTo"`
+	IsFavorite   bool   `json:"isFavorite,omitempty"`
+	IconURL      string `json:"iconUrl,omitempty"`
+}
+
+type AlreadyRunningPolicy string
+type FailurePolicy string
+type CancelPolicy string
+type ExitPolicy string
+type RetryPolicy string
+
+const (
+	AlreadyRunningAsk     AlreadyRunningPolicy = "ask"
+	AlreadyRunningReuse   AlreadyRunningPolicy = "reuse"
+	AlreadyRunningRestart AlreadyRunningPolicy = "restart"
+	FailureAsk            FailurePolicy        = "ask"
+	FailureStop           FailurePolicy        = "stop"
+	FailureContinue       FailurePolicy        = "continue"
+	CancelAsk             CancelPolicy         = "ask"
+	CancelLeave           CancelPolicy         = "leave"
+	CancelCloseStarted    CancelPolicy         = "close-started"
+	ExitAsk               ExitPolicy           = "ask"
+	ExitLeave             ExitPolicy           = "leave"
+	ExitCloseStarted      ExitPolicy           = "close-started"
+	RetryAsk              RetryPolicy          = "ask"
+	RetryFailed           RetryPolicy          = "failed"
+	RetryAll              RetryPolicy          = "all"
+)
+
+type LaunchPolicy struct {
+	AlreadyRunning AlreadyRunningPolicy `json:"alreadyRunning"`
+	Failure        FailurePolicy        `json:"failure"`
+	Cancel         CancelPolicy         `json:"cancel"`
+	Exit           ExitPolicy           `json:"exit"`
+	Retry          RetryPolicy          `json:"retry"`
+	MaxRetries     int                  `json:"maxRetries"`
+	FirstStepDelay int                  `json:"firstStepDelay,omitempty"`
+}
+
+func DefaultLaunchPolicy() *LaunchPolicy {
+	return &LaunchPolicy{AlreadyRunning: AlreadyRunningAsk, Failure: FailureAsk, Cancel: CancelAsk, Exit: ExitAsk, Retry: RetryAsk}
+}
+
+func NormalizeLaunchPolicy(policy *LaunchPolicy) *LaunchPolicy {
+	out := DefaultLaunchPolicy()
+	if policy != nil {
+		*out = *policy
+	}
+	if out.AlreadyRunning != AlreadyRunningReuse && out.AlreadyRunning != AlreadyRunningRestart {
+		out.AlreadyRunning = AlreadyRunningAsk
+	}
+	if out.Failure != FailureStop && out.Failure != FailureContinue {
+		out.Failure = FailureAsk
+	}
+	if out.Cancel != CancelLeave && out.Cancel != CancelCloseStarted {
+		out.Cancel = CancelAsk
+	}
+	if out.Exit != ExitLeave && out.Exit != ExitCloseStarted {
+		out.Exit = ExitAsk
+	}
+	if out.Retry != RetryFailed && out.Retry != RetryAll {
+		out.Retry = RetryAsk
+	}
+	if out.MaxRetries < 0 {
+		out.MaxRetries = 0
+	}
+	if out.MaxRetries > 3 {
+		out.MaxRetries = 3
+	}
+	if out.FirstStepDelay < 0 {
+		out.FirstStepDelay = 0
+	}
+	return out
 }
 
 // LaunchStep es un paso dentro de un perfil.
 type LaunchStep struct {
-	AppID string `json:"appId"`
-	Delay int    `json:"delay"`
+	AppID        string `json:"appId"`
+	Delay        int    `json:"delay"`
+	ArgsOverride string `json:"argsOverride,omitempty"`
 }
 
 // LaunchProfile es un perfil de lanzamiento editable.
 type LaunchProfile struct {
-	ID                     string       `json:"id"`
-	Name                   string       `json:"name"`
-	Description            string       `json:"description,omitempty"`
-	Steps                  []LaunchStep `json:"steps"`
-	IsFavorite             bool         `json:"isFavorite,omitempty"`
-	Notes                  string       `json:"notes,omitempty"`
-	LaunchCount            int          `json:"launchCount,omitempty"`
-	LastLaunchedAt         *time.Time   `json:"lastLaunchedAt,omitempty"`
-	AvgChainDurationMs     int64        `json:"avgChainDurationMs,omitempty"`
-	LaunchOnWindowsStartup bool         `json:"launchOnWindowsStartup,omitempty"`
-	Hotkey                 string       `json:"hotkey,omitempty"`
+	ID                     string        `json:"id"`
+	Name                   string        `json:"name"`
+	Description            string        `json:"description,omitempty"`
+	Steps                  []LaunchStep  `json:"steps"`
+	IsFavorite             bool          `json:"isFavorite,omitempty"`
+	Notes                  string        `json:"notes,omitempty"`
+	LaunchCount            int           `json:"launchCount,omitempty"`
+	LastLaunchedAt         *time.Time    `json:"lastLaunchedAt,omitempty"`
+	AvgChainDurationMs     int64         `json:"avgChainDurationMs,omitempty"`
+	LaunchOnWindowsStartup bool          `json:"launchOnWindowsStartup,omitempty"`
+	Hotkey                 string        `json:"hotkey,omitempty"`
+	Advanced               bool          `json:"advanced,omitempty"`
+	Policy                 *LaunchPolicy `json:"policy,omitempty"`
 }
 
 // DefaultAppSettings returns settings with sensible defaults.
@@ -100,6 +192,15 @@ func DefaultAppSettings() *AppSettings {
 		LauncherApps:     defaultLauncherApps(),
 		LauncherProfiles: defaultLauncherProfiles(),
 	}
+}
+
+func normalizeProfiles(profiles []LaunchProfile) []LaunchProfile {
+	out := make([]LaunchProfile, len(profiles))
+	for i, profile := range profiles {
+		out[i] = profile
+		out[i].Policy = NormalizeLaunchPolicy(profile.Policy)
+	}
+	return out
 }
 
 // migrateSettings applies additive schema migrations in place.
@@ -238,9 +339,7 @@ func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
-	out := make([]LaunchProfile, len(profiles))
-	copy(out, profiles)
-	s.settings.LauncherProfiles = out
+	s.settings.LauncherProfiles = normalizeProfiles(profiles)
 	// Marshal under lock for data consistency, then persist without the lock.
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
@@ -385,12 +484,15 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		return
 	}
 	merged := &AppSettings{
-		SchemaVersion:          loaded.SchemaVersion,
-		DeltaMode:              loaded.DeltaMode,
-		CpuSampling:            loaded.CpuSampling,
-		ActiveOverlayProfileID: loaded.ActiveOverlayProfileID,
-		BetaWelcomeCompleted:   loaded.BetaWelcomeCompleted,
-		BetaUserRole:           loaded.BetaUserRole,
+		SchemaVersion:               loaded.SchemaVersion,
+		DeltaMode:                   loaded.DeltaMode,
+		CpuSampling:                 loaded.CpuSampling,
+		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
+		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
+		BetaUserRole:                loaded.BetaUserRole,
+		LauncherLMUTriggerEnabled:   loaded.LauncherLMUTriggerEnabled,
+		LauncherLMUTriggerProfileID: loaded.LauncherLMUTriggerProfileID,
+		LauncherOnboardingCompleted: loaded.LauncherOnboardingCompleted,
 	}
 	if loaded.Hotkeys != nil {
 		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))
@@ -414,8 +516,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		merged.LauncherApps = defaultLauncherApps()
 	}
 	if loaded.LauncherProfiles != nil {
-		merged.LauncherProfiles = make([]LaunchProfile, len(loaded.LauncherProfiles))
-		copy(merged.LauncherProfiles, loaded.LauncherProfiles)
+		merged.LauncherProfiles = normalizeProfiles(loaded.LauncherProfiles)
 	} else {
 		merged.LauncherProfiles = defaultLauncherProfiles()
 	}

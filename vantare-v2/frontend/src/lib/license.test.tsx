@@ -113,6 +113,50 @@ describe("license module", () => {
       expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
     });
 
+    it("ignores stale anonymous license:changed while authenticated", () => {
+      const { result } = renderHook(() => useLicense(), {
+        wrapper: LicenseProvider,
+      });
+      act(() =>
+        emitChanged({
+          state: "active",
+          entitlements: ["bundle"],
+          userId: "u1",
+          email: "u@example.com",
+          deviceOK: true,
+        }),
+      );
+      act(() =>
+        emitChanged({
+          state: "anonymous",
+          entitlements: [],
+          userId: "",
+          email: "",
+          deviceOK: false,
+        }),
+      );
+      expect(result.current.result?.state).toBe("active");
+    });
+
+    it("clearLicense() forces anonymous state even after authentication", () => {
+      const { result } = renderHook(() => useLicense(), {
+        wrapper: LicenseProvider,
+      });
+      act(() =>
+        emitChanged({
+          state: "active",
+          entitlements: ["bundle"],
+          userId: "u1",
+          email: "u@example.com",
+          deviceOK: true,
+        }),
+      );
+      act(() => result.current.clearLicense());
+      expect(result.current.loading).toBe(false);
+      expect(result.current.result?.state).toBe("anonymous");
+      expect(result.current.result?.entitlements).toEqual([]);
+    });
+
     it("throws when useLicense is used outside the provider", () => {
       const consoleErr = vi.spyOn(console, "error").mockImplementation(() => {});
       expect(() => renderHook(() => useLicense())).toThrow(

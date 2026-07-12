@@ -22,6 +22,7 @@ import { CalendarReminderBanner } from './calendar/CalendarReminderBanner';
 import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
 import { ChainRunnerProvider } from './launcher/chain-store';
+import { LauncherStoreProvider } from './launcher/launcher-store';
 
 type SourceStatus = {
   kind: string;
@@ -50,9 +51,12 @@ function LicenseGate({ children }: { children: ReactNode }) {
   if (!result || result.state === 'anonymous') {
     return (
       <LoginScreen
-        onLoggedIn={(accessToken) => {
-          if (!accessToken) return;
-          Events.Emit('license:validate', { sessionToken: accessToken });
+        onLoggedIn={(tokens) => {
+          if (!tokens?.accessToken) return;
+          Events.Emit('license:validate', {
+            sessionToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken ?? '',
+          });
         }}
       />
     );
@@ -75,16 +79,6 @@ function LicenseGate({ children }: { children: ReactNode }) {
       {children}
     </>
   );
-}
-
-// LicenseBridge reenvía el access_token de Supabase al servicio Go. Si no hay
-// sesión (build sin env vars, mocks, offline), NO refresca con token vacío
-// para evitar pisar el resultado de un OAuth callback exitoso. El
-// LicenseProvider ya emite license:validate con token vacío en mount; el
-// OAuth callback emitirá license:validate con el token real cuando complete.
-function LicenseBridge() {
-  // Skip getSession in standalone mode — LicenseProvider already handles refresh
-  return null;
 }
 
 function HubShell() {
@@ -190,11 +184,12 @@ export function HubApp() {
   return (
     <LicenseProvider>
       <I18nProvider>
-        <LicenseBridge />
         <LicenseGate>
           <HubErrorBoundary>
             <ChainRunnerProvider>
-              <HubShell />
+              <LauncherStoreProvider>
+                <HubShell />
+              </LauncherStoreProvider>
             </ChainRunnerProvider>
           </HubErrorBoundary>
         </LicenseGate>

@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+.env.local
+
+# Smoke / agent scratch (may contain session tokens)
+.temp/
+smoke-jwt.txt
+*.jwt
+smoke-session.json
 
 # Editor directories and files
 .vscode/*

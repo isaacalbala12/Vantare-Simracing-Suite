@@ -34,6 +34,7 @@ func SaveProfile(backend ProfilesBackend, profile app.LaunchProfile) error {
 		return fmt.Errorf("%w: name is required", ErrInvalidConfig)
 	}
 	apps := backend.GetLauncherApps()
+	seen := make(map[string]struct{}, len(profile.Steps))
 	for i, s := range profile.Steps {
 		if s.AppID == "" {
 			return fmt.Errorf("%w: step %d missing appId", ErrInvalidStep, i)
@@ -44,7 +45,12 @@ func SaveProfile(backend ProfilesBackend, profile app.LaunchProfile) error {
 		if s.Delay < 0 {
 			return fmt.Errorf("%w: step %d delay negative", ErrInvalidStep, i)
 		}
+		if _, duplicate := seen[s.AppID]; duplicate && !profile.Advanced {
+			return fmt.Errorf("%w: duplicate app %q requires advanced mode", ErrInvalidStep, s.AppID)
+		}
+		seen[s.AppID] = struct{}{}
 	}
+	profile.Policy = app.NormalizeLaunchPolicy(profile.Policy)
 	profiles := backend.GetLauncherProfiles()
 	idx := -1
 	for i, p := range profiles {

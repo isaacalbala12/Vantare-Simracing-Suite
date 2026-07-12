@@ -95,6 +95,21 @@ func TestSaveProfileValidatesAppIDs(t *testing.T) {
 	})
 }
 
+func TestSaveProfileRejectsDuplicateStepsOutsideAdvancedMode(t *testing.T) {
+	backend := newProfilesBackend()
+	if err := SaveProfile(backend, app.LaunchProfile{
+		ID: "duplicate", Name: "Duplicate", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "lmu"}},
+	}); !errors.Is(err, ErrInvalidStep) {
+		t.Fatalf("expected duplicate step error, got %v", err)
+	}
+	if err := SaveProfile(backend, app.LaunchProfile{
+		ID: "advanced", Name: "Advanced", Advanced: true,
+		Steps: []app.LaunchStep{{AppID: "lmu", ArgsOverride: "--first"}, {AppID: "lmu", ArgsOverride: "--second"}},
+	}); err != nil {
+		t.Fatalf("advanced duplicate steps should be accepted: %v", err)
+	}
+}
+
 func TestSaveProfileUpdatesExisting(t *testing.T) {
 	backend := newProfilesBackend()
 	base := app.LaunchProfile{ID: "p1", Name: "P1", Steps: []app.LaunchStep{{AppID: "lmu", Delay: 0}}}

@@ -54,6 +54,97 @@ func TestMatchKnownAppsResolvesExecutable(t *testing.T) {
 	}
 }
 
+func TestMatchKnownAppsRegistryWithoutExecutableIsFoundButNotInstalled(t *testing.T) {
+	got := matchKnownApps([]discoveredCandidate{{DisplayName: "SimHub"}})
+
+	simhub, ok := got["simhub"]
+	if !ok {
+		t.Fatal("simhub should be present when the registry identifies it")
+	}
+	if !simhub.Availability.Catalogued || !simhub.Availability.Found {
+		t.Fatalf("expected catalogued and found, got %+v", simhub.Availability)
+	}
+	if simhub.PathSource != "registry" {
+		t.Fatalf("expected registry evidence, got %q", simhub.PathSource)
+	}
+	if simhub.Availability.Installed || simhub.Availability.Launchable {
+		t.Fatalf("registry match without executable must not be launchable, got %+v", simhub.Availability)
+	}
+}
+
+func TestProbeKnownPathsRepairsAvailabilityPreservingPreferences(t *testing.T) {
+	root := t.TempDir()
+	installDir := filepath.Join(root, "SimHub")
+	if err := os.MkdirAll(installDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	exe := filepath.Join(installDir, "SimHub.exe")
+	if err := os.WriteFile(exe, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PROGRAMFILES", root)
+
+	input := map[string]app.LauncherAppEntry{
+		"simhub": {
+			ID:          "simhub",
+			DisplayName: "SimHub (custom label)",
+			Args:        "--profile=night",
+			IsFavorite:  true,
+			Detected:    true,
+			Availability: Availability{
+				Catalogued: true,
+				Found:      true,
+			},
+		},
+	}
+
+	got := probeKnownPaths(input)
+	simhub, ok := got["simhub"]
+	if !ok {
+		t.Fatal("simhub should remain in the repaired result")
+	}
+	if simhub.ExecutablePath != exe {
+		t.Fatalf("expected repaired executable %q, got %q", exe, simhub.ExecutablePath)
+	}
+	if simhub.PathSource != "known-path" {
+		t.Fatalf("expected known-path evidence, got %q", simhub.PathSource)
+	}
+	if simhub.Args != "--profile=night" || !simhub.IsFavorite {
+		t.Fatalf("probe must preserve preferences, got args=%q favorite=%t", simhub.Args, simhub.IsFavorite)
+	}
+	if !simhub.Availability.Installed || !simhub.Availability.Launchable {
+		t.Fatalf("repaired executable must be installed and launchable, got %+v", simhub.Availability)
+	}
+}
+
+func TestProbeKnownPathsUsesInstalledExecutableAliases(t *testing.T) {
+	root := t.TempDir()
+	motecDir := filepath.Join(root, "MoTeC")
+	simhubDir := filepath.Join(root, "SimHub")
+	if err := os.MkdirAll(motecDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(simhubDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(motecDir, "app.exe"), []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(simhubDir, "SimHubWPF.exe"), []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PROGRAMFILES", root)
+	t.Setenv("PROGRAMFILES(X86)", root)
+
+	got := probeKnownPaths(nil)
+	if got["motec"].ExecutablePath != filepath.Join(motecDir, "app.exe") {
+		t.Fatalf("MoTeC executable alias was not resolved: %+v", got["motec"])
+	}
+	if got["simhub"].ExecutablePath != filepath.Join(simhubDir, "SimHubWPF.exe") {
+		t.Fatalf("SimHub executable alias was not resolved: %+v", got["simhub"])
+	}
+}
+
 func TestProbeKnownPathsDoesNotMutateInput(t *testing.T) {
 	in := map[string]app.LauncherAppEntry{
 		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate"},

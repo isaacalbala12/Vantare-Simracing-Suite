@@ -2589,3 +2589,11 @@ Nota LAUNCHER-V3-VERIFICACION-FINAL (2026-07-11):
 - Gate final Launcher: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `pnpm --dir frontend test` PASS (173 archivos, 1590 tests); `pnpm --dir frontend build` PASS.
 - Smoke Playwright final PASS en 1440x900 y 390x844: 7 apps, 2 perfiles, onboarding/editor avanzado, sin overflow móvil, errores de consola ni peticiones fallidas relevantes. Captura temporal: `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
 - `go test ./...` sigue fallando solo en problemas preexistentes de `internal/server` (nonce/puerto); `go build ./...` falla en `build/ios` porque ese paquete no contiene `main`; `go test -race` no puede arrancar porque el entorno carece de `gcc`; lint global mantiene 4 errores preexistentes fuera de Launcher (Calendar y topbar mock).
+
+Nota ISA-9-RESCAN-PROGRESS (2026-07-13):
+- Implementado en `vantareapp/isa-9-launcher`: Launcher dispara un único reescaneo por entrada real; el Hub no escanea al arrancar.
+- Backend emite checkpoints reales `0/15/55/75/100`, rechaza scans concurrentes y solo confirma 100 tras persistencia, resolución de iconos y snapshot final exitosos.
+- Bridge/store comparte listeners, limpia de forma idempotente y deduplica el comando antes de emitirlo para React Strict Mode. AppsPanel conserva snapshot/logos, bloquea Reescanear durante scanning y muestra barra A accesible con interpolación y reduced motion.
+- Commits: `e2915ee` backend, `ac8c2fe` bridge/store/UI. `.superpowers/` se conserva sin incluir.
+- Checks focalizados: Go launcher/cmd PASS; frontend Launcher/store/bridge/panel/progress PASS (14 tests); frontend build PASS; `git diff --check` PASS.
+- Pendiente antes de In Review: suite frontend completa, lint, Playwright 100/125/150/200, smoke Wails Windows con `.env.local` del escritorio, revisión inicial sin editar y validación manual 100% de Isaac. No merge a `develop`.

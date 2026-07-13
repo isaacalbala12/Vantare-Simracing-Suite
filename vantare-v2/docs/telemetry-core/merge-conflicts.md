@@ -17,12 +17,19 @@ git merge-tree (git merge-base refactor codex/engineer-release) refactor codex/e
 
 `git merge-tree --write-tree` terminó con código 1 porque detectó dos conflictos de contenido. No se ejecutó `git merge`, no se actualizó el índice y no se modificó el working tree.
 
+## Decisiones aprobadas
+
+- **MC-1 — APROBADA por Isaac el 2026-07-14.** La resolución vinculante para ISA-25 es conservar y combinar los tests deterministas de Engineer con los tests de seguridad PowerShell de `refactor`, sin sustituir, debilitar ni perder cobertura existente.
+- **MC-2 — APROBADA por Isaac el 2026-07-14.** La resolución vinculante para ISA-25 es conservar íntegramente el hardening y runtime de `refactor` e incorporar únicamente el endpoint health procedente de Engineer. Queda prohibido introducir un segundo router, lifecycle, servidor o estado paralelo.
+
+Estas aprobaciones cierran la decisión humana sobre la composición, pero no autorizan un merge en ISA-23. ISA-25 deberá materializar las resoluciones, aportar el diff y ejecutar sus checks antes de cualquier commit de merge.
+
 ## Inventario completo de conflictos
 
 | Ruta | Tipo | Aporte `refactor` | Aporte Engineer Release | Owner | Resolución propuesta para ISA-25 | Riesgo | Tests necesarios | Decisión humana |
 |---|---|---|---|---|---|---|---|---|
-| `vantare-v2/internal/engineer/audio/player_test.go` | content/content; ambas ramas modifican el mismo bloque de tests | Añade tests de seguridad para escapar comillas, construir el script PowerShell y codificarlo en Base64 UTF-16LE; conserva pruebas que dependen de audio/cache local | Sustituye las pruebas dependientes del entorno por `RecorderPlayer`, con parada y orden deterministas | ENGINEER | Conservar los tests deterministas de Engineer y añadir sin debilitarlos los tests de seguridad de `refactor`. No restaurar dependencia obligatoria de un MP3 real. La implementación productiva no cambia en TC-01C. | Medio: perder los tests de inyección o reintroducir flakiness de hardware/cache | `go test ./internal/engineer/audio/... -count=1`; en Windows, incluir las pruebas de `escapePSQuote`, `buildPSScript` y `encodePSCommand`; revisar también build-tag no Windows | Sí: Isaac aprueba esta composición antes de ISA-25. La evidencia faltante es el diff resuelto y la suite verde; responsable de prepararlo: worker ISA-25; bloquea el commit de merge de ISA-25. |
-| `vantare-v2/internal/server/server.go` | content/content; ambas ramas añaden rutas al mismo constructor y código al final del archivo | Endurece servidor loopback, nonce/rate limit/auth, security headers, `/api/profile-v3` y listener real | Añade `GET /api/engineer/health` y su handler sobre `EngineerService.Health()` | SHARED | Partir del archivo de `refactor` y añadir únicamente la ruta/handler de health de Engineer, conservando el hardening, `/api/profile-v3`, auth y lifecycle. No diseñar Telemetry Core ni cambiar payloads SSE/Wails. | Alto: una elección unilateral puede perder seguridad/auth/runtime Overlay o diagnóstico Engineer | `go test ./internal/server/... -count=1`; pruebas de auth/nonce/loopback existentes; `TestEngineerHealth`/health 200-503; smoke de `/telemetry/stream` y `/engineer/stream` en ISA-24/25 | Sí: Isaac aprueba el ownership SHARED y la integración mínima antes de ISA-25. Evidencia faltante: diff de resolución y baseline dinámico ISA-24; responsables: Isaac y worker ISA-25; bloquea el merge real. |
+| `vantare-v2/internal/engineer/audio/player_test.go` | content/content; ambas ramas modifican el mismo bloque de tests | Añade tests de seguridad para escapar comillas, construir el script PowerShell y codificarlo en Base64 UTF-16LE; conserva pruebas que dependen de audio/cache local | Sustituye las pruebas dependientes del entorno por `RecorderPlayer`, con parada y orden deterministas | ENGINEER | Conservar y combinar los tests deterministas de Engineer con los tests de seguridad PowerShell de `refactor`, sin sustituir, debilitar ni perder cobertura existente. No restaurar dependencia obligatoria de un MP3 real. La implementación productiva no cambia en TC-01C. | Medio: perder los tests de inyección o reintroducir flakiness de hardware/cache | `go test ./internal/engineer/audio/... -count=1`; en Windows, incluir las pruebas de `escapePSQuote`, `buildPSScript` y `encodePSCommand`; revisar también build-tag no Windows | **APROBADA — MC-1.** Isaac, 2026-07-14. Falta materializar el diff y obtener suite verde en ISA-25; eso bloquea el commit de merge, no la decisión. |
+| `vantare-v2/internal/server/server.go` | content/content; ambas ramas añaden rutas al mismo constructor y código al final del archivo | Endurece servidor loopback, nonce/rate limit/auth, security headers, `/api/profile-v3` y listener real | Añade `GET /api/engineer/health` y su handler sobre `EngineerService.Health()` | SHARED | Partir del archivo de `refactor`, conservar íntegramente su hardening y runtime, y añadir únicamente la ruta/handler de health de Engineer. No introducir un segundo router, lifecycle, servidor o estado paralelo; no diseñar Telemetry Core ni cambiar payloads SSE/Wails. | Alto: una elección unilateral puede perder seguridad/auth/runtime Overlay o diagnóstico Engineer | `go test ./internal/server/... -count=1`; pruebas de auth/nonce/loopback existentes; `TestEngineerHealth`/health 200-503; smoke de `/telemetry/stream` y `/engineer/stream` en ISA-24/25 | **APROBADA — MC-2.** Isaac, 2026-07-14. Faltan baseline dinámico ISA-24, diff resuelto y tests server en ISA-25; eso bloquea el merge real, no la decisión. |
 
 ## Resultado cuantitativo
 
@@ -48,10 +55,10 @@ Estos hallazgos no se corrigen en TC-01A ni se usan para cambiar funcionalidad d
 
 ## Registro de decisiones y bloqueos
 
-| ID | Pregunta concreta | Evidencia faltante | Responsable | Issue | Condición de bloqueo |
+| ID | Estado y decisión | Evidencia faltante | Responsable | Issue | Condición de bloqueo |
 |---|---|---|---|---|---|
-| MC-1 | ¿Aprueba Isaac combinar los tests deterministas de Engineer con las pruebas de seguridad PowerShell de `refactor`? | Diff de resolución y `go test ./internal/engineer/audio/...` en Windows | Isaac; prepara worker ISA-25 | ISA-25 | No se puede commitear el merge hasta aprobación y suite verde. |
-| MC-2 | ¿Aprueba Isaac que `server.go` conserve íntegro el runtime/hardening de `refactor` y reciba solo el endpoint health de Engineer? | Baseline dinámico ISA-24, diff resuelto y tests server | Isaac; preparan workers ISA-24/25 | ISA-24, ISA-25 | No se puede ejecutar/commitear el merge real hasta cerrar baseline y aprobación. |
+| MC-1 | **APROBADA por Isaac el 2026-07-14.** Combinar la cobertura determinista Engineer y la cobertura de seguridad PowerShell de `refactor` sin sustitución, debilitamiento ni pérdida. | Diff de resolución y `go test ./internal/engineer/audio/...` en Windows | Worker ISA-25 prepara evidencia; Isaac ya decidió la composición | ISA-25 | La decisión está cerrada. No se puede commitear el merge hasta materializar el diff y obtener suite verde. |
+| MC-2 | **APROBADA por Isaac el 2026-07-14.** Mantener íntegros hardening/runtime de `refactor` y añadir solo health de Engineer, sin router, lifecycle, servidor ni estado paralelo. | Baseline dinámico ISA-24, diff resuelto y tests server | Workers ISA-24/25 preparan evidencia; Isaac ya decidió la composición | ISA-24, ISA-25 | La decisión está cerrada. No se puede ejecutar/commitear el merge real hasta cerrar baseline y checks. |
 | MC-3 | ¿Qué ref remota recibirá la rama apilada si los SHAs locales están por delante de `origin`? | Confirmación de que `refactor@9712d993...` es la base publicada deseada | Isaac | ISA-23 | No bloquea la documentación; bloquea cualquier rebase/force-push, que además están prohibidos. El push normal conserva la historia fijada. |
 
 ## Resoluciones expresamente prohibidas
@@ -61,4 +68,4 @@ Estos hallazgos no se corrigen en TC-01A ni se usan para cambiar funcionalidad d
 - Activar simulator, replay, mock, readers independientes o Pit Manager para “probar” la integración.
 - Cambiar contratos públicos, estilos, renderizadores o comportamiento Overlay.
 - Introducir Telemetry Core durante la resolución de conflictos.
-- Ejecutar `git merge` antes de ISA-25 y la aprobación humana indicada.
+- Ejecutar `git merge` antes de ISA-25 o interpretar MC-1/MC-2 como autorización de merge.

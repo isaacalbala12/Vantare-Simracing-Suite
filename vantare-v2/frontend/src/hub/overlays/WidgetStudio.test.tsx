@@ -179,7 +179,7 @@ describe("WidgetStudio", () => {
         },
       ],
     };
-
+    
     render(
       <WidgetStudio
         profile={relativeProfile}
@@ -192,7 +192,10 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-
+    
+    // Navigate to Columnas section in the sub-nav
+    fireEvent.click(screen.getByTestId("sn-item-columnas"));
+    
     expect(screen.getByText("Columnas relative")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar mejor vuelta")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar última vuelta")).toBeTruthy();
@@ -393,7 +396,7 @@ describe("WidgetStudio", () => {
         },
       ],
     };
-
+    
     render(
       <WidgetStudio
         profile={standingsProfile}
@@ -406,7 +409,10 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-
+    
+    // Navigate to Columnas section in the sub-nav
+    fireEvent.click(screen.getByTestId("sn-item-columnas"));
+    
     expect(screen.getByText("Columnas standings")).toBeTruthy();
     expect(screen.getByLabelText("Mostrar mejor vuelta standings")).toBeTruthy();
     expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
@@ -435,7 +441,7 @@ describe("WidgetStudio", () => {
         },
       ],
     };
-
+    
     render(
       <WidgetStudio
         profile={standingsProfile}
@@ -448,9 +454,12 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-
+    
+    // Navigate to Columnas section in the sub-nav
+    fireEvent.click(screen.getByTestId("sn-item-columnas"));
+    
     fireEvent.click(screen.getByRole("switch", { name: "Mostrar mejor vuelta standings" }));
-
+    
     const next = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     expect(next.widgets[0].position).toEqual(standingsProfile.widgets[0].position);
     expect(next.variants?.[0].columns?.find((column) => column.id === "bestLap")?.enabled).toBe(true);

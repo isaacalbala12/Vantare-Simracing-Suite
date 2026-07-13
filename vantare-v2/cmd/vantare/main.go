@@ -35,7 +35,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.1.0.4"
+var version = "v0.1.0.5"
 
 // supabaseURL and supabaseAnonKey are injected at build time via ldflags
 // (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
@@ -137,41 +137,50 @@ func installerURL(release updater.Release) string {
 }
 
 // handleDiscoverApps runs discovery, persists the merged app set and emits the
-// canonical launcher:apps:detected event. On error it falls back to
+// canonical launcher snapshot. On error it falls back to
 // launcher:error so the UI can surface a message.
 func handleDiscoverApps(svc *launcher.Service, emitter app.EventEmitter) {
 	if _, err := svc.DiscoverApps(); err != nil {
 		log.Printf("launcher:discover error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		handleLauncherSnapshot(svc, emitter)
+		return
 	}
+	handleLauncherSnapshot(svc, emitter)
 }
 
-// handleAddApp validates and persists a manually-added app, then emits
-// launcher:apps:updated with the full app set so the UI refreshes.
+func emitLauncherSnapshot(svc *launcher.Service, emitter app.EventEmitter) {
+	emitter.Emit("launcher:snapshot", svc.Snapshot())
+}
+
+func handleLauncherSnapshot(svc *launcher.Service, emitter app.EventEmitter) {
+	emitLauncherSnapshot(svc, emitter)
+}
+
+// handleAddApp validates and persists a manually-added app, then emits a snapshot.
 func handleAddApp(entry app.LauncherAppEntry, svc *launcher.Service, emitter app.EventEmitter) {
 	if err := svc.AddManualApp(entry); err != nil {
 		log.Printf("launcher:addApp error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": svc.Settings().GetLauncherApps()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleRemoveApp deletes an app (refusing when a profile still uses it) and
-// emits launcher:apps:updated with the remaining set.
+// emits a snapshot with the remaining set.
 func handleRemoveApp(id string, svc *launcher.Service, emitter app.EventEmitter) {
 	if err := svc.RemoveApp(id); err != nil {
 		log.Printf("launcher:removeApp error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": svc.Settings().GetLauncherApps()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
-// handleListProfiles emits launcher:profiles:updated with the current profiles.
+// handleListProfiles emits the current launcher snapshot.
 func handleListProfiles(svc *launcher.Service, emitter app.EventEmitter) {
-	profiles := svc.ListProfiles()
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": profiles})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleSaveProfile validates and persists a profile, then re-emits the full
@@ -182,7 +191,7 @@ func handleSaveProfile(profile app.LaunchProfile, svc *launcher.Service, emitter
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleDeleteProfile removes a profile by ID and re-emits the remaining list.
@@ -192,7 +201,7 @@ func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmit
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleDuplicateProfile copies an existing profile into a new one with the
@@ -204,7 +213,7 @@ func handleDuplicateProfile(id, newID, newName string, svc *launcher.Service, em
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:profiles:updated", map[string]any{"profiles": svc.ListProfiles()})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleLaunchProfile starts the launch chain for a profile. The chain runs on
@@ -245,15 +254,174 @@ func handleRegistryList(emitter app.EventEmitter) {
 }
 
 // handleAppUpdate updates the Args field of a launcher app entry identified by
-// id. On success it emits launcher:apps:updated with the full app set so the
-// UI refreshes. On error it emits launcher:error with the failure reason.
+// id. The caller emits the canonical snapshot after this succeeds.
 func handleAppUpdate(id, args string, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
 	if err := settingsSvc.UpdateLauncherAppArgs(id, args); err != nil {
 		log.Printf("launcher:app:update error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": settingsSvc.GetLauncherApps()})
+	handleLauncherSnapshot(launcher.NewService(settingsSvc, emitter, nil), emitter)
+}
+
+func emitLauncherCommandError(emitter app.EventEmitter, err error) {
+	payload := map[string]any{"message": err.Error()}
+	if appErr, ok := err.(*launcher.LauncherAppError); ok {
+		payload["code"] = appErr.Code
+		if appErr.AppID != "" {
+			payload["appId"] = appErr.AppID
+		}
+	}
+	emitter.Emit("launcher:error", payload)
+}
+
+func handleResolveLauncherDecision(decisionID, action string, remember bool, emitter app.EventEmitter) {
+	if decisionID == "" || action == "" {
+		emitter.Emit("launcher:error", map[string]any{"code": "invalid_decision", "message": "decision id and action are required"})
+		return
+	}
+	emitter.Emit("launcher:decision:resolved", map[string]any{
+		"decisionId": decisionID,
+		"action":     action,
+		"remember":   remember,
+	})
+}
+
+func handleLauncherOnboardingComplete(settingsSvc *app.SettingsService, emitter app.EventEmitter) {
+	settings := settingsSvc.Settings()
+	settings.LauncherOnboardingCompleted = true
+	if err := settingsSvc.Save(settings); err != nil {
+		emitter.Emit("launcher:error", map[string]any{"code": "onboarding_save_failed", "message": err.Error()})
+		return
+	}
+	emitter.Emit("launcher:onboarding:completed", map[string]any{"completed": true})
+}
+
+func launcherProcessIdentity(id string, pid int, svc *launcher.Service) (launcher.ProcessIdentity, error) {
+	if pid <= 0 {
+		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: confirmed PID is required")
+	}
+	entry, ok := svc.Settings().GetLauncherApps()[id]
+	if !ok {
+		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: app %q not found", id)
+	}
+	identity := launcher.ProcessIdentity{PID: pid, ExecutablePath: entry.ExecutablePath}
+	if known, ok := launcher.KnownAppsByID[id]; ok && len(known.ProcessNames) > 0 {
+		identity.ProcessName = known.ProcessNames[0]
+	}
+	return identity, nil
+}
+
+func handleCloseLauncherApp(id string, pid int, svc *launcher.Service, emitter app.EventEmitter, ctx context.Context) {
+	identity, err := launcherProcessIdentity(id, pid, svc)
+	if err == nil {
+		err = launcher.CloseProcess(ctx, launcher.DefaultProcessInspector(), identity)
+	}
+	if err != nil {
+		emitter.Emit("launcher:error", map[string]any{"code": "process_close_failed", "message": err.Error(), "appId": id})
+		return
+	}
+	handleLauncherSnapshot(svc, emitter)
+}
+
+func handleRestartLauncherApp(id string, pid int, svc *launcher.Service, emitter app.EventEmitter, ctx context.Context) {
+	identity, err := launcherProcessIdentity(id, pid, svc)
+	entry, ok := svc.Settings().GetLauncherApps()[id]
+	if err == nil && !ok {
+		err = fmt.Errorf("launcher: app %q not found", id)
+	}
+	if err == nil {
+		err = launcher.RestartProcess(ctx, launcher.DefaultProcessInspector(), identity, entry.ExecutablePath, nil)
+	}
+	if err != nil {
+		emitter.Emit("launcher:error", map[string]any{"code": "process_restart_failed", "message": err.Error(), "appId": id})
+		return
+	}
+	handleLauncherSnapshot(svc, emitter)
+}
+
+func handleSetAppPath(id, path string, svc *launcher.Service, emitter app.EventEmitter) {
+	settings := svc.Settings()
+	apps := settings.GetLauncherApps()
+	entry, ok := apps[id]
+	if !ok {
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "app_not_found", Message: "launcher app was not found", AppID: id,
+		})
+		return
+	}
+	updated, err := launcher.ValidateExecutableOverride(entry, path)
+	if err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	apps[id] = updated
+	if err := settings.SetLauncherApps(apps); err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	handleLauncherSnapshot(svc, emitter)
+}
+
+func handlePreviewAppMerge(manualID string, svc *launcher.Service, emitter app.EventEmitter) {
+	entry, ok := svc.Settings().GetLauncherApps()[manualID]
+	if !ok {
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "app_not_found", Message: "manual launcher app was not found", AppID: manualID,
+		})
+		return
+	}
+	candidateID, ok := launcher.FindMergeCandidate(entry, launcher.OfficialCatalog)
+	if !ok {
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "merge_candidate_not_found", Message: "no official merge candidate was found", AppID: manualID,
+		})
+		return
+	}
+	emitter.Emit("launcher:app:merge:preview", map[string]any{
+		"manualId":         manualID,
+		"mergeCandidateId": candidateID,
+	})
+}
+
+func handleConfirmAppMerge(manualID, catalogID string, svc *launcher.Service, emitter app.EventEmitter) {
+	settings := svc.Settings()
+	apps := settings.GetLauncherApps()
+	manual, manualOK := apps[manualID]
+	catalog, catalogOK := apps[catalogID]
+	if !catalogOK {
+		catalog, catalogOK = launcher.OfficialAppEntry(catalogID)
+	}
+	if !manualOK || !catalogOK {
+		missingID := manualID
+		if manualOK {
+			missingID = catalogID
+		}
+		emitLauncherCommandError(emitter, &launcher.LauncherAppError{
+			Code: "app_not_found", Message: "manual or catalog launcher app was not found", AppID: missingID,
+		})
+		return
+	}
+	merged, profiles, err := launcher.MergeManualIntoCatalog(manual, catalog, settings.GetLauncherProfiles())
+	if err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	delete(apps, manualID)
+	apps[catalogID] = merged
+	if err := settings.SetLauncherApps(apps); err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	if err := settings.SetLauncherProfiles(profiles); err != nil {
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	emitter.Emit("launcher:app:merge:confirmed", map[string]any{
+		"manualId":  manualID,
+		"catalogId": catalogID,
+	})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleChainError is invoked when the chain runner reports a step failure.
@@ -359,7 +527,7 @@ func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsServic
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	emitter.Emit("launcher:apps:updated", map[string]any{"apps": settingsSvc.GetLauncherApps()})
+	handleLauncherSnapshot(launcher.NewService(settingsSvc, emitter, nil), emitter)
 }
 
 // handleLaunchFlag parses --launch=<profileID> from the command-line arguments.
@@ -381,7 +549,7 @@ func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *laun
 func main() {
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
-		udf := filepath.Join(appData, "Vantare", "webview_v0.3.10.0")
+		udf := filepath.Join(appData, "Vantare", "webview_v0.1.0.5")
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
@@ -582,6 +750,8 @@ func main() {
 		// Validate already emits license:changed internally via EmitChanged,
 		// so we must not emit again here to avoid duplicate events that can
 		// race with the frontend state machine.
+		log.Printf("license:validate request tokenLen=%d refreshLen=%d",
+			len(payload.SessionToken), len(payload.RefreshToken))
 		res, verr := licenseSvc.Validate(context.Background(), payload.SessionToken)
 		if verr != nil {
 			log.Printf("license:validate error: %v", verr)
@@ -589,8 +759,8 @@ func main() {
 			return
 		}
 		if res != nil {
-			log.Printf("license:validate result state=%s deviceOK=%v err=%v entitlements=%d",
-				res.State, res.DeviceOK, res.Error != nil, len(res.Entitlements))
+			log.Printf("license:validate result state=%s email=%s deviceOK=%v entitlements=%v err=%v",
+				res.State, res.Email, res.DeviceOK, res.Entitlements, res.Error)
 		}
 		// Emit auth:session so the frontend can persist the Supabase session
 		// in the WebView's localStorage. This survives app restarts.
@@ -611,6 +781,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
+		log.Printf("license:reset-device request tokenLen=%d", len(payload.SessionToken))
 		if payload.SessionToken == "" {
 			log.Printf("license:reset-device error: empty session token")
 			emitter.Emit("license:error", map[string]any{"message": "token de sesión requerido"})
@@ -622,6 +793,7 @@ func main() {
 			emitter.Emit("license:error", map[string]any{"message": err.Error()})
 			return
 		}
+		log.Printf("license:reset-device ok")
 	})
 
 	// Preset service for widget presets (WidgetStudio only)
@@ -1197,6 +1369,11 @@ func main() {
 		handleDiscoverApps(launcherSvc, emitter)
 	})
 
+	wailsApp.Event.On("launcher:snapshot:get", func(event *application.CustomEvent) {
+		_ = event
+		handleLauncherSnapshot(launcherSvc, emitter)
+	})
+
 	wailsApp.Event.On("launcher:app:add", func(event *application.CustomEvent) {
 		var entry app.LauncherAppEntry
 		if event.Data != nil {
@@ -1284,6 +1461,45 @@ func main() {
 		handleCancelProfile(payload.ID, launcherSvc)
 	})
 
+	wailsApp.Event.On("launcher:decision:resolve", func(event *application.CustomEvent) {
+		var payload struct {
+			DecisionID string `json:"decisionId"`
+			Action     string `json:"action"`
+			Remember   bool   `json:"remember"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, emitter)
+	})
+
+	wailsApp.Event.On("launcher:onboarding:complete", func(event *application.CustomEvent) {
+		_ = event
+		handleLauncherOnboardingComplete(settingsSvc, emitter)
+	})
+
+	for _, command := range []string{"launcher:app:close", "launcher:app:restart"} {
+		command := command
+		wailsApp.Event.On(command, func(event *application.CustomEvent) {
+			var payload struct {
+				ID  string `json:"id"`
+				PID int    `json:"pid"`
+			}
+			if event.Data != nil {
+				if raw, err := json.Marshal(event.Data); err == nil {
+					_ = json.Unmarshal(raw, &payload)
+				}
+			}
+			if command == "launcher:app:close" {
+				handleCloseLauncherApp(payload.ID, payload.PID, launcherSvc, emitter, ctx)
+				return
+			}
+			handleRestartLauncherApp(payload.ID, payload.PID, launcherSvc, emitter, ctx)
+		})
+	}
+
 	// File picker for manual apps. Wails v3 alpha.98-tui has no native dialog
 	// API, so this emits a fallback error and lets the frontend's HTML file
 	// input drive the real selection (see handleAppPick).
@@ -1312,6 +1528,63 @@ func main() {
 			}
 		}
 		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:path:set", func(event *application.CustomEvent) {
+		var payload struct {
+			ID   string `json:"id"`
+			Path string `json:"path"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleSetAppPath(payload.ID, payload.Path, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:merge:preview", func(event *application.CustomEvent) {
+		var payload struct {
+			ManualID string `json:"manualId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handlePreviewAppMerge(payload.ManualID, launcherSvc, emitter)
+	})
+
+	wailsApp.Event.On("launcher:app:merge:confirm", func(event *application.CustomEvent) {
+		var payload struct {
+			ManualID  string `json:"manualId"`
+			CatalogID string `json:"catalogId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleConfirmAppMerge(payload.ManualID, payload.CatalogID, launcherSvc, emitter)
+	})
+
+	// App icon handler. Frontend emits launcher:app:icon with { id, executablePath }.
+	// Responds with launcher:app:icon:result containing a base64 data URI or empty string.
+	wailsApp.Event.On("launcher:app:icon", func(event *application.CustomEvent) {
+		var payload struct {
+			ID             string `json:"id"`
+			ExecutablePath string `json:"executablePath"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		dataURI := launcher.GetAppIconForAppBase64(payload.ID, payload.ExecutablePath)
+		emitter.Emit("launcher:app:icon:result", map[string]any{
+			"id":      payload.ID,
+			"iconUrl": dataURI,
+		})
 	})
 
 	// Chain error -> native question dialog asking whether to retry.

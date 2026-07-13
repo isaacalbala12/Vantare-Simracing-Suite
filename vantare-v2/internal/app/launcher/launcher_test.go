@@ -67,7 +67,7 @@ func newBackendWithLMU() *fakeSettingsBackend {
 	}
 }
 
-func TestDiscoverAppsMergesAndEmits(t *testing.T) {
+func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	backend := newBackendWithLMU()
 	backend.apps["custom"] = app.LauncherAppEntry{ID: "custom", DisplayName: "My App", Detected: false}
 	emitter := &spyEmitter{}
@@ -78,14 +78,34 @@ func TestDiscoverAppsMergesAndEmits(t *testing.T) {
 		t.Fatalf("DiscoverApps: %v", err)
 	}
 	// Manual app preserved, detected apps merged in.
-	if _, ok := apps["custom"]; !ok {
+	appsByID := map[string]app.LauncherAppEntry{}
+	for _, a := range apps {
+		appsByID[a.ID] = a
+	}
+	if _, ok := appsByID["custom"]; !ok {
 		t.Fatal("manual app must be preserved across discovery")
 	}
-	if _, ok := apps["lmu"]; !ok {
+	if _, ok := appsByID["lmu"]; !ok {
 		t.Fatal("lmu must be present after discovery")
 	}
-	if !hasEvent(emitter, "launcher:apps:detected") {
-		t.Fatalf("expected launcher:apps:detected, got %v", emitter.events)
+	if len(emitter.events) != 0 {
+		t.Fatalf("discovery service should not emit legacy events, got %v", emitter.events)
+	}
+	if snapshot := svc.Snapshot(); snapshot.Discovery.LastScanAt == nil || snapshot.Discovery.Scanning {
+		t.Fatalf("discovery snapshot must be complete after a successful scan: %+v", snapshot.Discovery)
+	}
+}
+
+func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
+	backend := newBackendWithLMU()
+	svc := NewService(backend, &spyEmitter{}, nil)
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "ready", Pid: 42})
+	snapshot := svc.Snapshot()
+	if len(snapshot.ActiveChains) != 1 {
+		t.Fatalf("expected one active chain, got %+v", snapshot.ActiveChains)
+	}
+	if snapshot.ActiveChains[0].Steps[0].PID != 42 || snapshot.ActiveChains[0].Status != "ready" {
+		t.Fatalf("unexpected active chain state: %+v", snapshot.ActiveChains[0])
 	}
 }
 

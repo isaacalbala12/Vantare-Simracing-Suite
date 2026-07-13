@@ -66,6 +66,9 @@ func TestValidateEmitsLicenseChanged(t *testing.T) {
 	if w.State != "active" {
 		t.Fatalf("expected state active, got %s", w.State)
 	}
+	if w.LastValidated == "" {
+		t.Fatalf("expected lastValidated RFC3339 string on wire")
+	}
 }
 
 func TestValidateWithoutEmitterIsNoop(t *testing.T) {

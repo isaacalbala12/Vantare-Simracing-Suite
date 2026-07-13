@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { AppsPanel } from "./AppsPanel";
+import { LauncherStoreProvider } from "./launcher-store";
 
 const listeners = new Map<
   string,
@@ -40,16 +41,42 @@ function dispatch(name: string, data: unknown) {
   });
 }
 
+function renderPanel() {
+  return render(
+    <LauncherStoreProvider>
+      <AppsPanel />
+    </LauncherStoreProvider>,
+  );
+}
+
+function dispatchSnapshot(apps: Array<Record<string, unknown>>) {
+  dispatch("launcher:snapshot", {
+    revision: 1,
+    apps: apps.map((app) => ({
+      ...app,
+      availability: {
+        catalogued: true,
+        found: app.detected === true,
+        installed: app.detected === true,
+        launchable: app.detected === true,
+      },
+    })),
+    vantareProfiles: [],
+    userProfiles: [],
+    activeChains: [],
+    discovery: { scanning: false, lastScanAt: null, error: null },
+  });
+}
+
 describe("AppsPanel", () => {
-  it("requests discovery and profile list on mount", () => {
-    render(<AppsPanel />);
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:apps:discover");
+  it("uses the shared snapshot request on mount", () => {
+    renderPanel();
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:snapshot:get");
   });
 
   it("renders detected apps received via event", () => {
-    render(<AppsPanel />);
-    dispatch("launcher:apps:detected", {
-      apps: [
+    renderPanel();
+    dispatchSnapshot([
         {
           id: "lmu",
           displayName: "Le Mans Ultimate",
@@ -61,21 +88,19 @@ describe("AppsPanel", () => {
           gradientFrom: "#ff3b3b",
           gradientTo: "#9a0606",
         },
-      ],
-    });
+    ]);
     expect(screen.getByTestId("app-row-lmu")).toBeTruthy();
   });
 
   it("opens AddNonSteamGameModal on add button click", () => {
-    render(<AppsPanel />);
+    renderPanel();
     fireEvent.click(screen.getByTestId("apps-add-manual"));
     expect(screen.getByTestId("add-non-steam-modal")).toBeTruthy();
   });
 
   it("renders details panel with args input when clicking on an app", () => {
-    render(<AppsPanel />);
-    dispatch("launcher:apps:detected", {
-      apps: [
+    renderPanel();
+    dispatchSnapshot([
         {
           id: "obs",
           displayName: "OBS Studio",
@@ -87,17 +112,15 @@ describe("AppsPanel", () => {
           gradientFrom: "#302e31",
           gradientTo: "#1a1a1a",
         },
-      ],
-    });
+    ]);
     fireEvent.click(screen.getByTestId("app-row-obs"));
     expect(screen.getByTestId("app-details-obs")).toBeTruthy();
     expect(screen.getByTestId("app-args-input-obs")).toBeTruthy();
   });
 
   it("emits launcher:app:update when editing args", () => {
-    render(<AppsPanel />);
-    dispatch("launcher:apps:detected", {
-      apps: [
+    renderPanel();
+    dispatchSnapshot([
         {
           id: "obs",
           displayName: "OBS Studio",
@@ -110,8 +133,7 @@ describe("AppsPanel", () => {
           gradientFrom: "#302e31",
           gradientTo: "#1a1a1a",
         },
-      ],
-    });
+    ]);
     fireEvent.click(screen.getByTestId("app-row-obs"));
     fireEvent.change(screen.getByTestId("app-args-input-obs"), {
       target: { value: "--start-streaming" },

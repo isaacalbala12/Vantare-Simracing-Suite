@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   formatRelativeTime,
@@ -9,22 +7,23 @@ import {
   type LauncherAppEntry,
   type LaunchProfile,
 } from "./launcher-state";
-import { useChainState, useLastResult, type ChainState } from "./chain-store";
+import { useChainState, useLastResult } from "./chain-store";
 import { AppBadge } from "../components/AppBadge";
-import { ProfileEditor } from "./ProfileEditor";
 import { ProfileCardTimeline } from "./ProfileCard.timeline";
+import { dispatchLauncherCommand } from "./launcher-bridge";
 
 type ProfileCardProps = {
   profile: LaunchProfile;
   apps: LauncherAppEntry[];
   className?: string;
+  /** Called when the user clicks Editar. Parent opens the editor panel. */
+  onEdit?: (profileId: string) => void;
 };
 
 function appFor(apps: LauncherAppEntry[], id: string): LauncherAppEntry | undefined {
   return apps.find((a) => a.id === id);
 }
 
-/** Format a relative time string (e.g. "hace 10m", "hace 2h"). Delegates to shared formatRelativeTime in launcher-state. */
 function relativeTime(dateStr: string): string {
   try {
     const then = new Date(dateStr).getTime();
@@ -36,47 +35,31 @@ function relativeTime(dateStr: string): string {
   }
 }
 
-export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
+export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardProps) {
   const { t } = useI18n();
-  const chain: ChainState | undefined = useChainState(profile.id);
+  const chain = useChainState(profile.id);
   const lastResult = useLastResult(profile.id);
-  const [editing, setEditing] = useState(false);
 
-  // ── Early return: chain active → show mini-timeline ──────────────
   if (chain) {
     return (
       <ProfileCardTimeline
         chain={chain}
         apps={apps}
-        onCancel={() => Events.Emit("launcher:profile:cancel", { id: profile.id })}
+        onCancel={() => dispatchLauncherCommand("launcher:profile:cancel", { id: profile.id })}
       />
     );
   }
 
-  // ── Card normal ───────────────────────────────────────────────────
   const launchable = isProfileLaunchable(profile, apps);
   const estimatedMs = estimateChainDuration(profile, apps);
   const timeLabel = estimatedMs > 0 ? `≈${Math.round(estimatedMs / 1000)}s` : "—";
-
-  const handleLaunch = () =>
-    Events.Emit("launcher:profile:launch", { id: profile.id });
-  const handleDelete = () =>
-    Events.Emit("launcher:profile:delete", { id: profile.id });
-  const handleDuplicate = () =>
-    Events.Emit("launcher:profile:duplicate", {
-      id: profile.id,
-      newId: newProfileId("profile"),
-      newName: `${profile.name} ${t("launcher.profiles.copy.suffix")}`.trim(),
-    });
-  const handleSave = (updated: LaunchProfile) =>
-    Events.Emit("launcher:profile:save", { profile: updated });
 
   return (
     <article
       className={`card-sleek rounded-xl p-5 ${className ?? ""}`}
       data-testid={`profile-card-${profile.id}`}
     >
-      {/* ── Header: name + favorite badge + lastResult + launch btn ── */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2
@@ -89,51 +72,32 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
                 ? t("launcher.profiles.pro.name")
                 : profile.name}
             {profile.isFavorite && (
-              <span
-                className="text-amber-400 ml-2"
-                data-testid={`profile-favorite-badge-${profile.id}`}
-                aria-label="Favorita"
-              >
+              <span className="text-amber-400 ml-2" data-testid={`profile-favorite-badge-${profile.id}`} aria-label="Favorita">
                 ★
               </span>
             )}
           </h2>
           {profile.description && (
-            <p
-              className="text-xs text-vantare-textMuted mt-1"
-              data-testid={`profile-description-${profile.id}`}
-            >
+            <p className="text-xs text-vantare-textMuted mt-1" data-testid={`profile-description-${profile.id}`}>
               {profile.description}
             </p>
           )}
         </div>
-
         <div className="flex items-center gap-2">
           {lastResult && (
             <span
               data-testid={`profile-lastresult-${profile.id}`}
               className={`inline-block w-2 h-2 rounded-full ${
-                lastResult === "success"
-                  ? "bg-emerald-500"
-                  : lastResult === "error"
-                    ? "bg-red-500"
-                    : "bg-amber-500"
+                lastResult === "success" ? "bg-emerald-500" : lastResult === "error" ? "bg-red-500" : "bg-amber-500"
               }`}
-              title={
-                lastResult === "success"
-                  ? "Último lanzamiento exitoso"
-                  : lastResult === "partial"
-                    ? "Último lanzamiento parcial"
-                    : "Último lanzamiento fallido"
-              }
             />
           )}
           <button
             type="button"
-            onClick={handleLaunch}
+            onClick={() => dispatchLauncherCommand("launcher:profile:launch", { id: profile.id })}
             disabled={!launchable}
             title={launchable ? undefined : t("launcher.profile.unlaunchable")}
-            className="px-3 py-1.5 rounded-lg bg-accent text-[10px] uppercase tracking-[.18em] font-bold text-black hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 rounded-lg bg-vantare-red-400 text-[10px] uppercase tracking-[.18em] font-bold text-white hover:bg-vantare-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             data-testid={`profile-launch-${profile.id}`}
           >
             {t("launcher.profile.start")}
@@ -141,27 +105,21 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
         </div>
       </div>
 
-      {/* ── Estimated / real time ──────────────────────────────────── */}
+      {/* Time */}
       {timeLabel && (
-        <p
-          className="text-xs text-vantare-textMuted mt-2"
-          data-testid={`profile-time-${profile.id}`}
-        >
+        <p className="text-xs text-vantare-textMuted mt-2" data-testid={`profile-time-${profile.id}`}>
           {timeLabel}
         </p>
       )}
 
-      {/* ── Last launched (telemetry) ──────────────────────────────── */}
+      {/* Last launched */}
       {profile.lastLaunchedAt && (
-        <p
-          className="text-xs text-vantare-textDim mt-1"
-          data-testid={`profile-last-${profile.id}`}
-        >
+        <p className="text-xs text-vantare-textDim mt-1" data-testid={`profile-last-${profile.id}`}>
           Último: {relativeTime(profile.lastLaunchedAt)}
         </p>
       )}
 
-      {/* ── Steps list ─────────────────────────────────────────────── */}
+      {/* Steps */}
       <ul className="mt-3 flex flex-col gap-1.5" data-testid="profile-steps">
         {profile.steps.length === 0 && (
           <li className="text-xs text-vantare-textDim">Sin pasos configurados.</li>
@@ -177,9 +135,7 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
               {app ? (
                 <AppBadge app={app} size="sm" />
               ) : (
-                <span className="text-xs text-vantare-textDim">
-                  App desconocida ({step.appId})
-                </span>
+                <span className="text-xs text-vantare-textDim">App desconocida ({step.appId})</span>
               )}
               <span className="ml-auto text-[10px] uppercase tracking-[.18em] text-vantare-textDim">
                 {step.delay}s
@@ -189,20 +145,8 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
         })}
       </ul>
 
-      {/* ── Profile editor (side-panel) ────────────────────────────── */}
-      <ProfileEditor
-        profile={profile}
-        open={editing}
-        onClose={() => setEditing(false)}
-        onSave={handleSave}
-        apps={apps}
-      />
-
-      {/* ── Footer: count in tooltip + edit + duplicate + delete ──── */}
-      <div
-        className="mt-3 flex items-center gap-2 justify-end"
-        data-testid={`profile-actions-${profile.id}`}
-      >
+      {/* Footer actions */}
+      <div className="mt-3 flex items-center gap-2 justify-end" data-testid={`profile-actions-${profile.id}`}>
         <span
           className="text-[10px] uppercase tracking-[.18em] text-vantare-textMuted mr-auto"
           title={`Lanzado ${profile.launchCount ?? 0} veces`}
@@ -213,8 +157,8 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
 
         <button
           type="button"
-          onClick={() => setEditing(true)}
-          className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+          onClick={() => onEdit?.(profile.id)}
+          className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
           data-testid={`profile-edit-${profile.id}`}
         >
           Editar
@@ -222,8 +166,12 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
 
         <button
           type="button"
-          onClick={handleDuplicate}
-          className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+          onClick={() => dispatchLauncherCommand("launcher:profile:duplicate", {
+            id: profile.id,
+            newId: newProfileId("profile"),
+            newName: `${profile.name} ${t("launcher.profiles.copy.suffix")}`.trim(),
+          })}
+          className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
           data-testid={`profile-duplicate-${profile.id}`}
         >
           Duplicar
@@ -231,8 +179,8 @@ export function ProfileCard({ profile, apps, className }: ProfileCardProps) {
 
         <button
           type="button"
-          onClick={handleDelete}
-          className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:border-vantare-red-400/50 hover:text-vantare-red-400 transition-colors"
+          onClick={() => dispatchLauncherCommand("launcher:profile:delete", { id: profile.id })}
+          className="px-3 py-1.5 rounded-lg border border-vantare-red-400/30 text-[10px] uppercase tracking-[.18em] text-vantare-red-400 hover:bg-vantare-red-400/10 transition-colors"
           data-testid={`profile-delete-${profile.id}`}
         >
           Eliminar

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Events } from "@wailsio/runtime";
+import { useMemo, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   appSortOrder,
@@ -7,7 +6,9 @@ import {
   type LauncherAppEntry,
   type LaunchProfile,
 } from "./launcher-state";
+import { useLauncherSnapshot, useLauncherStore } from "./launcher-store";
 import { ProfileCard } from "./ProfileCard";
+import { ProfileEditor } from "./ProfileEditor";
 
 type ProfilesPanelProps = {
   className?: string;
@@ -15,43 +16,27 @@ type ProfilesPanelProps = {
 
 export function ProfilesPanel({ className }: ProfilesPanelProps) {
   const { t } = useI18n();
-  const [apps, setApps] = useState<LauncherAppEntry[]>([]);
-  const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
+  const snapshot = useLauncherSnapshot();
+  const { dispatchLauncherCommand } = useLauncherStore();
+  const apps = useMemo<LauncherAppEntry[]>(
+    () =>
+      (snapshot?.apps ?? []).map((app) => ({
+        ...app,
+        detected: app.detected ?? app.availability.found,
+      })).sort(appSortOrder),
+    [snapshot],
+  );
+  const profiles = useMemo<LaunchProfile[]>(
+    () => [
+      ...(snapshot?.vantareProfiles ?? []),
+      ...(snapshot?.userProfiles ?? []),
+    ],
+    [snapshot],
+  );
+  const vantareProfiles = snapshot?.vantareProfiles ?? [];
+  const userProfiles = snapshot?.userProfiles ?? [];
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
-  useEffect(() => {
-    Events.Emit("launcher:apps:discover");
-    Events.Emit("launcher:profiles:list");
-
-    const offApps = Events.On(
-      "launcher:apps:detected",
-      (event: { data?: { apps?: LauncherAppEntry[] } }) => {
-        setApps((event.data?.apps ?? []).slice().sort(appSortOrder));
-      },
-    );
-    const offAppsUpdated = Events.On(
-      "launcher:apps:updated",
-      (event: { data?: { apps?: LauncherAppEntry[] } }) => {
-        setApps((event.data?.apps ?? []).slice().sort(appSortOrder));
-      },
-    );
-    const offProfiles = Events.On(
-      "launcher:profiles:updated",
-      (event: { data?: { profiles?: LaunchProfile[] } }) => {
-        setProfiles(event.data?.profiles ?? []);
-      },
-    );
-
-    return () => {
-      offApps();
-      offAppsUpdated();
-      offProfiles();
-    };
-  }, []);
-
-  // handleCreate creates a new profile with a non-empty placeholder name so
-  // the backend's Name validation passes. The user can then click Editar to
-  // rename it. This is simpler than a full inline-edit draft state and
-  // keeps the existing ProfileCard API unchanged.
   const handleCreate = () => {
     const id = newProfileId("profile");
     const blank: LaunchProfile = {
@@ -60,17 +45,16 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
       description: "",
       steps: [],
     };
-    Events.Emit("launcher:profile:save", { profile: blank });
+    dispatchLauncherCommand("launcher:profile:save", { profile: blank });
   };
 
-  const orderedProfiles = useMemo(
-    () => [...profiles].sort((a, b) => {
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      return a.name.localeCompare(b.name);
-    }),
-    [profiles],
-  );
+  // Find the profile being edited (if any)
+  const editingProfile = editingProfileId
+    ? profiles.find((p) => p.id === editingProfileId) ?? null
+    : null;
+
+  const handleSave = (updated: LaunchProfile) =>
+    dispatchLauncherCommand("launcher:profile:save", { profile: updated });
 
   return (
     <section
@@ -82,32 +66,59 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
         <button
           type="button"
           onClick={handleCreate}
-          className="px-3 py-1.5 rounded-lg border border-dashed border-white/10 text-[10px] font-bold uppercase tracking-[.22em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+          className="px-3 py-1.5 rounded-lg border border-dashed border-white/20 text-[10px] font-bold uppercase tracking-[.22em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
           data-testid="profiles-create"
         >
           {t("launcher.profiles.create")}
         </button>
       </div>
 
-      <div className="flex flex-col gap-3" data-testid="profiles-list">
+      <div className="flex flex-col gap-4" data-testid="profiles-list">
         {profiles.length === 0 && (
-          <article
-            className="card-sleek rounded-xl p-5"
-            data-testid="profiles-empty"
-          >
-            <p className="text-xs text-vantare-textMuted">
-              {t("launcher.profiles.empty")}
-            </p>
+          <article className="card-sleek rounded-xl p-5" data-testid="profiles-empty">
+            <p className="text-xs text-vantare-textMuted">{t("launcher.profiles.empty")}</p>
           </article>
         )}
-        {orderedProfiles.map((profile) => (
-          <ProfileCard
-            key={profile.id}
-            profile={profile}
-            apps={apps}
-          />
-        ))}
+        {[
+          { id: "vantare", title: "Perfiles Vantare", items: vantareProfiles },
+          { id: "user", title: "Mis perfiles", items: userProfiles },
+        ].map((section) => {
+          const sectionProfiles = [...section.items].sort((a, b) => {
+            if (a.isFavorite && !b.isFavorite) return -1;
+            if (!a.isFavorite && b.isFavorite) return 1;
+            return a.name.localeCompare(b.name);
+          });
+          return (
+            <section key={section.id} data-testid={`profiles-section-${section.id}`}>
+              <h2 className="mb-2 text-[10px] uppercase tracking-[.22em] text-vantare-textDim">
+                {section.title}
+              </h2>
+              <div className="flex flex-col gap-3">
+                {sectionProfiles.map((profile) => (
+                  <ProfileCard
+                    key={profile.id}
+                    profile={profile}
+                    apps={apps}
+                    onEdit={(id) => setEditingProfileId(id)}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
+
+      {/* Profile Editor — rendered ONCE at panel level, only when editing */}
+      {editingProfile && (
+        <ProfileEditor
+          key={editingProfile.id}
+          profile={editingProfile}
+          open={true}
+          onClose={() => setEditingProfileId(null)}
+          onSave={handleSave}
+          apps={apps}
+        />
+      )}
     </section>
   );
 }

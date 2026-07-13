@@ -11,7 +11,6 @@
 // Procedimiento y flujo manual: docs/roadmap-maintenance.md.
 
 import {
-  PROGRESS_SCALE,
   pickText,
   type LocalizedText,
 } from "./roadmap-data";
@@ -41,17 +40,11 @@ export type RoadmapFeature = {
   subtasks: RoadmapSubtask[];
 };
 
-/** % derivado del ratio done/total de las subtasks, redondeado a la escala. */
+/** % derivado del ratio done/total de las subtasks. */
 export function featurePercent(f: RoadmapFeature): number {
   if (f.subtasks.length === 0) return 0;
   const done = f.subtasks.filter((s) => s.done).length;
-  return nearestOnScale(Math.round((done / f.subtasks.length) * 100));
-}
-
-function nearestOnScale(value: number): number {
-  return PROGRESS_SCALE.reduce((prev, curr) =>
-    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev,
-  );
+  return Math.round((done / f.subtasks.length) * 100);
 }
 
 export type FeaturesDataset = {
@@ -164,21 +157,41 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
   categories: [
     { id: "widget-studio", label: { es: "Widget Studio", en: "Widget Studio", pt: "Widget Studio", it: "Widget Studio" }, order: 1 },
     { id: "launcher", label: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, order: 2 },
-    { id: "onboarding", label: { es: "Onboarding", en: "Onboarding", pt: "Onboarding", it: "Onboarding" }, order: 3 },
-    { id: "payments", label: { es: "Pagos", en: "Payments", pt: "Pagamentos", it: "Pagamenti" }, order: 4 },
-    { id: "settings", label: { es: "Ajustes", en: "Settings", pt: "Configurações", it: "Impostazioni" }, order: 5 },
+    { id: "calendar", label: { es: "Calendario", en: "Calendar", pt: "Calendário", it: "Calendario" }, order: 3 },
+    { id: "engineer", label: { es: "Ingeniero", en: "Engineer", pt: "Engenheiro", it: "Engineer" }, order: 4 },
+    { id: "onboarding", label: { es: "Onboarding", en: "Onboarding", pt: "Onboarding", it: "Onboarding" }, order: 5 },
+    { id: "payments", label: { es: "Pagos", en: "Payments", pt: "Pagamentos", it: "Pagamenti" }, order: 6 },
+    { id: "settings", label: { es: "Ajustes", en: "Settings", pt: "Configurações", it: "Impostazioni" }, order: 7 },
+    { id: "strategy", label: { es: "Estrategia", en: "Strategy", pt: "Estratégia", it: "Strategia" }, order: 8 },
   ],
   features: [
     {
       id: "widget-studio-reform", category: "widget-studio",
-      label: { es: "Widget Studio — Reforma y code-review", en: "Widget Studio — Reform and code review", pt: "Widget Studio — Reforma e code review", it: "Widget Studio — Riforma e code review" },
-      description: { es: "Reformar Widget Studio sección a sección con code-review extenso.", en: "Reform Widget Studio section by section with extensive code review.", pt: "Reformar o Widget Studio seção por seção com code review extenso.", it: "Riformare Widget Studio sezione per sezione con code review esteso." },
+      label: { es: "Widget Studio — En refactor", en: "Widget Studio — Under refactor", pt: "Widget Studio — Em reforma", it: "Widget Studio — In riforma" },
+      description: { es: "Reformar Widget Studio de arriba a abajo: lienzo, inspector, catálogo, diseños, permisos, migraciones, pruebas visuales y conexión con la app real.", en: "Reform Widget Studio top to bottom: canvas, inspector, catalog, designs, permissions, migrations, visual tests and real app connection.", pt: "Reformar o Widget Studio de cima a baixo: canvas, inspetor, catálogo, design, permissões, migrações, testes visuais e conexão com a app real.", it: "Riformare Widget Studio dall'alto in basso: canvas, ispettore, catalogo, design, permessi, migrazioni, test visivi e connessione con l'app reale." },
       tipo: "feature", status: "in-development",
       subtasks: [
-        { label: { es: "Reformar sección a sección", en: "Reform section by section", pt: "Reformar seção por seção", it: "Riformare sezione per sezione" }, done: false },
-        { label: { es: "Code-review extenso", en: "Extensive code review", pt: "Code review extenso", it: "Code review esteso" }, done: false },
-        { label: { es: "Widgets Crystal restantes", en: "Remaining Crystal widgets", pt: "Widgets Crystal restantes", it: "Widget Crystal rimanenti" }, done: false },
-        { label: { es: "Revisión de personalización extensa", en: "Thorough customization review", pt: "Revisão extensa de personalização", it: "Revisione approfondita della personalizzazione" }, done: false },
+        { label: { es: "Cerrar fase del lienzo e interfaz base", en: "Close canvas and base interface phase", pt: "Fechar fase da canvas e interface base", it: "Chiudere fase della canvas e interfaccia base" }, done: false },
+        { label: { es: "Construir el inspector de verdad", en: "Build the real inspector", pt: "Construir o inspetor de verdade", it: "Costruire l'ispettore vero" }, done: false },
+        { label: { es: "Catálogo para añadir widgets", en: "Catalog to add widgets", pt: "Catálogo para adicionar widgets", it: "Catalogo per aggiungere widget" }, done: false },
+        { label: { es: "Sistema de diseños oficiales y personalizados", en: "Official and custom designs system", pt: "Sistema de design oficiais e personalizados", it: "Sistema di design ufficiali e personalizzati" }, done: false },
+        { label: { es: "Reglas de permisos y planes", en: "Permissions and plan rules", pt: "Regras de permissões e planos", it: "Regole di permessi e piani" }, done: false },
+        { label: { es: "Migrar Clasificación (Standings)", en: "Migrate Standings", pt: "Migrar Classificação (Standings)", it: "Migrare Standings" }, done: false },
+        { label: { es: "Migrar Relativo", en: "Migrate Relative", pt: "Migrar Relativo", it: "Migrare Relativo" }, done: false },
+        { label: { es: "Migrar Pedals", en: "Migrate Pedals", pt: "Migrar Pedals", it: "Migrare Pedals" }, done: false },
+        { label: { es: "Pruebas visuales de los cuatro widgets", en: "Visual tests for all four widgets", pt: "Testes visuais dos quatro widgets", it: "Test visivi dei quattro widget" }, done: false },
+        { label: { es: "Conectar el estudio a la app real", en: "Connect studio to real app", pt: "Conectar o estúdio à app real", it: "Connettere lo studio all'app reale" }, done: false },
+        { label: { es: "Telemetría en vivo con LMU", en: "Live telemetry with LMU", pt: "Telemetria ao vivo com LMU", it: "Telemetria in tempo reale con LMU" }, done: false },
+        { label: { es: "Overlay de escritorio y OBS con motor nuevo", en: "Desktop and OBS overlay with new engine", pt: "Overlay de desktop e OBS com motor novo", it: "Overlay desktop e OBS con nuovo motore" }, done: false },
+        { label: { es: "Vista Browser View y refresco tras guardar", en: "Browser View and refresh after save", pt: "Vista Browser View e atualização após salvar", it: "Vista Browser View e aggiornamento dopo salvataggio" }, done: false },
+        { label: { es: "Pantalla cuando no hay perfil activo", en: "Screen when no active profile", pt: "Tela quando não há perfil ativo", it: "Schermata quando non c'è un profilo attivo" }, done: false },
+        { label: { es: "Atajo de edición desde el escritorio", en: "Desktop edit shortcut", pt: "Atalho de edição da desktop", it: "Scorciatoia di modifica dal desktop" }, done: false },
+        { label: { es: "Traducciones completas", en: "Full translations", pt: "Traduções completas", it: "Traduzioni complete" }, done: false },
+        { label: { es: "Accesibilidad y teclado", en: "Accessibility and keyboard", pt: "Acessibilidade e teclado", it: "Accessibilità e tastiera" }, done: false },
+        { label: { es: "Rendimiento y límites de actualización", en: "Performance and update limits", pt: "Desempenho e limites de atualização", it: "Prestazioni e limiti di aggiornamento" }, done: false },
+        { label: { es: "Guías para crear nuevos estilos visuales", en: "Guides to create new visual styles", pt: "Guias para criar novos estilos visuais", it: "Guide per creare nuovi stili visivi" }, done: false },
+        { label: { es: "Retirar el editor viejo", en: "Remove old editor", pt: "Remover o editor antigo", it: "Rimuovere il vecchio editor" }, done: false },
+        { label: { es: "Revisión final de arquitectura y lanzamiento", en: "Final architecture review and launch", pt: "Revisão final de arquitetura e lançamento", it: "Revisione finale dell'architettura e lancio" }, done: false },
       ],
     },
     {
@@ -193,6 +206,26 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       ],
     },
     {
+      id: "calendar-general-review", category: "calendar",
+      label: { es: "Calendario — Revisión general", en: "Calendar — General review", pt: "Calendário — Revisão geral", it: "Calendario — Revisione generale" },
+      description: { es: "Revisión general del calendario LMU.", en: "General review of the LMU calendar.", pt: "Revisão geral do calendário LMU.", it: "Revisione generale del calendario LMU." },
+      tipo: "feature", status: "future",
+      subtasks: [
+        { label: { es: "Revisión general", en: "General review", pt: "Revisão geral", it: "Revisione generale" }, done: false },
+      ],
+    },
+    {
+      id: "engineer-spotter", category: "engineer",
+      label: { es: "Ingeniero — Spotter", en: "Engineer — Spotter", pt: "Engenheiro — Spotter", it: "Engineer — Spotter" },
+      description: { es: "Spotter, responsive y cambiar valores desde voz.", en: "Spotter, responsive and change values from voice.", pt: "Spotter, responsivo e alterar valores por voz.", it: "Spotter, responsive e cambiare valori dalla voce." },
+      tipo: "feature", status: "future",
+      subtasks: [
+        { label: { es: "Spotter", en: "Spotter", pt: "Spotter", it: "Spotter" }, done: false },
+        { label: { es: "Responsive", en: "Responsive", pt: "Responsivo", it: "Responsive" }, done: false },
+        { label: { es: "Cambiar valores desde voz", en: "Change values from voice", pt: "Alterar valores por voz", it: "Cambiare valori dalla voce" }, done: false },
+      ],
+    },
+    {
       id: "onboarding-login-review", category: "onboarding",
       label: { es: "Onboarding + Inicio de sesión", en: "Onboarding + Login", pt: "Onboarding + Login", it: "Onboarding + Login" },
       description: { es: "Revisión completa visual del flujo de onboarding e inicio de sesión.", en: "Complete visual review of the onboarding and login flow.", pt: "Revisão visual completa do fluxo de onboarding e login.", it: "Revisione visiva completa del flusso di onboarding e login." },
@@ -202,14 +235,21 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       ],
     },
     {
-      id: "payments-research", category: "payments",
-      label: { es: "Pagos — Investigación", en: "Payments — Research", pt: "Pagamentos — Pesquisa", it: "Pagamenti — Ricerca" },
-      description: { es: "Revisión completa del sistema de pagos.", en: "Complete review of the payment system.", pt: "Revisão completa do sistema de pagamentos.", it: "Revisione completa del sistema di pagamenti." },
-      tipo: "feature", status: "research",
+      id: "payments-live", category: "payments",
+      label: { es: "Pagos", en: "Payments", pt: "Pagamentos", it: "Pagamenti" },
+      description: { es: "Esperando primer pago", en: "Awaiting first payment", pt: "Aguardando primeiro pagamento", it: "In attesa del primo pagamento" },
+      tipo: "feature", status: "future",
       subtasks: [
-        { label: { es: "Revisión completa", en: "Complete review", pt: "Revisão completa", it: "Revisione completa" }, done: false },
-        { label: { es: "¿Polar vs Stripe?", en: "Polar vs Stripe?", pt: "Polar vs Stripe?", it: "Polar vs Stripe?" }, done: false },
-        { label: { es: "Reservar GPT 5.6", en: "Reserve GPT 5.6", pt: "Reservar GPT 5.6", it: "Prenotare GPT 5.6" }, done: false },
+        { label: { es: "Revisión completa del sistema", en: "Complete system review", pt: "Revisão completa do sistema", it: "Revisione completa del sistema" }, done: true },
+        { label: { es: "Evaluar Polar vs Stripe", en: "Evaluate Polar vs Stripe", pt: "Avaliar Polar vs Stripe", it: "Valutare Polar vs Stripe" }, done: true },
+        { label: { es: "Configurar productos", en: "Configure products", pt: "Configurar produtos", it: "Configurare prodotti" }, done: true },
+        { label: { es: "Webhook de pagos", en: "Payment webhook", pt: "Webhook de pagamentos", it: "Webhook di pagamento" }, done: true },
+        { label: { es: "Flujo de checkout", en: "Checkout flow", pt: "Fluxo de checkout", it: "Flusso di checkout" }, done: true },
+        { label: { es: "Gestión de suscripciones", en: "Subscription management", pt: "Gestão de assinaturas", it: "Gestione abbonamenti" }, done: true },
+        { label: { es: "Tests de integración", en: "Integration tests", pt: "Testes de integração", it: "Test di integrazione" }, done: true },
+        { label: { es: "Documentación", en: "Documentation", pt: "Documentação", it: "Documentazione" }, done: true },
+        { label: { es: "Deploy a staging", en: "Deploy to staging", pt: "Deploy para staging", it: "Deploy a staging" }, done: true },
+        { label: { es: "Smoke test completo", en: "Full smoke test", pt: "Smoke test completo", it: "Smoke test completo" }, done: false },
       ],
     },
     {
@@ -220,6 +260,15 @@ export const FEATURES_FALLBACK: FeaturesDataset = {
       subtasks: [
         { label: { es: "Configuraciones básicas", en: "Basic settings", pt: "Configurações básicas", it: "Impostazioni di base" }, done: false },
         { label: { es: "Cuenta de Vantare", en: "Vantare account", pt: "Conta Vantare", it: "Account Vantare" }, done: false },
+      ],
+    },
+    {
+      id: "strategy-review", category: "strategy",
+      label: { es: "Panel de estrategia", en: "Strategy panel", pt: "Painel de estratégia", it: "Pannello strategia" },
+      description: { es: "Revisar el cómo, el qué y el cuándo.", en: "Review the how, what and when.", pt: "Rever o como, o que e o quando.", it: "Rivedere il come, il cosa e il quando." },
+      tipo: "feature", status: "research",
+      subtasks: [
+        { label: { es: "Revisar el cómo, el qué y el cuándo", en: "Review the how, what and when", pt: "Rever o como, o que e o quando", it: "Rivedere il come, il cosa e il quando" }, done: false },
       ],
     },
   ],

@@ -9,6 +9,7 @@ import { OverlaysStudioPage } from "./OverlaysStudioPage";
 import { SettingsPage } from "./SettingsPage";
 import { EngineerPage } from "./EngineerPage";
 import { LicenseProvider, useLicense } from "../../lib/license";
+import { licenseDebug, licenseDebugWarn } from "../../lib/license-debug";
 import { LoginScreen } from "../auth/LoginScreen";
 import { PaywallScreen } from "../auth/PaywallScreen";
 import { LicenseBanner } from "../auth/LicenseBanner";
@@ -41,9 +42,12 @@ function LicenseGate({ children }: { children: ReactNode }) {
   if (!result || result.state === "anonymous") {
     return (
       <LoginScreen
-        onLoggedIn={(accessToken) => {
-          if (!accessToken) return;
-          Events.Emit("license:validate", { sessionToken: accessToken });
+        onLoggedIn={(tokens) => {
+          if (!tokens?.accessToken) return;
+          Events.Emit("license:validate", {
+            sessionToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken ?? "",
+          });
         }}
       />
     );
@@ -176,15 +180,24 @@ function LicenseBridge() {
       .then((session) => {
         if (cancelled) return;
         if (session?.access_token) {
+          licenseDebug("LicenseBridge", "sesión persistida, emit license:validate", {
+            tokenLen: session.access_token.length,
+            email: session.user?.email ?? "",
+          });
           Events.Emit("license:validate", {
             sessionToken: session.access_token,
           });
+          return;
         }
-        // No session: do not refresh. LicenseProvider already emitted
-        // license:validate with an empty token on mount.
+        licenseDebugWarn(
+          "LicenseBridge",
+          "getSession vacío — no se emite license:validate con token",
+        );
       })
-      .catch(() => {
-        // Supabase config error — do not refresh.
+      .catch((err: unknown) => {
+        licenseDebugWarn("LicenseBridge", "getSession falló", {
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
     return () => {
       cancelled = true;

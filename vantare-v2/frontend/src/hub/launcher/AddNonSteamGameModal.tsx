@@ -102,7 +102,6 @@ function ModalBody({
   // On mount, fetch the registry app list. ModalBody unmounts on close so
   // no cleanup for stale state is needed.
   useEffect(() => {
-    Events.Emit("launcher:registry:list");
     const off = Events.On(
       "launcher:registry:listed",
       (e: { data?: { apps?: RegistryApp[] } }) => {
@@ -110,6 +109,7 @@ function ModalBody({
         setLoading(false);
       },
     );
+    Events.Emit("launcher:registry:list");
     return () => {
       off();
     };

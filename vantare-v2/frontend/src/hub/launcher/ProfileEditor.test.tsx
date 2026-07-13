@@ -165,4 +165,34 @@ describe("ProfileEditor", () => {
     expect(autostartCheckbox).not.toBeNull();
     expect(autostartCheckbox.disabled).toBe(true);
   });
+
+  it("keeps advanced args hidden until advanced mode is enabled", () => {
+    render(
+      <ProfileEditor
+        profile={{ ...baseProfile, steps: [{ appId: "lmu", delay: 0 }] }}
+        open={true}
+        onClose={() => {}}
+        onSave={() => {}}
+        apps={mockApps}
+      />,
+    );
+    expect(screen.queryByTestId("editor-step-args-0")).toBeNull();
+    fireEvent.click(screen.getByTestId("profile-editor-advanced-toggle"));
+    expect(screen.getByTestId("editor-step-args-0")).toBeTruthy();
+  });
+
+  it("blocks saving a step that references an unavailable app", () => {
+    const onSave = vi.fn();
+    render(
+      <ProfileEditor
+        profile={{ ...baseProfile, steps: [{ appId: "missing", delay: 0 }] }}
+        open={true}
+        onClose={() => {}}
+        onSave={onSave}
+        apps={mockApps}
+      />,
+    );
+    expect((screen.getByTestId("profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("profile-editor-unlaunchable")).toBeTruthy();
+  });
 });

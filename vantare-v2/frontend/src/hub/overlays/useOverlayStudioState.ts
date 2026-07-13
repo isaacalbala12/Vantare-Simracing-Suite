@@ -30,6 +30,8 @@ export function useOverlayStudioState(options: UseOverlayStudioStateOptions = {}
   const [history, setHistory] = useState<ProfileConfig[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const profileRef = useRef<ProfileConfig | null>(null);
+  const pendingAutosaveRef = useRef(false);
+  const MAX_HISTORY = 50;
 
   const selectedWidget = useMemo(() => {
     return profile?.widgets.find((widget) => widget.id === selectedWidgetId) ?? profile?.widgets[0] ?? null;
@@ -89,7 +91,8 @@ export function useOverlayStudioState(options: UseOverlayStudioStateOptions = {}
     profileRef.current = nextProfile;
     setHistory((previous) => {
       const base = previous.slice(0, historyIndex + 1);
-      return [...base, nextProfile];
+      const next = [...base, nextProfile];
+      return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next;
     });
     setHistoryIndex((previous) => previous + 1);
     setProfile(nextProfile);
@@ -166,12 +169,21 @@ export function useOverlayStudioState(options: UseOverlayStudioStateOptions = {}
 
   useEffect(() => {
     if (!autosave || !dirty) return;
-    const id = window.setTimeout(() => saveProfile(), 800);
-    return () => window.clearTimeout(id);
+    pendingAutosaveRef.current = true;
+    const id = window.setTimeout(() => {
+      pendingAutosaveRef.current = false;
+      saveProfile();
+    }, 800);
+    return () => {
+      window.clearTimeout(id);
+      if (pendingAutosaveRef.current) saveProfile();
+    };
   }, [autosave, dirty, profile, saveProfile]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       if (!event.ctrlKey && !event.metaKey) return;
       if (event.key === "s") {
         event.preventDefault();

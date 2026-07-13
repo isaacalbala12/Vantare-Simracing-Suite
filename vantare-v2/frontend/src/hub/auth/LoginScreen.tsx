@@ -10,8 +10,13 @@ import {
 import { Browser, Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 
+export type LoginSessionTokens = {
+  accessToken: string;
+  refreshToken?: string;
+};
+
 type LoginScreenProps = {
-  onLoggedIn: (accessToken?: string) => void;
+  onLoggedIn: (tokens?: LoginSessionTokens) => void;
 };
 
 export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
@@ -39,7 +44,7 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
           setWaitingExternal(false);
           setOauthPending(null);
           if (event.data?.accessToken) {
-            onLoggedIn(event.data.accessToken);
+            onLoggedIn({ accessToken: event.data.accessToken });
           }
         }
       },
@@ -77,7 +82,10 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
         return;
       }
       if (session) {
-        onLoggedIn(session.access_token);
+        onLoggedIn({
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+        });
       }
     },
     [email, password, onLoggedIn],
@@ -95,7 +103,10 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
         return;
       }
       if (session) {
-        onLoggedIn(session.access_token);
+        onLoggedIn({
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+        });
       } else {
         setSignupEmailSent(true);
       }

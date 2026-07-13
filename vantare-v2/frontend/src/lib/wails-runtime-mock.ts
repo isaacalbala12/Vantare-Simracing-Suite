@@ -1,9 +1,17 @@
 /**
- * Mock for @wailsio/runtime used by the calendar visual harness.
+ * Mock for @wailsio/runtime used by visual harnesses only (VITE_RUNTIME_MOCK).
  * Auto-responds to common events with realistic data so the app
  * renders without a real Wails backend.
  */
 import { mockCalendar } from "../hub/calendar-visual-mock-data";
+import { licenseDebugWarn } from "./license-debug";
+import { setWailsRuntimeMockActive } from "./license-debug-log";
+
+setWailsRuntimeMockActive(true);
+licenseDebugWarn(
+  "wails-mock",
+  "wails-runtime-mock activo — license/reset NO usan el backend Go real",
+);
 
 const listeners = new Map<string, Set<(event: unknown) => void>>();
 
@@ -30,12 +38,33 @@ export const Events = {
 
     // Auto-respond to license validation
     if (name === "license:validate") {
+      licenseDebugWarn("wails-mock", "license:validate interceptado (mock)", {
+        email: "test@example.com",
+        entitlements: ["overlays"],
+      });
       setTimeout(() => {
         broadcast("license:changed", {
           state: "active",
           entitlements: ["overlays"],
+          userId: "mock-user",
           email: "test@example.com",
-          subscription: "lifetime",
+          deviceOK: true,
+          lastValidated: new Date().toISOString(),
+        });
+      }, 50);
+      return;
+    }
+
+    if (name === "license:reset-device") {
+      licenseDebugWarn("wails-mock", "license:reset-device interceptado (mock)");
+      setTimeout(() => {
+        broadcast("license:changed", {
+          state: "active",
+          entitlements: ["overlays"],
+          userId: "mock-user",
+          email: "test@example.com",
+          deviceOK: true,
+          lastValidated: new Date().toISOString(),
         });
       }, 50);
       return;
@@ -91,53 +120,28 @@ export const Events = {
       return;
     }
 
-    // Auto-respond to launcher apps discovery
-    if (name === "launcher:apps:discover") {
+    // Auto-respond to the canonical launcher snapshot request.
+    if (name === "launcher:snapshot:get") {
       setTimeout(
         () =>
-          broadcast("launcher:apps:detected", {
+          broadcast("launcher:snapshot", {
+            revision: 1,
             apps: [
-              { id: "lmu", displayName: "Le Mans Ultimate", abbreviation: "LMU", category: "simulator", launchMethod: "steam-uri", steamAppId: 2399420, detected: true, gradientFrom: "#ff3b3b", gradientTo: "#9a0606" },
-              { id: "obs", displayName: "OBS Studio", abbreviation: "OBS", category: "streaming", launchMethod: "executable", detected: true, gradientFrom: "#302e31", gradientTo: "#0a0a0a" },
-              { id: "crewchief", displayName: "CrewChief", abbreviation: "CC", category: "utility", launchMethod: "executable", detected: true, gradientFrom: "#3b82f6", gradientTo: "#1d4ed8" },
-              { id: "discord", displayName: "Discord", abbreviation: "DC", category: "utility", launchMethod: "executable", detected: true, gradientFrom: "#5865F2", gradientTo: "#404EED" },
-              { id: "spotify", displayName: "Spotify", abbreviation: "Sp", category: "audio", launchMethod: "executable", detected: true, gradientFrom: "#10b981", gradientTo: "#059669" },
-              { id: "motec", displayName: "MoTeC", abbreviation: "MT", category: "telemetry", launchMethod: "executable", detected: true, gradientFrom: "#f59e0b", gradientTo: "#b45309" },
-              { id: "simhub", displayName: "SimHub", abbreviation: "SH", category: "telemetry", launchMethod: "executable", detected: true, gradientFrom: "#8b5cf6", gradientTo: "#6d28d9" },
+              { id: "lmu", displayName: "Le Mans Ultimate", abbreviation: "LMU", category: "simulator", launchMethod: "steam-uri", steamAppId: 2399420, detected: true, gradientFrom: "#ff3b3b", gradientTo: "#9a0606", availability: { catalogued: true, found: true, installed: true, launchable: true } },
+              { id: "obs", displayName: "OBS Studio", abbreviation: "OBS", category: "streaming", launchMethod: "executable", detected: true, gradientFrom: "#302e31", gradientTo: "#0a0a0a", availability: { catalogued: true, found: true, installed: true, launchable: true } },
+              { id: "crewchief", displayName: "CrewChief", abbreviation: "CC", category: "utility", launchMethod: "executable", detected: true, gradientFrom: "#3b82f6", gradientTo: "#1d4ed8", availability: { catalogued: true, found: true, installed: true, launchable: true } },
+              { id: "discord", displayName: "Discord", abbreviation: "DC", category: "utility", launchMethod: "executable", detected: true, gradientFrom: "#5865F2", gradientTo: "#404EED", availability: { catalogued: true, found: true, installed: true, launchable: true } },
+              { id: "spotify", displayName: "Spotify", abbreviation: "Sp", category: "audio", launchMethod: "executable", detected: true, gradientFrom: "#10b981", gradientTo: "#059669", availability: { catalogued: true, found: true, installed: true, launchable: true } },
+              { id: "motec", displayName: "MoTeC", abbreviation: "MT", category: "telemetry", launchMethod: "executable", detected: true, gradientFrom: "#f59e0b", gradientTo: "#b45309", availability: { catalogued: true, found: true, installed: true, launchable: true } },
+              { id: "simhub", displayName: "SimHub", abbreviation: "SH", category: "telemetry", launchMethod: "executable", detected: false, gradientFrom: "#8b5cf6", gradientTo: "#6d28d9", availability: { catalogued: true, found: false, installed: false, launchable: false } },
             ],
-          }),
-        50,
-      );
-      return;
-    }
-
-    // Auto-respond to launcher profiles list
-    if (name === "launcher:profiles:list") {
-      setTimeout(
-        () =>
-          broadcast("launcher:profiles:updated", {
-            profiles: [
-              {
-                id: "creator",
-                name: "Creador de Contenido",
-                description: "LMU + OBS + Spotify",
-                steps: [
-                  { appId: "lmu", delay: 0 },
-                  { appId: "obs", delay: 2 },
-                  { appId: "spotify", delay: 2 },
-                ],
-              },
-              {
-                id: "pro",
-                name: "Pro",
-                steps: [
-                  { appId: "lmu", delay: 0 },
-                  { appId: "crewchief", delay: 2 },
-                  { appId: "spotify", delay: 2 },
-                  { appId: "motec", delay: 2 },
-                ],
-              },
+            vantareProfiles: [
+              { id: "creator", name: "Creador de Contenido", description: "LMU + OBS + Spotify", steps: [{ appId: "lmu", delay: 0 }, { appId: "obs", delay: 2 }, { appId: "spotify", delay: 2 }] },
+              { id: "pro", name: "Pro", steps: [{ appId: "lmu", delay: 0 }, { appId: "crewchief", delay: 2 }, { appId: "spotify", delay: 2 }, { appId: "motec", delay: 2 }] },
             ],
+            userProfiles: [],
+            activeChains: [],
+            discovery: { scanning: false, lastScanAt: new Date().toISOString(), error: null },
           }),
         50,
       );

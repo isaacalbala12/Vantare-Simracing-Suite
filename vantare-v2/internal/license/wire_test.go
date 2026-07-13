@@ -36,8 +36,8 @@ func TestResultToWire(t *testing.T) {
 	if w.GraceEndsAt == nil || !w.GraceEndsAt.Equal(grace) {
 		t.Fatalf("graceEndsAt mismatch")
 	}
-	if !w.LastValidated.Equal(last) {
-		t.Fatalf("lastValidated mismatch")
+	if w.LastValidated != last.UTC().Format(time.RFC3339Nano) {
+		t.Fatalf("lastValidated mismatch: got %s", w.LastValidated)
 	}
 	if w.Error != "" {
 		t.Fatalf("error should be empty, got %s", w.Error)
@@ -77,7 +77,7 @@ func TestLicenseWireJSONShape(t *testing.T) {
 		UserID:        "abc",
 		Email:         "x@y",
 		DeviceOK:      true,
-		LastValidated: time.Unix(0, 0).UTC(),
+		LastValidated: time.Unix(0, 0).UTC().Format(time.RFC3339Nano),
 	}
 	b, err := json.Marshal(w)
 	if err != nil {

@@ -1,7 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useContext,
-  useRef,
   useEffect,
   useCallback,
   useState,
@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Events } from "@wailsio/runtime";
 import { HubToast, type HubToastVariant } from "./HubToast";
+import { notifyLaunchResult } from "./launch-notification";
 
 export type ChainStepStatus = "pending" | "launching" | "done" | "failed";
 export type ChainStepState = {
@@ -253,11 +254,7 @@ type ChainRunnerStore = ReturnType<typeof createChainStore>;
 const ChainRunnerContext = createContext<ChainRunnerStore | null>(null);
 
 export function ChainRunnerProvider({ children }: { children: ReactNode }) {
-  const storeRef = useRef<ChainRunnerStore | null>(null);
-  if (!storeRef.current) {
-    storeRef.current = createChainStore();
-  }
-  const store = storeRef.current;
+  const [store] = useState(createChainStore);
 
   const [toastInfo, setToastInfo] = useState<{
     variant: HubToastVariant;
@@ -298,7 +295,9 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
           message = `Perfil ${data.profileId} · no se pudo iniciar`;
         }
 
-        setToastInfo({ variant: result, message, profileId: data.profileId });
+        if (!notifyLaunchResult(data.profileId, result)) {
+          setToastInfo({ variant: result, message, profileId: data.profileId });
+        }
       }
     });
     const offError = Events.On("launcher:chain:error", (event: unknown) => {

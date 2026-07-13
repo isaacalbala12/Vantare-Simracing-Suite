@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { Events } from "@wailsio/runtime";
+import { useMemo } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { formatRelativeTime, type LaunchProfile } from "../launcher/launcher-state";
 import { useChainState, useLastResult } from "../launcher/chain-store";
+import { useLauncherSnapshot, useLauncherStore } from "../launcher/launcher-store";
 
 type LauncherDockProps = {
   onNavigate: (section: string) => void;
@@ -132,22 +132,16 @@ function DockProfileButton({ profile, onLaunch }: DockProfileButtonProps) {
 
 export function LauncherDock({ onNavigate }: LauncherDockProps) {
   const { t } = useI18n();
-  const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
-
-  useEffect(() => {
-    // Pide perfiles al montar y escucha solo launcher:profiles:updated.
-    // No escuchar "settings" para evitar doble actualización redundante.
-    Events.Emit("launcher:profiles:list");
-    const offProfiles = Events.On(
-      "launcher:profiles:updated",
-      (event: { data?: { profiles?: LaunchProfile[] } }) => {
-        setProfiles(event.data?.profiles ?? []);
-      },
-    );
-    return () => {
-      offProfiles();
-    };
-  }, []);
+  const snapshot = useLauncherSnapshot();
+  const { dispatchLauncherCommand } = useLauncherStore();
+  const profiles = useMemo<LaunchProfile[]>(
+    () => [
+      ...(snapshot?.vantareProfiles ?? []),
+      ...(snapshot?.userProfiles ?? []),
+    ],
+    [snapshot],
+  );
+  const activeChains = snapshot?.activeChains ?? [];
 
   const orderedProfiles = useMemo(
     () =>
@@ -159,7 +153,8 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
     [profiles],
   );
 
-  const handleLaunch = (id: string) => Events.Emit("launcher:profile:launch", { id });
+  const handleLaunch = (id: string) =>
+    dispatchLauncherCommand("launcher:profile:launch", { id });
 
   return (
     <aside className="v52-dock hidden lg:flex flex-col" aria-label="Launcher rápido">
@@ -173,6 +168,12 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
         <ListIcon />
       </button>
       <div className="overflow-y-auto flex flex-col gap-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(245,245,245,0.16) transparent" }}>
+        {activeChains.map((chain) => (
+          <div key={`active-${chain.profileId}`} className="v52-dock-item relative" title={`${chain.profileId}: ${chain.status}`} data-testid={`dock-active-${chain.profileId}`}>
+            <span className="text-[9px] font-bold text-vantare-red-400" aria-label={`Cadena ${chain.profileId} ${chain.status}`}>●</span>
+            <button type="button" className="sr-only" onClick={() => dispatchLauncherCommand("launcher:app:restart", { profileId: chain.profileId })}>Reiniciar {chain.profileId}</button>
+          </div>
+        ))}
         {orderedProfiles.map((p) => {
           const displayName =
             p.id === "creator"

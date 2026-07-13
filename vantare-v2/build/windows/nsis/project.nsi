@@ -22,7 +22,7 @@ Unicode true
 !define INFO_PROJECTNAME    "vantare"
 !define INFO_COMPANYNAME    "Vantare"
 !define INFO_PRODUCTNAME    "Vantare Simracing Suite"
-!define INFO_PRODUCTVERSION "0.1.0.3"
+!define INFO_PRODUCTVERSION "0.1.0.5"
 !define INFO_COPYRIGHT      "© 2026 Vantare"
 !define PRODUCT_EXECUTABLE  "vantare.exe"
 ###

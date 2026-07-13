@@ -78,7 +78,11 @@ func (s *Service) EmitChanged(res *Result) {
 	if s == nil || s.emitter == nil || res == nil {
 		return
 	}
-	s.emitter.Emit(LicenseChangedEvent, res.ToWire())
+	wire := res.ToWire()
+	if wire.LastValidated == "" {
+		wire.LastValidated = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	s.emitter.Emit(LicenseChangedEvent, wire)
 }
 
 // Validate is the primary entry point. It returns a typed Result describing

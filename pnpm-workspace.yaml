@@ -1,5 +1,10 @@
-﻿packages:
+packages:
   - "apps/*"
   - "packages/*"
   - "shared/*"
   - "vantare-v2/frontend"
+allowBuilds:
+  electron: set this to true or false
+  esbuild: set this to true or false
+  koffi: set this to true or false
+  sharp: set this to true or false

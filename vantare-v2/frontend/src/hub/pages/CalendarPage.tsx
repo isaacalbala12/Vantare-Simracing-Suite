@@ -41,33 +41,16 @@ export function CalendarPage() {
     setCalendarAnchorDate(new Date());
   }, []);
 
-  // Navigation snaps to day 1 of the target month to avoid date drift
-  // (e.g. Mar 31 -> Apr would otherwise land on Mar 30).
-  const handlePrevious = useCallback(() => {
+  const handleNavigate = useCallback((delta: number) => {
     setCalendarAnchorDate((prev) => {
       const newDate = new Date(prev.getTime());
       if (calendarView === "month") {
         newDate.setDate(1);
-        newDate.setMonth(newDate.getMonth() - 1);
+        newDate.setMonth(newDate.getMonth() + delta);
       } else if (calendarView === "week") {
-        newDate.setDate(newDate.getDate() - 7);
+        newDate.setDate(newDate.getDate() + 7 * delta);
       } else {
-        newDate.setDate(newDate.getDate() - 1);
-      }
-      return newDate;
-    });
-  }, [calendarView]);
-
-  const handleNext = useCallback(() => {
-    setCalendarAnchorDate((prev) => {
-      const newDate = new Date(prev.getTime());
-      if (calendarView === "month") {
-        newDate.setDate(1);
-        newDate.setMonth(newDate.getMonth() + 1);
-      } else if (calendarView === "week") {
-        newDate.setDate(newDate.getDate() + 7);
-      } else {
-        newDate.setDate(newDate.getDate() + 1);
+        newDate.setDate(newDate.getDate() + delta);
       }
       return newDate;
     });
@@ -98,8 +81,6 @@ export function CalendarPage() {
 
   const timeZone = calendar?.timezone ?? "UTC";
   const loading = calendar === null && error === null;
-  const hasCalendar = calendar !== null;
-
   return (
     <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6 items-stretch">
       {/* SIDEBAR */}
@@ -127,8 +108,8 @@ export function CalendarPage() {
             timeZone={timeZone}
             onViewChange={setCalendarView}
             onToday={handleToday}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
+            onPrevious={() => handleNavigate(-1)}
+            onNext={() => handleNavigate(1)}
             onFilterChange={setActiveFilter}
           />
         </div>
@@ -176,37 +157,39 @@ export function CalendarPage() {
           </div>
         )}
 
-        {hasCalendar && (
+        {calendar && (
           <div className="flex-1 min-h-0 flex flex-col overflow-y-auto opacity-0 animate-fade-in-up delay-75" style={{ scrollbarWidth: "thin" }}>
-            {calendarView === "month" ? (
+            {calendarView === "month" && (
               <CalendarMonthView
                 anchorDate={calendarAnchorDate}
-                calendar={calendar!}
+                calendar={calendar}
                 timeZone={timeZone}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
                 onTierClick={handleOpenPanel}
                 onDayClick={handleDayClick}
               />
-            ) : calendarView === "week" ? (
+            )}
+            {calendarView === "week" && (
               <CalendarWeekView
                 anchorDate={calendarAnchorDate}
-                calendar={calendar!}
+                calendar={calendar}
                 timeZone={timeZone}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
                 onTierClick={handleOpenPanel}
               />
-            ) : calendarView === "day" ? (
+            )}
+            {calendarView === "day" && (
               <CalendarDayView
                 anchorDate={calendarAnchorDate}
-                calendar={calendar!}
+                calendar={calendar}
                 timeZone={timeZone}
                 activeFilter={activeFilter}
                 onFilterSelect={handleFilterSelect}
                 onTierClick={handleOpenPanel}
               />
-            ) : null}
+            )}
           </div>
         )}
 

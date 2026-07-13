@@ -291,16 +291,21 @@ describe("WidgetSettingsPanel — canApply enforcement", () => {
 });
 // ── Save-to-widget (handleSaveToWidget) ────────────────────────────────────
 
+function navigateToColumnasSection() {
+  const colBtn = screen.getByTestId("sn-item-columnas");
+  fireEvent.click(colBtn);
+}
+    
 describe("WidgetSettingsPanel — Save to widget", () => {
   beforeEach(() => {
     mockOnDraftChange.mockReset();
   });
-
+    
   it("shows save-to-widget button when draft is dirty and canApply=true", () => {
     mockUseAccess.mockReturnValue(paidAccess);
     const widget = makeWidget("standings"); // free widget → canApply=true for paid
     const profile = makeProfile([widget]);
-
+    
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -308,23 +313,26 @@ describe("WidgetSettingsPanel — Save to widget", () => {
         onChangeProfile={vi.fn()}
       />,
     );
-
+    
+    // Switch to Columnas section where WidgetConfigSections lives
+    navigateToColumnasSection();
+    
     // Initially no save button (draft === effective)
     expect(screen.queryByTestId("save-to-widget-btn")).toBeNull();
-
+    
     // Trigger draft change via mock test button
     fireEvent.click(screen.getByTestId("trigger-draft-change"));
-
+    
     // Now save button should appear
     expect(screen.getByTestId("save-to-widget-btn")).toBeDefined();
   });
-
+    
   it("calls onChangeProfile with correct payload on save", () => {
     mockUseAccess.mockReturnValue(paidAccess);
     const widget = makeWidget("standings");
     const profile = makeProfile([widget]);
     const onChangeProfile = vi.fn();
-
+    
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -332,22 +340,24 @@ describe("WidgetSettingsPanel — Save to widget", () => {
         onChangeProfile={onChangeProfile}
       />,
     );
-
+    
+    navigateToColumnasSection();
+    
     // Trigger dirty state
     fireEvent.click(screen.getByTestId("trigger-draft-change"));
     // Click save
     fireEvent.click(screen.getByTestId("save-to-widget-btn"));
-
+    
     expect(onChangeProfile).toHaveBeenCalledTimes(1);
     const saved = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     const updatedWidget = saved.widgets.find((w) => w.id === widget.id)!;
-
+    
     // props.slots should match the draft change
     expect(updatedWidget.props?.slots).toEqual([
       { id: "x", metricId: "pos", enabled: false },
     ]);
   });
-
+    
   it("preserves widget.position when saving", () => {
     mockUseAccess.mockReturnValue(paidAccess);
     const widget = makeWidget("standings", {
@@ -355,7 +365,7 @@ describe("WidgetSettingsPanel — Save to widget", () => {
     });
     const profile = makeProfile([widget]);
     const onChangeProfile = vi.fn();
-
+    
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -363,22 +373,24 @@ describe("WidgetSettingsPanel — Save to widget", () => {
         onChangeProfile={onChangeProfile}
       />,
     );
-
+    
+    navigateToColumnasSection();
+    
     fireEvent.click(screen.getByTestId("trigger-draft-change"));
     fireEvent.click(screen.getByTestId("save-to-widget-btn"));
-
+    
     const saved = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     const updatedWidget = saved.widgets.find((w) => w.id === widget.id)!;
     expect(updatedWidget.position).toEqual({ x: 100, y: 200, w: 400, h: 300 });
   });
-
+    
   it("does NOT create or modify profile.variants", () => {
     mockUseAccess.mockReturnValue(paidAccess);
     const widget = makeWidget("standings");
     const profile = makeProfile([widget]);
     profile.variants = [{ id: "existing-v", widgetType: "standings", name: "Existing" }];
     const onChangeProfile = vi.fn();
-
+    
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -386,17 +398,19 @@ describe("WidgetSettingsPanel — Save to widget", () => {
         onChangeProfile={onChangeProfile}
       />,
     );
-
+    
+    navigateToColumnasSection();
+    
     fireEvent.click(screen.getByTestId("trigger-draft-change"));
     fireEvent.click(screen.getByTestId("save-to-widget-btn"));
-
+    
     const saved = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     // Variants should be unchanged (same reference)
     expect(saved.variants).toBe(profile.variants);
     expect(saved.variants).toHaveLength(1);
     expect(saved.variants![0].id).toBe("existing-v");
   });
-
+    
   it("only changes props.slots, props.columns, props.columnGroups", () => {
     mockUseAccess.mockReturnValue(paidAccess);
     const widget = makeWidget("standings", {
@@ -404,7 +418,7 @@ describe("WidgetSettingsPanel — Save to widget", () => {
     });
     const profile = makeProfile([widget]);
     const onChangeProfile = vi.fn();
-
+    
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -412,13 +426,15 @@ describe("WidgetSettingsPanel — Save to widget", () => {
         onChangeProfile={onChangeProfile}
       />,
     );
-
+    
+    navigateToColumnasSection();
+    
     fireEvent.click(screen.getByTestId("trigger-draft-change"));
     fireEvent.click(screen.getByTestId("save-to-widget-btn"));
-
+    
     const saved = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     const updatedWidget = saved.widgets.find((w) => w.id === widget.id)!;
-
+    
     // Existing props preserved
     expect(updatedWidget.props?.appearance).toEqual({ accentColor: "#ff0000" });
     expect(updatedWidget.props?.customKey).toBe("keep-me");
@@ -427,12 +443,12 @@ describe("WidgetSettingsPanel — Save to widget", () => {
     expect(updatedWidget.props?.columns).toBeDefined();
     expect(updatedWidget.props?.columnGroups).toBeDefined();
   });
-
+    
   it("does NOT show save-to-widget button when canApply=false", () => {
     mockUseAccess.mockReturnValue(freeAccess);
     const widget = makeWidget("relative"); // pro widget → canApply=false for free
     const profile = makeProfile([widget]);
-
+    
     render(
       <WidgetSettingsPanel
         profile={profile}
@@ -440,10 +456,12 @@ describe("WidgetSettingsPanel — Save to widget", () => {
         onChangeProfile={vi.fn()}
       />,
     );
-
+    
+    navigateToColumnasSection();
+    
     // Trigger draft change
     fireEvent.click(screen.getByTestId("trigger-draft-change"));
-
+    
     // Save button should NOT appear even though draft is dirty
     expect(screen.queryByTestId("save-to-widget-btn")).toBeNull();
   });

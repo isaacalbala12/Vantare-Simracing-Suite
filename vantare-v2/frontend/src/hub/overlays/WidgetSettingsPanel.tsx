@@ -13,6 +13,9 @@ import { WidgetVariantManager } from "./WidgetVariantManager";
 import { useAccess } from "../../lib/access";
 import { canApplyWidget } from "./widget-catalog";
 import { resolveEffectiveWidgetVariant } from "./widget-config-model";
+import { SubNavRail } from "./SubNavRail";
+import { SubNavContent } from "./SubNavContent";
+import { getSectionsForWidget, type SubNavSectionId } from "./sub-nav-config";
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -25,33 +28,6 @@ type DraftConfig = {
   columns: ColumnConfig[];
   columnGroups: ColumnGroupConfig[];
 };
-
-function WidgetHeader({ widget }: { widget: WidgetConfig }) {
-  const { t } = useI18n();
-  const widgetName = widget.name || widget.id;
-  return (
-    <div
-      className="sticky top-0 z-10 -mx-1 flex flex-none items-center justify-between gap-3 border-b border-white/5 bg-vantare-bg/95 px-3 py-2 backdrop-blur"
-      data-testid="widget-settings-header"
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="font-display text-sm font-bold uppercase tracking-[0.18em] text-white truncate">
-          {widgetName}
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-vantare-textDim">
-          {widget.type}
-        </span>
-      </div>
-      <span
-        className={`shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest ${
-          widget.enabled ? "text-emerald-400" : "text-vantare-textDim"
-        }`}
-      >
-        {widget.enabled ? t("studio.widgetStatus.active") : t("studio.widgetStatus.hidden")}
-      </span>
-    </div>
-  );
-}
 
 function isDraftDirty(draft: DraftConfig, effective: DraftConfig): boolean {
   return (
@@ -79,7 +55,21 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
     columnGroups: effective.columnGroups,
   });
 
-  // Reset draft when widget changes
+  // Sub-nav state
+  const sections = widget ? getSectionsForWidget(widget.type) : [];
+  const [activeSectionId, setActiveSectionId] = useState<SubNavSectionId | null>(
+    () => sections.length > 0 ? sections[0].id : null
+  );
+
+  // Derive the effective active section — if the stored id doesn't belong to
+  // the current sections, fall back to the first section
+  const effectiveSectionId = (() => {
+    if (activeSectionId && sections.some((s) => s.id === activeSectionId)) {
+      return activeSectionId;
+    }
+    return sections.length > 0 ? sections[0].id : null;
+  })();
+
   const prevWidgetId = useRef(widget?.id);
   useEffect(() => {
     if (widget?.id !== prevWidgetId.current) {
@@ -136,115 +126,236 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
     onChangeProfile(applyOfficialDesignToProfile(profile, widget.id, design));
   };
 
+  const handleToggleVisibility = useCallback(() => {
+    if (!widget) return;
+    const updatedWidgets = profile.widgets.map((w) =>
+      w.id === widget.id ? { ...w, enabled: !w.enabled } : w
+    );
+    onChangeProfile({ ...profile, widgets: updatedWidgets });
+  }, [widget, profile, onChangeProfile]);
+
   const activeDesignId = widget ? getActiveOfficialDesignId(widget) : null;
   const selectedDesign = activeDesignId ? getOfficialDesign(activeDesignId) : null;
   const sameTypeWidgets = widget
     ? profile.widgets.filter((w) => w.type === widget.type)
     : [];
 
-  return (
-    <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-y-auto">
-      {widget ? <WidgetHeader widget={widget} /> : null}
-      {widget && !canApply && (
-        <div
-          className="mx-2 mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-amber-400"
-          data-testid="pro-upgrade-notice"
-        >
-          {t("studio.proUpgrade")}
-        </div>
-      )}
-      <div className="min-h-0 flex-1">
-        <PreviewInspector
-          profile={profile}
-          widget={widget}
-          onChangeProfile={onChangeProfile}
-          disabled={false}
-          showPositionControls={false}
-          showDangerActions={false}
-        />
+
+
+  if (!widget) {
+    return (
+      <div data-testid="widget-settings-panel" className="glass-panel flex h-full items-center justify-center rounded-xl text-sm text-vantare-textMuted">
+        Selecciona un widget para editar
       </div>
-      {widget && (
-        <div className="shrink-0">
-          <WidgetDesignGallery widget={widget} activeDesignId={activeDesignId} onApplyDesign={handleApplyOfficialDesign} />
-          {selectedDesign && sameTypeWidgets.length > 1 && (
-            <div className="border-t border-white/5 px-3 py-2">
-              <button
-                type="button"
-                data-testid="apply-design-to-all"
-                onClick={() => {
-                  let updated = profile;
-                  for (const w of sameTypeWidgets) {
-                    updated = applyOfficialDesignToProfile(updated, w.id, selectedDesign);
-                  }
-                  onChangeProfile(updated);
-                }}
-                title="Aplica este diseño a todos los widgets del mismo tipo en el profile"
-                className="w-full rounded bg-vantare-accent/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-accent cursor-pointer"
-              >
-                Aplicar a todos
-              </button>
+    );
+  }
+
+  // Pro upgrade notice (rendered above the sub-nav for visibility)
+  const proNotice = !canApply ? (
+    <div
+      className="mx-2 mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-amber-400"
+      data-testid="pro-upgrade-notice"
+    >
+      {t("studio.proUpgrade")}
+    </div>
+  ) : null;
+
+  return (
+    <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl">
+      {proNotice}
+      <div className="flex min-h-0 flex-1">
+        {/* Sub-nav rail */}
+        <SubNavRail
+          widgetName={widget.name || widget.id}
+          widgetEnabled={widget.enabled}
+          sections={sections}
+          activeSectionId={effectiveSectionId ?? ""}
+          onSelectSection={(id) => setActiveSectionId(id as SubNavSectionId)}
+          onToggleVisibility={handleToggleVisibility}
+          dirty={dirty}
+          onReset={handleDiscard}
+        />
+
+        {/* Sub-nav content */}
+        <SubNavContent
+          sections={sections}
+          activeSectionId={effectiveSectionId ?? ""}
+          onResetSection={handleDiscard}
+        >
+          {/* Diseño section */}
+          {effectiveSectionId === "diseno" && (
+            <div className="sn-section space-y-3">
+              <WidgetDesignGallery
+                widget={widget}
+                activeDesignId={activeDesignId}
+                onApplyDesign={handleApplyOfficialDesign}
+              />
+              {selectedDesign && sameTypeWidgets.length > 1 && (
+                <button
+                  type="button"
+                  data-testid="apply-design-to-all"
+                  onClick={() => {
+                    let updated = profile;
+                    for (const w of sameTypeWidgets) {
+                      updated = applyOfficialDesignToProfile(updated, w.id, selectedDesign);
+                    }
+                    onChangeProfile(updated);
+                  }}
+                  className="w-full rounded bg-vantare-red-500/20 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-red-400 hover:bg-vantare-red-500/30 cursor-pointer transition-colors"
+                >
+                  Aplicar a todos
+                </button>
+              )}
+              <WidgetVariantManager
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+                canApply={canApply}
+                draft={dirty ? draft : undefined}
+              />
+              <WidgetPresetSection
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+              />
             </div>
           )}
-          <WidgetVariantManager
-            profile={profile}
-            widget={widget}
-            onChangeProfile={onChangeProfile}
-            canApply={canApply}
-            draft={dirty ? draft : undefined}
-          />
 
-          {/* Draft actions */}
-          {dirty && canApply && (
-            <div className="flex items-center gap-2 border-t border-white/5 px-3 py-2" data-testid="draft-actions">
-              <button
-                type="button"
-                onClick={handleSaveToWidget}
-                data-testid="save-to-widget-btn"
-                className="rounded bg-vantare-accent/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-accent cursor-pointer"
-              >
-                {t("studio.saveToWidget")}
-              </button>
-              <button
-                type="button"
-                onClick={handleDiscard}
-                data-testid="discard-changes-btn"
-                className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
-              >
-                {t("studio.discard")}
-              </button>
+          {/* Apariencia section */}
+          {effectiveSectionId === "apariencia" && (
+            <div className="sn-section">
+              <PreviewInspector
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+                disabled={false}
+                showPositionControls={false}
+                showDangerActions={false}
+                showAppearanceControls={true}
+              />
             </div>
           )}
 
-          <WidgetConfigSections
-            slots={draft.slots}
-            columns={draft.columns}
-            columnGroups={draft.columnGroups}
-            widgetType={widget.type}
-            canApply={canApply}
-            onDraftChange={handleDraftChange}
-          />
-          <RelativeSettingsSection
-            profile={profile}
-            widget={widget}
-            onChangeProfile={onChangeProfile}
-          />
-          <StandingsSettingsSection
-            profile={profile}
-            widget={widget}
-            onChangeProfile={onChangeProfile}
-          />
-          <PedalsSettingsSection
-            profile={profile}
-            widget={widget}
-            onChangeProfile={onChangeProfile}
-          />
-          <WidgetPresetSection
-            profile={profile}
-            widget={widget}
-            onChangeProfile={onChangeProfile}
-          />
-        </div>
-      )}
+          {/* Columnas section (relative/standings) */}
+          {effectiveSectionId === "columnas" && (
+            <div className="sn-section space-y-3">
+              <WidgetConfigSections
+                slots={draft.slots}
+                columns={draft.columns}
+                columnGroups={draft.columnGroups}
+                widgetType={widget.type}
+                canApply={canApply}
+                onDraftChange={handleDraftChange}
+              />
+              <RelativeSettingsSection
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+              />
+              <StandingsSettingsSection
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+              />
+              {dirty && canApply && (
+                <div className="flex items-center gap-2 border-t border-white/5 pt-3" data-testid="draft-actions">
+                  <button
+                    type="button"
+                    onClick={handleSaveToWidget}
+                    data-testid="save-to-widget-btn"
+                    className="rounded bg-vantare-red-500/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-red-500 cursor-pointer"
+                  >
+                    {t("studio.saveToWidget")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDiscard}
+                    data-testid="discard-changes-btn"
+                    className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
+                  >
+                    {t("studio.discard")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Slots section (non-relative/standings) */}
+          {effectiveSectionId === "slots" && (
+            <div className="sn-section space-y-3">
+              <WidgetConfigSections
+                slots={draft.slots}
+                columns={draft.columns}
+                columnGroups={draft.columnGroups}
+                widgetType={widget.type}
+                canApply={canApply}
+                onDraftChange={handleDraftChange}
+              />
+              {dirty && canApply && (
+                <div className="flex items-center gap-2 border-t border-white/5 pt-3" data-testid="draft-actions">
+                  <button
+                    type="button"
+                    onClick={handleSaveToWidget}
+                    data-testid="save-to-widget-btn"
+                    className="rounded bg-vantare-red-500/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-red-500 cursor-pointer"
+                  >
+                    {t("studio.saveToWidget")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDiscard}
+                    data-testid="discard-changes-btn"
+                    className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
+                  >
+                    {t("studio.discard")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Colores section (pedals) */}
+          {effectiveSectionId === "colores" && (
+            <div className="sn-section">
+              <PedalsSettingsSection
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+              />
+            </div>
+          )}
+
+          {/* Visibilidad section */}
+          {effectiveSectionId === "visibilidad" && (
+            <div className="sn-section">
+              <PreviewInspector
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+                disabled={false}
+                showPositionControls={false}
+                showDangerActions={false}
+                showAppearanceControls={false}
+              />
+            </div>
+          )}
+
+          {/* General section */}
+          {effectiveSectionId === "general" && (
+            <div className="sn-section">
+              <PreviewInspector
+                profile={profile}
+                widget={widget}
+                onChangeProfile={onChangeProfile}
+                disabled={false}
+                showPositionControls={false}
+                showDangerActions={false}
+                showAppearanceControls={false}
+              />
+            </div>
+          )}
+        </SubNavContent>
+      </div>
     </div>
   );
 }

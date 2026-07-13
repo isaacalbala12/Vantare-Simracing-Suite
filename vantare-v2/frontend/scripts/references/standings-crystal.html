@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standings Crystal Reference</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #060608;
+      --accent-red: #e63946;
+      --accent-red-bright: #ff2a3b;
+      --accent-green: #22c55e;
+      --accent-yellow: #f59e0b;
+      --text-main: #ffffff;
+      --text-muted: #999999;
+      --text-dim: #555555;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    body { background-color: var(--bg-page); color: var(--text-main); font-family: var(--font-sans); margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .glass-card { width: 360px; background: rgba(18,18,22,0.82); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1); overflow: hidden; }
+    .card-header { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; }
+    .vantare-logo-box { display: flex; align-items: center; gap: 6px; }
+    .vantare-logo-svg { width: 20px; height: 20px; }
+    .vantare-brand-text { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
+    .grid-standings { display: grid; grid-template-columns: 20px 20px 26px 1fr 76px 58px; align-items: center; }
+    .table-header { height: 24px; font-size: 9px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0 8px; }
+    .row { height: 28px; border-bottom: 1px solid rgba(255,255,255,0.03); padding: 0 8px; }
+    .row:nth-child(even) { background: rgba(255,255,255,0.015); }
+    .row:nth-child(odd) { background: rgba(0,0,0,0.25); }
+    .row.highlight { background: linear-gradient(90deg, rgba(255,42,59,0.22), rgba(230,57,70,0.05)); position: relative; }
+    .row.highlight::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent-red-bright); box-shadow: 0 0 10px var(--accent-red-bright); }
+    .cell-center { text-align: center; }
+    .cell-left { text-align: left; font-size: 10px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cell-right { text-align: right; justify-self: end; font-family: var(--font-mono); font-size: 10px; font-weight: 600; }
+    .pos-num { font-family: var(--font-mono); font-weight: 700; font-size: 11px; width: 20px; text-align: center; }
+    .brand-side-strip { font-family: var(--font-display); font-weight: 800; font-size: 9px; width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+    .num-badge { color: #fff; font-size: 11px; font-weight: 900; font-family: var(--font-mono); width: 26px; height: 16px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; }
+    .tire-wrapper { display: flex; align-items: center; gap: 6px; justify-self: end; }
+    .tire-badge { width: 14px; height: 14px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 800; color: #000; }
+    .tire-S { background: #ff4d4d; }
+    .tire-M { background: #facc15; }
+    .tire-H { background: #e5e7eb; }
+    .card-footer { padding: 6px 12px; background: rgba(0,0,0,0.45); border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.5); }
+  </style>
+</head>
+<body>
+  <div class="glass-card" style="width: 360px;">
+    <div class="card-header">
+      <div class="vantare-logo-box"><svg class="vantare-logo-svg" viewBox="0 0 100 90" fill="none"><defs><linearGradient id="vantare-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#b3121f"/><stop offset="50%" stop-color="#e63946"/><stop offset="100%" stop-color="#ff4d5a"/></linearGradient></defs><path d="M50 0L100 90H72L50 50L28 90H0L50 0Z" fill="url(#vantare-grad)"/></svg><span class="vantare-brand-text">VANTARE</span></div>
+      <div style="display:flex; gap:6px; align-items:center;"><span style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-size:9px; font-weight:700; padding:3px 8px; border-radius:12px;">HYPERCAR</span><span style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--accent-red-bright);">01:45:22</span></div>
+    </div>
+    <div class="grid-standings table-header"><div></div><div class="cell-center">POS</div><div class="cell-center">#</div><div class="cell-left">EQUIPO / PILOTO</div><div class="cell-right">GAP</div><div class="cell-right">LAST</div></div>
+    <div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#cc0000;">FE</div><div class="cell-center pos-num" style="color:var(--accent-red-bright);">1</div><div class="cell-center"><span class="num-badge">50</span></div><div class="cell-left">Ferrari AF Corse</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>Leader</div><div class="cell-right" style="color:#aaa;">3:24.890</div></div>
+      <div class="grid-standings row highlight"><div class="brand-side-strip" style="color:#ff2a3b;">FE</div><div class="cell-center pos-num" style="color:#fff;">2</div><div class="cell-center"><span class="num-badge">51</span></div><div class="cell-left" style="color:#fff;font-weight:700;">Ferrari AF Corse (TÚ)</div><div class="tire-wrapper" style="color:var(--accent-red-bright);"><span class="tire-badge tire-S">S</span>+3.450s</div><div class="cell-right" style="color:#fff;font-weight:700;">3:25.400</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#006600;">PO</div><div class="cell-center pos-num">3</div><div class="cell-center"><span class="num-badge">6</span></div><div class="cell-left">Porsche Penske</div><div class="tire-wrapper" style="color:#f59e0b;"><span class="tire-badge tire-M">M</span>+12.3s</div><div class="cell-right" style="color:#aaa;">3:26.230</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#1a1aff;">AL</div><div class="cell-center pos-num">4</div><div class="cell-center"><span class="num-badge">36</span></div><div class="cell-left">Alpine Endurance</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+18.7s</div><div class="cell-right" style="color:#aaa;">3:26.580</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#1a1aff;">AL</div><div class="cell-center pos-num">5</div><div class="cell-center"><span class="num-badge">8</span></div><div class="cell-left">Alpine Endurance</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+21.2s</div><div class="cell-right" style="color:#aaa;">3:26.840</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#9933cc;">CA</div><div class="cell-center pos-num">6</div><div class="cell-center"><span class="num-badge">7</span></div><div class="cell-left">Cadillac Racing</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+25.8s</div><div class="cell-right" style="color:#aaa;">3:27.290</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#2563eb;">BM</div><div class="cell-center pos-num">7</div><div class="cell-center"><span class="num-badge">35</span></div><div class="cell-left">BMW M Team WRT</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+32.1s</div><div class="cell-right" style="color:#aaa;">3:27.510</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#2563eb;">BM</div><div class="cell-center pos-num">8</div><div class="cell-center"><span class="num-badge">46</span></div><div class="cell-left">BMW M Team WRT</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+34.5s</div><div class="cell-right" style="color:#aaa;">3:27.720</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#d97706;">TY</div><div class="cell-center pos-num">9</div><div class="cell-center"><span class="num-badge">5</span></div><div class="cell-left">Toyota Gazoo Racing</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+38.9s</div><div class="cell-right" style="color:#aaa;">3:27.950</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#d97706;">TY</div><div class="cell-center pos-num">10</div><div class="cell-center"><span class="num-badge">8</span></div><div class="cell-left">Toyota Gazoo Racing</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+41.2s</div><div class="cell-right" style="color:#aaa;">3:28.240</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#dc2626;">LM</div><div class="cell-center pos-num">11</div><div class="cell-center"><span class="num-badge">50</span></div><div class="cell-left">Lamborghini Iron Lynx</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+48.7s</div><div class="cell-right" style="color:#aaa;">3:28.520</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#dc2626;">LM</div><div class="cell-center pos-num">12</div><div class="cell-center"><span class="num-badge">63</span></div><div class="cell-left">Lamborghini Iron Lynx</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+51.3s</div><div class="cell-right" style="color:#aaa;">3:28.870</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#7c3aed;">PG</div><div class="cell-center pos-num">13</div><div class="cell-center"><span class="num-badge">99</span></div><div class="cell-left">Peugeot TotalEnergies</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+58.4s</div><div class="cell-right" style="color:#aaa;">3:29.160</div></div>
+      <div class="grid-standings row"><div class="brand-side-strip" style="color:#7c3aed;">PG</div><div class="cell-center pos-num">14</div><div class="cell-center"><span class="num-badge">94</span></div><div class="cell-left">Peugeot TotalEnergies</div><div class="tire-wrapper"><span class="tire-badge tire-M">M</span>+1:01.2</div><div class="cell-right" style="color:#aaa;">3:29.510</div></div>
+    </div>
+    <div class="card-footer">
+      <span>LE MANS ULTIMATE</span>
+      <span>TRACK TEMP: 28°C</span>
+    </div>
+  </div>
+</body>
+</html>

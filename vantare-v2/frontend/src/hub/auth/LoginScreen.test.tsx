@@ -60,7 +60,12 @@ describe("LoginScreen", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
     expect(signInWithEmail).toHaveBeenCalledWith("u@example.com", "secret");
-    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalledWith("tok"));
+    await vi.waitFor(() =>
+      expect(onLoggedIn).toHaveBeenCalledWith({
+        accessToken: "tok",
+        refreshToken: undefined,
+      }),
+    );
   });
 
   it("shows error message when signInWithEmail rejects", async () => {
@@ -259,7 +264,12 @@ describe("LoginScreen", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
     expect(signUp).toHaveBeenCalledWith("new@example.com", "pass123");
-    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalledWith("tok"));
+    await vi.waitFor(() =>
+      expect(onLoggedIn).toHaveBeenCalledWith({
+        accessToken: "tok",
+        refreshToken: undefined,
+      }),
+    );
   });
 
   it("shows confirmation message when email confirmation is required", async () => {

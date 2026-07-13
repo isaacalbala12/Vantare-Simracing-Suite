@@ -10,9 +10,9 @@ import {
 const lt = (s: string) => ({ es: s, en: s, pt: s, it: s });
 
 describe("FEATURES_FALLBACK dataset", () => {
-  it("has 5 categories and 5 features", () => {
-    expect(FEATURES_FALLBACK.categories.length).toBe(5);
-    expect(FEATURES_FALLBACK.features.length).toBe(5);
+  it("has 8 categories and 8 features", () => {
+    expect(FEATURES_FALLBACK.categories.length).toBe(8);
+    expect(FEATURES_FALLBACK.features.length).toBe(8);
   });
 
   it("every feature has a category id that exists in categories", () => {

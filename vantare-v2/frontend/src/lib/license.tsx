@@ -9,12 +9,22 @@ import {
 import type { ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
 import type { LicenseResult } from "./license-types";
+import { licenseDebug } from "./license-debug";
 
+
+const ANONYMOUS_LICENSE: LicenseResult = {
+  state: "anonymous",
+  entitlements: [],
+  userId: "",
+  email: "",
+  deviceOK: false,
+};
 
 type LicenseContextValue = {
   result: LicenseResult | null;
   loading: boolean;
   refresh: () => void;
+  clearLicense: () => void;
 };
 
 const LicenseContext = createContext<LicenseContextValue | null>(null);
@@ -25,10 +35,19 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(
     (sessionToken?: string) => {
+      licenseDebug("LicenseProvider", "emit license:validate", {
+        hasToken: Boolean(sessionToken),
+        tokenLen: sessionToken?.length ?? 0,
+      });
       Events.Emit("license:validate", sessionToken ? { sessionToken } : {});
     },
     [],
   );
+
+  const clearLicense = useCallback(() => {
+    setResult(ANONYMOUS_LICENSE);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
 
@@ -39,6 +58,13 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       (event: unknown) => {
         if (cancelled) return;
         const data = (event as { data?: LicenseResult | null })?.data ?? null;
+        licenseDebug("LicenseProvider", "license:changed", {
+          state: data?.state ?? "null",
+          email: data?.email ?? "",
+          entitlements: data?.entitlements ?? [],
+          deviceOK: data?.deviceOK,
+          lastValidated: data?.lastValidated ?? null,
+        });
         // Never regress from an authenticated state to anonymous. This
         // prevents the LicenseBridge/initial-mount empty-token refresh from
         // overwriting a successful OAuth callback result. Once the user is
@@ -90,8 +116,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<LicenseContextValue>(
-    () => ({ result, loading, refresh }),
-    [result, loading, refresh],
+    () => ({ result, loading, refresh, clearLicense }),
+    [result, loading, refresh, clearLicense],
   );
 
   return (

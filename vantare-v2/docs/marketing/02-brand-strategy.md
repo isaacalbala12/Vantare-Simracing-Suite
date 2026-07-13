@@ -6,6 +6,17 @@ Documento de la **Fase 2: Brand Strategy**.
 Define el mensaje, la voz, y la dirección visual de la marca.  
 Basado en la Fase 1: Brand Foundation.
 
+## Mapping con docs canónicos (2026-07-08)
+
+Este documento es **planificación de marketing**. La identidad de marca canónica vive en [`../BRAND.md`](../BRAND.md) y el design system técnico (tokens, componentes, estados) en [`../DESIGN.md`](../DESIGN.md). El style guide HTML navegable está en `../styleguide.html`.
+
+**Importante:** la paleta propuesta originalmente (naranja `#FF6B35`) NO coincide con el código real. El código implementa **rojo** (`#C1121F` / `#ff3b3b`). Ver §6 actualizada abajo y `DESIGN.md` §2.
+
+**Qué vive dónde:**
+- Mensaje principal, mensajes por producto, tagline, elevator pitch, tono de voz, vocabulario → **aquí** (es contenido de marketing, no cambia).
+- Paleta exacta, tipografía, espaciado, componentes, estados, principios de UI → [`../DESIGN.md`](../DESIGN.md).
+- Identidad conceptual consolidada (valores, personalidad, mensaje unificador) → [`../BRAND.md`](../BRAND.md).
+
 ---
 
 ## 1. Mensaje Principal de Marca
@@ -199,38 +210,48 @@ Para cuando no tienes ni 15 segundos:
 
 ## 6. Dirección Visual
 
+> **Esta sección es conceptual.** Los tokens exactos, valores hex, escalas tipográficas y patrones de implementación viven en [`../DESIGN.md`](../DESIGN.md) §2-§5. Esta sección explica el **por qué** detrás de la dirección, no prescribe valores.
+
 ### Filosofía visual
 
 > **"Parece un cockpit de LMP1. No un dashboard de Excel."**
 
 La estética debe evocar el **motorsport profesional**: limpio, técnico, rápido, preciso. Pero sin ser intimidante.
 
-### Paleta de colores (propuesta)
+### Paleta (intención de marca)
 
-| Color | Hex aproximado | Uso |
-|-------|---------------|-----|
-| **Negro asfalto** | `#0A0A0A` | Fondo principal, base oscura. |
-| **Gris carbono** | `#1A1A1A` | Cards, superficies secundarias. |
-| **Gris claro** | `#E5E5E5` | Texto principal sobre fondo oscuro. |
-| **Blanco puro** | `#FFFFFF` | Acentos, highlights, texto importante. |
-| **Naranja Vantare** | `#FF6B35` | Acento principal. Energía, velocidad, pasión. Evoca el color de los coches de Le Mans (naranja Gulf, naranja McLaren). |
-| **Rojo alerón** | `#E63946` | Acento secundario. Alertas, estados críticos, emergencias. |
-| **Verde bandera** | `#2A9D8F` | Estados positivos, éxito, confirmaciones. |
+El código real implementa **rojo Vantare** como acento principal. La propuesta original de marketing hablaba de "naranja Gulf/McLaren" como metáfora, pero al implementar la marca en producto se consolidó rojo — más agresivo, más técnico, más alineado con la realidad de un cockpit con luces de alerta.
+
+| Rol de marca | Token real | Intención |
+|---|---|---|
+| **Acento principal** | `#C1121F` (`--v-red-500`) | Velocidad, pasión, energía. El color de "vamos". |
+| **Acento brillante** | `#ff3b3b` (`--v-red-400`) | Hover, glow, indicadores activos. |
+| **Acento oscuro** | `#9B2226` (`--v-red-600`) | Backgrounds de badges, hover de botones. |
+| **Acento crítico** | `#E63946` | Solo para estados críticos. Como una bandera roja. |
+| **Estados positivos** | `#34D399` (verde menta) | Como la bandera a cuadros. Éxito. |
+| **Estados warning** | `#FFD700` (oro) | Advertencias, atención. |
+| **Fondo principal** | `#0a0a0a` | Asfalto, carbono, cockpit. |
+| **Superficies** | `#141414` | Cards, paneles. |
+| **Texto principal** | `#f5f5f5` | Blanco roto, suave sobre fondo oscuro. |
+
+> Para valores exactos, escalas, semitransparencias y gradientes, ver [`../DESIGN.md`](../DESIGN.md) §2.
 
 ### Por qué estos colores
 
 - **Negro + gris**: Referencia directa al asfalto, al carbono de los monoplazas, al ambiente oscuro de un cockpit. Base de confianza y profesionalismo.
-- **Naranja**: Color de la velocidad en motorsport. Gulf, McLaren, naranja de Le Mans. Es cálido pero técnico. No es el rojo genérico de "alerta". Es el naranja de "vamos".
-- **Rojo**: Solo para estados críticos. Como una bandera roja o un indicador de temperatura del motor.
+- **Rojo (acento principal)**: Velocidad en motorsport. Es cálido pero técnico. No es el rojo genérico de "alerta" — es el rojo de "vamos". La metáfora del naranja Gulf se mantiene a nivel conceptual pero la marca consolidó rojo.
 - **Verde**: Como la bandera a cuadros. Éxito, meta alcanzada.
+- **Oro**: Advertencia, atención.
 
-### Tipografía (propuesta)
+### Tipografía (intención)
 
-| Uso | Tipo | Ejemplo | Por qué |
-|-----|------|---------|---------|
-| **Display / Headers** | Sans-serif geometric, medium-bold | Space Grotesk, Inter | Limpia, moderna, técnica sin ser robótica. |
-| **Body / UI** | Sans-serif, regular | Inter, SF Pro | Legible a tamaños pequeños. Funciona en UI y web. |
-| **Números / Datos** | Monospace tabular | JetBrains Mono, SF Mono | Los números de telemetría y tiempos de vuelta deben alinearse perfectamente. |
+| Uso | Familia | Intención |
+|---|---|---|
+| **Display / Headers** | Rajdhani | Sans-serif geométrica, técnica sin ser robótica. |
+| **Body / UI** | Inter | Legible a tamaños pequeños. Funciona en UI y web. |
+| **Números / Datos** | Space Mono | Monospace tabular — los números de telemetría deben alinearse perfectamente. Space Mono es la mono canónica de marca desde BRAND-MONO-FONT-01 (2026-07-08). |
+
+> Para tamaños, pesos, tracking, y casos de uso detallados, ver [`../DESIGN.md`](../DESIGN.md) §3.
 
 ### Estilo de fotografía y gráficos
 

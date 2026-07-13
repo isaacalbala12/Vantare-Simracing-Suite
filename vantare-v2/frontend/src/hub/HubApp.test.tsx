@@ -44,14 +44,18 @@ vi.mock("../lib/license", () => ({
 }));
 
 vi.mock("./auth/LoginScreen", () => ({
-  LoginScreen: ({ onLoggedIn }: { onLoggedIn: (token?: string) => void }) => {
+  LoginScreen: ({
+    onLoggedIn,
+  }: {
+    onLoggedIn: (tokens?: { accessToken: string; refreshToken?: string }) => void;
+  }) => {
     loginScreenMock();
     return (
       <div data-testid="login-screen">
         <button
           type="button"
           data-testid="trigger-login"
-          onClick={() => onLoggedIn("tok-123")}
+          onClick={() => onLoggedIn({ accessToken: "tok-123", refreshToken: "ref-1" })}
         >
           trigger
         </button>
@@ -283,6 +287,7 @@ describe("HubApp gate (production)", () => {
     await waitFor(() => {
       expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
         sessionToken: "tok-123",
+        refreshToken: "ref-1",
       });
     });
   });

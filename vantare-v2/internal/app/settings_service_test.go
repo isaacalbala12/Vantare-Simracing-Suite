@@ -526,6 +526,26 @@ func TestDefaultAppSettingsIncludesDefaultProfiles(t *testing.T) {
 	}
 }
 
+func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
+	s := app.DefaultAppSettings()
+	s.LauncherProfiles = []app.LaunchProfile{{ID: "legacy", Name: "Legacy", Steps: []app.LaunchStep{{AppID: "lmu"}}}}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"schemaVersion":1,"launcherProfiles":[{"id":"legacy","name":"Legacy","steps":[{"appId":"lmu"}]}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	profiles := svc.GetLauncherProfiles()
+	if len(profiles) != 1 || profiles[0].Policy == nil {
+		t.Fatalf("legacy profile was lost or policy was not migrated: %+v", profiles)
+	}
+	if profiles[0].Policy.AlreadyRunning != app.AlreadyRunningAsk || profiles[0].Policy.Failure != app.FailureAsk || profiles[0].Policy.MaxRetries != 0 {
+		t.Fatalf("unexpected migrated policy: %+v", profiles[0].Policy)
+	}
+}
+
 func TestDefaultAppSettingsHasSchemaVersion1(t *testing.T) {
 	s := app.DefaultAppSettings()
 	if s.SchemaVersion != 1 {

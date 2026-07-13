@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { Events } from "@wailsio/runtime";
+import { useMemo, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   appSortOrder,
@@ -7,6 +6,7 @@ import {
   type LauncherAppEntry,
   type LaunchProfile,
 } from "./launcher-state";
+import { useLauncherSnapshot, useLauncherStore } from "./launcher-store";
 import { AppBadge } from "../components/AppBadge";
 import { AddNonSteamGameModal } from "./AddNonSteamGameModal";
 
@@ -19,8 +19,23 @@ type AppsPanelProps = {
 // for each app showing the executable path and editable args.
 export function AppsPanel({ className }: AppsPanelProps) {
   const { t } = useI18n();
-  const [apps, setApps] = useState<LauncherAppEntry[]>([]);
-  const [profiles, setProfiles] = useState<LaunchProfile[]>([]);
+  const snapshot = useLauncherSnapshot();
+  const { dispatchLauncherCommand } = useLauncherStore();
+  const apps = useMemo<LauncherAppEntry[]>(
+    () =>
+      (snapshot?.apps ?? []).map((app) => ({
+        ...app,
+        detected: app.detected ?? app.availability.found,
+      })).sort(appSortOrder),
+    [snapshot],
+  );
+  const profiles = useMemo<LaunchProfile[]>(
+    () => [
+      ...(snapshot?.vantareProfiles ?? []),
+      ...(snapshot?.userProfiles ?? []),
+    ],
+    [snapshot],
+  );
   const [showAdd, setShowAdd] = useState(false);
   const [detailsAppId, setDetailsAppId] = useState<string | null>(null);
 
@@ -28,38 +43,8 @@ export function AppsPanel({ className }: AppsPanelProps) {
     profiles.flatMap((p) => p.steps.map((s) => s.appId)),
   );
 
-  useEffect(() => {
-    Events.Emit("launcher:apps:discover");
-    Events.Emit("launcher:profiles:list");
-
-    const offDetected = Events.On(
-      "launcher:apps:detected",
-      (event: { data?: { apps?: LauncherAppEntry[] } }) => {
-        setApps((event.data?.apps ?? []).slice().sort(appSortOrder));
-      },
-    );
-    const offUpdated = Events.On(
-      "launcher:apps:updated",
-      (event: { data?: { apps?: LauncherAppEntry[] } }) => {
-        setApps((event.data?.apps ?? []).slice().sort(appSortOrder));
-      },
-    );
-    const offProfiles = Events.On(
-      "launcher:profiles:updated",
-      (event: { data?: { profiles?: LaunchProfile[] } }) => {
-        setProfiles(event.data?.profiles ?? []);
-      },
-    );
-
-    return () => {
-      offDetected();
-      offUpdated();
-      offProfiles();
-    };
-  }, []);
-
   const handleRemove = (id: string) => {
-    Events.Emit("launcher:app:remove", { id });
+    dispatchLauncherCommand("launcher:app:remove", { id });
   };
 
   return (
@@ -73,15 +58,15 @@ export function AppsPanel({ className }: AppsPanelProps) {
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
             data-testid="apps-add-manual"
           >
             + {t("launcher.apps.addManual")}
           </button>
           <button
             type="button"
-            onClick={() => Events.Emit("launcher:apps:discover")}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold uppercase tracking-[.18em] text-vantare-textMuted hover:border-accent/40 hover:text-white transition-colors"
+            onClick={() => dispatchLauncherCommand("launcher:apps:discover")}
+            className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
             data-testid="apps-rescan"
           >
             {t("launcher.apps.rescan")}
@@ -104,7 +89,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
             gradientFrom: "#6b7280",
             gradientTo: "#1f2937",
           };
-          Events.Emit("launcher:app:add", newEntry);
+          dispatchLauncherCommand("launcher:app:add", newEntry);
         }}
       />
 
@@ -133,7 +118,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    Events.Emit("launcher:app:favorite", {
+                    dispatchLauncherCommand("launcher:app:favorite", {
                       id: app.id,
                       favorite: !app.isFavorite,
                     });
@@ -160,7 +145,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
                       e.stopPropagation();
                       handleRemove(app.id);
                     }}
-                    className="text-[10px] uppercase tracking-[.18em] text-vantare-textDim hover:text-vantare-red-400 transition-colors"
+                    className="text-[10px] uppercase tracking-[.18em] text-vantare-red-400 hover:bg-vantare-red-400/10 px-2 py-0.5 rounded transition-colors"
                     data-testid={`app-remove-${app.id}`}
                   >
                     {t("launcher.profile.delete")}
@@ -184,7 +169,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
                       type="text"
                       value={app.args ?? ""}
                       onChange={(e) =>
-                        Events.Emit("launcher:app:update", {
+                        dispatchLauncherCommand("launcher:app:update", {
                           id: app.id,
                           args: e.target.value,
                         })

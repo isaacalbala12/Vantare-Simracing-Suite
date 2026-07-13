@@ -1,3 +1,9 @@
+Nota ISA-7-BILLING-RELAUNCH (2026-07-14):
+- Auditoria nueva desde `develop@c49e14a` completada en `docs/analysis/isa-7-billing-relaunch-2026-07-14.md`; la ejecucion ISA-7 anterior queda descartada.
+- Veredicto: NO-GO para venta publica y retirada de Stripe. Riesgos prioritarios: claim webhook no atomico, eventos fuera de orden sin reconciliacion, refund parcial lifetime, activacion/gracia de suscripcion, cache offline manipulable, mapping asimetrico y return URL del portal.
+- Polar permanece como unico runtime de billing y `VITE_BILLING_ENABLED` debe seguir desactivado. Stripe se conserva solo como legado historico inerte hasta completar microcortes, pruebas sandbox, smoke monetario expresamente aprobado y validacion manual completa de Isaac.
+- Esta iteracion no hizo pagos, mutaciones remotas, migraciones, borrados ni cambios de Stripe. `go test ./internal/license/...` PASS; suites Deno/frontend no arrancaron por dependencias locales ausentes y no se instalaron paquetes.
+
 Nota LAUNCHER-V3-SHELL-ICONLOCATION-FIX (2026-07-12):
 - Corregido el caso de shortcuts con `TargetPath` genérico (Discord `Update.exe`): el resolver lee `IShellLinkW.GetIconLocation`, extrae el recurso indicado sin la flecha del `.lnk` y solo después usa el ejecutable objetivo/Shell.
 - Smoke Windows: Discord pasó de icono genérico (`551` bytes) a recurso de shortcut válido (`1213` bytes); MoTeC, SimHub, LMU, OBS, Spotify y CrewChief siguen resolviendo iconos.

@@ -27,6 +27,24 @@ type LauncherDiscovery struct {
 	Error      *string    `json:"error"`
 }
 
+type LauncherDiscoveryPhase string
+
+const (
+	DiscoveryStarting       LauncherDiscoveryPhase = "starting"
+	DiscoveryDiscovering    LauncherDiscoveryPhase = "discovering"
+	DiscoveryMerging        LauncherDiscoveryPhase = "merging"
+	DiscoveryResolvingIcons LauncherDiscoveryPhase = "resolving-icons"
+	DiscoveryComplete       LauncherDiscoveryPhase = "complete"
+	DiscoveryError          LauncherDiscoveryPhase = "error"
+)
+
+type LauncherDiscoveryProgress struct {
+	Scanning bool                   `json:"scanning"`
+	Progress int                    `json:"progress"`
+	Phase    LauncherDiscoveryPhase `json:"phase"`
+	Error    *string                `json:"error"`
+}
+
 // LauncherSnapshot is the aggregate wire payload consumed by the future
 // frontend bridge. Legacy events remain available during migration.
 type LauncherSnapshot struct {

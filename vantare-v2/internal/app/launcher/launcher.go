@@ -9,6 +9,7 @@ package launcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -34,14 +35,15 @@ type LauncherSettingsBackend interface {
 // shared mutable state is wrapped by ChainRunner (its own mutex) and every
 // LauncherSettingsBackend is the slice of SettingsService the launcher needs.
 type Service struct {
-	settings    LauncherSettingsBackend
-	emit        Emitter
-	chain       *ChainRunner
-	revision    atomic.Uint64
-	activeMu    sync.Mutex
-	active      map[string]LauncherActiveChain
-	discoveryMu sync.RWMutex
-	discovery   LauncherDiscovery
+	settings       LauncherSettingsBackend
+	emit           Emitter
+	chain          *ChainRunner
+	revision       atomic.Uint64
+	activeMu       sync.Mutex
+	active         map[string]LauncherActiveChain
+	discoveryMu    sync.RWMutex
+	discovery      LauncherDiscovery
+	discoveryRunMu sync.Mutex
 }
 
 type serviceEmitter struct {
@@ -163,19 +165,44 @@ func (s *Service) BeginDiscovery() {
 	s.discoveryMu.Unlock()
 }
 
+var ErrDiscoveryInProgress = errors.New("launcher discovery already in progress")
+
+func (s *Service) emitDiscoveryProgress(progress int, phase LauncherDiscoveryPhase, scanning bool, err error) {
+	if progress < 0 {
+		progress = 0
+	}
+	if progress > 100 {
+		progress = 100
+	}
+	var message *string
+	if err != nil {
+		value := err.Error()
+		message = &value
+	}
+	s.emit.Emit("launcher:discovery:progress", LauncherDiscoveryProgress{Scanning: scanning, Progress: progress, Phase: phase, Error: message})
+}
+
 // DiscoverApps detects installed apps, merges them with the persisted set
 // (preserving manual apps) and persists the result. It is named DiscoverApps
 // rather than Discover to avoid a name collision with the package-level
 // Discover() helper in discovery.go. The caller emits the canonical snapshot.
 func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
+	if !s.discoveryRunMu.TryLock() {
+		return nil, ErrDiscoveryInProgress
+	}
+	defer s.discoveryRunMu.Unlock()
 	s.BeginDiscovery()
+	s.emitDiscoveryProgress(0, DiscoveryStarting, true, nil)
 	detected := Discover()
+	s.emitDiscoveryProgress(15, DiscoveryDiscovering, true, nil)
 	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
+	s.emitDiscoveryProgress(55, DiscoveryMerging, true, nil)
 	if err := s.settings.SetLauncherApps(merged); err != nil {
 		message := err.Error()
 		s.discoveryMu.Lock()
 		s.discovery = LauncherDiscovery{Error: &message}
 		s.discoveryMu.Unlock()
+		s.emitDiscoveryProgress(55, DiscoveryError, false, err)
 		return nil, err
 	}
 	// Convert map to slice for the legacy return value.
@@ -185,6 +212,7 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	}
 	// Enrich each app entry with the icon data URI so the frontend displays it
 	// immediately, without a separate round-trip event.
+	s.emitDiscoveryProgress(75, DiscoveryResolvingIcons, true, nil)
 	for i, a := range appsList {
 		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
 	}
@@ -192,6 +220,7 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	s.discoveryMu.Lock()
 	s.discovery = LauncherDiscovery{LastScanAt: &now}
 	s.discoveryMu.Unlock()
+	s.emitDiscoveryProgress(100, DiscoveryComplete, false, nil)
 	return appsList, nil
 }
 

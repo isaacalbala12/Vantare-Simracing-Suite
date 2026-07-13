@@ -58,7 +58,7 @@
   --v-motion-scale: 1;
   --v-font-sans: 'Inter', sans-serif;
   --v-font-display: 'Rajdhani', sans-serif;
-  --v-font-mono: 'JetBrains Mono', monospace;
+  --v-font-mono: 'Space Mono', monospace;
 }
 
 @keyframes fadeInUp {

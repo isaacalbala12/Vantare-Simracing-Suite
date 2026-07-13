@@ -6,7 +6,8 @@ import {
   type LauncherAppEntry,
   type LaunchProfile,
 } from "./launcher-state";
-import { useLauncherSnapshot, useLauncherStore } from "./launcher-store";
+import { useLauncherDiscoveryProgress, useLauncherSnapshot, useLauncherStore } from "./launcher-store";
+import { LauncherScanProgress } from "./LauncherScanProgress";
 import { AppBadge } from "../components/AppBadge";
 import { AddNonSteamGameModal } from "./AddNonSteamGameModal";
 
@@ -20,7 +21,8 @@ type AppsPanelProps = {
 export function AppsPanel({ className }: AppsPanelProps) {
   const { t } = useI18n();
   const snapshot = useLauncherSnapshot();
-  const { dispatchLauncherCommand } = useLauncherStore();
+  const { dispatchLauncherCommand, discoverApps } = useLauncherStore();
+  const progress = useLauncherDiscoveryProgress();
   const apps = useMemo<LauncherAppEntry[]>(
     () =>
       (snapshot?.apps ?? []).map((app) => ({
@@ -65,7 +67,9 @@ export function AppsPanel({ className }: AppsPanelProps) {
           </button>
           <button
             type="button"
-            onClick={() => dispatchLauncherCommand("launcher:apps:discover")}
+            onClick={discoverApps}
+            disabled={progress?.scanning === true}
+            aria-busy={progress?.scanning === true}
             className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
             data-testid="apps-rescan"
           >
@@ -73,6 +77,8 @@ export function AppsPanel({ className }: AppsPanelProps) {
           </button>
         </div>
       </div>
+
+      {progress?.scanning && <LauncherScanProgress progress={progress} />}
 
       <AddNonSteamGameModal
         open={showAdd}

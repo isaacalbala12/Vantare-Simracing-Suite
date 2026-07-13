@@ -4,11 +4,12 @@ import { ProfilesPanel } from "../launcher/ProfilesPanel";
 import { LauncherSessionPanel } from "../launcher/LauncherSessionPanel";
 import { LauncherOnboarding } from "../launcher/LauncherOnboarding";
 import { useLauncherSnapshot, useLauncherStore } from "../launcher/launcher-store";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function LauncherPage() {
   const snapshot = useLauncherSnapshot();
-  const { dispatchLauncherCommand } = useLauncherStore();
+  const { dispatchLauncherCommand, discoverApps } = useLauncherStore();
+  useEffect(() => { discoverApps(); }, [discoverApps]);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     try {
       return localStorage.getItem("vantare.launcherOnboardingCompleted") !== "true";

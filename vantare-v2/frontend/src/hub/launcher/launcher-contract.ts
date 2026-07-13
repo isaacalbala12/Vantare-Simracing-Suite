@@ -95,6 +95,13 @@ export type LauncherDiscovery = {
   error: string | null;
 };
 
+export type LauncherDiscoveryProgress = {
+  scanning: boolean;
+  progress: number;
+  phase: "starting" | "discovering" | "merging" | "resolving-icons" | "complete" | "error";
+  error: string | null;
+};
+
 export type LauncherSnapshot = {
   revision: number;
   apps: LauncherApp[];

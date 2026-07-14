@@ -2,6 +2,7 @@ Nota ISA-95 (2026-07-14):
 - Redistribución de Discord implementada en rama aislada: releases públicas desde `master`, testers desde fragmentos que alcanzan `develop`, builds beta por dispatch y desarrollo activo desde proyectos Linear con opt-in público.
 - Fuente tester: `docs/changelog/fragments/*.json`; se elimina el parser de primeras coincidencias históricas de este documento.
 - Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.
+- Validación real PASS (2026-07-14): release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`. Versión pública vigente verificada: `v0.1.0.2`.
 - Plan y operación: `docs/superpowers/plans/2026-07-14-isa-95-discord-linear-communications.md` y `docs/discord-communications.md`.
 
 Nota OVERLAY-STUDIO-V3 (2026-07-10):

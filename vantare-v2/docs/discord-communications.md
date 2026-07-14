@@ -42,3 +42,7 @@ Todo texto anterior a la marca se considera interno. Los proyectos publicables s
 - Release comprueba que el tag pertenece al historial de `master`.
 - Build beta y release son acciones explícitas; no se deducen de cambios documentales.
 - Nada llega a `develop` sin la validación manual completa de Isaac.
+
+## Validación ISA-95
+
+El 2026-07-14 se verificaron en GitHub Actions los cuatro destinos con la versión pública vigente `v0.1.0.2`: release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`.

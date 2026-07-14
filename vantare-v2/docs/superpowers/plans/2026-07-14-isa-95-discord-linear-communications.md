@@ -8,7 +8,7 @@
 
 **Tech Stack:** GitHub Actions YAML, Python 3 standard library, `unittest`, Linear GraphQL, Discord webhooks.
 
-**Execution status:** Completed on the issue branch. Automated checks and network-free dry-runs pass; real Discord publication remains behind Isaac's manual gate.
+**Execution status:** Completed on the issue branch. Automated checks, dry-runs and one final live run per channel pass. Integration into `develop` remains behind Isaac's manual approval.
 
 ---
 

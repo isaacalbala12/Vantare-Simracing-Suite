@@ -20,6 +20,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "multiclass-relative": "overlays.advanced",
   "delta-advanced": "overlays.advanced",
   "fuel-strategy": "overlays.advanced",
+  "delta-trace": "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

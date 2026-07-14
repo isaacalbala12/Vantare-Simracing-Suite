@@ -13,6 +13,7 @@ import { deltaAdvancedDefinition } from "../widget-types/delta-advanced/delta-ad
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { fuelStrategyDefinition } from "../widget-types/fuel-strategy/fuel-strategy-definition";
+import { deltaTraceDefinition } from "../widget-types/delta-trace/delta-trace-definition";
 
 export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
@@ -74,3 +75,4 @@ widgetTypeRegistry.register(inputTelemetryDefinition);
 widgetTypeRegistry.register(multiclassRelativeDefinition);
 widgetTypeRegistry.register(deltaAdvancedDefinition);
 widgetTypeRegistry.register(fuelStrategyDefinition);
+widgetTypeRegistry.register(deltaTraceDefinition);

@@ -1,5 +1,6 @@
 import { buildMockTelemetry } from "./mock-scenarios";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
+import { createDerivedTelemetryStore } from "./derived-telemetry-store";
 
 export type TelemetryListener = () => void;
 
@@ -62,6 +63,7 @@ export function createTelemetryRateCoordinator(
 ): TelemetryRateCoordinator {
   const createScheduler = options.createScheduler ?? defaultScheduler;
   let latest = emptySnapshot();
+  const derived = createDerivedTelemetryStore();
   const buckets = new Map<number, BucketState>();
 
   const notifyBucket = (bucket: BucketState) => {
@@ -103,7 +105,15 @@ export function createTelemetryRateCoordinator(
       };
     },
     publish(snapshot) {
-      latest = snapshot;
+      derived.publish(snapshot);
+      latest = {
+        ...snapshot,
+        derived: {
+          fuelHistory: derived.getFuelHistory(),
+          inputHistory: derived.getInputHistory(),
+          deltaHistory: derived.getDeltaHistory(),
+        },
+      };
       if (!isImmediateStatus(snapshot.status)) {
         return;
       }
@@ -117,6 +127,7 @@ export function createTelemetryRateCoordinator(
         bucket.listeners.clear();
       }
       buckets.clear();
+      derived.dispose();
     },
   };
 }

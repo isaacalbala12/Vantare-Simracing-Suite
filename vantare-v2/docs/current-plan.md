@@ -2584,3 +2584,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Microcorte 1 contratos/matriz/harnes
 - IDs Crystal normalizados al contrato canónico: `pedals-crystal`, `pedals-telemetry-crystal`, `pedals-telemetry-compact-crystal` e `input-crystal-{blade,capsule,dense}`; no se añadieron aliases ni otro `systemId`.
 - RED confirmado: 5 tests fallaron antes de implementar cardinalidad, selección por diseño e IDs canónicos. GREEN: 3 archivos / 34 tests PASS; `pnpm --dir frontend build` PASS con warning heredado de chunk >500 kB; `git diff --check` PASS.
 - No se tocaron shell, canvas, drag/resize, responsive, persistencia, Wails/SSE, permisos ni layout.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Microcorte 2 historial derivado acotado:
+- Nuevo `createDerivedTelemetryStore`: inputs/delta limitados a 120 muestras, fuel a 64 vueltas; sin timers, con copias inmutables, cleanup y reset por `session.key`/`epoch` o desconexión.
+- Consumo por vuelta solo se registra ante incremento real de vuelta y caída positiva de fuel fuera de pits; refuels/valores ausentes no se convierten en cero.
+- `TelemetryRateCoordinator.publish` enriquece una sola vez cada snapshot con histories derivados; Studio/Desktop/OBS reciben el mismo contrato sin lógica dentro de renderers.
+- RED confirmado por import inexistente y luego `snapshot.derived` ausente. GREEN: 2 archivos / 10 tests PASS; build PASS; `git diff --check` PASS.

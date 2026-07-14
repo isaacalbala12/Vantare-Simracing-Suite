@@ -1,3 +1,9 @@
+import type {
+  DerivedDeltaSample,
+  DerivedFuelLap,
+  DerivedInputSample,
+} from "./derived-telemetry-store";
+
 export type TelemetrySnapshot = {
   status: "ready" | "missing" | "stale" | "disconnected" | "error";
   capturedAt: number;
@@ -27,5 +33,10 @@ export type TelemetrySnapshot = {
     clutch?: number;
   };
   scoring: readonly Record<string, unknown>[];
+  derived?: {
+    fuelHistory: readonly DerivedFuelLap[];
+    inputHistory: readonly DerivedInputSample[];
+    deltaHistory: readonly DerivedDeltaSample[];
+  };
   errorMessage?: string;
 };

@@ -278,7 +278,7 @@ jobs:
 
           for index, chunk in enumerate(chunks, start=1):
               suffix = f"\n\n({index}/{len(chunks)})" if len(chunks) > 1 else ""
-              send_to_discord(webhook, {"content": chunk + suffix})
+              send_to_discord(webhook, {"content": chunk + suffix, "allowed_mentions": {"parse": []}})
 
           print("Published build availability to Discord")
           PY

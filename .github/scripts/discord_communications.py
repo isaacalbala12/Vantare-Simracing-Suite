@@ -94,14 +94,14 @@ def _bullets(items: Iterable[str]) -> str:
     return "\n".join(f"- {item.strip()}" for item in items)
 
 
-def render_testers(fragments: list[dict[str, Any]], revision: str) -> dict[str, str]:
+def render_testers(fragments: list[dict[str, Any]], revision: str) -> dict[str, Any]:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
     summary = [f"**{item['issue']}** — {item['summary']}" for item in fragments]
     technical = [note for item in fragments for note in item["technicalNotes"]]
     testing = [step for item in fragments for step in item["testing"]]
     limitations = [note for item in fragments for note in item["knownLimitations"]]
-    return {"content": (
+    return {"allowed_mentions": {"parse": []}, "content": (
         "## Vantare — actualización para testers\n"
         f"Revisión: `{revision[:12]}`\n\n"
         "### Resumen\n" + _bullets(summary) + "\n\n"
@@ -137,7 +137,7 @@ def select_public_projects(projects: Iterable[dict[str, Any]]) -> list[dict[str,
     return sorted(selected, key=lambda item: item["name"].casefold())
 
 
-def render_development(projects: list[dict[str, Any]]) -> dict[str, str]:
+def render_development(projects: list[dict[str, Any]]) -> dict[str, Any]:
     if not projects:
         body = "No hay actualizaciones públicas de proyectos activos en este corte."
     else:
@@ -150,7 +150,7 @@ def render_development(projects: list[dict[str, Any]]) -> dict[str, str]:
                 update += "…"
             entries.append(f"### {project['name']} · {percent}%{link}\n{update}")
         body = "\n\n".join(entries)
-    return {"content": "## Vantare — desarrollo activo\n\n" + body}
+    return {"allowed_mentions": {"parse": []}, "content": "## Vantare — desarrollo activo\n\n" + body}
 
 
 def assert_channel(metadata: dict[str, Any], expected_channel_id: str) -> None:
@@ -165,7 +165,7 @@ def _request_json(request: urllib.request.Request, opener: Callable[..., Any]) -
 
 def publish(
     webhook: str,
-    payload: dict[str, str],
+    payload: dict[str, Any],
     expected_channel_id: str,
     *,
     dry_run: bool = False,

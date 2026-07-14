@@ -45,6 +45,7 @@ class FragmentTests(unittest.TestCase):
         self.assertIn("Qué comprobar", content)
         self.assertIn("Limitaciones conocidas", content)
         self.assertNotIn("https://github.com", content)
+        self.assertEqual(payload["allowed_mentions"], {"parse": []})
 
     def test_semantic_dedup_ignores_json_formatting_only_changes(self):
         current = fragment()

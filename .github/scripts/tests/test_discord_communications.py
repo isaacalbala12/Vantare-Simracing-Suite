@@ -77,9 +77,9 @@ class LinearDigestTests(unittest.TestCase):
             {"name": "Terminado", "url": "https://linear.app/p/3", "progress": 1,
              "summary": "Finalizado", "status": {"type": "completed"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nListo"}]}},
         ]
-        active = communications.select_public_projects(projects)
+        active = communications.select_public_projects(projects, {"Billing", "Privado"})
         self.assertEqual([item["name"] for item in active], ["Privado", "Billing"])
-        self.assertEqual(active[0]["update"], "Resumen público seguro")
+        self.assertIn("Desarrollo en curso", active[0]["update"])
         self.assertNotIn("Notas internas", str(active))
 
     def test_empty_project_digest_is_explicit(self):

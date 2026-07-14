@@ -120,13 +120,12 @@ def parse_public_update(body: str | None) -> str | None:
     return public or None
 
 
-def select_public_projects(projects: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+def select_public_projects(projects: Iterable[dict[str, Any]], allowed_names: set[str]) -> list[dict[str, Any]]:
     selected = []
     for project in projects:
         if (project.get("status") or {}).get("type") != "started":
             continue
-        summary = str(project.get("summary") or "").strip()
-        if not summary:
+        if project.get("name") not in allowed_names:
             continue
         nodes = (project.get("projectUpdates") or {}).get("nodes") or []
         public = parse_public_update(nodes[0].get("body") if nodes else None)
@@ -134,7 +133,7 @@ def select_public_projects(projects: Iterable[dict[str, Any]]) -> list[dict[str,
             "name": project.get("name", "Proyecto sin nombre"),
             "url": project.get("url", ""),
             "progress": project.get("progress", 0),
-            "update": public or summary,
+            "update": public or "Desarrollo en curso. Consulta el proyecto para ver el estado operativo completo.",
             "updatedAt": project.get("updatedAt", ""),
         })
     return sorted(selected, key=lambda item: (item["updatedAt"], item["name"].casefold()), reverse=True)
@@ -214,7 +213,7 @@ def fetch_linear_projects(api_key: str) -> list[dict[str, Any]]:
     query DiscordDevelopmentProjects {
       projects(first: 50) {
         nodes {
-          name url progress updatedAt summary
+          name url progress updatedAt
           status { type }
           projectUpdates(first: 1) { nodes { body } }
         }
@@ -260,7 +259,12 @@ def main() -> int:
         if not key and not args.dry_run:
             raise RuntimeError("LINEAR_API_KEY is required")
         projects = [] if args.dry_run and not key else fetch_linear_projects(key)
-        payload = render_development(select_public_projects(projects))
+        allowlist_path = pathlib.Path("vantare-v2/docs/discord-development-projects.json")
+        allowlist = json.loads(allowlist_path.read_text(encoding="utf-8"))
+        allowed_names = set(allowlist.get("projects", []))
+        if not allowed_names:
+            raise ValueError("development project allowlist is empty")
+        payload = render_development(select_public_projects(projects, allowed_names))
         webhook = os.environ.get("DISCORD_KNOWN_ISSUES_WEBHOOK_URL", "")
         channel = "1519752544753291305"
     if not webhook and not args.dry_run:

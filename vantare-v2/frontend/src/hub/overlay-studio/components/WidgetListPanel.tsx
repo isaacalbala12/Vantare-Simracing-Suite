@@ -50,15 +50,26 @@ export function WidgetListPanel(): React.ReactElement {
 
   return (
     <aside className="osv3-list-panel" data-testid="studio-widget-list-panel">
-      <input
-        type="search"
-        data-testid="studio-widget-search"
-        className="osv3-list-panel__search"
-        placeholder={t("studio.v3.widgetList.searchPlaceholder")}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        aria-label={t("studio.v3.widgetList.searchAria")}
-      />
+      <div className="osv3-list-panel__header">
+        <div className="osv3-list-panel__heading">
+          <span className="osv3-list-panel__title" data-testid="studio-widget-list-title">
+            {t("studio.v3.layout.widgetsPanel")}
+          </span>
+          <span className="osv3-list-panel__count" data-testid="studio-widget-count">{widgets.length}</span>
+        </div>
+        <div className="osv3-list-panel__search-wrap">
+          <span className="osv3-list-panel__search-icon" aria-hidden="true" />
+          <input
+            type="search"
+            data-testid="studio-widget-search"
+            className="osv3-list-panel__search"
+            placeholder={t("studio.v3.widgetList.searchPlaceholder")}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label={t("studio.v3.widgetList.searchAria")}
+          />
+        </div>
+      </div>
       <div className="osv3-list-panel__list">
         {widgets.map((widget) => {
           const selected = widget.id === selectedWidgetId;
@@ -71,7 +82,7 @@ export function WidgetListPanel(): React.ReactElement {
               className={`osv3-list-panel__row${selected ? " osv3-list-panel__row--selected" : ""}`}
               onClick={() => selectWidget(widget.id)}
             >
-              <span>{widgetLabel(widget)}</span>
+              <span className="osv3-list-panel__row-name">{widgetLabel(widget)}</span>
               <span className="osv3-list-panel__badge">
                 {widget.behavior.enabled ? t("studio.v3.widgetList.status.active") : t("studio.v3.widgetList.status.hidden")} · {widget.visual.systemId}
               </span>

@@ -52,6 +52,28 @@ function DispatchEditButton() {
 
 describe("StudioHeader", () => {
   afterEach(() => cleanup());
+  it("renders the reference page hierarchy while keeping the real profile controls", async () => {
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <StudioHeader
+          profiles={[{ id: "profile-1", name: "Perfil A", file: "profiles/a.json" }]}
+          activeFile="profiles/a.json"
+          onRequestProfileChange={vi.fn()}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-page-title").textContent).toBe("Perfiles Específicos"));
+    expect(screen.getByTestId("studio-page-breadcrumb").textContent).toContain("Perfil A");
+    expect(screen.getByTestId("studio-page-description").textContent).toContain("colocación");
+    expect(screen.getByTestId("studio-profile-select")).toBeTruthy();
+    expect(screen.getByTestId("studio-session-select")).toBeTruthy();
+  });
+
   it("enables save only when dirty and wires undo/redo capabilities", async () => {
     render(
       <StudioProvider client={createMockClient()} initialFile="profiles/a.json">

@@ -26,6 +26,7 @@ REQUIRED_FRAGMENT_FIELDS = {
     "knownLimitations": list,
 }
 PUBLIC_UPDATE_MARKER = "<!-- discord:development -->"
+USER_AGENT = "Vantare-GitHub-Actions/1.0"
 
 
 def validate_fragment(value: dict[str, Any], source: str = "fragment") -> dict[str, Any]:
@@ -177,12 +178,20 @@ def publish(
     if dry_run:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return
-    metadata = _request_json(urllib.request.Request(webhook, method="GET"), opener)
+    metadata_request = urllib.request.Request(
+        webhook,
+        headers={"User-Agent": USER_AGENT},
+        method="GET",
+    )
+    try:
+        metadata = _request_json(metadata_request, opener)
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"Discord webhook metadata returned status {error.code}") from error
     assert_channel(metadata, expected_channel_id)
     request = urllib.request.Request(
         webhook,
         data=encoded,
-        headers={"Content-Type": "application/json", "User-Agent": "Vantare-GitHub-Actions"},
+        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
         method="POST",
     )
     for attempt in range(2):
@@ -213,10 +222,13 @@ def fetch_linear_projects(api_key: str) -> list[dict[str, Any]]:
     request = urllib.request.Request(
         "https://api.linear.app/graphql",
         data=json.dumps({"query": query}).encode("utf-8"),
-        headers={"Authorization": api_key, "Content-Type": "application/json"},
+        headers={"Authorization": api_key, "Content-Type": "application/json", "User-Agent": USER_AGENT},
         method="POST",
     )
-    response = _request_json(request, urllib.request.urlopen)
+    try:
+        response = _request_json(request, urllib.request.urlopen)
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"Linear GraphQL returned status {error.code}") from error
     if response.get("errors"):
         raise RuntimeError("Linear GraphQL query failed")
     return response["data"]["projects"]["nodes"]

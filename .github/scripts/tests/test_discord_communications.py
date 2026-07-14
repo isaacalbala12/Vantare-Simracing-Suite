@@ -103,6 +103,30 @@ class SafetyTests(unittest.TestCase):
         communications.publish("secret", {"content": "ok"}, "123", dry_run=True, opener=opener)
         self.assertFalse(called)
 
+    def test_live_publish_identifies_metadata_and_post_requests(self):
+        requests = []
+
+        class Response:
+            status = 204
+            def __init__(self, body=b""):
+                self.body = body
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return self.body
+
+        def opener(request, timeout):
+            requests.append(request)
+            if request.get_method() == "GET":
+                return Response(b'{"channel_id":"123"}')
+            return Response()
+
+        communications.publish("https://discord.test/webhook", {"content": "ok"}, "123", opener=opener)
+        self.assertEqual([request.get_method() for request in requests], ["GET", "POST"])
+        self.assertTrue(all(request.get_header("User-agent") == communications.USER_AGENT for request in requests))
+
     def test_workflow_routes_are_explicit_and_have_no_legacy_fallback(self):
         root = pathlib.Path(__file__).parents[3]
         tester = (root / ".github/workflows/discord-beta-progress.yml").read_text(encoding="utf-8")

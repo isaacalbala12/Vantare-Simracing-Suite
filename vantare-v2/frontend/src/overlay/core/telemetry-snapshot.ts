@@ -44,5 +44,7 @@ export type TelemetrySnapshot = {
       classes: readonly string[]; status: string; license?: string;
     }[];
   };
+  environment?: { ambientC?:number; trackC?:number; rainPercent?:number; wetnessPercent?:number; windKph?:number; windDirection?:string; pressureHpa?:number };
+  damage?: { body?:number; aero?:number; suspension?:number; tyres?:readonly [number,number,number,number] };
   errorMessage?: string;
 };

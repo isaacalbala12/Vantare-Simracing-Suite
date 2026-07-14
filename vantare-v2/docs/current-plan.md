@@ -2604,3 +2604,8 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Delta Trace:
 Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Race Schedule:
 - Registrado `race-schedule` y diseño Crystal sección 08. El renderer no hace fetch ni intervalos; consume eventos auxiliares ya adaptados, ordenados por `startAt` y limitados a cuatro.
 - Sin dataset inyectado el estado es `missing`, no una agenda inventada. GREEN: 2 archivos / 11 tests enfocados PASS, build PASS y `git diff --check` PASS.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Weather y Damage:
+- Registrados `track-weather`, `car-damage-visual` y `car-damage-numbers` en ambos sistemas con diseños Crystal de las secciones 11, 13 y 14.
+- Los ViewModels leen únicamente `environment`/`damage` opcionales del snapshot; sin contrato real permanecen `missing` y no inventan clima, porcentajes ni estados de carrocería.
+- `damage-reader` concentra la lectura defensiva y mantiene los renderers puros. RED por módulos inexistentes; GREEN: 4 archivos / 12 tests enfocados PASS, build PASS, checker PASS y `git diff --check` PASS.

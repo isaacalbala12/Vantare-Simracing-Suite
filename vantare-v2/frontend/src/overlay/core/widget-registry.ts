@@ -15,6 +15,9 @@ import { standingsDefinition } from "../widget-types/standings/standings-definit
 import { fuelStrategyDefinition } from "../widget-types/fuel-strategy/fuel-strategy-definition";
 import { deltaTraceDefinition } from "../widget-types/delta-trace/delta-trace-definition";
 import { raceScheduleDefinition } from "../widget-types/race-schedule/race-schedule-definition";
+import { trackWeatherDefinition } from "../widget-types/track-weather/track-weather-definition";
+import { carDamageVisualDefinition } from "../widget-types/car-damage-visual/car-damage-visual-definition";
+import { carDamageNumbersDefinition } from "../widget-types/car-damage-numbers/car-damage-numbers-definition";
 
 export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
@@ -78,3 +81,6 @@ widgetTypeRegistry.register(deltaAdvancedDefinition);
 widgetTypeRegistry.register(fuelStrategyDefinition);
 widgetTypeRegistry.register(deltaTraceDefinition);
 widgetTypeRegistry.register(raceScheduleDefinition);
+widgetTypeRegistry.register(trackWeatherDefinition);
+widgetTypeRegistry.register(carDamageVisualDefinition);
+widgetTypeRegistry.register(carDamageNumbersDefinition);

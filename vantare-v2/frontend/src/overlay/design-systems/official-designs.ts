@@ -214,6 +214,12 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "delta-trace-crystal", name: "Crystal Delta Trace", widgetType: "delta-trace", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "race-schedule-original", name: "Original Race Schedule", widgetType: "race-schedule", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "race-schedule-crystal", name: "Crystal Race Schedule", widgetType: "race-schedule", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "track-weather-original", name: "Original Track Weather", widgetType: "track-weather", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "track-weather-crystal", name: "Crystal Track Weather", widgetType: "track-weather", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "car-damage-visual-original", name: "Original Car Damage Visual", widgetType: "car-damage-visual", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "car-damage-visual-crystal", name: "Crystal Car Damage Visual", widgetType: "car-damage-visual", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "car-damage-numbers-original", name: "Original Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "car-damage-numbers-crystal", name: "Crystal Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

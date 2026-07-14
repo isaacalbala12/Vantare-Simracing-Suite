@@ -2590,3 +2590,8 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Microcorte 2 historial derivado acot
 - Consumo por vuelta solo se registra ante incremento real de vuelta y caída positiva de fuel fuera de pits; refuels/valores ausentes no se convierten en cero.
 - `TelemetryRateCoordinator.publish` enriquece una sola vez cada snapshot con histories derivados; Studio/Desktop/OBS reciben el mismo contrato sin lógica dentro de renderers.
 - RED confirmado por import inexistente y luego `snapshot.derived` ausente. GREEN: 2 archivos / 10 tests PASS; build PASS; `git diff --check` PASS.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Fuel Strategy:
+- Registrado `fuel-strategy` en el catálogo funcional, Original y Crystal con diseño oficial `fuel-strategy-crystal-unified` (sección 03).
+- ViewModel usa fuel live e historial derivado; proyección solo existe con consumo medio, tiempo restante y vuelta válida. Sin datos muestra `—`/`undefined`, nunca cero inventado.
+- RED por módulos inexistentes; GREEN: 4 archivos / 16 tests enfocados PASS, build PASS, checker PASS y `git diff --check` PASS.

@@ -12,6 +12,7 @@ import { multiclassRelativeDefinition } from "../widget-types/multiclass-relativ
 import { deltaAdvancedDefinition } from "../widget-types/delta-advanced/delta-advanced-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
+import { fuelStrategyDefinition } from "../widget-types/fuel-strategy/fuel-strategy-definition";
 
 export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
@@ -72,3 +73,4 @@ widgetTypeRegistry.register(headToHeadDefinition);
 widgetTypeRegistry.register(inputTelemetryDefinition);
 widgetTypeRegistry.register(multiclassRelativeDefinition);
 widgetTypeRegistry.register(deltaAdvancedDefinition);
+widgetTypeRegistry.register(fuelStrategyDefinition);

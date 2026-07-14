@@ -16,6 +16,7 @@ import { MulticlassRelativeOriginal } from "./multiclass-relative/MulticlassRela
 import { DeltaAdvancedOriginal } from "./delta-advanced/DeltaAdvancedOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
+import { FuelStrategyOriginal } from "./fuel-strategy/FuelStrategyOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 
@@ -292,6 +293,7 @@ const headToHeadRegistration = { widgetType: "head-to-head" as const, configVers
 const inputTelemetryRegistration = { widgetType: "input-telemetry" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: InputTelemetryOriginal as ComponentType<WidgetRendererProps> };
 const multiclassRelativeRegistration = { widgetType: "multiclass-relative" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: MulticlassRelativeOriginal as ComponentType<WidgetRendererProps> };
 const deltaAdvancedRegistration = { widgetType: "delta-advanced" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaAdvancedOriginal as ComponentType<WidgetRendererProps> };
+const fuelStrategyRegistration = { widgetType: "fuel-strategy" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: FuelStrategyOriginal as ComponentType<WidgetRendererProps> };
 
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
@@ -313,5 +315,6 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
     inputTelemetryRegistration,
     multiclassRelativeRegistration,
     deltaAdvancedRegistration,
+    fuelStrategyRegistration,
   ],
 };

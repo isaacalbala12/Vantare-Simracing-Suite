@@ -80,32 +80,11 @@ describe("official-designs", () => {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }
-    expect([...pairs].sort()).toEqual([
-      "broadcast-tower:vantare-crystal",
-      "broadcast-tower:vantare-original",
-      "delta-advanced:vantare-crystal",
-      "delta-advanced:vantare-original",
-      "delta:vantare-crystal",
-      "delta:vantare-original",
-      "head-to-head:vantare-crystal",
-      "head-to-head:vantare-original",
-      "input-telemetry:vantare-crystal",
-      "input-telemetry:vantare-original",
-      "multiclass-relative:vantare-crystal",
-      "multiclass-relative:vantare-original",
-      "pedals-telemetry-compact:vantare-crystal",
-      "pedals-telemetry-compact:vantare-original",
-      "pedals-telemetry:vantare-crystal",
-      "pedals-telemetry:vantare-original",
-      "pedals:vantare-crystal",
-      "pedals:vantare-original",
-      "racing-flags:vantare-crystal",
-      "racing-flags:vantare-original",
-      "relative:vantare-crystal",
-      "relative:vantare-original",
-      "standings:vantare-crystal",
-      "standings:vantare-original",
+    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => [
+      `${definition.type}:vantare-crystal`,
+      `${definition.type}:vantare-original`,
     ]);
+    expect([...pairs].sort()).toEqual(expectedPairs.sort());
   });
 
   it("marks exactly one default design for every widget/system pair", () => {

@@ -20,6 +20,34 @@ type PlayerTelemetry struct {
 	Position           Vec3        `json:"position"`
 	LocalVelocity      Vec3        `json:"localVelocity"`
 	Orientation        Orientation `json:"orientation"`
+	EngineWaterTemp    int32       `json:"engineWaterTemp,omitempty"`
+	EngineOilTemp      int32       `json:"engineOilTemp,omitempty"`
+	TyreTempFL         int32       `json:"tyreTempFL,omitempty"`
+	TyreTempFR         int32       `json:"tyreTempFR,omitempty"`
+	TyreTempRL         int32       `json:"tyreTempRL,omitempty"`
+	TyreTempRR         int32       `json:"tyreTempRR,omitempty"`
+	BrakeTempFL        int32       `json:"brakeTempFL,omitempty"`
+	BrakeTempFR        int32       `json:"brakeTempFR,omitempty"`
+	BrakeTempRL        int32       `json:"brakeTempRL,omitempty"`
+	BrakeTempRR        int32       `json:"brakeTempRR,omitempty"`
+	TyreWearFL         uint8       `json:"tyreWearFL,omitempty"`
+	TyreWearFR         uint8       `json:"tyreWearFR,omitempty"`
+	TyreWearRL         uint8       `json:"tyreWearRL,omitempty"`
+	TyreWearRR         uint8       `json:"tyreWearRR,omitempty"`
+
+	// mDentSeverity[8] from LMU: 8 bytes representing per-wheel-pair damage.
+	// Index mapping: [0-1]=aero, [2-3]=suspension, [4-5]=engine, [6-7]=brake/transmission.
+	DentSeverity [8]int32 `json:"dentSeverity,omitempty"`
+
+	// WheelDetachedCount indicates how many wheels are detached (>0 → EventDetachedPart).
+	WheelDetachedCount int32 `json:"wheelDetachedCount,omitempty"`
+	// Wheel data from LMUWheel struct (decoded via lmu.DecodeWheels).
+	WheelBrakeTempFL float64 `json:"wheelBrakeTempFL,omitempty"`
+	WheelBrakeTempFR float64 `json:"wheelBrakeTempFR,omitempty"`
+	WheelBrakeTempRL float64 `json:"wheelBrakeTempRL,omitempty"`
+	WheelBrakeTempRR float64 `json:"wheelBrakeTempRR,omitempty"`
+	WheelSurfaceType uint8 `json:"wheelSurfaceType,omitempty"`
+	WheelFlatFL      bool   `json:"wheelFlatFL,omitempty"`
 }
 
 type SessionInfo struct {
@@ -36,6 +64,8 @@ type SessionInfo struct {
 	TrackTemp                float64  `json:"trackTemp,omitempty"`
 	YellowFlagState          string   `json:"yellowFlagState,omitempty"`
 	SectorFlags              []string `json:"sectorFlags,omitempty"`
+	SessionLapsTotal         int32    `json:"sessionLapsTotal,omitempty"`    // total race laps (0 = timed)
+	IsTimedSession           bool     `json:"isTimedSession,omitempty"`       // true if time-limited
 }
 
 type VehicleScoring struct {

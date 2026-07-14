@@ -7,9 +7,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/engineer/lmu"
+	engineertelemetry "github.com/vantare/overlays/v2/internal/engineer/telemetry"
 	"github.com/vantare/overlays/v2/internal/telemetry/delta"
 	"github.com/vantare/overlays/v2/internal/telemetry/fusion"
-	"github.com/vantare/overlays/v2/internal/telemetry/lmu"
+	publiclmu "github.com/vantare/overlays/v2/internal/telemetry/lmu"
 	"github.com/vantare/overlays/v2/internal/telemetry/lmuapi"
 	"github.com/vantare/overlays/v2/internal/telemetry/normalizer"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
@@ -30,6 +32,15 @@ type EnrichedLMUSource struct {
 
 func (s *EnrichedLMUSource) Read() []byte {
 	return s.mmap.Read()
+}
+
+// ReadEngineerFrame decodifica el buffer mmap en un frame de telemetría de
+// Ingeniero (con geometría Position/Orientation por vehículo) reutilizando el
+// mismo buffer que alimenta los widgets. No abre un segundo reader ni muta el
+// buffer. Devuelve nil sin panic si LMU no está disponible o el buffer es
+// inválido, permitiendo que EngineerService caiga a simulator/replay.
+func (s *EnrichedLMUSource) ReadEngineerFrame() *engineertelemetry.Frame {
+	return lmu.ParseEngineerFrame(s.mmap.Read())
 }
 
 func (s *EnrichedLMUSource) ReadTelemetry() *models.Telemetry {
@@ -321,7 +332,7 @@ func (c *lmuRESTCache) Close() {
 }
 
 func createMockSource() service.Source {
-	buf := lmu.BuildSyntheticBuffer()
+	buf := publiclmu.BuildSyntheticBuffer()
 	return service.FuncSource{
 		ReadFunc: func() []byte { return buf },
 		InfoData: service.SourceInfo{

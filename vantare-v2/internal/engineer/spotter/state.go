@@ -38,8 +38,8 @@ type Machine struct {
 	// clearDelayMS is the CrewChief clear scheduling delay. It is kept separate
 	// from detectionHoldMS; queue-level delayed playback is a follow-up.
 	clearDelayMS      int64
-	messageExpiryMS   int64
-	clearExpiryMS     int64
+	messageExpiryMS   int64  // expiry for car_left/car_right/still_there/three_wide
+	clearExpiryMS     int64  // expiry for clear messages (CC: 2000ms)
 	pendingClearAt    int64
 	pendingClearEvent string
 }
@@ -48,11 +48,11 @@ func NewMachine() *Machine {
 	return &Machine{
 		state:              StateNone,
 		lastEventTimes:     make(map[string]int64),
-		stillThereRepeatMS: 2500,
+		stillThereRepeatMS: 3000, // CC: repeatHoldFrequency default 3s (road)
 		detectionHoldMS:    350,
 		clearDelayMS:       150,
-		messageExpiryMS:    2000,
-		clearExpiryMS:      2000,
+		messageExpiryMS:    1000, // CC: holdMessageExpiresAfter=1000, inTheMiddleMessageExpiresAfter=1000
+		clearExpiryMS:      2000, // CC: clearMessageExpiresAfter=2000, clearAllRoundMessageExpiresAfter=2000
 	}
 }
 
@@ -70,6 +70,11 @@ func (m *Machine) event(eventType string, nowMS int64, expiryMS int64) Event {
 		ExpiresAt: nowMS + expiryMS,
 		TextKey:   eventType,
 	}
+}
+
+// clearEvent creates an event with clearExpiryMS expiry (2000ms in CC).
+func (m *Machine) clearEvent(eventType string, nowMS int64) Event {
+	return m.event(eventType, nowMS, m.clearExpiryMS)
 }
 
 // entryEventsForStateTransition emits car_left / car_right / three_wide when

@@ -36,4 +36,3 @@ func (r *Reader) Next() (*telemetry.Frame, bool, error) {
 	}
 	return &frame, true, nil
 }
-

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
@@ -35,11 +36,110 @@ type EngineerService struct {
 	sensitivity    string
 	lastError      string
 
+	// Live LMU buffer provider (opcional). Si no es nil y source=="lmu",
+	// se construye un OverlaysLiveAdapter en telemetryLoop sin abrir segundo reader.
+	bufferProvider BufferProvider
+	bufferAvail    bool
+
 	// Loop management
 	ctx      context.Context
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
 	subs     []chan EngineerNotification
+
+	// Drop counter: número de notificaciones que no pudieron entregarse a un
+	// suscriptor SSE porque su canal estaba lleno. Se incrementa atómicamente
+	// en el fan-out y se expone vía DropCount() / Health() / /api/engineer/health.
+	dropCount atomic.Uint64
+
+	// Audio playback (opcional). Si audioPlayer != nil y audioResolver devuelve
+	// un path, queueLoop invoca Player.Play tras desencolar mensajes spotter.
+	// Sin tts/ aún, el resolver por defecto devuelve "" y la reproducción se
+	// salta silenciosamente. Esto cablea el flujo de extremo a extremo y deja
+	// listo el cambio cuando internal/tts/ entre.
+	audioPlayer    AudioPlayer
+	audioResolver  AudioResolver
+	audioConfig    *audio.AudioConfig
+	audioRouter    *audio.AudioRouter
+	lastWasSpotter bool
+
+	// skipAudioUntilMS evita reproducir el mismo spotter de nuevo si llegó
+	// hace muy poco (evita spam audible).
+	skipAudioUntilMS int64
+}
+
+// AudioPlayer es la interfaz mínima que queueLoop necesita del reproductor.
+// *audio.Player (internal/engineer/audio) la implementa.
+type AudioPlayer interface {
+	Play(path string) error
+}
+
+// AudioResolver resuelve un textKey de spotter a un path de audio reproducible
+// en disco (típicamente .mp3 cacheado por internal/tts/). Devuelve "" si no hay
+// cache disponible (en cuyo caso el servicio omite la reproducción silenciosamente).
+//
+// Implementación por defecto: NoopAudioResolver (siempre devuelve "").
+// Implementación real: cuando internal/tts/ exista, un TTSResolver que consulte
+// el cache TTS y sintetice si no existe (de forma síncrona o asíncrona según TTL).
+type AudioResolver interface {
+	Resolve(textKey string) string
+}
+
+// NoopAudioResolver es el resolver por defecto: nunca encuentra audio.
+// El cableado de queueLoop queda listo; cuando internal/tts/ exista basta
+// inyectar el resolver real vía SetAudioResolver.
+type NoopAudioResolver struct{}
+
+// Resolve devuelve "" (sin audio). Implementa AudioResolver.
+func (NoopAudioResolver) Resolve(textKey string) string { return "" }
+
+// SetBufferProvider inyecta el proveedor de buffer mmap de LMU (EnrichedLMUSource)
+// para que source=="lmu" pueda construir un OverlaysLiveAdapter sin abrir un
+// segundo reader. Es seguro llamarlo antes o después de Start; el cambio aplica
+// en el siguiente startLoopsLocked.
+func (s *EngineerService) SetBufferProvider(bp BufferProvider, available bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bufferProvider = bp
+	s.bufferAvail = available
+}
+
+// SetAudioPlayer inyecta el reproductor de audio. Si es nil, queueLoop no
+// intenta reproducir (modo silencioso).
+func (s *EngineerService) SetAudioPlayer(p AudioPlayer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audioPlayer = p
+}
+
+// SetAudioResolver inyecta el resolver textKey -> path de audio. Si es nil,
+// se usa NoopAudioResolver (siempre devuelve "" -> sin reproducción).
+func (s *EngineerService) SetAudioResolver(r AudioResolver) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if r == nil {
+		r = NoopAudioResolver{}
+	}
+	s.audioResolver = r
+}
+
+// SetAudioConfig inyecta la configuración de audio multi-idioma.
+// Si ya hay un AudioRouter configurado, se reenvía la configuración
+// automáticamente. Debe llamarse antes de Start() para evitar carreras.
+func (s *EngineerService) SetAudioConfig(cfg *audio.AudioConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audioConfig = cfg
+	if s.audioRouter != nil {
+		s.audioRouter.SetConfig(cfg)
+	}
+}
+
+// SetAudioRouter inyecta el enrutador de audio con resolucion por canal.
+func (s *EngineerService) SetAudioRouter(r *audio.AudioRouter) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audioRouter = r
 }
 
 // NewEngineerService creates a new instance of EngineerService.
@@ -55,6 +155,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		source:         "simulator",
 		spotterEnabled: true,
 		sensitivity:    "normal",
+		audioResolver:  NoopAudioResolver{},
 	}
 	return s
 }
@@ -153,13 +254,18 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	return nil
 }
 
-// SetSource updates the active telemetry source ("simulator" or "replay").
+// SetSource updates the active telemetry source ("simulator", "replay" or "lmu").
+// "lmu" requiere que se haya inyectado un BufferProvider vía SetBufferProvider;
+// si no lo hay, cae a simulator con lastError informativo.
 func (s *EngineerService) SetSource(source string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if source != "simulator" && source != "replay" {
-		return errors.New("invalid source: must be one of 'simulator' or 'replay'")
+	if source != "simulator" && source != "replay" && source != "lmu" {
+		return errors.New("invalid source: must be one of 'simulator', 'replay' or 'lmu'")
+	}
+	if source == "lmu" && s.bufferProvider == nil {
+		return errors.New("source 'lmu' requires a BufferProvider: call SetBufferProvider first")
 	}
 
 	s.source = source
@@ -258,6 +364,20 @@ func (s *EngineerService) telemetryLoop(ctx context.Context) {
 				return
 			}
 		}
+	case "lmu":
+		s.mu.Lock()
+		bp := s.bufferProvider
+		avail := s.bufferAvail
+		s.mu.Unlock()
+		if bp == nil {
+			s.mu.Lock()
+			s.connected = false
+			s.lastError = "lmu source selected but no BufferProvider injected"
+			s.mu.Unlock()
+			s.emitStatus()
+			return
+		}
+		source = NewOverlaysLiveAdapter(bp, avail)
 	default:
 		s.mu.Lock()
 		s.lastError = fmt.Sprintf("unknown source type: %s", sourceType)
@@ -268,7 +388,9 @@ func (s *EngineerService) telemetryLoop(ctx context.Context) {
 
 	defer func() {
 		if source != nil {
-			_ = source.Close()
+			if err := source.Close(); err != nil {
+				log.Printf("EngineerService: error closing telemetry source: %v", err)
+			}
 		}
 	}()
 
@@ -378,8 +500,8 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 			// Map spotter message to EngineerNotification
 			notif := EngineerNotification{
 				ID:        msg.ID,
-				Category:  "spotter",
-				Severity:  "info",
+				Category:  string(msg.Category),
+				Severity:  string(msg.Severity),
 				TextKey:   msg.TextKey,
 				Text:      Translate(msg.TextKey),
 				Priority:  int(msg.Priority),
@@ -399,9 +521,101 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 				select {
 				case sub <- notif:
 				default:
+					s.dropCount.Add(1)
+				}
+			}
+			s.mu.Unlock()
+
+			// Reproducir audio: primero con AudioRouter (channel-aware),
+			// fallback al resolver legacy si AudioRouter no está configurado.
+			s.mu.Lock()
+			player := s.audioPlayer
+			resolver := s.audioResolver
+			skipUntil := s.skipAudioUntilMS
+
+			// NEW: channel-aware audio routing
+			if player != nil && s.audioRouter != nil && now >= skipUntil {
+				ch := audio.ChannelEngineer
+				if msg.Priority >= audio.PrioritySpotter {
+					ch = audio.ChannelSpotter
+				}
+				path := s.audioRouter.Resolve(msg.TextKey, ch)
+				if path != "" {
+					s.skipAudioUntilMS = now + 2500
+					s.lastWasSpotter = msg.Priority >= audio.PrioritySpotter
+					s.wg.Add(1)
+					s.mu.Unlock()
+					go func(p string) {
+						defer s.wg.Done()
+						if err := player.Play(p); err != nil {
+							log.Printf("audio play error: %v", err)
+						}
+					}(path)
+					continue
+				}
+			} else if player != nil && resolver != nil && msg.Priority >= audio.PrioritySpotter && now >= skipUntil {
+				// Legacy fallback: old resolver interface
+				if path := resolver.Resolve(msg.TextKey); path != "" {
+					s.skipAudioUntilMS = now + 2500
+					s.lastWasSpotter = true
+					s.wg.Add(1)
+					s.mu.Unlock()
+					go func(p string) {
+						defer s.wg.Done()
+						if err := player.Play(p); err != nil {
+							log.Printf("audio play error: %v", err)
+						}
+					}(path)
+					continue
 				}
 			}
 			s.mu.Unlock()
 		}
 	}
+}
+
+// DropCount devuelve el número acumulado de notificaciones que se descartaron
+// porque un suscriptor SSE tenía el canal lleno. Útil para diagnóstico OBS.
+func (s *EngineerService) DropCount() uint64 {
+	return s.dropCount.Load()
+}
+
+// EngineerHealth es un snapshot ligero para /api/engineer/health.
+// Incluye solo campos útiles para OBS/diagnóstico, no el historial completo.
+type EngineerHealth struct {
+	OK        bool   `json:"ok"`
+	Source    string `json:"source"`
+	Connected bool   `json:"connected"`
+	Enabled   bool   `json:"enabled"`
+	Subs      int    `json:"subscribers"`
+	DropCount uint64 `json:"dropCount"`
+	LastError string `json:"lastError,omitempty"`
+}
+
+// Health devuelve el estado de salud del servicio.
+func (s *EngineerService) Health() EngineerHealth {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return EngineerHealth{
+		OK:        s.engineerSvcOKLocked(),
+		Source:    s.source,
+		Connected: s.connected,
+		Enabled:   s.enabled,
+		Subs:      len(s.subs),
+		DropCount: s.dropCount.Load(),
+		LastError: s.lastError,
+	}
+}
+
+// engineerSvcOKLocked considera OK el servicio si está habilitado y conectado,
+// o si está habilitado pero aún no ha intentado conectar (lastError vacío).
+// No exportado; se llama con s.mu sostenido.
+func (s *EngineerService) engineerSvcOKLocked() bool {
+	if !s.enabled {
+		return false
+	}
+	if s.source == "" {
+		return false
+	}
+	return true
 }

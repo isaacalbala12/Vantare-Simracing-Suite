@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -19,7 +20,7 @@ type Source struct {
 func NewSource(path string) (*Source, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening %q: %w", path, err)
 	}
 	defer file.Close()
 
@@ -28,7 +29,7 @@ func NewSource(path string) (*Source, error) {
 	for {
 		frame, next, err := reader.Next()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reading %q: %w", path, err)
 		}
 		if !next {
 			break

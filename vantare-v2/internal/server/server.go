@@ -190,6 +190,7 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /overlay", s.handleOverlay)
 	mux.HandleFunc("GET /api/profile", s.handleProfile)
 	mux.HandleFunc("GET /api/profile-v3", s.handleProfileV3)
+	mux.HandleFunc("GET /api/engineer/health", s.handleEngineerHealth)
 	mux.HandleFunc("GET /telemetry/stream", s.handleSSE)
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)
 	mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)
@@ -271,6 +272,23 @@ func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
+}
+
+// handleEngineerHealth exposes a lightweight Engineer service snapshot for
+// OBS/release diagnostics. It returns 503 when the service is unavailable or
+// reports an unhealthy state.
+func (s *Server) handleEngineerHealth(w http.ResponseWriter, r *http.Request) {
+	if s.engineerSvc == nil {
+		http.Error(w, "engineer service not available", http.StatusServiceUnavailable)
+		return
+	}
+	h := s.engineerSvc.Health()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	if !h.OK {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+	json.NewEncoder(w).Encode(h)
 }
 
 // authCallbackHTMLTmpl is served at /auth/callback with a one-time nonce

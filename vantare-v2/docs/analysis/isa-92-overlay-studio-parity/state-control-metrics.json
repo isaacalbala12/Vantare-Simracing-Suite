@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-07-14T22:53:20.515Z",
+  "command": "node docs/analysis/isa-92-overlay-studio-parity/measure-states.mjs",
+  "visualStates": {
+    "selected-row": {
+      "width": 238,
+      "height": 39,
+      "threshold": 12,
+      "masks": [
+        {
+          "x": 15,
+          "y": 8,
+          "w": 69,
+          "h": 21
+        },
+        {
+          "x": 42,
+          "y": 8,
+          "w": 105,
+          "h": 20
+        },
+        {
+          "x": 118,
+          "y": 9,
+          "w": 108,
+          "h": 19
+        }
+      ],
+      "changedPixels": 0,
+      "consideredPixels": 5072,
+      "deltaRatio": 0,
+      "gate": 0.05,
+      "pass": true
+    },
+    "active-rail-item": {
+      "width": 53,
+      "height": 45,
+      "threshold": 12,
+      "masks": [
+        {
+          "x": 9,
+          "y": 9,
+          "w": 36,
+          "h": 26
+        }
+      ],
+      "changedPixels": 24,
+      "consideredPixels": 1449,
+      "deltaRatio": 0.016563146997929608,
+      "gate": 0.05,
+      "pass": true
+    }
+  },
+  "domStates": {
+    "selectedRow": {
+      "width": 238,
+      "height": 37.5
+    },
+    "activeRailItem": {
+      "width": 52,
+      "height": 44
+    },
+    "railPreview": {
+      "width": 32,
+      "height": 22
+    },
+    "resizeHandleCount": 8,
+    "pageOverflowX": 0
+  },
+  "assertions": {
+    "selectedRow": {
+      "expected": {
+        "width": 238,
+        "height": 37.5
+      },
+      "tolerancePx": 1,
+      "pass": true
+    },
+    "activeRailItem": {
+      "expected": {
+        "width": 52,
+        "height": 44
+      },
+      "tolerancePx": 1,
+      "pass": true
+    },
+    "railPreview": {
+      "expected": {
+        "width": 32,
+        "height": 22
+      },
+      "tolerancePx": 1,
+      "pass": true
+    },
+    "resizeHandles": {
+      "expected": 8,
+      "pass": true
+    },
+    "overflow": {
+      "expected": 0,
+      "pass": true
+    }
+  }
+}

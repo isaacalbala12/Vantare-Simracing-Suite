@@ -1,4 +1,5 @@
 Nota OVERLAY-STUDIO-V3 (2026-07-10):
+- **ISA-92 / OS-02 LISTO PARA REVIEW (2026-07-15):** shell Studio alineado con `layout-studio-v10.html` en wide/medium/compact; chrome principal 1.000% y crops <= 4.532%, estados selected/active <= 1.656%, interacción move/Escape/8 handles/zoom/teclado/drawers PASS. Boundary i18n y suite frontend 1721/1721 PASS; build PASS. Evidencia en `docs/analysis/isa-92-overlay-studio-parity/`. `visual:overlay-studio` conserva el baseline Crystal heredado que falla 99.963% y no se regenera.
 - Objetivo: reconstrucción paralela de Overlay Studio V3 (Delta, Standings, Relative, Pedals en `vantare-original` y `vantare-crystal`).
 - Autoridad: ADR `docs/adr/0003-overlay-studio-v3-rebuild.md` y plan maestro `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md` (worktree `refactor`, rama `refactor`).
 - Worktree: `C:\Users\isaac\emdash\worktrees\vantare-v2\refactor` — rama `refactor`.

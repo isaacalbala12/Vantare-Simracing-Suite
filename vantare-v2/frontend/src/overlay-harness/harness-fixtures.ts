@@ -135,11 +135,14 @@ export function buildHarnessTelemetry(input: {
 
   const readyBase: TelemetrySnapshot = {
     ...base,
+    session: { ...base.session, remainingSeconds: 1161 },
+    player: { ...base.player, fuelLiters: 12.4, lastLapSeconds: 90, deltaSeconds: 0 },
     derived: {
       fuelHistory: [
-        { lap: 7, consumedLiters: 2.42 },
-        { lap: 8, consumedLiters: 2.38 },
-        { lap: 9, consumedLiters: 2.41 },
+        { lap: 7, consumedLiters: 1 },
+        { lap: 8, consumedLiters: 1 },
+        { lap: 9, consumedLiters: 1 },
+        { lap: 10, consumedLiters: 1 },
       ],
       inputHistory: Array.from({ length: 48 }, (_, index) => ({
         capturedAt: base.capturedAt - (47 - index) * 50,
@@ -156,10 +159,12 @@ export function buildHarnessTelemetry(input: {
       scheduleEvents: [
         { id: "spa", title: "Spa Endurance", track: "Spa-Francorchamps", startAt: "2026-07-14T18:00:00.000Z", durationMinutes: 90, classes: ["GT3"], status: "upcoming", license: "A" },
         { id: "monza", title: "Monza Sprint", track: "Monza", startAt: "2026-07-15T19:30:00.000Z", durationMinutes: 45, classes: ["GT3", "GT4"], status: "upcoming", license: "A" },
+        { id: "cota", title: "One Stint Sprint", track: "Circuit of the Americas", startAt: "2026-07-16T20:00:00.000Z", durationMinutes: 40, classes: ["HYPERCAR", "LMGT3"], status: "open", license: "GOLD SR" },
+        { id: "lemans", title: "6 Hours of Le Mans", track: "Circuit de la Sarthe", startAt: "2026-07-17T17:00:00.000Z", durationMinutes: 360, classes: ["HYPERCAR", "LMP2", "LMGT3"], status: "team registration", license: "SPECIAL EVENT" },
       ],
     },
-    environment: { ambientC: 24, trackC: 37, rainPercent: 12, wetnessPercent: 4, windKph: 11, windDirection: "NE", pressureHpa: 1014 },
-    damage: { body: 8, aero: 4, suspension: 12, tyres: [3, 6, 5, 4] },
+    environment: { ambientC: 24, trackC: 27.2, rainPercent: 0, wetnessPercent: 35, windKph: 8, windDirection: "Tailwind SE → NW", pressureHpa: 1014 },
+    damage: { body: 0, aero: 0, suspension: 0, tyres: [0, 0, 0, 0] },
   };
 
   if (input.widget === "standings" && variant === "standings-stress60") {

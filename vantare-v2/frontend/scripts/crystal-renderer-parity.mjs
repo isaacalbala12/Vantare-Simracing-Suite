@@ -8,7 +8,9 @@ const FRONTEND_ROOT = path.resolve(SCRIPT_DIR, "..");
 const REFERENCE_DIR = path.join(FRONTEND_ROOT, "testdata", "crystal-reference");
 const OUTPUT_DIR = path.join(FRONTEND_ROOT, ".tmp", "crystal-parity");
 const REPORT_ONLY = process.argv.includes("--report-only");
+const requestedIds = process.argv.find((argument) => argument.startsWith("--ids="))?.slice(6).split(/[\s,]+/).filter(Boolean);
 const MAX_PIXEL_DELTA_RATIO = 0.03;
+const MAX_CHANNEL_DELTA = 24;
 const GEOMETRY_TOLERANCE_PX = 2;
 
 function toDataUrl(buffer) {
@@ -36,11 +38,13 @@ async function comparePng(page, actual, expected) {
       return { ratio: 1, dimensionsMatch: false, actual: `${left.width}x${left.height}`, expected: `${right.width}x${right.height}` };
     }
     let different = 0;
+    const background = [6, 6, 8];
     for (let index = 0; index < left.data.length; index += 4) {
-      if (left.data[index] !== right.data[index]
-        || left.data[index + 1] !== right.data[index + 1]
-        || left.data[index + 2] !== right.data[index + 2]
-        || left.data[index + 3] !== right.data[index + 3]) different += 1;
+      const leftAlpha = left.data[index + 3] / 255;
+      const rightAlpha = right.data[index + 3] / 255;
+      const leftRgb = background.map((channel, offset) => left.data[index + offset] * leftAlpha + channel * (1 - leftAlpha));
+      const rightRgb = background.map((channel, offset) => right.data[index + offset] * rightAlpha + channel * (1 - rightAlpha));
+      if (Math.max(...leftRgb.map((channel, offset) => Math.abs(channel - rightRgb[offset]))) > 24) different += 1;
     }
     return { ratio: different / (left.data.length / 4), dimensionsMatch: true };
   }, { actualUrl: toDataUrl(actual), expectedUrl: toDataUrl(expected) });
@@ -90,6 +94,10 @@ async function capture(page, baseUrl, entry, surface, suffix) {
 async function main() {
   const manifest = JSON.parse(await readFile(path.join(REFERENCE_DIR, "manifest.json"), "utf8"));
   if (manifest.entries?.length !== 21) throw new Error("Crystal manifest must contain exactly 21 entries");
+  const entries = requestedIds?.length
+    ? manifest.entries.filter((entry) => requestedIds.includes(entry.id))
+    : manifest.entries;
+  if (requestedIds?.length && entries.length !== requestedIds.length) throw new Error("unknown Crystal design in --ids");
   await mkdir(OUTPUT_DIR, { recursive: true });
   const { server, baseUrl } = await startServer();
   const browser = await chromium.launch({ headless: true });
@@ -101,7 +109,7 @@ async function main() {
       style.textContent = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}";
       document.documentElement.append(style);
     });
-    for (const entry of manifest.entries) {
+    for (const entry of entries) {
       const harness = await capture(page, baseUrl, entry, "harness", "actual");
       const repeated = await capture(page, baseUrl, entry, "harness", "repeat");
       const reference = await readFile(path.join(REFERENCE_DIR, `${entry.id}.png`));
@@ -139,7 +147,7 @@ async function main() {
   }
   const report = {
     generatedAt: new Date().toISOString(),
-    thresholds: { maxPixelDeltaRatio: MAX_PIXEL_DELTA_RATIO, geometryTolerancePx: GEOMETRY_TOLERANCE_PX },
+    thresholds: { maxPixelDeltaRatio: MAX_PIXEL_DELTA_RATIO, maxChannelDelta: MAX_CHANNEL_DELTA, geometryTolerancePx: GEOMETRY_TOLERANCE_PX },
     summary: {
       total: results.length,
       geometryPassed: results.filter((result) => result.geometryPass).length,

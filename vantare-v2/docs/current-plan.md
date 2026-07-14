@@ -2615,3 +2615,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Harness 21/21:
 - Nuevo gate Playwright `visual:crystal-parity`: captura dos veces cada diseño, compara geometría ±2 px, estabilidad, referencia y salida Studio/Desktop/OBS; solo `--report-only` permite auditar sin ocultar el fallo.
 - RED confirmado: lista limitada a cuatro y geometría default. GREEN contractual: 2 archivos / 55 tests PASS y build PASS.
 - Primera medición honesta: 21/21 crops estables y 21/21 idénticos entre superficies; 15/21 sin overflow, 0/21 dentro del 3% contra la referencia. Los baselines no se regeneraron; el gate visual permanece rojo hasta ajustar familias.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-15) — Familias derivadas y auxiliares:
+- Fuel, Delta Trace, Race Schedule, Track Weather, Damage 13/14 y Delta 15/16 usan ya la estructura, radios, bordes, spacing y geometría literal de sus secciones canónicas; los valores siguen procediendo de ViewModels honestos.
+- El harness alinea fixtures de referencia sin introducir datos en runtime y el comparador compone alfa sobre `#060608` con tolerancia de canal 24 para no contar antialiasing como divergencia.
+- Medición perceptual actual: fuel 8.928%, delta-trace 11.639%, schedule 12.363%, weather 13.674%, damage visual 6.887%, damage numbers 13.279%, delta simple 3.211% y delta advanced 15.383%. Estabilidad y cross-surface permanecen 100%.
+- No se marcan como verdes: faltan alinear fuentes/datos visuales y cerrar las familias live restantes; ningún baseline fue regenerado.

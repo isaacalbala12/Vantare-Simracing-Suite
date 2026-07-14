@@ -4,6 +4,7 @@ import {
   buildHarnessViewModel,
   buildHarnessWidget,
   CRYSTAL_HARNESS_DESIGNS,
+  HARNESS_WIDGETS,
 } from "./harness-fixtures";
 
 describe("CRYSTAL_HARNESS_DESIGNS", () => {
@@ -30,8 +31,9 @@ describe("CRYSTAL_HARNESS_DESIGNS", () => {
 });
 
 describe("buildHarnessWidget", () => {
-  it("creates all four widget types with the requested visual system", () => {
-    for (const widgetType of ["delta", "standings", "relative", "pedals"] as const) {
+  it("creates all 18 widget types with the requested visual system", () => {
+    expect(HARNESS_WIDGETS).toHaveLength(18);
+    for (const widgetType of HARNESS_WIDGETS) {
       const widget = buildHarnessWidget(widgetType, "vantare-crystal");
       expect(widget.type).toBe(widgetType);
       expect(widget.visual.systemId).toBe("vantare-crystal");
@@ -52,6 +54,14 @@ describe("buildHarnessWidget", () => {
     );
     expect(widget.visual.provenance?.designId).toBe("delta-crystal-simple");
     expect(widget.visual.baseSettings).toMatchObject({ templateId: "delta-simple" });
+  });
+
+  it("uses the canonical crop geometry for every Crystal design", () => {
+    for (const design of CRYSTAL_HARNESS_DESIGNS) {
+      const widget = buildHarnessWidget(design.widgetType, "vantare-crystal", "default", design.designId);
+      expect(widget.layout.w, design.id).toBe(design.width);
+      expect(widget.layout.h, design.id).toBe(design.height);
+    }
   });
 });
 
@@ -84,6 +94,20 @@ describe("buildHarnessTelemetry", () => {
     });
     expect(zero.player?.throttle).toBe(0);
     expect(full.player?.throttle).toBe(1);
+  });
+
+  it("provides deterministic ready fixtures for all 18 widget types", () => {
+    for (const widgetType of HARNESS_WIDGETS) {
+      const widget = buildHarnessWidget(widgetType, "vantare-crystal");
+      const snapshot = buildHarnessTelemetry({
+        session: "race",
+        location: "track",
+        state: "ready",
+        widget: widgetType,
+      });
+      const model = buildHarnessViewModel(widget, snapshot) as { status: string };
+      expect(model.status, widgetType).toBe("ready");
+    }
   });
 });
 

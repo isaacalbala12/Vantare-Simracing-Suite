@@ -2609,3 +2609,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Weather y Damage:
 - Registrados `track-weather`, `car-damage-visual` y `car-damage-numbers` en ambos sistemas con diseños Crystal de las secciones 11, 13 y 14.
 - Los ViewModels leen únicamente `environment`/`damage` opcionales del snapshot; sin contrato real permanecen `missing` y no inventan clima, porcentajes ni estados de carrocería.
 - `damage-reader` concentra la lectura defensiva y mantiene los renderers puros. RED por módulos inexistentes; GREEN: 4 archivos / 12 tests enfocados PASS, build PASS, checker PASS y `git diff --check` PASS.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Harness 21/21:
+- `HARNESS_WIDGETS` deriva los 18 tipos del manifest canónico; los 21 diseños aplican sus dimensiones de crop y fixtures `ready` deterministas para histories, calendario, weather y damage sin contaminar runtime.
+- Nuevo gate Playwright `visual:crystal-parity`: captura dos veces cada diseño, compara geometría ±2 px, estabilidad, referencia y salida Studio/Desktop/OBS; solo `--report-only` permite auditar sin ocultar el fallo.
+- RED confirmado: lista limitada a cuatro y geometría default. GREEN contractual: 2 archivos / 55 tests PASS y build PASS.
+- Primera medición honesta: 21/21 crops estables y 21/21 idénticos entre superficies; 15/21 sin overflow, 0/21 dentro del 3% contra la referencia. Los baselines no se regeneraron; el gate visual permanece rojo hasta ajustar familias.

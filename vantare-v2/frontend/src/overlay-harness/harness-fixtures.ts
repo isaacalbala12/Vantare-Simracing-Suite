@@ -43,7 +43,9 @@ export type HarnessVariant =
   | "pedals-zero"
   | "pedals-full";
 
-export const HARNESS_WIDGETS: readonly HarnessWidget[] = ["delta", "standings", "relative", "pedals"];
+export const HARNESS_WIDGETS: readonly HarnessWidget[] = [
+  ...new Set(CRYSTAL_HARNESS_DESIGNS.map((design) => design.widgetType)),
+];
 
 export function isHarnessWidget(value: string): value is HarnessWidget {
   return (HARNESS_WIDGETS as readonly string[]).includes(value);
@@ -92,10 +94,12 @@ export function buildHarnessWidget(
     }
     widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
   }
+  const referenceDesign = designId ? getCrystalHarnessDesign(designId) : undefined;
   widget.layout = {
     ...widget.layout,
     x: 120,
     y: 96,
+    ...(referenceDesign ? { w: referenceDesign.width, h: referenceDesign.height } : {}),
     zIndex: 1,
   };
 
@@ -129,18 +133,47 @@ export function buildHarnessTelemetry(input: {
     return base;
   }
 
+  const readyBase: TelemetrySnapshot = {
+    ...base,
+    derived: {
+      fuelHistory: [
+        { lap: 7, consumedLiters: 2.42 },
+        { lap: 8, consumedLiters: 2.38 },
+        { lap: 9, consumedLiters: 2.41 },
+      ],
+      inputHistory: Array.from({ length: 48 }, (_, index) => ({
+        capturedAt: base.capturedAt - (47 - index) * 50,
+        throttle: Math.min(1, index / 32),
+        brake: index > 34 ? (index - 34) / 14 : 0,
+        clutch: 0,
+      })),
+      deltaHistory: Array.from({ length: 60 }, (_, index) => ({
+        capturedAt: base.capturedAt - (59 - index) * 100,
+        deltaSeconds: 0.24 - index * 0.006,
+      })),
+    },
+    auxiliary: {
+      scheduleEvents: [
+        { id: "spa", title: "Spa Endurance", track: "Spa-Francorchamps", startAt: "2026-07-14T18:00:00.000Z", durationMinutes: 90, classes: ["GT3"], status: "upcoming", license: "A" },
+        { id: "monza", title: "Monza Sprint", track: "Monza", startAt: "2026-07-15T19:30:00.000Z", durationMinutes: 45, classes: ["GT3", "GT4"], status: "upcoming", license: "A" },
+      ],
+    },
+    environment: { ambientC: 24, trackC: 37, rainPercent: 12, wetnessPercent: 4, windKph: 11, windDirection: "NE", pressureHpa: 1014 },
+    damage: { body: 8, aero: 4, suspension: 12, tyres: [3, 6, 5, 4] },
+  };
+
   if (input.widget === "standings" && variant === "standings-stress60") {
     return {
-      ...base,
+      ...readyBase,
       scoring: buildStandingsStressScoring(),
     };
   }
 
   if (input.widget === "pedals" && variant === "pedals-zero") {
     return {
-      ...base,
+      ...readyBase,
       player: {
-        ...base.player,
+        ...readyBase.player,
         throttle: 0,
         brake: 0,
         clutch: 0,
@@ -150,9 +183,9 @@ export function buildHarnessTelemetry(input: {
 
   if (input.widget === "pedals" && variant === "pedals-full") {
     return {
-      ...base,
+      ...readyBase,
       player: {
-        ...base.player,
+        ...readyBase.player,
         throttle: 1,
         brake: 1,
         clutch: 1,
@@ -160,7 +193,7 @@ export function buildHarnessTelemetry(input: {
     };
   }
 
-  return base;
+  return readyBase;
 }
 
 export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: TelemetrySnapshot): unknown {

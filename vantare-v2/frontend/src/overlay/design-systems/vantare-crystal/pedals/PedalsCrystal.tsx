@@ -22,6 +22,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
       className="vc-pedals vc-pedals-v3"
       style={buildPedalsAppearanceStyle(settings)}
     >
+      <header>V3: SOLO PEDALES (VERTICAL)</header>
       <div className="vc-pedals-frame">
         {model.statusMessage ? (
           <p className="vc-pedals-status-message" role="status">
@@ -76,6 +77,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
           </article>
         </div>
       </div>
+      <footer>Formato clásico vertical. Barras de gran recorrido para máxima precisión.</footer>
     </section>
   );
 }

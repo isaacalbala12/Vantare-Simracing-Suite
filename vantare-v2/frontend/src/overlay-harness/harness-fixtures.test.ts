@@ -109,6 +109,14 @@ describe("buildHarnessTelemetry", () => {
       expect(model.status, widgetType).toBe("ready");
     }
   });
+
+  it("provides canonical row density for table and battle designs", () => {
+    for (const widget of ["relative", "standings", "broadcast-tower", "head-to-head", "multiclass-relative"] as const) {
+      const snapshot = buildHarnessTelemetry({ session: "race", location: "track", state: "ready", widget });
+      expect(snapshot.scoring.length, widget).toBeGreaterThanOrEqual(20);
+      expect(snapshot.scoring.filter((row) => row.isPlayer), widget).toHaveLength(1);
+    }
+  });
 });
 
 describe("buildHarnessViewModel", () => {

@@ -2621,3 +2621,12 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-15) — Familias derivadas y auxiliares:
 - El harness alinea fixtures de referencia sin introducir datos en runtime y el comparador compone alfa sobre `#060608` con tolerancia de canal 24 para no contar antialiasing como divergencia.
 - Medición perceptual actual: fuel 8.928%, delta-trace 11.639%, schedule 12.363%, weather 13.674%, damage visual 6.887%, damage numbers 13.279%, delta simple 3.211% y delta advanced 15.383%. Estabilidad y cross-surface permanecen 100%.
 - No se marcan como verdes: faltan alinear fuentes/datos visuales y cerrar las familias live restantes; ningún baseline fue regenerado.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-15) — Familias live y bloqueo tipográfico:
+- Broadcast 02, Pedals 04, Flags 05, Head-to-Head 09, Input 10A/B/C y Multiclass 11 sustituyen las composiciones aproximadas por la jerarquía canónica y conservan datos de ViewModels puros.
+- Inventario Studio/registry actualizado a los 18 tipos en orden canónico; los tests que congelaban 12 tipos ahora validan `ALL_WIDGET_TYPES` y el default oficial de Fuel.
+- Gate actual: geometría 21/21 PASS, crops repetidos 21/21 estables (0% delta) y Studio/Desktop/OBS 21/21 idénticos. Comparación perceptual HTML↔renderer sigue 0/21 bajo 3% (mejor: Delta Simple 3.211%; rango restante 6.887%–32.780%).
+- Revisión adversarial cerrada en el microcorte: Broadcast/Head-to-Head ya no inventan líder, sectores o gaps; Input dibuja el historial del ViewModel y respeta `showClutch`; Multiclass no vuelve a truncar las filas seleccionadas por su ViewModel.
+- Gates rojos adicionales, no maquillados: `visual:overlay-studio` detecta 4.743% en `delta-original-ready-studio` frente a 0.5%; `bench:overlay-studio-drag` obtiene -29.15 frente a -19.51 (tolerancia 8). Canvas/shell quedan fuera del ownership de ISA-93.
+- Bloqueo material: `manifest.json` declara que los PNG usan web fonts resueltas, pero el repo no contiene Inter/Plus Jakarta Sans/JetBrains Mono. Con prohibición de dependencias y de regenerar baselines no existe una ruta autorizada para cerrar tipografía ±1 px/pixel ≤3%; se requiere decisión de Isaac sobre vendorizar esas fuentes o cambiar el contrato de captura.
+- Hasta resolverlo: no PR, no push y no cambio a In Review; Linear permanece In Progress. Baselines intactos.

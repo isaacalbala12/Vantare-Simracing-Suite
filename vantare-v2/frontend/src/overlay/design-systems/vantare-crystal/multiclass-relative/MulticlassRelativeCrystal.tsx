@@ -1,3 +1,6 @@
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { MulticlassRelativeViewModel } from "../../../widget-types/multiclass-relative/multiclass-relative-view-model";
-export function MulticlassRelativeCrystal({ model }: WidgetRendererProps<MulticlassRelativeViewModel>) { return <section data-widget-system="vantare-crystal" data-widget-renderer="multiclass-relative" data-status={model.status} className="vc-multiclass-relative"><header><strong>RELATIVE</strong><span>MULTICLASS</span></header>{model.rows.map((row) => <div className={row.isPlayer ? "is-player" : ""} data-class={row.classId} key={`${row.place}-${row.number}`}><b>{row.place}</b><i style={{ background: row.classColor }} /><span>{row.number}</span><strong>{row.name}</strong><em>{row.classId}</em><small>{row.gap === undefined ? "—" : row.gap.toFixed(3)}</small></div>)}</section>; }
+
+export function MulticlassRelativeCrystal({ model }: WidgetRendererProps<MulticlassRelativeViewModel>) {
+  return <section data-widget-system="vantare-crystal" data-widget-renderer="multiclass-relative" data-status={model.status} className="vc-multiclass-relative">{model.rows.map((row) => <article className={row.isPlayer ? "is-player" : ""} key={`${row.place}-${row.number}`}><b>{row.place}</b><i style={{ background: row.classColor }}>{row.classId}</i><em>{row.number}</em><strong>{row.name}</strong><span>{row.gap === undefined ? "—" : row.gap === 0 ? "0.0" : `${row.gap > 0 ? "+" : ""}${row.gap.toFixed(1)}`}</span></article>)}</section>;
+}

@@ -35,7 +35,8 @@ describe("PedalsTelemetryCrystal", () => {
     expect(root.classList.contains("vc-pedals-telemetry-v1")).toBe(true);
     expect(root.querySelector(".vc-pedals-telemetry-frame")).toBeTruthy();
     expect(root.querySelectorAll(".vc-pedals-telemetry-led")).toHaveLength(10);
-    expect(root.querySelectorAll(".vc-pedals-telemetry-fill")).toHaveLength(3);
+    expect(root.textContent).toContain("V1: CÁPSULA HUD ORIGINAL");
+    expect(root.querySelectorAll(".vc-pedals-telemetry-fill")).toHaveLength(0);
   });
 
   it("hides optional channels without adding editor controls", () => {

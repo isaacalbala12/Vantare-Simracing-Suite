@@ -74,6 +74,40 @@ function buildStandingsStressScoring(): Record<string, unknown>[] {
   }));
 }
 
+const CANONICAL_DRIVERS = [
+  "Ferrari AF Corse", "Ferrari AF Corse (TÚ)", "Porsche Penske", "Alpine Endurance",
+  "Alpine Endurance", "Cadillac Racing", "BMW M Team WRT", "BMW M Team WRT",
+  "Toyota Gazoo Racing", "Toyota Gazoo Racing", "Lamborghini Iron Lynx", "Lamborghini Iron Lynx",
+  "Peugeot TotalEnergies", "Peugeot TotalEnergies", "Porsche GT Team", "Porsche GT Team",
+  "Aston Martin Racing", "Aston Martin Racing", "Iron Lynx", "Iron Lynx",
+] as const;
+
+function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[] {
+  const multiclass = widget === "multiclass-relative";
+  return CANONICAL_DRIVERS.map((driverName, index) => {
+    const place = index + 1;
+    const isPlayer = place === 4;
+    const classIndex = Math.min(3, Math.floor(index / 5));
+    const vehicleClass = multiclass ? ["LMP2", "LMP3", "GT4", "HYPERCAR"][classIndex] : "HYPERCAR";
+    return {
+      id: `canonical-${place}`,
+      place,
+      driverNumber: String([50, 51, 6, 36, 8, 7, 35, 46, 5, 8, 50, 63, 99, 94, 11, 92, 22, 23, 77, 78][index]),
+      driverName,
+      teamName: driverName,
+      vehicleClass,
+      isPlayer,
+      inPits: false,
+      timeGapToPlayer: isPlayer ? 0 : (place - 4) * 1.84,
+      timeGapToLeader: place === 1 ? 0 : place * 3.45,
+      bestLapTime: 204.89 + index * 0.01,
+      lastLapTime: 204.89 + index * 0.34,
+      tireCompound: index % 4 === 0 ? "S" : "M",
+      teamBrandColor: ["#ef4444", "#3b82f6", "#f472b6", "#fbbf24"][classIndex],
+    };
+  });
+}
+
 export function buildHarnessWidget(
   widgetType: HarnessWidget,
   systemId: DesignSystemId,
@@ -121,6 +155,7 @@ export function buildHarnessTelemetry(input: {
   state: MockDataState;
   widget: HarnessWidget;
   variant?: HarnessVariant;
+  designId?: CrystalHarnessDesignId;
 }): TelemetrySnapshot {
   const variant = input.variant ?? "default";
   const base = buildMockTelemetry({
@@ -136,7 +171,8 @@ export function buildHarnessTelemetry(input: {
   const readyBase: TelemetrySnapshot = {
     ...base,
     session: { ...base.session, remainingSeconds: 1161 },
-    player: { ...base.player, fuelLiters: 12.4, lastLapSeconds: 90, deltaSeconds: 0 },
+    player: { ...base.player, fuelLiters: 12.4, lastLapSeconds: 90, lapNumber: 14, predictedLapSeconds: 164.659, deltaSeconds: input.designId === "delta-crystal-simple" ? 0 : -0.24, throttle: 1, brake: 0.06, clutch: 0, gear: 6, speedKph: 260, rpm: 6432 },
+    scoring: buildCanonicalScoring(input.widget),
     derived: {
       fuelHistory: [
         { lap: 7, consumedLiters: 1 },

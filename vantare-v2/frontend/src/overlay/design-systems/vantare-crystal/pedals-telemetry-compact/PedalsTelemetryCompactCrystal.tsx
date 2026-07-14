@@ -8,6 +8,7 @@ export function PedalsTelemetryCompactCrystal({ model }: WidgetRendererProps<Ped
   const values = { throttle: model.throttle, brake: model.brake, clutch: model.clutch };
   return (
     <section data-widget-system="vantare-crystal" data-widget-renderer="pedals-telemetry-compact" data-status={model.status} className="vc-pedals-telemetry-compact vc-pedals-telemetry-compact-v2">
+      <header>V2: RECTANGULAR PERFIL BAJO</header>
       <div className="vc-pedals-compact-frame">
         <div className="vc-pedals-compact-bars" aria-label="Pedal inputs">
           {channels.map(([name, label]) => {
@@ -27,6 +28,7 @@ export function PedalsTelemetryCompactCrystal({ model }: WidgetRendererProps<Ped
           {model.showRpm ? <span className="vc-pedals-compact-rpm">{model.rpmText} RPM</span> : null}
         </div>
       </div>
+      <footer>Altura vertical reducida. Pedales, marcha y velocidad.</footer>
     </section>
   );
 }

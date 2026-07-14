@@ -123,6 +123,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
     state: query.state,
     widget: query.widget,
     variant: query.variant,
+    designId: query.designId,
   });
   const widget = buildHarnessWidget(query.widget, query.system, query.variant, query.designId);
 

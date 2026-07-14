@@ -1,3 +1,10 @@
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
-import type { HeadToHeadViewModel } from "../../../widget-types/head-to-head/head-to-head-view-model";
-export function HeadToHeadCrystal({ model }: WidgetRendererProps<HeadToHeadViewModel>) { return <section data-widget-system="vantare-crystal" data-widget-renderer="head-to-head" data-status={model.status} className="vc-head-to-head"><header><strong>HEAD TO HEAD</strong><small>{model.target === "ahead" ? "TARGET AHEAD" : "TARGET BEHIND"}</small></header>{model.player && model.opponent ? <div className="vc-head-to-head-entries"><div><small>YOU · P{model.player.place}</small><strong>{model.player.number} {model.player.name}</strong></div><em>{model.gapSeconds === undefined ? "—" : `${model.gapSeconds.toFixed(3)}s`}</em><div><small>RIVAL · P{model.opponent.place}</small><strong>{model.opponent.number} {model.opponent.name}</strong></div></div> : <p role="status">{model.statusMessage ?? "No nearby rival"}</p>}</section>; }
+import type { HeadToHeadEntry, HeadToHeadViewModel } from "../../../widget-types/head-to-head/head-to-head-view-model";
+
+function Driver({ entry, active, gap, sectors }: { entry: HeadToHeadEntry; active?: boolean; gap?: number; sectors?: readonly string[] }) {
+  return <div className={active ? "is-player" : ""}><b>{entry.place}</b><strong>{entry.name}</strong><span>{sectors?.length ? sectors.join(" · ") : "—"}</span><em>{gap === undefined ? "—" : gap.toFixed(3)}</em><time>—</time></div>;
+}
+
+export function HeadToHeadCrystal({ model }: WidgetRendererProps<HeadToHeadViewModel>) {
+  return <section data-widget-system="vantare-crystal" data-widget-renderer="head-to-head" data-status={model.status} className="vc-head-to-head"><header>HEAD 2 HEAD</header>{model.player && model.opponent ? <main><Driver entry={model.opponent} gap={model.gapSeconds}/><Driver entry={model.player} active sectors={model.showSectors ? model.sectorComparisons : undefined}/></main> : <p role="status">{model.statusMessage ?? "No nearby rival"}</p>}</section>;
+}

@@ -2,9 +2,10 @@
 
 - Status: Proposed
 - Date: 2026-07-14
-- Deciders: Product (Isaac), pendiente
-- Related: ISA-7, ISA-68 a ISA-77
+- Deciders: Product (Isaac), decision consolidada pendiente en ISA-89
+- Related: ISA-7, ISA-89, ISA-68 a ISA-77, ISA-88
 - Detail: `docs/analysis/isa-7-polar-target-billing-architecture-2026-07-14.md`
+- Decision package: `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`
 
 ## Contexto
 
@@ -23,9 +24,27 @@ Polar ofrece Customer State, events firmados segun Standard Webhooks y recursos 
 7. Vantare seguira siendo autoridad de capabilities, device policy y leases offline firmadas.
 8. Mapping comercial sera simetrico, versionado y separado por entorno; desconocidos iran a quarantine fail-closed.
 
+## Catalogo y politicas presentadas para decision
+
+ISA-89 cierra una propuesta unica y comprobable, sin aceptarla todavia:
+
+| SKU | Precio | Capabilities | Offline |
+| --- | --- | --- | --- |
+| `pro_monthly` | 4,99 EUR/mes | `vantare.pro` | hasta `paidThrough` |
+| `launch_lifetime` | 30 EUR one-time | `vantare.pro` | perpetuo |
+| `supporter_monthly` | 9,99 EUR/mes | `vantare.pro`, `vantare.early_access` | hasta `paidThrough` |
+
+Pro y Launch existen en Polar con precio/intervalo correctos. Supporter no existe y no puede crearse hasta un gate remoto posterior. Los IDs reales, diferencias de organization, webhook y mapping estan inventariados en el decision package de ISA-89.
+
+Las politicas propuestas son: grants independientes por fuente; cero grace adicional; refund total revoca solo el grant atribuible; refund parcial no revoca automaticamente; identidad por account UUID + Polar `external_customer_id`; email no es PK; sin device lock obligatorio; retorno fijo a `http://127.0.0.1:39261/checkout/callback`; sesion Windows en Credential Manager y estado offline protegido con DPAPI CurrentUser.
+
+La retencion propuesta es 30 dias para raw procesado, quarantine hasta resolver + 90 dias (maximo operativo 180 dias), 24 meses para eventos/efectos/auditoria y vida de cuenta + 24 meses para el ledger minimo. El objetivo es RPO 0 para eventos aceptados, drift maximo de 6 horas para suscripciones activas y 24 horas para lifetime/inactivas, con RTO P1 de 4 horas.
+
 ## Estado
 
 Esta ADR es **Proposed**. No autoriza schema, codigo, despliegue, migracion, pago ni retirada de Polar, Supabase o Stripe. Solo Isaac puede aceptarla.
+
+El inventario ISA-89 mantiene el NO-GO: falta Supporter y la organizacion Polar observada tiene pagos, renovaciones, refunds y payouts deshabilitados. Aceptar esta ADR tampoco habilita venta publica ni autoriza mutaciones remotas.
 
 ## Consecuencias positivas
 
@@ -69,6 +88,9 @@ Rechazada. Vantare solo necesita hechos minimos para autorizacion, soporte y rec
 - Un evento no queda `processed` sin todos sus efectos comprometidos.
 - Mapping desconocido concede cero capabilities y genera evidencia reparable.
 - La cache offline no es autorizativa sin firma, expiracion, usuario y device binding validos.
+- La excepcion lifetime puede no tener expiracion comercial, pero siempre requiere firma y account UUID validos; un refund se aplica al siguiente contacto online.
+- Pro y Supporter nunca exceden `paidThrough`, aunque el webhook o backend no esten disponibles.
+- La URL de retorno debe coincidir exactamente con la allowlist y no puede proceder del cliente.
 
 ## Rollback
 
@@ -76,4 +98,4 @@ La adopcion debe hacerse con schema oscuro, shadow ingest, dual projection y lec
 
 ## Criterio para aceptar esta ADR
 
-Isaac revisa las decisiones humanas pendientes del informe, aprueba explicitamente catalogo, grace/offline, refund/dispute, retencion y device policy, y confirma el orden de ISA-68 a ISA-77. Hasta entonces permanece Proposed.
+Isaac responde al paquete unico de diez decisiones de `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`, aprobando o corrigiendo catalogo, offline/grace, refunds/grants, identidad, retencion, RPO/RTO, almacenamiento Windows, return URL, limites QA y microcortes. Hasta esa respuesta permanece Proposed e ISA-68 no comienza.

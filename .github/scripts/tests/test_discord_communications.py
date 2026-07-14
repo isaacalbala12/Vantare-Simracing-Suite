@@ -52,9 +52,12 @@ class FragmentTests(unittest.TestCase):
     def test_testers_html_is_branded_and_contains_release_candidate_content(self):
         output = communications.render_testers_html([fragment()], "abc1234")
         self.assertIn("VANTARE", output)
-        self.assertIn("BUILD CANDIDATA", output)
+        self.assertIn("ACTUALIZACIÓN PARA TESTERS", output)
         self.assertIn("Mensajes fiables", output)
-        self.assertIn("QUÉ COMPROBAR", output)
+        self.assertIn("QUÉ DEBES PROBAR", output)
+        self.assertIn("LIMITACIÓN CONOCIDA", output)
+        self.assertNotIn("briefing", output.casefold())
+        self.assertNotIn("Sin información adicional", output)
 
     def test_testers_payload_can_reference_its_visual_card(self):
         payload = communications.render_testers([fragment()], "abc1234", include_image=True)
@@ -130,23 +133,51 @@ class LinearDigestTests(unittest.TestCase):
                      "update": "Paridad & revisión", "updatedAt": "2026-07-15T10:00:00Z"}]
         output = communications.render_development_html(projects)
         self.assertIn("VANTARE", output)
-        self.assertIn("DESARROLLO ACTIVO", output)
+        self.assertIn("ESTADO DE DESARROLLO", output)
         self.assertIn("Overlay &lt;Studio&gt;", output)
         self.assertIn("Paridad &amp; revisión", output)
         self.assertNotIn("Overlay <Studio>", output)
+        self.assertIn("ESTADO DE DESARROLLO", output)
+        self.assertNotIn("Development pulse", output)
+        self.assertNotIn("BUILDING IN PUBLIC", output)
+
+    def test_development_html_does_not_add_empty_placeholder_projects(self):
+        projects = [{"name": "Overlay Studio", "url": "https://linear.app/p/overlay", "progress": 0.08,
+                     "update": "Paridad visual en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]
+        output = communications.render_development_html(projects)
+        self.assertNotIn("Próximo proyecto", output)
+        self.assertNotIn("DISPONIBLE", output)
 
 
 class ReleaseAndBuildTests(unittest.TestCase):
     def test_release_html_presents_public_version_and_changelog(self):
         output = communications.render_release_html(
             "v1.2.3",
-            "### Novedades\n- Nuevo launcher\n- Mejor rendimiento",
+            "Resumen de la versión.\n\n**Nuevo**\n- Perfiles rápidos en Launcher.\n\n**Mejorado**\n- El canvas responde mejor al redimensionar.\n\n**Corregido**\n- Los iconos vuelven a mostrarse.",
             "abc1234",
         )
-        self.assertIn("LANZAMIENTO PÚBLICO", output)
+        self.assertIn("NUEVA VERSIÓN", output)
         self.assertIn("v1.2.3", output)
-        self.assertIn("Nuevo launcher", output)
+        self.assertIn("Perfiles rápidos en Launcher", output)
+        self.assertIn("El canvas responde mejor", output)
+        self.assertIn("Los iconos vuelven a mostrarse", output)
         self.assertIn("VERSIÓN ESTABLE", output)
+        self.assertNotIn(">Changelog<", output)
+        self.assertNotIn("Incluido en esta versión", output)
+
+    def test_release_html_preserves_long_changelog_copy_across_the_card(self):
+        change = (
+            "El backend actualiza la lista de perfiles tras crear, copiar o eliminar "
+            "un perfil para que el usuario vea el resultado sin recargar la aplicación."
+        )
+        output = communications.render_release_html(
+            "v1.2.3", f"**Corregido**\n- {change}", "abc1234"
+        )
+        heading, body = communications._split_visual_copy(change)
+        self.assertEqual(f"{heading} {body}".strip(), change)
+        self.assertIn("El backend actualiza la lista de perfiles tras crear", output)
+        self.assertIn("un perfil para que el usuario vea el resultado", output)
+        self.assertNotIn("…", output)
 
     def test_release_payload_is_accessible_and_references_visual_card(self):
         payload = communications.render_release(
@@ -161,10 +192,25 @@ class ReleaseAndBuildTests(unittest.TestCase):
         output = communications.render_build_html(
             "v1.2.3-beta.1", "Validar Launcher y Overlay Studio", "a" * 64
         )
-        self.assertIn("BUILD BETA", output)
+        self.assertIn("VERSIÓN BETA", output)
         self.assertIn("v1.2.3-beta.1", output)
         self.assertIn("Validar Launcher", output)
         self.assertIn("SHA-256 VERIFICADO", output)
+        self.assertIn("VERSIÓN BETA", output)
+        self.assertNotIn("Public preview", output)
+
+    def test_all_customer_facing_cards_avoid_internal_or_placeholder_copy(self):
+        outputs = [
+            communications.render_testers_html([fragment()], "abc1234"),
+            communications.render_release_html("v1.2.3", "**Corregido**\n- El login vuelve a abrirse correctamente.", "abc1234"),
+            communications.render_build_html("v1.2.3-beta.1", "Validar el inicio de sesión.", "a" * 64),
+            communications.render_development_html([{"name": "Launcher", "progress": 0.5, "update": "Mejora de iconos en curso."}]),
+        ]
+        forbidden = ("sin información adicional", "próximo proyecto", "public preview", "tester briefing", "building in public")
+        for output in outputs:
+            normalized = output.casefold()
+            for phrase in forbidden:
+                self.assertNotIn(phrase, normalized)
 
     def test_build_payload_keeps_download_link_and_visual_card(self):
         payload = communications.render_build(

@@ -85,6 +85,8 @@
 - [x] Attach a stable PNG filename per audience and keep download/project/release links in the embed.
 - [x] Fail before publishing when Chrome or the PNG artifact is unavailable.
 - [x] Cover renderer escaping, Discord attachment names, workflow wiring and payload contracts with unit tests.
+- [x] Complete an editorial pass per audience and reject placeholder/mixed-language copy in tests.
+- [x] Remove empty filler cards and center layouts containing one or two meaningful cards.
 - [ ] Execute one real manual dispatch per lane and obtain Isaac's visual approval.
 
 ## Rollback

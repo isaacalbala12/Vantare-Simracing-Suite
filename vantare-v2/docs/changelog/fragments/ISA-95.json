@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "issue": "ISA-95",
   "type": "fix",
-  "summary": "Las comunicaciones de Discord dejan de repetir estados antiguos, separan cada audiencia y presentan testers y desarrollo con un formato visual profesional.",
+  "summary": "Cada canal de Discord muestra únicamente información vigente y adecuada para su audiencia.",
   "technicalNotes": [
-    "Los cambios para testers se generan desde fragmentos estructurados y solo al llegar a develop.",
-    "El canal de desarrollo consume únicamente actualizaciones públicas y explícitas de proyectos activos en Linear.",
-    "El desarrollo activo combina un embed accesible con una tarjeta generada desde HTML en el runner."
+    "Los testers reciben cambios verificables únicamente después de que alcancen develop.",
+    "El canal de desarrollo muestra solo actualizaciones aprobadas de proyectos activos en Linear.",
+    "Los cuatro canales conservan el texto y los enlaces de Discord junto a un resumen visual generado desde HTML."
   ],
   "testing": [
-    "Confirmar que una rama de issue no publica mensajes.",
-    "Validar manualmente cada workflow en su canal antes de aprobar el merge a develop.",
-    "Comprobar que la tarjeta de desarrollo conserva texto legible en escritorio y móvil."
+    "Confirmar que una rama de trabajo no publica mensajes para testers.",
+    "Comprobar que Release, Testers, Desarrollo y Build muestran contenido real, legible y sin tarjetas de relleno.",
+    "Verificar que los enlaces, la versión y el checksum siguen disponibles en el mensaje de Discord."
   ],
   "knownLimitations": [
-    "La publicación real permanece bloqueada hasta la validación manual de los cuatro destinos."
+    "Las nuevas tarjetas no se integrarán hasta validar manualmente los cuatro destinos en Discord."
   ]
 }

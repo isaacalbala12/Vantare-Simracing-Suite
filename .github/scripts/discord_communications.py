@@ -120,8 +120,54 @@ def _plain_lines(markdown: str, limit: int = 5) -> list[str]:
     return lines
 
 
+def _changelog_highlights(section: str, limit: int = 3) -> list[tuple[str, str]]:
+    labels = {
+        "nuevo": "NUEVO",
+        "novedades": "NUEVO",
+        "mejorado": "MEJORA",
+        "corregido": "CORRECCIÓN",
+        "seguridad": "SEGURIDAD",
+        "para testers": "PARA TESTERS",
+    }
+    current_label = "CAMBIO DESTACADO"
+    highlights: list[tuple[str, str]] = []
+    for raw in section.splitlines():
+        stripped = raw.strip()
+        heading = re.sub(r"^(?:#{1,6}\s+|\*\*)|(?:\*\*)$", "", stripped).strip().casefold()
+        if heading in labels and not stripped.startswith("-"):
+            current_label = labels[heading]
+            continue
+        if not re.match(r"^[-*+]\s+\S", stripped):
+            continue
+        text = re.sub(r"^[-*+]\s+", "", stripped)
+        text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text).replace("`", "").strip()
+        if text:
+            highlights.append((current_label, text))
+        if len(highlights) >= limit:
+            break
+    if highlights:
+        return highlights
+    return [("CAMBIO DESTACADO", line) for line in _plain_lines(section, limit)]
+
+
+def _split_visual_copy(text: str, heading_limit: int = 72) -> tuple[str, str]:
+    """Split sourced copy across a card without truncating its meaning."""
+    if len(text) <= heading_limit:
+        return text, ""
+    colon_match = re.search(r":\s", text)
+    colon = colon_match.start() if colon_match else -1
+    if 20 <= colon <= heading_limit:
+        return text[:colon].strip(), text[colon + 1:].strip()
+    boundary = text.rfind(" ", 0, heading_limit + 1)
+    if boundary < 20:
+        boundary = heading_limit
+    return text[:boundary].rstrip(" ,;"), text[boundary:].lstrip(" ,;")
+
+
 def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
                   cards: list[tuple[str, str, str]], footer_left: str, footer_right: str) -> str:
+    if not cards:
+        raise ValueError("at least one meaningful visual card is required")
     rendered_cards = []
     for index, (label, heading, body) in enumerate(cards[:3], start=1):
         rendered_cards.append(f"""
@@ -129,10 +175,8 @@ def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
             <div class="card-top"><span class="index">0{index}</span><span class="status"><i></i> {html.escape(label)}</span></div>
             <h2>{html.escape(heading)}</h2><p>{html.escape(body)}</p>
           </article>""")
-    while len(rendered_cards) < 3:
-        rendered_cards.append("""
-          <article class="project-card empty"><div class="card-top"><span class="index">—</span><span class="status">SIN DATOS</span></div>
-          <h2>Sin información adicional</h2><p>Consulta el mensaje de Discord para ver los enlaces y detalles accesibles.</p></article>""")
+    column_count = len(rendered_cards)
+    grid_width = {1: 520, 2: 760, 3: 1096}[column_count]
     return f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=1200, initial-scale=1"><style>
 *{{box-sizing:border-box}}html,body{{margin:0;width:1200px;height:630px;overflow:hidden}}body{{font-family:Inter,Arial,sans-serif;color:#f5f5f5;background:#080808}}
@@ -141,12 +185,12 @@ def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
 .brand{{display:flex;align-items:center;gap:15px}}.logo{{width:38px;height:38px;filter:drop-shadow(0 0 12px rgba(255,59,59,.45))}}.wordmark{{font-size:22px;font-weight:800;letter-spacing:.08em}}
 .eyebrow{{margin-top:10px;color:#ff3b3b;font-size:11px;font-weight:800;letter-spacing:.28em}}.title{{margin:5px 0 0;font-size:39px;line-height:1;font-weight:800;letter-spacing:-.04em}}.title span{{color:rgba(245,245,245,.35)}}
 .stamp{{padding:9px 12px;border:1px solid rgba(245,245,245,.09);border-radius:8px;background:rgba(20,20,20,.55);font:700 10px 'Courier New',monospace;letter-spacing:.14em;color:rgba(245,245,245,.48)}}
-.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}}.project-card{{height:330px;padding:22px;border:1px solid rgba(245,245,245,.09);border-radius:14px;background:linear-gradient(180deg,rgba(27,27,27,.82),rgba(13,13,13,.76));box-shadow:0 20px 55px rgba(0,0,0,.25)}}
+.grid{{display:grid;width:min(100%,var(--grid-width));grid-template-columns:repeat(var(--columns),minmax(0,1fr));gap:16px;margin:30px auto 0}}.project-card{{height:330px;padding:22px;border:1px solid rgba(245,245,245,.09);border-radius:14px;background:linear-gradient(180deg,rgba(27,27,27,.82),rgba(13,13,13,.76));box-shadow:0 20px 55px rgba(0,0,0,.25)}}
 .project-card.primary{{border-color:rgba(255,59,59,.42);box-shadow:0 20px 55px rgba(255,59,59,.08)}}.card-top{{display:flex;align-items:center;justify-content:space-between;font:700 9px 'Courier New',monospace;letter-spacing:.15em;color:rgba(245,245,245,.35)}}
 .index{{color:#ff3b3b}}.status{{display:flex;align-items:center;gap:7px}}.status i{{width:6px;height:6px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 9px rgba(255,59,59,.75)}}h2{{display:-webkit-box;height:100px;margin:22px 0 10px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:4;font-size:20px;line-height:1.2;letter-spacing:-.025em}}p{{display:-webkit-box;height:104px;margin:0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:5;color:rgba(245,245,245,.56);font-size:13px;line-height:1.55}}
 .empty{{opacity:.38;border-style:dashed}}footer{{display:flex;align-items:center;justify-content:space-between;margin-top:25px;color:rgba(245,245,245,.32);font:700 9px 'Courier New',monospace;letter-spacing:.16em}}.live{{display:flex;align-items:center;gap:8px}}.live:before{{content:"";width:5px;height:5px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,.65)}}
 </style></head><body><main class="canvas"><header><div><div class="brand"><svg class="logo" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff4d4d"/><stop offset=".55" stop-color="#e21b1b"/><stop offset="1" stop-color="#9a0606"/></linearGradient></defs><path d="M20 2 38 38H28L20 18 12 38H2Z" fill="url(#g)"/></svg><span class="wordmark">VANTARE</span></div><div class="eyebrow">{html.escape(eyebrow)}</div><h1 class="title">{html.escape(title)} <span>{html.escape(accent)}</span></h1></div><div class="stamp">{html.escape(stamp)}</div></header>
-<section class="grid">{''.join(rendered_cards)}</section><footer><span class="live">{html.escape(footer_left)}</span><span>{html.escape(footer_right)}</span></footer></main></body></html>"""
+<section class="grid" style="--columns:{column_count};--grid-width:{grid_width}px">{''.join(rendered_cards)}</section><footer><span class="live">{html.escape(footer_left)}</span><span>{html.escape(footer_right)}</span></footer></main></body></html>"""
 
 
 def render_testers(fragments: list[dict[str, Any]], revision: str, *, include_image: bool = False) -> dict[str, Any]:
@@ -179,19 +223,21 @@ def render_testers(fragments: list[dict[str, Any]], revision: str, *, include_im
 def render_testers_html(fragments: list[dict[str, Any]], revision: str) -> str:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
+    primary = fragments[0]
     cards = [
-        ("CAMBIO VALIDABLE", item["summary"], item["testing"][0])
-        for item in fragments[:3]
+        ("CAMBIO PRINCIPAL", primary["summary"], primary["technicalNotes"][0]),
+        ("QUÉ DEBES PROBAR", primary["testing"][0], primary["testing"][1] if len(primary["testing"]) > 1 else ""),
+        ("LIMITACIÓN CONOCIDA", primary["knownLimitations"][0], ""),
     ]
-    return _branded_html(eyebrow="BUILD CANDIDATA", title="Tester", accent="briefing",
+    return _branded_html(eyebrow="ACTUALIZACIÓN PARA TESTERS", title="Cambios", accent="para validar",
                          stamp=f"DEVELOP · {revision[:12]}", cards=cards,
-                         footer_left="QUÉ COMPROBAR", footer_right="VANTARE · TEST CHANNEL")
+                         footer_left="REVISA LOS TRES PUNTOS", footer_right="VANTARE · CANAL DE TESTERS")
 
 
 def render_release(tag: str, section: str, revision: str, release_url: str, *, include_image: bool = False) -> dict[str, Any]:
-    changes = _plain_lines(section, 8)
+    changes = _changelog_highlights(section, 8)
     embed = {"title": f"Vantare {tag}", "description": "Nueva versión pública disponible.", "color": VANTARE_RED,
-             "fields": [{"name": "Novedades", "value": _embed_field(changes), "inline": False}],
+             "fields": [{"name": "Cambios destacados", "value": _embed_field([f"**{label.title()}** — {text}" for label, text in changes]), "inline": False}],
              "footer": {"text": f"Vantare Stable · {revision[:12]}"}}
     if release_url:
         embed["fields"].append({"name": "Descarga", "value": f"[Ver lanzamiento]({release_url})", "inline": False})
@@ -201,11 +247,11 @@ def render_release(tag: str, section: str, revision: str, release_url: str, *, i
 
 
 def render_release_html(tag: str, section: str, revision: str) -> str:
-    changes = _plain_lines(section, 3) or ["Consulta el changelog completo en el mensaje de Discord."]
-    cards = [("NOVEDAD", change, "Incluido en esta versión pública de Vantare.") for change in changes]
-    return _branded_html(eyebrow="LANZAMIENTO PÚBLICO", title="Vantare", accent=tag,
+    changes = _changelog_highlights(section, 3)
+    cards = [(label, *_split_visual_copy(change)) for label, change in changes]
+    return _branded_html(eyebrow="NUEVA VERSIÓN", title="Vantare", accent=tag,
                          stamp=f"MASTER · {revision[:12]}", cards=cards,
-                         footer_left="VERSIÓN ESTABLE", footer_right="VANTARE · PUBLIC RELEASE")
+                         footer_left="VERSIÓN ESTABLE", footer_right="VANTARE · LANZAMIENTO PÚBLICO")
 
 
 def render_build(version: str, notes: str, download_url: str, sha256: str, release_url: str,
@@ -226,12 +272,12 @@ def render_build(version: str, notes: str, download_url: str, sha256: str, relea
 
 
 def render_build_html(version: str, notes: str, sha256: str) -> str:
-    cards = [("BUILD DISPONIBLE", version, notes or "Build beta preparada para validación."),
-             ("VALIDACIÓN", "Instalación y arranque", "Confirma inicio, navegación y ausencia de regresiones visibles."),
+    cards = [("OBJETIVO", version, notes or "Instala esta versión y comprueba que Vantare inicia correctamente."),
+             ("PRUEBA BÁSICA", "Instalación y arranque", "Confirma inicio, navegación y ausencia de regresiones visibles."),
              ("INTEGRIDAD", "SHA-256 VERIFICADO" if sha256 else "Checksum no indicado", sha256[:32] + "…" if sha256 else "Consulta el mensaje técnico.")]
-    return _branded_html(eyebrow="BUILD BETA", title="Public", accent="preview",
+    return _branded_html(eyebrow="VERSIÓN BETA", title="Lista", accent="para probar",
                          stamp=version, cards=cards,
-                         footer_left="LISTA PARA TESTERS", footer_right="VANTARE · BETA CHANNEL")
+                         footer_left="DESCARGA Y COMPRUEBA", footer_right="VANTARE · CANAL BETA")
 
 
 def parse_public_update(body: str | None) -> str | None:
@@ -313,12 +359,14 @@ def render_development_html(projects: list[dict[str, Any]]) -> str:
             <div class="progress-meta"><span>PROGRESO</span><strong>{percent}%</strong></div>
             <div class="track"><div style="width:{percent}%"></div></div>
           </article>""")
-    while len(cards) < 3:
+    if not cards:
         cards.append("""
-          <article class="project-card empty">
-            <div class="card-top"><span class="index">—</span><span class="status">DISPONIBLE</span></div>
-            <h2>Próximo proyecto</h2><p>Este espacio se activará cuando exista otro proyecto público en desarrollo.</p>
+          <article class="project-card">
+            <div class="card-top"><span class="index">—</span><span class="status">SIN CAMBIOS PUBLICADOS</span></div>
+            <h2>No hay novedades públicas hoy</h2><p>Los proyectos activos continúan en Linear sin una actualización nueva para Discord.</p>
           </article>""")
+    column_count = len(cards)
+    grid_width = {1: 520, 2: 760, 3: 1096}[column_count]
     return f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=1200, initial-scale=1">
 <style>
@@ -334,7 +382,7 @@ header,.grid,footer{{position:relative;z-index:1}} header{{display:flex;justify-
 .wordmark{{font-size:22px;font-weight:800;letter-spacing:.08em}} .eyebrow{{margin-top:10px;color:#ff3b3b;font-size:11px;font-weight:800;letter-spacing:.28em}}
 .title{{margin:5px 0 0;font-size:39px;line-height:1;font-weight:800;letter-spacing:-.04em}} .title span{{color:rgba(245,245,245,.35)}}
 .stamp{{padding:9px 12px;border:1px solid rgba(245,245,245,.09);border-radius:8px;background:rgba(20,20,20,.55);font:700 10px 'Courier New',monospace;letter-spacing:.14em;color:rgba(245,245,245,.48)}}
-.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}}
+.grid{{display:grid;width:min(100%,var(--grid-width));grid-template-columns:repeat(var(--columns),minmax(0,1fr));gap:16px;margin:30px auto 0}}
 .project-card{{height:330px;padding:22px;border:1px solid rgba(245,245,245,.09);border-radius:14px;background:linear-gradient(180deg,rgba(27,27,27,.82),rgba(13,13,13,.76));box-shadow:0 20px 55px rgba(0,0,0,.25)}}
 .project-card:first-child{{border-color:rgba(255,59,59,.42);box-shadow:0 20px 55px rgba(255,59,59,.08)}}
 .card-top{{display:flex;align-items:center;justify-content:space-between;font:700 9px 'Courier New',monospace;letter-spacing:.15em;color:rgba(245,245,245,.35)}}
@@ -345,9 +393,9 @@ h2{{height:58px;margin:24px 0 12px;font-size:22px;line-height:1.14;letter-spacin
 .empty{{opacity:.38;border-style:dashed}} footer{{display:flex;align-items:center;justify-content:space-between;margin-top:25px;color:rgba(245,245,245,.32);font:700 9px 'Courier New',monospace;letter-spacing:.16em}}
 .live{{display:flex;align-items:center;gap:8px}} .live:before{{content:"";width:5px;height:5px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,.65)}}
 </style></head><body><main class="canvas">
-<header><div><div class="brand"><svg class="logo" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff4d4d"/><stop offset=".55" stop-color="#e21b1b"/><stop offset="1" stop-color="#9a0606"/></linearGradient></defs><path d="M20 2 38 38H28L20 18 12 38H2Z" fill="url(#g)"/></svg><span class="wordmark">VANTARE</span></div><div class="eyebrow">DESARROLLO ACTIVO</div><h1 class="title">Development <span>pulse</span></h1></div><div class="stamp">LINEAR · LIVE STATUS</div></header>
-<section class="grid">{''.join(cards)}</section>
-<footer><span class="live">ACTUALIZACIÓN AUTOMÁTICA</span><span>VANTARE · BUILDING IN PUBLIC</span></footer>
+<header><div><div class="brand"><svg class="logo" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff4d4d"/><stop offset=".55" stop-color="#e21b1b"/><stop offset="1" stop-color="#9a0606"/></linearGradient></defs><path d="M20 2 38 38H28L20 18 12 38H2Z" fill="url(#g)"/></svg><span class="wordmark">VANTARE</span></div><div class="eyebrow">ESTADO DE DESARROLLO</div><h1 class="title">Proyectos <span>en curso</span></h1></div><div class="stamp">ACTUALIZADO DESDE LINEAR</div></header>
+<section class="grid" style="--columns:{column_count};--grid-width:{grid_width}px">{''.join(cards)}</section>
+<footer><span class="live">ACTUALIZACIÓN AUTOMÁTICA</span><span>VANTARE · DESARROLLO EN CURSO</span></footer>
 </main></body></html>"""
 
 

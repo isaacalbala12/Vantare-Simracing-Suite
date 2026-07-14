@@ -56,6 +56,25 @@ La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, 
 
 El embed siempre conserva el contenido completo, enlaces, checksum y contexto técnico. La imagen resume; nunca es la única fuente de información. Los cuatro workflows fallan antes del POST si Chrome no genera un PNG no vacío.
 
+## Contrato editorial
+
+Cada tarjeta responde una pregunta concreta de su audiencia:
+
+- Release: qué versión salió y cuáles son sus cambios más importantes.
+- Testers: qué cambió, qué deben comprobar y qué limitación deben conocer.
+- Desarrollo: qué proyectos avanzan y cuál es su estado público.
+- Build beta: qué versión descargar, qué validar y cómo comprobar su integridad.
+
+Reglas obligatorias:
+
+- español claro, salvo nombres propios y términos técnicos reconocibles como SHA-256;
+- datos procedentes del changelog, fragmento o actualización pública de Linear, nunca beneficios inventados;
+- una idea útil por tarjeta;
+- sin tarjetas de relleno, eslóganes vacíos ni mensajes como «próximo proyecto»;
+- sin etiquetas internas como `Development pulse`, `Public preview`, `Building in public` o `Tester briefing`;
+- si no hay novedades, se muestra un único estado vacío honesto;
+- el texto completo y los enlaces permanecen en el embed accesible.
+
 ## Gates
 
 - Los tests y dry-runs nunca hacen POST.

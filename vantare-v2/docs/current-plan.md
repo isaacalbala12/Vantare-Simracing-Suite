@@ -4,6 +4,7 @@ Nota ISA-95 (2026-07-14):
 - Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.
 - Validación real PASS (2026-07-14): release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`. Versión pública vigente verificada: `v0.1.0.2`.
 - Extensión híbrida completa (2026-07-15): Release, Testers, Desarrollo y Build combinan embed accesible con una tarjeta 1200×630 específica generada desde HTML inspirado en `roadmap_v5.2.html`. Sin IA ni dependencias nuevas. Las cuatro capturas locales están validadas; los POST reales de las imágenes siguen pendientes del gate manual.
+- Revisión editorial (2026-07-15): eliminadas tarjetas de relleno y etiquetas mixtas (`Tester briefing`, `Public preview`, `Development pulse`, `Building in public`); Release extrae solo highlights estructurados, Testers muestra cambio/prueba/limitación y los estados con 1–2 elementos se centran sin inventar contenido. Contrato editorial y tests anti-slop añadidos.
 - Plan y operación: `docs/superpowers/plans/2026-07-14-isa-95-discord-linear-communications.md` y `docs/discord-communications.md`.
 
 Nota OVERLAY-STUDIO-V3 (2026-07-10):

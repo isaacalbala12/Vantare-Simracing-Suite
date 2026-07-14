@@ -1,0 +1,390 @@
+{
+  "ok": true,
+  "base": "http://127.0.0.1:5176",
+  "generatedAt": "2026-07-14T10:17:15.161Z",
+  "results": [
+    {
+      "check": "click-no-move",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      }
+    },
+    {
+      "check": "move",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 240px; top: 168px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 240,
+          "top": 168,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      }
+    },
+    {
+      "check": "escape-cancel",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      }
+    },
+    {
+      "check": "resize-nw",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 48px; top: 65px; width: 492px; height: 211px; z-index: 1;",
+        "frame": {
+          "left": 48,
+          "top": 65,
+          "width": 492,
+          "height": 211
+        },
+        "viewport": {
+          "transform": "matrix(1.75714, 0, 0, 1.75714, 0, 0)",
+          "width": 280,
+          "height": 120.078
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3317535545023698
+    },
+    {
+      "check": "resize-n",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 48px; width: 532px; height: 228px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 48,
+          "width": 532,
+          "height": 228
+        },
+        "viewport": {
+          "transform": "matrix(1.9, 0, 0, 1.9, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3333333333333335
+    },
+    {
+      "check": "resize-ne",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 63px; width: 497px; height: 213px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 63,
+          "width": 497,
+          "height": 213
+        },
+        "viewport": {
+          "transform": "matrix(1.775, 0, 0, 1.775, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3333333333333335
+    },
+    {
+      "check": "resize-e",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 504px; height: 216px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 504,
+          "height": 216
+        },
+        "viewport": {
+          "transform": "matrix(1.8, 0, 0, 1.8, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3333333333333335
+    },
+    {
+      "check": "resize-se",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 520px; height: 223px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 520,
+          "height": 223
+        },
+        "viewport": {
+          "transform": "matrix(1.85714, 0, 0, 1.85714, 0, 0)",
+          "width": 280,
+          "height": 120.062
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3318385650224216
+    },
+    {
+      "check": "resize-s",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 541px; height: 232px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 541,
+          "height": 232
+        },
+        "viewport": {
+          "transform": "matrix(1.93214, 0, 0, 1.93214, 0, 0)",
+          "width": 280,
+          "height": 120.062
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.331896551724138
+    },
+    {
+      "check": "resize-sw",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 48px; top: 96px; width: 492px; height: 211px; z-index: 1;",
+        "frame": {
+          "left": 48,
+          "top": 96,
+          "width": 492,
+          "height": 211
+        },
+        "viewport": {
+          "transform": "matrix(1.75714, 0, 0, 1.75714, 0, 0)",
+          "width": 280,
+          "height": 120.078
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3317535545023698
+    },
+    {
+      "check": "resize-w",
+      "before": {
+        "style": "position: absolute; left: 120px; top: 96px; width: 420px; height: 180px; z-index: 1;",
+        "frame": {
+          "left": 120,
+          "top": 96,
+          "width": 420,
+          "height": 180
+        },
+        "viewport": {
+          "transform": "matrix(1.5, 0, 0, 1.5, 0, 0)",
+          "width": 280,
+          "height": 120
+        },
+        "interaction": "idle"
+      },
+      "after": {
+        "style": "position: absolute; left: 41px; top: 96px; width: 499px; height: 214px; z-index: 1;",
+        "frame": {
+          "left": 41,
+          "top": 96,
+          "width": 499,
+          "height": 214
+        },
+        "viewport": {
+          "transform": "matrix(1.78214, 0, 0, 1.78214, 0, 0)",
+          "width": 280,
+          "height": 120.078
+        },
+        "interaction": "idle"
+      },
+      "ratioBefore": 2.3333333333333335,
+      "ratioAfter": 2.3317757009345796
+    },
+    {
+      "check": "zoom-150",
+      "zoom": "150%"
+    }
+  ]
+}

@@ -66,7 +66,7 @@ class LinearDigestTests(unittest.TestCase):
         value = communications.parse_public_update("<!-- discord:development -->\n@everyone avance")
         self.assertNotIn("@everyone", value)
 
-    def test_active_projects_excludes_inactive_and_unapproved_text(self):
+    def test_active_projects_show_safe_metadata_but_hide_unapproved_text(self):
         projects = [
             {"name": "Billing", "url": "https://linear.app/p/1", "progress": 0.5,
              "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nPolar en curso."}]}},
@@ -76,7 +76,9 @@ class LinearDigestTests(unittest.TestCase):
              "status": {"type": "completed"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nListo"}]}},
         ]
         active = communications.select_public_projects(projects)
-        self.assertEqual([item["name"] for item in active], ["Billing"])
+        self.assertEqual([item["name"] for item in active], ["Privado", "Billing"])
+        self.assertEqual(active[0]["update"], "Sin resumen público adicional en este corte.")
+        self.assertNotIn("Notas internas", str(active))
 
     def test_empty_project_digest_is_explicit(self):
         payload = communications.render_development([])

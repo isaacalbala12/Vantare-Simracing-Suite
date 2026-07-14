@@ -74,7 +74,7 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 |----------|---------|---------|---------------|
 | Release announcement | push tag `v*` o manual | `DISCORD_RELEASE_WEBHOOK_URL` | `#beta-announcements` |
 | Tester progress | fragmento `docs/changelog/fragments/*.json` que alcanza `develop` | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
-| Public beta changelog | manual (`workflow_dispatch`) | `DISCORD_BUILD_WEBHOOK_URL` | beta pública (`1519747444315914512`) |
+| Public beta changelog | manual (`workflow_dispatch`) | `DISCORD_BUILD_WEBHOOK_URL` | changelog |
 | Active development | diario o manual, desde proyectos Linear con opt-in | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
 
 > Los canales exactos (`#beta-*`) son los publicos de la Beta Publica. Las builds internas previas (`v0.3.*`) que pudieran haber quedado apuntando a `#alpha-*` no se usan ya para esta linea.

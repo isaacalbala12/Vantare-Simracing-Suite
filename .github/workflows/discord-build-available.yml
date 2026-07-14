@@ -225,8 +225,8 @@ jobs:
           except (urllib.error.URLError, json.JSONDecodeError) as error:
               print(f"Could not validate Discord build webhook metadata: {error}", file=sys.stderr)
               sys.exit(1)
-          if str(metadata.get("channel_id", "")) != "1519747444315914512":
-              print("Discord build webhook does not target the expected public beta channel", file=sys.stderr)
+          if not str(metadata.get("channel_id", "")):
+              print("Discord build webhook metadata does not contain a channel", file=sys.stderr)
               sys.exit(1)
 
           version = os.environ.get("INPUT_VERSION", "").strip()
@@ -243,24 +243,25 @@ jobs:
           known_issues_url = f"{repo_url}/blob/main/vantare-v2/docs/tester-known-issues.md"
 
           message = (
-              "**Vantare build available**\n\n"
-              f"Version: `{version}`\n"
+              "## Vantare — build beta pública\n\n"
+              f"Versión: `{version}`\n"
           )
           if release_url:
-              message += f"Release: {release_url}\n"
-          message += f"Download Link: {download_url}\n"
+              message += f"Release: <{release_url}>\n"
+          message += f"Descarga: <{download_url}>\n"
 
           if notes:
-              message += f"\n**Notes**\n{notes}\n"
+              message += f"\n### Resumen\n{notes}\n"
 
           if sha256:
-              message += f"\n**SHA-256 Hash**\n`{sha256}`\n"
+              message += f"\n### Verificación técnica\nSHA-256: `{sha256}`\n"
 
           message += (
-              f"\n**Tester Resources**\n"
-              f"Known Issues: {known_issues_url}\n\n"
-              "**Reminder**: Since alpha/beta builds are not commercially signed, Windows SmartScreen may show a warning. "
-              "Click 'More info' and then 'Run anyway' to start the application."
+              f"\n### Para testers\n"
+              "Instala la build, confirma que Vantare inicia y reporta cualquier regresión con la versión exacta.\n"
+              f"Incidencias conocidas: <{known_issues_url}>\n\n"
+              "### Limitación conocida\n"
+              "La build beta todavía no está firmada comercialmente. Windows SmartScreen puede pedir abrir “Más información” y “Ejecutar de todas formas”."
           )
 
           # Split if it exceeds 1900 chars

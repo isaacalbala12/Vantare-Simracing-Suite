@@ -1,4 +1,4 @@
-name: Discord build available
+name: Discord public beta changelog
 
 on:
   workflow_dispatch:
@@ -153,7 +153,6 @@ jobs:
         if: github.run_attempt == 1
         env:
           DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_NOTES: ${{ inputs.notes }}
           RESOLVED_DOWNLOAD_URL: ${{ steps.metadata.outputs.download_url }}
@@ -210,9 +209,19 @@ jobs:
 
               return do_request(1)
 
-          webhook = (os.environ.get("DISCORD_BUILD_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
+          webhook = (os.environ.get("DISCORD_BUILD_WEBHOOK_URL") or "").strip()
           if not webhook:
-              print("Neither DISCORD_BUILD_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
+              print("DISCORD_BUILD_WEBHOOK_URL secret is not configured", file=sys.stderr)
+              sys.exit(1)
+
+          try:
+              with urllib.request.urlopen(webhook, timeout=20) as response:
+                  metadata = json.loads(response.read().decode("utf-8"))
+          except (urllib.error.URLError, json.JSONDecodeError) as error:
+              print(f"Could not validate Discord build webhook metadata: {error}", file=sys.stderr)
+              sys.exit(1)
+          if str(metadata.get("channel_id", "")) != "1519747444315914512":
+              print("Discord build webhook does not target the expected public beta channel", file=sys.stderr)
               sys.exit(1)
 
           version = os.environ.get("INPUT_VERSION", "").strip()

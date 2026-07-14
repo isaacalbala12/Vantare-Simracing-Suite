@@ -7,7 +7,7 @@ Este documento presenta una auditoría técnica sobre los riesgos de seguridad l
 ## 1. Análisis de Vectores de Riesgo y Privacidad
 
 ### A. Webhooks de Discord y Seguridad en CI/CD
-- **Estado actual**: Los webhooks utilizados en los flujos de trabajo de GitHub Actions (`discord-release.yml`, `discord-beta-progress.yml`, `discord-build-available.yml`, `discord-known-issues.yml`) leen correctamente de los secretos cifrados del repositorio (`secrets.DISCORD_WEBHOOK_URL`, `secrets.DISCORD_RELEASE_WEBHOOK_URL`, etc.).
+- **Estado actual (ISA-95)**: Los workflows de release, testers, beta pública y desarrollo activo usan exclusivamente su secreto `DISCORD_*_WEBHOOK_URL` dedicado. El fallback genérico fue retirado y `discord-known-issues.yml` fue sustituido por `discord-development-progress.yml`.
 - **Evaluación**: Cumple al 100% con las directrices de seguridad. No existen credenciales, tokens ni URLs de webhooks reales hardcodeados en el código fuente público, mitigando el riesgo de robo de webhooks o spam malintencionado en los canales de la comunidad.
 
 ---

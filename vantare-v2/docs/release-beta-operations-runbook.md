@@ -73,9 +73,9 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 | Workflow | Trigger | Secreto | Canal Discord |
 |----------|---------|---------|---------------|
 | Release announcement | push tag `v*` o manual | `DISCORD_RELEASE_WEBHOOK_URL` | `#beta-announcements` |
-| Beta progress | push a `current-plan.md` o `roadmap-execution-board.md` | `DISCORD_PROGRESS_WEBHOOK_URL` | `#beta-feedback` |
-| Build available | manual (`workflow_dispatch`) | `DISCORD_BUILD_AVAILABLE_WEBHOOK_URL` | `#beta-downloads` |
-| Known issues | push a `tester-known-issues.md` | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | `#beta-known-issues` |
+| Tester progress | fragmento `docs/changelog/fragments/*.json` que alcanza `develop` | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
+| Public beta changelog | manual (`workflow_dispatch`) | `DISCORD_BUILD_WEBHOOK_URL` | beta pública (`1519747444315914512`) |
+| Active development | diario o manual, desde proyectos Linear con opt-in | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
 
 > Los canales exactos (`#beta-*`) son los publicos de la Beta Publica. Las builds internas previas (`v0.3.*`) que pudieran haber quedado apuntando a `#alpha-*` no se usan ya para esta linea.
 
@@ -86,23 +86,23 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 gh workflow run "Discord release announcement" --ref master -f tag=v0.1.0.0
 
 # Publicar progreso
-gh workflow run "Discord beta progress" --ref master
+gh workflow run "Discord tester progress" --ref develop -f base_revision=HEAD^
 
 # Anunciar build disponible (automatica desde release)
-gh workflow run "Discord build available" --ref master \
+gh workflow run "Discord public beta changelog" --ref master \
   -f version=v0.1.0.0 \
   -f release_tag=v0.1.0.0 \
   -f notes="Notas opcionales para testers"
 
 # Anunciar build disponible (manual con URL externa)
-gh workflow run "Discord build available" --ref master \
+gh workflow run "Discord public beta changelog" --ref master \
   -f version=v0.1.0.0 \
   -f download_url="https://github.com/usuario/repo/releases/download/v0.1.0.0/vantare-amd64-installer.exe" \
   -f sha256="HASH_SHA256_AQUI" \
   -f notes="Notas opcionales"
 
-# Sincronizar incidencias conocidas
-gh workflow run "Discord known issues" --ref master
+# Publicar el digest aprobado de proyectos activos
+gh workflow run "Discord active development" --ref refactor
 ```
 
 ### Re-run seguro
@@ -112,9 +112,9 @@ Todos los workflows de Discord detectan `github.run_attempt > 1` y se saltan el 
 - Opcion recomendada: dispara un nuevo `workflow_dispatch` desde la UI o con `gh workflow run`.
 - Opcion de emergencia: re-run failed jobs. Advertira que se salta el envio.
 
-### Tag-guard para workflows no-release
+### Separacion de triggers
 
-Los workflows `Discord beta progress` y `Discord known issues` llevan un guard `if: github.ref_type != 'tag'`. Si el trigger es un tag, el workflow se salta el envio y termina en verde sin postear nada. Evita mensajes colaterales al publicar una release.
+`Discord tester progress` solo escucha fragmentos en `develop`; `Discord active development` solo se ejecuta por horario o dispatch; y el changelog beta solo por dispatch. Un tag no puede activar ninguna de esas tres vías.
 
 ---
 
@@ -254,7 +254,7 @@ Si aparece `Configuracion incompleta`, casi siempre se esta ejecutando un binari
 
 ### Publicar la build
 
-Ejecuta el workflow `Discord build available` aportando version, enlace y SHA256. El workflow `Discord release announcement` se dispara automaticamente al pushear el tag `v*`.
+Ejecuta `Discord public beta changelog` aportando versión, enlace y SHA256. `Discord release announcement` se dispara al pushear el tag `v*` y comprueba que su commit pertenece a `master`.
 
 ---
 
@@ -263,7 +263,7 @@ Ejecuta el workflow `Discord build available` aportando version, enlace y SHA256
 ### A. Si Discord no publica el anuncio
 
 1. Revisa la ejecucion del workflow en la pestana **Actions**.
-2. Si fallo por `Neither DISCORD_RELEASE_WEBHOOK_URL nor DISCORD_WEBHOOK_URL...`, configura los secretos en `Settings -> Secrets and variables -> Actions`.
+2. Si falta el secreto dedicado, configura exactamente el `DISCORD_*_WEBHOOK_URL` indicado en `docs/discord-communications.md`; no existe fallback genérico.
 3. Si fallo por `Could not find changelog section for...`, verifica que el tag coincide exactamente con el encabezado `## vX.X.X.X` de `docs/changelog.md`.
 4. Corrige y vuelve a disparar con `gh workflow run`.
 
@@ -288,13 +288,13 @@ git push origin v0.1.0.0
 
 | Sintoma | Causa probable | Solucion |
 |---------|----------------|----------|
-| `Neither DISCORD_*_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured` | No hay webhook configurado | Configura el secreto correspondiente. |
+| `dedicated Discord webhook secret is required` | No hay webhook dedicado configurado | Configura el secreto correspondiente; no uses un fallback genérico. |
 | `Discord webhook rejected the request (403)` | URL invalida o token cambiado | Verifica el webhook y actualiza el secreto. |
 | `Discord rate limited (429). Retrying after Ns...` | Muchos mensajes seguidos | El workflow reintenta; si persiste, espera minutos. |
 | `Could not fetch GitHub Release vX.Y.Z` | El tag no existe o falta `GITHUB_TOKEN` | Confirma con `gh release view`. |
 | `Release vX.Y.Z does not contain asset vantare-amd64-installer.exe` | La release no tiene los 6 assets | Revisa `Release build`. |
 | `Changelog section for vX.Y.Z is empty` | Encabezado sin contenido | Anade al menos una linea bajo `## vX.Y.Z`. |
-| Mensaje duplicado en Discord | Re-run sin idempotencia | Los workflows actuales se saltan en `run_attempt > 1`. |
+| Mensaje duplicado en Discord | Rerun o fragmento repetido | Los reruns se omiten y los fragmentos se comparan semánticamente con la revisión base. |
 
 ---
 

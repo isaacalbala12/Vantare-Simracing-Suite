@@ -26,12 +26,27 @@ jobs:
       - name: Checkout repository
         if: github.run_attempt == 1
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release belongs to master
+        if: github.run_attempt == 1
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          tag="${INPUT_TAG:-$REF_NAME}"
+          git fetch origin master --no-tags
+          tag_commit="$(git rev-list -n 1 "$tag")"
+          git merge-base --is-ancestor "$tag_commit" origin/master || {
+            echo "::error::Release tag $tag is not contained in origin/master"
+            exit 1
+          }
 
       - name: Publish changelog section to Discord
         if: github.run_attempt == 1
         env:
           DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           INPUT_TAG: ${{ inputs.tag }}
           REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA_VALUE: ${{ github.sha }}
@@ -87,9 +102,9 @@ jobs:
 
               return do_request(1)
 
-          webhook = (os.environ.get("DISCORD_RELEASE_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
+          webhook = (os.environ.get("DISCORD_RELEASE_WEBHOOK_URL") or "").strip()
           if not webhook:
-              print("Neither DISCORD_RELEASE_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
+              print("DISCORD_RELEASE_WEBHOOK_URL secret is not configured", file=sys.stderr)
               sys.exit(1)
 
           tag = (os.environ.get("INPUT_TAG") or os.environ.get("REF_NAME") or "").strip()

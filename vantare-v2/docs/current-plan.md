@@ -1,3 +1,9 @@
+Nota ISA-95 (2026-07-14):
+- Redistribución de Discord implementada en rama aislada: releases públicas desde `master`, testers desde fragmentos que alcanzan `develop`, builds beta por dispatch y desarrollo activo desde proyectos Linear con opt-in público.
+- Fuente tester: `docs/changelog/fragments/*.json`; se elimina el parser de primeras coincidencias históricas de este documento.
+- Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.
+- Plan y operación: `docs/superpowers/plans/2026-07-14-isa-95-discord-linear-communications.md` y `docs/discord-communications.md`.
+
 Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - Objetivo: reconstrucción paralela de Overlay Studio V3 (Delta, Standings, Relative, Pedals en `vantare-original` y `vantare-crystal`).
 - Autoridad: ADR `docs/adr/0003-overlay-studio-v3-rebuild.md` y plan maestro `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md` (worktree `refactor`, rama `refactor`).

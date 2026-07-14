@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-95",
+  "type": "fix",
+  "summary": "Las comunicaciones de Discord dejan de repetir estados antiguos y separan testers, desarrollo, builds beta y lanzamientos públicos.",
+  "technicalNotes": [
+    "Los cambios para testers se generan desde fragmentos estructurados y solo al llegar a develop.",
+    "El canal de desarrollo consume únicamente actualizaciones públicas y explícitas de proyectos activos en Linear."
+  ],
+  "testing": [
+    "Confirmar que una rama de issue no publica mensajes.",
+    "Validar manualmente cada workflow en su canal antes de aprobar el merge a develop."
+  ],
+  "knownLimitations": [
+    "La publicación real permanece bloqueada hasta la validación manual de los cuatro destinos."
+  ]
+}

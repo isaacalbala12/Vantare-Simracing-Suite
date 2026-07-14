@@ -66,6 +66,58 @@ describe("resizeWidgetLayout", () => {
     expect(resized.w).toBe(240);
   });
 
+  it.each(["w", "nw", "sw"] as const)(
+    "keeps the east edge anchored when %s reaches minimum width",
+    (handle) => {
+      const start = { ...startLayout(), aspectLocked: false };
+      const resized = resizeWidgetLayout({
+        startLayout: start,
+        handle,
+        pointerDelta: { dx: 180, dy: handle === "nw" ? 80 : 0 },
+        minSize: deltaCapabilities,
+        supportsAspectUnlock: true,
+      });
+
+      expect(resized.x + resized.w).toBe(start.x + start.w);
+    },
+  );
+
+  it.each(["n", "nw", "ne"] as const)(
+    "keeps the south edge anchored when %s reaches minimum height",
+    (handle) => {
+      const start = { ...startLayout(), aspectLocked: false };
+      const resized = resizeWidgetLayout({
+        startLayout: start,
+        handle,
+        pointerDelta: { dx: handle === "nw" ? 180 : 0, dy: 90 },
+        minSize: deltaCapabilities,
+        supportsAspectUnlock: true,
+      });
+
+      expect(resized.y + resized.h).toBe(start.y + start.h);
+    },
+  );
+
+  it.each(["w", "n"] as const)(
+    "keeps the opposite edge anchored for aspect-locked %s resize",
+    (handle) => {
+      const start = startLayout();
+      const resized = resizeWidgetLayout({
+        startLayout: start,
+        handle,
+        pointerDelta: { dx: 37, dy: 19 },
+        minSize: deltaCapabilities,
+        supportsAspectUnlock: false,
+      });
+
+      if (handle === "w") {
+        expect(resized.x + resized.w).toBe(start.x + start.w);
+      } else {
+        expect(resized.y + resized.h).toBe(start.y + start.h);
+      }
+    },
+  );
+
   it("never returns NaN or Infinity", () => {
     const resized = resizeWidgetLayout({
       startLayout: startLayout(),

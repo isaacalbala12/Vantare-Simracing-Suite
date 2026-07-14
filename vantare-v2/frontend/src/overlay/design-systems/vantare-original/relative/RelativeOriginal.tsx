@@ -4,7 +4,6 @@ import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-co
 import { RELATIVE_COLUMN_TEMPLATES } from "../../../widget-types/relative/relative-content";
 import {
   buildRelativeAppearanceStyle,
-  computeRelativeIntrinsicWidth,
   resolveRelativeClassColor,
   resolveRelativeGapColor,
 } from "../../../widget-types/relative/relative-renderer-helpers";
@@ -43,8 +42,6 @@ function renderCell(
 
 export function RelativeOriginal({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
   const showHeader = settings.showHeader !== false;
-  const intrinsicWidth = computeRelativeIntrinsicWidth(model.columns);
-  const fillRows = model.rowHeightMode === "fill";
 
   return (
     <section
@@ -55,8 +52,7 @@ export function RelativeOriginal({ model, settings }: WidgetRendererProps<Relati
       className="vo-relative"
       style={{
         ...buildRelativeAppearanceStyle(settings),
-        minWidth: `${intrinsicWidth}px`,
-        width: fillRows ? "100%" : `${intrinsicWidth}px`,
+        width: "100%",
       }}
     >
       {showHeader ? (

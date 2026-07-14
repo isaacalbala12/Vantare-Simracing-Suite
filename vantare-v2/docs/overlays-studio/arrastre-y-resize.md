@@ -67,12 +67,12 @@ Escape      → resetStudioFrameLayoutPreview(start) → idle
 4. **`previewActive`:** React no pisa `left/top/w/h` durante el gesto.
 5. **`.osv3-widget-frame--interacting`:** `will-change` + `translateZ(0)`.
 6. **`touch-action: none`** en `.osv3-widget-frame`.
+7. **Frame único + viewport canónico común:** `widget.layout` siempre define el frame; Studio, ProfilePreview y runtime escalan el renderer con el mismo cálculo basado en `defaultSize.width`.
 
 ### 2.3 Cuellos de botella que siguen
 
 | Cuello | Impacto | Notas |
 |--------|---------|-------|
-| **Resize** recalcula escala intrínseca | Medio-alto | `resolveWidgetIntrinsicScale` + scaler en cada frame DOM |
 | **Snap** en cada frame | Medio | `snapWidgetLayout` recorre hermanos |
 | **Varios widgets** en el perfil | Bajo-medio | Guías y canvas padre siguen actualizándose |
 | **Snapping intencional** | Bajo (UX) | Micro-saltos al enganchar — no es bug |

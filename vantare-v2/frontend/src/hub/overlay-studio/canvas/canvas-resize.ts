@@ -36,7 +36,7 @@ function resizeLockedFromWidth(
 ): { width: number; height: number } {
   const aspect = start.w / start.h;
   let nextW = Math.max(minSize.width, width);
-  let nextH = Math.max(minSize.height, Math.round(nextW / aspect));
+  const nextH = Math.max(minSize.height, Math.round(nextW / aspect));
   nextW = Math.round(nextH * aspect);
   return applyMinSize(nextW, nextH, minSize);
 }
@@ -48,7 +48,7 @@ function resizeLockedFromHeight(
 ): { width: number; height: number } {
   const aspect = start.w / start.h;
   let nextH = Math.max(minSize.height, height);
-  let nextW = Math.max(minSize.width, Math.round(nextH * aspect));
+  const nextW = Math.max(minSize.width, Math.round(nextH * aspect));
   nextH = Math.round(nextW / aspect);
   return applyMinSize(nextW, nextH, minSize);
 }
@@ -143,6 +143,13 @@ export function resizeWidgetLayout(input: ResizeInput): WidgetLayoutV3 {
       }
       break;
     }
+  }
+
+  if (input.handle === "w" || input.handle === "nw" || input.handle === "sw") {
+    x = start.x + start.w - w;
+  }
+  if (input.handle === "n" || input.handle === "nw" || input.handle === "ne") {
+    y = start.y + start.h - h;
   }
 
   return {

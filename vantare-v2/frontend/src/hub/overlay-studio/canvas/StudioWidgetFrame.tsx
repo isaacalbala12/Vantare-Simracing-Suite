@@ -9,11 +9,10 @@ import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../../overlay/core/pro
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
+import { WidgetVisualViewport } from "../../../overlay/core/WidgetVisualViewport";
 import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ResizeHandle } from "./canvas-resize";
-import { getStudioFramePreviewKind } from "./canvas-frame-preview";
-import { resolveStudioWidgetFrameGeometry, resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
 import { useStudioTelemetryCoordinator } from "./StudioTelemetryProvider";
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
@@ -66,10 +65,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   const rateLimitedSnapshot = useRateLimitedTelemetry(coordinator, widget.behavior.updateHz);
   const snapshot = snapshotOverride ?? rateLimitedSnapshot;
   const frameRef = useRef<HTMLDivElement>(null);
-  const rawFrameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
-  const previewKind = previewActive ? getStudioFramePreviewKind(widget.id) : undefined;
-  const frameGeometry = resolveStudioWidgetFrameGeometry(widget, previewKind, rawFrameGeometry);
-  const intrinsic = resolveWidgetIntrinsicScale(frameGeometry, widget);
+  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
 
   useLayoutEffect(() => {
     registerStudioFrameElement(widget.id, frameRef.current);
@@ -152,15 +148,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
           ))
         : null}
       <div data-testid={`studio-widget-visual-${widget.id}`} className="osv3-widget-frame__visual">
-        <div
-          data-testid={`studio-widget-intrinsic-scaler-${widget.id}`}
-          className="osv3-widget-frame__scaler"
-          style={{
-            width: intrinsic.baseSize.width,
-            height: intrinsic.baseSize.height,
-            transform: `scale(${intrinsic.scale})`,
-            transformOrigin: "top left",
-          }}
+        <WidgetVisualViewport
+          widgetType={widget.type}
+          layout={frameGeometry}
+          testId={`studio-widget-viewport-${widget.id}`}
         >
           <MemoWidgetVisualHost
             widget={widget}
@@ -168,7 +159,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
             renderMode="studio"
             diagnostics={diagnostics}
           />
-        </div>
+        </WidgetVisualViewport>
       </div>
     </div>
   );

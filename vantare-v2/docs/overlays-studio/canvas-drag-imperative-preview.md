@@ -159,4 +159,20 @@ pnpm --dir frontend test -- canvas-frame-preview.test.ts useCanvasInteraction.te
 
 ---
 
-*Última actualización: 2026-07-10.*
+## 9. Una sola geometría visual (2026-07-14)
+
+El rectángulo persistido en `widget.layout` es también el frame visual en Studio, en la preview de perfiles y en runtime. No debe existir una normalización del frame derivada del contenido.
+
+El contenido se renderiza en una capa de coordenadas canónicas común (`WidgetVisualViewport`), cuya anchura base procede de `defaultSize.width`. La escala depende únicamente de `layout.w`; la altura lógica se deriva de `layout.h / scale`. Así, un resize proporcional escala tipografía y composición completas sin modificar el frame ni depender del contenido.
+
+Durante un gesto, `canvas-frame-preview.ts` modifica `left`, `top`, `width`, `height`, el `translate` transitorio del **frame** y la geometría de ese viewport común. No puede introducir una escala exclusiva de Studio: ProfilePreview y runtime deben usar exactamente el mismo cálculo.
+
+Tests que protegen este contrato:
+
+- `StudioWidgetFrame.test.tsx`: los 12 tipos registrados conservan exactamente el frame `w/h` y escalan desde una anchura canónica estable.
+- `ProfilePreview.test.tsx` y `RuntimeWidgetFrame.test.tsx`: usan el mismo viewport y cálculo.
+- `canvas-frame-preview.test.ts`: la capa imperativa no conoce contenido; solo frame y anchura base declarada por el viewport.
+
+---
+
+*Última actualización: 2026-07-14.*

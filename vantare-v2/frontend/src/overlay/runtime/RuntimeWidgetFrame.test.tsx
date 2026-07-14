@@ -46,4 +46,20 @@ describe("RuntimeWidgetFrame", () => {
     expect(view.container.querySelector('[data-widget-system="vantare-original"]')).toBeTruthy();
     coordinator.dispose();
   });
+
+  it("scales widget content proportionally when the persisted frame grows", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const widget = deltaDefinition.createDefault("delta-scaled");
+    widget.layout = { ...widget.layout, w: 560, h: 192 };
+
+    const view = render(
+      <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="desktop" />,
+    );
+
+    const viewport = view.getByTestId("runtime-widget-viewport-delta-scaled") as HTMLElement;
+    expect(viewport.style.width).toBe("280px");
+    expect(viewport.style.height).toBe("96px");
+    expect(viewport.style.transform).toBe("scale(2)");
+    coordinator.dispose();
+  });
 });

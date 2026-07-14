@@ -5,6 +5,7 @@ import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { relativeDefinition } from "../../../overlay/widget-types/relative/relative-definition";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioCanvas } from "./StudioCanvas";
@@ -148,6 +149,100 @@ describe("applyResizePreview", () => {
     expect(preview.layout.w).toBeGreaterThanOrEqual(120);
     expect(preview.layout.h).toBeGreaterThanOrEqual(48);
   });
+
+  it("does not move fixed edges when resize snapping is enabled", () => {
+    const widget = deltaDefinition.createDefault("delta-main");
+    const start = {
+      ...widget.layout,
+      x: 103,
+      y: 107,
+    };
+    const preview = applyResizePreview({
+      widget,
+      start,
+      handle: "se",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 101, y: 39 },
+      siblings: [],
+      disableSnap: false,
+    });
+
+    expect(preview.layout.x).toBe(start.x);
+    expect(preview.layout.y).toBe(start.y);
+  });
+
+  it("snaps the dragged resize edge instead of the widget origin", () => {
+    const widget = relativeDefinition.createDefault("relative-main");
+    const start = {
+      ...widget.layout,
+      x: 100,
+      y: 100,
+      w: 430,
+      h: 300,
+      aspectLocked: false,
+    };
+    const snapped = applyResizePreview({
+      widget,
+      start,
+      handle: "e",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 3, y: 0 },
+      siblings: [],
+      disableSnap: false,
+    });
+    const unsnapped = applyResizePreview({
+      widget,
+      start,
+      handle: "e",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 3, y: 0 },
+      siblings: [],
+      disableSnap: true,
+    });
+
+    expect(snapped.layout.x).toBe(start.x);
+    expect(snapped.layout.x + snapped.layout.w).toBe(536);
+    expect(snapped.guides).toContainEqual({ orientation: "vertical", position: 536, kind: "grid" });
+    expect(unsnapped.layout.x + unsnapped.layout.w).toBe(533);
+    expect(unsnapped.guides).toEqual([]);
+  });
+
+  it.each(["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const)(
+    "preserves fixed edges while snapping unlocked %s resize",
+    (handle) => {
+      const widget = relativeDefinition.createDefault("relative-main");
+      const start = {
+        ...widget.layout,
+        x: 103,
+        y: 107,
+        w: 430,
+        h: 300,
+        aspectLocked: false,
+      };
+      const preview = applyResizePreview({
+        widget,
+        start,
+        handle,
+        pointerOrigin: { x: 0, y: 0 },
+        pointerCurrent: { x: 13, y: 11 },
+        siblings: [],
+        disableSnap: false,
+      });
+
+      if (!handle.includes("w")) {
+        expect(preview.layout.x).toBe(start.x);
+      } else {
+        expect(preview.layout.x + preview.layout.w).toBe(start.x + start.w);
+      }
+      if (!handle.includes("n")) {
+        expect(preview.layout.y).toBe(start.y);
+      } else {
+        expect(preview.layout.y + preview.layout.h).toBe(start.y + start.h);
+      }
+      expect(Number.isFinite(preview.layout.w)).toBe(true);
+      expect(Number.isFinite(preview.layout.h)).toBe(true);
+    },
+  );
 });
 
 describe("useCanvasInteraction", () => {
@@ -277,17 +372,18 @@ describe("useCanvasInteraction", () => {
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
     mockSceneRect();
 
-    const scaler = screen.getByTestId("studio-widget-intrinsic-scaler-delta-main");
-
     pointerDownFrame();
-    scaler.style.transform = "scale(1.5)";
     pointerUp();
 
     await waitFor(() =>
       expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle"),
     );
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
-    expect(scaler.style.transform).toBe("scale(1.5)");
+    const frame = screen.getByTestId("studio-widget-frame-delta-main");
+    const viewport = screen.getByTestId("studio-widget-viewport-delta-main");
+    expect(frame.style.width).toBe("280px");
+    expect(frame.style.height).toBe("96px");
+    expect(viewport.style.transform).toBe("scale(1)");
   });
 
   it("restores geometry and skips dispatch when Escape is pressed", async () => {
@@ -364,9 +460,9 @@ describe("useCanvasInteraction", () => {
     await waitFor(() => {
       const frame = screen.getByTestId("studio-widget-frame-delta-main");
       expect(Number.parseFloat(frame.style.width)).toBeGreaterThan(280);
-      const scaler = screen.getByTestId("studio-widget-intrinsic-scaler-delta-main");
-      const scale = Number.parseFloat(scaler.style.transform.replace("scale(", "").replace(")", ""));
-      expect(scale).toBeGreaterThan(0.9);
+      expect(Number.parseFloat(frame.style.height)).toBeGreaterThan(96);
+      const viewport = screen.getByTestId("studio-widget-viewport-delta-main");
+      expect(Number.parseFloat(viewport.style.transform.slice(6, -1))).toBeGreaterThan(1);
     });
     fireEvent.pointerUp(window, { pointerId: 2, bubbles: true });
 
@@ -397,8 +493,8 @@ describe("useCanvasInteraction", () => {
       expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle");
       expect(screen.getByTestId("studio-widget-frame-delta-main").style.width).toBe("280px");
     });
-    expect(screen.getByTestId("studio-widget-intrinsic-scaler-delta-main").style.transform).toBe("scale(1)");
     expect(screen.queryByTestId("studio-canvas-guides")).toBeNull();
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+    expect(screen.getByTestId("studio-widget-viewport-delta-main").style.transform).toBe("scale(1)");
   });
 });

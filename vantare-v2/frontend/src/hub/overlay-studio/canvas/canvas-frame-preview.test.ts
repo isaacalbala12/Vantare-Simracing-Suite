@@ -10,31 +10,30 @@ import {
   resolveStudioFrameGeometry,
   studioFrameTestId,
 } from "./canvas-frame-preview";
-import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
-import { resolveWidgetIntrinsicScale } from "./widget-intrinsic-scale";
+import { relativeDefinition } from "../../../overlay/widget-types/relative/relative-definition";
 
 const layout = { x: 120, y: 80, w: 280, h: 96, zIndex: 0, aspectLocked: true };
 const start = { x: 100, y: 100, w: 280, h: 96, zIndex: 0, aspectLocked: true };
-const deltaWidget = deltaDefinition.createDefault("delta-main");
 
 afterEach(() => {
   document.body.innerHTML = "";
   clearStudioFrameLayoutPreview("delta-main");
 });
 
-function mountFrameWithScaler(): HTMLElement {
+function mountFrame(): HTMLElement {
   const frame = document.createElement("div");
   frame.dataset.testid = studioFrameTestId("delta-main");
-  const scaler = document.createElement("div");
-  scaler.dataset.testid = "studio-widget-intrinsic-scaler-delta-main";
-  frame.append(scaler);
+  const viewport = document.createElement("div");
+  viewport.dataset.widgetVisualViewport = "true";
+  viewport.dataset.widgetVisualBaseWidth = "280";
+  frame.append(viewport);
   document.body.append(frame);
   return frame;
 }
 
 describe("canvas-frame-preview", () => {
   it("tracks the latest preview layout per widget id", () => {
-    beginStudioFramePreview("delta-main", "resize", layout, deltaWidget);
+    beginStudioFramePreview("delta-main", "resize", layout);
     applyStudioFrameLayoutPreview("delta-main", layout);
     expect(getStudioFrameLayoutPreview("delta-main")).toEqual(layout);
     clearStudioFrameLayoutPreview("delta-main");
@@ -42,9 +41,9 @@ describe("canvas-frame-preview", () => {
   });
 
   it("writes geometry directly to the frame element on resize", () => {
-    mountFrameWithScaler();
+    mountFrame();
 
-    beginStudioFramePreview("delta-main", "resize", layout, deltaWidget);
+    beginStudioFramePreview("delta-main", "resize", layout);
     applyStudioFrameLayoutPreview("delta-main", layout);
 
     const element = findStudioFrameElement("delta-main");
@@ -55,23 +54,22 @@ describe("canvas-frame-preview", () => {
     expect(element?.style.transform).toBe("");
   });
 
-  it("updates intrinsic scaler transform during resize preview", () => {
-    mountFrameWithScaler();
+  it("updates the canonical visual scale during imperative resize", () => {
+    const frame = mountFrame();
+    beginStudioFramePreview("delta-main", "resize", layout);
 
-    beginStudioFramePreview("delta-main", "resize", start, deltaWidget);
-    const resized = { ...start, w: 420, h: 144 };
-    applyStudioFrameLayoutPreview("delta-main", resized);
+    applyStudioFrameLayoutPreview("delta-main", { ...layout, w: 560, h: 192 });
 
-    const element = findStudioFrameElement("delta-main");
-    const scaler = element?.querySelector<HTMLElement>('[data-testid="studio-widget-intrinsic-scaler-delta-main"]');
-    const expected = resolveWidgetIntrinsicScale(resized, deltaWidget).scale;
-    expect(scaler?.style.transform).toBe(`scale(${expected})`);
+    const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
+    expect(viewport?.style.width).toBe("280px");
+    expect(viewport?.style.height).toBe("96px");
+    expect(viewport?.style.transform).toBe("scale(2)");
   });
 
   it("keeps start geometry and applies transform delta on move", () => {
-    mountFrameWithScaler();
+    mountFrame();
 
-    beginStudioFramePreview("delta-main", "move", start, deltaWidget);
+    beginStudioFramePreview("delta-main", "move", start);
     applyStudioFrameLayoutPreview("delta-main", { ...start, x: 140, y: 130 });
 
     const element = findStudioFrameElement("delta-main");
@@ -80,50 +78,36 @@ describe("canvas-frame-preview", () => {
     expect(element?.style.transform).toBe("translate(40px, 30px)");
   });
 
-  it("does not clear the committed scaler transform when a move preview ends", () => {
-    const frame = mountFrameWithScaler();
-    const scaler = frame.querySelector<HTMLElement>('[data-testid="studio-widget-intrinsic-scaler-delta-main"]');
-    expect(scaler).toBeTruthy();
-    scaler!.style.transform = "scale(1.5)";
+  it("keeps document frame dimensions while moving", () => {
+    mountFrame();
+    const widget = relativeDefinition.createDefault("delta-main");
+    const rawStart = { ...widget.layout, x: 100, y: 100, w: 430, h: 300, aspectLocked: true };
+    beginStudioFramePreview("delta-main", "move", rawStart);
+    applyStudioFrameLayoutPreview("delta-main", { ...rawStart, x: 140, y: 130 });
 
-    beginStudioFramePreview("delta-main", "move", start, deltaWidget);
-    applyStudioFrameLayoutPreview("delta-main", start);
-    clearStudioFrameLayoutPreview("delta-main");
-
-    expect(scaler?.style.transform).toBe("scale(1.5)");
+    const frame = findStudioFrameElement("delta-main");
+    expect(frame?.style.width).toBe("430px");
+    expect(frame?.style.height).toBe("300px");
   });
 
   it("clears cached preview layout on reset", () => {
-    beginStudioFramePreview("delta-main", "resize", layout, deltaWidget);
+    beginStudioFramePreview("delta-main", "resize", layout);
     applyStudioFrameLayoutPreview("delta-main", layout);
     resetStudioFrameLayoutPreview("delta-main", layout);
     expect(getStudioFrameLayoutPreview("delta-main")).toBeUndefined();
   });
 
-  it("restores the intrinsic scaler transform when resize preview is reset", () => {
-    const frame = mountFrameWithScaler();
-    const scaler = frame.querySelector<HTMLElement>('[data-testid="studio-widget-intrinsic-scaler-delta-main"]');
-    const scaledStart = { ...start, w: 420, h: 180 };
-    const scaledPreview = { ...scaledStart, w: 520, h: 223 };
-
-    beginStudioFramePreview("delta-main", "resize", scaledStart, deltaWidget);
-    applyStudioFrameLayoutPreview("delta-main", scaledPreview);
-    resetStudioFrameLayoutPreview("delta-main", scaledStart);
-
-    expect(scaler?.style.transform).toBe("scale(1.5)");
-  });
-
   it("prefers registered frame refs over querySelector", () => {
     const registered = document.createElement("div");
     registerStudioFrameElement("delta-main", registered);
-    beginStudioFramePreview("delta-main", "resize", layout, deltaWidget);
+    beginStudioFramePreview("delta-main", "resize", layout);
     applyStudioFrameLayoutPreview("delta-main", layout);
     expect(registered.style.left).toBe("120px");
     registerStudioFrameElement("delta-main", null);
   });
 
   it("resolves start geometry from cache during move preview", () => {
-    beginStudioFramePreview("delta-main", "move", start, deltaWidget);
+    beginStudioFramePreview("delta-main", "move", start);
     applyStudioFrameLayoutPreview("delta-main", { ...start, x: 140, y: 130 });
     const committed = { ...start, x: 10, y: 10 };
     expect(resolveStudioFrameGeometry("delta-main", committed, true)).toEqual(start);
@@ -131,7 +115,7 @@ describe("canvas-frame-preview", () => {
   });
 
   it("resolves preview geometry from cache during resize preview", () => {
-    beginStudioFramePreview("delta-main", "resize", layout, deltaWidget);
+    beginStudioFramePreview("delta-main", "resize", layout);
     applyStudioFrameLayoutPreview("delta-main", layout);
     const committed = { ...layout, x: 10, y: 10 };
     expect(resolveStudioFrameGeometry("delta-main", committed, true)).toEqual(layout);

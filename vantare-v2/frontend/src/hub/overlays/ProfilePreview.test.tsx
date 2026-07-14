@@ -44,6 +44,18 @@ describe("ProfilePreview", () => {
     expect(screen.getByTestId("profile-preview-frame-relative")).toBeTruthy();
   });
 
+  it("scales content from a stable canonical width inside the document frame", () => {
+    render(<ProfilePreview profile={profile} />);
+
+    const relativeFrame = screen.getByTestId("profile-preview-frame-relative");
+    expect(relativeFrame.style.width).toBe("320px");
+    expect(relativeFrame.style.height).toBe("280px");
+    const viewport = screen.getByTestId("profile-preview-viewport-relative");
+    expect(viewport.style.width).toBe("430px");
+    expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(376.25, 5);
+    expect(viewport.style.transform).toBe(`scale(${320 / 430})`);
+  });
+
   it("renders when ResizeObserver is unavailable", () => {
     const originalResizeObserver = window.ResizeObserver;
     Object.defineProperty(window, "ResizeObserver", {

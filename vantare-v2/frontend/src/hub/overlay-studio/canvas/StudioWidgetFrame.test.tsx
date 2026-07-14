@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
 import { StudioProvider } from "../state/studio-store";
@@ -139,4 +140,54 @@ describe("StudioWidgetFrame", () => {
 
     expect(WidgetVisualHost).toHaveBeenCalled();
   });
+
+  it.each(widgetTypeRegistry.list())(
+    "scales unlocked $type content from a stable canonical width",
+    (definition) => {
+      const widget = definition.createDefault(`${definition.type}-main`);
+      widget.layout = {
+        ...widget.layout,
+        w: 500,
+        h: 180,
+        aspectLocked: false,
+      };
+
+      renderFrame(widget);
+
+      const frame = screen.getByTestId(`studio-widget-frame-${definition.type}-main`);
+      const viewport = screen.getByTestId(`studio-widget-viewport-${definition.type}-main`);
+      const expectedScale = 500 / definition.capabilities.defaultSize.width;
+      expect(frame.style.width).toBe("500px");
+      expect(frame.style.height).toBe("180px");
+      expect(screen.getByTestId(`studio-widget-visual-${definition.type}-main`)).toBeTruthy();
+      expect(viewport.style.width).toBe(`${definition.capabilities.defaultSize.width}px`);
+      expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(180 / expectedScale, 5);
+      expect(viewport.style.transform).toBe(`scale(${expectedScale})`);
+    },
+  );
+
+  it.each(widgetTypeRegistry.list())(
+    "scales locked $type content without changing the document frame",
+    (definition) => {
+      const widget = definition.createDefault(`${definition.type}-locked`);
+      widget.layout = {
+        ...widget.layout,
+        w: 500,
+        h: 180,
+        aspectLocked: true,
+      };
+
+      renderFrame(widget);
+
+      const frame = screen.getByTestId(`studio-widget-frame-${definition.type}-locked`);
+      const viewport = screen.getByTestId(`studio-widget-viewport-${definition.type}-locked`);
+      const expectedScale = 500 / definition.capabilities.defaultSize.width;
+      expect(frame.style.width).toBe("500px");
+      expect(frame.style.height).toBe("180px");
+      expect(screen.getByTestId(`studio-widget-visual-${definition.type}-locked`)).toBeTruthy();
+      expect(viewport.style.width).toBe(`${definition.capabilities.defaultSize.width}px`);
+      expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(180 / expectedScale, 5);
+      expect(viewport.style.transform).toBe(`scale(${expectedScale})`);
+    },
+  );
 });

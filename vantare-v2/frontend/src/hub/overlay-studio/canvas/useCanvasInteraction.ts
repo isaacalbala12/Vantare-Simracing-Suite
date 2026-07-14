@@ -19,7 +19,7 @@ import {
   type Point,
 } from "./canvas-geometry";
 import { resizeWidgetLayout, type ResizeHandle } from "./canvas-resize";
-import { snapWidgetLayout, type SnapGuide } from "./canvas-snap";
+import { snapPoint, snapWidgetLayout, type SnapGuide } from "./canvas-snap";
 
 export type CanvasInteraction =
   | { kind: "idle" }
@@ -141,8 +141,19 @@ function toPublicInteraction(current: CanvasInteractionRef): CanvasInteraction {
   if (current.kind === "idle") {
     return current;
   }
-  const { preview: _preview, ...interaction } = current;
-  return interaction;
+  const interaction = {
+    widgetId: current.widgetId,
+    pointerId: current.pointerId,
+    pointerOrigin: current.pointerOrigin,
+    sceneRect: current.sceneRect,
+    scale: current.scale,
+    start: current.start,
+    guides: current.guides,
+  };
+  if (current.kind === "move") {
+    return { ...interaction, kind: "move" };
+  }
+  return { ...interaction, kind: "resize", handle: current.handle };
 }
 
 export function applyMovePreview(input: {
@@ -177,22 +188,61 @@ export function applyResizePreview(input: {
   disableSnap: boolean;
 }): { layout: WidgetLayoutV3; guides: SnapGuide[] } {
   const definition = widgetTypeRegistry.get(input.widget.type);
-  const resized = resizeWidgetLayout({
+  const pointerDelta = {
+    dx: input.pointerCurrent.x - input.pointerOrigin.x,
+    dy: input.pointerCurrent.y - input.pointerOrigin.y,
+  };
+  const resize = (delta: { dx: number; dy: number }) => resizeWidgetLayout({
     startLayout: input.start,
     handle: input.handle,
-    pointerDelta: {
-      dx: input.pointerCurrent.x - input.pointerOrigin.x,
-      dy: input.pointerCurrent.y - input.pointerOrigin.y,
-    },
+    pointerDelta: delta,
     minSize: definition.capabilities.minimumSize,
     supportsAspectUnlock: definition.capabilities.supportsAspectUnlock,
   });
-  const snapped = snapWidgetLayout({
-    layout: clampRecoverableLayout(resized),
+
+  const resized = resize(pointerDelta);
+  if (input.disableSnap) {
+    return { layout: clampRecoverableLayout(resized), guides: [] };
+  }
+
+  const movesWest = input.handle === "w" || input.handle === "nw" || input.handle === "sw";
+  const movesEast = input.handle === "e" || input.handle === "ne" || input.handle === "se";
+  const movesNorth = input.handle === "n" || input.handle === "nw" || input.handle === "ne";
+  const movesSouth = input.handle === "s" || input.handle === "sw" || input.handle === "se";
+  const locksAspect = input.start.aspectLocked || !definition.capabilities.supportsAspectUnlock;
+
+  const edgePoint = {
+    x: movesWest ? resized.x : movesEast ? resized.x + resized.w : input.start.x,
+    y: movesNorth ? resized.y : movesSouth ? resized.y + resized.h : input.start.y,
+  };
+  const snappedEdge = snapPoint(edgePoint, {
+    size: { w: 0, h: 0 },
     siblings: input.siblings,
-    disableSnap: input.disableSnap,
+    disableSnap: false,
   });
-  return { layout: snapped.layout, guides: snapped.guides };
+
+  const snappedDelta = { ...pointerDelta };
+  if (movesWest) {
+    snappedDelta.dx = snappedEdge.layout.x - input.start.x;
+  } else if (movesEast) {
+    snappedDelta.dx = snappedEdge.layout.x - (input.start.x + input.start.w);
+  }
+  if (!locksAspect || (!movesWest && !movesEast)) {
+    if (movesNorth) {
+      snappedDelta.dy = snappedEdge.layout.y - input.start.y;
+    } else if (movesSouth) {
+      snappedDelta.dy = snappedEdge.layout.y - (input.start.y + input.start.h);
+    }
+  }
+
+  const guides = snappedEdge.guides.filter((guide) => {
+    if (guide.orientation === "vertical") {
+      return movesWest || movesEast;
+    }
+    return (movesNorth || movesSouth) && (!locksAspect || (!movesWest && !movesEast));
+  });
+
+  return { layout: clampRecoverableLayout(resize(snappedDelta)), guides };
 }
 
 export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanvasInteractionResult {
@@ -405,7 +455,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
-    beginStudioFramePreview(widgetId, "move", start, widget);
+    beginStudioFramePreview(widgetId, "move", start);
     applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({
@@ -457,7 +507,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       sceneRect,
     );
     const start = structuredClone(widget.layout);
-    beginStudioFramePreview(widgetId, "resize", start, widget);
+    beginStudioFramePreview(widgetId, "resize", start);
     applyStudioFrameLayoutPreview(widgetId, start);
 
     setInteractionState({

@@ -3,7 +3,6 @@ import type { WidgetRendererProps } from "../../../core/design-system-definition
 import { CrystalBrand, CrystalFooter, CrystalPill } from "../crystal-primitives";
 import {
   buildRelativeAppearanceStyle,
-  computeRelativeIntrinsicWidth,
   resolveRelativeClassColor,
   resolveRelativeGapColor,
 } from "../../../widget-types/relative/relative-renderer-helpers";
@@ -36,8 +35,6 @@ function renderCell(
 
 export function RelativeCrystal({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
   const showHeader = settings.showHeader !== false;
-  const intrinsicWidth = computeRelativeIntrinsicWidth(model.columns);
-  const fillRows = model.rowHeightMode === "fill";
   const canonicalColumns = model.columns.filter((column) =>
     ["position", "class", "carNumber", "driverName", "gap", "bestLap"].includes(column.metricId),
   );
@@ -51,8 +48,7 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
       className="vc-relative"
       style={{
         ...buildRelativeAppearanceStyle(settings),
-        minWidth: `${intrinsicWidth}px`,
-        width: fillRows ? "100%" : `${intrinsicWidth}px`,
+        width: "100%",
       }}
     >
       <div className="vc-relative-frame">

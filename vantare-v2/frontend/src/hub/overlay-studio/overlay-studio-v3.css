@@ -854,10 +854,6 @@
   pointer-events: none;
 }
 
-.osv3-widget-frame__scaler {
-  pointer-events: none;
-}
-
 .osv3-resize-handle {
   position: absolute;
   z-index: 4;

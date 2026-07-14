@@ -5,7 +5,6 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildMockTelemetry } from "../../../core/mock-scenarios";
 import { createDefaultRelativeContent } from "../../../widget-types/relative/relative-content";
-import { computeRelativeIntrinsicWidth } from "../../../widget-types/relative/relative-renderer-helpers";
 import { buildRelativeViewModel } from "../../../widget-types/relative/relative-view-model";
 import type { RelativeViewModel } from "../../../widget-types/relative/relative-view-model";
 import { RelativeCrystal } from "./RelativeCrystal";
@@ -127,10 +126,10 @@ describe("RelativeCrystal", () => {
     expect(root.style.width).toBe("100%");
   });
 
-  it("sets intrinsic minimum width from enabled columns", () => {
+  it("fills the frame without overriding the canvas minimum width", () => {
     const { root } = renderCrystal(readyModel);
-    const expected = `${computeRelativeIntrinsicWidth(readyModel.columns)}px`;
-    expect(root.style.minWidth).toBe(expected);
+    expect(root.style.minWidth).toBe("");
+    expect(root.style.width).toBe("100%");
   });
 
   it("shows deterministic unavailable presentations", () => {

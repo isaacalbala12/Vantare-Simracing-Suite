@@ -3,7 +3,7 @@ import type { ProfileConfig } from "../../lib/profile";
 import { buildMockTelemetry } from "../../overlay/core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../../overlay/core/profile-document";
 import { WidgetVisualHost } from "../../overlay/core/WidgetVisualHost";
-import { resolveWidgetIntrinsicScale } from "../overlay-studio/canvas/widget-intrinsic-scale";
+import { WidgetVisualViewport } from "../../overlay/core/WidgetVisualViewport";
 import { resolveProfilePreviewDocument } from "./profile-preview-document";
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
@@ -92,7 +92,6 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
           }}
         />
         {widgets.map((widget) => {
-          const intrinsic = resolveWidgetIntrinsicScale(widget.layout, widget);
           const { x, y, w, h, zIndex } = widget.layout;
 
           return (
@@ -109,20 +108,17 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
                 pointerEvents: "none",
               }}
             >
-              <div
-                style={{
-                  width: intrinsic.baseSize.width,
-                  height: intrinsic.baseSize.height,
-                  transform: `scale(${intrinsic.scale})`,
-                  transformOrigin: "top left",
-                }}
+              <WidgetVisualViewport
+                widgetType={widget.type}
+                layout={widget.layout}
+                testId={`profile-preview-viewport-${widget.id}`}
               >
                 <MemoWidgetVisualHost
                   widget={widget}
                   snapshot={PREVIEW_SNAPSHOT}
                   renderMode="harness"
                 />
-              </div>
+              </WidgetVisualViewport>
             </div>
           );
         })}

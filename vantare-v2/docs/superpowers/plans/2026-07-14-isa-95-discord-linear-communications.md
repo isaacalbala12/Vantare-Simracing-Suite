@@ -8,7 +8,7 @@
 
 **Tech Stack:** GitHub Actions YAML, Python 3 standard library, `unittest`, Linear GraphQL, Discord webhooks.
 
-**Execution status:** Core routing completed on the issue branch. On 2026-07-15 the presentation was extended with native embeds and an HTML-rendered development card. Automated checks and local Chrome rendering pass; the new attachment POST and integration into `develop` remain behind Isaac's manual approval.
+**Execution status:** Core routing completed on the issue branch. On 2026-07-15 all four lanes were extended with accessible native embeds and dedicated HTML-rendered cards built from one Vantare visual language. Automated checks and local Chrome rendering cover Release, Testers, Development and Build; real attachment POSTs and integration remain behind Isaac's manual approval.
 
 ---
 
@@ -76,6 +76,16 @@
 - [ ] Review trigger, branch, secret and channel mappings adversarially.
 - [ ] Commit in small conventional commits, push the issue branch, create a draft PR against `refactor`, and move ISA-95 to `In Review`.
 - [ ] Do not merge. Manual validation in Discord remains an explicit Isaac gate before `develop`.
+
+## Task 7: Shared visual communication system
+
+- [x] Keep native embeds as the accessible source of truth.
+- [x] Generate dedicated 1200×630 HTML cards for Release, Testers, Development and Build.
+- [x] Reuse the Vantare black/red material, typography, grid and Chrome capture contract.
+- [x] Attach a stable PNG filename per audience and keep download/project/release links in the embed.
+- [x] Fail before publishing when Chrome or the PNG artifact is unavailable.
+- [x] Cover renderer escaping, Discord attachment names, workflow wiring and payload contracts with unit tests.
+- [ ] Execute one real manual dispatch per lane and obtain Isaac's visual approval.
 
 ## Rollback
 

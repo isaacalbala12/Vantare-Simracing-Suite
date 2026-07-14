@@ -25,7 +25,7 @@ jobs:
             --html-output "$RUNNER_TEMP/vantare-development.html" \
             > "$RUNNER_TEMP/development-payload-preview.json"
 
-      - name: Render Vantare development card
+      - name: render-discord-card
         run: |
           command -v google-chrome >/dev/null 2>&1 || {
             echo "::error::google-chrome is required to render the deterministic Discord card"

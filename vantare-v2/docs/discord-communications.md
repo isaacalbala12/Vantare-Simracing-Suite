@@ -35,15 +35,26 @@ Texto profesional y apto para publicación.
 
 Todo texto anterior a la marca se considera interno. Los proyectos publicables se declaran explícitamente en `docs/discord-development-projects.json`; sin una actualización marcada se muestra solo nombre, progreso, URL y un texto neutro. Los proyectos no autorizados, terminados o pausados no aparecen. El workflow no modifica Linear.
 
-La presentación es híbrida y determinista:
+## Sistema visual compartido
+
+Los cuatro canales usan una presentación híbrida y determinista:
 
 - un embed nativo conserva texto seleccionable, enlaces y accesibilidad;
-- una tarjeta 1200×630 se genera desde HTML con el lenguaje visual de Vantare;
+- una tarjeta 1200×630 se genera desde HTML con el lenguaje visual de Vantare y contenido específico para cada audiencia;
 - Chrome captura el HTML dentro del runner, sin servicios de IA ni dependencias nuevas;
-- el PNG se adjunta al mismo POST y el embed lo referencia mediante `attachment://vantare-development.png`;
+- el PNG se adjunta al mismo POST y el embed lo referencia mediante un nombre estable por canal;
 - si no puede generarse la tarjeta, el workflow falla antes de publicar y no envía un mensaje parcial.
 
-La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, superficies translúcidas, Inter, mono técnico, bordes finos y jerarquía sobria. La tarjeta no reproduce la navegación de la app; adapta ese sistema a tres proyectos legibles en Discord.
+La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, superficies translúcidas, Inter, mono técnico, bordes finos y jerarquía sobria. Las tarjetas no reproducen la navegación de la app.
+
+| Canal | Tarjeta | Contenido visual |
+|---|---|---|
+| Release | `vantare-release.png` | Versión estable y tres novedades principales del changelog canónico. |
+| Testers | `vantare-testers.png` | Build candidata, cambios visibles y comprobación principal. |
+| Desarrollo | `vantare-development.png` | Tres proyectos autorizados de Linear con progreso. |
+| Build beta | `vantare-build.png` | Versión beta, validación solicitada e integridad SHA-256. |
+
+El embed siempre conserva el contenido completo, enlaces, checksum y contexto técnico. La imagen resume; nunca es la única fuente de información. Los cuatro workflows fallan antes del POST si Chrome no genera un PNG no vacío.
 
 ## Gates
 
@@ -57,4 +68,4 @@ La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, 
 
 El 2026-07-14 se verificaron en GitHub Actions los cuatro destinos con la versión pública vigente `v0.1.0.2`: release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`.
 
-La extensión visual del 2026-07-15 se validó localmente con tests, dry-run y captura real de Chrome. El POST con imagen al canal de desarrollo permanece pendiente de validación manual antes de integrar.
+La extensión visual del 2026-07-15 se validó localmente con tests, dry-run y captura real de Chrome para las cuatro tarjetas. Los POST reales de las nuevas imágenes permanecen pendientes de validación manual antes de integrar.

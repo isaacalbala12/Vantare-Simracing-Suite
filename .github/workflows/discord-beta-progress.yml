@@ -48,14 +48,31 @@ jobs:
           fi
           echo "publish=true" >> "$GITHUB_OUTPUT"
 
-      - name: Publish tester update
+      - name: Build accessible tester payload and HTML card
+        if: steps.fragments.outputs.publish == 'true'
+        run: |
+          args=()
+          while IFS= read -r file; do args+=(--fragment "$file"); done < "$RUNNER_TEMP/tester-fragments.txt"
+          python .github/scripts/discord_communications.py testers --dry-run --revision "$GITHUB_SHA" \
+            --html-output "$RUNNER_TEMP/vantare-testers.html" "${args[@]}" > "$RUNNER_TEMP/testers-payload-preview.json"
+
+      - name: render-discord-card
+        if: steps.fragments.outputs.publish == 'true'
+        run: |
+          command -v google-chrome >/dev/null 2>&1 || { echo "::error::google-chrome is required"; exit 1; }
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-testers.png" "file://$RUNNER_TEMP/vantare-testers.html"
+          test -s "$RUNNER_TEMP/vantare-testers.png"
+
+      - name: Publish tester card and accessible update
         if: steps.fragments.outputs.publish == 'true'
         env:
           DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
         run: |
           args=()
           while IFS= read -r file; do args+=(--fragment "$file"); done < "$RUNNER_TEMP/tester-fragments.txt"
-          python .github/scripts/discord_communications.py testers --revision "$GITHUB_SHA" "${args[@]}"
+          python .github/scripts/discord_communications.py testers --revision "$GITHUB_SHA" \
+            --image "$RUNNER_TEMP/vantare-testers.png" "${args[@]}"
 
       - name: Nothing to publish
         if: steps.fragments.outputs.publish != 'true'

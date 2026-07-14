@@ -49,6 +49,17 @@ class FragmentTests(unittest.TestCase):
         self.assertNotIn("https://github.com", str(payload))
         self.assertEqual(payload["allowed_mentions"], {"parse": []})
 
+    def test_testers_html_is_branded_and_contains_release_candidate_content(self):
+        output = communications.render_testers_html([fragment()], "abc1234")
+        self.assertIn("VANTARE", output)
+        self.assertIn("BUILD CANDIDATA", output)
+        self.assertIn("Mensajes fiables", output)
+        self.assertIn("QUÉ COMPROBAR", output)
+
+    def test_testers_payload_can_reference_its_visual_card(self):
+        payload = communications.render_testers([fragment()], "abc1234", include_image=True)
+        self.assertEqual(payload["embeds"][0]["image"]["url"], "attachment://vantare-testers.png")
+
     def test_semantic_dedup_ignores_json_formatting_only_changes(self):
         current = fragment()
         previous = json.loads(json.dumps(current, indent=4))
@@ -125,6 +136,51 @@ class LinearDigestTests(unittest.TestCase):
         self.assertNotIn("Overlay <Studio>", output)
 
 
+class ReleaseAndBuildTests(unittest.TestCase):
+    def test_release_html_presents_public_version_and_changelog(self):
+        output = communications.render_release_html(
+            "v1.2.3",
+            "### Novedades\n- Nuevo launcher\n- Mejor rendimiento",
+            "abc1234",
+        )
+        self.assertIn("LANZAMIENTO PÚBLICO", output)
+        self.assertIn("v1.2.3", output)
+        self.assertIn("Nuevo launcher", output)
+        self.assertIn("VERSIÓN ESTABLE", output)
+
+    def test_release_payload_is_accessible_and_references_visual_card(self):
+        payload = communications.render_release(
+            "v1.2.3", "### Novedades\n- Nuevo launcher", "abc1234", "https://example.test/release", include_image=True
+        )
+        embed = payload["embeds"][0]
+        self.assertEqual(embed["image"]["url"], "attachment://vantare-release.png")
+        self.assertIn("Nuevo launcher", str(payload))
+        self.assertIn("[Ver lanzamiento]", str(payload))
+
+    def test_build_html_presents_download_and_verification_context(self):
+        output = communications.render_build_html(
+            "v1.2.3-beta.1", "Validar Launcher y Overlay Studio", "a" * 64
+        )
+        self.assertIn("BUILD BETA", output)
+        self.assertIn("v1.2.3-beta.1", output)
+        self.assertIn("Validar Launcher", output)
+        self.assertIn("SHA-256 VERIFICADO", output)
+
+    def test_build_payload_keeps_download_link_and_visual_card(self):
+        payload = communications.render_build(
+            "v1.2.3-beta.1",
+            "Validar Launcher",
+            "https://example.test/download",
+            "a" * 64,
+            "https://example.test/release",
+            "https://example.test/issues",
+            include_image=True,
+        )
+        embed = payload["embeds"][0]
+        self.assertEqual(embed["image"]["url"], "attachment://vantare-build.png")
+        self.assertIn("[Descargar build]", str(payload))
+
+
 class SafetyTests(unittest.TestCase):
     def test_validate_channel_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "channel"):
@@ -196,6 +252,40 @@ class SafetyTests(unittest.TestCase):
         self.assertIn("multipart/form-data", post.get_header("Content-type"))
         self.assertIn(b"vantare-development.png", post.data)
 
+    def test_live_publish_uses_the_requested_attachment_filename(self):
+        requests = []
+
+        class Response:
+            status = 204
+            def __init__(self, body=b""):
+                self.body = body
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return self.body
+
+        def opener(request, timeout):
+            requests.append(request)
+            if request.get_method() == "GET":
+                return Response(b'{"channel_id":"123"}')
+            return Response()
+
+        image = pathlib.Path("vantare-release.png")
+        try:
+            image.write_bytes(b"fake-png")
+            communications.publish(
+                "https://discord.test/webhook",
+                {"embeds": [{"image": {"url": "attachment://vantare-release.png"}}]},
+                "123",
+                attachment_path=image,
+                opener=opener,
+            )
+        finally:
+            image.unlink(missing_ok=True)
+        self.assertIn(b"vantare-release.png", requests[-1].data)
+
     def test_workflow_routes_are_explicit_and_have_no_legacy_fallback(self):
         root = pathlib.Path(__file__).parents[3]
         tester = (root / ".github/workflows/discord-beta-progress.yml").read_text(encoding="utf-8")
@@ -208,6 +298,9 @@ class SafetyTests(unittest.TestCase):
         self.assertIn("schedule:", development)
         self.assertIn("google-chrome", development)
         self.assertIn("--image", development)
+        self.assertIn("render-discord-card", tester)
+        self.assertIn("render-discord-card", release)
+        self.assertIn("render-discord-card", build)
         self.assertIn("origin/master", release)
         self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release + build)
 

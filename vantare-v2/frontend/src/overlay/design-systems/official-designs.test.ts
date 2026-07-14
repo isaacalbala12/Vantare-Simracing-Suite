@@ -6,6 +6,8 @@ import {
   listOfficialDesigns,
   OFFICIAL_DESIGNS_SECTION_LABEL,
 } from "./official-designs";
+import crystalReferenceManifest from "../../../testdata/crystal-reference/manifest.json";
+import type { WidgetType } from "../core/profile-document";
 
 describe("official-designs", () => {
   it("exposes the Vantare section label", () => {
@@ -44,6 +46,20 @@ describe("official-designs", () => {
       systemId: "vantare-crystal",
       visual: { templateId: "delta-simple" },
     });
+  });
+
+  it("uses canonical Crystal IDs for every currently registered widget type", () => {
+    const registeredTypes = new Set(widgetTypeRegistry.list().map((definition) => definition.type));
+    const expectedIds = crystalReferenceManifest.entries
+      .filter((entry) => registeredTypes.has(entry.widgetType as WidgetType))
+      .map((entry) => entry.designId)
+      .sort();
+    const actualIds = listOfficialDesigns()
+      .filter((design) => design.systemId === "vantare-crystal")
+      .map((design) => design.id)
+      .sort();
+
+    expect(actualIds).toEqual(expectedIds);
   });
 
   it("uses manifest-compatible visual defaults for every official design", () => {

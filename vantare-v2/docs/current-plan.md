@@ -2576,3 +2576,11 @@ Nota CRYSTAL-DIRECT-REPLACEMENT-PLAN (2026-07-12):
 - Estado: PLANIFICADO, sin código implementado por este corte.
 - Paquete de ejecución Luna creado: índice `docs/superpowers/plans/2026-07-12-crystal-luna-execution-index.md` + seis microplanes ordenados (contratos/UI, referencia/base, core, widgets live, widgets derivados y cutover).
 - Los microplanes fijan disponibilidad de datos: weather/damage permanecen `missing` en live hasta contrato real; histories se derivan de forma acotada; Calendar usa adapter read-only; no se permite inventar telemetría.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Microcorte 1 contratos/matriz/harness:
+- Rama/worktree: `vantareapp/isa-93-os-03-paridad-11-de-los-21-disenos-vantare-crystal` en `C:\Users\isaac\.codex\worktrees\ee0d\Vantare-Overlays\vantare-v2`, base ISA-91 `0a797bf720c098a52e91883ed0ddddda0c9fdd15`.
+- `CRYSTAL_HARNESS_DESIGNS` deriva del manifest canónico de referencia y congela 21 diseños / 18 tipos; solo `delta` (06/15) e `input-telemetry` (10A/B/C) admiten varias composiciones.
+- El harness acepta `designId`, valida que pertenezca al tipo funcional y a `vantare-crystal`, y aplica el diseño oficial con provenance determinista.
+- IDs Crystal normalizados al contrato canónico: `pedals-crystal`, `pedals-telemetry-crystal`, `pedals-telemetry-compact-crystal` e `input-crystal-{blade,capsule,dense}`; no se añadieron aliases ni otro `systemId`.
+- RED confirmado: 5 tests fallaron antes de implementar cardinalidad, selección por diseño e IDs canónicos. GREEN: 3 archivos / 34 tests PASS; `pnpm --dir frontend build` PASS con warning heredado de chunk >500 kB; `git diff --check` PASS.
+- No se tocaron shell, canvas, drag/resize, responsive, persistencia, Wails/SSE, permisos ni layout.

@@ -7,9 +7,35 @@ import type {
 import type { WidgetType, DesignSystemId, WidgetInstanceV3 } from "../overlay/core/profile-document";
 import type { TelemetrySnapshot } from "../overlay/core/telemetry-snapshot";
 import { widgetTypeRegistry } from "../overlay/core/widget-registry";
+import { applyWidgetDesign } from "../overlay/core/widget-design";
+import { getOfficialDesign } from "../overlay/design-systems/official-designs";
 import { parseRelativeContent, updateRelativeFilters } from "../overlay/widget-types/relative/relative-content";
+import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
 
 export type HarnessWidget = WidgetType;
+export type CrystalHarnessDesign = {
+  id: string;
+  widgetType: WidgetType;
+  designId: string;
+  width: number;
+  height: number;
+  htmlSection: number;
+};
+export type CrystalHarnessDesignId = CrystalHarnessDesign["designId"];
+
+export const CRYSTAL_HARNESS_DESIGNS: readonly CrystalHarnessDesign[] =
+  crystalReferenceManifest.entries.map((entry) => ({
+    id: entry.id,
+    widgetType: entry.widgetType as WidgetType,
+    designId: entry.designId,
+    width: entry.width,
+    height: entry.height,
+    htmlSection: entry.htmlSection,
+  }));
+
+export function getCrystalHarnessDesign(designId: string): CrystalHarnessDesign | undefined {
+  return CRYSTAL_HARNESS_DESIGNS.find((design) => design.designId === designId);
+}
 export type HarnessVariant =
   | "default"
   | "relative-fill"
@@ -50,13 +76,22 @@ export function buildHarnessWidget(
   widgetType: HarnessWidget,
   systemId: DesignSystemId,
   variant: HarnessVariant = "default",
+  designId?: CrystalHarnessDesignId,
 ): WidgetInstanceV3 {
   const definition = widgetTypeRegistry.get(widgetType);
-  const widget = definition.createDefault(`${widgetType}-harness`);
+  let widget = definition.createDefault(`${widgetType}-harness`);
   widget.visual = {
     ...widget.visual,
     systemId,
   };
+
+  if (designId) {
+    const design = getOfficialDesign(designId);
+    if (!design) {
+      throw new Error(`official Crystal design not registered: ${designId}`);
+    }
+    widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
+  }
   widget.layout = {
     ...widget.layout,
     x: 120,

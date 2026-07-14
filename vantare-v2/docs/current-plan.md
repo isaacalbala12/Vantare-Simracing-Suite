@@ -2600,3 +2600,7 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Delta Trace:
 - Registrado `delta-trace` en ambos sistemas y diseño Crystal sección 07. El ViewModel consume hasta 120 puntos derivados y calcula tendencia con dos ventanas de 10 y epsilon 0.01s.
 - `turnInsight`, mapa y sectores permanecen ausentes en live si no existe fuente; el SVG recibe datos puros.
 - RED por módulo inexistente; GREEN: 2 archivos / 10 tests enfocados PASS, build PASS y `git diff --check` PASS.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-14) — Race Schedule:
+- Registrado `race-schedule` y diseño Crystal sección 08. El renderer no hace fetch ni intervalos; consume eventos auxiliares ya adaptados, ordenados por `startAt` y limitados a cuatro.
+- Sin dataset inyectado el estado es `missing`, no una agenda inventada. GREEN: 2 archivos / 11 tests enfocados PASS, build PASS y `git diff --check` PASS.

@@ -955,3 +955,12 @@
 [data-widget-system="vantare-crystal"] .vc-delta-trace svg { width:100%; height:80px; overflow:visible; }
 [data-widget-system="vantare-crystal"] .vc-delta-trace path { fill:none; stroke:#22c55e; stroke-width:2; filter:drop-shadow(0 0 4px #22c55e); }
 [data-widget-system="vantare-crystal"] .vc-delta-trace footer strong { font:800 24px var(--vc-font-display); }
+
+[data-widget-system="vantare-crystal"].vc-race-schedule { width:100%; height:100%; box-sizing:border-box; padding:22px; color:var(--vc-text); background:rgba(18,18,22,.9); border:1px solid var(--vc-glass-border); border-radius:16px; box-shadow:var(--vc-glass-shadow); }
+[data-widget-system="vantare-crystal"] .vc-race-schedule > header { display:flex; justify-content:space-between; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,.08); font-family:var(--vc-font-display); }
+[data-widget-system="vantare-crystal"] .vc-race-schedule > header span { color:var(--vc-muted); font:700 10px var(--vc-font-mono); }
+[data-widget-system="vantare-crystal"] .vc-race-events { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:18px; }
+[data-widget-system="vantare-crystal"] .vc-race-events article { min-height:190px; padding:18px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); border-top:3px solid #ff3b3b; border-radius:12px; }
+[data-widget-system="vantare-crystal"] .vc-race-events small, [data-widget-system="vantare-crystal"] .vc-race-events time, [data-widget-system="vantare-crystal"] .vc-race-events footer { display:block; color:var(--vc-muted); font:700 10px var(--vc-font-mono); }
+[data-widget-system="vantare-crystal"] .vc-race-events h3 { margin:22px 0 8px; font:800 19px var(--vc-font-display); }
+[data-widget-system="vantare-crystal"] .vc-race-events time { margin:18px 0; color:#ff3b3b; }

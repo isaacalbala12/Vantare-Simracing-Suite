@@ -21,6 +21,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "delta-advanced": "overlays.advanced",
   "fuel-strategy": "overlays.advanced",
   "delta-trace": "overlays.advanced",
+  "race-schedule": "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

@@ -38,5 +38,11 @@ export type TelemetrySnapshot = {
     inputHistory: readonly DerivedInputSample[];
     deltaHistory: readonly DerivedDeltaSample[];
   };
+  auxiliary?: {
+    scheduleEvents?: readonly {
+      id: string; title: string; track: string; startAt: string; durationMinutes: number;
+      classes: readonly string[]; status: string; license?: string;
+    }[];
+  };
   errorMessage?: string;
 };

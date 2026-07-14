@@ -212,6 +212,8 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "fuel-strategy-crystal-unified", name: "Crystal Fuel Strategy", widgetType: "fuel-strategy", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "delta-trace-original", name: "Original Delta Trace", widgetType: "delta-trace", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "delta-trace-crystal", name: "Crystal Delta Trace", widgetType: "delta-trace", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "race-schedule-original", name: "Original Race Schedule", widgetType: "race-schedule", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "race-schedule-crystal", name: "Crystal Race Schedule", widgetType: "race-schedule", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

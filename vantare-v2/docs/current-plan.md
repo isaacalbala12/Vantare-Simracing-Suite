@@ -1,6 +1,7 @@
 Nota ISA-7-BILLING-RELAUNCH (2026-07-14):
 - Auditoria nueva desde `develop@c49e14a` completada en `docs/analysis/isa-7-billing-relaunch-2026-07-14.md`; la ejecucion ISA-7 anterior queda descartada.
 - Investigacion objetivo Polar: `docs/analysis/isa-7-polar-target-billing-architecture-2026-07-14.md`; ADR propuesta, no aceptada: `docs/adr/0003-proposed-polar-commercial-authority.md`.
+- Gate ISA-89 listo para decision: `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`. Pro y Launch coinciden con 4,99 EUR/mes y 30 EUR one-time; Supporter 9,99 EUR/mes no existe. La organization observada tiene pagos, renovaciones, refunds y payouts deshabilitados. La ADR sigue `Proposed` e ISA-68 no comienza sin aprobacion consolidada de Isaac.
 - Auditoria Supabase: `docs/analysis/isa-7-supabase-architecture-audit-2026-07-14.md`; recomendacion vigente **KEEP+HARDEN**, con reduccion de legado solo tras evidencia y autorizacion separada.
 - Veredicto: NO-GO para venta publica y retirada de Stripe. Riesgos prioritarios: claim webhook no atomico, eventos fuera de orden sin reconciliacion, refund parcial lifetime, activacion/gracia de suscripcion, cache offline manipulable, mapping asimetrico y return URL del portal.
 - Polar permanece como unico runtime de billing y `VITE_BILLING_ENABLED` debe seguir desactivado. Stripe se conserva solo como legado historico inerte hasta completar microcortes, pruebas sandbox, smoke monetario expresamente aprobado y validacion manual completa de Isaac.

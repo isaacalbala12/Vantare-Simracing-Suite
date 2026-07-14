@@ -8,7 +8,7 @@
 
 **Tech Stack:** GitHub Actions YAML, Python 3 standard library, `unittest`, Linear GraphQL, Discord webhooks.
 
-**Execution status:** Completed on the issue branch. Automated checks, dry-runs and one final live run per channel pass. Integration into `develop` remains behind Isaac's manual approval.
+**Execution status:** Core routing completed on the issue branch. On 2026-07-15 the presentation was extended with native embeds and an HTML-rendered development card. Automated checks and local Chrome rendering pass; the new attachment POST and integration into `develop` remain behind Isaac's manual approval.
 
 ---
 

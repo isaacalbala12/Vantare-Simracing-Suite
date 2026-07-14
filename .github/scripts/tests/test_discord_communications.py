@@ -39,12 +39,14 @@ class FragmentTests(unittest.TestCase):
 
     def test_render_testers_contains_four_professional_sections_without_raw_url(self):
         payload = communications.render_testers([fragment()], "abc1234")
-        content = payload["content"]
-        self.assertIn("Resumen", content)
-        self.assertIn("Notas técnicas", content)
-        self.assertIn("Qué comprobar", content)
-        self.assertIn("Limitaciones conocidas", content)
-        self.assertNotIn("https://github.com", content)
+        embed = payload["embeds"][0]
+        fields = {field["name"]: field["value"] for field in embed["fields"]}
+        self.assertEqual(embed["title"], "Vantare — actualización para testers")
+        self.assertIn("Resumen", fields)
+        self.assertIn("Notas técnicas", fields)
+        self.assertIn("Qué comprobar", fields)
+        self.assertIn("Limitaciones conocidas", fields)
+        self.assertNotIn("https://github.com", str(payload))
         self.assertEqual(payload["allowed_mentions"], {"parse": []})
 
     def test_semantic_dedup_ignores_json_formatting_only_changes(self):
@@ -53,6 +55,17 @@ class FragmentTests(unittest.TestCase):
         self.assertFalse(communications.fragment_changed(current, previous))
         previous["summary"] = "Resumen anterior"
         self.assertTrue(communications.fragment_changed(current, previous))
+
+    def test_tester_embed_fields_respect_discord_limits(self):
+        values = []
+        for index in range(8):
+            item = fragment(f"ISA-{index + 1}", "S" * 300)
+            item["technicalNotes"] = ["T" * 500]
+            item["testing"] = ["P" * 500]
+            item["knownLimitations"] = ["L" * 500]
+            values.append(item)
+        payload = communications.render_testers(values, "abc1234")
+        self.assertTrue(all(len(field["value"]) <= 1024 for field in payload["embeds"][0]["fields"]))
 
 
 class LinearDigestTests(unittest.TestCase):
@@ -84,11 +97,32 @@ class LinearDigestTests(unittest.TestCase):
 
     def test_empty_project_digest_is_explicit(self):
         payload = communications.render_development([])
-        self.assertIn("No hay actualizaciones públicas", payload["content"])
+        self.assertIn("No hay actualizaciones públicas", payload["embeds"][0]["description"])
 
     def test_project_digest_stays_inside_discord_limit(self):
         projects = [{"name": f"Project {index}", "url": "https://linear.app/p/x", "progress": 0.5, "update": "x" * 2000} for index in range(10)]
-        self.assertLessEqual(len(communications.render_development(projects)["content"]), 2000)
+        payload = communications.render_development(projects)
+        self.assertLessEqual(len(payload["embeds"][0]["fields"]), 3)
+        self.assertLessEqual(sum(len(field["value"]) for field in payload["embeds"][0]["fields"]), 3072)
+
+    def test_development_embed_hides_raw_urls_and_uses_attachment(self):
+        projects = [{"name": "Telemetry Core", "url": "https://linear.app/p/telemetry", "progress": 0.42,
+                     "update": "Contrato canónico en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]
+        payload = communications.render_development(projects, include_image=True)
+        embed = payload["embeds"][0]
+        self.assertEqual(embed["image"]["url"], "attachment://vantare-development.png")
+        self.assertNotIn("<https://", str(payload))
+        self.assertIn("[Abrir proyecto](https://linear.app/p/telemetry)", embed["fields"][0]["value"])
+
+    def test_development_html_uses_vantare_brand_and_escapes_linear_text(self):
+        projects = [{"name": "Overlay <Studio>", "url": "https://linear.app/p/overlay", "progress": 0.08,
+                     "update": "Paridad & revisión", "updatedAt": "2026-07-15T10:00:00Z"}]
+        output = communications.render_development_html(projects)
+        self.assertIn("VANTARE", output)
+        self.assertIn("DESARROLLO ACTIVO", output)
+        self.assertIn("Overlay &lt;Studio&gt;", output)
+        self.assertIn("Paridad &amp; revisión", output)
+        self.assertNotIn("Overlay <Studio>", output)
 
 
 class SafetyTests(unittest.TestCase):
@@ -131,6 +165,37 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual([request.get_method() for request in requests], ["GET", "POST"])
         self.assertTrue(all(request.get_header("User-agent") == communications.USER_AGENT for request in requests))
 
+    def test_live_publish_can_attach_generated_dashboard(self):
+        requests = []
+
+        class Response:
+            status = 204
+            def __init__(self, body=b""):
+                self.body = body
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return self.body
+
+        def opener(request, timeout):
+            requests.append(request)
+            if request.get_method() == "GET":
+                return Response(b'{"channel_id":"123"}')
+            return Response()
+
+        image = pathlib.Path(self.id().replace(".", "-") + ".png")
+        try:
+            image.write_bytes(b"fake-png")
+            payload = {"embeds": [{"image": {"url": "attachment://vantare-development.png"}}]}
+            communications.publish("https://discord.test/webhook", payload, "123", attachment_path=image, opener=opener)
+        finally:
+            image.unlink(missing_ok=True)
+        post = requests[-1]
+        self.assertIn("multipart/form-data", post.get_header("Content-type"))
+        self.assertIn(b"vantare-development.png", post.data)
+
     def test_workflow_routes_are_explicit_and_have_no_legacy_fallback(self):
         root = pathlib.Path(__file__).parents[3]
         tester = (root / ".github/workflows/discord-beta-progress.yml").read_text(encoding="utf-8")
@@ -141,6 +206,8 @@ class SafetyTests(unittest.TestCase):
         self.assertNotIn("current-plan.md", tester)
         self.assertIn("LINEAR_API_KEY", development)
         self.assertIn("schedule:", development)
+        self.assertIn("google-chrome", development)
+        self.assertIn("--image", development)
         self.assertIn("origin/master", release)
         self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release + build)
 

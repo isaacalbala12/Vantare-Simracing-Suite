@@ -15,8 +15,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish approved Linear project digest
+      - name: Build approved Linear project snapshot and HTML card
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          python .github/scripts/discord_communications.py development \
+            --dry-run \
+            --snapshot-output "$RUNNER_TEMP/development-projects.json" \
+            --html-output "$RUNNER_TEMP/vantare-development.html" \
+            > "$RUNNER_TEMP/development-payload-preview.json"
+
+      - name: Render Vantare development card
+        run: |
+          command -v google-chrome >/dev/null 2>&1 || {
+            echo "::error::google-chrome is required to render the deterministic Discord card"
+            exit 1
+          }
+          google-chrome \
+            --headless=new \
+            --disable-gpu \
+            --no-sandbox \
+            --hide-scrollbars \
+            --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-development.png" \
+            "file://$RUNNER_TEMP/vantare-development.html"
+          test -s "$RUNNER_TEMP/vantare-development.png"
+
+      - name: Publish approved Linear project digest
+        env:
           DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
-        run: python .github/scripts/discord_communications.py development
+        run: |
+          python .github/scripts/discord_communications.py development \
+            --snapshot-input "$RUNNER_TEMP/development-projects.json" \
+            --image "$RUNNER_TEMP/vantare-development.png"

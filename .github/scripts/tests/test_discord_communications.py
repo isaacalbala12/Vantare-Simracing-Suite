@@ -69,15 +69,17 @@ class LinearDigestTests(unittest.TestCase):
     def test_active_projects_show_safe_metadata_but_hide_unapproved_text(self):
         projects = [
             {"name": "Billing", "url": "https://linear.app/p/1", "progress": 0.5,
-             "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nPolar en curso."}]}},
+             "summary": "Billing seguro", "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nPolar en curso."}]}},
             {"name": "Privado", "url": "https://linear.app/p/2", "progress": 0.2,
-             "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "Notas internas"}]}},
+             "summary": "Resumen público seguro", "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "Notas internas"}]}},
+            {"name": "Contenido", "url": "https://linear.app/p/content", "progress": 0.1,
+             "summary": "", "status": {"type": "started"}, "projectUpdates": {"nodes": []}},
             {"name": "Terminado", "url": "https://linear.app/p/3", "progress": 1,
-             "status": {"type": "completed"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nListo"}]}},
+             "summary": "Finalizado", "status": {"type": "completed"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nListo"}]}},
         ]
         active = communications.select_public_projects(projects)
         self.assertEqual([item["name"] for item in active], ["Privado", "Billing"])
-        self.assertEqual(active[0]["update"], "Sin resumen público adicional en este corte.")
+        self.assertEqual(active[0]["update"], "Resumen público seguro")
         self.assertNotIn("Notas internas", str(active))
 
     def test_empty_project_digest_is_explicit(self):

@@ -125,13 +125,16 @@ def select_public_projects(projects: Iterable[dict[str, Any]]) -> list[dict[str,
     for project in projects:
         if (project.get("status") or {}).get("type") != "started":
             continue
+        summary = str(project.get("summary") or "").strip()
+        if not summary:
+            continue
         nodes = (project.get("projectUpdates") or {}).get("nodes") or []
         public = parse_public_update(nodes[0].get("body") if nodes else None)
         selected.append({
             "name": project.get("name", "Proyecto sin nombre"),
             "url": project.get("url", ""),
             "progress": project.get("progress", 0),
-            "update": public or "Sin resumen público adicional en este corte.",
+            "update": public or summary,
             "updatedAt": project.get("updatedAt", ""),
         })
     return sorted(selected, key=lambda item: (item["updatedAt"], item["name"].casefold()), reverse=True)
@@ -211,7 +214,7 @@ def fetch_linear_projects(api_key: str) -> list[dict[str, Any]]:
     query DiscordDevelopmentProjects {
       projects(first: 50) {
         nodes {
-          name url progress updatedAt
+          name url progress updatedAt summary
           status { type }
           projectUpdates(first: 1) { nodes { body } }
         }

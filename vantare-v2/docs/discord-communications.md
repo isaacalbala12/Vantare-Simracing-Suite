@@ -33,7 +33,7 @@ El digest consulta proyectos activos, no issues ni comentarios. Para autorizar t
 Texto profesional y apto para publicación.
 ```
 
-Todo texto anterior a la marca se considera interno. Los proyectos sin marca, terminados o pausados no aparecen. El workflow no modifica Linear.
+Todo texto anterior a la marca se considera interno. Sin una actualización marcada, se usa únicamente el `summary` corto del proyecto; los proyectos sin summary, terminados o pausados no aparecen. El workflow no modifica Linear.
 
 ## Gates
 

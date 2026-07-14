@@ -50,8 +50,7 @@
 
 ## Task 4: Repurpose known issues as active development
 
-**Files:**
-- Move: `.github/workflows/discord-known-issues.yml` -> `.github/workflows/discord-development-progress.yml`
+**File:** `.github/workflows/discord-known-issues.yml` (se conserva el nombre físico para mantener su ID de GitHub Actions; el nombre visible pasa a `Discord active development`)
 
 - [ ] Run daily plus manual dispatch; never trigger from arbitrary documentation pushes.
 - [ ] Query Linear read-only with `LINEAR_API_KEY`.

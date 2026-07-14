@@ -106,7 +106,7 @@ class SafetyTests(unittest.TestCase):
     def test_workflow_routes_are_explicit_and_have_no_legacy_fallback(self):
         root = pathlib.Path(__file__).parents[3]
         tester = (root / ".github/workflows/discord-beta-progress.yml").read_text(encoding="utf-8")
-        development = (root / ".github/workflows/discord-development-progress.yml").read_text(encoding="utf-8")
+        development = (root / ".github/workflows/discord-known-issues.yml").read_text(encoding="utf-8")
         release = (root / ".github/workflows/discord-release.yml").read_text(encoding="utf-8")
         build = (root / ".github/workflows/discord-build-available.yml").read_text(encoding="utf-8")
         self.assertRegex(tester, r"branches:\s*\[develop\]")

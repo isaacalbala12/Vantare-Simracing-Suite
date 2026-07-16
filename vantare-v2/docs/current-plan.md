@@ -2667,3 +2667,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Input Telemetry 10A/10B/10C:
 - 10A replica blur, sombras, rejilla y materiales; 10B/10C mantienen raíz transparente porque las variables glass de la autoridad no están definidas. 10C corrige además gearbox horizontal, spacing heredado y trazo SVG 2.5 px.
 - Resultados: Blade `100% / 0.02% / 0.53% / 0.35%`, Capsule `100% / 0.30% / 1.00% / 0.59%`, Dense `100% / 0.00% / 0.01% / 0.00%`; 3/3 pasan geometry, mask-alpha, composite, guard, fonts, stability y Studio/Desktop/OBS.
 - Estado acumulado: 12/21 diseños verdes; referencias intactas. Siguiente: rebaseline honesto de los nueve diseños restantes y cierre por familia/delta.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Checkpoint familias text-dense:
+- Broadcast, Standings, H2H, Multiclass, Schedule y Weather corrigen estructura, cardinalidad visual, marca SVG y semántica efectiva de raíces transparentes; 39 tests focalizados y frontend build PASS.
+- Mejora medida sin falsos verdes: Broadcast `100% / 0.15% / 5.55% / 3.23%`; Standings `100% / 0.39% / 8.13% / 6.00%`; H2H `80.20% / 14.46% / 22.18% / 9.18%`; Multiclass `17.12% / 13.03% / 17.14% / 9.23%`; Schedule `45.15% / 12.90% / 24.27% / 8.71%`; Weather `41.21% / 28.79% / 54.65% / 4.63%`.
+- Estado acumulado permanece 12/21. El comparador aún penaliza palabras/valores diferentes en widgets text-dense, contrario al contrato de comparar tipografía/formato pero no contenido circunstancial.
+- Siguiente microcorte: gate de texto semánticamente neutral con contrato tipográfico separado, conservando sin cambios geometry, alpha/mask, composite de materiales, stability y cross-surface. Referencias intactas.

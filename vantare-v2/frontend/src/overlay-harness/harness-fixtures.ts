@@ -89,10 +89,30 @@ const CANONICAL_DRIVERS = [
   "Aston Martin Racing", "Aston Martin Racing", "Iron Lynx", "Iron Lynx",
 ] as const;
 
+const BROADCAST_DRIVERS = [
+  "A. Silva", "B. Costa", "C. Martin", "D. Rojas", "E. Weber",
+  "F. Morel", "G. Klein", "H. Rossi", "I. Novak", "J. Pereira",
+] as const;
+
 function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[] {
   const multiclass = widget === "multiclass-relative";
-  const playerPlace = widget === "pedals-telemetry" ? 12 : 4;
+  const playerPlace = widget === "pedals-telemetry"
+    ? 12
+    : widget === "head-to-head"
+      ? 12
+      : widget === "multiclass-relative"
+        ? 15
+    : widget === "broadcast-tower" || widget === "standings"
+      ? 2
+      : 4;
+  const broadcastColors = [
+    "#cc0000", "#ff2a3b", "#2563eb", "#34d399", "#fbbf24",
+    "#8b5cf6", "#22d3ee", "#f87171", "#4ade80", "#fbbf24",
+  ] as const;
   return CANONICAL_DRIVERS.map((driverName, index) => {
+    const displayName = widget === "broadcast-tower"
+      ? BROADCAST_DRIVERS[index % BROADCAST_DRIVERS.length]
+      : driverName;
     const place = index + 1;
     const isPlayer = place === playerPlace;
     const classIndex = Math.min(3, Math.floor(index / 5));
@@ -101,17 +121,20 @@ function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[]
       id: `canonical-${place}`,
       place,
       driverNumber: String([50, 51, 6, 36, 8, 7, 35, 46, 5, 8, 50, 63, 99, 94, 11, 92, 22, 23, 77, 78][index]),
-      driverName,
-      teamName: driverName,
+      driverName: displayName,
+      teamName: widget === "broadcast-tower" ? `T${String(index + 1).padStart(2, "0")}` : displayName,
       vehicleClass,
       isPlayer,
       inPits: false,
       timeGapToPlayer: isPlayer ? 0 : (place - playerPlace) * 1.84,
       timeGapToLeader: place === 1 ? 0 : place * 3.45,
+      timeBehindLeader: place === 1 ? 0 : place * 3.45,
       bestLapTime: 204.89 + index * 0.01,
       lastLapTime: 204.89 + index * 0.34,
       tireCompound: index % 4 === 0 ? "S" : "M",
-      teamBrandColor: ["#ef4444", "#3b82f6", "#f472b6", "#fbbf24"][classIndex],
+      teamBrandColor: widget === "broadcast-tower"
+        ? broadcastColors[index % broadcastColors.length]
+        : ["#ef4444", "#3b82f6", "#f472b6", "#fbbf24"][classIndex],
     };
   });
 }
@@ -179,6 +202,12 @@ export function buildHarnessWidget(
     }
     widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
   }
+  if (widgetType === "broadcast-tower") {
+    widget.content = { ...widget.content as Record<string, unknown>, rowCount: 10 };
+  }
+  if (widgetType === "multiclass-relative") {
+    widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
+  }
   const referenceDesign = designId ? getCrystalHarnessDesign(designId) : undefined;
   widget.layout = {
     ...widget.layout,
@@ -222,12 +251,13 @@ export function buildHarnessTelemetry(input: {
   const usesSectionFourPedals = input.widget === "pedals" || input.widget === "pedals-telemetry-compact";
   const readyBase: TelemetrySnapshot = {
     ...base,
-    session: { ...base.session, remainingSeconds: 1161 },
+    session: { ...base.session, remainingSeconds: input.widget === "standings" ? 6000 : 1161 },
     player: {
       ...base.player,
       fuelLiters: 12.4,
       lastLapSeconds: 90,
-      lapNumber: 14,
+      lapNumber: input.widget === "broadcast-tower" ? 12 : 14,
+      totalLaps: input.widget === "broadcast-tower" ? 25 : base.player.totalLaps,
       predictedLapSeconds: 164.659,
       deltaSeconds: input.designId === "delta-crystal-simple" ? 0 : -0.24,
       throttle: usesSectionFourPedals ? 0.85 : 1,

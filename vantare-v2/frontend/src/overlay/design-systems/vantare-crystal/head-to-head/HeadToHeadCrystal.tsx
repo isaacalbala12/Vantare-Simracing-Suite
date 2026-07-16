@@ -6,5 +6,7 @@ function Driver({ entry, active, gap, sectors }: { entry: HeadToHeadEntry; activ
 }
 
 export function HeadToHeadCrystal({ model }: WidgetRendererProps<HeadToHeadViewModel>) {
-  return <section data-widget-system="vantare-crystal" data-widget-renderer="head-to-head" data-status={model.status} className="vc-head-to-head"><header>HEAD 2 HEAD</header>{model.player && model.opponent ? <main><Driver entry={model.opponent} gap={model.gapSeconds}/><Driver entry={model.player} active sectors={model.showSectors ? model.sectorComparisons : undefined}/></main> : <p role="status">{model.statusMessage ?? "No nearby rival"}</p>}</section>;
+  const ahead = model.ahead ?? (model.target === "ahead" ? model.opponent : undefined);
+  const behind = model.behind ?? (model.target === "behind" ? model.opponent : undefined);
+  return <section data-widget-system="vantare-crystal" data-widget-renderer="head-to-head" data-status={model.status} className="vc-head-to-head"><header>HEAD 2 HEAD</header>{model.player && model.opponent ? <main>{ahead ? <Driver entry={ahead} gap={model.target === "ahead" ? model.gapSeconds : undefined}/> : null}<Driver entry={model.player} active sectors={model.showSectors ? model.sectorComparisons : undefined}/>{behind ? <Driver entry={behind} gap={model.target === "behind" ? model.gapSeconds : undefined}/> : null}</main> : <p role="status">{model.statusMessage ?? "No nearby rival"}</p>}</section>;
 }

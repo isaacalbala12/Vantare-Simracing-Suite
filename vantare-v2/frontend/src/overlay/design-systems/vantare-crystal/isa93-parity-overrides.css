@@ -938,3 +938,285 @@
   line-height: normal;
   letter-spacing: normal;
 }
+
+[data-widget-system="vantare-crystal"].vc-broadcast-tower {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(24px);
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-lap small {
+  color: #aaa;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-lap b {
+  color: #fff;
+  font: 800 18px var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-lap b span {
+  color: #ff2a3b;
+  font-size: 12px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream {
+  align-items: center;
+  padding: 2px 0;
+  overflow-x: auto;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream article > i {
+  background: var(--vc-broadcast-brand);
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream article {
+  height: 46px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream article.is-player {
+  box-shadow: 0 0 18px rgba(255, 42, 59, 0.3);
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream article.is-player > b {
+  box-shadow: 0 0 10px #ff2a3b;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream article > div {
+  justify-content: center;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-driver-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream small {
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"] .vc-broadcast-stream article.is-player small {
+  color: #ff808b;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"].vc-broadcast-tower > aside {
+  width: 120px;
+  min-width: 120px;
+  flex: none;
+  font-size: 12px;
+}
+
+[data-widget-system="vantare-crystal"].vc-broadcast-tower > aside small {
+  color: #aaa;
+  font-size: 10px;
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="brand"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-family: var(--vc-font-display);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+[data-widget-system="vantare-crystal"] .crystal-brand-mark {
+  width: 20px;
+  height: 18px;
+  flex: none;
+  filter: drop-shadow(0 0 6px rgba(230, 57, 70, 0.5));
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-frame {
+  background: rgba(18, 18, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-header {
+  height: 40px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-header-meta {
+  gap: 6px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-header-meta [data-crystal-primitive="pill"] {
+  min-height: auto;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  font-size: 9px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-remaining {
+  font-size: 11px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header,
+[data-widget-system="vantare-crystal"] .vc-standings-row {
+  padding: 0 10px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row {
+  min-height: 28px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-class-bar {
+  min-height: 0;
+  overflow: visible;
+  color: var(--vc-standings-class-color);
+  background: transparent;
+  border-radius: 0;
+  font-size: 8px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-driver {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-player="true"] {
+  position: relative;
+  background: linear-gradient(90deg, rgba(255, 42, 59, 0.22), rgba(230, 57, 70, 0.05));
+  border-top: 1px solid rgba(255, 42, 59, 0.4);
+  border-bottom: 1px solid rgba(255, 42, 59, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-player="true"]::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #ff2a3b;
+  box-shadow: 0 0 10px #ff2a3b;
+  content: "";
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-tire-badge {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 8px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-tire-soft {
+  color: #fff;
+  background: #ff2a3b;
+}
+
+[data-widget-system="vantare-crystal"] .vc-tire-s {
+  color: #000;
+  background: #ff4d4d;
+  box-shadow: 0 0 6px rgba(255, 77, 77, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-tire-med,
+[data-widget-system="vantare-crystal"] .vc-tire-medium,
+[data-widget-system="vantare-crystal"] .vc-tire-m {
+  color: #111;
+  background: #facc15;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-last {
+  color: #aaa;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-position {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-number {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: center;
+  justify-content: initial;
+  width: 100%;
+  padding-left: 12px;
+  gap: 6px;
+  font: 600 10px var(--vc-font-mono);
+  text-align: left;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-player="true"] .vc-standings-last {
+  color: #fff;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-frame > [data-crystal-primitive="footer"] {
+  height: 25px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  font-family: var(--vc-font-sans);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"].vc-race-schedule,
+[data-widget-system="vantare-crystal"].vc-head-to-head,
+[data-widget-system="vantare-crystal"].vc-multiclass-relative,
+[data-widget-system="vantare-crystal"].vc-track-weather {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: blur(20px);
+}
+
+[data-widget-system="vantare-crystal"].vc-head-to-head main > div {
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0 18px;
+  grid-template-columns: 34px 280px minmax(0, 1fr) 70px 90px;
+}
+
+[data-widget-system="vantare-crystal"].vc-head-to-head main strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative > article {
+  grid-template-columns: 36px 81px 42px 1fr 70px;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative > article.is-player {
+  padding-left: 20px;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative article > i {
+  width: 65px;
+  box-sizing: border-box;
+}

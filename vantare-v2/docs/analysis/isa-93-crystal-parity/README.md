@@ -197,3 +197,36 @@ recibiendo exclusivamente el ViewModel y no fija valores de telemetría.
 Los tres pasan geometría, guard, fuentes, estabilidad y salida idéntica
 Studio/Desktop/OBS. Las referencias canónicas permanecen intactas. Estado
 acumulado: 12/21 diseños verdes.
+
+## Checkpoint parcial — familias text-dense 01/02/08/09/11/12
+
+Se corrigieron antes de seguir afinando píxel:
+
+- Broadcast usa diez slots deterministas, color de marca desde scoring, total de
+  vueltas, jerarquía `driver-top-row` y weather con anchura estable.
+- Relative/Standings comparten ya la marca SVG canónica; Standings alinea
+  header, tabla, filas, neumáticos, highlight y footer con la sección 01.
+- Head to Head expone los dos vecinos del jugador en el ViewModel puro y
+  Crystal renderiza las tres filas de la composición oficial.
+- Multiclass usa cuatro filas en la fixture canónica y corrige columnas,
+  padding del jugador y abreviación de clase.
+- Schedule, Head to Head, Multiclass y Weather eliminan el glass opaco
+  aproximado de la raíz: las variables de material de la autoridad no están
+  definidas y el backdrop se valida sobre escenas controladas.
+
+Las mejoras son medibles, pero este checkpoint no cierra diseños:
+
+| Diseño | Antes | Checkpoint | Estado |
+|---|---|---|---|
+| broadcast | 95.46% / 1.09% / 13.70% / 8.83% | 100% / 0.15% / 5.55% / 3.23% | RED |
+| standings | 100% / 1.60% / 19.97% / 14.85% | 100% / 0.39% / 8.13% / 6.00% | RED |
+| head-to-head | 21.71% / 47.49% / 11.37% / 65.23% | 80.20% / 14.46% / 22.18% / 9.18% | RED |
+| multiclass | 18.88% / 53.77% / 20.59% / 72.00% | 17.12% / 13.03% / 17.14% / 9.23% | RED |
+| schedule | 33.73% / 61.16% / 11.21% / 79.45% | 45.15% / 12.90% / 24.27% / 8.71% | RED |
+| weather | 5.43% / 49.45% / 10.27% / 64.66% | 41.21% / 28.79% / 54.65% / 4.63% | RED |
+
+El gate actual todavía cuenta diferencias de glifos y valores en widgets con
+mucho texto, aunque el contrato de ISA-93 exige no igualar palabras ni
+telemetría circunstancial. El siguiente microcorte debe separar esa señal de
+contenido de los contratos verificables de tipografía, geometría y material;
+no se marcará verde ningún diseño ni se tocarán referencias para ocultarla.

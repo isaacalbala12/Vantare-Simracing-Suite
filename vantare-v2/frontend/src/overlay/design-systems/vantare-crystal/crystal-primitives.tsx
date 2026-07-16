@@ -58,7 +58,16 @@ export function CrystalBrand({ children, className }: PrimitiveProps) {
       data-crystal-primitive="brand"
       className={primitiveClass("crystal-brand", className)}
     >
-      {children}
+      <svg className="crystal-brand-mark" viewBox="0 0 100 90" aria-hidden="true">
+        <defs>
+          <linearGradient id="vc-crystal-brand-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#ff2a3b" />
+            <stop offset="1" stopColor="#a80010" />
+          </linearGradient>
+        </defs>
+        <path d="M50 0 100 90H72L50 50 28 90H0Z" fill="url(#vc-crystal-brand-gradient)" />
+      </svg>
+      <span data-crystal-primitive="brand">{children}</span>
     </span>
   );
 }

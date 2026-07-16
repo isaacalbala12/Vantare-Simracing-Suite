@@ -25,14 +25,20 @@ function classColor(vehicleClass: string): string {
   return "#6b7280";
 }
 
+function teamAbbreviation(driverName: string): string {
+  const words = driverName.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0]![0] ?? ""}${words[1]![0] ?? ""}`.toUpperCase();
+  return driverName.slice(0, 2).toUpperCase() || "—";
+}
+
 function renderGap(row: StandingsRowViewModel, metricId: string | undefined) {
   const gap = metricId ? resolveStandingsCellValue(row, metricId) : "—";
   const isPit = Boolean(row.pitText);
   return (
-    <span className="vc-standings-gap-value">
+    <>
       {row.tireCompound ? <span className={`vc-standings-tire-badge vc-tire-${row.tireCompound.toLowerCase()}`}>{row.tireCompound.slice(0, 1)}</span> : null}
       <span className={isPit ? "vc-standings-pit-tag" : undefined}>{isPit ? row.pitText : gap}</span>
-    </span>
+    </>
   );
 }
 
@@ -91,9 +97,9 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
             >
               <span
                 className="vc-standings-class-bar"
-                style={{ "--vc-standings-class-color": classColor(row.vehicleClass) } as CSSProperties}
+                style={{ "--vc-standings-class-color": row.teamBrandColor || classColor(row.vehicleClass) } as CSSProperties}
               >
-                {classAbbreviation(row.vehicleClass)}
+                {row.teamCode || teamAbbreviation(row.driverName) || classAbbreviation(row.vehicleClass)}
               </span>
               <span className="vc-standings-position" data-metric="position">{row.position}</span>
               <span className="vc-standings-number" data-metric="driverNumber">{row.driverNumber || "—"}</span>

@@ -1,11 +1,78 @@
 {
-  "version": 1,
+  "version": 2,
   "source": "docs/overlay-glassmorphism-pro.html",
   "sourceAuthority": "numbered sections 01-16",
   "excludedSource": "final V2. WIDGETS REESTILIZADOS block",
   "fontContract": {
-    "resolution": "fallback-declared-no-local-font-files",
-    "pixelDelta": "reference PNGs use resolved web fonts when available; local fallback may shift glyph pixels"
+    "resolution": "authority-web-font-faces",
+    "requiredFamilies": [
+      "Inter",
+      "Plus Jakarta Sans",
+      "JetBrains Mono"
+    ],
+    "captured": {
+      "inter": true,
+      "plusJakartaSans": true,
+      "jetBrainsMono": true,
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "400",
+          "status": "loaded"
+        },
+        {
+          "family": "Inter",
+          "weight": "500",
+          "status": "loaded"
+        },
+        {
+          "family": "Inter",
+          "weight": "600",
+          "status": "loaded"
+        },
+        {
+          "family": "Inter",
+          "weight": "700",
+          "status": "loaded"
+        },
+        {
+          "family": "Inter",
+          "weight": "800",
+          "status": "loaded"
+        },
+        {
+          "family": "JetBrains Mono",
+          "weight": "500",
+          "status": "loaded"
+        },
+        {
+          "family": "JetBrains Mono",
+          "weight": "600",
+          "status": "loaded"
+        },
+        {
+          "family": "JetBrains Mono",
+          "weight": "700",
+          "status": "loaded"
+        },
+        {
+          "family": "JetBrains Mono",
+          "weight": "800",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "weight": "700",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "weight": "800",
+          "status": "loaded"
+        }
+      ]
+    },
+    "runtimeRequirement": "reference and renderer must expose the same local font faces before parity can pass"
   },
   "entries": [
     {
@@ -13,16 +80,66 @@
       "widgetType": "relative",
       "designId": "relative-crystal-vertical",
       "referenceSelector": ".widgets-row > .glass-card:nth-child(1)",
-      "width": 358,
+      "width": 357,
       "height": 288,
       "htmlSection": 1,
       "capture": {
-        "sha256": "7293da2f440b231b984c0b743e3809bb1614c3b91ed8a11d19a6a29c45213795",
-        "bbox": {
-          "x": 585,
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
+          "x": 585.5,
           "y": 304,
-          "width": 358,
+          "width": 357,
           "height": 288
+        },
+        "captureSize": {
+          "width": 613,
+          "height": 544
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "bd4090166a4be3368d42b4d295200ff70db5fab73c4d29ca90a793198bc23632",
+            "baselineSha256": "834af02541efe9caf4a32a7e5dd624db82ec32cd3cc06c199e25e782583e9d9a",
+            "alphaLt255Ratio": 0.9965994146435083,
+            "alphaZeroRatio": 0.32715190480760004,
+            "meanAlpha": 77.59486853468957,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "b1142105d0699d7da96c93fecef78a0c27ae8c4503d4274bf39cdcaaffb7dd31",
+            "baselineSha256": "0691f97bf11f3f1983c2e3098d4f1ba0ec5c06b21784992969a53d8a134a836d",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "490a008040afdb04bdf82d7d6f90c452a10ff9d591ad7d71492cbb3eada86289",
+            "baselineSha256": "94cf67a23e2333bb69657f500b06a521dd978f8df717cf435719485f2051a671",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -31,16 +148,66 @@
       "widgetType": "standings",
       "designId": "standings-crystal-vertical",
       "referenceSelector": ".widgets-row > .glass-card:nth-child(2)",
-      "width": 361,
+      "width": 360,
       "height": 650,
       "htmlSection": 1,
       "capture": {
-        "sha256": "a555b96000ebe19d91f5fd00c6eccaa3ead18b1e531a8915326e7f6977a1d0a1",
-        "bbox": {
-          "x": 974,
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
+          "x": 974.5,
           "y": 304,
-          "width": 361,
+          "width": 360,
           "height": 650
+        },
+        "captureSize": {
+          "width": 616,
+          "height": 906
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "6edd5c73532904cbc8660642f3aad438949a83bd2c91079ae4d2c820e9706d61",
+            "baselineSha256": "156ecd6f4f206f8df2357306307d04c9e55373aed6359f96e6d3ffe17a971042",
+            "alphaLt255Ratio": 0.9902704910983057,
+            "alphaZeroRatio": 0.2556477738596944,
+            "meanAlpha": 100.95112489607523,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "2e80bcdd3536f0d87bf71d4e7c53d6eb28f1c6cb58dbae10cf50a0a9a55cabbc",
+            "baselineSha256": "05c8843c4216537eef10cf3153c7049a7afd88088d5bf80ac7b8fe149265887c",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "6f207541435df4d17cad44e3b4062ad743b15fb0816605571eb2a371b1334673",
+            "baselineSha256": "f49fa2aa3ce6c11535d5797bb581d358e2fb4eb5585d455084ab6d2d08a33a7c",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -53,12 +220,62 @@
       "height": 71,
       "htmlSection": 2,
       "capture": {
-        "sha256": "4cb2c27c26c3369e6889ab5e96c955ad7ae5628048c79ccfd3ffaad0151e2d5e",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 24,
           "y": 1037,
           "width": 1872,
           "height": 71
+        },
+        "captureSize": {
+          "width": 2128,
+          "height": 327
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "84df82244e7ef6cdbba3033d4e0dc4d82b50f77d7c99d9691305a45877b47b1d",
+            "baselineSha256": "0aebc59f1b22c7c1c904f75e8716607be05930bfe4883aee03822aeba148f243",
+            "alphaLt255Ratio": 0.9820925593801016,
+            "alphaZeroRatio": 0.40020349037731945,
+            "meanAlpha": 58.92295963532685,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "99994242355ff7c5c08d7e6a09a1be49a9c97a2aa1155120080a7878e1bc6afe",
+            "baselineSha256": "56576c8edf4f6ceffcb5dc431cd73b3b76ed7cb74ce00fc1418fb3d7a7e295c4",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "4235728f7625df29c728ade2d9ab46ca7edf434d5f22e5f6ef42f67b4aff77e6",
+            "baselineSha256": "49915add34b39e58418c7840ae778966915cdc2d44d4b98cfa08e5a796ff6f0d",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -71,12 +288,62 @@
       "height": 204,
       "htmlSection": 3,
       "capture": {
-        "sha256": "afcb872900be4a0492e72f113c867bd4af9dacb9f9d47fee40253448a74944c1",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 620,
-          "y": 1163,
+          "y": 1191,
           "width": 680,
           "height": 204
+        },
+        "captureSize": {
+          "width": 936,
+          "height": 460
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "e33da3e0adf92a152977d32d90ed0ab6476ed2468e53513289196faade5927ee",
+            "baselineSha256": "3f0cf0546674ea675df80843a09f80fc4d93bf9ac78af3b82fd1dc10be9d9bae",
+            "alphaLt255Ratio": 0.9954756596060944,
+            "alphaZeroRatio": 0.30442679301374953,
+            "meanAlpha": 80.70917409884801,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "1b535d8e9588d40872338970fec5c358b11ae3aca5583e04b187040c3f27b9aa",
+            "baselineSha256": "6e7bdf477bd2bd70c64499402d8bbdaf10266c999f1b1f007e0404c99f7d4156",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "99493e7253ea1222ce26ba7f5cf3abc1837529cb59e8225698755470805b3cc2",
+            "baselineSha256": "9b52ba5ee2a3ec4c36529a974aa703c69ac3c45b3bd691a91ae201dfabe89520",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -84,17 +351,67 @@
       "id": "pedals-telemetry",
       "widgetType": "pedals-telemetry",
       "designId": "pedals-telemetry-crystal",
-      "referenceSelector": ".telemetry-showcase > .telemetry-col:nth-child(1)",
-      "width": 324,
-      "height": 152,
+      "referenceSelector": ".hud-capsule-v1",
+      "width": 323,
+      "height": 86,
       "htmlSection": 4,
       "capture": {
-        "sha256": "c3a96494d5c5abf66815594efdb689e181a666118c80f47f6e63049fa539a760",
-        "bbox": {
-          "x": 502,
-          "y": 834,
-          "width": 324,
-          "height": 152
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
+          "x": 502.59375,
+          "y": 1625,
+          "width": 322.796875,
+          "height": 86
+        },
+        "captureSize": {
+          "width": 579,
+          "height": 342
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "f3360fa4c308afd835343df0addad47c0b5e90a4f45760244923a213633c7571",
+            "baselineSha256": "3967ce081648909bf17804ab924984e6447bcf14d281759dc9cad8c1033d3706",
+            "alphaLt255Ratio": 0.9822187881909725,
+            "alphaZeroRatio": 0.5407740710440465,
+            "meanAlpha": 39.71800543384945,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "3f865ccd0f2b6f99059b70e96008eed319d48b6ecee0746449cd12975d0256c5",
+            "baselineSha256": "82ac3a48cdd06f0be0e85d0fe1c3e1cf65eddca2c5a164a33b0650c3d60bab2a",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "f11ba3b10968f9f575da6d2e3b2ae3ad84af057da168291d51e77af480671fb9",
+            "baselineSha256": "c79a8828387e99531c67e3be713259d81ec7482131c867547e2cca9a3e907a3e",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -102,17 +419,67 @@
       "id": "pedals-telemetry-compact",
       "widgetType": "pedals-telemetry-compact",
       "designId": "pedals-telemetry-compact-crystal",
-      "referenceSelector": ".telemetry-showcase > .telemetry-col:nth-child(2)",
-      "width": 281,
-      "height": 172,
+      "referenceSelector": ".cockpit-v2-low",
+      "width": 248,
+      "height": 92,
       "htmlSection": 4,
       "capture": {
-        "sha256": "6b3107f67bf28da8038d3e9f186535af7386e2f3070b4c1453d959db8bd31d16",
-        "bbox": {
-          "x": 861,
-          "y": 814,
-          "width": 281,
-          "height": 172
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
+          "x": 877.390625,
+          "y": 1605,
+          "width": 248,
+          "height": 92
+        },
+        "captureSize": {
+          "width": 504,
+          "height": 348
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "bc7b0e620cf9c368844cd899f4358ff9ff3e0da5c76c3c351e80356f553cc231",
+            "baselineSha256": "39d57181d27a1e4c54bcde86ed9e57e5e02c97164ccc2a2c74effb179db847bc",
+            "alphaLt255Ratio": 0.9904328589673417,
+            "alphaZeroRatio": 0.5414671136653896,
+            "meanAlpha": 39.32061895639482,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "ca9fd28b76e92d52277b42ca60f5a03461665bc9cc2235be10140e01260db66a",
+            "baselineSha256": "7348c13d2a2c2e264cb1f5ba0f8bb84ddc2462be34a336e2917e7f4f3a2e5a8d",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "5d6b9f234efe1729885e943288bd6620ddce4899111674f7023bcab0246a9ac7",
+            "baselineSha256": "efbda622b70960a836f500c7f63396e3e77da55c64ab0b4c5c4ff0099b058cac",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -120,17 +487,67 @@
       "id": "pedals",
       "widgetType": "pedals",
       "designId": "pedals-crystal",
-      "referenceSelector": ".telemetry-showcase > .telemetry-col:nth-child(3)",
-      "width": 241,
-      "height": 261,
+      "referenceSelector": ".cockpit-v3-solo",
+      "width": 120,
+      "height": 167,
       "htmlSection": 4,
       "capture": {
-        "sha256": "df0e17afb95e66f846bb6fc2256786ab962f2f0d340dc2b619e4480d3a6c02c3",
-        "bbox": {
-          "x": 1177,
-          "y": 725,
-          "width": 241,
-          "height": 261
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
+          "x": 1237.390625,
+          "y": 1516,
+          "width": 120,
+          "height": 167
+        },
+        "captureSize": {
+          "width": 376,
+          "height": 423
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "7146dc17bf2435ff7e497723633c3753eab844000867b2ce1972e14354ffe65d",
+            "baselineSha256": "3f0209c4010388c0f3755435f2d22219005a1a680fd12f9d8893f9dc0a032e95",
+            "alphaLt255Ratio": 0.9866769780192143,
+            "alphaZeroRatio": 0.5567313012423922,
+            "meanAlpha": 37.185906141542176,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "bd24b1c7a79d8893b4489aed84f172a4425bb7624f922cbe1133a54cc3e6e0a0",
+            "baselineSha256": "5060a1a0f01e77ce55e80355e2854a19324092af69c03d77c72ffbf9e795ad3b",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "d7ca65ba4c98da2e850cf3d3f5cb95d5f7bcd47f129787c4566b8b3195e6802c",
+            "baselineSha256": "54dbabda7846e8c90093e071f4220e09095f58ba15cb34f0bc29f2fb9dd604c1",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -143,12 +560,62 @@
       "height": 92,
       "htmlSection": 5,
       "capture": {
-        "sha256": "05b30c044a6814bf168751e55313ebec9d17ddf3692736c2d9070415b53f2848",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 670,
-          "y": 1079,
+          "y": 1832,
           "width": 280,
           "height": 92
+        },
+        "captureSize": {
+          "width": 536,
+          "height": 348
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "9a12af5e22cce9113dee446b1a4156efef49a2fe787735f74d1e8fa2dd10c4e3",
+            "baselineSha256": "7e6a666603a0ab68bd38eba199ff3fd36cc1d97a9fcbb1f1e94b13ec4cedcb39",
+            "alphaLt255Ratio": 0.9934165379996569,
+            "alphaZeroRatio": 0.5279368244981987,
+            "meanAlpha": 39.8706789329216,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "43f0c33b1c0308653c021df1986555de1af9975a3f269c4fa4b903717189c7a5",
+            "baselineSha256": "3165e84e88b23c3a6717b671e03a59953f1de36a9af7cfa54be85c9b3e6cbdff",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "173579cf65bacab2201966edd67c9180987257465b2cabc95cf5244ff9ed691e",
+            "baselineSha256": "6dfb325f6de39d1ce9660790d099483d14059f6adec2f9872379902eb3c69a42",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -161,12 +628,62 @@
       "height": 92,
       "htmlSection": 6,
       "capture": {
-        "sha256": "9b6794c6d0fb9a839cbeda318a1096e077ba67379e501218efdd12393ca7718f",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 500,
-          "y": 679,
+          "y": 2017,
           "width": 440,
           "height": 92
+        },
+        "captureSize": {
+          "width": 696,
+          "height": 348
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "e6b61b9498ed474f5b61de7e4476e936908ca30d546559be0ded7d9997137b3c",
+            "baselineSha256": "9e56a039d68fa425c63e4e2210403beb3de3c3bc38cf9bfc3d63a050659f2907",
+            "alphaLt255Ratio": 0.991697218919276,
+            "alphaZeroRatio": 0.7695327982560444,
+            "meanAlpha": 23.307240058131853,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "e3bf602fcad8c99bf734a5c449d9c785f3bc78f1c96c2f21a19e57488c167902",
+            "baselineSha256": "6eb73118bd923107da33f02e426f7ece8f8e0a45f1c260e6db8494364f6c98bf",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "6a22a85f2f9cb4ae909d3ba7ec3de39d435b72b9d9332aa33fae6d8208af6a0a",
+            "baselineSha256": "e019cc68001750d4286bc801a57c1a0beaf216ed0cda84adc25c32a383a86158",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -179,12 +696,62 @@
       "height": 144,
       "htmlSection": 7,
       "capture": {
-        "sha256": "4d785bb69368e8c8b3a998ab97be63bf5de766b28098f4171a35da0fa6e50cc9",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 460,
-          "y": 904,
+          "y": 2242,
           "width": 1000,
           "height": 144
+        },
+        "captureSize": {
+          "width": 1256,
+          "height": 400
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "9cb8ce3dfcf5807cf909711bb32103b2f7f3d904dab91c7a020398a7bcfa3d4d",
+            "baselineSha256": "00fc5889bd9ea56e07fbd500df6bbbd1f224e5a7ace78917577f7003c629236f",
+            "alphaLt255Ratio": 0.9957304936305732,
+            "alphaZeroRatio": 0.4789331210191083,
+            "meanAlpha": 75.5089729299363,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "60cab341b2681d1fde968d569ffd2535a492b4fed417a2b2f8ab7d5943c9b401",
+            "baselineSha256": "6fee711d582cacee4ac0e28ad9d2962c061c79b721b7dd7b471e6bf645f23cac",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "dc9b32a4fbe367948d48c26e3c16c897bb2d1da8dea95be51d39f322e0adcd31",
+            "baselineSha256": "3913f858bad79df968bb7877c4c12512371a826800d85c77f9ec3125fcd1a113",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -197,12 +764,62 @@
       "height": 583,
       "htmlSection": 8,
       "capture": {
-        "sha256": "92fc839cae00f8c5a412ee2a98ef83ec5c076ffba4a287e51d6bce25d20a7b6a",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 570,
-          "y": 1201,
+          "y": 2539,
           "width": 780,
           "height": 583
+        },
+        "captureSize": {
+          "width": 1036,
+          "height": 839
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "2a764b43185c1262a13d3656b68df2f95671d18c4f9171a00a1a195c5167642d",
+            "baselineSha256": "34658f318b8c7e4226698162dfb12766e3e5b6fd54f93c0674366d6118d96416",
+            "alphaLt255Ratio": 0.993651662900769,
+            "alphaZeroRatio": 0.7420329404834768,
+            "meanAlpha": 12.67935720498295,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "6a0db3dcae638e1ec48a1e983c69dbf0653cdb51ff0f8bf67739148dfa83f0bd",
+            "baselineSha256": "0f7a0fe69bea51eca73615f0aa8bb57df9acdd20b7e5f97d1db7d1072fedb29d",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "ff502575bc8493a8bf0e4db91fe691ddd94d29cb76230c31ddb5193bef0e8f38",
+            "baselineSha256": "5d054b642468546b076dc6b058d4a2614088d92189ec38246b8e97914af5dbf6",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -215,12 +832,62 @@
       "height": 151,
       "htmlSection": 9,
       "capture": {
-        "sha256": "ffb31a3a8a2d00926a57aeebc4d0c308880553de4b5a4eb23d19799a64260703",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 570,
-          "y": 914,
+          "y": 3205,
           "width": 780,
-          "height": 151
+          "height": 150.03125
+        },
+        "captureSize": {
+          "width": 1036,
+          "height": 407
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "93dfe75f44794648aa6d3e54c60d845682b04e6e448fe7915f80fe12fef867fc",
+            "baselineSha256": "5a554aae5fdc26e3484da0ff35f0b039ecfa14c6dc2b19b71e4a7c4225bc774c",
+            "alphaLt255Ratio": 0.9783304715737148,
+            "alphaZeroRatio": 0.8804914953563602,
+            "meanAlpha": 9.032846992306451,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "e8f1d5ea20de9b4a78a531d68baa08af32c2bd7d0a24645b65c278bfb1a3adcb",
+            "baselineSha256": "0ee4fbc754bdd74f45328c50d73f5f524dd07d4f546dcaea4aa43a5540a44054",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "080de1350b48bdb2fc02bb2fd1ecddf2480a5501be132bc2d7ee687c24dbe4eb",
+            "baselineSha256": "cfe819ed5e073fe42c10c0cc26bc224beaff2616965baeea57b5ac7f20d69508",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -230,15 +897,65 @@
       "designId": "input-crystal-blade",
       "referenceSelector": ".in10a-container",
       "width": 780,
-      "height": 97,
+      "height": 96,
       "htmlSection": 10,
       "capture": {
-        "sha256": "5da898993736dd8d1b44e71b17baa2a83d5d387297b4535203c6f5d8cb7e00be",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 570,
-          "y": 1147,
+          "y": 3438.03125,
           "width": 780,
-          "height": 97
+          "height": 96
+        },
+        "captureSize": {
+          "width": 1036,
+          "height": 352
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "437e1c3b48867d5a9d26fad4fbd04d3c6f1949f3beda4130a82a7b15b1c73bcc",
+            "baselineSha256": "a972e76d30c899e857c8157caf9f5f6321fb0fb37f19a8233ace890cf480a980",
+            "alphaLt255Ratio": 0.9832040847665847,
+            "alphaZeroRatio": 0.5512487934362934,
+            "meanAlpha": 50.92483382327132,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "41d86551f47b50601d87149e0421a8aad0ea6b1a32ec9968aabd6ba671785062",
+            "baselineSha256": "8c84648c66fbb6004fd4d636e7cd4a20c923101337d437acb1c21d0452856f21",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "e69aeacc91c65f559ce8ad5590d92c3b33c280adf01c93dc2f5da9b9ba6f7bb1",
+            "baselineSha256": "0600a479bf3d3c6c54bd369efac7af000cccdfb728609326f4a2e0d77eeb2a04",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -248,15 +965,65 @@
       "designId": "input-crystal-capsule",
       "referenceSelector": ".in10b-container",
       "width": 780,
-      "height": 101,
+      "height": 100,
       "htmlSection": 10,
       "capture": {
-        "sha256": "768d6d0c4bdbac930309edff61bc2feb34ed898ac5ebe09f35d092cf25c4f700",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 570,
-          "y": 701,
+          "y": 3647.03125,
           "width": 780,
-          "height": 101
+          "height": 100
+        },
+        "captureSize": {
+          "width": 1036,
+          "height": 356
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "2baa8754b1483d9b61ad421c093117440631afd8655c366fdebcabb1359329e7",
+            "baselineSha256": "f515a5207d49a8eadd81f78272a99f2eabd70310a6593a9b57e9b2a6d3a422c2",
+            "alphaLt255Ratio": 0.9834443191184764,
+            "alphaZeroRatio": 0.862934362934363,
+            "meanAlpha": 17.533800052058478,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "74999d80867b0d621abdd86c5325f7c45e20eb509c48f1660e39d91e0c870624",
+            "baselineSha256": "0754920f503004be6f437f897d416c1658afe49f9830942d28e5ffb0a2fef39e",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "85dc41669894f1ab5504c7c2dca09813f3c736f79be44206a571b3c7e79f6765",
+            "baselineSha256": "974631a77bd6bbcf1c103c4482c396e2feec59127254bdfb11068da6b0ee2068",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -266,15 +1033,65 @@
       "designId": "input-crystal-dense",
       "referenceSelector": ".in10c-container",
       "width": 780,
-      "height": 69,
+      "height": 68,
       "htmlSection": 10,
       "capture": {
-        "sha256": "a81065520ec6b0e3639ca50ec513680ccbed046cc8048e368c70897963f82570",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 570,
-          "y": 914,
+          "y": 3860.03125,
           "width": 780,
-          "height": 69
+          "height": 68
+        },
+        "captureSize": {
+          "width": 1036,
+          "height": 324
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "8de4629bcfb8215c5151bb26894f4f809084d7f2cae8d15990f85d280d4fe6d5",
+            "baselineSha256": "895eb1ea252f098cfb096f0698177cff4beb027fbd861044c0e69e3d29580265",
+            "alphaLt255Ratio": 0.9907228657228657,
+            "alphaZeroRatio": 0.9318246818246818,
+            "meanAlpha": 7.188146479813146,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "dd0ca6776fac0af2c79c7a01de3c256cb8699159a2d52007c6f7a1744905e165",
+            "baselineSha256": "d58647cb3489d0e845cd892f06ddff0aed1d9715bc0a52af40b262796b25b423",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "7dd7deb9dd381996e98b90c1cbf1c77968e602327604b921d1bc72c15b204a1c",
+            "baselineSha256": "d39d08dad400b33609e70efe7aeb5eaaa770868546a3787af275e4f39ad81e12",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -284,15 +1101,65 @@
       "designId": "multiclass-relative-crystal",
       "referenceSelector": ".mc-container",
       "width": 780,
-      "height": 211,
+      "height": 210,
       "htmlSection": 11,
       "capture": {
-        "sha256": "0afbb70ecbec7fe50c39492786f49b5a563e564cf01a0b89d3675bbb1d066bfe",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 570,
-          "y": 1065,
+          "y": 4011.03125,
           "width": 780,
-          "height": 211
+          "height": 210
+        },
+        "captureSize": {
+          "width": 1036,
+          "height": 466
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "2ba471d75e8521c75ec2dbbabb0c4db0b89fcf9cabca188a793152545d9ed5e6",
+            "baselineSha256": "0f4c9138905e05183d356108241e331e4798ff780c552d4a31ef90d85b1ba3f1",
+            "alphaLt255Ratio": 0.982366563375147,
+            "alphaZeroRatio": 0.8886916499577444,
+            "meanAlpha": 7.98624206671417,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "d18cca50d1ff559ba27725540198d350ef99b8f43c7b032788430731446a933c",
+            "baselineSha256": "2d107aa491a548210033ccc3d9521aa9e2e18bf36644787933cd0399f0631f39",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "a7ee6b091a717aa019c53b8a15d4229f9405293d8a1fb34c12dc0142f91db7e4",
+            "baselineSha256": "feac471a435499ed1075289c238d0f0ac3a53c50306b7f5e84e7097142d72e7b",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -302,15 +1169,65 @@
       "designId": "track-weather-crystal",
       "referenceSelector": ".tw-container",
       "width": 240,
-      "height": 421,
+      "height": 420,
       "htmlSection": 12,
       "capture": {
-        "sha256": "8a8307beb731e2c0ce0da0361bc61d2d74c31fd3f43504142c146f8eb4eb9b5b",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 840,
-          "y": 1183,
+          "y": 4324.03125,
           "width": 240,
-          "height": 421
+          "height": 420
+        },
+        "captureSize": {
+          "width": 496,
+          "height": 676
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "5f4d6496bf521325400c04f558c28ebc10bfacb2993e4a5d056c90fd5c0df82d",
+            "baselineSha256": "069ba40e487de6cd959336d6c56d7b7b4fa546fafdfc63dc5571a4b2212f08df",
+            "alphaLt255Ratio": 0.9973903655277725,
+            "alphaZeroRatio": 0.9673273764077114,
+            "meanAlpha": 3.495222132086276,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "f45dd0008cc70748eff9ea2a6f41f957afd95d4b0b0399641c5200f558854994",
+            "baselineSha256": "9f67b89c704873054a7b839574f5afdab09dcc5161e19160b924f89628394b06",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "71a3702a94ab46f00ef163cbbd72fb30b8da0d829b66f3d40ff0823c77f6167f",
+            "baselineSha256": "b045249177ccc5ffba18c9ac78dce4c3d508b3e41f7b95905ec5ee9e57342e91",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -320,15 +1237,65 @@
       "designId": "car-damage-visual-crystal",
       "referenceSelector": ".w13-car-visual",
       "width": 150,
-      "height": 191,
+      "height": 190,
       "htmlSection": 13,
       "capture": {
-        "sha256": "19e78fd44b22e0d3fae666c3eb74319da6372c0419bb837817eba494db949acb",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 885,
-          "y": 893,
+          "y": 4887.03125,
           "width": 150,
-          "height": 191
+          "height": 190
+        },
+        "captureSize": {
+          "width": 406,
+          "height": 446
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "e2047858d84a60b44bf88c6ed5d69e21013194756ef4266c7be4c06696ca0a48",
+            "baselineSha256": "ae8e44d6c9d1c00fd9e62ffea836a3094f05ed5355c8eb18ca88246e2e796cdf",
+            "alphaLt255Ratio": 0.9807373699441119,
+            "alphaZeroRatio": 0.9165543749585809,
+            "meanAlpha": 8.281655216594137,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "bf58311d4794ceabda4b70892a7abdf60f8b0c5aa1cf221f6fa49f80760ad234",
+            "baselineSha256": "9b6e0884bda3b885de81cccb9d31ce83f93bcb8e47fd5380471787bba86f3dc0",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "4873d2741afb0bd837f91a16b49e1e1121f32bdfb836e76029f4d306fa12bb17",
+            "baselineSha256": "80db3b44a12ed8d0fc8857a363edd94e2407d12611e43ba0c62a58667a5b77c8",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -338,15 +1305,65 @@
       "designId": "car-damage-numbers-crystal",
       "referenceSelector": ".w14-damage-nums",
       "width": 140,
-      "height": 149,
+      "height": 148,
       "htmlSection": 14,
       "capture": {
-        "sha256": "2837032d7bb7d2f11f2fcb4b1e4c88f661ddf075efe9394bcb43f47db1aa0e68",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 890,
-          "y": 1193,
+          "y": 5190.03125,
           "width": 140,
-          "height": 149
+          "height": 148
+        },
+        "captureSize": {
+          "width": 396,
+          "height": 404
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "533c9f3cd404149b6c1b7f7f61b4d8ffafa4875f91124510edb6e8b65324c784",
+            "baselineSha256": "1bb37a184534811c9aba5026fb36af347120585b020fa26a12d2e8f143d0f83f",
+            "alphaLt255Ratio": 0.9984373437343734,
+            "alphaZeroRatio": 0.9074907490749075,
+            "meanAlpha": 8.438975147514752,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "8117478503b532f4f65e67ab837e86e6647eed9a05737a32ec79b35377245bce",
+            "baselineSha256": "a7af1341a1b835896e4e91bdc84c11f3516a60d5a58020250bc5433489e304bf",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "9b345a58258cd19516126b7268f8c73290417dc4e56b6c2b5332747c782fa523",
+            "baselineSha256": "bb476acbf974f51c39ca8c2de15bb9aadc8ebe6d05df3aa279cf8b759111b268",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -356,15 +1373,65 @@
       "designId": "delta-crystal-simple",
       "referenceSelector": ".w15-delta-simple",
       "width": 420,
-      "height": 70,
+      "height": 69,
       "htmlSection": 15,
       "capture": {
-        "sha256": "825d9dd17ee6d72ba53483552f26c352589a8c6abd3f41823720f1043cb38d47",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 750,
-          "y": 727,
+          "y": 5451.03125,
           "width": 420,
-          "height": 70
+          "height": 69
+        },
+        "captureSize": {
+          "width": 676,
+          "height": 325
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "c4b54fa866024cb5c88823ce16dc82e393cded2ca72ce22f5ae4f55f85ec480c",
+            "baselineSha256": "4ba24d322649bfc75e8436126ee4e05860c87b7ad6a1cd135f0e02a754796183",
+            "alphaLt255Ratio": 0.9987664997724169,
+            "alphaZeroRatio": 0.892685480200273,
+            "meanAlpha": 12.435671370050068,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "96fa9e7e37de14c1a085f673ce1f005362d9d9b5bf7f90de62110b417044a178",
+            "baselineSha256": "f3b1fca719fcdc01c3a46c4bbb6ff2c3913f550e8b02dd3aaec647a8ae023598",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "04e73341b6e783c804e4a94a0eb23b65c1eac0fbfae57a63d0724d75a6fca6e5",
+            "baselineSha256": "e461b79ea80634b5787832a681bc76643daa2fbd939971a5a2abe2b2e60b1334",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     },
@@ -374,17 +1441,91 @@
       "designId": "delta-advanced-crystal",
       "referenceSelector": ".w16-delta-adv",
       "width": 480,
-      "height": 43,
+      "height": 42,
       "htmlSection": 16,
       "capture": {
-        "sha256": "3f55bbef02ce8faf0cbe091e14b0fb23b671218b9a1a4b45dd9d98e9413039f4",
-        "bbox": {
+        "protocol": 2,
+        "margin": 128,
+        "guard": 8,
+        "sourceBbox": {
           "x": 720,
-          "y": 909,
+          "y": 5633.03125,
           "width": 480,
-          "height": 43
+          "height": 42
+        },
+        "captureSize": {
+          "width": 736,
+          "height": 298
+        },
+        "scenes": {
+          "transparent": {
+            "widgetSha256": "ceaedef417d6fd7d9628bbb000a9e4d3533f2ca15a73f78cc129075d2039fc7c",
+            "baselineSha256": "f874a4e2fb9f4c843b603780e57e56f2dca89d950137696894260ad537431bc1",
+            "alphaLt255Ratio": 0.991318937846513,
+            "alphaZeroRatio": 0.9294207761890867,
+            "meanAlpha": 7.210306025678436,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "solid": {
+            "widgetSha256": "7fe7264863162f3ffc898c0fc4d370ae16240cfbf5f1ddb50a08cb0537b3d285",
+            "baselineSha256": "2fe82c898732a223ab488a35a3e3c9b17c770b7ab7c287edcd40ed055fc113d8",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          },
+          "grid": {
+            "widgetSha256": "bc9b5f7258830258e2573beeb4307dc779cad2c5ae230ade6eeffe2aa09b78ec",
+            "baselineSha256": "71104cb2e30353304abf9a4825881a855401f467df92ef045240b96f8f8fd7ce",
+            "alphaLt255Ratio": 0,
+            "alphaZeroRatio": 0,
+            "meanAlpha": 255,
+            "guardChangedPixels": 0,
+            "stability": {
+              "maskIoU": 1,
+              "alphaMeanDelta": 0,
+              "compositeDeltaRatio": 0,
+              "sceneDeltaRatio": 0
+            }
+          }
         }
       }
     }
-  ]
+  ],
+  "captureProtocol": {
+    "margin": 128,
+    "guard": 8,
+    "dpr": 1,
+    "scenes": [
+      {
+        "id": "transparent",
+        "backgroundColor": "transparent",
+        "backgroundImage": "none"
+      },
+      {
+        "id": "solid",
+        "backgroundColor": "#060608",
+        "backgroundImage": "none"
+      },
+      {
+        "id": "grid",
+        "backgroundColor": "#d9dde7",
+        "backgroundImage": "linear-gradient(45deg, rgba(10, 18, 32, 0.9) 25%, transparent 25%),linear-gradient(-45deg, rgba(10, 18, 32, 0.9) 25%, transparent 25%),linear-gradient(45deg, transparent 75%, rgba(10, 18, 32, 0.9) 75%),linear-gradient(-45deg, transparent 75%, rgba(10, 18, 32, 0.9) 75%)",
+        "backgroundPosition": "0 0, 0 16px, 16px -16px, -16px 0",
+        "backgroundSize": "32px 32px"
+      }
+    ]
+  }
 }

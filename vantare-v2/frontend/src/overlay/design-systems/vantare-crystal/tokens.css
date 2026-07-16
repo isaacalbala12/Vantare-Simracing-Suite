@@ -17,13 +17,13 @@
   --vc-surface: var(--vc-glass-surface);
   --vc-border: var(--vc-glass-border);
   --vc-highlight: rgba(255, 255, 255, 0.08);
-  --vc-text: #f8fafc;
-  --vc-muted: rgba(226, 232, 240, 0.72);
-  --vc-gaining: #4ade80;
-  --vc-losing: #fb7185;
-  --vc-neutral: #e2e8f0;
-  --vc-glow-gaining: rgba(74, 222, 128, 0.35);
-  --vc-glow-losing: rgba(251, 113, 133, 0.35);
+  --vc-text: #ffffff;
+  --vc-muted: #999999;
+  --vc-gaining: #22c55e;
+  --vc-losing: #ff2a3b;
+  --vc-neutral: #ffffff;
+  --vc-glow-gaining: rgba(34, 197, 94, 0.5);
+  --vc-glow-losing: rgba(255, 42, 59, 0.5);
   --vc-meter: rgba(255, 255, 255, 0.08);
 }
 

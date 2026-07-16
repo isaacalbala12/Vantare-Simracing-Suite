@@ -2630,3 +2630,13 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-15) — Familias live y bloqueo tipográfico
 - Gates rojos adicionales, no maquillados: `visual:overlay-studio` detecta 4.743% en `delta-original-ready-studio` frente a 0.5%; `bench:overlay-studio-drag` obtiene -29.15 frente a -19.51 (tolerancia 8). Canvas/shell quedan fuera del ownership de ISA-93.
 - Bloqueo material: `manifest.json` declara que los PNG usan web fonts resueltas, pero el repo no contiene Inter/Plus Jakarta Sans/JetBrains Mono. Con prohibición de dependencias y de regenerar baselines no existe una ruta autorizada para cerrar tipografía ±1 px/pixel ≤3%; se requiere decisión de Isaac sobre vendorizar esas fuentes o cambiar el contrato de captura.
 - Hasta resolverlo: no PR, no push y no cambio a In Review; Linear permanece In Progress. Baselines intactos.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Corrección P0 de autoridad visual:
+- Las referencias v1 quedan invalidadas: 21/21 PNG eran opacos y los tres Pedals capturaban wrappers de showcase con etiquetas/descripciones.
+- Protocolo v2: raíz aislada, layout 1920/DPR1, margen de sombra 128px, guard 8px, escena vacía y tres fondos controlados (transparente, `#060608`, rejilla); soporte calculado con RGBA premultiplicado y gates separados geometry/mask-alpha/composite/stability/cross-surface/fonts.
+- Revisión adversarial corrigió cinco defectos antes de migrar: descendientes del baseline, hermanos visibles, RGB oculto bajo alfa 0, feedback de viewport en widgets fluidos y repaint incompleto tras visibility.
+- Migración autorizada completada desde el HTML sin modificarlo: 21/21 referencias aisladas, 63/63 escenas estables, 63/63 guards limpios y 21/21 crops con alfa real.
+- Baseline renderer v2: geometry 14/21, guard 21/21, stability 21/21, Studio/Desktop/OBS 21/21; mask-alpha 0/21 y composite sólido+rejilla 0/21. Estos fallos sustituyen los porcentajes antiguos.
+- A/B de `tokens.css`: se conservan solo colores globales con mejora medida; se retiraron ajustes redundantes de Delta Simple. El fallback Chrome de Playwright queda cubierto.
+- Evidencia: `docs/analysis/isa-93-crystal-parity/README.md` y manifest v2 `frontend/testdata/crystal-reference/manifest.json`.
+- Siguiente: corregir overflow 7/21, vendorizar las fuentes oficiales ya autorizadas para cerrar `fontPass` y continuar familias contra los nuevos gates. ISA-93 permanece In Progress; sin PR final ni merge.

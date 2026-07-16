@@ -1,165 +1,300 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { chromium } from "playwright";
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const FRONTEND_ROOT = path.resolve(SCRIPT_DIR, "..");
-const REFERENCE_DIR = path.join(FRONTEND_ROOT, "testdata", "crystal-reference");
-const OUTPUT_DIR = path.join(FRONTEND_ROOT, ".tmp", "crystal-parity");
-const REPORT_ONLY = process.argv.includes("--report-only");
-const requestedIds = process.argv.find((argument) => argument.startsWith("--ids="))?.slice(6).split(/[\s,]+/).filter(Boolean);
-const MAX_PIXEL_DELTA_RATIO = 0.03;
-const MAX_CHANNEL_DELTA = 24;
-const GEOMETRY_TOLERANCE_PX = 2;
+import {
+  CONTROL_SCENES,
+  captureIsolatedElement,
+  comparePngCaptures,
+} from './crystal-parity-protocol.mjs';
 
-function toDataUrl(buffer) {
-  return `data:image/png;base64,${buffer.toString("base64")}`;
-}
-
-async function comparePng(page, actual, expected) {
-  return page.evaluate(async ({ actualUrl, expectedUrl }) => {
-    const decode = (url) => new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const context = canvas.getContext("2d");
-        if (!context) return reject(new Error("canvas context unavailable"));
-        context.drawImage(image, 0, 0);
-        resolve({ width: image.width, height: image.height, data: context.getImageData(0, 0, image.width, image.height).data });
-      };
-      image.onerror = () => reject(new Error("PNG decode failed"));
-      image.src = url;
-    });
-    const [left, right] = await Promise.all([decode(actualUrl), decode(expectedUrl)]);
-    if (left.width !== right.width || left.height !== right.height) {
-      return { ratio: 1, dimensionsMatch: false, actual: `${left.width}x${left.height}`, expected: `${right.width}x${right.height}` };
-    }
-    let different = 0;
-    const background = [6, 6, 8];
-    for (let index = 0; index < left.data.length; index += 4) {
-      const leftAlpha = left.data[index + 3] / 255;
-      const rightAlpha = right.data[index + 3] / 255;
-      const leftRgb = background.map((channel, offset) => left.data[index + offset] * leftAlpha + channel * (1 - leftAlpha));
-      const rightRgb = background.map((channel, offset) => right.data[index + offset] * rightAlpha + channel * (1 - rightAlpha));
-      if (Math.max(...leftRgb.map((channel, offset) => Math.abs(channel - rightRgb[offset]))) > 24) different += 1;
-    }
-    return { ratio: different / (left.data.length / 4), dimensionsMatch: true };
-  }, { actualUrl: toDataUrl(actual), expectedUrl: toDataUrl(expected) });
-}
+const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(scriptDirectory, '..');
+const canonicalReferenceDirectory = path.join(frontendRoot, 'testdata', 'crystal-reference');
+const auditReferenceDirectory = path.join(frontendRoot, '.tmp', 'crystal-reference-audit');
+const outputDirectory = path.join(frontendRoot, '.tmp', 'crystal-parity');
+const reportOnly = process.argv.includes('--report-only');
+const useAuditReferences = process.argv.includes('--reference-audit');
+const requestedIds = process.argv.find((argument) => argument.startsWith('--ids='))
+  ?.slice(6).split(/[\s,]+/).filter(Boolean);
+const maxCompositeDeltaRatio = 0.03;
+const maxAlphaDeltaRatio = 0.03;
+const minMaskIoU = 0.97;
+const geometryTolerancePx = 2;
+const windowsChrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 async function startServer() {
-  const { createServer } = await import("vite");
+  const { createServer } = await import('vite');
   const server = await createServer({
-    configFile: path.join(FRONTEND_ROOT, "vite.overlay-studio-harness.config.ts"),
-    server: { host: "127.0.0.1", port: 5177, strictPort: false },
+    configFile: path.join(frontendRoot, 'vite.overlay-studio-harness.config.ts'),
+    server: { host: '127.0.0.1', port: 5177, strictPort: false },
   });
   await server.listen();
   const address = server.httpServer?.address();
-  const port = typeof address === "object" && address ? address.port : 5177;
+  const port = typeof address === 'object' && address ? address.port : 5177;
   return { server, baseUrl: `http://127.0.0.1:${port}` };
 }
 
-async function capture(page, baseUrl, entry, surface, suffix) {
+function scenePath(baseDirectory, entryId, sceneId, baseline = false) {
+  return path.join(
+    baseDirectory,
+    'scenes',
+    entryId,
+    `${sceneId}${baseline ? '-baseline' : ''}.png`,
+  );
+}
+
+async function loadReferenceContract() {
+  if (useAuditReferences) {
+    const report = JSON.parse(await readFile(path.join(auditReferenceDirectory, 'report.json'), 'utf8'));
+    return { entries: report.entries, directory: auditReferenceDirectory, protocol: 2 };
+  }
+  const manifest = JSON.parse(await readFile(path.join(canonicalReferenceDirectory, 'manifest.json'), 'utf8'));
+  if (manifest.version !== 2) {
+    throw new Error('canonical references still use protocol v1; use --reference-audit for the proof cut');
+  }
+  return {
+    entries: manifest.entries,
+    directory: canonicalReferenceDirectory,
+    protocol: manifest.version,
+    fontContract: manifest.fontContract,
+  };
+}
+
+async function captureRenderer(page, baseUrl, entry, surface, scene) {
   const query = new URLSearchParams({
     widget: entry.widgetType,
-    system: "vantare-crystal",
+    system: 'vantare-crystal',
     design: entry.designId,
-    state: "ready",
+    state: 'ready',
     surface,
   });
-  await page.goto(`${baseUrl}/overlay-studio-harness.html?${query}`, { waitUntil: "networkidle" });
-  const frame = page.locator("[data-overlay-parity-widget-frame]");
+  await page.goto(`${baseUrl}/overlay-studio-harness.html?${query}`, { waitUntil: 'networkidle' });
+  await page.evaluate(async () => {
+    if (!document.fonts) return;
+    const queries = [
+      ...[400, 500, 600, 700, 800].map((weight) => `${weight} 16px "Inter"`),
+      ...[700, 800].map((weight) => `${weight} 16px "Plus Jakarta Sans"`),
+      ...[500, 600, 700, 800].map((weight) => `${weight} 16px "JetBrains Mono"`),
+    ];
+    await Promise.all(queries.map((query) => document.fonts.load(query, 'Vantare 0123456789')));
+    await document.fonts.ready;
+  });
+  const frame = page.locator('[data-overlay-parity-widget-frame]');
   await frame.locator(`[data-widget-renderer="${entry.widgetType}"]`).waitFor();
-  const geometry = await frame.evaluate((element) => {
-    const frameRect = element.getBoundingClientRect();
-    const renderer = element.querySelector("[data-widget-renderer]");
-    const rendererRect = renderer?.getBoundingClientRect();
+  await frame.evaluate((element, expected) => {
+    element.style.width = `${expected.width}px`;
+    element.style.height = `${expected.height}px`;
+  }, { width: entry.width, height: entry.height });
+  const rendererGeometry = await frame.locator('[data-widget-renderer]').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
     return {
-      width: frameRect.width,
-      height: frameRect.height,
-      rendererWidth: rendererRect?.width ?? 0,
-      rendererHeight: rendererRect?.height ?? 0,
-      overflowX: element.scrollWidth > element.clientWidth + 1,
-      overflowY: element.scrollHeight > element.clientHeight + 1,
+      width: rect.width,
+      height: rect.height,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+      scrollWidth: element.scrollWidth,
+      scrollHeight: element.scrollHeight,
     };
   });
-  const output = path.join(OUTPUT_DIR, `${entry.id}-${surface}-${suffix}.png`);
-  const buffer = await frame.screenshot({ path: output, animations: "disabled", omitBackground: true });
-  return { buffer, geometry, output };
+  const fontResolution = await page.evaluate(() => ({
+    inter: document.fonts?.check('400 16px "Inter"') ?? false,
+    plusJakartaSans: document.fonts?.check('700 16px "Plus Jakarta Sans"') ?? false,
+    jetBrainsMono: document.fonts?.check('500 16px "JetBrains Mono"') ?? false,
+    faces: document.fonts ? Array.from(document.fonts).map((face) => ({
+      family: face.family,
+      weight: face.weight,
+      status: face.status,
+    })) : [],
+  }));
+  const captured = await captureIsolatedElement(page, {
+    selector: '[data-overlay-parity-widget-frame]',
+    scene,
+  });
+  return { ...captured, fontResolution, rendererGeometry };
 }
 
 async function main() {
-  const manifest = JSON.parse(await readFile(path.join(REFERENCE_DIR, "manifest.json"), "utf8"));
-  if (manifest.entries?.length !== 21) throw new Error("Crystal manifest must contain exactly 21 entries");
+  const referenceContract = await loadReferenceContract();
   const entries = requestedIds?.length
-    ? manifest.entries.filter((entry) => requestedIds.includes(entry.id))
-    : manifest.entries;
-  if (requestedIds?.length && entries.length !== requestedIds.length) throw new Error("unknown Crystal design in --ids");
-  await mkdir(OUTPUT_DIR, { recursive: true });
+    ? referenceContract.entries.filter(({ id }) => requestedIds.includes(id))
+    : referenceContract.entries;
+  if (requestedIds?.length && entries.length !== requestedIds.length) {
+    throw new Error('unknown or unavailable Crystal design in --ids');
+  }
+  await mkdir(outputDirectory, { recursive: true });
   const { server, baseUrl } = await startServer();
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 2200, height: 1400 }, deviceScaleFactor: 1 });
+  const executablePath = process.env.CRYSTAL_PLAYWRIGHT_EXECUTABLE_PATH
+    || (process.platform === 'win32' && existsSync(windowsChrome) ? windowsChrome : undefined);
+  const browser = await chromium.launch({ headless: true, executablePath });
+  const page = await browser.newPage({ viewport: { width: 2400, height: 1400 }, deviceScaleFactor: 1 });
   const results = [];
+
   try {
     await page.addInitScript(() => {
-      const style = document.createElement("style");
-      style.textContent = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}";
+      const style = document.createElement('style');
+      style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}';
       document.documentElement.append(style);
     });
+
     for (const entry of entries) {
-      const harness = await capture(page, baseUrl, entry, "harness", "actual");
-      const repeated = await capture(page, baseUrl, entry, "harness", "repeat");
-      const reference = await readFile(path.join(REFERENCE_DIR, `${entry.id}.png`));
-      const parity = await comparePng(page, harness.buffer, reference);
-      const stability = await comparePng(page, harness.buffer, repeated.buffer);
-      const surfaceRatios = {};
-      for (const surface of ["studio", "desktop", "obs"]) {
-        const surfaceCapture = await capture(page, baseUrl, entry, surface, "surface");
-        surfaceRatios[surface] = (await comparePng(page, harness.buffer, surfaceCapture.buffer)).ratio;
+      const sceneResults = {};
+      let geometry;
+      let fontResolution;
+      let stabilityPass = true;
+      for (const scene of CONTROL_SCENES) {
+        const actual = await captureRenderer(page, baseUrl, entry, 'harness', scene);
+        const repeated = await captureRenderer(page, baseUrl, entry, 'harness', scene);
+        const [referenceWidget, referenceScene] = await Promise.all([
+          readFile(scenePath(referenceContract.directory, entry.id, scene.id)),
+          readFile(scenePath(referenceContract.directory, entry.id, scene.id, true)),
+        ]);
+        geometry = actual.geometry;
+        fontResolution = actual.fontResolution;
+        const stability = await comparePngCaptures(page, {
+          referenceWidget: actual.widget,
+          referenceScene: actual.sceneOnly,
+          actualWidget: repeated.widget,
+          actualScene: repeated.sceneOnly,
+          guard: actual.geometry.guard,
+          channelTolerance: 0,
+        });
+        const stable = stability.dimensionsMatch
+          && stability.maskIoU >= minMaskIoU
+          && stability.alphaMeanDelta <= maxAlphaDeltaRatio
+          && stability.compositeDeltaRatio <= maxCompositeDeltaRatio
+          && stability.sceneDeltaRatio === 0;
+        stabilityPass &&= stable;
+        const comparison = await comparePngCaptures(page, {
+          referenceWidget,
+          referenceScene,
+          actualWidget: actual.widget,
+          actualScene: actual.sceneOnly,
+          guard: actual.geometry.guard,
+        });
+        const sceneDirectory = path.join(outputDirectory, entry.id);
+        await mkdir(sceneDirectory, { recursive: true });
+        await Promise.all([
+          writeFile(path.join(sceneDirectory, `${scene.id}-actual.png`), actual.widget),
+          writeFile(path.join(sceneDirectory, `${scene.id}-actual-baseline.png`), actual.sceneOnly),
+        ]);
+        sceneResults[scene.id] = {
+          stable,
+          stability,
+          ...comparison,
+        };
       }
-      const geometryPass = Math.abs(harness.geometry.width - entry.width) <= GEOMETRY_TOLERANCE_PX
-        && Math.abs(harness.geometry.height - entry.height) <= GEOMETRY_TOLERANCE_PX
-        && !harness.geometry.overflowX && !harness.geometry.overflowY;
+
+      const surfaceResults = {};
+      const harnessTransparent = await captureRenderer(page, baseUrl, entry, 'harness', CONTROL_SCENES[0]);
+      for (const surface of ['studio', 'desktop', 'obs']) {
+        const surfaceCapture = await captureRenderer(page, baseUrl, entry, surface, CONTROL_SCENES[0]);
+        surfaceResults[surface] = await comparePngCaptures(page, {
+          referenceWidget: harnessTransparent.widget,
+          referenceScene: harnessTransparent.sceneOnly,
+          actualWidget: surfaceCapture.widget,
+          actualScene: surfaceCapture.sceneOnly,
+          guard: harnessTransparent.geometry.guard,
+          channelTolerance: 0,
+        });
+      }
+
+      const geometryPass = Math.abs(geometry.contentWidth - entry.width) <= geometryTolerancePx
+        && Math.abs(geometry.contentHeight - entry.height) <= geometryTolerancePx
+        && geometry.scrollWidth <= geometry.clientWidth + 1
+        && geometry.scrollHeight <= geometry.clientHeight + 1
+        && Math.abs(harnessTransparent.rendererGeometry.width - entry.width) <= geometryTolerancePx
+        && Math.abs(harnessTransparent.rendererGeometry.height - entry.height) <= geometryTolerancePx
+        && harnessTransparent.rendererGeometry.scrollWidth <= harnessTransparent.rendererGeometry.clientWidth + 1
+        && harnessTransparent.rendererGeometry.scrollHeight <= harnessTransparent.rendererGeometry.clientHeight + 1;
+      const transparent = sceneResults.transparent;
+      const alphaPass = transparent.dimensionsMatch
+        && transparent.maskIoU >= minMaskIoU
+        && transparent.alphaMeanDelta <= maxAlphaDeltaRatio
+        && transparent.alphaMismatchRatio <= maxAlphaDeltaRatio;
+      const compositePass = ['solid', 'grid'].every((sceneId) => (
+        sceneResults[sceneId].dimensionsMatch
+        && sceneResults[sceneId].sceneDeltaRatio === 0
+        && sceneResults[sceneId].compositeDeltaRatio <= maxCompositeDeltaRatio
+      ));
+      const guardPass = Object.values(sceneResults).every((sceneResult) => (
+        sceneResult.referenceGuardPixels === 0 && sceneResult.actualGuardPixels === 0
+      ));
+      const requiredFontFaces = referenceContract.fontContract?.captured?.faces
+        ?.filter(({ status }) => status === 'loaded')
+        .map(({ family, weight }) => `${family}|${weight}`) ?? [];
+      const actualFontFaces = new Set(
+        fontResolution.faces
+          .filter(({ status }) => status === 'loaded')
+          .map(({ family, weight }) => `${family.replaceAll('"', '')}|${weight}`),
+      );
+      const fontPass = requiredFontFaces.every((face) => actualFontFaces.has(face));
+      const surfacesPass = Object.values(surfaceResults).every((surfaceResult) => (
+        surfaceResult.dimensionsMatch
+        && surfaceResult.maskIoU === 1
+        && surfaceResult.alphaMeanDelta === 0
+        && surfaceResult.compositeDeltaRatio === 0
+        && surfaceResult.sceneDeltaRatio === 0
+      ));
       const result = {
         id: entry.id,
         widgetType: entry.widgetType,
         designId: entry.designId,
-        geometry: harness.geometry,
+        geometry,
+        rendererGeometry: harnessTransparent.rendererGeometry,
         expectedGeometry: { width: entry.width, height: entry.height },
         geometryPass,
-        pixelDeltaRatio: parity.ratio,
-        pixelPass: parity.dimensionsMatch && parity.ratio <= MAX_PIXEL_DELTA_RATIO,
-        stableDeltaRatio: stability.ratio,
-        stablePass: stability.dimensionsMatch && stability.ratio === 0,
-        surfaceDeltaRatios: surfaceRatios,
-        surfacesPass: Object.values(surfaceRatios).every((ratio) => ratio === 0),
+        fontResolution,
+        alphaPass,
+        compositePass,
+        guardPass,
+        fontPass,
+        stabilityPass,
+        surfacesPass,
+        scenes: sceneResults,
+        surfaces: surfaceResults,
       };
       results.push(result);
-      process.stdout.write(`${result.pixelPass ? "PASS" : "FAIL"} ${entry.id}: ${(parity.ratio * 100).toFixed(3)}%\n`);
+      process.stdout.write(
+        `${geometryPass && alphaPass && compositePass && guardPass && fontPass && stabilityPass && surfacesPass ? 'PASS' : 'FAIL'}`
+        + ` ${entry.id}: geometry=${geometryPass ? 'ok' : 'fail'}`
+        + ` maskIoU=${(transparent.maskIoU * 100).toFixed(2)}%`
+        + ` alpha=${(transparent.alphaMeanDelta * 100).toFixed(2)}%`
+        + ` solid=${(sceneResults.solid.compositeDeltaRatio * 100).toFixed(2)}%`
+        + ` grid=${(sceneResults.grid.compositeDeltaRatio * 100).toFixed(2)}%\n`,
+      );
     }
   } finally {
     await page.close();
     await browser.close();
     await server.close();
   }
+
+  const gateNames = ['geometryPass', 'alphaPass', 'compositePass', 'guardPass', 'fontPass', 'stabilityPass', 'surfacesPass'];
+  const summary = Object.fromEntries(gateNames.map((gate) => [
+    gate,
+    results.filter((result) => result[gate]).length,
+  ]));
   const report = {
     generatedAt: new Date().toISOString(),
-    thresholds: { maxPixelDeltaRatio: MAX_PIXEL_DELTA_RATIO, maxChannelDelta: MAX_CHANNEL_DELTA, geometryTolerancePx: GEOMETRY_TOLERANCE_PX },
-    summary: {
-      total: results.length,
-      geometryPassed: results.filter((result) => result.geometryPass).length,
-      pixelPassed: results.filter((result) => result.pixelPass).length,
-      stablePassed: results.filter((result) => result.stablePass).length,
-      surfacesPassed: results.filter((result) => result.surfacesPass).length,
+    referenceProtocol: referenceContract.protocol,
+    thresholds: {
+      geometryTolerancePx,
+      minMaskIoU,
+      maxAlphaDeltaRatio,
+      maxCompositeDeltaRatio,
+      maxChannelDelta: 24,
     },
+    total: results.length,
+    summary,
     results,
   };
-  await writeFile(path.join(OUTPUT_DIR, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  process.stdout.write(`${JSON.stringify(report.summary)}\nreport: ${path.join(OUTPUT_DIR, "report.json")}\n`);
-  if (!REPORT_ONLY && results.some((result) => !result.geometryPass || !result.pixelPass || !result.stablePass || !result.surfacesPass)) {
+  await writeFile(path.join(outputDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ total: results.length, ...summary })}\n`);
+  process.stdout.write(`report: ${path.join(outputDirectory, 'report.json')}\n`);
+  if (!reportOnly && results.some((result) => gateNames.some((gate) => !result[gate]))) {
     process.exitCode = 1;
   }
 }

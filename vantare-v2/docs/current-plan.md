@@ -4,6 +4,12 @@ Nota ISA-9 (2026-07-13) — Launcher logos:
 - Frontend: `AppBadge` prueba candidatos en orden y, tras un error, solicita extracción backend antes del fallback de abreviatura; `object-contain` conserva proporción.
 - Checks: `go test ./internal/app/launcher/...`, `go test ./cmd/vantare/...`, `pnpm --dir frontend test` (177 archivos/1614 tests), build frontend, lint focalizado y smoke Playwright 100/125/150/200% equivalentes sin overflow/errores. `wails3 build DEV=true` PASS.
 - Riesgos restantes: los assets oficiales locales siguen vacíos por decisión previa; el mock visual muestra abreviaturas. Falta validación manual de Isaac al 100%; no hacer merge a `develop` sin esa aprobación.
+Nota ISA-13-MONO-LEGIBILITY-RELAUNCH (2026-07-14):
+- Relanzada válida desde `c49e14aab474ee132c0368e92918f78d66a162c8` en `vantareapp/isa-13-mono-legibility-relaunch-20260714`; la ejecución anterior queda descartada y no se reutilizan sus artefactos.
+- Causa raíz confirmada: Hub usa Space Mono, pero `index.html` solo solicitaba el peso 400 aunque el chrome usa 700; además el fallback CSS aún declaraba JetBrains Mono. Se cargan Space Mono 400/700 y se alinea el fallback global a Space Mono.
+- Alcance: Dashboard, Launcher, Calendar, Overlay Studio y Settings auditados en es/en/it/pt, wide/medium/compact y DPR 1/1.25/1.5/2. Crystal/Original y tokens JetBrains de overlays no se modifican.
+- Regresión: contrato de token/carga y smoke Playwright determinista (`4 × 3 × 4`) añadidos. Tests frontend `178/178`, `1615/1615`; build PASS; diff check PASS. Lint mantiene 4 errores preexistentes fuera de scope.
+- Estado: IMPLEMENTADO EN RAMA; PR a `develop` pendiente de validación manual completa de Isaac; no hacer merge automático.
 
 Nota LAUNCHER-V3-SHELL-ICONLOCATION-FIX (2026-07-12):
 - Corregido el caso de shortcuts con `TargetPath` genérico (Discord `Update.exe`): el resolver lee `IShellLinkW.GetIconLocation`, extrae el recurso indicado sin la flecha del `.lnk` y solo después usa el ejecutable objetivo/Shell.

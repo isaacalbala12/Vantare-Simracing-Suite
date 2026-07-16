@@ -113,19 +113,61 @@ async function captureRenderer(page, baseUrl, entry, surface, scene) {
     })) : [],
   }));
   const textContract = await collectTextContract(page, '[data-overlay-parity-widget-frame]');
+  const dynamicStyleContract = await collectDynamicStyleContract(page, entry, 'actual');
   const captured = await captureIsolatedElement(page, {
     selector: '[data-overlay-parity-widget-frame]',
     scene,
+    dynamicSelectors: entry.dynamicLayers?.actual,
   });
-  return { ...captured, fontResolution, rendererGeometry, textContract };
+  return { ...captured, fontResolution, rendererGeometry, textContract, dynamicStyleContract };
 }
 
-async function captureAuthorityTextContract(page, entry) {
+async function collectDynamicStyleContract(page, entry, side) {
+  const roles = entry.dynamicLayers?.styleRoles ?? [];
+  return Promise.all(roles.map(async ({ role, [side]: selector }) => {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+    if (count !== 1) throw new Error(`${entry.id} ${side} dynamic role ${role} matched ${count} elements`);
+    const style = await locator.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      const normalizePaint = (value) => value.startsWith('url(') ? 'gradient' : value;
+      return {
+        fill: normalizePaint(computed.fill),
+        stroke: normalizePaint(computed.stroke),
+        strokeWidth: computed.strokeWidth,
+        opacity: computed.opacity,
+        filter: computed.filter === 'none' ? 'none' : 'filter',
+      };
+    });
+    return { role, style };
+  }));
+}
+
+function compareDynamicStyleContracts(reference, actual) {
+  const pass = reference.length === actual.length && reference.every((entry) => (
+    actual.some((candidate) => (
+      candidate.role === entry.role
+      && JSON.stringify(candidate.style) === JSON.stringify(entry.style)
+    ))
+  ));
+  return { reference, actual, pass };
+}
+
+async function captureAuthorityContract(page, entry) {
   await page.goto(authorityUrl, { waitUntil: 'networkidle' });
   await page.evaluate(async () => {
     await document.fonts?.ready;
   });
-  return collectTextContract(page, entry.referenceSelector);
+  const textContract = await collectTextContract(page, entry.referenceSelector);
+  const dynamicStyleContract = await collectDynamicStyleContract(page, entry, 'reference');
+  const captured = await captureIsolatedElement(page, {
+    selector: entry.referenceSelector,
+    scene: CONTROL_SCENES[0],
+    margin: entry.capture?.margin ?? 128,
+    guard: entry.capture?.guard ?? 8,
+    dynamicSelectors: entry.dynamicLayers?.reference,
+  });
+  return { textContract, dynamicStyleContract, dynamicMask: captured.dynamicMask };
 }
 
 async function main() {
@@ -152,7 +194,8 @@ async function main() {
     });
 
     for (const entry of entries) {
-      const referenceTextContract = await captureAuthorityTextContract(page, entry);
+      const authorityContract = await captureAuthorityContract(page, entry);
+      const referenceTextContract = authorityContract.textContract;
       const sceneResults = {};
       let geometry;
       let fontResolution;
@@ -190,6 +233,10 @@ async function main() {
             ...referenceTextContract.map(({ rect }) => rect),
             ...actual.textContract.map(({ rect }) => rect),
           ],
+          excludedMasks: [
+            authorityContract.dynamicMask,
+            actual.dynamicMask,
+          ].filter(Boolean),
         });
         const sceneDirectory = path.join(outputDirectory, entry.id);
         await mkdir(sceneDirectory, { recursive: true });
@@ -253,6 +300,10 @@ async function main() {
         referenceTextContract,
         harnessTransparent.textContract,
       );
+      const dynamicStyle = compareDynamicStyleContracts(
+        authorityContract.dynamicStyleContract,
+        harnessTransparent.dynamicStyleContract,
+      );
       const surfacesPass = Object.values(surfaceResults).every((surfaceResult) => (
         surfaceResult.dimensionsMatch
         && surfaceResult.maskIoU === 1
@@ -275,6 +326,8 @@ async function main() {
         fontPass,
         typographyPass: typography.pass,
         typography,
+        dynamicStylePass: dynamicStyle.pass,
+        dynamicStyle,
         stabilityPass,
         surfacesPass,
         scenes: sceneResults,
@@ -282,7 +335,7 @@ async function main() {
       };
       results.push(result);
       process.stdout.write(
-        `${geometryPass && alphaPass && compositePass && guardPass && fontPass && typography.pass && stabilityPass && surfacesPass ? 'PASS' : 'FAIL'}`
+        `${geometryPass && alphaPass && compositePass && guardPass && fontPass && typography.pass && dynamicStyle.pass && stabilityPass && surfacesPass ? 'PASS' : 'FAIL'}`
         + ` ${entry.id}: geometry=${geometryPass ? 'ok' : 'fail'}`
         + ` maskIoU=${(transparent.maskIoU * 100).toFixed(2)}%`
         + ` alpha=${(transparent.alphaMeanDelta * 100).toFixed(2)}%`
@@ -296,7 +349,7 @@ async function main() {
     await server.close();
   }
 
-  const gateNames = ['geometryPass', 'alphaPass', 'compositePass', 'guardPass', 'fontPass', 'typographyPass', 'stabilityPass', 'surfacesPass'];
+  const gateNames = ['geometryPass', 'alphaPass', 'compositePass', 'guardPass', 'fontPass', 'typographyPass', 'dynamicStylePass', 'stabilityPass', 'surfacesPass'];
   const summary = Object.fromEntries(gateNames.map((gate) => [
     gate,
     results.filter((result) => result[gate]).length,
@@ -304,7 +357,7 @@ async function main() {
   const report = {
     generatedAt: new Date().toISOString(),
     referenceProtocol: referenceContract.protocol,
-    comparisonProtocol: 3,
+    comparisonProtocol: 4,
     thresholds: {
       geometryTolerancePx,
       minMaskIoU,

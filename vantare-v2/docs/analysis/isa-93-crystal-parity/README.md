@@ -305,3 +305,31 @@ parte de la composición visual y son independientes del texto circunstancial.
 Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
 estabilidad y Studio/Desktop/OBS también pasan. Referencias intactas; estado
 acumulado: 16/21 diseños verdes.
+
+## Microcorte — contenido gráfico dinámico v4 y cierre Delta Trace 07
+
+El protocolo v4 amplía la neutralidad de contenido a curvas y mapas
+telemetría-dependientes sin excluir rectángulos completos. Autoridad y renderer
+generan una máscara PNG que contiene únicamente los píxeles renderizados de
+las capas dinámicas; se excluye la unión exacta de esos píxeles. Una regresión
+demuestra que mover una línea dinámica no altera el material, pero cambiar un
+rectángulo fijo situado dentro de su bounding box sí falla.
+
+La exclusión no omite el estilo: `trace-fill`, `trace-line`, `marker-line` y
+`marker-dot` tienen un gate separado para fill/gradient, stroke, stroke-width,
+opacity y filter. Rejilla, rectángulos de fondo, centro, sectores, bordes,
+glass, blur y geometría siguen contando en los PNG. El manifest añade solo
+selectores/roles; los PNG y hashes canónicos no se regeneran.
+
+Delta Trace estira top/bottom a los 998 px internos de la autoridad, restaura
+glass blur 24 px, sombra/inset, paneles, 14 sectores de 14 px, guías del
+gráfico y bloque TURN vertical de 36 px. Curva, turn, sectores y mapa continúan
+procediendo del ViewModel o muestran `—`; no se copian valores de la muestra.
+
+| Diseño | Antes v3 | Después v4 | Tipografía/dinámico | Gates |
+|---|---|---|---|---|
+| delta-trace | 76.38% / 3.50% / 6.20% / 10.05% | 100% / 0.05% / 2.67% / 1.53% | 100% / PASS | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 17/21;
+referencias PNG intactas.

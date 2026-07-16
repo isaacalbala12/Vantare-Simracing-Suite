@@ -695,6 +695,44 @@
       "width": 1000,
       "height": 144,
       "htmlSection": 7,
+      "dynamicLayers": {
+        "reference": [
+          ".dt-graph-wrap svg > path:nth-of-type(2)",
+          ".dt-graph-wrap svg > path:nth-of-type(3)",
+          ".dt-graph-wrap svg > line:nth-of-type(n + 2)",
+          ".dt-graph-wrap svg > circle",
+          ".dt-track-map svg path"
+        ],
+        "actual": [
+          ".vc-dt-live-fill",
+          ".vc-dt-live",
+          ".vc-dt-marker-line",
+          ".vc-dt-marker-dot",
+          ".vc-dt-map svg path"
+        ],
+        "styleRoles": [
+          {
+            "role": "trace-fill",
+            "reference": ".dt-graph-wrap svg > path:nth-of-type(2)",
+            "actual": ".vc-dt-live-fill"
+          },
+          {
+            "role": "trace-line",
+            "reference": ".dt-graph-wrap svg > path:nth-of-type(3)",
+            "actual": ".vc-dt-live"
+          },
+          {
+            "role": "marker-line",
+            "reference": ".dt-graph-wrap svg > line:nth-of-type(3)",
+            "actual": ".vc-dt-marker-line"
+          },
+          {
+            "role": "marker-dot",
+            "reference": ".dt-graph-wrap svg > circle",
+            "actual": ".vc-dt-marker-dot"
+          }
+        ]
+      },
       "capture": {
         "protocol": 2,
         "margin": 128,

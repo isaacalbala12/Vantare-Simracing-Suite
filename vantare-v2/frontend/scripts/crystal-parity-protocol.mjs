@@ -188,6 +188,7 @@ export async function captureIsolatedElement(page, {
   margin = 128,
   guard = 8,
   layoutWidth = 1920,
+  dynamicSelectors = [],
 }) {
   const layoutStyle = await page.addStyleTag({
     content: `
@@ -250,9 +251,35 @@ export async function captureIsolatedElement(page, {
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     }));
     const widget = await page.screenshot({ clip, animations: 'disabled', omitBackground: true });
+    let dynamicMask;
+    if (dynamicSelectors.length > 0) {
+      const visibleDynamicSelectors = dynamicSelectors
+        .flatMap((dynamicSelector) => [
+          `[data-crystal-parity-target] ${dynamicSelector}`,
+          `[data-crystal-parity-target] ${dynamicSelector} *`,
+        ])
+        .join(',');
+      const dynamicStyle = await page.addStyleTag({
+        content: `
+          html, html body {
+            background: transparent !important;
+            background-image: none !important;
+          }
+          [data-crystal-parity-target],
+          [data-crystal-parity-target] * { visibility: hidden !important; }
+          ${visibleDynamicSelectors} { visibility: visible !important; }
+        `,
+      });
+      try {
+        dynamicMask = await page.screenshot({ clip, animations: 'disabled', omitBackground: true });
+      } finally {
+        await dynamicStyle.evaluate((element) => element.remove());
+      }
+    }
     return {
       widget,
       sceneOnly,
+      dynamicMask,
       geometry: {
         ...geometry,
         contentWidth,
@@ -380,8 +407,9 @@ export async function comparePngCaptures(page, {
   guard = 8,
   channelTolerance = 24,
   excludedRects = [],
+  excludedMasks = [],
 }) {
-  const urls = [referenceWidget, referenceScene, actualWidget, actualScene]
+  const urls = [referenceWidget, referenceScene, actualWidget, actualScene, ...excludedMasks]
     .map((buffer) => `data:image/png;base64,${buffer.toString('base64')}`);
   return page.evaluate(async ({ sources, guardSize, tolerance, exclusions }) => {
     const decode = async (url) => {
@@ -403,11 +431,14 @@ export async function comparePngCaptures(page, {
         data: context.getImageData(0, 0, image.width, image.height).data,
       };
     };
-    const [reference, referenceBaseline, actual, actualBaseline] = await Promise.all(sources.map(decode));
+    const [reference, referenceBaseline, actual, actualBaseline, ...masks] = await Promise.all(sources.map(decode));
     const dimensions = [reference, referenceBaseline, actual, actualBaseline]
       .map(({ width, height }) => `${width}x${height}`);
     if (new Set(dimensions).size !== 1) {
       return { dimensionsMatch: false, dimensions };
+    }
+    if (masks.some(({ width, height }) => width !== reference.width || height !== reference.height)) {
+      return { dimensionsMatch: false, dimensions: [...dimensions, ...masks.map(({ width, height }) => `${width}x${height}`)] };
     }
     const differs = (left, right, offset, limit) => {
       const leftAlpha = left[offset + 3];
@@ -440,7 +471,7 @@ export async function comparePngCaptures(page, {
       const y = Math.floor(pixel / width);
       const excluded = exclusions.some((rect) => (
         x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height
-      ));
+      )) || masks.some((mask) => mask.data[offset + 3] > 0);
       const referenceAffected = differs(reference.data, referenceBaseline.data, offset, 1);
       const actualAffected = differs(actual.data, actualBaseline.data, offset, 1);
       const inGuard = x < guardSize || y < guardSize || x >= width - guardSize || y >= height - guardSize;

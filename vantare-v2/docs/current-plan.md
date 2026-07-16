@@ -2692,3 +2692,10 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Race Schedule 08:
 - Eventos y estados siguen naciendo del adapter/ViewModel read-only; los metadatos ausentes usan `—` y el renderer no copia fechas/countdowns de la autoridad ni muestra ISO crudo.
 - Resultado: `99.24% / 0.35% / 1.18% / 0.34%`, tipografía 100%/100% y todos los gates geometry, alpha/mask, composite, guard, fonts, stability y Studio/Desktop/OBS PASS.
 - Estado acumulado: 16/21 diseños verdes. Referencias intactas; quedan Relative, Delta Bar, Delta Trace, Multiclass y Weather.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Protocolo gráfico v4 y Delta Trace 07:
+- Las capas gráficas telemetría-dependientes usan máscaras de píxel exactas, no bounding boxes; una regresión prueba que el material fijo dentro del bbox sigue fallando si cambia.
+- Fill/gradient, stroke, stroke-width, opacity y filter se validan por roles dinámicos separados. El manifest solo añade selectores/roles; PNG y hashes canónicos permanecen intactos.
+- Delta Trace alinea stretch interno 998 px, blur 24 px, sombra/inset, paneles, rejilla, 14 sectores y TURN vertical 36 px sin inventar mapa, turn ni sectores live.
+- Resultado: `100% / 0.05% / 2.67% / 1.53%`, tipografía 100%, estilo dinámico PASS y todos los gates transversales PASS.
+- Estado acumulado: 17/21 diseños verdes. Quedan Relative, Delta Bar, Multiclass y Weather.

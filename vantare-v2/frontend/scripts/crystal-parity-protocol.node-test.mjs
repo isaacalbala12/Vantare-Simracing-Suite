@@ -108,6 +108,48 @@ test('can exclude text glyphs without excluding surrounding widget material', as
   }
 });
 
+test('excludes only rendered dynamic pixels instead of their bounding box', async () => {
+  const browser = await chromium.launch({ headless: true, executablePath: chromeExecutable });
+  const page = await browser.newPage({ viewport: { width: 800, height: 500 }, deviceScaleFactor: 1 });
+  try {
+    await page.setContent('<div id="widget" style="width:240px;height:80px;background:rgba(20,30,40,.7);border:1px solid white"><svg width="240" height="80"><rect class="fixed" x="100" y="30" width="10" height="10" fill="red"/><line class="dynamic" x1="20" x2="20" y1="10" y2="70" stroke="lime" stroke-width="3"/></svg></div>');
+    const reference = await captureIsolatedElement(page, { selector: '#widget', dynamicSelectors: ['.dynamic'] });
+    await page.locator('.dynamic').evaluate((element) => {
+      element.setAttribute('x1', '180');
+      element.setAttribute('x2', '180');
+    });
+    const actual = await captureIsolatedElement(page, { selector: '#widget', dynamicSelectors: ['.dynamic'] });
+    const withoutMasks = await comparePngCaptures(page, {
+      referenceWidget: reference.widget,
+      referenceScene: reference.sceneOnly,
+      actualWidget: actual.widget,
+      actualScene: actual.sceneOnly,
+    });
+    const withMasks = await comparePngCaptures(page, {
+      referenceWidget: reference.widget,
+      referenceScene: reference.sceneOnly,
+      actualWidget: actual.widget,
+      actualScene: actual.sceneOnly,
+      excludedMasks: [reference.dynamicMask, actual.dynamicMask],
+    });
+    assert.ok(withoutMasks.compositeDeltaRatio > 0);
+    assert.equal(withMasks.compositeDeltaRatio, 0);
+    assert.equal(withMasks.alphaMeanDelta, 0);
+    await page.locator('.fixed').evaluate((element) => element.setAttribute('fill', 'blue'));
+    const altered = await captureIsolatedElement(page, { selector: '#widget', dynamicSelectors: ['.dynamic'] });
+    const fixedMaterialChange = await comparePngCaptures(page, {
+      referenceWidget: reference.widget,
+      referenceScene: reference.sceneOnly,
+      actualWidget: altered.widget,
+      actualScene: altered.sceneOnly,
+      excludedMasks: [reference.dynamicMask, altered.dynamicMask],
+    });
+    assert.ok(fixedMaterialChange.compositeDeltaRatio > 0);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('isolates a widget without inheriting the authority page background', () => {
   const css = isolateWidgetStyles('.glass-card', { x: 128, y: 128 });
   assert.match(css, /html,\s*html body/);

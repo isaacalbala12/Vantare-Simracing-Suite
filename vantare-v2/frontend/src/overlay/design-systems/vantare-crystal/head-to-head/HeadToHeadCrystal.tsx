@@ -2,7 +2,7 @@ import type { WidgetRendererProps } from "../../../core/design-system-definition
 import type { HeadToHeadEntry, HeadToHeadViewModel } from "../../../widget-types/head-to-head/head-to-head-view-model";
 
 function Driver({ entry, active, gap, sectors }: { entry: HeadToHeadEntry; active?: boolean; gap?: number; sectors?: readonly string[] }) {
-  return <div className={active ? "is-player" : ""}><b>{entry.place}</b><strong>{entry.name}</strong><span>{sectors?.length ? sectors.join(" · ") : "—"}</span><em>{gap === undefined ? "—" : gap.toFixed(3)}</em><time>—</time></div>;
+  return <div className={active ? "is-player" : ""}><b>{entry.place}</b><strong>{entry.name}</strong><span>{sectors?.length ? <><u data-side="left">« —</u>{sectors.map((sector, index) => <i data-tone={sector} key={`${sector}-${index}`}>—</i>)}<u data-side="right">— »</u></> : "—"}</span><em>{gap === undefined ? "—" : gap.toFixed(3)}</em><time>—</time></div>;
 }
 
 export function HeadToHeadCrystal({ model }: WidgetRendererProps<HeadToHeadViewModel>) {

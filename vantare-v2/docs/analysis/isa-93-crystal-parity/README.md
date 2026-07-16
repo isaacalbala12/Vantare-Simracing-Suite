@@ -258,3 +258,30 @@ El mismo gate deja correctamente rojos los siete pendientes: Relative,
 Delta Bar, Delta Trace, Schedule, Head to Head, Multiclass y Weather conservan
 deltas reales de máscara/material o cobertura tipográfica; no existe un pase
 por exclusión de texto.
+
+## Microcorte — cierre Head to Head 09
+
+La comparación de cajas DOM contra `.h2h-container` confirmó la estructura
+real: filas de 47/51 px, placas de posición de 32.8125x22 px y sectores de
+23.609375x26 px. El renderer replica esas cajas, elimina el borde inferior que
+la autoridad excluye en la última fila y conserva la raíz transparente con
+backdrop sobre las escenas de control.
+
+Los sectores del jugador proceden únicamente del ViewModel. La fixture
+determinista aporta cuatro comparaciones para el harness; live conserva el
+array vacío cuando telemetría no las suministra. Las filas no activas usan
+Inter 12/400 como la autoridad, mientras placas, sectores, gaps y vueltas
+mantienen JetBrains Mono y los pesos canónicos.
+
+| Diseño | Antes v3 | Después | Tipografía | Gates |
+|---|---|---|---|---|
+| head-to-head | 83.95% / 3.44% / 3.77% / 1.49% | 99.50% / 1.39% / 1.94% / 1.54% | 100% / 100% coverage | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Referencias canónicas intactas;
+estado acumulado: 15/21 diseños verdes.
+
+El barrido 21/21 con protocolo v3 detectó además que las tres etiquetas de
+estadística de Fuel heredaban la familia mono. Se fijaron a Inter 9/700 como
+la autoridad y Fuel revalidó todos los gates con
+`100% / 0.08% / 0.82% / 0.54%`.

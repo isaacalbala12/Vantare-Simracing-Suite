@@ -2679,3 +2679,10 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Protocolo texto-neutral v3 y cierre 
 - Regresiones: cambiar palabras con el mismo estilo deja material exacto; cambiar font-size hace fallar tipografía. `node --test scripts/crystal-parity-protocol.node-test.mjs` → 9/9 PASS.
 - Standings queda `100% / 0.02% / 1.10% / 0.68%`; Broadcast `100% / 0.03% / 0.94% / 0.50%`; ambos pasan tipografía 100%/100%, geometry, alpha/mask, composite, guard, fonts, stability y cross-surface.
 - Estado acumulado: 14/21 verdes. Los siete pendientes siguen rojos con deltas reales; referencias intactas.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Head to Head 09:
+- Las cajas DOM se alinean con la autoridad efectiva: filas 47/51 px, placas 32.8125x22 px, sectores 23.609375x26 px y última fila sin borde inferior.
+- Los cuatro sectores deterministas nacen en la fixture y atraviesan el ViewModel puro; live mantiene estado honesto sin comparaciones si la telemetría no las aporta.
+- Resultado: `99.50% / 1.39% / 1.94% / 1.54%`, tipografía 100%/100% y todos los gates geometry, alpha/mask, composite, guard, fonts, stability y Studio/Desktop/OBS PASS.
+- El barrido v3 corrigió además la herencia tipográfica de las etiquetas Fuel a Inter 9/700; Fuel revalida `100% / 0.08% / 0.82% / 0.54%` con todos los gates PASS.
+- Estado acumulado: 15/21 diseños verdes. Referencias intactas; siguiente corte por delta real entre Relative, Delta Bar, Delta Trace, Schedule, Multiclass y Weather.

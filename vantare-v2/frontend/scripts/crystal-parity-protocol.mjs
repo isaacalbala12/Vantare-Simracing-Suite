@@ -336,9 +336,15 @@ export function compareTypographyContracts(reference, actual) {
   };
   const referenceCoverage = coverage(reference, actual);
   const actualCoverage = coverage(actual, reference);
+  const unmatchedReference = reference
+    .filter((entry) => !actual.some((candidate) => matches(entry.style, candidate.style)))
+    .map((entry) => ({ style: entry.style, area: entry.rect.width * entry.rect.height }))
+    .sort((left, right) => right.area - left.area)
+    .slice(0, 8);
   return {
     referenceCoverage,
     actualCoverage,
+    unmatchedReference,
     pass: referenceCoverage >= 0.9 && actualCoverage >= 0.9,
   };
 }

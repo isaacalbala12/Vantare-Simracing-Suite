@@ -18,5 +18,9 @@ export function buildHeadToHeadViewModel(snapshot: TelemetrySnapshot, content: H
   const opponentIndex = content.target === "ahead" ? playerIndex - 1 : playerIndex + 1;
   const opponentRow = rows[opponentIndex];
   if (!opponentRow) return unavailable("missing", content, "No nearby rival");
-  return { type: "head-to-head", status: "ready", player, opponent: entry(opponentRow, opponentIndex), ahead: aheadRow ? entry(aheadRow, playerIndex - 1) : undefined, behind: behindRow ? entry(behindRow, playerIndex + 1) : undefined, gapSeconds: readScoringGap(opponentRow) ?? readScoringGap(rows[playerIndex]), sectorComparisons: [], target: content.target, showSectors: content.showSectors };
+  const rawSectorComparisons = rows[playerIndex]?.sectorComparisons;
+  const sectorComparisons = Array.isArray(rawSectorComparisons)
+    ? rawSectorComparisons.filter((value): value is string => typeof value === "string").slice(0, 4)
+    : [];
+  return { type: "head-to-head", status: "ready", player, opponent: entry(opponentRow, opponentIndex), ahead: aheadRow ? entry(aheadRow, playerIndex - 1) : undefined, behind: behindRow ? entry(behindRow, playerIndex + 1) : undefined, gapSeconds: readScoringGap(opponentRow) ?? readScoringGap(rows[playerIndex]), sectorComparisons, target: content.target, showSectors: content.showSectors };
 }

@@ -13,3 +13,9 @@ it("renders only comparisons supplied by the ViewModel", () => {
   expect(container.textContent).not.toContain("LEADER");
   expect(container.textContent).not.toContain("S1 - S2");
 });
+
+it("renders the four deterministic sector materials supplied by the ViewModel", () => {
+  const entry = { place: 4, number: "36", name: "PLAYER", team: "ALPINE", className: "HYPERCAR", isPlayer: true };
+  const { container } = render(<HeadToHeadCrystal model={{ ...model, status: "ready", statusMessage: undefined, player: entry, opponent: { ...entry, place: 3, name: "RIVAL", isPlayer: false }, sectorComparisons: ["g", "g", "r", "r"] }} settings={{}} renderMode="harness" />);
+  expect(Array.from(container.querySelectorAll(".is-player i")).map((element) => element.getAttribute("data-tone"))).toEqual(["g", "g", "r", "r"]);
+});

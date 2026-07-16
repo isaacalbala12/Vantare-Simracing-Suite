@@ -132,6 +132,7 @@ function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[]
       bestLapTime: 204.89 + index * 0.01,
       lastLapTime: 204.89 + index * 0.34,
       tireCompound: index % 4 === 0 ? "S" : "M",
+      sectorComparisons: widget === "head-to-head" && isPlayer ? ["g", "g", "r", "r"] : undefined,
       teamBrandColor: widget === "broadcast-tower"
         ? broadcastColors[index % broadcastColors.length]
         : ["#ef4444", "#3b82f6", "#f472b6", "#fbbf24"][classIndex],

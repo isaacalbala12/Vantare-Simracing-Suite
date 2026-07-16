@@ -17,4 +17,13 @@ describe("buildHeadToHeadViewModel", () => {
     expect(model.status).toBe("missing");
     expect(model.opponent).toBeUndefined();
   });
+
+  it("uses only the first four string sector comparisons supplied by telemetry", () => {
+    const snapshot = buildMockTelemetry({ session: "race", location: "track" });
+    const scoring = snapshot.scoring.map((row) => row.isPlayer
+      ? { ...row, sectorComparisons: ["g", "g", "r", "r", "ignored", 1] }
+      : row);
+    const model = buildHeadToHeadViewModel({ ...snapshot, scoring }, { target: "ahead", showSectors: true });
+    expect(model.sectorComparisons).toEqual(["g", "g", "r", "r"]);
+  });
 });

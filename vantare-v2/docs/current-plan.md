@@ -2731,4 +2731,5 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — cierre cuantitativo:
 - Protocol/manifest 14/14, frontend 1803/1803, build, design-system check, smoke, performance/stress/reduced-motion y lint focalizado PASS.
 - Review adversarial sin P0/P1/P2; se retiró `display: contents` del root Delta por riesgo semántico innecesario.
 - `visual:overlay-studio` mantiene Original en 0.000% y expone el baseline ISA-91 stale `delta-crystal-ready-studio` al 100%; no se regeneró ni se rebajó el gate.
-- Pendiente operativo: commit/push final, PR draft a `refactor`, validación manual de Isaac y actualización Linear cuando el conector esté disponible. Nunca merge/develop.
+- PR draft #12 abierto hacia `refactor`: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/12. Nunca merge/develop.
+- Pendiente operativo: validación manual de Isaac y mover ISA-93 a In Review cuando el conector OAuth de Linear esté disponible en la sesión.

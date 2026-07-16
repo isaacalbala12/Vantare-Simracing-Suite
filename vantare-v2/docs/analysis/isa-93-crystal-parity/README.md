@@ -446,3 +446,7 @@ baseline.
 La revisión adversarial retiró un `display: contents` innecesario del root
 Delta y terminó sin P0/P1/P2. No se detectaron accesos a persistencia,
 Wails/SSE, permisos, shell, layout o estado global desde los renderers Crystal.
+
+Entrega: PR draft [#12](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/12)
+hacia `refactor`, sin merge. Linear In Review queda pendiente únicamente
+porque el conector OAuth no está expuesto en esta sesión.

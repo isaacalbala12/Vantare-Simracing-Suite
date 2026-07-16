@@ -2711,3 +2711,10 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Track Weather 12:
 - Valores/descripciones ambientales y fill vivo se neutralizan mediante máscaras exactas; labels, badges, barra base, separadores, materiales y tipografía siguen puntuados.
 - Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, tipografía y estilo dinámico PASS, todos los gates transversales PASS.
 - Estado acumulado: 19/21 diseños verdes. Quedan Relative y Delta Bar.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Relative 01:
+- La superficie glass vive en la raíz visual pura para preservar sombra exterior y blur; el frame interno ya no recorta material.
+- Header/tabla/filas/footer alinean 40/24/196/26 px, con pill de estado, jerarquía tipográfica y highlight canónicos.
+- Los colores de clase siguen telemetría real y se neutralizan por máscara exacta; geometría, filas, fondos, bordes y resto del material siguen puntuados.
+- Resultado: `100% / 0.01% / 0.44% / 0.27%`, todos los gates transversales PASS.
+- Estado acumulado: 20/21 diseños verdes. Queda Delta Bar.

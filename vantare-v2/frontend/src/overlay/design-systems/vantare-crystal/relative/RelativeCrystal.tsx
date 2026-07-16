@@ -55,7 +55,7 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
         {showHeader ? (
           <header className="vc-relative-header">
             <CrystalBrand>VANTARE</CrystalBrand>
-            <CrystalPill>RELATIVE</CrystalPill>
+            <CrystalPill><span aria-hidden="true">●</span> RELATIVE</CrystalPill>
           </header>
         ) : null}
         {model.statusMessage ? (

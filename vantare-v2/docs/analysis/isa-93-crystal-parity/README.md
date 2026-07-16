@@ -374,3 +374,24 @@ colores y opacidades permanecen puntuados.
 Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
 estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 19/21;
 referencias PNG intactas.
+
+## Microcorte — cierre Relative 01
+
+La superficie glass se aplica ahora a la raíz visual pura de Relative, como en
+la autoridad, en lugar de a un frame interno cuya sombra quedaba recortada.
+El material conserva `rgba(18,18,22,.82)`, borde 9%, radio 16 px, blur 24 px,
+sombra exterior e inset.
+
+La composición queda en 40/24/196/26 px para header, cabecera de tabla, siete
+filas y footer. Se restauran gradiente del header, pill rojo con estado,
+jerarquía 11/10 px y highlight del jugador. Los colores de clase siguen
+derivándose de la telemetría y solo sus píxeles se neutralizan; la geometría y
+el resto del material permanecen puntuados.
+
+| Diseño | Antes v4 | Después | Tipografía/dinámico | Gates |
+|---|---|---|---|---|
+| relative | 41.96% / 8.02% / 6.25% / 17.50% | 100% / 0.01% / 0.44% / 0.27% | 100% / PASS | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 20/21;
+referencias PNG intactas.

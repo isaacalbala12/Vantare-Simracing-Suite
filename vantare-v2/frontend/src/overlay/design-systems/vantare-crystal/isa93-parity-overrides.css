@@ -1633,6 +1633,98 @@
   line-height: 14px;
 }
 
+[data-widget-system="vantare-crystal"] .vc-relative-header {
+  height: 40px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+}
+
+[data-widget-system="vantare-crystal"].vc-relative {
+  background: rgba(18, 18, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-frame {
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-header [data-crystal-primitive="pill"] {
+  min-height: auto;
+  gap: 5px;
+  padding: 3px 10px;
+  color: #fff;
+  background: rgba(230, 57, 70, 0.15);
+  border: 1px solid rgba(230, 57, 70, 0.4);
+  border-radius: 20px;
+  font: 700 9px var(--vc-font-sans);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-header [data-crystal-primitive="pill"] > span {
+  color: #ff2a3b;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-rows {
+  height: 196px;
+  flex: none;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row {
+  height: 28px;
+  min-height: 28px;
+  flex: none;
+  font-size: 11px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="position"] {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="carNumber"] {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="driverName"] {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="gap"],
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="bestLap"] {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-class-bar {
+  width: 3px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row.vc-relative-player {
+  background: linear-gradient(90deg, rgba(255, 42, 59, 0.22) 0%, rgba(230, 57, 70, 0.05) 100%);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-frame > [data-crystal-primitive="footer"] {
+  height: 26px;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  gap: normal;
+  font: 600 9px var(--vc-font-sans);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-frame > [data-crystal-primitive="footer"] strong {
+  color: #ff2a3b;
+}
+
 [data-widget-system="vantare-crystal"].vc-head-to-head {
   height: 150px;
 }

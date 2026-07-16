@@ -79,6 +79,7 @@ describe("RelativeCrystal", () => {
     expect(root.querySelector(".vc-relative-table-header")).toBeTruthy();
     expect(root.querySelector(".vc-relative-row")).toBeTruthy();
     expect(root.querySelector("[data-crystal-primitive='brand']")).toBeTruthy();
+    expect(root.querySelector("[data-crystal-primitive='pill']")?.textContent).toBe("● RELATIVE");
     expect(root.querySelector("[data-crystal-primitive='footer']")).toBeTruthy();
     expect(root.querySelector(".vo-relative-row")).toBeNull();
   });

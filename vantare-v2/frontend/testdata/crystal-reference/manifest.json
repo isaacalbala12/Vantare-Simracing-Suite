@@ -83,6 +83,15 @@
       "width": 357,
       "height": 288,
       "htmlSection": 1,
+      "dynamicLayers": {
+        "reference": [
+          ".class-bar"
+        ],
+        "actual": [
+          ".vc-relative-class-bar"
+        ],
+        "styleRoles": []
+      },
       "capture": {
         "protocol": 2,
         "margin": 128,

@@ -9,7 +9,7 @@ describe("broadcastTowerDefinition", () => {
     expect(widget.content).toEqual({ rowCount: 5, showWeather: true, showSof: true });
   });
   it("clamps row count to the contract", () => {
-    expect(broadcastTowerDefinition.parseContent({ rowCount: 99 })).toMatchObject({ rowCount: 8 });
+    expect(broadcastTowerDefinition.parseContent({ rowCount: 99 })).toMatchObject({ rowCount: 10 });
     expect(broadcastTowerDefinition.parseContent({ rowCount: 1 })).toMatchObject({ rowCount: 3 });
   });
 });

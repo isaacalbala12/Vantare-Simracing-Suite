@@ -235,6 +235,7 @@ export function buildHarnessTelemetry(input: {
   location: MockLocationScenario;
   state: MockDataState;
   widget: HarnessWidget;
+  system?: DesignSystemId;
   variant?: HarnessVariant;
   designId?: CrystalHarnessDesignId;
 }): TelemetrySnapshot {
@@ -246,6 +247,20 @@ export function buildHarnessTelemetry(input: {
   });
 
   if (input.state !== "ready") {
+    return base;
+  }
+
+  if (input.system === "vantare-original") {
+    if (input.widget === "standings" && variant === "standings-stress60") {
+      return { ...base, scoring: buildStandingsStressScoring() };
+    }
+    if (input.widget === "pedals" && (variant === "pedals-zero" || variant === "pedals-full")) {
+      const value = variant === "pedals-full" ? 1 : 0;
+      return {
+        ...base,
+        player: { ...base.player, throttle: value, brake: value, clutch: value },
+      };
+    }
     return base;
   }
 

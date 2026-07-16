@@ -416,3 +416,33 @@ lugar del frame externo.
 Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
 estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 21/21;
 referencias PNG intactas.
+
+## Gates de cierre y revisión adversarial
+
+El barrido final v4 deja 21/21 en verde y 21/21 para cada gate:
+geometry, alpha/mask, composite, guard, fuentes, tipografía, estilo dinámico,
+stability y Studio/Desktop/OBS. Las referencias canónicas no se regeneraron
+durante los cierres de widgets; los cambios de PNG de la rama corresponden
+exclusivamente a la migración autorizada del protocolo opaco/asimétrico a las
+escenas v2 con alpha.
+
+Evidencia fresca:
+
+- `node --test scripts/crystal-reference-manifest.test.mjs scripts/crystal-parity-protocol.node-test.mjs`: 14/14 PASS.
+- `pnpm test`: 266 archivos, 1803/1803 PASS.
+- `pnpm build`: PASS.
+- `pnpm design-system:check`: 2 sistemas registrados PASS.
+- `pnpm e2e:overlay-studio`: empty/create/active profile PASS.
+- performance, stress60, rate buckets y reduced motion: 25/25 PASS.
+- lint focalizado de Crystal, harness y scripts ISA-93: PASS.
+- `git diff --check`: PASS.
+
+`visual:overlay-studio` conserva deliberadamente el baseline ISA-91 antiguo:
+Original vuelve a 0.000%, pero `delta-crystal-ready-studio` falla al 100%
+contra la nueva composición Crystal. No se ejecutó `--update`; esa diferencia
+queda visible para la validación manual en lugar de ocultarse regenerando el
+baseline.
+
+La revisión adversarial retiró un `display: contents` innecesario del root
+Delta y terminó sin P0/P1/P2. No se detectaron accesos a persistencia,
+Wails/SSE, permisos, shell, layout o estado global desde los renderers Crystal.

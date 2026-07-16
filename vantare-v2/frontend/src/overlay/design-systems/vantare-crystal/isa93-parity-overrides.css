@@ -1741,7 +1741,7 @@
 }
 
 [data-widget-system="vantare-crystal"].vc-delta:has(> .vc-delta-bar) {
-  display: contents;
+  position: static;
 }
 
 [data-widget-system="vantare-crystal"] .vc-delta-bar-top {

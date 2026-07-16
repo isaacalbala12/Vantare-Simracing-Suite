@@ -117,6 +117,26 @@ describe("buildHarnessTelemetry", () => {
     expect(capsule.scoring.find((entry) => entry.isPlayer)?.place).toBe(12);
   });
 
+  it("keeps legacy Original fixtures stable while Crystal uses canonical reference data", () => {
+    const original = buildHarnessTelemetry({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "delta",
+      system: "vantare-original",
+    });
+    const crystal = buildHarnessTelemetry({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "delta",
+      system: "vantare-crystal",
+      designId: "delta-crystal-bar",
+    });
+    expect(original.player.deltaSeconds).toBe(-0.15);
+    expect(crystal.player.deltaSeconds).toBe(-0.24);
+  });
+
   it("provides deterministic fixtures and keeps unavailable damage numbers honest", () => {
     for (const widgetType of HARNESS_WIDGETS) {
       const widget = buildHarnessWidget(widgetType, "vantare-crystal");

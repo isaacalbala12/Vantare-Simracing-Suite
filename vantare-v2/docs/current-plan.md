@@ -2725,3 +2725,10 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Delta Bar 06:
 - El harness captura la raíz visual `.vc-delta-bar`, no el frame externo, para mantener simetría de backdrop y clipping.
 - Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, todos los gates transversales PASS.
 - Estado focalizado: 21/21 diseños verdes; pendiente barrido final completo y gates de cierre.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — cierre cuantitativo:
+- Barrido v4 completo: 21/21 geometry, alpha/mask, composite, guard, fonts, typography, dynamic style, stability y Studio/Desktop/OBS PASS.
+- Protocol/manifest 14/14, frontend 1803/1803, build, design-system check, smoke, performance/stress/reduced-motion y lint focalizado PASS.
+- Review adversarial sin P0/P1/P2; se retiró `display: contents` del root Delta por riesgo semántico innecesario.
+- `visual:overlay-studio` mantiene Original en 0.000% y expone el baseline ISA-91 stale `delta-crystal-ready-studio` al 100%; no se regeneró ni se rebajó el gate.
+- Pendiente operativo: commit/push final, PR draft a `refactor`, validación manual de Isaac y actualización Linear cuando el conector esté disponible. Nunca merge/develop.

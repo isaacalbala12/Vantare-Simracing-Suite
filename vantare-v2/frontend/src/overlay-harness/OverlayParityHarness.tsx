@@ -123,6 +123,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
     location: query.location,
     state: query.state,
     widget: query.widget,
+    system: query.system,
     variant: query.variant,
     designId: query.designId,
   });

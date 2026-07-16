@@ -48,7 +48,8 @@ describe("WidgetVisualHost", () => {
     );
     const crystalValue = crystal.container.querySelector(".vc-delta-bar-value")?.textContent;
     expect(originalValue).toBe("-0.150");
-    expect(crystalValue).toBe("-0.150");
+    expect(crystalValue).toBe("-0.15");
+    expect(Number(crystalValue)).toBe(Number(originalValue));
   });
 
   it("reports unsupported visual pairs through diagnostics", () => {

@@ -9,7 +9,10 @@ import { chromium } from 'playwright';
 import {
   CONTROL_SCENES,
   captureIsolatedElement,
+  collectTextContract,
+  comparePngCaptures,
   compareRgbaLayers,
+  compareTypographyContracts,
   createComparisonMask,
   decodePng,
   isolateWidgetStyles,
@@ -61,6 +64,48 @@ test('detects a real opacity change independently from composite appearance', ()
   assert.equal(result.maskPixels, 1);
   assert.ok(result.alphaMeanDelta > 0.15);
   assert.equal(result.alphaPass, false);
+});
+
+test('keeps typography changes separate from text content', () => {
+  const reference = [{
+    rect: { x: 0, y: 0, width: 40, height: 12 },
+    style: { family: 'Inter', size: 12, weight: 700, lineHeight: 14, letterSpacing: 0, writingMode: 'horizontal-tb' },
+  }];
+  const equivalent = [{
+    rect: { x: 0, y: 0, width: 90, height: 12 },
+    style: { ...reference[0].style },
+  }];
+  const altered = [{
+    rect: { x: 0, y: 0, width: 90, height: 16 },
+    style: { ...reference[0].style, size: 16 },
+  }];
+  assert.equal(compareTypographyContracts(reference, equivalent).pass, true);
+  assert.equal(compareTypographyContracts(reference, altered).pass, false);
+});
+
+test('can exclude text glyphs without excluding surrounding widget material', async () => {
+  const browser = await chromium.launch({ headless: true, executablePath: chromeExecutable });
+  const page = await browser.newPage({ viewport: { width: 800, height: 500 }, deviceScaleFactor: 1 });
+  try {
+    await page.setContent('<div id="widget" style="width:240px;height:80px;background:rgba(20,30,40,.7);border:1px solid white;color:white;font:700 14px Inter">ALPHA</div>');
+    const referenceText = await collectTextContract(page, '#widget');
+    const reference = await captureIsolatedElement(page, { selector: '#widget' });
+    await page.locator('#widget').evaluate((element) => { element.textContent = 'DIFFERENT CONTENT'; });
+    const actualText = await collectTextContract(page, '#widget');
+    const actual = await captureIsolatedElement(page, { selector: '#widget' });
+    const result = await comparePngCaptures(page, {
+      referenceWidget: reference.widget,
+      referenceScene: reference.sceneOnly,
+      actualWidget: actual.widget,
+      actualScene: actual.sceneOnly,
+      excludedRects: [...referenceText, ...actualText].map(({ rect }) => rect),
+    });
+    assert.equal(result.maskIoU, 1);
+    assert.equal(result.alphaMeanDelta, 0);
+    assert.equal(result.compositeDeltaRatio, 0);
+  } finally {
+    await browser.close();
+  }
 });
 
 test('isolates a widget without inheriting the authority page background', () => {

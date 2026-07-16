@@ -1,13 +1,15 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
 import {
   CONTROL_SCENES,
   captureIsolatedElement,
+  collectTextContract,
   comparePngCaptures,
+  compareTypographyContracts,
 } from './crystal-parity-protocol.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +17,7 @@ const frontendRoot = path.resolve(scriptDirectory, '..');
 const canonicalReferenceDirectory = path.join(frontendRoot, 'testdata', 'crystal-reference');
 const auditReferenceDirectory = path.join(frontendRoot, '.tmp', 'crystal-reference-audit');
 const outputDirectory = path.join(frontendRoot, '.tmp', 'crystal-parity');
+const authorityUrl = pathToFileURL(path.resolve(frontendRoot, '..', 'docs', 'overlay-glassmorphism-pro.html')).href;
 const reportOnly = process.argv.includes('--report-only');
 const useAuditReferences = process.argv.includes('--reference-audit');
 const requestedIds = process.argv.find((argument) => argument.startsWith('--ids='))
@@ -109,11 +112,20 @@ async function captureRenderer(page, baseUrl, entry, surface, scene) {
       status: face.status,
     })) : [],
   }));
+  const textContract = await collectTextContract(page, '[data-overlay-parity-widget-frame]');
   const captured = await captureIsolatedElement(page, {
     selector: '[data-overlay-parity-widget-frame]',
     scene,
   });
-  return { ...captured, fontResolution, rendererGeometry };
+  return { ...captured, fontResolution, rendererGeometry, textContract };
+}
+
+async function captureAuthorityTextContract(page, entry) {
+  await page.goto(authorityUrl, { waitUntil: 'networkidle' });
+  await page.evaluate(async () => {
+    await document.fonts?.ready;
+  });
+  return collectTextContract(page, entry.referenceSelector);
 }
 
 async function main() {
@@ -140,6 +152,7 @@ async function main() {
     });
 
     for (const entry of entries) {
+      const referenceTextContract = await captureAuthorityTextContract(page, entry);
       const sceneResults = {};
       let geometry;
       let fontResolution;
@@ -173,6 +186,10 @@ async function main() {
           actualWidget: actual.widget,
           actualScene: actual.sceneOnly,
           guard: actual.geometry.guard,
+          excludedRects: [
+            ...referenceTextContract.map(({ rect }) => rect),
+            ...actual.textContract.map(({ rect }) => rect),
+          ],
         });
         const sceneDirectory = path.join(outputDirectory, entry.id);
         await mkdir(sceneDirectory, { recursive: true });
@@ -232,6 +249,10 @@ async function main() {
         && fontResolution.inter
         && fontResolution.plusJakartaSans
         && fontResolution.jetBrainsMono;
+      const typography = compareTypographyContracts(
+        referenceTextContract,
+        harnessTransparent.textContract,
+      );
       const surfacesPass = Object.values(surfaceResults).every((surfaceResult) => (
         surfaceResult.dimensionsMatch
         && surfaceResult.maskIoU === 1
@@ -252,6 +273,8 @@ async function main() {
         compositePass,
         guardPass,
         fontPass,
+        typographyPass: typography.pass,
+        typography,
         stabilityPass,
         surfacesPass,
         scenes: sceneResults,
@@ -259,7 +282,7 @@ async function main() {
       };
       results.push(result);
       process.stdout.write(
-        `${geometryPass && alphaPass && compositePass && guardPass && fontPass && stabilityPass && surfacesPass ? 'PASS' : 'FAIL'}`
+        `${geometryPass && alphaPass && compositePass && guardPass && fontPass && typography.pass && stabilityPass && surfacesPass ? 'PASS' : 'FAIL'}`
         + ` ${entry.id}: geometry=${geometryPass ? 'ok' : 'fail'}`
         + ` maskIoU=${(transparent.maskIoU * 100).toFixed(2)}%`
         + ` alpha=${(transparent.alphaMeanDelta * 100).toFixed(2)}%`
@@ -273,7 +296,7 @@ async function main() {
     await server.close();
   }
 
-  const gateNames = ['geometryPass', 'alphaPass', 'compositePass', 'guardPass', 'fontPass', 'stabilityPass', 'surfacesPass'];
+  const gateNames = ['geometryPass', 'alphaPass', 'compositePass', 'guardPass', 'fontPass', 'typographyPass', 'stabilityPass', 'surfacesPass'];
   const summary = Object.fromEntries(gateNames.map((gate) => [
     gate,
     results.filter((result) => result[gate]).length,
@@ -281,6 +304,7 @@ async function main() {
   const report = {
     generatedAt: new Date().toISOString(),
     referenceProtocol: referenceContract.protocol,
+    comparisonProtocol: 3,
     thresholds: {
       geometryTolerancePx,
       minMaskIoU,

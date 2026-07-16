@@ -230,3 +230,31 @@ mucho texto, aunque el contrato de ISA-93 exige no igualar palabras ni
 telemetría circunstancial. El siguiente microcorte debe separar esa señal de
 contenido de los contratos verificables de tipografía, geometría y material;
 no se marcará verde ningún diseño ni se tocarán referencias para ocultarla.
+
+## Microcorte — protocolo de texto neutral y cierre 01/02
+
+El protocolo de comparación v3 conserva los PNG canónicos v2 sin
+regenerarlos. Para cada captura obtiene rectángulos ajustados de nodos de texto
+en autoridad y renderer y los excluye únicamente de los gates píxel de
+mask/alpha/composite. Fondo, bordes, sombras y material alrededor siguen
+contando.
+
+La exclusión no elimina el contrato tipográfico: un gate separado compara por
+área las familias, tamaños `±1px`, pesos, line-height, letter-spacing y
+writing-mode de los nodos visibles. Las regresiones prueban que cambiar solo
+palabras no altera material, mientras un cambio de font-size sí falla.
+
+| Diseño | Métrica material v3 | Tipografía | Gates |
+|---|---|---|---|
+| standings | 100% / 0.02% / 1.10% / 0.68% | 100% / 100% coverage | PASS |
+| broadcast | 100% / 0.03% / 0.94% / 0.50% | 100% / 100% coverage | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`; coverage tipográfica:
+`authority / renderer`. Ambos mantienen guard, fuentes, estabilidad y
+Studio/Desktop/OBS verdes. Estado acumulado: 14/21. Las referencias siguen
+intactas.
+
+El mismo gate deja correctamente rojos los siete pendientes: Relative,
+Delta Bar, Delta Trace, Schedule, Head to Head, Multiclass y Weather conservan
+deltas reales de máscara/material o cobertura tipográfica; no existe un pase
+por exclusión de texto.

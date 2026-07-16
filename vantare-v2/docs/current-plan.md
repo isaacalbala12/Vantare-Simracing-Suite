@@ -2673,3 +2673,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Checkpoint familias text-dense:
 - Mejora medida sin falsos verdes: Broadcast `100% / 0.15% / 5.55% / 3.23%`; Standings `100% / 0.39% / 8.13% / 6.00%`; H2H `80.20% / 14.46% / 22.18% / 9.18%`; Multiclass `17.12% / 13.03% / 17.14% / 9.23%`; Schedule `45.15% / 12.90% / 24.27% / 8.71%`; Weather `41.21% / 28.79% / 54.65% / 4.63%`.
 - Estado acumulado permanece 12/21. El comparador aún penaliza palabras/valores diferentes en widgets text-dense, contrario al contrato de comparar tipografía/formato pero no contenido circunstancial.
 - Siguiente microcorte: gate de texto semánticamente neutral con contrato tipográfico separado, conservando sin cambios geometry, alpha/mask, composite de materiales, stability y cross-surface. Referencias intactas.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Protocolo texto-neutral v3 y cierre 01/02:
+- Sin regenerar PNG v2, el comparador excluye solo los rectángulos ajustados de glifos de mask/alpha/composite y añade un gate tipográfico por área: familia, tamaño ±1px, peso, line-height, letter-spacing y writing-mode.
+- Regresiones: cambiar palabras con el mismo estilo deja material exacto; cambiar font-size hace fallar tipografía. `node --test scripts/crystal-parity-protocol.node-test.mjs` → 9/9 PASS.
+- Standings queda `100% / 0.02% / 1.10% / 0.68%`; Broadcast `100% / 0.03% / 0.94% / 0.50%`; ambos pasan tipografía 100%/100%, geometry, alpha/mask, composite, guard, fonts, stability y cross-surface.
+- Estado acumulado: 14/21 verdes. Los siete pendientes siguen rojos con deltas reales; referencias intactas.

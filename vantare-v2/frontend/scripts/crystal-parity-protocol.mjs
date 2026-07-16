@@ -273,6 +273,76 @@ export async function captureIsolatedElement(page, {
   }
 }
 
+export async function collectTextContract(page, selector, margin = 128) {
+  return page.locator(selector).evaluate((root, captureMargin) => {
+    const rootRect = root.getBoundingClientRect();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const entries = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.textContent?.trim()) continue;
+      const parent = node.parentElement;
+      if (!parent) continue;
+      const style = getComputedStyle(parent);
+      if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) === 0) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) {
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        entries.push({
+          rect: {
+            x: Math.floor(captureMargin + rect.x - rootRect.x - 1),
+            y: Math.floor(captureMargin + rect.y - rootRect.y - 1),
+            width: Math.ceil(rect.width + 2),
+            height: Math.ceil(rect.height + 2),
+          },
+          style: {
+            family: style.fontFamily.split(',')[0].replaceAll('"', '').trim(),
+            size: Number.parseFloat(style.fontSize),
+            weight: Number.parseInt(style.fontWeight, 10) || 400,
+            lineHeight: style.lineHeight === 'normal' ? null : Number.parseFloat(style.lineHeight),
+            letterSpacing: style.letterSpacing === 'normal' ? 0 : Number.parseFloat(style.letterSpacing),
+            writingMode: style.writingMode,
+          },
+        });
+      }
+    }
+    return entries;
+  }, margin);
+}
+
+export function compareTypographyContracts(reference, actual) {
+  const matches = (left, right) => (
+    left.family === right.family
+    && Math.abs(left.size - right.size) <= 1
+    && Math.abs(left.weight - right.weight) <= 100
+    && Math.abs(left.letterSpacing - right.letterSpacing) <= 1
+    && left.writingMode === right.writingMode
+    && (
+      left.lineHeight === null
+      || right.lineHeight === null
+      || Math.abs(left.lineHeight - right.lineHeight) <= 1
+    )
+  );
+  const coverage = (source, target) => {
+    const total = source.reduce((sum, entry) => sum + entry.rect.width * entry.rect.height, 0);
+    if (total === 0) return target.length === 0 ? 1 : 0;
+    const covered = source.reduce((sum, entry) => (
+      target.some((candidate) => matches(entry.style, candidate.style))
+        ? sum + entry.rect.width * entry.rect.height
+        : sum
+    ), 0);
+    return covered / total;
+  };
+  const referenceCoverage = coverage(reference, actual);
+  const actualCoverage = coverage(actual, reference);
+  return {
+    referenceCoverage,
+    actualCoverage,
+    pass: referenceCoverage >= 0.9 && actualCoverage >= 0.9,
+  };
+}
+
 export async function decodePng(page, buffer) {
   const source = `data:image/png;base64,${buffer.toString('base64')}`;
   return page.evaluate(async (url) => {
@@ -303,10 +373,11 @@ export async function comparePngCaptures(page, {
   actualScene,
   guard = 8,
   channelTolerance = 24,
+  excludedRects = [],
 }) {
   const urls = [referenceWidget, referenceScene, actualWidget, actualScene]
     .map((buffer) => `data:image/png;base64,${buffer.toString('base64')}`);
-  return page.evaluate(async ({ sources, guardSize, tolerance }) => {
+  return page.evaluate(async ({ sources, guardSize, tolerance, exclusions }) => {
     const decode = async (url) => {
       const image = await new Promise((resolve, reject) => {
         const candidate = new Image();
@@ -361,9 +432,16 @@ export async function comparePngCaptures(page, {
     for (let offset = 0, pixel = 0; offset < reference.data.length; offset += 4, pixel += 1) {
       const x = pixel % width;
       const y = Math.floor(pixel / width);
+      const excluded = exclusions.some((rect) => (
+        x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height
+      ));
       const referenceAffected = differs(reference.data, referenceBaseline.data, offset, 1);
       const actualAffected = differs(actual.data, actualBaseline.data, offset, 1);
       const inGuard = x < guardSize || y < guardSize || x >= width - guardSize || y >= height - guardSize;
+      if (excluded) {
+        if (differs(referenceBaseline.data, actualBaseline.data, offset, 1)) sceneMismatchPixels += 1;
+        continue;
+      }
       if (referenceAffected) referencePixels += 1;
       if (actualAffected) actualPixels += 1;
       if (referenceAffected && actualAffected) intersectionPixels += 1;
@@ -408,5 +486,5 @@ export async function comparePngCaptures(page, {
       referenceAlphaLt255Ratio: referenceAlphaLt255 / pixels,
       actualAlphaLt255Ratio: actualAlphaLt255 / pixels,
     };
-  }, { sources: urls, guardSize: guard, tolerance: channelTolerance });
+  }, { sources: urls, guardSize: guard, tolerance: channelTolerance, exclusions: excludedRects });
 }

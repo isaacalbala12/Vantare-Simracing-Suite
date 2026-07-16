@@ -1,19 +1,19 @@
-import { fireEvent, render, screen, cleanup, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { WidgetStudio } from "./WidgetStudio";
-import type { ProfileConfig } from "../../lib/profile";
-import { createDefaultStandingsColumns } from "../../overlay/widgets/standings-catalog";
+import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { WidgetStudio } from './WidgetStudio';
+import type { ProfileConfig } from '../../lib/profile';
+import { createDefaultStandingsColumns } from '../../overlay/widgets/standings-catalog';
 
-vi.mock("@wailsio/runtime", () => ({
+vi.mock('@wailsio/runtime', () => ({
   Events: {
     Emit: vi.fn(),
     On: vi.fn().mockReturnValue(() => {}),
   },
 }));
-vi.mock("../../lib/access", () => ({
+vi.mock('../../lib/access', () => ({
   useAccess: () => ({
-    planLabel: "free",
-    planStatus: "free",
+    planLabel: 'free',
+    planStatus: 'free',
     roles: [],
     isBlocked: false,
     isUnconfigured: false,
@@ -25,18 +25,30 @@ afterEach(() => {
 });
 
 const profile: ProfileConfig = {
-  id: "default-racing",
-  name: "Default Racing",
-  displayMode: "racing",
+  id: 'default-racing',
+  name: 'Default Racing',
+  displayMode: 'racing',
   monitorIndex: 0,
   widgets: [
-    { id: "delta", type: "delta", enabled: true, updateHz: 30, position: { x: 760, y: 40, w: 400, h: 48 } },
-    { id: "relative", type: "relative", enabled: false, updateHz: 15, position: { x: 40, y: 600, w: 320, h: 280 } },
+    {
+      id: 'delta',
+      type: 'delta',
+      enabled: true,
+      updateHz: 30,
+      position: { x: 760, y: 40, w: 400, h: 48 },
+    },
+    {
+      id: 'relative',
+      type: 'relative',
+      enabled: false,
+      updateHz: 15,
+      position: { x: 40, y: 600, w: 320, h: 280 },
+    },
   ],
 };
 
-describe("WidgetStudio", () => {
-  it("renders the Widget Studio view", () => {
+describe('WidgetStudio', () => {
+  it('renders the Widget Studio view', () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -50,12 +62,12 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getAllByRole("heading", { name: "Widgets" }).length).toBeGreaterThan(0);
-    expect(screen.getByText("Sin cambios")).toBeTruthy();
-    expect(screen.getAllByText("delta").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Widgets' }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Sin cambios')).toBeTruthy();
+    expect(screen.getAllByText('delta').length).toBeGreaterThan(0);
   });
 
-  it("calls onBack from the back button", () => {
+  it('calls onBack from the back button', () => {
     const onBack = vi.fn();
     render(
       <WidgetStudio
@@ -70,12 +82,12 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Overlays Studio/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Overlays Studio/i }));
 
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("calls onSave from manual save button", () => {
+  it('calls onSave from manual save button', () => {
     const onSave = vi.fn();
     render(
       <WidgetStudio
@@ -90,12 +102,12 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("widget-studio-save-btn"));
+    fireEvent.click(screen.getByTestId('widget-studio-save-btn'));
 
     expect(onSave).toHaveBeenCalled();
   });
 
-  it("does not expose profile placement controls in Widget Studio", () => {
+  it('does not expose profile placement controls in Widget Studio', () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -109,20 +121,20 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
-    expect(screen.queryByLabelText("X (px)")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull();
+    expect(screen.queryByText('POSICIÓN Y TAMAÑO')).toBeNull();
+    expect(screen.queryByLabelText('X (px)')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull();
   });
 
-  it("passes selected widget variants to the widget preview", async () => {
+  it('passes selected widget variants to the widget preview', async () => {
     const relativeProfile: ProfileConfig = {
       ...profile,
       schemaVersion: 2,
       widgets: [
         {
-          id: "relative",
-          type: "relative",
-          variantId: "variant-relative-default",
+          id: 'relative',
+          type: 'relative',
+          variantId: 'variant-relative-default',
           enabled: true,
           updateHz: 15,
           position: { x: 40, y: 600, w: 420, h: 280 },
@@ -130,12 +142,12 @@ describe("WidgetStudio", () => {
       ],
       variants: [
         {
-          id: "variant-relative-default",
-          widgetType: "relative",
-          templateId: "relative-vantare-default",
+          id: 'variant-relative-default',
+          widgetType: 'relative',
+          templateId: 'relative-vantare-default',
           columns: [
-            { id: "driverName", metricId: "driverName", enabled: true },
-            { id: "bestLap", metricId: "bestLap", enabled: true },
+            { id: 'driverName', metricId: 'driverName', enabled: true },
+            { id: 'bestLap', metricId: 'bestLap', enabled: true },
           ],
         },
       ],
@@ -154,18 +166,18 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(await screen.findByText("1:30.876")).toBeTruthy();
+    expect(await screen.findByText('1:30.876')).toBeTruthy();
   });
 
-  it("shows Relative column controls for the Relative widget", () => {
+  it('shows Relative column controls for the Relative widget', () => {
     const relativeProfile: ProfileConfig = {
       ...profile,
       schemaVersion: 2,
       widgets: [
         {
-          id: "relative",
-          type: "relative",
-          variantId: "variant-relative-default",
+          id: 'relative',
+          type: 'relative',
+          variantId: 'variant-relative-default',
           enabled: true,
           updateHz: 15,
           position: { x: 40, y: 600, w: 320, h: 280 },
@@ -173,13 +185,13 @@ describe("WidgetStudio", () => {
       ],
       variants: [
         {
-          id: "variant-relative-default",
-          widgetType: "relative",
-          templateId: "relative-vantare-default",
+          id: 'variant-relative-default',
+          widgetType: 'relative',
+          templateId: 'relative-vantare-default',
         },
       ],
     };
-    
+
     render(
       <WidgetStudio
         profile={relativeProfile}
@@ -192,17 +204,17 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-    
+
     // Navigate to Columnas section in the sub-nav
-    fireEvent.click(screen.getByTestId("sn-item-columnas"));
-    
-    expect(screen.getByText("Columnas relative")).toBeTruthy();
-    expect(screen.getByLabelText("Mostrar mejor vuelta")).toBeTruthy();
-    expect(screen.getByLabelText("Mostrar última vuelta")).toBeTruthy();
-    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
+    fireEvent.click(screen.getByTestId('sn-item-columnas'));
+
+    expect(screen.getByText('Columnas relative')).toBeTruthy();
+    expect(screen.getByLabelText('Mostrar mejor vuelta')).toBeTruthy();
+    expect(screen.getByLabelText('Mostrar última vuelta')).toBeTruthy();
+    expect(screen.queryByText('POSICIÓN Y TAMAÑO')).toBeNull();
   });
 
-  it("constrains the desktop grid row so tall settings do not inflate the preview area", () => {
+  it('constrains the desktop grid row so tall settings do not inflate the preview area', () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -216,11 +228,11 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    const grid = screen.getByTestId("widget-studio-grid");
-    expect(grid.className).toContain("lg:grid-rows-[1fr]");
+    const grid = screen.getByTestId('widget-studio-grid');
+    expect(grid.className).toContain('lg:grid-rows-[1fr]');
   });
 
-  it("uses a fixed viewport-height shell so preview centering matches the visible area", () => {
+  it('uses a fixed viewport-height shell so preview centering matches the visible area', () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -234,17 +246,23 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    const grid = screen.getByTestId("widget-studio-grid");
+    const grid = screen.getByTestId('widget-studio-grid');
     const shell = grid.parentElement;
-    expect(shell?.className).toContain("h-[calc(100vh-3.5rem)]");
-    expect(shell?.className).not.toContain("min-h-[calc(100vh-3.5rem)]");
+    expect(shell?.className).toContain('h-[calc(100vh-3.5rem)]');
+    expect(shell?.className).not.toContain('min-h-[calc(100vh-3.5rem)]');
   });
 
-  it("shows a preview-only mock session selector when Standings is selected", () => {
+  it('shows a preview-only mock session selector when Standings is selected', () => {
     const standingsProfile: ProfileConfig = {
       ...profile,
       widgets: [
-        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+        {
+          id: 'standings',
+          type: 'standings',
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
       ],
     };
 
@@ -261,17 +279,23 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("mock-session-selector")).toBeTruthy();
-    expect(screen.getByTestId("mock-session-race")).toBeTruthy();
-    expect(screen.getByTestId("mock-session-practice")).toBeTruthy();
-    expect(screen.getByTestId("mock-session-qual")).toBeTruthy();
+    expect(screen.getByTestId('mock-session-selector')).toBeTruthy();
+    expect(screen.getByTestId('mock-session-race')).toBeTruthy();
+    expect(screen.getByTestId('mock-session-practice')).toBeTruthy();
+    expect(screen.getByTestId('mock-session-qual')).toBeTruthy();
   });
 
-  it("defaults the mock session selector to Carrera", async () => {
+  it('defaults the mock session selector to Carrera', async () => {
     const standingsProfile: ProfileConfig = {
       ...profile,
       widgets: [
-        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+        {
+          id: 'standings',
+          type: 'standings',
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
       ],
     };
 
@@ -288,17 +312,23 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("mock-session-race").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId('mock-session-race').getAttribute('aria-pressed')).toBe('true');
     await waitFor(() => {
-      expect(screen.getByText("Leader")).toBeTruthy();
+      expect(screen.getByText('Leader')).toBeTruthy();
     });
   });
 
-  it("switches the mock session scenario when clicking the selector", async () => {
+  it('switches the mock session scenario when clicking the selector', async () => {
     const standingsProfile: ProfileConfig = {
       ...profile,
       widgets: [
-        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+        {
+          id: 'standings',
+          type: 'standings',
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
       ],
     };
 
@@ -315,19 +345,25 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("mock-session-practice"));
+    fireEvent.click(screen.getByTestId('mock-session-practice'));
 
-    expect(screen.getByTestId("mock-session-practice").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId('mock-session-practice').getAttribute('aria-pressed')).toBe('true');
     await waitFor(() => {
-      expect(screen.getByText("1:29.823")).toBeTruthy();
+      expect(screen.getByText('1:29.823')).toBeTruthy();
     });
   });
 
-  it("does not show the mock session selector for Relative", () => {
+  it('does not show the mock session selector for Relative', () => {
     const relativeProfile: ProfileConfig = {
       ...profile,
       widgets: [
-        { id: "relative", type: "relative", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 320, h: 280 } },
+        {
+          id: 'relative',
+          type: 'relative',
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 320, h: 280 },
+        },
       ],
     };
 
@@ -344,15 +380,21 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.queryByTestId("mock-session-selector")).toBeNull();
+    expect(screen.queryByTestId('mock-session-selector')).toBeNull();
   });
 
-  it("does not mark the profile dirty when changing the mock session scenario", () => {
+  it('does not mark the profile dirty when changing the mock session scenario', () => {
     const onChangeProfile = vi.fn();
     const standingsProfile: ProfileConfig = {
       ...profile,
       widgets: [
-        { id: "standings", type: "standings", enabled: true, updateHz: 15, position: { x: 0, y: 0, w: 360, h: 300 } },
+        {
+          id: 'standings',
+          type: 'standings',
+          enabled: true,
+          updateHz: 15,
+          position: { x: 0, y: 0, w: 360, h: 300 },
+        },
       ],
     };
 
@@ -369,20 +411,20 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("mock-session-practice"));
+    fireEvent.click(screen.getByTestId('mock-session-practice'));
 
     expect(onChangeProfile).not.toHaveBeenCalled();
   });
 
-  it("shows Standings column controls for the Standings widget", () => {
+  it('shows Standings column controls for the Standings widget', () => {
     const standingsProfile: ProfileConfig = {
       ...profile,
       schemaVersion: 2,
       widgets: [
         {
-          id: "standings",
-          type: "standings",
-          variantId: "variant-standings-default",
+          id: 'standings',
+          type: 'standings',
+          variantId: 'variant-standings-default',
           enabled: true,
           updateHz: 15,
           position: { x: 40, y: 80, w: 360, h: 300 },
@@ -390,13 +432,13 @@ describe("WidgetStudio", () => {
       ],
       variants: [
         {
-          id: "variant-standings-default",
-          widgetType: "standings",
-          templateId: "standings-vantare-default",
+          id: 'variant-standings-default',
+          widgetType: 'standings',
+          templateId: 'standings-vantare-default',
         },
       ],
     };
-    
+
     render(
       <WidgetStudio
         profile={standingsProfile}
@@ -409,25 +451,25 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-    
+
     // Navigate to Columnas section in the sub-nav
-    fireEvent.click(screen.getByTestId("sn-item-columnas"));
-    
-    expect(screen.getByText("Columnas standings")).toBeTruthy();
-    expect(screen.getByLabelText("Mostrar mejor vuelta standings")).toBeTruthy();
-    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
+    fireEvent.click(screen.getByTestId('sn-item-columnas'));
+
+    expect(screen.getByText('Columnas standings')).toBeTruthy();
+    expect(screen.getByLabelText('Mostrar mejor vuelta standings')).toBeTruthy();
+    expect(screen.queryByText('POSICIÓN Y TAMAÑO')).toBeNull();
   });
 
-  it("updates Standings variant columns from WidgetStudio without touching position", () => {
+  it('updates Standings variant columns from WidgetStudio without touching position', () => {
     const onChangeProfile = vi.fn();
     const standingsProfile: ProfileConfig = {
       ...profile,
       schemaVersion: 2,
       widgets: [
         {
-          id: "standings",
-          type: "standings",
-          variantId: "variant-standings-default",
+          id: 'standings',
+          type: 'standings',
+          variantId: 'variant-standings-default',
           enabled: true,
           updateHz: 15,
           position: { x: 40, y: 80, w: 360, h: 300 },
@@ -435,13 +477,13 @@ describe("WidgetStudio", () => {
       ],
       variants: [
         {
-          id: "variant-standings-default",
-          widgetType: "standings",
-          templateId: "standings-vantare-default",
+          id: 'variant-standings-default',
+          widgetType: 'standings',
+          templateId: 'standings-vantare-default',
         },
       ],
     };
-    
+
     render(
       <WidgetStudio
         profile={standingsProfile}
@@ -454,18 +496,20 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-    
+
     // Navigate to Columnas section in the sub-nav
-    fireEvent.click(screen.getByTestId("sn-item-columnas"));
-    
-    fireEvent.click(screen.getByRole("switch", { name: "Mostrar mejor vuelta standings" }));
-    
+    fireEvent.click(screen.getByTestId('sn-item-columnas'));
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Mostrar mejor vuelta standings' }));
+
     const next = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     expect(next.widgets[0].position).toEqual(standingsProfile.widgets[0].position);
-    expect(next.variants?.[0].columns?.find((column) => column.id === "bestLap")?.enabled).toBe(true);
+    expect(next.variants?.[0].columns?.find((column) => column.id === 'bestLap')?.enabled).toBe(
+      true,
+    );
   });
 
-  it("shows a dirty save state with red accent and disables Save when not dirty", () => {
+  it('shows a dirty save state with red accent and disables Save when not dirty', () => {
     const { rerender } = render(
       <WidgetStudio
         profile={profile}
@@ -479,10 +523,12 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    const dirtyState = screen.getByTestId("widget-studio-save-state");
-    expect(dirtyState.textContent).toContain("Cambios sin guardar");
-    expect(dirtyState.className).toContain("text-vantare-red-400");
-    expect((screen.getByTestId("widget-studio-save-btn") as HTMLButtonElement).disabled).toBe(false);
+    const dirtyState = screen.getByTestId('widget-studio-save-state');
+    expect(dirtyState.textContent).toContain('Cambios sin guardar');
+    expect(dirtyState.className).toContain('text-vantare-red-400');
+    expect((screen.getByTestId('widget-studio-save-btn') as HTMLButtonElement).disabled).toBe(
+      false,
+    );
 
     rerender(
       <WidgetStudio
@@ -497,15 +543,21 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
-    expect((screen.getByTestId("widget-studio-save-btn") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId('widget-studio-save-state').textContent).toContain('Sin cambios');
+    expect((screen.getByTestId('widget-studio-save-btn') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("exposes the official design gallery inside WidgetStudio without position/tamaño controls", () => {
+  it('exposes the official design gallery inside WidgetStudio without position/tamaño controls', () => {
     const relativeProfile: ProfileConfig = {
       ...profile,
       widgets: [
-        { id: "relative", type: "relative", enabled: true, updateHz: 15, position: { x: 10, y: 20, w: 320, h: 280 } },
+        {
+          id: 'relative',
+          type: 'relative',
+          enabled: true,
+          updateHz: 15,
+          position: { x: 10, y: 20, w: 320, h: 280 },
+        },
       ],
     };
 
@@ -522,14 +574,14 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("widget-design-gallery")).toBeTruthy();
-    expect(screen.getByTestId("widget-design-item-vantare-racing-essential")).toBeTruthy();
-    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
-    expect(screen.queryByLabelText("X (px)")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull();
+    expect(screen.getByTestId('widget-design-gallery')).toBeTruthy();
+    expect(screen.getByTestId('widget-design-item-vantare-racing-essential')).toBeTruthy();
+    expect(screen.queryByText('POSICIÓN Y TAMAÑO')).toBeNull();
+    expect(screen.queryByLabelText('X (px)')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull();
   });
 
-  it("renders a design system selector reflecting the active design", () => {
+  it('renders a design system selector reflecting the active design', () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -543,32 +595,32 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.getByTestId("design-system-selector")).toBeTruthy();
-    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
+    expect(screen.getByTestId('design-system-selector')).toBeTruthy();
+    const select = screen.getByLabelText('Diseño') as HTMLSelectElement;
     expect(select).toBeTruthy();
-    expect(select.value).toBe("base");
-    expect(screen.getByRole("option", { name: "Base" })).toBeTruthy();
+    expect(select.value).toBe('base');
+    expect(screen.getByRole('option', { name: 'Base' })).toBeTruthy();
   });
 
-  it("shows the active official design selected in the top selector", () => {
+  it('shows the active official design selected in the top selector', () => {
     const standingsProfile: ProfileConfig = {
       ...profile,
       widgets: [
         {
-          id: "standings",
-          type: "standings",
+          id: 'standings',
+          type: 'standings',
           enabled: true,
           updateHz: 15,
-          variantId: "official-standings-vantare-crystal-standings",
+          variantId: 'official-standings-vantare-crystal-standings',
           position: { x: 0, y: 0, w: 360, h: 300 },
         },
       ],
       variants: [
         {
-          id: "official-standings-vantare-crystal-standings",
-          widgetType: "standings",
-          templateId: "standings-vantare-default",
-          themeId: "vantare-crystal",
+          id: 'official-standings-vantare-crystal-standings',
+          widgetType: 'standings',
+          templateId: 'standings-vantare-default',
+          themeId: 'vantare-crystal',
           columns: createDefaultStandingsColumns(),
         },
       ],
@@ -587,22 +639,22 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    const select = screen.getByLabelText("Diseño") as HTMLSelectElement;
-    expect(select.value).toBe("standings-vantare-crystal");
+    const select = screen.getByLabelText('Diseño') as HTMLSelectElement;
+    expect(select.value).toBe('standings-vantare-crystal');
     expect(
-      Array.from(select.options).find((option) => option.value === "standings-vantare-crystal")
+      Array.from(select.options).find((option) => option.value === 'standings-vantare-crystal')
         ?.textContent,
-    ).toBe("Standings Vantare Crystal");
+    ).toBe('Standings Vantare Crystal');
   });
 
-  it("selecting Standings Vantare Crystal applies it and re-renders the vantare-crystal preview", async () => {
+  it('selecting Standings Vantare Crystal applies it and re-renders the vantare-crystal preview', async () => {
     const onChangeProfile = vi.fn();
     const standingsProfile: ProfileConfig = {
       ...profile,
       widgets: [
         {
-          id: "standings",
-          type: "standings",
+          id: 'standings',
+          type: 'standings',
           enabled: true,
           updateHz: 15,
           position: { x: 0, y: 0, w: 360, h: 300 },
@@ -624,15 +676,15 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Diseño"), {
-      target: { value: "standings-vantare-crystal" },
+    fireEvent.change(screen.getByLabelText('Diseño'), {
+      target: { value: 'standings-vantare-crystal' },
     });
 
     expect(onChangeProfile).toHaveBeenCalledTimes(1);
     const next = onChangeProfile.mock.calls[0][0] as ProfileConfig;
     const applied = next.widgets[0];
-    expect(applied.variantId).toBe("official-standings-vantare-crystal-standings");
-    expect(next.variants?.find((v) => v.id === applied.variantId)?.themeId).toBe("vantare-crystal");
+    expect(applied.variantId).toBe('official-standings-vantare-crystal-standings');
+    expect(next.variants?.find((v) => v.id === applied.variantId)?.themeId).toBe('vantare-crystal');
 
     rerender(
       <WidgetStudio
@@ -648,11 +700,13 @@ describe("WidgetStudio", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("standings-panel").getAttribute("data-standings-template")).toBe("glassmorphism");
+      expect(screen.getByTestId('standings-panel').getAttribute('data-standings-template')).toBe(
+        'glassmorphism',
+      );
     });
   });
 
-  it("does not show position or size controls in WidgetStudio", () => {
+  it('does not show position or size controls in WidgetStudio', () => {
     render(
       <WidgetStudio
         profile={profile}
@@ -666,16 +720,16 @@ describe("WidgetStudio", () => {
       />,
     );
 
-    expect(screen.queryByText("POSICIÓN Y TAMAÑO")).toBeNull();
-    expect(screen.queryByLabelText("X (px)")).toBeNull();
-    expect(screen.queryByLabelText("Y (px)")).toBeNull();
-    expect(screen.queryByLabelText("W (px)")).toBeNull();
-    expect(screen.queryByLabelText("H (px)")).toBeNull();
+    expect(screen.queryByText('POSICIÓN Y TAMAÑO')).toBeNull();
+    expect(screen.queryByLabelText('X (px)')).toBeNull();
+    expect(screen.queryByLabelText('Y (px)')).toBeNull();
+    expect(screen.queryByLabelText('W (px)')).toBeNull();
+    expect(screen.queryByLabelText('H (px)')).toBeNull();
   });
-  it("disables save button with honest title when profile is empty", () => {
+  it('disables save button with honest title when profile is empty', () => {
     const emptyProfile: ProfileConfig = {
       schemaVersion: 2,
-      displayMode: "racing",
+      displayMode: 'racing',
       monitorIndex: 0,
       widgets: [],
       variants: [],
@@ -693,15 +747,15 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-    const btn = screen.getByTestId("widget-studio-save-btn");
-    expect(btn).toHaveProperty("disabled", true);
-    expect(btn.getAttribute("title")).toContain("Crea o activa un perfil");
+    const btn = screen.getByTestId('widget-studio-save-btn');
+    expect(btn).toHaveProperty('disabled', true);
+    expect(btn.getAttribute('title')).toContain('Crea o activa un perfil');
   });
 
-  it("disables design selector when profile is empty", () => {
+  it('disables design selector when profile is empty', () => {
     const emptyProfile: ProfileConfig = {
       schemaVersion: 2,
-      displayMode: "racing",
+      displayMode: 'racing',
       monitorIndex: 0,
       widgets: [],
       variants: [],
@@ -719,14 +773,14 @@ describe("WidgetStudio", () => {
         onBack={vi.fn()}
       />,
     );
-    const select = screen.getByRole("combobox", { name: /Diseño/i }) as HTMLSelectElement;
+    const select = screen.getByRole('combobox', { name: /Diseño/i }) as HTMLSelectElement;
     expect(select.disabled).toBe(true);
   });
 
-  it("save state stays idle when profile is empty even after onChangeProfile", async () => {
+  it('save state stays idle when profile is empty even after onChangeProfile', async () => {
     const emptyProfile: ProfileConfig = {
       schemaVersion: 2,
-      displayMode: "racing",
+      displayMode: 'racing',
       monitorIndex: 0,
       widgets: [],
       variants: [],
@@ -746,9 +800,9 @@ describe("WidgetStudio", () => {
       />,
     );
     // Badge should show idle (not dirty) when profile is synthetic
-    expect(screen.getByTestId("widget-studio-save-state").textContent).toContain("Sin cambios");
+    expect(screen.getByTestId('widget-studio-save-state').textContent).toContain('Sin cambios');
     // Save button should remain disabled — it must not become enabled via any interaction
-    const btn = screen.getByTestId("widget-studio-save-btn");
-    expect(btn).toHaveProperty("disabled", true);
+    const btn = screen.getByTestId('widget-studio-save-btn');
+    expect(btn).toHaveProperty('disabled', true);
   });
 });

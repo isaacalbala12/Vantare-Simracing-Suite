@@ -1,21 +1,32 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { useI18n } from "../../i18n/I18nProvider";
-import type { ProfileConfig, WidgetConfig, SlotConfig, ColumnConfig, ColumnGroupConfig } from "../../lib/profile";
-import { PreviewInspector } from "../preview/PreviewInspector";
-import { RelativeSettingsSection } from "./RelativeSettingsSection";
-import { StandingsSettingsSection } from "./StandingsSettingsSection";
-import { PedalsSettingsSection } from "./PedalsSettingsSection";
-import { WidgetPresetSection } from "./WidgetPresetSection";
-import { WidgetConfigSections } from "./WidgetConfigSections";
-import { WidgetDesignGallery } from "../widgets/WidgetDesignGallery";
-import { applyOfficialDesignToProfile, getActiveOfficialDesignId, getOfficialDesign, type OfficialDesign } from "../widgets/widget-design-gallery";
-import { WidgetVariantManager } from "./WidgetVariantManager";
-import { useAccess } from "../../lib/access";
-import { canApplyWidget } from "./widget-catalog";
-import { resolveEffectiveWidgetVariant } from "./widget-config-model";
-import { SubNavRail } from "./SubNavRail";
-import { SubNavContent } from "./SubNavContent";
-import { getSectionsForWidget, type SubNavSectionId } from "./sub-nav-config";
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useI18n } from '../../i18n/I18nProvider';
+import type {
+  ProfileConfig,
+  WidgetConfig,
+  SlotConfig,
+  ColumnConfig,
+  ColumnGroupConfig,
+} from '../../lib/profile';
+import { PreviewInspector } from '../preview/PreviewInspector';
+import { RelativeSettingsSection } from './RelativeSettingsSection';
+import { StandingsSettingsSection } from './StandingsSettingsSection';
+import { PedalsSettingsSection } from './PedalsSettingsSection';
+import { WidgetPresetSection } from './WidgetPresetSection';
+import { WidgetConfigSections } from './WidgetConfigSections';
+import { DesignBronzeCards } from './DesignBronzeCards';
+import {
+  applyOfficialDesignToProfile,
+  getActiveOfficialDesignId,
+  getOfficialDesign,
+  type OfficialDesign,
+} from '../widgets/widget-design-gallery';
+import { WidgetVariantManager } from './WidgetVariantManager';
+import { useAccess } from '../../lib/access';
+import { canApplyWidget } from './widget-catalog';
+import { resolveEffectiveWidgetVariant } from './widget-config-model';
+import { SubNavRail } from './SubNavRail';
+import { SubNavContent } from './SubNavContent';
+import { getSectionsForWidget, type SubNavSectionId } from './sub-nav-config';
 
 type WidgetSettingsPanelProps = {
   profile: ProfileConfig;
@@ -37,15 +48,20 @@ function isDraftDirty(draft: DraftConfig, effective: DraftConfig): boolean {
   );
 }
 
-export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: WidgetSettingsPanelProps) {
+export function WidgetSettingsPanel({
+  profile,
+  widget,
+  onChangeProfile,
+}: WidgetSettingsPanelProps) {
   const access = useAccess();
   const canApply = widget ? canApplyWidget(widget.type, access) : false;
   const { t } = useI18n();
 
   const effective = useMemo(
-    () => widget
-      ? resolveEffectiveWidgetVariant(widget, profile)
-      : { slots: [], columns: [], columnGroups: [] },
+    () =>
+      widget
+        ? resolveEffectiveWidgetVariant(widget, profile)
+        : { slots: [], columns: [], columnGroups: [] },
     [widget, profile],
   );
 
@@ -57,8 +73,8 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
 
   // Sub-nav state
   const sections = widget ? getSectionsForWidget(widget.type) : [];
-  const [activeSectionId, setActiveSectionId] = useState<SubNavSectionId | null>(
-    () => sections.length > 0 ? sections[0].id : null
+  const [activeSectionId, setActiveSectionId] = useState<SubNavSectionId | null>(() =>
+    sections.length > 0 ? sections[0].id : null,
   );
 
   // Derive the effective active section — if the stored id doesn't belong to
@@ -85,7 +101,11 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
   const dirty = isDraftDirty(draft, effective);
 
   const handleDraftChange = useCallback(
-    (changes: { slots?: SlotConfig[]; columns?: ColumnConfig[]; columnGroups?: ColumnGroupConfig[] }) => {
+    (changes: {
+      slots?: SlotConfig[];
+      columns?: ColumnConfig[];
+      columnGroups?: ColumnGroupConfig[];
+    }) => {
       setDraft((prev) => ({
         ...prev,
         ...(changes.slots !== undefined ? { slots: changes.slots } : {}),
@@ -129,22 +149,21 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
   const handleToggleVisibility = useCallback(() => {
     if (!widget) return;
     const updatedWidgets = profile.widgets.map((w) =>
-      w.id === widget.id ? { ...w, enabled: !w.enabled } : w
+      w.id === widget.id ? { ...w, enabled: !w.enabled } : w,
     );
     onChangeProfile({ ...profile, widgets: updatedWidgets });
   }, [widget, profile, onChangeProfile]);
 
   const activeDesignId = widget ? getActiveOfficialDesignId(widget) : null;
   const selectedDesign = activeDesignId ? getOfficialDesign(activeDesignId) : null;
-  const sameTypeWidgets = widget
-    ? profile.widgets.filter((w) => w.type === widget.type)
-    : [];
-
-
+  const sameTypeWidgets = widget ? profile.widgets.filter((w) => w.type === widget.type) : [];
 
   if (!widget) {
     return (
-      <div data-testid="widget-settings-panel" className="glass-panel flex h-full items-center justify-center rounded-xl text-sm text-vantare-textMuted">
+      <div
+        data-testid="widget-settings-panel"
+        className="glass-panel flex h-full items-center justify-center rounded-xl text-sm text-vantare-textMuted"
+      >
         Selecciona un widget para editar
       </div>
     );
@@ -156,12 +175,15 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
       className="mx-2 mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-amber-400"
       data-testid="pro-upgrade-notice"
     >
-      {t("studio.proUpgrade")}
+      {t('studio.proUpgrade')}
     </div>
   ) : null;
 
   return (
-    <div data-testid="widget-settings-panel" className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl">
+    <div
+      data-testid="widget-settings-panel"
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl"
+    >
       {proNotice}
       <div className="flex min-h-0 flex-1">
         {/* Sub-nav rail */}
@@ -169,7 +191,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           widgetName={widget.name || widget.id}
           widgetEnabled={widget.enabled}
           sections={sections}
-          activeSectionId={effectiveSectionId ?? ""}
+          activeSectionId={effectiveSectionId ?? ''}
           onSelectSection={(id) => setActiveSectionId(id as SubNavSectionId)}
           onToggleVisibility={handleToggleVisibility}
           dirty={dirty}
@@ -179,14 +201,14 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
         {/* Sub-nav content */}
         <SubNavContent
           sections={sections}
-          activeSectionId={effectiveSectionId ?? ""}
+          activeSectionId={effectiveSectionId ?? ''}
           onResetSection={handleDiscard}
         >
           {/* Diseño section */}
-          {effectiveSectionId === "diseno" && (
+          {effectiveSectionId === 'diseno' && (
             <div className="sn-section space-y-3">
-              <WidgetDesignGallery
-                widget={widget}
+              <DesignBronzeCards
+                widgetType={widget.type}
                 activeDesignId={activeDesignId}
                 onApplyDesign={handleApplyOfficialDesign}
               />
@@ -222,7 +244,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           )}
 
           {/* Apariencia section */}
-          {effectiveSectionId === "apariencia" && (
+          {effectiveSectionId === 'apariencia' && (
             <div className="sn-section">
               <PreviewInspector
                 profile={profile}
@@ -237,7 +259,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           )}
 
           {/* Columnas section (relative/standings) */}
-          {effectiveSectionId === "columnas" && (
+          {effectiveSectionId === 'columnas' && (
             <div className="sn-section space-y-3">
               <WidgetConfigSections
                 slots={draft.slots}
@@ -258,14 +280,17 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
                 onChangeProfile={onChangeProfile}
               />
               {dirty && canApply && (
-                <div className="flex items-center gap-2 border-t border-white/5 pt-3" data-testid="draft-actions">
+                <div
+                  className="flex items-center gap-2 border-t border-white/5 pt-3"
+                  data-testid="draft-actions"
+                >
                   <button
                     type="button"
                     onClick={handleSaveToWidget}
                     data-testid="save-to-widget-btn"
                     className="rounded bg-vantare-red-500/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-red-500 cursor-pointer"
                   >
-                    {t("studio.saveToWidget")}
+                    {t('studio.saveToWidget')}
                   </button>
                   <button
                     type="button"
@@ -273,7 +298,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
                     data-testid="discard-changes-btn"
                     className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
                   >
-                    {t("studio.discard")}
+                    {t('studio.discard')}
                   </button>
                 </div>
               )}
@@ -281,7 +306,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           )}
 
           {/* Slots section (non-relative/standings) */}
-          {effectiveSectionId === "slots" && (
+          {effectiveSectionId === 'slots' && (
             <div className="sn-section space-y-3">
               <WidgetConfigSections
                 slots={draft.slots}
@@ -292,14 +317,17 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
                 onDraftChange={handleDraftChange}
               />
               {dirty && canApply && (
-                <div className="flex items-center gap-2 border-t border-white/5 pt-3" data-testid="draft-actions">
+                <div
+                  className="flex items-center gap-2 border-t border-white/5 pt-3"
+                  data-testid="draft-actions"
+                >
                   <button
                     type="button"
                     onClick={handleSaveToWidget}
                     data-testid="save-to-widget-btn"
                     className="rounded bg-vantare-red-500/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-vantare-red-500 cursor-pointer"
                   >
-                    {t("studio.saveToWidget")}
+                    {t('studio.saveToWidget')}
                   </button>
                   <button
                     type="button"
@@ -307,7 +335,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
                     data-testid="discard-changes-btn"
                     className="rounded border border-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-vantare-textMuted hover:bg-white/5 cursor-pointer"
                   >
-                    {t("studio.discard")}
+                    {t('studio.discard')}
                   </button>
                 </div>
               )}
@@ -315,7 +343,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           )}
 
           {/* Colores section (pedals) */}
-          {effectiveSectionId === "colores" && (
+          {effectiveSectionId === 'colores' && (
             <div className="sn-section">
               <PedalsSettingsSection
                 profile={profile}
@@ -326,7 +354,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           )}
 
           {/* Visibilidad section */}
-          {effectiveSectionId === "visibilidad" && (
+          {effectiveSectionId === 'visibilidad' && (
             <div className="sn-section">
               <PreviewInspector
                 profile={profile}
@@ -341,7 +369,7 @@ export function WidgetSettingsPanel({ profile, widget, onChangeProfile }: Widget
           )}
 
           {/* General section */}
-          {effectiveSectionId === "general" && (
+          {effectiveSectionId === 'general' && (
             <div className="sn-section">
               <PreviewInspector
                 profile={profile}

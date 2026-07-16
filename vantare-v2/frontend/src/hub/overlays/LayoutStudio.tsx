@@ -1,8 +1,8 @@
-import type { ProfileConfig } from "../../lib/profile";
-import type { SaveState } from "./useOverlayStudioState";
-import { StudioWidgetList } from "./StudioWidgetList";
-import { PreviewCanvas } from "../preview/PreviewCanvas";
-import { WidgetSettingsPanel } from "./WidgetSettingsPanel";
+import type { ProfileConfig } from '../../lib/profile';
+import type { SaveState } from './useOverlayStudioState';
+import { StudioWidgetList } from './StudioWidgetList';
+import { PreviewCanvas } from '../preview/PreviewCanvas';
+import { WidgetSettingsPanel } from './WidgetSettingsPanel';
 
 type LayoutStudioProps = {
   profile: ProfileConfig;
@@ -41,7 +41,8 @@ export function LayoutStudio({
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-5">
       {!isActiveProfile && (
         <div className="mb-3 rounded-lg border border-yellow-900/30 bg-yellow-950/20 px-4 py-2 text-xs text-yellow-300">
-          Este perfil no es el activo. Los atajos globales y "Abrir overlay" usarán el perfil activo.
+          Este perfil no es el activo. Los atajos globales y "Abrir overlay" usarán el perfil
+          activo.
         </div>
       )}
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -61,15 +62,15 @@ export function LayoutStudio({
 
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-vantare-textMuted">
-            {saveState === "saving" && "Guardando..."}
-            {saveState === "saved" && "Guardado"}
-            {saveState === "error" && "Error al guardar"}
-            {saveState === "idle" && dirty && "Cambios sin guardar"}
+            {saveState === 'saving' && 'Guardando...'}
+            {saveState === 'saved' && 'Guardado'}
+            {saveState === 'error' && 'Error al guardar'}
+            {saveState === 'idle' && dirty && 'Cambios sin guardar'}
           </span>
           <button
             type="button"
             onClick={onSave}
-            disabled={!dirty || saveState === "saving"}
+            disabled={!dirty || saveState === 'saving'}
             className="btn-secondary rounded-lg px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
             Guardar
@@ -86,7 +87,7 @@ export function LayoutStudio({
             <button
               type="button"
               onClick={onStartOverlay}
-              disabled={dirty || saveState === "saving"}
+              disabled={dirty || saveState === 'saving'}
               className="btn-primary rounded-lg px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
             >
               Abrir overlay

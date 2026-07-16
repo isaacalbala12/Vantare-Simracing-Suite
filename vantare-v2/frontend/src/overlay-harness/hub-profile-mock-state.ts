@@ -1,7 +1,5 @@
-import type { ProfileDocumentV3 } from "../overlay/core/profile-document";
-import { deltaDefinition } from "../overlay/widget-types/delta/delta-definition";
-import { relativeDefinition } from "../overlay/widget-types/relative/relative-definition";
-import { standingsDefinition } from "../overlay/widget-types/standings/standings-definition";
+import type { ProfileDocumentV3, WidgetInstanceV3, WidgetType } from "../overlay/core/profile-document";
+import { widgetTypeRegistry } from "../overlay/core/widget-registry";
 
 export type HubMockProfileEntry = {
   id: string;
@@ -56,14 +54,25 @@ function slugifyProfileName(name: string): string {
 }
 
 export function buildDefaultCreatedProfileDocument(id: string, name: string): ProfileDocumentV3 {
-  const delta = deltaDefinition.createDefault("delta");
-  delta.layout = { ...delta.layout, x: 760, y: 40, w: 400, h: 48, zIndex: 1 };
+  const specs: ReadonlyArray<{
+    type: WidgetType;
+    id: string;
+    layout: { x: number; y: number; w?: number; h?: number };
+  }> = [
+    { type: "delta", id: "delta", layout: { x: 760, y: 40, w: 400, h: 48 } },
+    { type: "relative", id: "relative", layout: { x: 40, y: 600, w: 320, h: 280 } },
+    { type: "standings", id: "standings", layout: { x: 1560, y: 40, w: 340, h: 420 } },
+  ];
 
-  const relative = relativeDefinition.createDefault("relative");
-  relative.layout = { ...relative.layout, x: 40, y: 600, w: 320, h: 280, zIndex: 2 };
-
-  const standings = standingsDefinition.createDefault("standings");
-  standings.layout = { ...standings.layout, x: 1560, y: 40, w: 340, h: 420, zIndex: 3 };
+  const widgets: WidgetInstanceV3[] = specs.map((spec, index) => {
+    const widget = widgetTypeRegistry.get(spec.type).createDefault(spec.id);
+    widget.layout = {
+      ...widget.layout,
+      ...spec.layout,
+      zIndex: index + 1,
+    };
+    return widget;
+  });
 
   return {
     schemaVersion: 3,
@@ -74,9 +83,42 @@ export function buildDefaultCreatedProfileDocument(id: string, name: string): Pr
     layouts: {
       general: {
         type: "general",
-        widgets: [delta, relative, standings],
+        widgets,
       },
     },
+  };
+}
+
+function buildVisualAuditDocument(id: string, name: string): ProfileDocumentV3 {
+  const specs: ReadonlyArray<{
+    type: WidgetType;
+    id: string;
+    name: string;
+    layout: { x: number; y: number; w?: number; h?: number };
+  }> = [
+    { type: "standings", id: "standings", name: "Clasificación", layout: { x: 1520, y: 40, w: 340, h: 420 } },
+    { type: "delta", id: "delta", name: "Delta de vuelta", layout: { x: 720, y: 380, w: 420, h: 180 } },
+    { type: "relative", id: "relative", name: "Relativos", layout: { x: 40, y: 620, w: 320, h: 280 } },
+    { type: "pedals-telemetry", id: "boost-box", name: "Boost box", layout: { x: 360, y: 430 } },
+    { type: "racing-flags", id: "racing-flags", name: "Banderas de carrera", layout: { x: 72, y: 72 } },
+    { type: "input-telemetry", id: "input-telemetry", name: "Telemetría de pedales", layout: { x: 1180, y: 760 } },
+    { type: "multiclass-relative", id: "multiclass-relative", name: "Relativos multiclase", layout: { x: 1120, y: 80 } },
+    { type: "delta-advanced", id: "delta-advanced", name: "Delta avanzado", layout: { x: 660, y: 80 } },
+    { type: "head-to-head", id: "head-to-head", name: "Duelo directo", layout: { x: 640, y: 760 } },
+  ];
+  const widgets = specs.map((spec, index) => {
+    const widget = widgetTypeRegistry.get(spec.type).createDefault(spec.id);
+    widget.name = spec.name;
+    widget.layout = { ...widget.layout, ...spec.layout, zIndex: index + 1 };
+    return widget;
+  });
+  return {
+    schemaVersion: 3,
+    id,
+    name,
+    displayMode: "edit",
+    monitorIndex: 0,
+    layouts: { general: { type: "general", widgets } },
   };
 }
 
@@ -90,13 +132,14 @@ function storeDocument(file: string, document: ProfileDocumentV3, revision = "re
 function seedActiveProfile(): void {
   const id = "default-racing";
   const file = "example-racing.json";
-  const document = buildDefaultCreatedProfileDocument(id, "Default Racing");
+  const name = "Le Mans Ultimate · Resistencia nocturna";
+  const document = buildVisualAuditDocument(id, name);
   storeDocument(file, document);
   profiles = [
     {
       id,
       file,
-      name: "Default Racing",
+      name,
       displayMode: "edit",
       widgets: document.layouts.general?.widgets.length ?? 0,
     },

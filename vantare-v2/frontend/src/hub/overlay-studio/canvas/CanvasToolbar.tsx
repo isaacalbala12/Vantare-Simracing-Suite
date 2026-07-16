@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { StudioPreviewState } from "../state/studio-store";
 import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
@@ -19,6 +20,7 @@ export type CanvasToolbarProps = {
 export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
   const { preview, onPreviewChange } = props;
   const { t } = useI18n();
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   return (
     <div data-testid="studio-canvas-toolbar" className="osv3-canvas-toolbar">
@@ -27,14 +29,6 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
         <span className="osv3-canvas-toolbar__dimensions">1920×1080</span>
       </div>
       <div className="osv3-canvas-toolbar__controls">
-        <button
-          type="button"
-          data-testid="studio-zoom-fit"
-          className="osv3-canvas-toolbar__button"
-          onClick={() => onPreviewChange({ zoom: "fit" })}
-        >
-          {t("studio.v3.canvas.zoom.fit")}
-        </button>
         <button
           type="button"
           data-testid="studio-zoom-minus"
@@ -56,27 +50,52 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
         >
           +
         </button>
-        <select
-          data-testid="studio-background-select"
-          className="osv3-canvas-toolbar__select"
-          value={preview.backgroundId}
-          onChange={(event) => onPreviewChange({ backgroundId: event.target.value })}
-        >
-          {CANVAS_BACKGROUNDS.map((background) => (
-            <option key={background.id} value={background.id}>
-              {background.id}
-            </option>
-          ))}
-        </select>
-        <label className="osv3-canvas-toolbar__toggle">
-          <input
-            data-testid="studio-safe-area-toggle"
-            type="checkbox"
-            checked={preview.safeArea}
-            onChange={(event) => onPreviewChange({ safeArea: event.target.checked })}
-          />
-          {t("studio.v3.canvas.safeArea")}
-        </label>
+        <div className="osv3-canvas-toolbar__options">
+          <button
+            type="button"
+            data-testid="studio-canvas-options-toggle"
+            className="osv3-canvas-toolbar__button osv3-canvas-toolbar__options-toggle"
+            aria-expanded={optionsOpen}
+            aria-label={t("studio.v3.header.menu")}
+            onClick={() => setOptionsOpen((open) => !open)}
+          >
+            •••
+          </button>
+          <div
+            className={optionsOpen ? "osv3-canvas-toolbar__options-panel osv3-canvas-toolbar__options-panel--open" : "osv3-canvas-toolbar__options-panel"}
+            aria-hidden={!optionsOpen}
+          >
+            <button
+              type="button"
+              data-testid="studio-zoom-fit"
+              className="osv3-canvas-toolbar__button"
+              onClick={() => onPreviewChange({ zoom: "fit" })}
+            >
+              {t("studio.v3.canvas.zoom.fit")}
+            </button>
+            <select
+              data-testid="studio-background-select"
+              className="osv3-canvas-toolbar__select"
+              value={preview.backgroundId}
+              onChange={(event) => onPreviewChange({ backgroundId: event.target.value })}
+            >
+              {CANVAS_BACKGROUNDS.map((background) => (
+                <option key={background.id} value={background.id}>
+                  {background.id}
+                </option>
+              ))}
+            </select>
+            <label className="osv3-canvas-toolbar__toggle">
+              <input
+                data-testid="studio-safe-area-toggle"
+                type="checkbox"
+                checked={preview.safeArea}
+                onChange={(event) => onPreviewChange({ safeArea: event.target.checked })}
+              />
+              {t("studio.v3.canvas.safeArea")}
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   );

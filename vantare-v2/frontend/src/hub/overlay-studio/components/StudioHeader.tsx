@@ -77,76 +77,86 @@ export function StudioHeader({
         </p>
       </div>
       <div className="osv3-header__controls">
-        <div className="osv3-header__left">
-          <select
-            data-testid="studio-profile-select"
-            className="osv3-header__profile-select"
-            value={activeFile}
-            onChange={(event) => onRequestProfileChange(event.target.value)}
-            aria-label={t("studio.v3.header.activeProfileAria")}
-          >
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.file}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-          <select
-            data-testid="studio-session-select"
-            className="osv3-header__session-select"
-            value={activeSession}
-            onChange={(event) => selectSession(event.target.value as SessionLayoutType)}
-            aria-label={t("studio.v3.header.sessionAria")}
-          >
-            {SESSION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t(option.label)}
-              </option>
-            ))}
-          </select>
-          <span className="osv3-header__status" data-testid="studio-save-status">
-            {t(saveStatusLabel(saveState, dirty))}
-          </span>
-        </div>
-        <div className="osv3-header__right">
+        <div className="osv3-header__menu">
           <button
             type="button"
-            data-testid="studio-save-button"
-            className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
-            disabled={!dirty || saveState === "saving"}
-            onClick={() => void save()}
+            data-testid="studio-menu-button"
+            className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
           >
-            {t("studio.v3.header.save")}
+            <span
+              className={dirty ? "osv3-header__menu-status osv3-header__menu-status--dirty" : "osv3-header__menu-status"}
+              aria-hidden="true"
+            />
+            {t("studio.v3.header.menu")}
           </button>
-          <button
-            type="button"
-            data-testid="studio-undo-button"
-            className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
-            disabled={!canUndo}
-            onClick={undo}
+          <div
+            className={menuOpen ? "osv3-header__menu-panel osv3-header__menu-panel--open" : "osv3-header__menu-panel"}
+            data-testid="studio-menu-panel"
+            aria-hidden={!menuOpen}
           >
-            {t("studio.v3.header.undo")}
-          </button>
-          <button
-            type="button"
-            data-testid="studio-redo-button"
-            className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
-            disabled={!canRedo}
-            onClick={redo}
-          >
-            {t("studio.v3.header.redo")}
-          </button>
-          <div className="osv3-header__menu">
-            <button
-              type="button"
-              data-testid="studio-menu-button"
-              className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {t("studio.v3.header.menu")}
-            </button>
-            {menuOpen ? (
-              <div className="osv3-header__menu-panel" data-testid="studio-menu-panel">
+            <div className="osv3-header__menu-controls">
+              <select
+                data-testid="studio-profile-select"
+                className="osv3-header__profile-select"
+                value={activeFile}
+                onChange={(event) => onRequestProfileChange(event.target.value)}
+                aria-label={t("studio.v3.header.activeProfileAria")}
+              >
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.file}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                data-testid="studio-session-select"
+                className="osv3-header__session-select"
+                value={activeSession}
+                onChange={(event) => selectSession(event.target.value as SessionLayoutType)}
+                aria-label={t("studio.v3.header.sessionAria")}
+              >
+                {SESSION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.label)}
+                  </option>
+                ))}
+              </select>
+              <span className="osv3-header__status" data-testid="studio-save-status">
+                {t(saveStatusLabel(saveState, dirty))}
+              </span>
+              <div className="osv3-header__menu-actions">
+                <button
+                  type="button"
+                  data-testid="studio-save-button"
+                  className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                  disabled={!dirty || saveState === "saving"}
+                  onClick={() => void save()}
+                >
+                  {t("studio.v3.header.save")}
+                </button>
+                <button
+                  type="button"
+                  data-testid="studio-undo-button"
+                  className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                  disabled={!canUndo}
+                  onClick={undo}
+                >
+                  {t("studio.v3.header.undo")}
+                </button>
+                <button
+                  type="button"
+                  data-testid="studio-redo-button"
+                  className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                  disabled={!canRedo}
+                  onClick={redo}
+                >
+                  {t("studio.v3.header.redo")}
+                </button>
+              </div>
+            </div>
+            <div className="osv3-header__menu-links">
                 <button type="button" className="osv3-header__menu-item" onClick={onOpenManageProfiles}>
                   {t("studio.v3.header.manageProfiles")}
                 </button>
@@ -159,8 +169,7 @@ export function StudioHeader({
                 <button type="button" className="osv3-header__menu-item" onClick={onOpenObs}>
                   OBS
                 </button>
-              </div>
-            ) : null}
+            </div>
           </div>
         </div>
       </div>

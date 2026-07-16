@@ -1,0 +1,155 @@
+{
+  "ok": true,
+  "generatedAt": "2026-07-16T15:24:50.316Z",
+  "command": "node frontend/scripts/overlay-studio-strict-interactions.mjs",
+  "route": "real V52Shell + StudioRoute + OverlayStudioV3",
+  "results": [
+    {
+      "check": "click-selection",
+      "ok": true
+    },
+    {
+      "check": "first-pointermove-preview",
+      "ok": true,
+      "before": {
+        "x": 569.375,
+        "y": 541.53125,
+        "width": 190.3125,
+        "height": 71.04998779296875
+      },
+      "firstMoveBox": {
+        "x": 660.7249755859375,
+        "y": 588.4749755859375,
+        "width": 190.3125,
+        "height": 71.050048828125
+      }
+    },
+    {
+      "check": "move-commit",
+      "ok": true,
+      "before": {
+        "left": "360px",
+        "top": "430px",
+        "width": "300px",
+        "height": "112px",
+        "zIndex": "4",
+        "transform": ""
+      },
+      "after": {
+        "left": "504px",
+        "top": "504px",
+        "width": "300px",
+        "height": "112px",
+        "zIndex": "4",
+        "transform": ""
+      }
+    },
+    {
+      "check": "escape-move",
+      "ok": true
+    },
+    {
+      "check": "concurrent-telemetry-render",
+      "ok": true
+    },
+    {
+      "check": "escape-resize",
+      "ok": true
+    },
+    {
+      "check": "resize-nw",
+      "ok": true
+    },
+    {
+      "check": "resize-n",
+      "ok": true
+    },
+    {
+      "check": "resize-ne",
+      "ok": true
+    },
+    {
+      "check": "resize-e",
+      "ok": true
+    },
+    {
+      "check": "resize-se",
+      "ok": true
+    },
+    {
+      "check": "resize-s",
+      "ok": true
+    },
+    {
+      "check": "resize-sw",
+      "ok": true
+    },
+    {
+      "check": "resize-w",
+      "ok": true
+    },
+    {
+      "check": "aspect-lock",
+      "ok": true,
+      "beforeRatio": 2.678571888774254,
+      "afterRatio": 2.6780817494428213
+    },
+    {
+      "check": "z-order",
+      "ok": true,
+      "beforeZ": "4",
+      "afterZ": "8"
+    },
+    {
+      "check": "zoom-50-100-150",
+      "ok": true,
+      "labels": [
+        "50%",
+        "100%",
+        "150%"
+      ]
+    },
+    {
+      "check": "keyboard-move",
+      "ok": true
+    },
+    {
+      "check": "dirty",
+      "ok": true
+    },
+    {
+      "check": "undo",
+      "ok": true,
+      "before": "360px",
+      "undone": "360px"
+    },
+    {
+      "check": "redo",
+      "ok": true,
+      "moved": "361px",
+      "redone": "361px"
+    },
+    {
+      "check": "save",
+      "ok": true
+    },
+    {
+      "check": "browser-view",
+      "ok": true,
+      "url": "http://127.0.0.1:5176/overlay?profile=example-racing.json"
+    },
+    {
+      "check": "compact-list-drawer",
+      "ok": true
+    },
+    {
+      "check": "compact-inspector-drawer",
+      "ok": true
+    },
+    {
+      "check": "compact-drawer-escape",
+      "ok": true
+    }
+  ],
+  "consoleErrors": []
+}

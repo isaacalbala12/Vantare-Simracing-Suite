@@ -140,3 +140,19 @@ otros sistemas, pero no forma parte del diseño visual de la sección 05.
 
 Ambos pasan geometría, guard, fuentes, estabilidad y Studio/Desktop/OBS. Las
 referencias canónicas permanecen intactas.
+
+## Microcorte — Delta 15 y 16
+
+Delta Simple conserva la sombra externa del badge fuera del bounding box de
+contenido y replica la semántica efectiva del HTML, donde las variables glass
+de la sección 15 no están definidas. Delta Advanced elimina por la misma razón
+el fondo/borde aproximado de la raíz y aplica los colores de valor S/T de la
+autoridad. Los valores siguen procediendo de sus ViewModels.
+
+| Diseño | Baseline v2 | Después | Gates |
+|---|---|---|---|
+| delta-simple | 86.44% / 12.61% / 4.83% / 20.90% | 100% / 0.00% / 0.00% / 0.00% | PASS |
+| delta-advanced | 15.35% / 21.93% / 7.93% / 38.22% | 100% / 0.82% / 2.67% / 1.97% | PASS |
+
+Geometría, guard, fuentes, estabilidad y cross-surface pasan en ambos. No se
+regeneraron referencias.

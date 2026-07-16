@@ -2651,3 +2651,8 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Fuel 03 y Flags 05:
 - Fuel corrige la jerarquía top/stats/footer e historial, y neutraliza crecimiento grid/selectores heredados sin inventar capacidad o porcentaje en runtime: `100% / 0.20% / 2.61% / 1.73%`, PASS.
 - Flags limita Crystal a la raíz `.flag-card` de la autoridad; el resumen sectorial externo deja de contaminar el crop. Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, PASS.
 - Estado acumulado: 5/21 diseños completamente verdes; 21/21 guard, fuentes, estabilidad y cross-surface verdes. Referencias intactas; ISA-93 continúa In Progress.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Delta 15/16:
+- Delta Simple restaura la sombra externa recortada por la raíz compartida y replica el material efectivo de `.w15-delta-simple`: `100% / 0.00% / 0.00% / 0.00%`, PASS.
+- Delta Advanced elimina fondo/borde aproximados no presentes en la autoridad efectiva y conserva valores honestos del ViewModel: `100% / 0.82% / 2.67% / 1.97%`, PASS.
+- Estado acumulado: 7/21 diseños verdes; referencias intactas y todos los gates transversales de estos cortes PASS. Siguiente: Damage 13/14.

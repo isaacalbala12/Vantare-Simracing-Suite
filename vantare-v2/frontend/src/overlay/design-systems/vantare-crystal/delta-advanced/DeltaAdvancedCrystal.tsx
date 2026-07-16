@@ -5,5 +5,5 @@ const value = (input: number | undefined) => input === undefined ? "--.---" : `$
 
 export function DeltaAdvancedCrystal({ model }: WidgetRendererProps<DeltaAdvancedViewModel>) {
   const cells = [["b", "B", model.best], ["s", "S", model.sector], ["t", "T", model.theoretical], ["l", "L", model.last]] as const;
-  return <section data-widget-system="vantare-crystal" data-widget-renderer="delta-advanced" data-status={model.status} className="vc-delta-advanced">{cells.map(([tone, tag, item]) => <div key={tag}><i data-tone={tone}>{tag}</i><b>{value(item)}</b></div>)}</section>;
+  return <section data-widget-system="vantare-crystal" data-widget-renderer="delta-advanced" data-status={model.status} className="vc-delta-advanced">{cells.map(([tone, tag, item]) => <div data-tone={tone} key={tag}><i>{tag}</i><b>{value(item)}</b></div>)}</section>;
 }

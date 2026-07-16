@@ -86,12 +86,13 @@ async function captureRenderer(page, baseUrl, entry, surface, scene) {
     await document.fonts.ready;
   });
   const frame = page.locator('[data-overlay-parity-widget-frame]');
+  const captureSelector = entry.actualSelector ?? '[data-overlay-parity-widget-frame]';
   await frame.locator(`[data-widget-renderer="${entry.widgetType}"]`).waitFor();
   await frame.evaluate((element, expected) => {
     element.style.width = `${expected.width}px`;
     element.style.height = `${expected.height}px`;
   }, { width: entry.width, height: entry.height });
-  const rendererGeometry = await frame.locator('[data-widget-renderer]').evaluate((element) => {
+  const rendererGeometry = await page.locator(captureSelector).evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return {
       width: rect.width,
@@ -112,10 +113,10 @@ async function captureRenderer(page, baseUrl, entry, surface, scene) {
       status: face.status,
     })) : [],
   }));
-  const textContract = await collectTextContract(page, '[data-overlay-parity-widget-frame]');
+  const textContract = await collectTextContract(page, captureSelector);
   const dynamicStyleContract = await collectDynamicStyleContract(page, entry, 'actual');
   const captured = await captureIsolatedElement(page, {
-    selector: '[data-overlay-parity-widget-frame]',
+    selector: captureSelector,
     scene,
     dynamicSelectors: entry.dynamicLayers?.actual,
   });

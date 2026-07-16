@@ -98,16 +98,25 @@ const sourceBoundaryTest = async () => {
   assert.equal(source.slice(markerIndex).includes('V2-'), true);
 };
 
+const rendererRootIsolationTest = async () => {
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const deltaBar = manifest.entries.find(({ id }) => id === 'delta-bar');
+  assert.equal(deltaBar.actualSelector, '.vc-delta-bar');
+  assert.notEqual(deltaBar.actualSelector, '[data-overlay-parity-widget-frame]');
+};
+
 if (process.env.VITEST) {
   const { describe, it } = await import('vitest');
   describe('Crystal canonical reference manifest', () => {
     it('freezes the 21-entry inventory', canonicalInventoryTest);
     it('excludes the final V2 block', sourceBoundaryTest);
     it('targets only the three Pedals widget roots', pedalsIsolationTest);
+    it('targets the Delta Bar visual root instead of the harness frame', rendererRootIsolationTest);
   });
 } else {
   const { test } = await import('node:test');
   test('the canonical reference extractor freezes the 21-entry inventory', canonicalInventoryTest);
   test('the source boundary excludes the final V2 block', sourceBoundaryTest);
   test('the Pedals references exclude showcase labels and descriptions', pedalsIsolationTest);
+  test('the Delta Bar capture uses its visual root', rendererRootIsolationTest);
 }

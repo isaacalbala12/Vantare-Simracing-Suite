@@ -633,9 +633,19 @@
       "widgetType": "delta",
       "designId": "delta-crystal-bar",
       "referenceSelector": ".delta-bar-wrapper:nth-child(1)",
+      "actualSelector": ".vc-delta-bar",
       "width": 440,
       "height": 92,
       "htmlSection": 6,
+      "dynamicLayers": {
+        "reference": [
+          ".delta-fill-bar"
+        ],
+        "actual": [
+          ".vc-delta-bar-fill"
+        ],
+        "styleRoles": []
+      },
       "capture": {
         "protocol": 2,
         "margin": 128,

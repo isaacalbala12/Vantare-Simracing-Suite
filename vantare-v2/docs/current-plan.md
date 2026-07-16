@@ -2718,3 +2718,10 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Relative 01:
 - Los colores de clase siguen telemetría real y se neutralizan por máscara exacta; geometría, filas, fondos, bordes y resto del material siguen puntuados.
 - Resultado: `100% / 0.01% / 0.44% / 0.27%`, todos los gates transversales PASS.
 - Estado acumulado: 20/21 diseños verdes. Queda Delta Bar.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Delta Bar 06:
+- La composición aislada 440x92 elimina la card exterior y alinea pill superior 275.140625x30, track 440x22, pill inferior 87x28 y gaps de 6 px.
+- La variante Bar usa centésimas; el ViewModel y Delta Simple no cambian. El fill live se neutraliza por máscara exacta y conserva gradiente/radios/glow Crystal.
+- El harness captura la raíz visual `.vc-delta-bar`, no el frame externo, para mantener simetría de backdrop y clipping.
+- Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, todos los gates transversales PASS.
+- Estado focalizado: 21/21 diseños verdes; pendiente barrido final completo y gates de cierre.

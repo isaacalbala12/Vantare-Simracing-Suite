@@ -395,3 +395,24 @@ el resto del material permanecen puntuados.
 Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
 estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 20/21;
 referencias PNG intactas.
+
+## Microcorte — cierre Delta Bar 06
+
+Delta Bar vuelve a ser una composición transparente de 440x92 px, sin card
+exterior: pill superior de 275.140625x30, track 440x22 y pill inferior 87x28,
+separados por gaps de 6 px. Los tres materiales conservan blur 24 px, bordes,
+sombras y glows de la autoridad.
+
+La variante Bar formatea el delta en centésimas, sin alterar el ViewModel ni
+Delta Simple. La longitud del fill sigue siendo telemetría live y se excluye
+por máscara de píxel; su gradiente, dirección, radios y glow se fijan al
+contrato Crystal. El harness captura `.vc-delta-bar`, su raíz visual real, en
+lugar del frame externo.
+
+| Diseño | Antes v4 | Después | Tipografía/dinámico | Gates |
+|---|---|---|---|---|
+| delta-bar | 37.77% / 21.17% / 12.38% / 32.15% | 100% / 0.00% / 0.00% / 0.00% | 100% / PASS | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 21/21;
+referencias PNG intactas.

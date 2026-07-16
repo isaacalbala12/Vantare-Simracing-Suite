@@ -285,3 +285,23 @@ El barrido 21/21 con protocolo v3 detectó además que las tres etiquetas de
 estadística de Fuel heredaban la familia mono. Se fijaron a Inter 9/700 como
 la autoridad y Fuel revalidó todos los gates con
 `100% / 0.08% / 0.82% / 0.54%`.
+
+## Microcorte — cierre Race Schedule 08
+
+Schedule replica la jerarquía interna completa de `.rs-container`: header de
+55 px, subbar de 45 px, lista de 483 px y filas 121/121/121/120. Los cuatro
+filtros, seis slots de metadata por fila, materiales de clase/estado, glow
+live y gradiente especial permanecen dentro de la raíz aislada.
+
+Los eventos siguen procediendo del adapter y ViewModel read-only. Los slots
+sin metadatos reales muestran `—`; el renderer no copia fechas, countdowns ni
+valores de la muestra HTML y no expone el ISO crudo. Los anchos de slot forman
+parte de la composición visual y son independientes del texto circunstancial.
+
+| Diseño | Antes v3 | Después | Tipografía | Gates |
+|---|---|---|---|---|
+| schedule | 45.96% / 3.96% / 7.41% / 1.25% | 99.24% / 0.35% / 1.18% / 0.34% | 100% / 100% coverage | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Referencias intactas; estado
+acumulado: 16/21 diseños verdes.

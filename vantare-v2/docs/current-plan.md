@@ -2686,3 +2686,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Head to Head 09:
 - Resultado: `99.50% / 1.39% / 1.94% / 1.54%`, tipografía 100%/100% y todos los gates geometry, alpha/mask, composite, guard, fonts, stability y Studio/Desktop/OBS PASS.
 - El barrido v3 corrigió además la herencia tipográfica de las etiquetas Fuel a Inter 9/700; Fuel revalida `100% / 0.08% / 0.82% / 0.54%` con todos los gates PASS.
 - Estado acumulado: 15/21 diseños verdes. Referencias intactas; siguiente corte por delta real entre Relative, Delta Bar, Delta Trace, Schedule, Multiclass y Weather.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Race Schedule 08:
+- La composición alinea header 55 px, subbar 45 px, lista 483 px y filas 121/121/121/120, con cuatro filtros y seis slots visuales por evento.
+- Eventos y estados siguen naciendo del adapter/ViewModel read-only; los metadatos ausentes usan `—` y el renderer no copia fechas/countdowns de la autoridad ni muestra ISO crudo.
+- Resultado: `99.24% / 0.35% / 1.18% / 0.34%`, tipografía 100%/100% y todos los gates geometry, alpha/mask, composite, guard, fonts, stability y Studio/Desktop/OBS PASS.
+- Estado acumulado: 16/21 diseños verdes. Referencias intactas; quedan Relative, Delta Bar, Delta Trace, Multiclass y Weather.

@@ -57,10 +57,12 @@ func (ns *nonceStore) Consume(nonce string) bool {
 	ns.mu.Lock()
 	defer ns.mu.Unlock()
 	used, exists := ns.nonces[nonce]
-	if !exists || used {
+	created, hasCreatedAt := ns.created[nonce]
+	if !exists || used || !hasCreatedAt || time.Since(created) > ns.ttl {
+		delete(ns.nonces, nonce)
+		delete(ns.created, nonce)
 		return false
 	}
-	ns.nonces[nonce] = true
 	delete(ns.nonces, nonce)
 	delete(ns.created, nonce)
 	return true
@@ -405,6 +407,10 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 	var payload authTokenPayload
 	if err := json.Unmarshal(body, &payload); err != nil || payload.AccessToken == "" {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	if !s.nonceStore.Consume(payload.Nonce) {
+		http.Error(w, "invalid or expired nonce", http.StatusUnauthorized)
 		return
 	}
 

@@ -1,0 +1,28 @@
+{
+  "name": "move-fast",
+  "kind": "move",
+  "description": "Arrastre rápido en diagonal (~120 Hz efectivo, 10 px por paso)",
+  "steps": [
+    { "type": "pointerdown", "delayMs": 0 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointermove", "delayMs": 8, "dx": 10, "dy": 4 },
+    { "type": "pointerup", "delayMs": 24 }
+  ]
+}

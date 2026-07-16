@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "presets": [
+    {
+      "id": "delta-original-default",
+      "name": "Delta Original Default",
+      "widgetType": "delta",
+      "style": "vantare-racing",
+      "origin": "vantare",
+      "createdAt": "2026-07-10T00:00:00Z",
+      "updatedAt": "2026-07-10T00:00:00Z"
+    },
+    {
+      "id": "delta-crystal-legacy",
+      "name": "Delta Crystal Legacy",
+      "widgetType": "delta",
+      "style": "glassmorphism-pro",
+      "themeId": "vantare-crystal",
+      "origin": "vantare",
+      "createdAt": "2026-07-10T00:00:00Z",
+      "updatedAt": "2026-07-10T00:00:00Z"
+    }
+  ]
+}

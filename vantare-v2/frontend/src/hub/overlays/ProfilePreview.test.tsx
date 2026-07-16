@@ -1,7 +1,12 @@
 import { render, screen, cleanup } from "@testing-library/react";
-import { describe, expect, it, afterEach, vi } from "vitest";
+import { describe, expect, it, afterEach, beforeAll } from "vitest";
+import { registerBuiltinDesignSystems } from "../registry/builtin-systems";
 import { ProfilePreview } from "./ProfilePreview";
 import type { ProfileConfig } from "../../lib/profile";
+
+beforeAll(() => {
+  registerBuiltinDesignSystems();
+});
 
 afterEach(() => {
   cleanup();
@@ -31,33 +36,51 @@ const fullRacingProfile: ProfileConfig = {
 };
 
 describe("ProfilePreview", () => {
-  it("renders real preview widget frames for a profile", () => {
+  it("renders V3 preview frames for core widgets", () => {
     render(<ProfilePreview profile={profile} />);
 
     expect(screen.getByTestId("profile-preview")).toBeTruthy();
-    expect(screen.getByTestId("preview-widget-frame-delta")).toBeTruthy();
-    expect(screen.getByTestId("preview-widget-frame-relative")).toBeTruthy();
+    expect(screen.getByTestId("profile-preview-frame-delta")).toBeTruthy();
+    expect(screen.getByTestId("profile-preview-frame-relative")).toBeTruthy();
+  });
+
+  it("scales content from a stable canonical width inside the document frame", () => {
+    render(<ProfilePreview profile={profile} />);
+
+    const relativeFrame = screen.getByTestId("profile-preview-frame-relative");
+    expect(relativeFrame.style.width).toBe("320px");
+    expect(relativeFrame.style.height).toBe("280px");
+    const viewport = screen.getByTestId("profile-preview-viewport-relative");
+    expect(viewport.style.width).toBe("430px");
+    expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(376.25, 5);
+    expect(viewport.style.transform).toBe(`scale(${320 / 430})`);
   });
 
   it("renders when ResizeObserver is unavailable", () => {
     const originalResizeObserver = window.ResizeObserver;
-    vi.stubGlobal("ResizeObserver", undefined);
+    Object.defineProperty(window, "ResizeObserver", {
+      configurable: true,
+      value: undefined,
+    });
 
     try {
       render(<ProfilePreview profile={profile} />);
 
       expect(screen.getByTestId("profile-preview")).toBeTruthy();
-      expect(screen.getByTestId("preview-widget-frame-delta")).toBeTruthy();
+      expect(screen.getByTestId("profile-preview-frame-delta")).toBeTruthy();
     } finally {
-      vi.stubGlobal("ResizeObserver", originalResizeObserver);
+      Object.defineProperty(window, "ResizeObserver", {
+        configurable: true,
+        value: originalResizeObserver,
+      });
     }
   });
 
-  it("renders all implemented widgets used by the racing profile", () => {
+  it("renders core widgets from a mixed legacy racing profile", () => {
     render(<ProfilePreview profile={fullRacingProfile} />);
 
-    expect(screen.getByTestId("preview-widget-frame-telemetry")).toBeTruthy();
-    expect(screen.getByTestId("preview-widget-frame-telemetry-vertical")).toBeTruthy();
-    expect(screen.getByTestId("preview-widget-frame-pedals")).toBeTruthy();
+    expect(screen.getByTestId("profile-preview-frame-standings")).toBeTruthy();
+    expect(screen.getByTestId("profile-preview-frame-pedals")).toBeTruthy();
+    expect(screen.queryByTestId("profile-preview-frame-telemetry")).toBeNull();
   });
 });

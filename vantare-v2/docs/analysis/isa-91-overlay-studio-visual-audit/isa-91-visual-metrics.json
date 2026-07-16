@@ -1,0 +1,849 @@
+{
+  "sha": "b011d4b59362224c0239b5e823736257132a5699",
+  "generatedAt": "2026-07-14T10:14:35.078Z",
+  "environment": {
+    "dpr": 1,
+    "baseUrl": "http://127.0.0.1:5176",
+    "motion": "reduced via injected style where applicable",
+    "browser": "chromium"
+  },
+  "captures": {
+    "studio-wide": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-wide.png",
+      "sha256": "5694e6ba68c7c7e057674d8624d1ea2411c6d2b58d6c4e151959077c651e1e78",
+      "bytes": 32636,
+      "bounds": {
+        "layoutMode": "wide",
+        "scene": {
+          "x": 256,
+          "y": 224.25,
+          "width": 1288,
+          "height": 724.5
+        },
+        "frame": {
+          "x": 336.5,
+          "y": 288.6499938964844,
+          "width": 281.75,
+          "height": 120.75003051757812
+        },
+        "saveStatus": "Sin cambios"
+      }
+    },
+    "studio-medium": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-medium.png",
+      "sha256": "a6227b7c2ff9b20373cff677673420e82913ea5a9b8e54ccf2161d9f408df2dc",
+      "bytes": 25289,
+      "bounds": {
+        "layoutMode": "medium",
+        "scene": {
+          "x": 256,
+          "y": 185.75,
+          "width": 928,
+          "height": 522
+        },
+        "frame": {
+          "x": 314,
+          "y": 232.14999389648438,
+          "width": 203,
+          "height": 87
+        },
+        "saveStatus": "Sin cambios"
+      }
+    },
+    "studio-compact": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-compact.png",
+      "sha256": "6ee0406cde9cfd94d766a518ee9caa3d462a48d7d51c598b247b36e166e0701a",
+      "bytes": 19314,
+      "bounds": {
+        "layoutMode": "compact",
+        "scene": {
+          "x": 16,
+          "y": 204.5,
+          "width": 768,
+          "height": 432
+        },
+        "frame": {
+          "x": 64,
+          "y": 242.89999389648438,
+          "width": 168,
+          "height": 72
+        },
+        "saveStatus": "Sin cambios"
+      }
+    },
+    "layout-reference-wide": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/layout-reference-wide.png",
+      "sha256": "50b27534e4668ba357c5317290baf136f836650e7d43af2d4c5f2027aa875bc2",
+      "bytes": 1700035
+    },
+    "layout-reference-medium": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/layout-reference-medium.png",
+      "sha256": "66b1f3af2b30c194680722718966926cb3808515fbb8df8d491334f095de0b65",
+      "bytes": 595114
+    },
+    "layout-reference-compact": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/layout-reference-compact.png",
+      "sha256": "ea2aa200a530f35c9cdbfa81c4e0a18559ce00e94e7d9220fd042b0c4fd818c6",
+      "bytes": 223326
+    },
+    "crystal-reference-full": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-full.png",
+      "sha256": "6070ad641fd53cfb6563490b7137a298b3c63f28d16b64bfafc5ff39031bacd5",
+      "bytes": 1735999
+    },
+    "crystal-reference-section-01": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-01.png",
+      "sha256": "adb5318d905c6a48f75742977e6992df401fa6fb683b8c85102ad59f80942849",
+      "heading": "01. TABLAS VERTICALES (STANDINGS & RELATIVE)",
+      "clip": {
+        "x": 180,
+        "y": 253,
+        "width": 1240,
+        "height": 725
+      }
+    },
+    "crystal-reference-section-02": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-02.png",
+      "sha256": "26e16f622caf120da5e2e2f0833c845bf7af92660288832d7ae693179a044f26",
+      "heading": "02. STANDINGS HORIZONTAL (BROADCAST TOWER)",
+      "clip": {
+        "x": 180,
+        "y": 986,
+        "width": 1240,
+        "height": 146
+      }
+    },
+    "crystal-reference-section-03": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-03.png",
+      "sha256": "9861f19ff18ef81c9204e2e726f4ee3bcdc68a735b8d500e09e74bc9ab35fa61",
+      "heading": "03. FUEL CALCULATOR + LAP HISTORY (UNIFICADO COMPACTO)",
+      "clip": {
+        "x": 180,
+        "y": 1140,
+        "width": 1240,
+        "height": 279
+      }
+    },
+    "crystal-reference-section-04": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-04.png",
+      "sha256": "ab4495a5450610a824a4efd8d03febe71894cd2429dd19d6ebddf0b9796dc0bc",
+      "heading": "04. PEDALS TELEMETRY: V1 CLÁSICO vs V2 PERFIL BAJO vs V3 SOLO PEDALES",
+      "clip": {
+        "x": 180,
+        "y": 1427,
+        "width": 1240,
+        "height": 346
+      }
+    },
+    "crystal-reference-section-05": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-05.png",
+      "sha256": "26a07380180b09741c0c8c098e24cfd03dc61523962823ccf8a9d448cca6988a",
+      "heading": "05. RACING FLAGS",
+      "clip": {
+        "x": 180,
+        "y": 1781,
+        "width": 1240,
+        "height": 177
+      }
+    },
+    "crystal-reference-section-06": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-06.png",
+      "sha256": "29069a12c0814c6fbb04c9103d3e654e88029c77452a2aebb3dc5c4886ddbc46",
+      "heading": "06. DELTA BAR (PREDICTIVE LAP TIMING - CONCEPTO ORIGINAL COMPACTO)",
+      "clip": {
+        "x": 180,
+        "y": 1966,
+        "width": 1240,
+        "height": 217
+      }
+    },
+    "crystal-reference-section-07": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-07.png",
+      "sha256": "2786d987c52b8b07cb10266a25f6738665f9a01a3a05ea8c2932bfb8e060909c",
+      "heading": "07. DELTA TRACE & CORNER PERFORMANCE (MEJORADO CON COACHING & COLORES RACING)",
+      "clip": {
+        "x": 180,
+        "y": 2191,
+        "width": 1240,
+        "height": 289
+      }
+    },
+    "crystal-reference-section-08": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-08.png",
+      "sha256": "389a898901da8fc118beea7a02e981dd3ccb05d3da6e6e99e3c1359ff251c526",
+      "heading": "08. RACE SCHEDULE & UPCOMING EVENTS (OFFICIAL LMU WEEKLY CALENDAR)",
+      "clip": {
+        "x": 180,
+        "y": 2488,
+        "width": 1240,
+        "height": 658
+      }
+    },
+    "crystal-reference-section-09": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-09.png",
+      "sha256": "459007f99b3f45872f3ed53197be0cf959f3512b3af9fa09084e1469654b0cf4",
+      "heading": "09. Head 2 Head Battle Telemetry (Unified HUD)",
+      "clip": {
+        "x": 180,
+        "y": 3154,
+        "width": 1240,
+        "height": 225.03125
+      }
+    },
+    "crystal-reference-section-10": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-10.png",
+      "sha256": "d0928c738d41e3f9e512951044fc9eb1503d2061cd837543be4e37e713bffe75",
+      "heading": "10A. Sleek Horizontal Blade (Estilo F1 / Rectangular Uniforme)",
+      "clip": {
+        "x": 180,
+        "y": 3387.03125,
+        "width": 1240,
+        "height": 201
+      }
+    },
+    "crystal-reference-section-11": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-11.png",
+      "sha256": "49dcc9daf15a4e6d62fce00c4cbfe5ca21b8e7d29d7b7f95759b2261a985b2bc",
+      "heading": "10B. Symmetrical Aero Capsule (Estilo Hypercar / Simétrico)",
+      "clip": {
+        "x": 180,
+        "y": 3596.03125,
+        "width": 1240,
+        "height": 205
+      }
+    },
+    "crystal-reference-section-12": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-12.png",
+      "sha256": "c4521a566a0ebbbec89f36cf14e4ea1174850a3e5fbe5780f26eaeee15191243",
+      "heading": "10C. Ultra-Dense Strip (Estilo Endurance / Alta Densidad)",
+      "clip": {
+        "x": 180,
+        "y": 3809.03125,
+        "width": 1240,
+        "height": 143
+      }
+    },
+    "crystal-reference-section-13": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-13.png",
+      "sha256": "6b42f5341c02324643659756ecf9f075e6ce6781e401d3fed66846431b47a0ae",
+      "heading": "11. Multiclass Relative Gap HUD (Integrated & Gapless)",
+      "clip": {
+        "x": 180,
+        "y": 3960.03125,
+        "width": 1240,
+        "height": 285
+      }
+    },
+    "crystal-reference-section-14": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-14.png",
+      "sha256": "12ada42847a13ebada6c6709be4fc1c2f69866f5ce696fa0bd59ad7b8bfff3ad",
+      "heading": "12. Track Weather & Environment (Vertical Environmental Panel)",
+      "clip": {
+        "x": 180,
+        "y": 4253.03125,
+        "width": 1240,
+        "height": 575
+      }
+    },
+    "crystal-reference-section-15": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-15.png",
+      "sha256": "f81a1c086399e1d4867c522f76136bc0fef704aad5ff5c59dfc1f98fa0072440",
+      "heading": "13. Car Damage Visual Widget (Separado - Tamaño compacto original)",
+      "clip": {
+        "x": 180,
+        "y": 4836.03125,
+        "width": 1240,
+        "height": 295
+      }
+    },
+    "crystal-reference-section-16": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-16.png",
+      "sha256": "72a9365b35474a34a55efcd591e9296618427b743f10682324bee20f2bd23fe8",
+      "heading": "14. Car Damage Numbers Widget (Separado - Bloque vertical compacto)",
+      "clip": {
+        "x": 180,
+        "y": 5139.03125,
+        "width": 1240,
+        "height": 253
+      }
+    },
+    "crystal-reference-section-17": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-17.png",
+      "sha256": "db916ef642d2e085b867b536d9a9011411d10c8aea267d4e36a1db79b8ad85fa",
+      "heading": "15. Delta Simple Widget (Separado - Barra superior oscura con badge inferior)",
+      "clip": {
+        "x": 180,
+        "y": 5400.03125,
+        "width": 1240,
+        "height": 174
+      }
+    },
+    "crystal-reference-section-18": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/crystal-reference-section-18.png",
+      "sha256": "3d6cb0c5286b9a5d7d88e6a0ba085b152a3f36fc39d7aa5ef94636dad10c8c7d",
+      "heading": "16. Delta Advanced Widget (Separado - Franja horizontal de 4 bloques)",
+      "clip": {
+        "x": 180,
+        "y": 5582.03125,
+        "width": 1240,
+        "height": 167
+      }
+    },
+    "implementation-01-relative": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-01-relative.png",
+      "sha256": "df74157140c9057d6ea58f0fa5fbc099e33eaa23ceb62098a73db4fd3c5777a5",
+      "bytes": 8921
+    },
+    "implementation-01-standings": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-01-standings.png",
+      "sha256": "ff8f93c5bbfdc7bd165fca0e3dfca46c921e0990f04fdc8aa7cbcff4636a5617",
+      "bytes": 25497
+    },
+    "implementation-06-delta-bar": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-06-delta-bar.png",
+      "sha256": "0c5eb56a23b3a7c3b4acf5d96bbc8bbe49b49ea038965df51677d0f4c7315496",
+      "bytes": 6103
+    },
+    "implementation-04-pedals": {
+      "path": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-04-pedals.png",
+      "sha256": "defdd3d65d3bc701de1fe9826c15214034d379070d28b74d8a781f103d8654b7",
+      "bytes": 2748
+    }
+  },
+  "comparisons": {
+    "studio-vs-layout-wide": {
+      "width": 1920,
+      "height": 1080,
+      "aWidth": 1920,
+      "aHeight": 1080,
+      "bWidth": 1920,
+      "bHeight": 1080,
+      "changedPixels": 1809309,
+      "totalPixels": 2073600,
+      "deltaRatio": 0.872544849537037,
+      "maxChannelDelta": 248,
+      "meanMaxChannelDelta": 74.75799238040123,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-vs-layout-wide-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-vs-layout-wide-overlay.png",
+      "diffSha256": "6dd5b48621b509dbbcfa3333059bf45b5d325da83138c51c697bb7ced0f3efe8",
+      "overlaySha256": "fa33d7b9c039f3d435c8f8a44837424d2c23dbc64f80bd3f207ec1ad5be242c4"
+    },
+    "studio-vs-layout-medium": {
+      "width": 1200,
+      "height": 800,
+      "aWidth": 1200,
+      "aHeight": 800,
+      "bWidth": 1200,
+      "bHeight": 800,
+      "changedPixels": 846202,
+      "totalPixels": 960000,
+      "deltaRatio": 0.8814604166666666,
+      "maxChannelDelta": 248,
+      "meanMaxChannelDelta": 50.63700625,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1200,
+        "height": 800
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-vs-layout-medium-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-vs-layout-medium-overlay.png",
+      "diffSha256": "a751643324ca65ac47fe66bccc859840c71af81a65717bef95034eb281298d14",
+      "overlaySha256": "cf3f5eb0567c75caa21041eb9838667d9000867da1c4f865361402e9b9076f60"
+    },
+    "studio-vs-layout-compact": {
+      "width": 800,
+      "height": 700,
+      "aWidth": 800,
+      "aHeight": 700,
+      "bWidth": 800,
+      "bHeight": 700,
+      "changedPixels": 519853,
+      "totalPixels": 560000,
+      "deltaRatio": 0.9283089285714285,
+      "maxChannelDelta": 248,
+      "meanMaxChannelDelta": 27.411953571428572,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 800,
+        "height": 700
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-vs-layout-compact-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/studio-vs-layout-compact-overlay.png",
+      "diffSha256": "f340ca5436733b7550cc7d473a0633b422b45a8298220da5d38849db21fdb681",
+      "overlaySha256": "86f4224ff41dbd71b8da09f1101be3d307f134a88783f97e5accf67190580275"
+    },
+    "implementation-vs-reference-01-relative": {
+      "width": 304,
+      "height": 285,
+      "aWidth": 1240,
+      "aHeight": 725,
+      "bWidth": 304,
+      "bHeight": 285,
+      "changedPixels": 86166,
+      "totalPixels": 86640,
+      "deltaRatio": 0.9945290858725762,
+      "maxChannelDelta": 245,
+      "meanMaxChannelDelta": 49.28633425669437,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 304,
+        "height": 285
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-01-relative-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-01-relative-overlay.png",
+      "diffSha256": "4aca6dd32be8ce68222cc49bd12dc09b6d9dfc3c0a891a85735b8e4899f2c927",
+      "overlaySha256": "6f02423b816b3e8c89521d60409b14e8bca5ba1e162371df49f68910d70dd403"
+    },
+    "implementation-vs-reference-01-standings": {
+      "width": 520,
+      "height": 560,
+      "aWidth": 1240,
+      "aHeight": 725,
+      "bWidth": 520,
+      "bHeight": 560,
+      "changedPixels": 290005,
+      "totalPixels": 291200,
+      "deltaRatio": 0.9958962912087912,
+      "maxChannelDelta": 244,
+      "meanMaxChannelDelta": 51.12185782967033,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 520,
+        "height": 560
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-01-standings-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-01-standings-overlay.png",
+      "diffSha256": "dcc24b6a7b9972426b3e6deaeb983a98e523f45c086afdb46e0e77a9a1520438",
+      "overlaySha256": "d779d44693d74015183a11aca2f049d7926b061fcd000a62efe1774d731cddd3"
+    },
+    "implementation-vs-reference-06-delta-bar": {
+      "width": 280,
+      "height": 96,
+      "aWidth": 1240,
+      "aHeight": 217,
+      "bWidth": 280,
+      "bHeight": 96,
+      "changedPixels": 23643,
+      "totalPixels": 26880,
+      "deltaRatio": 0.8795758928571429,
+      "maxChannelDelta": 248,
+      "meanMaxChannelDelta": 56.32886904761905,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 280,
+        "height": 96
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-06-delta-bar-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-06-delta-bar-overlay.png",
+      "diffSha256": "380a7527d3daf46f1c083b3fd670d6f697804775bb3347b58fe723d06fee3124",
+      "overlaySha256": "372dbf4456b42ecba4bda1e8f98efeb3db8d71e52ca8c7dc815e0f7529a2fe08"
+    },
+    "implementation-vs-reference-04-pedals": {
+      "width": 120,
+      "height": 160,
+      "aWidth": 1240,
+      "aHeight": 346,
+      "bWidth": 120,
+      "bHeight": 160,
+      "changedPixels": 19196,
+      "totalPixels": 19200,
+      "deltaRatio": 0.9997916666666666,
+      "maxChannelDelta": 252,
+      "meanMaxChannelDelta": 199.05604166666666,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 160
+      },
+      "diffPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-04-pedals-diff.png",
+      "overlayPath": "docs/analysis/isa-91-overlay-studio-visual-audit/artifacts/implementation-vs-reference-04-pedals-overlay.png",
+      "diffSha256": "3bc8ad5d3a46d74311895c367f10dffeea498e1c2f394ce1680f011ae26b8f0e",
+      "overlaySha256": "bf5e171c485f081ead242fd8b63d9250d676009cff389c39e5da98960d18e1e9"
+    }
+  },
+  "designs": [
+    {
+      "id": "01-relative",
+      "label": "01 Relative",
+      "widgetType": "relative",
+      "officialDesign": "relative-crystal-vertical",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/relative/RelativeCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "renderable-diff-measured",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-01.png"
+    },
+    {
+      "id": "01-standings",
+      "label": "01 Standings",
+      "widgetType": "standings",
+      "officialDesign": "standings-crystal-vertical",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/standings/StandingsCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "renderable-diff-measured",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-01.png"
+    },
+    {
+      "id": "02-broadcast-tower",
+      "label": "02 Broadcast Tower",
+      "widgetType": "broadcast-tower",
+      "officialDesign": "broadcast-tower-crystal",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/broadcast-tower/BroadcastTowerCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-02.png"
+    },
+    {
+      "id": "03-fuel-strategy",
+      "label": "03 Fuel Calculator + Lap History",
+      "widgetType": "fuel-strategy",
+      "officialDesign": "fuel-strategy-crystal-unified",
+      "owner": "frontend/src/overlay/widget-types/fuel-strategy/",
+      "correctionIssue": "ISA-93",
+      "status": "missing-widget-type",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-03.png"
+    },
+    {
+      "id": "04-pedals-telemetry",
+      "label": "04 Pedals V1",
+      "widgetType": "pedals-telemetry",
+      "officialDesign": "pedals-telemetry-crystal-v1",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/pedals-telemetry/PedalsTelemetryCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-04.png"
+    },
+    {
+      "id": "04-pedals-telemetry-compact",
+      "label": "04 Pedals V2",
+      "widgetType": "pedals-telemetry-compact",
+      "officialDesign": "pedals-telemetry-compact-crystal-v2",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/pedals-telemetry-compact/PedalsTelemetryCompactCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-04.png"
+    },
+    {
+      "id": "04-pedals",
+      "label": "04 Pedals V3",
+      "widgetType": "pedals",
+      "officialDesign": "pedals-crystal-v3",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/pedals/PedalsCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "renderable-diff-measured",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-04.png"
+    },
+    {
+      "id": "05-racing-flags",
+      "label": "05 Racing Flags",
+      "widgetType": "racing-flags",
+      "officialDesign": "racing-flags-crystal",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/racing-flags/RacingFlagsCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-05.png"
+    },
+    {
+      "id": "06-delta-bar",
+      "label": "06 Delta Bar",
+      "widgetType": "delta",
+      "officialDesign": "delta-crystal-bar",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/delta/DeltaCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "renderable-diff-measured",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-06.png"
+    },
+    {
+      "id": "07-delta-trace",
+      "label": "07 Delta Trace",
+      "widgetType": "delta-trace",
+      "officialDesign": "delta-trace-crystal",
+      "owner": "frontend/src/overlay/widget-types/delta-trace/",
+      "correctionIssue": "ISA-93",
+      "status": "missing-widget-type",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-07.png"
+    },
+    {
+      "id": "08-race-schedule",
+      "label": "08 Race Schedule",
+      "widgetType": "race-schedule",
+      "officialDesign": "race-schedule-crystal",
+      "owner": "frontend/src/overlay/widget-types/race-schedule/",
+      "correctionIssue": "ISA-93",
+      "status": "missing-widget-type",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-08.png"
+    },
+    {
+      "id": "09-head-to-head",
+      "label": "09 Head to Head",
+      "widgetType": "head-to-head",
+      "officialDesign": "head-to-head-crystal",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/head-to-head/HeadToHeadCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-09.png"
+    },
+    {
+      "id": "10a-input-blade",
+      "label": "10A Input Blade",
+      "widgetType": "input-telemetry",
+      "officialDesign": "input-telemetry-crystal-blade",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/input-telemetry/InputTelemetryCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-10.png"
+    },
+    {
+      "id": "10b-input-capsule",
+      "label": "10B Input Capsule",
+      "widgetType": "input-telemetry",
+      "officialDesign": "input-telemetry-crystal-capsule",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/input-telemetry/InputTelemetryCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-10.png"
+    },
+    {
+      "id": "10c-input-dense",
+      "label": "10C Input Dense",
+      "widgetType": "input-telemetry",
+      "officialDesign": "input-telemetry-crystal-dense",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/input-telemetry/InputTelemetryCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-10.png"
+    },
+    {
+      "id": "11-multiclass-relative",
+      "label": "11 Multiclass Relative",
+      "widgetType": "multiclass-relative",
+      "officialDesign": "multiclass-relative-crystal",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/multiclass-relative/MulticlassRelativeCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-11.png"
+    },
+    {
+      "id": "12-track-weather",
+      "label": "12 Track Weather",
+      "widgetType": "track-weather",
+      "officialDesign": "track-weather-crystal",
+      "owner": "frontend/src/overlay/widget-types/track-weather/",
+      "correctionIssue": "ISA-93",
+      "status": "missing-widget-type",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-12.png"
+    },
+    {
+      "id": "13-car-damage-visual",
+      "label": "13 Car Damage Visual",
+      "widgetType": "car-damage-visual",
+      "officialDesign": "car-damage-visual-crystal",
+      "owner": "frontend/src/overlay/widget-types/car-damage-visual/",
+      "correctionIssue": "ISA-93",
+      "status": "missing-widget-type",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-13.png"
+    },
+    {
+      "id": "14-car-damage-numbers",
+      "label": "14 Car Damage Numbers",
+      "widgetType": "car-damage-numbers",
+      "officialDesign": "car-damage-numbers-crystal",
+      "owner": "frontend/src/overlay/widget-types/car-damage-numbers/",
+      "correctionIssue": "ISA-93",
+      "status": "missing-widget-type",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-14.png"
+    },
+    {
+      "id": "15-delta-simple",
+      "label": "15 Delta Simple",
+      "widgetType": "delta",
+      "officialDesign": "delta-crystal-simple",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/delta/DeltaCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-no-real-parity-harness",
+      "priority": "P2",
+      "referenceArtifact": "artifacts/crystal-reference-section-15.png"
+    },
+    {
+      "id": "16-delta-advanced",
+      "label": "16 Delta Advanced",
+      "widgetType": "delta-advanced",
+      "officialDesign": "delta-advanced-crystal",
+      "owner": "frontend/src/overlay/design-systems/vantare-crystal/delta-advanced/DeltaAdvancedCrystal.tsx",
+      "correctionIssue": "ISA-93",
+      "status": "registered-but-not-harness-renderable",
+      "priority": "P1",
+      "referenceArtifact": "artifacts/crystal-reference-section-16.png"
+    }
+  ],
+  "reference": {
+    "title": "Vantare Suite - Glassmorphism Pro (V2 & V3 Pedals)",
+    "headings": [
+      {
+        "index": 0,
+        "text": "01. TABLAS VERTICALES (STANDINGS & RELATIVE)",
+        "y": 261,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 1,
+        "text": "02. STANDINGS HORIZONTAL (BROADCAST TOWER)",
+        "y": 994,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 2,
+        "text": "03. FUEL CALCULATOR + LAP HISTORY (UNIFICADO COMPACTO)",
+        "y": 1148,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 3,
+        "text": "04. PEDALS TELEMETRY: V1 CLÁSICO vs V2 PERFIL BAJO vs V3 SOLO PEDALES",
+        "y": 1435,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 4,
+        "text": "05. RACING FLAGS",
+        "y": 1789,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 5,
+        "text": "06. DELTA BAR (PREDICTIVE LAP TIMING - CONCEPTO ORIGINAL COMPACTO)",
+        "y": 1974,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 6,
+        "text": "07. DELTA TRACE & CORNER PERFORMANCE (MEJORADO CON COACHING & COLORES RACING)",
+        "y": 2199,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 7,
+        "text": "08. RACE SCHEDULE & UPCOMING EVENTS (OFFICIAL LMU WEEKLY CALENDAR)",
+        "y": 2496,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 8,
+        "text": "09. Head 2 Head Battle Telemetry (Unified HUD)",
+        "y": 3162,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 9,
+        "text": "10A. Sleek Horizontal Blade (Estilo F1 / Rectangular Uniforme)",
+        "y": 3395.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 10,
+        "text": "10B. Symmetrical Aero Capsule (Estilo Hypercar / Simétrico)",
+        "y": 3604.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 11,
+        "text": "10C. Ultra-Dense Strip (Estilo Endurance / Alta Densidad)",
+        "y": 3817.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 12,
+        "text": "11. Multiclass Relative Gap HUD (Integrated & Gapless)",
+        "y": 3968.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 13,
+        "text": "12. Track Weather & Environment (Vertical Environmental Panel)",
+        "y": 4261.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 14,
+        "text": "13. Car Damage Visual Widget (Separado - Tamaño compacto original)",
+        "y": 4844.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 15,
+        "text": "14. Car Damage Numbers Widget (Separado - Bloque vertical compacto)",
+        "y": 5147.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 16,
+        "text": "15. Delta Simple Widget (Separado - Barra superior oscura con badge inferior)",
+        "y": 5408.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 17,
+        "text": "16. Delta Advanced Widget (Separado - Franja horizontal de 4 bloques)",
+        "y": 5590.03125,
+        "height": 23,
+        "className": "section-title"
+      },
+      {
+        "index": 18,
+        "text": "V2. WIDGETS REESTILIZADOS (GLASSMORPHISM PRO)",
+        "y": 5765.03125,
+        "height": 23,
+        "className": "section-title"
+      }
+    ],
+    "v2Excluded": true,
+    "bodyHeight": 7000
+  }
+}

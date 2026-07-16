@@ -1,18 +1,21 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
-import { resetTelemetryRef } from "../lib/telemetry-ref";
+import { relativeDefinition } from "./widget-types/relative/relative-definition";
 
 type Handler = (event: { data: unknown }) => void;
 
 const runtimeMock = vi.hoisted(() => ({
   handlers: new Map<string, Handler[]>(),
+  onCalls: [] as string[],
   emit: vi.fn(),
 }));
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: (name: string, handler: Handler) => {
+      runtimeMock.onCalls.push(name);
       runtimeMock.handlers.set(name, [...(runtimeMock.handlers.get(name) ?? []), handler]);
       return () =>
         runtimeMock.handlers.set(
@@ -38,11 +41,36 @@ function tick(ms: number) {
   });
 }
 
+function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1") {
+  return {
+    document,
+    revision,
+    layoutOrigin: { x: 0, y: 0 },
+    windowMode: "racing",
+  };
+}
+
+function buildRelativeDocument(): ProfileDocumentV3 {
+  return {
+    schemaVersion: 3,
+    id: "default-racing",
+    name: "Default Racing",
+    displayMode: "racing",
+    monitorIndex: 0,
+    layouts: {
+      general: {
+        type: "general",
+        widgets: [relativeDefinition.createDefault("relative-main")],
+      },
+    },
+  };
+}
+
 describe("CompositeApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
+    runtimeMock.onCalls = [];
     runtimeMock.emit.mockClear();
-    resetTelemetryRef();
     vi.useFakeTimers();
   });
 
@@ -52,28 +80,23 @@ describe("CompositeApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("applies telemetry:update events to runtime widgets", () => {
+  it("subscribes once to overlay:profile-v3-loaded and telemetry:update", () => {
     render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
+    expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(1);
+  });
 
+  it("renders runtime widgets after overlay:profile-v3-loaded", () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
-    expect(screen.getByText("No player")).toBeTruthy();
+    expect(screen.getByText("RELATIVE")).toBeTruthy();
+  });
+
+  it("applies telemetry updates through the Wails adapter", () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
 
     dispatch("telemetry:update", {
       seq: 1,
@@ -85,208 +108,61 @@ describe("CompositeApp", () => {
         ],
       },
     });
-    tick(100);
+    tick(200);
 
     expect(screen.getByText("Isaac Albala")).toBeTruthy();
   });
 
-  it("renders engineer-notifications widget without crash or warning", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "engineer-test",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "engineer-notif-1",
-            type: "engineer-notifications",
-            enabled: true,
-            updateHz: 5,
-            position: { x: 100, y: 100, w: 300, h: 80 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
+  it("renders a transparent empty surface for an empty profile", () => {
+    const empty: ProfileDocumentV3 = {
+      schemaVersion: 3,
+      id: "empty",
+      name: "Empty",
+      displayMode: "racing",
+      monitorIndex: 0,
+      layouts: { general: { type: "general", widgets: [] } },
+    };
 
+    const view = render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(empty));
     tick(100);
-    // Should NOT log warning for unknown widget type
-    expect(warnSpy).not.toHaveBeenCalled();
-    // In runtime without active notification, nothing visible is expected (renders null)
-    // The widget is mounted and listening via transport="wails" (__engineerTransport)
-    warnSpy.mockRestore();
+
+    const surface = view.getByTestId("runtime-overlay-surface") as HTMLElement;
+    expect(surface.style.background).toBe("transparent");
+    expect(view.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
   });
 
-  it("renders only enabled widgets", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-          {
-            id: "standings",
-            type: "standings",
-            enabled: false,
-            updateHz: 15,
-            position: { x: 0, y: 300, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
-
+  it("refreshes the runtime surface when revision changes", () => {
+    const view = render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument(), "rev-a"));
     tick(100);
-    expect(screen.getByText("RELATIVE")).toBeTruthy();
-    expect(screen.queryByText("HYPERCAR")).toBeNull();
+    expect(view.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+
+    const next = buildRelativeDocument();
+    next.layouts.general.widgets[0].layout.x = 120;
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(next, "rev-b"));
+    tick(100);
+
+    const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+    expect(frame.style.left).toBe("120px");
   });
 
-  it("enters edit mode when windowMode is edit and shows the edit chrome", () => {
+  it("does not mount edit chrome when overlay:edit-mode-changed fires", () => {
     render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-edit",
-        displayMode: "edit",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "edit",
-    });
-
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
-    expect(screen.queryByTestId("edit-mode-chip")).toBeNull();
-    expect(screen.getByTestId("edit-mode-hint")).toBeTruthy();
-    expect(screen.getByTestId("edit-frame-relative")).toBeTruthy();
-  });
-
-  it("toggles edit mode via overlay:edit-mode-changed", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
-
-    tick(100);
-    expect(screen.queryByTestId("edit-mode-hint")).toBeNull();
 
     dispatch("overlay:edit-mode-changed", { mode: "edit" });
     tick(100);
-    expect(screen.getByTestId("edit-mode-hint")).toBeTruthy();
 
-    dispatch("overlay:edit-mode-changed", { mode: "racing" });
-    tick(100);
     expect(screen.queryByTestId("edit-mode-hint")).toBeNull();
-  });
-
-  it("does not emit profile:request on layout:saved while in edit mode", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-edit",
-        displayMode: "edit",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "edit",
-    });
-
-    tick(100);
-    runtimeMock.emit.mockClear();
-    dispatch("layout:saved", { ok: true });
-    tick(100);
-
-    expect(runtimeMock.emit).not.toHaveBeenCalledWith("profile:request");
-  });
-
-  it("emits profile:request on layout:saved while in racing mode", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
-
-    tick(100);
-    runtimeMock.emit.mockClear();
-    dispatch("layout:saved", { ok: true });
-    tick(100);
-
-    expect(runtimeMock.emit).toHaveBeenCalledWith("profile:request");
+    expect(screen.queryByTestId("edit-frame-relative")).toBeNull();
   });
 
   it("shows calendar reminder banner on calendar:reminder event", () => {
     render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
-
-    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
 
     dispatch("calendar:reminder", {
       eventId: "evt-1",
@@ -304,23 +180,7 @@ describe("CompositeApp", () => {
 
   it("hides calendar reminder banner on close", () => {
     render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-racing",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
     dispatch("calendar:reminder", {
@@ -332,102 +192,10 @@ describe("CompositeApp", () => {
       registrationUrl: "",
     });
     tick(100);
-
-    expect(screen.getByTestId("overlay-calendar-reminder-banner")).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
     tick(100);
 
     expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
-  });
-
-  it("does not show calendar reminder banner in edit mode", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-edit",
-        displayMode: "edit",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "edit",
-    });
-    tick(100);
-
-    dispatch("calendar:reminder", {
-      eventId: "evt-1",
-      title: "6h de Spa",
-      track: "Spa-Francorchamps",
-      minutesLeft: 15,
-      startTime: "2026-07-02T20:00:00+02:00",
-      registrationUrl: "",
-    });
-    tick(100);
-
-    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
-  });
-
-  it("emits layout:save after dragging a widget in edit mode", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "default-edit",
-        displayMode: "edit",
-        widgets: [
-          {
-            id: "relative",
-            type: "relative",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 320, h: 280 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "edit",
-    });
-
-    tick(100);
-    runtimeMock.emit.mockClear();
-
-    const frame = screen.getByTestId("edit-frame-relative");
-    fireEvent.mouseDown(frame, { clientX: 0, clientY: 0 });
-    fireEvent.mouseMove(window, { clientX: 50, clientY: 30 });
-    fireEvent.mouseUp(window);
-
-    tick(100);
-    expect(runtimeMock.emit).toHaveBeenCalledWith("layout:save", expect.any(Object));
-  });
-
-  it("does not render widgets that are not runtime-ready in the catalog", () => {
-    render(<CompositeApp />);
-    dispatch("profile:loaded", {
-      profile: {
-        id: "runtime-test",
-        displayMode: "racing",
-        widgets: [
-          {
-            id: "broadcast-tower-1",
-            type: "broadcast-tower",
-            enabled: true,
-            updateHz: 15,
-            position: { x: 0, y: 0, w: 300, h: 100 },
-          },
-        ],
-      },
-      layoutOrigin: { x: 0, y: 0 },
-      windowMode: "racing",
-    });
-    tick(100);
-    // broadcast-tower has runtimeReady:false in catalog — must not render
-    expect(screen.queryByTestId("broadcast-tower-widget")).toBeNull();
   });
 });

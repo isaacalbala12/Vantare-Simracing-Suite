@@ -1,0 +1,1255 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vantare - Strategy Planner</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Rajdhani', 'sans-serif'],
+          },
+          colors: {
+            vantare: {
+              bg: '#0a0a0a',
+              surface: '#0F0F0F',
+              panel: '#141414',
+              border: '#1E1E1E',
+              borderHover: '#2A2A2A',
+              text: '#f5f5f5',
+              textMuted: '#7A7A7A',
+              textDim: '#4A4A4A',
+              red: {
+                50: '#FFE5E5',
+                100: '#FFCCCC',
+                200: '#FF9999',
+                300: '#FF6666',
+                400: '#ff3b3b',
+                500: '#C1121F',
+                600: '#9B2226',
+                700: '#800020',
+                800: '#66001A',
+                900: '#4A0012',
+                950: '#2A000A',
+              },
+              wine: '#722F37',
+              burgundy: '#4A0E16',
+              blood: '#8B0000',
+            },
+          },
+          animation: {
+            'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'pulse-red': 'pulseRed 2s ease-in-out infinite',
+            'pulse-live': 'pulseLive 1.6s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            pulseRed: {
+              '0%, 100%': { opacity: '0.6' },
+              '50%': { opacity: '1' },
+            },
+            pulseLive: {
+              '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+              '50%': { opacity: '0.4', transform: 'scale(0.85)' },
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    * { scrollbar-width: thin; scrollbar-color: rgba(245,245,245,.16) #0a0a0a; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: rgba(245,245,245,.16); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ff3b3b; }
+
+    body {
+      background: #0a0a0a;
+      color: #f5f5f5;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .v52-shell-bg {
+      background-color: #0a0a0a;
+      background-image:
+        radial-gradient(ellipse 25% 45% at 18% 82%, rgba(255,59,59,.16), transparent 65%),
+        radial-gradient(ellipse 60% 40% at 50% 58%, rgba(255,59,59,.10), transparent 65%),
+        radial-gradient(ellipse 100% 80% at 50% 50%, #141414 0%, #0a0a0a 60%, #050505 100%);
+    }
+    .v52-grain {
+      position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .55;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .v52-vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 110% 75% at 50% 50%, transparent 50%, rgba(0,0,0,.45) 100%),
+        linear-gradient(180deg, rgba(0,0,0,.3) 0%, transparent 15%, transparent 85%, rgba(0,0,0,.45) 100%);
+    }
+
+    .premium-bg {
+      background-color: #0a0a0a;
+      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .glass-panel {
+      background: rgba(20,20,20,0.55);
+      border: 1px solid rgba(245,245,245,.08);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-panel:hover { border-color: rgba(255,59,59,.4); }
+
+    .card-sleek {
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      background: rgba(20,20,20,0.55);
+      border: 1px solid rgba(245,245,245,.08);
+    }
+    .card-sleek:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,59,59,.4);
+      box-shadow: 0 24px 60px rgba(255,59,59,.18), 0 0 100px rgba(255,59,59,.10);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff3b3b 0%, #9a0606 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 6px;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #ff4d4d 0%, #b00808 100%);
+      box-shadow: 0 0 20px rgba(255,59,59,.4);
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: rgba(245,245,245,.05);
+      border: 1px solid rgba(245,245,245,.1);
+      transition: all 0.2s;
+      border-radius: 6px;
+    }
+    .btn-secondary:hover {
+      background: rgba(245,245,245,.08);
+      border-color: rgba(255,59,59,.4);
+    }
+
+    .nav-item {
+      position: relative;
+      transition: all 0.2s;
+    }
+    .nav-item::after {
+      content: '';
+      position: absolute;
+      bottom: -6px; left: 50%;
+      width: 0; height: 2px;
+      background: #ff3b3b;
+      box-shadow: 0 0 8px rgba(255,59,59,.6);
+      transition: all 0.3s;
+      transform: translateX(-50%);
+    }
+    .nav-item:hover::after,
+    .nav-item.active::after { width: 100%; }
+    .nav-item:hover { color: #f5f5f5; }
+
+    .pro-badge {
+      background: linear-gradient(135deg, #ff3b3b 0%, #9a0606 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-text-huge {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(3.5rem, 9vw, 6.5rem);
+      line-height: 1;
+      letter-spacing: 0.2em;
+      background: linear-gradient(180deg, #FFFFFF 0%, #7A7A7A 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 10;
+      font-weight: 700;
+    }
+
+    .live-indicator { animation: pulseRed 2s infinite; }
+
+    .v52-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .32em;
+      text-transform: uppercase;
+      color: #ff3b3b;
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .v52-eyebrow::before, .v52-eyebrow::after {
+      content: "";
+      width: 36px; height: 1px;
+      background: #ff3b3b;
+      opacity: .7;
+    }
+
+    .v52-dock {
+      position: fixed;
+      top: 58px; left: 0; bottom: 0;
+      width: 60px; z-index: 40;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 16px 0;
+      background: rgba(15,15,15,0.6);
+      border-right: 1px solid rgba(255,59,59,0.18);
+      box-shadow: 4px 0 16px rgba(0,0,0,0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .v52-dock-item {
+      position: relative;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+      background: rgba(20,20,20,0.6);
+      border: 1px solid rgba(245,245,245,.08);
+      color: #f5f5f5;
+      transition: all 0.2s;
+    }
+    .v52-dock-item:hover {
+      background: rgba(255,59,59,0.1);
+      border-color: rgba(255,59,59,0.5);
+      transform: scale(1.05);
+    }
+    .v52-dock-item svg { width: 20px; height: 20px; }
+
+    .logo-v { filter: drop-shadow(0 0 10px rgba(255,59,59,0.5)); }
+
+    .tire-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .tire-soft { background: rgba(255,77,77,.10); color: #ff4d4d; border: 1px solid rgba(255,77,77,.25); }
+    .tire-soft .tire-dot { background: #ff4d4d; box-shadow: 0 0 6px #ff4d4d; }
+    .tire-medium { background: rgba(241,196,15,.08); color: #f1c40f; border: 1px solid rgba(241,196,15,.25); }
+    .tire-medium .tire-dot { background: #f1c40f; box-shadow: 0 0 6px #f1c40f; }
+    .tire-hard { background: rgba(245,245,245,.06); color: #f5f5f5; border: 1px solid rgba(245,245,245,.15); }
+    .tire-hard .tire-dot { background: #f5f5f5; box-shadow: 0 0 4px #f5f5f5; }
+    .tire-wet { background: rgba(74,163,255,.10); color: #4aa3ff; border: 1px solid rgba(74,163,255,.25); }
+    .tire-wet .tire-dot { background: #4aa3ff; box-shadow: 0 0 6px #4aa3ff; }
+    .tire-dot { width: 6px; height: 6px; border-radius: 9999px; }
+
+    .life-bar {
+      position: relative; width: 100%; height: 4px;
+      background: rgba(255,255,255,.06);
+      border-radius: 9999px; overflow: hidden;
+    }
+    .life-bar-fill {
+      position: absolute; inset: 0 auto 0 0;
+      border-radius: 9999px;
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .life-good { background: linear-gradient(90deg, #4a4a4a 0%, #6a6a6a 100%); }
+    .life-warn { background: linear-gradient(90deg, #f1c40f 0%, #f39c12 100%); box-shadow: 0 0 6px rgba(241,196,15,.4); }
+    .life-low  { background: linear-gradient(90deg, #ff3b3b 0%, #c1121f 100%); box-shadow: 0 0 8px rgba(255,59,59,.5); }
+
+    .stint-card {
+      position: relative;
+      background: rgba(20,20,20,0.55);
+      border: 1px solid rgba(245,245,245,.08);
+      border-radius: 8px;
+      padding: 16px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .stint-card:hover { border-color: rgba(255,59,59,.3); }
+    .stint-card.stint-active {
+      border-color: rgba(255,59,59,.45);
+      background: linear-gradient(180deg, rgba(255,59,59,.04) 0%, rgba(20,20,20,.55) 100%);
+    }
+
+    .wheel-slot {
+      background: rgba(10,10,10,0.6);
+      border: 1px solid rgba(245,245,245,.06);
+      border-radius: 8px;
+      padding: 10px 12px;
+      transition: all 0.2s ease;
+    }
+    .wheel-slot:hover {
+      background: rgba(20,20,20,0.7);
+      border-color: rgba(255,59,59,.3);
+    }
+
+    .pit-stop {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      padding: 8px 0;
+    }
+    .pit-stop::before {
+      content: '';
+      position: absolute;
+      left: 90px; right: 90px; top: 50%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,59,59,.35) 50%, transparent 100%);
+    }
+    .pit-stop-pill {
+      position: relative;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(20,20,20,0.95);
+      border: 1px solid rgba(255,59,59,.35);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px; font-weight: 700;
+      color: #ff4d4d;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .pit-stop-pill .pit-icon {
+      width: 6px; height: 6px; border-radius: 9999px;
+      background: #ff3b3b;
+      box-shadow: 0 0 8px rgba(255,59,59,.7);
+    }
+
+    .rec-row {
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: rgba(20,20,20,0.55);
+      border: 1px solid rgba(245,245,245,.06);
+      transition: all 0.2s ease;
+    }
+    .rec-row:hover {
+      border-color: rgba(255,59,59,.3);
+      background: rgba(25,25,25,0.65);
+    }
+
+    .set-card {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(10,10,10,0.6);
+      border: 1px solid rgba(245,245,245,.06);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    .set-card:hover { border-color: rgba(245,245,245,.12); }
+    .set-card.set-used { opacity: .6; }
+    .set-card.set-current {
+      border-color: rgba(255,59,59,.45);
+      background: rgba(255,59,59,.06);
+    }
+
+    .label-mono {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(245,245,245,.5);
+    }
+
+    .deg-curve {
+      width: 100%;
+      max-width: 200px;
+      height: 40px;
+      display: block;
+    }
+
+    .delay-100 { animation-delay: 100ms; }
+    .delay-200 { animation-delay: 200ms; }
+    .delay-300 { animation-delay: 300ms; }
+    .delay-400 { animation-delay: 400ms; }
+    .delay-500 { animation-delay: 500ms; }
+
+    .strategy-card {
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: rgba(20,20,20,0.55);
+      border: 1px solid rgba(245,245,245,.06);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .strategy-card:hover {
+      border-color: rgba(255,59,59,.3);
+      background: rgba(25,25,25,0.65);
+    }
+    .strategy-card.strategy-active {
+      border-color: rgba(255,59,59,.45);
+      background: linear-gradient(180deg, rgba(255,59,59,.04) 0%, rgba(20,20,20,.55) 100%);
+      cursor: default;
+    }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+    .modal-panel {
+      width: min(1100px, 92vw);
+      max-height: 88vh;
+      background: #141414;
+      border: 1px solid rgba(245,245,245,.08);
+      border-radius: 12px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 80px rgba(255,59,59,.08);
+      transform: scale(0.96);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-backdrop.open .modal-panel { transform: scale(1); }
+
+    .raw-table { width: 100%; border-collapse: collapse; font-family: 'Inter', sans-serif; font-size: 11px; }
+    .raw-table th, .raw-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .raw-table th { color: rgba(245,245,245,.5); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 9px; }
+    .raw-table td { color: #f5f5f5; }
+    .raw-table tbody tr:hover { background: rgba(255,255,255,.02); }
+    .raw-table .col-A { color: #ff4d4d; font-weight: 700; }
+    .raw-table .col-B { color: rgba(245,245,245,.75); }
+    .raw-table .col-C { color: rgba(245,245,245,.4); }
+    .raw-table .num   { text-align: right; }
+    .raw-table .best  { color: #4ade80; font-weight: 700; }
+    .raw-table .worst { color: rgba(245,245,245,.35); }
+  </style>
+</head>
+
+<body class="min-h-screen v52-shell-bg relative hub">
+  <div class="v52-grain"></div>
+  <div class="v52-vignette"></div>
+
+  <!-- TOPBAR -->
+  <nav class="sticky top-0 z-50 glass-panel border-b border-white/5">
+    <div class="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-8 min-w-0">
+        <div class="flex items-center gap-3 shrink-0">
+          <svg class="w-8 h-8 logo-v" viewBox="0 0 40 40" fill="none">
+            <defs>
+              <linearGradient id="logoGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff4d4d" />
+                <stop offset="55%" stop-color="#e21b1b" />
+                <stop offset="100%" stop-color="#9a0606" />
+              </linearGradient>
+            </defs>
+            <path d="M20 2 L38 38 L28 38 L20 18 L12 38 L2 38 Z" fill="url(#logoGradTop)" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+            <path d="M20 8 L32 34 L26 34 L20 20 L14 34 L8 34 Z" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+          </svg>
+          <span class="font-sans font-bold text-xl tracking-wider text-white">VANTARE</span>
+          <span class="hidden sm:inline text-[10px] text-vantare-textMuted font-sans px-2 py-0.5 rounded bg-white/5 border border-white/5">
+            v0.2.14-alpha.1
+          </span>
+          <span class="hidden sm:inline text-[10px] text-vantare-textMuted font-sans px-2 py-0.5 rounded bg-white/5 border border-white/5">
+            Mock
+          </span>
+        </div>
+        <div class="hidden md:flex items-center gap-5 text-[11px] md:text-xs lg:text-sm font-medium text-vantare-textMuted">
+          <a href="#" class="nav-item">Hub</a>
+          <a href="#" class="nav-item">Overlays Studio</a>
+          <a href="#" class="nav-item">Launcher</a>
+          <a href="#" class="nav-item">Carreras</a>
+          <a href="#" class="nav-item">Ingeniero</a>
+          <a href="#" class="nav-item active text-vantare-text">Strategy</a>
+          <a href="#" class="nav-item">Telemetria</a>
+          <a href="#" class="nav-item">Roadmap</a>
+          <a href="#" class="nav-item">Ajustes</a>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 shrink-0">
+        <button class="btn-secondary px-3 py-1.5 text-xs font-bold text-vantare-textMuted hover:text-white">Lite OFF</button>
+        <button class="btn-secondary px-4 py-1.5 text-sm font-medium flex items-center gap-2 text-vantare-textMuted hover:text-white">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <span class="hidden sm:inline">Notificaciones</span>
+        </button>
+        <div class="flex items-center gap-2 pl-4 border-l border-white/5">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-vantare-red-600 to-vantare-burgundy flex items-center justify-center text-xs font-bold text-white">U</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- DOCK -->
+  <aside class="v52-dock hidden lg:flex" aria-label="Launcher rapido">
+    <button type="button" class="v52-dock-item" aria-label="Ir a Launcher" title="Launcher">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+    <button type="button" class="v52-dock-item" title="Spa 6h (lanzado 12 veces)">
+      <svg viewBox="0 0 24 24" class="w-5 h-5">
+        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.1)" stroke-width="2" fill="none"/>
+        <circle cx="12" cy="12" r="10" stroke="#3b82f6" stroke-width="2" fill="none"
+                stroke-dasharray="62.83" stroke-dashoffset="15"
+                style="transform: rotate(-90deg); transform-origin: 12px 12px;"/>
+      </svg>
+      <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400"></span>
+      <span class="absolute inset-0 rounded border border-emerald-500/40 pointer-events-none"></span>
+    </button>
+    <button type="button" class="v52-dock-item" title="Le Mans 24h"><span class="text-[10px] font-bold text-white">LM</span></button>
+    <button type="button" class="v52-dock-item" title="Daytona"><span class="text-[10px] font-bold text-white">DT</span></button>
+    <button type="button" class="v52-dock-item" title="Sebring"><span class="text-[10px] font-bold text-white">SB</span></button>
+    <button type="button" class="v52-dock-item" title="Monza sprint"><span class="text-[10px] font-bold text-white">MZ</span></button>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="relative z-20 flex-1 pt-0">
+    <div class="max-w-[1920px] mx-auto px-4 sm:px-6 pt-6 pb-6 lg:pl-[84px] flex flex-col h-full overflow-x-hidden">
+      <main class="flex flex-col gap-5 min-w-0 flex-1 min-h-0">
+
+        <!-- SECTION HEADING -->
+        <section class="opacity-0 animate-fade-in-up delay-200">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <span class="v52-eyebrow" style="font-size:10px">Strategy Planner</span>
+              <h1 class="font-sans font-bold text-2xl text-vantare-text mt-2 leading-tight">Plan offline</h1>
+            </div>
+            <div class="flex items-center gap-5 text-[11px] font-sans text-vantare-textMuted">
+              <div class="flex items-center gap-2">
+                <span class="tire-chip tire-medium"><span class="tire-dot"></span>DRY</span>
+                <span>6h Spa - Hypercar - #51 Ferrari</span>
+              </div>
+              <div class="flex items-center gap-2 pl-5 border-l border-white/10">
+                <span class="text-vantare-textDim">PROX.</span>
+                <span class="text-vantare-text font-bold">en 2h 14m</span>
+              </div>
+              <div class="flex items-center gap-2 pl-5 border-l border-white/10">
+                <span class="text-vantare-textDim">PLANES</span>
+                <span class="text-vantare-text font-bold">3</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEPPER -->
+        <section class="opacity-0 animate-fade-in-up delay-300">
+          <div class="flex items-center gap-2">
+            <button class="flex items-center gap-2 px-3 py-1.5 rounded bg-vantare-red-500/10 border border-vantare-red-500/30 hover:bg-vantare-red-500/15 transition-colors">
+              <span class="w-1.5 h-1.5 rounded-full bg-vantare-red-400"></span>
+              <span class="text-[10px] font-sans font-bold text-vantare-red-400">01</span>
+              <span class="text-xs font-medium text-vantare-text">Importar telemetria</span>
+              <svg class="w-3 h-3 text-vantare-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <div class="flex-1 h-px bg-white/10"></div>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-white/5 border border-white/10">
+              <span class="text-[10px] font-sans font-bold text-vantare-textMuted">02</span>
+              <span class="text-xs font-medium text-vantare-textMuted">Revisar stints</span>
+            </div>
+            <div class="flex-1 h-px bg-white/10"></div>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-white/5 border border-white/10">
+              <span class="text-[10px] font-sans font-bold text-vantare-textMuted">03</span>
+              <span class="text-xs font-medium text-vantare-textMuted">Ajustar inventario</span>
+            </div>
+            <div class="flex-1 h-px bg-white/10"></div>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-white/5 border border-white/10">
+              <span class="text-[10px] font-sans font-bold text-vantare-textMuted">04</span>
+              <span class="text-xs font-medium text-vantare-textMuted">Guardar</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3-COLUMN GRID -->
+        <div class="grid grid-cols-12 gap-5">
+
+          <!-- COL 1: ESTRATEGIAS + AHORRO -->
+          <aside class="col-span-12 xl:col-span-3 flex flex-col gap-5 opacity-0 animate-fade-in-up delay-300">
+            <div class="glass-panel rounded-lg p-5">
+              <button id="strategies-open" class="flex items-center justify-between mb-4 w-full text-left group" aria-haspopup="dialog">
+                <div>
+                  <h2 class="font-bold text-sm tracking-wider uppercase text-vantare-text group-hover:text-vantare-red-400 transition-colors">Estrategias</h2>
+                  <p class="text-[11px] text-vantare-textMuted mt-0.5">3 planes - 1 activa - click para ver datos raw</p>
+                </div>
+                <svg class="w-4 h-4 text-vantare-textMuted group-hover:text-vantare-text transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                </svg>
+              </button>
+
+              <div class="strategy-card strategy-active mb-2.5">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-sans text-[11px] font-bold text-vantare-red-400">A</span>
+                    <span class="font-bold text-sm text-vantare-text">Conservadora</span>
+                    <span class="pro-badge">ACTIVA</span>
+                  </div>
+                  <span class="font-sans text-[11px] text-emerald-400 font-bold">-0.8s</span>
+                </div>
+                <div class="flex items-center gap-1.5 mb-2.5">
+                  <span class="tire-chip tire-medium"><span class="tire-dot"></span>M</span>
+                  <span class="tire-chip tire-hard"><span class="tire-dot"></span>H</span>
+                  <span class="tire-chip tire-hard"><span class="tire-dot"></span>H</span>
+                  <span class="tire-chip tire-soft"><span class="tire-dot"></span>S</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-[10px] font-sans">
+                  <div>
+                    <div class="text-vantare-textDim">TIEMPO</div>
+                    <div class="text-vantare-text font-bold">6h 04m 12s</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">PITS</div>
+                    <div class="text-vantare-text font-bold">3</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">SETS</div>
+                    <div class="text-vantare-text font-bold">2M-2H-1S</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">AHORRO</div>
+                    <div class="text-vantare-text font-bold">+1.0<span class="text-vantare-textDim font-normal"> v/stint</span></div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-vantare-textMuted mt-2 leading-relaxed">
+                  Fuel-save ligero. Margen amplio en cada stint, baja carga sobre el piloto.
+                </p>
+              </div>
+
+              <button class="strategy-card w-full text-left mb-2.5">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-sans text-[11px] font-bold text-vantare-textMuted">B</span>
+                    <span class="font-bold text-sm text-vantare-text">Agresiva</span>
+                  </div>
+                  <span class="font-sans text-[11px] text-yellow-400 font-bold">+2.4s</span>
+                </div>
+                <div class="flex items-center gap-1.5 mb-2.5">
+                  <span class="tire-chip tire-soft"><span class="tire-dot"></span>S</span>
+                  <span class="tire-chip tire-medium"><span class="tire-dot"></span>M</span>
+                  <span class="tire-chip tire-soft"><span class="tire-dot"></span>S</span>
+                  <span class="tire-chip tire-soft"><span class="tire-dot"></span>S</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-[10px] font-sans">
+                  <div>
+                    <div class="text-vantare-textDim">TIEMPO</div>
+                    <div class="text-vantare-text font-bold">6h 04m 15s</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">PITS</div>
+                    <div class="text-vantare-text font-bold">3</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">SETS</div>
+                    <div class="text-vantare-text font-bold">1M-3S</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">AHORRO</div>
+                    <div class="text-yellow-400 font-bold">+3.0<span class="text-vantare-textDim font-normal"> v/stint</span></div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-vantare-textMuted mt-2 leading-relaxed">
+                  Fuel-save agresivo en stints 2-3. Requiere piloto consistente y 3 sets de Soft.
+                </p>
+              </button>
+
+              <button class="strategy-card w-full text-left">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-sans text-[11px] font-bold text-vantare-textMuted">C</span>
+                    <span class="font-bold text-sm text-vantare-text">Segura</span>
+                  </div>
+                  <span class="font-sans text-[11px] text-vantare-textDim font-bold">+5.1s</span>
+                </div>
+                <div class="flex items-center gap-1.5 mb-2.5">
+                  <span class="tire-chip tire-hard"><span class="tire-dot"></span>H</span>
+                  <span class="tire-chip tire-hard"><span class="tire-dot"></span>H</span>
+                  <span class="tire-chip tire-hard"><span class="tire-dot"></span>H</span>
+                  <span class="tire-chip tire-medium"><span class="tire-dot"></span>M</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-[10px] font-sans">
+                  <div>
+                    <div class="text-vantare-textDim">TIEMPO</div>
+                    <div class="text-vantare-text font-bold">6h 04m 18s</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">PITS</div>
+                    <div class="text-vantare-text font-bold">3</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">SETS</div>
+                    <div class="text-vantare-text font-bold">1M-3H</div>
+                  </div>
+                  <div>
+                    <div class="text-vantare-textDim">AHORRO</div>
+                    <div class="text-vantare-textDim font-bold">0 v/stint</div>
+                  </div>
+                </div>
+                <p class="text-[10px] text-vantare-textMuted mt-2 leading-relaxed">
+                  Sin fuel-save. Va sobrado de fuel en cada stint, maxima consistencia.
+                </p>
+              </button>
+            </div>
+
+            <!-- PANEL AHORRO COMBUSTIBLE -->
+            <div class="glass-panel rounded-lg p-5">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h3 class="font-bold text-sm text-vantare-text">Ahorro de combustible</h3>
+                  <p class="text-[11px] text-vantare-textMuted mt-0.5">Vueltas a ahorrar por stint para saltarse uno entero</p>
+                </div>
+                <span class="pro-badge">OPT</span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 mb-4">
+                <div class="bg-black/30 border border-white/5 rounded p-2.5">
+                  <div class="label-mono mb-1">Estado</div>
+                  <div class="font-sans text-base font-bold text-vantare-text leading-none">4 / 3</div>
+                  <div class="font-sans text-[10px] text-vantare-textMuted mt-1">stints / pits</div>
+                </div>
+                <div class="bg-vantare-red-500/[0.04] border border-vantare-red-500/20 rounded p-2.5">
+                  <div class="label-mono mb-1 text-vantare-red-400">Ahorro/stint</div>
+                  <div class="font-sans text-base font-bold text-vantare-text leading-none">+2.0<span class="text-[10px] text-vantare-textMuted font-normal"> v</span></div>
+                  <div class="font-sans text-[10px] text-vantare-textMuted mt-1">x 3 stints activos</div>
+                </div>
+                <div class="bg-emerald-500/[0.04] border border-emerald-500/20 rounded p-2.5">
+                  <div class="label-mono mb-1 text-emerald-400">Neto</div>
+                  <div class="font-sans text-base font-bold text-emerald-400 leading-none">-18.4s</div>
+                  <div class="font-sans text-[10px] text-vantare-textMuted mt-1">-22.4s pit / +4s fuel</div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <div class="label-mono mb-2">Comparativa de plan</div>
+                <div class="space-y-2">
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] font-sans mb-1">
+                      <span class="text-vantare-textMuted">ACTUAL - 4 stints - 78v - 3 pits</span>
+                    </div>
+                    <div class="flex gap-1 h-5">
+                      <div class="flex-[17] bg-vantare-surface border border-white/10 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-textMuted">17v</div>
+                      <div class="flex-[22] bg-vantare-surface border border-white/10 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-textMuted">22v</div>
+                      <div class="flex-[19] bg-vantare-surface border border-white/10 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-textMuted">19v</div>
+                      <div class="flex-[20] bg-vantare-surface border border-white/10 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-textMuted">20v</div>
+                      <div class="w-4 bg-vantare-red-500/20 border border-vantare-red-500/30 rounded-sm flex items-center justify-center text-[8px] font-sans text-vantare-red-400">3P</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] font-sans mb-1">
+                      <span class="text-vantare-red-400">CON FUEL-SAVE - 3 stints - 84v - 2 pits</span>
+                    </div>
+                    <div class="flex gap-1 h-5">
+                      <div class="flex-[19] bg-vantare-red-500/15 border border-vantare-red-500/30 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-text">19v</div>
+                      <div class="flex-[24] bg-vantare-red-500/15 border border-vantare-red-500/30 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-text">24v</div>
+                      <div class="flex-[21] bg-vantare-red-500/15 border border-vantare-red-500/30 rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-text">21v</div>
+                      <div class="flex-[20] border border-dashed border-vantare-textDim rounded-sm flex items-center justify-center text-[9px] font-sans text-vantare-textDim">--</div>
+                      <div class="w-4 bg-emerald-500/20 border border-emerald-500/30 rounded-sm flex items-center justify-center text-[8px] font-sans text-emerald-400">2P</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn-primary w-full px-3 py-2 text-xs font-semibold text-white flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Aplicar fuel-save al plan
+              </button>
+            </div>
+          </aside>
+
+          <!-- COL 2: PLAN DE CARRERA -->
+          <section class="col-span-12 xl:col-span-6 opacity-0 animate-fade-in-up delay-400">
+            <div class="glass-panel rounded-lg p-6">
+              <div class="flex items-center justify-between mb-5 gap-4 flex-wrap">
+                <div>
+                  <h2 class="font-bold text-lg text-vantare-text">Plan de carrera</h2>
+                  <p class="text-xs text-vantare-textMuted mt-0.5">4 stints - 78 vueltas - 3 paradas - 6h 04m estimadas</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button class="btn-secondary px-3 py-1.5 text-xs font-medium text-vantare-text">Reset</button>
+                  <button class="btn-secondary px-3 py-1.5 text-xs font-medium text-vantare-text">Comparar</button>
+                  <button class="btn-secondary px-3 py-1.5 text-xs font-medium text-vantare-text">+ Stint</button>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-4 mb-4 text-[10px] font-sans text-vantare-textMuted">
+                <span class="flex items-center gap-1.5">
+                  <svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#4ade80" stroke-width="1.2" stroke-dasharray="3 2"/></svg>
+                  Desgaste cae
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#f5f5f5" stroke-width="1.2"/></svg>
+                  Tiempo vuelta sube con bajon inicial
+                </span>
+              </div>
+
+              <div class="grid grid-cols-[140px_1fr_1fr_1fr_1fr] gap-3 mb-3 px-1">
+                <div class="label-mono">Stint</div>
+                <div class="label-mono text-center">Front Left</div>
+                <div class="label-mono text-center">Front Right</div>
+                <div class="label-mono text-center">Rear Left</div>
+                <div class="label-mono text-center">Rear Right</div>
+              </div>
+
+              <!-- STINT 1 (active) -->
+              <div class="stint-card stint-active mb-2">
+                <div class="grid grid-cols-[140px_1fr_1fr_1fr_1fr] gap-3 items-center">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-base text-vantare-text">Stint 1</span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-live"></span>
+                    </div>
+                    <div class="font-sans text-[10px] text-vantare-textMuted mt-0.5">v.1-17 - 17v</div>
+                    <div class="mt-2"><span class="tire-chip tire-medium"><span class="tire-dot"></span>Medium</span></div>
+                  </div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FL</span><span class="font-sans text-[10px] text-vantare-text">78%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 78%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FR</span><span class="font-sans text-[10px] text-vantare-text">78%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 78%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RL</span><span class="font-sans text-[10px] text-vantare-text">78%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 78%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RR</span><span class="font-sans text-[10px] text-vantare-text">78%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 78%"></div></div></div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/5">
+                  <div class="flex items-center gap-4 text-[11px] text-vantare-textMuted font-sans">
+                    <span>Fuel <span class="text-vantare-text">82L</span></span>
+                    <span>Stint <span class="text-vantare-text">17v - 1h 04m</span></span>
+                    <span>Pace <span class="text-vantare-text">2:18.4</span></span>
+                    <span>Deg. pico <span class="text-vantare-text">v.12</span></span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-2.5">
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" class="sr-only peer" />
+                      <span class="w-3.5 h-3.5 rounded border border-white/20 peer-checked:bg-vantare-red-500 peer-checked:border-vantare-red-500 flex items-center justify-center transition-colors">
+                        <svg class="w-2.5 h-2.5 text-white hidden peer-checked:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                      </span>
+                      <span class="text-[10px] font-sans font-bold text-vantare-textMuted group-hover:text-vantare-text transition-colors uppercase tracking-wider">Fuel-save</span>
+                    </label>
+                    <div class="flex items-center gap-1.5">
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">-</button>
+                      <span class="font-sans text-[11px] font-bold text-vantare-text w-8 text-center">+2.0v</span>
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">+</button>
+                    </div>
+                    <span class="font-sans text-[10px] text-vantare-textDim">= <span class="text-vantare-text">19v</span> - +1.0s en pista</span>
+                    <svg class="deg-curve ml-auto" viewBox="0 0 200 40" preserveAspectRatio="none">
+                      <path d="M0,4 L12,4 L24,5 L36,6 L48,7 L60,8 L72,9 L84,10 L96,10 L108,11 L120,12 L132,13 L144,14 L156,15 L168,16 L180,17 L192,18 L200,18" fill="none" stroke="#4ade80" stroke-width="1.2" vector-effect="non-scaling-stroke" stroke-dasharray="3 2"/>
+                      <path d="M0,30 L24,28 L48,24 L72,22 L96,20 L120,18 L144,17 L168,16 L192,16 L200,16" fill="none" stroke="#f5f5f5" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pit-stop"><span class="pit-stop-pill"><span class="pit-icon"></span>Pit stop - 22.4s - fuel + tyres</span></div>
+
+              <!-- STINT 2 -->
+              <div class="stint-card mb-2">
+                <div class="grid grid-cols-[140px_1fr_1fr_1fr_1fr] gap-3 items-center">
+                  <div>
+                    <span class="font-bold text-base text-vantare-text">Stint 2</span>
+                    <div class="font-sans text-[10px] text-vantare-textMuted mt-0.5">v.18-39 - 22v</div>
+                    <div class="mt-2"><span class="tire-chip tire-hard"><span class="tire-dot"></span>Hard</span></div>
+                  </div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FL</span><span class="font-sans text-[10px] text-vantare-text">92%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 92%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FR</span><span class="font-sans text-[10px] text-vantare-text">92%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 92%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RL</span><span class="font-sans text-[10px] text-vantare-text">92%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 92%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RR</span><span class="font-sans text-[10px] text-vantare-text">92%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 92%"></div></div></div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/5">
+                  <div class="flex items-center gap-4 text-[11px] text-vantare-textMuted font-sans">
+                    <span>Fuel <span class="text-vantare-text">96L</span></span>
+                    <span>Stint <span class="text-vantare-text">22v - 1h 23m</span></span>
+                    <span>Pace <span class="text-vantare-text">2:19.1</span></span>
+                    <span>Deg. pico <span class="text-vantare-text">v.30</span></span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-2.5">
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" class="sr-only peer" checked />
+                      <span class="w-3.5 h-3.5 rounded border border-vantare-red-500 bg-vantare-red-500 flex items-center justify-center transition-colors">
+                        <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                      </span>
+                      <span class="text-[10px] font-sans font-bold text-vantare-red-400 transition-colors uppercase tracking-wider">Fuel-save</span>
+                    </label>
+                    <div class="flex items-center gap-1.5">
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">-</button>
+                      <span class="font-sans text-[11px] font-bold text-vantare-text w-8 text-center">+2.0v</span>
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">+</button>
+                    </div>
+                    <span class="font-sans text-[10px] text-vantare-textDim">= <span class="text-vantare-text">24v</span> - +1.0s en pista</span>
+                    <svg class="deg-curve ml-auto" viewBox="0 0 200 40" preserveAspectRatio="none">
+                      <path d="M0,4 L18,4 L36,4 L54,5 L72,5 L90,6 L108,6 L126,7 L144,7 L162,8 L180,8 L200,9" fill="none" stroke="#4ade80" stroke-width="1.2" vector-effect="non-scaling-stroke" stroke-dasharray="3 2"/>
+                      <path d="M0,30 L27,28 L54,26 L81,25 L108,24 L135,23 L162,22 L189,22 L200,21" fill="none" stroke="#f5f5f5" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pit-stop"><span class="pit-stop-pill"><span class="pit-icon"></span>Pit stop - 22.4s - fuel + tyres</span></div>
+
+              <!-- STINT 3 -->
+              <div class="stint-card mb-2">
+                <div class="grid grid-cols-[140px_1fr_1fr_1fr_1fr] gap-3 items-center">
+                  <div>
+                    <span class="font-bold text-base text-vantare-text">Stint 3</span>
+                    <div class="font-sans text-[10px] text-vantare-textMuted mt-0.5">v.40-58 - 19v</div>
+                    <div class="mt-2"><span class="tire-chip tire-hard"><span class="tire-dot"></span>Hard</span></div>
+                  </div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FL</span><span class="font-sans text-[10px] text-vantare-text">88%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 88%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FR</span><span class="font-sans text-[10px] text-vantare-text">88%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 88%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RL</span><span class="font-sans text-[10px] text-vantare-text">88%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 88%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RR</span><span class="font-sans text-[10px] text-vantare-text">88%</span></div><div class="life-bar"><div class="life-bar-fill life-good" style="width: 88%"></div></div></div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/5">
+                  <div class="flex items-center gap-4 text-[11px] text-vantare-textMuted font-sans">
+                    <span>Fuel <span class="text-vantare-text">85L</span></span>
+                    <span>Stint <span class="text-vantare-text">19v - 1h 12m</span></span>
+                    <span>Pace <span class="text-vantare-text">2:19.4</span></span>
+                    <span>Deg. pico <span class="text-vantare-text">v.50</span></span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-2.5">
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" class="sr-only peer" checked />
+                      <span class="w-3.5 h-3.5 rounded border border-vantare-red-500 bg-vantare-red-500 flex items-center justify-center transition-colors">
+                        <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                      </span>
+                      <span class="text-[10px] font-sans font-bold text-vantare-red-400 transition-colors uppercase tracking-wider">Fuel-save</span>
+                    </label>
+                    <div class="flex items-center gap-1.5">
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">-</button>
+                      <span class="font-sans text-[11px] font-bold text-vantare-text w-8 text-center">+2.0v</span>
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">+</button>
+                    </div>
+                    <span class="font-sans text-[10px] text-vantare-textDim">= <span class="text-vantare-text">21v</span> - +1.0s en pista</span>
+                    <svg class="deg-curve ml-auto" viewBox="0 0 200 40" preserveAspectRatio="none">
+                      <path d="M0,4 L20,4 L40,5 L60,5 L80,6 L100,7 L120,8 L140,9 L160,10 L180,11 L200,12" fill="none" stroke="#4ade80" stroke-width="1.2" vector-effect="non-scaling-stroke" stroke-dasharray="3 2"/>
+                      <path d="M0,30 L26,28 L52,26 L78,25 L104,24 L130,23 L156,23 L182,22 L200,22" fill="none" stroke="#f5f5f5" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pit-stop"><span class="pit-stop-pill"><span class="pit-icon"></span>Pit stop - 22.4s - fuel + tyres</span></div>
+
+              <!-- STINT 4 -->
+              <div class="stint-card">
+                <div class="grid grid-cols-[140px_1fr_1fr_1fr_1fr] gap-3 items-center">
+                  <div>
+                    <span class="font-bold text-base text-vantare-text">Stint 4</span>
+                    <div class="font-sans text-[10px] text-vantare-textMuted mt-0.5">v.59-78 - 20v</div>
+                    <div class="mt-2"><span class="tire-chip tire-soft"><span class="tire-dot"></span>Soft</span></div>
+                  </div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FL</span><span class="font-sans text-[10px] text-yellow-400 font-bold">45%</span></div><div class="life-bar"><div class="life-bar-fill life-warn" style="width: 45%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">FR</span><span class="font-sans text-[10px] text-yellow-400 font-bold">45%</span></div><div class="life-bar"><div class="life-bar-fill life-warn" style="width: 45%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RL</span><span class="font-sans text-[10px] text-yellow-400 font-bold">45%</span></div><div class="life-bar"><div class="life-bar-fill life-warn" style="width: 45%"></div></div></div>
+                  <div class="wheel-slot"><div class="flex items-center justify-between mb-1.5"><span class="font-sans text-[10px] text-vantare-textDim">RR</span><span class="font-sans text-[10px] text-yellow-400 font-bold">45%</span></div><div class="life-bar"><div class="life-bar-fill life-warn" style="width: 45%"></div></div></div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/5">
+                  <div class="flex items-center gap-4 text-[11px] text-vantare-textMuted font-sans">
+                    <span>Fuel <span class="text-vantare-text">88L</span></span>
+                    <span>Stint <span class="text-vantare-text">20v - 1h 16m</span></span>
+                    <span>Pace <span class="text-vantare-text">2:17.9</span></span>
+                    <span>Deg. pico <span class="text-vantare-text">v.65</span></span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-2.5">
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" class="sr-only peer" />
+                      <span class="w-3.5 h-3.5 rounded border border-white/20 peer-checked:bg-vantare-red-500 peer-checked:border-vantare-red-500 flex items-center justify-center transition-colors">
+                        <svg class="w-2.5 h-2.5 text-white hidden peer-checked:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                      </span>
+                      <span class="text-[10px] font-sans font-bold text-vantare-textMuted group-hover:text-vantare-text transition-colors uppercase tracking-wider">Fuel-save</span>
+                    </label>
+                    <div class="flex items-center gap-1.5">
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">-</button>
+                      <span class="font-sans text-[11px] font-bold text-vantare-text w-8 text-center">+2.0v</span>
+                      <button class="w-4 h-4 rounded bg-white/5 hover:bg-white/10 text-vantare-textMuted text-[10px] flex items-center justify-center">+</button>
+                    </div>
+                    <span class="font-sans text-[10px] text-vantare-textDim">= <span class="text-vantare-text">22v</span> - +1.0s en pista</span>
+                    <svg class="deg-curve ml-auto" viewBox="0 0 200 40" preserveAspectRatio="none">
+                      <path d="M0,4 L10,4 L20,5 L30,7 L40,10 L50,13 L60,16 L70,19 L80,22 L90,24 L100,26 L110,28 L120,30 L130,31 L140,32 L150,33 L160,33 L170,34 L180,34 L190,34 L200,35" fill="none" stroke="#f1c40f" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-dasharray="3 2"/>
+                      <path d="M0,32 L10,30 L20,26 L30,22 L40,20 L50,21 L60,23 L70,25 L80,28 L90,30 L100,31 L110,32 L120,33 L130,34 L140,35 L150,36 L160,36 L170,37 L180,37 L190,38 L200,38" fill="none" stroke="#f5f5f5" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-5 pt-5 border-t border-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-6 text-[11px] font-sans">
+                  <div>
+                    <div class="label-mono mb-0.5">Tiempo total</div>
+                    <div class="text-vantare-text">6h 04m 12s</div>
+                  </div>
+                  <div>
+                    <div class="label-mono mb-0.5">Pits totales</div>
+                    <div class="text-vantare-text">3 - 1m 07s</div>
+                  </div>
+                  <div>
+                    <div class="label-mono mb-0.5">vs optimo</div>
+                    <div class="text-vantare-text">+0.8s</div>
+                  </div>
+                </div>
+                <button class="btn-primary px-5 py-2 text-sm font-semibold text-white">Guardar plan</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- COL 3: INVENTARIO + ACCIONES -->
+          <aside class="col-span-12 xl:col-span-3 space-y-4 opacity-0 animate-fade-in-up delay-500">
+            <div class="glass-panel rounded-lg p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-sm tracking-wider uppercase text-vantare-text">Inventario</h2>
+                <span class="label-mono">4 / 8 sets</span>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="set-card set-current">
+                  <div class="flex items-center gap-3">
+                    <span class="tire-chip tire-medium"><span class="tire-dot"></span>Medium</span>
+                    <span class="font-sans text-[10px] text-vantare-textMuted">Set 1 - montado</span>
+                  </div>
+                  <span class="font-sans text-xs text-vantare-text font-bold">78%</span>
+                </div>
+                <div class="set-card">
+                  <div class="flex items-center gap-3">
+                    <span class="tire-chip tire-hard"><span class="tire-dot"></span>Hard</span>
+                    <span class="font-sans text-[10px] text-vantare-textMuted">Set 2 - libre</span>
+                  </div>
+                  <span class="font-sans text-xs text-emerald-400 font-bold">100%</span>
+                </div>
+                <div class="set-card">
+                  <div class="flex items-center gap-3">
+                    <span class="tire-chip tire-hard"><span class="tire-dot"></span>Hard</span>
+                    <span class="font-sans text-[10px] text-vantare-textMuted">Set 3 - libre</span>
+                  </div>
+                  <span class="font-sans text-xs text-emerald-400 font-bold">100%</span>
+                </div>
+                <div class="set-card">
+                  <div class="flex items-center gap-3">
+                    <span class="tire-chip tire-soft"><span class="tire-dot"></span>Soft</span>
+                    <span class="font-sans text-[10px] text-vantare-textMuted">Set 4 - libre</span>
+                  </div>
+                  <span class="font-sans text-xs text-emerald-400 font-bold">100%</span>
+                </div>
+              </div>
+
+              <div class="mt-3 pt-3 border-t border-dashed border-white/10">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="label-mono text-vantare-textDim">Sesion anterior</span>
+                  <span class="font-sans text-[10px] text-vantare-textDim">4 sets usados</span>
+                </div>
+                <div class="space-y-1.5">
+                  <div class="set-card set-used">
+                    <div class="flex items-center gap-3">
+                      <span class="tire-chip tire-soft"><span class="tire-dot"></span>Soft</span>
+                      <span class="font-sans text-[10px] text-vantare-textDim">Set 5</span>
+                    </div>
+                    <span class="font-sans text-xs text-vantare-textDim">--</span>
+                  </div>
+                  <div class="set-card set-used">
+                    <div class="flex items-center gap-3">
+                      <span class="tire-chip tire-medium"><span class="tire-dot"></span>Medium</span>
+                      <span class="font-sans text-[10px] text-vantare-textDim">Set 6</span>
+                    </div>
+                    <span class="font-sans text-xs text-vantare-textDim">--</span>
+                  </div>
+                  <div class="set-card set-used">
+                    <div class="flex items-center gap-3">
+                      <span class="tire-chip tire-hard"><span class="tire-dot"></span>Hard</span>
+                      <span class="font-sans text-[10px] text-vantare-textDim">Set 7</span>
+                    </div>
+                    <span class="font-sans text-xs text-vantare-textDim">--</span>
+                  </div>
+                  <div class="set-card set-used">
+                    <div class="flex items-center gap-3">
+                      <span class="tire-chip tire-medium"><span class="tire-dot"></span>Medium</span>
+                      <span class="font-sans text-[10px] text-vantare-textDim">Set 8</span>
+                    </div>
+                    <span class="font-sans text-xs text-vantare-textDim">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-3 pt-3 border-t border-white/5 text-[11px] text-vantare-textMuted font-sans">
+                Restantes: <span class="text-vantare-text">1 S / 0 M / 2 H</span>
+              </div>
+            </div>
+
+            <div class="glass-panel rounded-lg p-5">
+              <h2 class="font-bold text-sm tracking-wider uppercase text-vantare-text mb-4">Acciones</h2>
+              <div class="space-y-2">
+                <button class="btn-secondary w-full px-3 py-2 text-xs font-medium text-vantare-text flex items-center justify-between">
+                  <span>Duplicar stint</span>
+                  <span class="font-sans text-[10px] text-vantare-textDim">Ctrl+D</span>
+                </button>
+                <button class="btn-secondary w-full px-3 py-2 text-xs font-medium text-vantare-text flex items-center justify-between">
+                  <span>Auto-balancear</span>
+                  <span class="font-sans text-[10px] text-vantare-textDim">Ctrl+B</span>
+                </button>
+                <button class="btn-secondary w-full px-3 py-2 text-xs font-medium text-vantare-text flex items-center justify-between">
+                  <span>Exportar plan</span>
+                  <span class="font-sans text-[10px] text-vantare-textDim">Ctrl+E</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- MODAL: DATOS RAW DE ESTRATEGIAS -->
+  <div id="strategies-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="strategies-modal-title">
+    <div class="modal-panel">
+
+      <div class="flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <div>
+          <span class="text-[10px] font-sans font-bold text-vantare-red-400 tracking-wider uppercase">Strategy - raw data</span>
+          <h2 id="strategies-modal-title" class="font-sans font-bold text-xl text-vantare-text mt-0.5">Comparativa de estrategias</h2>
+          <p class="text-[11px] text-vantare-textMuted mt-0.5">6h Spa-Francorchamps - Hypercar - #51 Ferrari - 78 vueltas - 22C / 28C</p>
+        </div>
+        <button id="strategies-close" class="btn-secondary w-8 h-8 flex items-center justify-center" aria-label="Cerrar">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-6 py-5">
+
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <div class="border border-vantare-red-500/30 bg-vantare-red-500/[0.04] rounded p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-sans text-xs font-bold text-vantare-red-400">A</span>
+                <span class="font-bold text-sm text-vantare-text">Conservadora</span>
+                <span class="pro-badge">ACTIVA</span>
+              </div>
+              <span class="font-sans text-xs text-emerald-400 font-bold">-0.8s</span>
+            </div>
+            <p class="text-[11px] text-vantare-textMuted leading-relaxed">M-H-H-S - fuel-save ligero (+1.0v/stint) - 2M-2H-1S - ritmo constante.</p>
+          </div>
+          <div class="border border-white/10 rounded p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-sans text-xs font-bold text-vantare-textMuted">B</span>
+                <span class="font-bold text-sm text-vantare-text">Agresiva</span>
+              </div>
+              <span class="font-sans text-xs text-yellow-400 font-bold">+2.4s</span>
+            </div>
+            <p class="text-[11px] text-vantare-textMuted leading-relaxed">S-M-S-S - fuel-save agresivo (+3.0v/stint) - 1M-3S - asume piloto consistente.</p>
+          </div>
+          <div class="border border-white/10 rounded p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-sans text-xs font-bold text-vantare-textMuted">C</span>
+                <span class="font-bold text-sm text-vantare-text">Segura</span>
+              </div>
+              <span class="font-sans text-xs text-vantare-textDim font-bold">+5.1s</span>
+            </div>
+            <p class="text-[11px] text-vantare-textMuted leading-relaxed">H-H-H-M - sin fuel-save (0v/stint) - 1M-3H - maxima consistencia.</p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="label-mono mb-3">Plan stint a stint</h3>
+          <table class="raw-table">
+            <thead>
+              <tr><th>Stint</th><th>Compound</th><th class="num">Vueltas</th><th class="num">Fuel-save</th><th class="num">Pace medio</th><th class="num">Deg. pico</th><th class="num">Tiempo stint</th><th class="num">Fuel</th><th>Sets</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="font-bold">Stint 1</td><td><span class="col-A">A:</span> M <span class="col-B">B:</span> S <span class="col-C">C:</span> H</td><td class="num">17 / 14 / 22</td><td class="num">+1.0 / +3.0 / 0</td><td class="num">2:18.4 / 2:16.2 / 2:19.8</td><td class="num">v.12 / v.6 / v.18</td><td class="num">39:14 / 31:46 / 51:16</td><td class="num">82 / 76 / 95</td><td>Set 1</td></tr>
+              <tr><td class="font-bold">Stint 2</td><td><span class="col-A">A:</span> H <span class="col-B">B:</span> M <span class="col-C">C:</span> H</td><td class="num">22 / 18 / 24</td><td class="num">+1.0 / +3.0 / 0</td><td class="num">2:19.1 / 2:17.4 / 2:19.9</td><td class="num">v.30 / v.22 / v.32</td><td class="num">51:00 / 41:13 / 56:48</td><td class="num">96 / 88 / 100</td><td>Set 2</td></tr>
+              <tr><td class="font-bold">Stint 3</td><td><span class="col-A">A:</span> H <span class="col-B">B:</span> S <span class="col-C">C:</span> H</td><td class="num">19 / 16 / 21</td><td class="num">+1.0 / +3.0 / 0</td><td class="num">2:19.4 / 2:18.8 / 2:20.0</td><td class="num">v.50 / v.40 / v.55</td><td class="num">44:08 / 37:48 / 49:00</td><td class="num">85 / 80 / 92</td><td>Set 3</td></tr>
+              <tr><td class="font-bold">Stint 4</td><td><span class="col-A">A:</span> S <span class="col-B">B:</span> S <span class="col-C">C:</span> M</td><td class="num">20 / 19 / 18</td><td class="num">+1.0 / +3.0 / 0</td><td class="num">2:17.9 / 2:18.2 / 2:20.5</td><td class="num">v.65 / v.58 / v.70</td><td class="num">45:58 / 43:58 / 42:09</td><td class="num">88 / 84 / 80</td><td>Set 4</td></tr>
+              <tr style="border-top: 1px solid rgba(255,59,59,.2); background: rgba(255,59,59,.02);"><td class="font-bold">Stint 5</td><td class="text-vantare-textDim">-- saltado --</td><td class="num text-vantare-textDim">-- / 16 / --</td><td class="num text-vantare-textDim">-- / +3.0 / --</td><td class="num text-vantare-textDim">-- / 2:18.5 / --</td><td class="num text-vantare-textDim">-- / v.40 / --</td><td class="num text-vantare-textDim">-- / 36:56 / --</td><td class="num text-vantare-textDim">-- / 75 / --</td><td class="text-vantare-textDim">--</td></tr>
+              <tr style="border-top: 2px solid rgba(245,245,245,.15); background: rgba(255,255,255,.02);"><td class="font-bold">Total</td><td class="text-vantare-textDim">--</td><td class="num font-bold text-vantare-text">78 / 83 / 85</td><td class="num font-bold">+1.0 / +3.0 / 0</td><td class="num font-bold text-vantare-text">2:18.7 / 2:17.8 / 2:20.0</td><td class="num font-bold text-vantare-text">-- / -- / --</td><td class="num font-bold">3h 00m / 3h 11m / 3h 19m</td><td class="num font-bold text-vantare-text">351 / 403 / 367</td><td class="font-bold text-vantare-text">2M-2H-1S / 1M-3S / 1M-3H</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="label-mono mb-3">Pit stops</h3>
+          <table class="raw-table">
+            <thead>
+              <tr><th>#</th><th>Vuelta</th><th class="num">Pit loss (s)</th><th class="num">Fuel anadido (L)</th><th>Neumaticos</th><th class="num">A tiempo perdido</th><th class="num">B tiempo perdido</th><th class="num">C tiempo perdido</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>17 / 14 / 22</td><td class="num">22.4</td><td class="num">82 / 76 / 95</td><td>M-H / S-M / H-H</td><td class="num">22.4</td><td class="num">22.4</td><td class="num">22.4</td></tr>
+              <tr><td>2</td><td>39 / 32 / 46</td><td class="num">22.4</td><td class="num">96 / 88 / 100</td><td>H-H / M-S / H-H</td><td class="num">44.8</td><td class="num">44.8</td><td class="num">44.8</td></tr>
+              <tr><td>3</td><td>58 / 48 / 67</td><td class="num">22.4</td><td class="num">85 / 80 / 92</td><td>H-S / S-S / H-M</td><td class="num">67.2</td><td class="num">67.2</td><td class="num">67.2</td></tr>
+              <tr><td>4</td><td>-- / 64 / --</td><td class="num">22.4</td><td class="num">-- / 75 / --</td><td class="text-vantare-textDim">-- / S-S / --</td><td class="num text-vantare-textDim">67.2</td><td class="num">89.6</td><td class="num text-vantare-textDim">67.2</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h3 class="label-mono mb-3">Riesgos y trade-offs</h3>
+          <table class="raw-table">
+            <thead>
+              <tr><th>Riesgo</th><th class="col-A">A - Conservadora</th><th class="col-B">B - Agresiva</th><th class="col-C">C - Segura</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Riesgo de Safety Car</td><td>Medio</td><td>Alto (fuel-save asume ritmo constante)</td><td>Bajo</td></tr>
+              <tr><td>Margen fuel por stint</td><td class="best">+3L</td><td>+1L</td><td class="best">+5L</td></tr>
+              <tr><td>Degradacion final neumatico</td><td>45%</td><td>52%</td><td>38%</td></tr>
+              <tr><td>Ritmo minimo garantizado</td><td>2:18.4</td><td>2:16.2</td><td>2:20.5</td></tr>
+              <tr><td>Sets de Soft necesarios</td><td>1</td><td class="worst">3</td><td>0</td></tr>
+              <tr><td>Prob. de necesitar parada extra</td><td>5%</td><td>18%</td><td>2%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between px-6 py-4 border-t border-white/5">
+        <span class="text-[11px] text-vantare-textMuted">Recomendacion: <span class="text-vantare-text font-bold">A - Conservadora</span> - mejor balance tiempo/riesgo con la telemetria disponible.</span>
+        <div class="flex items-center gap-2">
+          <button id="strategies-cancel" class="btn-secondary px-4 py-1.5 text-xs font-medium text-vantare-text">Cerrar</button>
+          <button class="btn-primary px-4 py-1.5 text-xs font-semibold text-white">Aplicar A</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const openBtn = document.getElementById('strategies-open');
+      const modal = document.getElementById('strategies-modal');
+      const closeBtn = document.getElementById('strategies-close');
+      const cancelBtn = document.getElementById('strategies-cancel');
+      if (!openBtn || !modal) return;
+
+      function openModal() {
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal() {
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+
+      openBtn.addEventListener('click', openModal);
+      closeBtn.addEventListener('click', closeModal);
+      cancelBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+    })();
+  </script>
+</body>
+</html>

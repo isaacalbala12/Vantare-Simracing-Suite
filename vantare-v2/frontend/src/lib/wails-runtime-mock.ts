@@ -4,6 +4,14 @@
  * renders without a real Wails backend.
  */
 import { mockCalendar } from "../hub/calendar-visual-mock-data";
+import {
+  createHubProfile,
+  getHubMockSettings,
+  listHubProfiles,
+  loadHubDocument,
+  saveHubDocument,
+  setActiveHubProfile,
+} from "../overlay-harness/hub-profile-mock-state";
 import { licenseDebugWarn } from "./license-debug";
 import { setWailsRuntimeMockActive } from "./license-debug-log";
 
@@ -14,6 +22,37 @@ licenseDebugWarn(
 );
 
 const listeners = new Map<string, Set<(event: unknown) => void>>();
+
+type HarnessWidgetDesign = {
+  id: string;
+  name: string;
+  widgetType: string;
+  systemId: string;
+  systemVersion: number;
+  configVersion: number;
+  visual: Record<string, unknown>;
+  content?: Record<string, unknown>;
+  includesContent: boolean;
+  origin: "vantare" | "user";
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+const harnessDesignLibrary: HarnessWidgetDesign[] = [];
+
+function createHarnessDesignId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `harness-design-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function readHarnessPayload(data: unknown): Record<string, unknown> {
+  if (data && typeof data === "object") {
+    return data as Record<string, unknown>;
+  }
+  return {};
+}
 
 function broadcast(name: string, data: unknown) {
 
@@ -101,26 +140,126 @@ export const Events = {
 
     // Auto-respond to settings request
     if (name === "settings:get") {
-      setTimeout(
-        () =>
-          broadcast("settings", {
-            betaWelcomeCompleted: true,
-            betaUserRole: "racer",
-            activeOverlayProfileId: null,
-            deltaMode: "relative",
-          }),
-        50,
-      );
+      setTimeout(() => broadcast("settings", getHubMockSettings()), 50);
       return;
     }
 
     // Auto-respond to hub profiles list
     if (name === "hub:list") {
-      setTimeout(() => broadcast("hub:profiles", { profiles: [] }), 50);
+      setTimeout(() => broadcast("hub:profiles", { profiles: listHubProfiles() }), 50);
       return;
     }
 
-    // Auto-respond to the canonical launcher snapshot request.
+    if (name === "hub:create") {
+      const payload = readHarnessPayload(data);
+      const profileName = typeof payload.name === "string" ? payload.name : "";
+      const created = createHubProfile(profileName);
+      setTimeout(() => {
+        if ("error" in created) {
+          broadcast("hub:error", { message: created.error });
+          return;
+        }
+        broadcast("hub:profile-created", { id: created.id, file: created.file });
+        broadcast("hub:profiles", { profiles: listHubProfiles() });
+      }, 50);
+      return;
+    }
+
+    if (name === "hub:set-active") {
+      const payload = readHarnessPayload(data);
+      const id = typeof payload.id === "string" ? payload.id : "";
+      const file = typeof payload.file === "string" ? payload.file : "";
+      if (id && file) {
+        setActiveHubProfile(id, file);
+        setTimeout(() => {
+          broadcast("hub:profile-activated", { activeProfileId: id });
+          broadcast("settings", getHubMockSettings());
+        }, 50);
+      }
+      return;
+    }
+
+    if (name === "studio:profile:load") {
+      const payload = readHarnessPayload(data);
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+      const file = typeof payload.file === "string" ? payload.file : "";
+      const loaded = loadHubDocument(file);
+      setTimeout(() => {
+        if (!loaded) {
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "load",
+            message: `profile not found: ${file}`,
+          });
+          return;
+        }
+        broadcast("studio:profile:loaded", {
+          requestId,
+          document: loaded.document,
+          revision: loaded.revision,
+          migratedFrom: 3,
+        });
+      }, 0);
+      return;
+    }
+
+    if (name === "studio:profile:save") {
+      const payload = readHarnessPayload(data);
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+      const expectedRevision = typeof payload.expectedRevision === "string" ? payload.expectedRevision : "";
+      const document = payload.document;
+      const documentId =
+        document && typeof document === "object" && "id" in document && typeof document.id === "string"
+          ? document.id
+          : "";
+      const fileFromPath = listHubProfiles().find((profile) => profile.id === documentId)?.file ?? "";
+      if (!document || typeof document !== "object" || !fileFromPath) {
+        setTimeout(() => {
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "save",
+            message: "invalid studio profile save payload",
+          });
+        }, 0);
+        return;
+      }
+      const result = saveHubDocument(
+        fileFromPath,
+        document as import("../overlay/core/profile-document").ProfileDocumentV3,
+        expectedRevision,
+      );
+      setTimeout(() => {
+        if (!result.ok) {
+          if (result.kind === "conflict") {
+            broadcast("studio:profile:conflict", { requestId, message: result.message });
+            return;
+          }
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "save",
+            message: result.message,
+          });
+          return;
+        }
+        const stored = loadHubDocument(fileFromPath);
+        if (!stored) {
+          broadcast("studio:profile:error", {
+            requestId,
+            operation: "save",
+            message: "profile missing after save",
+          });
+          return;
+        }
+        broadcast("studio:profile:saved", {
+          requestId,
+          document: stored.document,
+          revision: stored.revision,
+        });
+      }, 0);
+      return;
+    }
+
+    // Auto-respond to the canonical Launcher V3 snapshot request.
     if (name === "launcher:snapshot:get") {
       setTimeout(
         () =>
@@ -145,6 +284,88 @@ export const Events = {
           }),
         50,
       );
+      return;
+    }
+
+    // In-memory widget design library for Overlay Studio V3 harness
+    if (name === "design:list") {
+      const payload = readHarnessPayload(data);
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+      const widgetType = typeof payload.widgetType === "string" ? payload.widgetType : "";
+      const designs =
+        widgetType === ""
+          ? [...harnessDesignLibrary]
+          : harnessDesignLibrary.filter((design) => design.widgetType === widgetType);
+      setTimeout(() => {
+        broadcast("design:list:response", { requestId, designs });
+      }, 0);
+      return;
+    }
+
+    if (name === "design:save") {
+      const payload = readHarnessPayload(data);
+      const rawDesign = payload.design;
+      if (!rawDesign || typeof rawDesign !== "object") {
+        setTimeout(() => {
+          broadcast("design:error", { operation: "save", message: "missing design payload" });
+        }, 0);
+        return;
+      }
+      const incoming = rawDesign as HarnessWidgetDesign;
+      const now = new Date().toISOString();
+      const id = incoming.id?.trim() ? incoming.id : createHarnessDesignId();
+      const existingIndex = harnessDesignLibrary.findIndex((design) => design.id === id);
+      const saved: HarnessWidgetDesign = {
+        ...incoming,
+        id,
+        origin: "user",
+        createdAt: existingIndex >= 0 ? harnessDesignLibrary[existingIndex]?.createdAt ?? now : now,
+        updatedAt: now,
+      };
+      if (existingIndex >= 0) {
+        harnessDesignLibrary[existingIndex] = saved;
+      } else {
+        harnessDesignLibrary.push(saved);
+      }
+      setTimeout(() => {
+        broadcast("design:saved", { design: saved });
+      }, 0);
+      return;
+    }
+
+    if (name === "design:delete") {
+      const payload = readHarnessPayload(data);
+      const id = typeof payload.id === "string" ? payload.id : "";
+      const index = harnessDesignLibrary.findIndex((design) => design.id === id);
+      if (index < 0) {
+        setTimeout(() => {
+          broadcast("design:error", { operation: "delete", message: `design not found: ${id}` });
+        }, 0);
+        return;
+      }
+      harnessDesignLibrary.splice(index, 1);
+      setTimeout(() => {
+        broadcast("design:deleted", { id });
+      }, 0);
+      return;
+    }
+
+    if (name === "design:rename") {
+      const payload = readHarnessPayload(data);
+      const id = typeof payload.id === "string" ? payload.id : "";
+      const nextName = typeof payload.name === "string" ? payload.name.trim() : "";
+      const design = harnessDesignLibrary.find((entry) => entry.id === id);
+      if (!design || nextName === "") {
+        setTimeout(() => {
+          broadcast("design:error", { operation: "rename", message: "invalid rename payload" });
+        }, 0);
+        return;
+      }
+      design.name = nextName;
+      design.updatedAt = new Date().toISOString();
+      setTimeout(() => {
+        broadcast("design:renamed", { id, name: nextName });
+      }, 0);
       return;
     }
 

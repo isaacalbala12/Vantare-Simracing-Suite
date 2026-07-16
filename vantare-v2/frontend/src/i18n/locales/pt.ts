@@ -1,3 +1,5 @@
+import { studioV3Pt } from "./studio-v3/pt";
+
 export const pt: Record<string, string> = {
   // Onboarding
   "onboarding.welcome": "Bem-vindo ao Vantare",
@@ -129,10 +131,9 @@ export const pt: Record<string, string> = {
   "studio.type": "Tipo",
 
   // Widget Studio - Draft actions
-  "studio.saveToWidget": "Salvar no widget",
-  "studio.discard": "Descartar",
+
   // Widget Studio - New keys (P1 review fixes)
-  "studio.selectWidgetPreview": "Selecione um widget para visualizar.",
+
   "studio.editMode": "Modo de edição",
   "studio.addWidget": "+ Adicionar widget",
 
@@ -446,4 +447,6 @@ export const pt: Record<string, string> = {
   "license.unconfiguredTitle": "Configuração incompleta",
   "license.unconfiguredDesc1": "O app não pode validar sua licença porque os valores públicos do Supabase estão faltando nesta build. Este é um problema de configuração do instalador, não da sua conta.",
   "license.unconfiguredDesc2": "Baixe a versão mais recente do canal de beta ou entre em contato com o suporte se o problema persistir.",
+  // Overlay Studio V3
+  ...studioV3Pt,
 };

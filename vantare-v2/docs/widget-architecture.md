@@ -410,3 +410,6 @@ File: `frontend/src/overlay/widgets/widget-appearance.ts`
 Returns `{ style: string, appearance: Required<WidgetAppearance> }`.
 
 **Important**: step 2 does NOT consult the registry's `perWidgetAppearance`. This is gap P1.
+# Contrato canónico Overlay Studio V3 (2026-07-11)
+
+La arquitectura vigente tiene un único editor `OverlayStudioV3`; la antigua separación WidgetStudio/LayoutStudio solo aparece en secciones históricas. Los perfiles V3 separan layout, comportamiento, contenido y visual. `WidgetVisualHost` recibe ViewModels puros y selecciona `vantare-original` o `vantare-crystal`; el canvas aporta únicamente chrome de edición. El alcance cerrado son Delta, Standings, Relative y Pedals. Nuevos widgets, selección múltiple y sistemas visuales adicionales son expansión.

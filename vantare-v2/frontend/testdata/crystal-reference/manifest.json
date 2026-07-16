@@ -1,0 +1,390 @@
+{
+  "version": 1,
+  "source": "docs/overlay-glassmorphism-pro.html",
+  "sourceAuthority": "numbered sections 01-16",
+  "excludedSource": "final V2. WIDGETS REESTILIZADOS block",
+  "fontContract": {
+    "resolution": "fallback-declared-no-local-font-files",
+    "pixelDelta": "reference PNGs use resolved web fonts when available; local fallback may shift glyph pixels"
+  },
+  "entries": [
+    {
+      "id": "relative",
+      "widgetType": "relative",
+      "designId": "relative-crystal-vertical",
+      "referenceSelector": ".widgets-row > .glass-card:nth-child(1)",
+      "width": 358,
+      "height": 288,
+      "htmlSection": 1,
+      "capture": {
+        "sha256": "7293da2f440b231b984c0b743e3809bb1614c3b91ed8a11d19a6a29c45213795",
+        "bbox": {
+          "x": 585,
+          "y": 304,
+          "width": 358,
+          "height": 288
+        }
+      }
+    },
+    {
+      "id": "standings",
+      "widgetType": "standings",
+      "designId": "standings-crystal-vertical",
+      "referenceSelector": ".widgets-row > .glass-card:nth-child(2)",
+      "width": 361,
+      "height": 650,
+      "htmlSection": 1,
+      "capture": {
+        "sha256": "a555b96000ebe19d91f5fd00c6eccaa3ead18b1e531a8915326e7f6977a1d0a1",
+        "bbox": {
+          "x": 974,
+          "y": 304,
+          "width": 361,
+          "height": 650
+        }
+      }
+    },
+    {
+      "id": "broadcast",
+      "widgetType": "broadcast-tower",
+      "designId": "broadcast-tower-crystal",
+      "referenceSelector": ".broadcast-ticker",
+      "width": 1872,
+      "height": 71,
+      "htmlSection": 2,
+      "capture": {
+        "sha256": "4cb2c27c26c3369e6889ab5e96c955ad7ae5628048c79ccfd3ffaad0151e2d5e",
+        "bbox": {
+          "x": 24,
+          "y": 1037,
+          "width": 1872,
+          "height": 71
+        }
+      }
+    },
+    {
+      "id": "fuel",
+      "widgetType": "fuel-strategy",
+      "designId": "fuel-strategy-crystal-unified",
+      "referenceSelector": ".unified-fuel-card",
+      "width": 680,
+      "height": 204,
+      "htmlSection": 3,
+      "capture": {
+        "sha256": "afcb872900be4a0492e72f113c867bd4af9dacb9f9d47fee40253448a74944c1",
+        "bbox": {
+          "x": 620,
+          "y": 1163,
+          "width": 680,
+          "height": 204
+        }
+      }
+    },
+    {
+      "id": "pedals-telemetry",
+      "widgetType": "pedals-telemetry",
+      "designId": "pedals-telemetry-crystal",
+      "referenceSelector": ".telemetry-showcase > .telemetry-col:nth-child(1)",
+      "width": 324,
+      "height": 152,
+      "htmlSection": 4,
+      "capture": {
+        "sha256": "c3a96494d5c5abf66815594efdb689e181a666118c80f47f6e63049fa539a760",
+        "bbox": {
+          "x": 502,
+          "y": 834,
+          "width": 324,
+          "height": 152
+        }
+      }
+    },
+    {
+      "id": "pedals-telemetry-compact",
+      "widgetType": "pedals-telemetry-compact",
+      "designId": "pedals-telemetry-compact-crystal",
+      "referenceSelector": ".telemetry-showcase > .telemetry-col:nth-child(2)",
+      "width": 281,
+      "height": 172,
+      "htmlSection": 4,
+      "capture": {
+        "sha256": "6b3107f67bf28da8038d3e9f186535af7386e2f3070b4c1453d959db8bd31d16",
+        "bbox": {
+          "x": 861,
+          "y": 814,
+          "width": 281,
+          "height": 172
+        }
+      }
+    },
+    {
+      "id": "pedals",
+      "widgetType": "pedals",
+      "designId": "pedals-crystal",
+      "referenceSelector": ".telemetry-showcase > .telemetry-col:nth-child(3)",
+      "width": 241,
+      "height": 261,
+      "htmlSection": 4,
+      "capture": {
+        "sha256": "df0e17afb95e66f846bb6fc2256786ab962f2f0d340dc2b619e4480d3a6c02c3",
+        "bbox": {
+          "x": 1177,
+          "y": 725,
+          "width": 241,
+          "height": 261
+        }
+      }
+    },
+    {
+      "id": "flags",
+      "widgetType": "racing-flags",
+      "designId": "racing-flags-crystal",
+      "referenceSelector": ".flag-card:nth-child(1)",
+      "width": 280,
+      "height": 92,
+      "htmlSection": 5,
+      "capture": {
+        "sha256": "05b30c044a6814bf168751e55313ebec9d17ddf3692736c2d9070415b53f2848",
+        "bbox": {
+          "x": 670,
+          "y": 1079,
+          "width": 280,
+          "height": 92
+        }
+      }
+    },
+    {
+      "id": "delta-bar",
+      "widgetType": "delta",
+      "designId": "delta-crystal-bar",
+      "referenceSelector": ".delta-bar-wrapper:nth-child(1)",
+      "width": 440,
+      "height": 92,
+      "htmlSection": 6,
+      "capture": {
+        "sha256": "9b6794c6d0fb9a839cbeda318a1096e077ba67379e501218efdd12393ca7718f",
+        "bbox": {
+          "x": 500,
+          "y": 679,
+          "width": 440,
+          "height": 92
+        }
+      }
+    },
+    {
+      "id": "delta-trace",
+      "widgetType": "delta-trace",
+      "designId": "delta-trace-crystal",
+      "referenceSelector": ".dt-container",
+      "width": 1000,
+      "height": 144,
+      "htmlSection": 7,
+      "capture": {
+        "sha256": "4d785bb69368e8c8b3a998ab97be63bf5de766b28098f4171a35da0fa6e50cc9",
+        "bbox": {
+          "x": 460,
+          "y": 904,
+          "width": 1000,
+          "height": 144
+        }
+      }
+    },
+    {
+      "id": "schedule",
+      "widgetType": "race-schedule",
+      "designId": "race-schedule-crystal",
+      "referenceSelector": ".rs-container",
+      "width": 780,
+      "height": 583,
+      "htmlSection": 8,
+      "capture": {
+        "sha256": "92fc839cae00f8c5a412ee2a98ef83ec5c076ffba4a287e51d6bce25d20a7b6a",
+        "bbox": {
+          "x": 570,
+          "y": 1201,
+          "width": 780,
+          "height": 583
+        }
+      }
+    },
+    {
+      "id": "head-to-head",
+      "widgetType": "head-to-head",
+      "designId": "head-to-head-crystal",
+      "referenceSelector": ".h2h-container",
+      "width": 780,
+      "height": 151,
+      "htmlSection": 9,
+      "capture": {
+        "sha256": "ffb31a3a8a2d00926a57aeebc4d0c308880553de4b5a4eb23d19799a64260703",
+        "bbox": {
+          "x": 570,
+          "y": 914,
+          "width": 780,
+          "height": 151
+        }
+      }
+    },
+    {
+      "id": "input-blade",
+      "widgetType": "input-telemetry",
+      "designId": "input-crystal-blade",
+      "referenceSelector": ".in10a-container",
+      "width": 780,
+      "height": 97,
+      "htmlSection": 10,
+      "capture": {
+        "sha256": "5da898993736dd8d1b44e71b17baa2a83d5d387297b4535203c6f5d8cb7e00be",
+        "bbox": {
+          "x": 570,
+          "y": 1147,
+          "width": 780,
+          "height": 97
+        }
+      }
+    },
+    {
+      "id": "input-capsule",
+      "widgetType": "input-telemetry",
+      "designId": "input-crystal-capsule",
+      "referenceSelector": ".in10b-container",
+      "width": 780,
+      "height": 101,
+      "htmlSection": 10,
+      "capture": {
+        "sha256": "768d6d0c4bdbac930309edff61bc2feb34ed898ac5ebe09f35d092cf25c4f700",
+        "bbox": {
+          "x": 570,
+          "y": 701,
+          "width": 780,
+          "height": 101
+        }
+      }
+    },
+    {
+      "id": "input-dense",
+      "widgetType": "input-telemetry",
+      "designId": "input-crystal-dense",
+      "referenceSelector": ".in10c-container",
+      "width": 780,
+      "height": 69,
+      "htmlSection": 10,
+      "capture": {
+        "sha256": "a81065520ec6b0e3639ca50ec513680ccbed046cc8048e368c70897963f82570",
+        "bbox": {
+          "x": 570,
+          "y": 914,
+          "width": 780,
+          "height": 69
+        }
+      }
+    },
+    {
+      "id": "multiclass",
+      "widgetType": "multiclass-relative",
+      "designId": "multiclass-relative-crystal",
+      "referenceSelector": ".mc-container",
+      "width": 780,
+      "height": 211,
+      "htmlSection": 11,
+      "capture": {
+        "sha256": "0afbb70ecbec7fe50c39492786f49b5a563e564cf01a0b89d3675bbb1d066bfe",
+        "bbox": {
+          "x": 570,
+          "y": 1065,
+          "width": 780,
+          "height": 211
+        }
+      }
+    },
+    {
+      "id": "weather",
+      "widgetType": "track-weather",
+      "designId": "track-weather-crystal",
+      "referenceSelector": ".tw-container",
+      "width": 240,
+      "height": 421,
+      "htmlSection": 12,
+      "capture": {
+        "sha256": "8a8307beb731e2c0ce0da0361bc61d2d74c31fd3f43504142c146f8eb4eb9b5b",
+        "bbox": {
+          "x": 840,
+          "y": 1183,
+          "width": 240,
+          "height": 421
+        }
+      }
+    },
+    {
+      "id": "damage-visual",
+      "widgetType": "car-damage-visual",
+      "designId": "car-damage-visual-crystal",
+      "referenceSelector": ".w13-car-visual",
+      "width": 150,
+      "height": 191,
+      "htmlSection": 13,
+      "capture": {
+        "sha256": "19e78fd44b22e0d3fae666c3eb74319da6372c0419bb837817eba494db949acb",
+        "bbox": {
+          "x": 885,
+          "y": 893,
+          "width": 150,
+          "height": 191
+        }
+      }
+    },
+    {
+      "id": "damage-numbers",
+      "widgetType": "car-damage-numbers",
+      "designId": "car-damage-numbers-crystal",
+      "referenceSelector": ".w14-damage-nums",
+      "width": 140,
+      "height": 149,
+      "htmlSection": 14,
+      "capture": {
+        "sha256": "2837032d7bb7d2f11f2fcb4b1e4c88f661ddf075efe9394bcb43f47db1aa0e68",
+        "bbox": {
+          "x": 890,
+          "y": 1193,
+          "width": 140,
+          "height": 149
+        }
+      }
+    },
+    {
+      "id": "delta-simple",
+      "widgetType": "delta",
+      "designId": "delta-crystal-simple",
+      "referenceSelector": ".w15-delta-simple",
+      "width": 420,
+      "height": 70,
+      "htmlSection": 15,
+      "capture": {
+        "sha256": "825d9dd17ee6d72ba53483552f26c352589a8c6abd3f41823720f1043cb38d47",
+        "bbox": {
+          "x": 750,
+          "y": 727,
+          "width": 420,
+          "height": 70
+        }
+      }
+    },
+    {
+      "id": "delta-advanced",
+      "widgetType": "delta-advanced",
+      "designId": "delta-advanced-crystal",
+      "referenceSelector": ".w16-delta-adv",
+      "width": 480,
+      "height": 43,
+      "htmlSection": 16,
+      "capture": {
+        "sha256": "3f55bbef02ce8faf0cbe091e14b0fb23b671218b9a1a4b45dd9d98e9413039f4",
+        "bbox": {
+          "x": 720,
+          "y": 909,
+          "width": 480,
+          "height": 43
+        }
+      }
+    }
+  ]
+}

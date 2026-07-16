@@ -474,3 +474,6 @@ Checklist manual minimo:
 - Plan actual: `docs/current-plan.md`
 - Plan sandbox preview: `docs/superpowers/plans/2026-06-22-widget-sandbox-preview-architecture.md`
 - Plan intrinsic width: `docs/superpowers/plans/2026-06-23-preview2-widgetstudio-intrinsic-width.md`
+# Contrato canónico Overlay Studio V3 (2026-07-11)
+
+Studio, Desktop y OBS comparten `WidgetVisualHost` y renderers puros. Mock y Live generan el mismo ViewModel; la pérdida de LMU se expresa como estado desconectado. El canvas y sus guías son editor-only. Las miniaturas usan el mismo pipeline V3 y no leen persistencia ni transporte.

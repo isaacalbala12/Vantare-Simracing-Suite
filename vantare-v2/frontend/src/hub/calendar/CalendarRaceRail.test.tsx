@@ -238,4 +238,91 @@ describe("CalendarRaceRail", () => {
     expect(screen.queryByTestId("rail-follow-btn-s1")).toBeNull();
     expect(screen.getByText("Bloqueado")).toBeTruthy();
   });
+
+  it("groups items by tier with section headers", () => {
+    const spy = vi.spyOn(calendarUpcoming, "buildUpcomingRaceItems").mockReturnValue([
+      { id: "b1", kind: "series", tier: "beginner", name: "Bronce Race", track: "Monza", vehicleClass: "GT3", setup: "", durationMin: 20, nextStart: "2026-07-03T20:00:00Z", isActive: false },
+      { id: "i1", kind: "series", tier: "intermediate", name: "Plata Race", track: "Spa", vehicleClass: "GT3", setup: "", durationMin: 30, nextStart: "2026-07-03T21:00:00Z", isActive: false },
+      { id: "a1", kind: "series", tier: "advanced", name: "Oro Race", track: "Paul Ricard", vehicleClass: "LMP2", setup: "", durationMin: 45, nextStart: "2026-07-03T22:00:00Z", isActive: false },
+    ]);
+
+    render(<CalendarRaceRail calendar={{ ...EMPTY_CALENDAR }} />);
+
+    // Tier section headers should render
+    expect(screen.getByText("Bronce")).toBeTruthy();
+    expect(screen.getByText("Plata")).toBeTruthy();
+    expect(screen.getByText("Oro")).toBeTruthy();
+
+    // All three cards should render
+    expect(screen.getByTestId("rail-card-beginner")).toBeTruthy();
+    expect(screen.getByTestId("rail-card-intermediate")).toBeTruthy();
+    expect(screen.getByTestId("rail-card-advanced")).toBeTruthy();
+
+    spy.mockRestore();
+  });
+
+  it("groups events under Especial section", () => {
+    const spy = vi.spyOn(calendarUpcoming, "buildUpcomingRaceItems").mockReturnValue([
+      { id: "ev-1", kind: "event", tier: "event", name: "Le Mans 24h", track: "La Sarthe", vehicleClass: "Hypercar", setup: "", durationMin: 120, nextStart: "2026-07-03T20:00:00Z", isActive: false },
+    ]);
+
+    render(<CalendarRaceRail calendar={{ ...EMPTY_CALENDAR }} />);
+
+    // Event should be grouped under "Especial" header
+    expect(screen.getByText("Especial")).toBeTruthy();
+    expect(screen.getByTestId("rail-card-special")).toBeTruthy();
+
+    spy.mockRestore();
+  });
+
+  it("preserves tier order: beginner before intermediate before advanced", () => {
+    const spy = vi.spyOn(calendarUpcoming, "buildUpcomingRaceItems").mockReturnValue([
+      { id: "a1", kind: "series", tier: "advanced", name: "Oro", track: "Paul Ricard", vehicleClass: "LMP2", setup: "", durationMin: 45, nextStart: "2026-07-03T22:00:00Z", isActive: false },
+      { id: "b1", kind: "series", tier: "beginner", name: "Bronce", track: "Monza", vehicleClass: "GT3", setup: "", durationMin: 20, nextStart: "2026-07-03T20:00:00Z", isActive: false },
+      { id: "i1", kind: "series", tier: "intermediate", name: "Plata", track: "Spa", vehicleClass: "GT3", setup: "", durationMin: 30, nextStart: "2026-07-03T21:00:00Z", isActive: false },
+    ]);
+
+    render(<CalendarRaceRail calendar={{ ...EMPTY_CALENDAR }} />);
+
+    // Check DOM order: beginner group before intermediate before advanced
+    const rail = screen.getByTestId("calendar-race-rail");
+    const beginnerIdx = rail.innerHTML.indexOf("Bronce");
+    const intermediateIdx = rail.innerHTML.indexOf("Plata");
+    const advancedIdx = rail.innerHTML.indexOf("Oro");
+    expect(beginnerIdx).toBeLessThan(intermediateIdx);
+    expect(intermediateIdx).toBeLessThan(advancedIdx);
+
+    spy.mockRestore();
+  });
+
+  it("filters to single tier group when activeFilter is set", () => {
+    const spy = vi.spyOn(calendarUpcoming, "buildUpcomingRaceItems").mockReturnValue([
+      { id: "b1", kind: "series", tier: "beginner", name: "Bronce", track: "Monza", vehicleClass: "GT3", setup: "", durationMin: 20, nextStart: "2026-07-03T20:00:00Z", isActive: false },
+      { id: "a1", kind: "series", tier: "advanced", name: "Oro", track: "Paul Ricard", vehicleClass: "LMP2", setup: "", durationMin: 45, nextStart: "2026-07-03T22:00:00Z", isActive: false },
+    ]);
+
+    render(<CalendarRaceRail calendar={{ ...EMPTY_CALENDAR }} activeFilter="beginner" />);
+
+    // Only beginner group should render
+    expect(screen.getByTestId("rail-card-beginner")).toBeTruthy();
+    expect(screen.queryByTestId("rail-card-advanced")).toBeNull();
+    expect(screen.getAllByText("Bronce").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("Oro").filter((el) => el.getAttribute("title") === "Oro").length).toBe(0);
+
+    spy.mockRestore();
+  });
+
+  it("rail cards have role=button and are keyboard accessible", () => {
+    const spy = vi.spyOn(calendarUpcoming, "buildUpcomingRaceItems").mockReturnValue([
+      { id: "b1", kind: "series", tier: "beginner", name: "Bronce", track: "Monza", vehicleClass: "GT3", setup: "", durationMin: 20, nextStart: "2026-07-03T20:00:00Z", isActive: false },
+    ]);
+
+    render(<CalendarRaceRail calendar={{ ...EMPTY_CALENDAR }} />);
+
+    const card = screen.getByTestId("rail-card-beginner");
+    expect(card.getAttribute("role")).toBe("button");
+    expect(card.getAttribute("tabindex")).toBe("0");
+
+    spy.mockRestore();
+  });
 });

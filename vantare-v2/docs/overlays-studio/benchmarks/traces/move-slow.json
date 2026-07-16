@@ -1,0 +1,19 @@
+{
+  "name": "move-slow",
+  "kind": "move",
+  "description": "Arrastre lento y uniforme (~30 Hz, 4 px por paso)",
+  "steps": [
+    { "type": "pointerdown", "delayMs": 0 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 0 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 1 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 1 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 1 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 2 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 2 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 2 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 2 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 2 },
+    { "type": "pointermove", "delayMs": 32, "dx": 4, "dy": 2 },
+    { "type": "pointerup", "delayMs": 48 }
+  ]
+}

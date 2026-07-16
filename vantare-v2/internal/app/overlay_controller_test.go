@@ -18,11 +18,13 @@ func (f *fakeOverlayWindow) Close() {
 	f.closed = true
 }
 
-func (f *fakeOverlayWindow) ApplyProfileMode(profile *config.ProfileConfig) error {
+func (f *fakeOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
 	if f.appliedModes == nil {
 		f.appliedModes = make([]config.DisplayMode, 0)
 	}
-	f.appliedModes = append(f.appliedModes, profile.DisplayMode)
+	if document != nil {
+		f.appliedModes = append(f.appliedModes, document.DisplayMode)
+	}
 	return nil
 }
 
@@ -33,7 +35,7 @@ type fakeOverlayFactory struct {
 	bounds  config.Rect
 }
 
-func (f *fakeOverlayFactory) NewOverlayWindow(profile *config.ProfileConfig, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
+func (f *fakeOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	f.created++
 	f.origin = origin
 	f.bounds = bounds
@@ -41,18 +43,23 @@ func (f *fakeOverlayFactory) NewOverlayWindow(profile *config.ProfileConfig, ori
 	return f.last, nil
 }
 
+func racingDocument(id string, mode config.DisplayMode) *config.ProfileDocumentV3 {
+	return &config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            id,
+		Name:          id,
+		DisplayMode:   mode,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral},
+		},
+	}
+}
+
 func TestOverlayControllerStartCreatesCleanWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	profile := &config.ProfileConfig{
-		ID:          "default-racing",
-		DisplayMode: config.ModeRacing,
-		Widgets: []config.WidgetConfig{
-			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 760, Y: 40, W: 400, H: 48}},
-		},
-	}
 
-	status, err := controller.Start(profile)
+	status, err := controller.Start(racingDocument("default-racing", config.ModeRacing))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,21 +83,15 @@ func TestOverlayControllerStartCreatesCleanWindow(t *testing.T) {
 func TestOverlayControllerStartClosesPreviousWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	profile := &config.ProfileConfig{
-		ID:          "default-racing",
-		DisplayMode: config.ModeRacing,
-		Widgets: []config.WidgetConfig{
-			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 0, Y: 0, W: 100, H: 50}},
-		},
-	}
+	document := racingDocument("default-racing", config.ModeRacing)
 
-	_, err := controller.Start(profile)
+	_, err := controller.Start(document)
 	if err != nil {
 		t.Fatal(err)
 	}
 	first := factory.last
 
-	_, err = controller.Start(profile)
+	_, err = controller.Start(document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,15 +106,8 @@ func TestOverlayControllerStartClosesPreviousWindow(t *testing.T) {
 func TestOverlayControllerStopClosesWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	profile := &config.ProfileConfig{
-		ID:          "default-racing",
-		DisplayMode: config.ModeRacing,
-		Widgets: []config.WidgetConfig{
-			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 0, Y: 0, W: 100, H: 50}},
-		},
-	}
 
-	_, err := controller.Start(profile)
+	_, err := controller.Start(racingDocument("default-racing", config.ModeRacing))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,15 +125,8 @@ func TestOverlayControllerStopClosesWindow(t *testing.T) {
 func TestOverlayControllerStreamingDoesNotCreateDesktopWindow(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
-	profile := &config.ProfileConfig{
-		ID:          "default-streaming",
-		DisplayMode: config.ModeStreaming,
-		Widgets: []config.WidgetConfig{
-			{ID: "delta", Type: "delta", Enabled: true, Position: config.Rect{X: 0, Y: 0, W: 100, H: 50}},
-		},
-	}
 
-	status, err := controller.Start(profile)
+	status, err := controller.Start(racingDocument("default-streaming", config.ModeStreaming))
 	if err != nil {
 		t.Fatal(err)
 	}

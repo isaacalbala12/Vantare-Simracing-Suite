@@ -12,7 +12,7 @@ import {
 } from "../../calendar/calendar-view-math";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { matchesTierFilter } from "./calendar-filter";
-import { tierStyle, formatInZone } from "./calendar-shared";
+import { tierStyle, tierBadgeStyle, formatInZone } from "./calendar-shared";
 import type { CalendarFilter } from "./CalendarToolbar";
 
 const SPANISH_MONTHS = [
@@ -22,6 +22,14 @@ const SPANISH_MONTHS = [
 
 const HOUR_HEIGHT = 72;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const TIER_TOP_BARS: Record<string, string> = {
+  beginner: "linear-gradient(90deg,transparent 5%,#6B3F1C 25%,#CD7F32 50%,#F5C889 75%,transparent 95%)",
+  intermediate: "linear-gradient(90deg,transparent 5%,#3D4654 25%,#B8BFC8 50%,#F0F4F8 75%,transparent 95%)",
+  advanced: "linear-gradient(90deg,transparent 5%,#7A5C08 25%,#D4A017 50%,#EBB945 75%,transparent 95%)",
+  weekly: "linear-gradient(90deg,transparent 5%,#991b1b 25%,#ff3b3b 50%,#ff6b6b 75%,transparent 95%)",
+  special: "linear-gradient(90deg,transparent 5%,#92400e 25%,#f59e0b 50%,#fbbf24 75%,transparent 95%)",
+};
 
 export type CalendarDayViewProps = {
   anchorDate: Date;
@@ -309,6 +317,8 @@ export function CalendarDayView({
 
               {placedEvents.map((item, idx) => {
                 const tc = item.type === "special" ? tierStyle("special") : tierStyle(item.tier || "weekly");
+                const tierKey = item.type === "special" ? "special" : (item.tier || "weekly");
+                const topBar = TIER_TOP_BARS[tierKey] || TIER_TOP_BARS.weekly;
                 const timeFormatted = formatInZone(item.startTime, timeZone, { hour: "2-digit", minute: "2-digit" });
                 const endFormatted = formatInZone(new Date(item.startTime.getTime() + (item.durationMin || 0) * 60000), timeZone, { hour: "2-digit", minute: "2-digit" });
                 const tooltip = `${item.type === "special" ? "★ " : ""}${item.label} · ${tierShort(item.tier || item.type)} · ${timeFormatted}-${endFormatted}${item.track ? ` · ${item.track}` : ""}`;
@@ -319,25 +329,45 @@ export function CalendarDayView({
                     data-testid={`calendar-day-event-${idx}`}
                     title={tooltip}
                     onClick={() => onTierClick?.(item.type === "special" ? "special" : (item.tier as CalendarFilter))}
-                    className="absolute z-20 rounded px-2 py-1 text-xs flex flex-col justify-between overflow-hidden cursor-pointer leading-tight"
+                    className="absolute z-20 rounded-lg overflow-hidden cursor-pointer group transition-all hover:scale-[1.02]"
                     style={{
                       top: item.top,
                       left: item.left,
                       width: item.width,
                       height: item.height,
-                      background: tc.bg,
-                      border: `1px solid ${tc.border}`,
-                      color: tc.text,
+                      background: "rgba(15,15,15,.7)",
+                      border: "1px solid rgba(255,255,255,.05)",
                     }}
                   >
-                    <div className="font-bold truncate pr-3 leading-tight">
-                      {item.type === "special" ? "★ " : ""}
-                      {item.label}
-                    </div>
-                    <div className="font-mono text-[9px] opacity-75 mt-0.5 truncate">
-                      {item.track ? `${item.track} · ` : ""}
-                      {timeFormatted} - {endFormatted}
-                      {item.durationMin > 0 ? ` (${item.durationMin}m)` : ""}
+                    {/* Top gradient bar — visible on hover */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: topBar }}
+                    />
+                    {/* Hover glow */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                      style={{ background: `linear-gradient(180deg,${tc.accent}14 0%,transparent 40%)` }}
+                    />
+                    {/* Content */}
+                    <div className="px-2.5 py-2 relative h-full flex flex-col justify-center gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="shrink-0 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-[.15em]"
+                          style={tierBadgeStyle(tc.accent)}
+                        >
+                          {tierShort(tierKey).slice(0, 1)}
+                        </span>
+                        <span className="font-bold text-[11px] text-white truncate leading-tight">
+                          {item.type === "special" ? "★ " : ""}
+                          {item.label}
+                        </span>
+                      </div>
+                      <div className="font-mono text-[9px] text-white/40 truncate">
+                        {item.track ? `${item.track} · ` : ""}
+                        {timeFormatted} - {endFormatted}
+                        {item.durationMin > 0 ? ` (${item.durationMin}m)` : ""}
+                      </div>
                     </div>
                   </div>
                 );

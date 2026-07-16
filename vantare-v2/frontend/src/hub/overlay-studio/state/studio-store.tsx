@@ -1,0 +1,409 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { useAccess } from "../../../lib/access";
+import type { AccessContext } from "../../../lib/access-policy";
+import { DEFAULT_STUDIO_ACCESS } from "../access/studio-access";
+import type {
+  ProfileDocumentV3,
+  SessionLayoutType,
+  SessionLayoutV3,
+} from "../../../overlay/core/profile-document";
+import type { MockLocationScenario, MockSessionScenario } from "../../../overlay/core/mock-scenarios";
+import {
+  assertCommandAccess,
+  StudioAccessError,
+  validateDraftAccess,
+} from "../access/studio-access";
+import { upgradeProfileVisualConfigs } from "../../../overlay/core/visual-config-migration";
+import {
+  commitStudioCommand,
+  discardStudioHistory,
+  createStudioHistory,
+  isStudioHistoryDirty,
+  markStudioHistorySaved,
+  redoStudioHistory,
+  undoStudioHistory,
+  type StudioHistory,
+} from "./studio-history";
+import { resolveSessionLayout } from "./session-layouts";
+import type { StudioCommand } from "./studio-command";
+import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
+import { buildHistoryFromRecovery, createStudioRecoveryStore } from "./studio-recovery";
+
+export type StudioSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
+
+export type StudioPreviewState = {
+  source: "mock" | "live";
+  mockSession: MockSessionScenario;
+  mockLocation: MockLocationScenario;
+  zoom: "fit" | 50 | 75 | 100 | 125 | 150;
+  backgroundId: string;
+  safeArea: boolean;
+};
+
+const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
+  source: "mock",
+  mockSession: "practice",
+  mockLocation: "track",
+  zoom: "fit",
+  backgroundId: "grid",
+  safeArea: false,
+};
+
+type StudioDocumentContextValue = {
+  access: AccessContext;
+  document: ProfileDocumentV3 | null;
+  savedDocument: ProfileDocumentV3 | null;
+  revision: string;
+  activeLayout: SessionLayoutV3 | null;
+  activeSession: SessionLayoutType;
+  selectedWidgetId: string | null;
+  dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  saveState: StudioSaveState;
+  /** Fatal profile load failure only — do not use for access or save errors. */
+  lastError: string | null;
+  accessNotice: string | null;
+  visuallyMigratedWidgetIds: readonly string[];
+  dispatch(command: StudioCommand): void;
+  selectWidget(id: string | null): void;
+  selectSession(type: SessionLayoutType): void;
+  save(): Promise<StudioSaveResult>;
+  undo(): void;
+  redo(): void;
+  discardAll(): void;
+  acceptRecovery(recoveredDocument: ProfileDocumentV3): void;
+  dismissAccessNotice(): void;
+  notifyAccessDenied(message: string): void;
+};
+
+type StudioPreviewContextValue = {
+  preview: StudioPreviewState;
+  setPreview(patch: Partial<StudioPreviewState>): void;
+};
+
+const StudioDocumentContext = createContext<StudioDocumentContextValue | null>(null);
+const StudioPreviewContext = createContext<StudioPreviewContextValue | null>(null);
+
+function buildInitialHistory(loadedDocument: ProfileDocumentV3): {
+  history: StudioHistory;
+  migratedWidgetIds: string[];
+} {
+  const upgrade = upgradeProfileVisualConfigs(loadedDocument);
+  const history = {
+    ...createStudioHistory(upgrade.document),
+    saved: structuredClone(loadedDocument),
+  };
+  return {
+    history,
+    migratedWidgetIds: upgrade.migratedWidgetIds,
+  };
+}
+
+export function StudioProvider(props: {
+  client: StudioProfileClient;
+  initialFile: string;
+  children: ReactNode;
+  recoveryStorage?: Storage | null;
+  recoveryWriteDelayMs?: number;
+  access?: AccessContext;
+}): React.ReactElement {
+  const {
+    client,
+    initialFile,
+    children,
+    recoveryStorage = null,
+    recoveryWriteDelayMs = 300,
+    access: accessOverride,
+  } = props;
+  const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
+  const [history, setHistory] = useState<StudioHistory | null>(null);
+  const [revision, setRevision] = useState<string>("");
+  const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<StudioSaveState>("idle");
+  const [accessNotice, setAccessNotice] = useState<string | null>(null);
+  const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
+  const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const recoveryStore = useMemo(
+    () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
+    [recoveryStorage],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setSaveState("idle");
+    setAccessNotice(null);
+    setLoadError(null);
+
+    void client.load(initialFile).then(
+      (loaded) => {
+        if (cancelled) {
+          return;
+        }
+        const initial = buildInitialHistory(loaded.document);
+        setHistory(initial.history);
+        setRevision(loaded.revision);
+        setVisuallyMigratedWidgetIds(initial.migratedWidgetIds);
+        setActiveSession("general");
+        setSelectedWidgetId(null);
+      },
+      (error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "failed to load studio profile";
+        setLoadError(message);
+        setHistory(null);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client, initialFile]);
+
+  const document = history?.present ?? null;
+  const dirty = history ? isStudioHistoryDirty(history) : false;
+  const canUndo = (history?.past.length ?? 0) > 0;
+  const canRedo = (history?.future.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (!recoveryStore || !history || !document || !dirty) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      recoveryStore.write({
+        version: 1,
+        profileId: document.id,
+        baseRevision: revision,
+        capturedAt: new Date().toISOString(),
+        document,
+      });
+    }, recoveryWriteDelayMs);
+    return () => window.clearTimeout(timeout);
+  }, [recoveryStore, history, document, dirty, revision, recoveryWriteDelayMs]);
+
+  const activeLayout = useMemo(() => {
+    if (!document) {
+      return null;
+    }
+    return resolveSessionLayout(document, activeSession);
+  }, [document, activeSession]);
+
+  const dispatch = useCallback(
+    (command: StudioCommand) => {
+      setHistory((current) => {
+        if (!current?.present) {
+          return current;
+        }
+        try {
+          assertCommandAccess(
+            access,
+            command,
+            current.present,
+            command.type === "widget/apply-design" ? command.design : undefined,
+          );
+        } catch (error) {
+          if (error instanceof StudioAccessError) {
+            setAccessNotice(error.message);
+            return current;
+          }
+          const message =
+            error instanceof Error ? error.message : "studio access denied";
+          setAccessNotice(message);
+          return current;
+        }
+        setAccessNotice(null);
+        return commitStudioCommand(current, command);
+      });
+      setSaveState("idle");
+    },
+    [access],
+  );
+
+  const undo = useCallback(() => {
+    setHistory((current) => (current ? undoStudioHistory(current) : current));
+  }, []);
+
+  const redo = useCallback(() => {
+    setHistory((current) => (current ? redoStudioHistory(current) : current));
+  }, []);
+
+  const discardAll = useCallback(() => {
+    setHistory((current) => {
+      if (!current) {
+        return current;
+      }
+      if (recoveryStore && current.saved) {
+        recoveryStore.clear(current.saved.id);
+      }
+      return discardStudioHistory(current);
+    });
+    setSaveState("idle");
+    setAccessNotice(null);
+    setVisuallyMigratedWidgetIds([]);
+  }, [recoveryStore]);
+
+  const dismissAccessNotice = useCallback(() => {
+    setAccessNotice(null);
+  }, []);
+
+  const notifyAccessDenied = useCallback((message: string) => {
+    setAccessNotice(message);
+  }, []);
+
+  const acceptRecovery = useCallback(
+    (recoveredDocument: ProfileDocumentV3) => {
+      setHistory((current) => {
+        if (!current) {
+          return current;
+        }
+        return buildHistoryFromRecovery(current.saved, recoveredDocument);
+      });
+    },
+    [],
+  );
+
+  const save = useCallback(async (): Promise<StudioSaveResult> => {
+    if (!history || !document || !history.saved) {
+      return { status: "error", message: "studio profile is not loaded" };
+    }
+    const draftValidation = validateDraftAccess(access, history.saved, document);
+    if (!draftValidation.allowed) {
+      setSaveState("error");
+      setAccessNotice(draftValidation.reason);
+      return { status: "error", message: draftValidation.reason };
+    }
+    setSaveState("saving");
+    setAccessNotice(null);
+    const result = await client.save({ document, expectedRevision: revision });
+    if (result.status === "saved") {
+      setHistory((current) =>
+        current ? markStudioHistorySaved({ ...current, present: result.document }, result.document) : current,
+      );
+      if (recoveryStore) {
+        recoveryStore.clear(result.document.id);
+      }
+      setRevision(result.revision);
+      setSaveState("saved");
+      setVisuallyMigratedWidgetIds([]);
+      return result;
+    }
+    if (result.status === "conflict") {
+      setSaveState("conflict");
+      setAccessNotice(result.message);
+      return result;
+    }
+    setSaveState("error");
+    setAccessNotice(result.message);
+    return result;
+  }, [access, client, document, history, recoveryStore, revision]);
+
+  const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
+    setPreviewState((current) => ({ ...current, ...patch }));
+  }, []);
+
+  const documentValue = useMemo<StudioDocumentContextValue>(
+    () => ({
+      access,
+      document,
+      savedDocument: history?.saved ?? null,
+      revision,
+      activeLayout,
+      activeSession,
+      selectedWidgetId,
+      dirty,
+      canUndo,
+      canRedo,
+      saveState,
+      lastError: loadError,
+      accessNotice,
+      visuallyMigratedWidgetIds,
+      dispatch,
+      selectWidget: setSelectedWidgetId,
+      selectSession: setActiveSession,
+      save,
+      undo,
+      redo,
+      discardAll,
+      acceptRecovery,
+      dismissAccessNotice,
+      notifyAccessDenied,
+    }),
+    [
+      access,
+      document,
+      history,
+      revision,
+      activeLayout,
+      activeSession,
+      selectedWidgetId,
+      dirty,
+      canUndo,
+      canRedo,
+      saveState,
+      loadError,
+      accessNotice,
+      visuallyMigratedWidgetIds,
+      dispatch,
+      save,
+      undo,
+      redo,
+      discardAll,
+      acceptRecovery,
+      dismissAccessNotice,
+      notifyAccessDenied,
+    ],
+  );
+
+  const previewValue = useMemo<StudioPreviewContextValue>(
+    () => ({
+      preview,
+      setPreview,
+    }),
+    [preview, setPreview],
+  );
+
+  return (
+    <StudioDocumentContext.Provider value={documentValue}>
+      <StudioPreviewContext.Provider value={previewValue}>{children}</StudioPreviewContext.Provider>
+    </StudioDocumentContext.Provider>
+  );
+}
+
+export function useStudioDocument(): StudioDocumentContextValue {
+  const context = useContext(StudioDocumentContext);
+  if (!context) {
+    throw new Error("useStudioDocument must be used inside StudioProvider");
+  }
+  return context;
+}
+
+export function useStudioPreview(): StudioPreviewContextValue {
+  const context = useContext(StudioPreviewContext);
+  if (!context) {
+    throw new Error("useStudioPreview must be used inside StudioProvider");
+  }
+  return context;
+}
+
+export function ConnectedStudioProvider(props: {
+  client: StudioProfileClient;
+  initialFile: string;
+  children: ReactNode;
+  recoveryStorage?: Storage | null;
+  recoveryWriteDelayMs?: number;
+}): React.ReactElement {
+  const access = useAccess();
+  return <StudioProvider {...props} access={access} />;
+}

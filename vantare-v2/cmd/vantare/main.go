@@ -587,6 +587,7 @@ func main() {
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
+	var studioProfileSvc *app.StudioProfileService
 	var rtSampler *ops.RuntimeSampler
 	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
@@ -666,7 +667,7 @@ func main() {
 		stopOverlay: func() {
 			overlayController.Stop()
 			if overlayRunning.Load() {
-				resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+				resetOverlayDisplayMode(overlayController, studioProfileSvc)
 				overlayRunning.Store(false)
 			}
 		},
@@ -796,13 +797,24 @@ func main() {
 		log.Printf("license:reset-device ok")
 	})
 
-	// Preset service for widget presets (WidgetStudio only)
-	presetSvc := app.NewPresetService(cfgDir, emitter)
-	if err := presetSvc.Load(); err != nil {
-		log.Printf("warning: could not load presets: %v (using empty)", err)
+	// Overlay Studio V3 profile persistence (canonical runtime document owner)
+	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
+		log.Printf("studio profile saved: %s revision=%s", saved.Path, saved.Revision)
+		refreshActiveOverlayAfterSave(overlayController, studioProfileSvc, &overlayRunning, saved)
+	})
+	studioProfileSvc.SetProfilesDir(cfgDir)
+	if _, err := studioProfileSvc.Load(resolvedProfilePath); err != nil {
+		log.Printf("warning: could not load studio V3 profile %s: %v", resolvedProfilePath, err)
 	}
-	wailsApp.RegisterService(application.NewService(presetSvc))
-	presetSvc.RegisterHandlers(wailsApp)
+	hubSvc.SetStudioProfileService(studioProfileSvc)
+	studioProfileSvc.RegisterHandlers(wailsApp)
+
+	// Widget design library for Overlay Studio V3
+	designSvc := app.NewWidgetDesignService(cfgDir, emitter)
+	if err := designSvc.Load(); err != nil {
+		log.Printf("warning: could not load widget designs: %v (using empty)", err)
+	}
+	designSvc.RegisterHandlers(wailsApp)
 
 	// Updater service
 	settingsPath := filepath.Join(cfgDir, "updater-settings.json")
@@ -899,6 +911,10 @@ func main() {
 		if path, err := hubSvc.ResolveProfilePath(activeID); err == nil {
 			if err := profileSvc.LoadActiveProfile(path); err != nil {
 				log.Printf("warning: could not load active profile %s: %v", activeID, err)
+			} else if studioProfileSvc != nil {
+				if err := studioProfileSvc.LoadActiveProfile(path); err != nil {
+					log.Printf("warning: could not load active studio profile %s: %v", activeID, err)
+				}
 			}
 		} else {
 			log.Printf("warning: active profile %s not found: %v", activeID, err)
@@ -915,7 +931,7 @@ func main() {
 	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, vapp)
 	wailsApp.RegisterService(application.NewService(diagSvc))
 
-	// Set profiles directory for profile cycling
+	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
 
 	// Hotkey manager
@@ -924,50 +940,67 @@ func main() {
 
 	// Register default hotkey actions
 	hkMgr.Register("toggleOverlay", settingsSvc.Settings().Hotkeys["toggleOverlay"], func() {
-		if overlayController == nil {
+		if hubSvc == nil {
 			return
 		}
-		status := overlayController.Status()
-		if status.Running {
-			overlayController.Stop()
-			resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+		if overlayRunning.Load() {
+			hubSvc.StopOverlay()
+			resetOverlayDisplayMode(overlayController, studioProfileSvc)
 			overlayRunning.Store(false)
-		} else {
-			// Start with current profile
-			profile := profileSvc.Profile()
-			if profile != nil {
-				if _, err := overlayController.Start(profile); err != nil {
-					log.Printf("hotkey toggle overlay error: %v", err)
-					return
-				}
-				overlayRunning.Store(true)
-				// Always open in racing mode; edit mode is entered explicitly via
-				// the toggle-edit-mode hotkey.
-				resetOverlayDisplayMode(overlayController, profileSvc, emitter)
-			}
+			return
 		}
+		status, err := hubSvc.StartActiveOverlay()
+		if err != nil {
+			log.Printf("hotkey toggle overlay error: %v", err)
+			if !status.Running {
+				overlayRunning.Store(false)
+			}
+			return
+		}
+		overlayRunning.Store(status.Running)
+		resetOverlayDisplayMode(overlayController, studioProfileSvc)
 	})
 
 	hkMgr.Register("nextProfile", settingsSvc.Settings().Hotkeys["nextProfile"], func() {
-		if !overlayRunning.Load() {
+		if !overlayRunning.Load() || studioProfileSvc == nil {
 			return
 		}
-		if err := profileSvc.NextProfile(); err != nil {
+		if err := studioProfileSvc.NextProfile(); err != nil {
 			log.Printf("hotkey next profile error: %v", err)
+			return
+		}
+		if status, err := hubSvc.StartActiveOverlay(); err != nil {
+			log.Printf("hotkey next profile restart overlay error: %v", err)
+			if !status.Running {
+				overlayRunning.Store(false)
+			}
+		} else {
+			overlayRunning.Store(status.Running)
+			resetOverlayDisplayMode(overlayController, studioProfileSvc)
 		}
 	})
 
 	hkMgr.Register("prevProfile", settingsSvc.Settings().Hotkeys["prevProfile"], func() {
-		if !overlayRunning.Load() {
+		if !overlayRunning.Load() || studioProfileSvc == nil {
 			return
 		}
-		if err := profileSvc.PreviousProfile(); err != nil {
+		if err := studioProfileSvc.PreviousProfile(); err != nil {
 			log.Printf("hotkey prev profile error: %v", err)
+			return
+		}
+		if status, err := hubSvc.StartActiveOverlay(); err != nil {
+			log.Printf("hotkey prev profile restart overlay error: %v", err)
+			if !status.Running {
+				overlayRunning.Store(false)
+			}
+		} else {
+			overlayRunning.Store(status.Running)
+			resetOverlayDisplayMode(overlayController, studioProfileSvc)
 		}
 	})
 
 	hkMgr.Register("toggleEditMode", settingsSvc.Settings().Hotkeys["toggleEditMode"], func() {
-		handleToggleEditMode(overlayController, profileSvc, hubSvc, &overlayRunning, emitter)
+		handleOpenOverlayStudio(studioProfileSvc, emitter)
 	})
 
 	// Silent update check on startup (after a short delay so the UI is ready).
@@ -1103,7 +1136,7 @@ func main() {
 
 	// Keep a helper to rebuild hotkey registrations when settings change.
 	rebuildHotkeys := func() {
-		hkMgr.UpdateFromSettings(settingsSvc.Settings(), buildHotkeyActionMap(overlayController, profileSvc, hubSvc, &overlayRunning, emitter))
+		hkMgr.UpdateFromSettings(settingsSvc.Settings(), buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter))
 	}
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
@@ -1250,7 +1283,7 @@ func main() {
 		// Stop overlay if running (no hot-swap).
 		if overlayRunning.Load() {
 			hubSvc.StopOverlay()
-			resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+			resetOverlayDisplayMode(overlayController, studioProfileSvc)
 			overlayRunning.Store(false)
 		}
 		if err := hubSvc.SetActiveProfile(target); err != nil {
@@ -1281,14 +1314,12 @@ func main() {
 			return
 		}
 		overlayRunning.Store(status.Running)
-		// Always open the desktop overlay in racing mode. Edit mode is entered
-		// explicitly via the toggle-edit-mode hotkey.
-		resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+		resetOverlayDisplayMode(overlayController, studioProfileSvc)
 	})
 
 	wailsApp.Event.On("overlay:stop", func(event *application.CustomEvent) {
 		hubSvc.StopOverlay()
-		resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+		resetOverlayDisplayMode(overlayController, studioProfileSvc)
 		overlayRunning.Store(false)
 	})
 
@@ -1308,11 +1339,11 @@ func main() {
 			return
 		}
 		overlayRunning.Store(status.Running)
-		resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+		resetOverlayDisplayMode(overlayController, studioProfileSvc)
 	})
 
 	wailsApp.Event.On("overlay:toggle-edit-mode", func(event *application.CustomEvent) {
-		handleToggleEditMode(overlayController, profileSvc, hubSvc, &overlayRunning, emitter)
+		handleOpenOverlayStudio(studioProfileSvc, emitter)
 	})
 
 	wailsApp.Event.On("profile:set-mode", func(event *application.CustomEvent) {
@@ -1863,15 +1894,15 @@ func (o *wailsOverlayWindow) Close() {
 	o.w.Close()
 }
 
-func (o *wailsOverlayWindow) ApplyProfileMode(profile *config.ProfileConfig) error {
-	if o.mgr == nil || profile == nil {
+func (o *wailsOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
+	if o.mgr == nil || document == nil {
 		return fmt.Errorf("overlay window not ready for mode application")
 	}
-	o.mgr.ApplyProfile(profile, false)
+	o.mgr.ApplyProfileV3(document, false)
 	return nil
 }
 
-func (f *wailsOverlayFactory) NewOverlayWindow(profile *config.ProfileConfig, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
+func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	w := f.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:             "Vantare Overlay",
 		Width:             1920,
@@ -1896,9 +1927,9 @@ func (f *wailsOverlayFactory) NewOverlayWindow(profile *config.ProfileConfig, or
 
 	handle := &wailsWindowHandle{w: w}
 	mgr := window.NewManager(handle, 0)
-	// Apply the profile's display mode instead of hard-coding passthrough.
-	// This guarantees ModeRacing starts click-through and ModeEdit starts interactive.
-	mgr.ApplyProfile(profile, false)
+	// Apply the profile document display mode instead of hard-coding passthrough.
+	// ModeRacing starts click-through; ModeEdit starts interactive.
+	mgr.ApplyProfileV3(document, false)
 	return &wailsOverlayWindow{w: w, handle: handle, mgr: mgr}, nil
 }
 
@@ -1919,194 +1950,146 @@ func readProfileTarget(event *application.CustomEvent) string {
 	return data.ID
 }
 
-// overlayStarter is the subset of HubService needed to start a desktop overlay.
-type overlayStarter interface {
-	StartActiveOverlay() (app.OverlayStatus, error)
+// refreshActiveOverlayAfterSave reloads the running desktop overlay when Studio
+// saves the same profile that is currently active in the runtime.
+func refreshActiveOverlayAfterSave(
+	overlayController *app.OverlayController,
+	studioProfileSvc *app.StudioProfileService,
+	overlayRunning *atomic.Bool,
+	saved app.StudioProfileSaved,
+) {
+	if overlayController == nil || studioProfileSvc == nil || !overlayRunning.Load() {
+		return
+	}
+	status := overlayController.Status()
+	if !status.Running {
+		return
+	}
+	if saved.Path == "" || studioProfileSvc.Path() != saved.Path {
+		return
+	}
+	if saved.Document == nil {
+		return
+	}
+	if _, err := overlayController.Start(saved.Document); err != nil {
+		log.Printf("overlay refresh after save error: %v", err)
+		return
+	}
+	studioProfileSvc.EmitRuntimeLoaded()
+	resetOverlayDisplayMode(overlayController, studioProfileSvc)
 }
 
-// emitEditModeChanged notifies the frontend of the current edit mode.
-func emitEditModeChanged(emitter app.EventEmitter, mode config.DisplayMode) {
+// handleOpenOverlayStudio requests Hub navigation to Overlay Studio for the
+// active profile. Runtime editing chrome is never toggled from the hotkey.
+func handleOpenOverlayStudio(studioProfileSvc *app.StudioProfileService, emitter app.EventEmitter) {
 	if emitter == nil {
 		return
 	}
-	emitter.Emit("overlay:edit-mode-changed", map[string]any{"mode": string(mode)})
+	payload := map[string]any{}
+	if studioProfileSvc != nil {
+		if doc := studioProfileSvc.Document(); doc != nil && doc.ID != "" {
+			payload["profileId"] = doc.ID
+		}
+		if path := studioProfileSvc.Path(); path != "" {
+			payload["file"] = filepath.Base(path)
+		}
+	}
+	emitter.Emit("hub:open-overlay-studio", payload)
 }
 
-// applyDisplayModeToWindow applies the current profile's display mode to the
-// running overlay window. ProfileService has no window manager in main, so the
-// real window state is updated here.
-func applyDisplayModeToWindow(overlayController *app.OverlayController, profile *config.ProfileConfig) error {
-	if overlayController == nil || profile == nil {
-		return fmt.Errorf("cannot apply mode: missing controller or profile")
-	}
-	win := overlayController.CurrentWindow()
-	if win == nil {
-		return fmt.Errorf("no overlay window to apply mode")
-	}
-	return win.ApplyProfileMode(profile)
-}
-
-// handleToggleEditMode toggles edit mode on the running overlay. If the overlay
-// is not running, it opens the active profile and enters edit mode immediately.
-// The profile is always left in a well-defined mode (racing or edit) and the
-// frontend is notified via overlay:edit-mode-changed.
-func handleToggleEditMode(
-	overlayController *app.OverlayController,
-	profileSvc *app.ProfileService,
-	starter overlayStarter,
-	overlayRunning *atomic.Bool,
-	emitter app.EventEmitter,
-) {
-	if overlayController == nil || profileSvc == nil {
+// resetOverlayDisplayMode forces the active V3 document back to racing mode and
+// applies it to the running window when one exists.
+func resetOverlayDisplayMode(overlayController *app.OverlayController, studioProfileSvc *app.StudioProfileService) {
+	if studioProfileSvc == nil {
 		return
 	}
-
-	status := overlayController.Status()
-	if !status.Running {
-		if starter == nil {
-			return
-		}
-		profile := profileSvc.Profile()
-		if profile == nil {
-			return
-		}
-		// Ensure a clean runtime start, then switch to edit mode.
-		if profile.DisplayMode == config.ModeEdit {
-			if err := profileSvc.SetDisplayMode(config.ModeRacing); err != nil {
-				log.Printf("hotkey toggle edit mode reset error: %v", err)
-				return
-			}
-		}
-		newStatus, err := starter.StartActiveOverlay()
-		if err != nil {
-			log.Printf("hotkey toggle edit mode start overlay error: %v", err)
-			// StartActiveOverlay stops the previous window before starting a
-			// new one; on failure there may be no window left, so sync the
-			// flag to avoid a dangling true value. Do not emit
-			// overlay:edit-mode-changed on this error path.
-			if !newStatus.Running {
-				overlayRunning.Store(false)
-			}
-			return
-		}
-		if !newStatus.Running {
-			// No desktop window (e.g. streaming profile); do not enter edit mode.
-			return
-		}
-		overlayRunning.Store(newStatus.Running)
-		if err := profileSvc.SetDisplayMode(config.ModeEdit); err != nil {
-			log.Printf("hotkey toggle edit mode error: %v", err)
-			return
-		}
-		if err := applyDisplayModeToWindow(overlayController, profileSvc.Profile()); err != nil {
-			log.Printf("hotkey toggle edit mode apply window error: %v", err)
-			return
-		}
-		profileSvc.EmitLoaded()
-		emitEditModeChanged(emitter, config.ModeEdit)
+	document := studioProfileSvc.Document()
+	if document == nil || document.DisplayMode == config.ModeRacing {
 		return
 	}
-
-	profile := profileSvc.Profile()
-	if profile == nil {
+	if err := studioProfileSvc.SetDisplayMode(config.ModeRacing); err != nil {
+		log.Printf("overlay reset display mode error: %v", err)
 		return
 	}
-	target := config.ModeEdit
-	if profile.DisplayMode == config.ModeEdit {
-		target = config.ModeRacing
-	}
-	if err := profileSvc.SetDisplayMode(target); err != nil {
-		log.Printf("hotkey toggle edit mode error: %v", err)
-		return
-	}
-	if err := applyDisplayModeToWindow(overlayController, profileSvc.Profile()); err != nil {
-		log.Printf("hotkey toggle edit mode apply window error: %v", err)
-		return
-	}
-	profileSvc.EmitLoaded()
-	emitEditModeChanged(emitter, target)
-}
-
-// resetOverlayDisplayMode forces the active profile back to racing mode and
-// applies it to the running window when one exists. It is called when the
-// overlay is started/stopped so the next start always opens in runtime mode,
-// even if the previous edit session left the profile in edit mode.
-func resetOverlayDisplayMode(overlayController *app.OverlayController, profileSvc *app.ProfileService, emitter app.EventEmitter) {
-	if profileSvc == nil {
-		return
-	}
-	profile := profileSvc.Profile()
-	if profile == nil {
-		return
-	}
-	if profile.DisplayMode == config.ModeRacing {
-		return
-	}
-	if err := profileSvc.SetDisplayMode(config.ModeRacing); err != nil {
-		log.Printf("overlay stop reset display mode error: %v", err)
-		return
-	}
-	if overlayController != nil && overlayController.CurrentWindow() != nil {
-		if err := applyDisplayModeToWindow(overlayController, profileSvc.Profile()); err != nil {
+	document = studioProfileSvc.Document()
+	if overlayController != nil && overlayController.CurrentWindow() != nil && document != nil {
+		if err := overlayController.CurrentWindow().ApplyProfileMode(document); err != nil {
 			log.Printf("overlay reset display mode apply window error: %v", err)
 		}
 	}
-	profileSvc.EmitLoaded()
-	emitEditModeChanged(emitter, config.ModeRacing)
+	studioProfileSvc.EmitRuntimeLoaded()
 }
 
 // buildHotkeyActionMap returns the action map used for hotkey registration and
 // rebuild. Keeping this in a separate function makes it testable and guarantees
 // that rebuildHotkeys includes every action (including toggleEditMode).
 func buildHotkeyActionMap(
-	overlayController *app.OverlayController,
-	profileSvc *app.ProfileService,
 	hubSvc *app.HubService,
+	studioProfileSvc *app.StudioProfileService,
+	overlayController *app.OverlayController,
 	overlayRunning *atomic.Bool,
 	emitter app.EventEmitter,
 ) map[string]func() {
 	return map[string]func(){
 		"toggleOverlay": func() {
-			if overlayController == nil {
+			if hubSvc == nil {
 				return
 			}
-			status := overlayController.Status()
-			if status.Running {
-				overlayController.Stop()
-				resetOverlayDisplayMode(overlayController, profileSvc, emitter)
+			if overlayRunning.Load() {
+				hubSvc.StopOverlay()
+				resetOverlayDisplayMode(overlayController, studioProfileSvc)
 				overlayRunning.Store(false)
-			} else {
-				profile := profileSvc.Profile()
-				if profile != nil {
-					if _, err := overlayController.Start(profile); err != nil {
-						log.Printf("hotkey toggle overlay error: %v", err)
-						return
-					}
-					overlayRunning.Store(true)
-					// Always open in racing mode; edit mode is entered explicitly via
-					// the toggle-edit-mode hotkey.
-					resetOverlayDisplayMode(overlayController, profileSvc, emitter)
-				}
+				return
 			}
+			status, err := hubSvc.StartActiveOverlay()
+			if err != nil {
+				log.Printf("hotkey toggle overlay error: %v", err)
+				if !status.Running {
+					overlayRunning.Store(false)
+				}
+				return
+			}
+			overlayRunning.Store(status.Running)
+			resetOverlayDisplayMode(overlayController, studioProfileSvc)
 		},
 		"nextProfile": func() {
-			if !overlayRunning.Load() {
+			if !overlayRunning.Load() || studioProfileSvc == nil || hubSvc == nil {
 				return
 			}
-			if err := profileSvc.NextProfile(); err != nil {
+			if err := studioProfileSvc.NextProfile(); err != nil {
 				log.Printf("hotkey next profile error: %v", err)
+				return
+			}
+			if status, err := hubSvc.StartActiveOverlay(); err != nil {
+				log.Printf("hotkey next profile restart overlay error: %v", err)
+				if !status.Running {
+					overlayRunning.Store(false)
+				}
+			} else {
+				overlayRunning.Store(status.Running)
+				resetOverlayDisplayMode(overlayController, studioProfileSvc)
 			}
 		},
 		"prevProfile": func() {
-			if !overlayRunning.Load() {
+			if !overlayRunning.Load() || studioProfileSvc == nil || hubSvc == nil {
 				return
 			}
-			if err := profileSvc.PreviousProfile(); err != nil {
+			if err := studioProfileSvc.PreviousProfile(); err != nil {
 				log.Printf("hotkey prev profile error: %v", err)
+				return
+			}
+			if status, err := hubSvc.StartActiveOverlay(); err != nil {
+				log.Printf("hotkey prev profile restart overlay error: %v", err)
+				if !status.Running {
+					overlayRunning.Store(false)
+				}
+			} else {
+				overlayRunning.Store(status.Running)
+				resetOverlayDisplayMode(overlayController, studioProfileSvc)
 			}
 		},
 		"toggleEditMode": func() {
-			handleToggleEditMode(overlayController, profileSvc, hubSvc, overlayRunning, emitter)
+			handleOpenOverlayStudio(studioProfileSvc, emitter)
 		},
 	}
 }

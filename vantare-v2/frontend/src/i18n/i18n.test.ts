@@ -229,12 +229,5 @@ describe("widget studio translations", () => {
       expect(es["studio.overview"]).toBe("Resumen");
       expect(en["studio.overview"]).toBe("Overview");
     });
-
-    it("has draft action labels", () => {
-      expect(es["studio.saveToWidget"]).toBe("Guardar en widget");
-      expect(en["studio.saveToWidget"]).toBe("Save to widget");
-      expect(es["studio.discard"]).toBe("Descartar");
-      expect(en["studio.discard"]).toBe("Discard");
-    });
   });
 });

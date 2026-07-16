@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ProfileConfig, WidgetConfig } from "../../lib/profile";
-import { getOfficialDesign, listOfficialDesigns, applyOfficialDesignToProfile } from "../../hub/widgets/widget-design-gallery";
+import type { ProfileConfig, WidgetConfig, WidgetVariantConfig } from "../../lib/profile";
 import {
   getCanonicalPreviewTelemetry,
   getCanonicalRelativeRows,
@@ -15,7 +14,12 @@ import {
   CANONICAL_THROTTLE_VALUE,
   CANONICAL_BRAKE_VALUE,
   CANONICAL_CLUTCH_VALUE,
+  CANONICAL_RELATIVE_FILTERS,
   applyCanonicalPreviewOverrides,
+  CORE_TELEMETRY_STATES,
+  createWidgetPreviewTelemetry,
+  createDisconnectedWidgetPreviewTelemetry,
+  createStaleWidgetPreviewTelemetry,
 } from "./widget-preview-fixtures";
 
 function makeWidget(type: string, variantId?: string): WidgetConfig {
@@ -29,15 +33,26 @@ function makeWidget(type: string, variantId?: string): WidgetConfig {
   };
 }
 
-function makeProfile(widget: WidgetConfig): ProfileConfig {
+function makeProfile(widget: WidgetConfig, variants: WidgetVariantConfig[] = []): ProfileConfig {
   return {
     id: "profile-test",
     name: "Test",
     displayMode: "racing",
     monitorIndex: 0,
     widgets: [widget],
-    variants: [],
+    variants,
   };
+}
+
+function makeOfficialProfile(
+  widget: WidgetConfig,
+  variant: WidgetVariantConfig,
+): ProfileConfig {
+  const variantId = `official-${variant.id}-${widget.id}`;
+  return makeProfile(
+    { ...widget, variantId },
+    [{ ...variant, id: variantId }],
+  );
 }
 
 describe("widget-preview-fixtures", () => {
@@ -168,10 +183,15 @@ describe("widget-preview-fixtures", () => {
     });
 
     it("overrides columns for official standings design", () => {
-      const design = getOfficialDesign("standings-leaderboard")!;
       const widget = makeWidget("standings");
-      let profile = makeProfile(widget);
-      profile = applyOfficialDesignToProfile(profile, widget.id, design);
+      const profile = makeOfficialProfile(widget, {
+        id: "standings-leaderboard",
+        widgetType: "standings",
+        name: "Standings Leaderboard",
+        templateId: "standings-vantare-default",
+        themeId: "vantare-racing",
+        columns: [{ id: "position", metricId: "position", enabled: true, width: 10 }],
+      });
       const updatedWidget = profile.widgets[0];
       const result = applyCanonicalPreviewOverrides(profile, updatedWidget);
       const variant = result.variants?.find((v) => v.id === updatedWidget.variantId);
@@ -179,24 +199,25 @@ describe("widget-preview-fixtures", () => {
       const colIds = variant!.columns!.map((c) => c.id);
       expect(colIds).toEqual(["position", "driverNumber", "driverName", "gap", "bestLap", "lastLap"]);
     });
+
     it("overrides columns and filters for official relative design", () => {
-      const design = getOfficialDesign("broadcast-pro")!;
       const widget = makeWidget("relative");
-      let profile = makeProfile(widget);
-      profile = applyOfficialDesignToProfile(profile, widget.id, design);
+      const profile = makeOfficialProfile(widget, {
+        id: "broadcast-pro",
+        widgetType: "relative",
+        name: "Broadcast Pro",
+        templateId: "relative-vantare-default",
+        themeId: "broadcast-pro",
+        columns: [{ id: "position", metricId: "position", enabled: true, width: 10 }],
+        filters: { rangeAhead: 4, rangeBehind: 4, classScope: "sameClass" },
+      });
       const updatedWidget = profile.widgets[0];
       const result = applyCanonicalPreviewOverrides(profile, updatedWidget);
       const variant = result.variants?.find((v) => v.id === updatedWidget.variantId);
       expect(variant).toBeDefined();
       const colIds = variant!.columns!.map((c) => c.id);
       expect(colIds).toEqual(["position", "class", "carNumber", "driverName", "gap", "bestLap"]);
-      expect(variant!.filters).toEqual({
-        rangeAhead: 2,
-        rangeBehind: 2,
-        classScope: "all",
-        includePlayer: true,
-        rowHeightMode: "fill",
-      });
+      expect(variant!.filters).toEqual(CANONICAL_RELATIVE_FILTERS);
     });
 
     it("does not override position/x/y/w/h", () => {
@@ -207,108 +228,69 @@ describe("widget-preview-fixtures", () => {
       const resultWidget = result.widgets[0];
       expect(resultWidget.position).toEqual({ x: 100, y: 200, w: 400, h: 500 });
     });
-  });
 
-  describe("parity across official standings designs", () => {
-    it("all official standings designs use the same semantic columns after override", () => {
-      const designs = listOfficialDesigns("standings");
-      expect(designs.length).toBeGreaterThan(0);
-
-      const expectedColIds = CANONICAL_STANDINGS_COLUMNS.map((c) => c.id);
-
-      for (const design of designs) {
-        const widget = makeWidget("standings");
-        let profile = makeProfile(widget);
-        profile = applyOfficialDesignToProfile(profile, widget.id, design);
-        const updatedWidget = profile.widgets[0];
-        profile = applyCanonicalPreviewOverrides(profile, updatedWidget);
-        const variant = profile.variants?.find((v) => v.id === updatedWidget.variantId);
-        expect(variant).toBeDefined();
-        const colIds = variant!.columns!.map((c) => c.id);
-        expect(colIds).toEqual(expectedColIds);
-      }
-    });
-
-    it("all official standings designs enable the same columns after override", () => {
-      const designs = listOfficialDesigns("standings");
-      for (const design of designs) {
-        const widget = makeWidget("standings");
-        let profile = makeProfile(widget);
-        profile = applyOfficialDesignToProfile(profile, widget.id, design);
-        const updatedWidget = profile.widgets[0];
-        profile = applyCanonicalPreviewOverrides(profile, updatedWidget);
-        const variant = profile.variants?.find((v) => v.id === updatedWidget.variantId);
-        for (const col of variant!.columns!) {
-          expect(col.enabled).toBe(true);
-        }
-      }
+    it("preserves visual identity fields on official variants", () => {
+      const widget = makeWidget("standings");
+      const profile = makeOfficialProfile(widget, {
+        id: "standings-vantare-crystal",
+        widgetType: "standings",
+        name: "Crystal",
+        templateId: "standings-vantare-default",
+        themeId: "vantare-crystal",
+        columns: CANONICAL_STANDINGS_COLUMNS,
+      });
+      const updatedWidget = profile.widgets[0];
+      const result = applyCanonicalPreviewOverrides(profile, updatedWidget);
+      const variant = result.variants?.find((v) => v.id === updatedWidget.variantId);
+      expect(variant?.templateId).toBe("standings-vantare-default");
+      expect(variant?.themeId).toBe("vantare-crystal");
     });
   });
 
-  describe("parity across official relative designs", () => {
-    it("all official relative designs use the same semantic columns after override", () => {
-      const designs = listOfficialDesigns("relative");
-      expect(designs.length).toBeGreaterThan(0);
-
-      const expectedColIds = CANONICAL_RELATIVE_COLUMNS.map((c) => c.id);
-
-      for (const design of designs) {
-        const widget = makeWidget("relative");
-        let profile = makeProfile(widget);
-        profile = applyOfficialDesignToProfile(profile, widget.id, design);
-        const updatedWidget = profile.widgets[0];
-        profile = applyCanonicalPreviewOverrides(profile, updatedWidget);
-        const variant = profile.variants?.find((v) => v.id === updatedWidget.variantId);
-        expect(variant).toBeDefined();
-        const colIds = variant!.columns!.map((c) => c.id);
-        expect(colIds).toEqual(expectedColIds);
-      }
+  describe("CORE_TELEMETRY_STATES", () => {
+    it("createWidgetPreviewTelemetry is deterministic across two calls", () => {
+      const first = createWidgetPreviewTelemetry("race");
+      const second = createWidgetPreviewTelemetry("race");
+      expect(JSON.stringify(first)).toBe(JSON.stringify(second));
     });
 
-    it("all official relative designs use canonical filters after override", () => {
-      const designs = listOfficialDesigns("relative");
-      for (const design of designs) {
-        const widget = makeWidget("relative");
-        let profile = makeProfile(widget);
-        profile = applyOfficialDesignToProfile(profile, widget.id, design);
-        const updatedWidget = profile.widgets[0];
-        profile = applyCanonicalPreviewOverrides(profile, updatedWidget);
-        const variant = profile.variants?.find((v) => v.id === updatedWidget.variantId);
-        expect(variant!.filters).toEqual({
-          rangeAhead: 2,
-          rangeBehind: 2,
-          classScope: "all",
-          includePlayer: true,
-          rowHeightMode: "fill",
-        });
-      }
+    it("fresh calls do not share mutable vehicle references", () => {
+      const first = createWidgetPreviewTelemetry("race");
+      const second = createWidgetPreviewTelemetry("race");
+      first.vehicles[0].driverName = "MUTATED";
+      expect(second.vehicles[0].driverName).toBe("ALPINE");
     });
-  });
 
-  describe("regression: base and vantare-crystal official designs keep distinct visual identity", () => {
-    it("does not collapse base and vantare-crystal to the same themeId", () => {
-      const baseDesign = getOfficialDesign("standings-leaderboard")!;
-      const glassDesign = getOfficialDesign("standings-vantare-crystal")!;
+    it("readyRace exposes fields consumed by the four core widgets", () => {
+      const telemetry = CORE_TELEMETRY_STATES.readyRace;
+      expect(telemetry.connected).toBe(true);
+      expect(telemetry.deltaBest).toBe(CANONICAL_DELTA_VALUE);
+      expect(telemetry.throttle).toBe(CANONICAL_THROTTLE_VALUE);
+      expect(telemetry.brake).toBe(CANONICAL_BRAKE_VALUE);
+      expect(telemetry.clutch).toBe(CANONICAL_CLUTCH_VALUE);
+      expect(telemetry.vehicles.length).toBe(CANONICAL_STANDINGS_COUNT);
+      expect(telemetry.vehicles.some((vehicle) => vehicle.isPlayer)).toBe(true);
+      expect(telemetry.vehicles.some((vehicle) => vehicle.timeGapToPlayer != null)).toBe(true);
+    });
 
-      const baseWidget = makeWidget("standings");
-      let baseProfile = makeProfile(baseWidget);
-      baseProfile = applyOfficialDesignToProfile(baseProfile, baseWidget.id, baseDesign);
-      const baseUpdated = baseProfile.widgets[0];
-      baseProfile = applyCanonicalPreviewOverrides(baseProfile, baseUpdated);
-      const baseVariant = baseProfile.variants?.find((v) => v.id === baseUpdated.variantId);
+    it("practice and qualifying scenarios change session metadata only", () => {
+      expect(CORE_TELEMETRY_STATES.readyPractice.sessionName).toBe("PRACTICE1");
+      expect(CORE_TELEMETRY_STATES.readyQualifying.sessionName).toBe("QUALIFY");
+      expect(CORE_TELEMETRY_STATES.readyRace.sessionName).toBe("RACE");
+    });
 
-      const glassWidget = makeWidget("standings");
-      let glassProfile = makeProfile(glassWidget);
-      glassProfile = applyOfficialDesignToProfile(glassProfile, glassWidget.id, glassDesign);
-      const glassUpdated = glassProfile.widgets[0];
-      glassProfile = applyCanonicalPreviewOverrides(glassProfile, glassUpdated);
-      const glassVariant = glassProfile.variants?.find((v) => v.id === glassUpdated.variantId);
+    it("pits scenario marks the player as in pits", () => {
+      const player = CORE_TELEMETRY_STATES.pits.vehicles.find((vehicle) => vehicle.isPlayer);
+      expect(player?.inPits).toBe(true);
+      expect(player?.pitting).toBe(true);
+    });
 
-      expect(baseVariant).toBeDefined();
-      expect(glassVariant).toBeDefined();
-      expect(baseVariant?.themeId).not.toBe("vantare-crystal");
-      expect(glassVariant?.themeId).toBe("vantare-crystal");
-      expect(glassVariant?.templateId).toBeTruthy();
+    it("disconnected and stale states are explicit", () => {
+      expect(createDisconnectedWidgetPreviewTelemetry().connected).toBe(false);
+      expect(createDisconnectedWidgetPreviewTelemetry().vehicles).toEqual([]);
+      expect(createStaleWidgetPreviewTelemetry().connected).toBe(true);
+      expect(createStaleWidgetPreviewTelemetry().vehicles).toEqual([]);
+      expect(createStaleWidgetPreviewTelemetry().playerHasVehicle).toBe(false);
     });
   });
 });

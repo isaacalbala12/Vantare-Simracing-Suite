@@ -83,28 +83,30 @@ var invalidProfileNameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 // ProfileEntry is a lightweight profile descriptor for hub listing.
 type ProfileEntry struct {
-	ID          string                `json:"id"`
-	File        string                `json:"file"` // basename on disk (e.g. example-racing.json)
-	Name        string                `json:"name,omitempty"`
-	DisplayMode config.DisplayMode    `json:"displayMode"`
-	Widgets     int                   `json:"widgets"`
-	Profile     *config.ProfileConfig `json:"profile,omitempty"`
+	ID              string                    `json:"id"`
+	File            string                    `json:"file"` // basename on disk (e.g. example-racing.json)
+	Name            string                    `json:"name,omitempty"`
+	DisplayMode     config.DisplayMode        `json:"displayMode"`
+	Widgets         int                       `json:"widgets"`
+	Profile         *config.ProfileConfig     `json:"profile,omitempty"`
+	PreviewDocument *config.ProfileDocumentV3 `json:"previewDocument,omitempty"`
 }
 
 // OverlayRuntime is the interface HubService uses to start/stop the desktop overlay.
 type OverlayRuntime interface {
-	Start(profile *config.ProfileConfig) (OverlayStatus, error)
+	Start(document *config.ProfileDocumentV3) (OverlayStatus, error)
 	Stop() OverlayStatus
 	Status() OverlayStatus
 }
 
 // HubService manages profile CRUD from the hub frontend.
 type HubService struct {
-	profilesDir string
-	profileSvc  *ProfileService
-	settingsSvc *SettingsService
-	emitter     EventEmitter
-	overlay     OverlayRuntime
+	profilesDir      string
+	profileSvc       *ProfileService
+	studioProfileSvc *StudioProfileService
+	settingsSvc      *SettingsService
+	emitter          EventEmitter
+	overlay          OverlayRuntime
 }
 
 // NewHubService creates a hub service.
@@ -115,6 +117,31 @@ func NewHubService(profilesDir string, profileSvc *ProfileService, emitter Event
 		emitter:     emitter,
 		overlay:     overlay,
 	}
+}
+
+// SetStudioProfileService wires the canonical V3 runtime profile service.
+func (s *HubService) SetStudioProfileService(svc *StudioProfileService) {
+	s.studioProfileSvc = svc
+}
+
+func (s *HubService) activeOverlayDocument() (*config.ProfileDocumentV3, error) {
+	if s.studioProfileSvc == nil {
+		return nil, fmt.Errorf("studio profile service not configured")
+	}
+	if doc := s.studioProfileSvc.Document(); doc != nil {
+		return doc, nil
+	}
+	path := s.profileSvc.Path()
+	if path == "" {
+		return nil, fmt.Errorf("no active profile")
+	}
+	if _, err := s.studioProfileSvc.Load(path); err != nil {
+		return nil, err
+	}
+	if doc := s.studioProfileSvc.Document(); doc != nil {
+		return doc, nil
+	}
+	return nil, fmt.Errorf("no active V3 profile")
 }
 
 // SetSettingsService attaches a settings service for active profile persistence.
@@ -139,6 +166,10 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 			continue
 		}
 		fullPath := filepath.Join(s.profilesDir, e.Name())
+		raw, readErr := os.ReadFile(fullPath)
+		if readErr != nil {
+			continue
+		}
 		p, err := config.LoadFile(fullPath)
 		if err != nil {
 			continue
@@ -150,14 +181,18 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 		if id == "" {
 			id = strings.TrimSuffix(e.Name(), ".json")
 		}
-		profiles = append(profiles, ProfileEntry{
+		entry := ProfileEntry{
 			ID:          id,
 			File:        e.Name(),
 			Name:        p.Name,
 			DisplayMode: p.DisplayMode,
 			Widgets:     len(p.Widgets),
 			Profile:     p,
-		})
+		}
+		if previewDoc, _, migErr := config.MigrateProfileJSONToV3(raw); migErr == nil {
+			entry.PreviewDocument = previewDoc
+		}
+		profiles = append(profiles, entry)
 	}
 	return profiles, nil
 }
@@ -271,6 +306,11 @@ func (s *HubService) SetActiveProfile(idOrFile string) error {
 	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
 		return fmt.Errorf("loading active profile: %w", err)
 	}
+	if s.studioProfileSvc != nil {
+		if err := s.studioProfileSvc.LoadActiveProfile(path); err != nil {
+			return fmt.Errorf("loading active studio profile: %w", err)
+		}
+	}
 	profile := s.profileSvc.GetProfile()
 	if profile == nil || profile.ID == "" {
 		return fmt.Errorf("loaded profile has no id")
@@ -303,15 +343,21 @@ func (s *HubService) StartOverlay(idOrFile string) (OverlayStatus, error) {
 	if s.overlay == nil {
 		return OverlayStatus{}, fmt.Errorf("overlay runtime not configured")
 	}
-	profile := s.profileSvc.GetProfile()
+	document, err := s.activeOverlayDocument()
+	if err != nil {
+		return OverlayStatus{}, err
+	}
 	// Close any previous window to avoid ghost overlays when switching profiles.
 	s.overlay.Stop()
-	status, err := s.overlay.Start(profile)
+	status, err := s.overlay.Start(document)
 	if s.emitter != nil {
 		s.emitter.Emit("overlay:status", status)
 	}
 	if err != nil {
 		return status, err
+	}
+	if s.studioProfileSvc != nil {
+		s.studioProfileSvc.EmitRuntimeLoaded()
 	}
 	return status, nil
 }
@@ -334,39 +380,23 @@ func (s *HubService) StartActiveOverlay() (OverlayStatus, error) {
 	if s.overlay == nil {
 		return OverlayStatus{}, fmt.Errorf("overlay runtime not configured")
 	}
-	profile := s.profileSvc.GetProfile()
-	if profile == nil {
-		return OverlayStatus{}, fmt.Errorf("no active profile")
+	document, err := s.activeOverlayDocument()
+	if err != nil {
+		return OverlayStatus{}, err
 	}
 	// Close any previous window to avoid ghost overlays when switching profiles.
 	s.overlay.Stop()
-	status, err := s.overlay.Start(profile)
+	status, err := s.overlay.Start(document)
 	if s.emitter != nil {
 		s.emitter.Emit("overlay:status", status)
 	}
 	if err != nil {
 		return status, err
 	}
+	if s.studioProfileSvc != nil {
+		s.studioProfileSvc.EmitRuntimeLoaded()
+	}
 	return status, nil
-}
-
-// StartEditOverlay opens the desktop overlay in edit mode for the active profile.
-// It closes any running overlay window first to avoid ghost windows or racing renderers.
-func (s *HubService) StartEditOverlay(idOrFile string) (OverlayStatus, error) {
-	if err := s.ActivateProfile(idOrFile); err != nil {
-		return OverlayStatus{}, err
-	}
-	profile := s.profileSvc.GetProfile()
-	if profile == nil {
-		return OverlayStatus{}, fmt.Errorf("no active profile")
-	}
-	editProfile := *profile
-	editProfile.DisplayMode = config.ModeEdit
-	// Make sure the previous overlay is gone before opening edit mode.
-	if s.overlay != nil {
-		s.overlay.Stop()
-	}
-	return s.overlay.Start(&editProfile)
 }
 
 // SaveProfile persists the provided profile to disk via the profile service.

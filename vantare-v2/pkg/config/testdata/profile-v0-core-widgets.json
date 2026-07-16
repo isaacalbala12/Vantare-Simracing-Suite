@@ -1,0 +1,52 @@
+{
+  "id": "v0-core-widgets",
+  "name": "V0 Core Widgets Fixture",
+  "displayMode": "edit",
+  "monitorIndex": 0,
+  "widgets": [
+    {
+      "id": "delta-main",
+      "type": "delta",
+      "enabled": true,
+      "updateHz": 10,
+      "position": { "x": 80, "y": 80, "w": 360, "h": 120 },
+      "props": { "style": "vantare-racing" }
+    },
+    {
+      "id": "standings-main",
+      "type": "standings",
+      "enabled": true,
+      "updateHz": 8,
+      "position": { "x": 80, "y": 240, "w": 420, "h": 360 },
+      "props": { "style": "vantare-racing" }
+    },
+    {
+      "id": "relative-main",
+      "type": "relative",
+      "enabled": true,
+      "updateHz": 12,
+      "position": { "x": 520, "y": 240, "w": 320, "h": 300 },
+      "props": {
+        "style": "vantare-racing",
+        "rangeAhead": 3,
+        "rangeBehind": 2,
+        "classScope": "sameClass",
+        "includePlayer": true,
+        "rowHeightMode": "compact"
+      }
+    },
+    {
+      "id": "pedals-main",
+      "type": "pedals",
+      "enabled": true,
+      "updateHz": 20,
+      "position": { "x": 900, "y": 640, "w": 280, "h": 180 },
+      "props": {
+        "style": "vantare-racing",
+        "throttleColor": "#22c55e",
+        "brakeColor": "#ef4444",
+        "clutchColor": "#f59e0b"
+      }
+    }
+  ]
+}

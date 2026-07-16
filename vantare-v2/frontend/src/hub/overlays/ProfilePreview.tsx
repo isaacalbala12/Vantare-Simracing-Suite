@@ -1,18 +1,35 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ProfileConfig } from "../../lib/profile";
-import { PreviewWidgetFrame } from "../preview/PreviewWidgetFrame";
+import { buildMockTelemetry } from "../../overlay/core/mock-scenarios";
+import type { ProfileDocumentV3 } from "../../overlay/core/profile-document";
+import { WidgetVisualHost } from "../../overlay/core/WidgetVisualHost";
+import { WidgetVisualViewport } from "../../overlay/core/WidgetVisualViewport";
+import { resolveProfilePreviewDocument } from "./profile-preview-document";
 
-type ProfilePreviewProps = {
-  profile: ProfileConfig;
-};
+const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
 const LOGICAL_WIDTH = 1920;
 const LOGICAL_HEIGHT = 1080;
 
-export function ProfilePreview({ profile }: ProfilePreviewProps) {
+const PREVIEW_SNAPSHOT = buildMockTelemetry({
+  session: "race",
+  location: "track",
+  state: "ready",
+});
+
+type ProfilePreviewProps = {
+  profile?: ProfileConfig | null;
+  previewDocument?: ProfileDocumentV3 | null;
+};
+
+export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(360);
-  const widgets = Array.isArray(profile.widgets) ? profile.widgets : [];
+  const document = useMemo(
+    () => resolveProfilePreviewDocument(profile, previewDocument),
+    [profile, previewDocument],
+  );
+  const widgets = document?.layouts.general.widgets ?? [];
 
   useEffect(() => {
     const el = containerRef.current;
@@ -39,6 +56,17 @@ export function ProfilePreview({ profile }: ProfilePreviewProps) {
 
   const scale = Math.min(previewWidth / LOGICAL_WIDTH, 1);
 
+  if (!document) {
+    return (
+      <div
+        data-testid="profile-preview"
+        className="flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-black/45 text-xs text-vantare-textMuted"
+      >
+        Preview no disponible
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -63,16 +91,37 @@ export function ProfilePreview({ profile }: ProfilePreviewProps) {
             backgroundSize: "80px 80px",
           }}
         />
-        {widgets.map((widget) => (
-          <PreviewWidgetFrame
-            key={widget.id}
-            widget={widget}
-            selected={false}
-            scale={scale}
-            onSelect={() => undefined}
-            disabled
-          />
-        ))}
+        {widgets.map((widget) => {
+          const { x, y, w, h, zIndex } = widget.layout;
+
+          return (
+            <div
+              key={widget.id}
+              data-testid={`profile-preview-frame-${widget.id}`}
+              className={`absolute overflow-hidden ${widget.behavior.enabled ? "" : "opacity-45 grayscale"}`}
+              style={{
+                left: x,
+                top: y,
+                width: w,
+                height: h,
+                zIndex,
+                pointerEvents: "none",
+              }}
+            >
+              <WidgetVisualViewport
+                widgetType={widget.type}
+                layout={widget.layout}
+                testId={`profile-preview-viewport-${widget.id}`}
+              >
+                <MemoWidgetVisualHost
+                  widget={widget}
+                  snapshot={PREVIEW_SNAPSHOT}
+                  renderMode="harness"
+                />
+              </WidgetVisualViewport>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

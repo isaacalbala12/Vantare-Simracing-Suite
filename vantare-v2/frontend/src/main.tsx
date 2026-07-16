@@ -6,7 +6,6 @@ import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
 import { CompositeApp } from "./overlay/CompositeApp";
 import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
-import { EditOverlayApp } from "./overlay/EditOverlayApp";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
@@ -21,9 +20,6 @@ applyTheme(themeId === "vantare-lite" ? liteTheme : v5Theme);
 export function App() {
   const path = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
-  if (path.startsWith("/overlay/edit")) {
-    return <EditOverlayApp />;
-  }
   if (path.startsWith("/overlay") || params.get("obs") === "1") {
     return <ObsOverlayApp />;
   }

@@ -83,11 +83,22 @@ func (s *Server) resolveProfilePath(profileParam string) (string, error) {
 			continue
 		}
 		full := filepath.Join(s.cfgDir, entry.Name())
-		p, err := config.LoadFile(full)
+		loaded, err := config.ProfileDocumentStore{}.Load(full)
 		if err != nil {
+			p, legacyErr := config.LoadFile(full)
+			if legacyErr != nil {
+				continue
+			}
+			id := p.ID
+			if id == "" {
+				id = strings.TrimSuffix(entry.Name(), ".json")
+			}
+			if id == stem || id == profileParam || entry.Name() == clean {
+				return full, nil
+			}
 			continue
 		}
-		id := p.ID
+		id := loaded.Document.ID
 		if id == "" {
 			id = strings.TrimSuffix(entry.Name(), ".json")
 		}

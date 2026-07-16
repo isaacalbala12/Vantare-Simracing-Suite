@@ -45,6 +45,12 @@ func TestHubServiceCreateAndList(t *testing.T) {
 	if profiles[0].Widgets != 3 {
 		t.Fatalf("expected 3 widgets, got %d", profiles[0].Widgets)
 	}
+	if profiles[0].PreviewDocument == nil {
+		t.Fatal("expected previewDocument in list entry")
+	}
+	if profiles[0].PreviewDocument.SchemaVersion != config.ProfileSchemaVersionV3 {
+		t.Fatalf("preview schema=%d want %d", profiles[0].PreviewDocument.SchemaVersion, config.ProfileSchemaVersionV3)
+	}
 }
 
 func TestHubServiceActivateProfile(t *testing.T) {
@@ -94,6 +100,7 @@ func TestHubServiceStartOverlayForcesRacingMode(t *testing.T) {
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
 	runtime := &fakeOverlayRuntime{}
 	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+	attachStudioProfileSvc(t, hubSvc, profileSvc)
 
 	status, err := hubSvc.StartOverlay("custom-edit")
 	if err != nil {
@@ -641,10 +648,10 @@ type fakeOverlayRuntime struct {
 	err     error
 }
 
-func (f *fakeOverlayRuntime) Start(profile *config.ProfileConfig) (app.OverlayStatus, error) {
+func (f *fakeOverlayRuntime) Start(document *config.ProfileDocumentV3) (app.OverlayStatus, error) {
 	f.started++
-	if profile != nil {
-		f.lastID = profile.ID
+	if document != nil {
+		f.lastID = document.ID
 	}
 	if f.err != nil {
 		return app.OverlayStatus{Running: false, ProfileID: f.lastID, Mode: config.ModeRacing}, f.err
@@ -659,6 +666,19 @@ func (f *fakeOverlayRuntime) Stop() app.OverlayStatus {
 
 func (f *fakeOverlayRuntime) Status() app.OverlayStatus {
 	return app.OverlayStatus{Running: f.started > f.stopped, ProfileID: f.lastID, Mode: config.ModeRacing}
+}
+
+func attachStudioProfileSvc(t *testing.T, hubSvc *app.HubService, profileSvc *app.ProfileService) {
+	t.Helper()
+	studioSvc := app.NewStudioProfileService(nil, nil)
+	if path := profileSvc.Path(); path != "" {
+		if _, err := os.Stat(path); err == nil {
+			if _, err := studioSvc.Load(path); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	hubSvc.SetStudioProfileService(studioSvc)
 }
 
 func TestHubServiceStartActiveOverlay(t *testing.T) {
@@ -682,6 +702,7 @@ func TestHubServiceStartActiveOverlay(t *testing.T) {
 	}
 	runtime := &fakeOverlayRuntime{}
 	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+	attachStudioProfileSvc(t, hubSvc, profileSvc)
 
 	status, err := hubSvc.StartActiveOverlay()
 	if err != nil {
@@ -725,6 +746,7 @@ func TestHubServiceStartOverlayLoadsProfileAndStartsRuntime(t *testing.T) {
 	profileSvc := app.NewProfileService(filepath.Join(dir, "dummy.json"), nil, nil)
 	runtime := &fakeOverlayRuntime{}
 	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
+	attachStudioProfileSvc(t, hubSvc, profileSvc)
 
 	status, err := hubSvc.StartOverlay("default-racing")
 	if err != nil {
@@ -775,6 +797,7 @@ func TestHubServiceStartOverlayEmitsStoppedStatusWhenRuntimeFails(t *testing.T) 
 	runtime := &fakeOverlayRuntime{err: errors.New("create window failed")}
 	spy := &spyEmitter{}
 	hubSvc := app.NewHubService(dir, profileSvc, spy, runtime)
+	attachStudioProfileSvc(t, hubSvc, profileSvc)
 
 	status, err := hubSvc.StartOverlay("default-racing")
 	if err == nil {
@@ -906,6 +929,10 @@ func TestHubServiceSetActiveProfileStopsRunningOverlay(t *testing.T) {
 	require.NoError(t, hubSvc.CreateProfile("A"))
 	require.NoError(t, hubSvc.CreateProfile("B"))
 
+	studioSvc := app.NewStudioProfileService(nil, nil)
+	studioSvc.SetProfilesDir(dir)
+	hubSvc.SetStudioProfileService(studioSvc)
+
 	// Start overlay on profile A.
 	_, err := hubSvc.StartOverlay("custom-a")
 	require.NoError(t, err)
@@ -936,6 +963,7 @@ func TestHubServiceStartActiveOverlayUsesActiveProfile(t *testing.T) {
 	runtime := &fakeOverlayRuntime{}
 	hubSvc := app.NewHubService(dir, profileSvc, nil, runtime)
 	hubSvc.SetSettingsService(settingsSvc)
+	attachStudioProfileSvc(t, hubSvc, profileSvc)
 
 	// Set active profile and then start overlay.
 	settingsSvc.Settings().ActiveOverlayProfileID = "default-racing"

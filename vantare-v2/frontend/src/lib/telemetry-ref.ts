@@ -47,12 +47,16 @@ export type PlayerDiff = {
 };
 
 export type SessionDiff = {
+  sessionKey?: string;
+  sessionEpoch?: number;
   trackName?: string;
   sessionType?: number;
   sessionName?: string;
   sessionTime?: number;
   numVehicles?: number;
   gamePhase?: number;
+  yellowFlagState?: string;
+  sectorFlags?: string[];
 };
 
 export type SessionState = "offline" | "menu" | "garage" | "session" | "";
@@ -136,10 +140,22 @@ export type TelemetryRefState = {
   fuel: number;
   deltaBest: number;
   trackName: string;
+  globalFlag?: string;
+  sectorFlags?: string[];
   throttle: number;
   brake: number;
   clutch: number;
   timeRemaining?: number;
+  availability?: {
+    speed?: boolean;
+    gear?: boolean;
+    rpm?: boolean;
+    fuel?: boolean;
+    deltaBest?: boolean;
+    throttle?: boolean;
+    brake?: boolean;
+    clutch?: boolean;
+  };
   vehicles: VehicleScoring[];
 };
 
@@ -228,6 +244,8 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
     if (s.sessionType != null) state.sessionType = s.sessionType;
     if (s.sessionName != null) state.sessionName = s.sessionName;
     if (s.timeRemainingInGamePhase != null) state.timeRemaining = s.timeRemainingInGamePhase;
+    if (s.yellowFlagState != null) state.globalFlag = s.yellowFlagState;
+    if (s.sectorFlags != null) state.sectorFlags = [...s.sectorFlags];
   }
 
   if (snapshot.vehicles) {
@@ -258,10 +276,16 @@ export function applyTelemetryUpdate(payload: TelemetryPayload) {
     }
     const sd = d.session as Record<string, unknown> | undefined;
     if (sd) {
+      if (typeof sd.sessionKey === "string") state.sessionKey = sd.sessionKey;
+      if (typeof sd.sessionEpoch === "number") state.sessionEpoch = sd.sessionEpoch;
       if (typeof sd.trackName === "string") state.trackName = sd.trackName;
       if (typeof sd.sessionType === "number") state.sessionType = sd.sessionType;
       if (typeof sd.sessionName === "string") state.sessionName = sd.sessionName;
       if (typeof sd.timeRemainingInGamePhase === "number") state.timeRemaining = sd.timeRemainingInGamePhase;
+      if (typeof sd.yellowFlagState === "string") state.globalFlag = sd.yellowFlagState;
+      if (Array.isArray(sd.sectorFlags)) {
+        state.sectorFlags = sd.sectorFlags.filter((flag): flag is string => typeof flag === "string");
+      }
     }
     if (d.vehicles && Array.isArray(d.vehicles)) {
       state.vehicles = d.vehicles as VehicleScoring[];
@@ -286,6 +310,9 @@ export function clearRuntimeTelemetry() {
   state.fuel = 0;
   state.deltaBest = 0;
   state.trackName = "";
+  state.globalFlag = undefined;
+  state.sectorFlags = undefined;
+  state.availability = undefined;
   state.throttle = 0;
   state.brake = 0;
   state.clutch = 0;

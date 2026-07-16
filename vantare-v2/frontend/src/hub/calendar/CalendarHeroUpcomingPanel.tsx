@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
+import { tierStyle, tierBadgeStyle } from "./calendar-shared";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
 
 type CalendarHeroUpcomingPanelProps = {
@@ -39,44 +40,44 @@ function formatWeeklyTime(dateStr: string | null, now: Date): string {
   return `${d.toLocaleDateString([], { day: "2-digit", month: "short" })} ${time}`;
 }
 
-const TIER_STYLES: Record<string, { label: string; bg: string; border: string; shadow: string; barGrad: string }> = {
+type TierCardStyle = { label: string; color: string; topBar: string; bgGrad: string };
+
+const TIER_CARD_STYLES: Record<string, TierCardStyle> = {
   beginner: {
     label: "Bronce",
-    bg: "rgba(205,127,50,.5)",
-    border: "rgba(205,127,50,.5)",
-    shadow: "rgba(205,127,50,.7)",
-    barGrad: "linear-gradient(90deg,#6B3F1C 0%,#CD7F32 50%,#F5C889 100%)",
+    color: tierStyle("beginner").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#6B3F1C 25%,#CD7F32 50%,#F5C889 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(205,127,50,.07) 0%,rgba(20,20,20,.65) 50%)",
   },
   intermediate: {
     label: "Plata",
-    bg: "rgba(184,191,200,.5)",
-    border: "rgba(184,191,200,.5)",
-    shadow: "rgba(184,191,200,.65)",
-    barGrad: "linear-gradient(90deg,#3D4654 0%,#B8BFC8 50%,#F0F4F8 100%)",
+    color: tierStyle("intermediate").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#3D4654 25%,#B8BFC8 50%,#F0F4F8 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(184,191,200,.06) 0%,rgba(20,20,20,.65) 50%)",
   },
   advanced: {
     label: "Oro",
-    bg: "rgba(212,160,23,.5)",
-    border: "rgba(212,160,23,.5)",
-    shadow: "rgba(212,160,23,.6)",
-    barGrad: "linear-gradient(90deg,#7A5C08 0%,#D4A017 50%,#EBB945 100%)",
+    color: tierStyle("advanced").accent,
+    topBar: "linear-gradient(90deg,transparent 5%,#7A5C08 25%,#D4A017 50%,#EBB945 75%,transparent 95%)",
+    bgGrad: "linear-gradient(180deg,rgba(212,160,23,.07) 0%,rgba(20,20,20,.65) 50%)",
   },
 };
 
 function TierCard({ item, tierKey, now, onNavigate, onTierClick }: { item: UpcomingRaceItem | null; tierKey: string; now: Date; onNavigate?: (section: string) => void; onTierClick?: (tier: string) => void }) {
-  const styles = TIER_STYLES[tierKey] || TIER_STYLES.beginner;
+  const styles = TIER_CARD_STYLES[tierKey] || TIER_CARD_STYLES.beginner;
 
   if (!item) {
     return (
       <div
-        className="group rounded-xl bg-[rgba(20,20,20,.6)] overflow-hidden relative"
-        style={{ borderTopColor: styles.border }}
+        className="group rounded-xl overflow-hidden relative"
+        style={{ background: styles.bgGrad, border: "1px solid rgba(255,255,255,.06)" }}
         data-testid={`upcoming-card-${tierKey}-empty`}
       >
-        <div className="cal-bar h-2" style={{ background: styles.barGrad, boxShadow: `0 0 18px ${styles.shadow}` }} />
+        {/* Top gradient bar */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: styles.topBar }} />
         <div className="p-5 relative">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-[.22em]" style={{ color: styles.border.replace("rgba", "rgb").replace(",.5)", ")").replace("0.5", "1") }}>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[.2em]" style={tierBadgeStyle(styles.color)}>
               {styles.label}
             </span>
           </div>
@@ -89,7 +90,6 @@ function TierCard({ item, tierKey, now, onNavigate, onTierClick }: { item: Upcom
   }
 
   const timeStr = formatUpcomingTime(item.nextStart, now);
-  const colorBase = styles.border.replace("rgba", "rgb").replace(",.5)", ")").replace("0.5", "1");
 
   const handleClick = () => {
     if (onTierClick) {
@@ -101,8 +101,8 @@ function TierCard({ item, tierKey, now, onNavigate, onTierClick }: { item: Upcom
 
   return (
     <div
-      className="group rounded-xl bg-[rgba(20,20,20,.6)] overflow-hidden transition-all hover:-translate-y-1 relative cursor-pointer"
-      style={{ borderTopColor: styles.border }}
+      className="group rounded-xl overflow-hidden transition-all hover:-translate-y-1 relative cursor-pointer"
+      style={{ background: styles.bgGrad, border: "1px solid rgba(255,255,255,.06)" }}
       data-testid={`upcoming-card-${tierKey}`}
       onClick={handleClick}
       role="button"
@@ -110,11 +110,15 @@ function TierCard({ item, tierKey, now, onNavigate, onTierClick }: { item: Upcom
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClick(); }}
       aria-label={`Ver carreras ${styles.label}`}
     >
-      <div className="cal-bar h-2" style={{ background: styles.barGrad, boxShadow: `0 0 18px ${styles.shadow}` }} />
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: `radial-gradient(ellipse 100% 45% at 50% 0%,${styles.border.replace(".5)", ".12)")},transparent 70%)` }} />
+      {/* Top gradient bar */}
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: styles.topBar }} />
+      {/* Hover glow */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: `radial-gradient(ellipse 100% 60% at 50% 0%,${styles.color}22,transparent 70%)` }} />
       <div className="p-5 relative">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-bold uppercase tracking-[.22em]" style={{ color: colorBase }}>{styles.label}</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[.2em]" style={tierBadgeStyle(styles.color)}>
+            {styles.label}
+          </span>
           {item.isActive && (
             <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[.22em] px-1.5 py-0.5 rounded" style={{ background: "rgba(255,59,59,.15)", color: "#ff3b3b", border: "1px solid rgba(255,59,59,.4)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-accent live-indicator"></span>
@@ -189,7 +193,7 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate, onTierClick }: Cale
 
       {weeklyItem && (
         <div
-          className="group mt-4 card-sleek rounded-xl p-4 pl-5 flex items-center justify-between gap-4 relative overflow-hidden cursor-pointer border-l-2 border-accent"
+          className="group mt-4 card-sleek rounded-xl p-4 pl-5 flex items-center justify-between gap-4 relative overflow-hidden cursor-pointer"
           data-testid="upcoming-card-weekly"
           onClick={() => onNavigate?.("carreras")}
           role="button"

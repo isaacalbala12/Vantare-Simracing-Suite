@@ -189,6 +189,7 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("GET /overlay", s.handleOverlay)
 	mux.HandleFunc("GET /api/profile", s.handleProfile)
+	mux.HandleFunc("GET /api/profile-v3", s.handleProfileV3)
 	mux.HandleFunc("GET /telemetry/stream", s.handleSSE)
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)
 	mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)

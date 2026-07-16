@@ -199,7 +199,7 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
             <span className="font-medium text-white capitalize">{oauthPending}</span>{" "}
             {t("auth.inBrowser")}
           </p>
-          <div className="mx-auto h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-vantare-red-500" />
+          <div className="mx-auto login-spinner" />
           <button
             type="button"
             data-testid="login-cancel-waiting"

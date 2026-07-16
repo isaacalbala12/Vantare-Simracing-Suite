@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 3,
+  "id": "v2-core-widgets",
+  "name": "V2 Core Widgets Fixture",
+  "displayMode": "edit",
+  "monitorIndex": 0,
+  "layouts": {
+    "general": {
+      "type": "general",
+      "widgets": [
+        {
+          "id": "delta-main",
+          "type": "delta",
+          "name": "Delta Original",
+          "layout": {
+            "x": 80,
+            "y": 80,
+            "w": 360,
+            "h": 120,
+            "zIndex": 0,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true,
+            "updateHz": 10
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-original",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {
+              "legacyDesignId": "vantare-racing"
+            },
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "standings-main",
+          "type": "standings",
+          "name": "Standings Original",
+          "layout": {
+            "x": 80,
+            "y": 240,
+            "w": 420,
+            "h": 360,
+            "zIndex": 1,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true,
+            "updateHz": 8
+          },
+          "content": {
+            "columns": [
+              {
+                "enabled": true,
+                "id": "position",
+                "metricId": "position",
+                "width": 48
+              },
+              {
+                "enabled": true,
+                "id": "name",
+                "metricId": "name",
+                "width": 160
+              },
+              {
+                "enabled": true,
+                "id": "bestLap",
+                "metricId": "bestLap",
+                "width": 88
+              },
+              {
+                "enabled": true,
+                "id": "lastLap",
+                "metricId": "lastLap",
+                "width": 88
+              },
+              {
+                "enabled": true,
+                "id": "interval",
+                "metricId": "interval",
+                "width": 72
+              },
+              {
+                "enabled": true,
+                "id": "currentLap",
+                "metricId": "currentLap",
+                "width": 72
+              }
+            ]
+          },
+          "visual": {
+            "systemId": "vantare-original",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {
+              "legacyDesignId": "vantare-racing"
+            },
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "relative-main",
+          "type": "relative",
+          "name": "Relative Crystal",
+          "layout": {
+            "x": 520,
+            "y": 240,
+            "w": 320,
+            "h": 300,
+            "zIndex": 2,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true,
+            "updateHz": 12
+          },
+          "content": {
+            "filters": {
+              "classScope": "sameClass",
+              "includePlayer": true,
+              "rangeAhead": 4,
+              "rangeBehind": 2,
+              "rowHeightMode": "comfortable"
+            }
+          },
+          "visual": {
+            "systemId": "vantare-crystal",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "pedals-main",
+          "type": "pedals",
+          "name": "Pedals Crystal",
+          "layout": {
+            "x": 900,
+            "y": 640,
+            "w": 280,
+            "h": 180,
+            "zIndex": 3,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true,
+            "updateHz": 20
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-crystal",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {
+              "brakeColor": "#f87171",
+              "clutchColor": "#fbbf24",
+              "throttleColor": "#34d399"
+            },
+            "appearanceOverrides": {}
+          }
+        }
+      ],
+      "preservedWidgets": [
+        {
+          "id": "telemetry-aux",
+          "type": "telemetry",
+          "source": {
+            "enabled": true,
+            "id": "telemetry-aux",
+            "position": {
+              "h": 120,
+              "w": 240,
+              "x": 1200,
+              "y": 80
+            },
+            "type": "telemetry",
+            "updateHz": 5,
+            "variantId": "variant-telemetry-aux-default"
+          }
+        },
+        {
+          "id": "telemetry-vertical-aux",
+          "type": "telemetry-vertical",
+          "source": {
+            "enabled": false,
+            "id": "telemetry-vertical-aux",
+            "position": {
+              "h": 320,
+              "w": 80,
+              "x": 1200,
+              "y": 240
+            },
+            "type": "telemetry-vertical",
+            "updateHz": 5,
+            "variantId": "variant-telemetry-vertical-aux-default"
+          }
+        }
+      ]
+    }
+  }
+}

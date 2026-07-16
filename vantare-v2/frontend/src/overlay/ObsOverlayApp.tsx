@@ -1,65 +1,52 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Events } from "@wailsio/runtime";
-import type {
-  ProfileConfig,
-  LayoutOrigin,
-  WidgetConfig,
-} from "../lib/profile";
-import { toWindowLocal } from "../lib/profile";
-import {
-  applyTelemetryUpdate,
-  parseTelemetryPayload,
-  resetTelemetryRef,
-} from "../lib/telemetry-ref";
-import { isWidgetVisible, getCurrentTelemetryState } from "../lib/visibility";
-import { isRuntimeReadyWidget } from "../hub/overlays/widget-catalog";
-import { WidgetHost } from "./WidgetHost";
-import { enrichWidgetPropsWithVariant } from "../lib/widget-variants";
-import { DeltaWidget } from "./widgets/DeltaWidget";
-import { RelativeWidget } from "./widgets/RelativeWidget";
-import { StandingsWidget } from "./widgets/StandingsWidget";
-import { TelemetryWidget } from "./widgets/TelemetryWidget";
-import { TelemetryVerticalWidget } from "./widgets/TelemetryVerticalWidget";
-import { PedalsWidget } from "./widgets/PedalsWidget";
-import { EngineerNotificationsWidget } from "./widgets/EngineerNotificationsWidget";
-import { BroadcastTowerWidget } from "./widgets/BroadcastTowerWidget";
-import { MulticlassRelativeWidget } from "./widgets/MulticlassRelativeWidget";
-import { applyOverlayDocumentMode } from "./overlay-document";
-import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
-import type { WidgetTelemetryMode } from "./widgets/use-widget-telemetry";
+import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
+import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinator";
+import { applyOverlayDocumentMode } from "./overlay-document";
+import { readOverlayRouteParams } from "./overlay-route-params";
+import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
+import { ObsOverlayStudioPreview } from "./ObsOverlayStudioPreview";
+import { ObsOverlayRuntime } from "./runtime/ObsOverlayRuntime";
+import { createSseTelemetryAdapter } from "./transports/sse-telemetry-adapter";
 
-type WidgetProps = {
-  editMode: boolean;
-  telemetryMode?: WidgetTelemetryMode;
-  updateHz?: number;
-  props?: Record<string, unknown>;
-};
-const WIDGETS: Record<string, ComponentType<WidgetProps>> = {
-  delta: DeltaWidget,
-  relative: RelativeWidget,
-  standings: StandingsWidget,
-  telemetry: TelemetryWidget,
-  "telemetry-vertical": TelemetryVerticalWidget,
-  pedals: PedalsWidget,
-  "engineer-notifications": EngineerNotificationsWidget,
-  "broadcast-tower": BroadcastTowerWidget,
-  "multiclass-relative": MulticlassRelativeWidget,
+type ProfileV3ApiResponse = {
+  document: ProfileDocumentV3;
+  revision: string;
+  layoutOrigin?: { x: number; y: number };
 };
 
 const STREAMING_MODE_HINT = "obs-streaming";
 
 export function ObsOverlayApp() {
-  const [profile, setProfile] = useState<ProfileConfig | null>(null);
-  const [layoutOrigin, setLayoutOrigin] = useState<LayoutOrigin>({ x: 0, y: 0 });
-  const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
+  const [studioPreview] = useState(
+    () => readOverlayRouteParams(typeof window !== "undefined" ? window.location.search : "").studioPreview,
+  );
+  const [document, setDocument] = useState<ProfileDocumentV3 | null>(null);
+  const [revision, setRevision] = useState("");
+  const [layoutOrigin, setLayoutOrigin] = useState({ x: 0, y: 0 });
   const [error, setError] = useState<string | null>(null);
-  const [telemetryKey, setTelemetryKey] = useState(0);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
+  const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
+  const adapter = useMemo(
+    () =>
+      createSseTelemetryAdapter({
+        coordinator,
+        url: "/telemetry/stream",
+      }),
+    [coordinator],
+  );
+
+  useEffect(() => applyOverlayDocumentMode(), []);
+
   useEffect(() => {
-    return applyOverlayDocumentMode();
-  }, []);
+    adapter.start();
+    return () => {
+      adapter.stop();
+      coordinator.dispose();
+    };
+  }, [adapter, coordinator]);
 
   useEffect(() => {
     const unsub = Events.On("calendar:reminder", (event: { data: CalendarReminderPayload }) => {
@@ -72,93 +59,66 @@ export function ObsOverlayApp() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const profileName = params.get("profile") || "example-streaming.json";
-    let es: EventSource | null = null;
+    const { profileName } = readOverlayRouteParams(window.location.search);
     let disposed = false;
 
-    fetch(`/api/profile?profile=${encodeURIComponent(profileName)}`)
+    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`)
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: { profile: ProfileConfig; layoutOrigin: LayoutOrigin }) => {
-        if (disposed) return;
-        resetTelemetryRef(); // avoid stale telemetry from previous OBS source load
-        setProfile(data.profile);
-        setLayoutOrigin(data.layoutOrigin);
-        setWidgets(data.profile.widgets.filter((w) => w.enabled));
-
-        es = new EventSource("/telemetry/stream");
-        es.addEventListener("telemetry", (event: MessageEvent) => {
-          try {
-            applyTelemetryUpdate(parseTelemetryPayload(event.data));
-            setTelemetryKey((k) => k + 1);
-          } catch (err) {
-            console.error("SSE parse error", err);
-          }
-        });
-        es.onerror = () => {
-          console.warn("SSE connection error");
-        };
-        es.onopen = () => {
-          setError(null);
-        };
-        if (disposed) {
-          es.close();
-          es = null;
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
+        return res.json() as Promise<ProfileV3ApiResponse>;
+      })
+      .then((data) => {
+        if (disposed) {
+          return;
+        }
+        setDocument(parseProfileDocumentV3(data.document));
+        setRevision(data.revision ?? "");
+        setLayoutOrigin(data.layoutOrigin ?? { x: 0, y: 0 });
+        setError(null);
       })
       .catch((err: Error) => {
-        if (disposed) return;
+        if (disposed) {
+          return;
+        }
         setError(`Failed to load profile: ${err.message}`);
       });
 
     return () => {
       disposed = true;
-      es?.close();
-      es = null;
     };
   }, []);
 
-  // telemetryKey is read during render to recompute visibility on telemetry ticks
-  const telemetryState = telemetryKey >= 0 ? getCurrentTelemetryState() : undefined;
-  const visibleWidgets = (telemetryState
-    ? widgets.filter((w) => isWidgetVisible(w, telemetryState))
-    : widgets
-  ).filter((w) => isRuntimeReadyWidget(w.type));
+  const statusShellClass = studioPreview
+    ? "obs-studio-preview flex items-center justify-center w-full h-full text-sm font-mono text-white/80"
+    : "flex items-center justify-center w-full h-full text-sm font-mono";
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center w-full h-full text-red-400 text-sm font-mono">
-        {error}
-      </div>
-    );
+    return <div className={`${statusShellClass} text-red-400`}>{error}</div>;
   }
 
-  if (!profile) {
+  if (!document) {
     return (
-      <div className="flex items-center justify-center w-full h-full text-white/40 text-sm font-mono">
+      <div className={`${statusShellClass} ${studioPreview ? "text-white/60" : "text-white/40"}`}>
         Loading overlay...
       </div>
     );
   }
 
-  return (
-    <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
-      {visibleWidgets.map((w) => {
-        const Component = WIDGETS[w.type];
-        if (!Component) {
-          return null;
-        }
-        const localPos = toWindowLocal(w.position, layoutOrigin);
-        return (
-          <WidgetHost key={w.id} id={w.id} position={localPos} widget={w} profile={profile}>
-            <Component editMode={false} telemetryMode="live" updateHz={w.updateHz} props={{ ...enrichWidgetPropsWithVariant(profile, w), __engineerTransport: "sse" as const }} />
-          </WidgetHost>
-        );
-      })}
+  const runtime = (
+    <ObsOverlayRuntime
+      key={revision}
+      document={document}
+      revision={revision}
+      layoutOrigin={layoutOrigin}
+      telemetry={coordinator}
+    />
+  );
 
+  const widgetLayer = (
+    <>
+      {runtime}
       {reminder && (
         <OverlayCalendarReminderBanner
           reminder={reminder}
@@ -166,6 +126,22 @@ export function ObsOverlayApp() {
           className="absolute top-4 right-4 z-50"
         />
       )}
+    </>
+  );
+
+  if (studioPreview) {
+    return (
+      <ObsOverlayStudioPreview>
+        <div className="relative w-full h-full overflow-hidden" data-vantare-mode={STREAMING_MODE_HINT}>
+          {widgetLayer}
+        </div>
+      </ObsOverlayStudioPreview>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
+      {widgetLayer}
     </div>
   );
 }

@@ -51,6 +51,67 @@ Nota LAUNCHER-V3-PLAN (2026-07-11):
 - La skill `vantare-core` no se usa como fuente de verdad por indicación expresa del usuario.
 - Estado: PLANIFICADO, sin cambios de código.
 
+Nota OVERLAY-STUDIO-V3 (2026-07-10):
+- **ISA-92 / OS-02 EN PROGRESO, CIERRE LOCAL VALIDADO (2026-07-16):** Isaac rechazó la primera entrega por falta de paridad global en materiales, densidad, composición, catálogo y estado del inspector. La segunda pasada monta `V52Shell` + `StudioRoute` reales, perfil poblado, selección, action bar e inspector activo; publica wide/medium/compact, side-by-side, overlay, estados y métricas unmasked en `docs/analysis/isa-92-overlay-studio-parity/`. La recaptura final mantiene el drawer medium completo dentro del viewport y evidencia compact coherente; una revisión adversarial independiente cierra sin P0/P1/P2. Tests, build, lint focal, E2E e interacción real pasan; Crystal conserva el fallo heredado sin regeneración. PR #10 permanece draft, sin merge; commit/push e `In Review` siguen pendientes de completar la entrega.
+- Objetivo: reconstrucción paralela de Overlay Studio V3 (Delta, Standings, Relative, Pedals en `vantare-original` y `vantare-crystal`).
+- Autoridad: ADR `docs/adr/0003-overlay-studio-v3-rebuild.md` y plan maestro `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md` (worktree `refactor`, rama `refactor`).
+- Worktree: `C:\Users\isaac\emdash\worktrees\vantare-v2\refactor` — rama `refactor`.
+- **Fase 0 ✅ CERRADA** (commits `b2326e3`..`4f340f5`): autoridad ADR, baseline, fixtures migración, caracterización 4 widgets, inventario consumidores.
+- **Fase 1 ✅ CERRADA** (commits `2f0b3f3`..`2dfb940`): tipos/validación/migración V3 Go, storage revision-aware + backup `.pre-v3.bak`, `StudioProfileService` paralelo, contrato TS `profile-document.ts`, librería diseños `WidgetDesignService` + `widget-design.ts`.
+- Evidencia baseline: `docs/overlay-studio-v3-baseline.md`, `docs/overlay-studio-v3-inventory.md`.
+- Tests Fase 1: `go test ./pkg/config/... ./internal/app/... -run "ProfileDocumentStore|StudioProfileService|WidgetDesignService|MigrateProfile|ValidateProfileDocumentV3" -count=1` PASS; `pnpm --dir frontend test` → 166 files / 1584 PASS; `pnpm --dir frontend build` PASS.
+- Goldens migración: `pkg/config/testdata/profile-v3-core-widgets-from-v0.golden.json`, `profile-v3-core-widgets-from-v2.golden.json`; parser TS alineado en `profile-contract-fixture.test.tsx` (parse + render de los 4 widgets del golden v2).
+- Preexistentes documentados (no regresión): lint frontend 11 errores; `internal/server` nonce/port tests FAIL en `go test ./...`; flaky ocasional `TestConcurrentSavesDontCorruptFile` en `internal/app` (Windows file lock).
+- **Fase 2 ✅ CERRADA** (commits `6e471fe`..`d853b4c`): registry funcional Delta, telemetry store, view model, design-system registry + migración visual, renderers Original/Crystal, `WidgetVisualHost`, harness visual determinista (`visual:overlay-studio`).
+- Evidencia Fase 2: `pnpm --dir frontend test` → 179 files / 1642 PASS; `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` x2 PASS (0.000% delta); `rg` design-systems sin imports prohibidos (solo aserciones en tests).
+- **Fase 3 ✅ CERRADA** (commits `41df467`..`dd94e34` + fix build `studio-store`): session layouts, command reducer, widget order, bounded undo/redo, profile client Wails, `StudioProvider` global draft, crash recovery localStorage, dirty-navigation guard y hotkeys.
+- Evidencia Fase 3: `pnpm --dir frontend test -- overlay-studio/state` x2 → 67 PASS; `pnpm --dir frontend test` → 188 files / 1709 PASS; `pnpm --dir frontend build` PASS.
+- **Fase 4 ✅ CERRADA** (commits `b7bdec0`..`e80c612`): shell V10, geometría pura, canvas con `WidgetVisualHost`, drag/resize transaccional, preview controls, acciones unificadas, paneles responsive, modales dirty/recovery, harness V3 y visual geometry (wide/medium/compact + drag/resize).
+- Evidencia Fase 4: `pnpm --dir frontend test -- src/hub/overlay-studio` → 159 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 15 baselines 0.000% delta + interacciones wide; `pnpm --dir frontend build` PASS.
+- QA manual harness: `pnpm --dir frontend exec vite --config vite.overlay-studio-harness.config.ts --host 127.0.0.1` → `http://127.0.0.1:5176/overlay-studio-v3-harness.html`.
+- Docs vivos canvas/drag: `docs/overlays-studio/` (índice `README.md`; anti-regresión `canvas-drag-imperative-preview.md`; exploración `arrastre-y-resize.md`; benchmark `benchmarks/` + `pnpm --dir frontend bench:overlay-studio-drag`).
+- Fix drag teleport/rastro (2026-07-10): commit `dc382bf` — preview imperativa B1 (`canvas-frame-preview.ts`, `previewActive` en frame). Tests `useCanvasInteraction` 11/11; suite overlay-studio 233/233.
+- Fix preview click shrink (2026-07-10): `clearStudioFrameLayoutPreview()` ya solo limpia el scaler cuando termina una sesión `resize`; una sesión `move` no puede borrar el `transform` comprometido por React. Regresiones cubiertas en `canvas-frame-preview.test.ts` y `useCanvasInteraction.test.tsx`; move/resize verificados en el harness real.
+- Fix resize guides/capture (2026-07-10): las guías del canvas pasan a `z-index: 0` para quedar detrás de los frames y `lostpointercapture` se cablea desde frame/handles al cancelador de interacción. Resize durante captura perdida restaura el layout, elimina guías y no marca dirty; verificado en navegador.
+- Task 5.8 Browser View (2026-07-10): `browser-view.ts` abre `/overlay?profile=` solo con perfil guardado; si dirty → guardar o cancelar (sin descartar). Cableado en `OverlayStudioV3` + `StudioCanvas`.
+- Harness Browser View (2026-07-10): middleware Vite (`overlay-studio-harness-vite-plugin.ts`) + preview studio (`studioPreview=1`, fondo gris/rejilla, escala fit). Commits `32bc433`..`39a1133`.
+- **Fase 5 ✅ CERRADA** (commits `96d7119`..`a606b21` + harness browser view): inspector por capacidades, catálogo, diseños, access policy, Browser View.
+- **Fase 7.1 ✅ CERRADA** (commit `39f864a`): handlers Wails `studio:profile:load/save` con `requestId` correlacionado; `WidgetDesignService` handlers ya registrados; `StudioProfileService.RegisterHandlers` en `main.go`.
+- Evidencia 7.1: `go test ./internal/app/... -run "StudioProfileService|WidgetDesignService" -count=1` PASS.
+- **Fase 7.2 ✅ CERRADA** (commit `9ab6bd7`): `normalizeLegacyTelemetry`, `TelemetryRateCoordinator`, adaptadores Wails (`telemetry:update`) y SSE (`/telemetry/stream`); stale/disconnected/error publican inmediato; buckets compartidos por Hz.
+- Evidencia 7.2: `pnpm --dir frontend test -- telemetry-adapter telemetry-rate-coordinator wails-telemetry sse-telemetry` → 16 PASS; `pnpm --dir frontend test -- src/overlay` → 76 files / 486 PASS; `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% delta + parity + studio QA, exit 0.
+- **Fase 7.3 ✅ CERRADA** (commit `e7bfa14`): `resolve-runtime-layout`, `RuntimeWidgetFrame`, `RuntimeOverlaySurface`, `useRateLimitedTelemetry`; layout runtime sin materializar sesiones; widgets filtrados por enabled/visibility/z-index; preserved legacy con diagnóstico no fatal.
+- Evidencia 7.3: `pnpm --dir frontend test -- resolve-runtime-layout RuntimeWidgetFrame RuntimeOverlaySurface` → 14 PASS; `pnpm --dir frontend visual:overlay-studio` exit 0.
+- **Fase 6 ✅ CERRADA** (commits `074d389`..`5f44acb`): 6.1–6.8 migración funcional completa (Standings, Relative, Pedals Original/Crystal); registry 4 widgets × 2 systems; official designs; catálogo 4 entradas; golden v2 sin diagnósticos; fix chrome selección Relative (`fcf4989`).
+- **6.9 matriz visual + parity:** harness 4 widgets (`harness-fixtures.ts`), 59 baselines PNG (widget×system×surface ready + estados error + variantes stress60/fill/zero/full), assertions HTML parity studio/desktop/obs en Vitest + Playwright, chrome Relative en studio verificado.
+- Evidencia Fase 6 (2026-07-11): `pnpm --dir frontend test -- src/overlay` → 69 files / 456 PASS; `pnpm --dir frontend test -- OverlayParityHarness harness-fixtures` → 21 PASS; `pnpm --dir frontend visual:overlay-studio` x2 → 59 baselines 0.000% delta + parity 4 widgets + studio-relative-chrome + drag/resize + zoom; `pnpm --dir frontend build` PASS.
+- **Fase 7.4 ✅ CERRADA** (commit `960838a`): `GET /api/profile-v3` migration-aware para OBS.
+- **Fase 7.5 ✅ CERRADA** (commit `a5f31c4`): lifecycle Go V3 (`StudioProfileService` canónico, hotkeys, `overlay:profile-v3-loaded`, navegación Hub).
+- **Fase 7.6 ✅ CERRADA** (commit `2b1c6e5`): `DesktopOverlayRuntime` + `CompositeApp` con adaptador Wails y evento `overlay:profile-v3-loaded`.
+- **Fase 7.7 ✅ CERRADA** (commit `5a407f1`): `ObsOverlayRuntime` + `ObsOverlayApp` con `/api/profile-v3` y SSE.
+- **Fase 7.8 ✅ CERRADA** (commit `ddf73ab`): refresh del overlay activo solo tras save exitoso del mismo perfil.
+- **Fase 7.9 ✅ CERRADA** (commit `6ba0d0a`): `StudioRoute` entra directo al editor V3 con perfil activo; `NoActiveProfileState`; telemetría live por coordinador + `useRateLimitedTelemetry` en frames; sin `V52OverlaysHome` ni `EMPTY_PROFILE`.
+- **Fase 7.10 ✅ CERRADA** (commit `71867c6`): gates automatizados frontend + visual + Go app; smoke manual documentado en `docs/manual-verification.md` (requiere Wails + copia de perfil de prueba).
+- Evidencia 7.4–7.10 (2026-07-11): `pnpm --dir frontend test` → 258 files / 2084 PASS (1 fix live-disconnected en `StudioCanvas.test.tsx`); `pnpm --dir frontend build` PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% delta + parity + studio QA; `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `go test ./...` mantiene preexistentes en `internal/server` (nonce/port bind).
+- **Post-7.10 hotfix ✅** (commit `32b24b3`, 2026-07-11): plan Free puede mover/redimensionar todos los widgets (layout libre; premium sigue en content/visual); avisos de acceso en banner; flujo crear perfil + carga Hub + standings defaults + harness E2E ruta studio. Smoke manual Wails en Desktop (`refactor`) **PASS** (usuario).
+- **Fase 8.7A ✅ CERRADA** (commit `888ebda`, 2026-07-11): retirado editor legacy `hub/overlays` (34 archivos); conservados `OwnProfilesView`, `RecommendedProfilesView`, OBS/community. i18n: eliminados `studio.saveToWidget` y `studio.discard`.
+- **Fase 8.7B ✅ CERRADA** (2026-07-11): retirados `PreviewPage`, `WidgetsPage` y módulos preview legacy (`PreviewCanvas`, `PreviewInspector`, `WidgetList`, etc.). Conservados `PreviewWidgetFrame` + `WidgetRenderer` para miniaturas de perfiles (`ProfilePreview`). Contrato harness movido a `overlay-harness/widget-preview-contract.ts`.
+- Evidencia 8.7A–8.7B: `pnpm test -- StudioRoute ProfilePreview overlay-studio widget-preview-contract` → 306 PASS; `pnpm build` PASS.
+- **Fase 8.7C ✅ CERRADA** (2026-07-11): retirados `EditOverlayApp`, `WidgetEditFrame`, `shared-widget-map`, `WidgetHost` y ruta `/overlay/edit`. Runtime desktop/OBS ya usaba V3 (`DesktopOverlayRuntime`, `ObsOverlayRuntime`). Conservados `WidgetRenderer` + miniaturas de perfiles. `StartEditOverlay` en Go queda sin callers frontend (retiro Go diferido).
+- Evidencia 8.7C: `pnpm test -- CompositeApp ObsOverlayApp DesktopOverlayRuntime ObsOverlayRuntime ProfilePreview StudioRoute overlay-studio widget-preview-contract` → 309 PASS; `pnpm build` PASS.
+- **Fase 8.7D ✅ CERRADA** (2026-07-11): miniaturas de perfiles migradas a V3 (`WidgetVisualHost` + `previewDocument` en `ListProfiles`); retirados `WidgetRenderer`, `PreviewWidgetFrame`, componentes legacy `overlay/widgets/*Widget.tsx`, harness parity legacy, settings sections huérfanas y `StartEditOverlay` Go.
+- Evidencia 8.7D: `pnpm test -- ProfilePreview overlay-studio widget-preview-contract CompositeApp ObsOverlayApp` → 327 PASS; `pnpm build` PASS; `go test ./internal/app/...` PASS.
+- **Fase 8.7E ✅ CERRADA** (2026-07-11): retirados `widget-design-gallery`, `WidgetDesignGallery`, `widget-presets`, `widget-presets-store` y `widget-variants` (frontend legacy). Diseños oficiales V3 siguen en `official-designs.ts`; tests de fixtures migrados sin dependencia del modelo legacy de variants.
+- Evidencia 8.7E: `pnpm test -- overlay-studio official-designs widget-preview-fixtures` → 316 PASS; `pnpm build` PASS.
+- **Fase 8.7F ✅ CERRADA** (2026-07-11): retirado Go `PresetService` y handlers Wails `preset:*` (sin callers tras 8.7E). Migración one-shot `widget-presets.json` → `widget-designs.json` conservada en `WidgetDesignService` con tipos legacy internos.
+- Evidencia 8.7F: `go test ./internal/app/... ./cmd/vantare/... -count=1` PASS; `pnpm test -- widget-design-client` → 11 PASS.
+- **Fase 8.7G ✅ CERRADA** (2026-07-11): auditoría retirement `docs/overlay-studio-v3-retirement-audit.md`; inventario actualizado; búsqueda consumidores legacy → cero en producción.
+- **Fase 8.8 ✅ CERRADA** (2026-07-12): auditoría final `docs/overlay-studio-v3-final-audit.md` actualizada; gates frescos: `pnpm test` 213 archivos / 1578 tests PASS, `pnpm build` PASS, `visual:overlay-studio` 59 baselines 0.000% delta + parity + QA responsive/teclado PASS, `design-system:check` 2 sistemas PASS, `go test ./internal/app/... -run StudioProfileService` PASS.
+- **Fase 8 (cutover V3) ✅ CERRADA** para merge: retirement 8.7 y hardening 8.1–8.6 completos. El lint frontend y `go test ./...` mantienen fallos preexistentes fuera del alcance; quedan documentados como gates de mantenimiento separados.
+- **Siguiente:** push `refactor`; merge cuando usuario apruebe; expansión de widgets y resolución de los gates preexistentes de lint/`internal/server`.
+- Rollback ordenado (revert commits en orden inverso): Hub route `6ba0d0a` → OBS `5a407f1` → Desktop `2b1c6e5` → lifecycle `a5f31c4`. Legacy editor/renderer retirado en Fase 8.7.
+- Índice Luna: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-luna-execution-index.md`.
+
 Nota LAUNCH-1C (2026-07-10):
 - Objetivo: cerrar smoke de checkout Polar **produccion** sin pago real (sin presupuesto test).
 - Proyecto Supabase: `ombjshwzqgeisazijduq` (oficial). Sin merge PR, sin tag, sin release publico.
@@ -2544,7 +2605,6 @@ Nota FEATURES-DATA (2026-07-08):
 - Tests: 157/157 files, 1503/1503 tests PASS (regresión 0). Lint 0 errores en archivos tocados.
 - Archivos modificados: ProfileEditor.tsx, ProfileEditor.test.tsx, launcher-state.ts (3 archivos).
 - Commit: 9efd6ee feat(launcher): ProfileEditor steps + hotkey + autostart (cut 3)
-
 Nota LAUNCHER-ICONS (2026-07-10):
 - Bug raiz corregido: en icon_windows.go, `DestroyIcon` estaba en shell32.dll (real: user32.dll) y `DeleteObject` en user32.dll (real: gdi32.dll). `NewProc` es perezoso -> la extraccion de iconos del backend panicaba en cualquier icono extraido con exito. Esto rompia TODOS los iconos extraidos del .exe, no solo 3.
 - Nuevo fallback de icono: si `ExtractIconExW` sobre el .exe no devuelve icono, se resuelve el acceso directo del escritorio/Start Menu (.lnk) via IShellLink y se extrae con `SHGetFileInfo` (el icono que muestra Windows, funciona aunque el target .exe no tenga icono embebido ni exista).
@@ -2582,3 +2642,29 @@ Nota LAUNCHER-V3-VERIFICACION-FINAL (2026-07-11):
 - Gate final Launcher: `go test ./internal/app/launcher/... ./cmd/vantare/...` PASS; `pnpm --dir frontend test` PASS (173 archivos, 1590 tests); `pnpm --dir frontend build` PASS.
 - Smoke Playwright final PASS en 1440x900 y 390x844: 7 apps, 2 perfiles, onboarding/editor avanzado, sin overflow móvil, errores de consola ni peticiones fallidas relevantes. Captura temporal: `C:\Users\isaac\AppData\Local\Temp\vantare-launcher-v3-smoke.png`.
 - `go test ./...` sigue fallando solo en problemas preexistentes de `internal/server` (nonce/puerto); `go build ./...` falla en `build/ios` porque ese paquete no contiene `main`; `go test -race` no puede arrancar porque el entorno carece de `gcc`; lint global mantiene 4 errores preexistentes fuera de Launcher (Calendar y topbar mock).
+
+# Nota OVERLAY-STUDIO-V3-QUALITY (2026-07-12)
+
+- Rama de trabajo: `refactor`.
+- 8.4 cerrado en este corte: `widget-diagnostics.ts` separa el contrato y añade `createWidgetDiagnosticCollector` con límite, conteos y limpieza; los renderizadores reciben ViewModels y diagnósticos acotados sin payloads de telemetría/perfil. `StudioProfileService` registra solo metadata segura en errores.
+- 8.5 cerrado en este corte: template no registrado, contrato compilable, `design-system:check`, guía de authoring, guía HTML→sistema y worksheet; Crystal queda cubierto por presupuesto de blur y contrato visual.
+- 8.6 cerrado: los seis documentos vivos contienen el contrato canónico V3 y los comandos actuales.
+- Evidencia: `pnpm --dir frontend test -- ...` → 7 archivos / 20 PASS; `pnpm --dir frontend design-system:check` → 2 sistemas PASS; `pnpm --dir frontend build` → PASS; `go test ./internal/app/... -run StudioProfileService -count=1` → PASS; `git diff --check` → PASS.
+- 8.1 cerrado: paridad de claves y frontera de literales en los cuatro idiomas; componentes V3 usan `useI18n` para copy visible.
+- 8.2 cerrado: suite `overlay-studio-a11y.test.tsx`, nombres accesibles de zoom/frames, foco visible, restauración Escape de drawers y browser gate wide/compact.
+- 8.3 cerrado: regresión determinista de buckets 15/30 Hz para 20 instancias, presupuesto Crystal blur ≤16px y reduced-motion; no se usan thresholds de tiempo de pared.
+- Gates finales de este corte: `pnpm --dir frontend test` → 213 archivos / 1578 PASS; `pnpm --dir frontend build` → PASS; `pnpm --dir frontend visual:overlay-studio` → 59 baselines 0.000% + parity + drag/resize + zoom + teclado PASS; `pnpm --dir frontend design-system:check` → 2 sistemas PASS; `git diff --check` → PASS.
+- Lint: no gate verde; permanece bloqueado por 44 errores preexistentes y 2 warnings del repositorio, incluyendo calendar/launcher y reglas React existentes en Overlay Studio. No se introdujeron errores nuevos de TypeScript/build.
+- Go completo: `go test ./...` sigue bloqueado por fallos preexistentes de nonce/puerto en `internal/server` y por el directorio no relacionado `vantare-v2/` presente en el working tree; los paquetes de aplicación/cmd y el foco de Studio pasan.
+Nota CRYSTAL-DIRECT-REPLACEMENT-PLAN (2026-07-12):
+- Autoridad vigente para el próximo trabajo Crystal; sustituye cualquier inventario/agrupación histórica anterior basada en `visualTemplate` para Pedals, Damage o Delta Advanced.
+- Objetivo: sustituir directamente la implementación visual actual `vantare-crystal` por el glassmorphism canónico de `docs/overlay-glassmorphism-pro.html`, manteniendo el mismo ID público y retirando Crystal v1.
+- Plan: `docs/superpowers/plans/2026-07-12-vantare-crystal-glassmorphism-direct-replacement.md`.
+- Inventario corregido: referencia numerada 01–16 mapeada a 18 tipos funcionales y 21 diseños Crystal. Solo Input 10A/B/C y Delta 06/15 son variantes del mismo tipo; Pedals V1/V2/V3, Damage 13/14 y Delta Advanced 16 son tipos independientes.
+- Exclusión explícita: el bloque final `V2. WIDGETS REESTILIZADOS` (`.v2-section`) no forma parte del producto ni de la referencia visual.
+- UI acordada: el inspector separa `Sistema visual` (Original/Crystal), `Diseños de Vantare` filtrados por tipo+sistema y `Mis diseños` filtrados por tipo+sistema; AddWidget muestra tipos funcionales, no composiciones.
+- Alcance: tipos/ViewModels/inspectores, Original fallback, Crystal 1:1, migraciones v1→v2, catálogo Studio, perfiles/diseños, runtime Studio/Desktop/OBS, Playwright HTML↔renderer, rendimiento, a11y e i18n.
+- Regla: sustitución directa bajo `systemId="vantare-crystal"`; no coexistencia ni fallback oculto del Crystal actual.
+- Estado: PLANIFICADO, sin código implementado por este corte.
+- Paquete de ejecución Luna creado: índice `docs/superpowers/plans/2026-07-12-crystal-luna-execution-index.md` + seis microplanes ordenados (contratos/UI, referencia/base, core, widgets live, widgets derivados y cutover).
+- Los microplanes fijan disponibilidad de datos: weather/damage permanecen `missing` en live hasta contrato real; histories se derivan de forma acotada; Calendar usa adapter read-only; no se permite inventar telemetría.

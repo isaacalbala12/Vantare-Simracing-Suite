@@ -211,3 +211,104 @@ export function applyCanonicalPreviewOverrides(
 export function getCanonicalPreviewMaxRows(widgetType: string): number | undefined {
   return PREVIEW_CANONICAL_MAX_ROWS[widgetType];
 }
+
+// ── Core widget characterization telemetry (V3 baseline) ─────────────────────
+
+export type CoreTelemetryScenario = "race" | "practice" | "qual" | "pits";
+
+function cloneTelemetryState(source: TelemetryRefState): TelemetryRefState {
+  return {
+    ...source,
+    vehicles: source.vehicles.map((vehicle) => ({ ...vehicle })),
+  };
+}
+
+function buildCoreTelemetryBase(): TelemetryRefState {
+  return cloneTelemetryState(getCanonicalPreviewTelemetry());
+}
+
+/**
+ * Deterministic telemetry for legacy characterization and V3 parity harnesses.
+ * Each call returns a fresh object graph.
+ */
+export function createWidgetPreviewTelemetry(scenario: CoreTelemetryScenario): TelemetryRefState {
+  const telemetry = buildCoreTelemetryBase();
+
+  if (scenario === "practice") {
+    return {
+      ...telemetry,
+      sessionType: 10,
+      sessionName: "PRACTICE1",
+      sessionKey: "mock|Circuit de Barcelona|practice",
+      timeRemaining: 5328,
+    };
+  }
+
+  if (scenario === "qual") {
+    return {
+      ...telemetry,
+      sessionType: 11,
+      sessionName: "QUALIFY",
+      sessionKey: "mock|Circuit de Barcelona|qual",
+      timeRemaining: 900,
+    };
+  }
+
+  if (scenario === "pits") {
+    return {
+      ...telemetry,
+      vehicles: telemetry.vehicles.map((vehicle) =>
+        vehicle.isPlayer
+          ? { ...vehicle, inPits: true, pitting: true, tireCompound: "" }
+          : { ...vehicle },
+      ),
+    };
+  }
+
+  return telemetry;
+}
+
+export function createDisconnectedWidgetPreviewTelemetry(): TelemetryRefState {
+  return {
+    seq: 0,
+    connected: false,
+    playerHasVehicle: false,
+    sessionEpoch: 0,
+    sessionKey: "",
+    sessionState: "offline",
+    sessionType: undefined,
+    sessionName: "",
+    speed: 0,
+    gear: 0,
+    rpm: 0,
+    fuel: 0,
+    deltaBest: 0,
+    trackName: "",
+    throttle: 0,
+    brake: 0,
+    clutch: 0,
+    timeRemaining: 0,
+    vehicles: [],
+  };
+}
+
+export function createStaleWidgetPreviewTelemetry(): TelemetryRefState {
+  return {
+    ...createDisconnectedWidgetPreviewTelemetry(),
+    connected: true,
+    sessionState: "session",
+    sessionKey: "mock|Circuit de Barcelona|race",
+    sessionEpoch: 1,
+    seq: 1,
+    trackName: "Circuit de Barcelona",
+  };
+}
+
+export const CORE_TELEMETRY_STATES = {
+  readyRace: createWidgetPreviewTelemetry("race"),
+  readyPractice: createWidgetPreviewTelemetry("practice"),
+  readyQualifying: createWidgetPreviewTelemetry("qual"),
+  pits: createWidgetPreviewTelemetry("pits"),
+  disconnected: createDisconnectedWidgetPreviewTelemetry(),
+  stale: createStaleWidgetPreviewTelemetry(),
+} as const;

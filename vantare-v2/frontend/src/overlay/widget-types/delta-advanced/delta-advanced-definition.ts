@@ -1,0 +1,11 @@
+import { validateInspectorControls } from "../../core/inspector-control";
+import type { WidgetInstanceV3 } from "../../core/profile-document";
+import type { WidgetTypeDefinition } from "../../core/widget-definition";
+import { getWidgetRequiredFeature } from "../../core/widget-definition";
+import { buildDeltaAdvancedViewModel, type DeltaAdvancedViewModel } from "./delta-advanced-view-model";
+export type DeltaAdvancedContent = { showUnavailableFields: boolean };
+const DEFAULT_CONTENT: DeltaAdvancedContent = { showUnavailableFields: true };
+const DEFAULT_LAYOUT = { x: 64, y: 64, w: 360, h: 124, zIndex: 0, aspectLocked: false } as const;
+const inspector = { content: [{ kind: "toggle" as const, id: "show-unavailable-fields", labelKey: "studio.v3.inspector.deltaAdvanced.showUnavailableFields", path: "showUnavailableFields", defaultValue: true }] } as const;
+validateInspectorControls(inspector.content);
+export const deltaAdvancedDefinition: WidgetTypeDefinition<DeltaAdvancedContent, DeltaAdvancedViewModel> = { type: "delta-advanced", labelKey: "studio.v3.widgetTypes.deltaAdvanced", capabilities: { inspectorSections: ["design", "appearance", "content", "behavior", "layout", "actions"], supportsAspectUnlock: true, minimumSize: { width: 260, height: 88 }, defaultSize: { width: DEFAULT_LAYOUT.w, height: DEFAULT_LAYOUT.h }, requiredFeature: getWidgetRequiredFeature("delta-advanced") }, inspector, createDefault(id: string): WidgetInstanceV3 { return { id, type: "delta-advanced", layout: { ...DEFAULT_LAYOUT }, behavior: { enabled: true, updateHz: 10 }, content: { ...DEFAULT_CONTENT }, visual: { systemId: "vantare-original", systemVersion: 1, configVersion: 1, baseSettings: {}, appearanceOverrides: {} } }; }, parseContent(input: unknown): DeltaAdvancedContent { if (input == null) return { ...DEFAULT_CONTENT }; if (typeof input !== "object" || Array.isArray(input)) throw new Error("delta-advanced content must be an object"); const value = input as Record<string, unknown>; if (value.showUnavailableFields !== undefined && typeof value.showUnavailableFields !== "boolean") throw new Error("delta-advanced showUnavailableFields must be boolean"); return { showUnavailableFields: typeof value.showUnavailableFields === "boolean" ? value.showUnavailableFields : true }; }, buildViewModel: buildDeltaAdvancedViewModel };

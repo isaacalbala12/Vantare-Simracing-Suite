@@ -1,0 +1,939 @@
+[data-widget-system="vantare-crystal"] {
+  --vc-page-bg: #060608;
+  --vc-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vc-font-display: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --vc-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --vc-glass-surface: rgba(18, 18, 22, 0.82);
+  --vc-glass-border: rgba(255, 255, 255, 0.09);
+  --vc-glass-highlight: rgba(255, 255, 255, 0.1);
+  --vc-glass-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --vc-blur-soft: 20px;
+  --vc-blur-glass: 24px;
+  --vc-blur-strong: 25px;
+  --vc-radius-sm: 8px;
+  --vc-radius-md: 12px;
+  --vc-radius-lg: 16px;
+  --vc-glow-accent: var(--vc-glass-shadow);
+  --vc-surface: var(--vc-glass-surface);
+  --vc-border: var(--vc-glass-border);
+  --vc-highlight: rgba(255, 255, 255, 0.08);
+  --vc-text: #f8fafc;
+  --vc-muted: rgba(226, 232, 240, 0.72);
+  --vc-gaining: #4ade80;
+  --vc-losing: #fb7185;
+  --vc-neutral: #e2e8f0;
+  --vc-glow-gaining: rgba(74, 222, 128, 0.35);
+  --vc-glow-losing: rgba(251, 113, 133, 0.35);
+  --vc-meter: rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-crystal"].vc-delta {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar,
+[data-widget-system="vantare-crystal"] .vc-delta-simple {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  padding: 0.75rem;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-lg);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: none;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-lap,
+[data-widget-system="vantare-crystal"] .vc-delta-bar-split {
+  flex-shrink: 0;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-predicted {
+  color: var(--vc-text);
+  font-family: var(--vc-font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-track {
+  position: relative;
+  flex: 1;
+  min-height: 1.25rem;
+  overflow: hidden;
+  background: rgba(10, 10, 14, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-center {
+  position: absolute;
+  inset: 0 auto 0 50%;
+  z-index: 2;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px #fff;
+  transform: translateX(-50%);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: calc(abs(var(--delta-progress, 0)) * 50%);
+  border-radius: 5px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-track[data-tone="gaining"] .vc-delta-bar-fill {
+  right: 50%;
+  background: var(--vc-gaining);
+  box-shadow: 0 0 12px var(--vc-gaining);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-track[data-tone="losing"] .vc-delta-bar-fill {
+  left: 50%;
+  background: var(--vc-losing);
+  box-shadow: 0 0 12px var(--vc-losing);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-bar-value,
+[data-widget-system="vantare-crystal"] .vc-delta-simple-badge {
+  align-self: center;
+  min-width: 5rem;
+  font-size: 1rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-simple {
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.5rem;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-simple-bar {
+  width: 100%;
+  height: 2.25rem;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-md);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: none;
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-simple-bar[data-tone="gaining"] {
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-simple-bar[data-tone="losing"] {
+  border-color: rgba(251, 113, 133, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-delta-status-message {
+  margin: 0;
+  color: var(--vc-muted);
+  font-size: 0.7rem;
+}
+
+[data-widget-system="vantare-crystal"].vc-standings {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+  font-size: 0.75rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-lg);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: blur(var(--vc-blur-glass));
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-remaining {
+  color: var(--vc-accent);
+  font-family: var(--vc-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-status-message {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  color: var(--vc-muted);
+  font-size: 0.68rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header,
+[data-widget-system="vantare-crystal"] .vc-standings-row {
+  display: grid;
+  grid-template-columns: 20px 20px 26px minmax(0, 1fr) 76px 58px;
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 0.75rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header {
+  min-height: 24px;
+  color: var(--vc-muted);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header > span:not(.vc-standings-driver-heading),
+[data-widget-system="vantare-crystal"] .vc-standings-position,
+[data-widget-system="vantare-crystal"] .vc-standings-number {
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-table-header > span:nth-last-child(-n + 2),
+[data-widget-system="vantare-crystal"] .vc-standings-last,
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value {
+  text-align: right;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-rows {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row {
+  min-height: 28px;
+  color: var(--vc-text);
+  font-size: 0.66rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-class-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.48rem;
+  font-weight: 800;
+  border-radius: 2px;
+  background: var(--vc-standings-class-color);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-driver,
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value,
+[data-widget-system="vantare-crystal"] .vc-standings-last {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value,
+[data-widget-system="vantare-crystal"] .vc-standings-last,
+[data-widget-system="vantare-crystal"] .vc-standings-number,
+[data-widget-system="vantare-crystal"] .vc-standings-position {
+  font-family: var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-gap-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-tire-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  color: #111;
+  font-size: 0.5rem;
+  font-weight: 900;
+  border-radius: 50%;
+  background: #ddd;
+}
+
+[data-widget-system="vantare-crystal"] .vc-tire-soft { background: #ef4444; color: #fff; }
+[data-widget-system="vantare-crystal"] .vc-tire-med { background: #facc15; }
+[data-widget-system="vantare-crystal"] .vc-tire-medium { background: #facc15; }
+[data-widget-system="vantare-crystal"] .vc-tire-hard { background: #f8fafc; }
+
+[data-widget-system="vantare-crystal"] .vc-standings-pit-tag {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-player="true"] {
+  background: linear-gradient(90deg, rgba(255, 42, 59, 0.22), rgba(230, 57, 70, 0.05));
+  border-top: 1px solid rgba(255, 42, 59, 0.4);
+  border-bottom: 1px solid rgba(255, 42, 59, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-row[data-leader="true"] .vc-standings-gap-value {
+  color: var(--vc-gaining);
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"][data-compact="true"] .vc-standings-row {
+  min-height: 24px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-frame > [data-crystal-primitive="footer"] {
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-standings-rows,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-standings-rows,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-standings-rows,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-standings-rows {
+  opacity: 0.4;
+}
+
+/* The old configurable table is intentionally not part of the canonical composition. */
+[data-widget-system="vantare-crystal"] .vc-standings-columns,
+[data-widget-system="vantare-crystal"] .vc-standings-row-card {
+  display: none;
+}
+
+[data-widget-system="vantare-crystal"].vc-relative {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-lg);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: blur(var(--vc-blur-glass));
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-status-message {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.68rem;
+  color: var(--vc-muted);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-table-header,
+[data-widget-system="vantare-crystal"] .vc-relative-row {
+  display: grid;
+  grid-template-columns: 26px 4px 28px minmax(0, 1fr) 58px 62px;
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 10px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-table-header {
+  min-height: 24px;
+  color: var(--vc-muted);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-table-header [data-metric="driverName"] {
+  text-align: left;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-table-header [data-metric="gap"],
+[data-widget-system="vantare-crystal"] .vc-relative-table-header [data-metric="bestLap"] {
+  text-align: right;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row {
+  min-height: 28px;
+  color: var(--vc-text);
+  font-size: 0.66rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="driverName"] {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="gap"],
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="bestLap"] {
+  font-family: var(--vc-font-mono);
+  font-size: 0.6rem;
+  text-align: right;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="class"] {
+  min-height: 16px;
+  border-radius: 2px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-player {
+  position: relative;
+  background: linear-gradient(90deg, rgba(255, 42, 59, 0.22), rgba(230, 57, 70, 0.05));
+  border-top: 1px solid rgba(255, 42, 59, 0.4);
+  border-bottom: 1px solid rgba(255, 42, 59, 0.4);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-player::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  content: "";
+  background: var(--vc-relative-accent, #e63946);
+  box-shadow: 0 0 10px var(--vc-relative-accent, #e63946);
+}
+
+[data-widget-system="vantare-crystal"][data-row-height="fill"] .vc-relative-row {
+  flex: 1 1 0;
+  min-height: 20px;
+}
+
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-relative-rows,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-relative-rows,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-relative-rows,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-relative-rows {
+  opacity: 0.4;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-rows:empty::after {
+  display: block;
+  padding: 1rem;
+  color: var(--vc-muted);
+  content: "—";
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-rows > .vc-relative-row {
+  display: grid;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-frame > [data-crystal-primitive="footer"] {
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-cell {
+  min-width: 0;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-class-bar {
+  display: block;
+  width: 4px;
+  min-height: 16px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="position"],
+[data-widget-system="vantare-crystal"] .vc-relative-row > [data-metric="carNumber"] {
+  font-family: var(--vc-font-mono);
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"] .vc-relative-frame > [data-crystal-primitive="footer"] {
+  flex-shrink: 0;
+  min-height: 1.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* End canonical relative composition. */
+[data-widget-system="vantare-crystal"].vc-pedals {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  font-family: var(--vc-font-sans);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  padding: 0.5rem;
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-lg);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: blur(var(--vc-blur-glass));
+}
+
+[data-widget-system="vantare-crystal"][data-transparent="true"] .vc-pedals-frame {
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-crystal"] *,
+  [data-widget-system="vantare-crystal"] *::before,
+  [data-widget-system="vantare-crystal"] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-status-message {
+  margin: 0 0 0.35rem;
+  color: var(--vc-muted);
+  font-size: 0.65rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-channels {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 34px;
+  height: 100%;
+  gap: 0.3rem;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-label {
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--vc-muted);
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-meter {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 4rem;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--vc-radius-md);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  border-radius: 0 0 var(--vc-radius-md) var(--vc-radius-md);
+  box-shadow: 0 0 8px currentColor;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-value {
+  font-size: 0.55rem;
+  font-weight: 700;
+  font-family: var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-pedals-channels,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-pedals-channels,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-pedals-channels,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-pedals-channels {
+  opacity: 0.4;
+}
+
+[data-widget-system="vantare-crystal"].vc-pedals-telemetry {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+  --vc-pedals-telemetry-throttle: #22c55e;
+  --vc-pedals-telemetry-brake: #ff2a3b;
+  --vc-pedals-telemetry-clutch: #f59e0b;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-frame {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
+  background: rgba(15, 15, 18, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 60px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(var(--vc-blur-glass));
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-gear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 3.75rem;
+  width: 3.75rem;
+  height: 3.75rem;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #22c55e;
+  border-right-color: #22c55e;
+  border-radius: 50%;
+  background: #0c0c0e;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-gear-value {
+  font-family: var(--vc-font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-center { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 0.35rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-leds { display: flex; gap: 3px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led { width: 9px; height: 5px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led.is-on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led.is-on.is-red { background: #ff2a3b; box-shadow: 0 0 6px #ff2a3b; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values { display: flex; gap: 1rem; font-family: var(--vc-font-mono); }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values div { display: flex; flex-direction: column; gap: 2px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values strong { font-size: 1rem; line-height: 1; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-values small { color: var(--vc-muted); font-size: 0.48rem; font-weight: 700; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-bars { display: flex; align-items: flex-end; gap: 0.5rem; height: 3.5rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-channel { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-pedal-label,
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-pedal-value { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 800; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-track { position: relative; width: 10px; flex: 1; min-height: 2.6rem; overflow: hidden; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 3px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-fill { position: absolute; right: 0; bottom: 0; left: 0; border-radius: 3px; box-shadow: 0 0 8px currentColor; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-status { margin: 0; color: var(--vc-muted); font-size: 0.55rem; }
+[data-widget-system="vantare-crystal"][data-status="missing"] .vc-pedals-telemetry-frame,
+[data-widget-system="vantare-crystal"][data-status="stale"] .vc-pedals-telemetry-frame,
+[data-widget-system="vantare-crystal"][data-status="disconnected"] .vc-pedals-telemetry-frame,
+[data-widget-system="vantare-crystal"][data-status="error"] .vc-pedals-telemetry-frame { opacity: 0.5; }
+
+[data-widget-system="vantare-crystal"].vc-pedals-telemetry-compact {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+}
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-frame {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 1rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 3px solid var(--vc-accent-red-bright, #ff3b3b);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  background: rgba(18, 18, 22, 0.9);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(var(--vc-blur-glass));
+}
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-bars { display: flex; align-items: flex-end; gap: 0.65rem; height: 3.1rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-channel { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-label { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 800; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-track { position: relative; display: block; width: 14px; flex: 1; min-height: 2.3rem; overflow: hidden; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-track i { position: absolute; right: 0; bottom: 0; left: 0; display: block; background: #22c55e; }
+[data-widget-system="vantare-crystal"] [data-pedal="brake"] .vc-pedals-compact-track i { background: #ff2a3b; }
+[data-widget-system="vantare-crystal"] [data-pedal="clutch"] .vc-pedals-compact-track i { background: #f59e0b; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-core { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 5.3rem; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift { display: flex; gap: 3px; width: 100%; justify-content: center; margin-bottom: 4px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift i { width: 7px; height: 5px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift i.is-on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-gear { font-family: var(--vc-font-display); font-size: 2rem; line-height: 0.85; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-speed,
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-rpm { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; font-weight: 700; }
+
+[data-widget-system="vantare-crystal"].vc-racing-flags { width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); font-family: var(--vc-font-sans); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-top { padding: 0.45rem 0.8rem; color: var(--vc-muted); background: rgba(0, 0, 0, 0.4); border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-family: var(--vc-font-mono); font-size: 0.55rem; font-weight: 800; letter-spacing: 0.08em; text-align: center; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-banner { display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.8rem; font-family: var(--vc-font-display); font-size: 1.1rem; font-weight: 800; letter-spacing: 0.05em; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-light { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--vc-muted); }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-green .vc-racing-flags-light { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-yellow .vc-racing-flags-light { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-red .vc-racing-flags-light { background: #ff2a3b; box-shadow: 0 0 8px #ff2a3b; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags-sectors { display: flex; justify-content: center; gap: 0.6rem; padding: 0 0.7rem 0.6rem; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-racing-flags[data-hidden="true"] { display: none; }
+
+[data-widget-system="vantare-crystal"].vc-broadcast-tower { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower header { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.9rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower header strong { font-family: var(--vc-font-display); font-size: 0.8rem; letter-spacing: 0.12em; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower header strong span { color: var(--vc-muted); font-size: 0.55rem; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower header small, [data-widget-system="vantare-crystal"] .vc-broadcast-tower footer { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows { display: flex; flex: 1; flex-direction: column; padding: 0.25rem 0; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows > div { display: grid; grid-template-columns: 1.5rem 2rem 1fr 7rem 3.5rem; gap: 0.4rem; align-items: center; min-height: 1.8rem; padding: 0 0.8rem; font-family: var(--vc-font-mono); font-size: 0.58rem; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows > div:nth-child(even) { background: rgba(255, 255, 255, 0.03); }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows .is-player { background: rgba(230, 57, 70, 0.22); }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows small, [data-widget-system="vantare-crystal"] .vc-broadcast-tower-rows em { color: var(--vc-muted); font-size: 0.48rem; font-style: normal; }
+[data-widget-system="vantare-crystal"] .vc-broadcast-tower footer { padding: 0.5rem 0.8rem; background: rgba(0, 0, 0, 0.35); border-top: 1px solid rgba(255, 255, 255, 0.06); }
+
+[data-widget-system="vantare-crystal"].vc-head-to-head { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.8rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
+[data-widget-system="vantare-crystal"] .vc-head-to-head header { display: flex; justify-content: space-between; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.55rem; }
+[data-widget-system="vantare-crystal"] .vc-head-to-head-entries { display: flex; flex-direction: column; justify-content: center; flex: 1; gap: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-head-to-head-entries div { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0.55rem; background: rgba(255, 255, 255, 0.04); }
+[data-widget-system="vantare-crystal"] .vc-head-to-head-entries small { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; }
+[data-widget-system="vantare-crystal"] .vc-head-to-head-entries strong { font-family: var(--vc-font-display); font-size: 0.7rem; }
+[data-widget-system="vantare-crystal"] .vc-head-to-head-entries em { align-self: center; color: #f59e0b; font-family: var(--vc-font-mono); font-size: 0.7rem; font-style: normal; }
+
+[data-widget-system="vantare-crystal"].vc-input-telemetry { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.75rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry header, [data-widget-system="vantare-crystal"] .vc-input-telemetry footer { display: flex; justify-content: space-between; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-content { display: flex; align-items: center; flex: 1; gap: 1rem; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-bars { display: flex; flex: 1; flex-direction: column; gap: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-bars > div { display: flex; align-items: center; gap: 0.45rem; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.48rem; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-bars > div span { width: 4rem; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-bars > div i { display: block; height: 0.55rem; background: #22c55e; border-radius: 3px; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-bars [data-input="brake"] i { background: #ff2a3b; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-bars [data-input="clutch"] i { background: #f59e0b; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-readout { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; min-width: 5rem; font-family: var(--vc-font-mono); }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-readout b { font-family: var(--vc-font-display); font-size: 2rem; line-height: 0.9; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-readout span { color: var(--vc-muted); font-size: 0.48rem; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-capsule { border-radius: 40px; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-dense { padding: 0.4rem 0.7rem; border-radius: 5px; }
+[data-widget-system="vantare-crystal"] .vc-input-telemetry-dense .vc-input-telemetry-content { gap: 0.5rem; }
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative header { display: flex; justify-content: space-between; padding: 0.7rem 0.8rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative header strong { font-family: var(--vc-font-display); font-size: 0.75rem; letter-spacing: 0.1em; }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative header span { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative > div { display: grid; grid-template-columns: 1.5rem 0.35rem 2rem 1fr 5rem 3.5rem; gap: 0.4rem; align-items: center; min-height: 1.8rem; padding: 0 0.8rem; font-family: var(--vc-font-mono); font-size: 0.55rem; }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative > div:nth-child(even) { background: rgba(255, 255, 255, 0.03); }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative > div.is-player { background: rgba(230, 57, 70, 0.22); }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative > div i { width: 0.25rem; height: 1rem; }
+[data-widget-system="vantare-crystal"] .vc-multiclass-relative > div em, [data-widget-system="vantare-crystal"] .vc-multiclass-relative > div small { color: var(--vc-muted); font-size: 0.48rem; font-style: normal; }
+
+[data-widget-system="vantare-crystal"].vc-delta-advanced { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 0.8rem; color: var(--vc-text); background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); backdrop-filter: none; }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced header { display: flex; justify-content: space-between; color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced-best { display: flex; flex: 1; flex-direction: column; justify-content: center; }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced-best small, [data-widget-system="vantare-crystal"] .vc-delta-advanced-grid small { color: var(--vc-muted); font-family: var(--vc-font-mono); font-size: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced-best b { color: #22c55e; font-family: var(--vc-font-display); font-size: 2.3rem; }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced-grid div { display: flex; flex-direction: column; gap: 0.15rem; padding-top: 0.4rem; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+[data-widget-system="vantare-crystal"] .vc-delta-advanced-grid strong { font-family: var(--vc-font-mono); font-size: 0.75rem; }
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="surface"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  padding: 1rem;
+  color: var(--vc-text);
+  font-family: var(--vc-font-sans);
+  background: var(--vc-glass-surface);
+  border: 1px solid var(--vc-glass-border);
+  border-radius: var(--vc-radius-lg);
+  box-shadow: var(--vc-glass-shadow);
+  backdrop-filter: blur(var(--vc-blur-glass));
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="header"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--vc-text);
+  font-family: var(--vc-font-display);
+}
+
+[data-widget-system="vantare-crystal"] .crystal-header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+[data-widget-system="vantare-crystal"] .crystal-header-title,
+[data-widget-system="vantare-crystal"] .crystal-header-meta {
+  color: var(--vc-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="brand"] {
+  color: var(--vc-text);
+  font-size: 0.9rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="pill"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.5rem;
+  padding: 0.15rem 0.55rem;
+  color: var(--vc-neutral);
+  font-family: var(--vc-font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  border: 1px solid var(--vc-glass-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="pill"][data-tone="gaining"] {
+  color: var(--vc-gaining);
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.12);
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="pill"][data-tone="losing"] {
+  color: var(--vc-losing);
+  border-color: rgba(251, 113, 133, 0.4);
+  background: rgba(251, 113, 133, 0.12);
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="table-row"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--vc-text);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--vc-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="table-row"][data-selected="true"] {
+  border-color: rgba(251, 113, 133, 0.45);
+  background: rgba(251, 113, 133, 0.14);
+  box-shadow: 0 0 18px rgba(251, 113, 133, 0.2);
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="status-frame"] {
+  color: var(--vc-muted);
+  font-size: 0.72rem;
+}
+
+[data-widget-system="vantare-crystal"][data-crystal-primitive="footer"] {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--vc-muted);
+  font-family: var(--vc-font-mono);
+  font-size: 0.62rem;
+}

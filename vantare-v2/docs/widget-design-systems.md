@@ -326,3 +326,6 @@ Once gaps P1-P5 are resolved, the workflow will be:
 4. Appearance resolver reads from `lookupDesignSystem(style).perWidgetAppearance`.
 5. All widgets check `useWidgetComponents` and fall back to defaults.
 6. Test end-to-end: gallery → apply → render.
+# Contrato canónico Overlay Studio V3 (2026-07-11)
+
+V3 tiene exactamente dos sistemas completos: `vantare-original` y `vantare-crystal`. Un diseño es una plantilla versionada copiada al widget; nunca contiene posición, identidad, z-order ni una referencia mutable. Cada sistema declara compatibilidad, defaults y migraciones secuenciales. El template y el checker ejecutable viven en `frontend/src/overlay/design-systems/_template` y `design-system:check`.

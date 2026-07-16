@@ -1,0 +1,8 @@
+import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
+import type { WidgetViewModelBase } from "../../core/widget-definition";
+import { readNonNegativeNumber, readNormalizedInput } from "../shared/input-readers";
+import type { InputTelemetrySample } from "./input-telemetry-accumulator";
+import type { InputTelemetryContent } from "./input-telemetry-definition";
+
+export type InputTelemetryViewModel = WidgetViewModelBase & { type: "input-telemetry"; throttle: number; brake: number; clutch: number; speedKph?: number; rpm?: number; gear?: number; history: readonly InputTelemetrySample[]; historySeconds: number; showClutch: boolean };
+export function buildInputTelemetryViewModel(snapshot: TelemetrySnapshot, content: InputTelemetryContent, history: readonly InputTelemetrySample[] = []): InputTelemetryViewModel { const unavailable = snapshot.status === "disconnected" || snapshot.status === "error" || snapshot.status === "missing"; return { type: "input-telemetry", status: snapshot.status, statusMessage: snapshot.errorMessage, throttle: unavailable ? 0 : readNormalizedInput(snapshot.player.throttle) ?? 0, brake: unavailable ? 0 : readNormalizedInput(snapshot.player.brake) ?? 0, clutch: unavailable ? 0 : readNormalizedInput(snapshot.player.clutch) ?? 0, speedKph: unavailable ? undefined : readNonNegativeNumber(snapshot.player.speedKph), rpm: unavailable ? undefined : readNonNegativeNumber(snapshot.player.rpm), gear: unavailable ? undefined : readNonNegativeNumber(snapshot.player.gear), history: unavailable ? [] : history, historySeconds: content.historySeconds, showClutch: content.showClutch }; }

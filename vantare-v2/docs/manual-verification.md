@@ -113,6 +113,36 @@ Si la preview aislada vuelve a mostrar offsets, clipping o cajas invisibles, rev
 11. Guarda.
 12. Comprueba que `Abrir overlay` vuelve a habilitarse.
 
+## Overlay Studio V3 — smoke de produccion (Fase 7)
+
+Usar una **copia migrada** del perfil de Fase 0, nunca el unico perfil del usuario. Conservar el `.pre-v3.bak` generado por la migracion.
+
+Comandos de gate automatizado (2026-07-11, rama `refactor`):
+
+```powershell
+pnpm --dir vantare-v2/frontend test
+pnpm --dir vantare-v2/frontend build
+pnpm --dir vantare-v2/frontend visual:overlay-studio
+cd vantare-v2; go test ./internal/app/... ./cmd/vantare/... -count=1
+```
+
+Resultado registrado: frontend 2084/2084 PASS, build PASS, visual 59 baselines 0.000% delta + parity, Go app PASS. `go test ./...` conserva fallos preexistentes en `internal/server` (nonce/port).
+
+Checklist manual en Wails (perfil de prueba):
+
+1. Abrir Hub → `Overlays Studio`: entra **directo** al editor V3 del perfil activo (sin home v5.2). Si no hay activo, muestra crear/seleccionar/recomendados.
+2. Cambiar sesion (Practice/Qualifying/Race/Endurance); editar y guardar un layout independiente por sesion.
+3. Arrastrar/redimensionar Delta, guardar, undo/redo, reabrir y verificar persistencia.
+4. Cambiar Original/Crystal en los cuatro widgets.
+5. Mock session/location y Live desconectado en preview.
+6. Iniciar overlay Desktop; guardar en Studio y verificar **un** refresh automatico.
+7. Abrir Browser View; verificar estado guardado y reconexion SSE.
+8. Borrar los cuatro widgets V3, guardar, verificar Desktop/OBS transparentes y payloads legacy preservados en JSON.
+9. Restaurar fixture; hotkey de edicion abre/enfoca Overlay Studio con Desktop fullscreen click-through.
+10. Forzar conflicto de save y fallo de disco; verificar que el borrador local sigue intacto.
+
+Rollback ensayado (orden): revert `refactor(studio): switch Hub route` → OBS runtime → Desktop runtime → lifecycle Go.
+
 ## Que reportar si algo falla
 
 Indica:

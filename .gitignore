@@ -63,3 +63,18 @@ vantare-v2/configs/license-cache.json
 
 # Local terminal session logs (tool noise, not source)
 terminals/
+vantare-v2/configs/app-settings.json.bak
+
+# Local build-generated syso
+vantare-v2/cmd/vantare/wails_windows_amd64.syso
+
+# Local HTML mockups (design iterations, not shipped)
+layout-studio-v*.html
+carreras-*.html
+dayview-*.html
+hub_main_v*.html
+overlays_mockup.html
+standings_*.html
+vantare_*.html
+crewchief_overlay.html
+mockups/

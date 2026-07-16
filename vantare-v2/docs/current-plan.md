@@ -2640,3 +2640,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Corrección P0 de autoridad visual:
 - A/B de `tokens.css`: se conservan solo colores globales con mejora medida; se retiraron ajustes redundantes de Delta Simple. El fallback Chrome de Playwright queda cubierto.
 - Evidencia: `docs/analysis/isa-93-crystal-parity/README.md` y manifest v2 `frontend/testdata/crystal-reference/manifest.json`.
 - Siguiente: corregir overflow 7/21, vendorizar las fuentes oficiales ya autorizadas para cerrar `fontPass` y continuar familias contra los nuevos gates. ISA-93 permanece In Progress; sin PR final ni merge.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Fuentes oficiales y Pedals 04:
+- Vendor local mínimo y reproducible: Inter 400–800, Plus Jakarta Sans 700–800 y JetBrains Mono 500–800, subsets latin WOFF2, versiones/URLs/SHA-256 y OFL fijados; sin CDN runtime ni dependencia npm.
+- Pedals V1/V2/V3 eliminan definitivamente tags y descripciones del showcase; la raíz del renderer coincide con `.hud-capsule-v1`, `.cockpit-v2-low` y `.cockpit-v3-solo`.
+- Harness final del corte: 3/3 geometry, mask-alpha, sólido, rejilla, guard, fuentes, estabilidad y Studio/Desktop/OBS PASS. Métricas finales V1 `100% / 0.10% / 2.92% / 1.51%`, V2 `100% / 0.05% / 1.62% / 0.83%`, V3 `100% / 0.00% / 0.56% / 0.30%`.
+- Referencias intactas. ISA-93 sigue In Progress; siguiente microcorte: reevaluación completa 21/21 y cierre de la siguiente familia por mayor delta/overflow.

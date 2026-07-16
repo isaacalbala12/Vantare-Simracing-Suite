@@ -84,9 +84,10 @@ const CANONICAL_DRIVERS = [
 
 function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[] {
   const multiclass = widget === "multiclass-relative";
+  const playerPlace = widget === "pedals-telemetry" ? 12 : 4;
   return CANONICAL_DRIVERS.map((driverName, index) => {
     const place = index + 1;
-    const isPlayer = place === 4;
+    const isPlayer = place === playerPlace;
     const classIndex = Math.min(3, Math.floor(index / 5));
     const vehicleClass = multiclass ? ["LMP2", "LMP3", "GT4", "HYPERCAR"][classIndex] : "HYPERCAR";
     return {
@@ -98,7 +99,7 @@ function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[]
       vehicleClass,
       isPlayer,
       inPits: false,
-      timeGapToPlayer: isPlayer ? 0 : (place - 4) * 1.84,
+      timeGapToPlayer: isPlayer ? 0 : (place - playerPlace) * 1.84,
       timeGapToLeader: place === 1 ? 0 : place * 3.45,
       bestLapTime: 204.89 + index * 0.01,
       lastLapTime: 204.89 + index * 0.34,
@@ -168,10 +169,24 @@ export function buildHarnessTelemetry(input: {
     return base;
   }
 
+  const usesSectionFourPedals = input.widget === "pedals" || input.widget === "pedals-telemetry-compact";
   const readyBase: TelemetrySnapshot = {
     ...base,
     session: { ...base.session, remainingSeconds: 1161 },
-    player: { ...base.player, fuelLiters: 12.4, lastLapSeconds: 90, lapNumber: 14, predictedLapSeconds: 164.659, deltaSeconds: input.designId === "delta-crystal-simple" ? 0 : -0.24, throttle: 1, brake: 0.06, clutch: 0, gear: 6, speedKph: 260, rpm: 6432 },
+    player: {
+      ...base.player,
+      fuelLiters: 12.4,
+      lastLapSeconds: 90,
+      lapNumber: 14,
+      predictedLapSeconds: 164.659,
+      deltaSeconds: input.designId === "delta-crystal-simple" ? 0 : -0.24,
+      throttle: usesSectionFourPedals ? 0.85 : 1,
+      brake: usesSectionFourPedals ? 0.15 : 0.06,
+      clutch: 0,
+      gear: 6,
+      speedKph: 260,
+      rpm: 6432,
+    },
     scoring: buildCanonicalScoring(input.widget),
     derived: {
       fuelHistory: [

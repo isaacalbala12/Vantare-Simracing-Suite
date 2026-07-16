@@ -55,6 +55,8 @@ describe("PedalsCrystal", () => {
     expect(root.querySelector("[data-pedal='brake']")).toBeTruthy();
     expect(root.querySelector("[data-pedal='clutch']")).toBeTruthy();
     expect(root.textContent).not.toMatch(/gear|rpm|speed/i);
+    expect(root.textContent).not.toContain("V3: SOLO PEDALES");
+    expect(root.textContent).not.toContain("Formato clásico vertical");
   });
 
   it("renders three pedal channels with exact percentages", () => {

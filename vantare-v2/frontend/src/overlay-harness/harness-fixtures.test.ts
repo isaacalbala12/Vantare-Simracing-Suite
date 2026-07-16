@@ -96,6 +96,27 @@ describe("buildHarnessTelemetry", () => {
     expect(full.player?.throttle).toBe(1);
   });
 
+  it("uses the deterministic section 04 telemetry values for isolated Pedals references", () => {
+    for (const widget of ["pedals", "pedals-telemetry-compact"] as const) {
+      const snapshot = buildHarnessTelemetry({
+        session: "race",
+        location: "track",
+        state: "ready",
+        widget,
+      });
+      expect(snapshot.player?.throttle, widget).toBe(0.85);
+      expect(snapshot.player?.brake, widget).toBe(0.15);
+    }
+
+    const capsule = buildHarnessTelemetry({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "pedals-telemetry",
+    });
+    expect(capsule.scoring.find((entry) => entry.isPlayer)?.place).toBe(12);
+  });
+
   it("provides deterministic ready fixtures for all 18 widget types", () => {
     for (const widgetType of HARNESS_WIDGETS) {
       const widget = buildHarnessWidget(widgetType, "vantare-crystal");

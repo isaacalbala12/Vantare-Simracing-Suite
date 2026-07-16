@@ -97,3 +97,27 @@ anteriores:
 
 Los deltas visuales son ahora accionables. No se volverán a regenerar referencias
 para acercarlas al renderer.
+
+## Microcorte — fuentes oficiales y Pedals 04
+
+Se incorporaron como assets locales, sin CDN runtime ni dependencia npm, los
+subsets latin variables mínimos de Inter 400–800, Plus Jakarta Sans 700–800 y
+JetBrains Mono 500–800. Sus versiones, URLs oficiales, commits upstream,
+SHA-256 y licencias OFL están fijados en
+`frontend/src/assets/fonts/vantare-crystal/README.md`.
+
+Los tres renderers de la sección 04 dejaron de renderizar etiquetas y
+descripciones del showcase. Sus raíces son ahora directamente los materiales
+visuales canónicos; los valores continúan llegando de ViewModels puros. La
+fixture aislada usa los datos deterministas de la sección 04 sin fijarlos en
+runtime.
+
+| Diseño | Baseline v2 | Después | Gates |
+|---|---|---|---|
+| pedals-telemetry | 33.52% / 21.97% / 18.64% / 36.20% | 100% / 0.10% / 2.92% / 1.51% | PASS |
+| pedals-telemetry-compact | 31.66% / 17.36% / 21.39% / 32.67% | 100% / 0.05% / 1.62% / 0.83% | PASS |
+| pedals | 13.42% / 29.56% / 32.59% / 39.76% | 100% / 0.00% / 0.56% / 0.30% | PASS |
+
+Formato de las métricas: `mask IoU / alpha / solid / grid`. Los tres diseños
+pasan además geometría, guard, fuentes, estabilidad y salida idéntica
+Studio/Desktop/OBS. No se modificaron ni regeneraron sus referencias.

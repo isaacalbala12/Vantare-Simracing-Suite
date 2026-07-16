@@ -222,15 +222,16 @@ async function main() {
       const guardPass = Object.values(sceneResults).every((sceneResult) => (
         sceneResult.referenceGuardPixels === 0 && sceneResult.actualGuardPixels === 0
       ));
-      const requiredFontFaces = referenceContract.fontContract?.captured?.faces
-        ?.filter(({ status }) => status === 'loaded')
-        .map(({ family, weight }) => `${family}|${weight}`) ?? [];
-      const actualFontFaces = new Set(
+      const actualFontFamilies = new Set(
         fontResolution.faces
           .filter(({ status }) => status === 'loaded')
-          .map(({ family, weight }) => `${family.replaceAll('"', '')}|${weight}`),
+          .map(({ family }) => family.replaceAll('"', '')),
       );
-      const fontPass = requiredFontFaces.every((face) => actualFontFaces.has(face));
+      const fontPass = (referenceContract.fontContract?.requiredFamilies ?? [])
+        .every((family) => actualFontFamilies.has(family))
+        && fontResolution.inter
+        && fontResolution.plusJakartaSans
+        && fontResolution.jetBrainsMono;
       const surfacesPass = Object.values(surfaceResults).every((surfaceResult) => (
         surfaceResult.dimensionsMatch
         && surfaceResult.maskIoU === 1

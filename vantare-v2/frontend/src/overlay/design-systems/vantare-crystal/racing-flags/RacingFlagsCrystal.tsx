@@ -7,7 +7,6 @@ export function RacingFlagsCrystal({ model }: WidgetRendererProps<RacingFlagsVie
   return <section data-widget-system="vantare-crystal" data-widget-renderer="racing-flags" data-status={model.status} data-hidden={model.hidden ? "true" : "false"} className={`vc-racing-flags vc-racing-flags-${model.globalFlag ?? "unknown"}`}>
     <div className="vc-racing-flags-top">{label}</div>
     <div className="vc-racing-flags-banner"><small>{model.globalFlag === "yellow" ? "SECTOR" : "FLAG"}</small><strong>{message}</strong></div>
-    {model.showSectorFlags ? <div className="vc-racing-flags-sectors">{model.sectorFlags.map((flag, index) => <span data-sector={index + 1} key={`${index}-${flag}`}>S{index + 1} {flag.toUpperCase()}</span>)}</div> : null}
     {model.statusMessage ? <p role="status">{model.statusMessage}</p> : null}
   </section>;
 }

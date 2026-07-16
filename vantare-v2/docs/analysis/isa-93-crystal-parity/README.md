@@ -121,3 +121,22 @@ runtime.
 Formato de las métricas: `mask IoU / alpha / solid / grid`. Los tres diseños
 pasan además geometría, guard, fuentes, estabilidad y salida idéntica
 Studio/Desktop/OBS. No se modificaron ni regeneraron sus referencias.
+
+## Microcorte — Fuel 03 y Flags 05
+
+Fuel se alineó con los tres bloques reales de `.unified-fuel-card` y con una
+lista de historial aislada. Se neutralizaron `min-height:auto` y selectores
+heredados que hacían crecer los ítems grid; el renderer sigue mostrando datos
+honestos y no inventa capacidad de depósito cuando no existe en telemetría.
+
+Flags elimina del renderer Crystal el resumen de sectores externo a
+`.flag-card`; ese contenido sigue perteneciendo al contrato funcional y a
+otros sistemas, pero no forma parte del diseño visual de la sección 05.
+
+| Diseño | Baseline v2 | Después | Gates |
+|---|---|---|---|
+| fuel | 100% / 0.52% / 6.90% / 6.87% | 100% / 0.20% / 2.61% / 1.73% | PASS |
+| flags | 99.86% / 1.65% / 12.87% / 7.75% | 100% / 0.00% / 0.00% / 0.00% | PASS |
+
+Ambos pasan geometría, guard, fuentes, estabilidad y Studio/Desktop/OBS. Las
+referencias canónicas permanecen intactas.

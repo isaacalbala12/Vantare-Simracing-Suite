@@ -2646,3 +2646,8 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Fuentes oficiales y Pedals 04:
 - Pedals V1/V2/V3 eliminan definitivamente tags y descripciones del showcase; la raíz del renderer coincide con `.hud-capsule-v1`, `.cockpit-v2-low` y `.cockpit-v3-solo`.
 - Harness final del corte: 3/3 geometry, mask-alpha, sólido, rejilla, guard, fuentes, estabilidad y Studio/Desktop/OBS PASS. Métricas finales V1 `100% / 0.10% / 2.92% / 1.51%`, V2 `100% / 0.05% / 1.62% / 0.83%`, V3 `100% / 0.00% / 0.56% / 0.30%`.
 - Referencias intactas. ISA-93 sigue In Progress; siguiente microcorte: reevaluación completa 21/21 y cierre de la siguiente familia por mayor delta/overflow.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Fuel 03 y Flags 05:
+- Fuel corrige la jerarquía top/stats/footer e historial, y neutraliza crecimiento grid/selectores heredados sin inventar capacidad o porcentaje en runtime: `100% / 0.20% / 2.61% / 1.73%`, PASS.
+- Flags limita Crystal a la raíz `.flag-card` de la autoridad; el resumen sectorial externo deja de contaminar el crop. Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, PASS.
+- Estado acumulado: 5/21 diseños completamente verdes; 21/21 guard, fuentes, estabilidad y cross-surface verdes. Referencias intactas; ISA-93 continúa In Progress.

@@ -7,8 +7,10 @@ export function FuelStrategyCrystal({ model }: WidgetRendererProps<FuelStrategyV
   return (
     <section data-widget-system="vantare-crystal" data-widget-renderer="fuel-strategy" data-status={model.status} className="vc-fuel-strategy">
       <div className="vc-fuel-main">
-        <div className="vc-fuel-heading"><strong>COMBUSTIBLE</strong><b>{number(model.fuelLiters, " L")}</b></div>
-        <div className="vc-fuel-bar"><i style={{ width: `${model.fuelPercent ?? 0}%` }} /></div>
+        <div className="vc-fuel-top">
+          <div className="vc-fuel-heading"><strong>COMBUSTIBLE</strong><b>{number(model.fuelLiters, " L")}</b></div>
+          <div className="vc-fuel-bar"><i style={{ width: `${model.fuelPercent ?? 0}%` }} /></div>
+        </div>
         <div className="vc-fuel-stats">
           <span><b>{number(model.avgPerLap, " L")}</b><small>CONSUMO MEDIO</small></span>
           <span><b>{number(model.lapsRemaining)}</b><small>VUELTAS REST.</small></span>
@@ -18,7 +20,9 @@ export function FuelStrategyCrystal({ model }: WidgetRendererProps<FuelStrategyV
       </div>
       <aside>
         <header>HISTORIAL RECIENTE</header>
-        {[...model.history].reverse().map((row) => <div key={row.lap}><span>Vuelta #{row.lap}</span><b>{row.consumedLiters.toFixed(1)} L</b></div>)}
+        <div className="vc-fuel-history-list">
+          {[...model.history].reverse().map((row) => <div key={row.lap}><span>Vuelta #{row.lap}</span><b>{row.consumedLiters.toFixed(1)} L</b></div>)}
+        </div>
         <em>{model.history.length > 0 ? "Ritmo derivado de vueltas completadas" : "Historial no disponible"}</em>
       </aside>
     </section>

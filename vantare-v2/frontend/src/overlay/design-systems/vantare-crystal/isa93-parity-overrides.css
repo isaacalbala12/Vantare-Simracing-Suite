@@ -351,3 +351,235 @@
   text-align: center;
   transform: translateY(-50%);
 }
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: #fff;
+  background: rgba(18, 18, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  font-family: var(--vc-font-sans);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-main {
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
+  padding: 18px 22px;
+  gap: 16px;
+  min-height: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-heading strong {
+  font: 800 14px var(--vc-font-display);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-heading b {
+  color: #ff2a3b;
+  font: 700 12px var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-bar {
+  width: 100%;
+  height: 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff2a3b 0%, #ff7580 100%);
+  box-shadow: 0 0 10px rgba(255, 42, 59, 0.5);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0;
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-stats span {
+  display: block;
+  padding: 8px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-stats b {
+  display: block;
+  margin: 0;
+  color: #fff;
+  font: 800 14px var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-stats small {
+  display: block;
+  margin-top: 2px;
+  color: var(--vc-muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-stats .vc-fuel-required {
+  color: #ff2a3b;
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-main footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+  color: #aaa;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font: 600 11px var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"] .vc-fuel-main footer b {
+  color: #22c55e;
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy > aside {
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
+  min-height: 0;
+  padding: 18px 22px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy > aside header {
+  padding-bottom: 6px;
+  color: var(--vc-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font: 800 12px var(--vc-font-display);
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy > aside > .vc-fuel-history-list {
+  display: flex;
+  justify-content: flex-start;
+  flex-direction: column;
+  margin-top: 8px;
+  padding: 0;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy .vc-fuel-history-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  font: 500 12px var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy .vc-fuel-history-list span {
+  color: #ccc;
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy .vc-fuel-history-list b {
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-crystal"].vc-fuel-strategy > aside em {
+  margin-top: 6px;
+  color: #777;
+  font-size: 10px;
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"].vc-racing-flags {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: #fff;
+  background: rgba(18, 18, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(24px);
+  font-family: var(--vc-font-sans);
+}
+
+[data-widget-system="vantare-crystal"] .vc-racing-flags-top {
+  display: block;
+  height: auto;
+  padding: 8px 16px;
+  color: #22c55e;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font: 800 11px var(--vc-font-mono);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+[data-widget-system="vantare-crystal"] .vc-racing-flags-banner {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  gap: 12px;
+  color: #22c55e;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.05) 100%);
+  border-top: 2px solid #22c55e;
+  font: 800 20px var(--vc-font-display);
+  letter-spacing: 0.05em;
+}
+
+[data-widget-system="vantare-crystal"] .vc-racing-flags-banner small {
+  padding: 3px 8px;
+  color: #22c55e;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  font: 900 11px var(--vc-font-mono);
+}
+
+[data-widget-system="vantare-crystal"].vc-racing-flags-yellow .vc-racing-flags-top,
+[data-widget-system="vantare-crystal"].vc-racing-flags-yellow .vc-racing-flags-banner,
+[data-widget-system="vantare-crystal"].vc-racing-flags-yellow .vc-racing-flags-banner small {
+  color: #f59e0b;
+}
+
+[data-widget-system="vantare-crystal"].vc-racing-flags-yellow .vc-racing-flags-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border-top-color: #f59e0b;
+}
+
+[data-widget-system="vantare-crystal"].vc-racing-flags > p {
+  position: absolute;
+  inset: auto 8px 2px;
+  margin: 0;
+  font-size: 9px;
+  text-align: center;
+}

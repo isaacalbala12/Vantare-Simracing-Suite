@@ -90,6 +90,17 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 
+  it("seeds the deterministic Input history before the host builds its ViewModel", () => {
+    const parsed = parseHarnessQuery(
+      "?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade",
+    );
+    if ("error" in parsed) {
+      throw new Error(parsed.error);
+    }
+    render(<OverlayParityHarness query={parsed} />);
+    expect(document.querySelector(".vc-input-graph path")?.getAttribute("d")).toContain("L");
+  });
+
   it.each(HARNESS_WIDGETS)(
     "keeps %s renderer markup identical across studio/desktop/obs",
     (widget) => {

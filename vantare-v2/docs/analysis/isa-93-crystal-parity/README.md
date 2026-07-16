@@ -170,3 +170,30 @@ real. Damage Numbers usa una fixture sin payload de daño para representar el
 | damage-numbers | 21.31% / 27.58% / 9.02% / 47.39% | 100% / 0.00% / 0.00% / 0.00% | PASS |
 
 Los dos pasan todos los gates y mantienen intactas sus referencias.
+
+## Microcorte — Input Telemetry 10A/10B/10C
+
+El harness ahora siembra el historial derivado determinista que consume el
+ViewModel real; no existe una segunda ruta de render ni datos fijados dentro del
+renderer. Las tres variantes mantienen el mismo tipo funcional
+`input-telemetry` y solo cambian composición mediante su diseño oficial.
+
+10A restaura blur, sombras externas/inset, rejilla y materiales literales. 10B
+y 10C respetan la semántica efectiva del HTML: sus variables glass no están
+definidas, por lo que la raíz permanece transparente y el backdrop se valida
+sobre los fondos de control. 10C usa además la jerarquía horizontal real del
+gearbox y el trazo SVG canónico de 2.5 px.
+
+Los valores usados son deterministas y equivalentes a la muestra de autoridad
+para impedir que texto circunstancial contamine la métrica; el renderer sigue
+recibiendo exclusivamente el ViewModel y no fija valores de telemetría.
+
+| Diseño | Baseline v2 | Después | Gates |
+|---|---|---|---|
+| input-blade | 82.10% / 5.33% / 5.58% / 20.68% | 100% / 0.02% / 0.53% / 0.35% | PASS |
+| input-capsule | 27.45% / 33.99% / 8.56% / 59.99% | 100% / 0.30% / 1.00% / 0.59% | PASS |
+| input-dense | 14.58% / 34.94% / 7.47% / 53.98% | 100% / 0.00% / 0.01% / 0.00% | PASS |
+
+Los tres pasan geometría, guard, fuentes, estabilidad y salida idéntica
+Studio/Desktop/OBS. Las referencias canónicas permanecen intactas. Estado
+acumulado: 12/21 diseños verdes.

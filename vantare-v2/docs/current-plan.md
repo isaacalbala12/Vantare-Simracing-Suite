@@ -2661,3 +2661,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Damage 13/14:
 - Damage Visual y Damage Numbers replican el material efectivo de la autoridad sin fondo glass aproximado adicional.
 - La fixture de Damage Numbers mantiene `missing` y `n/a` honestos cuando no existe payload; el contrato del harness ya no exige falsamente `ready` a todos los tipos.
 - Resultado exacto en ambos: `100% / 0.00% / 0.00% / 0.00%`, todos los gates PASS. Estado acumulado: 9/21; referencias intactas.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Input Telemetry 10A/10B/10C:
+- El harness siembra el historial derivado determinista que usa el ViewModel real; los renderers continúan puros y sin una ruta visual paralela.
+- 10A replica blur, sombras, rejilla y materiales; 10B/10C mantienen raíz transparente porque las variables glass de la autoridad no están definidas. 10C corrige además gearbox horizontal, spacing heredado y trazo SVG 2.5 px.
+- Resultados: Blade `100% / 0.02% / 0.53% / 0.35%`, Capsule `100% / 0.30% / 1.00% / 0.59%`, Dense `100% / 0.00% / 0.01% / 0.00%`; 3/3 pasan geometry, mask-alpha, composite, guard, fonts, stability y Studio/Desktop/OBS.
+- Estado acumulado: 12/21 diseños verdes; referencias intactas. Siguiente: rebaseline honesto de los nueve diseños restantes y cierre por familia/delta.

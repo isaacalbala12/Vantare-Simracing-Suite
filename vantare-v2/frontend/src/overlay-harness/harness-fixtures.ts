@@ -9,6 +9,13 @@ import type { TelemetrySnapshot } from "../overlay/core/telemetry-snapshot";
 import { widgetTypeRegistry } from "../overlay/core/widget-registry";
 import { applyWidgetDesign } from "../overlay/core/widget-design";
 import { getOfficialDesign } from "../overlay/design-systems/official-designs";
+import type { InputTelemetryContent } from "../overlay/widget-types/input-telemetry/input-telemetry-definition";
+import {
+  recordInputTelemetrySample,
+  resetInputTelemetryHistory,
+  type InputTelemetrySample,
+} from "../overlay/widget-types/input-telemetry/input-telemetry-accumulator";
+import { buildInputTelemetryViewModel } from "../overlay/widget-types/input-telemetry/input-telemetry-view-model";
 import { parseRelativeContent, updateRelativeFilters } from "../overlay/widget-types/relative/relative-content";
 import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
 
@@ -109,6 +116,49 @@ function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[]
   });
 }
 
+type InputTracePoint = readonly [number, number];
+
+function interpolate(points: readonly InputTracePoint[], x: number): number {
+  const rightIndex = points.findIndex(([pointX]) => pointX >= x);
+  if (rightIndex <= 0) return points[Math.max(0, rightIndex)]?.[1] ?? 0;
+  const [leftX, leftValue] = points[rightIndex - 1]!;
+  const [rightX, rightValue] = points[rightIndex]!;
+  const progress = (x - leftX) / Math.max(1, rightX - leftX);
+  return leftValue + (rightValue - leftValue) * progress;
+}
+
+function buildCanonicalInputHistory(
+  designId: CrystalHarnessDesignId | undefined,
+  capturedAt: number,
+): readonly InputTelemetrySample[] {
+  const dense = designId === "input-crystal-dense";
+  const capsule = designId === "input-crystal-capsule";
+  const width = dense ? 400 : 500;
+  const throttlePoints = dense
+    ? [[0, 0], [60, 0], [100, 1], [140, 1], [180, 0], [400, 0]] as const
+    : [[0, 0], [80, 0], [140, 1], [180, 1], [220, 0], [500, 0]] as const;
+  const brakePeak = dense ? (40 - 15) / 36 : capsule ? (70 - 25) / 65 : (88 - 30) / 76;
+  const brakePoints = dense
+    ? [[0, 0], [90, 0], [110, brakePeak], [130, brakePeak], [150, 0], [400, 0]] as const
+    : [[0, 0], [120, 0], [150, brakePeak], [180, brakePeak], [210, 0], [500, 0]] as const;
+  const clutchPeak = capsule ? (70 - 15) / 65 : (88 - 18) / 76;
+  const clutchShoulder = capsule ? (70 - 25) / 65 : (88 - 30) / 76;
+  const clutchPoints = dense
+    ? [[0, 0], [400, 0]] as const
+    : [[0, 0], [150, clutchShoulder], [165, clutchPeak], [180, clutchShoulder], [500, 0]] as const;
+  const xs = [...new Set([
+    ...throttlePoints.map(([x]) => x),
+    ...brakePoints.map(([x]) => x),
+    ...clutchPoints.map(([x]) => x),
+  ])].sort((left, right) => left - right);
+  return xs.map((x) => ({
+    capturedAt: capturedAt - (width - x) * (4000 / width),
+    throttle: interpolate(throttlePoints, x),
+    brake: interpolate(brakePoints, x),
+    clutch: clutchPoints.find(([pointX]) => pointX === x)?.[1] ?? 0,
+  }));
+}
+
 export function buildHarnessWidget(
   widgetType: HarnessWidget,
   systemId: DesignSystemId,
@@ -183,8 +233,8 @@ export function buildHarnessTelemetry(input: {
       throttle: usesSectionFourPedals ? 0.85 : 1,
       brake: usesSectionFourPedals ? 0.15 : 0.06,
       clutch: 0,
-      gear: 6,
-      speedKph: 260,
+      gear: input.widget === "input-telemetry" ? 3 : 6,
+      speedKph: input.widget === "input-telemetry" ? 128 : 260,
       rpm: 6432,
     },
     scoring: buildCanonicalScoring(input.widget),
@@ -195,12 +245,7 @@ export function buildHarnessTelemetry(input: {
         { lap: 9, consumedLiters: 1 },
         { lap: 10, consumedLiters: 1 },
       ],
-      inputHistory: Array.from({ length: 48 }, (_, index) => ({
-        capturedAt: base.capturedAt - (47 - index) * 50,
-        throttle: Math.min(1, index / 32),
-        brake: index > 34 ? (index - 34) / 14 : 0,
-        clutch: 0,
-      })),
+      inputHistory: buildCanonicalInputHistory(input.designId, base.capturedAt),
       deltaHistory: Array.from({ length: 60 }, (_, index) => ({
         capturedAt: base.capturedAt - (59 - index) * 100,
         deltaSeconds: 0.24 - index * 0.006,
@@ -257,5 +302,34 @@ export function buildHarnessTelemetry(input: {
 export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: TelemetrySnapshot): unknown {
   const definition = widgetTypeRegistry.get(widget.type);
   const content = definition.parseContent(widget.content);
+  if (widget.type === "input-telemetry") {
+    return buildInputTelemetryViewModel(
+      snapshot,
+      content as InputTelemetryContent,
+      snapshot.derived?.inputHistory.map((item) => ({
+        capturedAt: item.capturedAt,
+        throttle: item.throttle ?? 0,
+        brake: item.brake ?? 0,
+        clutch: item.clutch ?? 0,
+      })) ?? [],
+    );
+  }
   return definition.buildViewModel(snapshot, content as never);
+}
+
+export function seedHarnessInputHistory(widget: WidgetInstanceV3, snapshot: TelemetrySnapshot): void {
+  if (widget.type !== "input-telemetry") return;
+  resetInputTelemetryHistory();
+  for (const item of snapshot.derived?.inputHistory ?? []) {
+    recordInputTelemetrySample(widget.id, {
+      ...snapshot,
+      capturedAt: item.capturedAt,
+      player: {
+        ...snapshot.player,
+        throttle: item.throttle,
+        brake: item.brake,
+        clutch: item.clutch,
+      },
+    });
+  }
 }

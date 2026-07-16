@@ -13,6 +13,7 @@ import {
   HARNESS_WIDGETS,
   isHarnessVariant,
   isHarnessWidget,
+  seedHarnessInputHistory,
   type HarnessVariant,
   type HarnessWidget,
   type CrystalHarnessDesignId,
@@ -126,6 +127,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
     designId: query.designId,
   });
   const widget = buildHarnessWidget(query.widget, query.system, query.variant, query.designId);
+  seedHarnessInputHistory(widget, snapshot);
 
   return (
     <div

@@ -144,6 +144,24 @@ describe("buildHarnessTelemetry", () => {
     expect(model.body).toBeUndefined();
   });
 
+  it("passes the deterministic accumulated input history to the pure Input ViewModel", () => {
+    const widget = buildHarnessWidget(
+      "input-telemetry",
+      "vantare-crystal",
+      "default",
+      "input-crystal-blade",
+    );
+    const snapshot = buildHarnessTelemetry({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "input-telemetry",
+      designId: "input-crystal-blade",
+    });
+    const model = buildHarnessViewModel(widget, snapshot) as { history: readonly unknown[] };
+    expect(model.history).toHaveLength(10);
+  });
+
   it("provides canonical row density for table and battle designs", () => {
     for (const widget of ["relative", "standings", "broadcast-tower", "head-to-head", "multiclass-relative"] as const) {
       const snapshot = buildHarnessTelemetry({ session: "race", location: "track", state: "ready", widget });

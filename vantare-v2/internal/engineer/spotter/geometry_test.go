@@ -203,6 +203,7 @@ func TestClassify_FallbackToFramePlayer(t *testing.T) {
 				Row2: telemetry.Vec3{X: 1, Y: 0, Z: 0},
 			},
 			Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+			Speed:    MinSpotterSpeedMPS + 1.0, // en pista, no parado (gate de velocidad)
 		},
 		Vehicles: []telemetry.VehicleScoring{
 			{
@@ -236,6 +237,7 @@ func TestClassify_PrefersLivePlayerOrientationOverScoringOrientation(t *testing.
 		Player: &telemetry.PlayerTelemetry{
 			ID:       1,
 			Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+			Speed:    MinSpotterSpeedMPS + 1.0, // en pista (gate de velocidad)
 			Orientation: telemetry.Orientation{
 				Row0: telemetry.Vec3{X: 1, Y: 0, Z: 0},
 				Row1: telemetry.Vec3{X: 0, Y: 1, Z: 0},
@@ -606,3 +608,379 @@ func TestClassifyWithActiveSides_ExistingOverlapBothSides(t *testing.T) {
 	}
 }
 
+// Speed gate: Classify debe silenciar el spotter cuando el jugador va por
+// debajo de MinSpotterSpeedMPS (paridad CC NoisyCartesianCoordinateSpotter.cs:297).
+func TestClassify_PlayerBelowMinSpeed_NoZones(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS - 1.0, // por debajo del umbral
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}}, // oponente en overlap
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 0 {
+		t.Fatalf("expected 0 zones when player below min speed, got %d: %+v", len(zones), zones)
+	}
+}
+
+func TestClassify_PlayerAtMinSpeed_ZonesReturned(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS, // exactamente en el umbral -> debe pasar (gate usa <, no <=)
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone at exactly min speed, got %d", len(zones))
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+}
+
+func TestClassify_PlayerAboveMinSpeed_ZonesReturned(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 10.0,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone above min speed, got %d", len(zones))
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+}
+
+// Si frame.Player es nil (player resuelto solo por VehicleScoring fallback),
+// el gate de velocidad no aplica — comportamiento existente se mantiene.
+func TestClassify_PlayerNilSpeed_NoGateApplied(t *testing.T) {
+	frame := &telemetry.Frame{
+		// Player = nil intencionalmente
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone when Player is nil (gate not applied), got %d", len(zones))
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+}
+
+// FCY gate: durante Full Course Yellow / Safety Car (GamePhase=6) el spotter
+// queda en silencio. Paridad CC: Spotter.cs:42-55 pause/unpause + RF2Data.cs:68
+// rF2GamePhase.FullCourseYellow=6.
+func TestClassify_FCYGamePhase_NoZones(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{
+			GamePhase: FCYGamePhase, // 6 = FullCourseYellow
+		},
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 5.0, // jugador en pista
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}}, // oponente en overlap
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 0 {
+		t.Fatalf("expected 0 zones during FCY (spotter paused), got %d: %+v", len(zones), zones)
+	}
+}
+
+func TestClassify_GreenFlagPhase_ZonesReturned(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{
+			GamePhase: 5, // GreenFlag
+		},
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 5.0,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone during GreenFlag, got %d", len(zones))
+	}
+}
+
+// Sin Session, el gate FCY no aplica (frame sin info de fase).
+// ──────────────────────────────────────────────
+// Stacked Cars Collapse (CC parity)
+// ──────────────────────────────────────────────
+
+func TestClassify_StackedOpponents_LeftSide(t *testing.T) {
+	// 3 opponents on left side, lateral spread 0.2m (2.8 to 3.0) < 1.8m car width.
+	// Should collapse to 1 zone (the closest: forward 1.0m).
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 1,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+				Orientation: telemetry.Orientation{Row2: telemetry.Vec3{Z: 1}}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 1.0}},
+			{ID: 3, LapDistance: 100, Position: telemetry.Vec3{X: 2.9, Y: 0, Z: 2.0}},
+			{ID: 4, LapDistance: 100, Position: telemetry.Vec3{X: 3.0, Y: 0, Z: 3.0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 collapsed zone, got %d: %+v", len(zones), zones)
+	}
+	if zones[0].Side != SideLeft {
+		t.Errorf("expected SideLeft, got %s", zones[0].Side)
+	}
+	if zones[0].VehicleID != 2 {
+		t.Errorf("expected closest opponent (VehicleID 2, forward 1.0m), got VehicleID %d", zones[0].VehicleID)
+	}
+	if zones[0].ForwardM != 1.0 {
+		t.Errorf("expected ForwardM 1.0 (closest), got %f", zones[0].ForwardM)
+	}
+}
+
+func TestClassify_StackedOpponents_WideSpread_NoCollapse(t *testing.T) {
+	// 2 opponents on left side, lateral spread 3.2m (2.8 to 6.0) > 1.8m car width.
+	// Should NOT collapse — still 2 zones.
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 1,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+				Orientation: telemetry.Orientation{Row2: telemetry.Vec3{Z: 1}}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 1.0}},
+			{ID: 3, LapDistance: 100, Position: telemetry.Vec3{X: 6.0, Y: 0, Z: 2.0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 2 {
+		t.Fatalf("expected 2 zones (wide spread, no collapse), got %d: %+v", len(zones), zones)
+	}
+	// Both should be on left side.
+	for i, z := range zones {
+		if z.Side != SideLeft {
+			t.Errorf("zone[%d] expected SideLeft, got %s", i, z.Side)
+		}
+	}
+}
+
+func TestClassify_StackedOpponents_DifferentSides(t *testing.T) {
+	// 2 on left (spread 0.1m), 2 on right (spread 0.1m). Each side collapses
+	// independently to 1 zone. Total: 2 zones (one left, one right).
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 1,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+				Orientation: telemetry.Orientation{Row2: telemetry.Vec3{Z: 1}}},
+			// Left side
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 1.0}},
+			{ID: 3, LapDistance: 100, Position: telemetry.Vec3{X: 2.9, Y: 0, Z: 2.0}},
+			// Right side
+			{ID: 4, LapDistance: 100, Position: telemetry.Vec3{X: -2.8, Y: 0, Z: 1.0}},
+			{ID: 5, LapDistance: 100, Position: telemetry.Vec3{X: -2.9, Y: 0, Z: 2.0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 2 {
+		t.Fatalf("expected 2 zones (one per side after collapse), got %d: %+v", len(zones), zones)
+	}
+
+	// One left, one right.
+	leftCount, rightCount := 0, 0
+	for _, z := range zones {
+		switch z.Side {
+		case SideLeft:
+			leftCount++
+		case SideRight:
+			rightCount++
+		}
+	}
+	if leftCount != 1 {
+		t.Errorf("expected 1 left zone, got %d", leftCount)
+	}
+	if rightCount != 1 {
+		t.Errorf("expected 1 right zone, got %d", rightCount)
+	}
+}
+
+// ──────────────────────────────────────────────
+// Grid Side Detection (CC parity)
+// ──────────────────────────────────────────────
+
+func TestGridSide_Formation_Left(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{GamePhase: FormationGamePhase},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, PathLateral: -3.0, LapDistance: 100},
+		},
+	}
+	if gs := GridSide(frame); gs != "left" {
+		t.Errorf("expected 'left', got %q", gs)
+	}
+}
+
+func TestGridSide_Formation_Right(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{GamePhase: FormationGamePhase},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, PathLateral: 3.0, LapDistance: 100},
+		},
+	}
+	if gs := GridSide(frame); gs != "right" {
+		t.Errorf("expected 'right', got %q", gs)
+	}
+}
+
+func TestGridSide_NotFormation_ReturnsEmpty(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{GamePhase: 5}, // GreenFlag
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, PathLateral: -3.0, LapDistance: 100},
+		},
+	}
+	if gs := GridSide(frame); gs != "" {
+		t.Errorf("expected '', got %q", gs)
+	}
+}
+
+func TestGridSide_Formation_Center(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{GamePhase: FormationGamePhase},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, PathLateral: 0, LapDistance: 100},
+		},
+	}
+	if gs := GridSide(frame); gs != "" {
+		t.Errorf("expected '' (centered), got %q", gs)
+	}
+}
+
+func TestGridSide_NilSession_ReturnsEmpty(t *testing.T) {
+	frame := &telemetry.Frame{
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, PathLateral: -3.0, LapDistance: 100},
+		},
+	}
+	if gs := GridSide(frame); gs != "" {
+		t.Errorf("expected '' (nil session), got %q", gs)
+	}
+}
+
+func TestGridSide_NilFrame_ReturnsEmpty(t *testing.T) {
+	if gs := GridSide(nil); gs != "" {
+		t.Errorf("expected '' (nil frame), got %q", gs)
+	}
+}
+
+func TestGridSide_NoPlayer_ReturnsEmpty(t *testing.T) {
+	frame := &telemetry.Frame{
+		Session: &telemetry.SessionInfo{GamePhase: FormationGamePhase},
+		// No vehicles with IsPlayer
+	}
+	if gs := GridSide(frame); gs != "" {
+		t.Errorf("expected '' (no player vehicle), got %q", gs)
+	}
+}
+
+// Collapsed stacked with Aggressive/Covervative sensitivity
+func TestClassify_StackedOpponents_AggressiveSensitivity(t *testing.T) {
+	// Aggressive uses CarWidthM=2.0m. Two opponents with lateral spread 1.9m
+	// should collapse under Aggressive (< 2.0).
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 1,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+				Orientation: telemetry.Orientation{Row2: telemetry.Vec3{Z: 1}}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 1.0}},
+			{ID: 3, LapDistance: 100, Position: telemetry.Vec3{X: 4.7, Y: 0, Z: 2.0}}, // spread = 1.9m
+		},
+	}
+
+	zones := Classify(frame, SensitivityAggressive)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 collapsed zone with aggressive sensitivity, got %d: %+v", len(zones), zones)
+	}
+}
+
+func TestClassify_StackedOpponents_ConservativeSensitivity(t *testing.T) {
+	// Conservative uses CarWidthM=1.6m. Two opponents with lateral spread 1.7m
+	// should NOT collapse under Conservative (>= 1.6).
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 1,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0},
+				Orientation: telemetry.Orientation{Row2: telemetry.Vec3{Z: 1}}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 1.0}},
+			{ID: 3, LapDistance: 100, Position: telemetry.Vec3{X: 4.5, Y: 0, Z: 2.0}}, // spread = 1.7m
+		},
+	}
+
+	zones := Classify(frame, SensitivityConservative)
+	if len(zones) != 2 {
+		t.Fatalf("expected 2 zones (no collapse with conservative, spread 1.7 >= 1.6), got %d: %+v", len(zones), zones)
+	}
+}
+
+func TestClassify_NilSession_NoFCYGate(t *testing.T) {
+	frame := &telemetry.Frame{
+		Player: &telemetry.PlayerTelemetry{
+			ID:    1,
+			Speed: MinSpotterSpeedMPS + 5.0,
+		},
+		Vehicles: []telemetry.VehicleScoring{
+			{ID: 1, IsPlayer: true, LapDistance: 100, Position: telemetry.Vec3{X: 0, Y: 0, Z: 0}},
+			{ID: 2, LapDistance: 100, Position: telemetry.Vec3{X: 2.8, Y: 0, Z: 0}},
+		},
+	}
+
+	zones := Classify(frame, SensitivityNormal)
+	if len(zones) != 1 {
+		t.Fatalf("expected 1 zone when Session is nil (FCY gate not applied), got %d", len(zones))
+	}
+}

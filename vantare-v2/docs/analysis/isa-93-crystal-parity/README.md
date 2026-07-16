@@ -156,3 +156,17 @@ autoridad. Los valores siguen procediendo de sus ViewModels.
 
 Geometría, guard, fuentes, estabilidad y cross-surface pasan en ambos. No se
 regeneraron referencias.
+
+## Microcorte — Damage 13 y 14
+
+Ambas raíces eliminan el material aproximado que no existe en la autoridad
+efectiva de las secciones 13/14. Damage Visual conserva su chasis y daño cero
+real. Damage Numbers usa una fixture sin payload de daño para representar el
+`n/a` canónico como estado `missing`, sin inventar valores en runtime.
+
+| Diseño | Baseline v2 | Después | Gates |
+|---|---|---|---|
+| damage-visual | 17.46% / 31.43% / 3.44% / 46.94% | 100% / 0.00% / 0.00% / 0.00% | PASS |
+| damage-numbers | 21.31% / 27.58% / 9.02% / 47.39% | 100% / 0.00% / 0.00% / 0.00% | PASS |
+
+Los dos pasan todos los gates y mantienen intactas sus referencias.

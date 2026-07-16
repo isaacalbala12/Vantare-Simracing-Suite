@@ -215,7 +215,9 @@ export function buildHarnessTelemetry(input: {
       ],
     },
     environment: { ambientC: 24, trackC: 27.2, rainPercent: 0, wetnessPercent: 35, windKph: 8, windDirection: "Tailwind SE → NW", pressureHpa: 1014 },
-    damage: { body: 0, aero: 0, suspension: 0, tyres: [0, 0, 0, 0] },
+    damage: input.widget === "car-damage-numbers"
+      ? undefined
+      : { body: 0, aero: 0, suspension: 0, tyres: [0, 0, 0, 0] },
   };
 
   if (input.widget === "standings" && variant === "standings-stress60") {

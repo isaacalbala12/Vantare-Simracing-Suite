@@ -2656,3 +2656,8 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Delta 15/16:
 - Delta Simple restaura la sombra externa recortada por la raíz compartida y replica el material efectivo de `.w15-delta-simple`: `100% / 0.00% / 0.00% / 0.00%`, PASS.
 - Delta Advanced elimina fondo/borde aproximados no presentes en la autoridad efectiva y conserva valores honestos del ViewModel: `100% / 0.82% / 2.67% / 1.97%`, PASS.
 - Estado acumulado: 7/21 diseños verdes; referencias intactas y todos los gates transversales de estos cortes PASS. Siguiente: Damage 13/14.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Damage 13/14:
+- Damage Visual y Damage Numbers replican el material efectivo de la autoridad sin fondo glass aproximado adicional.
+- La fixture de Damage Numbers mantiene `missing` y `n/a` honestos cuando no existe payload; el contrato del harness ya no exige falsamente `ready` a todos los tipos.
+- Resultado exacto en ambos: `100% / 0.00% / 0.00% / 0.00%`, todos los gates PASS. Estado acumulado: 9/21; referencias intactas.

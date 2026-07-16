@@ -117,7 +117,7 @@ describe("buildHarnessTelemetry", () => {
     expect(capsule.scoring.find((entry) => entry.isPlayer)?.place).toBe(12);
   });
 
-  it("provides deterministic ready fixtures for all 18 widget types", () => {
+  it("provides deterministic fixtures and keeps unavailable damage numbers honest", () => {
     for (const widgetType of HARNESS_WIDGETS) {
       const widget = buildHarnessWidget(widgetType, "vantare-crystal");
       const snapshot = buildHarnessTelemetry({
@@ -127,8 +127,21 @@ describe("buildHarnessTelemetry", () => {
         widget: widgetType,
       });
       const model = buildHarnessViewModel(widget, snapshot) as { status: string };
-      expect(model.status, widgetType).toBe("ready");
+      expect(model.status, widgetType).toBe(widgetType === "car-damage-numbers" ? "missing" : "ready");
     }
+  });
+
+  it("does not invent numeric damage for the section 14 placeholder reference", () => {
+    const widget = buildHarnessWidget("car-damage-numbers", "vantare-crystal");
+    const snapshot = buildHarnessTelemetry({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "car-damage-numbers",
+    });
+    const model = buildHarnessViewModel(widget, snapshot) as { status: string; body?: number };
+    expect(model).toMatchObject({ status: "missing" });
+    expect(model.body).toBeUndefined();
   });
 
   it("provides canonical row density for table and battle designs", () => {

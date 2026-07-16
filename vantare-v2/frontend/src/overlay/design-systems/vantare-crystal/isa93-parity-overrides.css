@@ -677,3 +677,54 @@
 [data-widget-system="vantare-crystal"].vc-delta-advanced [data-tone="t"] b {
   color: #eab308;
 }
+
+[data-widget-system="vantare-crystal"].vc-damage-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  backdrop-filter: blur(20px);
+}
+
+[data-widget-system="vantare-crystal"].vc-damage-numbers {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  gap: 4px;
+  overflow: visible;
+  color: #ccc;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  backdrop-filter: blur(20px);
+}
+
+[data-widget-system="vantare-crystal"].vc-damage-numbers > div {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0;
+  border-radius: 6px;
+  font: 800 14px var(--vc-font-display);
+}
+
+[data-widget-system="vantare-crystal"].vc-damage-numbers b {
+  color: #22c55e;
+  font-family: var(--vc-font-mono);
+  font-weight: 900;
+}

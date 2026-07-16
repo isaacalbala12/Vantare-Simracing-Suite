@@ -442,6 +442,38 @@ describe("OverlayStudioV3", () => {
     expect(screen.getByTestId("studio-list-drawer-toggle")).toBeTruthy();
   });
 
+  it("tracks real window resizes when no viewport override is supplied", async () => {
+    const initialWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1600 });
+
+    render(
+      <StudioProvider client={createMockClient()} initialFile="profiles/a.json">
+        <OverlayStudioV3
+          profiles={profiles}
+          activeFile="profiles/a.json"
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
+          onRequestProfileChange={vi.fn()}
+          onOpenManageProfiles={vi.fn()}
+          onOpenRecommended={vi.fn()}
+          onOpenCommunity={vi.fn()}
+          onOpenObs={vi.fn()}
+        />
+      </StudioProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-responsive-grid").getAttribute("data-layout-mode")).toBe("wide"),
+    );
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 800 });
+    fireEvent(window, new Event("resize"));
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-responsive-grid").getAttribute("data-layout-mode")).toBe("compact"),
+    );
+
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: initialWidth });
+  });
+
   it("opens Browser View from the saved profile file when the draft is clean", async () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     renderWorkbench();

@@ -45,7 +45,10 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   } = props;
   const { t } = useI18n();
   const telemetryProps = { coordinator, telemetryAdapter, liveAvailable };
-  const viewportWidth = viewportWidthProp ?? (typeof window !== "undefined" ? window.innerWidth : 1440);
+  const [windowViewportWidth, setWindowViewportWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1440,
+  );
+  const viewportWidth = viewportWidthProp ?? windowViewportWidth;
   const recoveryStorage =
     recoveryStorageProp ?? (typeof window !== "undefined" ? window.sessionStorage : null);
   const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);
@@ -72,6 +75,15 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const [browserViewError, setBrowserViewError] = useState<string | null>(null);
   const recoveryCheckedProfileIdRef = useRef<string | null>(null);
   const browserViewDecideRef = useRef<((decision: BrowserViewDecision) => void) | null>(null);
+
+  useEffect(() => {
+    if (viewportWidthProp !== undefined || typeof window === "undefined") {
+      return;
+    }
+    const updateViewportWidth = () => setWindowViewportWidth(window.innerWidth);
+    window.addEventListener("resize", updateViewportWidth);
+    return () => window.removeEventListener("resize", updateViewportWidth);
+  }, [viewportWidthProp]);
 
   useEffect(() => {
     const profileId = document?.id;

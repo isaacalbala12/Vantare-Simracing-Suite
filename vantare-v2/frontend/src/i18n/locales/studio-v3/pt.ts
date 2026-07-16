@@ -40,6 +40,9 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.saveStatus.dirty": "Alterações por guardar",
   "studio.v3.saveStatus.clean": "Sem alterações",
   "studio.v3.header.activeProfileAria": "Perfil ativo",
+  "studio.v3.header.pageTitle": "Perfis Específicos",
+  "studio.v3.header.pageDescription":
+    "A editar a posição e a visibilidade dos widgets para o perfil ativo.",
   "studio.v3.header.sessionAria": "Sessão de layout",
   "studio.v3.header.save": "Guardar",
   "studio.v3.header.undo": "Desfazer",
@@ -200,6 +203,7 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.actions.restoreDefaults": "Repor valores",
   "studio.v3.actions.discardAll": "Descartar tudo",
   "studio.v3.canvas.zoom.fit": "Ajustar",
+  "studio.v3.canvas.title": "Área de desenho",
   "studio.v3.canvas.zoom.decrease": "Diminuir zoom",
   "studio.v3.canvas.zoom.increase": "Aumentar zoom",
   "studio.v3.canvas.zoom.fitLabel": "Fit",

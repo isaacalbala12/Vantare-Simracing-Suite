@@ -1,0 +1,217 @@
+{
+  "ok": true,
+  "generatedAt": "2026-07-14T22:59:18.882Z",
+  "command": "node docs/analysis/isa-92-overlay-studio-parity/measure-interactions.mjs",
+  "results": [
+    {
+      "check": "move",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "280px",
+        "top": "176px",
+        "width": "420px",
+        "height": "180px"
+      }
+    },
+    {
+      "check": "resize-escape-cancel",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      }
+    },
+    {
+      "check": "escape-cancel",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      }
+    },
+    {
+      "check": "resize-nw",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "57px",
+        "top": "69px",
+        "width": "483px",
+        "height": "207px"
+      }
+    },
+    {
+      "check": "resize-n",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "64px",
+        "width": "495px",
+        "height": "212px"
+      }
+    },
+    {
+      "check": "resize-ne",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "70px",
+        "width": "481px",
+        "height": "206px"
+      }
+    },
+    {
+      "check": "resize-e",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "96px",
+        "width": "481px",
+        "height": "206px"
+      }
+    },
+    {
+      "check": "resize-se",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "96px",
+        "width": "481px",
+        "height": "206px"
+      }
+    },
+    {
+      "check": "resize-s",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "120px",
+        "top": "96px",
+        "width": "504px",
+        "height": "216px"
+      }
+    },
+    {
+      "check": "resize-sw",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "57px",
+        "top": "96px",
+        "width": "483px",
+        "height": "207px"
+      }
+    },
+    {
+      "check": "resize-w",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "57px",
+        "top": "96px",
+        "width": "483px",
+        "height": "207px"
+      }
+    },
+    {
+      "check": "zoom-150",
+      "ok": true,
+      "label": "150%"
+    },
+    {
+      "check": "keyboard-move",
+      "ok": true,
+      "before": {
+        "left": "120px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      },
+      "after": {
+        "left": "121px",
+        "top": "96px",
+        "width": "420px",
+        "height": "180px"
+      }
+    },
+    {
+      "check": "action-bar",
+      "ok": true
+    },
+    {
+      "check": "compact-list-drawer",
+      "ok": true
+    },
+    {
+      "check": "compact-inspector-drawer",
+      "ok": true
+    }
+  ],
+  "consoleErrors": []
+}

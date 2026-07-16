@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-07-14T22:10:13.183Z",
+  "threshold": 12,
+  "regions": {
+    "mainChrome": {
+      "x": 84,
+      "y": 172,
+      "w": 1812,
+      "h": 884,
+      "changedPixels": 16026,
+      "totalPixels": 1601808,
+      "deltaRatio": 0.010004944412813521,
+      "gate": 0.03,
+      "pass": true
+    },
+    "pageHeader": {
+      "x": 84,
+      "y": 74,
+      "w": 1476,
+      "h": 90,
+      "changedPixels": 3229,
+      "totalPixels": 132840,
+      "deltaRatio": 0.024307437518819634,
+      "gate": 0.05,
+      "pass": true
+    },
+    "canvasToolbar": {
+      "x": 340,
+      "y": 172,
+      "w": 1220,
+      "h": 38,
+      "changedPixels": 2101,
+      "totalPixels": 46360,
+      "deltaRatio": 0.045319240724762726,
+      "gate": 0.05,
+      "pass": true
+    },
+    "canvasFooter": {
+      "x": 340,
+      "y": 1011,
+      "w": 1220,
+      "h": 45,
+      "changedPixels": 2111,
+      "totalPixels": 54900,
+      "deltaRatio": 0.038451730418943536,
+      "gate": 0.05,
+      "pass": true
+    },
+    "listHeader": {
+      "x": 84,
+      "y": 172,
+      "w": 240,
+      "h": 77,
+      "changedPixels": 606,
+      "totalPixels": 18480,
+      "deltaRatio": 0.03279220779220779,
+      "gate": 0.05,
+      "pass": true
+    },
+    "inspectorRail": {
+      "x": 1576,
+      "y": 172,
+      "w": 72,
+      "h": 884,
+      "changedPixels": 1896,
+      "totalPixels": 63648,
+      "deltaRatio": 0.029788838612368026,
+      "gate": 0.05,
+      "pass": true
+    }
+  }
+}

@@ -48,6 +48,8 @@ describe("WidgetListPanel", () => {
     );
 
     await waitFor(() => expect(screen.getByTestId("studio-widget-row-delta-a")).toBeTruthy());
+    expect(screen.getByTestId("studio-widget-list-title").textContent).toBe("Widgets");
+    expect(screen.getByTestId("studio-widget-count").textContent).toBe("3");
     const rows = screen.getAllByTestId(/^studio-widget-row-/);
     expect(rows.map((row) => row.getAttribute("data-widget-id"))).toEqual(["delta-a", "delta-c", "delta-b"]);
     expect(screen.getByTestId("studio-widget-row-delta-c").textContent).toContain("oculto");

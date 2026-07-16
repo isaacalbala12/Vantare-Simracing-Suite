@@ -1,0 +1,438 @@
+{
+  "generatedAt": "2026-07-16T15:29:58.759Z",
+  "authority": "C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/layout-studio-v10.html",
+  "referenceScreenshot": "C:/Users/isaac/AppData/Local/Temp/isa92-strict-reference.png",
+  "actualScreenshot": "C:\\Users\\isaac\\.codex\\worktrees\\cf0f\\Vantare-Overlays\\vantare-v2\\docs\\analysis\\isa-92-overlay-studio-parity\\artifacts\\strict-real-wide.png",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "comparisonPolicy": {
+    "rawThresholdPerChannel": 12,
+    "broadMasks": 0,
+    "rawFullScreenshotIsInformational": true,
+    "allowedStableGateExclusions": [
+      "canvas interior because the real fixture intentionally uses the authorised grid mode",
+      "minimum dynamic text bounding boxes recorded in strict-route-geometry.json",
+      "real V52 topbar and dock because preserving the real shell is an explicit exception"
+    ]
+  },
+  "rawFullScreenshot": {
+    "changedPixels": 1038676,
+    "consideredPixels": 2073600,
+    "deltaRatio": 0.5009047067901234,
+    "pass": null
+  },
+  "unmaskedRegionDeltas": {
+    "header": {
+      "width": 1812,
+      "height": 96,
+      "changedPixels": 0,
+      "consideredPixels": 173952,
+      "deltaRatio": 0,
+      "masks": []
+    },
+    "catalog": {
+      "width": 240,
+      "height": 881,
+      "changedPixels": 0,
+      "consideredPixels": 211440,
+      "deltaRatio": 0,
+      "masks": []
+    },
+    "toolbar": {
+      "width": 1218,
+      "height": 36,
+      "changedPixels": 0,
+      "consideredPixels": 43848,
+      "deltaRatio": 0,
+      "masks": []
+    },
+    "footer": {
+      "width": 1218,
+      "height": 44,
+      "changedPixels": 0,
+      "consideredPixels": 53592,
+      "deltaRatio": 0,
+      "masks": []
+    },
+    "rail": {
+      "width": 72,
+      "height": 879,
+      "changedPixels": 0,
+      "consideredPixels": 63288,
+      "deltaRatio": 0,
+      "masks": []
+    },
+    "inspectorBody": {
+      "width": 246,
+      "height": 879,
+      "changedPixels": 0,
+      "consideredPixels": 216234,
+      "deltaRatio": 0,
+      "masks": []
+    },
+    "canvasChrome": {
+      "changedPixels": 0,
+      "consideredPixels": 97440,
+      "deltaRatio": 0,
+      "masks": [],
+      "excluded": "canvas stage interior only"
+    }
+  },
+  "geometry": {
+    "header": {
+      "reference": {
+        "x": 8,
+        "y": 1974,
+        "width": 1904,
+        "height": 2057.875
+      },
+      "actual": {
+        "x": 84,
+        "y": 78,
+        "width": 1812,
+        "height": 96.5
+      },
+      "deltaPx": {
+        "x": 76,
+        "y": -1896,
+        "width": -92,
+        "height": -1961.37
+      }
+    },
+    "grid": {
+      "reference": {
+        "x": 8,
+        "y": 4031.875,
+        "width": 1904,
+        "height": 2276
+      },
+      "actual": {
+        "x": 84,
+        "y": 174.5,
+        "width": 1812,
+        "height": 881.5
+      },
+      "deltaPx": {
+        "x": 76,
+        "y": -3857.37,
+        "width": -92,
+        "height": -1394.5
+      }
+    },
+    "catalog": {
+      "reference": {
+        "x": 8,
+        "y": 4031.875,
+        "width": 1904,
+        "height": 2276
+      },
+      "actual": {
+        "x": 84,
+        "y": 174.5,
+        "width": 240,
+        "height": 881.5
+      },
+      "deltaPx": {
+        "x": 76,
+        "y": -3857.37,
+        "width": -1664,
+        "height": -1394.5
+      }
+    },
+    "canvas": {
+      "reference": {
+        "x": 8,
+        "y": 6307.875,
+        "width": 1904,
+        "height": 149
+      },
+      "actual": {
+        "x": 340,
+        "y": 174.5,
+        "width": 1220,
+        "height": 881.5
+      },
+      "deltaPx": {
+        "x": 332,
+        "y": -6133.37,
+        "width": -684,
+        "height": 732.5
+      }
+    },
+    "toolbar": {
+      "reference": {
+        "x": 9,
+        "y": 6308.875,
+        "width": 1902,
+        "height": 39
+      },
+      "actual": {
+        "x": 341,
+        "y": 175.5,
+        "width": 1218,
+        "height": 36
+      },
+      "deltaPx": {
+        "x": 332,
+        "y": -6133.37,
+        "width": -684,
+        "height": -3
+      }
+    },
+    "stage": {
+      "reference": {
+        "x": 9,
+        "y": 6347.875,
+        "width": 1902,
+        "height": 0
+      },
+      "actual": {
+        "x": 341,
+        "y": 211.5,
+        "width": 1218,
+        "height": 799.5
+      },
+      "deltaPx": {
+        "x": 332,
+        "y": -6136.37,
+        "width": -684,
+        "height": 799.5
+      }
+    },
+    "footer": {
+      "reference": {
+        "x": 9,
+        "y": 6347.875,
+        "width": 1902,
+        "height": 108
+      },
+      "actual": {
+        "x": 341,
+        "y": 1011,
+        "width": 1218,
+        "height": 44
+      },
+      "deltaPx": {
+        "x": 332,
+        "y": -5336.87,
+        "width": -684,
+        "height": -64
+      }
+    },
+    "inspector": {
+      "reference": {
+        "x": 8,
+        "y": 6456.875,
+        "width": 1904,
+        "height": 1167.109375
+      },
+      "actual": {
+        "x": 1576,
+        "y": 174.5,
+        "width": 320,
+        "height": 881.5
+      },
+      "deltaPx": {
+        "x": 1568,
+        "y": -6282.37,
+        "width": -1584,
+        "height": -285.61
+      }
+    },
+    "rail": {
+      "reference": {
+        "x": 9,
+        "y": 6457.875,
+        "width": 73,
+        "height": 1165.109375
+      },
+      "actual": {
+        "x": 1577,
+        "y": 175.5,
+        "width": 72,
+        "height": 879.5
+      },
+      "deltaPx": {
+        "x": 1568,
+        "y": -6282.37,
+        "width": -1,
+        "height": -285.61
+      }
+    },
+    "inspectorBody": {
+      "reference": {
+        "x": 82,
+        "y": 6457.875,
+        "width": 1829,
+        "height": 1165.109375
+      },
+      "actual": {
+        "x": 1649,
+        "y": 175.5,
+        "width": 246,
+        "height": 879.5
+      },
+      "deltaPx": {
+        "x": 1567,
+        "y": -6282.37,
+        "width": -1583,
+        "height": -285.61
+      }
+    }
+  },
+  "tokens": {
+    "catalog": {
+      "reference": {
+        "backgroundColor": "rgba(13, 13, 15, 0.7)",
+        "borderColor": "rgba(255, 255, 255, 0.04)",
+        "borderRadius": "0px",
+        "backdropFilter": "blur(20px) saturate(1.6)",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "normal"
+      },
+      "actual": {
+        "backgroundColor": "rgba(13, 13, 15, 0.7)",
+        "borderColor": "rgba(255, 255, 255, 0.04)",
+        "borderRadius": "12px",
+        "backdropFilter": "blur(20px) saturate(1.6)",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "24px"
+      },
+      "exact": {
+        "backgroundColor": true,
+        "borderColor": true,
+        "borderRadius": false,
+        "backdropFilter": true,
+        "fontFamily": true,
+        "fontSize": true,
+        "lineHeight": false
+      }
+    },
+    "canvas": {
+      "reference": {
+        "backgroundColor": "rgba(13, 13, 15, 0.7)",
+        "borderColor": "rgba(255, 255, 255, 0.04)",
+        "borderRadius": "0px",
+        "backdropFilter": "blur(20px) saturate(1.6)",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "normal"
+      },
+      "actual": {
+        "backgroundColor": "rgba(13, 13, 15, 0.7)",
+        "borderColor": "rgba(255, 255, 255, 0.04)",
+        "borderRadius": "12px",
+        "backdropFilter": "blur(20px) saturate(1.6)",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "24px"
+      },
+      "exact": {
+        "backgroundColor": true,
+        "borderColor": true,
+        "borderRadius": false,
+        "backdropFilter": true,
+        "fontFamily": true,
+        "fontSize": true,
+        "lineHeight": false
+      }
+    },
+    "inspector": {
+      "reference": {
+        "backgroundColor": "rgba(13, 13, 15, 0.7)",
+        "borderColor": "rgba(255, 255, 255, 0.04)",
+        "borderRadius": "0px",
+        "backdropFilter": "blur(20px) saturate(1.6)",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "normal"
+      },
+      "actual": {
+        "backgroundColor": "rgba(13, 13, 15, 0.7)",
+        "borderColor": "rgba(255, 255, 255, 0.04)",
+        "borderRadius": "12px",
+        "backdropFilter": "blur(20px) saturate(1.6)",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "24px"
+      },
+      "exact": {
+        "backgroundColor": true,
+        "borderColor": true,
+        "borderRadius": false,
+        "backdropFilter": true,
+        "fontFamily": true,
+        "fontSize": true,
+        "lineHeight": false
+      }
+    },
+    "selectedRow": {
+      "reference": {
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(255, 255, 255)",
+        "borderRadius": "0px",
+        "backdropFilter": "none",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "13px",
+        "lineHeight": "normal"
+      },
+      "actual": {
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(255, 255, 255)",
+        "borderRadius": "0px",
+        "backdropFilter": "none",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "13px",
+        "lineHeight": "19.5px"
+      },
+      "exact": {
+        "backgroundColor": true,
+        "borderRadius": true,
+        "backdropFilter": true,
+        "fontFamily": true,
+        "fontSize": true,
+        "lineHeight": false
+      }
+    },
+    "designCard": {
+      "reference": {
+        "backgroundColor": "rgb(10, 10, 14)",
+        "borderColor": "rgba(193, 18, 31, 0.5)",
+        "borderRadius": "8px",
+        "backdropFilter": "none",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "normal"
+      },
+      "actual": {
+        "backgroundColor": "rgb(10, 10, 14)",
+        "borderColor": "rgba(193, 18, 31, 0.5)",
+        "borderRadius": "8px",
+        "backdropFilter": "none",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "16px",
+        "lineHeight": "24px"
+      },
+      "exact": {
+        "backgroundColor": true,
+        "borderColor": true,
+        "borderRadius": true,
+        "backdropFilter": true,
+        "fontFamily": true,
+        "fontSize": true,
+        "lineHeight": false
+      }
+    }
+  },
+  "artifacts": {
+    "reference": "C:\\Users\\isaac\\.codex\\worktrees\\cf0f\\Vantare-Overlays\\vantare-v2\\docs\\analysis\\isa-92-overlay-studio-parity\\artifacts\\strict-reference.png",
+    "actual": "C:\\Users\\isaac\\.codex\\worktrees\\cf0f\\Vantare-Overlays\\vantare-v2\\docs\\analysis\\isa-92-overlay-studio-parity\\artifacts\\strict-real-wide.png",
+    "sideBySide": "C:\\Users\\isaac\\.codex\\worktrees\\cf0f\\Vantare-Overlays\\vantare-v2\\docs\\analysis\\isa-92-overlay-studio-parity\\artifacts\\strict-side-by-side.png",
+    "overlay": "C:\\Users\\isaac\\.codex\\worktrees\\cf0f\\Vantare-Overlays\\vantare-v2\\docs\\analysis\\isa-92-overlay-studio-parity\\artifacts\\strict-overlay.png",
+    "unmaskedDiff": "C:\\Users\\isaac\\.codex\\worktrees\\cf0f\\Vantare-Overlays\\vantare-v2\\docs\\analysis\\isa-92-overlay-studio-parity\\artifacts\\strict-diff-unmasked.png"
+  }
+}

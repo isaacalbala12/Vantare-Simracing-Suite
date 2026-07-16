@@ -333,3 +333,23 @@ procediendo del ViewModel o muestran `—`; no se copian valores de la muestra.
 Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
 estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 17/21;
 referencias PNG intactas.
+
+## Microcorte — cierre Multiclass 11
+
+El ViewModel selecciona ahora una ventana par de cuatro filas con el jugador
+en la segunda posición: un rival delante y dos detrás, como la composición
+canónica. Las filas usan alturas 52/52/52/51 px y gaps de 1 px; los divisores
+de clase permanecen anclados a cada frontera y la última fila no añade borde.
+
+Los colores de clase proceden de scoring y no se fuerzan a las clases de la
+muestra HTML. Sus píxeles se declaran dinámicos en el manifest, mientras el
+número activo rojo, fondo del jugador, borde izquierdo, geometría 65x23,
+radios, spacing y tipografía siguen dentro de los gates fijos.
+
+| Diseño | Antes v4 | Después | Tipografía/dinámico | Gates |
+|---|---|---|---|---|
+| multiclass | 8.71% / 9.03% / 6.80% / 3.49% | 100% / 0.00% / 0.00% / 0.00% | 100% / PASS | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 18/21;
+referencias PNG intactas.

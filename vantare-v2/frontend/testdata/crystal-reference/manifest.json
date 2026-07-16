@@ -1141,6 +1141,15 @@
       "width": 780,
       "height": 210,
       "htmlSection": 11,
+      "dynamicLayers": {
+        "reference": [
+          ".mc-class"
+        ],
+        "actual": [
+          ".vc-multiclass-relative article > i"
+        ],
+        "styleRoles": []
+      },
       "capture": {
         "protocol": 2,
         "margin": 128,

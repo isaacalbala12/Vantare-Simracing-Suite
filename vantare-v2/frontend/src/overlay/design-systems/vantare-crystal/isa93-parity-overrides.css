@@ -1684,7 +1684,38 @@
 }
 
 [data-widget-system="vantare-crystal"].vc-multiclass-relative > article {
+  position: relative;
+  height: 52px;
+  flex: none;
   grid-template-columns: 36px 81px 42px 1fr 70px;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative > article:not(:last-child) {
+  margin-bottom: 1px;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative > article:last-child {
+  height: 51px;
+  border-bottom: 0;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative > article:not(:last-child)::after {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: -7px;
+  left: 0;
+  color: rgba(255, 255, 255, 0.15);
+  font: 700 10px var(--vc-font-mono);
+  letter-spacing: 2px;
+  text-align: center;
+  content: "••••••";
+  pointer-events: none;
+}
+
+[data-widget-system="vantare-crystal"].vc-multiclass-relative > article.is-player > em {
+  color: #fff;
+  background: #ff2a3b;
 }
 
 [data-widget-system="vantare-crystal"].vc-multiclass-relative > article.is-player {

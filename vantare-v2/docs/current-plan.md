@@ -2699,3 +2699,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Protocolo gráfico v4 y Delta Trace 
 - Delta Trace alinea stretch interno 998 px, blur 24 px, sombra/inset, paneles, rejilla, 14 sectores y TURN vertical 36 px sin inventar mapa, turn ni sectores live.
 - Resultado: `100% / 0.05% / 2.67% / 1.53%`, tipografía 100%, estilo dinámico PASS y todos los gates transversales PASS.
 - Estado acumulado: 17/21 diseños verdes. Quedan Relative, Delta Bar, Multiclass y Weather.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Multiclass 11:
+- La ventana par coloca al jugador en segunda fila (1 delante/2 detrás) y alinea filas 52/52/52/51 px con gaps de 1 px y divisores anclados.
+- Los colores de clase siguen scoring real y se neutralizan como píxeles dinámicos exactos; número activo, fondo/borde del jugador y geometría de badges permanecen en gates fijos.
+- Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, tipografía y estilo dinámico PASS, todos los gates transversales PASS.
+- Estado acumulado: 18/21 diseños verdes. Quedan Relative, Delta Bar y Weather.

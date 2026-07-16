@@ -1,3 +1,10 @@
+Nota ISA-9 (2026-07-13) — Launcher logos:
+- Causa raíz: `getIconHighRes` usaba GUID incorrectos para `IImageList`/`IImageList2` y el slot vtable `Add` (3) en lugar de `GetIcon` (10); `SHIL_JUMBO` fallaba y todos los iconos caían a PNG de `32x32`.
+- Fix mínimo: GUID oficiales + `GetIcon` vtable 10. El smoke Windows real pasa a `256x256` para LMU/Steam, OBS, MoTeC, SimHub, CrewChief, Discord/shortcut y Spotify; el resolver manual también queda cubierto.
+- Frontend: `AppBadge` prueba candidatos en orden y, tras un error, solicita extracción backend antes del fallback de abreviatura; `object-contain` conserva proporción.
+- Checks: `go test ./internal/app/launcher/...`, `go test ./cmd/vantare/...`, `pnpm --dir frontend test` (177 archivos/1614 tests), build frontend, lint focalizado y smoke Playwright 100/125/150/200% equivalentes sin overflow/errores. `wails3 build DEV=true` PASS.
+- Riesgos restantes: los assets oficiales locales siguen vacíos por decisión previa; el mock visual muestra abreviaturas. Falta validación manual de Isaac al 100%; no hacer merge a `develop` sin esa aprobación.
+
 Nota LAUNCHER-V3-SHELL-ICONLOCATION-FIX (2026-07-12):
 - Corregido el caso de shortcuts con `TargetPath` genérico (Discord `Update.exe`): el resolver lee `IShellLinkW.GetIconLocation`, extrae el recurso indicado sin la flecha del `.lnk` y solo después usa el ejecutable objetivo/Shell.
 - Smoke Windows: Discord pasó de icono genérico (`551` bytes) a recurso de shortcut válido (`1213` bytes); MoTeC, SimHub, LMU, OBS, Spotify y CrewChief siguen resolviendo iconos.
@@ -2668,3 +2675,10 @@ Nota CRYSTAL-DIRECT-REPLACEMENT-PLAN (2026-07-12):
 - Estado: PLANIFICADO, sin código implementado por este corte.
 - Paquete de ejecución Luna creado: índice `docs/superpowers/plans/2026-07-12-crystal-luna-execution-index.md` + seis microplanes ordenados (contratos/UI, referencia/base, core, widgets live, widgets derivados y cutover).
 - Los microplanes fijan disponibilidad de datos: weather/damage permanecen `missing` en live hasta contrato real; histories se derivan de forma acotada; Calendar usa adapter read-only; no se permite inventar telemetría.
+Nota ISA-9-RESCAN-PROGRESS (2026-07-13):
+- Implementado en `vantareapp/isa-9-launcher`: Launcher dispara un único reescaneo por entrada real; el Hub no escanea al arrancar.
+- Backend emite checkpoints reales `0/15/55/75/100`, rechaza scans concurrentes y solo confirma 100 tras persistencia, resolución de iconos y snapshot final exitosos.
+- Bridge/store comparte listeners, limpia de forma idempotente y deduplica el comando antes de emitirlo para React Strict Mode. AppsPanel conserva snapshot/logos, bloquea Reescanear durante scanning y muestra barra A accesible con interpolación y reduced motion.
+- Commits: `e2915ee` backend, `ac8c2fe` bridge/store/UI. `.superpowers/` se conserva sin incluir.
+- Checks focalizados: Go launcher/cmd PASS; frontend Launcher/store/bridge/panel/progress PASS (14 tests); frontend build PASS; `git diff --check` PASS.
+- Pendiente antes de In Review: suite frontend completa, lint, Playwright 100/125/150/200, smoke Wails Windows con `.env.local` del escritorio, revisión inicial sin editar y validación manual 100% de Isaac. No merge a `develop`.

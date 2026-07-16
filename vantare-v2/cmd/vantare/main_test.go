@@ -419,7 +419,7 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
+	if len(emitter.events) != 6 || emitter.events[5] != "launcher:snapshot" {
 		t.Fatalf("expected canonical discovery snapshot, got %v", emitter.events)
 	}
 }

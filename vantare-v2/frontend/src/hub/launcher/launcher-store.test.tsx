@@ -44,9 +44,7 @@ describe("launcher store", () => {
     );
 
     expect(bridge.requestSnapshot).toHaveBeenCalledTimes(1);
-    expect(bridge.dispatchLauncherCommand).toHaveBeenCalledWith(
-      "launcher:apps:discover",
-    );
+    expect(bridge.dispatchLauncherCommand).not.toHaveBeenCalled();
     act(() => receiveSnapshot?.(snapshot));
     expect(screen.getByTestId("one").textContent).toBe("1");
     expect(screen.getByTestId("two").textContent).toBe("1");

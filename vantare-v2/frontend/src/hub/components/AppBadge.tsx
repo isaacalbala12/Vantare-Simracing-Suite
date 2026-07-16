@@ -36,8 +36,19 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
   const [extractedIcon, setExtractedIcon] = useState<string | null>(() =>
     iconCache.get(app.id) ?? null,
   );
-  const localIcon = resolveIconCandidates(app)[0] ?? KNOWN_ICONS[app.id] ?? null;
-  const iconUrl = localIcon ?? extractedIcon;
+  const iconKey = `${app.id}|${app.iconUrl ?? ""}|${app.executablePath ?? ""}`;
+  const [failedCandidateState, setFailedCandidateState] = useState({
+    key: "",
+    count: 0,
+  });
+  const failedCandidateCount =
+    failedCandidateState.key === iconKey ? failedCandidateState.count : 0;
+  const iconCandidates = [
+    ...resolveIconCandidates(app),
+    KNOWN_ICONS[app.id],
+    extractedIcon,
+  ].filter((candidate): candidate is string => Boolean(candidate));
+  const iconUrl = iconCandidates[failedCandidateCount] ?? null;
   const appId = app.id;
   const executablePath = app.executablePath;
 
@@ -62,7 +73,7 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
     }
 
     return off;
-  }, [appId, executablePath, iconUrl]);
+  }, [appId, app.iconUrl, executablePath, iconUrl]);
 
   return (
     <span
@@ -77,9 +88,15 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
           loading="lazy"
           className={`${dim} rounded-lg object-contain`}
           onError={() => {
-            // Image failed — try known icon or fallback to abbreviation
-            iconCache.delete(appId);
-            setExtractedIcon(null);
+            // Try the next ranked candidate before falling back to the abbreviation.
+            if (extractedIcon === iconUrl) {
+              iconCache.delete(appId);
+              setExtractedIcon(null);
+            }
+            setFailedCandidateState({
+              key: iconKey,
+              count: failedCandidateCount + 1,
+            });
           }}
         />
       ) : (

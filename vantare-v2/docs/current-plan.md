@@ -2705,3 +2705,9 @@ Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Multiclass 11:
 - Los colores de clase siguen scoring real y se neutralizan como píxeles dinámicos exactos; número activo, fondo/borde del jugador y geometría de badges permanecen en gates fijos.
 - Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, tipografía y estilo dinámico PASS, todos los gates transversales PASS.
 - Estado acumulado: 18/21 diseños verdes. Quedan Relative, Delta Bar y Weather.
+
+Nota ISA-93 CRYSTAL-PARITY (2026-07-16) — Track Weather 12:
+- El panel aislado replica la composición intrínseca 107/91/107/115 px, barra wetness y jerarquía anidada de viento sin incorporar fondo de página.
+- Valores/descripciones ambientales y fill vivo se neutralizan mediante máscaras exactas; labels, badges, barra base, separadores, materiales y tipografía siguen puntuados.
+- Resultado exacto: `100% / 0.00% / 0.00% / 0.00%`, tipografía y estilo dinámico PASS, todos los gates transversales PASS.
+- Estado acumulado: 19/21 diseños verdes. Quedan Relative y Delta Bar.

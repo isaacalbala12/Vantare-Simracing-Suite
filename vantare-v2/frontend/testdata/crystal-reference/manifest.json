@@ -1218,6 +1218,31 @@
       "width": 240,
       "height": 420,
       "htmlSection": 12,
+      "dynamicLayers": {
+        "reference": [
+          ".tw-box:nth-child(1) .tw-big",
+          ".tw-box:nth-child(1) > div:last-child",
+          ".tw-box:nth-child(2) .tw-bar-fill",
+          ".tw-box:nth-child(2) .tw-sub",
+          ".tw-box:nth-child(3) .tw-big",
+          ".tw-box:nth-child(3) > div:last-child",
+          ".tw-box:nth-child(4) .tw-big",
+          ".tw-box:nth-child(4) .tw-val-row > div > div:last-child",
+          ".tw-box:nth-child(4) > div:last-child"
+        ],
+        "actual": [
+          ".vc-weather-box:nth-child(1) strong",
+          ".vc-weather-box:nth-child(1) > p",
+          ".vc-weather-box:nth-child(2) .vc-weather-wet span > i",
+          ".vc-weather-box:nth-child(2) > p",
+          ".vc-weather-box:nth-child(3) strong",
+          ".vc-weather-box:nth-child(3) > p",
+          ".vc-weather-box:nth-child(4) .vc-weather-wind-copy > strong",
+          ".vc-weather-box:nth-child(4) .vc-weather-wind-copy > em",
+          ".vc-weather-box:nth-child(4) > p"
+        ],
+        "styleRoles": []
+      },
       "capture": {
         "protocol": 2,
         "margin": 128,

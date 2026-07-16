@@ -353,3 +353,24 @@ radios, spacing y tipografía siguen dentro de los gates fijos.
 Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
 estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 18/21;
 referencias PNG intactas.
+
+## Microcorte — cierre Track Weather 12
+
+La raíz aislada conserva el material de la autoridad: fondo y borde exteriores
+transparentes, `backdrop-filter: blur(20px)` y únicamente los cuatro paneles
+internos como contenido. Se eliminó la distribución `flex: 1`, que alteraba
+las proporciones, y se fijó la composición intrínseca canónica
+107/91/107/115 px.
+
+Los valores y descripciones ambientales siguen procediendo del ViewModel. Sus
+píxeles, junto con el fill vivo de wetness, se excluyen con máscaras exactas;
+labels, badges TEMP/RAIN/WIND, barra base, separadores, tipografía, spacing,
+colores y opacidades permanecen puntuados.
+
+| Diseño | Antes v4 | Después | Tipografía/dinámico | Gates |
+|---|---|---|---|---|
+| weather | 33.29% / 14.19% / 32.57% / 0.45% | 100% / 0.00% / 0.00% / 0.00% | 100% / PASS | PASS |
+
+Formato: `mask IoU / alpha / solid / grid`. Geometry, guard, fuentes,
+estabilidad y Studio/Desktop/OBS también pasan. Estado acumulado: 19/21;
+referencias PNG intactas.

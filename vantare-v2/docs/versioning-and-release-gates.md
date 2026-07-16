@@ -64,7 +64,7 @@ Si la version confirma una build/runtime usable, tambien se actualiza la version
 
 Las tareas puramente documentales, analisis, planes y reviews no crean version/tag por si solas. Se commitean con scope documental y se agrupan bajo la siguiente version funcional cuando corresponda.
 
-Al pushear un tag `v*`, `.github/workflows/discord-release.yml` lee la entrada de `docs/changelog.md` para ese tag y la publica en Discord usando el secret `DISCORD_WEBHOOK_URL`.
+Al pushear un tag `v*`, `.github/workflows/discord-release.yml` comprueba que el commit pertenece a `master`, lee la entrada de `docs/changelog.md` para ese tag y la publica usando exclusivamente `DISCORD_RELEASE_WEBHOOK_URL`.
 
 ## Checkpoints confirmados
 

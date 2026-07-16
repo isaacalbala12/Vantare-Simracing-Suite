@@ -2,8 +2,7 @@ name: Discord release announcement
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -16,134 +15,56 @@ permissions:
 
 jobs:
   announce:
+    if: github.run_attempt == 1
     runs-on: ubuntu-latest
     steps:
-      - name: Warn on rerun to avoid duplicate Discord messages
-        if: github.run_attempt > 1
-        run: |
-          echo "::warning::Skipping Discord announcement because this is a rerun (run_attempt=${{ github.run_attempt }}). To re-announce, trigger a fresh workflow_dispatch with a distinct tag or delete the previous run."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Checkout repository
-        if: github.run_attempt == 1
-        uses: actions/checkout@v4
-
-      - name: Publish changelog section to Discord
-        if: github.run_attempt == 1
+      - name: Verify release belongs to master and extract changelog
+        id: release
         env:
-          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           INPUT_TAG: ${{ inputs.tag }}
           REF_NAME: ${{ github.ref_name }}
-          GITHUB_SHA_VALUE: ${{ github.sha }}
-          GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
-          GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
-          python - <<'PY'
-          import json
-          import os
-          import re
-          import sys
-          import textwrap
-          import time
-          import urllib.error
-          import urllib.request
-
-          def send_to_discord(webhook, payload_dict):
-              """Validate payload and POST to Discord with 429 retry and 403 handling."""
-              payload_str = json.dumps(payload_dict)
-              # Validate JSON roundtrip before sending
-              json.loads(payload_str)
-
-              data = payload_str.encode("utf-8")
-              req = urllib.request.Request(
-                  webhook,
-                  data=data,
-                  headers={
-                      "Content-Type": "application/json",
-                      "User-Agent": "GitHub-Actions-Discord-Announcer",
-                  },
-                  method="POST",
-              )
-
-              def do_request(attempt):
-                  try:
-                      with urllib.request.urlopen(req, timeout=20) as resp:
-                          if resp.status >= 300:
-                              raise RuntimeError(f"Discord webhook failed with status {resp.status}")
-                          return resp
-                  except urllib.error.HTTPError as e:
-                      if e.code == 429 and attempt == 1:
-                          retry_after = e.headers.get("Retry-After")
-                          wait = int(retry_after) if retry_after and retry_after.isdigit() else 5
-                          print(f"Discord rate limited (429). Retrying after {wait}s...", file=sys.stderr)
-                          time.sleep(wait)
-                          return do_request(attempt + 1)
-                      if e.code == 403:
-                          print("Discord webhook rejected the request (403). Verify the webhook URL secret is correct and the webhook has not been deleted.", file=sys.stderr)
-                          sys.exit(1)
-                      raise RuntimeError(f"Discord webhook failed with status {e.code}: {e.reason}")
-                  except urllib.error.URLError as e:
-                      raise RuntimeError(f"Discord webhook request failed: {e.reason}")
-
-              return do_request(1)
-
-          webhook = (os.environ.get("DISCORD_RELEASE_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
-          if not webhook:
-              print("Neither DISCORD_RELEASE_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
-              sys.exit(1)
-
-          tag = (os.environ.get("INPUT_TAG") or os.environ.get("REF_NAME") or "").strip()
-          if not tag:
-              print("No tag provided by workflow_dispatch or github.ref_name", file=sys.stderr)
-              sys.exit(1)
-
-          changelog_path = "vantare-v2/docs/changelog.md"
-          with open(changelog_path, "r", encoding="utf-8") as fh:
-              changelog = fh.read()
-
-          pattern = re.compile(
-              rf"^##\s+{re.escape(tag)}\s*$([\s\S]*?)(?=^##\s+v|\Z)",
-              re.MULTILINE,
-          )
-          match = pattern.search(changelog)
-          if not match:
-              print(f"Could not find changelog section for {tag}", file=sys.stderr)
-              sys.exit(1)
-
-          section = match.group(1).strip()
-          if not section:
-              print(f"Changelog section for {tag} is empty", file=sys.stderr)
-              sys.exit(1)
-
-          repo_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{os.environ['GITHUB_REPOSITORY_VALUE']}"
-          tag_url = f"{repo_url}/releases/tag/{tag}"
-          sha = os.environ.get("GITHUB_SHA_VALUE", "")[:7]
-
-          header = f"**Vantare {tag}**\n{tag_url}\nCommit: `{sha}`\n\n"
-          content = header + section
-
-          # Discord message content limit is 2000 chars. Split on paragraph
-          # boundaries so long changelogs still publish instead of failing.
-          chunks = []
-          current = ""
-          for paragraph in content.split("\n\n"):
-              candidate = paragraph if not current else current + "\n\n" + paragraph
-              if len(candidate) <= 1900:
-                  current = candidate
-                  continue
-              if current:
-                  chunks.append(current)
-              if len(paragraph) <= 1900:
-                  current = paragraph
-              else:
-                  chunks.extend(textwrap.wrap(paragraph, 1900, replace_whitespace=False))
-                  current = ""
-          if current:
-              chunks.append(current)
-
-          for index, chunk in enumerate(chunks, start=1):
-              suffix = f"\n\n({index}/{len(chunks)})" if len(chunks) > 1 else ""
-              send_to_discord(webhook, {"content": chunk + suffix})
-
-          print(f"Published changelog for {tag} to Discord")
+          tag="${INPUT_TAG:-$REF_NAME}"
+          git fetch origin master --no-tags
+          tag_commit="$(git rev-list -n 1 "$tag")"
+          git merge-base --is-ancestor "$tag_commit" origin/master || { echo "::error::$tag is not contained in origin/master"; exit 1; }
+          python - "$tag" "$RUNNER_TEMP/release-section.md" <<'PY'
+          import pathlib, re, sys
+          tag, output = sys.argv[1:]
+          changelog = pathlib.Path("vantare-v2/docs/changelog.md").read_text(encoding="utf-8")
+          match = re.search(rf"^##\s+{re.escape(tag)}\s*$([\s\S]*?)(?=^##\s+v|\Z)", changelog, re.MULTILINE)
+          if not match or not match.group(1).strip():
+              raise SystemExit(f"Missing changelog section for {tag}")
+          pathlib.Path(output).write_text(match.group(1).strip(), encoding="utf-8")
           PY
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "url=$SERVER_URL/$REPOSITORY/releases/tag/$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Build accessible payload and HTML card
+        run: |
+          python .github/scripts/discord_communications.py release --dry-run \
+            --tag "${{ steps.release.outputs.tag }}" --section-file "$RUNNER_TEMP/release-section.md" \
+            --release-url "${{ steps.release.outputs.url }}" --revision "$GITHUB_SHA" \
+            --html-output "$RUNNER_TEMP/vantare-release.html" > "$RUNNER_TEMP/release-payload-preview.json"
+
+      - name: render-discord-card
+        run: |
+          command -v google-chrome >/dev/null 2>&1 || { echo "::error::google-chrome is required"; exit 1; }
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-release.png" "file://$RUNNER_TEMP/vantare-release.html"
+          test -s "$RUNNER_TEMP/vantare-release.png"
+
+      - name: Publish release card and accessible changelog
+        env:
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+        run: |
+          python .github/scripts/discord_communications.py release \
+            --tag "${{ steps.release.outputs.tag }}" --section-file "$RUNNER_TEMP/release-section.md" \
+            --release-url "${{ steps.release.outputs.url }}" --revision "$GITHUB_SHA" \
+            --image "$RUNNER_TEMP/vantare-release.png"

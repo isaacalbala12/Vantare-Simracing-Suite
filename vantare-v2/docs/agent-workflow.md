@@ -69,6 +69,12 @@ Debe buscar:
 9. Si se acepta, se hace commit pequeno cuando el usuario lo pida.
 10. Se actualiza `docs/current-plan.md` y `docs/roadmap-execution-board.md`.
 
+## Comunicación de cambios visibles
+
+Si una issue cambia comportamiento que deben conocer o probar los testers, el worker añade un fragmento válido en `docs/changelog/fragments/ISA-N.json` siguiendo `docs/changelog/fragments/schema.json`. No edita mensajes acumulativos ni publica directamente en Discord.
+
+El fragmento debe explicar en español claro el resultado, los detalles técnicos útiles, la validación manual y las limitaciones conocidas. El anuncio se producirá únicamente cuando el fragmento alcance `develop`, después del gate humano. Consulta `docs/discord-communications.md` para la distribución de canales.
+
 ## Documentos ejecutables y orquestables
 
 Todo documento operativo debe permitir que otro modelo pueda continuar el trabajo.

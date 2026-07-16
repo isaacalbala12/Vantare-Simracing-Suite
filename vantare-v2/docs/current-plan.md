@@ -63,6 +63,14 @@ Nota LAUNCHER-V3-PLAN (2026-07-11):
 - Fuera de alcance: import/export, cloud, plugins, scripts/comandos genéricos, historial persistente y rediseño visual.
 - La skill `vantare-core` no se usa como fuente de verdad por indicación expresa del usuario.
 - Estado: PLANIFICADO, sin cambios de código.
+Nota ISA-95 (2026-07-14):
+- Redistribución de Discord implementada en rama aislada: releases públicas desde `master`, testers desde fragmentos que alcanzan `develop`, builds beta por dispatch y desarrollo activo desde proyectos Linear con opt-in público.
+- Fuente tester: `docs/changelog/fragments/*.json`; se elimina el parser de primeras coincidencias históricas de este documento.
+- Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.
+- Validación real PASS (2026-07-14): release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`. Versión pública vigente verificada: `v0.1.0.2`.
+- Extensión híbrida completa (2026-07-15): Release, Testers, Desarrollo y Build combinan embed accesible con una tarjeta 1200×630 específica generada desde HTML inspirado en `roadmap_v5.2.html`. Sin IA ni dependencias nuevas. Las cuatro capturas locales están validadas; los POST reales de las imágenes siguen pendientes del gate manual.
+- Revisión editorial (2026-07-15): eliminadas tarjetas de relleno y etiquetas mixtas (`Tester briefing`, `Public preview`, `Development pulse`, `Building in public`); Release extrae solo highlights estructurados, Testers muestra cambio/prueba/limitación y los estados con 1–2 elementos se centran sin inventar contenido. Contrato editorial y tests anti-slop añadidos.
+- Plan y operación: `docs/superpowers/plans/2026-07-14-isa-95-discord-linear-communications.md` y `docs/discord-communications.md`.
 
 Nota OVERLAY-STUDIO-V3 (2026-07-10):
 - **ISA-92 / OS-02 EN PROGRESO, CIERRE LOCAL VALIDADO (2026-07-16):** Isaac rechazó la primera entrega por falta de paridad global en materiales, densidad, composición, catálogo y estado del inspector. La segunda pasada monta `V52Shell` + `StudioRoute` reales, perfil poblado, selección, action bar e inspector activo; publica wide/medium/compact, side-by-side, overlay, estados y métricas unmasked en `docs/analysis/isa-92-overlay-studio-parity/`. La recaptura final mantiene el drawer medium completo dentro del viewport y evidencia compact coherente; una revisión adversarial independiente cierra sin P0/P1/P2. Tests, build, lint focal, E2E e interacción real pasan; Crystal conserva el fallo heredado sin regeneración. PR #10 permanece draft, sin merge; commit/push e `In Review` siguen pendientes de completar la entrega.

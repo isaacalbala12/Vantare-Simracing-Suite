@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-95",
+  "type": "fix",
+  "summary": "Cada canal de Discord muestra únicamente información vigente y adecuada para su audiencia.",
+  "technicalNotes": [
+    "Los testers reciben cambios verificables únicamente después de que alcancen develop.",
+    "El canal de desarrollo muestra solo actualizaciones aprobadas de proyectos activos en Linear.",
+    "Los cuatro canales conservan el texto y los enlaces de Discord junto a un resumen visual generado desde HTML."
+  ],
+  "testing": [
+    "Confirmar que una rama de trabajo no publica mensajes para testers.",
+    "Comprobar que Release, Testers, Desarrollo y Build muestran contenido real, legible y sin tarjetas de relleno.",
+    "Verificar que los enlaces, la versión y el checksum siguen disponibles en el mensaje de Discord."
+  ],
+  "knownLimitations": [
+    "Las nuevas tarjetas no se integrarán hasta validar manualmente los cuatro destinos en Discord."
+  ]
+}

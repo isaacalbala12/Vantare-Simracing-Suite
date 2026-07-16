@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Overlay Studio V3 — Visual Parity 1:1",
+    "url": "https://linear.app/vantareapp/project/overlay-studio-v3-visual-parity-11",
+    "progress": 0.08,
+    "update": "Paridad visual del editor y de Vantare Crystal en ejecución por microcortes verificables.",
+    "updatedAt": "2026-07-15T10:00:00Z"
+  },
+  {
+    "name": "Telemetry Core — LMU Live Unification",
+    "url": "https://linear.app/vantareapp/project/telemetry-core-lmu-live-unification",
+    "progress": 0.08,
+    "update": "Unificación de shared memory, REST local y consumidores Engineer sobre un contrato canónico.",
+    "updatedAt": "2026-07-15T09:00:00Z"
+  },
+  {
+    "name": "Billing — Polar Production Readiness",
+    "url": "https://linear.app/vantareapp/project/billing-polar-production-readiness",
+    "progress": 0.04,
+    "update": "Catálogo comercial y políticas cerradas. Continúa el hardening previo a venta pública.",
+    "updatedAt": "2026-07-15T08:00:00Z"
+  }
+]

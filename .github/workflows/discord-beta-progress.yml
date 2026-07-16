@@ -1,207 +1,79 @@
-name: Discord beta progress
+name: Discord tester progress
 
 on:
   push:
+    branches: [develop]
     paths:
-      - "vantare-v2/docs/current-plan.md"
-      - "vantare-v2/docs/roadmap-execution-board.md"
+      - "vantare-v2/docs/changelog/fragments/*.json"
   workflow_dispatch:
+    inputs:
+      base_revision:
+        description: "Revision base exclusiva para el dry cut (por defecto HEAD^)"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   announce:
-    if: github.ref_type != 'tag'
+    if: github.run_attempt == 1
     runs-on: ubuntu-latest
     steps:
-      - name: Skip on tag push to avoid duplicate release announcements
-        if: github.ref_type == 'tag'
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect canonical tester fragments
+        id: fragments
+        env:
+          BASE_REVISION: ${{ inputs.base_revision }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
-          echo "::notice::Skipping Discord beta progress because the trigger was a tag push (ref=${{ github.ref }}, ref_type=${{ github.ref_type }}). Use 'Discord release announcement' or 'Discord build available' for tag-driven releases."
+          base="${BASE_REVISION:-$BEFORE_SHA}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="HEAD^"
+          fi
+          mapfile -t files < <(git diff --diff-filter=AM --name-only "$base" HEAD -- 'vantare-v2/docs/changelog/fragments/*.json' | grep -v '/schema.json$' || true)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          args=()
+          for file in "${files[@]}"; do args+=(--fragment "$file"); done
+          python .github/scripts/discord_communications.py select-fragments --base "$base" "${args[@]}" > "$RUNNER_TEMP/tester-fragments.txt"
+          if [ ! -s "$RUNNER_TEMP/tester-fragments.txt" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
 
-      - name: Warn on rerun to avoid duplicate Discord messages
-        if: github.run_attempt > 1
+      - name: Build accessible tester payload and HTML card
+        if: steps.fragments.outputs.publish == 'true'
         run: |
-          echo "::warning::Skipping Discord beta progress because this is a rerun (run_attempt=${{ github.run_attempt }}). To re-announce, trigger a fresh workflow_dispatch."
+          args=()
+          while IFS= read -r file; do args+=(--fragment "$file"); done < "$RUNNER_TEMP/tester-fragments.txt"
+          python .github/scripts/discord_communications.py testers --dry-run --revision "$GITHUB_SHA" \
+            --html-output "$RUNNER_TEMP/vantare-testers.html" "${args[@]}" > "$RUNNER_TEMP/testers-payload-preview.json"
 
-      - name: Checkout repository
-        if: github.run_attempt == 1
-        uses: actions/checkout@v4
+      - name: render-discord-card
+        if: steps.fragments.outputs.publish == 'true'
+        run: |
+          command -v google-chrome >/dev/null 2>&1 || { echo "::error::google-chrome is required"; exit 1; }
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-testers.png" "file://$RUNNER_TEMP/vantare-testers.html"
+          test -s "$RUNNER_TEMP/vantare-testers.png"
 
-      - name: Publish beta progress to Discord
-        if: github.run_attempt == 1
+      - name: Publish tester card and accessible update
+        if: steps.fragments.outputs.publish == 'true'
         env:
           DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          GITHUB_SHA_VALUE: ${{ github.sha }}
-          GITHUB_SERVER_URL_VALUE: ${{ github.server_url }}
-          GITHUB_REPOSITORY_VALUE: ${{ github.repository }}
         run: |
-          python - <<'PY'
-          import json
-          import os
-          import re
-          import sys
-          import textwrap
-          import time
-          import urllib.error
-          import urllib.request
+          args=()
+          while IFS= read -r file; do args+=(--fragment "$file"); done < "$RUNNER_TEMP/tester-fragments.txt"
+          python .github/scripts/discord_communications.py testers --revision "$GITHUB_SHA" \
+            --image "$RUNNER_TEMP/vantare-testers.png" "${args[@]}"
 
-          def send_to_discord(webhook, payload_dict):
-              """Validate payload and POST to Discord with 429 retry and 403 handling."""
-              payload_str = json.dumps(payload_dict)
-              # Validate JSON roundtrip before sending
-              json.loads(payload_str)
-
-              data = payload_str.encode("utf-8")
-              req = urllib.request.Request(
-                  webhook,
-                  data=data,
-                  headers={
-                      "Content-Type": "application/json",
-                      "User-Agent": "GitHub-Actions-Discord-Announcer",
-                  },
-                  method="POST",
-              )
-
-              def do_request(attempt):
-                  try:
-                      with urllib.request.urlopen(req, timeout=20) as resp:
-                          if resp.status >= 300:
-                              raise RuntimeError(f"Discord webhook failed with status {resp.status}")
-                          return resp
-                  except urllib.error.HTTPError as e:
-                      if e.code == 429 and attempt == 1:
-                          retry_after = e.headers.get("Retry-After")
-                          wait = int(retry_after) if retry_after and retry_after.isdigit() else 5
-                          print(f"Discord rate limited (429). Retrying after {wait}s...", file=sys.stderr)
-                          time.sleep(wait)
-                          return do_request(attempt + 1)
-                      if e.code == 403:
-                          print("Discord webhook rejected the request (403). Verify the webhook URL secret is correct and the webhook has not been deleted.", file=sys.stderr)
-                          sys.exit(1)
-                      raise RuntimeError(f"Discord webhook failed with status {e.code}: {e.reason}")
-                  except urllib.error.URLError as e:
-                      raise RuntimeError(f"Discord webhook request failed: {e.reason}")
-
-              return do_request(1)
-
-          webhook = (os.environ.get("DISCORD_PROGRESS_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
-          if not webhook:
-              print("Neither DISCORD_PROGRESS_WEBHOOK_URL nor DISCORD_WEBHOOK_URL secret is configured", file=sys.stderr)
-              sys.exit(1)
-
-          current_plan_path = "vantare-v2/docs/current-plan.md"
-          roadmap_path = "vantare-v2/docs/roadmap-execution-board.md"
-
-          if not os.path.exists(current_plan_path):
-              print(f"Error: {current_plan_path} does not exist", file=sys.stderr)
-              sys.exit(1)
-          if not os.path.exists(roadmap_path):
-              print(f"Error: {roadmap_path} does not exist", file=sys.stderr)
-              sys.exit(1)
-
-          with open(current_plan_path, "r", encoding="utf-8") as fh:
-              current_plan = fh.read()
-
-          stable_match = re.search(r"Version (?:publica|estable) actual de runtime/build:\s*`([^`]+)`", current_plan)
-          if not stable_match:
-              print("Error: Could not find stable version in current-plan.md", file=sys.stderr)
-              sys.exit(1)
-          stable_version = stable_match.group(1).strip()
-
-          checkpoint_match = re.search(r"Ultimo checkpoint de roadmap confirmado:\s*(.+)", current_plan)
-          if not checkpoint_match:
-              print("Error: Could not find last checkpoint in current-plan.md", file=sys.stderr)
-              sys.exit(1)
-          last_checkpoint = checkpoint_match.group(1).strip()
-
-          with open(roadmap_path, "r", encoding="utf-8") as fh:
-              roadmap = fh.read()
-
-          next_tasks = []
-          in_progress_tasks = []
-
-          for line in roadmap.splitlines():
-              if line.startswith("|") and not line.strip().startswith("|---"):
-                  parts = [p.strip() for p in line.split("|")]
-                  if len(parts) >= 5:
-                      status = parts[4]
-                      task_id = parts[1]
-                      minifase = parts[3]
-                      
-                      if task_id.lower() == "id" or status.lower() == "estado":
-                          continue
-
-                      if status == "Next":
-                          next_tasks.append(f"{task_id} - {minifase}")
-                      elif status == "In progress":
-                          in_progress_tasks.append(f"{task_id} - {minifase}")
-
-          next_text = next_tasks[0] if next_tasks else "No hay tareas Next"
-          in_progress_text = "\n".join(in_progress_tasks) if in_progress_tasks else "No hay tareas en progreso"
-
-          # Extract "Próxima acción" from current-plan.md "Siguiente trabajo recomendado" (first 3 items)
-          next_lines = []
-          in_section = False
-          for line in current_plan.split("\n"):
-              if "Siguiente trabajo recomendado:" in line:
-                  in_section = True
-                  continue
-              if in_section:
-                  stripped = line.strip()
-                  if not stripped:
-                      continue
-                  if re.match(r"^\d+\.", stripped):
-                      next_lines.append(stripped)
-                      if len(next_lines) >= 3:
-                          break
-                  else:
-                      break
-          if not next_lines:
-              print("Error: Could not find Siguiente trabajo recomendado in current-plan.md", file=sys.stderr)
-              sys.exit(1)
-          next_action = "\n".join(next_lines)
-
-          repo_url = f"{os.environ['GITHUB_SERVER_URL_VALUE']}/{os.environ['GITHUB_REPOSITORY_VALUE']}"
-          sha = os.environ.get("GITHUB_SHA_VALUE", "")[:7]
-          commit_url = f"{repo_url}/commit/{sha}"
-
-          message = (
-              "**Vantare beta progress**\n\n"
-              f"Stable: `{stable_version}`\n"
-              f"Checkpoint: {last_checkpoint}\n\n"
-              "**Next**\n"
-              f"{next_text}\n\n"
-              "**In progress**\n"
-              f"{in_progress_text}\n\n"
-              "**Próxima acción**\n"
-              f"{next_action}\n\n"
-              f"Commit: [`{sha}`]({commit_url})"
-          )
-
-          # Split message if it exceeds 1900 chars
-          chunks = []
-          current = ""
-          for paragraph in message.split("\n\n"):
-              candidate = paragraph if not current else current + "\n\n" + paragraph
-              if len(candidate) <= 1900:
-                  current = candidate
-                  continue
-              if current:
-                  chunks.append(current)
-              if len(paragraph) <= 1900:
-                  current = paragraph
-              else:
-                  chunks.extend(textwrap.wrap(paragraph, 1900, replace_whitespace=False))
-                  current = ""
-          if current:
-              chunks.append(current)
-
-          for index, chunk in enumerate(chunks, start=1):
-              suffix = f"\n\n({index}/{len(chunks)})" if len(chunks) > 1 else ""
-              send_to_discord(webhook, {"content": chunk + suffix})
-
-          print("Published beta progress to Discord")
-          PY
+      - name: Nothing to publish
+        if: steps.fragments.outputs.publish != 'true'
+        run: echo "No new canonical tester fragments in this revision range."

@@ -1,3 +1,10 @@
+Nota INTEGRACION-ISA-9-13-95 (2026-07-16):
+- ISA-9 (Launcher), ISA-13 (legibilidad Space Mono) e ISA-95 (comunicaciones Discord) se consolidaron sobre `develop@4e22bfa` en `codex/integrate-isa9-isa13-isa95-develop`.
+- La integración conserva Overlay Studio V3, Telemetry Core, Engineer y OAuth nonce ya presentes; los únicos conflictos fueron documentales en este archivo y se resolvieron manteniendo ambas líneas de trabajo.
+- Evidencia fresca: frontend `265/265` archivos y `1767/1767` tests PASS; build PASS; `go test ./... -count=1` PASS; Launcher Playwright PASS (`7` apps, `2` perfiles, desktop/compact); ISA-13 Playwright PASS (`4` idiomas × `3` viewports × `4` secciones); Discord `27/27` tests y cuatro YAML PASS.
+- Lint focal de los archivos integrados PASS. El lint global conserva `33` errores y `2` warnings preexistentes fuera del alcance, principalmente Calendar y Overlay Studio.
+- ISA-93 permanece fuera de esta integración hasta completar y validar la paridad visual de Vantare Crystal.
+
 Nota ISA-9 (2026-07-13) — Launcher logos:
 - Causa raíz: `getIconHighRes` usaba GUID incorrectos para `IImageList`/`IImageList2` y el slot vtable `Add` (3) en lugar de `GetIcon` (10); `SHIL_JUMBO` fallaba y todos los iconos caían a PNG de `32x32`.
 - Fix mínimo: GUID oficiales + `GetIcon` vtable 10. El smoke Windows real pasa a `256x256` para LMU/Steam, OBS, MoTeC, SimHub, CrewChief, Discord/shortcut y Spotify; el resolver manual también queda cubierto.

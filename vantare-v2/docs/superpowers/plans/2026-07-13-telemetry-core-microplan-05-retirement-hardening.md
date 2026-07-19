@@ -1,6 +1,6 @@
 # Telemetry Core Microplan 05 Retirement and Hardening Implementation Plan
 
-> **Estado: BORRADOR DEPENDIENTE.** No es ejecutable hasta completar y validar TC-02, TC-03 y TC-04. ISA-87 corresponde a TC-05E (observabilidad Wails/teardown) e ISA-41 a TC-05F (gate final); la numeración histórica del cuerpo debe leerse con esa corrección.
+> **Estado: SUPERSEDED.** Sustituido por `2026-07-19-telemetry-core-microplan-09-retirement-hardening.md`. ISA-87 es ahora TC-09E e ISA-117 el gate final; no ejecutar este microplan histórico.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

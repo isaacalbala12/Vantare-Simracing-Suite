@@ -1,4 +1,6 @@
-# Telemetry Core Sol Medium Execution Index Implementation Plan
+# Telemetry Core Sol Medium Execution Index Implementation Plan — SUPERSEDED
+
+> **Sustituido el 2026-07-19** por `2026-07-19-telemetry-core-sol-medium-execution-index.md`. No lanzar issues pendientes desde este índice histórico.
 
 > **Estado reconciliado (ISA-100):** TC-01 está completado. La ejecución está pausada antes de ISA-26; TC-02 no es ejecutable hasta la planificación conjunta con Isaac. Este índice no debe usarse para lanzar automáticamente el siguiente corte.
 

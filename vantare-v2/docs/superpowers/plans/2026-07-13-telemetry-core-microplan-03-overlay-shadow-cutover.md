@@ -1,6 +1,6 @@
 # Telemetry Core Microplan 03 Overlay Shadow and Cutover Implementation Plan
 
-> **Estado: BORRADOR DEPENDIENTE.** No es ejecutable hasta cerrar TC-02 y aprobar su gate humano. Debe reconciliarse de nuevo contra el Overlay Studio integrado antes de iniciar ISA-29. No autoriza cambios visuales ni de renderizadores.
+> **Estado: SUPERSEDED.** Sustituido por los microplanes TC-03 Driver LMU y TC-07 Overlay del 2026-07-19. Se conserva como historia; no ejecutar sus issues o instrucciones.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

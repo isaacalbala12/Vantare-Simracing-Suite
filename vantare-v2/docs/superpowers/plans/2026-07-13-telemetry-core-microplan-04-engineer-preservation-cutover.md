@@ -1,6 +1,6 @@
 # Telemetry Core Microplan 04 Engineer Preservation and Cutover Implementation Plan
 
-> **Estado: BORRADOR DEPENDIENTE.** No es ejecutable hasta cerrar TC-02 y TC-03. La matriz de rescate integrada es la autoridad para preservar toda la funcionalidad real de Engineer/Spotter; este plan no autoriza eliminar monitores, audio, comandos o Pit Manager.
+> **Estado: SUPERSEDED.** Sustituido por `2026-07-19-telemetry-core-microplan-08-engineer-cutover.md`. La matriz de rescate sigue siendo evidencia vigente; no ejecutar este microplan histórico.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

@@ -1,4 +1,6 @@
-# Telemetry Core Live Unification Implementation Plan
+# Telemetry Core Live Unification Implementation Plan — SUPERSEDED
+
+> **Sustituido el 2026-07-19** por `2026-07-19-telemetry-core-final-architecture-master.md` y ADR 0004. Se conserva únicamente como historia de la planificación previa. No ejecutar TC-02–TC-05 desde este documento.
 
 > **Estado reconciliado (ISA-100, 2026-07-19):** TC-01 está completado e integrado en `develop@f492007`. TC-02–TC-05 siguen sin iniciar. Este documento gobierna objetivo, fronteras y secuencia; no autoriza iniciar ISA-26. Antes de TC-02A debe realizarse una revisión conjunta con Isaac. Consulta `docs/telemetry-core/README.md`.
 

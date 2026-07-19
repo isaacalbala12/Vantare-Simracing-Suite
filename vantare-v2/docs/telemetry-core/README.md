@@ -20,8 +20,8 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 
 - TC-01 está completado e integrado en `develop` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - La base global de Go quedó verde en ISA-97.
-- TC-02, TC-03, TC-04 y TC-05 permanecen sin iniciar.
-- ISA-26 continúa en Backlog. Su diseño heredado no está aprobado para ejecución y debe revisarse con Isaac antes de cambiar su estado, rama o código.
+- TC-02–TC-09 están planificados y permanecen sin iniciar.
+- ISA-26 continúa en Backlog como primer microcorte ejecutable. Su descripción y microplan del 2026-07-19 sustituyen el diseño heredado; cambiará a In Progress únicamente cuando se lance su rama/worktree/chat.
 
 ## Fronteras
 
@@ -45,6 +45,8 @@ Strategy Product B no forma parte de este paquete documental. Puede ser consumid
 - Cada issue ejecutable parte de la base aprobada indicada en Linear y usa su propia rama, worktree y chat.
 - Nada entra en `develop` sin validación manual completa y aprobación explícita de Isaac.
 
-## Punto de pausa actual
+## Plan vigente desde 2026-07-19
 
-ISA-100 termina al separar y reconciliar la documentación. El siguiente paso no es ejecutar ISA-26: primero se revisarán conjuntamente su contrato, ownership de campos, modelo de calidad, compatibilidad y estrategia de migración. Hasta entonces, el microplan TC-02 es un borrador no ejecutable.
+Isaac aprobó la arquitectura modular y sus guardarraíles. ADR 0004 y `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md` sustituyen los microplanes TC-02–TC-05 del 2026-07-13. La ejecución comienza en ISA-26 y continúa por TC-02–TC-09; una issue, rama, worktree, chat, review y pausa cada vez.
+
+Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No deben usarse para lanzar trabajo pendiente.

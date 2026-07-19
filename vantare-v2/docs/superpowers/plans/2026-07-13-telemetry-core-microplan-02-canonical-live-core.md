@@ -1,6 +1,6 @@
 # Telemetry Core Microplan 02 Canonical Live Core Implementation Plan
 
-> **Estado: BORRADOR NO EJECUTABLE.** El contenido siguiente procede de ISA-21 y todavía no está reconciliado a nivel de contrato con el código actual. ISA-26 permanece en Backlog. No crear rama, no escribir tests y no implementar hasta revisar con Isaac identidad, tiempo, calidad, capabilities, ownership de campos y compatibilidad. ISA-100 no valida ni modifica esas decisiones.
+> **Estado: SUPERSEDED.** Sustituido por `2026-07-19-telemetry-core-microplan-02-foundations-contracts.md` tras la aprobación arquitectónica de Isaac. Se conserva como historia; no ejecutar sus issues o instrucciones.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

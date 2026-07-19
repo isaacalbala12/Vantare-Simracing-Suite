@@ -2713,3 +2713,9 @@ Nota ISA-9-RESCAN-PROGRESS (2026-07-13):
 - Commits: `e2915ee` backend, `ac8c2fe` bridge/store/UI. `.superpowers/` se conserva sin incluir.
 - Checks focalizados: Go launcher/cmd PASS; frontend Launcher/store/bridge/panel/progress PASS (14 tests); frontend build PASS; `git diff --check` PASS.
 - Pendiente antes de In Review: suite frontend completa, lint, Playwright 100/125/150/200, smoke Wails Windows con `.env.local` del escritorio, revisión inicial sin editar y validación manual 100% de Isaac. No merge a `develop`.
+Nota TELEMETRY-CORE-ISA-100 (2026-07-19):
+- Telemetry Core se separa documentalmente de Strategy Product B. La rama histórica ISA-21 no debe mergearse en bloque.
+- TC-01 está completado e integrado en `develop@f492007` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
+- Autoridad y fronteras: `docs/telemetry-core/README.md`. Se rescatan exclusivamente el plan maestro, cinco microplanes y el índice Telemetry Core.
+- TC-02–TC-05 siguen sin iniciar. ISA-26 permanece en Backlog y su microplan está marcado como borrador no ejecutable hasta una sesión conjunta de planificación con Isaac.
+- No se ha tocado código de producto, Strategy Planner ni la arquitectura runtime en ISA-100.

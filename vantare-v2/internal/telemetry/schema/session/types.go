@@ -9,8 +9,9 @@ const (
 	TypeQualifying
 	TypeRace
 	TypeWarmup
+	TypeEndurance
 )
 
-func (value Type) Known() bool { return value >= TypePractice && value <= TypeWarmup }
+func (value Type) Known() bool { return value >= TypePractice && value <= TypeEndurance }
 
 type LapNumber int32

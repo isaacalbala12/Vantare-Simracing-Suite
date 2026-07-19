@@ -17,4 +17,10 @@ const (
 	SignalStandingsPosition
 	SignalWeatherAmbientTemperature
 	SignalSpatialPosition
+	SignalSessionLapNumber
+	SignalVehicleGear
+	SignalVehicleTeamName
+	SignalVehicleName
+	SignalStandingsCompletedLaps
+	SignalSpatialOrientation
 )

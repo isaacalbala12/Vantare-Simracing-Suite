@@ -7,7 +7,78 @@ import (
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/controls"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/wheels"
 )
+
+// Compile-time witnesses keep the explicitly declared runtime contracts tied
+// to this catalog specification without adding a schema -> catalog dependency.
+var (
+	_ identity.DriverName     = ""
+	_ session.Type            = session.TypeUnknown
+	_ session.LapNumber       = 0
+	_ vehicle.TeamName        = ""
+	_ vehicle.VehicleName     = ""
+	_ vehicle.Gear            = 0
+	_ vehicle.EngineRPM       = 0
+	_ controls.Inputs         = controls.Inputs{}
+	_ energy.FuelAmount       = 0
+	_ pit.StopCount           = 0
+	_ standings.Position      = 0
+	_ standings.CompletedLaps = 0
+	_ weather.Temperature     = 0
+	_ spatial.Position        = spatial.Position{}
+	_ spatial.Orientation     = spatial.Orientation{}
+	_ wheels.BrakeTemperature = wheels.BrakeTemperature{}
+)
+
+func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
+	t.Parallel()
+
+	want := []struct {
+		id     SignalID
+		key    string
+		domain schema.Domain
+	}{
+		{SignalIdentityDriverName, "identity.driver_name", schema.DomainIdentity},
+		{SignalSessionType, "session.type", schema.DomainSession},
+		{SignalVehicleEngineRPM, "vehicle.engine_rpm", schema.DomainVehicle},
+		{SignalControlsThrottle, "controls.throttle", schema.DomainControls},
+		{SignalControlsBrake, "controls.brake", schema.DomainControls},
+		{SignalControlsClutch, "controls.clutch", schema.DomainControls},
+		{SignalWheelsBrakeTemperature, "wheels.brake_temperature", schema.DomainWheels},
+		{SignalEnergyFuelAmount, "energy.fuel_amount", schema.DomainEnergy},
+		{SignalPitStopCount, "pit.stop_count", schema.DomainPit},
+		{SignalStandingsPosition, "standings.position", schema.DomainStandings},
+		{SignalWeatherAmbientTemperature, "weather.ambient_temperature", schema.DomainWeather},
+		{SignalSpatialPosition, "spatial.position", schema.DomainSpatial},
+		{SignalSessionLapNumber, "session.lap_number", schema.DomainSession},
+		{SignalVehicleGear, "vehicle.gear", schema.DomainVehicle},
+		{SignalVehicleTeamName, "vehicle.team_name", schema.DomainVehicle},
+		{SignalVehicleName, "vehicle.name", schema.DomainVehicle},
+		{SignalStandingsCompletedLaps, "standings.completed_laps", schema.DomainStandings},
+		{SignalSpatialOrientation, "spatial.orientation", schema.DomainSpatial},
+	}
+
+	got := All()
+	if len(got) != len(want) {
+		t.Fatalf("catalog contains %d definitions, want exact runtime contract set of %d", len(got), len(want))
+	}
+	for index, expected := range want {
+		definition := got[index]
+		if definition.ID != expected.id || definition.Key != expected.key || definition.Domain != expected.domain {
+			t.Fatalf("definition %d = {%d %q %s}, want {%d %q %s}", index, definition.ID, definition.Key, definition.Domain, expected.id, expected.key, expected.domain)
+		}
+	}
+}
 
 func TestValidateLedgerRejectsBrokenInvariants(t *testing.T) {
 	t.Parallel()

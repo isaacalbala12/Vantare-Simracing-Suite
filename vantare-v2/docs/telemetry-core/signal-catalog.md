@@ -16,6 +16,12 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 10 | `standings.position` | standings | count | unknown |
 | 11 | `weather.ambient_temperature` | weather | unknown | unknown |
 | 12 | `spatial.position` | spatial | unknown | unknown |
+| 13 | `session.lap_number` | session | count | unknown |
+| 14 | `vehicle.gear` | vehicle | unsupported | unknown |
+| 15 | `vehicle.team_name` | vehicle | unsupported | unsupported |
+| 16 | `vehicle.name` | vehicle | unsupported | unsupported |
+| 17 | `standings.completed_laps` | standings | count | unknown |
+| 18 | `spatial.orientation` | spatial | unknown | unknown |
 
 ## Retired IDs
 

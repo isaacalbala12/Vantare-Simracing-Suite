@@ -14,4 +14,18 @@ func TestTypeUnknownAndForwardCompatibility(t *testing.T) {
 	if !TypeRace.Known() {
 		t.Fatal("canonical race type must be known")
 	}
+	if !TypeEndurance.Known() {
+		t.Fatal("canonical endurance type must be known")
+	}
+}
+
+func TestCanonicalTypesRemainStable(t *testing.T) {
+	t.Parallel()
+
+	want := []Type{TypePractice, TypeQualifying, TypeRace, TypeWarmup, TypeEndurance}
+	for index, sessionType := range want {
+		if sessionType != Type(index+1) {
+			t.Fatalf("canonical type %d = %d, want %d", index, sessionType, index+1)
+		}
+	}
 }

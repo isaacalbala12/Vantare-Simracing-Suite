@@ -37,6 +37,12 @@ var definitions = []Definition{
 	{ID: SignalStandingsPosition, Key: "standings.position", Domain: schema.DomainStandings, Unit: schema.UnitCount, Range: schema.UnknownRange()},
 	{ID: SignalWeatherAmbientTemperature, Key: "weather.ambient_temperature", Domain: schema.DomainWeather, Unit: schema.UnitUnknown, Range: schema.UnknownRange()},
 	{ID: SignalSpatialPosition, Key: "spatial.position", Domain: schema.DomainSpatial, Unit: schema.UnitUnknown, Range: schema.UnknownRange()},
+	{ID: SignalSessionLapNumber, Key: "session.lap_number", Domain: schema.DomainSession, Unit: schema.UnitCount, Range: schema.UnknownRange()},
+	{ID: SignalVehicleGear, Key: "vehicle.gear", Domain: schema.DomainVehicle, Unit: schema.UnitUnsupported, Range: schema.UnknownRange()},
+	{ID: SignalVehicleTeamName, Key: "vehicle.team_name", Domain: schema.DomainVehicle, Unit: schema.UnitUnsupported, Range: schema.UnsupportedRange()},
+	{ID: SignalVehicleName, Key: "vehicle.name", Domain: schema.DomainVehicle, Unit: schema.UnitUnsupported, Range: schema.UnsupportedRange()},
+	{ID: SignalStandingsCompletedLaps, Key: "standings.completed_laps", Domain: schema.DomainStandings, Unit: schema.UnitCount, Range: schema.UnknownRange()},
+	{ID: SignalSpatialOrientation, Key: "spatial.orientation", Domain: schema.DomainSpatial, Unit: schema.UnitUnknown, Range: schema.UnknownRange()},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

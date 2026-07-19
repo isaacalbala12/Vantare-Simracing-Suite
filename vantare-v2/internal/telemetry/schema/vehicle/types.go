@@ -7,3 +7,7 @@ import "github.com/vantare/overlays/v2/internal/telemetry/schema"
 type Gear int32
 
 type EngineRPM schema.RPM
+
+type TeamName string
+
+type VehicleName string

@@ -2,7 +2,10 @@
 // It deliberately does not model presence, quality, provenance, or time.
 package schema
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // Domain identifies the canonical owner of a telemetry value.
 type Domain uint8
@@ -118,8 +121,14 @@ func ClosedRange(minimum, maximum float64) Range {
 func (r Range) Validate() error {
 	switch r.Kind {
 	case RangeUnknown, RangeUnsupported:
+		if r.Min != 0 || r.Max != 0 {
+			return fmt.Errorf("range kind %d must not carry numeric bounds", r.Kind)
+		}
 		return nil
 	case RangeClosed:
+		if math.IsNaN(r.Min) || math.IsNaN(r.Max) || math.IsInf(r.Min, 0) || math.IsInf(r.Max, 0) {
+			return fmt.Errorf("closed range bounds must be finite")
+		}
 		if r.Min > r.Max {
 			return fmt.Errorf("closed range minimum %g exceeds maximum %g", r.Min, r.Max)
 		}
@@ -142,3 +151,11 @@ func (r Range) String() string {
 
 // Ratio is a demonstrated normalized value in the inclusive range 0..1.
 type Ratio float64
+
+type Seconds float64
+
+type RPM float64
+
+type Celsius float64
+
+type Count int32

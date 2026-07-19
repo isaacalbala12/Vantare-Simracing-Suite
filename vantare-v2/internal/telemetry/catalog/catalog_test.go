@@ -72,7 +72,7 @@ func TestMarkdownGoldenIsDeterministic(t *testing.T) {
 		t.Fatal("Markdown() changed between identical calls")
 	}
 
-	want, err := os.ReadFile("testdata/signal-catalog.golden.md")
+	want, err := os.ReadFile("../../../docs/telemetry-core/signal-catalog.md")
 	if err != nil {
 		t.Fatalf("read golden: %v", err)
 	}

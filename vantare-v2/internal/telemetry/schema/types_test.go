@@ -1,6 +1,9 @@
 package schema
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestUnitUnknownAndUnsupportedAreExplicit(t *testing.T) {
 	t.Parallel()
@@ -28,6 +31,10 @@ func TestRangeValidation(t *testing.T) {
 		{name: "unsupported", range_: UnsupportedRange()},
 		{name: "closed", range_: ClosedRange(0, 1)},
 		{name: "closed inverted", range_: ClosedRange(1, 0), wantErr: true},
+		{name: "closed nan", range_: ClosedRange(math.NaN(), 1), wantErr: true},
+		{name: "closed infinity", range_: ClosedRange(0, math.Inf(1)), wantErr: true},
+		{name: "unknown with numeric payload", range_: Range{Kind: RangeUnknown, Min: 1}, wantErr: true},
+		{name: "unsupported with numeric payload", range_: Range{Kind: RangeUnsupported, Max: 1}, wantErr: true},
 		{name: "invalid kind", range_: Range{Kind: RangeKind(255)}, wantErr: true},
 	}
 

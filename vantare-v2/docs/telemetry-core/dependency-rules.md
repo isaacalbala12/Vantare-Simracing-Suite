@@ -13,13 +13,14 @@ schema ─────────────────┘
 app/composition conecta puertos, transports y storage desde fuera.
 ```
 
-La flecha significa “puede depender de”. `schema` es la capa más baja. `core` conoce contratos y puertos, nunca el driver LMU concreto. Una proyección consume core/schema y nunca readquiere datos. Los productos consumen proyecciones; core/schema no importan productos.
+La flecha significa “puede depender de”. `schema` es la capa más baja. `catalog` depende solo de `schema` y standard library para publicar metadata e IDs; ningún contrato runtime importa `catalog`. `core` conoce contratos y puertos, nunca el driver LMU concreto. Una proyección consume core/schema y nunca readquiere datos. Los productos consumen proyecciones; core/schema no importan productos.
 
 ## Matriz permitida
 
 | Desde | Puede importar | No puede importar |
 | --- | --- | --- |
 | `internal/telemetry/schema[/...]` | standard library y su propio árbol | otros subpaquetes telemetry, productos, transports, frameworks, DB |
+| `internal/telemetry/catalog[/...]` | schema y standard library | core, drivers, paquetes legacy telemetry, productos, transports, frameworks, DB |
 | `internal/telemetry/core[/...]` | schema, standard library y contratos propios de core | drivers LMU, legacy `lmu`/`lmuapi`, projections, recording, productos, Wails/SSE/app/DB |
 | `internal/telemetry/drivers/<source>` | schema/core ports y librerías de adquisición aprobadas | Overlay, Engineer, Strategy, app/server; ningún import inverso desde core |
 | `internal/telemetry/projection/<consumer>` | schema/core y lógica pura de proyección | drivers concretos, legacy LMU, Wails/SSE/app/DB |
@@ -40,6 +41,7 @@ Todo código Go productivo bajo `internal/telemetry` rechaza imports de:
 Además:
 
 - `schema` no sube a ninguna otra capa telemetry;
+- `catalog` solo importa `schema` dentro de Telemetry Core; schema y sus dominios nunca importan catalog;
 - `core` no importa `drivers/*`, `lmu`, `lmuapi`, `projection*` ni `recording`;
 - `projection/*` no importa `drivers/*`, `lmu` ni `lmuapi`.
 
@@ -47,12 +49,12 @@ SSE está representado hoy por `internal/server`, y Wails por su módulo externo
 
 ## Caracterización compatible del estado actual
 
-El árbol actual contiene paquetes legacy como `diff`, `fusion`, `gap`, `lmu`, `lmuapi`, `mock`, `normalize`, `pipeline` y `source`, pero todavía no contiene los paquetes canónicos `schema`, `core`, `drivers/*`, `projection/*` o `recording` completos.
+El árbol actual contiene paquetes legacy como `diff`, `fusion`, `gap`, `lmu`, `lmuapi`, `mock`, `normalize`, `pipeline` y `source`. ISA-27 añade `schema` y `catalog` sin migrar consumidores; todavía no existen `core`, `drivers/*`, `projection/*` o `recording` completos.
 
 Por eso el guard:
 
 - escanea el código productivo existente y aplica prohibiciones globales desde ahora;
-- activa las reglas específicas por ruta automáticamente cuando aparezca cada paquete futuro;
+- aplica reglas específicas a schema/catalog y las activa automáticamente cuando aparezca cada paquete futuro;
 - no exige migraciones, imports o paquetes inexistentes;
 - no declara que el grafo legacy ya sea la arquitectura final.
 

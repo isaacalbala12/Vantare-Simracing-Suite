@@ -48,6 +48,14 @@ func TestValidateImport(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "schema may use standard library", edge: importEdge{Package: "internal/telemetry/schema", Import: "time"}},
+		{name: "schema rejects reflection", edge: importEdge{Package: "internal/telemetry/schema", Import: "reflect"}, wantErr: true},
+		{name: "schema rejects third party", edge: importEdge{Package: "internal/telemetry/schema", Import: "example.com/dependency"}, wantErr: true},
+		{name: "catalog may use schema", edge: importEdge{Package: "internal/telemetry/catalog", Import: modulePath + "/internal/telemetry/schema"}},
+		{name: "catalog may use standard library", edge: importEdge{Package: "internal/telemetry/catalog", Import: "sort"}},
+		{name: "catalog rejects reflection", edge: importEdge{Package: "internal/telemetry/catalog", Import: "reflect"}, wantErr: true},
+		{name: "catalog rejects third party", edge: importEdge{Package: "internal/telemetry/catalog", Import: "example.com/dependency"}, wantErr: true},
+		{name: "catalog rejects core", edge: importEdge{Package: "internal/telemetry/catalog", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
+		{name: "catalog rejects legacy telemetry", edge: importEdge{Package: "internal/telemetry/catalog", Import: modulePath + "/internal/telemetry/diff"}, wantErr: true},
 		{name: "core may use schema", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/schema"}},
 		{name: "projection may use core", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "legacy telemetry package may use internal core thresholds", edge: importEdge{Package: "internal/telemetry/diff", Import: modulePath + "/internal/core"}},
@@ -189,9 +197,26 @@ func validateImport(edge importEdge) error {
 	}
 
 	if edge.Package == "internal/telemetry/schema" || strings.HasPrefix(edge.Package, "internal/telemetry/schema/") {
-		telemetryPrefix := modulePath + "/internal/telemetry/"
-		if strings.HasPrefix(edge.Import, telemetryPrefix) && !hasImportPrefix(edge.Import, modulePath+"/internal/telemetry/schema") {
+		if edge.Import == "reflect" {
+			return fmt.Errorf("schema must not use reflection")
+		}
+		if isThirdPartyImport(edge.Import) {
+			return fmt.Errorf("schema may only import standard library or its own tree, not %s", edge.Import)
+		}
+		if strings.HasPrefix(edge.Import, modulePath+"/") && !hasImportPrefix(edge.Import, modulePath+"/internal/telemetry/schema") {
 			return fmt.Errorf("schema is the lowest telemetry layer and must not import %s", edge.Import)
+		}
+	}
+
+	if edge.Package == "internal/telemetry/catalog" || strings.HasPrefix(edge.Package, "internal/telemetry/catalog/") {
+		if edge.Import == "reflect" {
+			return fmt.Errorf("catalog must not use reflection")
+		}
+		if isThirdPartyImport(edge.Import) {
+			return fmt.Errorf("catalog may only import standard library and schema, not %s", edge.Import)
+		}
+		if strings.HasPrefix(edge.Import, modulePath+"/") && !hasImportPrefix(edge.Import, modulePath+"/internal/telemetry/schema") {
+			return fmt.Errorf("catalog may only import the schema telemetry layer, not %s", edge.Import)
 		}
 	}
 
@@ -234,6 +259,11 @@ func hasAnyImportPrefix(value string, prefixes []string) bool {
 
 func hasImportPrefix(value, prefix string) bool {
 	return value == prefix || strings.HasPrefix(value, prefix+"/")
+}
+
+func isThirdPartyImport(importPath string) bool {
+	first, _, _ := strings.Cut(importPath, "/")
+	return strings.Contains(first, ".") && !strings.HasPrefix(importPath, modulePath+"/")
 }
 
 func ignoredDirectory(name string) bool {

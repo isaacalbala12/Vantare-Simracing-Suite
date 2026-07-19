@@ -20,8 +20,8 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 
 - TC-01 está completado e integrado en `develop` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - La base global de Go quedó verde en ISA-97.
-- TC-02–TC-09 están planificados y permanecen sin iniciar.
-- ISA-26 continúa en Backlog como primer microcorte ejecutable. Su descripción y microplan del 2026-07-19 sustituyen el diseño heredado; cambiará a In Progress únicamente cuando se lance su rama/worktree/chat.
+- TC-02 está iniciado únicamente mediante ISA-26; TC-03–TC-09 permanecen sin iniciar.
+- ISA-26 está `In Review` sobre `vantareapp/isa-100-tc-00b-separar-y-reconciliar-la-planificacion-de-telemetry@724158a262eaa5dbcc8ab89c98aa74847ffed06b`. ISA-27 no está iniciado y queda bloqueado por la review/validación humana de Isaac.
 
 ## Fronteras
 

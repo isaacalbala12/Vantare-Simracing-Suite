@@ -61,8 +61,12 @@ func TestValidateImport(t *testing.T) {
 		{name: "telemetry rejects app composition root", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/app"}, wantErr: true},
 		{name: "telemetry rejects server transport", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/server"}, wantErr: true},
 		{name: "telemetry rejects Wails", edge: importEdge{Package: "internal/telemetry/core", Import: "github.com/wailsapp/wails/v3/pkg/application"}, wantErr: true},
+		{name: "telemetry rejects Wails webview module", edge: importEdge{Package: "internal/telemetry/core", Import: "github.com/wailsapp/wails/webview2"}, wantErr: true},
+		{name: "telemetry allows unrelated package containing wails", edge: importEdge{Package: "internal/telemetry/core", Import: "example.com/acme/swails-client"}},
 		{name: "telemetry rejects database sql", edge: importEdge{Package: "internal/telemetry/core", Import: "database/sql"}, wantErr: true},
 		{name: "telemetry rejects DuckDB", edge: importEdge{Package: "internal/telemetry/recording", Import: "github.com/marcboeker/go-duckdb"}, wantErr: true},
+		{name: "telemetry rejects DuckDB bindings", edge: importEdge{Package: "internal/telemetry/recording", Import: "github.com/duckdb/duckdb-go-bindings/v2"}, wantErr: true},
+		{name: "telemetry allows unrelated package containing duckdb", edge: importEdge{Package: "internal/telemetry/recording", Import: "example.com/acme/duckdb-tools"}},
 	}
 
 	for _, tt := range tests {
@@ -92,13 +96,13 @@ func TestScanProductionImportsIgnoresTestsGeneratedFilesAndTools(t *testing.T) {
 		t.Fatalf("ignored fixtures produced violations: %v", violations)
 	}
 
-	writeFixture(t, root, "core/bad.go", "package core\nimport _ \""+modulePath+"/internal/telemetry/drivers/lmu\"\n")
+	writeFixture(t, root, "core/bad.go", "package core\n\nimport (\n\t\"time\"\n\t_ \""+modulePath+"/internal/telemetry/drivers/lmu\"\n)\n\nvar _ = time.Second\n")
 	violations, err = scanProductionImports(root)
 	if err != nil {
 		t.Fatalf("scan fixture with violation: %v", err)
 	}
-	if len(violations) != 1 || !strings.Contains(violations[0], "drivers/lmu") {
-		t.Fatalf("violations = %v, want one concrete LMU violation", violations)
+	if len(violations) != 1 || !strings.Contains(violations[0], "bad.go:5:") || !strings.Contains(violations[0], "drivers/lmu") {
+		t.Fatalf("violations = %v, want one concrete LMU violation at bad.go:5", violations)
 	}
 }
 
@@ -126,7 +130,8 @@ func scanProductionImports(telemetryRoot string) ([]string, error) {
 			return nil
 		}
 
-		parsed, err := parser.ParseFile(token.NewFileSet(), path, contents, parser.ImportsOnly)
+		fileSet := token.NewFileSet()
+		parsed, err := parser.ParseFile(fileSet, path, contents, parser.ImportsOnly)
 		if err != nil {
 			return fmt.Errorf("parse imports in %s: %w", path, err)
 		}
@@ -148,7 +153,8 @@ func scanProductionImports(telemetryRoot string) ([]string, error) {
 				if relErr != nil {
 					relFile = path
 				}
-				violations = append(violations, fmt.Sprintf("%s: %v", filepath.ToSlash(relFile), err))
+				line := fileSet.Position(spec.Pos()).Line
+				violations = append(violations, fmt.Sprintf("%s:%d: %v", filepath.ToSlash(relFile), line, err))
 			}
 		}
 		return nil
@@ -172,8 +178,13 @@ func validateImport(edge importEdge) error {
 		}
 	}
 
-	lowerImport := strings.ToLower(edge.Import)
-	if strings.Contains(lowerImport, "wails") || edge.Import == "database/sql" || strings.Contains(lowerImport, "duckdb") {
+	frameworkAndDatabasePrefixes := []string{
+		"github.com/wailsapp/wails/v3",
+		"github.com/wailsapp/wails/webview2",
+		"github.com/marcboeker/go-duckdb",
+		"github.com/duckdb/duckdb-go-bindings",
+	}
+	if edge.Import == "database/sql" || hasAnyImportPrefix(edge.Import, frameworkAndDatabasePrefixes) {
 		return fmt.Errorf("%s must not import framework or database package %s", edge.Package, edge.Import)
 	}
 
@@ -210,6 +221,15 @@ func validateImport(edge importEdge) error {
 		}
 	}
 	return nil
+}
+
+func hasAnyImportPrefix(value string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if hasImportPrefix(value, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasImportPrefix(value, prefix string) bool {

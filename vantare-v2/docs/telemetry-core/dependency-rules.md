@@ -35,7 +35,7 @@ Todo código Go productivo bajo `internal/telemetry` rechaza imports de:
 
 - `internal/app`, `internal/server`, `internal/overlay`, `pkg/overlay`;
 - `internal/engineer` e `internal/strategy`;
-- Wails, `database/sql` o DuckDB.
+- los módulos concretos Wails `github.com/wailsapp/wails/v3` y `github.com/wailsapp/wails/webview2`, `database/sql`, `github.com/marcboeker/go-duckdb` o `github.com/duckdb/duckdb-go-bindings`.
 
 Además:
 
@@ -66,7 +66,7 @@ El test real comienza verde porque no hay hoy un import productivo que viole esa
 2. Recorre archivos con `filepath.WalkDir`.
 3. Excluye `_test.go`, `testdata`, `tools`, `vendor`, directorios ocultos y archivos cuya primera línea contiene el marcador Go `Code generated ... DO NOT EDIT`.
 4. Extrae imports con `go/parser`, no con regex ni shell externa.
-5. Valida cada arista, ordena las infracciones y produce salida determinista.
+5. Valida cada arista, informa `archivo:línea`, ordena las infracciones y produce salida determinista.
 
 Las exclusiones son deliberadas:
 

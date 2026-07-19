@@ -2,7 +2,7 @@
 
 **Objetivo:** fijar un lenguaje canónico modular antes de conectar ninguna fuente o consumidor. Esta fase no cambia el runtime productivo.
 
-**Base:** último `develop` aprobado que contenga TC-01. Cada issue parte de la base registrada en Linear.
+**Base:** cada issue parte de la base registrada en Linear. Para ISA-26 la base aprobada es `vantareapp/isa-100-tc-00b-separar-y-reconciliar-la-planificacion-de-telemetry@724158a262eaa5dbcc8ab89c98aa74847ffed06b`, no `develop`.
 
 ## ISA-26 / TC-02A — Cerrar arquitectura e inventario de dominios
 
@@ -27,7 +27,7 @@
 - Cada campo tiene owner y ningún campo ambiguo se marca como obligatorio.
 - El test falla si `core` importa productos, LMU concreto, Wails/SSE o almacenamiento.
 - `go test ./internal/telemetry/... -count=1` y `go test ./... -count=1` PASS.
-- Pausa para review arquitectónica; ISA-27 no se inicia automáticamente.
+- ISA-26 queda `In Review`; ISA-27 no está iniciado y permanece bloqueado hasta la review/validación humana de Isaac.
 
 ## ISA-27 / TC-02B — Schema tipado, catálogo y unidades
 

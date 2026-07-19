@@ -1,3 +1,10 @@
+Nota ISA-26 / TC-02A (2026-07-19):
+- Cerrado el inventario previo al runtime en `docs/telemetry-core/domain-inventory.md`: contrato público Overlay/Desktop/OBS, proyección V3, modelo y 30/30 dominios Engineer, Launcher/consumidores live y requirements futuros de Strategy/Analysis sin crear schema.
+- Cerradas las reglas de dirección del ADR 0004 en `docs/telemetry-core/dependency-rules.md` y un guard determinista en `internal/telemetry/architecture_test.go`; el guard caracteriza el árbol legacy y se activa para `schema`, `core`, drivers y proyecciones cuando aparezcan, sin exigir migraciones inexistentes.
+- Deudas reservadas a TC-03: presencia por campo sin sentinel cero/false/vacío, unidades/provenance LMU, identidad de sesión sin `NumVehicles`, offsets placeholder y divergencia `Speed` m/s frente a `speedKph` V3. No se resolvieron inventando schema ni cambiando producción.
+- Evidencia: test focal rojo antes de implementar el validador; `go test ./internal/telemetry/... -count=1` PASS; `go test ./... -count=1` PASS después de generar `frontend/dist` ignorado; build frontend PASS; `git diff --check` PASS. `-race` no disponible porque el toolchain tiene CGO deshabilitado.
+- Estado: implementado para review sobre la rama apilada ISA-100; sin merge y sin iniciar ISA-27. Sigue obligatorio el gate manual de Isaac antes de cualquier integración.
+
 Nota TELEMETRY-CORE-FINAL-ARCHITECTURE (2026-07-19):
 - Isaac aprobó reconstruir Telemetry Core con arquitectura modular orientada a observaciones: drivers compilados, LMU Driver propietario de Shared Memory + REST, reducer single-writer, derivaciones ordenadas, snapshots inmutables, hechos separados y proyecciones versionadas por producto.
 - ADR vigente: `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.

@@ -34,8 +34,11 @@ describe("PedalsTelemetryCrystal", () => {
     expect(root.getAttribute("data-widget-renderer")).toBe("pedals-telemetry");
     expect(root.classList.contains("vc-pedals-telemetry-v1")).toBe(true);
     expect(root.querySelector(".vc-pedals-telemetry-frame")).toBeTruthy();
-    expect(root.querySelectorAll(".vc-pedals-telemetry-led")).toHaveLength(10);
-    expect(root.querySelectorAll(".vc-pedals-telemetry-fill")).toHaveLength(3);
+    expect(root.querySelectorAll(".vc-pedals-telemetry-led")).toHaveLength(9);
+    expect(root.querySelector(".vc-pedals-telemetry-position")?.textContent).toBe("P5");
+    expect(root.textContent).not.toContain("V1: CÁPSULA HUD ORIGINAL");
+    expect(root.textContent).not.toContain("Cápsula redondeada original");
+    expect(root.querySelectorAll(".vc-pedals-telemetry-fill")).toHaveLength(0);
   });
 
   it("hides optional channels without adding editor controls", () => {

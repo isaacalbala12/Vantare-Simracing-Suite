@@ -7,23 +7,11 @@ import {
 } from "../widget-types/relative/relative-renderer-helpers";
 import type { WidgetTypeDefinition } from "./widget-definition";
 import { WidgetTypeRegistry, widgetTypeRegistry } from "./widget-registry";
+import { ALL_WIDGET_TYPES } from "./profile-document";
 
 describe("widgetTypeRegistry", () => {
   it("registers the implemented widget definitions", () => {
-    expect(widgetTypeRegistry.list().map((item) => item.type)).toEqual([
-      "delta",
-      "standings",
-      "relative",
-      "pedals",
-      "pedals-telemetry",
-      "pedals-telemetry-compact",
-      "racing-flags",
-      "broadcast-tower",
-      "head-to-head",
-      "input-telemetry",
-      "multiclass-relative",
-      "delta-advanced",
-    ]);
+    expect(widgetTypeRegistry.list().map((item) => item.type)).toEqual(ALL_WIDGET_TYPES);
   });
 
   it("exposes inspector sections for every registered widget", () => {

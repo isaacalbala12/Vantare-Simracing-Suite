@@ -9,11 +9,14 @@ import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
 import {
   buildHarnessTelemetry,
   buildHarnessWidget,
+  getCrystalHarnessDesign,
   HARNESS_WIDGETS,
   isHarnessVariant,
   isHarnessWidget,
+  seedHarnessInputHistory,
   type HarnessVariant,
   type HarnessWidget,
+  type CrystalHarnessDesignId,
 } from "./harness-fixtures";
 
 export type HarnessSurface = "studio" | "desktop" | "obs" | "harness";
@@ -27,6 +30,7 @@ export type HarnessQuery = {
   state: MockDataState;
   surface: HarnessSurface;
   variant: HarnessVariant;
+  designId?: CrystalHarnessDesignId;
 };
 
 const DEFAULT_QUERY: HarnessQuery = {
@@ -54,6 +58,7 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   const state = (params.get("state") ?? DEFAULT_QUERY.state) as MockDataState;
   const surface = (params.get("surface") ?? DEFAULT_QUERY.surface) as HarnessSurface;
   const variant = (params.get("variant") ?? DEFAULT_QUERY.variant) as HarnessVariant;
+  const designId = params.get("design") ?? undefined;
 
   if (!isHarnessWidget(widget)) {
     return { error: `invalid widget parameter: ${widget}` };
@@ -77,6 +82,19 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
     return { error: `invalid variant parameter: ${variant}` };
   }
 
+  if (designId) {
+    const design = getCrystalHarnessDesign(designId);
+    if (!design) {
+      return { error: `invalid design parameter: ${designId}` };
+    }
+    if (system !== "vantare-crystal") {
+      return { error: `design ${designId} requires system=vantare-crystal` };
+    }
+    if (design.widgetType !== widget) {
+      return { error: `design ${designId} requires widget=${design.widgetType}` };
+    }
+  }
+
   if (variant === "relative-fill" && widget !== "relative") {
     return { error: "relative-fill variant requires widget=relative" };
   }
@@ -87,7 +105,16 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
     return { error: `${variant} variant requires widget=pedals` };
   }
 
-  return { widget, system, session, location, state, surface, variant };
+  return {
+    widget,
+    system,
+    session,
+    location,
+    state,
+    surface,
+    variant,
+    ...(designId ? { designId } : {}),
+  };
 }
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
@@ -96,9 +123,12 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
     location: query.location,
     state: query.state,
     widget: query.widget,
+    system: query.system,
     variant: query.variant,
+    designId: query.designId,
   });
-  const widget = buildHarnessWidget(query.widget, query.system, query.variant);
+  const widget = buildHarnessWidget(query.widget, query.system, query.variant, query.designId);
+  seedHarnessInputHistory(widget, snapshot);
 
   return (
     <div
@@ -106,6 +136,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
       data-overlay-parity-widget={query.widget}
       data-overlay-parity-system={query.system}
       data-overlay-parity-variant={query.variant}
+      data-overlay-parity-design={query.designId ?? ""}
       style={{
         width: 1920,
         height: 1080,

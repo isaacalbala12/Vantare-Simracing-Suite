@@ -1,0 +1,1 @@
+import type {TelemetrySnapshot} from "../../core/telemetry-snapshot";export function readDamage(snapshot:TelemetrySnapshot){return snapshot.damage?{...snapshot.damage,tyres:snapshot.damage.tyres?[...snapshot.damage.tyres] as [number,number,number,number]:undefined}:undefined;}

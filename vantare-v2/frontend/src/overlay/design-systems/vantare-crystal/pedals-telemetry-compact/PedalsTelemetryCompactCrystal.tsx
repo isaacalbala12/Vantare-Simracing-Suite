@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { PedalsTelemetryCompactViewModel } from "../../../widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model";
 
-const channels = [["brake", "B"], ["throttle", "T"], ["clutch", "C"]] as const;
+const channels = [["throttle", "THR"], ["brake", "BRK"], ["clutch", "CLU"]] as const;
 
 export function PedalsTelemetryCompactCrystal({ model }: WidgetRendererProps<PedalsTelemetryCompactViewModel>) {
   const values = { throttle: model.throttle, brake: model.brake, clutch: model.clutch };
@@ -20,11 +20,15 @@ export function PedalsTelemetryCompactCrystal({ model }: WidgetRendererProps<Ped
         </div>
         <div className="vc-pedals-compact-core">
           <div className="vc-pedals-compact-shift" aria-label={`RPM ${model.rpmText}`}>
-            {Array.from({ length: 8 }, (_, index) => <i className={model.rpm !== undefined && model.rpm >= (index + 1) * 1000 ? "is-on" : ""} key={index} />)}
+            {Array.from({ length: 7 }, (_, index) => (
+              <i
+                className={`${model.rpm !== undefined && model.rpm >= (index + 1) * 900 ? "is-on " : ""}${index < 3 ? "is-green" : index < 5 ? "is-yellow" : "is-red"}`}
+                key={index}
+              />
+            ))}
           </div>
           <strong className="vc-pedals-compact-gear">{model.gearText}</strong>
           {model.showSpeed ? <span className="vc-pedals-compact-speed">{model.speedText} KM/H</span> : null}
-          {model.showRpm ? <span className="vc-pedals-compact-rpm">{model.rpmText} RPM</span> : null}
         </div>
       </div>
     </section>

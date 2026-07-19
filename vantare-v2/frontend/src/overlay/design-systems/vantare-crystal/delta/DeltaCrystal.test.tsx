@@ -86,17 +86,17 @@ describe("DeltaCrystal", () => {
 
   it("renders gaining losing and neutral delta text from the model", () => {
     const gaining = renderCrystal(readyGaining);
-    expect(gaining.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("-0.245");
+    expect(gaining.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("-0.24");
     expect(gaining.root.querySelector(".vc-delta-bar-value")?.getAttribute("data-tone")).toBe("gaining");
     cleanup();
 
     const losing = renderCrystal(readyLosing);
-    expect(losing.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("+0.380");
+    expect(losing.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("+0.38");
     expect(losing.root.querySelector(".vc-delta-bar-value")?.getAttribute("data-tone")).toBe("losing");
     cleanup();
 
     const neutral = renderCrystal(readyNeutral);
-    expect(neutral.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("0.000");
+    expect(neutral.root.querySelector(".vc-delta-bar-value")?.textContent).toBe("0.00");
     expect(neutral.root.querySelector(".vc-delta-bar-value")?.getAttribute("data-tone")).toBe("neutral");
   });
 
@@ -118,14 +118,14 @@ describe("DeltaCrystal", () => {
     const meta = root.querySelector(".vc-delta-bar-top");
     expect(meta?.querySelector(".vc-delta-bar-lap")?.textContent).toBe("LAP 14");
     expect(meta?.querySelector(".vc-delta-bar-predicted")?.textContent).toBe("2:44.659");
-    expect(meta?.querySelector(".vc-delta-bar-split")?.textContent).toBe("-0.245");
+    expect(meta?.querySelector(".vc-delta-bar-split")?.textContent).toBe("-0.24");
     const fill = root.querySelector(".vc-delta-bar-fill") as HTMLElement;
     expect(fill.style.getPropertyValue("--delta-progress")).toBe("-0.1225");
   });
 
   it("keeps functional text stable when cosmetic settings change", () => {
     const { root } = renderCrystal(readyGaining, { showHeader: false, glowIntensity: 0.8 });
-    expect(root.querySelector(".vc-delta-bar-value")?.textContent).toBe("-0.245");
+    expect(root.querySelector(".vc-delta-bar-value")?.textContent).toBe("-0.24");
     expect(root.querySelector(".vc-delta-bar-top")).toBeNull();
   });
 

@@ -1,4 +1,9 @@
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { DeltaAdvancedViewModel } from "../../../widget-types/delta-advanced/delta-advanced-view-model";
-function value(value: number | undefined): string { return value === undefined ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(3)}`; }
-export function DeltaAdvancedCrystal({ model }: WidgetRendererProps<DeltaAdvancedViewModel>) { return <section data-widget-system="vantare-crystal" data-widget-renderer="delta-advanced" data-status={model.status} className="vc-delta-advanced"><header><strong>DELTA</strong><span>ADVANCED</span></header><div className="vc-delta-advanced-best"><small>BEST</small><b>{value(model.best)}</b></div><div className="vc-delta-advanced-grid"><div><small>SECTOR</small><strong>{model.showUnavailableFields ? value(model.sector) : ""}</strong></div><div><small>THEORETICAL</small><strong>{model.showUnavailableFields ? value(model.theoretical) : ""}</strong></div><div><small>LAST</small><strong>{model.showUnavailableFields ? value(model.last) : ""}</strong></div></div></section>; }
+
+const value = (input: number | undefined) => input === undefined ? "--.---" : `${input >= 0 ? "+" : ""}${input.toFixed(3)}`;
+
+export function DeltaAdvancedCrystal({ model }: WidgetRendererProps<DeltaAdvancedViewModel>) {
+  const cells = [["b", "B", model.best], ["s", "S", model.sector], ["t", "T", model.theoretical], ["l", "L", model.last]] as const;
+  return <section data-widget-system="vantare-crystal" data-widget-renderer="delta-advanced" data-status={model.status} className="vc-delta-advanced">{cells.map(([tone, tag, item]) => <div data-tone={tone} key={tag}><i>{tag}</i><b>{value(item)}</b></div>)}</section>;
+}

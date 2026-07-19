@@ -17,6 +17,12 @@ import { MulticlassRelativeCrystal } from "./multiclass-relative/MulticlassRelat
 import { DeltaAdvancedCrystal } from "./delta-advanced/DeltaAdvancedCrystal";
 import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
+import { FuelStrategyCrystal } from "./fuel-strategy/FuelStrategyCrystal";
+import { DeltaTraceCrystal } from "./delta-trace/DeltaTraceCrystal";
+import { RaceScheduleCrystal } from "./race-schedule/RaceScheduleCrystal";
+import { TrackWeatherCrystal } from "./track-weather/TrackWeatherCrystal";
+import { CarDamageVisualCrystal } from "./car-damage-visual/CarDamageVisualCrystal";
+import { CarDamageNumbersCrystal } from "./car-damage-numbers/CarDamageNumbersCrystal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 
@@ -303,6 +309,12 @@ const headToHeadRegistration = { widgetType: "head-to-head" as const, configVers
 const inputTelemetryRegistration = { widgetType: "input-telemetry" as const, configVersion: 1, defaultSettings: { templateId: "input-blade" }, configMigrations: { 0: (settings: Record<string, unknown>) => ({ templateId: "input-blade", ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { templateId: "input-blade", ...(input as Record<string, unknown>) } : { templateId: "input-blade" }; }, inspector: { appearance: [] }, Renderer: InputTelemetryCrystal as ComponentType<WidgetRendererProps> };
 const multiclassRelativeRegistration = { widgetType: "multiclass-relative" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: MulticlassRelativeCrystal as ComponentType<WidgetRendererProps> };
 const deltaAdvancedRegistration = { widgetType: "delta-advanced" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaAdvancedCrystal as ComponentType<WidgetRendererProps> };
+const fuelStrategyRegistration = { widgetType: "fuel-strategy" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: FuelStrategyCrystal as ComponentType<WidgetRendererProps> };
+const deltaTraceRegistration = { widgetType: "delta-trace" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaTraceCrystal as ComponentType<WidgetRendererProps> };
+const raceScheduleRegistration = { widgetType: "race-schedule" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: RaceScheduleCrystal as ComponentType<WidgetRendererProps> };
+const trackWeatherRegistration = { widgetType: "track-weather" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: TrackWeatherCrystal as ComponentType<WidgetRendererProps> };
+const carDamageVisualRegistration = { widgetType: "car-damage-visual" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: CarDamageVisualCrystal as ComponentType<WidgetRendererProps> };
+const carDamageNumbersRegistration = { widgetType: "car-damage-numbers" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: CarDamageNumbersCrystal as ComponentType<WidgetRendererProps> };
 
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
@@ -324,5 +336,11 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
     inputTelemetryRegistration,
     multiclassRelativeRegistration,
     deltaAdvancedRegistration,
+    fuelStrategyRegistration,
+    deltaTraceRegistration,
+    raceScheduleRegistration,
+    trackWeatherRegistration,
+    carDamageVisualRegistration,
+    carDamageNumbersRegistration,
   ],
 };

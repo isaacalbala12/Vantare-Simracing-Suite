@@ -38,10 +38,20 @@ describe("Crystal canonical glass contract", () => {
     expect(originalCss).not.toContain("--vc-blur-");
   });
 
-  it("registers the offline-font limitation and expected pixel-delta caveat", () => {
-    expect(referenceManifest.fontContract).toEqual({
-      resolution: "fallback-declared-no-local-font-files",
-      pixelDelta: "reference PNGs use resolved web fonts when available; local fallback may shift glyph pixels",
-    });
+  it("registers the exact authority font families as a parity gate", () => {
+    expect(referenceManifest.fontContract.resolution).toBe("authority-web-font-faces");
+    expect(referenceManifest.fontContract.requiredFamilies).toEqual([
+      "Inter",
+      "Plus Jakarta Sans",
+      "JetBrains Mono",
+    ]);
+    expect(referenceManifest.fontContract.runtimeRequirement).toContain("same local font faces");
+    expect(referenceManifest.fontContract.captured.faces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ family: "Inter", weight: "400" }),
+        expect.objectContaining({ family: "Plus Jakarta Sans", weight: "800" }),
+        expect.objectContaining({ family: "JetBrains Mono", weight: "500" }),
+      ]),
+    );
   });
 });

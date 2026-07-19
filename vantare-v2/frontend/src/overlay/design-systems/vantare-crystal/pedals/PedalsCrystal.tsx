@@ -30,7 +30,6 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
         ) : null}
         <div className="vc-pedals-channels" aria-label="Pedals: throttle, brake, clutch">
           <article className="vc-pedals-channel" data-pedal="throttle">
-            <span className="vc-pedals-label">THR</span>
             <div className="vc-pedals-meter">
               <span
                 className="vc-pedals-fill"
@@ -42,10 +41,10 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
+            <span className="vc-pedals-label">THR</span>
             <span className="vc-pedals-value">{model.throttleText}</span>
           </article>
           <article className="vc-pedals-channel" data-pedal="brake">
-            <span className="vc-pedals-label">BRK</span>
             <div className="vc-pedals-meter">
               <span
                 className="vc-pedals-fill"
@@ -57,10 +56,10 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
+            <span className="vc-pedals-label">BRK</span>
             <span className="vc-pedals-value">{model.brakeText}</span>
           </article>
           <article className="vc-pedals-channel" data-pedal="clutch">
-            <span className="vc-pedals-label">CLU</span>
             <div className="vc-pedals-meter">
               <span
                 className="vc-pedals-fill"
@@ -72,6 +71,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
+            <span className="vc-pedals-label">CLU</span>
             <span className="vc-pedals-value">{model.clutchText}</span>
           </article>
         </div>

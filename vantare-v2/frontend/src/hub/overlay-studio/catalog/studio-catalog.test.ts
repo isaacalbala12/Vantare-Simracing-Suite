@@ -106,26 +106,13 @@ describe("deriveStudioCatalog", () => {
       "input-crystal-capsule",
       "input-crystal-dense",
     ]);
-    expect(deriveStudioCatalog()).toHaveLength(12);
+    expect(deriveStudioCatalog()).toHaveLength(18);
     expect(deriveStudioCatalog().map((entry) => entry.type)).toContain("input-telemetry");
   });
 
   it("returns only registered widget types from the canonical registry", () => {
     const catalog = deriveStudioCatalog();
-    expect(catalog.map((entry) => entry.type)).toEqual([
-      "delta",
-      "standings",
-      "relative",
-      "pedals",
-      "broadcast-tower",
-      "pedals-telemetry",
-      "pedals-telemetry-compact",
-      "racing-flags",
-      "head-to-head",
-      "delta-advanced",
-      "input-telemetry",
-      "multiclass-relative",
-    ]);
+    expect(catalog.map((entry) => entry.type)).toEqual(ALL_WIDGET_TYPES);
     expect(catalog[0]).toMatchObject({
       labelKey: "overlay.widgets.delta",
       defaultSize: { width: 280, height: 96 },

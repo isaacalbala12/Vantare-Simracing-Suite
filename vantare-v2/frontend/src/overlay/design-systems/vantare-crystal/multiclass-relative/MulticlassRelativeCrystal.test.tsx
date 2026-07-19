@@ -4,4 +4,4 @@ import type { MulticlassRelativeViewModel } from "../../../widget-types/multicla
 import { MulticlassRelativeCrystal } from "./MulticlassRelativeCrystal";
 afterEach(() => cleanup());
 const model: MulticlassRelativeViewModel = { type: "multiclass-relative", status: "ready", rows: [{ place: 1, classId: "HYPERCAR", classColor: "#fff", number: "7", name: "PORSCHE", isPlayer: false }], rowCount: 5, classMode: "all", showClassDivider: true };
-describe("MulticlassRelativeCrystal", () => { it("renders the Crystal relative table", () => { const { container } = render(<MulticlassRelativeCrystal model={model} settings={{}} renderMode="harness" />); expect(container.querySelector('[data-widget-system="vantare-crystal"]')).toBeTruthy(); }); });
+describe("MulticlassRelativeCrystal", () => { it("renders every row already selected by the ViewModel", () => { const rows = Array.from({ length: 5 }, (_, index) => ({ ...model.rows[0]!, place: index + 1, number: String(index + 1) })); const { container } = render(<MulticlassRelativeCrystal model={{ ...model, rows }} settings={{}} renderMode="harness" />); expect(container.querySelectorAll("article")).toHaveLength(5); }); });

@@ -12,7 +12,9 @@ describe("PedalsTelemetryCompactCrystal", () => {
     const root = container.querySelector('[data-widget-system="vantare-crystal"]') as HTMLElement;
     expect(root.classList.contains("vc-pedals-telemetry-compact-v2")).toBe(true);
     expect(root.querySelector(".vc-pedals-compact-frame")).toBeTruthy();
-    expect(root.querySelectorAll(".vc-pedals-compact-shift i")).toHaveLength(8);
+    expect(root.querySelectorAll(".vc-pedals-compact-shift i")).toHaveLength(7);
+    expect(root.textContent).not.toContain("V2: RECTANGULAR PERFIL BAJO");
+    expect(root.textContent).not.toContain("Altura vertical reducida");
     expect(root.querySelectorAll("button, input, textarea")).toHaveLength(0);
   });
 });

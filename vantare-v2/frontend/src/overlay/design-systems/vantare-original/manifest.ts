@@ -16,6 +16,12 @@ import { MulticlassRelativeOriginal } from "./multiclass-relative/MulticlassRela
 import { DeltaAdvancedOriginal } from "./delta-advanced/DeltaAdvancedOriginal";
 import { RelativeOriginal } from "./relative/RelativeOriginal";
 import { StandingsOriginal } from "./standings/StandingsOriginal";
+import { FuelStrategyOriginal } from "./fuel-strategy/FuelStrategyOriginal";
+import { DeltaTraceOriginal } from "./delta-trace/DeltaTraceOriginal";
+import { RaceScheduleOriginal } from "./race-schedule/RaceScheduleOriginal";
+import { TrackWeatherOriginal } from "./track-weather/TrackWeatherOriginal";
+import { CarDamageVisualOriginal } from "./car-damage-visual/CarDamageVisualOriginal";
+import { CarDamageNumbersOriginal } from "./car-damage-numbers/CarDamageNumbersOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 
@@ -292,6 +298,12 @@ const headToHeadRegistration = { widgetType: "head-to-head" as const, configVers
 const inputTelemetryRegistration = { widgetType: "input-telemetry" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: InputTelemetryOriginal as ComponentType<WidgetRendererProps> };
 const multiclassRelativeRegistration = { widgetType: "multiclass-relative" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: MulticlassRelativeOriginal as ComponentType<WidgetRendererProps> };
 const deltaAdvancedRegistration = { widgetType: "delta-advanced" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaAdvancedOriginal as ComponentType<WidgetRendererProps> };
+const fuelStrategyRegistration = { widgetType: "fuel-strategy" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: FuelStrategyOriginal as ComponentType<WidgetRendererProps> };
+const deltaTraceRegistration = { widgetType: "delta-trace" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: DeltaTraceOriginal as ComponentType<WidgetRendererProps> };
+const raceScheduleRegistration = { widgetType: "race-schedule" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: RaceScheduleOriginal as ComponentType<WidgetRendererProps> };
+const trackWeatherRegistration = { widgetType: "track-weather" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: TrackWeatherOriginal as ComponentType<WidgetRendererProps> };
+const carDamageVisualRegistration = { widgetType: "car-damage-visual" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: CarDamageVisualOriginal as ComponentType<WidgetRendererProps> };
+const carDamageNumbersRegistration = { widgetType: "car-damage-numbers" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: CarDamageNumbersOriginal as ComponentType<WidgetRendererProps> };
 
 export const vantareOriginalManifest: DesignSystemDefinition = {
   id: "vantare-original",
@@ -313,5 +325,11 @@ export const vantareOriginalManifest: DesignSystemDefinition = {
     inputTelemetryRegistration,
     multiclassRelativeRegistration,
     deltaAdvancedRegistration,
+    fuelStrategyRegistration,
+    deltaTraceRegistration,
+    raceScheduleRegistration,
+    trackWeatherRegistration,
+    carDamageVisualRegistration,
+    carDamageNumbersRegistration,
   ],
 };

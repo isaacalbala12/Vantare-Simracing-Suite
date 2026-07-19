@@ -1,3 +1,10 @@
+Nota INTEGRACION-ISA-93 (2026-07-19):
+- Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.
+- Se integra la rama publicada `vantareapp/isa-93-os-03-paridad-11-de-los-21-disenos-vantare-crystal` en un worktree limpio basado en `develop@93d52bc`; se conserva íntegramente la historia vigente de `develop`.
+- El alcance añade 21 diseños Crystal para 18 tipos funcionales, renderizadores/ViewModels puros, fuentes locales, contratos cuantitativos y escenas transparent/solid/grid comunes a Studio/Desktop/OBS.
+- Autoridad y evidencia detallada: `docs/analysis/isa-93-crystal-parity/README.md`. No se regenera ni se debilita el baseline histórico `delta-crystal-ready-studio` durante esta integración.
+- Estado: INTEGRACIÓN EN VALIDACIÓN; actualizar con SHA y checks frescos antes de cerrar ISA-93.
+
 Nota INTEGRACION-ISA-9-13-95 (2026-07-16):
 - ISA-9 (Launcher), ISA-13 (legibilidad Space Mono) e ISA-95 (comunicaciones Discord) se consolidaron sobre `develop@4e22bfa` en `codex/integrate-isa9-isa13-isa95-develop`.
 - La integración conserva Overlay Studio V3, Telemetry Core, Engineer y OAuth nonce ya presentes; los únicos conflictos fueron documentales en este archivo y se resolvieron manteniendo ambas líneas de trabajo.

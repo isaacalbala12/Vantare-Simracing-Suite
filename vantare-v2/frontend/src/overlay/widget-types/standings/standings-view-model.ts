@@ -21,6 +21,8 @@ export type StandingsRowViewModel = {
   driverNumber: string;
   driverName: string;
   vehicleClass: string;
+  teamCode: string;
+  teamBrandColor: string;
   gapText: string;
   intervalText: string;
   currentLapText: string;
@@ -94,7 +96,9 @@ function buildRowViewModel(
     position: readScoringNumber(row, "place") ?? index + 1,
     driverNumber: columnValues.driverNumber ?? "",
     driverName: columnValues.driverName ?? PLACEHOLDER,
-    vehicleClass: columnValues.vehicleClass ?? "",
+    vehicleClass: readScoringString(row, "vehicleClass") ?? "",
+    teamCode: readScoringString(row, "teamCode") ?? "",
+    teamBrandColor: readScoringString(row, "teamBrandColor") ?? "",
     gapText: columnValues.gap ?? PLACEHOLDER,
     intervalText: columnValues.interval ?? PLACEHOLDER,
     currentLapText: columnValues.currentLap ?? "",

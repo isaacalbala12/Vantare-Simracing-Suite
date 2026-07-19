@@ -12,10 +12,10 @@ describe("buildBroadcastTowerViewModel", () => {
     expect(model.sof).toBeUndefined();
   });
 
-  it("caps requested rows at eight", () => {
+  it("caps requested rows at ten", () => {
     const snapshot = buildMockTelemetry({ session: "race", location: "track" });
     const rows = Array.from({ length: 12 }, (_, index) => ({ id: index, place: index + 1, driverName: `Driver ${index}`, isPlayer: index === 0 }));
-    const model = buildBroadcastTowerViewModel({ ...snapshot, scoring: rows }, { rowCount: 8, showWeather: false, showSof: false });
-    expect(model.rows).toHaveLength(8);
+    const model = buildBroadcastTowerViewModel({ ...snapshot, scoring: rows }, { rowCount: 10, showWeather: false, showSof: false });
+    expect(model.rows).toHaveLength(10);
   });
 });

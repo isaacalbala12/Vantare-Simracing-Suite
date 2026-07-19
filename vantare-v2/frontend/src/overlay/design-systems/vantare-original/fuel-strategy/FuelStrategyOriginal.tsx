@@ -1,0 +1,4 @@
+import type { WidgetRendererProps } from "../../../core/design-system-definition";
+import type { FuelStrategyViewModel } from "../../../widget-types/fuel-strategy/fuel-strategy-view-model";
+const number = (value: number | undefined, suffix = "") => value === undefined ? "—" : `${value.toFixed(1)}${suffix}`;
+export function FuelStrategyOriginal({ model }: WidgetRendererProps<FuelStrategyViewModel>) { return <section data-widget-system="vantare-original" data-widget-renderer="fuel-strategy" data-status={model.status} className="vo-fuel-strategy"><header>FUEL STRATEGY</header><strong>{number(model.fuelLiters, " L")}</strong><div><span>AVG {number(model.avgPerLap, " L")}</span><span>LAPS {number(model.lapsRemaining)}</span><span>NEEDED {number(model.requiredFuel, " L")}</span></div></section>; }

@@ -36,6 +36,15 @@ describe("parseHarnessQuery", () => {
     });
   });
 
+  it("accepts each canonical Crystal design only with its functional widget type", () => {
+    expect(
+      parseHarnessQuery("?widget=delta&system=vantare-crystal&design=delta-crystal-simple"),
+    ).toMatchObject({ widget: "delta", designId: "delta-crystal-simple" });
+    expect(
+      parseHarnessQuery("?widget=pedals&system=vantare-crystal&design=delta-crystal-simple"),
+    ).toEqual({ error: "design delta-crystal-simple requires widget=delta" });
+  });
+
   it("rejects invalid query values with explicit errors", () => {
     expect(parseHarnessQuery("?widget=telemetry")).toEqual({
       error: "invalid widget parameter: telemetry",
@@ -79,6 +88,17 @@ describe("OverlayParityHarness", () => {
     render(<OverlayParityHarness query={parsed} />);
     expect(screen.getByText("obs")).toBeTruthy();
     expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
+  });
+
+  it("seeds the deterministic Input history before the host builds its ViewModel", () => {
+    const parsed = parseHarnessQuery(
+      "?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade",
+    );
+    if ("error" in parsed) {
+      throw new Error(parsed.error);
+    }
+    render(<OverlayParityHarness query={parsed} />);
+    expect(document.querySelector(".vc-input-graph path")?.getAttribute("d")).toContain("L");
   });
 
   it.each(HARNESS_WIDGETS)(

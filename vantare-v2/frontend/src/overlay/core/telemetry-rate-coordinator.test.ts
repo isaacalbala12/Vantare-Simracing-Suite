@@ -80,6 +80,28 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
+  it("publishes bounded derived histories once per incoming snapshot", () => {
+    const coordinator = createTelemetryRateCoordinator({ now: () => 1_000 });
+    const first = buildMockTelemetry({ session: "race", location: "track" });
+    coordinator.publish({
+      ...first,
+      session: { ...first.session, key: "race-a", epoch: 1 },
+      player: { ...first.player, totalLaps: 4, fuelLiters: 60, deltaSeconds: -0.1 },
+    });
+    coordinator.publish({
+      ...first,
+      capturedAt: first.capturedAt + 1_000,
+      session: { ...first.session, key: "race-a", epoch: 1 },
+      player: { ...first.player, totalLaps: 5, fuelLiters: 57.2, deltaSeconds: -0.2 },
+    });
+
+    const latest = coordinator.getSnapshot(15);
+    expect(latest.derived?.fuelHistory).toEqual([{ lap: 5, consumedLiters: 2.8 }]);
+    expect(latest.derived?.deltaHistory).toHaveLength(2);
+    expect(latest.derived?.inputHistory).toHaveLength(2);
+    coordinator.dispose();
+  });
+
   it("removes schedulers after the last subscriber unsubscribes", () => {
     const stops: Array<() => void> = [];
     const coordinator = createTelemetryRateCoordinator({

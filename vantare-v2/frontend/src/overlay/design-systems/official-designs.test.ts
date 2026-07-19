@@ -6,6 +6,8 @@ import {
   listOfficialDesigns,
   OFFICIAL_DESIGNS_SECTION_LABEL,
 } from "./official-designs";
+import crystalReferenceManifest from "../../../testdata/crystal-reference/manifest.json";
+import type { WidgetType } from "../core/profile-document";
 
 describe("official-designs", () => {
   it("exposes the Vantare section label", () => {
@@ -46,6 +48,20 @@ describe("official-designs", () => {
     });
   });
 
+  it("uses canonical Crystal IDs for every currently registered widget type", () => {
+    const registeredTypes = new Set(widgetTypeRegistry.list().map((definition) => definition.type));
+    const expectedIds = crystalReferenceManifest.entries
+      .filter((entry) => registeredTypes.has(entry.widgetType as WidgetType))
+      .map((entry) => entry.designId)
+      .sort();
+    const actualIds = listOfficialDesigns()
+      .filter((design) => design.systemId === "vantare-crystal")
+      .map((design) => design.id)
+      .sort();
+
+    expect(actualIds).toEqual(expectedIds);
+  });
+
   it("uses manifest-compatible visual defaults for every official design", () => {
     for (const design of listOfficialDesigns()) {
       const registration = designSystemRegistry.resolve(
@@ -64,32 +80,11 @@ describe("official-designs", () => {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }
-    expect([...pairs].sort()).toEqual([
-      "broadcast-tower:vantare-crystal",
-      "broadcast-tower:vantare-original",
-      "delta-advanced:vantare-crystal",
-      "delta-advanced:vantare-original",
-      "delta:vantare-crystal",
-      "delta:vantare-original",
-      "head-to-head:vantare-crystal",
-      "head-to-head:vantare-original",
-      "input-telemetry:vantare-crystal",
-      "input-telemetry:vantare-original",
-      "multiclass-relative:vantare-crystal",
-      "multiclass-relative:vantare-original",
-      "pedals-telemetry-compact:vantare-crystal",
-      "pedals-telemetry-compact:vantare-original",
-      "pedals-telemetry:vantare-crystal",
-      "pedals-telemetry:vantare-original",
-      "pedals:vantare-crystal",
-      "pedals:vantare-original",
-      "racing-flags:vantare-crystal",
-      "racing-flags:vantare-original",
-      "relative:vantare-crystal",
-      "relative:vantare-original",
-      "standings:vantare-crystal",
-      "standings:vantare-original",
+    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => [
+      `${definition.type}:vantare-crystal`,
+      `${definition.type}:vantare-original`,
     ]);
+    expect([...pairs].sort()).toEqual(expectedPairs.sort());
   });
 
   it("marks exactly one default design for every widget/system pair", () => {

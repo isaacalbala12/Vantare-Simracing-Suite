@@ -418,11 +418,10 @@ describe("applyStudioCommand", () => {
     expect(restoredCrystal.content).toEqual({ keep: "functional" });
   });
 
-  it("fails atomically when a target system has no official default", () => {
+  it("uses the canonical official default when switching a newly completed type", () => {
     const document = buildDocument([widget("fuel-1", { type: "fuel-strategy" })]);
     const before = structuredClone(document);
-    expect(() =>
-      applyStudioCommand(document, {
+    const result = applyStudioCommand(document, {
         type: "widget/apply-design",
         session: "general",
         widgetIds: ["fuel-1"],
@@ -438,8 +437,8 @@ describe("applyStudioCommand", () => {
           origin: "vantare",
         },
         appliedAt: "2026-07-12T00:00:00Z",
-      }),
-    ).toThrow(/no official default/i);
+      });
+    expect(result.layouts.general.widgets[0]?.visual.provenance?.designId).toBe("fuel-strategy-crystal-unified");
     expect(document).toEqual(before);
   });
 

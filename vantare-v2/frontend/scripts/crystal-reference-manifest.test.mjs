@@ -13,9 +13,9 @@ const expectedEntries = [
   ['standings', 'standings-crystal-vertical', 1],
   ['broadcast', 'broadcast-tower-crystal', 2],
   ['fuel', 'fuel-strategy-crystal-unified', 3],
-  ['pedals-telemetry', 'pedals-telemetry-crystal', 4],
-  ['pedals-telemetry-compact', 'pedals-telemetry-compact-crystal', 4],
-  ['pedals', 'pedals-crystal', 4],
+  ['pedals-telemetry', 'pedals-telemetry-crystal', 4, '.hud-capsule-v1'],
+  ['pedals-telemetry-compact', 'pedals-telemetry-compact-crystal', 4, '.cockpit-v2-low'],
+  ['pedals', 'pedals-crystal', 4, '.cockpit-v3-solo'],
   ['flags', 'racing-flags-crystal', 5],
   ['delta-bar', 'delta-crystal-bar', 6],
   ['delta-trace', 'delta-trace-crystal', 7],
@@ -38,16 +38,17 @@ const canonicalInventoryTest = async () => {
   assert.equal(result.stdout.trim(), 'crystal-reference: 21 canonical crops OK');
 
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-  assert.equal(manifest.version, 1);
+  assert.equal(manifest.version, 2);
+  assert.deepEqual(manifest.captureProtocol.scenes.map(({ id }) => id), ['transparent', 'solid', 'grid']);
   assert.equal(manifest.entries.length, expectedEntries.length);
   assert.deepEqual(
     manifest.entries.map(({ id, designId, htmlSection }) => [id, designId, htmlSection]),
-    expectedEntries,
+    expectedEntries.map(([id, designId, htmlSection]) => [id, designId, htmlSection]),
   );
 
   const ids = new Set();
   const selectors = new Set();
-  for (const entry of manifest.entries) {
+  for (const [index, entry] of manifest.entries.entries()) {
     assert.ok(entry.referenceSelector);
     assert.ok(!entry.referenceSelector.startsWith('.v2-'));
     assert.ok(!ids.has(entry.id));
@@ -56,8 +57,33 @@ const canonicalInventoryTest = async () => {
     assert.ok(entry.designId);
     assert.ok(Number.isInteger(entry.width) && entry.width > 0);
     assert.ok(Number.isInteger(entry.height) && entry.height > 0);
+    assert.equal(entry.capture.protocol, 2);
+    assert.ok(entry.capture.scenes.transparent.alphaLt255Ratio > 0);
+    assert.equal(entry.capture.scenes.transparent.meanAlpha < 255, true);
+    assert.equal(entry.capture.scenes.transparent.guardChangedPixels, 0);
+    assert.equal(entry.capture.scenes.solid.guardChangedPixels, 0);
+    assert.equal(entry.capture.scenes.grid.guardChangedPixels, 0);
+    const expectedSelector = expectedEntries[index][3];
+    if (expectedSelector) assert.equal(entry.referenceSelector, expectedSelector);
     ids.add(entry.id);
     selectors.add(entry.referenceSelector);
+  }
+};
+
+const pedalsIsolationTest = async () => {
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const source = await readFile(sourcePath, 'utf8');
+  const pedals = manifest.entries.filter(({ htmlSection }) => htmlSection === 4);
+  assert.deepEqual(
+    pedals.map(({ referenceSelector }) => referenceSelector),
+    ['.hud-capsule-v1', '.cockpit-v2-low', '.cockpit-v3-solo'],
+  );
+  for (const entry of pedals) {
+    const selectorIndex = source.indexOf(entry.referenceSelector.slice(1));
+    assert.ok(selectorIndex > 0);
+    const nearbySource = source.slice(selectorIndex, selectorIndex + 2500);
+    assert.equal(nearbySource.includes('telemetry-col'), false);
+    assert.equal(nearbySource.includes('version-tag'), false);
   }
 };
 
@@ -72,14 +98,25 @@ const sourceBoundaryTest = async () => {
   assert.equal(source.slice(markerIndex).includes('V2-'), true);
 };
 
+const rendererRootIsolationTest = async () => {
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const deltaBar = manifest.entries.find(({ id }) => id === 'delta-bar');
+  assert.equal(deltaBar.actualSelector, '.vc-delta-bar');
+  assert.notEqual(deltaBar.actualSelector, '[data-overlay-parity-widget-frame]');
+};
+
 if (process.env.VITEST) {
   const { describe, it } = await import('vitest');
   describe('Crystal canonical reference manifest', () => {
     it('freezes the 21-entry inventory', canonicalInventoryTest);
     it('excludes the final V2 block', sourceBoundaryTest);
+    it('targets only the three Pedals widget roots', pedalsIsolationTest);
+    it('targets the Delta Bar visual root instead of the harness frame', rendererRootIsolationTest);
   });
 } else {
   const { test } = await import('node:test');
   test('the canonical reference extractor freezes the 21-entry inventory', canonicalInventoryTest);
   test('the source boundary excludes the final V2 block', sourceBoundaryTest);
+  test('the Pedals references exclude showcase labels and descriptions', pedalsIsolationTest);
+  test('the Delta Bar capture uses its visual root', rendererRootIsolationTest);
 }

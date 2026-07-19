@@ -12,6 +12,12 @@ import { multiclassRelativeDefinition } from "../widget-types/multiclass-relativ
 import { deltaAdvancedDefinition } from "../widget-types/delta-advanced/delta-advanced-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
+import { fuelStrategyDefinition } from "../widget-types/fuel-strategy/fuel-strategy-definition";
+import { deltaTraceDefinition } from "../widget-types/delta-trace/delta-trace-definition";
+import { raceScheduleDefinition } from "../widget-types/race-schedule/race-schedule-definition";
+import { trackWeatherDefinition } from "../widget-types/track-weather/track-weather-definition";
+import { carDamageVisualDefinition } from "../widget-types/car-damage-visual/car-damage-visual-definition";
+import { carDamageNumbersDefinition } from "../widget-types/car-damage-numbers/car-damage-numbers-definition";
 
 export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
@@ -64,11 +70,17 @@ widgetTypeRegistry.register(deltaDefinition);
 widgetTypeRegistry.register(standingsDefinition);
 widgetTypeRegistry.register(relativeDefinition);
 widgetTypeRegistry.register(pedalsDefinition);
+widgetTypeRegistry.register(broadcastTowerDefinition);
+widgetTypeRegistry.register(fuelStrategyDefinition);
 widgetTypeRegistry.register(pedalsTelemetryDefinition);
 widgetTypeRegistry.register(pedalsTelemetryCompactDefinition);
 widgetTypeRegistry.register(racingFlagsDefinition);
-widgetTypeRegistry.register(broadcastTowerDefinition);
+widgetTypeRegistry.register(deltaTraceDefinition);
+widgetTypeRegistry.register(raceScheduleDefinition);
 widgetTypeRegistry.register(headToHeadDefinition);
+widgetTypeRegistry.register(deltaAdvancedDefinition);
 widgetTypeRegistry.register(inputTelemetryDefinition);
 widgetTypeRegistry.register(multiclassRelativeDefinition);
-widgetTypeRegistry.register(deltaAdvancedDefinition);
+widgetTypeRegistry.register(trackWeatherDefinition);
+widgetTypeRegistry.register(carDamageVisualDefinition);
+widgetTypeRegistry.register(carDamageNumbersDefinition);

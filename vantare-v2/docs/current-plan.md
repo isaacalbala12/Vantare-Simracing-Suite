@@ -3,7 +3,10 @@ Nota INTEGRACION-ISA-93 (2026-07-19):
 - Se integra la rama publicada `vantareapp/isa-93-os-03-paridad-11-de-los-21-disenos-vantare-crystal` en un worktree limpio basado en `develop@93d52bc`; se conserva íntegramente la historia vigente de `develop`.
 - El alcance añade 21 diseños Crystal para 18 tipos funcionales, renderizadores/ViewModels puros, fuentes locales, contratos cuantitativos y escenas transparent/solid/grid comunes a Studio/Desktop/OBS.
 - Autoridad y evidencia detallada: `docs/analysis/isa-93-crystal-parity/README.md`. No se regenera ni se debilita el baseline histórico `delta-crystal-ready-studio` durante esta integración.
-- Estado: INTEGRACIÓN EN VALIDACIÓN; actualizar con SHA y checks frescos antes de cerrar ISA-93.
+- Integración: merge `80b0b13cecb3c758c5b08860ba1057bacf56449e` sobre `develop@93d52bc`.
+- Evidencia fresca combinada: protocolo 14/14 PASS; design-system 2/2 PASS; frontend 280 archivos y 1851/1851 tests PASS; build PASS; Crystal 21/21 PASS en geometría, alfa, composición, fuentes, tipografía, estabilidad y Studio/Desktop/OBS.
+- Deuda previa confirmada contra `develop@93d52bc`: `e2e:overlay-studio` no monta `LauncherStoreProvider`; el visual legacy conserva Original 0,000% y falla únicamente el baseline Crystal ISA-91 obsoleto al 100%. Ninguno fue introducido por ISA-93 y ningún baseline se regeneró.
+- Estado: INTEGRADO Y VALIDADO EN SU ALCANCE; pendiente prueba manual global de la aplicación desde `develop` y corte posterior para reparar el smoke compartido/retirar el baseline obsoleto.
 
 Nota INTEGRACION-ISA-9-13-95 (2026-07-16):
 - ISA-9 (Launcher), ISA-13 (legibilidad Space Mono) e ISA-95 (comunicaciones Discord) se consolidaron sobre `develop@4e22bfa` en `codex/integrate-isa9-isa13-isa95-develop`.

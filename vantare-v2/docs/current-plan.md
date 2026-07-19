@@ -1,3 +1,11 @@
+Nota TELEMETRY-CORE-FINAL-ARCHITECTURE (2026-07-19):
+- Isaac aprobó reconstruir Telemetry Core con arquitectura modular orientada a observaciones: drivers compilados, LMU Driver propietario de Shared Memory + REST, reducer single-writer, derivaciones ordenadas, snapshots inmutables, hechos separados y proyecciones versionadas por producto.
+- ADR vigente: `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
+- Plan maestro e índice: `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md` y `2026-07-19-telemetry-core-sol-medium-execution-index.md`.
+- Fases: TC-02 contratos, TC-03 driver LMU, TC-04 runtime, TC-05 proyecciones/transporte, TC-06 recording/replay, TC-07 Overlay, TC-08 Engineer y TC-09 retirement/hardening.
+- La ejecución inicia en ISA-26. Los planes pendientes del 2026-07-13 quedan `SUPERSEDED`; TC-01 se conserva como baseline completado.
+- Nada entra en `develop` sin validación manual completa y aprobación explícita de Isaac.
+
 Nota INTEGRACION-ISA-93 (2026-07-19):
 - Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.
 - Se integra la rama publicada `vantareapp/isa-93-os-03-paridad-11-de-los-21-disenos-vantare-crystal` en un worktree limpio basado en `develop@93d52bc`; se conserva íntegramente la historia vigente de `develop`.
@@ -2713,3 +2721,9 @@ Nota ISA-9-RESCAN-PROGRESS (2026-07-13):
 - Commits: `e2915ee` backend, `ac8c2fe` bridge/store/UI. `.superpowers/` se conserva sin incluir.
 - Checks focalizados: Go launcher/cmd PASS; frontend Launcher/store/bridge/panel/progress PASS (14 tests); frontend build PASS; `git diff --check` PASS.
 - Pendiente antes de In Review: suite frontend completa, lint, Playwright 100/125/150/200, smoke Wails Windows con `.env.local` del escritorio, revisión inicial sin editar y validación manual 100% de Isaac. No merge a `develop`.
+Nota TELEMETRY-CORE-ISA-100 (2026-07-19):
+- Telemetry Core se separa documentalmente de Strategy Product B. La rama histórica ISA-21 no debe mergearse en bloque.
+- TC-01 está completado e integrado en `develop@f492007` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
+- Autoridad y fronteras: `docs/telemetry-core/README.md`. Se rescatan exclusivamente el plan maestro, cinco microplanes y el índice Telemetry Core.
+- TC-02–TC-05 siguen sin iniciar. ISA-26 permanece en Backlog y su microplan está marcado como borrador no ejecutable hasta una sesión conjunta de planificación con Isaac.
+- No se ha tocado código de producto, Strategy Planner ni la arquitectura runtime en ISA-100.

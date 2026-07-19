@@ -1,3 +1,11 @@
+Nota ISA-26 / TC-02A (2026-07-19):
+- Cerrado tras segunda review el inventario previo al runtime en `docs/telemetry-core/domain-inventory.md`: contrato público Overlay/Desktop/OBS, proyección V3, modelo y 30/30 dominios Engineer, Launcher/consumidores live y requirements futuros de Strategy/Analysis sin crear schema. La cobertura normativa RF/SC asigna a cada fila/grupo rango, frecuencia útil, source y consumer; cuando no hay evidencia los marca explícitamente `desconocido / TC-03`, sin confundir frecuencia útil con adquisición.
+- Cerradas las reglas de dirección del ADR 0004 en `docs/telemetry-core/dependency-rules.md` y un guard determinista en `internal/telemetry/architecture_test.go`; el guard caracteriza el árbol legacy y se activa para `schema`, `core`, drivers y proyecciones cuando aparezcan, sin exigir migraciones inexistentes.
+- Deudas reservadas a TC-03: presencia por campo sin sentinel cero/false/vacío, unidades/provenance LMU, identidad de sesión sin `NumVehicles`, offsets placeholder y divergencia `Speed` m/s frente a `speedKph` V3. No se resolvieron inventando schema ni cambiando producción.
+- Evidencia: test focal rojo antes de implementar el validador; `go test ./internal/telemetry/... -count=1` PASS; `go test ./... -count=1` PASS después de generar `frontend/dist` ignorado; build frontend PASS; `git diff --check` PASS. `-race` no disponible porque el toolchain tiene CGO deshabilitado.
+- Evidencia fresca de segunda review: comprobación RF/SC PASS sobre 143 filas de campos/grupos; test focal y `go test ./internal/telemetry/... -count=1` PASS; `git diff --check` PASS. Dos repeticiones literales de `go test ./... -count=1` quedaron rojas por flakies fuera de este diff: `TestConcurrentSavesDontCorruptFile` reproduce colisiones de `app-settings.json.tmp` también focalmente con `-count=20` (ISA-118), mientras `TestServiceEmitRateCapped` dio PASS focal `-count=20` y solo falló bajo carga global (ISA-119). Ambos pasaron focalmente con `-count=1`, no se modificaron y no se declara la suite global verde. Una ejecución serial superó `internal/app` y fue terminada externamente antes de acabar el resto.
+- Estado operativo único: ISA-26 está `In Review` sobre `vantareapp/isa-100-tc-00b-separar-y-reconciliar-la-planificacion-de-telemetry@724158a262eaa5dbcc8ab89c98aa74847ffed06b`; sin merge. ISA-27 no está iniciado y queda bloqueado por la review/validación humana de Isaac.
+
 Nota TELEMETRY-CORE-FINAL-ARCHITECTURE (2026-07-19):
 - Isaac aprobó reconstruir Telemetry Core con arquitectura modular orientada a observaciones: drivers compilados, LMU Driver propietario de Shared Memory + REST, reducer single-writer, derivaciones ordenadas, snapshots inmutables, hechos separados y proyecciones versionadas por producto.
 - ADR vigente: `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
@@ -2721,9 +2729,9 @@ Nota ISA-9-RESCAN-PROGRESS (2026-07-13):
 - Commits: `e2915ee` backend, `ac8c2fe` bridge/store/UI. `.superpowers/` se conserva sin incluir.
 - Checks focalizados: Go launcher/cmd PASS; frontend Launcher/store/bridge/panel/progress PASS (14 tests); frontend build PASS; `git diff --check` PASS.
 - Pendiente antes de In Review: suite frontend completa, lint, Playwright 100/125/150/200, smoke Wails Windows con `.env.local` del escritorio, revisión inicial sin editar y validación manual 100% de Isaac. No merge a `develop`.
-Nota TELEMETRY-CORE-ISA-100 (2026-07-19):
+Nota TELEMETRY-CORE-ISA-100 (2026-07-19) — ESTADO HISTÓRICO SUPERSEDED POR LA NOTA ISA-26 AL INICIO:
 - Telemetry Core se separa documentalmente de Strategy Product B. La rama histórica ISA-21 no debe mergearse en bloque.
 - TC-01 está completado e integrado en `develop@f492007` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - Autoridad y fronteras: `docs/telemetry-core/README.md`. Se rescatan exclusivamente el plan maestro, cinco microplanes y el índice Telemetry Core.
-- TC-02–TC-05 siguen sin iniciar. ISA-26 permanece en Backlog y su microplan está marcado como borrador no ejecutable hasta una sesión conjunta de planificación con Isaac.
+- Estado al publicar ISA-100: TC-02–TC-05 seguían sin iniciar e ISA-26 estaba en Backlog. Esta línea ya no es operativa: ISA-26 está `In Review` sobre ISA-100 y ISA-27 permanece no iniciado/bloqueado por review humana, según la nota vigente al inicio del documento.
 - No se ha tocado código de producto, Strategy Planner ni la arquitectura runtime en ISA-100.

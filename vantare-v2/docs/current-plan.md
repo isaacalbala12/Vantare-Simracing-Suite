@@ -1,3 +1,12 @@
+Nota ISA-31 / TC-03B (2026-07-21):
+- Implementado `core.DriverManager[T]` genérico sobre el puerto `core.Driver[T]`, sin importar drivers concretos ni cambiar composición/producto. El catálogo compilado mantiene descriptor, prioridad y capabilities estáticas separados del estado y capabilities del driver activo.
+- La selección es determinista: preferencia explícita válida primero, después prioridad descendente y finalmente ID estable. Un cambio de preferencia exige `Stop -> SetPreferred -> Start`; no existe hot-swap implícito ni fallback mock.
+- El lifecycle posee exactamente una llamada `Run` activa, rechaza doble `Start` con error inspeccionable, mantiene constructor/errores terminales observables hasta `Stop`, trata ausencia como `detecting` y hace `Stop` idempotente, cancelable y bloqueante hasta teardown.
+- Reconnect solo ocurre si el candidato clasifica expresamente el error como transitorio. Usa instancias nuevas secuencialmente, máximo configurable, backoff exponencial acotado y jitter acotado/injectable; agotamiento devuelve error tipado. Detector, backoff y driver comparten cancelación.
+- TDD y concurrencia: tests table-driven y coordinados por canales cubren catálogo inválido, desempate, preferencia, doble start, ausencia, constructor, terminal sin retry, retry agotado, una sola ejecución activa, cancelación durante backoff, contexto padre y teardown. No usan `time.Sleep`; los deadlines solo protegen contra bloqueos.
+- Evidencia: focal core/driver repetido 20 veces PASS; `go test ./internal/telemetry/... -count=1` PASS; guard ADR 0004 PASS; `go vet` focal PASS y `git diff --check` PASS. `-race` queda pendiente porque el entorno mantiene `CGO_ENABLED=0`; no se ejecutó suite global ni frontend porque este corte es un paquete Go aislado sin composición ni UI.
+- Estado: preparado para review; sin driver LMU concreto, parsers, fusión, wiring, push, PR, Linear ni merge. ISA-32 no debe iniciarse hasta aprobación humana de este corte.
+
 Nota ISA-30 / TC-03A (2026-07-21):
 - Iniciada desde ISA-29 aprobada en `8d12cf0399f1848d873a8268d12e5d3005945830`, con rama/worktree aislados y sin cambiar producción. Inventario canónico: `docs/telemetry-core/lmu-raw-acquisition-audit.md`.
 - Confirmado: un único mapping `LMU_Data` alimenta los parsers público y Engineer; la duplicación está en offsets/decodificación, no en tres conexiones principales. Extended, PitInfo y REST deben quedar bajo el único LMU Driver.

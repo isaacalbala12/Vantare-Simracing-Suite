@@ -84,6 +84,83 @@ func TestDriverManagerSupportedIsStaticAndSelectionIsDeterministic(t *testing.T)
 	}
 }
 
+func TestDriverManagerCatalogValidationAndStableTieBreak(t *testing.T) {
+	t.Parallel()
+
+	invalid := []struct {
+		name       string
+		candidates []DriverCandidate[int]
+	}{
+		{name: "empty ID", candidates: []DriverCandidate[int]{{Detect: func(context.Context) (bool, error) { return false, nil }, New: func() (Driver[int], error) { return nil, nil }}}},
+		{name: "missing detector", candidates: []DriverCandidate[int]{{Descriptor: driver.Descriptor{ID: "lmu"}, New: func() (Driver[int], error) { return nil, nil }}}},
+		{name: "missing constructor", candidates: []DriverCandidate[int]{{Descriptor: driver.Descriptor{ID: "lmu"}, Detect: func(context.Context) (bool, error) { return false, nil }}}},
+		{name: "duplicate ID", candidates: []DriverCandidate[int]{
+			managerCandidate("lmu", 1, nil, make(chan driver.ID, 1)),
+			managerCandidate("lmu", 2, nil, make(chan driver.ID, 1)),
+		}},
+	}
+	for _, tt := range invalid {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := NewDriverManager(tt.candidates, ManagerConfig{}); !errors.Is(err, ErrInvalidDriverCatalog) {
+				t.Fatalf("NewDriverManager error = %v, want ErrInvalidDriverCatalog", err)
+			}
+		})
+	}
+
+	started := make(chan driver.ID, 1)
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		managerCandidate("zeta", 10, nil, started),
+		managerCandidate("alpha", 10, nil, started),
+	}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-started; got != "alpha" {
+		t.Fatalf("equal-priority driver = %q, want stable ID tie-break alpha", got)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDriverManagerPreferenceChangesOnlyWhileStopped(t *testing.T) {
+	started := make(chan driver.ID, 2)
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		managerCandidate("primary", 20, nil, started),
+		managerCandidate("secondary", 10, nil, started),
+	}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-started; got != "primary" {
+		t.Fatalf("first driver = %q, want primary", got)
+	}
+	if err := manager.SetPreferred("secondary"); !errors.Is(err, ErrManagerRunning) {
+		t.Fatalf("SetPreferred while running = %v, want ErrManagerRunning", err)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.SetPreferred("secondary"); err != nil {
+		t.Fatalf("SetPreferred while stopped: %v", err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-started; got != "secondary" {
+		t.Fatalf("driver after preference change = %q, want secondary", got)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDriverManagerLifecycleAndConstructorFailure(t *testing.T) {
 	t.Run("double start is typed and stop is idempotent", func(t *testing.T) {
 		started := make(chan driver.ID, 1)
@@ -124,7 +201,7 @@ func TestDriverManagerLifecycleAndConstructorFailure(t *testing.T) {
 		if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
 			t.Fatal(err)
 		}
-		waitManagerState(t, manager, driver.StateError)
+		waitManagerError(t, manager, want)
 		status := manager.Status()
 		if !errors.Is(status.Err, want) {
 			t.Fatalf("status error = %v, want wrapped constructor error", status.Err)
@@ -177,7 +254,93 @@ func TestDriverManagerDetectionWithoutCandidateNeverStartsMock(t *testing.T) {
 	}
 }
 
+func TestDriverManagerDetectionErrorsRequireExplicitRetryClassification(t *testing.T) {
+	t.Run("unclassified detector error is terminal", func(t *testing.T) {
+		failure := errors.New("detector permission denied")
+		manager, err := NewDriverManager([]DriverCandidate[int]{
+			{
+				Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+				Detect:     func(context.Context) (bool, error) { return false, failure },
+				New:        func() (Driver[int], error) { return nil, nil },
+			},
+		}, ManagerConfig{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+			t.Fatal(err)
+		}
+		waitManagerError(t, manager, failure)
+		if got := manager.Status().State; got != driver.StateError {
+			t.Fatalf("state = %s, want error", got)
+		}
+		if err := manager.Stop(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("classified transient detector error remains detecting", func(t *testing.T) {
+		failure := errors.New("temporary detector failure")
+		waiting := make(chan struct{})
+		manager, err := NewDriverManager([]DriverCandidate[int]{
+			{
+				Descriptor:         driver.Descriptor{ID: "lmu", Priority: 1},
+				Detect:             func(context.Context) (bool, error) { return false, failure },
+				DetectionRetryable: func(err error) bool { return errors.Is(err, failure) },
+				New:                func() (Driver[int], error) { return nil, nil },
+			},
+		}, ManagerConfig{Retry: RetryPolicy{Wait: func(ctx context.Context, _ time.Duration) error {
+			close(waiting)
+			<-ctx.Done()
+			return ctx.Err()
+		}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+			t.Fatal(err)
+		}
+		<-waiting
+		status := manager.Status()
+		if status.State != driver.StateDetecting || !errors.Is(status.Err, failure) {
+			t.Fatalf("status = %#v, want retryable detecting error", status)
+		}
+		if err := manager.Stop(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func TestDriverManagerReconnectIsBoundedAndCancelable(t *testing.T) {
+	t.Run("terminal run error is not retried", func(t *testing.T) {
+		terminal := errors.New("incompatible simulator build")
+		constructed := 0
+		manager, err := NewDriverManager([]DriverCandidate[int]{
+			{
+				Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+				Detect:     func(context.Context) (bool, error) { return true, nil },
+				New: func() (Driver[int], error) {
+					constructed++
+					return &managerTestDriver{state: driver.StateError, run: func(context.Context) error { return terminal }}, nil
+				},
+				Retryable: func(error) bool { return false },
+			},
+		}, ManagerConfig{Retry: RetryPolicy{MaxReconnects: 10}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+			t.Fatal(err)
+		}
+		waitManagerError(t, manager, terminal)
+		if constructed != 1 || !errors.Is(manager.Status().Err, terminal) {
+			t.Fatalf("constructed=%d status=%#v, want one terminal attempt", constructed, manager.Status())
+		}
+		if err := manager.Stop(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("replaces failed instance sequentially and exhausts retries", func(t *testing.T) {
 		transient := errors.New("transient disconnect")
 		var mu sync.Mutex
@@ -213,8 +376,8 @@ func TestDriverManagerReconnectIsBoundedAndCancelable(t *testing.T) {
 			InitialBackoff: time.Second,
 			MaxBackoff:     2 * time.Second,
 			Jitter:         func(delay time.Duration) time.Duration { return delay },
-			Wait: func(context.Context, time.Duration) error {
-				waits <- time.Second
+			Wait: func(_ context.Context, delay time.Duration) error {
+				waits <- delay
 				return nil
 			},
 		}})
@@ -234,6 +397,9 @@ func TestDriverManagerReconnectIsBoundedAndCancelable(t *testing.T) {
 		mu.Unlock()
 		if gotConstructed != 3 || gotMax != 1 {
 			t.Fatalf("constructed=%d max active=%d, want 3 and 1", gotConstructed, gotMax)
+		}
+		if first, second := <-waits, <-waits; first != time.Second || second != 2*time.Second {
+			t.Fatalf("backoff delays = %s, %s; want 1s, 2s", first, second)
 		}
 		if err := manager.Stop(t.Context()); err != nil {
 			t.Fatal(err)
@@ -280,6 +446,18 @@ func TestDriverManagerReconnectIsBoundedAndCancelable(t *testing.T) {
 	})
 }
 
+func TestDefaultJitterIsBounded(t *testing.T) {
+	t.Parallel()
+
+	const delay = 10 * time.Second
+	for range 1000 {
+		got := defaultJitter(delay)
+		if got < 9*time.Second || got > 11*time.Second {
+			t.Fatalf("defaultJitter(%s) = %s, want within +/-10%%", delay, got)
+		}
+	}
+}
+
 func TestDriverManagerParentCancellationLeavesNoRunBehind(t *testing.T) {
 	runStarted := make(chan struct{})
 	runStopped := make(chan struct{})
@@ -306,13 +484,17 @@ func TestDriverManagerParentCancellationLeavesNoRunBehind(t *testing.T) {
 	}
 	<-runStarted
 	cancel()
-	if err := manager.Stop(t.Context()); err != nil {
-		t.Fatal(err)
-	}
 	select {
 	case <-runStopped:
-	default:
-		t.Fatal("Stop returned while Run was still active")
+	case <-time.After(time.Second):
+		t.Fatal("parent cancellation did not stop Run")
+	}
+	waitManagerState(t, manager, driver.StateStopped)
+	if status := manager.Status(); status.ActiveID != "" || status.Err != nil {
+		t.Fatalf("status after parent cancellation = %#v, want clean stopped state", status)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatalf("Stop after parent cancellation: %v", err)
 	}
 }
 
@@ -340,6 +522,21 @@ func waitManagerState(t *testing.T, manager *DriverManager[int], want driver.Sta
 		select {
 		case <-deadline:
 			t.Fatalf("manager did not reach %s; last status %#v", want, manager.Status())
+		default:
+		}
+	}
+}
+
+func waitManagerError(t *testing.T, manager *DriverManager[int], want error) {
+	t.Helper()
+	deadline := time.After(time.Second)
+	for {
+		if errors.Is(manager.Status().Err, want) {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("manager did not expose %v; last status %#v", want, manager.Status())
 		default:
 		}
 	}

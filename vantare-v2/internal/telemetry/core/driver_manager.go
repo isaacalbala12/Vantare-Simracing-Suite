@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"sort"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 var (
 	ErrManagerAlreadyStarted = errors.New("telemetry driver manager already started")
+	ErrManagerRunning        = errors.New("telemetry driver manager is running")
 	ErrReconnectExhausted    = errors.New("telemetry driver reconnect attempts exhausted")
 	ErrInvalidDriverCatalog  = errors.New("invalid telemetry driver catalog")
 )
@@ -24,7 +26,10 @@ type DriverCandidate[T any] struct {
 	Descriptor driver.Descriptor
 	Detect     func(context.Context) (bool, error)
 	New        func() (Driver[T], error)
-	Retryable  func(error) bool
+	// DetectionRetryable explicitly permits retrying a detector failure. A
+	// nil classifier makes detector errors terminal; normal absence is false,nil.
+	DetectionRetryable func(error) bool
+	Retryable          func(error) bool
 }
 
 // RetryPolicy controls reconnects after an already constructed driver exits.
@@ -103,6 +108,18 @@ func (manager *DriverManager[T]) Supported() []driver.Descriptor {
 		result[i] = cloneDescriptor(candidate.Descriptor)
 	}
 	return result
+}
+
+// SetPreferred changes selection for the next Start. A live manager is never
+// hot-swapped implicitly: callers must Stop, change preference, then Start.
+func (manager *DriverManager[T]) SetPreferred(id driver.ID) error {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	if manager.running {
+		return ErrManagerRunning
+	}
+	manager.config.Preferred = id
+	return nil
 }
 
 // Start begins detection and driver ownership in one managed goroutine.
@@ -192,14 +209,21 @@ func (manager *DriverManager[T]) Status() DriverStatus {
 }
 
 func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], done chan<- struct{}) {
-	defer close(done)
+	defer func() {
+		manager.finishRun()
+		close(done)
+	}()
 
 	for {
-		candidate, found, detectErr := manager.detect(ctx)
+		candidate, found, detectErr, terminalDetection := manager.detect(ctx)
 		if ctx.Err() != nil {
 			return
 		}
 		if !found {
+			if terminalDetection {
+				manager.setTerminal(detectErr)
+				return
+			}
 			manager.setWaitingDetection(detectErr)
 			if err := manager.config.Retry.Wait(ctx, manager.backoffDelay(0)); err != nil {
 				return
@@ -218,8 +242,8 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 		}
 		manager.setActive(candidate.Descriptor.ID, instance)
 		runErr := instance.Run(ctx, sink)
-		manager.clearActive()
 		if ctx.Err() != nil {
+			manager.clearActive()
 			return
 		}
 		if runErr == nil {
@@ -230,35 +254,55 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 			return
 		}
 
-		attempt := manager.incrementAttempt()
+		attempt := manager.recordTransient(runErr)
 		if attempt > manager.config.Retry.MaxReconnects {
 			manager.setTerminal(errors.Join(ErrReconnectExhausted, runErr))
 			return
 		}
-		manager.setStale(runErr)
 		if err := manager.config.Retry.Wait(ctx, manager.backoffDelay(attempt-1)); err != nil {
 			return
 		}
 	}
 }
 
-func (manager *DriverManager[T]) detect(ctx context.Context) (DriverCandidate[T], bool, error) {
+func (manager *DriverManager[T]) finishRun() {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	manager.active = nil
+	manager.activeID = ""
+	switch manager.state {
+	case driver.StateError, driver.StateStopping:
+		// Error remains observable until an explicit Stop acknowledges it.
+		// Stop owns the final transition when cancellation was requested.
+		return
+	default:
+		manager.state = driver.StateStopped
+		manager.err = nil
+		manager.running = false
+	}
+}
+
+func (manager *DriverManager[T]) detect(ctx context.Context) (DriverCandidate[T], bool, error, bool) {
 	ordered := manager.orderedCandidates()
 	var lastErr error
+	terminal := false
 	for _, candidate := range ordered {
 		available, err := candidate.Detect(ctx)
 		if err != nil {
 			lastErr = errors.Join(lastErr, fmt.Errorf("detect driver %q: %w", candidate.Descriptor.ID, err))
+			if candidate.DetectionRetryable == nil || !candidate.DetectionRetryable(err) {
+				terminal = true
+			}
 			continue
 		}
 		if available {
-			return candidate, true, lastErr
+			return candidate, true, lastErr, false
 		}
 		if ctx.Err() != nil {
-			return DriverCandidate[T]{}, false, ctx.Err()
+			return DriverCandidate[T]{}, false, ctx.Err(), false
 		}
 	}
-	return DriverCandidate[T]{}, false, lastErr
+	return DriverCandidate[T]{}, false, lastErr, terminal
 }
 
 func (manager *DriverManager[T]) orderedCandidates() []DriverCandidate[T] {
@@ -302,18 +346,15 @@ func (manager *DriverManager[T]) clearActive() {
 	manager.activeID = ""
 }
 
-func (manager *DriverManager[T]) incrementAttempt() int {
+func (manager *DriverManager[T]) recordTransient(err error) int {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
+	manager.active = nil
+	manager.activeID = ""
 	manager.attempt++
-	return manager.attempt
-}
-
-func (manager *DriverManager[T]) setStale(err error) {
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
 	manager.state = driver.StateStale
 	manager.err = err
+	return manager.attempt
 }
 
 func (manager *DriverManager[T]) setTerminal(err error) {
@@ -361,12 +402,20 @@ func normalizedRetryPolicy(policy RetryPolicy) RetryPolicy {
 		policy.InitialBackoff = policy.MaxBackoff
 	}
 	if policy.Jitter == nil {
-		policy.Jitter = func(delay time.Duration) time.Duration { return delay }
+		policy.Jitter = defaultJitter
 	}
 	if policy.Wait == nil {
 		policy.Wait = waitWithTimer
 	}
 	return policy
+}
+
+func defaultJitter(delay time.Duration) time.Duration {
+	window := delay / 10
+	if window == 0 {
+		return delay
+	}
+	return delay - window + time.Duration(rand.Int64N(int64(2*window+1)))
 }
 
 func waitWithTimer(ctx context.Context, delay time.Duration) error {

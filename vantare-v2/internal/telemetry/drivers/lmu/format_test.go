@@ -72,27 +72,80 @@ func TestMenuDoesNotRequireTelemetryIndexWithoutPlayer(t *testing.T) {
 	}
 }
 
-func TestParseRejectsShortAndDegradesUnknownSignature(t *testing.T) {
+func TestParseRejectsShortAndBuildAbsentAllZeroRemainsUnknown(t *testing.T) {
 	if _, err := Parse(make([]byte, ObjectOutSize-1), time.Now()); err != ErrIncompatibleBuffer {
 		t.Fatalf("error = %v", err)
 	}
-	for _, tt := range []struct {
-		name string
-		buf  []byte
+	got, err := Parse(make([]byte, ObjectOutSize), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Compatibility != CompatibilityUnknown || got.Fingerprint != unknownFingerprint {
+		t.Fatalf("observation = %#v", got)
+	}
+	assertNoPublishedFields(t, got)
+}
+
+func TestBuildApprovedMenuWithoutPlayerNameIsKnownWithoutFastTelemetry(t *testing.T) {
+	buf := make([]byte, ObjectOutSize)
+	got, err := parseSupported(buf, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Compatibility != CompatibilityKnown {
+		t.Fatalf("compatibility=%v fingerprint=%q", got.Compatibility, got.Fingerprint)
+	}
+	if got.Fingerprint != "LMU_Data/runtime:build=1.3.0.0;size=324820;evidence=menu-invariants;telemetry=not-required-no-player" {
+		t.Fatalf("fingerprint=%q", got.Fingerprint)
+	}
+	if player, present := got.PlayerPresent.Value(); !present || player {
+		t.Fatalf("player=%v present=%v", player, present)
+	}
+	assertNoFastTelemetry(t, got)
+}
+
+func TestPlayerCompatibilityDoesNotUsePersonalNameAsFormatEvidence(t *testing.T) {
+	buf := knownBuffer(t)
+	clear(buf[1748 : 1748+32])
+	got, err := parseSupported(buf, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Compatibility != CompatibilityKnown {
+		t.Fatalf("compatibility=%v fingerprint=%q", got.Compatibility, got.Fingerprint)
+	}
+	if player, present := got.PlayerPresent.Value(); !present || !player {
+		t.Fatalf("player=%v present=%v", player, present)
+	}
+}
+
+func TestBuildApprovedMalformedMenuRemainsUnknown(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func([]byte)
 	}{
-		{name: "all zero", buf: make([]byte, ObjectOutSize)},
-		{name: "plausible invariants without positive evidence", buf: plausibleUnknownBuffer()},
-	} {
+		{name: "vehicle count", mutate: func(buf []byte) { binary.LittleEndian.PutUint32(buf[1736:], maxVehicles+1) }},
+		{name: "phase", mutate: func(buf []byte) { buf[1740] = 10 }},
+		{name: "player index", mutate: func(buf []byte) { buf[128465] = 254 }},
+		{name: "player boolean", mutate: func(buf []byte) { buf[128466] = 2 }},
+		{name: "non-finite source time", mutate: func(buf []byte) {
+			binary.LittleEndian.PutUint64(buf[1700:], math.Float64bits(math.NaN()))
+		}},
+	}
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseSupported(tt.buf, time.Now())
+			buf := make([]byte, ObjectOutSize)
+			buf[128465] = 255
+			tt.mutate(buf)
+			got, err := parseSupported(buf, time.Now())
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got.Compatibility != CompatibilityUnknown {
-				t.Fatalf("compatibility = %v", got.Compatibility)
+				t.Fatalf("compatibility=%v fingerprint=%q", got.Compatibility, got.Fingerprint)
 			}
-			if got.Fingerprint != "LMU_Data/runtime:build=1.3.0.0;evidence=scoring-insufficient" {
-				t.Fatalf("fingerprint = %q", got.Fingerprint)
+			if got.Fingerprint != "LMU_Data/runtime:build=1.3.0.0;evidence=menu-invariants-invalid" {
+				t.Fatalf("fingerprint=%q", got.Fingerprint)
 			}
 			assertNoPublishedFields(t, got)
 		})
@@ -318,6 +371,18 @@ func assertNoPublishedFields(t *testing.T, got Observation) {
 	for index, value := range freshness {
 		if value != schema.FreshnessMissing {
 			t.Fatalf("field %d freshness = %v, want missing", index, value)
+		}
+	}
+}
+
+func assertNoFastTelemetry(t *testing.T, got Observation) {
+	t.Helper()
+	for index, value := range []schema.Freshness{
+		got.VehicleName.Freshness(), got.LapNumber.Freshness(), got.Gear.Freshness(),
+		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Controls.Freshness(),
+	} {
+		if value != schema.FreshnessMissing {
+			t.Fatalf("fast field %d freshness = %v, want missing", index, value)
 		}
 	}
 }

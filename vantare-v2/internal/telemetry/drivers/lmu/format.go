@@ -22,7 +22,7 @@ const (
 	telemetryStride        = 1888
 	scoringStride          = 584
 	maxVehicles            = 104
-	knownFingerprintFormat = "LMU_Data/runtime:build=%s;size=324820;scoring=invariants+player-name-nul;telemetry=%s"
+	knownFingerprintFormat = "LMU_Data/runtime:build=%s;size=324820;evidence=%s;telemetry=%s"
 	unknownFingerprint     = "LMU_Data/size=324820/evidence=insufficient"
 )
 
@@ -88,21 +88,23 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	vehicles := readInt32(buf, 1736)
 	phase := buf[1740]
 	playerIndex := int(buf[128465])
-	if !hasScoringEvidence(buf, vehicles, phase, playerIndex) {
-		result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=scoring-insufficient", profile.version)
+	if !hasScoringInvariants(buf, vehicles, phase, playerIndex) {
+		result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=menu-invariants-invalid", profile.version)
 		return result, nil
 	}
 	playerPresent := buf[128466] != 0
+	evidence := "menu-invariants"
 	telemetryEvidence := "not-required-no-player"
 	if playerPresent {
 		if !hasPlayerTelemetryEvidence(buf, vehicles, playerIndex) {
 			result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=telemetry-insufficient", profile.version)
 			return result, nil
 		}
+		evidence = "player-correlated"
 		telemetryEvidence = "player-slot-correlated"
 	}
 	result.Compatibility = CompatibilityKnown
-	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, telemetryEvidence)
+	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, evidence, telemetryEvidence)
 	result.PlayerPresent = observed(playerPresent)
 
 	result.TrackName = observed(readString(buf, 1632, 64))
@@ -144,19 +146,19 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	return result, nil
 }
 
-func hasScoringEvidence(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
+func hasScoringInvariants(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
 	playerMarker := buf[128466]
 	if vehicles < 0 || vehicles > maxVehicles || phase > 9 || playerMarker > 1 {
 		return false
 	}
-	if playerMarker == 1 && (playerIndex < 0 || playerIndex >= maxVehicles) {
+	if playerMarker == 1 && playerIndex >= maxVehicles {
 		return false
 	}
-	// Both audited real fixtures contain a non-empty, NUL-terminated scoring
-	// player name at this offset. The content is never returned or fingerprinted;
-	// only its structural shape contributes positive runtime evidence.
-	_, ok := reasonableCString(buf[1748:1748+32], false)
-	return ok
+	if playerMarker == 0 && playerIndex >= maxVehicles && playerIndex != 255 {
+		return false
+	}
+	seconds := readFloat64(buf, 1700)
+	return finite(seconds) && seconds >= 0 && seconds <= float64(math.MaxInt64)/float64(time.Second)
 }
 
 func hasPlayerTelemetryEvidence(buf []byte, vehicles int32, playerIndex int) bool {

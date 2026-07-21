@@ -17,17 +17,20 @@ se publican como `invalid`; nunca se convierten en cero válido.
 - mapping ausente o lectura perdida: error retryable `ErrDisconnected`; el
   reconnect corresponde a `core.DriverManager`, no al driver;
 - buffer menor a 324.820 bytes: `ErrIncompatibleBuffer` terminal;
-- la compatibilidad solo es `known` con build allowlisted (`1.3.0.0`) y evidencia
-  estructural positiva. Windows localiza `Le Mans Ultimate.exe`, conserva su
-  ruta solo en memoria y lee FileVersion/ProductVersion con `version.dll`; la
-  ruta nunca entra en estado, fingerprint ni error. Build ausente/no soportado,
-  all-zero o evidencia insuficiente quedan `unknown`, fingerprint `insufficient`
-  y todos los campos de offsets `missing`;
+- la compatibilidad solo es `known` con el perfil aprobado completo: proceso
+  exacto `Le Mans Ultimate.exe`, FileVersion/ProductVersion allowlisted
+  (`1.3.0.0`), mapping abierto y vista de 324.820 bytes. Windows conserva la
+  ruta solo en memoria y lee las versiones con `version.dll`; la ruta nunca
+  entra en estado, fingerprint ni error. Build ausente/no soportado queda
+  `unknown`, fingerprint `insufficient` y todos los campos de offsets `missing`;
 - scoring y telemetry se prueban aparte: menú requiere build + invariantes
-  scoring y puede ser `live` sin vehículo; con jugador se exige un único slot
+  de conteo, fase, índice, booleano y tiempo finito, y puede ser `live` sin
+  vehículo aunque el buffer o el nombre de piloto estén vacíos. Sin evidencia
+  de build, el mismo buffer all-zero sigue `unknown`; con invariantes de menú
+  malformadas también queda `unknown`. Con jugador se exige un único slot
   scoring `isPlayer`, ID consistente, vehículo y track coherentes con el slot
-  telemetry. Scoring válido con telemetry movida/corrupta queda `unknown` y no
-  publica campos rápidos;
+  telemetry. Un nombre personal nunca es evidencia de formato. Scoring válido
+  con telemetry movida/corrupta queda `unknown` y no publica campos rápidos;
 - jugador ausente: runtime `live`, con `PlayerPresent=false` y campos de
   vehículo ausentes;
 - reloj inmóvil sobre el límite: runtime `stale` y campos presentes `stale`;
@@ -62,9 +65,9 @@ límites. RPM negativa, componentes no finitos y velocidad final no finita tras
 ## Rendimiento
 
 El benchmark estabilidad (dos copias)+parse+evidencia de compatibilidad da
-23,18–24,72 µs/op, 592 B/op y 14 allocs/op en Windows amd64. A 60 Hz hay
-16,67 ms por muestra: el microcorte consume menos del 0,15 % de ese presupuesto
-(>670x de margen). La consulta proceso/version y la normalización allowlist
+22,12–25,31 µs/op, 600 B/op y 14 allocs/op en Windows amd64. A 60 Hz hay
+16,67 ms por muestra: el microcorte consume menos del 0,16 % de ese presupuesto
+(>650x de margen). La consulta proceso/version y la normalización allowlist
 ocurren una vez por `Run`, fuera del hot path. Las
 asignaciones pertenecen a los strings canónicos de la observación; el buffer de
 324.820 B y su scratch se reservan una vez por `Run` y se reutilizan.
@@ -95,8 +98,7 @@ El test realiza un único `Run`, recibe una observación sin raw y cancela; el
 defer cierra view y handle. Para verificar desconexión, repetir con LMU cerrado:
 debe fallar con `ErrDisconnected`, no publicar mock ni iniciar reconnect local.
 
-Ejecución read-only del 2026-07-21 con LMU abierto: el provider confirmó build
-`1.3.0.0`, pero el frame actual no aportó las invariantes scoring exigidas y el
-test cerró FAIL con `evidence=scoring-insufficient`. No se capturó ni escribió
-raw. El resultado mantiene el gate fail-closed y requiere repetir en menú/pista
-cuando LMU publique el bloque scoring completo; no justifica relajar evidencia.
+Ejecución read-only del 2026-07-21 con LMU abierto: PASS. El provider confirmó
+build `1.3.0.0`; el frame fue clasificado como `live`,
+`PlayerPresent=false`, con fingerprint seguro `evidence=menu-invariants` y sin
+telemetría rápida publicada. No se capturó ni escribió raw o PII.

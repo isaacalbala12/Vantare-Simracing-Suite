@@ -58,6 +58,24 @@ type DriverStatus struct {
 	Err              error
 }
 
+type driverCycle struct {
+	generation uint64
+	done       chan struct{}
+	mu         sync.RWMutex
+	result     error
+}
+
+func (cycle *driverCycle) setResult(result error) {
+	cycle.mu.Lock()
+	cycle.result = result
+	cycle.mu.Unlock()
+}
+func (cycle *driverCycle) Result() error {
+	cycle.mu.RLock()
+	defer cycle.mu.RUnlock()
+	return cycle.result
+}
+
 // DriverManager owns exactly one driver Run call at a time.
 type DriverManager[T any] struct {
 	mu         sync.RWMutex
@@ -75,6 +93,7 @@ type DriverManager[T any] struct {
 	err                 error
 	cancel              context.CancelFunc
 	done                chan struct{}
+	cycle               *driverCycle
 }
 
 func NewDriverManager[T any](candidates []DriverCandidate[T], config ManagerConfig) (*DriverManager[T], error) {
@@ -148,8 +167,10 @@ func (manager *DriverManager[T]) Start(parent context.Context, sink driver.Obser
 	manager.attempt = 0
 	manager.err = nil
 	manager.cancel = cancel
-	manager.done = make(chan struct{})
-	go manager.run(ctx, sink, manager.generation, manager.done)
+	cycle := &driverCycle{generation: manager.generation, done: make(chan struct{})}
+	manager.cycle = cycle
+	manager.done = cycle.done
+	go manager.run(ctx, sink, cycle)
 	return nil
 }
 
@@ -161,20 +182,26 @@ func (manager *DriverManager[T]) Stop(ctx context.Context) error {
 	}
 	manager.mu.Lock()
 	if !manager.running {
+		cycle := manager.cycle
 		manager.mu.Unlock()
-		return nil
+		if cycle == nil {
+			return nil
+		}
+		return cycle.Result()
 	}
 	manager.state = driver.StateStopping
 	cancel := manager.cancel
 	done := manager.done
 	generation := manager.generation
+	cycle := manager.cycle
 	manager.mu.Unlock()
 
 	cancel()
 	select {
 	case <-done:
+		result := cycle.Result()
 		manager.completeStop(generation, done)
-		return nil
+		return result
 	case <-ctx.Done():
 		return fmt.Errorf("stop driver manager: %w", ctx.Err())
 	}
@@ -203,10 +230,12 @@ func (manager *DriverManager[T]) Status() DriverStatus {
 	return manager.statusLocked()
 }
 
-func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], generation uint64, done chan<- struct{}) {
+func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], cycle *driverCycle) {
+	var cycleResult error
 	defer func() {
-		manager.finishRun(generation)
-		close(done)
+		cycle.setResult(cycleResult)
+		manager.finishRun(cycle.generation)
+		close(cycle.done)
 	}()
 
 	for {
@@ -237,6 +266,15 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 		}
 		manager.setActive(candidate.Descriptor.ID, instance)
 		runErr := instance.Run(ctx, sink)
+		if errors.Is(runErr, driver.ErrTeardown) {
+			cycleResult = fmt.Errorf("run driver %q: %w", candidate.Descriptor.ID, runErr)
+			if ctx.Err() != nil {
+				manager.clearActive()
+			} else {
+				manager.setTerminal(cycleResult)
+			}
+			return
+		}
 		if ctx.Err() != nil {
 			manager.clearActive()
 			return

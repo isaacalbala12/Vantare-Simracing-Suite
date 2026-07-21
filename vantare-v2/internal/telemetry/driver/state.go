@@ -2,7 +2,14 @@
 // drivers. Concrete drivers live below internal/telemetry/drivers.
 package driver
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrTeardown identifies a lifecycle cleanup failure that must reach the
+// caller of DriverManager.Stop even when Run also returns context cancellation.
+var ErrTeardown = errors.New("telemetry driver teardown failed")
 
 // State is the externally observable lifecycle of one active driver.
 type State uint8

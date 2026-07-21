@@ -801,6 +801,62 @@ func TestDriverManagerParentCancellationLeavesNoRunBehind(t *testing.T) {
 	}
 }
 
+func TestDriverManagerStopReturnsGenerationTeardownFailure(t *testing.T) {
+	closeFailure := errors.New("close mapping failed")
+	started := make(chan int, 2)
+	constructed := 0
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (Driver[int], error) {
+				constructed++
+				cycle := constructed
+				return &managerTestDriver{state: driver.StateLive, run: func(ctx context.Context) error {
+					started <- cycle
+					<-ctx.Done()
+					if cycle == 1 {
+						return errors.Join(ctx.Err(), driver.ErrTeardown, closeFailure)
+					}
+					return ctx.Err()
+				}}, nil
+			},
+		},
+	}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	manager.mu.RLock()
+	firstCycle := manager.cycle
+	manager.mu.RUnlock()
+
+	results := make(chan error, 2)
+	for range 2 {
+		go func() { results <- manager.Stop(t.Context()) }()
+	}
+	for range 2 {
+		if err := <-results; !errors.Is(err, driver.ErrTeardown) || !errors.Is(err, closeFailure) {
+			t.Fatalf("Stop error = %v, want teardown and close failure", err)
+		}
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatalf("restart: %v", err)
+	}
+	if err := firstCycle.Result(); !errors.Is(err, closeFailure) {
+		t.Fatalf("old generation lost teardown after restart: %v", err)
+	}
+	if cycle := <-started; cycle != 2 {
+		t.Fatalf("cycle = %d", cycle)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatalf("clean second Stop inherited old error: %v", err)
+	}
+}
+
 func managerCandidate(id driver.ID, priority int, capabilities []driver.Capability, started chan<- driver.ID) DriverCandidate[int] {
 	return DriverCandidate[int]{
 		Descriptor: driver.Descriptor{ID: id, Priority: priority, Capabilities: capabilities},

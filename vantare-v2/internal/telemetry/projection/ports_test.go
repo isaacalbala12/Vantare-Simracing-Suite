@@ -20,7 +20,7 @@ type fakeFactSubscription struct{}
 func (fakeFactSubscription) Next(context.Context) (envelope.Fact[int], error) {
 	return envelope.Fact[int]{}, nil
 }
-func (fakeFactSubscription) Close() error { return nil }
+func (fakeFactSubscription) Close(context.Context) error { return nil }
 
 type fakeFactSubscriber struct{}
 

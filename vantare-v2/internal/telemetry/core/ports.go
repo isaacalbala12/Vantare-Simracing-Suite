@@ -24,14 +24,16 @@ type Driver[T any] interface {
 }
 
 // Derivation is one pure, deterministic stage in the future ordered chain. It
-// does no I/O and returns a new owned snapshot without mutating its input.
+// does no I/O, preserves the input header exactly, and returns a new owned
+// snapshot without mutating its input.
 type Derivation[T any] interface {
 	Apply(snapshot envelope.Snapshot[T]) (envelope.Snapshot[T], error)
 }
 
 // RecordingSink is consumed by the future core. Writes are loss-intolerant:
 // an implementation that cannot keep up returns ErrBackpressure. Close must
-// flush accepted data or return an error before its context expires.
+// flush accepted data or return an error before its context expires; it is
+// idempotent and later writes return ErrClosed.
 type RecordingSink[S any, F comparable] interface {
 	WriteSnapshot(ctx context.Context, snapshot envelope.Snapshot[S]) error
 	WriteFact(ctx context.Context, fact envelope.Fact[F]) error

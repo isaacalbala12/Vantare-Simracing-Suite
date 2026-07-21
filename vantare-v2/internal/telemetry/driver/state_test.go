@@ -31,32 +31,49 @@ func TestAllStatesAreKnownAndNamed(t *testing.T) {
 func TestLifecycleTransitions(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		from State
-		to   State
-		want bool
-	}{
-		{name: "start detection", from: StateStopped, to: StateDetecting, want: true},
-		{name: "connect after detection", from: StateDetecting, to: StateConnecting, want: true},
-		{name: "become live", from: StateConnecting, to: StateLive, want: true},
-		{name: "live degrades", from: StateLive, to: StateDegraded, want: true},
-		{name: "degraded recovers", from: StateDegraded, to: StateLive, want: true},
-		{name: "stale reconnects", from: StateStale, to: StateConnecting, want: true},
-		{name: "shutdown starts", from: StateLive, to: StateStopping, want: true},
-		{name: "shutdown completes", from: StateStopping, to: StateStopped, want: true},
-		{name: "error may stop", from: StateError, to: StateStopped, want: true},
-		{name: "cannot skip detection", from: StateStopped, to: StateLive},
-		{name: "cannot leave stopping for live", from: StateStopping, to: StateLive},
-		{name: "same state is not a transition", from: StateLive, to: StateLive},
-		{name: "unknown source rejected", from: State(255), to: StateStopped},
+	states := []State{
+		StateStopped, StateDetecting, StateConnecting, StateLive,
+		StateDegraded, StateStale, StateError, StateStopping,
+	}
+	allowed := map[[2]State]bool{
+		{StateStopped, StateDetecting}:    true,
+		{StateDetecting, StateConnecting}: true,
+		{StateDetecting, StateStopping}:   true,
+		{StateDetecting, StateError}:      true,
+		{StateConnecting, StateLive}:      true,
+		{StateConnecting, StateDegraded}:  true,
+		{StateConnecting, StateStale}:     true,
+		{StateConnecting, StateStopping}:  true,
+		{StateConnecting, StateError}:     true,
+		{StateLive, StateDegraded}:        true,
+		{StateLive, StateStale}:           true,
+		{StateLive, StateStopping}:        true,
+		{StateLive, StateError}:           true,
+		{StateDegraded, StateLive}:        true,
+		{StateDegraded, StateStale}:       true,
+		{StateDegraded, StateStopping}:    true,
+		{StateDegraded, StateError}:       true,
+		{StateStale, StateConnecting}:     true,
+		{StateStale, StateLive}:           true,
+		{StateStale, StateDegraded}:       true,
+		{StateStale, StateStopping}:       true,
+		{StateStale, StateError}:          true,
+		{StateError, StateStopped}:        true,
+		{StateError, StateDetecting}:      true,
+		{StateError, StateStopping}:       true,
+		{StateStopping, StateStopped}:     true,
+		{StateStopping, StateError}:       true,
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.from.CanTransitionTo(tt.to); got != tt.want {
-				t.Fatalf("%s -> %s = %v, want %v", tt.from, tt.to, got, tt.want)
+	for _, from := range states {
+		for _, to := range states {
+			want := allowed[[2]State{from, to}]
+			if got := from.CanTransitionTo(to); got != want {
+				t.Fatalf("%s -> %s = %v, want %v", from, to, got, want)
 			}
-		})
+		}
+	}
+	if State(255).CanTransitionTo(StateStopped) || StateStopped.CanTransitionTo(State(255)) {
+		t.Fatal("unknown lifecycle state accepted")
 	}
 }

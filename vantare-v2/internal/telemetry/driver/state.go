@@ -73,7 +73,9 @@ func (state State) CanTransitionTo(next State) bool {
 
 // ObservationSink is consumed by a driver. WriteObservation may block only
 // until ctx is cancelled and must return an inspectable flow-control error
-// rather than silently dropping an observation.
+// rather than silently dropping an observation. It consumes mutable payloads
+// synchronously: the sink must clone anything it retains, and the driver may
+// reuse its buffers only after WriteObservation returns.
 type ObservationSink[T any] interface {
 	WriteObservation(ctx context.Context, observation T) error
 }

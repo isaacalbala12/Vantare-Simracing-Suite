@@ -41,7 +41,7 @@ type SnapshotReader[T any] interface {
 // idempotent; after closure Next returns an inspectable closed error.
 type FactSubscription[T comparable] interface {
 	Next(ctx context.Context) (envelope.Fact[T], error)
-	Close() error
+	Close(ctx context.Context) error
 }
 
 // FactSubscriber resumes strictly after the supplied cursor. If retained
@@ -51,7 +51,7 @@ type FactSubscriber[T comparable] interface {
 }
 
 // Projector is a pure, deterministic mapping between owned snapshots. It does
-// no I/O and preserves ordering metadata unless its versioned contract says otherwise.
+// no I/O and preserves the input header exactly.
 type Projector[Canonical any, Product any] interface {
 	Project(snapshot envelope.Snapshot[Canonical]) (envelope.Snapshot[Product], error)
 }

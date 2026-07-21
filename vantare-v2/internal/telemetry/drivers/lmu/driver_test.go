@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	drivercontract "github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
@@ -135,6 +136,34 @@ func TestDriverPropagatesCloseFailureWithoutRawDiagnostics(t *testing.T) {
 	}
 	if containsAny(err.Error(), []string{"driver-", "player", "Circuit"}) {
 		t.Fatalf("diagnostic leaked fixture identity: %v", err)
+	}
+}
+
+func TestLMUTeardownFailureReachesDriverManagerStop(t *testing.T) {
+	closeFailure := errors.New("close LMU mapping failed")
+	reader := &testReader{data: knownBuffer(t), closeError: closeFailure}
+	driver := newDriver(config{open: func() (memoryReader, error) { return reader, nil }})
+	manager, err := core.NewDriverManager([]core.DriverCandidate[Observation]{
+		{
+			Descriptor: drivercontract.Descriptor{ID: "lmu"},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New:        func() (core.Driver[Observation], error) { return driver, nil },
+		},
+	}, core.ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &collectingSink{values: make(chan Observation, 1)}
+	if err := manager.Start(t.Context(), sink); err != nil {
+		t.Fatal(err)
+	}
+	<-sink.values
+	err = manager.Stop(t.Context())
+	if !errors.Is(err, drivercontract.ErrTeardown) || !errors.Is(err, closeFailure) {
+		t.Fatalf("Stop error = %v", err)
+	}
+	if reader.closes != 1 {
+		t.Fatalf("closes = %d", reader.closes)
 	}
 }
 

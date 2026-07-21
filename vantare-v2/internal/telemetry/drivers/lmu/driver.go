@@ -115,7 +115,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 	}
 	defer func() {
 		if err := reader.Close(); err != nil {
-			runErr = errors.Join(runErr, fmt.Errorf("close %s: %w", MemoryName, err))
+			runErr = errors.Join(runErr, fmt.Errorf("%w: close %s: %w", drivercontract.ErrTeardown, MemoryName, err))
 		}
 	}()
 	if err := ctx.Err(); err != nil {

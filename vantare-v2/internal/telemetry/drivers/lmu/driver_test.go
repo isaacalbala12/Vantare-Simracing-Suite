@@ -135,6 +135,52 @@ func TestDriverReturnsTypedErrorsForManagerReconnect(t *testing.T) {
 	}
 }
 
+func TestTeardownDominatesTransientFailureAndPreventsReconnect(t *testing.T) {
+	closeFailure := errors.New("close failed after disconnect")
+	reader := &testReader{readErr: ErrMappingRead, closeError: closeFailure, closed: make(chan struct{})}
+	opens := atomic.Int32{}
+	constructions := atomic.Int32{}
+	waits := atomic.Int32{}
+	manager, err := core.NewDriverManager([]core.DriverCandidate[Observation]{
+		{
+			Descriptor: drivercontract.Descriptor{ID: "lmu"},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (core.Driver[Observation], error) {
+				constructions.Add(1)
+				return newDriver(config{open: func() (memoryReader, error) { opens.Add(1); return reader, nil }}), nil
+			},
+			Retryable: IsRetryable,
+		},
+	}, core.ManagerConfig{Retry: core.RetryPolicy{
+		MaxReconnects: 1,
+		Wait:          func(context.Context, time.Duration) error { waits.Add(1); return nil },
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), &countingSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-reader.closed
+	results := make(chan error, 2)
+	for range 2 {
+		go func() { results <- manager.Stop(t.Context()) }()
+	}
+	for range 2 {
+		err := <-results
+		if !errors.Is(err, drivercontract.ErrTeardown) || !errors.Is(err, ErrDisconnected) || !errors.Is(err, closeFailure) {
+			t.Fatalf("Stop error = %v", err)
+		}
+	}
+	if opens.Load() != 1 || constructions.Load() != 1 || waits.Load() != 0 {
+		t.Fatalf("opens=%d constructions=%d waits=%d", opens.Load(), constructions.Load(), waits.Load())
+	}
+	joined := errors.Join(drivercontract.ErrTeardown, ErrDisconnected, ErrIncoherentSnapshot)
+	if IsRetryable(joined) {
+		t.Fatal("teardown must dominate every transient marker")
+	}
+}
+
 func TestDriverPropagatesCloseFailureWithoutRawDiagnostics(t *testing.T) {
 	closeFailure := errors.New("close handle failed")
 	reader := &testReader{data: make([]byte, ObjectOutSize), closeError: closeFailure}

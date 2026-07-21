@@ -266,10 +266,16 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 		}
 		manager.setActive(candidate.Descriptor.ID, instance)
 		runErr := instance.Run(ctx, sink)
-		if ctx.Err() != nil {
-			if errors.Is(runErr, driver.ErrTeardown) {
-				cycleResult = fmt.Errorf("run driver %q: %w", candidate.Descriptor.ID, runErr)
+		if errors.Is(runErr, driver.ErrTeardown) {
+			cycleResult = fmt.Errorf("run driver %q: %w", candidate.Descriptor.ID, runErr)
+			if ctx.Err() != nil {
+				manager.clearActive()
+			} else {
+				manager.setTerminal(cycleResult)
 			}
+			return
+		}
+		if ctx.Err() != nil {
 			manager.clearActive()
 			return
 		}

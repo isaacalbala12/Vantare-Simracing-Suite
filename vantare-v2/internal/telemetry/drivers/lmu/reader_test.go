@@ -12,6 +12,7 @@ type testReader struct {
 	closes     int
 	closeError error
 	snapshots  [][]byte
+	closed     chan struct{}
 }
 
 func (reader *testReader) Snapshot(destination []byte) error {
@@ -63,7 +64,13 @@ func TestReadStableRequiresTwoConsecutiveEqualCopies(t *testing.T) {
 	}
 }
 
-func (reader *testReader) Close() error { reader.closes++; return reader.closeError }
+func (reader *testReader) Close() error {
+	reader.closes++
+	if reader.closed != nil {
+		close(reader.closed)
+	}
+	return reader.closeError
+}
 
 func TestPrivateReaderCopiesAndReportsFailures(t *testing.T) {
 	source := make([]byte, ObjectOutSize)

@@ -200,6 +200,9 @@ func (driver *Driver) setRuntime(state drivercontract.State) {
 }
 
 func IsRetryable(err error) bool {
+	if errors.Is(err, drivercontract.ErrTeardown) {
+		return false
+	}
 	return errors.Is(err, ErrDisconnected) || errors.Is(err, ErrMappingUnavailable) || errors.Is(err, ErrMappingRead) || errors.Is(err, ErrIncoherentSnapshot)
 }
 

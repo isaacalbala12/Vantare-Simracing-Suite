@@ -85,19 +85,18 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	if !profile.supported {
 		return result, nil
 	}
-	result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=scoring-insufficient", profile.version)
-
 	vehicles := readInt32(buf, 1736)
 	phase := buf[1740]
 	playerIndex := int(buf[128465])
 	if !hasScoringEvidence(buf, vehicles, phase, playerIndex) {
+		result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=scoring-insufficient", profile.version)
 		return result, nil
 	}
 	playerPresent := buf[128466] != 0
 	telemetryEvidence := "not-required-no-player"
 	if playerPresent {
-		result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=telemetry-insufficient", profile.version)
 		if !hasPlayerTelemetryEvidence(buf, vehicles, playerIndex) {
+			result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=telemetry-insufficient", profile.version)
 			return result, nil
 		}
 		telemetryEvidence = "player-slot-correlated"

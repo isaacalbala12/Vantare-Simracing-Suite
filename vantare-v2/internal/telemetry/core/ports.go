@@ -16,11 +16,12 @@ var (
 )
 
 // Driver is consumed by the future driver manager. Run owns the driver's
-// complete blocking lifecycle and must stop when ctx is cancelled. State must
-// be safe to query concurrently; the runtime owns transition validation.
+// complete blocking lifecycle and must stop when ctx is cancelled.
+// RuntimeSnapshot must be concurrency-safe, non-blocking and return data that
+// the caller may copy; DriverManager owns transition validation.
 type Driver[T any] interface {
 	Run(ctx context.Context, sink driver.ObservationSink[T]) error
-	State() driver.State
+	RuntimeSnapshot() driver.RuntimeSnapshot
 }
 
 // Derivation is one pure, deterministic stage in the future ordered chain. It

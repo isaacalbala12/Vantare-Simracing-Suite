@@ -1,3 +1,11 @@
+Nota ISA-32 / TC-03C (2026-07-21):
+- Implementado `internal/telemetry/drivers/lmu` como adquisición canónica y aislada de `LMU_Data`: cada `Run` abre exactamente un mapping, copia muestras a buffer privado y cierra view/handle una sola vez. No crea goroutines propias; ticker, clock y apertura solo se inyectan dentro del paquete para tests deterministas.
+- El payload `Observation` es product-neutral, sin raw ni `pkg/models`: usa campos `schema.Field` con presencia/provenance/freshness explícitos para la muestra demostrada por fixtures reales de menú y pista. Menú sigue `live` sin vehículo; NaN/Inf/rangos imposibles son `invalid`, nunca cero inventado.
+- Compatibilidad/lifecycle: buffer corto es `ErrIncompatibleBuffer` terminal; mapping ausente o lectura perdida devuelve `ErrDisconnected` retryable para que el reconnect pertenezca a `DriverManager`; firma/invariantes desconocidos dejan runtime `degraded` y solo campos validados. Reloj inmóvil pasa a `stale`; retrocesos distinguen reset y wrap.
+- `RuntimeSnapshot` es concurrency-safe, no hace I/O y copia capabilities. `Run` cancela sin goroutines internas y cierra exactamente una vez. Parsers legacy, Engineer, Overlay, Strategy, REST, composición productiva, fusión/delta/gaps y dependencias permanecen sin cambios.
+- Fixtures reales cubiertas: menú y pista. Garaje y boxes siguen pendientes de captura real; no se inventan. Verificación manual opt-in documentada en `docs/telemetry-core/lmu-shared-memory-driver.md`.
+- Estado: preparado para review y validación manual LMU; sin push, PR, Linear, wiring, merge ni integración en `develop`. ISA-33 no debe iniciarse hasta aprobación humana de este corte.
+
 Nota ISA-31 / TC-03B (2026-07-21):
 - Implementado `core.DriverManager[T]` genérico sobre el puerto `core.Driver[T]`, sin importar drivers concretos ni cambiar composición/producto. El catálogo compilado mantiene descriptor, prioridad y capabilities estáticas; el puerto entrega aparte un snapshot runtime con estado y capabilities actuales, siempre copiados defensivamente.
 - La selección es determinista: preferencia explícita válida primero, después prioridad descendente y finalmente ID estable. Un cambio de preferencia exige `Stop -> SetPreferred -> Start`; no existe hot-swap implícito ni fallback mock.

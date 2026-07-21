@@ -17,8 +17,10 @@ se publican como `invalid`; nunca se convierten en cero válido.
 - mapping ausente o lectura perdida: error retryable `ErrDisconnected`; el
   reconnect corresponde a `core.DriverManager`, no al driver;
 - buffer menor a 324.820 bytes: `ErrIncompatibleBuffer` terminal;
-- invariantes/firma desconocidos: runtime `degraded`, conservando solo campos
-  que pasan validación individual;
+- la compatibilidad solo es `known` cuando aparecen evidencia positiva no
+  expuesta (forma NUL-terminated del nombre scoring presente en ambas fixtures)
+  e invariantes plausibles; all-zero o evidencia insuficiente quedan `unknown`,
+  fingerprint `insufficient` y todos los campos de offsets `missing`;
 - jugador ausente: runtime `live`, con `PlayerPresent=false` y campos de
   vehículo ausentes;
 - reloj inmóvil sobre el límite: runtime `stale` y campos presentes `stale`;
@@ -30,17 +32,30 @@ driver no crea goroutines propias. Clock, ticker y apertura son inyectables solo
 dentro del paquete para tests deterministas sin `time.Sleep`.
 
 Los errores de cierre se propagan mediante `errors.Join`; no se ignoran aunque
-la lectura o el sink ya hayan fallado. Los diagnósticos contienen nombres de
+la lectura o el sink ya hayan fallado. `driver.ErrTeardown` conserva el resultado
+por generación para que uno o varios `DriverManager.Stop` lo reciban sin
+contaminar un restart. Los diagnósticos contienen nombres de
 canal, operación y errores tipados, nunca bytes raw, nombres de pilotos, pista o
 vehículo.
 
+`LMU_Data` no ofrece un contador/generación de frame demostrado. Por eso cada
+muestra exige dos copias completas consecutivas idénticas, con scratch
+preasignado y hasta tres comparaciones. Si nunca estabiliza, no se publica y
+`ErrIncoherentSnapshot` devuelve el reconnect al manager. Esta comprobación
+reduce torn reads, pero no puede probar atomicidad del productor sin protocolo.
+
+Gear y lap conservan valores source según sus contratos actuales; no se inventan
+límites. RPM negativa, componentes no finitos y velocidad final no finita tras
+`sqrt` son `invalid`.
+
 ## Rendimiento
 
-El benchmark copy+parse de la fixture completa (324.820 B) da 7,28–7,37 µs/op,
+El benchmark estabilidad (dos copias)+parse de la fixture completa da
+21,51–22,79 µs/op,
 200 B/op y 4 allocs/op en Windows amd64. A 60 Hz hay 16,67 ms por muestra: el
-microcorte consume menos del 0,05 % de ese presupuesto (>2.200x de margen). Las
+microcorte consume menos del 0,14 % de ese presupuesto (>730x de margen). Las
 asignaciones pertenecen a los strings canónicos de la observación; el buffer de
-324.820 B se reserva una vez por `Run` y se reutiliza.
+324.820 B y su scratch se reservan una vez por `Run` y se reutilizan.
 
 ## Fixtures y límites
 

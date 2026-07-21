@@ -102,6 +102,19 @@ func TestDriverCancellationBoundariesDoNotOpenOrPublishLate(t *testing.T) {
 			t.Fatalf("error=%v calls=%d closes=%d", err, sink.calls.Load(), reader.closes)
 		}
 	})
+	t.Run("cancelled after stable read does not publish", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		reader := &testReader{data: knownBuffer(t)}
+		driver := newDriver(config{
+			open: func() (memoryReader, error) { return reader, nil },
+			now:  func() time.Time { cancel(); return time.Unix(1, 0) },
+		})
+		sink := &countingSink{}
+		err := driver.Run(ctx, sink)
+		if !errors.Is(err, context.Canceled) || sink.calls.Load() != 0 || reader.reads != 2 || reader.closes != 1 {
+			t.Fatalf("error=%v calls=%d reads=%d closes=%d", err, sink.calls.Load(), reader.reads, reader.closes)
+		}
+	})
 }
 
 func TestDriverReturnsTypedErrorsForManagerReconnect(t *testing.T) {

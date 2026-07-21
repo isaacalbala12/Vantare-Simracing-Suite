@@ -1,6 +1,7 @@
 package lmu
 
 import (
+	"context"
 	"encoding/binary"
 	"math"
 	"os"
@@ -188,16 +189,20 @@ func BenchmarkParseTrackFixture(b *testing.B) {
 	}
 }
 
-func BenchmarkCopyAndParseTrackFixture(b *testing.B) {
+func BenchmarkStableCopyAndParseTrackFixture(b *testing.B) {
 	source, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
 	if err != nil {
 		b.Fatal(err)
 	}
 	destination := make([]byte, ObjectOutSize)
+	scratch := make([]byte, ObjectOutSize)
+	reader := &testReader{data: source}
 	b.ReportAllocs()
 	b.SetBytes(ObjectOutSize)
 	for b.Loop() {
-		copy(destination, source)
+		if err := readStable(context.Background(), reader, destination, scratch, defaultStableComparisons); err != nil {
+			b.Fatal(err)
+		}
 		if _, err := Parse(destination, time.Unix(0, 0)); err != nil {
 			b.Fatal(err)
 		}

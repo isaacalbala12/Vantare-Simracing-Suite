@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
 func TestParseAuditedFixtures(t *testing.T) {
@@ -53,28 +55,38 @@ func TestParseRejectsShortAndDegradesUnknownSignature(t *testing.T) {
 	if _, err := Parse(make([]byte, ObjectOutSize-1), time.Now()); err != ErrIncompatibleBuffer {
 		t.Fatalf("error = %v", err)
 	}
-	buf := make([]byte, ObjectOutSize)
-	binary.LittleEndian.PutUint32(buf[1736:], uint32(maxVehicles+1))
-	buf[1740] = 255
-	got, err := Parse(buf, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Compatibility != CompatibilityUnknown {
-		t.Fatalf("compatibility = %v", got.Compatibility)
-	}
-	if got.VehicleCount.Freshness() != schema.FreshnessInvalid {
-		t.Fatal("invalid count was not explicit")
+	for _, tt := range []struct {
+		name string
+		buf  []byte
+	}{
+		{name: "all zero", buf: make([]byte, ObjectOutSize)},
+		{name: "plausible invariants without positive evidence", buf: plausibleUnknownBuffer()},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Parse(tt.buf, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Compatibility != CompatibilityUnknown {
+				t.Fatalf("compatibility = %v", got.Compatibility)
+			}
+			if got.Fingerprint != unknownFingerprint {
+				t.Fatalf("fingerprint = %q", got.Fingerprint)
+			}
+			assertNoPublishedFields(t, got)
+		})
 	}
 }
 
 func TestParseMarksNonFiniteAndOutOfRangeFieldsInvalid(t *testing.T) {
-	buf := make([]byte, ObjectOutSize)
+	buf := knownBuffer(t)
 	buf[128466] = 1
-	base := telemetryOffset
+	base := telemetryOffset + int(buf[128465])*telemetryStride
 	binary.LittleEndian.PutUint64(buf[base+356:], math.Float64bits(math.NaN()))
 	binary.LittleEndian.PutUint64(buf[base+184:], math.Float64bits(math.Inf(1)))
 	binary.LittleEndian.PutUint64(buf[base+420:], math.Float64bits(2))
+	binary.LittleEndian.PutUint64(buf[base+428:], math.Float64bits(0))
+	binary.LittleEndian.PutUint64(buf[base+444:], math.Float64bits(0))
 	got, err := Parse(buf, time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -85,6 +97,44 @@ func TestParseMarksNonFiniteAndOutOfRangeFieldsInvalid(t *testing.T) {
 		if freshness != schema.FreshnessInvalid {
 			t.Fatalf("%s freshness = %v", name, freshness)
 		}
+	}
+}
+
+func TestParseRejectsOverflowedSpeedAndNegativeRPM(t *testing.T) {
+	buf := knownBuffer(t)
+	buf[128466] = 1
+	base := telemetryOffset + int(buf[128465])*telemetryStride
+	for _, offset := range []int{184, 192, 200} {
+		binary.LittleEndian.PutUint64(buf[base+offset:], math.Float64bits(math.MaxFloat64))
+	}
+	binary.LittleEndian.PutUint64(buf[base+356:], math.Float64bits(-1))
+	got, err := Parse(buf, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SpeedMPS.Freshness() != schema.FreshnessInvalid {
+		t.Fatal("overflowed sqrt must be invalid")
+	}
+	if got.EngineRPM.Freshness() != schema.FreshnessInvalid {
+		t.Fatal("negative RPM must be invalid")
+	}
+}
+
+func TestGearAndLapPreserveSourceValuesWithoutInventedRanges(t *testing.T) {
+	buf := knownBuffer(t)
+	buf[128466] = 1
+	base := telemetryOffset + int(buf[128465])*telemetryStride
+	binary.LittleEndian.PutUint32(buf[base+20:], uint32(math.MaxInt32))
+	binary.LittleEndian.PutUint32(buf[base+352:], uint32(99))
+	got, err := Parse(buf, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value, ok := got.LapNumber.Value(); !ok || value != session.LapNumber(math.MaxInt32) {
+		t.Fatalf("lap = %v,%v", value, ok)
+	}
+	if value, ok := got.Gear.Value(); !ok || value != vehicle.Gear(99) {
+		t.Fatalf("gear = %v,%v", value, ok)
 	}
 }
 
@@ -150,6 +200,36 @@ func BenchmarkCopyAndParseTrackFixture(b *testing.B) {
 		copy(destination, source)
 		if _, err := Parse(destination, time.Unix(0, 0)); err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+func plausibleUnknownBuffer() []byte {
+	buf := make([]byte, ObjectOutSize)
+	binary.LittleEndian.PutUint32(buf[1736:], 1)
+	buf[1740] = 5
+	return buf
+}
+
+func knownBuffer(t *testing.T) []byte {
+	t.Helper()
+	buf, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return buf
+}
+
+func assertNoPublishedFields(t *testing.T, got Observation) {
+	t.Helper()
+	freshness := []schema.Freshness{
+		got.SourceTime.Freshness(), got.TrackName.Freshness(), got.SessionType.Freshness(), got.VehicleCount.Freshness(),
+		got.PlayerPresent.Freshness(), got.VehicleName.Freshness(), got.LapNumber.Freshness(), got.Gear.Freshness(),
+		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Controls.Freshness(),
+	}
+	for index, value := range freshness {
+		if value != schema.FreshnessMissing {
+			t.Fatalf("field %d freshness = %v, want missing", index, value)
 		}
 	}
 }

@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	MemoryName       = "LMU_Data"
-	ObjectOutSize    = 324820
-	telemetryOffset  = 128468
-	telemetryStride  = 1888
-	scoringStride    = 584
-	maxVehicles      = 104
-	knownFingerprint = "LMU_Data/324820/telemetry-1888/scoring-584"
+	MemoryName         = "LMU_Data"
+	ObjectOutSize      = 324820
+	telemetryOffset    = 128468
+	telemetryStride    = 1888
+	scoringStride      = 584
+	maxVehicles        = 104
+	knownFingerprint   = "LMU_Data/size=324820/evidence=scoring-player-name-nul+invariants/telemetry=1888/scoring=584"
+	unknownFingerprint = "LMU_Data/size=324820/evidence=insufficient"
 )
 
 var ErrIncompatibleBuffer = errors.New("LMU_Data buffer is structurally incompatible")
@@ -68,17 +69,19 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 
 	result := Observation{
 		ReceivedUTC:   received.Round(0).UTC(),
-		Compatibility: CompatibilityKnown,
-		Fingerprint:   knownFingerprint,
-		PlayerPresent: observed(buf[128466] != 0),
+		Compatibility: CompatibilityUnknown,
+		Fingerprint:   unknownFingerprint,
 	}
 
 	vehicles := readInt32(buf, 1736)
 	phase := buf[1740]
 	playerIndex := int(buf[128465])
-	if vehicles < 0 || vehicles > maxVehicles || playerIndex >= maxVehicles || phase > 9 {
-		result.Compatibility = CompatibilityUnknown
+	if !hasStructuralEvidence(buf, vehicles, phase, playerIndex) {
+		return result, nil
 	}
+	result.Compatibility = CompatibilityKnown
+	result.Fingerprint = knownFingerprint
+	result.PlayerPresent = observed(buf[128466] != 0)
 
 	result.TrackName = observed(readString(buf, 1632, 64))
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
@@ -92,11 +95,21 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 	result.VehicleName = observed(vehicle.VehicleName(readString(buf, base+32, 64)))
 	result.LapNumber = observed(session.LapNumber(readInt32(buf, base+20)))
 	result.Gear = observed(vehicle.Gear(readInt32(buf, base+352)))
-	result.EngineRPM = finiteField(vehicle.EngineRPM(readFloat64(buf, base+356)))
+	rpm := readFloat64(buf, base+356)
+	if finite(rpm) && rpm >= 0 {
+		result.EngineRPM = observed(vehicle.EngineRPM(rpm))
+	} else {
+		result.EngineRPM = invalid[vehicle.EngineRPM]()
+	}
 
 	vx, vy, vz := readFloat64(buf, base+184), readFloat64(buf, base+192), readFloat64(buf, base+200)
 	if finite(vx) && finite(vy) && finite(vz) {
-		result.SpeedMPS = observed(math.Sqrt(vx*vx + vy*vy + vz*vz))
+		speed := math.Sqrt(vx*vx + vy*vy + vz*vz)
+		if finite(speed) {
+			result.SpeedMPS = observed(speed)
+		} else {
+			result.SpeedMPS = invalid[float64]()
+		}
 	} else {
 		result.SpeedMPS = invalid[float64]()
 	}
@@ -109,6 +122,24 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 	return result, nil
 }
 
+func hasStructuralEvidence(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
+	if vehicles < 0 || vehicles > maxVehicles || phase > 9 || playerIndex < 0 || playerIndex >= maxVehicles || buf[128466] > 1 {
+		return false
+	}
+	// Both audited real fixtures contain a non-empty, NUL-terminated scoring
+	// player name at this offset. The content is never returned or fingerprinted;
+	// only its structural shape contributes positive runtime evidence.
+	name := buf[1748 : 1748+32]
+	nul := -1
+	for index, value := range name {
+		if value == 0 {
+			nul = index
+			break
+		}
+	}
+	return nul > 0
+}
+
 func observed[T comparable](value T) schema.Field[T] {
 	field, _ := schema.NewField(value, schema.ProvenanceObserved, schema.FreshnessFresh)
 	return field
@@ -118,13 +149,6 @@ func invalid[T comparable]() schema.Field[T] {
 	var zero T
 	field, _ := schema.NewField(zero, schema.ProvenanceObserved, schema.FreshnessInvalid)
 	return field
-}
-
-func finiteField[T ~float64](value T) schema.Field[T] {
-	if !finite(float64(value)) {
-		return invalid[T]()
-	}
-	return observed(value)
 }
 
 func validateDuration(seconds float64) schema.Field[time.Duration] {

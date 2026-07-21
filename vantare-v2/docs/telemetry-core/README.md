@@ -20,8 +20,8 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 
 - TC-01 está completado e integrado en `develop` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - La base global de Go quedó verde en ISA-97.
-- TC-02 continúa mediante ISA-28; TC-03–TC-09 permanecen sin iniciar.
-- ISA-26 está `Done` en `9bd922fe245b27440d239c3578f1a4aaf6ea2817`. ISA-27 está `Done` y fue validada manualmente por Isaac en `72da58552495d8a9623ad42fc1e82510d048d7a0`. ISA-28 está preparada para `In Review` sobre esa base; ISA-29 no está iniciada.
+- TC-02 está en su corte final ISA-29; TC-03–TC-09 permanecen sin iniciar.
+- ISA-26 está `Done` en `9bd922fe245b27440d239c3578f1a4aaf6ea2817`, ISA-27 en `72da58552495d8a9623ad42fc1e82510d048d7a0` e ISA-28 en `e182f92cc085c3c51f119a02146e20c6236cdd38`, las tres tras validación manual de Isaac. ISA-29 implementó los puertos y guards finales de TC-02 sobre esa base, está preparada para `In Review` y continúa pendiente del gate humano.
 
 ## Fronteras
 

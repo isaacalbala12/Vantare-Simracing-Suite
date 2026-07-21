@@ -69,6 +69,10 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 }
 
 func parseWithBuild(buf []byte, received time.Time, build BuildEvidence) (Observation, error) {
+	return parseWithProfile(buf, received, profileFromBuild(build))
+}
+
+func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfile) (Observation, error) {
 	if len(buf) < ObjectOutSize {
 		return Observation{}, ErrIncompatibleBuffer
 	}
@@ -78,8 +82,7 @@ func parseWithBuild(buf []byte, received time.Time, build BuildEvidence) (Observ
 		Compatibility: CompatibilityUnknown,
 		Fingerprint:   unknownFingerprint,
 	}
-	version, supported := build.supportedVersion()
-	if !supported {
+	if !profile.supported {
 		return result, nil
 	}
 
@@ -98,7 +101,7 @@ func parseWithBuild(buf []byte, received time.Time, build BuildEvidence) (Observ
 		telemetryEvidence = "player-slot-correlated"
 	}
 	result.Compatibility = CompatibilityKnown
-	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, version, telemetryEvidence)
+	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, telemetryEvidence)
 	result.PlayerPresent = observed(playerPresent)
 
 	result.TrackName = observed(readString(buf, 1632, 64))

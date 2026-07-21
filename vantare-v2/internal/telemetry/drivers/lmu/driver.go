@@ -117,6 +117,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 	if buildErr != nil {
 		build = BuildEvidence{}
 	}
+	profile := profileFromBuild(build)
 	reader, err := driver.config.open()
 	if err != nil {
 		return fmt.Errorf("%w: open %s: %w", ErrDisconnected, MemoryName, err)
@@ -152,7 +153,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			return fmt.Errorf("%w: snapshot %s: %w", ErrDisconnected, MemoryName, err)
 		}
 		now := driver.config.now()
-		observation, err := parseWithBuild(buffer, now, build)
+		observation, err := parseWithProfile(buffer, now, profile)
 		if err != nil {
 			return err
 		}

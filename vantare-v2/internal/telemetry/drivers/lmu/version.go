@@ -16,6 +16,16 @@ type BuildEvidence struct {
 	ProductVersion string
 }
 
+type compatibilityProfile struct {
+	version   string
+	supported bool
+}
+
+func profileFromBuild(evidence BuildEvidence) compatibilityProfile {
+	version, supported := evidence.supportedVersion()
+	return compatibilityProfile{version: version, supported: supported}
+}
+
 func (evidence BuildEvidence) supportedVersion() (string, bool) {
 	for _, candidate := range []string{evidence.FileVersion, evidence.ProductVersion} {
 		normalized, ok := normalizeVersion(candidate)

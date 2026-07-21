@@ -257,13 +257,14 @@ func BenchmarkStableCopyAndParseTrackFixture(b *testing.B) {
 	destination := make([]byte, ObjectOutSize)
 	scratch := make([]byte, ObjectOutSize)
 	reader := &testReader{data: source}
+	profile := profileFromBuild(BuildEvidence{FileVersion: supportedLMUVersion})
 	b.ReportAllocs()
 	b.SetBytes(ObjectOutSize)
 	for b.Loop() {
 		if err := readStable(context.Background(), reader, destination, scratch, defaultStableComparisons); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := parseSupported(destination, time.Unix(0, 0)); err != nil {
+		if _, err := parseWithProfile(destination, time.Unix(0, 0), profile); err != nil {
 			b.Fatal(err)
 		}
 	}

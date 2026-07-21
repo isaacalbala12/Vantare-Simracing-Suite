@@ -55,7 +55,13 @@ func NewSnapshot[T any](header Header, value T, clone Clone[T]) (Snapshot[T], er
 
 func (snapshot Snapshot[T]) Header() Header { return snapshot.header }
 
-func (snapshot Snapshot[T]) Value() T { return snapshot.clone(snapshot.value) }
+func (snapshot Snapshot[T]) Value() (T, bool) {
+	if snapshot.clone == nil {
+		var zero T
+		return zero, false
+	}
+	return snapshot.clone(snapshot.value), true
+}
 
 // Fact carries one ordered, value-semantic discrete occurrence.
 type Fact[T comparable] struct {

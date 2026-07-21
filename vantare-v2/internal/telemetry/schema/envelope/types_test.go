@@ -48,12 +48,18 @@ func TestSnapshotClonesMutablePayloadAtBothBoundaries(t *testing.T) {
 		t.Fatalf("NewSnapshot() error = %v", err)
 	}
 	original[0] = 99
-	first := snapshot.Value()
+	first, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("constructed snapshot must contain a value")
+	}
 	if first[0] != 1 {
 		t.Fatalf("snapshot changed through input alias: %v", first)
 	}
 	first[1] = 88
-	second := snapshot.Value()
+	second, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("constructed snapshot must contain a value")
+	}
 	if second[1] != 2 {
 		t.Fatalf("snapshot changed through output alias: %v", second)
 	}
@@ -64,6 +70,15 @@ func TestSnapshotRequiresOwnershipFunction(t *testing.T) {
 
 	if _, err := NewSnapshot[[]int](Header{}, nil, nil); !errors.Is(err, ErrCloneRequired) {
 		t.Fatalf("NewSnapshot() error = %v, want %v", err, ErrCloneRequired)
+	}
+}
+
+func TestZeroSnapshotIsSafeAndEmpty(t *testing.T) {
+	t.Parallel()
+
+	value, ok := (Snapshot[[]int]{}).Value()
+	if ok || value != nil {
+		t.Fatalf("zero snapshot Value() = (%v, %v), want (nil, false)", value, ok)
 	}
 }
 

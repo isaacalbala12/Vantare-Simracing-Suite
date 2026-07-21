@@ -16,13 +16,15 @@ type RunIdentity struct {
 	Driver  DriverID
 }
 
-func (identity RunIdentity) Complete() bool {
-	return identity.Event != "" && identity.Session != "" && identity.Vehicle != ""
+func (identity RunIdentity) SessionKnown() bool {
+	return identity.Event != "" && identity.Session != ""
+}
+
+func (identity RunIdentity) SameSession(other RunIdentity) bool {
+	return identity.SessionKnown() && other.SessionKnown() &&
+		identity.Event == other.Event && identity.Session == other.Session
 }
 
 func (identity RunIdentity) SameRun(other RunIdentity) bool {
-	return identity.Complete() && other.Complete() &&
-		identity.Event == other.Event &&
-		identity.Session == other.Session &&
-		identity.Vehicle == other.Vehicle
+	return identity.SameSession(other) && identity.Vehicle == other.Vehicle
 }

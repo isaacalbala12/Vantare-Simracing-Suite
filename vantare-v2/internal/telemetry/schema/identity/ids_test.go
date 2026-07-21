@@ -28,3 +28,20 @@ func TestRunIdentityContinuity(t *testing.T) {
 		})
 	}
 }
+
+func TestSessionIdentityDoesNotDependOnVehicleAssignment(t *testing.T) {
+	t.Parallel()
+
+	withoutVehicle := RunIdentity{Event: "event-1", Session: "session-1"}
+	withVehicle := withoutVehicle
+	withVehicle.Vehicle = "car-7"
+	if !withoutVehicle.SameSession(withVehicle) {
+		t.Fatal("vehicle assignment must not change session identity")
+	}
+	if withoutVehicle.SameRun(withVehicle) {
+		t.Fatal("vehicle assignment must create a different run identity")
+	}
+	if !withoutVehicle.SameRun(withoutVehicle) {
+		t.Fatal("a known session without an assigned vehicle must remain continuous")
+	}
+}

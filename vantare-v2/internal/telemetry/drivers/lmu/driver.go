@@ -42,20 +42,24 @@ type config struct {
 	freshnessLimit    time.Duration
 	stableComparisons int
 	build             buildProvider
+	rest              *restConfig
+	beforeRESTPublish func()
 }
 
 // Driver owns exactly one LMU_Data mapping for the duration of each Run.
 // Reconnection belongs to core.DriverManager, which creates a fresh Run.
 type Driver struct {
-	mu      sync.RWMutex
-	state   drivercontract.State
-	running bool
-	config  config
+	mu          sync.RWMutex
+	state       drivercontract.State
+	sharedState drivercontract.State
+	restStatus  RESTStatus
+	running     bool
+	config      config
 }
 
 var _ core.Driver[Observation] = (*Driver)(nil)
 
-func New() *Driver { return newDriver(config{}) }
+func New() *Driver { return newDriver(config{rest: defaultRESTConfig()}) }
 
 func newDriver(cfg config) *Driver {
 	if cfg.open == nil {
@@ -79,6 +83,7 @@ func newDriver(cfg config) *Driver {
 	if cfg.build == nil {
 		cfg.build = readLMUBuildEvidence
 	}
+	cfg.rest = normalizeRESTConfig(cfg.rest, cfg.now)
 	// DriverManager exposes an instance only after selecting it as active, where
 	// its own state is already connecting. Matching that state at construction
 	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
@@ -133,6 +138,31 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 
 	ticker := driver.config.newTicker(driver.config.interval)
 	defer ticker.Stop()
+
+	runContext, cancelRun := context.WithCancel(ctx)
+	var restOutput <-chan Observation
+	var restDone <-chan error
+	if driver.config.rest != nil {
+		output := make(chan Observation)
+		done := make(chan error, 1)
+		restOutput = output
+		restDone = done
+		go func() {
+			done <- runREST(runContext, driver.config.rest, output)
+		}()
+	}
+	defer func() {
+		cancelRun()
+		if restDone == nil {
+			return
+		}
+		if err := <-restDone; err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			runErr = errors.Join(runErr, fmt.Errorf("stop LMU REST poller: %w", err))
+		}
+		if closer, ok := driver.config.rest.client.(interface{ CloseIdleConnections() }); ok {
+			closer.CloseIdleConnections()
+		}
+	}()
 	buffer := make([]byte, ObjectOutSize)
 	scratch := make([]byte, ObjectOutSize)
 	var previousSource time.Duration
@@ -170,7 +200,13 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			previousSource = current
 		}
 		state := runtimeState(observation)
-		driver.setRuntime(state)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		driver.setSharedRuntime(state)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := sink.WriteObservation(ctx, observation); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
 		}
@@ -184,6 +220,20 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case observation := <-restOutput:
+			if driver.config.beforeRESTPublish != nil {
+				driver.config.beforeRESTPublish()
+			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			driver.setRESTRuntime(observation.REST.Status)
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := sink.WriteObservation(ctx, observation); err != nil {
+				return fmt.Errorf("write LMU REST observation: %w", err)
+			}
 		case <-ticker.C():
 			if err := acquire(); err != nil {
 				return err
@@ -196,16 +246,54 @@ func (driver *Driver) RuntimeSnapshot() drivercontract.RuntimeSnapshot {
 	driver.mu.RLock()
 	defer driver.mu.RUnlock()
 	result := drivercontract.RuntimeSnapshot{State: driver.state}
-	if driver.state == drivercontract.StateLive || driver.state == drivercontract.StateDegraded || driver.state == drivercontract.StateStale {
+	if driver.sharedState == drivercontract.StateLive || driver.sharedState == drivercontract.StateDegraded || driver.sharedState == drivercontract.StateStale {
 		result.Capabilities = []drivercontract.Capability{CapabilitySharedMemory}
+	}
+	if driver.restStatus == RESTStatusLive || driver.restStatus == RESTStatusPartial || driver.restStatus == RESTStatusStale {
+		result.Capabilities = append(result.Capabilities, drivercontract.Capability(CapabilityREST))
 	}
 	return result
 }
 
 func (driver *Driver) setRuntime(state drivercontract.State) {
 	driver.mu.Lock()
+	driver.sharedState = state
 	driver.state = state
 	driver.mu.Unlock()
+}
+
+func (driver *Driver) setSharedRuntime(state drivercontract.State) {
+	driver.mu.Lock()
+	driver.sharedState = state
+	driver.state = combinedRuntimeState(driver.sharedState, driver.restStatus)
+	driver.mu.Unlock()
+}
+
+func (driver *Driver) setRESTRuntime(status RESTStatus) {
+	driver.mu.Lock()
+	driver.restStatus = status
+	driver.state = combinedRuntimeState(driver.sharedState, driver.restStatus)
+	driver.mu.Unlock()
+}
+
+func combinedRuntimeState(shared drivercontract.State, rest RESTStatus) drivercontract.State {
+	if shared == drivercontract.StateDegraded || shared == drivercontract.StateError {
+		return shared
+	}
+	if shared == drivercontract.StateStale {
+		return drivercontract.StateStale
+	}
+	if shared != drivercontract.StateLive {
+		return shared
+	}
+	switch rest {
+	case RESTStatusUnknown, RESTStatusLive:
+		return drivercontract.StateLive
+	case RESTStatusStale:
+		return drivercontract.StateDegraded
+	default:
+		return drivercontract.StateDegraded
+	}
 }
 
 func IsRetryable(err error) bool {

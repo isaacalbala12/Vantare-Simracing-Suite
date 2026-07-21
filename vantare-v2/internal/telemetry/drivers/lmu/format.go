@@ -47,6 +47,7 @@ const (
 // audited LMU_Data fixtures. It intentionally contains no raw bytes, deltas,
 // gaps, warnings, or product decisions.
 type Observation struct {
+	Source        ObservationSource
 	ReceivedUTC   time.Time
 	Compatibility Compatibility
 	Fingerprint   string
@@ -62,6 +63,7 @@ type Observation struct {
 	EngineRPM     schema.Field[vehicle.EngineRPM]
 	SpeedMPS      schema.Field[float64]
 	Controls      schema.Field[controls.Inputs]
+	REST          RESTObservation
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
@@ -78,6 +80,7 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	}
 
 	result := Observation{
+		Source:        SourceSharedMemory,
 		ReceivedUTC:   received.Round(0).UTC(),
 		Compatibility: CompatibilityUnknown,
 		Fingerprint:   unknownFingerprint,

@@ -256,6 +256,45 @@ func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
 	<-done
 }
 
+func TestDriverCachesBuildEvidenceOncePerRunAndFailsClosed(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		build    BuildEvidence
+		buildErr error
+	}{
+		{name: "absent"},
+		{name: "unsupported", build: BuildEvidence{FileVersion: "9.9.9.9"}},
+		{name: "provider error", buildErr: errors.New("version unavailable")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := &testReader{data: knownBuffer(t)}
+			ticks := &manualTicker{ticks: make(chan time.Time, 1)}
+			calls := atomic.Int32{}
+			driver := newDriver(config{
+				open:      func() (memoryReader, error) { return reader, nil },
+				build:     func() (BuildEvidence, error) { calls.Add(1); return tt.build, tt.buildErr },
+				newTicker: func(time.Duration) ticker { return ticks },
+			})
+			sink := &collectingSink{values: make(chan Observation, 2)}
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan error, 1)
+			go func() { done <- driver.Run(ctx, sink) }()
+			first := <-sink.values
+			if first.Compatibility != CompatibilityUnknown || runtimeState(first) != drivercontract.StateDegraded {
+				t.Fatalf("observation=%#v", first)
+			}
+			assertNoPublishedFields(t, first)
+			ticks.ticks <- time.Now()
+			<-sink.values
+			cancel()
+			<-done
+			if calls.Load() != 1 {
+				t.Fatalf("build calls = %d", calls.Load())
+			}
+		})
+	}
+}
+
 func TestRuntimeSnapshotIsConcurrentAndDefensive(t *testing.T) {
 	driver := New()
 	driver.setRuntime(drivercontract.StateLive)

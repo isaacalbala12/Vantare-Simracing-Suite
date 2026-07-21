@@ -58,6 +58,11 @@ func TestValidateImport(t *testing.T) {
 		{name: "catalog rejects legacy telemetry", edge: importEdge{Package: "internal/telemetry/catalog", Import: modulePath + "/internal/telemetry/diff"}, wantErr: true},
 		{name: "driver contract may use schema", edge: importEdge{Package: "internal/telemetry/driver", Import: modulePath + "/internal/telemetry/schema/envelope"}},
 		{name: "driver contract rejects core", edge: importEdge{Package: "internal/telemetry/driver", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
+		{name: "concrete driver may use core port", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/core"}},
+		{name: "concrete driver may use neutral driver contract", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/driver"}},
+		{name: "concrete driver may use own subpackage", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/drivers/lmu/sharedmemory"}},
+		{name: "concrete driver rejects projection", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/projection/overlay"}, wantErr: true},
+		{name: "concrete driver rejects another simulator", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/drivers/iracing"}, wantErr: true},
 		{name: "core may use schema", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/schema"}},
 		{name: "core may use neutral driver contracts", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/driver"}},
 		{name: "core rejects catalog", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/catalog"}, wantErr: true},
@@ -236,6 +241,17 @@ func validateImport(edge importEdge) error {
 		}
 	}
 
+	if ownDriverRoot, ok := concreteDriverRoot(edge.Package); ok {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/schema",
+			modulePath+"/internal/telemetry/driver",
+			modulePath+"/internal/telemetry/core",
+			ownDriverRoot,
+		) {
+			return fmt.Errorf("concrete driver may only import schema, core ports, neutral driver contracts, and its own tree within telemetry, not %s", edge.Import)
+		}
+	}
+
 	if edge.Package == "internal/telemetry/core" || strings.HasPrefix(edge.Package, "internal/telemetry/core/") {
 		if unexpectedTelemetryImport(edge.Import,
 			modulePath+"/internal/telemetry/schema",
@@ -282,6 +298,18 @@ func unexpectedTelemetryImport(importPath string, allowedPrefixes ...string) boo
 		return false
 	}
 	return !hasAnyImportPrefix(importPath, allowedPrefixes)
+}
+
+func concreteDriverRoot(packagePath string) (string, bool) {
+	const prefix = "internal/telemetry/drivers/"
+	if !strings.HasPrefix(packagePath, prefix) {
+		return "", false
+	}
+	simulator, _, _ := strings.Cut(strings.TrimPrefix(packagePath, prefix), "/")
+	if simulator == "" {
+		return "", false
+	}
+	return modulePath + "/" + prefix + simulator, true
 }
 
 func hasAnyImportPrefix(value string, prefixes []string) bool {

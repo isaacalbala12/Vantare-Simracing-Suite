@@ -14,6 +14,7 @@ const (
 	th32csSnapProcess              = 0x00000002
 	processQueryLimitedInformation = 0x1000
 	maxPathUTF16                   = 32768
+	fixedFileInfoSignature         = 0xFEEF04BD
 )
 
 var (
@@ -194,6 +195,13 @@ func readWindowsFileVersion(path string) (BuildEvidence, error) {
 		return BuildEvidence{}, fmt.Errorf("query fixed version: %w", callErr)
 	}
 	fixed := *(*fixedFileInfo)(unsafe.Pointer(fixedAddress))
+	return buildEvidenceFromFixed(fixed)
+}
+
+func buildEvidenceFromFixed(fixed fixedFileInfo) (BuildEvidence, error) {
+	if fixed.Signature != fixedFileInfoSignature {
+		return BuildEvidence{}, errors.New("invalid fixed version signature")
+	}
 	return BuildEvidence{
 		FileVersion:    formatFixedVersion(fixed.FileVersionMS, fixed.FileVersionLS),
 		ProductVersion: formatFixedVersion(fixed.ProductVersionMS, fixed.ProductVersionLS),

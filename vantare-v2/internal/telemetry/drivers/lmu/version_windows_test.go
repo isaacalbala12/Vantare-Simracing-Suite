@@ -91,6 +91,18 @@ func TestFormatFixedVersion(t *testing.T) {
 	}
 }
 
+func TestBuildEvidenceFromFixedRequiresSignature(t *testing.T) {
+	valid := fixedFileInfo{Signature: fixedFileInfoSignature, FileVersionMS: 1<<16 | 3}
+	evidence, err := buildEvidenceFromFixed(valid)
+	if err != nil || evidence.FileVersion != supportedLMUVersion {
+		t.Fatalf("evidence=%#v error=%v", evidence, err)
+	}
+	valid.Signature = 0
+	if _, err := buildEvidenceFromFixed(valid); err == nil {
+		t.Fatal("missing fixed version signature accepted")
+	}
+}
+
 func setProcessName(entry *processEntry32, name string) {
 	encoded := append(utf16.Encode([]rune(name)), 0)
 	copy(entry.ExeFile[:], encoded)

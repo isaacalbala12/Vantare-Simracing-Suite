@@ -43,6 +43,7 @@ type config struct {
 	stableComparisons int
 	build             buildProvider
 	rest              *restConfig
+	beforeRESTPublish func()
 }
 
 // Driver owns exactly one LMU_Data mapping for the duration of each Run.
@@ -199,7 +200,13 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			previousSource = current
 		}
 		state := runtimeState(observation)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		driver.setSharedRuntime(state)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := sink.WriteObservation(ctx, observation); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
 		}
@@ -214,7 +221,16 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		case <-ctx.Done():
 			return ctx.Err()
 		case observation := <-restOutput:
+			if driver.config.beforeRESTPublish != nil {
+				driver.config.beforeRESTPublish()
+			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			driver.setRESTRuntime(observation.REST.Status)
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if err := sink.WriteObservation(ctx, observation); err != nil {
 				return fmt.Errorf("write LMU REST observation: %w", err)
 			}

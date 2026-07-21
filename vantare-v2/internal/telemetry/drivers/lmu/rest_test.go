@@ -3,8 +3,12 @@ package lmu
 import (
 	"context"
 	"errors"
+	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -29,7 +33,7 @@ func TestRESTPollProducesTimestampedFieldObservations(t *testing.T) {
 
 	now := time.Unix(100, 123).UTC()
 	cfg := testRESTConfig(server, now)
-	observation, complete := pollREST(t.Context(), cfg, &restCache{}, now)
+	observation, complete := pollREST(t.Context(), cfg, &restCache{})
 	if !complete || observation.Source != SourceREST || observation.REST.Status != RESTStatusLive {
 		t.Fatalf("observation = %#v complete=%v", observation, complete)
 	}
@@ -73,7 +77,7 @@ func TestRESTPollKeepsIndependentEndpointHealth(t *testing.T) {
 			})
 			defer server.Close()
 			now := time.Unix(100, 0)
-			observation, _ := pollREST(t.Context(), testRESTConfig(server, now), &restCache{}, now)
+			observation, _ := pollREST(t.Context(), testRESTConfig(server, now), &restCache{})
 			if observation.REST.Status != test.wantStatus || observation.REST.Standings.Status != test.wantStandings || observation.REST.SessionInfo.Status != test.wantSession {
 				t.Fatalf("REST = %#v", observation.REST)
 			}
@@ -92,7 +96,7 @@ func TestRESTPollClassifiesDeadlineAndPreservesCancellation(t *testing.T) {
 	now := time.Unix(100, 0)
 	cfg := normalizeRESTConfig(&restConfig{client: client, now: func() time.Time { return now }}, time.Now)
 	cfg.deadline = 20 * time.Millisecond
-	observation, _ := pollREST(t.Context(), cfg, &restCache{}, now)
+	observation, _ := pollREST(t.Context(), cfg, &restCache{})
 	if observation.REST.Status != RESTStatusTimeout || observation.REST.Standings.Status != RESTEndpointTimeout || observation.REST.SessionInfo.Status != RESTEndpointTimeout {
 		t.Fatalf("REST = %#v", observation.REST)
 	}
@@ -119,18 +123,141 @@ func TestRESTCacheMarksResponsesAndFieldsStaleWithoutRefreshingTimestamp(t *test
 	firstTime := time.Unix(100, 0).UTC()
 	cfg := testRESTConfig(server, firstTime)
 	cache := &restCache{}
-	first, _ := pollREST(t.Context(), cfg, cache, firstTime)
+	first, _ := pollREST(t.Context(), cfg, cache)
 	if first.REST.Status != RESTStatusLive {
 		t.Fatalf("first status = %v", first.REST.Status)
 	}
 	failing.Store(true)
 	staleTime := firstTime.Add(cfg.ttl + time.Nanosecond)
-	second, _ := pollREST(t.Context(), cfg, cache, staleTime)
+	cfg.now = func() time.Time { return staleTime }
+	second, _ := pollREST(t.Context(), cfg, cache)
 	if second.REST.Status != RESTStatusStale || second.REST.Standings.Status != RESTEndpointStale || second.REST.SessionInfo.Status != RESTEndpointStale {
 		t.Fatalf("stale REST = %#v", second.REST)
 	}
 	assertTimedValue(t, second.REST.TrackName, "Old Track", firstTime, schema.FreshnessStale)
 	assertTimedValue(t, second.REST.PlayerPosition, 1, firstTime, schema.FreshnessStale)
+}
+
+func TestRESTSessionValidationIsTransactional(t *testing.T) {
+	var cycle atomic.Int32
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == standingsEndpoint {
+			cycle.Add(1)
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		if cycle.Load() == 1 {
+			_, _ = w.Write([]byte(`{"trackName":"Accepted Track","session":"RACE1","numberOfVehicles":10,"currentEventTime":50}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"trackName":"Rejected Track","session":"PRACTICE1","numberOfVehicles":2,"currentEventTime":-1}`))
+	})
+	defer server.Close()
+
+	firstTime := time.Unix(100, 0).UTC()
+	secondTime := firstTime.Add(time.Second)
+	current := atomic.Int64{}
+	current.Store(firstTime.UnixNano())
+	cfg := testRESTConfig(server, firstTime)
+	cfg.now = func() time.Time { return time.Unix(0, current.Load()).UTC() }
+	cache := &restCache{}
+	first, _ := pollREST(t.Context(), cfg, cache)
+	current.Store(secondTime.UnixNano())
+	second, _ := pollREST(t.Context(), cfg, cache)
+
+	if second.REST.SessionInfo.Status != RESTEndpointMalformed {
+		t.Fatalf("session endpoint = %#v", second.REST.SessionInfo)
+	}
+	if second.REST.SessionInfo.LastSuccessUTC != first.REST.SessionInfo.LastSuccessUTC {
+		t.Fatalf("invalid response recorded success: first=%v second=%v", first.REST.SessionInfo.LastSuccessUTC, second.REST.SessionInfo.LastSuccessUTC)
+	}
+	assertTimedValue(t, second.REST.TrackName, "Accepted Track", firstTime, schema.FreshnessFresh)
+	assertTimedValue(t, second.REST.SourceTime, 50*time.Second, firstTime, schema.FreshnessFresh)
+	for _, invalidTime := range []float64{-1, math.NaN()} {
+		seed := restCache{
+			sessionInfo: RESTEndpointSnapshot{LastSuccessUTC: firstTime},
+			trackName:   timedObserved("Cached Track", firstTime),
+			sourceTime:  timedObserved(50*time.Second, firstTime),
+		}
+		if err := seed.acceptSession(restSessionInfo{TrackName: "Must Not Commit", CurrentEventTime: invalidTime}, secondTime); err == nil {
+			t.Fatalf("CurrentEventTime %v was accepted", invalidTime)
+		}
+		if seed.sessionInfo.LastSuccessUTC != firstTime {
+			t.Fatalf("CurrentEventTime %v recorded success at %v", invalidTime, seed.sessionInfo.LastSuccessUTC)
+		}
+		assertTimedValue(t, seed.trackName, "Cached Track", firstTime, schema.FreshnessFresh)
+		assertTimedValue(t, seed.sourceTime, 50*time.Second, firstTime, schema.FreshnessFresh)
+	}
+}
+
+func TestRESTUsesPerResponseTimestampsAndFinalSnapshotTime(t *testing.T) {
+	start := time.Unix(100, 0).UTC()
+	clock := &lockedClock{now: start}
+	client := doerFunc(func(request *http.Request) (*http.Response, error) {
+		var body string
+		switch request.URL.Path {
+		case standingsEndpoint:
+			clock.advance(time.Second)
+			body = `[{"player":true,"position":2,"lapsCompleted":3,"pitstops":0}]`
+		case sessionInfoEndpoint:
+			clock.advance(2 * time.Second)
+			body = `{"trackName":"Later Track","session":"RACE1","numberOfVehicles":4,"currentEventTime":20}`
+		default:
+			t.Fatalf("unexpected path %s", request.URL.Path)
+		}
+		return responseFor(request, http.StatusOK, body), nil
+	})
+	cfg := normalizeRESTConfig(&restConfig{
+		baseURL: "http://127.0.0.1:6397",
+		client:  client,
+		now:     clock.current,
+		ttl:     1500 * time.Millisecond,
+	}, clock.current)
+
+	observation, _ := pollREST(t.Context(), cfg, &restCache{})
+	standingsReceived := start.Add(time.Second)
+	sessionReceived := start.Add(3 * time.Second)
+	if observation.ReceivedUTC != sessionReceived {
+		t.Fatalf("snapshot time = %v want %v", observation.ReceivedUTC, sessionReceived)
+	}
+	if observation.REST.Standings.LastAttemptUTC != start || observation.REST.Standings.LastSuccessUTC != standingsReceived {
+		t.Fatalf("standings timestamps = %#v", observation.REST.Standings)
+	}
+	if observation.REST.SessionInfo.LastAttemptUTC != standingsReceived || observation.REST.SessionInfo.LastSuccessUTC != sessionReceived {
+		t.Fatalf("session timestamps = %#v", observation.REST.SessionInfo)
+	}
+	assertTimedValue(t, observation.REST.PlayerPosition, 2, standingsReceived, schema.FreshnessStale)
+	assertTimedValue(t, observation.REST.TrackName, "Later Track", sessionReceived, schema.FreshnessFresh)
+	if observation.REST.Status != RESTStatusStale {
+		t.Fatalf("REST status = %v", observation.REST.Status)
+	}
+}
+
+func TestRESTRejectsRedirectBeforeExternalDestination(t *testing.T) {
+	requests := atomic.Int32{}
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		http.Redirect(w, request, "http://example.invalid/escape", http.StatusFound)
+	})
+	defer server.Close()
+	cfg := normalizeRESTConfig(&restConfig{baseURL: server.URL, client: newRESTHTTPClient(), now: time.Now}, time.Now)
+	result := fetchREST(t.Context(), cfg, standingsEndpoint)
+	if result.status != RESTEndpointMalformed || requests.Load() != 1 {
+		t.Fatalf("redirect result=%#v requests=%d", result, requests.Load())
+	}
+}
+
+func TestRESTRejectsNonLoopbackBaseBeforeTransport(t *testing.T) {
+	calls := atomic.Int32{}
+	client := doerFunc(func(request *http.Request) (*http.Response, error) {
+		calls.Add(1)
+		return responseFor(request, http.StatusOK, `[]`), nil
+	})
+	cfg := normalizeRESTConfig(&restConfig{baseURL: "http://example.invalid", client: client, now: time.Now}, time.Now)
+	result := fetchREST(t.Context(), cfg, standingsEndpoint)
+	if result.status != RESTEndpointMalformed || calls.Load() != 0 {
+		t.Fatalf("non-loopback result=%#v calls=%d", result, calls.Load())
+	}
 }
 
 func TestDriverOwnsRESTPollerAndWaitsForItsCancellation(t *testing.T) {
@@ -171,6 +298,47 @@ func TestDriverOwnsRESTPollerAndWaitsForItsCancellation(t *testing.T) {
 	}
 	if reader.closes != 1 || ticks.stops != 1 {
 		t.Fatalf("reader closes=%d ticker stops=%d", reader.closes, ticks.stops)
+	}
+}
+
+func TestDriverDoesNotPublishOrMutateRESTAfterCancellation(t *testing.T) {
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == standingsEndpoint {
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"currentEventTime":1,"numberOfVehicles":0}`))
+	})
+	defer server.Close()
+
+	beforePublish := make(chan struct{})
+	release := make(chan struct{})
+	driver := newTestDriver(config{
+		open: func() (memoryReader, error) { return &testReader{data: knownBuffer(t)}, nil },
+		rest: testRESTConfig(server, time.Unix(100, 0)),
+		beforeRESTPublish: func() {
+			close(beforePublish)
+			<-release
+		},
+	})
+	sink := &countingSink{}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- driver.Run(ctx, sink) }()
+	<-beforePublish
+	cancel()
+	close(release)
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v", err)
+	}
+	if sink.calls.Load() != 1 {
+		t.Fatalf("sink calls = %d, want only initial shared-memory observation", sink.calls.Load())
+	}
+	driver.mu.RLock()
+	restStatus := driver.restStatus
+	driver.mu.RUnlock()
+	if restStatus != RESTStatusUnknown {
+		t.Fatalf("REST runtime mutated after cancellation: %v", restStatus)
 	}
 }
 
@@ -298,7 +466,11 @@ func BenchmarkRESTDecodeObservations(b *testing.B) {
 		}
 		cache := restCache{}
 		updateStandingsFields(&cache, rows, time.Time{})
-		updateSessionFields(&cache, info, time.Time{})
+		fields, err := validateSessionFields(info, time.Time{})
+		if err != nil {
+			b.Fatal(err)
+		}
+		cache.applySession(fields)
 	}
 }
 
@@ -330,4 +502,30 @@ type doerFunc func(*http.Request) (*http.Response, error)
 
 func (function doerFunc) Do(request *http.Request) (*http.Response, error) {
 	return function(request)
+}
+
+type lockedClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (clock *lockedClock) current() time.Time {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	return clock.now
+}
+
+func (clock *lockedClock) advance(duration time.Duration) {
+	clock.mu.Lock()
+	clock.now = clock.now.Add(duration)
+	clock.mu.Unlock()
+}
+
+func responseFor(request *http.Request, status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     make(http.Header),
+		Request:    request,
+	}
 }

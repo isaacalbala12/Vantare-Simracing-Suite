@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -80,6 +81,7 @@ type RESTObservation struct {
 	SessionInfo RESTEndpointSnapshot
 
 	TrackName      TimedField[string]
+	SourceTime     TimedField[time.Duration]
 	SessionType    TimedField[session.Type]
 	VehicleCount   TimedField[schema.Count]
 	PlayerPresent  TimedField[bool]
@@ -109,8 +111,10 @@ func defaultRESTConfig() *restConfig {
 
 func newRESTHTTPClient() *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	return &http.Client{Transport: transport}
+	return &http.Client{Transport: transport, CheckRedirect: rejectRESTRedirect}
 }
+
+func rejectRESTRedirect(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
 
 func normalizeRESTConfig(cfg *restConfig, fallbackNow func() time.Time) *restConfig {
 	if cfg == nil {
@@ -123,6 +127,10 @@ func normalizeRESTConfig(cfg *restConfig, fallbackNow func() time.Time) *restCon
 	}
 	if copy.client == nil {
 		copy.client = newRESTHTTPClient()
+	} else if client, ok := copy.client.(*http.Client); ok {
+		clone := *client
+		clone.CheckRedirect = rejectRESTRedirect
+		copy.client = &clone
 	}
 	if copy.now == nil {
 		copy.now = fallbackNow
@@ -160,6 +168,7 @@ type restCache struct {
 	standings      RESTEndpointSnapshot
 	sessionInfo    RESTEndpointSnapshot
 	trackName      TimedField[string]
+	sourceTime     TimedField[time.Duration]
 	sessionType    TimedField[session.Type]
 	vehicleCount   TimedField[schema.Count]
 	playerPresent  TimedField[bool]
@@ -186,8 +195,10 @@ func runREST(ctx context.Context, cfg *restConfig, output chan<- Observation) er
 	cache := restCache{}
 	backoff := cfg.interval
 	for {
-		now := cfg.now().Round(0).UTC()
-		observation, complete := pollREST(ctx, cfg, &cache, now)
+		observation, complete := pollREST(ctx, cfg, &cache)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -204,85 +215,139 @@ func runREST(ctx context.Context, cfg *restConfig, output chan<- Observation) er
 	}
 }
 
-func pollREST(ctx context.Context, cfg *restConfig, cache *restCache, now time.Time) (Observation, bool) {
-	standingsStatus, standingsBody := fetchREST(ctx, cfg, standingsEndpoint, now)
-	cache.standings.LastAttemptUTC = now
-	cache.standings.Status = standingsStatus
-	if standingsStatus == RESTEndpointFresh {
-		rows, err := decodeStandings(standingsBody)
+func pollREST(ctx context.Context, cfg *restConfig, cache *restCache) (Observation, bool) {
+	standingsResponse := fetchREST(ctx, cfg, standingsEndpoint)
+	cache.standings.LastAttemptUTC = standingsResponse.attemptedUTC
+	cache.standings.Status = standingsResponse.status
+	if standingsResponse.status == RESTEndpointFresh {
+		rows, err := decodeStandings(standingsResponse.body)
 		if err != nil {
 			cache.standings.Status = classifyDecodeError(err)
 		} else {
-			cache.standings.LastSuccessUTC = now
-			updateStandingsFields(cache, rows, now)
+			next := *cache
+			updateStandingsFields(&next, rows, standingsResponse.receivedUTC)
+			cache.applyStandings(next)
+			cache.standings.LastSuccessUTC = standingsResponse.receivedUTC
 		}
 	}
 	if ctx.Err() != nil {
+		snapshotUTC := restNow(cfg)
 		rest := cache.snapshot()
 		rest.Status = overallRESTStatus(rest)
-		return Observation{Source: SourceREST, ReceivedUTC: now, REST: rest}, false
+		return Observation{Source: SourceREST, ReceivedUTC: snapshotUTC, REST: rest}, false
 	}
 
-	sessionStatus, sessionBody := fetchREST(ctx, cfg, sessionInfoEndpoint, now)
-	cache.sessionInfo.LastAttemptUTC = now
-	cache.sessionInfo.Status = sessionStatus
-	if sessionStatus == RESTEndpointFresh {
-		info, err := decodeSessionInfo(sessionBody)
+	sessionResponse := fetchREST(ctx, cfg, sessionInfoEndpoint)
+	cache.sessionInfo.LastAttemptUTC = sessionResponse.attemptedUTC
+	cache.sessionInfo.Status = sessionResponse.status
+	if sessionResponse.status == RESTEndpointFresh {
+		info, err := decodeSessionInfo(sessionResponse.body)
 		if err != nil {
 			cache.sessionInfo.Status = classifyDecodeError(err)
 		} else {
-			cache.sessionInfo.LastSuccessUTC = now
-			updateSessionFields(cache, info, now)
+			if validationErr := cache.acceptSession(info, sessionResponse.receivedUTC); validationErr != nil {
+				cache.sessionInfo.Status = RESTEndpointMalformed
+			}
 		}
 	}
 
-	markRESTStale(cache, now, cfg.ttl)
+	snapshotUTC := restNow(cfg)
+	markRESTStale(cache, snapshotUTC, cfg.ttl)
 	rest := cache.snapshot()
 	rest.Status = overallRESTStatus(rest)
-	return Observation{Source: SourceREST, ReceivedUTC: now, REST: rest}, rest.Status == RESTStatusLive
+	return Observation{Source: SourceREST, ReceivedUTC: snapshotUTC, REST: rest}, rest.Status == RESTStatusLive
 }
 
-func fetchREST(parent context.Context, cfg *restConfig, path string, _ time.Time) (RESTEndpointStatus, []byte) {
+type restResponse struct {
+	status       RESTEndpointStatus
+	body         []byte
+	attemptedUTC time.Time
+	receivedUTC  time.Time
+}
+
+func fetchREST(parent context.Context, cfg *restConfig, path string) restResponse {
+	result := restResponse{attemptedUTC: restNow(cfg)}
+	target, err := url.Parse(cfg.baseURL + path)
+	if err != nil || !isLoopbackHTTP(target) {
+		result.status = RESTEndpointMalformed
+		result.receivedUTC = restNow(cfg)
+		return result
+	}
 	ctx, cancel := context.WithTimeout(parent, cfg.deadline)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.baseURL+path, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return RESTEndpointMalformed, nil
+		result.status = RESTEndpointMalformed
+		result.receivedUTC = restNow(cfg)
+		return result
 	}
 	resp, err := cfg.client.Do(req)
 	if err != nil {
+		result.receivedUTC = restNow(cfg)
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return RESTEndpointTimeout, nil
+			result.status = RESTEndpointTimeout
+			return result
 		}
 		if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
-			return RESTEndpointOffline, nil
+			result.status = RESTEndpointOffline
+			return result
 		}
 		var networkError net.Error
 		if errors.As(err, &networkError) {
-			return RESTEndpointOffline, nil
+			result.status = RESTEndpointOffline
+			return result
 		}
-		return RESTEndpointOffline, nil
+		result.status = RESTEndpointOffline
+		return result
 	}
 	defer resp.Body.Close()
+	result.receivedUTC = restNow(cfg)
+	if resp.Request == nil || !isLoopbackHTTP(resp.Request.URL) {
+		result.status = RESTEndpointMalformed
+		return result
+	}
 	switch {
 	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented:
-		return RESTEndpointUnsupported, nil
+		result.status = RESTEndpointUnsupported
+		return result
 	case resp.StatusCode >= 500:
-		return RESTEndpointOffline, nil
+		result.status = RESTEndpointOffline
+		return result
 	case resp.StatusCode < 200 || resp.StatusCode >= 300:
-		return RESTEndpointMalformed, nil
+		result.status = RESTEndpointMalformed
+		return result
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maximumRESTResponseBytes+1))
+	result.receivedUTC = restNow(cfg)
 	if err != nil {
-		return RESTEndpointOffline, nil
+		result.status = RESTEndpointOffline
+		return result
 	}
 	if len(body) == 0 || len(bytes.TrimSpace(body)) == 0 {
-		return RESTEndpointEmpty, nil
+		result.status = RESTEndpointEmpty
+		return result
 	}
 	if len(body) > maximumRESTResponseBytes {
-		return RESTEndpointMalformed, nil
+		result.status = RESTEndpointMalformed
+		return result
 	}
-	return RESTEndpointFresh, body
+	result.status = RESTEndpointFresh
+	result.body = body
+	return result
+}
+
+func restNow(cfg *restConfig) time.Time { return cfg.now().Round(0).UTC() }
+
+func isLoopbackHTTP(target *url.URL) bool {
+	if target == nil || target.Scheme != "http" || target.Hostname() == "" {
+		return false
+	}
+	host := strings.ToLower(target.Hostname())
+	if host == "localhost" {
+		return true
+	}
+	address := net.ParseIP(host)
+	return address != nil && address.IsLoopback()
 }
 
 func decodeStandings(body []byte) ([]restStanding, error) {
@@ -343,17 +408,52 @@ func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time)
 	}
 }
 
-func updateSessionFields(cache *restCache, info restSessionInfo, now time.Time) {
+func (cache *restCache) applyStandings(next restCache) {
+	cache.playerPresent = next.playerPresent
+	cache.playerPosition = next.playerPosition
+	cache.completedLaps = next.completedLaps
+	cache.pitStopCount = next.pitStopCount
+}
+
+type sessionFields struct {
+	trackName    TimedField[string]
+	sourceTime   TimedField[time.Duration]
+	sessionType  TimedField[session.Type]
+	vehicleCount TimedField[schema.Count]
+}
+
+func validateSessionFields(info restSessionInfo, now time.Time) (sessionFields, error) {
+	if !finite(info.CurrentEventTime) || info.CurrentEventTime < 0 || info.CurrentEventTime > float64(math.MaxInt64)/float64(time.Second) {
+		return sessionFields{}, errors.New("invalid LMU REST current event time")
+	}
+	fields := sessionFields{
+		sourceTime:   timedObserved(time.Duration(info.CurrentEventTime*float64(time.Second)), now),
+		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now},
+		vehicleCount: timedValidated[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now),
+	}
 	if strings.TrimSpace(info.TrackName) == "" {
-		cache.trackName = timedMissing[string](now)
+		fields.trackName = timedMissing[string](now)
 	} else {
-		cache.trackName = timedObserved(info.TrackName, now)
+		fields.trackName = timedObserved(info.TrackName, now)
 	}
-	cache.sessionType = TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now}
-	cache.vehicleCount = timedValidated[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now)
-	if !finite(info.CurrentEventTime) || info.CurrentEventTime < 0 {
-		cache.sessionInfo.Status = RESTEndpointMalformed
+	return fields, nil
+}
+
+func (cache *restCache) applySession(fields sessionFields) {
+	cache.trackName = fields.trackName
+	cache.sourceTime = fields.sourceTime
+	cache.sessionType = fields.sessionType
+	cache.vehicleCount = fields.vehicleCount
+}
+
+func (cache *restCache) acceptSession(info restSessionInfo, receivedUTC time.Time) error {
+	fields, err := validateSessionFields(info, receivedUTC)
+	if err != nil {
+		return err
 	}
+	cache.applySession(fields)
+	cache.sessionInfo.LastSuccessUTC = receivedUTC
+	return nil
 }
 
 func parseRESTSessionType(value string) schema.Field[session.Type] {
@@ -393,6 +493,7 @@ func markRESTStale(cache *restCache, now time.Time, ttl time.Duration) {
 	cache.standings = staleEndpoint(cache.standings, now, ttl)
 	cache.sessionInfo = staleEndpoint(cache.sessionInfo, now, ttl)
 	cache.trackName = staleTimedField(cache.trackName, now, ttl)
+	cache.sourceTime = staleTimedField(cache.sourceTime, now, ttl)
 	cache.sessionType = staleTimedField(cache.sessionType, now, ttl)
 	cache.vehicleCount = staleTimedField(cache.vehicleCount, now, ttl)
 	cache.playerPresent = staleTimedField(cache.playerPresent, now, ttl)
@@ -426,7 +527,7 @@ func staleTimedField[T comparable](value TimedField[T], now time.Time, ttl time.
 func (cache restCache) snapshot() RESTObservation {
 	return RESTObservation{
 		Standings: cache.standings, SessionInfo: cache.sessionInfo,
-		TrackName: cache.trackName, SessionType: cache.sessionType, VehicleCount: cache.vehicleCount,
+		TrackName: cache.trackName, SourceTime: cache.sourceTime, SessionType: cache.sessionType, VehicleCount: cache.vehicleCount,
 		PlayerPresent: cache.playerPresent, PlayerPosition: cache.playerPosition,
 		CompletedLaps: cache.completedLaps, PitStopCount: cache.pitStopCount,
 	}

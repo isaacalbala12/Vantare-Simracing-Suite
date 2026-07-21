@@ -54,6 +54,24 @@ func TestParseAuditedFixtures(t *testing.T) {
 	}
 }
 
+func TestMenuDoesNotRequireTelemetryIndexWithoutPlayer(t *testing.T) {
+	buf, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-menu-fixture.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf[128465] = 255
+	got, err := parseSupported(buf, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Compatibility != CompatibilityKnown {
+		t.Fatalf("compatibility=%v fingerprint=%q", got.Compatibility, got.Fingerprint)
+	}
+	if player, present := got.PlayerPresent.Value(); !present || player {
+		t.Fatalf("player=%v present=%v", player, present)
+	}
+}
+
 func TestParseRejectsShortAndDegradesUnknownSignature(t *testing.T) {
 	if _, err := Parse(make([]byte, ObjectOutSize-1), time.Now()); err != ErrIncompatibleBuffer {
 		t.Fatalf("error = %v", err)
@@ -73,7 +91,7 @@ func TestParseRejectsShortAndDegradesUnknownSignature(t *testing.T) {
 			if got.Compatibility != CompatibilityUnknown {
 				t.Fatalf("compatibility = %v", got.Compatibility)
 			}
-			if got.Fingerprint != unknownFingerprint {
+			if got.Fingerprint != "LMU_Data/runtime:build=1.3.0.0;evidence=scoring-insufficient" {
 				t.Fatalf("fingerprint = %q", got.Fingerprint)
 			}
 			assertNoPublishedFields(t, got)

@@ -85,6 +85,7 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	if !profile.supported {
 		return result, nil
 	}
+	result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=scoring-insufficient", profile.version)
 
 	vehicles := readInt32(buf, 1736)
 	phase := buf[1740]
@@ -95,6 +96,7 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	playerPresent := buf[128466] != 0
 	telemetryEvidence := "not-required-no-player"
 	if playerPresent {
+		result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=telemetry-insufficient", profile.version)
 		if !hasPlayerTelemetryEvidence(buf, vehicles, playerIndex) {
 			return result, nil
 		}
@@ -144,7 +146,11 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 }
 
 func hasScoringEvidence(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
-	if vehicles < 0 || vehicles > maxVehicles || phase > 9 || playerIndex < 0 || playerIndex >= maxVehicles || buf[128466] > 1 {
+	playerMarker := buf[128466]
+	if vehicles < 0 || vehicles > maxVehicles || phase > 9 || playerMarker > 1 {
+		return false
+	}
+	if playerMarker == 1 && (playerIndex < 0 || playerIndex >= maxVehicles) {
 		return false
 	}
 	// Both audited real fixtures contain a non-empty, NUL-terminated scoring

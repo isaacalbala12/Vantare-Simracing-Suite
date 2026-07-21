@@ -1,6 +1,6 @@
 # TC-02A — Reglas de dependencia de Telemetry Core
 
-Fecha de corte: 2026-07-19. Estas reglas concretan la dirección del ADR 0004 sin exigir que los paquetes futuros ya existan. ISA-26 no mueve código productivo ni crea el runtime nuevo.
+Fecha de corte: 2026-07-21. Estas reglas concretan la dirección del ADR 0004. ISA-29 añade contratos y guards compilables, pero todavía no crea el runtime ni conecta producción.
 
 ## Dirección canónica
 
@@ -21,8 +21,10 @@ La flecha significa “puede depender de”. `schema` es la capa más baja. `cat
 | --- | --- | --- |
 | `internal/telemetry/schema[/...]` | standard library y su propio árbol | otros subpaquetes telemetry, productos, transports, frameworks, DB |
 | `internal/telemetry/catalog[/...]` | schema y standard library | core, drivers, paquetes legacy telemetry, productos, transports, frameworks, DB |
-| `internal/telemetry/core[/...]` | schema, standard library y contratos propios de core | drivers LMU, legacy `lmu`/`lmuapi`, projections, recording, productos, Wails/SSE/app/DB |
-| `internal/telemetry/drivers/<source>` | schema/core ports y librerías de adquisición aprobadas | Overlay, Engineer, Strategy, app/server; ningún import inverso desde core |
+| `internal/telemetry/driver[/...]` | schema y standard library | core, drivers concretos, productos, transports, DB |
+| `internal/telemetry/core[/...]` | schema, contratos neutrales de driver, standard library y contratos propios de core | drivers concretos, legacy `lmu`/`lmuapi`, derive concreto, projections, recording, productos, Wails/SSE/app/DB |
+| `internal/telemetry/derive[/...]` | schema, puertos core y su propio árbol | drivers, projections, recording, productos, transports, DB |
+| `internal/telemetry/drivers/<source>` | schema, contratos driver, puertos core, su propio árbol y librerías de adquisición aprobadas | otro driver de simulador, projections, recording, Overlay, Engineer, Strategy, app/server; ningún import inverso desde core |
 | `internal/telemetry/projection/<consumer>` | schema/core y lógica pura de proyección | drivers concretos, legacy LMU, Wails/SSE/app/DB |
 | `internal/telemetry/recording` | schema/core ports y formatos puros | implementación DuckDB/SQL dentro de Telemetry Core; productos/transports |
 | `internal/app` o composition root | core, drivers, projections, transports y adapters de storage | —; aquí se cablean implementaciones, sin devolver dependencias hacia core |
@@ -42,14 +44,18 @@ Además:
 
 - `schema` no sube a ninguna otra capa telemetry;
 - `catalog` solo importa `schema` dentro de Telemetry Core; schema y sus dominios nunca importan catalog;
-- `core` no importa `drivers/*`, `lmu`, `lmuapi`, `projection*` ni `recording`;
-- `projection/*` no importa `drivers/*`, `lmu` ni `lmuapi`.
+- `driver` es el contrato neutral consumido por drivers y no importa `core`;
+- `core` solo importa `schema` y `driver` dentro de Telemetry Core;
+- `derive` solo importa `schema`, puertos `core` y su propio árbol;
+- `projection/*` solo importa `schema`, puertos `core` y su propio árbol;
+- `recording` solo importa `schema`, puertos `core` y su propio árbol;
+- cada `drivers/<simulador>` solo importa `schema`, puertos `core`, contratos `driver` y su propio árbol: no puede importar otro simulador.
 
 SSE está representado hoy por `internal/server`, y Wails por su módulo externo; ambos son transports. “LMU concreto” incluye tanto el driver futuro `drivers/lmu` como los paquetes legacy actuales `internal/telemetry/lmu` y `lmuapi`.
 
 ## Caracterización compatible del estado actual
 
-El árbol actual contiene paquetes legacy como `diff`, `fusion`, `gap`, `lmu`, `lmuapi`, `mock`, `normalize`, `pipeline` y `source`. ISA-27 añade `schema` y `catalog` sin migrar consumidores; todavía no existen `core`, `drivers/*`, `projection/*` o `recording` completos.
+El árbol actual contiene paquetes legacy como `diff`, `fusion`, `gap`, `lmu`, `lmuapi`, `mock`, `normalize`, `pipeline` y `source`. TC-02 ya añadió `schema`, `catalog` y los contratos mínimos `driver`, `core` y `projection`, sin migrar consumidores. Los paquetes concretos `drivers/*`, `derive` y `recording` todavía no existen.
 
 Por eso el guard:
 
@@ -58,7 +64,7 @@ Por eso el guard:
 - no exige migraciones, imports o paquetes inexistentes;
 - no declara que el grafo legacy ya sea la arquitectura final.
 
-El test real comienza verde porque no hay hoy un import productivo que viole esas fronteras y los paquetes futuros aún no existen. El rojo previo comprobable se hizo contra la función de validación antes de implementarla. Los fixtures table-driven demuestran que un futuro `core -> drivers/lmu` falla y que los archivos excluidos no generan falsos positivos.
+El test real recorre tanto los contratos TC-02 presentes como cualquier paquete futuro que aparezca. Los rojos previos comprobaron fronteras ausentes para `driver`, `core`, `derive`, `projection`, `recording` y drivers concretos. Los fixtures table-driven demuestran, entre otros casos, que `core -> drivers/lmu`, `drivers/lmu -> projection` y `drivers/lmu -> drivers/iracing` fallan sin excluir archivos productivos.
 
 ## Guard automatizado
 
@@ -105,4 +111,4 @@ La búsqueda sirve de evidencia humana; el guard ejecutable es el test con parse
 - Seguridad: el guard solo lee fuentes dentro de `internal/telemetry`; no abre `.env`, secretos ni red.
 - Rendimiento: parsea únicamente imports de archivos Go y se ejecuta durante tests, no en runtime.
 - Determinismo: no depende del orden del filesystem, proceso externo ni plataforma.
-- Rollback: revertir `architecture_test.go` y estos documentos devuelve exactamente el comportamiento anterior, porque ISA-26 no modifica producción.
+- Rollback: revertir los commits contractuales de ISA-29 elimina puertos y guards sin alterar producción, porque TC-02 todavía no tiene consumidores runtime.

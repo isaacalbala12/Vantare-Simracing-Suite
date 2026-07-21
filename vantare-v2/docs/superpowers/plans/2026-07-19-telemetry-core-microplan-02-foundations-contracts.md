@@ -4,7 +4,7 @@
 
 **Base:** cada issue parte de la base registrada en Linear. Para ISA-26 la base aprobada es `vantareapp/isa-100-tc-00b-separar-y-reconciliar-la-planificacion-de-telemetry@724158a262eaa5dbcc8ab89c98aa74847ffed06b`, no `develop`.
 
-**Estado operativo 2026-07-21:** ISA-26 e ISA-27 están `Done` tras validación manual de Isaac. ISA-28 está preparada para `In Review` sobre ISA-27 aprobada en `72da58552495d8a9623ad42fc1e82510d048d7a0`; ISA-29 no está iniciada. Las líneas de cierre de cada issue inferiores describen sus gates históricos.
+**Estado operativo 2026-07-21:** ISA-26, ISA-27 e ISA-28 están `Done` tras validación manual de Isaac. ISA-29 partió de ISA-28 aprobada en `e182f92cc085c3c51f119a02146e20c6236cdd38`, completó técnicamente el gate final de TC-02 y está preparada para `In Review`; TC-03 continúa bloqueado hasta aceptación humana. Las líneas de cierre de cada issue inferiores describen sus gates históricos.
 
 ## ISA-26 / TC-02A — Cerrar arquitectura e inventario de dominios
 

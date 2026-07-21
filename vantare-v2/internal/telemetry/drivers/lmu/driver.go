@@ -70,7 +70,10 @@ func newDriver(cfg config) *Driver {
 	if cfg.freshnessLimit <= 0 {
 		cfg.freshnessLimit = defaultFreshnessLimit
 	}
-	return &Driver{state: drivercontract.StateStopped, config: cfg}
+	// DriverManager exposes an instance only after selecting it as active, where
+	// its own state is already connecting. Matching that state at construction
+	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
+	return &Driver{state: drivercontract.StateConnecting, config: cfg}
 }
 
 func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSink[Observation]) (runErr error) {

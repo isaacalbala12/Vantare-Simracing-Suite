@@ -126,3 +126,9 @@ func TestRuntimeSnapshotIsConcurrentAndDefensive(t *testing.T) {
 		t.Fatalf("capability leaked: %q", got)
 	}
 }
+
+func TestNewDriverStartsAtManagerCompatibleConnectingState(t *testing.T) {
+	if got := New().RuntimeSnapshot().State; got != drivercontract.StateConnecting {
+		t.Fatalf("initial state = %s, want connecting", got)
+	}
+}

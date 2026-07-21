@@ -20,7 +20,7 @@ const (
 	telemetryStride    = 1888
 	scoringStride      = 584
 	maxVehicles        = 104
-	knownFingerprint   = "LMU_Data/size=324820/evidence=scoring-player-name-nul+invariants/telemetry=1888/scoring=584"
+	knownFingerprint   = "LMU_Data/runtime:size=324820;scoring-player-name=nul;vehicle-count=valid;phase=valid;player-index=valid"
 	unknownFingerprint = "LMU_Data/size=324820/evidence=insufficient"
 )
 

@@ -830,6 +830,9 @@ func TestDriverManagerStopReturnsGenerationTeardownFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	<-started
+	manager.mu.RLock()
+	firstCycle := manager.cycle
+	manager.mu.RUnlock()
 
 	results := make(chan error, 2)
 	for range 2 {
@@ -842,6 +845,9 @@ func TestDriverManagerStopReturnsGenerationTeardownFailure(t *testing.T) {
 	}
 	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
 		t.Fatalf("restart: %v", err)
+	}
+	if err := firstCycle.Result(); !errors.Is(err, closeFailure) {
+		t.Fatalf("old generation lost teardown after restart: %v", err)
 	}
 	if cycle := <-started; cycle != 2 {
 		t.Fatalf("cycle = %d", cycle)

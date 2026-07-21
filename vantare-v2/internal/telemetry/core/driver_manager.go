@@ -58,25 +58,42 @@ type DriverStatus struct {
 	Err              error
 }
 
+type driverCycle struct {
+	generation uint64
+	done       chan struct{}
+	mu         sync.RWMutex
+	result     error
+}
+
+func (cycle *driverCycle) setResult(result error) {
+	cycle.mu.Lock()
+	cycle.result = result
+	cycle.mu.Unlock()
+}
+func (cycle *driverCycle) Result() error {
+	cycle.mu.RLock()
+	defer cycle.mu.RUnlock()
+	return cycle.result
+}
+
 // DriverManager owns exactly one driver Run call at a time.
 type DriverManager[T any] struct {
 	mu         sync.RWMutex
 	candidates []DriverCandidate[T]
 	config     ManagerConfig
 
-	running               bool
-	generation            uint64
-	state                 driver.State
-	active                Driver[T]
-	activeID              driver.ID
-	activeRevision        uint64
-	runtimeCapabilities   []driver.Capability
-	attempt               int
-	err                   error
-	cancel                context.CancelFunc
-	done                  chan struct{}
-	cycleResult           error
-	cycleResultGeneration uint64
+	running             bool
+	generation          uint64
+	state               driver.State
+	active              Driver[T]
+	activeID            driver.ID
+	activeRevision      uint64
+	runtimeCapabilities []driver.Capability
+	attempt             int
+	err                 error
+	cancel              context.CancelFunc
+	done                chan struct{}
+	cycle               *driverCycle
 }
 
 func NewDriverManager[T any](candidates []DriverCandidate[T], config ManagerConfig) (*DriverManager[T], error) {
@@ -149,11 +166,11 @@ func (manager *DriverManager[T]) Start(parent context.Context, sink driver.Obser
 	manager.runtimeCapabilities = nil
 	manager.attempt = 0
 	manager.err = nil
-	manager.cycleResult = nil
-	manager.cycleResultGeneration = manager.generation
 	manager.cancel = cancel
-	manager.done = make(chan struct{})
-	go manager.run(ctx, sink, manager.generation, manager.done)
+	cycle := &driverCycle{generation: manager.generation, done: make(chan struct{})}
+	manager.cycle = cycle
+	manager.done = cycle.done
+	go manager.run(ctx, sink, cycle)
 	return nil
 }
 
@@ -165,20 +182,24 @@ func (manager *DriverManager[T]) Stop(ctx context.Context) error {
 	}
 	manager.mu.Lock()
 	if !manager.running {
-		result := manager.resultForGenerationLocked(manager.generation)
+		cycle := manager.cycle
 		manager.mu.Unlock()
-		return result
+		if cycle == nil {
+			return nil
+		}
+		return cycle.Result()
 	}
 	manager.state = driver.StateStopping
 	cancel := manager.cancel
 	done := manager.done
 	generation := manager.generation
+	cycle := manager.cycle
 	manager.mu.Unlock()
 
 	cancel()
 	select {
 	case <-done:
-		result := manager.resultForGeneration(generation)
+		result := cycle.Result()
 		manager.completeStop(generation, done)
 		return result
 	case <-ctx.Done():
@@ -209,12 +230,12 @@ func (manager *DriverManager[T]) Status() DriverStatus {
 	return manager.statusLocked()
 }
 
-func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], generation uint64, done chan<- struct{}) {
+func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], cycle *driverCycle) {
 	var cycleResult error
 	defer func() {
-		manager.storeCycleResult(generation, cycleResult)
-		manager.finishRun(generation)
-		close(done)
+		cycle.setResult(cycleResult)
+		manager.finishRun(cycle.generation)
+		close(cycle.done)
 	}()
 
 	for {
@@ -269,29 +290,6 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 			return
 		}
 	}
-}
-
-func (manager *DriverManager[T]) storeCycleResult(generation uint64, result error) {
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
-	if manager.generation != generation {
-		return
-	}
-	manager.cycleResultGeneration = generation
-	manager.cycleResult = result
-}
-
-func (manager *DriverManager[T]) resultForGeneration(generation uint64) error {
-	manager.mu.RLock()
-	defer manager.mu.RUnlock()
-	return manager.resultForGenerationLocked(generation)
-}
-
-func (manager *DriverManager[T]) resultForGenerationLocked(generation uint64) error {
-	if manager.cycleResultGeneration != generation {
-		return nil
-	}
-	return manager.cycleResult
 }
 
 func (manager *DriverManager[T]) finishRun(generation uint64) {

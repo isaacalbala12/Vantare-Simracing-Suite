@@ -21,7 +21,10 @@ se publican como `invalid`; nunca se convierten en cero válido.
   exacto `Le Mans Ultimate.exe`, FileVersion/ProductVersion allowlisted
   (`1.3.0.0`), mapping abierto y vista de 324.820 bytes. Windows conserva la
   ruta solo en memoria y lee las versiones con `version.dll`; la ruta nunca
-  entra en estado, fingerprint ni error. Build ausente/no soportado queda
+  entra en estado, fingerprint ni error. Cuando FileVersion y ProductVersion
+  existen, ambas deben normalizar al mismo valor allowlisted; una contradicción
+  degrada fail-closed. Si solo existe una, esa única fuente puede validarse
+  contra la allowlist. Build ausente/no soportado queda
   `unknown`, fingerprint `insufficient` y todos los campos de offsets `missing`;
 - scoring y telemetry se prueban aparte: menú requiere build + invariantes
   de conteo, fase, índice, booleano y tiempo finito, y puede ser `live` sin

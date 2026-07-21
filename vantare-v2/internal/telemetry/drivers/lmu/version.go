@@ -27,16 +27,38 @@ func profileFromBuild(evidence BuildEvidence) compatibilityProfile {
 }
 
 func (evidence BuildEvidence) supportedVersion() (string, bool) {
-	for _, candidate := range []string{evidence.FileVersion, evidence.ProductVersion} {
-		normalized, ok := normalizeVersion(candidate)
-		if !ok {
-			continue
+	filePresent := strings.TrimSpace(evidence.FileVersion) != ""
+	productPresent := strings.TrimSpace(evidence.ProductVersion) != ""
+	if !filePresent && !productPresent {
+		return "", false
+	}
+
+	var version string
+	if filePresent && productPresent {
+		fileVersion, fileOK := normalizeVersion(evidence.FileVersion)
+		productVersion, productOK := normalizeVersion(evidence.ProductVersion)
+		if !fileOK || !productOK || fileVersion != productVersion {
+			return "", false
 		}
-		if _, allowed := supportedLMUVersions[normalized]; allowed {
-			return normalized, true
+		version = fileVersion
+	} else if filePresent {
+		var ok bool
+		version, ok = normalizeVersion(evidence.FileVersion)
+		if !ok {
+			return "", false
+		}
+	} else {
+		var ok bool
+		version, ok = normalizeVersion(evidence.ProductVersion)
+		if !ok {
+			return "", false
 		}
 	}
-	return "", false
+
+	if _, allowed := supportedLMUVersions[version]; !allowed {
+		return "", false
+	}
+	return version, true
 }
 
 func normalizeVersion(value string) (string, bool) {

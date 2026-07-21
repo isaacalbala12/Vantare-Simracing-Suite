@@ -269,6 +269,7 @@ func TestDriverCachesBuildEvidenceOncePerRunAndFailsClosed(t *testing.T) {
 	}{
 		{name: "absent"},
 		{name: "unsupported", build: BuildEvidence{FileVersion: "9.9.9.9"}},
+		{name: "contradictory", build: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: supportedLMUVersion}},
 		{name: "provider error", buildErr: errors.New("version unavailable")},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

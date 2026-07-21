@@ -92,10 +92,17 @@ func TestFormatFixedVersion(t *testing.T) {
 }
 
 func TestBuildEvidenceFromFixedRequiresSignature(t *testing.T) {
-	valid := fixedFileInfo{Signature: fixedFileInfoSignature, FileVersionMS: 1<<16 | 3}
+	valid := fixedFileInfo{
+		Signature:        fixedFileInfoSignature,
+		FileVersionMS:    1<<16 | 3,
+		ProductVersionMS: 1<<16 | 3,
+	}
 	evidence, err := buildEvidenceFromFixed(valid)
-	if err != nil || evidence.FileVersion != supportedLMUVersion {
+	if err != nil || evidence.FileVersion != supportedLMUVersion || evidence.ProductVersion != supportedLMUVersion {
 		t.Fatalf("evidence=%#v error=%v", evidence, err)
+	}
+	if version, supported := evidence.supportedVersion(); !supported || version != supportedLMUVersion {
+		t.Fatalf("provider evidence unsupported: version=%q supported=%v", version, supported)
 	}
 	valid.Signature = 0
 	if _, err := buildEvidenceFromFixed(valid); err == nil {

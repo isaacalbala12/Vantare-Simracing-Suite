@@ -69,6 +69,7 @@ type DriverManager[T any] struct {
 	state               driver.State
 	active              Driver[T]
 	activeID            driver.ID
+	activeRevision      uint64
 	runtimeCapabilities []driver.Capability
 	attempt             int
 	err                 error
@@ -142,6 +143,7 @@ func (manager *DriverManager[T]) Start(parent context.Context, sink driver.Obser
 	manager.state = driver.StateDetecting
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	manager.attempt = 0
 	manager.err = nil
@@ -182,6 +184,7 @@ func (manager *DriverManager[T]) Status() DriverStatus {
 	manager.mu.RLock()
 	active := manager.active
 	generation := manager.generation
+	activeRevision := manager.activeRevision
 	status := manager.statusLocked()
 	manager.mu.RUnlock()
 
@@ -194,7 +197,7 @@ func (manager *DriverManager[T]) Status() DriverStatus {
 	runtime := active.RuntimeSnapshot()
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
-	if manager.generation == generation && manager.active == active {
+	if manager.generation == generation && manager.activeRevision == activeRevision {
 		manager.applyRuntimeSnapshot(runtime)
 	}
 	return manager.statusLocked()
@@ -265,6 +268,7 @@ func (manager *DriverManager[T]) finishRun(generation uint64) {
 	}
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	switch manager.state {
 	case driver.StateError, driver.StateStopping:
@@ -288,6 +292,7 @@ func (manager *DriverManager[T]) completeStop(generation uint64, done <-chan str
 	manager.state = driver.StateStopped
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	manager.attempt = 0
 	manager.err = nil
@@ -367,6 +372,7 @@ func (manager *DriverManager[T]) setWaitingDetection(err error) {
 	manager.state = driver.StateDetecting
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	manager.err = err
 }
@@ -377,6 +383,7 @@ func (manager *DriverManager[T]) setActive(id driver.ID, active Driver[T]) {
 	manager.state = driver.StateConnecting
 	manager.activeID = id
 	manager.active = active
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	manager.err = nil
 }
@@ -386,6 +393,7 @@ func (manager *DriverManager[T]) clearActive() {
 	defer manager.mu.Unlock()
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 }
 
@@ -394,6 +402,7 @@ func (manager *DriverManager[T]) recordTransient(err error) int {
 	defer manager.mu.Unlock()
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	manager.attempt++
 	manager.state = driver.StateStale
@@ -407,6 +416,7 @@ func (manager *DriverManager[T]) setTerminal(err error) {
 	manager.state = driver.StateError
 	manager.active = nil
 	manager.activeID = ""
+	manager.activeRevision++
 	manager.runtimeCapabilities = nil
 	manager.err = err
 }

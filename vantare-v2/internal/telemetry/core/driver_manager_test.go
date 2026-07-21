@@ -35,6 +35,21 @@ type managerTestSink struct{}
 
 func (managerTestSink) WriteObservation(context.Context, int) error { return nil }
 
+type nonComparableDriver struct {
+	values  []int
+	started chan struct{}
+}
+
+func (d nonComparableDriver) Run(ctx context.Context, _ driver.ObservationSink[int]) error {
+	close(d.started)
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func (d nonComparableDriver) RuntimeSnapshot() driver.RuntimeSnapshot {
+	return driver.RuntimeSnapshot{State: driver.StateLive, Capabilities: []driver.Capability{"runtime"}}
+}
+
 func TestDriverManagerSupportedIsStaticAndSelectionIsDeterministic(t *testing.T) {
 	t.Parallel()
 
@@ -335,6 +350,114 @@ func TestDriverManagerValidatesRuntimeStateAndCapabilities(t *testing.T) {
 	recovered := manager.Status()
 	if recovered.State != driver.StateLive || recovered.Err != nil {
 		t.Fatalf("valid recovery from degraded = %#v", recovered)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDriverManagerStatusAcceptsNonComparableDriverValue(t *testing.T) {
+	started := make(chan struct{})
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "non-comparable", Priority: 1},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (Driver[int], error) {
+				return nonComparableDriver{values: []int{1}, started: started}, nil
+			},
+		},
+	}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	status := manager.Status()
+	if status.State != driver.StateLive || !equalCapabilities(status.Capabilities, []driver.Capability{"runtime"}) {
+		t.Fatalf("non-comparable runtime status = %#v", status)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSlowSnapshotCannotOverwriteReconnectedReuseOfSameInstance(t *testing.T) {
+	transient := errors.New("transient disconnect")
+	firstRunStarted := make(chan struct{})
+	secondRunStarted := make(chan struct{})
+	failFirst := make(chan struct{})
+	snapshotStarted := make(chan struct{})
+	releaseSnapshot := make(chan struct{})
+
+	var mu sync.Mutex
+	runs := 0
+	snapshots := 0
+	reused := &managerTestDriver{}
+	reused.run = func(ctx context.Context) error {
+		mu.Lock()
+		runs++
+		run := runs
+		mu.Unlock()
+		if run == 1 {
+			close(firstRunStarted)
+			<-failFirst
+			return transient
+		}
+		close(secondRunStarted)
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	reused.runtime = func() driver.RuntimeSnapshot {
+		mu.Lock()
+		snapshots++
+		snapshot := snapshots
+		mu.Unlock()
+		if snapshot == 1 {
+			close(snapshotStarted)
+			<-releaseSnapshot
+			return driver.RuntimeSnapshot{State: driver.StateLive, Capabilities: []driver.Capability{"old-cycle"}}
+		}
+		return driver.RuntimeSnapshot{State: driver.StateLive, Capabilities: []driver.Capability{"new-cycle"}}
+	}
+
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "reused", Priority: 1},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New:        func() (Driver[int], error) { return reused, nil },
+			Retryable:  func(err error) bool { return errors.Is(err, transient) },
+		},
+	}, ManagerConfig{Retry: RetryPolicy{
+		MaxReconnects: 1,
+		Jitter:        func(delay time.Duration) time.Duration { return delay },
+		Wait:          func(context.Context, time.Duration) error { return nil },
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-firstRunStarted
+	oldStatus := make(chan DriverStatus, 1)
+	go func() { oldStatus <- manager.Status() }()
+	<-snapshotStarted
+	close(failFirst)
+	select {
+	case <-secondRunStarted:
+	case <-time.After(time.Second):
+		t.Fatal("reconnected Run did not start")
+	}
+	close(releaseSnapshot)
+	staleResult := <-oldStatus
+	if staleResult.State == driver.StateLive || equalCapabilities(staleResult.Capabilities, []driver.Capability{"old-cycle"}) {
+		t.Fatalf("old snapshot contaminated reconnected cycle: %#v", staleResult)
+	}
+	fresh := manager.Status()
+	if fresh.State != driver.StateLive || !equalCapabilities(fresh.Capabilities, []driver.Capability{"new-cycle"}) {
+		t.Fatalf("fresh reconnected status = %#v", fresh)
 	}
 	if err := manager.Stop(t.Context()); err != nil {
 		t.Fatal(err)

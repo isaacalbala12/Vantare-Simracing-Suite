@@ -46,7 +46,7 @@ func TestDriverOwnsSingleOpenAndCloseUntilCancellation(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- driver.Run(ctx, sink) }()
 	<-sink.values
-	if opens != 1 || reader.reads != 1 {
+	if opens != 1 || reader.reads != 2 {
 		t.Fatalf("opens=%d reads=%d", opens, reader.reads)
 	}
 	cancel()
@@ -56,6 +56,51 @@ func TestDriverOwnsSingleOpenAndCloseUntilCancellation(t *testing.T) {
 	if reader.closes != 1 || ticks.stops != 1 {
 		t.Fatalf("closes=%d ticker stops=%d", reader.closes, ticks.stops)
 	}
+}
+
+func TestDriverRejectsIncoherentFrameWithoutPublishing(t *testing.T) {
+	a := knownBuffer(t)
+	b := append([]byte(nil), a...)
+	b[100]++
+	reader := &testReader{snapshots: [][]byte{a, b, a, b}}
+	sink := &countingSink{}
+	driver := newDriver(config{open: func() (memoryReader, error) { return reader, nil }, stableComparisons: 3})
+	err := driver.Run(t.Context(), sink)
+	if !errors.Is(err, ErrIncoherentSnapshot) || !IsRetryable(err) {
+		t.Fatalf("error = %v", err)
+	}
+	if sink.calls.Load() != 0 {
+		t.Fatal("incoherent frame was published")
+	}
+	if reader.closes != 1 {
+		t.Fatalf("closes = %d", reader.closes)
+	}
+	if driver.RuntimeSnapshot().State != drivercontract.StateDegraded {
+		t.Fatalf("runtime = %s", driver.RuntimeSnapshot().State)
+	}
+}
+
+func TestDriverCancellationBoundariesDoNotOpenOrPublishLate(t *testing.T) {
+	t.Run("already cancelled does not open", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		opens := 0
+		driver := newDriver(config{open: func() (memoryReader, error) { opens++; return &testReader{data: knownBuffer(t)}, nil }})
+		err := driver.Run(ctx, &countingSink{})
+		if !errors.Is(err, context.Canceled) || opens != 0 {
+			t.Fatalf("error=%v opens=%d", err, opens)
+		}
+	})
+	t.Run("cancelled after open closes without publish", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		reader := &testReader{data: knownBuffer(t)}
+		driver := newDriver(config{open: func() (memoryReader, error) { cancel(); return reader, nil }})
+		sink := &countingSink{}
+		err := driver.Run(ctx, sink)
+		if !errors.Is(err, context.Canceled) || sink.calls.Load() != 0 || reader.closes != 1 {
+			t.Fatalf("error=%v calls=%d closes=%d", err, sink.calls.Load(), reader.closes)
+		}
+	})
 }
 
 func TestDriverReturnsTypedErrorsForManagerReconnect(t *testing.T) {
@@ -94,8 +139,7 @@ func TestDriverPropagatesCloseFailureWithoutRawDiagnostics(t *testing.T) {
 }
 
 func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
-	buffer := make([]byte, ObjectOutSize)
-	buffer[1740] = 255
+	buffer := knownBuffer(t)
 	reader := &testReader{data: buffer}
 	ticks := &manualTicker{ticks: make(chan time.Time, 2)}
 	var nowUnix atomic.Int64
@@ -111,8 +155,8 @@ func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- driver.Run(ctx, sink) }()
 	first := <-sink.values
-	if first.Compatibility != CompatibilityUnknown || driver.RuntimeSnapshot().State != drivercontract.StateDegraded {
-		t.Fatal("unknown signature was not degraded")
+	if first.Compatibility != CompatibilityKnown || driver.RuntimeSnapshot().State != drivercontract.StateLive {
+		t.Fatal("known signature was not live")
 	}
 	nowUnix.Store(102)
 	ticks.ticks <- time.Unix(102, 0)
@@ -149,6 +193,21 @@ func TestNewDriverStartsAtManagerCompatibleConnectingState(t *testing.T) {
 	if got := New().RuntimeSnapshot().State; got != drivercontract.StateConnecting {
 		t.Fatalf("initial state = %s, want connecting", got)
 	}
+}
+
+func TestIncompatibilityTakesPriorityOverStale(t *testing.T) {
+	observation := Observation{Compatibility: CompatibilityUnknown, SourceTime: observed(time.Second)}
+	observation = withFreshness(observation, schema.FreshnessStale)
+	if got := runtimeState(observation); got != drivercontract.StateDegraded {
+		t.Fatalf("state = %s", got)
+	}
+}
+
+type countingSink struct{ calls atomic.Int32 }
+
+func (sink *countingSink) WriteObservation(context.Context, Observation) error {
+	sink.calls.Add(1)
+	return nil
 }
 
 func containsAny(value string, candidates []string) bool {

@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	CapabilitySharedMemory drivercontract.Capability = "shared-memory"
-	defaultInterval                                  = time.Second / 60
-	defaultFreshnessLimit                            = 500 * time.Millisecond
+	CapabilitySharedMemory   drivercontract.Capability = "shared-memory"
+	defaultInterval                                    = time.Second / 60
+	defaultFreshnessLimit                              = 500 * time.Millisecond
+	defaultStableComparisons                           = 3
 )
 
 var (
@@ -34,11 +35,12 @@ func (value systemTicker) C() <-chan time.Time { return value.ticker.C }
 func (value systemTicker) Stop()               { value.ticker.Stop() }
 
 type config struct {
-	open           openMemory
-	now            func() time.Time
-	newTicker      func(time.Duration) ticker
-	interval       time.Duration
-	freshnessLimit time.Duration
+	open              openMemory
+	now               func() time.Time
+	newTicker         func(time.Duration) ticker
+	interval          time.Duration
+	freshnessLimit    time.Duration
+	stableComparisons int
 }
 
 // Driver owns exactly one LMU_Data mapping for the duration of each Run.
@@ -70,6 +72,9 @@ func newDriver(cfg config) *Driver {
 	if cfg.freshnessLimit <= 0 {
 		cfg.freshnessLimit = defaultFreshnessLimit
 	}
+	if cfg.stableComparisons <= 0 {
+		cfg.stableComparisons = defaultStableComparisons
+	}
 	// DriverManager exposes an instance only after selecting it as active, where
 	// its own state is already connecting. Matching that state at construction
 	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
@@ -93,12 +98,17 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		driver.running = false
 		if ctx.Err() != nil {
 			driver.state = drivercontract.StateStopping
+		} else if errors.Is(runErr, ErrIncoherentSnapshot) {
+			driver.state = drivercontract.StateDegraded
 		} else {
 			driver.state = drivercontract.StateError
 		}
 		driver.mu.Unlock()
 	}()
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	reader, err := driver.config.open()
 	if err != nil {
 		return fmt.Errorf("%w: open %s: %w", ErrDisconnected, MemoryName, err)
@@ -108,16 +118,27 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			runErr = errors.Join(runErr, fmt.Errorf("close %s: %w", MemoryName, err))
 		}
 	}()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	ticker := driver.config.newTicker(driver.config.interval)
 	defer ticker.Stop()
 	buffer := make([]byte, ObjectOutSize)
+	scratch := make([]byte, ObjectOutSize)
 	var previousSource time.Duration
 	var unchangedSince time.Time
 
 	acquire := func() error {
-		if err := reader.Snapshot(buffer); err != nil {
+		if err := readStable(ctx, reader, buffer, scratch, driver.config.stableComparisons); err != nil {
 			if errors.Is(err, ErrIncompatibleBuffer) {
+				return err
+			}
+			if errors.Is(err, ErrIncoherentSnapshot) {
+				driver.setRuntime(drivercontract.StateDegraded)
+				return err
+			}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return err
 			}
 			return fmt.Errorf("%w: snapshot %s: %w", ErrDisconnected, MemoryName, err)
@@ -125,6 +146,9 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		now := driver.config.now()
 		observation, err := Parse(buffer, now)
 		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if current, present := observation.SourceTime.Value(); present && observation.SourceTime.Freshness() == schema.FreshnessFresh {
@@ -136,13 +160,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			}
 			previousSource = current
 		}
-		state := drivercontract.StateLive
-		if observation.Compatibility == CompatibilityUnknown {
-			state = drivercontract.StateDegraded
-		}
-		if observation.SourceTime.Freshness() == schema.FreshnessStale {
-			state = drivercontract.StateStale
-		}
+		state := runtimeState(observation)
 		driver.setRuntime(state)
 		if err := sink.WriteObservation(ctx, observation); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
@@ -182,7 +200,17 @@ func (driver *Driver) setRuntime(state drivercontract.State) {
 }
 
 func IsRetryable(err error) bool {
-	return errors.Is(err, ErrDisconnected) || errors.Is(err, ErrMappingUnavailable) || errors.Is(err, ErrMappingRead)
+	return errors.Is(err, ErrDisconnected) || errors.Is(err, ErrMappingUnavailable) || errors.Is(err, ErrMappingRead) || errors.Is(err, ErrIncoherentSnapshot)
+}
+
+func runtimeState(observation Observation) drivercontract.State {
+	if observation.Compatibility == CompatibilityUnknown {
+		return drivercontract.StateDegraded
+	}
+	if observation.SourceTime.Freshness() == schema.FreshnessStale {
+		return drivercontract.StateStale
+	}
+	return drivercontract.StateLive
 }
 
 func withFreshness(value Observation, freshness schema.Freshness) Observation {

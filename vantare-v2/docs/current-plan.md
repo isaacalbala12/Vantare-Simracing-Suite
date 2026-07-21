@@ -1,3 +1,12 @@
+Nota ISA-30 / TC-03A (2026-07-21):
+- Iniciada desde ISA-29 aprobada en `8d12cf0399f1848d873a8268d12e5d3005945830`, con rama/worktree aislados y sin cambiar producción. Inventario canónico: `docs/telemetry-core/lmu-raw-acquisition-audit.md`.
+- Confirmado: un único mapping `LMU_Data` alimenta los parsers público y Engineer; la duplicación está en offsets/decodificación, no en tres conexiones principales. Extended, PitInfo y REST deben quedar bajo el único LMU Driver.
+- La fixture histórica contenía identidad real. Se sustituye por buffer sanitizado con lista blanca numérica, aliases deterministas, procedencia, versión/fingerprint y SHA-256; se añade captura real `menu` de LMU 1.3.0.0. Garaje y boxes quedan explícitamente pendientes, sin inventar datos.
+- Se caracteriza paridad de campos solapados y se añaden fuzz targets no-panic para ambos parsers. No se eliminan parsers, no se cablea el driver y no se cambia comportamiento productivo.
+- Riesgos reservados a ISA-31/32/33: detector de compatibilidad, NaN/Inf, `TotalLaps` divergente, offsets de ruedas/aceite no verificados, REST pit menu separado y recapturas reales garaje/boxes. ISA-31 no debe iniciarse hasta revisión y aprobación manual de este corte.
+- Evidencia: focales LMU/Engineer y `go test ./internal/telemetry/... -count=1` PASS; fuzz explícito 5 s por parser PASS (28.271 + 158.473 ejecuciones); benchmark 13,5–15,6 µs/op; build frontend PASS; suite global serial `go test -p 1 ./... -count=1` PASS. La suite paralela reproduce únicamente ISA-118 (`TestConcurrentSavesDontCorruptFile`) y el focal vuelve a pasar; `-race` no está disponible con `CGO_ENABLED=0`. Vet focal conserva tres warnings legacy `unsafe.Pointer` en readers mmap fuera del diff.
+- Review final correctness/readability/architecture/security/performance: sin P0/P1/P2. Estado: preparado para `In Review`, PR draft apilada sobre ISA-29 y sin merge; ISA-31 no iniciada.
+
 Nota ISA-29 / TC-02D (2026-07-21):
 - Iniciada desde ISA-28 aprobada en `e182f92cc085c3c51f119a02146e20c6236cdd38`, con rama y worktree aislados. El corte solo fija contratos compilables y guardarraíles; no conecta LMU, crea runtime, cambia productos ni añade transporte/almacenamiento.
 - `driver.State` fija los ocho estados aprobados (`stopped`, `detecting`, `connecting`, `live`, `degraded`, `stale`, `error`, `stopping`) y transiciones explícitas. Reinicios desde error requieren decisión del manager; no existe retry automático oculto.

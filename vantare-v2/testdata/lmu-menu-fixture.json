@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "capture": {
+    "state": "menu",
+    "capturedAt": "2026-07-21T18:29:57Z",
+    "provenance": "direct read-only capture from LMU_Data during ISA-30",
+    "lmuVersion": "1.3.0.0 from Le Mans Ultimate.exe metadata",
+    "fingerprint": "LMU_Data/324820/telemetry-1888/scoring-584"
+  },
+  "sanitization": {
+    "version": "numeric-whitelist-v1",
+    "policy": "zero-filled buffer plus audited numeric fields; identities replaced with deterministic aliases"
+  },
+  "sha256": "8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a",
+  "session": {
+    "playerName": "player"
+  },
+  "telemetry": {
+    "playerVehicleIdx": 0,
+    "playerHasVehicle": false
+  },
+  "vehicles": null,
+  "playerTelemetry": null
+}

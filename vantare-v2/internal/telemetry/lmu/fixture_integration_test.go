@@ -1,14 +1,28 @@
 package lmu
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 type fixtureSidecar struct {
+	SchemaVersion int `json:"schemaVersion"`
+	Capture       struct {
+		State       string `json:"state"`
+		Provenance  string `json:"provenance"`
+		LMUVersion  string `json:"lmuVersion"`
+		Fingerprint string `json:"fingerprint"`
+	} `json:"capture"`
+	Sanitization struct {
+		Version string `json:"version"`
+	} `json:"sanitization"`
+	SHA256  string `json:"sha256"`
 	Session struct {
 		TrackName   string  `json:"trackName"`
 		SessionType int32   `json:"sessionType"`
@@ -24,10 +38,10 @@ type fixtureSidecar struct {
 		PlayerHasVehicle bool `json:"playerHasVehicle"`
 	} `json:"telemetry"`
 	Vehicles []struct {
-		ID         int32   `json:"id"`
-		DriverName string  `json:"driverName"`
-		Place      uint8   `json:"place"`
-		IsPlayer   bool    `json:"isPlayer"`
+		ID           int32  `json:"id"`
+		DriverName   string `json:"driverName"`
+		Place        uint8  `json:"place"`
+		IsPlayer     bool   `json:"isPlayer"`
 		VehicleClass string `json:"vehicleClass"`
 	} `json:"vehicles"`
 	PlayerTelemetry *struct {
@@ -108,6 +122,34 @@ func TestFixtureParseSession(t *testing.T) {
 	assertFloat(t, "trackTemp", session.TrackTemp, fx.Session.TrackTemp, 0.01)
 }
 
+func TestFixtureHasProvenanceAndSanitization(t *testing.T) {
+	buf, fx := loadFixture(t)
+	if fx.SchemaVersion != 1 || fx.Capture.State == "" || fx.Capture.Provenance == "" {
+		t.Fatalf("fixture provenance incomplete: %+v", fx.Capture)
+	}
+	if fx.Capture.LMUVersion == "" || fx.Capture.Fingerprint == "" {
+		t.Fatal("fixture build/fingerprint missing")
+	}
+	if fx.Sanitization.Version != fixtureSanitizerVersion {
+		t.Fatalf("sanitizer version: got %q want %q", fx.Sanitization.Version, fixtureSanitizerVersion)
+	}
+	sum := sha256.Sum256(buf)
+	if hex.EncodeToString(sum[:]) != fx.SHA256 {
+		t.Fatal("fixture SHA-256 does not match manifest")
+	}
+	_, jsonPath := fixturePaths()
+	rawManifest, err := os.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatalf("read fixture manifest for privacy check: %v", err)
+	}
+	lower := strings.ToLower(string(buf) + string(rawManifest))
+	for _, forbidden := range []string{"isaac", "@gmail", "c:\\users\\"} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("fixture contains forbidden identity/path fragment %q", forbidden)
+		}
+	}
+}
+
 func TestFixtureParsePlayerTelemetry(t *testing.T) {
 	buf, fx := loadFixture(t)
 	if !fx.Telemetry.PlayerHasVehicle || fx.PlayerTelemetry == nil {
@@ -184,6 +226,42 @@ func TestFixtureParseFull(t *testing.T) {
 	}
 	if len(tele.Vehicles) == 0 {
 		t.Fatal("expected scoring vehicles")
+	}
+}
+
+func TestMenuFixtureIsDisconnectedFromPlayer(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "testdata")
+	buf, err := os.ReadFile(filepath.Join(root, "lmu-menu-fixture.bin"))
+	if err != nil {
+		t.Fatalf("read menu fixture: %v", err)
+	}
+	tele := Parse(buf, ParseFull)
+	if tele == nil {
+		t.Fatal("expected structurally compatible menu fixture")
+	}
+	if tele.PlayerHasVehicle || tele.Player != nil {
+		t.Fatal("menu fixture must not expose a player vehicle")
+	}
+	rawManifest, err := os.ReadFile(filepath.Join(root, "lmu-menu-fixture.json"))
+	if err != nil {
+		t.Fatalf("read menu manifest: %v", err)
+	}
+	var manifest fixtureManifest
+	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
+		t.Fatalf("parse menu manifest: %v", err)
+	}
+	if manifest.Capture.State != "menu" || manifest.Capture.Provenance == "" || manifest.Capture.LMUVersion == "" {
+		t.Fatalf("menu provenance incomplete: %+v", manifest.Capture)
+	}
+	sum := sha256.Sum256(buf)
+	if hex.EncodeToString(sum[:]) != manifest.SHA256 {
+		t.Fatal("menu fixture SHA-256 does not match manifest")
+	}
+	lower := strings.ToLower(string(buf) + string(rawManifest))
+	for _, forbidden := range []string{"isaac", "@gmail", "c:\\users\\"} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("menu fixture contains forbidden identity/path fragment %q", forbidden)
+		}
 	}
 }
 

@@ -62,9 +62,9 @@ límites. RPM negativa, componentes no finitos y velocidad final no finita tras
 ## Rendimiento
 
 El benchmark estabilidad (dos copias)+parse+evidencia de compatibilidad da
-23,25–23,83 µs/op, 592 B/op y 14 allocs/op en Windows amd64. A 60 Hz hay
+23,18–24,72 µs/op, 592 B/op y 14 allocs/op en Windows amd64. A 60 Hz hay
 16,67 ms por muestra: el microcorte consume menos del 0,15 % de ese presupuesto
-(>690x de margen). La consulta proceso/version y la normalización allowlist
+(>670x de margen). La consulta proceso/version y la normalización allowlist
 ocurren una vez por `Run`, fuera del hot path. Las
 asignaciones pertenecen a los strings canónicos de la observación; el buffer de
 324.820 B y su scratch se reservan una vez por `Run` y se reutilizan.
@@ -94,3 +94,9 @@ Remove-Item Env:\LMU_LIVE_SHARED_MEMORY_TEST
 El test realiza un único `Run`, recibe una observación sin raw y cancela; el
 defer cierra view y handle. Para verificar desconexión, repetir con LMU cerrado:
 debe fallar con `ErrDisconnected`, no publicar mock ni iniciar reconnect local.
+
+Ejecución read-only del 2026-07-21 con LMU abierto: el provider confirmó build
+`1.3.0.0`, pero el frame actual no aportó las invariantes scoring exigidas y el
+test cerró FAIL con `evidence=scoring-insufficient`. No se capturó ni escribió
+raw. El resultado mantiene el gate fail-closed y requiere repetir en menú/pista
+cuando LMU publique el bloque scoring completo; no justifica relajar evidencia.

@@ -4,6 +4,7 @@ Nota ISA-32 / TC-03C (2026-07-21):
 - Compatibilidad/lifecycle: buffer corto es `ErrIncompatibleBuffer` terminal; mapping ausente o lectura perdida devuelve `ErrDisconnected` retryable para que el reconnect pertenezca a `DriverManager`; firma/invariantes desconocidos dejan runtime `degraded` y solo campos validados. Reloj inmóvil pasa a `stale`; retrocesos distinguen reset y wrap.
 - `RuntimeSnapshot` es concurrency-safe, no hace I/O y copia capabilities. `Run` cancela sin goroutines internas y cierra exactamente una vez. Parsers legacy, Engineer, Overlay, Strategy, REST, composición productiva, fusión/delta/gaps y dependencias permanecen sin cambios.
 - Fixtures reales cubiertas: menú y pista. Garaje y boxes siguen pendientes de captura real; no se inventan. Verificación manual opt-in documentada en `docs/telemetry-core/lmu-shared-memory-driver.md`.
+- Evidencia: focal repetido 20 veces PASS; fuzz explícito 10 s PASS (~602.606 ejecuciones); copy+parse de 324.820 B en 7,28–7,37 µs/op, 200 B/op y 4 allocs/op (margen >2.200x frente al presupuesto de 16,67 ms a 60 Hz); `go test ./internal/telemetry/... -count=1` y guard ADR PASS. `-race` no arranca con `CGO_ENABLED=0`; vet focal conserva un único warning `unsafe.Pointer` inevitable en la materialización de la vista mmap Windows, localizado y sin raw público.
 - Estado: preparado para review y validación manual LMU; sin push, PR, Linear, wiring, merge ni integración en `develop`. ISA-33 no debe iniciarse hasta aprobación humana de este corte.
 
 Nota ISA-31 / TC-03B (2026-07-21):

@@ -3,6 +3,7 @@ package lmu
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -75,6 +76,23 @@ func TestDriverReturnsTypedErrorsForManagerReconnect(t *testing.T) {
 	}
 }
 
+func TestDriverPropagatesCloseFailureWithoutRawDiagnostics(t *testing.T) {
+	closeFailure := errors.New("close handle failed")
+	reader := &testReader{data: make([]byte, ObjectOutSize), closeError: closeFailure}
+	sinkFailure := errors.New("stop after first observation")
+	driver := newDriver(config{open: func() (memoryReader, error) { return reader, nil }})
+	err := driver.Run(t.Context(), &collectingSink{values: make(chan Observation, 1), err: sinkFailure})
+	if !errors.Is(err, sinkFailure) || !errors.Is(err, closeFailure) {
+		t.Fatalf("Run error = %v, want sink and close failures", err)
+	}
+	if reader.closes != 1 {
+		t.Fatalf("closes = %d, want 1", reader.closes)
+	}
+	if containsAny(err.Error(), []string{"driver-", "player", "Circuit"}) {
+		t.Fatalf("diagnostic leaked fixture identity: %v", err)
+	}
+}
+
 func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
 	buffer := make([]byte, ObjectOutSize)
 	buffer[1740] = 255
@@ -131,4 +149,13 @@ func TestNewDriverStartsAtManagerCompatibleConnectingState(t *testing.T) {
 	if got := New().RuntimeSnapshot().State; got != drivercontract.StateConnecting {
 		t.Fatalf("initial state = %s, want connecting", got)
 	}
+}
+
+func containsAny(value string, candidates []string) bool {
+	for _, candidate := range candidates {
+		if strings.Contains(value, candidate) {
+			return true
+		}
+	}
+	return false
 }

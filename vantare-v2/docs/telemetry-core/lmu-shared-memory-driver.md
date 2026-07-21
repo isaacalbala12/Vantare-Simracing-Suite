@@ -29,6 +29,19 @@ se publican como `invalid`; nunca se convierten en cero válido.
 driver no crea goroutines propias. Clock, ticker y apertura son inyectables solo
 dentro del paquete para tests deterministas sin `time.Sleep`.
 
+Los errores de cierre se propagan mediante `errors.Join`; no se ignoran aunque
+la lectura o el sink ya hayan fallado. Los diagnósticos contienen nombres de
+canal, operación y errores tipados, nunca bytes raw, nombres de pilotos, pista o
+vehículo.
+
+## Rendimiento
+
+El benchmark copy+parse de la fixture completa (324.820 B) da 7,28–7,37 µs/op,
+200 B/op y 4 allocs/op en Windows amd64. A 60 Hz hay 16,67 ms por muestra: el
+microcorte consume menos del 0,05 % de ese presupuesto (>2.200x de margen). Las
+asignaciones pertenecen a los strings canónicos de la observación; el buffer de
+324.820 B se reserva una vez por `Run` y se reutiliza.
+
 ## Fixtures y límites
 
 - pista: `testdata/lmu-fixture.bin`, captura real sanitizada;

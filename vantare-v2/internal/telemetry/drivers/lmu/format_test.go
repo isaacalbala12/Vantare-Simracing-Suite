@@ -137,3 +137,19 @@ func BenchmarkParseTrackFixture(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkCopyAndParseTrackFixture(b *testing.B) {
+	source, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	destination := make([]byte, ObjectOutSize)
+	b.ReportAllocs()
+	b.SetBytes(ObjectOutSize)
+	for b.Loop() {
+		copy(destination, source)
+		if _, err := Parse(destination, time.Unix(0, 0)); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -30,7 +31,7 @@ func TestLiveLMUSharedMemoryOptIn(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Run: %v", err)
 	}
-	if sink.value.Fingerprint != knownFingerprint {
+	if !strings.Contains(sink.value.Fingerprint, "build="+supportedLMUVersion) {
 		t.Fatalf("fingerprint = %q", sink.value.Fingerprint)
 	}
 }

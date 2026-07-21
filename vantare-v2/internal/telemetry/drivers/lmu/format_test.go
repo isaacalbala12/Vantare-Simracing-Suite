@@ -31,11 +31,11 @@ func TestParseAuditedFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := Parse(buf, time.Date(2026, 7, 21, 12, 0, 0, 0, time.FixedZone("local", 3600)))
+			got, err := parseSupported(buf, time.Date(2026, 7, 21, 12, 0, 0, 0, time.FixedZone("local", 3600)))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Compatibility != CompatibilityKnown || got.Fingerprint != knownFingerprint {
+			if got.Compatibility != CompatibilityKnown || !strings.Contains(got.Fingerprint, "build=1.3.0.0") {
 				t.Fatalf("compatibility = %#v", got)
 			}
 			player, _ := got.PlayerPresent.Value()
@@ -66,7 +66,7 @@ func TestParseRejectsShortAndDegradesUnknownSignature(t *testing.T) {
 		{name: "plausible invariants without positive evidence", buf: plausibleUnknownBuffer()},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Parse(tt.buf, time.Now())
+			got, err := parseSupported(tt.buf, time.Now())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -112,7 +112,7 @@ func TestParseMarksNonFiniteAndOutOfRangeFieldsInvalid(t *testing.T) {
 	binary.LittleEndian.PutUint64(buf[base+420:], math.Float64bits(2))
 	binary.LittleEndian.PutUint64(buf[base+428:], math.Float64bits(0))
 	binary.LittleEndian.PutUint64(buf[base+444:], math.Float64bits(0))
-	got, err := Parse(buf, time.Now())
+	got, err := parseSupported(buf, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestParseRejectsOverflowedSpeedAndNegativeRPM(t *testing.T) {
 		binary.LittleEndian.PutUint64(buf[base+offset:], math.Float64bits(math.MaxFloat64))
 	}
 	binary.LittleEndian.PutUint64(buf[base+356:], math.Float64bits(-1))
-	got, err := Parse(buf, time.Now())
+	got, err := parseSupported(buf, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestGearAndLapPreserveSourceValuesWithoutInventedRanges(t *testing.T) {
 	base := telemetryOffset + int(buf[128465])*telemetryStride
 	binary.LittleEndian.PutUint32(buf[base+20:], uint32(math.MaxInt32))
 	binary.LittleEndian.PutUint32(buf[base+352:], uint32(99))
-	got, err := Parse(buf, time.Now())
+	got, err := parseSupported(buf, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,6 +160,39 @@ func TestGearAndLapPreserveSourceValuesWithoutInventedRanges(t *testing.T) {
 	}
 	if value, ok := got.Gear.Value(); !ok || value != vehicle.Gear(99) {
 		t.Fatalf("gear = %v,%v", value, ok)
+	}
+}
+
+func TestPlayerCompatibilityRequiresCorrelatedScoringAndTelemetrySlots(t *testing.T) {
+	fixture := knownBuffer(t)
+	playerIndex := int(fixture[128465])
+	telemetryBase := telemetryOffset + playerIndex*telemetryStride
+	tests := []struct {
+		name   string
+		mutate func([]byte)
+	}{
+		{name: "artificial scoring only", mutate: func(buf []byte) { clear(buf[telemetryBase : telemetryBase+telemetryStride]) }},
+		{name: "telemetry moved", mutate: func(buf []byte) {
+			target := telemetryOffset + ((playerIndex+1)%maxVehicles)*telemetryStride
+			copy(buf[target:target+telemetryStride], buf[telemetryBase:telemetryBase+telemetryStride])
+			clear(buf[telemetryBase : telemetryBase+telemetryStride])
+		}},
+		{name: "telemetry ID corrupt", mutate: func(buf []byte) { binary.LittleEndian.PutUint32(buf[telemetryBase:], uint32(9999)) }},
+		{name: "vehicle name incoherent", mutate: func(buf []byte) { copy(buf[telemetryBase+32:], []byte("different-vehicle\x00")) }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := append([]byte(nil), fixture...)
+			tt.mutate(buf)
+			got, err := parseSupported(buf, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Compatibility != CompatibilityUnknown {
+				t.Fatalf("compatibility=%v fingerprint=%q", got.Compatibility, got.Fingerprint)
+			}
+			assertNoPublishedFields(t, got)
+		})
 	}
 }
 
@@ -197,7 +230,10 @@ func TestSessionTypeOnlyMapsDemonstratedLMUCodes(t *testing.T) {
 func FuzzParseNeverPanics(f *testing.F) {
 	f.Add(make([]byte, ObjectOutSize))
 	f.Add([]byte{1, 2, 3})
-	f.Fuzz(func(t *testing.T, buf []byte) { _, _ = Parse(buf, time.Unix(0, 0)) })
+	f.Fuzz(func(t *testing.T, buf []byte) {
+		_, _ = Parse(buf, time.Unix(0, 0))
+		_, _ = parseSupported(buf, time.Unix(0, 0))
+	})
 }
 
 func BenchmarkParseTrackFixture(b *testing.B) {
@@ -207,7 +243,7 @@ func BenchmarkParseTrackFixture(b *testing.B) {
 	}
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := Parse(buf, time.Unix(0, 0)); err != nil {
+		if _, err := parseSupported(buf, time.Unix(0, 0)); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -227,10 +263,14 @@ func BenchmarkStableCopyAndParseTrackFixture(b *testing.B) {
 		if err := readStable(context.Background(), reader, destination, scratch, defaultStableComparisons); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := Parse(destination, time.Unix(0, 0)); err != nil {
+		if _, err := parseSupported(destination, time.Unix(0, 0)); err != nil {
 			b.Fatal(err)
 		}
 	}
+}
+
+func parseSupported(buf []byte, received time.Time) (Observation, error) {
+	return parseWithBuild(buf, received, BuildEvidence{FileVersion: supportedLMUVersion})
 }
 
 func plausibleUnknownBuffer() []byte {

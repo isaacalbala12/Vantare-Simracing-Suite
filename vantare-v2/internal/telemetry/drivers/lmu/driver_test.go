@@ -37,7 +37,7 @@ func TestDriverOwnsSingleOpenAndCloseUntilCancellation(t *testing.T) {
 	ticks := &manualTicker{ticks: make(chan time.Time)}
 	opens := 0
 	now := time.Unix(100, 0)
-	driver := newDriver(config{
+	driver := newTestDriver(config{
 		open:      func() (memoryReader, error) { opens++; return reader, nil },
 		now:       func() time.Time { return now },
 		newTicker: func(time.Duration) ticker { return ticks },
@@ -65,7 +65,7 @@ func TestDriverRejectsIncoherentFrameWithoutPublishing(t *testing.T) {
 	b[100]++
 	reader := &testReader{snapshots: [][]byte{a, b, a, b}}
 	sink := &countingSink{}
-	driver := newDriver(config{open: func() (memoryReader, error) { return reader, nil }, stableComparisons: 3})
+	driver := newTestDriver(config{open: func() (memoryReader, error) { return reader, nil }, stableComparisons: 3})
 	err := driver.Run(t.Context(), sink)
 	if !errors.Is(err, ErrIncoherentSnapshot) || !IsRetryable(err) {
 		t.Fatalf("error = %v", err)
@@ -86,7 +86,7 @@ func TestDriverCancellationBoundariesDoNotOpenOrPublishLate(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 		opens := 0
-		driver := newDriver(config{open: func() (memoryReader, error) { opens++; return &testReader{data: knownBuffer(t)}, nil }})
+		driver := newTestDriver(config{open: func() (memoryReader, error) { opens++; return &testReader{data: knownBuffer(t)}, nil }})
 		err := driver.Run(ctx, &countingSink{})
 		if !errors.Is(err, context.Canceled) || opens != 0 {
 			t.Fatalf("error=%v opens=%d", err, opens)
@@ -95,7 +95,7 @@ func TestDriverCancellationBoundariesDoNotOpenOrPublishLate(t *testing.T) {
 	t.Run("cancelled after open closes without publish", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		reader := &testReader{data: knownBuffer(t)}
-		driver := newDriver(config{open: func() (memoryReader, error) { cancel(); return reader, nil }})
+		driver := newTestDriver(config{open: func() (memoryReader, error) { cancel(); return reader, nil }})
 		sink := &countingSink{}
 		err := driver.Run(ctx, sink)
 		if !errors.Is(err, context.Canceled) || sink.calls.Load() != 0 || reader.closes != 1 {
@@ -105,7 +105,7 @@ func TestDriverCancellationBoundariesDoNotOpenOrPublishLate(t *testing.T) {
 	t.Run("cancelled after stable read does not publish", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		reader := &testReader{data: knownBuffer(t)}
-		driver := newDriver(config{
+		driver := newTestDriver(config{
 			open: func() (memoryReader, error) { return reader, nil },
 			now:  func() time.Time { cancel(); return time.Unix(1, 0) },
 		})
@@ -118,14 +118,14 @@ func TestDriverCancellationBoundariesDoNotOpenOrPublishLate(t *testing.T) {
 }
 
 func TestDriverReturnsTypedErrorsForManagerReconnect(t *testing.T) {
-	driver := newDriver(config{open: func() (memoryReader, error) { return nil, ErrMappingUnavailable }})
+	driver := newTestDriver(config{open: func() (memoryReader, error) { return nil, ErrMappingUnavailable }})
 	err := driver.Run(t.Context(), &collectingSink{values: make(chan Observation, 1)})
 	if !IsRetryable(err) || !errors.Is(err, ErrDisconnected) {
 		t.Fatalf("error = %v", err)
 	}
 
 	short := &testReader{data: make([]byte, ObjectOutSize-1)}
-	driver = newDriver(config{open: func() (memoryReader, error) { return short, nil }})
+	driver = newTestDriver(config{open: func() (memoryReader, error) { return short, nil }})
 	err = driver.Run(t.Context(), &collectingSink{values: make(chan Observation, 1)})
 	if !errors.Is(err, ErrIncompatibleBuffer) || IsRetryable(err) {
 		t.Fatalf("short error = %v", err)
@@ -147,7 +147,7 @@ func TestTeardownDominatesTransientFailureAndPreventsReconnect(t *testing.T) {
 			Detect:     func(context.Context) (bool, error) { return true, nil },
 			New: func() (core.Driver[Observation], error) {
 				constructions.Add(1)
-				return newDriver(config{open: func() (memoryReader, error) { opens.Add(1); return reader, nil }}), nil
+				return newTestDriver(config{open: func() (memoryReader, error) { opens.Add(1); return reader, nil }}), nil
 			},
 			Retryable: IsRetryable,
 		},
@@ -185,7 +185,7 @@ func TestDriverPropagatesCloseFailureWithoutRawDiagnostics(t *testing.T) {
 	closeFailure := errors.New("close handle failed")
 	reader := &testReader{data: make([]byte, ObjectOutSize), closeError: closeFailure}
 	sinkFailure := errors.New("stop after first observation")
-	driver := newDriver(config{open: func() (memoryReader, error) { return reader, nil }})
+	driver := newTestDriver(config{open: func() (memoryReader, error) { return reader, nil }})
 	err := driver.Run(t.Context(), &collectingSink{values: make(chan Observation, 1), err: sinkFailure})
 	if !errors.Is(err, sinkFailure) || !errors.Is(err, closeFailure) {
 		t.Fatalf("Run error = %v, want sink and close failures", err)
@@ -201,7 +201,7 @@ func TestDriverPropagatesCloseFailureWithoutRawDiagnostics(t *testing.T) {
 func TestLMUTeardownFailureReachesDriverManagerStop(t *testing.T) {
 	closeFailure := errors.New("close LMU mapping failed")
 	reader := &testReader{data: knownBuffer(t), closeError: closeFailure}
-	driver := newDriver(config{open: func() (memoryReader, error) { return reader, nil }})
+	driver := newTestDriver(config{open: func() (memoryReader, error) { return reader, nil }})
 	manager, err := core.NewDriverManager([]core.DriverCandidate[Observation]{
 		{
 			Descriptor: drivercontract.Descriptor{ID: "lmu"},
@@ -232,7 +232,7 @@ func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
 	ticks := &manualTicker{ticks: make(chan time.Time, 2)}
 	var nowUnix atomic.Int64
 	nowUnix.Store(100)
-	driver := newDriver(config{
+	driver := newTestDriver(config{
 		open:           func() (memoryReader, error) { return reader, nil },
 		now:            func() time.Time { return time.Unix(nowUnix.Load(), 0) },
 		newTicker:      func(time.Duration) ticker { return ticks },
@@ -296,6 +296,13 @@ type countingSink struct{ calls atomic.Int32 }
 func (sink *countingSink) WriteObservation(context.Context, Observation) error {
 	sink.calls.Add(1)
 	return nil
+}
+
+func newTestDriver(cfg config) *Driver {
+	if cfg.build == nil {
+		cfg.build = func() (BuildEvidence, error) { return BuildEvidence{FileVersion: supportedLMUVersion}, nil }
+	}
+	return newDriver(cfg)
 }
 
 func containsAny(value string, candidates []string) bool {

@@ -41,6 +41,7 @@ type config struct {
 	interval          time.Duration
 	freshnessLimit    time.Duration
 	stableComparisons int
+	build             buildProvider
 }
 
 // Driver owns exactly one LMU_Data mapping for the duration of each Run.
@@ -75,6 +76,9 @@ func newDriver(cfg config) *Driver {
 	if cfg.stableComparisons <= 0 {
 		cfg.stableComparisons = defaultStableComparisons
 	}
+	if cfg.build == nil {
+		cfg.build = readLMUBuildEvidence
+	}
 	// DriverManager exposes an instance only after selecting it as active, where
 	// its own state is already connecting. Matching that state at construction
 	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
@@ -108,6 +112,10 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	build, buildErr := driver.config.build()
+	if buildErr != nil {
+		build = BuildEvidence{}
 	}
 	reader, err := driver.config.open()
 	if err != nil {
@@ -144,7 +152,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			return fmt.Errorf("%w: snapshot %s: %w", ErrDisconnected, MemoryName, err)
 		}
 		now := driver.config.now()
-		observation, err := Parse(buffer, now)
+		observation, err := parseWithBuild(buffer, now, build)
 		if err != nil {
 			return err
 		}

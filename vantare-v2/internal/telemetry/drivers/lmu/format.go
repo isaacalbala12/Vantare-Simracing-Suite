@@ -3,9 +3,11 @@ package lmu
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/controls"
@@ -14,14 +16,14 @@ import (
 )
 
 const (
-	MemoryName         = "LMU_Data"
-	ObjectOutSize      = 324820
-	telemetryOffset    = 128468
-	telemetryStride    = 1888
-	scoringStride      = 584
-	maxVehicles        = 104
-	knownFingerprint   = "LMU_Data/runtime:size=324820;scoring-player-name=nul;vehicle-count=valid;phase=valid;player-index=valid"
-	unknownFingerprint = "LMU_Data/size=324820/evidence=insufficient"
+	MemoryName             = "LMU_Data"
+	ObjectOutSize          = 324820
+	telemetryOffset        = 128468
+	telemetryStride        = 1888
+	scoringStride          = 584
+	maxVehicles            = 104
+	knownFingerprintFormat = "LMU_Data/runtime:build=%s;size=324820;scoring=invariants+player-name-nul;telemetry=%s"
+	unknownFingerprint     = "LMU_Data/size=324820/evidence=insufficient"
 )
 
 var ErrIncompatibleBuffer = errors.New("LMU_Data buffer is structurally incompatible")
@@ -63,6 +65,10 @@ type Observation struct {
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
+	return parseWithBuild(buf, received, BuildEvidence{})
+}
+
+func parseWithBuild(buf []byte, received time.Time, build BuildEvidence) (Observation, error) {
 	if len(buf) < ObjectOutSize {
 		return Observation{}, ErrIncompatibleBuffer
 	}
@@ -72,16 +78,28 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 		Compatibility: CompatibilityUnknown,
 		Fingerprint:   unknownFingerprint,
 	}
+	version, supported := build.supportedVersion()
+	if !supported {
+		return result, nil
+	}
 
 	vehicles := readInt32(buf, 1736)
 	phase := buf[1740]
 	playerIndex := int(buf[128465])
-	if !hasStructuralEvidence(buf, vehicles, phase, playerIndex) {
+	if !hasScoringEvidence(buf, vehicles, phase, playerIndex) {
 		return result, nil
 	}
+	playerPresent := buf[128466] != 0
+	telemetryEvidence := "not-required-no-player"
+	if playerPresent {
+		if !hasPlayerTelemetryEvidence(buf, vehicles, playerIndex) {
+			return result, nil
+		}
+		telemetryEvidence = "player-slot-correlated"
+	}
 	result.Compatibility = CompatibilityKnown
-	result.Fingerprint = knownFingerprint
-	result.PlayerPresent = observed(buf[128466] != 0)
+	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, version, telemetryEvidence)
+	result.PlayerPresent = observed(playerPresent)
 
 	result.TrackName = observed(readString(buf, 1632, 64))
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
@@ -122,22 +140,75 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 	return result, nil
 }
 
-func hasStructuralEvidence(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
+func hasScoringEvidence(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
 	if vehicles < 0 || vehicles > maxVehicles || phase > 9 || playerIndex < 0 || playerIndex >= maxVehicles || buf[128466] > 1 {
 		return false
 	}
 	// Both audited real fixtures contain a non-empty, NUL-terminated scoring
 	// player name at this offset. The content is never returned or fingerprinted;
 	// only its structural shape contributes positive runtime evidence.
-	name := buf[1748 : 1748+32]
+	_, ok := reasonableCString(buf[1748:1748+32], false)
+	return ok
+}
+
+func hasPlayerTelemetryEvidence(buf []byte, vehicles int32, playerIndex int) bool {
+	if vehicles <= 0 {
+		return false
+	}
+	playerScoring := -1
+	for index := 0; index < int(vehicles); index++ {
+		base := 2192 + index*scoringStride
+		if buf[base+196] == 1 {
+			if playerScoring != -1 {
+				return false
+			}
+			playerScoring = base
+		}
+	}
+	if playerScoring < 0 {
+		return false
+	}
+	telemetry := telemetryOffset + playerIndex*telemetryStride
+	if readInt32(buf, playerScoring) != readInt32(buf, telemetry) {
+		return false
+	}
+	scoringVehicle, ok := reasonableCString(buf[playerScoring+36:playerScoring+100], false)
+	if !ok {
+		return false
+	}
+	telemetryVehicle, ok := reasonableCString(buf[telemetry+32:telemetry+96], false)
+	if !ok || scoringVehicle != telemetryVehicle {
+		return false
+	}
+	scoringTrack, ok := reasonableCString(buf[1632:1696], false)
+	if !ok {
+		return false
+	}
+	telemetryTrack, ok := reasonableCString(buf[telemetry+96:telemetry+160], false)
+	return ok && scoringTrack == telemetryTrack
+}
+
+func reasonableCString(value []byte, allowEmpty bool) (string, bool) {
 	nul := -1
-	for index, value := range name {
-		if value == 0 {
+	for index, char := range value {
+		if char == 0 {
 			nul = index
 			break
 		}
 	}
-	return nul > 0
+	if nul < 0 || (!allowEmpty && nul == 0) {
+		return "", false
+	}
+	value = value[:nul]
+	if !utf8.Valid(value) {
+		return "", false
+	}
+	for _, char := range string(value) {
+		if char < 0x20 {
+			return "", false
+		}
+	}
+	return string(value), true
 }
 
 func observed[T comparable](value T) schema.Field[T] {

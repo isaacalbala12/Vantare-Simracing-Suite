@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	ErrManagerAlreadyStarted = errors.New("telemetry driver manager already started")
-	ErrManagerRunning        = errors.New("telemetry driver manager is running")
-	ErrReconnectExhausted    = errors.New("telemetry driver reconnect attempts exhausted")
-	ErrInvalidDriverCatalog  = errors.New("invalid telemetry driver catalog")
+	ErrManagerAlreadyStarted   = errors.New("telemetry driver manager already started")
+	ErrManagerRunning          = errors.New("telemetry driver manager is running")
+	ErrReconnectExhausted      = errors.New("telemetry driver reconnect attempts exhausted")
+	ErrInvalidDriverCatalog    = errors.New("invalid telemetry driver catalog")
+	ErrInvalidDriverTransition = errors.New("invalid telemetry driver state transition")
 )
 
 // DriverCandidate binds static support metadata to cancelable detection and a
@@ -63,14 +64,16 @@ type DriverManager[T any] struct {
 	candidates []DriverCandidate[T]
 	config     ManagerConfig
 
-	running  bool
-	state    driver.State
-	active   Driver[T]
-	activeID driver.ID
-	attempt  int
-	err      error
-	cancel   context.CancelFunc
-	done     chan struct{}
+	running             bool
+	generation          uint64
+	state               driver.State
+	active              Driver[T]
+	activeID            driver.ID
+	runtimeCapabilities []driver.Capability
+	attempt             int
+	err                 error
+	cancel              context.CancelFunc
+	done                chan struct{}
 }
 
 func NewDriverManager[T any](candidates []DriverCandidate[T], config ManagerConfig) (*DriverManager[T], error) {
@@ -135,14 +138,16 @@ func (manager *DriverManager[T]) Start(parent context.Context, sink driver.Obser
 
 	ctx, cancel := context.WithCancel(parent)
 	manager.running = true
+	manager.generation++
 	manager.state = driver.StateDetecting
 	manager.active = nil
 	manager.activeID = ""
+	manager.runtimeCapabilities = nil
 	manager.attempt = 0
 	manager.err = nil
 	manager.cancel = cancel
 	manager.done = make(chan struct{})
-	go manager.run(ctx, sink, manager.done)
+	go manager.run(ctx, sink, manager.generation, manager.done)
 	return nil
 }
 
@@ -160,21 +165,13 @@ func (manager *DriverManager[T]) Stop(ctx context.Context) error {
 	manager.state = driver.StateStopping
 	cancel := manager.cancel
 	done := manager.done
+	generation := manager.generation
 	manager.mu.Unlock()
 
 	cancel()
 	select {
 	case <-done:
-		manager.mu.Lock()
-		manager.running = false
-		manager.state = driver.StateStopped
-		manager.active = nil
-		manager.activeID = ""
-		manager.attempt = 0
-		manager.err = nil
-		manager.cancel = nil
-		manager.done = nil
-		manager.mu.Unlock()
+		manager.completeStop(generation, done)
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("stop driver manager: %w", ctx.Err())
@@ -183,34 +180,29 @@ func (manager *DriverManager[T]) Stop(ctx context.Context) error {
 
 func (manager *DriverManager[T]) Status() DriverStatus {
 	manager.mu.RLock()
-	status := DriverStatus{
-		State:            manager.state,
-		ActiveID:         manager.activeID,
-		ReconnectAttempt: manager.attempt,
-		Err:              manager.err,
-	}
 	active := manager.active
-	if active != nil {
-		for _, candidate := range manager.candidates {
-			if candidate.Descriptor.ID == manager.activeID {
-				status.Capabilities = append([]driver.Capability(nil), candidate.Descriptor.Capabilities...)
-				break
-			}
-		}
-	}
+	generation := manager.generation
+	status := manager.statusLocked()
 	manager.mu.RUnlock()
 
-	if active != nil && status.State != driver.StateStopping && status.State != driver.StateError {
-		if current := active.State(); current.Known() && current != driver.StateStopped {
-			status.State = current
-		}
+	if active == nil || status.State == driver.StateStopping || status.State == driver.StateError {
+		return status
 	}
-	return status
+
+	// RuntimeSnapshot is external driver code and may block briefly; never call
+	// it while holding the manager mutex.
+	runtime := active.RuntimeSnapshot()
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	if manager.generation == generation && manager.active == active {
+		manager.applyRuntimeSnapshot(runtime)
+	}
+	return manager.statusLocked()
 }
 
-func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], done chan<- struct{}) {
+func (manager *DriverManager[T]) run(ctx context.Context, sink driver.ObservationSink[T], generation uint64, done chan<- struct{}) {
 	defer func() {
-		manager.finishRun()
+		manager.finishRun(generation)
 		close(done)
 	}()
 
@@ -265,11 +257,15 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 	}
 }
 
-func (manager *DriverManager[T]) finishRun() {
+func (manager *DriverManager[T]) finishRun(generation uint64) {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
+	if manager.generation != generation {
+		return
+	}
 	manager.active = nil
 	manager.activeID = ""
+	manager.runtimeCapabilities = nil
 	switch manager.state {
 	case driver.StateError, driver.StateStopping:
 		// Error remains observable until an explicit Stop acknowledges it.
@@ -280,6 +276,50 @@ func (manager *DriverManager[T]) finishRun() {
 		manager.err = nil
 		manager.running = false
 	}
+}
+
+func (manager *DriverManager[T]) completeStop(generation uint64, done <-chan struct{}) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	if manager.generation != generation || manager.done != done {
+		return
+	}
+	manager.running = false
+	manager.state = driver.StateStopped
+	manager.active = nil
+	manager.activeID = ""
+	manager.runtimeCapabilities = nil
+	manager.attempt = 0
+	manager.err = nil
+	manager.cancel = nil
+	manager.done = nil
+}
+
+func (manager *DriverManager[T]) statusLocked() DriverStatus {
+	return DriverStatus{
+		State:            manager.state,
+		ActiveID:         manager.activeID,
+		Capabilities:     append([]driver.Capability(nil), manager.runtimeCapabilities...),
+		ReconnectAttempt: manager.attempt,
+		Err:              manager.err,
+	}
+}
+
+func (manager *DriverManager[T]) applyRuntimeSnapshot(runtime driver.RuntimeSnapshot) {
+	manager.runtimeCapabilities = append(manager.runtimeCapabilities[:0], runtime.Capabilities...)
+	if runtime.State == manager.state {
+		return
+	}
+	if runtime.State.Known() && manager.state.CanTransitionTo(runtime.State) {
+		manager.state = runtime.State
+		if errors.Is(manager.err, ErrInvalidDriverTransition) {
+			manager.err = nil
+		}
+		return
+	}
+	from := manager.state
+	manager.state = driver.StateDegraded
+	manager.err = fmt.Errorf("%w: %s -> %s", ErrInvalidDriverTransition, from, runtime.State)
 }
 
 func (manager *DriverManager[T]) detect(ctx context.Context) (DriverCandidate[T], bool, error, bool) {
@@ -327,6 +367,7 @@ func (manager *DriverManager[T]) setWaitingDetection(err error) {
 	manager.state = driver.StateDetecting
 	manager.active = nil
 	manager.activeID = ""
+	manager.runtimeCapabilities = nil
 	manager.err = err
 }
 
@@ -336,6 +377,7 @@ func (manager *DriverManager[T]) setActive(id driver.ID, active Driver[T]) {
 	manager.state = driver.StateConnecting
 	manager.activeID = id
 	manager.active = active
+	manager.runtimeCapabilities = nil
 	manager.err = nil
 }
 
@@ -344,6 +386,7 @@ func (manager *DriverManager[T]) clearActive() {
 	defer manager.mu.Unlock()
 	manager.active = nil
 	manager.activeID = ""
+	manager.runtimeCapabilities = nil
 }
 
 func (manager *DriverManager[T]) recordTransient(err error) int {
@@ -351,6 +394,7 @@ func (manager *DriverManager[T]) recordTransient(err error) int {
 	defer manager.mu.Unlock()
 	manager.active = nil
 	manager.activeID = ""
+	manager.runtimeCapabilities = nil
 	manager.attempt++
 	manager.state = driver.StateStale
 	manager.err = err
@@ -363,6 +407,7 @@ func (manager *DriverManager[T]) setTerminal(err error) {
 	manager.state = driver.StateError
 	manager.active = nil
 	manager.activeID = ""
+	manager.runtimeCapabilities = nil
 	manager.err = err
 }
 

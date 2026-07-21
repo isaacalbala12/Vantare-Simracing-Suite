@@ -11,8 +11,9 @@ import (
 )
 
 type managerTestDriver struct {
-	state driver.State
-	run   func(context.Context) error
+	state   driver.State
+	runtime func() driver.RuntimeSnapshot
+	run     func(context.Context) error
 }
 
 func (d *managerTestDriver) Run(ctx context.Context, _ driver.ObservationSink[int]) error {
@@ -23,7 +24,12 @@ func (d *managerTestDriver) Run(ctx context.Context, _ driver.ObservationSink[in
 	return ctx.Err()
 }
 
-func (d *managerTestDriver) State() driver.State { return d.state }
+func (d *managerTestDriver) RuntimeSnapshot() driver.RuntimeSnapshot {
+	if d.runtime != nil {
+		return d.runtime()
+	}
+	return driver.RuntimeSnapshot{State: d.state}
+}
 
 type managerTestSink struct{}
 
@@ -155,6 +161,180 @@ func TestDriverManagerPreferenceChangesOnlyWhileStopped(t *testing.T) {
 	}
 	if got := <-started; got != "secondary" {
 		t.Fatalf("driver after preference change = %q, want secondary", got)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestConcurrentStopsCannotClearRestartedGeneration(t *testing.T) {
+	started := make(chan driver.ID, 2)
+	manager, err := NewDriverManager([]DriverCandidate[int]{managerCandidate("lmu", 1, nil, started)}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	manager.mu.RLock()
+	oldGeneration, oldDone := manager.generation, manager.done
+	manager.mu.RUnlock()
+
+	releaseStops := make(chan struct{})
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			<-releaseStops
+			results <- manager.Stop(t.Context())
+		}()
+	}
+	close(releaseStops)
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatalf("concurrent Stop: %v", err)
+		}
+	}
+
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatalf("restart: %v", err)
+	}
+	<-started
+	manager.completeStop(oldGeneration, oldDone)
+	status := manager.Status()
+	if status.State != driver.StateLive || status.ActiveID != "lmu" {
+		t.Fatalf("stale Stop completion cleared restarted generation: %#v", status)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStopTimeoutCompletionCanBeAcknowledgedAndRestarted(t *testing.T) {
+	runStarted := make(chan struct{})
+	releaseRun := make(chan struct{})
+	var startOnce sync.Once
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (Driver[int], error) {
+				return &managerTestDriver{state: driver.StateLive, run: func(ctx context.Context) error {
+					startOnce.Do(func() { close(runStarted) })
+					<-ctx.Done()
+					<-releaseRun
+					return ctx.Err()
+				}}, nil
+			},
+		},
+	}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-runStarted
+	manager.mu.RLock()
+	oldDone := manager.done
+	manager.mu.RUnlock()
+
+	stopCtx, cancelStop := context.WithCancel(t.Context())
+	cancelStop()
+	if err := manager.Stop(stopCtx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("timed out Stop = %v, want context cancellation", err)
+	}
+	if got := manager.Status().State; got != driver.StateStopping {
+		t.Fatalf("state after timed out Stop = %s, want stopping", got)
+	}
+	close(releaseRun)
+	select {
+	case <-oldDone:
+	case <-time.After(time.Second):
+		t.Fatal("driver did not finish after release")
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatalf("acknowledge completed Stop: %v", err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatalf("restart after completed timeout: %v", err)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDriverManagerValidatesRuntimeStateAndCapabilities(t *testing.T) {
+	var snapshotMu sync.RWMutex
+	snapshot := driver.RuntimeSnapshot{State: driver.StateLive, Capabilities: []driver.Capability{"shared-memory"}}
+	setSnapshot := func(next driver.RuntimeSnapshot) {
+		snapshotMu.Lock()
+		snapshot = next
+		snapshotMu.Unlock()
+	}
+	readSnapshot := func() driver.RuntimeSnapshot {
+		snapshotMu.RLock()
+		defer snapshotMu.RUnlock()
+		return driver.RuntimeSnapshot{
+			State:        snapshot.State,
+			Capabilities: append([]driver.Capability(nil), snapshot.Capabilities...),
+		}
+	}
+	started := make(chan struct{})
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "lmu", Priority: 1, Capabilities: []driver.Capability{"compiled-shared-memory", "compiled-rest"}},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (Driver[int], error) {
+				return &managerTestDriver{runtime: readSnapshot, run: func(ctx context.Context) error {
+					close(started)
+					<-ctx.Done()
+					return ctx.Err()
+				}}, nil
+			},
+		},
+	}, ManagerConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	<-started
+
+	status := manager.Status()
+	if status.State != driver.StateLive || len(status.Capabilities) != 1 || status.Capabilities[0] != "shared-memory" {
+		t.Fatalf("initial runtime status = %#v", status)
+	}
+	status.Capabilities[0] = "mutated"
+	if got := manager.Status().Capabilities[0]; got != "shared-memory" {
+		t.Fatalf("runtime capabilities leaked mutable state: %q", got)
+	}
+	if got := manager.Supported()[0].Capabilities; len(got) != 2 || got[0] != "compiled-shared-memory" {
+		t.Fatalf("static support was replaced by runtime capabilities: %#v", got)
+	}
+
+	valid := []driver.RuntimeSnapshot{
+		{State: driver.StateStale, Capabilities: nil},
+		{State: driver.StateConnecting, Capabilities: []driver.Capability{"shared-memory"}},
+		{State: driver.StateLive, Capabilities: []driver.Capability{"shared-memory", "rest"}},
+	}
+	for _, next := range valid {
+		setSnapshot(next)
+		if got := manager.Status(); got.State != next.State || !equalCapabilities(got.Capabilities, next.Capabilities) || got.Err != nil {
+			t.Fatalf("valid transition to %s produced %#v", next.State, got)
+		}
+	}
+
+	setSnapshot(driver.RuntimeSnapshot{State: driver.StateStopped, Capabilities: []driver.Capability{"rest"}})
+	invalid := manager.Status()
+	if invalid.State != driver.StateDegraded || !errors.Is(invalid.Err, ErrInvalidDriverTransition) {
+		t.Fatalf("illegal live -> stopped transition = %#v, want degraded diagnostic", invalid)
+	}
+	setSnapshot(driver.RuntimeSnapshot{State: driver.StateLive, Capabilities: []driver.Capability{"shared-memory"}})
+	recovered := manager.Status()
+	if recovered.State != driver.StateLive || recovered.Err != nil {
+		t.Fatalf("valid recovery from degraded = %#v", recovered)
 	}
 	if err := manager.Stop(t.Context()); err != nil {
 		t.Fatal(err)
@@ -540,4 +720,16 @@ func waitManagerError(t *testing.T, manager *DriverManager[int], want error) {
 		default:
 		}
 	}
+}
+
+func equalCapabilities(left, right []driver.Capability) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }

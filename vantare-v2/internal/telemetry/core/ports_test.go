@@ -12,7 +12,9 @@ import (
 type fakeDriver struct{}
 
 func (fakeDriver) Run(context.Context, driver.ObservationSink[int]) error { return nil }
-func (fakeDriver) State() driver.State                                    { return driver.StateStopped }
+func (fakeDriver) RuntimeSnapshot() driver.RuntimeSnapshot {
+	return driver.RuntimeSnapshot{State: driver.StateStopped}
+}
 
 type fakeObservationSink struct{}
 

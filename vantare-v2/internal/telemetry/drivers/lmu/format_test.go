@@ -3,9 +3,11 @@ package lmu
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,6 +78,28 @@ func TestParseRejectsShortAndDegradesUnknownSignature(t *testing.T) {
 			}
 			assertNoPublishedFields(t, got)
 		})
+	}
+}
+
+func TestCompatibilityDiagnosticsNeverContainRawOrIdentity(t *testing.T) {
+	short := []byte("player Circuit driver-private-identity")
+	_, err := Parse(short, time.Now())
+	if !errors.Is(err, ErrIncompatibleBuffer) {
+		t.Fatalf("error = %v", err)
+	}
+	for _, forbidden := range []string{"player", "Circuit", "driver-private-identity"} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Fatalf("diagnostic leaked %q: %v", forbidden, err)
+		}
+	}
+	unknown, err := Parse(plausibleUnknownBuffer(), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"Circuit", "driver-private-identity"} {
+		if strings.Contains(unknown.Fingerprint, forbidden) {
+			t.Fatalf("fingerprint leaked identity: %q", unknown.Fingerprint)
+		}
 	}
 }
 

@@ -50,6 +50,31 @@ func TestNewFieldRejectsIncoherentMetadata(t *testing.T) {
 	}
 }
 
+func TestNewFieldAcceptsCanonicalQualityStates(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		provenance Provenance
+		freshness  Freshness
+	}{
+		{name: "observed fresh", provenance: ProvenanceObserved, freshness: FreshnessFresh},
+		{name: "derived stale", provenance: ProvenanceDerived, freshness: FreshnessStale},
+		{name: "estimated invalid", provenance: ProvenanceEstimated, freshness: FreshnessInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			field, err := NewField(0, tt.provenance, tt.freshness)
+			if err != nil {
+				t.Fatalf("NewField() error = %v", err)
+			}
+			if field.Provenance() != tt.provenance || field.Freshness() != tt.freshness {
+				t.Fatalf("metadata = (%v, %v), want (%v, %v)", field.Provenance(), field.Freshness(), tt.provenance, tt.freshness)
+			}
+		})
+	}
+}
+
 func assertPresent[T comparable](t *testing.T, name string, value T) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {

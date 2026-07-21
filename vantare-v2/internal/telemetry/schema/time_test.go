@@ -22,6 +22,8 @@ func TestCursorAdvanceModelsContinuityResetAndWrap(t *testing.T) {
 		{name: "continuous", cursor: Cursor{Epoch: 2, Sequence: 8}, want: Cursor{Epoch: 2, Sequence: 9}},
 		{name: "brief disconnect keeps epoch", cursor: Cursor{Epoch: 2, Sequence: 8}, transition: TransitionBriefDisconnect, want: Cursor{Epoch: 2, Sequence: 9}},
 		{name: "source reset", cursor: Cursor{Epoch: 2, Sequence: 8}, transition: TransitionSourceReset, want: Cursor{Epoch: 3, Sequence: 1}},
+		{name: "event change", cursor: Cursor{Epoch: 2, Sequence: 8}, transition: TransitionEventChanged, want: Cursor{Epoch: 3, Sequence: 1}},
+		{name: "session change", cursor: Cursor{Epoch: 2, Sequence: 8}, transition: TransitionSessionChanged, want: Cursor{Epoch: 3, Sequence: 1}},
 		{name: "vehicle change", cursor: Cursor{Epoch: 2, Sequence: 8}, transition: TransitionVehicleChanged, want: Cursor{Epoch: 3, Sequence: 1}},
 		{name: "sequence wrap", cursor: Cursor{Epoch: 2, Sequence: Sequence(math.MaxUint64)}, want: Cursor{Epoch: 3, Sequence: 1}},
 	}
@@ -54,7 +56,17 @@ func TestClockUsesMonotonicAgeWithoutSerializingIt(t *testing.T) {
 	t.Parallel()
 
 	received := time.Now()
-	clock := NewClock(MissingField[time.Duration](), MissingField[time.Duration](), received)
+	zeroTime, err := NewField(time.Duration(0), ProvenanceObserved, FreshnessFresh)
+	if err != nil {
+		t.Fatalf("NewField() error = %v", err)
+	}
+	clock := NewClock(zeroTime, zeroTime, received)
+	for name, field := range map[string]Field[time.Duration]{"source": clock.SourceTime(), "session": clock.SessionTime()} {
+		value, present := field.Value()
+		if !present || value != 0 {
+			t.Fatalf("%s time = (%s, %v), want (0s, true)", name, value, present)
+		}
+	}
 	if got := clock.Age(received.Add(250 * time.Millisecond)); got != 250*time.Millisecond {
 		t.Fatalf("Age() = %s, want 250ms", got)
 	}

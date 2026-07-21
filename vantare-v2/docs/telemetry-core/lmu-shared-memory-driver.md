@@ -51,9 +51,9 @@ límites. RPM negativa, componentes no finitos y velocidad final no finita tras
 ## Rendimiento
 
 El benchmark estabilidad (dos copias)+parse de la fixture completa da
-21,51–22,79 µs/op,
+21,50–22,48 µs/op,
 200 B/op y 4 allocs/op en Windows amd64. A 60 Hz hay 16,67 ms por muestra: el
-microcorte consume menos del 0,14 % de ese presupuesto (>730x de margen). Las
+microcorte consume menos del 0,14 % de ese presupuesto (>740x de margen). Las
 asignaciones pertenecen a los strings canónicos de la observación; el buffer de
 324.820 B y su scratch se reservan una vez por `Run` y se reutilizan.
 

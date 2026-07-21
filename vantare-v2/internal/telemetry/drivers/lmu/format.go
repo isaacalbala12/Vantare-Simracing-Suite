@@ -142,16 +142,16 @@ func validateCount(value, min, max int32) schema.Field[schema.Count] {
 }
 
 func validateSessionType(value int32) schema.Field[session.Type] {
-	// LMU/rFactor session codes demonstrated by the current fixtures.
+	// Only codes demonstrated by the audited fixture and existing LMU monitors
+	// are translated. Other source codes remain explicitly invalid until TC-03
+	// has real captures proving their semantics.
 	var canonical session.Type
 	switch value {
-	case 0, 1, 2, 3, 4:
+	case 1:
 		canonical = session.TypePractice
-	case 5, 6, 7, 8:
+	case 3:
 		canonical = session.TypeQualifying
-	case 9:
-		canonical = session.TypeWarmup
-	case 10, 11, 12, 13:
+	case 4, 5:
 		canonical = session.TypeRace
 	default:
 		return invalid[session.Type]()

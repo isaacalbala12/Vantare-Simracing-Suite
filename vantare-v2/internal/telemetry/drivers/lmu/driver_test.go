@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -79,10 +80,11 @@ func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
 	buffer[1740] = 255
 	reader := &testReader{data: buffer}
 	ticks := &manualTicker{ticks: make(chan time.Time, 2)}
-	now := time.Unix(100, 0)
+	var nowUnix atomic.Int64
+	nowUnix.Store(100)
 	driver := newDriver(config{
 		open:           func() (memoryReader, error) { return reader, nil },
-		now:            func() time.Time { return now },
+		now:            func() time.Time { return time.Unix(nowUnix.Load(), 0) },
 		newTicker:      func(time.Duration) ticker { return ticks },
 		freshnessLimit: time.Second,
 	})
@@ -94,8 +96,8 @@ func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
 	if first.Compatibility != CompatibilityUnknown || driver.RuntimeSnapshot().State != drivercontract.StateDegraded {
 		t.Fatal("unknown signature was not degraded")
 	}
-	now = now.Add(2 * time.Second)
-	ticks.ticks <- now
+	nowUnix.Store(102)
+	ticks.ticks <- time.Unix(102, 0)
 	second := <-sink.values
 	if second.SourceTime.Freshness() != schema.FreshnessStale || driver.RuntimeSnapshot().State != drivercontract.StateStale {
 		t.Fatal("unchanged clock was not stale")

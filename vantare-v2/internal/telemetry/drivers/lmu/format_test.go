@@ -100,6 +100,25 @@ func TestClassifyClockResetAndWrap(t *testing.T) {
 	}
 }
 
+func TestSessionTypeOnlyMapsDemonstratedLMUCodes(t *testing.T) {
+	tests := []struct {
+		code      int32
+		freshness schema.Freshness
+	}{
+		{code: 1, freshness: schema.FreshnessFresh},
+		{code: 3, freshness: schema.FreshnessFresh},
+		{code: 4, freshness: schema.FreshnessFresh},
+		{code: 5, freshness: schema.FreshnessFresh},
+		{code: 2, freshness: schema.FreshnessInvalid},
+		{code: 10, freshness: schema.FreshnessInvalid},
+	}
+	for _, tt := range tests {
+		if got := validateSessionType(tt.code).Freshness(); got != tt.freshness {
+			t.Fatalf("code %d freshness = %v, want %v", tt.code, got, tt.freshness)
+		}
+	}
+}
+
 func FuzzParseNeverPanics(f *testing.F) {
 	f.Add(make([]byte, ObjectOutSize))
 	f.Add([]byte{1, 2, 3})

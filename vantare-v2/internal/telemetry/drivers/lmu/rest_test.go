@@ -190,6 +190,33 @@ func TestRESTSessionValidationIsTransactional(t *testing.T) {
 	}
 }
 
+func TestRESTSourceTimeUpperBoundIsConservativeAndDeterministic(t *testing.T) {
+	maxWholeSeconds := int64(math.MaxInt64) / int64(time.Second)
+	roundedDurationLimit := float64(math.MaxInt64) / float64(time.Second)
+	tests := []struct {
+		name    string
+		seconds float64
+		valid   bool
+	}{
+		{name: "largest exact whole second", seconds: float64(maxWholeSeconds), valid: true},
+		{name: "next representable after whole second", seconds: math.Nextafter(float64(maxWholeSeconds), math.Inf(1)), valid: true},
+		{name: "immediately below rounded duration limit", seconds: math.Nextafter(roundedDurationLimit, math.Inf(-1)), valid: true},
+		{name: "rounded duration limit is conservatively rejected", seconds: roundedDurationLimit, valid: false},
+		{name: "immediately above rounded duration limit", seconds: math.Nextafter(roundedDurationLimit, math.Inf(1)), valid: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			duration, valid := durationFromSeconds(test.seconds)
+			if valid != test.valid {
+				t.Fatalf("durationFromSeconds(%.18g) valid=%v duration=%v", test.seconds, valid, duration)
+			}
+			if valid && duration < 0 {
+				t.Fatalf("duration overflowed negative: %v", duration)
+			}
+		})
+	}
+}
+
 func TestRESTUsesPerResponseTimestampsAndFinalSnapshotTime(t *testing.T) {
 	start := time.Unix(100, 0).UTC()
 	clock := &lockedClock{now: start}

@@ -21,7 +21,7 @@ No se modifican Engineer, Overlay, Strategy, Wails, SSE ni el composition root. 
 
 Cada endpoint conserva la hora real de intento, `LastSuccessUTC` de recepción y estado propio. Cada campo conserva la recepción real en `UpdatedUTC` y calidad `fresh`, `stale`, `missing` o `invalid`. La hora final del snapshot se captura después de ambos requests y gobierna TTL/freshness. Un fallo de un endpoint no borra un éxito independiente del otro.
 
-`sessionInfo` se acepta de forma transaccional: primero valida todo el payload temporal y construye campos provisionales; solo entonces confirma campos y `LastSuccessUTC`. Un `CurrentEventTime` negativo, NaN, infinito o fuera de rango preserva íntegro el último cache válido. El tiempo de evento aceptado se emite como `SourceTime` observado.
+`sessionInfo` se acepta de forma transaccional: primero valida todo el payload temporal y construye campos provisionales; solo entonces confirma campos y `LastSuccessUTC`. Un `CurrentEventTime` negativo, NaN, infinito o fuera de rango preserva íntegro el último cache válido. El tiempo de evento aceptado se emite como `SourceTime` observado. Su conversión separa segundos enteros y nanosegundos fraccionarios, valida el resto disponible de `time.Duration` y rechaza de forma conservadora valores ambiguos en el límite superior.
 
 ## Estados honestos
 

@@ -423,11 +423,12 @@ type sessionFields struct {
 }
 
 func validateSessionFields(info restSessionInfo, now time.Time) (sessionFields, error) {
-	if !finite(info.CurrentEventTime) || info.CurrentEventTime < 0 || info.CurrentEventTime > float64(math.MaxInt64)/float64(time.Second) {
+	sourceTime, valid := durationFromSeconds(info.CurrentEventTime)
+	if !valid {
 		return sessionFields{}, errors.New("invalid LMU REST current event time")
 	}
 	fields := sessionFields{
-		sourceTime:   timedObserved(time.Duration(info.CurrentEventTime*float64(time.Second)), now),
+		sourceTime:   timedObserved(sourceTime, now),
 		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now},
 		vehicleCount: timedValidated[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now),
 	}
@@ -437,6 +438,26 @@ func validateSessionFields(info restSessionInfo, now time.Time) (sessionFields, 
 		fields.trackName = timedObserved(info.TrackName, now)
 	}
 	return fields, nil
+}
+
+func durationFromSeconds(seconds float64) (time.Duration, bool) {
+	if !finite(seconds) || seconds < 0 {
+		return 0, false
+	}
+	wholeFloat, fraction := math.Modf(seconds)
+	maxWholeSeconds := int64(math.MaxInt64) / int64(time.Second)
+	if wholeFloat > float64(maxWholeSeconds) {
+		return 0, false
+	}
+	wholeSeconds := int64(wholeFloat)
+	fractionalNanos := int64(fraction * float64(time.Second))
+	if wholeSeconds == maxWholeSeconds {
+		maxFractionalNanos := int64(math.MaxInt64) % int64(time.Second)
+		if fractionalNanos > maxFractionalNanos {
+			return 0, false
+		}
+	}
+	return time.Duration(wholeSeconds)*time.Second + time.Duration(fractionalNanos), true
 }
 
 func (cache *restCache) applySession(fields sessionFields) {

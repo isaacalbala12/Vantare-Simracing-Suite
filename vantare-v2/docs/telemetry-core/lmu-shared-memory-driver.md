@@ -17,10 +17,17 @@ se publican como `invalid`; nunca se convierten en cero válido.
 - mapping ausente o lectura perdida: error retryable `ErrDisconnected`; el
   reconnect corresponde a `core.DriverManager`, no al driver;
 - buffer menor a 324.820 bytes: `ErrIncompatibleBuffer` terminal;
-- la compatibilidad solo es `known` cuando aparecen evidencia positiva no
-  expuesta (forma NUL-terminated del nombre scoring presente en ambas fixtures)
-  e invariantes plausibles; all-zero o evidencia insuficiente quedan `unknown`,
-  fingerprint `insufficient` y todos los campos de offsets `missing`;
+- la compatibilidad solo es `known` con build allowlisted (`1.3.0.0`) y evidencia
+  estructural positiva. Windows localiza `Le Mans Ultimate.exe`, conserva su
+  ruta solo en memoria y lee FileVersion/ProductVersion con `version.dll`; la
+  ruta nunca entra en estado, fingerprint ni error. Build ausente/no soportado,
+  all-zero o evidencia insuficiente quedan `unknown`, fingerprint `insufficient`
+  y todos los campos de offsets `missing`;
+- scoring y telemetry se prueban aparte: menú requiere build + invariantes
+  scoring y puede ser `live` sin vehículo; con jugador se exige un único slot
+  scoring `isPlayer`, ID consistente, vehículo y track coherentes con el slot
+  telemetry. Scoring válido con telemetry movida/corrupta queda `unknown` y no
+  publica campos rápidos;
 - jugador ausente: runtime `live`, con `PlayerPresent=false` y campos de
   vehículo ausentes;
 - reloj inmóvil sobre el límite: runtime `stale` y campos presentes `stale`;
@@ -38,6 +45,10 @@ contaminar un restart. Los diagnósticos contienen nombres de
 canal, operación y errores tipados, nunca bytes raw, nombres de pilotos, pista o
 vehículo.
 
+Teardown tiene prioridad absoluta sobre disconnected/incoherent: nunca es
+retryable y `DriverManager` no construye otra instancia aunque el mismo error
+contenga marcadores transitorios.
+
 `LMU_Data` no ofrece un contador/generación de frame demostrado. Por eso cada
 muestra exige dos copias completas consecutivas idénticas, con scratch
 preasignado y hasta tres comparaciones. Si nunca estabiliza, no se publica y
@@ -50,10 +61,11 @@ límites. RPM negativa, componentes no finitos y velocidad final no finita tras
 
 ## Rendimiento
 
-El benchmark estabilidad (dos copias)+parse de la fixture completa da
-21,50–22,48 µs/op,
-200 B/op y 4 allocs/op en Windows amd64. A 60 Hz hay 16,67 ms por muestra: el
-microcorte consume menos del 0,14 % de ese presupuesto (>740x de margen). Las
+El benchmark estabilidad (dos copias)+parse+evidencia de compatibilidad da
+23,25–23,83 µs/op, 592 B/op y 14 allocs/op en Windows amd64. A 60 Hz hay
+16,67 ms por muestra: el microcorte consume menos del 0,15 % de ese presupuesto
+(>690x de margen). La consulta proceso/version y la normalización allowlist
+ocurren una vez por `Run`, fuera del hot path. Las
 asignaciones pertenecen a los strings canónicos de la observación; el buffer de
 324.820 B y su scratch se reservan una vez por `Run` y se reutilizan.
 
@@ -63,6 +75,7 @@ asignaciones pertenecen a los strings canónicos de la observación; el buffer d
 - menú: `testdata/lmu-menu-fixture.bin`, captura real sanitizada sin vehículo;
 - garaje y boxes: pendientes de captura real; no se simulan ni se declara
   cobertura.
+- no-Windows, LMU ausente o versión fuera de allowlist: `unknown/degraded`.
 
 Los parsers legacy permanecen intactos para comparación posterior. El raw solo
 es visible en tests internos del paquete y nunca forma parte de la API del

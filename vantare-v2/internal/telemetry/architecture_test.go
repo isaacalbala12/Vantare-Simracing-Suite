@@ -61,6 +61,8 @@ func TestValidateImport(t *testing.T) {
 		{name: "core may use schema", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/schema"}},
 		{name: "core may use neutral driver contracts", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/driver"}},
 		{name: "core rejects catalog", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/catalog"}, wantErr: true},
+		{name: "derive may use core", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/core"}},
+		{name: "derive rejects driver contracts", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
 		{name: "projection root may use core", edge: importEdge{Package: "internal/telemetry/projection", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "projection may use core", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "projection root rejects driver contracts", edge: importEdge{Package: "internal/telemetry/projection", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
@@ -240,6 +242,16 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/driver",
 		) {
 			return fmt.Errorf("core may only import schema and neutral driver contracts within telemetry, not %s", edge.Import)
+		}
+	}
+
+	if edge.Package == "internal/telemetry/derive" || strings.HasPrefix(edge.Package, "internal/telemetry/derive/") {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/schema",
+			modulePath+"/internal/telemetry/core",
+			modulePath+"/internal/telemetry/derive",
+		) {
+			return fmt.Errorf("derive may only import schema, core, and its own tree within telemetry, not %s", edge.Import)
 		}
 	}
 

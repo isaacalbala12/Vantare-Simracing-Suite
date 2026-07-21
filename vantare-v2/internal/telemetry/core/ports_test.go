@@ -26,12 +26,19 @@ func (fakeRecordingSink) WriteSnapshot(context.Context, envelope.Snapshot[[]int]
 func (fakeRecordingSink) WriteFact(context.Context, envelope.Fact[int]) error { return nil }
 func (fakeRecordingSink) Close(context.Context) error                         { return nil }
 
+type fakeDerivation struct{}
+
+func (fakeDerivation) Apply(snapshot envelope.Snapshot[[]int]) (envelope.Snapshot[[]int], error) {
+	return snapshot, nil
+}
+
 func TestPortsAreSatisfiedByNarrowFakes(t *testing.T) {
 	t.Parallel()
 
 	var _ Driver[int] = fakeDriver{}
 	var _ driver.ObservationSink[int] = fakeObservationSink{}
 	var _ RecordingSink[[]int, int] = fakeRecordingSink{}
+	var _ Derivation[[]int] = fakeDerivation{}
 }
 
 func TestFlowControlErrorsRemainInspectableWhenWrapped(t *testing.T) {

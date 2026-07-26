@@ -125,6 +125,30 @@ func TestSessionCoordinatorSessionAndVehicleResetsAreDistinct(t *testing.T) {
 	}
 }
 
+func TestSessionCoordinatorExplicitEndIsIdempotentAndRestartable(t *testing.T) {
+	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
+	sink := &factSink{}
+	first := coordinatorSnapshot(t, 1, 1, "shm", run("e", "s", "v", "t", "d"), 1)
+	if err := coordinator.Apply(context.Background(), first, sink); err != nil {
+		t.Fatal(err)
+	}
+	if err := coordinator.EndSession(context.Background(), sink); err != nil {
+		t.Fatal(err)
+	}
+	if err := coordinator.EndSession(context.Background(), sink); err != nil {
+		t.Fatal(err)
+	}
+	next := coordinatorSnapshot(t, 2, 1, "shm", run("e", "s", "v", "t", "d"), 1)
+	if err := coordinator.Apply(context.Background(), next, sink); err != nil {
+		t.Fatal(err)
+	}
+	got := kinds(flattenFactValues(sink.batches))
+	want := []FactKind{FactSessionStarted, FactSessionEnded, FactSessionStarted}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("kinds = %v, want %v", got, want)
+	}
+}
+
 func TestSessionCoordinatorLapHighWaterMarkSurvivesSourceRegression(t *testing.T) {
 	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
 	sink := &factSink{}

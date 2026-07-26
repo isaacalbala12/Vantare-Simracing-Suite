@@ -76,6 +76,7 @@ type coordinatorVehicle struct {
 
 type coordinatorState struct {
 	initialized     bool
+	sessionActive   bool
 	header          envelope.Header
 	connected       bool
 	connectionKnown bool
@@ -203,6 +204,44 @@ func (coordinator *SessionCoordinator) SetConnected(
 	return nil
 }
 
+// EndSession explicitly closes the current session when no successor snapshot
+// exists yet. It is idempotent and does not conflate connection loss with a
+// session boundary.
+func (coordinator *SessionCoordinator) EndSession(ctx context.Context, sink FactBatchSink) error {
+	if !coordinator.running.CompareAndSwap(false, true) {
+		return ErrCoordinatorRunning
+	}
+	defer coordinator.running.Store(false)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if sink == nil {
+		return fmt.Errorf("write session end fact: %w", ErrClosed)
+	}
+
+	coordinator.mu.RLock()
+	if !coordinator.state.initialized || !coordinator.state.sessionActive {
+		coordinator.mu.RUnlock()
+		return nil
+	}
+	next := cloneCoordinatorState(coordinator.state)
+	coordinator.mu.RUnlock()
+	next.sessionActive = false
+	next.vehicles = nil
+	events := []SessionFact{{
+		Kind:        FactSessionEnded,
+		OccurredUTC: coordinator.now().Round(0).UTC(),
+		Identity:    next.header.Identity,
+	}}
+	if err := coordinator.publish(ctx, sink, next.header, &next, events); err != nil {
+		return err
+	}
+	coordinator.mu.Lock()
+	coordinator.state = next
+	coordinator.mu.Unlock()
+	return nil
+}
+
 func (coordinator *SessionCoordinator) Current() (envelope.Header, FactSequence, bool) {
 	coordinator.mu.RLock()
 	defer coordinator.mu.RUnlock()
@@ -219,7 +258,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 	previousHeader := next.header
 	previousVehicles := next.vehicles
 
-	if !next.initialized {
+	if !next.initialized || !next.sessionActive {
 		facts = append(facts, SessionFact{Kind: FactSessionStarted, OccurredUTC: now, Identity: header.Identity})
 		previousVehicles = nil
 	} else if !previousHeader.Identity.SameSession(header.Identity) {
@@ -254,8 +293,8 @@ func (coordinator *SessionCoordinator) applySnapshot(
 					// A same-session source regression cannot revoke an
 					// already emitted fact. Preserve the high-water mark.
 					current.completedLaps = previous.completedLaps
-				} else {
-					for completed := previous.completedLaps + 1; completed <= laps; completed++ {
+				} else if laps > previous.completedLaps {
+					for completed := previous.completedLaps + 1; ; completed++ {
 						facts = append(facts, SessionFact{
 							Kind:        FactLapCompleted,
 							OccurredUTC: now,
@@ -264,6 +303,9 @@ func (coordinator *SessionCoordinator) applySnapshot(
 						})
 						if len(facts) > coordinator.maxFacts {
 							return nil, ErrFactBatchOverflow
+						}
+						if completed == laps {
+							break
 						}
 					}
 				}
@@ -296,6 +338,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 	}
 
 	next.initialized = true
+	next.sessionActive = true
 	next.header = header
 	next.vehicles = updatedVehicles
 	if !next.connectionKnown {

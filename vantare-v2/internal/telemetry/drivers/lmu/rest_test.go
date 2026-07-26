@@ -94,7 +94,7 @@ func TestRESTPollClassifiesDeadlineAndPreservesCancellation(t *testing.T) {
 		return nil, request.Context().Err()
 	})
 	now := time.Unix(100, 0)
-	cfg := normalizeRESTConfig(&restConfig{client: client, now: func() time.Time { return now }}, time.Now)
+	cfg := normalizeRESTConfig(&restConfig{client: client, now: func() time.Time { return now }}, time.Now, func() time.Duration { return 0 })
 	cfg.deadline = 20 * time.Millisecond
 	observation, _ := pollREST(t.Context(), cfg, &restCache{})
 	if observation.REST.Status != RESTStatusTimeout || observation.REST.Standings.Status != RESTEndpointTimeout || observation.REST.SessionInfo.Status != RESTEndpointTimeout {
@@ -122,6 +122,8 @@ func TestRESTCacheMarksResponsesAndFieldsStaleWithoutRefreshingTimestamp(t *test
 
 	firstTime := time.Unix(100, 0).UTC()
 	cfg := testRESTConfig(server, firstTime)
+	var elapsed atomic.Int64
+	cfg.elapsed = func() time.Duration { return time.Duration(elapsed.Load()) }
 	cache := &restCache{}
 	first, _ := pollREST(t.Context(), cfg, cache)
 	if first.REST.Status != RESTStatusLive {
@@ -130,12 +132,59 @@ func TestRESTCacheMarksResponsesAndFieldsStaleWithoutRefreshingTimestamp(t *test
 	failing.Store(true)
 	staleTime := firstTime.Add(cfg.ttl + time.Nanosecond)
 	cfg.now = func() time.Time { return staleTime }
+	elapsed.Store(int64(cfg.ttl + time.Nanosecond))
 	second, _ := pollREST(t.Context(), cfg, cache)
 	if second.REST.Status != RESTStatusStale || second.REST.Standings.Status != RESTEndpointStale || second.REST.SessionInfo.Status != RESTEndpointStale {
 		t.Fatalf("stale REST = %#v", second.REST)
 	}
 	assertTimedValue(t, second.REST.TrackName, "Old Track", firstTime, schema.FreshnessStale)
 	assertTimedValue(t, second.REST.PlayerPosition, 1, firstTime, schema.FreshnessStale)
+}
+
+func TestRESTFreshnessUsesMonotonicAgeAcrossWallClockJumpsAndRecovers(t *testing.T) {
+	failing := atomic.Bool{}
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if failing.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		if request.URL.Path == standingsEndpoint {
+			_, _ = w.Write([]byte(`[{"player":true,"position":1,"lapsCompleted":2,"pitstops":0}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"trackName":"Monotonic","session":"RACE1","numberOfVehicles":4,"currentEventTime":10}`))
+	})
+	defer server.Close()
+
+	wall := time.Unix(1_000, 0).UTC()
+	var wallNanos atomic.Int64
+	var elapsedNanos atomic.Int64
+	wallNanos.Store(wall.UnixNano())
+	cfg := testRESTConfig(server, wall)
+	cfg.now = func() time.Time { return time.Unix(0, wallNanos.Load()).UTC() }
+	cfg.elapsed = func() time.Duration { return time.Duration(elapsedNanos.Load()) }
+	cache := &restCache{}
+
+	first, _ := pollREST(t.Context(), cfg, cache)
+	assertTimedValue(t, first.REST.TrackName, "Monotonic", wall, schema.FreshnessFresh)
+
+	failing.Store(true)
+	wallNanos.Store(wall.Add(-24 * time.Hour).UnixNano())
+	elapsedNanos.Store(int64(cfg.ttl))
+	atBoundary, _ := pollREST(t.Context(), cfg, cache)
+	assertTimedValue(t, atBoundary.REST.TrackName, "Monotonic", wall, schema.FreshnessFresh)
+
+	wallNanos.Store(wall.Add(365 * 24 * time.Hour).UnixNano())
+	elapsedNanos.Store(int64(cfg.ttl + time.Nanosecond))
+	expired, _ := pollREST(t.Context(), cfg, cache)
+	assertTimedValue(t, expired.REST.TrackName, "Monotonic", wall, schema.FreshnessStale)
+
+	failing.Store(false)
+	recoveryWall := wall.Add(-365 * 24 * time.Hour)
+	wallNanos.Store(recoveryWall.UnixNano())
+	elapsedNanos.Store(int64(cfg.ttl + time.Second))
+	recovered, _ := pollREST(t.Context(), cfg, cache)
+	assertTimedValue(t, recovered.REST.TrackName, "Monotonic", recoveryWall, schema.FreshnessFresh)
 }
 
 func TestRESTSessionValidationIsTransactional(t *testing.T) {
@@ -174,12 +223,13 @@ func TestRESTSessionValidationIsTransactional(t *testing.T) {
 	assertTimedValue(t, second.REST.TrackName, "Accepted Track", firstTime, schema.FreshnessFresh)
 	assertTimedValue(t, second.REST.SourceTime, 50*time.Second, firstTime, schema.FreshnessFresh)
 	for _, invalidTime := range []float64{-1, math.NaN()} {
+		rejectedTrack := "Must Not Commit"
 		seed := restCache{
 			sessionInfo: RESTEndpointSnapshot{LastSuccessUTC: firstTime},
 			trackName:   timedObserved("Cached Track", firstTime),
 			sourceTime:  timedObserved(50*time.Second, firstTime),
 		}
-		if err := seed.acceptSession(restSessionInfo{TrackName: "Must Not Commit", CurrentEventTime: invalidTime}, secondTime); err == nil {
+		if err := seed.acceptSession(restSessionInfo{TrackName: &rejectedTrack, CurrentEventTime: invalidTime}, secondTime, monotonicStamp{elapsed: time.Second, set: true}); err == nil {
 			t.Fatalf("CurrentEventTime %v was accepted", invalidTime)
 		}
 		if seed.sessionInfo.LastSuccessUTC != firstTime {
@@ -238,8 +288,9 @@ func TestRESTUsesPerResponseTimestampsAndFinalSnapshotTime(t *testing.T) {
 		baseURL: "http://127.0.0.1:6397",
 		client:  client,
 		now:     clock.current,
+		elapsed: clock.currentElapsed,
 		ttl:     1500 * time.Millisecond,
-	}, clock.current)
+	}, clock.current, clock.currentElapsed)
 
 	observation, _ := pollREST(t.Context(), cfg, &restCache{})
 	standingsReceived := start.Add(time.Second)
@@ -267,7 +318,7 @@ func TestRESTRejectsRedirectBeforeExternalDestination(t *testing.T) {
 		http.Redirect(w, request, "http://example.invalid/escape", http.StatusFound)
 	})
 	defer server.Close()
-	cfg := normalizeRESTConfig(&restConfig{baseURL: server.URL, client: newRESTHTTPClient(), now: time.Now}, time.Now)
+	cfg := normalizeRESTConfig(&restConfig{baseURL: server.URL, client: newRESTHTTPClient(), now: time.Now}, time.Now, func() time.Duration { return 0 })
 	result := fetchREST(t.Context(), cfg, standingsEndpoint)
 	if result.status != RESTEndpointMalformed || requests.Load() != 1 {
 		t.Fatalf("redirect result=%#v requests=%d", result, requests.Load())
@@ -280,7 +331,7 @@ func TestRESTRejectsNonLoopbackBaseBeforeTransport(t *testing.T) {
 		calls.Add(1)
 		return responseFor(request, http.StatusOK, `[]`), nil
 	})
-	cfg := normalizeRESTConfig(&restConfig{baseURL: "http://example.invalid", client: client, now: time.Now}, time.Now)
+	cfg := normalizeRESTConfig(&restConfig{baseURL: "http://example.invalid", client: client, now: time.Now}, time.Now, func() time.Duration { return 0 })
 	result := fetchREST(t.Context(), cfg, standingsEndpoint)
 	if result.status != RESTEndpointMalformed || calls.Load() != 0 {
 		t.Fatalf("non-loopback result=%#v calls=%d", result, calls.Load())
@@ -299,7 +350,7 @@ func TestDriverOwnsRESTPollerAndWaitsForItsCancellation(t *testing.T) {
 
 	reader := &testReader{data: knownBuffer(t)}
 	ticks := &manualTicker{ticks: make(chan time.Time)}
-	cfg := normalizeRESTConfig(&restConfig{client: client, now: func() time.Time { return time.Unix(100, 0) }}, time.Now)
+	cfg := normalizeRESTConfig(&restConfig{client: client, now: func() time.Time { return time.Unix(100, 0) }}, time.Now, func() time.Duration { return 0 })
 	cfg.deadline = time.Minute
 	driver := newTestDriver(config{
 		open:      func() (memoryReader, error) { return reader, nil },
@@ -310,8 +361,8 @@ func TestDriverOwnsRESTPollerAndWaitsForItsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- driver.Run(ctx, sink) }()
-	if first := <-sink.values; first.Source != SourceSharedMemory {
-		t.Fatalf("first source = %v", first.Source)
+	if first := <-sink.values; first.Source != SourceCanonical || first.MatrixVersion != MatrixVersion {
+		t.Fatalf("first canonical observation = %#v", first)
 	}
 	<-requestStarted
 	cancel()
@@ -369,10 +420,10 @@ func TestDriverDoesNotPublishOrMutateRESTAfterCancellation(t *testing.T) {
 	}
 }
 
-func TestDriverPublishesBothInternalChannelsAndReportsCapabilities(t *testing.T) {
+func TestDriverFusesBothInternalChannelsAndReportsCapabilities(t *testing.T) {
 	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
 		if request.URL.Path == standingsEndpoint {
-			_, _ = w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[{"player":true,"position":1,"lapsCompleted":0,"pitstops":0}]`))
 			return
 		}
 		_, _ = w.Write([]byte(`{"currentEventTime":1,"numberOfVehicles":0}`))
@@ -388,11 +439,32 @@ func TestDriverPublishesBothInternalChannelsAndReportsCapabilities(t *testing.T)
 	})
 	sink := &collectingSink{values: make(chan Observation, 4)}
 	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
 	done := make(chan error, 1)
 	go func() { done <- driver.Run(ctx, sink) }()
-	sources := map[ObservationSource]bool{}
-	for len(sources) < 2 {
-		sources[(<-sink.values).Source] = true
+
+	timeout := time.NewTimer(2 * time.Second)
+	defer timeout.Stop()
+	var fused Observation
+	for {
+		select {
+		case observation := <-sink.values:
+			if observation.Source != SourceCanonical || observation.REST.Status != RESTStatusUnknown {
+				t.Fatalf("non-canonical observation leaked: %#v", observation)
+			}
+			position, present := observation.PlayerPosition.Value()
+			if present {
+				if position != 1 {
+					t.Fatalf("player position = %d, want 1", position)
+				}
+				fused = observation
+			}
+		case <-timeout.C:
+			t.Fatal("timed out waiting for canonical observation containing REST standings")
+		}
+		if _, present := fused.PlayerPosition.Value(); present {
+			break
+		}
 	}
 	snapshot := driver.RuntimeSnapshot()
 	if snapshot.State != drivercontract.StateLive || len(snapshot.Capabilities) != 2 || snapshot.Capabilities[0] != CapabilitySharedMemory || snapshot.Capabilities[1] != CapabilityREST {
@@ -492,8 +564,8 @@ func BenchmarkRESTDecodeObservations(b *testing.B) {
 			b.Fatal(err)
 		}
 		cache := restCache{}
-		updateStandingsFields(&cache, rows, time.Time{})
-		fields, err := validateSessionFields(info, time.Time{})
+		updateStandingsFields(&cache, rows, time.Time{}, monotonicStamp{elapsed: 0, set: true})
+		fields, err := validateSessionFields(info, time.Time{}, monotonicStamp{elapsed: 0, set: true})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -511,8 +583,9 @@ func testRESTConfig(server *httptest.Server, now time.Time) *restConfig {
 		baseURL: server.URL,
 		client:  server.Client(),
 		now:     func() time.Time { return now },
+		elapsed: func() time.Duration { return 0 },
 		wait:    func(context.Context, time.Duration) error { return nil },
-	}, func() time.Time { return now })
+	}, func() time.Time { return now }, func() time.Duration { return 0 })
 }
 
 func assertTimedValue[T comparable](t *testing.T, field TimedField[T], want T, updated time.Time, freshness schema.Freshness) {
@@ -532,8 +605,9 @@ func (function doerFunc) Do(request *http.Request) (*http.Response, error) {
 }
 
 type lockedClock struct {
-	mu  sync.Mutex
-	now time.Time
+	mu      sync.Mutex
+	now     time.Time
+	elapsed time.Duration
 }
 
 func (clock *lockedClock) current() time.Time {
@@ -545,7 +619,14 @@ func (clock *lockedClock) current() time.Time {
 func (clock *lockedClock) advance(duration time.Duration) {
 	clock.mu.Lock()
 	clock.now = clock.now.Add(duration)
+	clock.elapsed += duration
 	clock.mu.Unlock()
+}
+
+func (clock *lockedClock) currentElapsed() time.Duration {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	return clock.elapsed
 }
 
 func responseFor(request *http.Request, status int, body string) *http.Response {

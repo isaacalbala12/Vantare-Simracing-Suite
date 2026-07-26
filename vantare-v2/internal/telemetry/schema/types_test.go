@@ -17,6 +17,9 @@ func TestUnitUnknownAndUnsupportedAreExplicit(t *testing.T) {
 	if !UnitUnsupported.Known() || UnitUnsupported.Supported() {
 		t.Fatal("unsupported unit must be known but unsupported")
 	}
+	if !UnitMetersPerSecond.Known() || !UnitMetersPerSecond.Supported() || UnitMetersPerSecond.String() != "m/s" {
+		t.Fatalf("meters-per-second unit contract is incomplete: known=%v supported=%v string=%q", UnitMetersPerSecond.Known(), UnitMetersPerSecond.Supported(), UnitMetersPerSecond)
+	}
 }
 
 func TestRangeValidation(t *testing.T) {

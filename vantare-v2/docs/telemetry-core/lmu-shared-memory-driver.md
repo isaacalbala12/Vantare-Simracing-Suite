@@ -36,13 +36,16 @@ se publican como `invalid`; nunca se convierten en cero válido.
   con telemetry movida/corrupta queda `unknown` y no publica campos rápidos;
 - jugador ausente: runtime `live`, con `PlayerPresent=false` y campos de
   vehículo ausentes;
-- reloj inmóvil sobre el límite: runtime `stale` y campos presentes `stale`;
+- reloj de sesión inmóvil sobre el límite monotónico interno: runtime `stale` y
+  campos presentes `stale`. Saltos hacia delante o atrás de UTC no adelantan ni
+  retrasan esta transición; UTC se conserva únicamente como metadata;
 - retroceso del reloj: `ClockReset`; retroceso tras un contador largo:
   `ClockWrap`.
 
 `RuntimeSnapshot` usa copia defensiva y mutex de lectura; no bloquea en I/O. El
-driver no crea goroutines propias. Clock, ticker y apertura son inyectables solo
-dentro del paquete para tests deterministas sin `time.Sleep`.
+driver no crea goroutines propias. Reloj UTC de metadata, elapsed monotónico,
+ticker y apertura son inyectables solo dentro del paquete para tests
+deterministas sin `time.Sleep`.
 
 Los errores de cierre se propagan mediante `errors.Join`; no se ignoran aunque
 la lectura o el sink ya hayan fallado. `driver.ErrTeardown` conserva el resultado

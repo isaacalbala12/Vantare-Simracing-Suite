@@ -4,7 +4,7 @@ Estado: implementado en ISA-33 / TC-03D, pendiente de validación manual y sin w
 
 ## Alcance
 
-El mismo `internal/telemetry/drivers/lmu.Driver` que posee `LMU_Data` posee ahora el canal REST local. Shared Memory y REST emiten observaciones separadas (`SourceSharedMemory` y `SourceREST`); este corte no decide autoridad, no fusiona campos y no sustituye listas o sesiones. La matriz de autoridad y la fusión pertenecen a ISA-34.
+El mismo `internal/telemetry/drivers/lmu.Driver` que posee `LMU_Data` posee el canal REST local. La adquisición mantiene observaciones internas separadas (`SourceSharedMemory` y `SourceREST`); desde ISA-34 el borde del driver publica lotes `SourceCanonical` fusionados campo a campo según `lmu-authority-matrix.md`. No sustituye listas o sesiones.
 
 No se modifican Engineer, Overlay, Strategy, Wails, SSE ni el composition root. Tampoco se incorpora mock productivo o dependencia externa.
 
@@ -19,7 +19,7 @@ No se modifican Engineer, Overlay, Strategy, Wails, SSE ni el composition root. 
 - Una única goroutine interna pertenece al `Run` del driver. Comparte su contexto, no publica después de cancelación y el driver espera su fin antes de retornar.
 - El transporte HTTP es propiedad del driver, solo acepta destinos HTTP loopback, rechaza redirects antes de seguirlos y cierra conexiones idle durante teardown.
 
-Cada endpoint conserva la hora real de intento, `LastSuccessUTC` de recepción y estado propio. Cada campo conserva la recepción real en `UpdatedUTC` y calidad `fresh`, `stale`, `missing` o `invalid`. La hora final del snapshot se captura después de ambos requests y gobierna TTL/freshness. Un fallo de un endpoint no borra un éxito independiente del otro.
+Cada endpoint conserva la hora real de intento, `LastSuccessUTC` de recepción y estado propio. Cada campo conserva la recepción real en `UpdatedUTC` y calidad `fresh`, `stale`, `missing` o `invalid`. Esas horas UTC son solo metadata: una marca monotónica interna tomada en cada recepción y al final del snapshot gobierna TTL/freshness. Un fallo de un endpoint no borra un éxito independiente del otro.
 
 `sessionInfo` se acepta de forma transaccional: primero valida todo el payload temporal y construye campos provisionales; solo entonces confirma campos y `LastSuccessUTC`. Un `CurrentEventTime` negativo, NaN, infinito o fuera de rango preserva íntegro el último cache válido. El tiempo de evento aceptado se emite como `SourceTime` observado. Su conversión separa segundos enteros y nanosegundos fraccionarios, valida el resto disponible de `time.Duration` y rechaza de forma conservadora valores ambiguos en el límite superior.
 

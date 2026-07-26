@@ -37,6 +37,7 @@ func (value systemTicker) Stop()               { value.ticker.Stop() }
 type config struct {
 	open              openMemory
 	now               func() time.Time
+	elapsed           func() time.Duration
 	newTicker         func(time.Duration) ticker
 	interval          time.Duration
 	freshnessLimit    time.Duration
@@ -68,6 +69,10 @@ func newDriver(cfg config) *Driver {
 	if cfg.now == nil {
 		cfg.now = time.Now
 	}
+	if cfg.elapsed == nil {
+		started := time.Now()
+		cfg.elapsed = func() time.Duration { return time.Since(started) }
+	}
 	if cfg.newTicker == nil {
 		cfg.newTicker = func(interval time.Duration) ticker { return systemTicker{time.NewTicker(interval)} }
 	}
@@ -83,7 +88,7 @@ func newDriver(cfg config) *Driver {
 	if cfg.build == nil {
 		cfg.build = readLMUBuildEvidence
 	}
-	cfg.rest = normalizeRESTConfig(cfg.rest, cfg.now)
+	cfg.rest = normalizeRESTConfig(cfg.rest, cfg.now, cfg.elapsed)
 	// DriverManager exposes an instance only after selecting it as active, where
 	// its own state is already connecting. Matching that state at construction
 	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
@@ -165,8 +170,9 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 	}()
 	buffer := make([]byte, ObjectOutSize)
 	scratch := make([]byte, ObjectOutSize)
+	var fusion Fusion
 	var previousSource time.Duration
-	var unchangedSince time.Time
+	var unchangedSince monotonicStamp
 
 	acquire := func() error {
 		if err := readStable(ctx, reader, buffer, scratch, driver.config.stableComparisons); err != nil {
@@ -183,6 +189,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			return fmt.Errorf("%w: snapshot %s: %w", ErrDisconnected, MemoryName, err)
 		}
 		now := driver.config.now()
+		elapsed := driver.config.elapsed()
 		observation, err := parseWithProfile(buffer, now, profile)
 		if err != nil {
 			return err
@@ -192,9 +199,9 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		}
 		if current, present := observation.SourceTime.Value(); present && observation.SourceTime.Freshness() == schema.FreshnessFresh {
 			observation.ClockChange = classifyClock(previousSource, current)
-			if current != previousSource || unchangedSince.IsZero() {
-				unchangedSince = now
-			} else if now.Sub(unchangedSince) >= driver.config.freshnessLimit {
+			if current != previousSource || !unchangedSince.set {
+				unchangedSince = monotonicStamp{elapsed: elapsed, set: true}
+			} else if elapsed < unchangedSince.elapsed || elapsed-unchangedSince.elapsed >= driver.config.freshnessLimit {
 				observation = withFreshness(observation, schema.FreshnessStale)
 			}
 			previousSource = current
@@ -207,7 +214,8 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := sink.WriteObservation(ctx, observation); err != nil {
+		canonical := fusion.Merge(now, elapsed, observation)
+		if err := sink.WriteObservation(ctx, canonical); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
 		}
 		return nil
@@ -231,7 +239,8 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			if err := sink.WriteObservation(ctx, observation); err != nil {
+			canonical := fusion.Merge(driver.config.now(), driver.config.elapsed(), observation)
+			if err := sink.WriteObservation(ctx, canonical); err != nil {
 				return fmt.Errorf("write LMU REST observation: %w", err)
 			}
 		case <-ticker.C():
@@ -324,7 +333,9 @@ func withFreshness(value Observation, freshness schema.Freshness) Observation {
 	value.Gear = copyFreshness(value.Gear, freshness)
 	value.EngineRPM = copyFreshness(value.EngineRPM, freshness)
 	value.SpeedMPS = copyFreshness(value.SpeedMPS, freshness)
-	value.Controls = copyFreshness(value.Controls, freshness)
+	value.Throttle = copyFreshness(value.Throttle, freshness)
+	value.Brake = copyFreshness(value.Brake, freshness)
+	value.Clutch = copyFreshness(value.Clutch, freshness)
 	return value
 }
 

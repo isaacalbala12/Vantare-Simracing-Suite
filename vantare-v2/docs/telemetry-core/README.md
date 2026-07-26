@@ -20,8 +20,8 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 
 - TC-01 está completado e integrado en `develop` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - La base global de Go quedó verde en ISA-97.
-- TC-02 quedó cerrado mediante ISA-26–29. TC-03 avanza de forma apilada: ISA-30 inventarió las fuentes, ISA-31 fijó lifecycle/selección, ISA-32 implementó Shared Memory en `539da68604d14df88f0d87638028f1f46ca95d8e` e ISA-33 implementa REST local sobre esa base. ISA-34 (autoridad/fusión) todavía no ha comenzado; TC-04–TC-09 permanecen sin iniciar.
-- ISA-33 está preparada para `In Review`, sin wiring productivo ni merge, y requiere validación manual de Isaac antes de iniciar ISA-34.
+- TC-02 quedó cerrado mediante ISA-26–29. TC-03 avanza de forma apilada: ISA-30 inventarió las fuentes, ISA-31 fijó lifecycle/selección, ISA-32 implementó Shared Memory, ISA-33 implementó REST local e ISA-34 incorpora la matriz v1 y fusión por campo sobre `08323022c79cc7d11096ed604c61da702dfeeee9`. TC-04–TC-09 permanecen sin iniciar.
+- ISA-34 está preparada para review, sin wiring productivo ni merge. El gate manual TC-03 de conexión/desconexión LMU sigue reservado a Isaac antes de iniciar TC-04.
 
 ## Fronteras
 

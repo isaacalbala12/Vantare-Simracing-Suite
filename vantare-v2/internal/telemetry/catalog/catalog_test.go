@@ -66,6 +66,11 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalVehicleName, "vehicle.name", schema.DomainVehicle},
 		{SignalStandingsCompletedLaps, "standings.completed_laps", schema.DomainStandings},
 		{SignalSpatialOrientation, "spatial.orientation", schema.DomainSpatial},
+		{SignalSessionSourceTime, "session.source_time", schema.DomainSession},
+		{SignalSessionTrackName, "session.track_name", schema.DomainSession},
+		{SignalSessionVehicleCount, "session.vehicle_count", schema.DomainSession},
+		{SignalVehiclePlayerPresent, "vehicle.player_present", schema.DomainVehicle},
+		{SignalVehicleSpeedMPS, "vehicle.speed_mps", schema.DomainVehicle},
 	}
 
 	got := All()
@@ -76,6 +81,28 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		definition := got[index]
 		if definition.ID != expected.id || definition.Key != expected.key || definition.Domain != expected.domain {
 			t.Fatalf("definition %d = {%d %q %s}, want {%d %q %s}", index, definition.ID, definition.Key, definition.Domain, expected.id, expected.key, expected.domain)
+		}
+	}
+}
+
+func TestCatalogDefinesEveryISA34FusionSignalMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		id     SignalID
+		unit   schema.Unit
+		range_ schema.Range
+	}{
+		{SignalSessionSourceTime, schema.UnitSeconds, schema.UnknownRange()},
+		{SignalSessionTrackName, schema.UnitUnsupported, schema.UnsupportedRange()},
+		{SignalSessionVehicleCount, schema.UnitCount, schema.ClosedRange(0, 104)},
+		{SignalVehiclePlayerPresent, schema.UnitBoolean, schema.UnsupportedRange()},
+		{SignalVehicleSpeedMPS, schema.UnitMetersPerSecond, schema.UnknownRange()},
+	}
+	for _, tt := range tests {
+		definition, ok := ByID(tt.id)
+		if !ok || definition.Unit != tt.unit || definition.Range != tt.range_ {
+			t.Fatalf("definition %d = %#v, want unit=%v range=%v", tt.id, definition, tt.unit, tt.range_)
 		}
 	}
 }

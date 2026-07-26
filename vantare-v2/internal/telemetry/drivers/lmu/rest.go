@@ -35,8 +35,10 @@ const (
 type ObservationSource uint8
 
 const (
-	SourceSharedMemory ObservationSource = iota + 1
+	SourceUnknown ObservationSource = iota
+	SourceSharedMemory
 	SourceREST
+	SourceCanonical
 )
 
 type RESTStatus uint8
@@ -65,14 +67,16 @@ const (
 )
 
 type RESTEndpointSnapshot struct {
-	Status         RESTEndpointStatus
-	LastAttemptUTC time.Time
-	LastSuccessUTC time.Time
+	Status          RESTEndpointStatus
+	LastAttemptUTC  time.Time
+	LastSuccessUTC  time.Time
+	lastSuccessMono monotonicStamp
 }
 
 type TimedField[T comparable] struct {
-	Field      schema.Field[T]
-	UpdatedUTC time.Time
+	Field       schema.Field[T]
+	UpdatedUTC  time.Time
+	updatedMono monotonicStamp
 }
 
 type RESTObservation struct {
@@ -98,6 +102,7 @@ type restConfig struct {
 	baseURL        string
 	client         restDoer
 	now            func() time.Time
+	elapsed        func() time.Duration
 	wait           func(context.Context, time.Duration) error
 	interval       time.Duration
 	deadline       time.Duration
@@ -116,7 +121,7 @@ func newRESTHTTPClient() *http.Client {
 
 func rejectRESTRedirect(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
 
-func normalizeRESTConfig(cfg *restConfig, fallbackNow func() time.Time) *restConfig {
+func normalizeRESTConfig(cfg *restConfig, fallbackNow func() time.Time, fallbackElapsed func() time.Duration) *restConfig {
 	if cfg == nil {
 		return nil
 	}
@@ -134,6 +139,14 @@ func normalizeRESTConfig(cfg *restConfig, fallbackNow func() time.Time) *restCon
 	}
 	if copy.now == nil {
 		copy.now = fallbackNow
+	}
+	if copy.elapsed == nil {
+		if fallbackElapsed != nil {
+			copy.elapsed = fallbackElapsed
+		} else {
+			started := time.Now()
+			copy.elapsed = func() time.Duration { return time.Since(started) }
+		}
 	}
 	if copy.wait == nil {
 		copy.wait = waitContext
@@ -185,7 +198,7 @@ type restStanding struct {
 }
 
 type restSessionInfo struct {
-	TrackName        string  `json:"trackName"`
+	TrackName        *string `json:"trackName"`
 	Session          string  `json:"session"`
 	NumberOfVehicles int32   `json:"numberOfVehicles"`
 	CurrentEventTime float64 `json:"currentEventTime"`
@@ -225,9 +238,10 @@ func pollREST(ctx context.Context, cfg *restConfig, cache *restCache) (Observati
 			cache.standings.Status = classifyDecodeError(err)
 		} else {
 			next := *cache
-			updateStandingsFields(&next, rows, standingsResponse.receivedUTC)
+			updateStandingsFields(&next, rows, standingsResponse.receivedUTC, standingsResponse.receivedMono)
 			cache.applyStandings(next)
 			cache.standings.LastSuccessUTC = standingsResponse.receivedUTC
+			cache.standings.lastSuccessMono = standingsResponse.receivedMono
 		}
 	}
 	if ctx.Err() != nil {
@@ -245,14 +259,15 @@ func pollREST(ctx context.Context, cfg *restConfig, cache *restCache) (Observati
 		if err != nil {
 			cache.sessionInfo.Status = classifyDecodeError(err)
 		} else {
-			if validationErr := cache.acceptSession(info, sessionResponse.receivedUTC); validationErr != nil {
+			if validationErr := cache.acceptSession(info, sessionResponse.receivedUTC, sessionResponse.receivedMono); validationErr != nil {
 				cache.sessionInfo.Status = RESTEndpointMalformed
 			}
 		}
 	}
 
 	snapshotUTC := restNow(cfg)
-	markRESTStale(cache, snapshotUTC, cfg.ttl)
+	snapshotMono := restElapsed(cfg)
+	markRESTStale(cache, snapshotMono, cfg.ttl)
 	rest := cache.snapshot()
 	rest.Status = overallRESTStatus(rest)
 	return Observation{Source: SourceREST, ReceivedUTC: snapshotUTC, REST: rest}, rest.Status == RESTStatusLive
@@ -263,6 +278,7 @@ type restResponse struct {
 	body         []byte
 	attemptedUTC time.Time
 	receivedUTC  time.Time
+	receivedMono monotonicStamp
 }
 
 func fetchREST(parent context.Context, cfg *restConfig, path string) restResponse {
@@ -270,7 +286,7 @@ func fetchREST(parent context.Context, cfg *restConfig, path string) restRespons
 	target, err := url.Parse(cfg.baseURL + path)
 	if err != nil || !isLoopbackHTTP(target) {
 		result.status = RESTEndpointMalformed
-		result.receivedUTC = restNow(cfg)
+		result.receivedUTC, result.receivedMono = restNow(cfg), monotonicStamp{elapsed: restElapsed(cfg), set: true}
 		return result
 	}
 	ctx, cancel := context.WithTimeout(parent, cfg.deadline)
@@ -278,12 +294,12 @@ func fetchREST(parent context.Context, cfg *restConfig, path string) restRespons
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
 		result.status = RESTEndpointMalformed
-		result.receivedUTC = restNow(cfg)
+		result.receivedUTC, result.receivedMono = restNow(cfg), monotonicStamp{elapsed: restElapsed(cfg), set: true}
 		return result
 	}
 	resp, err := cfg.client.Do(req)
 	if err != nil {
-		result.receivedUTC = restNow(cfg)
+		result.receivedUTC, result.receivedMono = restNow(cfg), monotonicStamp{elapsed: restElapsed(cfg), set: true}
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			result.status = RESTEndpointTimeout
 			return result
@@ -301,7 +317,7 @@ func fetchREST(parent context.Context, cfg *restConfig, path string) restRespons
 		return result
 	}
 	defer resp.Body.Close()
-	result.receivedUTC = restNow(cfg)
+	result.receivedUTC, result.receivedMono = restNow(cfg), monotonicStamp{elapsed: restElapsed(cfg), set: true}
 	if resp.Request == nil || !isLoopbackHTTP(resp.Request.URL) {
 		result.status = RESTEndpointMalformed
 		return result
@@ -318,7 +334,7 @@ func fetchREST(parent context.Context, cfg *restConfig, path string) restRespons
 		return result
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maximumRESTResponseBytes+1))
-	result.receivedUTC = restNow(cfg)
+	result.receivedUTC, result.receivedMono = restNow(cfg), monotonicStamp{elapsed: restElapsed(cfg), set: true}
 	if err != nil {
 		result.status = RESTEndpointOffline
 		return result
@@ -336,7 +352,8 @@ func fetchREST(parent context.Context, cfg *restConfig, path string) restRespons
 	return result
 }
 
-func restNow(cfg *restConfig) time.Time { return cfg.now().Round(0).UTC() }
+func restNow(cfg *restConfig) time.Time         { return cfg.now().Round(0).UTC() }
+func restElapsed(cfg *restConfig) time.Duration { return cfg.elapsed() }
 
 func isLoopbackHTTP(target *url.URL) bool {
 	if target == nil || target.Scheme != "http" || target.Hostname() == "" {
@@ -391,19 +408,19 @@ func classifyDecodeError(err error) RESTEndpointStatus {
 	return RESTEndpointMalformed
 }
 
-func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time) {
-	cache.playerPresent = timedObserved(false, now)
-	cache.playerPosition = timedMissing[standings.Position](now)
-	cache.completedLaps = timedMissing[standings.CompletedLaps](now)
-	cache.pitStopCount = timedMissing[pit.StopCount](now)
+func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time, elapsed monotonicStamp) {
+	cache.playerPresent = timedObservedAt(false, now, elapsed)
+	cache.playerPosition = timedMissingAt[standings.Position](now, elapsed)
+	cache.completedLaps = timedMissingAt[standings.CompletedLaps](now, elapsed)
+	cache.pitStopCount = timedMissingAt[pit.StopCount](now, elapsed)
 	for _, row := range rows {
 		if !row.Player {
 			continue
 		}
-		cache.playerPresent = timedObserved(true, now)
-		cache.playerPosition = timedValidated[standings.Position](row.Position, 1, math.MaxInt32, now)
-		cache.completedLaps = timedValidated[standings.CompletedLaps](row.LapsCompleted, 0, math.MaxInt32, now)
-		cache.pitStopCount = timedValidated[pit.StopCount](row.Pitstops, 0, math.MaxInt32, now)
+		cache.playerPresent = timedObservedAt(true, now, elapsed)
+		cache.playerPosition = timedValidatedAt[standings.Position](row.Position, 1, math.MaxInt32, now, elapsed)
+		cache.completedLaps = timedValidatedAt[standings.CompletedLaps](row.LapsCompleted, 0, math.MaxInt32, now, elapsed)
+		cache.pitStopCount = timedValidatedAt[pit.StopCount](row.Pitstops, 0, math.MaxInt32, now, elapsed)
 		return
 	}
 }
@@ -422,20 +439,20 @@ type sessionFields struct {
 	vehicleCount TimedField[schema.Count]
 }
 
-func validateSessionFields(info restSessionInfo, now time.Time) (sessionFields, error) {
+func validateSessionFields(info restSessionInfo, now time.Time, elapsed monotonicStamp) (sessionFields, error) {
 	sourceTime, valid := durationFromSeconds(info.CurrentEventTime)
 	if !valid {
 		return sessionFields{}, errors.New("invalid LMU REST current event time")
 	}
 	fields := sessionFields{
-		sourceTime:   timedObserved(sourceTime, now),
-		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now},
-		vehicleCount: timedValidated[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now),
+		sourceTime:   timedObservedAt(sourceTime, now, elapsed),
+		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now, updatedMono: elapsed},
+		vehicleCount: timedValidatedAt[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now, elapsed),
 	}
-	if strings.TrimSpace(info.TrackName) == "" {
-		fields.trackName = timedMissing[string](now)
+	if info.TrackName == nil {
+		fields.trackName = timedMissingAt[string](now, elapsed)
 	} else {
-		fields.trackName = timedObserved(info.TrackName, now)
+		fields.trackName = timedObservedAt(normalizeTrackName(*info.TrackName), now, elapsed)
 	}
 	return fields, nil
 }
@@ -467,13 +484,14 @@ func (cache *restCache) applySession(fields sessionFields) {
 	cache.vehicleCount = fields.vehicleCount
 }
 
-func (cache *restCache) acceptSession(info restSessionInfo, receivedUTC time.Time) error {
-	fields, err := validateSessionFields(info, receivedUTC)
+func (cache *restCache) acceptSession(info restSessionInfo, receivedUTC time.Time, receivedMono monotonicStamp) error {
+	fields, err := validateSessionFields(info, receivedUTC, receivedMono)
 	if err != nil {
 		return err
 	}
 	cache.applySession(fields)
 	cache.sessionInfo.LastSuccessUTC = receivedUTC
+	cache.sessionInfo.lastSuccessMono = receivedMono
 	return nil
 }
 
@@ -496,42 +514,54 @@ func parseRESTSessionType(value string) schema.Field[session.Type] {
 }
 
 func timedObserved[T comparable](value T, now time.Time) TimedField[T] {
-	return TimedField[T]{Field: observed(value), UpdatedUTC: now}
+	return timedObservedAt(value, now, monotonicStamp{elapsed: 0, set: true})
 }
 
 func timedMissing[T comparable](now time.Time) TimedField[T] {
-	return TimedField[T]{Field: schema.MissingField[T](), UpdatedUTC: now}
+	return timedMissingAt[T](now, monotonicStamp{elapsed: 0, set: true})
 }
 
 func timedValidated[T ~int32](value int32, minimum, maximum int32, now time.Time) TimedField[T] {
+	return timedValidatedAt[T](value, minimum, maximum, now, monotonicStamp{elapsed: 0, set: true})
+}
+
+func timedObservedAt[T comparable](value T, now time.Time, elapsed monotonicStamp) TimedField[T] {
+	return TimedField[T]{Field: observed(value), UpdatedUTC: now, updatedMono: elapsed}
+}
+
+func timedMissingAt[T comparable](now time.Time, elapsed monotonicStamp) TimedField[T] {
+	return TimedField[T]{Field: schema.MissingField[T](), UpdatedUTC: now, updatedMono: elapsed}
+}
+
+func timedValidatedAt[T ~int32](value int32, minimum, maximum int32, now time.Time, elapsed monotonicStamp) TimedField[T] {
 	if value < minimum || value > maximum {
-		return TimedField[T]{Field: invalid[T](), UpdatedUTC: now}
+		return TimedField[T]{Field: invalid[T](), UpdatedUTC: now, updatedMono: elapsed}
 	}
-	return timedObserved(T(value), now)
+	return timedObservedAt(T(value), now, elapsed)
 }
 
-func markRESTStale(cache *restCache, now time.Time, ttl time.Duration) {
-	cache.standings = staleEndpoint(cache.standings, now, ttl)
-	cache.sessionInfo = staleEndpoint(cache.sessionInfo, now, ttl)
-	cache.trackName = staleTimedField(cache.trackName, now, ttl)
-	cache.sourceTime = staleTimedField(cache.sourceTime, now, ttl)
-	cache.sessionType = staleTimedField(cache.sessionType, now, ttl)
-	cache.vehicleCount = staleTimedField(cache.vehicleCount, now, ttl)
-	cache.playerPresent = staleTimedField(cache.playerPresent, now, ttl)
-	cache.playerPosition = staleTimedField(cache.playerPosition, now, ttl)
-	cache.completedLaps = staleTimedField(cache.completedLaps, now, ttl)
-	cache.pitStopCount = staleTimedField(cache.pitStopCount, now, ttl)
+func markRESTStale(cache *restCache, elapsed time.Duration, ttl time.Duration) {
+	cache.standings = staleEndpoint(cache.standings, elapsed, ttl)
+	cache.sessionInfo = staleEndpoint(cache.sessionInfo, elapsed, ttl)
+	cache.trackName = staleTimedField(cache.trackName, elapsed, ttl)
+	cache.sourceTime = staleTimedField(cache.sourceTime, elapsed, ttl)
+	cache.sessionType = staleTimedField(cache.sessionType, elapsed, ttl)
+	cache.vehicleCount = staleTimedField(cache.vehicleCount, elapsed, ttl)
+	cache.playerPresent = staleTimedField(cache.playerPresent, elapsed, ttl)
+	cache.playerPosition = staleTimedField(cache.playerPosition, elapsed, ttl)
+	cache.completedLaps = staleTimedField(cache.completedLaps, elapsed, ttl)
+	cache.pitStopCount = staleTimedField(cache.pitStopCount, elapsed, ttl)
 }
 
-func staleEndpoint(value RESTEndpointSnapshot, now time.Time, ttl time.Duration) RESTEndpointSnapshot {
-	if !value.LastSuccessUTC.IsZero() && now.Sub(value.LastSuccessUTC) > ttl && value.Status != RESTEndpointUnsupported {
+func staleEndpoint(value RESTEndpointSnapshot, elapsed time.Duration, ttl time.Duration) RESTEndpointSnapshot {
+	if value.lastSuccessMono.set && (elapsed < value.lastSuccessMono.elapsed || elapsed-value.lastSuccessMono.elapsed > ttl) && value.Status != RESTEndpointUnsupported {
 		value.Status = RESTEndpointStale
 	}
 	return value
 }
 
-func staleTimedField[T comparable](value TimedField[T], now time.Time, ttl time.Duration) TimedField[T] {
-	if value.UpdatedUTC.IsZero() || now.Sub(value.UpdatedUTC) <= ttl || value.Field.Freshness() == schema.FreshnessMissing || value.Field.Freshness() == schema.FreshnessInvalid {
+func staleTimedField[T comparable](value TimedField[T], elapsed time.Duration, ttl time.Duration) TimedField[T] {
+	if !value.updatedMono.set || (elapsed >= value.updatedMono.elapsed && elapsed-value.updatedMono.elapsed <= ttl) || value.Field.Freshness() == schema.FreshnessMissing || value.Field.Freshness() == schema.FreshnessInvalid {
 		return value
 	}
 	fieldValue, present := value.Field.Value()

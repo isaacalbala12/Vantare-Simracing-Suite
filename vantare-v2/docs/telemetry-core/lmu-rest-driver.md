@@ -4,7 +4,7 @@ Estado: implementado en ISA-33 / TC-03D, pendiente de validación manual y sin w
 
 ## Alcance
 
-El mismo `internal/telemetry/drivers/lmu.Driver` que posee `LMU_Data` posee ahora el canal REST local. Shared Memory y REST emiten observaciones separadas (`SourceSharedMemory` y `SourceREST`); este corte no decide autoridad, no fusiona campos y no sustituye listas o sesiones. La matriz de autoridad y la fusión pertenecen a ISA-34.
+El mismo `internal/telemetry/drivers/lmu.Driver` que posee `LMU_Data` posee el canal REST local. La adquisición mantiene observaciones internas separadas (`SourceSharedMemory` y `SourceREST`); desde ISA-34 el borde del driver publica lotes `SourceCanonical` fusionados campo a campo según `lmu-authority-matrix.md`. No sustituye listas o sesiones.
 
 No se modifican Engineer, Overlay, Strategy, Wails, SSE ni el composition root. Tampoco se incorpora mock productivo o dependencia externa.
 

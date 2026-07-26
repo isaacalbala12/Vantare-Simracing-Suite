@@ -3,10 +3,12 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -144,6 +146,114 @@ func TestReducerAcceptsNextEpochReset(t *testing.T) {
 	}
 }
 
+func TestReducerRequiresCompleteStableSessionIdentityWithinEpoch(t *testing.T) {
+	tests := []struct {
+		name     string
+		mutate   func(*Batch)
+		wantErr  error
+		firstErr bool
+	}{
+		{
+			name: "first event missing",
+			mutate: func(batch *Batch) {
+				batch.Header.Identity.Event = ""
+			},
+			wantErr:  ErrIncompleteRunIdentity,
+			firstErr: true,
+		},
+		{
+			name: "first session missing",
+			mutate: func(batch *Batch) {
+				batch.Header.Identity.Session = ""
+			},
+			wantErr:  ErrIncompleteRunIdentity,
+			firstErr: true,
+		},
+		{
+			name: "event changes in same epoch",
+			mutate: func(batch *Batch) {
+				batch.Header.Identity.Event = "other-event"
+				for index := range batch.State.Vehicles {
+					batch.State.Vehicles[index].Identity.Event = "other-event"
+				}
+			},
+			wantErr: ErrRunIdentityChanged,
+		},
+		{
+			name: "session changes in same epoch",
+			mutate: func(batch *Batch) {
+				batch.Header.Identity.Session = "other-session"
+				for index := range batch.State.Vehicles {
+					batch.State.Vehicles[index].Identity.Session = "other-session"
+				}
+			},
+			wantErr: ErrRunIdentityChanged,
+		},
+		{
+			name: "partial next header cannot disable validation",
+			mutate: func(batch *Batch) {
+				batch.Header.Identity.Event = ""
+			},
+			wantErr: ErrIncompleteRunIdentity,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reducer := NewReducer()
+			if !test.firstErr {
+				if _, err := reducer.Apply(testBatch(schema.Cursor{Epoch: 7, Sequence: 1}, "spa", 1)); err != nil {
+					t.Fatalf("initial Apply(): %v", err)
+				}
+			}
+			sequence := schema.Sequence(2)
+			if test.firstErr {
+				sequence = 1
+			}
+			batch := testBatch(schema.Cursor{Epoch: 7, Sequence: sequence}, "lemans", 1)
+			test.mutate(&batch)
+			if _, err := reducer.Apply(batch); !errors.Is(err, test.wantErr) {
+				t.Fatalf("Apply() error = %v, want %v", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestReducerAllowsVehicleAndDriverChangesWithinSession(t *testing.T) {
+	reducer := NewReducer()
+	first := testBatch(schema.Cursor{Epoch: 2, Sequence: 1}, "spa", 1)
+	first.Header.Identity.Vehicle = "player-car-a"
+	first.Header.Identity.Driver = "driver-a"
+	if _, err := reducer.Apply(first); err != nil {
+		t.Fatalf("initial Apply(): %v", err)
+	}
+
+	next := testBatch(schema.Cursor{Epoch: 2, Sequence: 2}, "spa", 1)
+	next.Header.Identity.Vehicle = "player-car-b"
+	next.Header.Identity.Driver = "driver-b"
+	if _, err := reducer.Apply(next); err != nil {
+		t.Fatalf("Apply() after vehicle/driver change: %v", err)
+	}
+}
+
+func TestReducerAllowsSessionIdentityChangeOnlyAtEpochReset(t *testing.T) {
+	reducer := NewReducer()
+	if _, err := reducer.Apply(testBatch(schema.Cursor{Epoch: 3, Sequence: 1}, "spa", 1)); err != nil {
+		t.Fatalf("initial Apply(): %v", err)
+	}
+
+	reset := testBatch(schema.Cursor{Epoch: 4, Sequence: 1}, "lemans", 1)
+	reset.Header.Identity.Event = "next-event"
+	reset.Header.Identity.Session = "next-session"
+	for index := range reset.State.Vehicles {
+		reset.State.Vehicles[index].Identity.Event = "next-event"
+		reset.State.Vehicles[index].Identity.Session = "next-session"
+	}
+	if _, err := reducer.Apply(reset); err != nil {
+		t.Fatalf("Apply() valid identity reset: %v", err)
+	}
+}
+
 func TestReducerAndSnapshotOwnMutableState(t *testing.T) {
 	reducer := NewReducer()
 	batch := testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 2)
@@ -274,6 +384,40 @@ func TestReducerDoesNotApplyBufferedBatchWhenAlreadyCancelled(t *testing.T) {
 	}
 }
 
+func TestReducerRechecksCancellationAfterReceiveBeforeApply(t *testing.T) {
+	reducer := NewReducer()
+	ctx := newCancelOnSecondErrContext()
+	batch := testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 1)
+	batches := make(chan Batch, 1)
+	batches <- batch
+	snapshots := make(chan envelope.Snapshot[ObservedState], 1)
+
+	if err := reducer.Run(ctx, batches, snapshots); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run() error = %v, want context canceled", err)
+	}
+	if _, ok := reducer.Current(); ok {
+		t.Fatal("Run() mutated state after cancellation won the receive boundary")
+	}
+	if len(snapshots) != 0 {
+		t.Fatalf("Run() published %d snapshots after cancellation, want 0", len(snapshots))
+	}
+
+	retryBatches := make(chan Batch, 1)
+	retryBatches <- batch
+	close(retryBatches)
+	retrySnapshots := make(chan envelope.Snapshot[ObservedState], 1)
+	if err := reducer.Run(context.Background(), retryBatches, retrySnapshots); err != nil {
+		t.Fatalf("Run() retry: %v", err)
+	}
+	if len(retrySnapshots) != 1 {
+		t.Fatalf("Run() retry published %d snapshots, want 1", len(retrySnapshots))
+	}
+	retried := <-retrySnapshots
+	if retried.Header().Cursor != batch.Header.Cursor {
+		t.Fatalf("retry cursor = %+v, want %+v", retried.Header().Cursor, batch.Header.Cursor)
+	}
+}
+
 func TestReducerRejectsConcurrentRun(t *testing.T) {
 	reducer := NewReducer()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -303,17 +447,118 @@ func FuzzReducerCursorValidation(f *testing.F) {
 	f.Add(uint64(2), uint64(1), uint64(3), uint64(1))
 	f.Fuzz(func(t *testing.T, firstEpoch, firstSequence, nextEpoch, nextSequence uint64) {
 		reducer := NewReducer()
-		_, _ = reducer.Apply(testBatch(
-			schema.Cursor{Epoch: schema.Epoch(firstEpoch), Sequence: schema.Sequence(firstSequence)},
-			"spa",
-			1,
-		))
-		_, _ = reducer.Apply(testBatch(
-			schema.Cursor{Epoch: schema.Epoch(nextEpoch), Sequence: schema.Sequence(nextSequence)},
-			"lemans",
-			1,
-		))
+		model := reducerModel{}
+		cursors := []schema.Cursor{
+			{Epoch: schema.Epoch(firstEpoch), Sequence: schema.Sequence(firstSequence)},
+			{Epoch: schema.Epoch(nextEpoch), Sequence: schema.Sequence(nextSequence)},
+		}
+		for index, cursor := range cursors {
+			track := fmt.Sprintf("track-%d", index)
+			batch := testBatch(cursor, track, 1)
+			wantErr := model.apply(batch)
+			got, gotErr := reducer.Apply(batch)
+			if !sameReducerError(gotErr, wantErr) {
+				t.Fatalf("Apply(%+v) error = %v, want %v", cursor, gotErr, wantErr)
+			}
+			assertReducerMatchesModel(t, reducer, model)
+			if wantErr == nil {
+				value, ok := got.Value()
+				if !ok {
+					t.Fatalf("accepted cursor %+v returned empty snapshot", cursor)
+				}
+				if got.Header() != model.header || !reflect.DeepEqual(value, model.state) {
+					t.Fatalf("accepted snapshot = (%+v, %+v), want (%+v, %+v)", got.Header(), value, model.header, model.state)
+				}
+			}
+		}
 	})
+}
+
+type reducerModel struct {
+	initialized bool
+	header      envelope.Header
+	state       ObservedState
+}
+
+func (model *reducerModel) apply(batch Batch) error {
+	cursor := batch.Header.Cursor
+	run := batch.Header.Identity
+	var err error
+	switch {
+	case !run.SessionKnown():
+		err = ErrIncompleteRunIdentity
+	case !model.initialized && (cursor.Epoch == 0 || cursor.Sequence != 1):
+		err = ErrInvalidInitialCursor
+	case model.initialized && (cursor.Epoch < model.header.Cursor.Epoch ||
+		(cursor.Epoch == model.header.Cursor.Epoch && cursor.Sequence <= model.header.Cursor.Sequence)):
+		err = ErrStaleBatch
+	case model.initialized && cursor.Epoch == model.header.Cursor.Epoch &&
+		cursor.Sequence != model.header.Cursor.Sequence+1:
+		err = ErrSequenceGap
+	case model.initialized && cursor.Epoch == model.header.Cursor.Epoch &&
+		!model.header.Identity.SameSession(run):
+		err = ErrRunIdentityChanged
+	case model.initialized && cursor.Epoch != model.header.Cursor.Epoch &&
+		cursor.Epoch != model.header.Cursor.Epoch+1:
+		err = ErrEpochGap
+	case model.initialized && cursor.Epoch == model.header.Cursor.Epoch+1 && cursor.Sequence != 1:
+		err = ErrInvalidEpochReset
+	}
+	if err != nil {
+		return err
+	}
+	model.initialized = true
+	model.header = batch.Header
+	model.state = batch.State
+	model.state.Vehicles = append([]VehicleState(nil), batch.State.Vehicles...)
+	return nil
+}
+
+func sameReducerError(got, want error) bool {
+	if got == nil || want == nil {
+		return got == nil && want == nil
+	}
+	return errors.Is(got, want)
+}
+
+func assertReducerMatchesModel(t *testing.T, reducer *Reducer, model reducerModel) {
+	t.Helper()
+	snapshot, ok := reducer.Current()
+	if ok != model.initialized {
+		t.Fatalf("Current() present = %t, want %t", ok, model.initialized)
+	}
+	if !ok {
+		return
+	}
+	value, valueOK := snapshot.Value()
+	if !valueOK {
+		t.Fatal("Current() returned snapshot with no value")
+	}
+	if snapshot.Header() != model.header || !reflect.DeepEqual(value, model.state) {
+		t.Fatalf("Current() = (%+v, %+v), want (%+v, %+v)", snapshot.Header(), value, model.header, model.state)
+	}
+}
+
+type cancelOnSecondErrContext struct {
+	done  chan struct{}
+	calls atomic.Int32
+	once  sync.Once
+}
+
+func newCancelOnSecondErrContext() *cancelOnSecondErrContext {
+	return &cancelOnSecondErrContext{done: make(chan struct{})}
+}
+
+func (ctx *cancelOnSecondErrContext) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (ctx *cancelOnSecondErrContext) Done() <-chan struct{}       { return ctx.done }
+func (ctx *cancelOnSecondErrContext) Value(any) any               { return nil }
+
+func (ctx *cancelOnSecondErrContext) Err() error {
+	if ctx.calls.Add(1) < 2 {
+		return nil
+	}
+	ctx.once.Do(func() { close(ctx.done) })
+	return context.Canceled
 }
 
 func BenchmarkReducerApply64Vehicles(b *testing.B) {

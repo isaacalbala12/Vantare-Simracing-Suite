@@ -18,16 +18,18 @@ import (
 )
 
 var (
-	ErrInvalidInitialCursor = errors.New("first telemetry batch must have a non-zero epoch and sequence one")
-	ErrStaleBatch           = errors.New("telemetry batch is duplicate or out of order")
-	ErrSequenceGap          = errors.New("telemetry batch has a sequence gap")
-	ErrEpochGap             = errors.New("telemetry batch has an epoch gap")
-	ErrInvalidEpochReset    = errors.New("new telemetry epoch must start at sequence one")
-	ErrDuplicateVehicle     = errors.New("telemetry batch contains a duplicate vehicle identity")
-	ErrMissingVehicleID     = errors.New("telemetry batch contains an empty vehicle identity")
-	ErrVehicleRunMismatch   = errors.New("telemetry vehicle identity does not belong to the batch run")
-	ErrVehicleCountMismatch = errors.New("telemetry vehicle count does not match the complete batch")
-	ErrReducerRunning       = errors.New("telemetry reducer already has an active owner")
+	ErrInvalidInitialCursor  = errors.New("first telemetry batch must have a non-zero epoch and sequence one")
+	ErrStaleBatch            = errors.New("telemetry batch is duplicate or out of order")
+	ErrSequenceGap           = errors.New("telemetry batch has a sequence gap")
+	ErrEpochGap              = errors.New("telemetry batch has an epoch gap")
+	ErrInvalidEpochReset     = errors.New("new telemetry epoch must start at sequence one")
+	ErrDuplicateVehicle      = errors.New("telemetry batch contains a duplicate vehicle identity")
+	ErrMissingVehicleID      = errors.New("telemetry batch contains an empty vehicle identity")
+	ErrVehicleRunMismatch    = errors.New("telemetry vehicle identity does not belong to the batch run")
+	ErrVehicleCountMismatch  = errors.New("telemetry vehicle count does not match the complete batch")
+	ErrIncompleteRunIdentity = errors.New("telemetry batch requires complete event and session identity")
+	ErrRunIdentityChanged    = errors.New("telemetry event or session changed without an epoch reset")
+	ErrReducerRunning        = errors.New("telemetry reducer already has an active owner")
 )
 
 // VehicleState is the observed, product-neutral state of one vehicle. Every
@@ -96,7 +98,7 @@ func (reducer *Reducer) apply(batch Batch) (envelope.Snapshot[ObservedState], er
 	reducer.mu.Lock()
 	defer reducer.mu.Unlock()
 
-	if err := validateCursor(reducer.header.Cursor, reducer.initialized, batch.Header.Cursor); err != nil {
+	if err := validateBatchHeader(reducer.header, reducer.initialized, batch.Header); err != nil {
 		return envelope.Snapshot[ObservedState]{}, err
 	}
 	if err := validateObservedState(batch.Header.Identity, batch.State); err != nil {
@@ -152,6 +154,9 @@ func (reducer *Reducer) Run(
 			if !ok {
 				return nil
 			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			snapshot, err := reducer.apply(batch)
 			if err != nil {
 				return fmt.Errorf("apply telemetry batch: %w", err)
@@ -167,6 +172,20 @@ func (reducer *Reducer) Run(
 
 func (reducer *Reducer) Running() bool {
 	return reducer.running.Load()
+}
+
+func validateBatchHeader(current envelope.Header, initialized bool, next envelope.Header) error {
+	if !next.Identity.SessionKnown() {
+		return ErrIncompleteRunIdentity
+	}
+	if err := validateCursor(current.Cursor, initialized, next.Cursor); err != nil {
+		return err
+	}
+	if initialized && next.Cursor.Epoch == current.Cursor.Epoch &&
+		!current.Identity.SameSession(next.Identity) {
+		return ErrRunIdentityChanged
+	}
+	return nil
 }
 
 func validateCursor(current schema.Cursor, initialized bool, next schema.Cursor) error {

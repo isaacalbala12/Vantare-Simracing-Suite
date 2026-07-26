@@ -371,7 +371,9 @@ func BenchmarkSessionCoordinatorApply64Vehicles(b *testing.B) {
 	sequence := schema.Sequence(1)
 	b.ReportAllocs()
 	for b.Loop() {
+		b.StopTimer()
 		snapshot := coordinatorSnapshot(b, 1, sequence, "shm", run("e", "s", "vehicle-0", "", ""), 64)
+		b.StartTimer()
 		if err := coordinator.Apply(context.Background(), snapshot, sink); err != nil {
 			b.Fatal(err)
 		}

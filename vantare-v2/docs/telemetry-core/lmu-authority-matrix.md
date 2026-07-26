@@ -57,14 +57,14 @@ tests; no se reutilizan IDs ni se activa una alternativa por conveniencia.
 | Señal canónica | Shared Memory raw | Endpoint/campo REST | Unidad canónica | Normalización común | Divergencia conocida y regla | Evidencia automática |
 |---|---|---|---|---|---|---|
 | `session.source_time` | `LMU_Data` scoring, `float64` offset 1700 | `/rest/watch/sessionInfo.currentEventTime` | `time.Duration` desde segundos | Una sola conversión acotada: rechaza negativo, NaN, infinito y overflow; conserva cero | Las fuentes se muestrean en instantes distintos. Solo se compara/fusiona el valor canónico válido; no se interpola | `TestOverlapNormalizationsAreEquivalent/source_time_bounded_conversion` y límites REST |
-| `session.track_name` | C string UTF-8 de 64 bytes, offset 1632 | `/rest/watch/sessionInfo.trackName` | texto | `normalizeTrackName`: elimina espacio exterior en ambos bordes | REST puede quedar vacío durante transición; vacío presente no se inventa como ausencia. Freshness y autoridad deciden | `TestOverlapNormalizationsAreEquivalent/track_name`, fixtures SHM y validación transaccional REST |
+| `session.track_name` | C string UTF-8 de 64 bytes, offset 1632 | `/rest/watch/sessionInfo.trackName` | texto | `normalizeTrackName`: elimina espacio exterior en ambos bordes | Política única de presencia: si el campo existe, `""` y solo espacios normalizado a `""` siguen presentes en ambas fuentes; nunca se convierten a `missing`. Una clave REST omitida sí es ausencia explícita. Freshness y autoridad deciden | `TestOverlapNormalizationsAreEquivalent/track_name` cubre omitido, `""`, espacios y texto normal en ambas transformaciones; fixtures SHM y validación transaccional REST |
 | `session.type` | `int32` offset 1696: 1 practice, 3 qualify, 4/5 race | `/rest/watch/sessionInfo.session`: prefijos `PRACTICE`, `QUALIFY`, `RACE`, `WARMUP` | `schema/session.Type` | Ambos decoders producen el mismo enum para practice/qualify/race | REST observa `warmup`, sin código SHM demostrado; sigue siendo un valor canónico REST válido cuando SHM no aporta uno. No se equipara a otra fase | `TestOverlapNormalizationsAreEquivalent/session_type` y tests unitarios de ambos decoders |
 | `session.vehicle_count` | `int32` offset 1736 | `/rest/watch/sessionInfo.numberOfVehicles` | `schema.Count` | Mismo rango cerrado 0–104; cero es válido | Una respuesta REST parcial puede retrasarse respecto al scoring; no se suman ni promedian conteos | `TestOverlapNormalizationsAreEquivalent/vehicle_count` y validación de rangos |
 | `vehicle.player_present` | byte booleano offset 128466, solo 0/1 válido | `/rest/watch/standings`: existe una fila con `player=true` | booleano | Shared Memory valida 0/1; REST reduce las filas válidas con `any(player)` | REST vacío significa `false` observado para ese snapshot, pero un endpoint fallido conserva freshness previa; no confunde fallo con ausencia | `TestOverlapNormalizationsAreEquivalent/player_present`, tests de standings y fixtures SHM |
 
 La alternativa solo opera después de estas transformaciones. Los tests comparan
 ambas rutas con casos table-driven; no existe una segunda conversión de
-`source_time`.
+`source_time` ni una segunda política de presencia para `track_name`.
 
 ## Verificación
 

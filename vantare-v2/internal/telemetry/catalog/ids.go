@@ -28,4 +28,5 @@ const (
 	SignalSessionVehicleCount
 	SignalVehiclePlayerPresent
 	SignalVehicleSpeedMPS
+	SignalPitInPit
 )

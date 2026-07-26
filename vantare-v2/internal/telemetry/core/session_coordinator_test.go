@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
@@ -169,6 +172,116 @@ func TestSessionCoordinatorLapHighWaterMarkSurvivesSourceRegression(t *testing.T
 	}
 }
 
+func TestSessionCoordinatorRetainsVehicleHistoryAcrossAbsenceWithoutInferringPitTransition(t *testing.T) {
+	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
+	sink := &factSink{}
+
+	first := coordinatorSnapshot(t, 1, 1, "shm", run("e", "s", "vehicle-0", "team", "driver"), 2)
+	setVehicleState(t, &first, 1, 4, false)
+	if err := coordinator.Apply(context.Background(), first, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	absent := coordinatorSnapshot(t, 1, 2, "shm", run("e", "s", "vehicle-0", "team", "driver"), 1)
+	if err := coordinator.Apply(context.Background(), absent, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	readded := coordinatorSnapshot(t, 1, 3, "shm", run("e", "s", "vehicle-0", "team", "driver"), 2)
+	setVehicleState(t, &readded, 1, 6, true)
+	if err := coordinator.Apply(context.Background(), readded, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	continuous := coordinatorSnapshot(t, 1, 4, "shm", run("e", "s", "vehicle-0", "team", "driver"), 2)
+	setVehicleState(t, &continuous, 1, 6, false)
+	if err := coordinator.Apply(context.Background(), continuous, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	got := flattenFactValues(sink.batches)
+	wantKinds := []FactKind{FactSessionStarted, FactLapCompleted, FactLapCompleted, FactPitExited}
+	if !reflect.DeepEqual(kinds(got), wantKinds) {
+		t.Fatalf("kinds = %v, want %v", kinds(got), wantKinds)
+	}
+	if got[1].Lap != 5 || got[2].Lap != 6 {
+		t.Fatalf("readded lap facts = %d,%d, want 5,6", got[1].Lap, got[2].Lap)
+	}
+	for _, fact := range got {
+		if fact.Kind == FactPitEntered {
+			t.Fatal("pit entry was inferred across participant absence")
+		}
+	}
+}
+
+func TestSessionCoordinatorFactHeadersMatchOccurrenceIdentityCursorAndClock(t *testing.T) {
+	times := []time.Time{
+		time.Date(2026, 7, 27, 10, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 27, 10, 0, 1, 0, time.UTC),
+		time.Date(2026, 7, 27, 10, 0, 2, 0, time.UTC),
+	}
+	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{Now: func() time.Time { return times[0] }})
+	sink := &factSink{}
+
+	first := coordinatorSnapshot(t, 1, 1, "shm", run("event", "session-a", "vehicle-0", "team-a", "driver-a"), 2)
+	first = withSnapshotClock(t, first, times[0])
+	setVehicleState(t, &first, 1, 4, false)
+	if err := coordinator.Apply(context.Background(), first, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	second := coordinatorSnapshot(t, 1, 2, "shm", run("event", "session-a", "vehicle-0", "team-a", "driver-a"), 2)
+	second = withSnapshotClock(t, second, times[1])
+	secondState, _ := second.Value()
+	rivalIdentity := secondState.Vehicles[1].Identity
+	rivalIdentity.Team = "rival-team"
+	rivalIdentity.Driver = "rival-driver"
+	secondState.Vehicles[1].Identity = rivalIdentity
+	secondState.Vehicles[1].CompletedLaps = present(standings.CompletedLaps(5))
+	secondState.Vehicles[1].InPit = present(pit.InPit(true))
+	second, _ = envelope.NewSnapshot(second.Header(), secondState, cloneObservedState)
+	if err := coordinator.Apply(context.Background(), second, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	third := coordinatorSnapshot(t, 2, 1, "shm", run("event", "session-b", "vehicle-0", "team-b", "driver-b"), 1)
+	third = withSnapshotClock(t, third, times[2])
+	if err := coordinator.Apply(context.Background(), third, sink); err != nil {
+		t.Fatal(err)
+	}
+
+	facts := flattenFacts(sink.batches)
+	if len(facts) != 6 {
+		t.Fatalf("fact count = %d, want 6", len(facts))
+	}
+	for _, index := range []int{1, 2, 3} {
+		if facts[index].Header().Identity != rivalIdentity ||
+			facts[index].Header().Cursor != second.Header().Cursor ||
+			facts[index].Header().Clock != second.Header().Clock {
+			t.Fatalf("rival fact[%d] header = %+v, want rival/current snapshot", index, facts[index].Header())
+		}
+	}
+	ended := facts[4]
+	if ended.Value().Kind != FactSessionEnded ||
+		ended.Header().Identity.Session != "session-a" ||
+		ended.Header().Cursor != second.Header().Cursor ||
+		ended.Header().Clock != second.Header().Clock {
+		t.Fatalf("session ended header = %+v value=%+v", ended.Header(), ended.Value())
+	}
+	started := facts[5]
+	if started.Value().Kind != FactSessionStarted ||
+		started.Header().Identity.Session != "session-b" ||
+		started.Header().Cursor != third.Header().Cursor ||
+		started.Header().Clock != third.Header().Clock {
+		t.Fatalf("session started header = %+v value=%+v", started.Header(), started.Value())
+	}
+	for index, fact := range facts {
+		if fact.Value().Sequence != FactSequence(index+1) {
+			t.Fatalf("fact[%d] sequence = %d", index, fact.Value().Sequence)
+		}
+	}
+}
+
 func TestSessionCoordinatorRejectsDuplicateAndOutOfOrderWithoutMutation(t *testing.T) {
 	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
 	sink := &factSink{}
@@ -230,6 +343,78 @@ func TestSessionCoordinatorBackpressureAndOverflowAreAtomicAndRetryable(t *testi
 	}
 }
 
+func TestSessionCoordinatorClosedAndBackpressureMatrixLeavesStateUnchanged(t *testing.T) {
+	operations := []struct {
+		name     string
+		run      func(*SessionCoordinator, FactBatchSink) error
+		wantKind FactKind
+	}{
+		{
+			name: "apply",
+			run: func(coordinator *SessionCoordinator, sink FactBatchSink) error {
+				next := coordinatorSnapshot(t, 1, 2, "shm", run("e", "s", "v", "team", "driver-b"), 1)
+				return coordinator.Apply(context.Background(), next, sink)
+			},
+			wantKind: FactDriverChanged,
+		},
+		{
+			name: "connection",
+			run: func(coordinator *SessionCoordinator, sink FactBatchSink) error {
+				return coordinator.SetConnected(context.Background(), false, sink)
+			},
+			wantKind: FactConnectionLost,
+		},
+		{
+			name: "session end",
+			run: func(coordinator *SessionCoordinator, sink FactBatchSink) error {
+				return coordinator.EndSession(context.Background(), sink)
+			},
+			wantKind: FactSessionEnded,
+		},
+	}
+	failures := []struct {
+		name    string
+		sink    func() FactBatchSink
+		wantErr error
+	}{
+		{name: "nil sink", sink: func() FactBatchSink { return nil }, wantErr: ErrClosed},
+		{name: "closed", sink: func() FactBatchSink { return &factSink{err: ErrClosed} }, wantErr: ErrClosed},
+		{name: "backpressure", sink: func() FactBatchSink { return &factSink{err: ErrBackpressure} }, wantErr: ErrBackpressure},
+	}
+
+	for _, operation := range operations {
+		for _, failure := range failures {
+			t.Run(operation.name+"/"+failure.name, func(t *testing.T) {
+				coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
+				seedSink := &factSink{}
+				seed := coordinatorSnapshot(t, 1, 1, "shm", run("e", "s", "v", "team", "driver-a"), 1)
+				if err := coordinator.Apply(context.Background(), seed, seedSink); err != nil {
+					t.Fatal(err)
+				}
+				beforeHeader, beforeSequence, beforeInitialized := coordinator.Current()
+
+				if err := operation.run(coordinator, failure.sink()); !errors.Is(err, failure.wantErr) {
+					t.Fatalf("error = %v, want %v", err, failure.wantErr)
+				}
+				afterHeader, afterSequence, afterInitialized := coordinator.Current()
+				if afterHeader != beforeHeader || afterSequence != beforeSequence || afterInitialized != beforeInitialized {
+					t.Fatalf("state changed after error: before=(%+v,%d,%v) after=(%+v,%d,%v)",
+						beforeHeader, beforeSequence, beforeInitialized, afterHeader, afterSequence, afterInitialized)
+				}
+
+				retrySink := &factSink{}
+				if err := operation.run(coordinator, retrySink); err != nil {
+					t.Fatalf("retry error = %v", err)
+				}
+				values := flattenFactValues(retrySink.batches)
+				if len(values) != 1 || values[0].Kind != operation.wantKind || values[0].Sequence != beforeSequence+1 {
+					t.Fatalf("retry facts = %+v", values)
+				}
+			})
+		}
+	}
+}
+
 func TestSessionCoordinatorCancellationAndSingleOwner(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
@@ -278,6 +463,60 @@ func TestSessionCoordinatorSinkCanReadLastCommittedState(t *testing.T) {
 	}
 	if _, _, initialized := coordinator.Current(); !initialized {
 		t.Fatal("accepted state was not committed")
+	}
+}
+
+func TestSessionCoordinatorReadersSeeOnlyCommittedStateWhileSinkIsBlocked(t *testing.T) {
+	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
+	if err := coordinator.Apply(
+		context.Background(),
+		coordinatorSnapshot(t, 1, 1, "shm", run("e", "s", "v", "team", "driver-a"), 1),
+		&factSink{},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	sink := FactBatchSinkFunc(func(context.Context, []envelope.Fact[SessionFact]) error {
+		close(entered)
+		<-release
+		return nil
+	})
+	done := make(chan error, 1)
+	go func() {
+		next := coordinatorSnapshot(t, 1, 2, "shm", run("e", "s", "v", "team", "driver-b"), 1)
+		done <- coordinator.Apply(context.Background(), next, sink)
+	}()
+	<-entered
+
+	var readers sync.WaitGroup
+	errs := make(chan string, 16)
+	for worker := 0; worker < 16; worker++ {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			for iteration := 0; iteration < 1000; iteration++ {
+				header, sequence, initialized := coordinator.Current()
+				if !initialized || header.Cursor.Sequence != 1 || sequence != 1 {
+					errs <- fmt.Sprintf("reader saw candidate (%+v,%d,%v)", header, sequence, initialized)
+					return
+				}
+			}
+		}()
+	}
+	readers.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	header, sequence, _ := coordinator.Current()
+	if header.Cursor.Sequence != 2 || sequence != 2 {
+		t.Fatalf("committed state = (%+v,%d)", header, sequence)
 	}
 }
 
@@ -337,7 +576,7 @@ func setVehicleState(t testing.TB, snapshot *envelope.Snapshot[ObservedState], i
 	t.Helper()
 	state, _ := snapshot.Value()
 	state.Vehicles[index].CompletedLaps = present(laps)
-	state.Vehicles[index].InPit = present(inPit)
+	state.Vehicles[index].InPit = present(pit.InPit(inPit))
 	next, err := envelope.NewSnapshot(snapshot.Header(), state, cloneObservedState)
 	if err != nil {
 		t.Fatal(err)
@@ -358,6 +597,26 @@ func flattenFactValues(batches [][]envelope.Fact[SessionFact]) []SessionFact {
 		for _, fact := range batch {
 			result = append(result, fact.Value())
 		}
+	}
+	return result
+}
+
+func flattenFacts(batches [][]envelope.Fact[SessionFact]) []envelope.Fact[SessionFact] {
+	var result []envelope.Fact[SessionFact]
+	for _, batch := range batches {
+		result = append(result, batch...)
+	}
+	return result
+}
+
+func withSnapshotClock(t testing.TB, snapshot envelope.Snapshot[ObservedState], received time.Time) envelope.Snapshot[ObservedState] {
+	t.Helper()
+	header := snapshot.Header()
+	header.Clock = schema.NewClock(schema.Field[time.Duration]{}, schema.Field[time.Duration]{}, received)
+	value, _ := snapshot.Value()
+	result, err := envelope.NewSnapshot(header, value, cloneObservedState)
+	if err != nil {
+		t.Fatal(err)
 	}
 	return result
 }
@@ -406,65 +665,267 @@ func BenchmarkSessionCoordinatorApply64Vehicles(b *testing.B) {
 }
 
 func FuzzSessionCoordinatorTransitions(f *testing.F) {
-	f.Add([]byte{1, 2, 3, 4, 5})
-	f.Add([]byte{0xff, 0, 0xff, 1})
+	f.Add([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8})
+	f.Add([]byte{8, 6, 5, 6, 3, 7})
 	f.Fuzz(func(t *testing.T, transitions []byte) {
-		if len(transitions) > 32 {
-			transitions = transitions[:32]
+		if len(transitions) > 48 {
+			transitions = transitions[:48]
 		}
 		now := time.Unix(0, 0).UTC()
 		coordinator := NewSessionCoordinator(SessionCoordinatorConfig{
 			Now:          func() time.Time { return now },
 			MaxFactBatch: 64,
 		})
-		sink := &factSink{}
-		epoch := schema.Epoch(1)
-		sequence := schema.Sequence(1)
+		model := sessionOracle{}
 		id := run("event", "session", "vehicle-0", "team", "driver")
-		if err := coordinator.Apply(
-			context.Background(),
-			coordinatorSnapshot(t, epoch, sequence, "fuzz", id, 1),
-			sink,
-		); err != nil {
+		initial := coordinatorSnapshot(t, 1, 1, "fuzz", id, 1)
+		setVehicleState(t, &initial, 0, 0, false)
+		initial = withSnapshotClock(t, initial, now)
+		initialState, _ := initial.Value()
+		wantInitial, wantErr := model.apply(initial.Header(), initialState, now)
+		initialSink := &factSink{}
+		if err := coordinator.Apply(context.Background(), initial, initialSink); err != nil || wantErr != nil {
 			t.Fatal(err)
 		}
-		lastFact := FactSequence(1)
-		for _, transition := range transitions {
-			switch transition % 5 {
+		if !reflect.DeepEqual(flattenFacts(initialSink.batches), wantInitial) {
+			t.Fatalf("initial facts = %+v, want %+v", flattenFacts(initialSink.batches), wantInitial)
+		}
+
+		for step, transition := range transitions {
+			beforeHeader, beforeSequence, beforeInitialized := coordinator.Current()
+			header := model.header
+			header.Source = envelope.SourceID(fmt.Sprintf("source-%d", transition%3))
+			header.Cursor.Sequence++
+			presentVehicle := true
+			forceBackpressure := false
+			switch transition % 9 {
 			case 0:
-				sequence++
+				header.Cursor = model.header.Cursor
 			case 1:
-				epoch++
-				sequence = 1
+				header.Cursor.Sequence++
 			case 2:
-				epoch++
-				sequence = 1
-				id.Session = identity.SessionID(string(rune('a' + transition%26)))
+				header.Cursor.Epoch++
+				header.Cursor.Sequence = 1
 			case 3:
-				epoch++
-				sequence = 1
-				id.Vehicle = identity.VehicleID("vehicle-" + string(rune('a'+transition%26)))
+				header.Cursor.Epoch++
+				header.Cursor.Sequence = 1
+				header.Identity.Session = identity.SessionID(fmt.Sprintf("session-%d-%d", step, transition))
 			case 4:
-				sequence++
-				id.Driver = identity.DriverID(string(rune('a' + transition%26)))
+				header.Cursor.Epoch++
+				header.Cursor.Sequence = 1
+				header.Identity.Vehicle = identity.VehicleID(fmt.Sprintf("vehicle-%d-%d", step, transition))
+			case 5:
+				presentVehicle = false
+			case 7:
+				header.Identity.Driver = identity.DriverID(fmt.Sprintf("driver-%d-%d", step, transition))
+				header.Identity.Team = identity.TeamID(fmt.Sprintf("team-%d", step))
+			case 8:
+				header.Identity.Driver = identity.DriverID(fmt.Sprintf("blocked-driver-%d", step))
+				forceBackpressure = true
 			}
-			snapshot := coordinatorSnapshot(t, epoch, sequence, "fuzz", id, 1)
-			err := coordinator.Apply(context.Background(), snapshot, sink)
-			if err != nil {
-				// Invalid generated cursors are observable and must not panic or
-				// corrupt the last accepted fact sequence.
-				_, current, initialized := coordinator.Current()
-				if initialized && current < lastFact {
-					t.Fatalf("fact sequence regressed from %d to %d", lastFact, current)
+
+			participants := 0
+			if presentVehicle {
+				participants = 1
+			}
+			snapshot := coordinatorSnapshot(
+				t,
+				header.Cursor.Epoch,
+				header.Cursor.Sequence,
+				header.Source,
+				header.Identity,
+				participants,
+			)
+			snapshot = withSnapshotClock(t, snapshot, now)
+			if presentVehicle {
+				history := model.vehicles[header.Identity.Vehicle]
+				laps := history.completedLaps + standings.CompletedLaps(transition%3)
+				setVehicleState(t, &snapshot, 0, laps, transition&1 == 1)
+			}
+			state, _ := snapshot.Value()
+			candidateModel := model.clone()
+			wantFacts, oracleErr := candidateModel.apply(snapshot.Header(), state, now)
+			sink := &factSink{}
+			if forceBackpressure && oracleErr == nil && len(wantFacts) > 0 {
+				sink.err = ErrBackpressure
+			}
+			gotErr := coordinator.Apply(context.Background(), snapshot, sink)
+			if sink.err != nil && oracleErr == nil {
+				oracleErr = sink.err
+			}
+			if !sameCoordinatorError(gotErr, oracleErr) {
+				t.Fatalf("step %d error = %v, want %v", step, gotErr, oracleErr)
+			}
+
+			if oracleErr != nil {
+				afterHeader, afterSequence, afterInitialized := coordinator.Current()
+				if afterHeader != beforeHeader || afterSequence != beforeSequence || afterInitialized != beforeInitialized {
+					t.Fatalf("step %d error mutated state: before=(%+v,%d,%v) after=(%+v,%d,%v)",
+						step, beforeHeader, beforeSequence, beforeInitialized, afterHeader, afterSequence, afterInitialized)
 				}
-				continue
+				if len(sink.batches) != 0 {
+					t.Fatalf("step %d failed sink accepted facts", step)
+				}
+			} else {
+				model = candidateModel
+				gotFacts := flattenFacts(sink.batches)
+				if len(gotFacts) != len(wantFacts) || (len(gotFacts) > 0 && !reflect.DeepEqual(gotFacts, wantFacts)) {
+					t.Fatalf("step %d facts = %+v, want %+v", step, gotFacts, wantFacts)
+				}
+				gotHeader, gotSequence, initialized := coordinator.Current()
+				if !initialized || gotHeader != model.header || gotSequence != model.factSequence {
+					t.Fatalf("step %d state = (%+v,%d,%v), want (%+v,%d,true)",
+						step, gotHeader, gotSequence, initialized, model.header, model.factSequence)
+				}
 			}
-			_, current, _ := coordinator.Current()
-			if current < lastFact {
-				t.Fatalf("fact sequence regressed from %d to %d", lastFact, current)
-			}
-			lastFact = current
 			now = now.Add(time.Nanosecond)
 		}
 	})
+}
+
+type oracleVehicle struct {
+	identity      identity.RunIdentity
+	completedLaps standings.CompletedLaps
+	hasLaps       bool
+	inPit         pit.InPit
+	hasPit        bool
+	lastSeen      schema.Cursor
+}
+
+type sessionOracle struct {
+	initialized   bool
+	sessionActive bool
+	header        envelope.Header
+	vehicles      map[identity.VehicleID]oracleVehicle
+	factSequence  FactSequence
+}
+
+func (model sessionOracle) clone() sessionOracle {
+	result := model
+	if model.vehicles != nil {
+		result.vehicles = make(map[identity.VehicleID]oracleVehicle, len(model.vehicles))
+		for id, vehicle := range model.vehicles {
+			result.vehicles[id] = vehicle
+		}
+	}
+	return result
+}
+
+func (model *sessionOracle) apply(
+	header envelope.Header,
+	state ObservedState,
+	occurred time.Time,
+) ([]envelope.Fact[SessionFact], error) {
+	if !header.Identity.SessionKnown() {
+		return nil, ErrIncompleteRunIdentity
+	}
+	if !model.initialized {
+		if header.Cursor.Epoch == 0 || header.Cursor.Sequence != 1 {
+			return nil, ErrInvalidInitialCursor
+		}
+	} else {
+		current := model.header.Cursor
+		next := header.Cursor
+		switch {
+		case next.Epoch < current.Epoch || next.Epoch == current.Epoch && next.Sequence <= current.Sequence:
+			return nil, ErrStaleBatch
+		case next.Epoch == current.Epoch && next.Sequence != current.Sequence+1:
+			return nil, ErrSequenceGap
+		case next.Epoch == current.Epoch && !model.header.Identity.SameRun(header.Identity):
+			return nil, ErrRunIdentityChanged
+		case next.Epoch != current.Epoch && next.Epoch != current.Epoch+1:
+			return nil, ErrEpochGap
+		case next.Epoch == current.Epoch+1 && next.Sequence != 1:
+			return nil, ErrInvalidEpochReset
+		}
+	}
+
+	drafts := make([]sessionFactDraft, 0, 4)
+	previousHeader := model.header
+	previousVehicles := model.vehicles
+	if !model.initialized || !model.sessionActive {
+		drafts = append(drafts, oracleDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: occurred}))
+		previousVehicles = nil
+	} else if !previousHeader.Identity.SameSession(header.Identity) {
+		drafts = append(drafts,
+			oracleDraft(previousHeader, previousHeader.Identity, SessionFact{Kind: FactSessionEnded, OccurredUTC: occurred}),
+			oracleDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: occurred, PreviousIdentity: previousHeader.Identity}),
+		)
+		previousVehicles = nil
+	} else if previousHeader.Identity.Vehicle != header.Identity.Vehicle {
+		previousVehicles = nil
+	}
+
+	vehicles := previousVehicles
+	if vehicles == nil {
+		vehicles = make(map[identity.VehicleID]oracleVehicle)
+	}
+	for _, observed := range state.Vehicles {
+		previous, exists := previousVehicles[observed.Identity.Vehicle]
+		current := previous
+		current.identity = observed.Identity
+		continuous := exists &&
+			previous.lastSeen.Epoch == header.Cursor.Epoch &&
+			previous.lastSeen.Sequence+1 == header.Cursor.Sequence
+		if exists && (previous.identity.Driver != observed.Identity.Driver || previous.identity.Team != observed.Identity.Team) {
+			drafts = append(drafts, oracleDraft(header, observed.Identity, SessionFact{
+				Kind: FactDriverChanged, OccurredUTC: occurred, PreviousIdentity: previous.identity,
+			}))
+		}
+		if laps, present := observed.CompletedLaps.Value(); present && observed.CompletedLaps.Freshness() != schema.FreshnessInvalid {
+			if exists && previous.hasLaps && laps > previous.completedLaps {
+				for completed := previous.completedLaps + 1; ; completed++ {
+					drafts = append(drafts, oracleDraft(header, observed.Identity, SessionFact{
+						Kind: FactLapCompleted, OccurredUTC: occurred, Lap: session.LapNumber(completed),
+					}))
+					if completed == laps {
+						break
+					}
+				}
+			}
+			if !exists || !previous.hasLaps || laps >= previous.completedLaps {
+				current.completedLaps = laps
+			}
+			current.hasLaps = true
+		}
+		if inPit, present := observed.InPit.Value(); present && observed.InPit.Freshness() != schema.FreshnessInvalid {
+			if continuous && previous.hasPit && inPit != previous.inPit {
+				kind := FactPitExited
+				if inPit {
+					kind = FactPitEntered
+				}
+				drafts = append(drafts, oracleDraft(header, observed.Identity, SessionFact{
+					Kind: kind, OccurredUTC: occurred, PreviousIdentity: previous.identity,
+				}))
+			}
+			current.inPit, current.hasPit = inPit, true
+		}
+		current.lastSeen = header.Cursor
+		vehicles[observed.Identity.Vehicle] = current
+	}
+
+	facts := make([]envelope.Fact[SessionFact], len(drafts))
+	for index := range drafts {
+		drafts[index].value.Sequence = model.factSequence + FactSequence(index) + 1
+		facts[index] = envelope.NewFact(drafts[index].header, drafts[index].value)
+	}
+	model.initialized = true
+	model.sessionActive = true
+	model.header = header
+	model.vehicles = vehicles
+	model.factSequence += FactSequence(len(facts))
+	return facts, nil
+}
+
+func oracleDraft(header envelope.Header, factIdentity identity.RunIdentity, value SessionFact) sessionFactDraft {
+	header.Identity = factIdentity
+	value.Identity = factIdentity
+	return sessionFactDraft{header: header, value: value}
+}
+
+func sameCoordinatorError(got, want error) bool {
+	if got == nil || want == nil {
+		return got == nil && want == nil
+	}
+	return errors.Is(got, want)
 }

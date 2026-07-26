@@ -22,6 +22,9 @@ const (
 	telemetryOffset        = 128468
 	telemetryStride        = 1888
 	scoringStride          = 584
+	scoringOffset          = 2192
+	scoringIsPlayerOffset  = 196
+	scoringInPitsOffset    = 198
 	maxVehicles            = 104
 	knownFingerprintFormat = "LMU_Data/runtime:build=%s;size=324820;evidence=%s;telemetry=%s"
 	unknownFingerprint     = "LMU_Data/size=324820/evidence=insufficient"
@@ -71,6 +74,7 @@ type Observation struct {
 	PlayerPosition schema.Field[standings.Position]
 	CompletedLaps  schema.Field[standings.CompletedLaps]
 	PitStopCount   schema.Field[pit.StopCount]
+	InPit          schema.Field[pit.InPit]
 	REST           RESTObservation
 	MatrixVersion  uint16
 	Decisions      []FieldDecision
@@ -109,8 +113,11 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	playerPresent := buf[128466] != 0
 	evidence := "menu-invariants"
 	telemetryEvidence := "not-required-no-player"
+	playerScoringBase := -1
 	if playerPresent {
-		if !hasPlayerTelemetryEvidence(buf, vehicles, playerIndex) {
+		var correlated bool
+		playerScoringBase, correlated = playerScoringEvidence(buf, vehicles, playerIndex)
+		if !correlated {
 			result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=telemetry-insufficient", profile.version)
 			return result, nil
 		}
@@ -130,6 +137,7 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 		return result, nil
 	}
 	base := telemetryOffset + playerIndex*telemetryStride
+	result.InPit = validateInPit(buf[playerScoringBase+scoringInPitsOffset])
 	result.VehicleName = observed(vehicle.VehicleName(readString(buf, base+32, 64)))
 	result.LapNumber = observed(session.LapNumber(readInt32(buf, base+20)))
 	result.Gear = observed(vehicle.Gear(readInt32(buf, base+352)))
@@ -173,41 +181,41 @@ func hasScoringInvariants(buf []byte, vehicles int32, phase byte, playerIndex in
 	return finite(seconds) && seconds >= 0 && seconds <= float64(math.MaxInt64)/float64(time.Second)
 }
 
-func hasPlayerTelemetryEvidence(buf []byte, vehicles int32, playerIndex int) bool {
+func playerScoringEvidence(buf []byte, vehicles int32, playerIndex int) (int, bool) {
 	if vehicles <= 0 {
-		return false
+		return 0, false
 	}
 	playerScoring := -1
 	for index := 0; index < int(vehicles); index++ {
-		base := 2192 + index*scoringStride
-		if buf[base+196] == 1 {
+		base := scoringOffset + index*scoringStride
+		if buf[base+scoringIsPlayerOffset] == 1 {
 			if playerScoring != -1 {
-				return false
+				return 0, false
 			}
 			playerScoring = base
 		}
 	}
 	if playerScoring < 0 {
-		return false
+		return 0, false
 	}
 	telemetry := telemetryOffset + playerIndex*telemetryStride
 	if readInt32(buf, playerScoring) != readInt32(buf, telemetry) {
-		return false
+		return 0, false
 	}
 	scoringVehicle, ok := reasonableCString(buf[playerScoring+36:playerScoring+100], false)
 	if !ok {
-		return false
+		return 0, false
 	}
 	telemetryVehicle, ok := reasonableCString(buf[telemetry+32:telemetry+96], false)
 	if !ok || scoringVehicle != telemetryVehicle {
-		return false
+		return 0, false
 	}
 	scoringTrack, ok := reasonableCString(buf[1632:1696], false)
 	if !ok {
-		return false
+		return 0, false
 	}
 	telemetryTrack, ok := reasonableCString(buf[telemetry+96:telemetry+160], false)
-	return ok && scoringTrack == telemetryTrack
+	return playerScoring, ok && scoringTrack == telemetryTrack
 }
 
 func reasonableCString(value []byte, allowEmpty bool) (string, bool) {
@@ -264,6 +272,13 @@ func validateCount(value, min, max int32) schema.Field[schema.Count] {
 		return invalid[schema.Count]()
 	}
 	return observed(schema.Count(value))
+}
+
+func validateInPit(value byte) schema.Field[pit.InPit] {
+	if value > 1 {
+		return invalid[pit.InPit]()
+	}
+	return observed(pit.InPit(value == 1))
 }
 
 func validateSessionType(value int32) schema.Field[session.Type] {

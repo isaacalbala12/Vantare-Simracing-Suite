@@ -12,6 +12,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
@@ -70,8 +71,14 @@ type coordinatorVehicle struct {
 	identity      identity.RunIdentity
 	completedLaps standings.CompletedLaps
 	hasLaps       bool
-	inPit         bool
+	inPit         pit.InPit
 	hasPit        bool
+	lastSeen      schema.Cursor
+}
+
+type sessionFactDraft struct {
+	header envelope.Header
+	value  SessionFact
 }
 
 type coordinatorState struct {
@@ -145,7 +152,7 @@ func (coordinator *SessionCoordinator) Apply(
 	if err != nil {
 		return err
 	}
-	if err := coordinator.publish(ctx, sink, header, &next, facts); err != nil {
+	if err := coordinator.publish(ctx, sink, &next, facts); err != nil {
 		return err
 	}
 	coordinator.mu.Lock()
@@ -190,12 +197,11 @@ func (coordinator *SessionCoordinator) SetConnected(
 	if connected {
 		kind = FactConnectionRecovered
 	}
-	events := []SessionFact{{
+	events := []sessionFactDraft{newFactDraft(next.header, next.header.Identity, SessionFact{
 		Kind:        kind,
 		OccurredUTC: coordinator.now().Round(0).UTC(),
-		Identity:    next.header.Identity,
-	}}
-	if err := coordinator.publish(ctx, sink, next.header, &next, events); err != nil {
+	})}
+	if err := coordinator.publish(ctx, sink, &next, events); err != nil {
 		return err
 	}
 	coordinator.mu.Lock()
@@ -228,12 +234,11 @@ func (coordinator *SessionCoordinator) EndSession(ctx context.Context, sink Fact
 	coordinator.mu.RUnlock()
 	next.sessionActive = false
 	next.vehicles = nil
-	events := []SessionFact{{
+	events := []sessionFactDraft{newFactDraft(next.header, next.header.Identity, SessionFact{
 		Kind:        FactSessionEnded,
 		OccurredUTC: coordinator.now().Round(0).UTC(),
-		Identity:    next.header.Identity,
-	}}
-	if err := coordinator.publish(ctx, sink, next.header, &next, events); err != nil {
+	})}
+	if err := coordinator.publish(ctx, sink, &next, events); err != nil {
 		return err
 	}
 	coordinator.mu.Lock()
@@ -252,19 +257,19 @@ func (coordinator *SessionCoordinator) applySnapshot(
 	next *coordinatorState,
 	header envelope.Header,
 	state ObservedState,
-) ([]SessionFact, error) {
+) ([]sessionFactDraft, error) {
 	now := coordinator.now().Round(0).UTC()
-	facts := make([]SessionFact, 0, 4)
+	facts := make([]sessionFactDraft, 0, 4)
 	previousHeader := next.header
 	previousVehicles := next.vehicles
 
 	if !next.initialized || !next.sessionActive {
-		facts = append(facts, SessionFact{Kind: FactSessionStarted, OccurredUTC: now, Identity: header.Identity})
+		facts = append(facts, newFactDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now}))
 		previousVehicles = nil
 	} else if !previousHeader.Identity.SameSession(header.Identity) {
 		facts = append(facts,
-			SessionFact{Kind: FactSessionEnded, OccurredUTC: now, Identity: previousHeader.Identity},
-			SessionFact{Kind: FactSessionStarted, OccurredUTC: now, Identity: header.Identity, PreviousIdentity: previousHeader.Identity},
+			newFactDraft(previousHeader, previousHeader.Identity, SessionFact{Kind: FactSessionEnded, OccurredUTC: now}),
+			newFactDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now, PreviousIdentity: previousHeader.Identity}),
 		)
 		previousVehicles = nil
 	} else if previousHeader.Identity.Vehicle != header.Identity.Vehicle {
@@ -272,18 +277,24 @@ func (coordinator *SessionCoordinator) applySnapshot(
 		previousVehicles = nil
 	}
 
-	updatedVehicles := make(map[identity.VehicleID]coordinatorVehicle, len(state.Vehicles))
+	updatedVehicles := previousVehicles
+	if updatedVehicles == nil {
+		updatedVehicles = make(map[identity.VehicleID]coordinatorVehicle, len(state.Vehicles))
+	}
 	for _, vehicle := range state.Vehicles {
 		previous, exists := previousVehicles[vehicle.Identity.Vehicle]
-		current := coordinatorVehicle{identity: vehicle.Identity}
+		current := previous
+		current.identity = vehicle.Identity
+		continuousPresence := exists &&
+			previous.lastSeen.Epoch == header.Cursor.Epoch &&
+			previous.lastSeen.Sequence+1 == header.Cursor.Sequence
 
 		if exists && (previous.identity.Driver != vehicle.Identity.Driver || previous.identity.Team != vehicle.Identity.Team) {
-			facts = append(facts, SessionFact{
+			facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{
 				Kind:             FactDriverChanged,
 				OccurredUTC:      now,
-				Identity:         vehicle.Identity,
 				PreviousIdentity: previous.identity,
-			})
+			}))
 		}
 
 		if laps, present := usableField(vehicle.CompletedLaps); present {
@@ -295,12 +306,11 @@ func (coordinator *SessionCoordinator) applySnapshot(
 					current.completedLaps = previous.completedLaps
 				} else if laps > previous.completedLaps {
 					for completed := previous.completedLaps + 1; ; completed++ {
-						facts = append(facts, SessionFact{
+						facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{
 							Kind:        FactLapCompleted,
 							OccurredUTC: now,
-							Identity:    vehicle.Identity,
 							Lap:         session.LapNumber(completed),
-						})
+						}))
 						if len(facts) > coordinator.maxFacts {
 							return nil, ErrFactBatchOverflow
 						}
@@ -316,21 +326,21 @@ func (coordinator *SessionCoordinator) applySnapshot(
 
 		if inPit, present := usableField(vehicle.InPit); present {
 			current.inPit, current.hasPit = inPit, true
-			if exists && previous.hasPit && inPit != previous.inPit {
+			if continuousPresence && previous.hasPit && inPit != previous.inPit {
 				kind := FactPitExited
 				if inPit {
 					kind = FactPitEntered
 				}
-				facts = append(facts, SessionFact{
+				facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{
 					Kind:             kind,
 					OccurredUTC:      now,
-					Identity:         vehicle.Identity,
 					PreviousIdentity: previous.identity,
-				})
+				}))
 			}
 		} else if exists {
 			current.inPit, current.hasPit = previous.inPit, previous.hasPit
 		}
+		current.lastSeen = header.Cursor
 		updatedVehicles[vehicle.Identity.Vehicle] = current
 		if len(facts) > coordinator.maxFacts {
 			return nil, ErrFactBatchOverflow
@@ -362,26 +372,31 @@ func coordinatorHeader(header envelope.Header, state ObservedState) envelope.Hea
 	return header
 }
 
+func newFactDraft(header envelope.Header, factIdentity identity.RunIdentity, value SessionFact) sessionFactDraft {
+	header.Identity = factIdentity
+	value.Identity = factIdentity
+	return sessionFactDraft{header: header, value: value}
+}
+
 func (coordinator *SessionCoordinator) publish(
 	ctx context.Context,
 	sink FactBatchSink,
-	header envelope.Header,
 	next *coordinatorState,
-	values []SessionFact,
+	drafts []sessionFactDraft,
 ) error {
-	if len(values) == 0 {
+	if len(drafts) == 0 {
 		return nil
 	}
-	if len(values) > coordinator.maxFacts {
+	if len(drafts) > coordinator.maxFacts {
 		return ErrFactBatchOverflow
 	}
-	if uint64(next.factSequence) > math.MaxUint64-uint64(len(values)) {
+	if uint64(next.factSequence) > math.MaxUint64-uint64(len(drafts)) {
 		return ErrFactSequenceExhausted
 	}
-	facts := make([]envelope.Fact[SessionFact], len(values))
-	for index := range values {
-		values[index].Sequence = next.factSequence + FactSequence(index) + 1
-		facts[index] = envelope.NewFact(header, values[index])
+	facts := make([]envelope.Fact[SessionFact], len(drafts))
+	for index := range drafts {
+		drafts[index].value.Sequence = next.factSequence + FactSequence(index) + 1
+		facts[index] = envelope.NewFact(drafts[index].header, drafts[index].value)
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -389,7 +404,7 @@ func (coordinator *SessionCoordinator) publish(
 	if err := sink.WriteFacts(ctx, facts); err != nil {
 		return fmt.Errorf("write ordered telemetry facts: %w", err)
 	}
-	next.factSequence += FactSequence(len(values))
+	next.factSequence += FactSequence(len(drafts))
 	return nil
 }
 

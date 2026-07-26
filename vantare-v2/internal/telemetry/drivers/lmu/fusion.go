@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	MatrixVersion          uint16 = 1
+	MatrixVersion          uint16 = 2
 	maxConflictDiagnostics        = 5
 )
 
@@ -21,7 +21,7 @@ type AuthorityRule struct {
 	AlternativeTTL time.Duration
 }
 
-var authorityMatrixV1 = [...]AuthorityRule{
+var authorityMatrixV2 = [...]AuthorityRule{
 	{catalog.SignalSessionSourceTime, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
 	{catalog.SignalSessionTrackName, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
 	{catalog.SignalSessionType, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
@@ -38,11 +38,12 @@ var authorityMatrixV1 = [...]AuthorityRule{
 	{catalog.SignalStandingsPosition, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
 	{catalog.SignalStandingsCompletedLaps, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
 	{catalog.SignalPitStopCount, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
+	{catalog.SignalPitInPit, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 }
 
 func AuthorityMatrix() []AuthorityRule {
-	result := make([]AuthorityRule, len(authorityMatrixV1))
-	copy(result, authorityMatrixV1[:])
+	result := make([]AuthorityRule, len(authorityMatrixV2))
+	copy(result, authorityMatrixV2[:])
 	return result
 }
 
@@ -94,7 +95,7 @@ func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs
 		Source:        SourceCanonical,
 		ReceivedUTC:   receivedUTC.Round(0).UTC(),
 		MatrixVersion: MatrixVersion,
-		Decisions:     make([]FieldDecision, 0, len(authorityMatrixV1)),
+		Decisions:     make([]FieldDecision, 0, len(authorityMatrixV2)),
 		Conflicts:     make([]ConflictDiagnostic, 0, maxConflictDiagnostics),
 	}
 	if fusion.shared.sequence != 0 {
@@ -105,22 +106,23 @@ func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs
 	shm := fusion.shared.observation
 	rest := fusion.rest.observation.REST
 	shmStamp := fusion.shared.received
-	result.SourceTime = chooseField(elapsed, authorityMatrixV1[0], shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, fusion.rest.received), &result)
-	result.TrackName = chooseField(elapsed, authorityMatrixV1[1], shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, fusion.rest.received), &result)
-	result.SessionType = chooseField(elapsed, authorityMatrixV1[2], shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, fusion.rest.received), &result)
-	result.VehicleCount = chooseField(elapsed, authorityMatrixV1[3], shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, fusion.rest.received), &result)
-	result.PlayerPresent = chooseField(elapsed, authorityMatrixV1[4], shm.PlayerPresent, shmStamp, rest.PlayerPresent.Field, timedStamp(rest.PlayerPresent, fusion.rest.received), &result)
-	result.VehicleName = choosePreferredOnly(elapsed, authorityMatrixV1[5], shm.VehicleName, shmStamp, &result)
-	result.LapNumber = choosePreferredOnly(elapsed, authorityMatrixV1[6], shm.LapNumber, shmStamp, &result)
-	result.Gear = choosePreferredOnly(elapsed, authorityMatrixV1[7], shm.Gear, shmStamp, &result)
-	result.EngineRPM = choosePreferredOnly(elapsed, authorityMatrixV1[8], shm.EngineRPM, shmStamp, &result)
-	result.SpeedMPS = choosePreferredOnly(elapsed, authorityMatrixV1[9], shm.SpeedMPS, shmStamp, &result)
-	result.Throttle = choosePreferredOnly(elapsed, authorityMatrixV1[10], shm.Throttle, shmStamp, &result)
-	result.Brake = choosePreferredOnly(elapsed, authorityMatrixV1[11], shm.Brake, shmStamp, &result)
-	result.Clutch = choosePreferredOnly(elapsed, authorityMatrixV1[12], shm.Clutch, shmStamp, &result)
-	result.PlayerPosition = choosePreferredOnly(elapsed, authorityMatrixV1[13], rest.PlayerPosition.Field, timedStamp(rest.PlayerPosition, fusion.rest.received), &result)
-	result.CompletedLaps = choosePreferredOnly(elapsed, authorityMatrixV1[14], rest.CompletedLaps.Field, timedStamp(rest.CompletedLaps, fusion.rest.received), &result)
-	result.PitStopCount = choosePreferredOnly(elapsed, authorityMatrixV1[15], rest.PitStopCount.Field, timedStamp(rest.PitStopCount, fusion.rest.received), &result)
+	result.SourceTime = chooseField(elapsed, authorityMatrixV2[0], shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, fusion.rest.received), &result)
+	result.TrackName = chooseField(elapsed, authorityMatrixV2[1], shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, fusion.rest.received), &result)
+	result.SessionType = chooseField(elapsed, authorityMatrixV2[2], shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, fusion.rest.received), &result)
+	result.VehicleCount = chooseField(elapsed, authorityMatrixV2[3], shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, fusion.rest.received), &result)
+	result.PlayerPresent = chooseField(elapsed, authorityMatrixV2[4], shm.PlayerPresent, shmStamp, rest.PlayerPresent.Field, timedStamp(rest.PlayerPresent, fusion.rest.received), &result)
+	result.VehicleName = choosePreferredOnly(elapsed, authorityMatrixV2[5], shm.VehicleName, shmStamp, &result)
+	result.LapNumber = choosePreferredOnly(elapsed, authorityMatrixV2[6], shm.LapNumber, shmStamp, &result)
+	result.Gear = choosePreferredOnly(elapsed, authorityMatrixV2[7], shm.Gear, shmStamp, &result)
+	result.EngineRPM = choosePreferredOnly(elapsed, authorityMatrixV2[8], shm.EngineRPM, shmStamp, &result)
+	result.SpeedMPS = choosePreferredOnly(elapsed, authorityMatrixV2[9], shm.SpeedMPS, shmStamp, &result)
+	result.Throttle = choosePreferredOnly(elapsed, authorityMatrixV2[10], shm.Throttle, shmStamp, &result)
+	result.Brake = choosePreferredOnly(elapsed, authorityMatrixV2[11], shm.Brake, shmStamp, &result)
+	result.Clutch = choosePreferredOnly(elapsed, authorityMatrixV2[12], shm.Clutch, shmStamp, &result)
+	result.PlayerPosition = choosePreferredOnly(elapsed, authorityMatrixV2[13], rest.PlayerPosition.Field, timedStamp(rest.PlayerPosition, fusion.rest.received), &result)
+	result.CompletedLaps = choosePreferredOnly(elapsed, authorityMatrixV2[14], rest.CompletedLaps.Field, timedStamp(rest.CompletedLaps, fusion.rest.received), &result)
+	result.PitStopCount = choosePreferredOnly(elapsed, authorityMatrixV2[15], rest.PitStopCount.Field, timedStamp(rest.PitStopCount, fusion.rest.received), &result)
+	result.InPit = choosePreferredOnly(elapsed, authorityMatrixV2[16], shm.InPit, shmStamp, &result)
 	return result
 }
 

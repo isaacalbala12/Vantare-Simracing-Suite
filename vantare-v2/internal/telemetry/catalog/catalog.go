@@ -48,6 +48,7 @@ var definitions = []Definition{
 	{ID: SignalSessionVehicleCount, Key: "session.vehicle_count", Domain: schema.DomainSession, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 104)},
 	{ID: SignalVehiclePlayerPresent, Key: "vehicle.player_present", Domain: schema.DomainVehicle, Unit: schema.UnitBoolean, Range: schema.UnsupportedRange()},
 	{ID: SignalVehicleSpeedMPS, Key: "vehicle.speed_mps", Domain: schema.DomainVehicle, Unit: schema.UnitMetersPerSecond, Range: schema.UnknownRange()},
+	{ID: SignalPitInPit, Key: "pit.in_pit", Domain: schema.DomainPit, Unit: schema.UnitBoolean, Range: schema.UnsupportedRange()},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

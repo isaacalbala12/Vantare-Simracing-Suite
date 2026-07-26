@@ -59,12 +59,36 @@ mediante `EndSession` si el runtime observa un final explícito sin sucesor.
 
 `lap completed` usa el contador canónico de vueltas completadas. Un salto emite
 una entrada por vuelta para no perder hechos. Un retroceso temporal dentro de
-la misma sesión conserva el high-water mark; una nueva sesión o cambio de coche
-crea un historial nuevo.
+la misma sesión conserva el high-water mark. El historial se conserva por
+`VehicleID` aunque el vehículo falte temporalmente de la lista; si reaparece
+con un salto, se emiten en orden todas las vueltas que faltaban. Una nueva
+sesión o cambio de coche crea un historial nuevo.
 
 `pit entered/exited` necesita el estado booleano observado `VehicleState.InPit`.
 `PitStopCount` no es suficiente para demostrar una salida, por lo que no se
-infiere ese hecho desde el contador.
+infiere ese hecho desde el contador. Tampoco se infiere una transición mientras
+un vehículo está ausente: el primer valor al reaparecer establece un nuevo
+baseline y solo una observación consecutiva posterior puede emitir entrada o
+salida.
+
+En LMU, `InPit` procede exclusivamente del booleano observado
+`VehicleScoring.InPits`, catalogado como `pit.in_pit` y autorizado por Shared
+Memory en la matriz `v2`. `false` es un valor presente. No se mezcla con
+`PitState` ni se interpreta como lane/box/garage; faltan capturas reales
+específicas de esas transiciones.
+
+## Headers de hechos
+
+Cada `Fact` lleva el header de la observación que demuestra ese hecho, no el
+header genérico del lote:
+
+- hechos de un rival usan la identidad completa de ese vehículo y el
+  cursor/reloj del snapshot entrante;
+- `session ended` conserva identidad, cursor, epoch y reloj del último snapshot
+  de la sesión anterior;
+- `session started` usa la identidad, cursor y reloj del snapshot sucesor;
+- la secuencia del hecho es global, monotónica y distinta del cursor del
+  snapshot.
 
 ## Backpressure, ownership y límites
 
@@ -92,6 +116,12 @@ go test ./internal/telemetry/... -count=1
 go test ./internal/telemetry/core -run '^$' -fuzz '^FuzzSessionCoordinatorTransitions$' -fuzztime=10s
 go test ./internal/telemetry/core -run '^$' -bench '^BenchmarkSessionCoordinatorApply64Vehicles$' -benchmem -count=5
 ```
+
+Los tests model-based comparan hechos exactos, headers, estado, errores y
+atomicidad contra un oráculo de transiciones independiente. La matriz de
+errores cubre `Apply`, `SetConnected` y `EndSession` con cierre y backpressure;
+lectores concurrentes solo observan el último estado confirmado mientras el
+sink está bloqueado.
 
 La verificación manual en este corte consiste en inspeccionar los hechos de un
 harness controlado: inicio de sesión; desconexión/recuperación; cambio de

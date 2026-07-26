@@ -246,6 +246,7 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/schema",
 			modulePath+"/internal/telemetry/driver",
 			modulePath+"/internal/telemetry/core",
+			modulePath+"/internal/telemetry/catalog",
 			ownDriverRoot,
 		) {
 			return fmt.Errorf("concrete driver may only import schema, core ports, neutral driver contracts, and its own tree within telemetry, not %s", edge.Import)

@@ -43,6 +43,11 @@ var definitions = []Definition{
 	{ID: SignalVehicleName, Key: "vehicle.name", Domain: schema.DomainVehicle, Unit: schema.UnitUnsupported, Range: schema.UnsupportedRange()},
 	{ID: SignalStandingsCompletedLaps, Key: "standings.completed_laps", Domain: schema.DomainStandings, Unit: schema.UnitCount, Range: schema.UnknownRange()},
 	{ID: SignalSpatialOrientation, Key: "spatial.orientation", Domain: schema.DomainSpatial, Unit: schema.UnitUnknown, Range: schema.UnknownRange()},
+	{ID: SignalSessionSourceTime, Key: "session.source_time", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange()},
+	{ID: SignalSessionTrackName, Key: "session.track_name", Domain: schema.DomainSession, Unit: schema.UnitUnsupported, Range: schema.UnsupportedRange()},
+	{ID: SignalSessionVehicleCount, Key: "session.vehicle_count", Domain: schema.DomainSession, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 104)},
+	{ID: SignalVehiclePlayerPresent, Key: "vehicle.player_present", Domain: schema.DomainVehicle, Unit: schema.UnitBoolean, Range: schema.UnsupportedRange()},
+	{ID: SignalVehicleSpeedMPS, Key: "vehicle.speed_mps", Domain: schema.DomainVehicle, Unit: schema.UnitMetersPerSecond, Range: schema.UnknownRange()},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

@@ -188,11 +188,14 @@ func TestParseMarksNonFiniteAndOutOfRangeFieldsInvalid(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, freshness := range map[string]schema.Freshness{
-		"rpm": got.EngineRPM.Freshness(), "speed": got.SpeedMPS.Freshness(), "controls": got.Controls.Freshness(),
+		"rpm": got.EngineRPM.Freshness(), "speed": got.SpeedMPS.Freshness(), "throttle": got.Throttle.Freshness(),
 	} {
 		if freshness != schema.FreshnessInvalid {
 			t.Fatalf("%s freshness = %v", name, freshness)
 		}
+	}
+	if got.Brake.Freshness() != schema.FreshnessFresh || got.Clutch.Freshness() != schema.FreshnessFresh {
+		t.Fatalf("independent valid controls were discarded: brake=%v clutch=%v", got.Brake.Freshness(), got.Clutch.Freshness())
 	}
 }
 
@@ -366,7 +369,7 @@ func assertNoPublishedFields(t *testing.T, got Observation) {
 	freshness := []schema.Freshness{
 		got.SourceTime.Freshness(), got.TrackName.Freshness(), got.SessionType.Freshness(), got.VehicleCount.Freshness(),
 		got.PlayerPresent.Freshness(), got.VehicleName.Freshness(), got.LapNumber.Freshness(), got.Gear.Freshness(),
-		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Controls.Freshness(),
+		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Throttle.Freshness(), got.Brake.Freshness(), got.Clutch.Freshness(),
 	}
 	for index, value := range freshness {
 		if value != schema.FreshnessMissing {
@@ -379,7 +382,7 @@ func assertNoFastTelemetry(t *testing.T, got Observation) {
 	t.Helper()
 	for index, value := range []schema.Freshness{
 		got.VehicleName.Freshness(), got.LapNumber.Freshness(), got.Gear.Freshness(),
-		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Controls.Freshness(),
+		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Throttle.Freshness(), got.Brake.Freshness(), got.Clutch.Freshness(),
 	} {
 		if value != schema.FreshnessMissing {
 			t.Fatalf("fast field %d freshness = %v, want missing", index, value)

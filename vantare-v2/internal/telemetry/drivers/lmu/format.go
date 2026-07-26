@@ -10,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/controls"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
@@ -66,7 +65,9 @@ type Observation struct {
 	Gear           schema.Field[vehicle.Gear]
 	EngineRPM      schema.Field[vehicle.EngineRPM]
 	SpeedMPS       schema.Field[float64]
-	Controls       schema.Field[controls.Inputs]
+	Throttle       schema.Field[schema.Ratio]
+	Brake          schema.Field[schema.Ratio]
+	Clutch         schema.Field[schema.Ratio]
 	PlayerPosition schema.Field[standings.Position]
 	CompletedLaps  schema.Field[standings.CompletedLaps]
 	PitStopCount   schema.Field[pit.StopCount]
@@ -120,7 +121,7 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, evidence, telemetryEvidence)
 	result.PlayerPresent = observed(playerPresent)
 
-	result.TrackName = observed(readString(buf, 1632, 64))
+	result.TrackName = observed(normalizeTrackName(readString(buf, 1632, 64)))
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
 	result.SessionType = validateSessionType(readInt32(buf, 1696))
 	result.SourceTime = validateDuration(readFloat64(buf, 1700))
@@ -151,11 +152,9 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 		result.SpeedMPS = invalid[float64]()
 	}
 	throttle, brake, clutch := readFloat64(buf, base+420), readFloat64(buf, base+428), readFloat64(buf, base+444)
-	if finiteRatio(throttle) && finiteRatio(brake) && finiteRatio(clutch) {
-		result.Controls = observed(controls.Inputs{Throttle: schema.Ratio(throttle), Brake: schema.Ratio(brake), Clutch: schema.Ratio(clutch)})
-	} else {
-		result.Controls = invalid[controls.Inputs]()
-	}
+	result.Throttle = validateRatio(throttle)
+	result.Brake = validateRatio(brake)
+	result.Clutch = validateRatio(clutch)
 	return result, nil
 }
 
@@ -246,10 +245,18 @@ func invalid[T comparable]() schema.Field[T] {
 }
 
 func validateDuration(seconds float64) schema.Field[time.Duration] {
-	if !finite(seconds) || seconds < 0 || seconds > float64(math.MaxInt64)/float64(time.Second) {
+	value, valid := durationFromSeconds(seconds)
+	if !valid {
 		return invalid[time.Duration]()
 	}
-	return observed(time.Duration(seconds * float64(time.Second)))
+	return observed(value)
+}
+
+func validateRatio(value float64) schema.Field[schema.Ratio] {
+	if !finiteRatio(value) {
+		return invalid[schema.Ratio]()
+	}
+	return observed(schema.Ratio(value))
 }
 
 func validateCount(value, min, max int32) schema.Field[schema.Count] {
@@ -292,6 +299,8 @@ func readString(buf []byte, off, size int) string {
 	}
 	return string(value)
 }
+
+func normalizeTrackName(value string) string { return strings.TrimSpace(value) }
 
 func classifyClock(previous, current time.Duration) ClockChange {
 	if previous <= 0 || current >= previous {

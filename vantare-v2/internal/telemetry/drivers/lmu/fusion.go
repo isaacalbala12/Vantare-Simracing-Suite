@@ -3,32 +3,17 @@ package lmu
 import (
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/catalog"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
-const MatrixVersion uint16 = 1
-
-type FieldID string
-
 const (
-	FieldSourceTime     FieldID = "session.source-time"
-	FieldTrackName      FieldID = "session.track-name"
-	FieldSessionType    FieldID = "session.type"
-	FieldVehicleCount   FieldID = "session.vehicle-count"
-	FieldPlayerPresent  FieldID = "vehicle.player-present"
-	FieldVehicleName    FieldID = "vehicle.name"
-	FieldLapNumber      FieldID = "session.lap-number"
-	FieldGear           FieldID = "vehicle.gear"
-	FieldEngineRPM      FieldID = "vehicle.engine-rpm"
-	FieldSpeedMPS       FieldID = "vehicle.speed-mps"
-	FieldControls       FieldID = "controls.inputs"
-	FieldPlayerPosition FieldID = "standings.player-position"
-	FieldCompletedLaps  FieldID = "standings.completed-laps"
-	FieldPitStopCount   FieldID = "pit.stop-count"
+	MatrixVersion          uint16 = 1
+	maxConflictDiagnostics        = 5
 )
 
 type AuthorityRule struct {
-	Field          FieldID
+	Signal         catalog.SignalID
 	Preferred      ObservationSource
 	Alternative    ObservationSource
 	Equivalent     bool
@@ -37,20 +22,22 @@ type AuthorityRule struct {
 }
 
 var authorityMatrixV1 = [...]AuthorityRule{
-	{FieldSourceTime, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
-	{FieldTrackName, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
-	{FieldSessionType, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
-	{FieldVehicleCount, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
-	{FieldPlayerPresent, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
-	{FieldVehicleName, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
-	{FieldLapNumber, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
-	{FieldGear, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
-	{FieldEngineRPM, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
-	{FieldSpeedMPS, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
-	{FieldControls, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
-	{FieldPlayerPosition, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
-	{FieldCompletedLaps, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
-	{FieldPitStopCount, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
+	{catalog.SignalSessionSourceTime, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
+	{catalog.SignalSessionTrackName, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
+	{catalog.SignalSessionType, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
+	{catalog.SignalSessionVehicleCount, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
+	{catalog.SignalVehiclePlayerPresent, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
+	{catalog.SignalVehicleName, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalSessionLapNumber, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalVehicleGear, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalVehicleEngineRPM, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalVehicleSpeedMPS, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalControlsThrottle, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalControlsBrake, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalControlsClutch, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalStandingsPosition, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
+	{catalog.SignalStandingsCompletedLaps, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
+	{catalog.SignalPitStopCount, SourceREST, SourceUnknown, false, defaultRESTTTL, 0},
 }
 
 func AuthorityMatrix() []AuthorityRule {
@@ -60,84 +47,101 @@ func AuthorityMatrix() []AuthorityRule {
 }
 
 type FieldDecision struct {
-	Field     FieldID
+	Signal    catalog.SignalID
 	Source    ObservationSource
 	Freshness schema.Freshness
 	Fallback  bool
 }
 
 type ConflictDiagnostic struct {
-	Field       FieldID
+	Signal      catalog.SignalID
 	Preferred   ObservationSource
 	Alternative ObservationSource
 }
 
-// Fusion is single-writer state owned by one Driver.Run. It retains only the
-// latest typed observation from each source; it never retains raw payloads.
-type Fusion struct {
-	shared    Observation
-	hasShared bool
-	rest      Observation
-	hasREST   bool
+type monotonicStamp struct {
+	elapsed time.Duration
+	set     bool
 }
 
-func (fusion *Fusion) Merge(now time.Time, inputs ...Observation) Observation {
-	now = now.Round(0).UTC()
+type fusionSource struct {
+	observation Observation
+	received    monotonicStamp
+	sequence    uint64
+}
+
+// Fusion is single-writer state owned by one Driver.Run. UTC is output metadata
+// only; arrival sequence orders inputs and monotonic elapsed time governs TTL.
+type Fusion struct {
+	shared   fusionSource
+	rest     fusionSource
+	sequence uint64
+}
+
+func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs ...Observation) Observation {
 	for _, input := range inputs {
+		fusion.sequence++
+		state := fusionSource{observation: input, received: monotonicStamp{elapsed: elapsed, set: true}, sequence: fusion.sequence}
 		switch input.Source {
 		case SourceSharedMemory:
-			if !fusion.hasShared || !input.ReceivedUTC.Before(fusion.shared.ReceivedUTC) {
-				fusion.shared, fusion.hasShared = input, true
-			}
+			fusion.shared = state
 		case SourceREST:
-			if !fusion.hasREST || !input.ReceivedUTC.Before(fusion.rest.ReceivedUTC) {
-				fusion.rest, fusion.hasREST = input, true
-			}
+			fusion.rest = state
 		}
 	}
 
 	result := Observation{
 		Source:        SourceCanonical,
-		ReceivedUTC:   now,
+		ReceivedUTC:   receivedUTC.Round(0).UTC(),
 		MatrixVersion: MatrixVersion,
 		Decisions:     make([]FieldDecision, 0, len(authorityMatrixV1)),
-		Conflicts:     make([]ConflictDiagnostic, 0, 5),
+		Conflicts:     make([]ConflictDiagnostic, 0, maxConflictDiagnostics),
 	}
-	if fusion.hasShared {
-		result.Compatibility = fusion.shared.Compatibility
-		result.Fingerprint = fusion.shared.Fingerprint
-		result.ClockChange = fusion.shared.ClockChange
+	if fusion.shared.sequence != 0 {
+		result.Compatibility = fusion.shared.observation.Compatibility
+		result.Fingerprint = fusion.shared.observation.Fingerprint
+		result.ClockChange = fusion.shared.observation.ClockChange
 	}
-	result.SourceTime = chooseField(fusion, now, authorityMatrixV1[0], fusion.shared.SourceTime, fusion.shared.ReceivedUTC, fusion.rest.REST.SourceTime.Field, fusion.rest.REST.SourceTime.UpdatedUTC, &result)
-	result.TrackName = chooseField(fusion, now, authorityMatrixV1[1], fusion.shared.TrackName, fusion.shared.ReceivedUTC, fusion.rest.REST.TrackName.Field, fusion.rest.REST.TrackName.UpdatedUTC, &result)
-	result.SessionType = chooseField(fusion, now, authorityMatrixV1[2], fusion.shared.SessionType, fusion.shared.ReceivedUTC, fusion.rest.REST.SessionType.Field, fusion.rest.REST.SessionType.UpdatedUTC, &result)
-	result.VehicleCount = chooseField(fusion, now, authorityMatrixV1[3], fusion.shared.VehicleCount, fusion.shared.ReceivedUTC, fusion.rest.REST.VehicleCount.Field, fusion.rest.REST.VehicleCount.UpdatedUTC, &result)
-	result.PlayerPresent = chooseField(fusion, now, authorityMatrixV1[4], fusion.shared.PlayerPresent, fusion.shared.ReceivedUTC, fusion.rest.REST.PlayerPresent.Field, fusion.rest.REST.PlayerPresent.UpdatedUTC, &result)
-	result.VehicleName = choosePreferredOnly(now, authorityMatrixV1[5], fusion.shared.VehicleName, fusion.shared.ReceivedUTC, fusion.hasShared, &result)
-	result.LapNumber = choosePreferredOnly(now, authorityMatrixV1[6], fusion.shared.LapNumber, fusion.shared.ReceivedUTC, fusion.hasShared, &result)
-	result.Gear = choosePreferredOnly(now, authorityMatrixV1[7], fusion.shared.Gear, fusion.shared.ReceivedUTC, fusion.hasShared, &result)
-	result.EngineRPM = choosePreferredOnly(now, authorityMatrixV1[8], fusion.shared.EngineRPM, fusion.shared.ReceivedUTC, fusion.hasShared, &result)
-	result.SpeedMPS = choosePreferredOnly(now, authorityMatrixV1[9], fusion.shared.SpeedMPS, fusion.shared.ReceivedUTC, fusion.hasShared, &result)
-	result.Controls = choosePreferredOnly(now, authorityMatrixV1[10], fusion.shared.Controls, fusion.shared.ReceivedUTC, fusion.hasShared, &result)
-	result.PlayerPosition = choosePreferredOnly(now, authorityMatrixV1[11], fusion.rest.REST.PlayerPosition.Field, fusion.rest.REST.PlayerPosition.UpdatedUTC, fusion.hasREST, &result)
-	result.CompletedLaps = choosePreferredOnly(now, authorityMatrixV1[12], fusion.rest.REST.CompletedLaps.Field, fusion.rest.REST.CompletedLaps.UpdatedUTC, fusion.hasREST, &result)
-	result.PitStopCount = choosePreferredOnly(now, authorityMatrixV1[13], fusion.rest.REST.PitStopCount.Field, fusion.rest.REST.PitStopCount.UpdatedUTC, fusion.hasREST, &result)
+	shm := fusion.shared.observation
+	rest := fusion.rest.observation.REST
+	shmStamp := fusion.shared.received
+	result.SourceTime = chooseField(elapsed, authorityMatrixV1[0], shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, fusion.rest.received), &result)
+	result.TrackName = chooseField(elapsed, authorityMatrixV1[1], shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, fusion.rest.received), &result)
+	result.SessionType = chooseField(elapsed, authorityMatrixV1[2], shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, fusion.rest.received), &result)
+	result.VehicleCount = chooseField(elapsed, authorityMatrixV1[3], shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, fusion.rest.received), &result)
+	result.PlayerPresent = chooseField(elapsed, authorityMatrixV1[4], shm.PlayerPresent, shmStamp, rest.PlayerPresent.Field, timedStamp(rest.PlayerPresent, fusion.rest.received), &result)
+	result.VehicleName = choosePreferredOnly(elapsed, authorityMatrixV1[5], shm.VehicleName, shmStamp, &result)
+	result.LapNumber = choosePreferredOnly(elapsed, authorityMatrixV1[6], shm.LapNumber, shmStamp, &result)
+	result.Gear = choosePreferredOnly(elapsed, authorityMatrixV1[7], shm.Gear, shmStamp, &result)
+	result.EngineRPM = choosePreferredOnly(elapsed, authorityMatrixV1[8], shm.EngineRPM, shmStamp, &result)
+	result.SpeedMPS = choosePreferredOnly(elapsed, authorityMatrixV1[9], shm.SpeedMPS, shmStamp, &result)
+	result.Throttle = choosePreferredOnly(elapsed, authorityMatrixV1[10], shm.Throttle, shmStamp, &result)
+	result.Brake = choosePreferredOnly(elapsed, authorityMatrixV1[11], shm.Brake, shmStamp, &result)
+	result.Clutch = choosePreferredOnly(elapsed, authorityMatrixV1[12], shm.Clutch, shmStamp, &result)
+	result.PlayerPosition = choosePreferredOnly(elapsed, authorityMatrixV1[13], rest.PlayerPosition.Field, timedStamp(rest.PlayerPosition, fusion.rest.received), &result)
+	result.CompletedLaps = choosePreferredOnly(elapsed, authorityMatrixV1[14], rest.CompletedLaps.Field, timedStamp(rest.CompletedLaps, fusion.rest.received), &result)
+	result.PitStopCount = choosePreferredOnly(elapsed, authorityMatrixV1[15], rest.PitStopCount.Field, timedStamp(rest.PitStopCount, fusion.rest.received), &result)
 	return result
 }
 
-func chooseField[T comparable](fusion *Fusion, now time.Time, rule AuthorityRule, preferred schema.Field[T], preferredUTC time.Time, alternative schema.Field[T], alternativeUTC time.Time, result *Observation) schema.Field[T] {
-	preferred = fieldAt(now, preferredUTC, rule.PreferredTTL, preferred, fusion.hasShared)
-	alternative = fieldAt(now, alternativeUTC, rule.AlternativeTTL, alternative, fusion.hasREST)
-	preferredUsable := usable(preferred)
-	alternativeUsable := usable(alternative)
-	if preferredUsable && alternativeUsable && fieldsDiffer(preferred, alternative) {
-		result.Conflicts = append(result.Conflicts, ConflictDiagnostic{Field: rule.Field, Preferred: rule.Preferred, Alternative: rule.Alternative})
+func timedStamp[T comparable](field TimedField[T], fallback monotonicStamp) monotonicStamp {
+	if field.updatedMono.set {
+		return field.updatedMono
+	}
+	return fallback
+}
+
+func chooseField[T comparable](elapsed time.Duration, rule AuthorityRule, preferred schema.Field[T], preferredAt monotonicStamp, alternative schema.Field[T], alternativeAt monotonicStamp, result *Observation) schema.Field[T] {
+	preferred = fieldAt(elapsed, preferredAt, rule.PreferredTTL, preferred)
+	alternative = fieldAt(elapsed, alternativeAt, rule.AlternativeTTL, alternative)
+	if validUsable(preferred) && validUsable(alternative) && fieldsDiffer(preferred, alternative) {
+		appendConflict(result, ConflictDiagnostic{Signal: rule.Signal, Preferred: rule.Preferred, Alternative: rule.Alternative})
 	}
 	switch {
-	case preferredUsable:
+	case usable(preferred):
 		appendDecision(result, rule, rule.Preferred, preferred.Freshness(), false)
 		return preferred
-	case rule.Equivalent && alternativeUsable:
+	case rule.Equivalent && usable(alternative):
 		appendDecision(result, rule, rule.Alternative, alternative.Freshness(), true)
 		return alternative
 	case validStale(preferred):
@@ -158,8 +162,8 @@ func chooseField[T comparable](fusion *Fusion, now time.Time, rule AuthorityRule
 	}
 }
 
-func choosePreferredOnly[T comparable](now time.Time, rule AuthorityRule, field schema.Field[T], updated time.Time, sourcePresent bool, result *Observation) schema.Field[T] {
-	field = fieldAt(now, updated, rule.PreferredTTL, field, sourcePresent)
+func choosePreferredOnly[T comparable](elapsed time.Duration, rule AuthorityRule, field schema.Field[T], updated monotonicStamp, result *Observation) schema.Field[T] {
+	field = fieldAt(elapsed, updated, rule.PreferredTTL, field)
 	if hasValue(field) {
 		appendDecision(result, rule, rule.Preferred, field.Freshness(), false)
 		return field
@@ -168,11 +172,11 @@ func choosePreferredOnly[T comparable](now time.Time, rule AuthorityRule, field 
 	return schema.MissingField[T]()
 }
 
-func fieldAt[T comparable](now, updated time.Time, ttl time.Duration, field schema.Field[T], sourcePresent bool) schema.Field[T] {
-	if !sourcePresent || !hasValue(field) || field.Freshness() != schema.FreshnessFresh {
+func fieldAt[T comparable](elapsed time.Duration, updated monotonicStamp, ttl time.Duration, field schema.Field[T]) schema.Field[T] {
+	if !updated.set || !hasValue(field) || field.Freshness() != schema.FreshnessFresh {
 		return field
 	}
-	if updated.IsZero() || now.Before(updated) || now.Sub(updated) > ttl {
+	if elapsed < updated.elapsed || elapsed-updated.elapsed > ttl {
 		return copyFreshness(field, schema.FreshnessStale)
 	}
 	return field
@@ -188,6 +192,8 @@ func validStale[T comparable](field schema.Field[T]) bool {
 	return present && field.Freshness() == schema.FreshnessStale
 }
 
+func validUsable[T comparable](field schema.Field[T]) bool { return usable(field) || validStale(field) }
+
 func hasValue[T comparable](field schema.Field[T]) bool {
 	_, present := field.Value()
 	return present
@@ -200,5 +206,11 @@ func fieldsDiffer[T comparable](left, right schema.Field[T]) bool {
 }
 
 func appendDecision(result *Observation, rule AuthorityRule, source ObservationSource, freshness schema.Freshness, fallback bool) {
-	result.Decisions = append(result.Decisions, FieldDecision{Field: rule.Field, Source: source, Freshness: freshness, Fallback: fallback})
+	result.Decisions = append(result.Decisions, FieldDecision{Signal: rule.Signal, Source: source, Freshness: freshness, Fallback: fallback})
+}
+
+func appendConflict(result *Observation, diagnostic ConflictDiagnostic) {
+	if len(result.Conflicts) < maxConflictDiagnostics {
+		result.Conflicts = append(result.Conflicts, diagnostic)
+	}
 }

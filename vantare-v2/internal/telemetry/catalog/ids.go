@@ -23,4 +23,9 @@ const (
 	SignalVehicleName
 	SignalStandingsCompletedLaps
 	SignalSpatialOrientation
+	SignalSessionSourceTime
+	SignalSessionTrackName
+	SignalSessionVehicleCount
+	SignalVehiclePlayerPresent
+	SignalVehicleSpeedMPS
 )

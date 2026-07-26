@@ -22,6 +22,11 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 16 | `vehicle.name` | vehicle | unsupported | unsupported |
 | 17 | `standings.completed_laps` | standings | count | unknown |
 | 18 | `spatial.orientation` | spatial | unknown | unknown |
+| 19 | `session.source_time` | session | seconds | unknown |
+| 20 | `session.track_name` | session | unsupported | unsupported |
+| 21 | `session.vehicle_count` | session | count | [0,104] |
+| 22 | `vehicle.player_present` | vehicle | boolean | unsupported |
+| 23 | `vehicle.speed_mps` | vehicle | m/s | unknown |
 
 ## Retired IDs
 

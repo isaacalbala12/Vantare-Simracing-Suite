@@ -37,6 +37,7 @@ func (value systemTicker) Stop()               { value.ticker.Stop() }
 type config struct {
 	open              openMemory
 	now               func() time.Time
+	elapsed           func() time.Duration
 	newTicker         func(time.Duration) ticker
 	interval          time.Duration
 	freshnessLimit    time.Duration
@@ -68,6 +69,10 @@ func newDriver(cfg config) *Driver {
 	if cfg.now == nil {
 		cfg.now = time.Now
 	}
+	if cfg.elapsed == nil {
+		started := time.Now()
+		cfg.elapsed = func() time.Duration { return time.Since(started) }
+	}
 	if cfg.newTicker == nil {
 		cfg.newTicker = func(interval time.Duration) ticker { return systemTicker{time.NewTicker(interval)} }
 	}
@@ -83,7 +88,7 @@ func newDriver(cfg config) *Driver {
 	if cfg.build == nil {
 		cfg.build = readLMUBuildEvidence
 	}
-	cfg.rest = normalizeRESTConfig(cfg.rest, cfg.now)
+	cfg.rest = normalizeRESTConfig(cfg.rest, cfg.now, cfg.elapsed)
 	// DriverManager exposes an instance only after selecting it as active, where
 	// its own state is already connecting. Matching that state at construction
 	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
@@ -208,7 +213,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		canonical := fusion.Merge(now, observation)
+		canonical := fusion.Merge(now, driver.config.elapsed(), observation)
 		if err := sink.WriteObservation(ctx, canonical); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
 		}
@@ -233,7 +238,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			canonical := fusion.Merge(driver.config.now(), observation)
+			canonical := fusion.Merge(driver.config.now(), driver.config.elapsed(), observation)
 			if err := sink.WriteObservation(ctx, canonical); err != nil {
 				return fmt.Errorf("write LMU REST observation: %w", err)
 			}
@@ -327,7 +332,9 @@ func withFreshness(value Observation, freshness schema.Freshness) Observation {
 	value.Gear = copyFreshness(value.Gear, freshness)
 	value.EngineRPM = copyFreshness(value.EngineRPM, freshness)
 	value.SpeedMPS = copyFreshness(value.SpeedMPS, freshness)
-	value.Controls = copyFreshness(value.Controls, freshness)
+	value.Throttle = copyFreshness(value.Throttle, freshness)
+	value.Brake = copyFreshness(value.Brake, freshness)
+	value.Clutch = copyFreshness(value.Clutch, freshness)
 	return value
 }
 

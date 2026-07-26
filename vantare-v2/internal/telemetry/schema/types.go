@@ -66,9 +66,10 @@ const (
 	UnitSeconds
 	UnitRPM
 	UnitCelsius
+	UnitMetersPerSecond
 )
 
-func (u Unit) Known() bool { return u >= UnitUnsupported && u <= UnitCelsius }
+func (u Unit) Known() bool { return u >= UnitUnsupported && u <= UnitMetersPerSecond }
 
 func (u Unit) Supported() bool { return u != UnitUnknown && u != UnitUnsupported && u.Known() }
 
@@ -90,6 +91,8 @@ func (u Unit) String() string {
 		return "rpm"
 	case UnitCelsius:
 		return "celsius"
+	case UnitMetersPerSecond:
+		return "m/s"
 	default:
 		return "unknown"
 	}

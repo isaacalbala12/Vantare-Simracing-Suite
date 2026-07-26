@@ -24,7 +24,7 @@ La flecha significa “puede depender de”. `schema` es la capa más baja. `cat
 | `internal/telemetry/driver[/...]` | schema y standard library | core, drivers concretos, productos, transports, DB |
 | `internal/telemetry/core[/...]` | schema, contratos neutrales de driver, standard library y contratos propios de core | drivers concretos, legacy `lmu`/`lmuapi`, derive concreto, projections, recording, productos, Wails/SSE/app/DB |
 | `internal/telemetry/derive[/...]` | schema, puertos core y su propio árbol | drivers, projections, recording, productos, transports, DB |
-| `internal/telemetry/drivers/<source>` | schema, contratos driver, puertos core, su propio árbol y librerías de adquisición aprobadas | otro driver de simulador, projections, recording, Overlay, Engineer, Strategy, app/server; ningún import inverso desde core |
+| `internal/telemetry/drivers/<source>` | schema, catálogo canónico de señales, contratos driver, puertos core, su propio árbol y librerías de adquisición aprobadas | otro driver de simulador, projections, recording, Overlay, Engineer, Strategy, app/server; ningún import inverso desde core |
 | `internal/telemetry/projection/<consumer>` | schema/core y lógica pura de proyección | drivers concretos, legacy LMU, Wails/SSE/app/DB |
 | `internal/telemetry/recording` | schema/core ports y formatos puros | implementación DuckDB/SQL dentro de Telemetry Core; productos/transports |
 | `internal/app` o composition root | core, drivers, projections, transports y adapters de storage | —; aquí se cablean implementaciones, sin devolver dependencias hacia core |
@@ -49,7 +49,7 @@ Además:
 - `derive` solo importa `schema`, puertos `core` y su propio árbol;
 - `projection/*` solo importa `schema`, puertos `core` y su propio árbol;
 - `recording` solo importa `schema`, puertos `core` y su propio árbol;
-- cada `drivers/<simulador>` solo importa `schema`, puertos `core`, contratos `driver` y su propio árbol: no puede importar otro simulador.
+- cada `drivers/<simulador>` solo importa `schema`, `catalog`, puertos `core`, contratos `driver` y su propio árbol: no puede importar otro simulador. `catalog` es la única autoridad de IDs; un driver no mantiene un ledger paralelo.
 
 SSE está representado hoy por `internal/server`, y Wails por su módulo externo; ambos son transports. “LMU concreto” incluye tanto el driver futuro `drivers/lmu` como los paquetes legacy actuales `internal/telemetry/lmu` y `lmuapi`.
 

@@ -165,6 +165,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 	}()
 	buffer := make([]byte, ObjectOutSize)
 	scratch := make([]byte, ObjectOutSize)
+	var fusion Fusion
 	var previousSource time.Duration
 	var unchangedSince time.Time
 
@@ -207,7 +208,8 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := sink.WriteObservation(ctx, observation); err != nil {
+		canonical := fusion.Merge(now, observation)
+		if err := sink.WriteObservation(ctx, canonical); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
 		}
 		return nil
@@ -231,7 +233,8 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			if err := sink.WriteObservation(ctx, observation); err != nil {
+			canonical := fusion.Merge(driver.config.now(), observation)
+			if err := sink.WriteObservation(ctx, canonical); err != nil {
 				return fmt.Errorf("write LMU REST observation: %w", err)
 			}
 		case <-ticker.C():

@@ -35,8 +35,10 @@ const (
 type ObservationSource uint8
 
 const (
-	SourceSharedMemory ObservationSource = iota + 1
+	SourceUnknown ObservationSource = iota
+	SourceSharedMemory
 	SourceREST
+	SourceCanonical
 )
 
 type RESTStatus uint8

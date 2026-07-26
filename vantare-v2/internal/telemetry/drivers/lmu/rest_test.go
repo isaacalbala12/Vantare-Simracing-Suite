@@ -310,8 +310,8 @@ func TestDriverOwnsRESTPollerAndWaitsForItsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- driver.Run(ctx, sink) }()
-	if first := <-sink.values; first.Source != SourceSharedMemory {
-		t.Fatalf("first source = %v", first.Source)
+	if first := <-sink.values; first.Source != SourceCanonical || first.MatrixVersion != MatrixVersion {
+		t.Fatalf("first canonical observation = %#v", first)
 	}
 	<-requestStarted
 	cancel()
@@ -369,10 +369,10 @@ func TestDriverDoesNotPublishOrMutateRESTAfterCancellation(t *testing.T) {
 	}
 }
 
-func TestDriverPublishesBothInternalChannelsAndReportsCapabilities(t *testing.T) {
+func TestDriverFusesBothInternalChannelsAndReportsCapabilities(t *testing.T) {
 	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
 		if request.URL.Path == standingsEndpoint {
-			_, _ = w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[{"player":true,"position":1,"lapsCompleted":0,"pitstops":0}]`))
 			return
 		}
 		_, _ = w.Write([]byte(`{"currentEventTime":1,"numberOfVehicles":0}`))
@@ -390,9 +390,11 @@ func TestDriverPublishesBothInternalChannelsAndReportsCapabilities(t *testing.T)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- driver.Run(ctx, sink) }()
-	sources := map[ObservationSource]bool{}
-	for len(sources) < 2 {
-		sources[(<-sink.values).Source] = true
+	first := <-sink.values
+	second := <-sink.values
+	position, positionPresent := second.PlayerPosition.Value()
+	if first.Source != SourceCanonical || second.Source != SourceCanonical || second.REST.Status != RESTStatusUnknown || !positionPresent || position != 1 {
+		t.Fatalf("canonical observations = first:%#v second:%#v", first, second)
 	}
 	snapshot := driver.RuntimeSnapshot()
 	if snapshot.State != drivercontract.StateLive || len(snapshot.Capabilities) != 2 || snapshot.Capabilities[0] != CapabilitySharedMemory || snapshot.Capabilities[1] != CapabilityREST {

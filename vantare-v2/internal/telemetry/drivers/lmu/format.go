@@ -11,7 +11,9 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/controls"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
@@ -45,25 +47,33 @@ const (
 
 // Observation is the canonical, product-neutral subset demonstrated by the
 // audited LMU_Data fixtures. It intentionally contains no raw bytes, deltas,
-// gaps, warnings, or product decisions.
+// gaps, warnings, or product decisions. Decisions below describe source
+// authority only. Canonical driver output leaves REST empty so consumers cannot
+// bypass field-level fusion.
 type Observation struct {
-	Source        ObservationSource
-	ReceivedUTC   time.Time
-	Compatibility Compatibility
-	Fingerprint   string
-	ClockChange   ClockChange
-	SourceTime    schema.Field[time.Duration]
-	TrackName     schema.Field[string]
-	SessionType   schema.Field[session.Type]
-	VehicleCount  schema.Field[schema.Count]
-	PlayerPresent schema.Field[bool]
-	VehicleName   schema.Field[vehicle.VehicleName]
-	LapNumber     schema.Field[session.LapNumber]
-	Gear          schema.Field[vehicle.Gear]
-	EngineRPM     schema.Field[vehicle.EngineRPM]
-	SpeedMPS      schema.Field[float64]
-	Controls      schema.Field[controls.Inputs]
-	REST          RESTObservation
+	Source         ObservationSource
+	ReceivedUTC    time.Time
+	Compatibility  Compatibility
+	Fingerprint    string
+	ClockChange    ClockChange
+	SourceTime     schema.Field[time.Duration]
+	TrackName      schema.Field[string]
+	SessionType    schema.Field[session.Type]
+	VehicleCount   schema.Field[schema.Count]
+	PlayerPresent  schema.Field[bool]
+	VehicleName    schema.Field[vehicle.VehicleName]
+	LapNumber      schema.Field[session.LapNumber]
+	Gear           schema.Field[vehicle.Gear]
+	EngineRPM      schema.Field[vehicle.EngineRPM]
+	SpeedMPS       schema.Field[float64]
+	Controls       schema.Field[controls.Inputs]
+	PlayerPosition schema.Field[standings.Position]
+	CompletedLaps  schema.Field[standings.CompletedLaps]
+	PitStopCount   schema.Field[pit.StopCount]
+	REST           RESTObservation
+	MatrixVersion  uint16
+	Decisions      []FieldDecision
+	Conflicts      []ConflictDiagnostic
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {

@@ -223,12 +223,13 @@ func TestRESTSessionValidationIsTransactional(t *testing.T) {
 	assertTimedValue(t, second.REST.TrackName, "Accepted Track", firstTime, schema.FreshnessFresh)
 	assertTimedValue(t, second.REST.SourceTime, 50*time.Second, firstTime, schema.FreshnessFresh)
 	for _, invalidTime := range []float64{-1, math.NaN()} {
+		rejectedTrack := "Must Not Commit"
 		seed := restCache{
 			sessionInfo: RESTEndpointSnapshot{LastSuccessUTC: firstTime},
 			trackName:   timedObserved("Cached Track", firstTime),
 			sourceTime:  timedObserved(50*time.Second, firstTime),
 		}
-		if err := seed.acceptSession(restSessionInfo{TrackName: "Must Not Commit", CurrentEventTime: invalidTime}, secondTime, monotonicStamp{elapsed: time.Second, set: true}); err == nil {
+		if err := seed.acceptSession(restSessionInfo{TrackName: &rejectedTrack, CurrentEventTime: invalidTime}, secondTime, monotonicStamp{elapsed: time.Second, set: true}); err == nil {
 			t.Fatalf("CurrentEventTime %v was accepted", invalidTime)
 		}
 		if seed.sessionInfo.LastSuccessUTC != firstTime {

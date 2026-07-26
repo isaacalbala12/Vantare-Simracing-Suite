@@ -2,8 +2,10 @@ package lmu
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -231,34 +233,77 @@ func TestLMUTeardownFailureReachesDriverManagerStop(t *testing.T) {
 	}
 }
 
-func TestDriverReportsDegradedUnknownAndStaleClock(t *testing.T) {
-	buffer := knownBuffer(t)
-	reader := &testReader{data: buffer}
-	ticks := &manualTicker{ticks: make(chan time.Time, 2)}
-	var nowUnix atomic.Int64
-	nowUnix.Store(100)
-	driver := newTestDriver(config{
-		open:           func() (memoryReader, error) { return reader, nil },
-		now:            func() time.Time { return time.Unix(nowUnix.Load(), 0) },
-		newTicker:      func(time.Duration) ticker { return ticks },
-		freshnessLimit: time.Second,
-	})
-	sink := &collectingSink{values: make(chan Observation, 3)}
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- driver.Run(ctx, sink) }()
-	first := <-sink.values
-	if first.Compatibility != CompatibilityKnown || driver.RuntimeSnapshot().State != drivercontract.StateLive {
-		t.Fatal("known signature was not live")
+func TestDriverLifecycleFreshnessUsesElapsedAcrossUTCJumpsAndRecovers(t *testing.T) {
+	tests := []struct {
+		name            string
+		wallJump        time.Duration
+		firstElapsed    time.Duration
+		firstFreshness  schema.Freshness
+		needsExpiryTick bool
+	}{
+		{name: "UTC rollback cannot prevent expiry", wallJump: -24 * time.Hour, firstElapsed: time.Second + time.Nanosecond, firstFreshness: schema.FreshnessStale},
+		{name: "UTC forward cannot force expiry", wallJump: 365 * 24 * time.Hour, firstElapsed: 500 * time.Millisecond, firstFreshness: schema.FreshnessFresh, needsExpiryTick: true},
 	}
-	nowUnix.Store(102)
-	ticks.ticks <- time.Unix(102, 0)
-	second := <-sink.values
-	if second.SourceTime.Freshness() != schema.FreshnessStale || driver.RuntimeSnapshot().State != drivercontract.StateStale {
-		t.Fatal("unchanged clock was not stale")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buffer := knownBuffer(t)
+			reader := &testReader{data: buffer}
+			ticks := &manualTicker{ticks: make(chan time.Time, 3)}
+			initialWall := time.Unix(100, 0).UTC()
+			var wallNanos atomic.Int64
+			var elapsedNanos atomic.Int64
+			wallNanos.Store(initialWall.UnixNano())
+			driver := newTestDriver(config{
+				open:           func() (memoryReader, error) { return reader, nil },
+				now:            func() time.Time { return time.Unix(0, wallNanos.Load()).UTC() },
+				elapsed:        func() time.Duration { return time.Duration(elapsedNanos.Load()) },
+				newTicker:      func(time.Duration) ticker { return ticks },
+				freshnessLimit: time.Second,
+			})
+			sink := &collectingSink{values: make(chan Observation, 4)}
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan error, 1)
+			go func() { done <- driver.Run(ctx, sink) }()
+
+			first := <-sink.values
+			if first.SourceTime.Freshness() != schema.FreshnessFresh || driver.RuntimeSnapshot().State != drivercontract.StateLive {
+				t.Fatalf("initial observation=%v runtime=%v", first.SourceTime.Freshness(), driver.RuntimeSnapshot().State)
+			}
+
+			jumpedWall := initialWall.Add(tt.wallJump)
+			wallNanos.Store(jumpedWall.UnixNano())
+			elapsedNanos.Store(int64(tt.firstElapsed))
+			ticks.ticks <- jumpedWall
+			afterJump := <-sink.values
+			if afterJump.ReceivedUTC != jumpedWall || afterJump.SourceTime.Freshness() != tt.firstFreshness {
+				t.Fatalf("after UTC jump metadata=%v freshness=%v want metadata=%v freshness=%v", afterJump.ReceivedUTC, afterJump.SourceTime.Freshness(), jumpedWall, tt.firstFreshness)
+			}
+
+			if tt.needsExpiryTick {
+				elapsedNanos.Store(int64(time.Second + time.Nanosecond))
+				ticks.ticks <- jumpedWall
+				expired := <-sink.values
+				if expired.SourceTime.Freshness() != schema.FreshnessStale || driver.RuntimeSnapshot().State != drivercontract.StateStale {
+					t.Fatalf("elapsed expiry freshness=%v runtime=%v", expired.SourceTime.Freshness(), driver.RuntimeSnapshot().State)
+				}
+			}
+
+			currentSeconds := math.Float64frombits(binary.LittleEndian.Uint64(buffer[1700:]))
+			binary.LittleEndian.PutUint64(buffer[1700:], math.Float64bits(currentSeconds+1))
+			recoveryWall := initialWall.Add(-365 * 24 * time.Hour)
+			wallNanos.Store(recoveryWall.UnixNano())
+			ticks.ticks <- recoveryWall
+			recovered := <-sink.values
+			if recovered.ReceivedUTC != recoveryWall || recovered.SourceTime.Freshness() != schema.FreshnessFresh || driver.RuntimeSnapshot().State != drivercontract.StateLive {
+				t.Fatalf("recovery metadata=%v freshness=%v runtime=%v", recovered.ReceivedUTC, recovered.SourceTime.Freshness(), driver.RuntimeSnapshot().State)
+			}
+
+			cancel()
+			if err := <-done; !errors.Is(err, context.Canceled) {
+				t.Fatalf("Run error = %v", err)
+			}
+		})
 	}
-	cancel()
-	<-done
 }
 
 func TestDriverCachesBuildEvidenceOncePerRunAndFailsClosed(t *testing.T) {

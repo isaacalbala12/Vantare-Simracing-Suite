@@ -198,7 +198,7 @@ type restStanding struct {
 }
 
 type restSessionInfo struct {
-	TrackName        string  `json:"trackName"`
+	TrackName        *string `json:"trackName"`
 	Session          string  `json:"session"`
 	NumberOfVehicles int32   `json:"numberOfVehicles"`
 	CurrentEventTime float64 `json:"currentEventTime"`
@@ -449,11 +449,10 @@ func validateSessionFields(info restSessionInfo, now time.Time, elapsed monotoni
 		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now, updatedMono: elapsed},
 		vehicleCount: timedValidatedAt[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now, elapsed),
 	}
-	trackName := normalizeTrackName(info.TrackName)
-	if trackName == "" {
+	if info.TrackName == nil {
 		fields.trackName = timedMissingAt[string](now, elapsed)
 	} else {
-		fields.trackName = timedObservedAt(trackName, now, elapsed)
+		fields.trackName = timedObservedAt(normalizeTrackName(*info.TrackName), now, elapsed)
 	}
 	return fields, nil
 }

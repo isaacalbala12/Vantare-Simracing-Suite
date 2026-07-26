@@ -172,7 +172,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 	scratch := make([]byte, ObjectOutSize)
 	var fusion Fusion
 	var previousSource time.Duration
-	var unchangedSince time.Time
+	var unchangedSince monotonicStamp
 
 	acquire := func() error {
 		if err := readStable(ctx, reader, buffer, scratch, driver.config.stableComparisons); err != nil {
@@ -189,6 +189,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			return fmt.Errorf("%w: snapshot %s: %w", ErrDisconnected, MemoryName, err)
 		}
 		now := driver.config.now()
+		elapsed := driver.config.elapsed()
 		observation, err := parseWithProfile(buffer, now, profile)
 		if err != nil {
 			return err
@@ -198,9 +199,9 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		}
 		if current, present := observation.SourceTime.Value(); present && observation.SourceTime.Freshness() == schema.FreshnessFresh {
 			observation.ClockChange = classifyClock(previousSource, current)
-			if current != previousSource || unchangedSince.IsZero() {
-				unchangedSince = now
-			} else if now.Sub(unchangedSince) >= driver.config.freshnessLimit {
+			if current != previousSource || !unchangedSince.set {
+				unchangedSince = monotonicStamp{elapsed: elapsed, set: true}
+			} else if elapsed < unchangedSince.elapsed || elapsed-unchangedSince.elapsed >= driver.config.freshnessLimit {
 				observation = withFreshness(observation, schema.FreshnessStale)
 			}
 			previousSource = current
@@ -213,7 +214,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		canonical := fusion.Merge(now, driver.config.elapsed(), observation)
+		canonical := fusion.Merge(now, elapsed, observation)
 		if err := sink.WriteObservation(ctx, canonical); err != nil {
 			return fmt.Errorf("write LMU observation: %w", err)
 		}

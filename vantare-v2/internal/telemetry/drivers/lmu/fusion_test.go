@@ -165,19 +165,27 @@ func TestOverlapNormalizationsAreEquivalent(t *testing.T) {
 		}
 	})
 	t.Run("track name", func(t *testing.T) {
-		for _, raw := range []string{" Circuit ", "\tTrack\n"} {
+		for _, raw := range []string{"", "   ", " Circuit ", "\tTrack\n"} {
+			restRaw := raw
+			shmField := observed(normalizeTrackName(raw))
 			restFields, err := validateSessionFields(
-				restSessionInfo{TrackName: raw, CurrentEventTime: 0},
+				restSessionInfo{TrackName: &restRaw, CurrentEventTime: 0},
 				time.Time{},
 				monotonicStamp{elapsed: 0, set: true},
 			)
 			if err != nil {
 				t.Fatal(err)
 			}
+			shmValue, shmPresent := shmField.Value()
 			restValue, restPresent := restFields.trackName.Field.Value()
-			if got, want := normalizeTrackName(raw), strings.TrimSpace(raw); got != want || !restPresent || restValue != want {
-				t.Fatalf("normalizeTrackName(%q)=%q want=%q", raw, got, want)
+			want := strings.TrimSpace(raw)
+			if !shmPresent || !restPresent || shmValue != want || restValue != want {
+				t.Fatalf("raw=%q SHM=(%q,%v) REST=(%q,%v) want=%q", raw, shmValue, shmPresent, restValue, restPresent, want)
 			}
+		}
+		missing, err := validateSessionFields(restSessionInfo{CurrentEventTime: 0}, time.Time{}, monotonicStamp{elapsed: 0, set: true})
+		if err != nil || missing.trackName.Field.Freshness() != schema.FreshnessMissing {
+			t.Fatalf("omitted REST track name = %#v error=%v, want missing", missing.trackName, err)
 		}
 	})
 	t.Run("session type", func(t *testing.T) {

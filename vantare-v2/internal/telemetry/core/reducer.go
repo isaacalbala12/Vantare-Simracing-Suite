@@ -28,7 +28,7 @@ var (
 	ErrVehicleRunMismatch    = errors.New("telemetry vehicle identity does not belong to the batch run")
 	ErrVehicleCountMismatch  = errors.New("telemetry vehicle count does not match the complete batch")
 	ErrIncompleteRunIdentity = errors.New("telemetry batch requires complete event and session identity")
-	ErrRunIdentityChanged    = errors.New("telemetry event or session changed without an epoch reset")
+	ErrRunIdentityChanged    = errors.New("telemetry event, session, or vehicle changed without an epoch reset")
 	ErrReducerRunning        = errors.New("telemetry reducer already has an active owner")
 )
 
@@ -182,7 +182,7 @@ func validateBatchHeader(current envelope.Header, initialized bool, next envelop
 		return err
 	}
 	if initialized && next.Cursor.Epoch == current.Cursor.Epoch &&
-		!current.Identity.SameSession(next.Identity) {
+		!current.Identity.SameRun(next.Identity) {
 		return ErrRunIdentityChanged
 	}
 	return nil

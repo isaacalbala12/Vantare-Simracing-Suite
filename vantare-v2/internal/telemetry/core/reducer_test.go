@@ -146,7 +146,7 @@ func TestReducerAcceptsNextEpochReset(t *testing.T) {
 	}
 }
 
-func TestReducerRequiresCompleteStableSessionIdentityWithinEpoch(t *testing.T) {
+func TestReducerRequiresCompleteStableRunIdentityWithinEpoch(t *testing.T) {
 	tests := []struct {
 		name     string
 		mutate   func(*Batch)
@@ -190,6 +190,13 @@ func TestReducerRequiresCompleteStableSessionIdentityWithinEpoch(t *testing.T) {
 			wantErr: ErrRunIdentityChanged,
 		},
 		{
+			name: "vehicle changes in same epoch",
+			mutate: func(batch *Batch) {
+				batch.Header.Identity.Vehicle = "other-player-vehicle"
+			},
+			wantErr: ErrRunIdentityChanged,
+		},
+		{
 			name: "partial next header cannot disable validation",
 			mutate: func(batch *Batch) {
 				batch.Header.Identity.Event = ""
@@ -219,24 +226,26 @@ func TestReducerRequiresCompleteStableSessionIdentityWithinEpoch(t *testing.T) {
 	}
 }
 
-func TestReducerAllowsVehicleAndDriverChangesWithinSession(t *testing.T) {
+func TestReducerAllowsTeamAndDriverChangesWithinRun(t *testing.T) {
 	reducer := NewReducer()
 	first := testBatch(schema.Cursor{Epoch: 2, Sequence: 1}, "spa", 1)
 	first.Header.Identity.Vehicle = "player-car-a"
+	first.Header.Identity.Team = "team-a"
 	first.Header.Identity.Driver = "driver-a"
 	if _, err := reducer.Apply(first); err != nil {
 		t.Fatalf("initial Apply(): %v", err)
 	}
 
 	next := testBatch(schema.Cursor{Epoch: 2, Sequence: 2}, "spa", 1)
-	next.Header.Identity.Vehicle = "player-car-b"
+	next.Header.Identity.Vehicle = "player-car-a"
+	next.Header.Identity.Team = "team-b"
 	next.Header.Identity.Driver = "driver-b"
 	if _, err := reducer.Apply(next); err != nil {
-		t.Fatalf("Apply() after vehicle/driver change: %v", err)
+		t.Fatalf("Apply() after team/driver change: %v", err)
 	}
 }
 
-func TestReducerAllowsSessionIdentityChangeOnlyAtEpochReset(t *testing.T) {
+func TestReducerAllowsRunIdentityChangeOnlyAtEpochReset(t *testing.T) {
 	reducer := NewReducer()
 	if _, err := reducer.Apply(testBatch(schema.Cursor{Epoch: 3, Sequence: 1}, "spa", 1)); err != nil {
 		t.Fatalf("initial Apply(): %v", err)
@@ -245,6 +254,7 @@ func TestReducerAllowsSessionIdentityChangeOnlyAtEpochReset(t *testing.T) {
 	reset := testBatch(schema.Cursor{Epoch: 4, Sequence: 1}, "lemans", 1)
 	reset.Header.Identity.Event = "next-event"
 	reset.Header.Identity.Session = "next-session"
+	reset.Header.Identity.Vehicle = "next-player-vehicle"
 	for index := range reset.State.Vehicles {
 		reset.State.Vehicles[index].Identity.Event = "next-event"
 		reset.State.Vehicles[index].Identity.Session = "next-session"
@@ -432,6 +442,15 @@ func TestReducerRejectsConcurrentRun(t *testing.T) {
 	for !reducer.Running() && time.Now().Before(deadline) {
 		runtime.Gosched()
 	}
+	if !reducer.Running() {
+		cancel()
+		select {
+		case err := <-done:
+			t.Fatalf("first Run() never acquired ownership and returned %v", err)
+		case <-time.After(time.Second):
+			t.Fatal("first Run() never acquired ownership and did not stop after cancellation")
+		}
+	}
 	if err := reducer.Run(context.Background(), batches, snapshots); !errors.Is(err, ErrReducerRunning) {
 		t.Fatalf("second Run() error = %v, want %v", err, ErrReducerRunning)
 	}
@@ -439,7 +458,14 @@ func TestReducerRejectsConcurrentRun(t *testing.T) {
 		t.Fatalf("Apply() during Run error = %v, want %v", err, ErrReducerRunning)
 	}
 	cancel()
-	<-done
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("first Run() error = %v, want context canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("first Run() did not stop after cancellation")
+	}
 }
 
 func FuzzReducerCursorValidation(f *testing.F) {
@@ -496,7 +522,7 @@ func (model *reducerModel) apply(batch Batch) error {
 		cursor.Sequence != model.header.Cursor.Sequence+1:
 		err = ErrSequenceGap
 	case model.initialized && cursor.Epoch == model.header.Cursor.Epoch &&
-		!model.header.Identity.SameSession(run):
+		!model.header.Identity.SameRun(run):
 		err = ErrRunIdentityChanged
 	case model.initialized && cursor.Epoch != model.header.Cursor.Epoch &&
 		cursor.Epoch != model.header.Cursor.Epoch+1:

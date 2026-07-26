@@ -7,9 +7,15 @@ validación manual de Isaac. No existe wiring productivo.
 
 - `core.Batch` contiene un estado observado completo y un
   `envelope.Header` con epoch/sequence.
-- El primer lote de un ciclo empieza en sequence 1. Dentro del mismo epoch se
-  acepta únicamente la siguiente sequence. Un reset válido incrementa el epoch
-  exactamente en uno y vuelve a sequence 1.
+- El primer lote exige identidad completa de evento y sesión, un epoch distinto
+  de cero y sequence 1. El epoch inicial puede ser cualquiera distinto de cero.
+- Dentro del mismo epoch se acepta únicamente la siguiente sequence y
+  `Event`/`Session` deben seguir representando la misma sesión según
+  `RunIdentity.SameSession`. Un header parcial nunca desactiva esta validación.
+  `Vehicle`, `Team` y `Driver` pueden cambiar sin rotar el epoch.
+- Un reset válido incrementa el epoch exactamente en uno, vuelve a sequence 1
+  y exige otra vez identidad completa. En ese límite sí puede cambiar
+  `Event`/`Session`.
 - Duplicados, retrocesos, gaps, saltos de epoch, conteos incoherentes e
   identidades de vehículo vacías, duplicadas o pertenecientes a otra sesión se
   rechazan antes de cambiar el estado.
@@ -27,7 +33,10 @@ validación manual de Isaac. No existe wiring productivo.
 - Cada `envelope.Snapshot` vuelve a copiar sus colecciones al construirse y en
   cada lectura. Un productor o consumidor no puede mutar el estado publicado.
 - `Run` es el único owner del loop mientras está activo, no crea goroutines y
-  rechaza un segundo owner. El contexto cancela recepción y publicación.
+  rechaza un segundo owner. El contexto se revalida inmediatamente después de
+  recibir y antes de aplicar: si la cancelación gana ese límite, el lote puede
+  haberse consumido del canal, pero no cambia cursor/estado ni se publica. El
+  mismo lote puede reenviarse al reiniciar. También se cancela la publicación.
 - El loop no contiene red, disco, JSON, reflection, logging, callbacks
   inyectables ni decisiones de producto.
 - No se implementa structural sharing. El benchmark de 64 vehículos registra
@@ -52,13 +61,15 @@ go test ./internal/telemetry/... -count=1
 Evidencia de este worktree:
 
 - core repetido 20 veces, Telemetry Core completo, guard ADR 0004, vet focal y
-  suite global Go: PASS; el vet amplio conserva únicamente tres warnings
+  suite global Go: PASS; el vet amplio conserva únicamente seis warnings
   `unsafe.Pointer` Win32 heredados fuera del diff;
-- fuzz 10 s: PASS, 2.318.048 ejecuciones;
+- fuzz con oracle/modelo 10 s: PASS, 2.508.370 ejecuciones; cada transición
+  comprueba error, cursor, atomicidad y snapshot;
 - benchmark Windows/amd64, AMD Ryzen 7 3700X, 64 vehículos, cinco repeticiones:
-  8,11–9,26 µs/op, 36.264 B/op y 5 allocs/op;
-- race: no ejecutable en este host; `CGO_ENABLED=0` y al habilitarlo falta
-  `gcc`.
+  8,77–9,61 µs/op, 36.264 B/op y 5 allocs/op;
+- race focal: PASS con el GCC UCRT64 ya instalado, usando temporalmente
+  `CGO_ENABLED=1`, `CC=gcc.exe` y su directorio en `PATH`; no se instaló ni
+  modificó toolchain del sistema.
 
 Rollback: revertir los commits de ISA-35. Al no existir wiring productivo, el
 rollback no requiere migración de datos ni cambios de configuración.

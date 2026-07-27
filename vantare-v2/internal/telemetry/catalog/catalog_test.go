@@ -32,6 +32,7 @@ var (
 	_ controls.Inputs         = controls.Inputs{}
 	_ energy.FuelAmount       = 0
 	_ pit.StopCount           = 0
+	_ pit.InPit               = false
 	_ standings.Position      = 0
 	_ standings.CompletedLaps = 0
 	_ weather.Temperature     = 0
@@ -71,6 +72,7 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalSessionVehicleCount, "session.vehicle_count", schema.DomainSession},
 		{SignalVehiclePlayerPresent, "vehicle.player_present", schema.DomainVehicle},
 		{SignalVehicleSpeedMPS, "vehicle.speed_mps", schema.DomainVehicle},
+		{SignalPitInPit, "pit.in_pit", schema.DomainPit},
 	}
 
 	got := All()
@@ -98,6 +100,7 @@ func TestCatalogDefinesEveryISA34FusionSignalMetadata(t *testing.T) {
 		{SignalSessionVehicleCount, schema.UnitCount, schema.ClosedRange(0, 104)},
 		{SignalVehiclePlayerPresent, schema.UnitBoolean, schema.UnsupportedRange()},
 		{SignalVehicleSpeedMPS, schema.UnitMetersPerSecond, schema.UnknownRange()},
+		{SignalPitInPit, schema.UnitBoolean, schema.UnsupportedRange()},
 	}
 	for _, tt := range tests {
 		definition, ok := ByID(tt.id)

@@ -47,6 +47,7 @@ type VehicleState struct {
 	Clutch        schema.Field[schema.Ratio]
 	Position      schema.Field[standings.Position]
 	CompletedLaps schema.Field[standings.CompletedLaps]
+	InPit         schema.Field[pit.InPit]
 	PitStopCount  schema.Field[pit.StopCount]
 }
 

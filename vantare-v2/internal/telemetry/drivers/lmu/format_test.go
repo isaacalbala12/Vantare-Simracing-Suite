@@ -49,6 +49,45 @@ func TestParseAuditedFixtures(t *testing.T) {
 				if _, present := got.VehicleName.Value(); present {
 					t.Fatal("menu invented a vehicle")
 				}
+				if _, present := got.InPit.Value(); present {
+					t.Fatal("menu invented pit state")
+				}
+			} else if value, present := got.InPit.Value(); !present || bool(value) {
+				t.Fatalf("track fixture in_pit = (%v,%v), want observed false", value, present)
+			}
+		})
+	}
+}
+
+func TestParsePlayerInPitUsesDemonstratedScoringBooleanWithExplicitPresence(t *testing.T) {
+	tests := []struct {
+		name      string
+		raw       byte
+		freshness schema.Freshness
+		value     bool
+	}{
+		{name: "false is present", raw: 0, freshness: schema.FreshnessFresh},
+		{name: "true is present", raw: 1, freshness: schema.FreshnessFresh, value: true},
+		{name: "non boolean is invalid", raw: 2, freshness: schema.FreshnessInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := knownBuffer(t)
+			scoringBase, ok := playerScoringEvidence(buf, 44, int(buf[128465]))
+			if !ok {
+				t.Fatal("fixture lacks correlated player scoring row")
+			}
+			buf[scoringBase+scoringInPitsOffset] = tt.raw
+			got, err := parseSupported(buf, time.Unix(0, 0))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.InPit.Freshness() != tt.freshness {
+				t.Fatalf("freshness = %v, want %v", got.InPit.Freshness(), tt.freshness)
+			}
+			value, present := got.InPit.Value()
+			if !present || bool(value) != tt.value {
+				t.Fatalf("value = (%v,%v), want (%v,true)", value, present, tt.value)
 			}
 		})
 	}
@@ -370,6 +409,7 @@ func assertNoPublishedFields(t *testing.T, got Observation) {
 		got.SourceTime.Freshness(), got.TrackName.Freshness(), got.SessionType.Freshness(), got.VehicleCount.Freshness(),
 		got.PlayerPresent.Freshness(), got.VehicleName.Freshness(), got.LapNumber.Freshness(), got.Gear.Freshness(),
 		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Throttle.Freshness(), got.Brake.Freshness(), got.Clutch.Freshness(),
+		got.InPit.Freshness(),
 	}
 	for index, value := range freshness {
 		if value != schema.FreshnessMissing {
@@ -383,6 +423,7 @@ func assertNoFastTelemetry(t *testing.T, got Observation) {
 	for index, value := range []schema.Freshness{
 		got.VehicleName.Freshness(), got.LapNumber.Freshness(), got.Gear.Freshness(),
 		got.EngineRPM.Freshness(), got.SpeedMPS.Freshness(), got.Throttle.Freshness(), got.Brake.Freshness(), got.Clutch.Freshness(),
+		got.InPit.Freshness(),
 	} {
 		if value != schema.FreshnessMissing {
 			t.Fatalf("fast field %d freshness = %v, want missing", index, value)

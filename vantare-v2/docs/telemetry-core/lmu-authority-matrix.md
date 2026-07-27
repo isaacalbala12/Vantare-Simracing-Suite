@@ -1,6 +1,6 @@
 # LMU — matriz de autoridad y fusión por campo
 
-Estado: ISA-34 / TC-03E, matriz `v1`.
+Estado: ISA-36 / TC-04B, matriz `v2` aditiva sobre ISA-34.
 
 ## Contrato
 
@@ -25,7 +25,7 @@ valores ni se sustituyen sesiones, standings u otros bloques. El diagnóstico
 solo contiene ID de campo y fuentes en conflicto; la calidad seleccionada vive
 en la decisión del campo y no se incluyen valores.
 
-## Matriz v1
+## Matriz v2
 
 | Orden | Campo estable | Preferida | Alternativa equivalente | TTL preferida | TTL alternativa |
 |---:|---|---|---|---:|---:|
@@ -45,12 +45,31 @@ en la decisión del campo y no se incluyen valores.
 | 14 | `standings.position` | REST | ninguna | 2 s | — |
 | 15 | `standings.completed_laps` | REST | ninguna | 2 s | — |
 | 16 | `pit.stop_count` | REST | ninguna | 2 s | — |
+| 17 | `pit.in_pit` | Shared Memory | ninguna | 500 ms | — |
 
 Los cinco primeros son todo el solapamiento demostrado por los contratos
 actuales. Los ocho siguientes son señales rápidas o de vehículo demostradas
-solo en Shared Memory. Los tres últimos proceden realmente de standings REST.
+solo en Shared Memory. Las tres siguientes proceden realmente de standings
+REST. La última es el booleano observado `VehicleScoring.InPits` de Shared
+Memory.
 Ampliar esta tabla exige una nueva versión, evidencia de semántica/unidad y
 tests; no se reutilizan IDs ni se activa una alternativa por conveniencia.
+
+## Evidencia y límite de `pit.in_pit`
+
+La matriz `v2` añade únicamente `pit.in_pit` a la `v1`. La señal representa
+exactamente el byte booleano `VehicleScoring.InPits` del vehículo jugador
+correlacionado con su slot de telemetría: `0` es `false` presente, `1` es
+`true` presente y cualquier otro byte es `invalid`. No se combina con
+`PitState`, no demuestra por sí sola lane/box/garage y no tiene alternativa
+REST.
+
+La evidencia existente y sanitizada de pista contiene ambas ramas del booleano
+entre las 44 filas de scoring (34 `true`, 10 `false`) y confirma `false` para el
+jugador correlacionado. Los tests modifican únicamente esa copia sanitizada
+para demostrar `true` e `invalid` sin leer ni regenerar raw. Siguen pendientes
+capturas reales específicas de transición, boxes y garaje; por eso el contrato
+no afirma esas semánticas.
 
 ## Equivalencia de los cinco solapamientos
 
@@ -75,7 +94,7 @@ go test ./internal/telemetry/drivers/lmu -count=1
 go test ./internal/telemetry/... -count=1
 ```
 
-La suite cubre matriz completa 1:1 con `catalog.Definitions`, preferred
+La suite cubre matriz completa `v2` 1:1 con `catalog.Definitions`, preferred
 stale/invalid/missing, REST parcial, recuperación, cero válido, las cuatro
 combinaciones fresh/stale en conflictos, clamp explícito a cinco, borde TTL,
 saltos del reloj civil, orden de llegada, equivalencias, fuzz, benchmark y

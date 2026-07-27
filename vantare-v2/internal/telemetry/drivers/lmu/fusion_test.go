@@ -13,7 +13,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestAuthorityMatrixV1ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
+func TestAuthorityMatrixV2ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
 	want := []catalog.SignalID{
 		catalog.SignalSessionSourceTime, catalog.SignalSessionTrackName, catalog.SignalSessionType,
 		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent, catalog.SignalVehicleName,
@@ -21,9 +21,10 @@ func TestAuthorityMatrixV1ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
 		catalog.SignalVehicleSpeedMPS, catalog.SignalControlsThrottle, catalog.SignalControlsBrake,
 		catalog.SignalControlsClutch, catalog.SignalStandingsPosition, catalog.SignalStandingsCompletedLaps,
 		catalog.SignalPitStopCount,
+		catalog.SignalPitInPit,
 	}
 	first, second := AuthorityMatrix(), AuthorityMatrix()
-	if MatrixVersion != 1 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
+	if MatrixVersion != 2 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
 		t.Fatalf("version=%d matrix=%#v", MatrixVersion, first)
 	}
 	seen := make(map[catalog.SignalID]bool, len(first))
@@ -46,6 +47,20 @@ func TestAuthorityMatrixV1ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
 	first[0].Preferred = SourceREST
 	if AuthorityMatrix()[0].Preferred != SourceSharedMemory {
 		t.Fatal("matrix leaked mutable storage")
+	}
+}
+
+func TestFusionPublishesInPitOnlyFromSharedMemoryWithExplicitFalsePresence(t *testing.T) {
+	shared := Observation{Source: SourceSharedMemory, InPit: fieldWithFreshness(pit.InPit(false), schema.FreshnessFresh)}
+	rest := restObservation(time.Unix(0, 0), time.Second, "track")
+	got := (&Fusion{}).Merge(time.Unix(0, 0), time.Second, shared, rest)
+	value, present := got.InPit.Value()
+	if !present || bool(value) || got.InPit.Freshness() != schema.FreshnessFresh {
+		t.Fatalf("in_pit = (%v,%v,%v)", value, present, got.InPit.Freshness())
+	}
+	decision := got.Decisions[len(got.Decisions)-1]
+	if decision.Signal != catalog.SignalPitInPit || decision.Source != SourceSharedMemory || decision.Fallback {
+		t.Fatalf("decision = %+v", decision)
 	}
 }
 

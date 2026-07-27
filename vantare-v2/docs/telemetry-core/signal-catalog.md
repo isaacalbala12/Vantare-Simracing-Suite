@@ -27,6 +27,7 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 21 | `session.vehicle_count` | session | count | [0,104] |
 | 22 | `vehicle.player_present` | vehicle | boolean | unsupported |
 | 23 | `vehicle.speed_mps` | vehicle | m/s | unknown |
+| 24 | `pit.in_pit` | pit | boolean | unsupported |
 
 ## Retired IDs
 

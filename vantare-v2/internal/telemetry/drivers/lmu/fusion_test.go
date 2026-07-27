@@ -13,7 +13,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestAuthorityMatrixV1ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
+func TestAuthorityMatrixV2ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
 	want := []catalog.SignalID{
 		catalog.SignalSessionSourceTime, catalog.SignalSessionTrackName, catalog.SignalSessionType,
 		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent, catalog.SignalVehicleName,

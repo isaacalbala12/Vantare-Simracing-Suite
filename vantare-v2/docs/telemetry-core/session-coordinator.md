@@ -30,8 +30,9 @@ vehículo dentro del snapshot completo.
   existe un snapshot sucesor; una pérdida de conexión nunca llama implícitamente
   a este límite.
 - Cambio de equipo o piloto: emite `driver changed`; no reinicia sesión.
-- Cambio de coche/run con la misma sesión: reinicia historial por vehículo, no
-  emite `session ended/started`.
+- Cambio de coche/run con la misma sesión: inicializa solo el nuevo run activo.
+  Conserva high-water y baseline de pit de todos los `VehicleID`
+  estables/rivales; no emite `session ended/started`.
 - Cambio real de evento o sesión: emite `session ended` y después
   `session started`, y reinicia el historial por vehículo.
 - Un nuevo epoch con la misma identidad puede representar un reset de fuente y
@@ -62,7 +63,9 @@ una entrada por vuelta para no perder hechos. Un retroceso temporal dentro de
 la misma sesión conserva el high-water mark. El historial se conserva por
 `VehicleID` aunque el vehículo falte temporalmente de la lista; si reaparece
 con un salto, se emiten en orden todas las vueltas que faltaban. Una nueva
-sesión o cambio de coche crea un historial nuevo.
+sesión crea un historial nuevo. Un cambio de coche conserva rivales estables y
+crea baseline únicamente para el nuevo run activo, aunque ese `VehicleID`
+hubiera aparecido antes como rival.
 
 `pit entered/exited` necesita el estado booleano observado `VehicleState.InPit`.
 `PitStopCount` no es suficiente para demostrar una salida, por lo que no se
@@ -97,6 +100,14 @@ header genérico del lote:
 sin cambiar estado. El límite por defecto es 256 hechos por snapshot y se puede
 reducir en harnesses. Superarlo devuelve `ErrFactBatchOverflow`.
 
+El historial tiene un presupuesto canónico máximo de 104 `VehicleID` por
+sesión, igual a los slots `VehicleScoring` demostrados por LMU. El valor
+`MaxVehicleHistory` permite reducirlo en un harness, pero nunca ampliarlo por
+encima de 104. Si la unión del historial y los participantes nuevos excede el
+presupuesto, `Apply` devuelve `ErrVehicleHistoryOverflow` antes de escribir al
+sink o confirmar estado. No existe eviction silenciosa: el mismo cursor puede
+reintentarse con una entrada dentro de contrato sin perder hechos.
+
 No existe cola interna, drop, logging por muestra ni callback de producto.
 Fan-out, métricas y políticas por consumidor pertenecen a ISA-38. El sink se
 invoca fuera del mutex: puede leer el último estado confirmado, y un consumidor
@@ -117,8 +128,9 @@ go test ./internal/telemetry/core -run '^$' -fuzz '^FuzzSessionCoordinatorTransi
 go test ./internal/telemetry/core -run '^$' -bench '^BenchmarkSessionCoordinatorApply64Vehicles$' -benchmem -count=5
 ```
 
-Los tests model-based comparan hechos exactos, headers, estado, errores y
-atomicidad contra un oráculo de transiciones independiente. La matriz de
+Los tests model-based usan varios participantes y cambios del coche activo, y
+comparan hechos exactos, headers, estado, errores y atomicidad contra un oráculo
+de transiciones independiente. La matriz de
 errores cubre `Apply`, `SetConnected` y `EndSession` con cierre y backpressure;
 lectores concurrentes solo observan el último estado confirmado mientras el
 sink está bloqueado.

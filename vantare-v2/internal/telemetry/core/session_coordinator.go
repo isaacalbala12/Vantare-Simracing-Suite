@@ -18,10 +18,15 @@ import (
 )
 
 var (
-	ErrCoordinatorRunning    = errors.New("telemetry session coordinator already has an active owner")
-	ErrFactBatchOverflow     = errors.New("telemetry fact batch exceeds configured limit")
-	ErrFactSequenceExhausted = errors.New("telemetry fact sequence exhausted")
+	ErrCoordinatorRunning     = errors.New("telemetry session coordinator already has an active owner")
+	ErrFactBatchOverflow      = errors.New("telemetry fact batch exceeds configured limit")
+	ErrFactSequenceExhausted  = errors.New("telemetry fact sequence exhausted")
+	ErrVehicleHistoryOverflow = errors.New("telemetry session vehicle history exceeds configured limit")
 )
+
+// MaxSessionVehicleHistory matches the demonstrated LMU VehicleScoring slot
+// budget. A session never evicts history silently to admit another vehicle.
+const MaxSessionVehicleHistory = 104
 
 type FactKind uint8
 
@@ -63,8 +68,9 @@ type FactBatchSink interface {
 }
 
 type SessionCoordinatorConfig struct {
-	Now          func() time.Time
-	MaxFactBatch int
+	Now               func() time.Time
+	MaxFactBatch      int
+	MaxVehicleHistory int
 }
 
 type coordinatorVehicle struct {
@@ -95,11 +101,12 @@ type coordinatorState struct {
 // no I/O except the caller-provided loss-intolerant fact port and starts no
 // goroutines. A failed fact write leaves all coordinator state unchanged.
 type SessionCoordinator struct {
-	running  atomic.Bool
-	mu       sync.RWMutex
-	now      func() time.Time
-	maxFacts int
-	state    coordinatorState
+	running     atomic.Bool
+	mu          sync.RWMutex
+	now         func() time.Time
+	maxFacts    int
+	maxVehicles int
+	state       coordinatorState
 }
 
 func NewSessionCoordinator(config SessionCoordinatorConfig) *SessionCoordinator {
@@ -111,7 +118,11 @@ func NewSessionCoordinator(config SessionCoordinatorConfig) *SessionCoordinator 
 	if maxFacts <= 0 {
 		maxFacts = 256
 	}
-	return &SessionCoordinator{now: now, maxFacts: maxFacts}
+	maxVehicles := config.MaxVehicleHistory
+	if maxVehicles <= 0 || maxVehicles > MaxSessionVehicleHistory {
+		maxVehicles = MaxSessionVehicleHistory
+	}
+	return &SessionCoordinator{now: now, maxFacts: maxFacts, maxVehicles: maxVehicles}
 }
 
 func (coordinator *SessionCoordinator) Apply(
@@ -273,21 +284,29 @@ func (coordinator *SessionCoordinator) applySnapshot(
 		)
 		previousVehicles = nil
 	} else if previousHeader.Identity.Vehicle != header.Identity.Vehicle {
-		// A car/run reset is distinct from a session reset.
-		previousVehicles = nil
+		// A car/run reset starts a new baseline only for the newly active run.
+		// Stable rivals keep their same-session high-water and pit history.
+		delete(previousVehicles, header.Identity.Vehicle)
 	}
 
 	updatedVehicles := previousVehicles
 	if updatedVehicles == nil {
 		updatedVehicles = make(map[identity.VehicleID]coordinatorVehicle, len(state.Vehicles))
 	}
+	trackedVehicles := len(updatedVehicles)
+	for _, vehicle := range state.Vehicles {
+		if _, exists := updatedVehicles[vehicle.Identity.Vehicle]; !exists {
+			trackedVehicles++
+			if trackedVehicles > coordinator.maxVehicles {
+				return nil, ErrVehicleHistoryOverflow
+			}
+		}
+	}
 	for _, vehicle := range state.Vehicles {
 		previous, exists := previousVehicles[vehicle.Identity.Vehicle]
 		current := previous
 		current.identity = vehicle.Identity
-		continuousPresence := exists &&
-			previous.lastSeen.Epoch == header.Cursor.Epoch &&
-			previous.lastSeen.Sequence+1 == header.Cursor.Sequence
+		continuousPresence := exists && previous.lastSeen == previousHeader.Cursor
 
 		if exists && (previous.identity.Driver != vehicle.Identity.Driver || previous.identity.Team != vehicle.Identity.Team) {
 			facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{

@@ -1,3 +1,15 @@
+Nota VANTARE-PROGRAM (2026-07-27):
+- ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.
+- Lectura obligatoria: `docs/vantare-program/README.md` y el handoff vivo.
+- Flujo objetivo: rama de issue -> aprobación inicial -> `nightly` ->
+  feedback/correcciones -> `testers` -> aprobación final -> `master`.
+- Transición: `nightly` y `testers` aún no existen. Hasta migrar ramas/CI, las
+  entregas permanecen apiladas sin promoción; `develop` solo describe historia.
+- Telemetry Core continúa desde ISA-37. Telemetry Analysis y Engineer/Spotter
+  requieren proyecto, investigación profunda y plan propios.
+- Strategy Planner es un único producto; Product A/B/C son fases históricas.
+- La skill `vantare-core` no es autoridad.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

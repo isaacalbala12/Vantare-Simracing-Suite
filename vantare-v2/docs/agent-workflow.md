@@ -1,5 +1,42 @@
 # Workflow de agentes
 
+> Flujo vigente desde ISA-120. Antes de actuar, lee
+> `docs/vantare-program/README.md`, `execution-policy.md` y el handoff del
+> proyecto. El flujo Nightly/Testers está aprobado como objetivo, pero hasta
+> que una issue migre ramas y CI, las entregas permanecen apiladas en ramas de
+> issue y no se promocionan.
+
+## Fuente operativa y aislamiento
+
+- Linear contiene proyectos, milestones, issues, dependencias, estado y rama.
+- Una issue ejecutable con cambios equivale a una rama Linear, un worktree y un
+  contexto propios.
+- Una investigación que solo modifica Linear no necesita rama; si genera docs
+  en el repo, sí.
+- Los hallazgos fuera de alcance crean issues; no se incorporan silenciosamente.
+- Se confirma base, worktree y estado limpio antes de editar.
+- Se usa exactamente el nombre de rama generado por Linear.
+- Commits pequeños y staging limitado a rutas; no `git add .`.
+- El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
+  autorización.
+
+## Promoción
+
+```text
+rama de issue
+  -> aprobación inicial de Isaac
+nightly
+  -> feedback Pro Plus y correcciones
+testers
+  -> validación amplia
+master, solo con aprobación final de Isaac
+```
+
+La promoción usa una issue de integración propia. Antes de crear `nightly` y
+`testers`, adaptar workflows y documentar rollback, ningún agente inventa esos
+destinos: conserva el PR en draft o la rama publicada sin merge. Tests y review
+no sustituyen las aprobaciones.
+
 ## Roles
 
 ## Orquestador
@@ -58,22 +95,26 @@ Debe buscar:
 
 ## Flujo normal
 
-1. Usuario debate con orquestador.
-2. Orquestador consulta `docs/roadmap-execution-board.md`.
-3. Orquestador crea miniplan pequeno.
-4. Orquestador crea prompt worker.
-5. Worker implementa.
-6. Worker reporta evidencia.
-7. Reviewer audita sin editar.
-8. Orquestador recomienda aceptar, corregir, dividir o revertir.
-9. Si se acepta, se hace commit pequeno cuando el usuario lo pida.
-10. Se actualiza `docs/current-plan.md` y `docs/roadmap-execution-board.md`.
+1. Usuario debate con orquestador cuando hacen falta decisiones.
+2. Orquestador consulta Linear, `docs/vantare-program/` y el handoff vivo.
+3. El tablero histórico solo se consulta como contexto; no elige trabajo.
+4. Orquestador crea o identifica el miniplan vigente.
+5. Orquestador crea prompt worker.
+6. Worker implementa.
+7. Worker reporta evidencia.
+8. Reviewer audita sin editar.
+9. Orquestador recomienda aceptar, corregir, dividir o revertir.
+10. Se hace commit pequeño cuando el contrato de la issue lo permite.
+11. Se actualiza el handoff, Linear y `docs/current-plan.md`.
 
 ## Comunicación de cambios visibles
 
 Si una issue cambia comportamiento que deben conocer o probar los testers, el worker añade un fragmento válido en `docs/changelog/fragments/ISA-N.json` siguiendo `docs/changelog/fragments/schema.json`. No edita mensajes acumulativos ni publica directamente en Discord.
 
-El fragmento debe explicar en español claro el resultado, los detalles técnicos útiles, la validación manual y las limitaciones conocidas. El anuncio se producirá únicamente cuando el fragmento alcance `develop`, después del gate humano. Consulta `docs/discord-communications.md` para la distribución de canales.
+El fragmento debe explicar en español claro el resultado, los detalles técnicos
+útiles, la validación manual y las limitaciones conocidas. Los mensajes de
+Nightly, Testers y Master se generan únicamente al alcanzar ese nivel
+autorizado. Consulta `docs/discord-communications.md`.
 
 ## Documentos ejecutables y orquestables
 

@@ -15,10 +15,24 @@ Regla central: hacer el cambio seguro mas pequeno posible.
 
 - Lee este archivo antes de editar.
 - Lee `docs/current-plan.md` antes de empezar cualquier tarea.
+- Lee `docs/vantare-program/README.md` y el handoff vivo del proyecto antes de
+  interpretar contexto o lanzar trabajo. Las decisiones más recientes de ese
+  directorio prevalecen sobre planes históricos.
+- Lee `docs/agent-workflow.md` antes de crear ramas, worktrees, PRs o cambiar
+  el estado de una issue de Linear.
+- Flujo objetivo aprobado: rama de issue -> aprobación inicial de Isaac ->
+  `nightly` -> feedback/correcciones -> `testers` -> aprobación final ->
+  `master`. Hasta crear esas ramas y actualizar CI, el modo transitorio es
+  mantener cada entrega en su rama apilada, sin promoción.
+- Actualiza el handoff vivo si cambia estado, arquitectura, decisiones,
+  evidencia, riesgos o siguiente acción.
+- No uses la skill `vantare-core`; está desactualizada.
 - Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
 - Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - No hagas features, refactors o limpieza general si no están en el alcance.
-- No redisenes arquitectura sin aprobacion explicita.
+- No redisenes arquitectura de forma oportunista. Un cambio arquitectónico solo
+  se ejecuta dentro de una issue/plan aprobados, con ADR cuando corresponda,
+  evidencia y review.
 - No anadas dependencias sin justificarlo y sin aprobacion.
 - No mezcles documentacion, feature, bugfix y refactor en un mismo cambio salvo que sea imprescindible.
 - No toques archivos no relacionados.

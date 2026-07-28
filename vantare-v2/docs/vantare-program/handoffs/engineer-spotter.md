@@ -15,19 +15,32 @@ CrewChief, Pit Manager y wake word.
 - ADR 0004 y el handoff de Telemetry Core.
 - `docs/telemetry-core/engineer-rescue-matrix.md` y
   `docs/engineer/audits/g3-parity-audit.md` son evidencia histórica.
-- El futuro informe clean-room, spec, HTML, ADR y plan serán autoridad detallada.
+- El paquete `docs/vantare-program/research/engineer-spotter/` contiene el
+  informe clean-room, spec propuesta, matriz, fuentes, HTML y microplan.
 
 ## Estado
 
-Existe código importado de DeepSeek/Engineer Release con monitores, audio,
-comandos, SSE/Wails y UI. Se trata como no confiable hasta una auditoría.
-La auditoría G3 y la matriz de rescate no demuestran funcionamiento. El
-proyecto Linear `Engineer & Spotter — LMU Race Companion` ya existe. TC-08
-migra la entrada; el producto vive aparte.
+ISA-123 completó la investigación primaria y una auditoría read-only del
+runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
+`ACCEPT` sin P0/P1/P2/P3: implementó el contrato específico de capabilities,
+calidad y límites de cancelación, pero todavía no proyecta datos ni cambia
+consumidores. TC-05A conserva la autoridad transversal sobre envelope,
+versionado, ownership, fan-out y puertos; ENG-03 realizará la adaptación
+explícita. El código legacy contiene lógica y
+fixtures caracterizables, pero la ruta de producto arranca conectada al
+simulador, no recibe aún la proyección de Telemetry Core y no garantiza
+preempción de Spotter ni Pit transaccional. Por ello sigue sin ser confiable
+como beta. TC-08 migra la entrada; el producto vive aparte.
 
-- Rama/base/SHA: aún no existen; la research issue debe fijarlos.
+- Rama activa: `vantareapp/isa-125-eng-02-contratos-engineerprojection-capabilities-y-envelope`.
+- Base: `7a1cd702bc1f50e13a3f351360e6a018d0bd7423` (ENG-01).
 - Promoción: ninguna.
-- Evidencia: auditoría G3 parcial y matriz de rescate; insuficientes.
+- Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
+  Go PASS, race x10, vet, frontend build para embed e inventario de 34
+  consumidores productivos legacy. La auditoría G3 y matriz de rescate
+  permanecen como historial, no como prueba de runtime. Una primera ejecución
+  global expuso una intermitencia heredada del test de cancelación REST del
+  driver LMU; focal x20 y repetición global pasaron.
 
 ## Decisiones
 
@@ -48,6 +61,16 @@ migra la entrada; el producto vive aparte.
 - Strategy solo cambia tras aceptación.
 - Subtítulos y widget de radio Crystal forman parte del proyecto.
 - Spotter p95 <150 ms desde decisión estable a inicio del audio.
+- TC-05A define el envelope transversal; ENG-02 no duplica su versionado,
+  clocks, ownership, fan-out ni puertos.
+- La API visible por Engineer usa tipos de producto y no exige importar
+  schema/envelope.
+- Los snapshots son latest-wins: un salto entre versiones observadas no es un
+  gap de hechos ni exige resync.
+- Capability unknown, unsupported y degraded son diferentes. Solo un campo
+  fresh con capability supported es utilizable sin decisión adicional.
+- Reset de epoch y cambios de equipo, piloto, coche, sesión o evento cancelan
+  decisiones pendientes de Engineer.
 
 ## Alcance Beta
 
@@ -69,9 +92,10 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Riesgos
 
-- **P0 potencial:** falsos positivos del Spotter o mensajes caducados.
-- **P0 potencial:** Pit Manager actúa sin verificación/fail-closed.
-- **P1:** código importado cableado a mock/simulator.
+- **P0 confirmado de honestidad:** servicio/UI arrancan conectados al simulador.
+- **P0:** no existe garantía de preempción audible ni de mensajes no caducados.
+- **P0:** Pit Manager carece de transacción y readback demostrados.
+- **P1:** no existe aún la proyección Engineer de Telemetry Core.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
 - **P2:** cobertura desigual en cuatro idiomas.
@@ -80,17 +104,21 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
-| Activa | Ninguna |
-| Siguiente | ENG-01, investigación clean-room y auditoría read-only |
+| En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
+| Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
+| Siguiente | ENG-03, payload y proyección pura desde Telemetry Core |
 | Cutover | TC-08, sin absorber el proyecto de producto |
 
 ## Siguiente acción exacta
 
-Crear la issue de investigación; usar LMU, SimHub y replays sin modificar
-producción. Base: GOV-01 publicado o la base limpia indicada en Linear.
-Entregar matriz, capabilities, licencias, HTML, arquitectura, plan y handoff.
-No crear monitores antes de demostrar wiring y señales.
+Entregar commit/push/PR/Linear de ENG-02. ENG-03 debe adaptar el contrato
+transversal aprobado por TC-05A y añadir solo
+el payload y projector demostrables desde el snapshot final de Telemetry Core,
+con golden/replay y sin wiring productivo. No crear monitores antes de fijar
+señales. Isaac decide la promoción posterior a `nightly`, no el inicio del
+siguiente corte.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-07-28, ISA-125 / ENG-02 cerrada técnicamente; review independiente
+`ACCEPT` sin P0/P1/P2/P3 y límites incoherentes corregidos fail-closed.

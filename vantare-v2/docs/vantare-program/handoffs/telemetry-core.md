@@ -16,17 +16,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ejecución: GOV-01
-  `67e263392b2192ee11f2ef4ccb161331dda3c735`, que ya incorpora la cadena
-  apilada hasta ISA-37.
-- Rama: `vantareapp/isa-38-tc-04d-fan-out-backpressure-observabilidad-y-soak`.
+- Base de ejecución:
+  `08836514d973e7833db8a58720e0aae38c47e746`, entrega ISA-38 apilada sobre
+  GOV-01 y la cadena anterior.
+- Rama: `vantareapp/isa-39-tc-05a-proyecciones-versionadas-por-producto`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
 - TC-04B ISA-36: cerrado.
 - TC-04C ISA-37: implementado y presente en la base.
-- TC-04D ISA-38: implementado y review independiente ACCEPT; entrega aislada.
-- TC-05–TC-09: pendientes.
+- TC-04D ISA-38: implementado, entregado y presente en la base.
+- TC-05A ISA-39: cerrado técnicamente; correcciones del primer review
+  aceptadas sin P0/P1/P2/P3.
+- TC-05B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -53,6 +55,20 @@ de `unsafe.Pointer` en readers Win32.
   cancelado, métricas de dos lectores y agotamiento máximo tienen regresiones.
   Focal x20, Telemetry completo, race focal x5 con GCC UCRT64, vet focal, build
   frontend y suite global Go PASS tras la corrección; re-review ACCEPT.
+- ISA-39: cuatro proyecciones v1 pequeñas, golden JSON, calidad/presencia
+  explícitas, capabilities por producto y versiones canonical/projection/
+  recording independientes. La frontera corregida y aprobada es
+  `core -> derive -> projection`; Overlay publica `controls.history` sin
+  duplicar el tipo derivado. Sin transporte o wiring. ENG-02 debe consumir el
+  contrato `projection/engineer` y no duplicar envelope/versioning. Focal x20,
+  Telemetry, guard ADR, vet, race x5 y frontend build PASS. Global conserva la
+  contención Windows conocida de settings. Una pasada intermedia mostró una
+  ejecución load-sensitive del teardown REST LMU; Telemetry final y el focal
+  aislado x20 pasan, y ninguna ruta del driver está en el diff.
+- ISA-39 review: los campos del jugador ausente ya no usan el zero-value de Go;
+  serializan calidad `unknown/missing` explícita en Engineer, Strategy y
+  Analysis. El guard de arquitectura rechaza imports entre subárboles de
+  productos y conserva únicamente raíz común + árbol propio.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
@@ -66,14 +82,15 @@ de `unsafe.Pointer` en readers Win32.
 |---|---|
 | Cerradas | ISA-23–37, incluyendo ISA-96/97/100 según Linear |
 | En revisión | ISA-38 / TC-04D, implementación aceptada técnicamente |
-| Siguiente | ISA-39 / TC-05A |
-| Pendientes | ISA-39–41, ISA-101–117 e ISA-87 según dependencias |
+| Cerrada técnicamente | ISA-39 / TC-05A, re-review `ACCEPT` |
+| Siguiente | ISA-40 / TC-05B |
+| Pendientes | ISA-40–41, ISA-101–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-38. Después ISA-39 / TC-05A debe definir proyecciones versionadas
-por producto sobre puertos de lectura, sin adaptar `core` a Wails/SSE y sin
-introducir todavía recording o cutover.
+Entregar commit/push/PR/Linear de ISA-39. Después ISA-40 / TC-05B debe
+envolver estas proyecciones en Wails/SSE con full snapshot y resync, sin
+serializar el snapshot canónico ni duplicar contratos.
 
 ## Gate final
 
@@ -83,4 +100,5 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-28, ISA-38 / TC-04D, Codex orquestador; review independiente ACCEPT.
+2026-07-29, ISA-39 / TC-05A cerrada técnicamente; re-review independiente
+`ACCEPT` sin P0/P1/P2/P3.

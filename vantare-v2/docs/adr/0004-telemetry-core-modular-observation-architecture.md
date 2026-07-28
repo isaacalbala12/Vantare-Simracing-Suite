@@ -47,7 +47,8 @@ Reglas:
 - `schema` no importa paquetes internos de producto, transporte, app o driver concreto.
 - `core` no importa LMU, Engineer, Overlay, Strategy, Wails, SSE ni DuckDB.
 - `drivers/lmu` no importa productos.
-- `projection/*` puede leer schema/core públicos, pero no adquirir telemetría.
+- `projection/*` lee el snapshot canónico final de `derive` y puede usar
+  schema/core públicos, pero no adquirir telemetría.
 - los productos solo importan su proyección;
 - `internal/app` es el único composition root que conoce implementaciones concretas;
 - tests arquitectónicos impiden dependencias inversas.

@@ -9,6 +9,7 @@
     "build:dev": "tsc -b && vite build --mode development",
     "test": "vitest run",
     "test:isa13-mono": "node scripts/isa-13-mono-legibility.playwright.mjs",
+    "test:eng01-reference": "node scripts/engineer-reference-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "e2e:overlay-studio": "node scripts/overlay-studio-e2e-smoke.mjs",

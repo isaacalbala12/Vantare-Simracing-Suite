@@ -10,6 +10,25 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-123 / ENG-01 (2026-07-28):
+- Investigación clean-room y auditoría del runtime actual entregadas en
+  `docs/vantare-program/research/engineer-spotter/`: fuentes/licencias,
+  matriz de paridad, auditoría de código, arquitectura, HTML y microcortes.
+- Veredicto: el runtime actual no es una beta honesta ni segura. Arranca con
+  estado sintético conectado, no consume la proyección de Telemetry Core, no
+  garantiza preempción P0 ni implementa Pit Manager transaccional/verificado.
+- Dirección: caracterizar antes de migrar; Core como única fuente; scheduler y
+  `AudioOwner` acotados/cancelables; críticos pre-renderizados; PTT/STT/wake
+  offline; Pit fail-closed; UI y Radio Crystal basados en playback/capabilities
+  reales. CrewChief se usa como referencia funcional clean-room; su código
+  actual es MIT, sin extrapolar esa licencia a sonidos, voces o dependencias.
+- Review técnico independiente: **ACCEPT**, sin P0/P1/P2/P3 conocidos. El
+  smoke Playwright versionado `pnpm --dir frontend test:eng01-reference`
+  verifica interacción, escenarios, ES/IT, PTT/wake, responsive, consola y
+  regenera la evidencia visual. ENG-02 puede comenzar con el ADR en una rama
+  de issue. Ninguna promoción a `nightly` ocurre sin aprobación inicial de
+  Isaac.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

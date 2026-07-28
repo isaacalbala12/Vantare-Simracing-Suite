@@ -10,6 +10,25 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-122 / TA-01 (2026-07-27):
+- Investigación canónica de Telemetry Analysis entregada en
+  `docs/vantare-program/research/telemetry-analysis/`: fuentes primarias,
+  matriz competitiva, auditoría LMU/repo, contrato propuesto, arquitectura,
+  UI/UX, referencia HTML propia y microcortes TDD.
+- Decisiones propuestas: post-sesión, resumen + workspace, galería local,
+  comparación por distancia condicionada a evidencia, máximo cuatro trazas,
+  derivados oficiales, notas no destructivas y consejos deterministas con
+  evidencia/confianza; LLM no es autoridad.
+- Gate: no hay implementación aún. TA-02 puede continuar de forma autónoma en
+  su propia rama: la revisión independiente final del 2026-07-28 dio `ACCEPT`
+  sin P0/P1/P2/P3. Playwright verificó selección A/B, trazas, canal,
+  sincronización de zona, tabs por teclado, responsive 1440/390 y cero errores.
+  La promoción a
+  `nightly` sí requiere la aprobación inicial de Isaac y permanece además
+  bloqueada hasta que ISA-121 cree la topología física de ramas/CI. El catálogo
+  actual no demuestra distancia/longitud/geometría LMU suficientes para delta o
+  mapa espacial productivo; no se permitirá fallback sintético.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

@@ -10,6 +10,36 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-39 / TC-05A (2026-07-28):
+- Definidas proyecciones Go v1 puras e independientes para Overlay, Engineer,
+  Strategy y Analysis. Consumen `derive.FinalState`: el guard y ADR fijan
+  `core -> derive -> projection` sin imports inversos. Cada JSON conserva
+  cursor/UTC y calidad explícita sin exponer raw, Source, clock monotónico o
+  identidad interna completa.
+- Canonical, projection y recording evolucionan con versiones separadas.
+  `VersionPolicy` rechaza cero, futuras y retiradas, y marca como deprecated una
+  versión anterior aún soportada.
+- Overlay expone únicamente sesión, standings, controles, pit y el
+  `controls.history` derivado ya demostrado. Engineer añade hechos ordenados
+  sin mensajes ni decisiones. Strategy y Analysis son compile-only y no
+  inventan fuel, Virtual Energy, ruedas, meteorología o histórico aún ausentes.
+- Cuatro golden JSON y un guard transversal cubren cero/false, missing, stale,
+  capabilities y ausencia de leakage. Focal x20, Telemetry completo, guard ADR,
+  vet focal, race x5 y build frontend PASS. La suite global final conserva solo
+  la contención Windows conocida de `TestConcurrentSavesDontCorruptFile`. Una
+  pasada intermedia bajo carga hizo fallar una vez
+  `TestDriverDoesNotPublishOrMutateRESTAfterCancellation`, pero la suite
+  Telemetry final y el test aislado x20 pasan. Guía:
+  `docs/telemetry-core/runtime-projections.md`.
+- Sin transporte, Wails/SSE, recording funcional, UI, wiring productivo,
+  dependencias, persistencia o lógica de producto.
+- Correcciones de review: Engineer, Strategy y Analysis inicializan todos los
+  campos del vehículo activo como `unknown/missing` aunque el vehículo todavía
+  no aparezca en el snapshot, con regresiones sobre el JSON completo. El guard
+  permite a cada producto importar la raíz común `projection` y su propio
+  subárbol, pero rechaza imports cruzados entre productos. Re-review
+  independiente final `ACCEPT` sin P0/P1/P2/P3; preparado para entrega.
+
 Nota ISA-38 / TC-04D (2026-07-28):
 - Implementado `internal/telemetry/core.Fanout` como frontera neutral y acotada:
   snapshots completos latest-wins con frame atómico, hechos con secuencia propia

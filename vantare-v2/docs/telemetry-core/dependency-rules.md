@@ -6,14 +6,14 @@ Fecha de corte: 2026-07-21. Estas reglas concretan la dirección del ADR 0004. I
 
 ```text
 drivers concretos ─┐
-                   ├─ core ── projections ── Overlay / Engineer / Strategy / Analysis
+                   ├─ core ── derive ── projections ── Overlay / Engineer / Strategy / Analysis
 replay/test source ┘    │
 schema ─────────────────┘
 
 app/composition conecta puertos, transports y storage desde fuera.
 ```
 
-La flecha significa “puede depender de”. `schema` es la capa más baja. `catalog` depende solo de `schema` y standard library para publicar metadata e IDs; ningún contrato runtime importa `catalog`. `core` conoce contratos y puertos, nunca el driver LMU concreto. Una proyección consume core/schema y nunca readquiere datos. Los productos consumen proyecciones; core/schema no importan productos.
+La flecha significa “puede depender de”. `schema` es la capa más baja. `catalog` depende solo de `schema` y standard library para publicar metadata e IDs; ningún contrato runtime importa `catalog`. `core` conoce contratos y puertos, nunca el driver LMU concreto. `derive` produce el snapshot canónico final. Una proyección consume ese snapshot y nunca readquiere datos. Los productos consumen proyecciones; core/schema/derive no importan productos ni proyecciones.
 
 ## Matriz permitida
 
@@ -25,7 +25,7 @@ La flecha significa “puede depender de”. `schema` es la capa más baja. `cat
 | `internal/telemetry/core[/...]` | schema, contratos neutrales de driver, standard library y contratos propios de core | drivers concretos, legacy `lmu`/`lmuapi`, derive concreto, projections, recording, productos, Wails/SSE/app/DB |
 | `internal/telemetry/derive[/...]` | schema, puertos core y su propio árbol | drivers, projections, recording, productos, transports, DB |
 | `internal/telemetry/drivers/<source>` | schema, catálogo canónico de señales, contratos driver, puertos core, su propio árbol y librerías de adquisición aprobadas | otro driver de simulador, projections, recording, Overlay, Engineer, Strategy, app/server; ningún import inverso desde core |
-| `internal/telemetry/projection/<consumer>` | schema/core y lógica pura de proyección | drivers concretos, legacy LMU, Wails/SSE/app/DB |
+| `internal/telemetry/projection/<consumer>` | schema/core, snapshot final de derive y lógica pura de proyección | drivers concretos, legacy LMU, Wails/SSE/app/DB |
 | `internal/telemetry/recording` | schema/core ports y formatos puros | implementación DuckDB/SQL dentro de Telemetry Core; productos/transports |
 | `internal/app` o composition root | core, drivers, projections, transports y adapters de storage | —; aquí se cablean implementaciones, sin devolver dependencias hacia core |
 | Overlay/Desktop/OBS/Engineer/Strategy/Analysis | su proyección/puerto público | driver LMU concreto y modelo interno de otro producto |
@@ -47,7 +47,8 @@ Además:
 - `driver` es el contrato neutral consumido por drivers y no importa `core`;
 - `core` solo importa `schema` y `driver` dentro de Telemetry Core;
 - `derive` solo importa `schema`, puertos `core` y su propio árbol;
-- `projection/*` solo importa `schema`, puertos `core` y su propio árbol;
+- `projection/*` solo importa `schema`, puertos `core`, el snapshot final
+  `derive` y su propio árbol;
 - `recording` solo importa `schema`, puertos `core` y su propio árbol;
 - cada `drivers/<simulador>` solo importa `schema`, `catalog`, puertos `core`, contratos `driver` y su propio árbol: no puede importar otro simulador. `catalog` es la única autoridad de IDs; un driver no mantiene un ledger paralelo.
 

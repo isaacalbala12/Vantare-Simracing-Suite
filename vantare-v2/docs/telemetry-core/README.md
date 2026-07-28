@@ -6,6 +6,11 @@ Estado de esta guía: vigente desde ISA-100 sobre `develop@f492007`.
 
 Este directorio reúne la evidencia y las decisiones operativas de Telemetry Core. LMU Shared Memory y LMU REST local son fuentes principales complementarias de un único núcleo live. Overlay Studio, Desktop, OBS y Engineer/Spotter consumen proyecciones del núcleo; ninguno posee un segundo pipeline de telemetría.
 
+ISA-39 define los payloads v1 en
+[`runtime-projections.md`](runtime-projections.md): contratos pequeños por
+producto, calidad/presencia explícitas y versiones canonical/projection/
+recording independientes. Todavía no existe transporte ni wiring productivo.
+
 ## Jerarquía de autoridad
 
 1. `AGENTS.md` y `docs/agent-workflow.md` gobiernan el proceso.

@@ -70,6 +70,12 @@ func TestValidateImport(t *testing.T) {
 		{name: "derive rejects driver contracts", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
 		{name: "projection root may use core", edge: importEdge{Package: "internal/telemetry/projection", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "projection may use core", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/core"}},
+		{name: "projection may use final derive state", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/derive"}},
+		{name: "projection may use common projection root", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/projection"}},
+		{name: "projection may use own subpackage", edge: importEdge{Package: "internal/telemetry/projection/overlay/render", Import: modulePath + "/internal/telemetry/projection/overlay/model"}},
+		{name: "projection rejects another product", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/projection/engineer"}, wantErr: true},
+		{name: "projection nested package rejects another product", edge: importEdge{Package: "internal/telemetry/projection/analysis/render", Import: modulePath + "/internal/telemetry/projection/strategy/model"}, wantErr: true},
+		{name: "derive rejects inverse projection import", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/projection"}, wantErr: true},
 		{name: "projection root rejects driver contracts", edge: importEdge{Package: "internal/telemetry/projection", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
 		{name: "recording may use core", edge: importEdge{Package: "internal/telemetry/recording", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "recording rejects projection", edge: importEdge{Package: "internal/telemetry/recording", Import: modulePath + "/internal/telemetry/projection"}, wantErr: true},
@@ -273,12 +279,8 @@ func validateImport(edge importEdge) error {
 	}
 
 	if edge.Package == "internal/telemetry/projection" || strings.HasPrefix(edge.Package, "internal/telemetry/projection/") {
-		if unexpectedTelemetryImport(edge.Import,
-			modulePath+"/internal/telemetry/schema",
-			modulePath+"/internal/telemetry/core",
-			modulePath+"/internal/telemetry/projection",
-		) {
-			return fmt.Errorf("projection may only import schema, core, and its own tree within telemetry, not %s", edge.Import)
+		if err := validateProjectionImport(edge); err != nil {
+			return err
 		}
 	}
 
@@ -292,6 +294,37 @@ func validateImport(edge importEdge) error {
 		}
 	}
 	return nil
+}
+
+func validateProjectionImport(edge importEdge) error {
+	if unexpectedTelemetryImport(edge.Import,
+		modulePath+"/internal/telemetry/schema",
+		modulePath+"/internal/telemetry/core",
+		modulePath+"/internal/telemetry/derive",
+	) {
+		projectionRoot := modulePath + "/internal/telemetry/projection"
+		if edge.Import == projectionRoot {
+			return nil
+		}
+		productRoot, ok := projectionProductRoot(edge.Package)
+		if ok && hasImportPrefix(edge.Import, productRoot) {
+			return nil
+		}
+		return fmt.Errorf("projection may only import schema, core, derive, the common projection root, and its own product tree within telemetry, not %s", edge.Import)
+	}
+	return nil
+}
+
+func projectionProductRoot(packagePath string) (string, bool) {
+	const prefix = "internal/telemetry/projection/"
+	if !strings.HasPrefix(packagePath, prefix) {
+		return "", false
+	}
+	product, _, _ := strings.Cut(strings.TrimPrefix(packagePath, prefix), "/")
+	if product == "" {
+		return "", false
+	}
+	return modulePath + "/" + prefix + product, true
 }
 
 func unexpectedTelemetryImport(importPath string, allowedPrefixes ...string) bool {

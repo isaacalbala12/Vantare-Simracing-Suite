@@ -17,11 +17,12 @@ visible es `Telemetría`.
 
 ## Estado
 
-TA-01 / ISA-122 completó la investigación documental, competitiva y de código
-en `docs/vantare-program/research/telemetry-analysis/`. El paquete no implementa
-producto. La ejecución puede continuar autónomamente por issues tras cerrar su
-revisión técnica; la aprobación inicial de Isaac se reserva para promover el
-conjunto aceptado a `nightly`. Depende de contratos y recording/replay TC-05/06.
+TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
+TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
+independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable
+del producto: discovery metadata-only, estabilidad LMU, manifest sanitizado,
+corpus sintético y presupuestos. La aprobación inicial de Isaac se reserva para
+promover el conjunto aceptado a `nightly`.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: ninguna.
@@ -29,6 +30,18 @@ conjunto aceptado a `nightly`. Depende de contratos y recording/replay TC-05/06.
   catálogo/fixtures/driver LMU, matriz, contrato propuesto, arquitectura, HTML
   propio y plan TDD. No hubo hands-on autenticado, compra, captura LMU nueva ni
   acceso a archivos personales.
+- Rama TA-02/base: `vantareapp/isa-124-ta-02-corpus-sanitizado-y-contrato-de-importacion`
+  sobre TA-01 `0d7686b168f60ae9c21d55ffd995ce7837caff40`.
+- Contrato TA-02:
+  `research/telemetry-analysis/import-contract.md`.
+- Evidencia TA-02: corpus puramente sintético validado con la misma política de
+  manifest productiva; tests de WAL/ventana/identidad del handle/original
+  intacto/dedupe/redacción/cancelación/límites. El acceso exige
+  `user_approved`; no existe bypass `vantare_owned`. Parser ID/versión son
+  obligatorios (`none@0` cuando no hay parser). No se accedió a
+  `UserData\\Telemetry`, LMU, SimHub ni archivos personales.
+  Focal x20, vet, race x10, fuzz 10 s (2.186.642 ejecuciones), suite Go global
+  y `git diff --check` PASS.
 
 ## Experiencia cerrada
 
@@ -71,11 +84,14 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 - **P1 técnico:** el catálogo actual no demuestra progreso/longitud de vuelta,
   distancia o geometría suficientes para implementar comparación espacial LMU;
   delta/mapa deben degradar honestamente hasta TA-04 con evidencia real.
-- **P2 privacidad:** no existe aún contrato de importación de `UserData\\Telemetry`,
-  MoTeC ni muestra histórica sanitizada; discovery debe ser metadata-first.
-- **P1 integridad:** LMU histórico observado es DuckDB con WAL activo; un
-  indexador no puede leer WAL a medio escribir, forzar checkpoint ni tocar la
-  biblioteca original. TA-02 debe demostrar estabilidad y apertura read-only.
+- **P2 privacidad, reducido por TA-02:** ya existe contrato metadata-first,
+  locator/error sanitizados y corpus sintético. Aún falta auditar un corpus
+  histórico real legal antes del parser productivo.
+- **P1 integridad, reducido por TA-02:** WAL presente bloquea la apertura y se
+  revalida antes/después de leer. El gate exige ausencia + ventana estable y la
+  lectura verifica que path y handle siguen siendo el mismo archivo regular,
+  incluso si un reemplazo conserva tamaño/mtime. Aún falta caracterizar el
+  formato real mediante una copia autorizada y read-only en TA-03.
 - **P2 confianza:** AI/marketing de referencias no es autoridad. Las tarjetas
   iniciales han de ser reglas deterministas versionadas con evidencia visible.
 
@@ -84,17 +100,20 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Estado | Issue |
 |---|---|
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
-| Siguiente | TA-02, corpus legal/sanitizado y contrato de importación |
-| Implementación | TA-03+ según `research/telemetry-analysis/plan-microcuts.md` |
+| Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
+| Siguiente corte | TA-03, modelo histórico canónico |
+| Implementación posterior | TA-04+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-TA-02 debe crear primero un corpus legal/sanitizado y contrato de importación;
-no puede implementar UI, reader LMU propio, comparación por distancia o
-recomendaciones antes de sus gates. Isaac decide la promoción posterior a
-`nightly`, no el inicio autónomo del siguiente corte.
+Entregar commit/push/PR/Linear de TA-02 y abrir TA-03 apilada. No implementar
+UI, reader LMU live, comparación espacial ni
+recomendaciones. Isaac decide la promoción posterior a `nightly`, no el inicio
+autónomo del siguiente corte.
 
 ## Última actualización
 
-2026-07-28, ISA-122 / TA-01. Revisión independiente final `ACCEPT`, sin
-P0/P1/P2/P3; Playwright wide/mobile y controles ilustrativos en verde.
+2026-07-28, ISA-124 / TA-02 cerrada tras review: permiso exclusivo
+`user_approved`, revalidación WAL, identidad path/handle, manifest/corpus bajo
+una política común, parser explícito y deduplicación semántica única. Batería
+final completa en verde; review independiente `ACCEPT` sin P0/P1/P2/P3.

@@ -10,6 +10,34 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-38 / TC-04D (2026-07-28):
+- Implementado `internal/telemetry/core.Fanout` como frontera neutral y acotada:
+  snapshots completos latest-wins con frame atómico, hechos con secuencia propia
+  sobre ring compartido y resync explícito, sin goroutines, I/O, transporte o
+  producto.
+- Un consumidor lento nunca bloquea al publisher. Snapshots sustituidos son
+  observables; un gap de hechos nunca se oculta y exige adoptar `Latest` antes
+  de reanudar. Budgets: 1.024/4.096 hechos y 32/64 lectores por clase.
+- Métricas de cardinalidad fija cubren publicaciones, superseded, lag, queue,
+  resync, stale, reconnect y coste de derivación sin incluir telemetría ni PII.
+- Se corrigió un posible deadlock de teardown eliminando ownership duplicado con
+  `sync.Once`; un único mutex/mapa gobierna cierres y un test repite 1.000
+  cierres owner/suscripciones concurrentes.
+- Correcciones de review: cada snapshot declara su cobertura causal de hechos
+  sin capturar el cursor global; cierres in-memory liberan ownership incluso
+  con contexto cancelado; el cursor máximo queda agotado sin wrap a cero; y las
+  métricas distinguen entregas sustituidas por suscriptor y lag actual.
+- Evidencia fresca: `go test ./internal/telemetry/... -count=1` PASS; soak
+  determinista 20.000 publicaciones y lectores concurrentes 500 PASS.
+  Baseline fechado: escalar 231,1–251,6 ns/op y hecho 129,1–136,2 ns/op, ambos
+  sin allocations; copia completa 64 vehículos 3,753–5,432 µs/op, 16.384 B/op.
+  Guía: `docs/telemetry-core/runtime-fanout.md`. Race focal x5 con GCC UCRT64,
+  vet focal, build frontend y suite global Go PASS tras las correcciones;
+  re-review independiente **ACCEPT**, sin P0/P1/P2/P3 conocidos. Preparado
+  para entrega aislada; sin wiring, merge o promoción.
+  Sin wiring, cambios frontend tracked, dependencias, recording, Wails/SSE,
+  commit, merge o promoción.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

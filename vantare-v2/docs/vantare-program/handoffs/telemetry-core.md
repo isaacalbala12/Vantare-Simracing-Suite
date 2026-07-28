@@ -16,16 +16,16 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base apilada: ISA-37, SHA
-  `44c7513499f1ab88ebf1aedbc02d3b8e5feda99e`.
-- Rama: `vantareapp/isa-37-tc-04c-derivaciones-ordenadas-acotadas-y-versionadas`.
+- Base de ejecución: GOV-01
+  `67e263392b2192ee11f2ef4ccb161331dda3c735`, que ya incorpora la cadena
+  apilada hasta ISA-37.
+- Rama: `vantareapp/isa-38-tc-04d-fan-out-backpressure-observabilidad-y-soak`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
 - TC-04B ISA-36: cerrado.
-- TC-04C ISA-37: implementado sobre
-  `44c7513499f1ab88ebf1aedbc02d3b8e5feda99e`; `In Review`.
-- TC-04D ISA-38: siguiente corte.
+- TC-04C ISA-37: implementado y presente en la base.
+- TC-04D ISA-38: implementado y review independiente ACCEPT; entrega aislada.
 - TC-05–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -47,6 +47,15 @@ de `unsafe.Pointer` en readers Win32.
 
 - ISA-37: focal x20, Core, guard ADR, race, fuzz 10 s, benchmark, frontend
   build y suite global Go en verde.
+- ISA-38: fan-out sin goroutines, snapshot latest-wins de capacidad uno, log de
+  hechos compartido/acotado y resync explícito; tests de soak 20.000, lectores
+  concurrentes y 1.000 cierres simultáneos. El cursor causal, teardown
+  cancelado, métricas de dos lectores y agotamiento máximo tienen regresiones.
+  Focal x20, Telemetry completo, race focal x5 con GCC UCRT64, vet focal, build
+  frontend y suite global Go PASS tras la corrección; re-review ACCEPT.
+- Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
+  129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
+  3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
 - **P3 heredado:** tres avisos `unsafe.Pointer` Win32 en vet.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
 - **P2 funcional conocido:** gaps/delta siguen missing hasta demostrar inputs.
@@ -56,16 +65,15 @@ de `unsafe.Pointer` en readers Win32.
 | Estado | Issues |
 |---|---|
 | Cerradas | ISA-23–37, incluyendo ISA-96/97/100 según Linear |
-| Activa | ISA-37 en `In Review` |
-| Siguiente | ISA-38 / TC-04D |
+| En revisión | ISA-38 / TC-04D, implementación aceptada técnicamente |
+| Siguiente | ISA-39 / TC-05A |
 | Pendientes | ISA-39–41, ISA-101–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-ISA-38 / TC-04D: fan-out latest-wins para snapshots y stream ordenado para
-hechos sobre ISA-37, métricas/soak/teardown, sin Wails/SSE, UI, recording ni
-cutover. Base exacta: SHA de ISA-37. Checks: microplan, Core, global Go, race,
-benchmark y diff-check. Después ISA-39, ISA-40 e ISA-41.
+Entregar ISA-38. Después ISA-39 / TC-05A debe definir proyecciones versionadas
+por producto sobre puertos de lectura, sin adaptar `core` a Wails/SSE y sin
+introducir todavía recording o cutover.
 
 ## Gate final
 
@@ -75,4 +83,4 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-07-28, ISA-38 / TC-04D, Codex orquestador; review independiente ACCEPT.

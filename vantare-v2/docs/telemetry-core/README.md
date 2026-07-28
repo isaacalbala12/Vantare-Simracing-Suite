@@ -20,8 +20,11 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 
 - TC-01 está completado e integrado en `develop` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - La base global de Go quedó verde en ISA-97.
-- TC-02 quedó cerrado mediante ISA-26–29. TC-03 avanza de forma apilada: ISA-30 inventarió las fuentes, ISA-31 fijó lifecycle/selección, ISA-32 implementó Shared Memory, ISA-33 implementó REST local e ISA-34 incorpora la matriz v1 y fusión por campo sobre `08323022c79cc7d11096ed604c61da702dfeeee9`. TC-04–TC-09 permanecen sin iniciar.
-- ISA-34 está preparada para review, sin wiring productivo ni merge. El gate manual TC-03 de conexión/desconexión LMU sigue reservado a Isaac antes de iniciar TC-04.
+- TC-02 y TC-03 están cerrados en la cadena apilada. TC-04A–C implementaron
+  reducer, coordinación/hechos y derivaciones; TC-04D / ISA-38 implementa
+  fan-out, backpressure y observabilidad. TC-05–TC-09 siguen pendientes.
+- La cadena permanece en ramas de issue sin wiring productivo ni promoción. El
+  handoff vivo de `docs/vantare-program/` contiene los SHAs y siguiente corte.
 
 ## Fronteras
 
@@ -43,10 +46,18 @@ Strategy Product B no forma parte de este paquete documental. Puede ser consumid
 - Ningún renderer de widgets conoce fuentes, transporte o persistencia.
 - No se elimina funcionalidad Engineer; solo infraestructura duplicada demostrada sin consumidores.
 - Cada issue ejecutable parte de la base aprobada indicada en Linear y usa su propia rama, worktree y chat.
-- Nada entra en `develop` sin validación manual completa y aprobación explícita de Isaac.
+- Ninguna rama de issue se promueve a `nightly` sin aprobación inicial de Isaac;
+  `master` requiere siempre su validación final.
 
 ## Plan vigente desde 2026-07-19
 
 Isaac aprobó la arquitectura modular y sus guardarraíles. ADR 0004 y `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md` sustituyen los microplanes TC-02–TC-05 del 2026-07-13. La ejecución comienza en ISA-26 y continúa por TC-02–TC-09; una issue, rama, worktree, chat, review y pausa cada vez.
 
 Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No deben usarse para lanzar trabajo pendiente.
+
+## Implementaciones runtime documentadas
+
+- [Reducer single-writer](runtime-reducer.md)
+- [SessionCoordinator y hechos](session-coordinator.md)
+- [Derivaciones ordenadas](runtime-derivations.md)
+- [Fan-out y backpressure](runtime-fanout.md)

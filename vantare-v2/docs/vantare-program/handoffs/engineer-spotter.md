@@ -21,16 +21,26 @@ CrewChief, Pit Manager y wake word.
 ## Estado
 
 ISA-123 completó la investigación primaria y una auditoría read-only del
-runtime. El código contiene lógica y fixtures caracterizables, pero la ruta de
-producto arranca conectada al simulador, no recibe la proyección de Telemetry
-Core y no garantiza preempción de Spotter ni Pit transaccional. Por ello sigue
-sin ser confiable como beta. TC-08 migra la entrada; el producto vive aparte.
+runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
+`ACCEPT` sin P0/P1/P2/P3: implementó el contrato específico de capabilities,
+calidad y límites de cancelación, pero todavía no proyecta datos ni cambia
+consumidores. TC-05A conserva la autoridad transversal sobre envelope,
+versionado, ownership, fan-out y puertos; ENG-03 realizará la adaptación
+explícita. El código legacy contiene lógica y
+fixtures caracterizables, pero la ruta de producto arranca conectada al
+simulador, no recibe aún la proyección de Telemetry Core y no garantiza
+preempción de Spotter ni Pit transaccional. Por ello sigue sin ser confiable
+como beta. TC-08 migra la entrada; el producto vive aparte.
 
-- Rama: `vantareapp/isa-123-eng-01-auditoria-clean-room-crewchiefdre-y-codigo-vantare`.
-- Base/SHA auditado: `67e263392b2192ee11f2ef4ccb161331dda3c735`.
+- Rama activa: `vantareapp/isa-125-eng-02-contratos-engineerprojection-capabilities-y-envelope`.
+- Base: `7a1cd702bc1f50e13a3f351360e6a018d0bd7423` (ENG-01).
 - Promoción: ninguna.
-- Evidencia: paquete ENG-01; la auditoría G3 y matriz de rescate permanecen
-  como historial, no como prueba de runtime.
+- Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
+  Go PASS, race x10, vet, frontend build para embed e inventario de 34
+  consumidores productivos legacy. La auditoría G3 y matriz de rescate
+  permanecen como historial, no como prueba de runtime. Una primera ejecución
+  global expuso una intermitencia heredada del test de cancelación REST del
+  driver LMU; focal x20 y repetición global pasaron.
 
 ## Decisiones
 
@@ -51,6 +61,16 @@ sin ser confiable como beta. TC-08 migra la entrada; el producto vive aparte.
 - Strategy solo cambia tras aceptación.
 - Subtítulos y widget de radio Crystal forman parte del proyecto.
 - Spotter p95 <150 ms desde decisión estable a inicio del audio.
+- TC-05A define el envelope transversal; ENG-02 no duplica su versionado,
+  clocks, ownership, fan-out ni puertos.
+- La API visible por Engineer usa tipos de producto y no exige importar
+  schema/envelope.
+- Los snapshots son latest-wins: un salto entre versiones observadas no es un
+  gap de hechos ni exige resync.
+- Capability unknown, unsupported y degraded son diferentes. Solo un campo
+  fresh con capability supported es utilizable sin decisión adicional.
+- Reset de epoch y cambios de equipo, piloto, coche, sesión o evento cancelan
+  decisiones pendientes de Engineer.
 
 ## Alcance Beta
 
@@ -85,15 +105,20 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Estado | Issue |
 |---|---|
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
-| Siguiente | ENG-02, ADR, contratos/capabilities/goldens |
+| Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
+| Siguiente | ENG-03, payload y proyección pura desde Telemetry Core |
 | Cutover | TC-08, sin absorber el proyecto de producto |
 
 ## Siguiente acción exacta
 
-Entregar ENG-01 y convertir la arquitectura aceptada en ADR dentro de ENG-02.
-No crear monitores antes de fijar contratos, gates, wiring y señales. Isaac
-decide la promoción posterior a `nightly`, no el inicio del siguiente corte.
+Entregar commit/push/PR/Linear de ENG-02. ENG-03 debe adaptar el contrato
+transversal aprobado por TC-05A y añadir solo
+el payload y projector demostrables desde el snapshot final de Telemetry Core,
+con golden/replay y sin wiring productivo. No crear monitores antes de fijar
+señales. Isaac decide la promoción posterior a `nightly`, no el inicio del
+siguiente corte.
 
 ## Última actualización
 
-2026-07-28, ISA-123 / ENG-01, Codex orquestador; review independiente ACCEPT.
+2026-07-28, ISA-125 / ENG-02 cerrada técnicamente; review independiente
+`ACCEPT` sin P0/P1/P2/P3 y límites incoherentes corregidos fail-closed.

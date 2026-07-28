@@ -10,6 +10,40 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-125 / ENG-02 (2026-07-28):
+- Implementado el contrato puro específico de Engineer en
+  `internal/telemetry/projection/engineer`: manifest de capabilities, campos
+  que separan cero presente, missing, stale, invalid, unsupported y degraded,
+  y límites de cancelación por epoch/identidad.
+- TC-05A, ejecutado en paralelo, conserva la autoridad sobre envelope,
+  versionado, ownership, fan-out y puertos de proyección. ENG-02 no duplica
+  esos contratos; ENG-03 hará la adaptación explícita cuando ambos cortes
+  estén integrados.
+- Una capability unknown/ausente o unsupported no puede producir un valor
+  utilizable. Degraded exige decisión explícita. El manifest tiene ownership
+  defensivo y la API visible por Engineer no expone tipos de schema/envelope.
+- Los snapshots son latest-wins y pueden omitir secuencias intermedias.
+  `ClassifyBoundary` valida epoch/identidad e identifica límites de cancelación
+  por reset, equipo, piloto, coche, sesión o evento. La secuencia estricta y el
+  resync pertenecen al stream transversal de hechos.
+- ADR 0005 registra la decisión. El inventario reproducible localiza 34
+  archivos productivos en 29 directorios que aún consumen el frame legacy y
+  fija su migración posterior sin borrar código en este corte.
+- Sin projection productiva, monitores, scheduler, audio, voz, Pit, UI, I/O,
+  goroutines, dependencias o imports LMU nuevos.
+- Evidencia fresca: contrato x20, Telemetry Core completo, 31 paquetes
+  Engineer, vet focal, race x10 con GCC UCRT64 y suite global Go PASS.
+  `frontend/dist` ignorado se regeneró desde el lockfile para habilitar el
+  embed; frontend build PASS con el warning conocido de chunk grande. Sin
+  cambios frontend versionados. La primera ejecución global expuso una
+  intermitencia fuera del diff en
+  `TestDriverDoesNotPublishOrMutateRESTAfterCancellation`; el test focal x20 y
+  la repetición global pasaron. El review final corrigió el comportamiento
+  fail-closed: cambios incoherentes de evento/sesión/vehículo sin reset de
+  epoch devuelven error y un límite que cancela decisiones pendientes, mientras
+  un epoch stale no destruye el contexto válido. Review independiente `ACCEPT`
+  sin P0/P1/P2/P3; preparado para entrega, sin promoción a `nightly`.
+
 Nota ISA-123 / ENG-01 (2026-07-28):
 - Investigación clean-room y auditoría del runtime actual entregadas en
   `docs/vantare-program/research/engineer-spotter/`: fuentes/licencias,

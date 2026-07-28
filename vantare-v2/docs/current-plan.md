@@ -29,6 +29,38 @@ Nota ISA-122 / TA-01 (2026-07-27):
   actual no demuestra distancia/longitud/geometría LMU suficientes para delta o
   mapa espacial productivo; no se permitirá fallback sintético.
 
+Nota ISA-124 / TA-02 (2026-07-28):
+- Implementado en rama aislada el contrato neutral
+  `internal/telemetryanalysis`: discovery metadata-only, estados explícitos,
+  gate de estabilidad sin sleeps, manifest v1 sanitizado, dedupe por hash,
+  autorización de acceso, políticas reference/managed-copy, cancelación y
+  presupuestos.
+- Para LMU, un `.duckdb.wal` hermano siempre significa `active`. Solo ausencia
+  de WAL más tamaño/mtime sin cambios durante una ventana positiva inyectada
+  emite el gate interno que permite calcular el manifest. Nunca se lee el WAL,
+  se fuerza checkpoint ni se modifica el original.
+- La apertura de contenido exige siempre permiso `user_approved`; una
+  procedencia `vantare_owned` no es autoridad y queda aplazada hasta una
+  capability no falsificable de recording. El WAL se revalida antes y después
+  de leer, y el handle abierto debe conservar la misma identidad de archivo
+  regular mediante `os.SameFile` o el token equivalente del seam.
+- Corpus mínimo versionado exclusivamente sintético: no contiene bytes de LMU,
+  datos personales ni una base DuckDB válida. Hash, tamaño, dedupe y procedencia
+  se verifican de forma reproducible con el mismo validador de manifest que usa
+  producción. Parser ID y versión son obligatorios; `none@0` declara ausencia.
+- Alcance cerrado: no hay parser DuckDB, índice/base de datos, UI, galería,
+  copia gestionada real, comparación, delta, mapa ni imports de Telemetry Core.
+  Contrato: `docs/vantare-program/research/telemetry-analysis/import-contract.md`.
+- Evidencia fresca tras el endurecimiento: focal x20, vet focal, race x10 con
+  GCC UCRT64, fuzz de redacción 10 s (2.186.642 ejecuciones), suite global Go y
+  `git diff --check` PASS. Para el embed global se conserva `frontend/dist`
+  ignorado desde un worktree con el mismo árbol frontend; no hay delta frontend.
+- Review independiente final: `ACCEPT` sin P0/P1/P2/P3. El cierre añadió una
+  única función canónica de deduplicación y una regresión que rechaza claves
+  hexadecimales bien formadas pero incompatibles con hash+tamaño.
+- Estado: técnicamente cerrado y preparado para commit/push, PR draft apilada
+  sobre TA-01 y Linear `In Review`; sin promoción a `nightly`.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

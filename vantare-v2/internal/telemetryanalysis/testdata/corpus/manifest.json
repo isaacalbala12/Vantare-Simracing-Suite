@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "dedupe_key": "d618353bd669519ec9180da8d15b281c91557c8d5d653c301b1fe742556a4522",
+  "content_sha256": "a0846326b066e9d5cdb3dbbd7d02da4a34c102905f332482c170bede8cc62208",
+  "size": 146,
+  "source": {
+    "kind": "lmu",
+    "format": "synthetic-contract",
+    "locator": "lmu://0000000000000000",
+    "storage": "managed_copy"
+  },
+  "parser": {
+    "id": "none",
+    "version": "0"
+  },
+  "provenance": {
+    "kind": "synthetic",
+    "evidence_id": "ta-02-synthetic-v1"
+  }
+}

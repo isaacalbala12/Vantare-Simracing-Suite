@@ -1,0 +1,5 @@
+github.com/duckdb/duckdb-go-bindings@v0.10505.0
+github.com/duckdb/duckdb-go-bindings/lib/windows-amd64@v0.10505.0
+github.com/duckdb/duckdb-go/v2@v2.10505.0
+github.com/go-viper/mapstructure/v2@v2.5.0
+github.com/google/uuid@v1.6.0

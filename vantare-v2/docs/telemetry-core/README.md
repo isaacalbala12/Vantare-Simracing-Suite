@@ -9,7 +9,15 @@ Este directorio reúne la evidencia y las decisiones operativas de Telemetry Cor
 ISA-39 define los payloads v1 en
 [`runtime-projections.md`](runtime-projections.md): contratos pequeños por
 producto, calidad/presencia explícitas y versiones canonical/projection/
-recording independientes. Todavía no existe transporte ni wiring productivo.
+recording independientes. TC-05B/TC-05C ya aportan transporte y consumo
+aislados en harness, pero todavía no existe wiring productivo global.
+
+ISA-101 audita el histórico sin incorporar un backend productivo. La decisión
+propuesta es SQLite modernc condicionado para autoridad; MCAP queda candidato
+condicionado para intercambio/replay, pendiente recovery local compatible;
+DuckDB solo posible cache reconstruible futura y framing propio descartado.
+[`storage-benchmark-isa-101.md`](storage-benchmark-isa-101.md),
+[`historical-storage-schema.md`](historical-storage-schema.md) y ADR 0005.
 
 ## Jerarquía de autoridad
 
@@ -27,7 +35,9 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 - La base global de Go quedó verde en ISA-97.
 - TC-02 y TC-03 están cerrados en la cadena apilada. TC-04A–C implementaron
   reducer, coordinación/hechos y derivaciones; TC-04D / ISA-38 implementa
-  fan-out, backpressure y observabilidad. TC-05–TC-09 siguen pendientes.
+  fan-out, backpressure y observabilidad. TC-05A/B están cerrados
+  técnicamente, TC-05C está en review, TC-06A corrige su primer review y
+  TC-06B–TC-09 siguen pendientes.
 - La cadena permanece en ramas de issue sin wiring productivo ni promoción. El
   handoff vivo de `docs/vantare-program/` contiene los SHAs y siguiente corte.
 
@@ -66,3 +76,5 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [SessionCoordinator y hechos](session-coordinator.md)
 - [Derivaciones ordenadas](runtime-derivations.md)
 - [Fan-out y backpressure](runtime-fanout.md)
+- [Benchmark de almacenamiento ISA-101](storage-benchmark-isa-101.md)
+- [Esquema histórico y contrato TC-06B](historical-storage-schema.md)

@@ -10,6 +10,42 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-101 / TC-06A (2026-07-30):
+- Auditoría y benchmark aislado completados sobre
+  `4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`, sin backend productivo,
+  wiring, frontend, dependencia en el `go.mod` raíz, commit o promoción.
+- Veredicto propuesto: SQLite modernc `GO` condicionado como histórico
+  autoritativo; MCAP candidato condicionado para export/import/replay (recovery
+  upstream no verificado localmente); DuckDB `NO-GO` en el
+  camino de grabación actual por CGO/packaging Windows; framing propio
+  descartado salvo baseline desechable.
+- Los tres candidatos CGO-free conservaron counts, cursor y SHA-256 idénticos
+  en nominal, 4×, 64 vehículos, ráfagas y 24 h lógicas. Las cifras de
+  throughput usan cierre final y no se presentan como RPO.
+- Los dos reviews se corrigieron con kills antes de append/commit, después de
+  commit/antes de manifest y después del replace. SQLite/framing muestran
+  `DB=240` con watermark `200` en el límite intermedio; opening, recording y
+  recovering reinician incomplete. Accepted es volátil y no se promete ACK
+  durable por lote ni pérdida exacta tras crash.
+- `RecordingPayloadV1` y `RecordingFactV1` son DTOs separados de core,
+  versionados, allowlisted y pseudonimizados por slots locales; golden y tests
+  con JSON válido rechazan mediante error unknown tipado nombres, IDs remotos,
+  rutas, metadata abierta y campos desconocidos.
+- Integridad (`opening/recording/recovering/complete/incomplete`) y modo de
+  acceso (`read_write/read_only`) son ejes separados. El probe before-append
+  registra correctamente `volatile_accepted=200`; los límites posteriores 240.
+- DuckDB falla exactamente con bindings Windows excluidos bajo CGO=0 y sin
+  `gcc` bajo CGO=1. El build base Wails CGO=0 pasa; la integración real de
+  SQLite debe volver a medir binario, licencias y packaging en TC-06B.
+- ADR: `docs/adr/0005-historical-storage-sqlite-mcap.md`. Metodología y CSV:
+  `docs/telemetry-core/storage-benchmark-isa-101.md` y
+  `docs/telemetry-core/evidence/isa-101-storage/`. Esquema/contrato TC-06B:
+  `docs/telemetry-core/historical-storage-schema.md`.
+- Estado: correcciones de la segunda re-review implementadas; pendiente nueva
+  verificación independiente.
+  No iniciar TC-06B ni añadir SQLite al producto hasta aceptar findings y el
+  gate humano aplicable.
+
 Nota ISA-40 / TC-05B (2026-07-29):
 - Implementado `internal/app/telemetrytransport` como adapter/harness local sin
   wiring productivo global. Cada hub está ligado a un `ProductID` cerrado

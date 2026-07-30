@@ -1,0 +1,10 @@
+candidate,probe,boundary,status,detail,integrity_state,access_mode,recovery_integrity_state,volatile_accepted,persisted_accepted_watermark,backend_committed,recovered,commit_ns,original_preserved,incomplete_visible,original_sha256,after_sha256
+mcap,concurrent_reader,,NO_GO,candidate exposes no durable partial-chunk checkpoint,,,,200,0,0,0,0,false,true,,
+mcap,tail_truncation,,PASS,"truncated copy rejected/partial without mutating original: create mcap iterator: could not get info: Invalid magic at end of file, found: [0 0 0 0 61 0 198 103]",,,,210,210,210,0,0,true,true,f8f3860a46cadd021f4c56eb217cfab30de807b321d4451cedca5462e16e75cd,f8f3860a46cadd021f4c56eb217cfab30de807b321d4451cedca5462e16e75cd
+mcap,disk_full,,BLOCKED_ENV,no isolated Windows volume quota or injectable database VFS; filling the host disk is unsafe,,,,0,0,0,0,0,false,false,,
+mcap,writer_slow,,DEFERRED_TC06B,"a synthetic sleep measures the recorder queue/coordinator, not this backend; TC-06B must inject a slow store",,,,0,0,0,0,0,false,false,,
+mcap,permissions,,BLOCKED_ENV,a deterministic denial requires mutating Windows ACLs; TC-06B must use an isolated ACL fixture or injectable filesystem,,,,0,0,0,0,0,false,false,,
+mcap,deterministic_kill,before_append,NO_GO,backend has no partial-session commit boundary; manifest protocol cannot make an uncommitted chunk durable,,,,200,200,200,0,0,false,true,,
+mcap,deterministic_kill,before_commit,NO_GO,backend has no partial-session commit boundary; manifest protocol cannot make an uncommitted chunk durable,,,,240,200,200,0,0,false,true,,
+mcap,deterministic_kill,after_commit_before_manifest,NO_GO,backend has no partial-session commit boundary; manifest protocol cannot make an uncommitted chunk durable,,,,240,200,240,0,0,false,true,,
+mcap,deterministic_kill,after_manifest_replace,NO_GO,backend has no partial-session commit boundary; manifest protocol cannot make an uncommitted chunk durable,,,,240,240,240,0,0,false,true,,

@@ -16,10 +16,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ejecución:
-  `ebb0bd7abc4b2614665a1918a94cc068f6c92edc`, entrega ISA-40 / TC-05B.
+- Base de ISA-101 / TC-06A:
+  `4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`.
 - Rama:
-  `vantareapp/isa-41-tc-05c-contratos-typescript-y-harness-de-observabilidad`.
+  `vantareapp/isa-101-tc-06a-auditoria-de-almacenamiento-y-esquema-historico`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -31,7 +31,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-05B ISA-40: cerrado técnicamente tras re-review `ACCEPT` sin
   P0/P1/P2/P3.
 - TC-05C ISA-41: implementación completa; pendiente review independiente.
-- TC-06–TC-09: pendientes.
+- TC-06A ISA-101: auditoría, benchmark, ADR y esquema implementados; hallazgos
+  de la segunda re-review corregidos y pendientes de nueva verificación. No hay
+  backend productivo.
+- TC-06B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -93,6 +96,34 @@ de `unsafe.Pointer` en readers Win32.
   Go y suite global Go PASS. El primer review quedó corregido: reframe
   coherente tras cambio de status, extensiones seguras, cap duro de 256 KiB y
   attach/teardown transaccionales; pendiente re-review independiente.
+- ISA-101: benchmark aislado con exactamente los mismos bytes sanitizados para
+  framing, SQLite modernc y MCAP. Cinco repeticiones nominal/4×/ráfaga y una
+  de 24 h lógica conservaron counts, cursor y SHA-256; queries de rango/cursor,
+  crecimiento y tamaños quedaron en CSV. Throughput de cierre se separa de
+  checkpoints/RPO.
+- ISA-101 crash/recovery: kills deterministas cubren antes de append, antes de
+  commit, después de commit/antes de manifest y después del replace. En el
+  límite intermedio SQLite/framing recuperan DB `240` con watermark `200`;
+  before-append conserva accepted `200`; opening/recording/recovering reinician
+  incomplete sin mezclar `accessMode`. Accepted es volátil: no hay ACK durable
+  por lote ni pérdida exacta inferible. MCAP no ofrece commit parcial y sigue
+  `NO-GO` autoritativo; su recovery CLI upstream no quedó verificado localmente.
+- ISA-101 packaging: probes CGO=0 PASS para framing, SQLite y MCAP; DuckDB
+  bloqueado por build tags CGO y ausencia de `gcc`. Build base Wails CGO=0
+  PASS. SQLite queda `GO` condicionado a TC-06B; MCAP candidato condicionado
+  para intercambio/replay; DuckDB y
+  framing propio `NO-GO` autoritativo.
+- ISA-101 checks: tests del módulo x5 para framing/SQLite/MCAP y tags combinados,
+  vet por candidato, builds CGO=0, Telemetry completo, suite Go global, frontend
+  build, Wails Windows, invariantes de 48 filas/16 digests y `diff --check`
+  PASS. Race no está disponible en este host CGO=0 sin `gcc`; frontend test no
+  se repitió porque el corte no cambia frontend.
+- ADR 0005 y `docs/telemetry-core/historical-storage-schema.md` fijan manifest
+  atómico, observed/facts autoritativos, derived reconstruible, raw opt-in
+  separado, chunks versionados/CRC, accepted volátil/watermark/committed,
+  `RecordingPayloadV1`/`RecordingFactV1` allowlisted con golden y errores
+  unknown tipados, integridad/modo de acceso separados, COW con switch solo por
+  manifest, versiones futuras read-only y recovery sobre copia.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
@@ -109,13 +140,16 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-39 / TC-05A, re-review `ACCEPT` |
 | Cerrada técnicamente | ISA-40 / TC-05B, re-review `ACCEPT` |
 | En review técnico | ISA-41 / TC-05C |
-| Pendientes | ISA-101–117 e ISA-87 según dependencias |
+| Pendiente re-review | ISA-101 / TC-06A |
+| Pendientes | ISA-102–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Ejecutar re-review independiente de ISA-41 / TC-05C y corregir todos los
-hallazgos razonables restantes. Después entregarla con commit/push/PR draft y Linear
-`In Review`, sin migrar pantallas productivas ni promover ramas.
+Ejecutar re-review de ISA-101 / TC-06A sobre correcciones de payload fact,
+privacidad tipada, integrity/access mode y accepted por boundary. No iniciar
+TC-06B, añadir SQLite al `go.mod`
+principal, hacer wiring, commit/push/PR o cambiar Linear hasta cerrar ese
+review y recibir la dirección aplicable.
 
 ## Gate final
 
@@ -125,6 +159,7 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-30, ISA-41 / TC-05C implementada sobre TC-05B. Decoder/store, harness,
-golden y matriz de checks completos; cuatro findings del primer review
-corregidos y pendiente re-review independiente.
+2026-07-30, ISA-101 / TC-06A implementada sobre
+`4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`. Auditoría primaria, benchmark
+aislado, resultados crudos, fallos/recuperación, ADR 0005 y esquema v1 listos
+para review independiente; sin backend productivo ni entrega remota.

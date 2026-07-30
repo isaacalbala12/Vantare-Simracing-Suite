@@ -83,6 +83,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
 | Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación activa: contratos TypeScript y harness de observabilidad |
+| Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | inventario de replay, reloj, fixtures y oráculo activo; sin código |
 
 ## Próximas acciones exactas
 

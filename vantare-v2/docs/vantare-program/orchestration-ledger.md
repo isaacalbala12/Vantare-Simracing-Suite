@@ -85,7 +85,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 | Telemetry Core | TC-05C / ISA-41 | `4801dce`, PR draft #36 sobre TC-05B | cerrado técnicamente; Linear pendiente; sin promoción |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A / ISA-101 | `C:\tmp\vantare-isa101\vantare-v2` sobre TC-05C `4801dce` | `In Review`; commit `6aa46f1`, PR draft #37, sin promoción |
-| Telemetry Core | TC-06B / ISA-102 | `C:\tmp\vantare-isa102\vantare-v2` sobre TC-06A `6aa46f1` | implementación terminada; review adversarial pendiente |
+| Telemetry Core | TC-06B / ISA-102 | `8683f03`, PR draft #38 sobre TC-06A `6aa46f1` | cerrado técnicamente; Linear pendiente; sin promoción |
 
 ## Próximas acciones exactas
 
@@ -517,6 +517,28 @@ Segunda review adversarial: `CHANGES REQUIRED`.
 - Siguiente acción exacta: tracking del primer cursor realmente no persistido,
   filesystem context-aware con regresión bloqueada y DSN seguro probado bajo
   `folder # 100%`; después, tercera review completa. TC-06C sigue bloqueada.
+
+Tercera review y entrega técnica: `ACCEPT`.
+
+- Los tres findings de la segunda review quedaron corregidos con regresiones:
+  ledger de deuda por cursor/tiempo y epochs, escritura atómica cooperativa con
+  contexto y limpieza de temporales, y DSN SQLite construido mediante
+  `net/url` para rutas con `#`, `%`, espacios y Unicode.
+- La review final no encontró P0/P1/P2/P3 conocidos. El worker repitió focal
+  x10, RPO/off-by-one x100 y filesystem/DSN x100.
+- Verificación fresca del orquestador: recording PASS, Telemetry Core PASS,
+  vet focal PASS, build Wails Windows con CGO desactivado PASS y suite Go
+  global serial PASS.
+- Una ejecución global paralela reprodujo únicamente la contención Windows
+  heredada `TestConcurrentSavesDontCorruptFile` de ISA-118. El caso aislado
+  x20 y la suite serial pasan; no se atribuye una regresión a TC-06B.
+- `-race` no es ejecutable en este host por ausencia de `gcc`.
+- Commit `8683f036bc1169be2e27ea50982ebf86af369bed`, rama remota sincronizada y
+  PR draft [#38](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/38)
+  apilada sobre ISA-101. No hubo merge ni promoción.
+- Linear queda pendiente de sincronización porque el conector no está expuesto
+  en esta sesión. TC-06C puede abrirse de forma apilada sobre `8683f03`; no se
+  habilita wiring productivo.
 
 ## Bloqueos operativos actuales
 

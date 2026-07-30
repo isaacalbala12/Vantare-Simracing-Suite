@@ -390,6 +390,14 @@ Tercera review independiente: `NEEDS FIXES` por un único P2.
 - El revisor reprodujo focal x5 y x100, tags, vet, Telemetry Core, faults,
   48/48 filas, 16 digests, 12 agregados, gofmt y whitespace; revisión read-only.
 
+Fix del único P2 completado; review final pendiente:
+
+- `decodeRecordingFactV1` rechaza cualquier byte reservado no cero en
+  `[57:160]` con `errRecordingPayload`.
+- La regresión table-driven cubre los límites 57 y 159.
+- Encoder y CSV válidos no cambian. Tests x100 base/SQLite/MCAP, vet,
+  Telemetry Core, Go global, gofmt y diff-check pasan.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

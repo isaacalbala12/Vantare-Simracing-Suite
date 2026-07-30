@@ -50,11 +50,38 @@ permanecen apilados en ramas publicadas con PR draft.
 - Riesgo pendiente: TA-04 debe demostrar semántica real de progreso, distancia
   y geometría antes de mapa o delta. La presencia de canales no es prueba.
 
+### Evidencia read-only que desbloquea TA-04
+
+Una sesión LMU completada de unas 114 minutos y 69 vueltas completas fue
+inspeccionada mediante copia temporal read-only. El original permaneció
+estable y con hash/metadata intactos; la copia se eliminó y no quedó ningún
+temporal. No se leyeron valores de metadata ni se expusieron rutas, identidad,
+coordenadas absolutas o muestras crudas.
+
+- `Lap Dist` a 10 Hz: 70 resets fuertes, 69 vueltas completas y cero pasos
+  negativos dentro de ellas. Longitud muy estable: CV aproximado 0,057 %.
+- `Total Dist` a 10 Hz: totalmente monotónica y coherente con los incrementos
+  de `Lap Dist`; correlación de incrementos 0,999899 fuera de resets.
+- 71 eventos `Lap`, contador +1; resets alineados con mediana 52,5 ms y máximo
+  92,5 ms, compatible con resolución de 100 ms.
+- `GPS Time` a 100 Hz es monotónico con paso mediano 10 ms; se observó una
+  discontinuidad positiva acumulada de 12,5 ms que el contrato debe tolerar
+  solo después de validarla por sesión.
+- GPS lat/long a 10 Hz comparte longitud con `Lap Dist`; las 69 vueltas cierran
+  y no se observó teleport. Solo podrán persistirse coordenadas locales
+  proyectadas, nunca coordenadas absolutas.
+- `Lap Time` es la fuente completa de duración; `Current LapTime` omitió cinco
+  eventos y solo puede usarse como corroboración.
+
+Veredicto: `GO` para TA-04 limitado a `SpatialAxisV1`, validación por sesión,
+degradación explícita y geometría local. No autoriza delta comparativo,
+elegibilidad/validez de vueltas, nombres de curvas ni coaching.
+
 ## Cortes activos
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | findings originales cerrados; re-review detectó 1 P1 y 1 P3 nuevos; segundo fix activo |
+| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | segundo fix completado; re-review final activa |
 
 ## Próximas acciones exactas
 
@@ -138,6 +165,11 @@ el corte por dos nuevos: SSE emitía `projection/status` mientras Wails usaba el
 nombre completo por producto, y un helper de test hacía polling con
 `time.Sleep`. Se ordenó alinear nombres SSE/Wails y comparar nombre+JSON, además
 de sustituir el polling por señalización determinista. No hay otros P0–P3.
+
+El segundo fix hace que SSE y Wails emitan exactamente el mismo nombre completo
+por producto y el mismo JSON. La regresión compara ambos. El helper de test ya
+espera una señal por canal con timeout y no contiene `time.Sleep`. Focal x20,
+Telemetry Core, vet, race x5 y diff-check pasaron; queda re-review final.
 
 El fix de ENG-03 alineó el proyector y el adaptador: `LapNumber` por sí solo
 declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y

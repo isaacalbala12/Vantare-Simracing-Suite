@@ -398,6 +398,19 @@ Fix del único P2 completado; review final pendiente:
 - Encoder y CSV válidos no cambian. Tests x100 base/SQLite/MCAP, vet,
   Telemetry Core, Go global, gofmt y diff-check pasan.
 
+Cuarta review independiente: `ACCEPT`, cero P0-P3.
+
+- El revisor confirmó reserved-zero en todo `[57:160]`, límites 57/159,
+  round-trip y goldens estables; repitió focal x100, benchmark x5 por tags,
+  vet, Telemetry Core, gofmt, diff-check y revisión del diff completo.
+- Entrega final ISA-101: commit `6aa46f1`, push sincronizado, worktree limpio y
+  PR draft [#37](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/37)
+  apilada sobre TC-05C.
+- Linear ISA-101 está `In Review` con decisión, evidencia, límites, commit y PR.
+- No hubo promoción a `nightly`, `testers` ni `master`.
+- TC-06B queda habilitada únicamente como siguiente rama apilada sobre
+  `6aa46f1`, preservando los gates deferidos del ADR.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

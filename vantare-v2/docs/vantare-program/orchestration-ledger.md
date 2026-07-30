@@ -82,7 +82,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación activa: contratos TypeScript y harness de observabilidad |
+| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación terminada; review independiente pendiente |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
 
@@ -147,6 +147,30 @@ Preparación cerrada:
 - Harness que demuestre full/resync, secuencia, status y facts separados,
   reconexión, gaps y diagnóstico sin payload sensible.
 - Sin composición productiva, UI final ni imports de dominios internos.
+
+Implementación recibida, aún sin commit:
+
+- Decoder y store TypeScript puros para `overlay`, `engineer`, `strategy` y
+  `analysis`, con merge patch RFC 7396 y facts en cursor independiente.
+- `attach` comparte la fuente, ofrece teardown idempotente y no cablea ninguna
+  pantalla productiva.
+- Harness explícitamente no productivo para status, full, delta, gap, facts y
+  reconexión.
+- Conserva el cursor interno al avanzar status y expone estados estables sin
+  mutación compartida.
+- Valida contrato v1, límite de 256 KiB, JSON/profundidad, UTC, enteros seguros,
+  claves privadas y prototype pollution.
+- Los golden tests TypeScript leen las cuatro proyecciones producidas por Go;
+  un fixture Go/TypeScript común fija nombres, rutas, status y límites.
+- Evidencia del worker: 29/29 focales, 1.880/1.880 tests frontend, build,
+  lint focal, TC-05B Go x20, proyecciones Go, `go test ./...`, vet focal,
+  diff-check y JSON pasan.
+- Playwright no aplica: este corte no crea página, layout, UI ni wiring
+  productivo.
+- Observaciones heredadas no bloqueantes: aviso de chunk frontend superior a
+  500 KiB y mensajes `AbortError` de teardown de happy-dom con salida correcta.
+- Siguiente gate: review independiente de paridad Go/TypeScript, aislamiento,
+  cursor/epoch, resync/facts, límites, ownership y lifecycle de listeners.
 
 ### TC-06A — decisión de almacenamiento histórico
 

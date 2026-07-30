@@ -10,6 +10,41 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-40 / TC-05B (2026-07-29):
+- Implementado `internal/app/telemetrytransport` como adapter/harness local sin
+  wiring productivo global. Cada hub está ligado a un `ProductID` cerrado
+  (Overlay, Engineer, Strategy o Analysis); Wails y SSE emiten exactamente los
+  mismos nombres namespaced y JSON. SSE acepta únicamente loopback y ambos
+  adapters heredan lifecycle del contexto.
+- Cada publicación conserva full completo. Delta RFC 7396 es opcional y solo se
+  acepta si reconstruye exactamente el full nuevo. Late join, reconnect, gap,
+  cambio de epoch y consumer lento reciben full determinista; publicación nunca
+  espera al consumidor y cada suscriptor usa un único slot latest-wins.
+- Envelope incluye projectionVersion, epoch, sequence, full/delta, capturedAt
+  UTC y statusRevision. Status se publica aparte a bajo ritmo; si su revisión
+  avanza, ningún consumidor recibe después un snapshot antiguo.
+- Facts conservan `factSequence` independiente y adapters pull-based sin
+  coalescing. Los adapters exigen continuidad exacta desde `after` y exponen
+  gaps, duplicados o regresiones. No se infiere orden de hechos desde el cursor
+  snapshot.
+- Constructors públicos reciben únicamente `PayloadV1` tipado de Overlay,
+  Engineer, Strategy o Analysis. Un sello privado detecta sustitución posterior
+  de payload/metadata. Se rechazan versión desconocida, JSON inválido, keys
+  raw/canonical/internal y payloads sobre el límite duro de 256 KiB.
+- Sin `derive.FinalState`, schema/core/raw serializado; sin dependencias,
+  persistencia, UI, goroutines propias, colas no acotadas o reglas de dominio.
+  Guía: `docs/telemetry-core/projection-transport.md`.
+- Evidencia fresca: focal x20, vet focal, race x5 con GCC UCRT64, Telemetry
+  completo, guard ADR, frontend 280/280 archivos y 1851/1851 tests, frontend
+  build y suite global Go PASS. Benchmark full con 64 vehículos:
+  258–303 µs/op, ~128,7 KiB/op y 1.964–1.965 allocs/op.
+- Review independiente en tres pasadas: los 2 P1 y 3 P2 iniciales cerraron
+  aislamiento/routing por producto, epoch regresivo, continuidad facts, sello
+  delta y regresiones de perímetro. La segunda pasada cerró nombre SSE/Wails y
+  retiró un polling con `time.Sleep`. Re-review final `ACCEPT` sin P0/P1/P2/P3.
+- Estado: preparado para commit/push, PR draft apilada sobre TC-05A y Linear
+  `In Review`; sin promoción. ISA-41 / TC-05C sigue siendo el siguiente corte.
+
 Nota ISA-39 / TC-05A (2026-07-28):
 - Definidas proyecciones Go v1 puras e independientes para Overlay, Engineer,
   Strategy y Analysis. Consumen `derive.FinalState`: el guard y ADR fijan

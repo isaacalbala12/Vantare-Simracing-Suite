@@ -82,7 +82,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | segunda review `ACCEPT`; entrega Git pendiente |
+| Telemetry Core | TC-05C / ISA-41 | `4801dce`, PR draft #36 sobre TC-05B | cerrado técnicamente; Linear pendiente; sin promoción |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
 
@@ -216,6 +216,10 @@ Segunda review independiente: `ACCEPT`, sin P0-P3 nuevos o pendientes.
 - TypeScript focal 36/36, lint focal, transporte Go x20, proyecciones Go,
   frontend TypeScript/build y diff-check pasan.
 - Playwright sigue sin aplicar porque el corte no expone ninguna UI.
+- Entrega: commit `4801dce`, push sincronizado, worktree limpio y PR draft
+  [#36](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/36)
+  apilada sobre la rama TC-05B. No se promovió a `nightly`, `testers` ni
+  `master`.
 
 ### TC-06A — decisión de almacenamiento histórico
 

@@ -23,6 +23,11 @@ independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable
 del producto: discovery metadata-only, estabilidad LMU, manifest sanitizado,
 corpus sintético y presupuestos. La aprobación inicial de Isaac se reserva para
 promover el conjunto aceptado a `nightly`.
+TA-03 / ISA-126 está técnicamente cerrada sobre TA-02 tras re-review
+independiente `ACCEPT` sin P0/P1/P2/P3. Caracteriza un DuckDB LMU completado
+mediante copia temporal read-only y añade modelo/parser histórico v1 sin
+integrar un driver DuckDB concreto. Los seis findings P1/P2 del primer review
+quedaron cerrados con regresiones no complacientes.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: ninguna.
@@ -42,6 +47,28 @@ promover el conjunto aceptado a `nightly`.
   `UserData\\Telemetry`, LMU, SimHub ni archivos personales.
   Focal x20, vet, race x10, fuzz 10 s (2.186.642 ejecuciones), suite Go global
   y `git diff --check` PASS.
+- Rama TA-03/base:
+  `vantareapp/isa-126-ta-03-caracterizacion-duckdb-lmu-y-modelo-historico-canonico`
+  sobre TA-02 `f59fd3d2e1971944ee6cf2979f5535c7ac8d2a29`.
+- Contratos TA-03:
+  `research/telemetry-analysis/lmu-duckdb-characterization.md`,
+  `research/telemetry-analysis/historical-model.md` y schema sanitizado
+  `internal/telemetryanalysis/testdata/lmu-duckdb-schema-v1.json`.
+- Evidencia TA-03: 12 claves de metadata, 56 canales continuos, 42 eventos y
+  101 tablas. Original/copia con hash coincidente y metadata original intacta;
+  la copia se abrió read-only. No se versionó DB, muestra, ruta, valor de
+  metadata, nombre o identificador.
+- Corrección de review TA-03: catálogo inmutable y resolución interna por
+  `channelID`; máximo duro y predecesora acotada; EOF de eventos coherente;
+  metadata desconocida sensible; validación directa de timestamps de vueltas;
+  `DECIMAL` desconocido; duplicados case-insensitive rechazados.
+- Checks TA-03 tras corrección: focal x20, vet, race x10 y fuzz de
+  normalización/redacción 10 s PASS; suite Go global serial PASS; build
+  frontend PASS para embed. La global paralela anterior reprodujo una vez el
+  flake ISA-118 de settings y el focal x20 pasó. Benchmark de dos horas/100 Hz:
+  720.000 muestras en 50,03–54,95 ms, unas 103,69 MB de asignación acumulada y
+  352–370 asignaciones paginadas. La copia temporal read-only se eliminó al
+  finalizar.
 
 ## Experiencia cerrada
 
@@ -84,14 +111,22 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 - **P1 técnico:** el catálogo actual no demuestra progreso/longitud de vuelta,
   distancia o geometría suficientes para implementar comparación espacial LMU;
   delta/mapa deben degradar honestamente hasta TA-04 con evidencia real.
-- **P2 privacidad, reducido por TA-02:** ya existe contrato metadata-first,
-  locator/error sanitizados y corpus sintético. Aún falta auditar un corpus
-  histórico real legal antes del parser productivo.
-- **P1 integridad, reducido por TA-02:** WAL presente bloquea la apertura y se
+- **P2 privacidad, reducido por TA-02/03:** ya existe contrato metadata-first,
+  locator/error sanitizados y un schema real sanitizado sin valores. El reader
+  productivo aún debe demostrar que nunca expone rutas o metadatos sensibles.
+- **P1 integridad, reducido por TA-02/03:** WAL presente bloquea la apertura y se
   revalida antes/después de leer. El gate exige ausencia + ventana estable y la
   lectura verifica que path y handle siguen siendo el mismo archivo regular,
-  incluso si un reemplazo conserva tamaño/mtime. Aún falta caracterizar el
-  formato real mediante una copia autorizada y read-only en TA-03.
+  incluso si un reemplazo conserva tamaño/mtime. La caracterización usó una
+  copia autorizada read-only y verificó hash/metadata original antes/después;
+  el reader productivo y su empaquetado siguen pendientes.
+- **P2 dependencia, explicitado por TA-03:** el cliente Go oficial DuckDB es
+  MIT, pero introduce CGO/GCC, binarios y empaquetado Windows. TA-03 conserva
+  un puerto neutral y no añade la dependencia; un reader productivo necesita
+  decisión/corte propio.
+- **P1 temporal, explicitado por TA-03:** el catálogo continuo no declara el
+  origen que lo alinea con `ts`. `Lap Dist`, `Total Dist` y GPS aparecen en el
+  schema, pero TA-04 debe demostrar su comportamiento antes de mapa/delta.
 - **P2 confianza:** AI/marketing de referencias no es autoridad. Las tarjetas
   iniciales han de ser reglas deterministas versionadas con evidencia visible.
 
@@ -101,19 +136,22 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 |---|---|
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
-| Siguiente corte | TA-03, modelo histórico canónico |
-| Implementación posterior | TA-04+ según `research/telemetry-analysis/plan-microcuts.md` |
+| Cerrada técnicamente | TA-03 / ISA-126, caracterización DuckDB y modelo histórico canónico; re-review independiente `ACCEPT` |
+| Siguiente corte | TA-04, progreso/distancia y mapa con evidencia |
+| Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Entregar commit/push/PR/Linear de TA-02 y abrir TA-03 apilada. No implementar
-UI, reader LMU live, comparación espacial ni
-recomendaciones. Isaac decide la promoción posterior a `nightly`, no el inicio
-autónomo del siguiente corte.
+Cerrar la entrega operativa de TA-03 con commit, push, PR draft y Linear
+`In Review`; después abrir TA-04 apilada. TA-04 debe demostrar semántica y
+continuidad de `Lap Dist`, `Total Dist` y/o GPS antes de mapa/delta; no puede
+asumir que la mera presencia del canal prueba el algoritmo. Isaac decide la
+promoción posterior a `nightly`.
 
 ## Última actualización
 
-2026-07-28, ISA-124 / TA-02 cerrada tras review: permiso exclusivo
-`user_approved`, revalidación WAL, identidad path/handle, manifest/corpus bajo
-una política común, parser explícito y deduplicación semántica única. Batería
-final completa en verde; review independiente `ACCEPT` sin P0/P1/P2/P3.
+2026-07-30, ISA-126 / TA-03 cerrada técnicamente: re-review independiente
+`ACCEPT` sin P0/P1/P2/P3 tras verificar los seis findings corregidos. DuckDB
+LMU caracterizado read-only, schema sanitizado, modelo histórico v1, parser por
+catálogo/páginas, calidad/provenance y ejes honestos. Sin dependencia DuckDB de
+producto, integración o promoción.

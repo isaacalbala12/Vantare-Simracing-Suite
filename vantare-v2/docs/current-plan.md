@@ -61,6 +61,53 @@ Nota ISA-124 / TA-02 (2026-07-28):
 - Estado: técnicamente cerrado y preparado para commit/push, PR draft apilada
   sobre TA-01 y Linear `In Review`; sin promoción a `nightly`.
 
+Nota ISA-126 / TA-03 (2026-07-29):
+- Caracterizado read-only un DuckDB LMU completado mediante copia temporal:
+  original y copia con SHA-256 coincidente, metadata original intacta, cero
+  WAL y conexión `read_only`. No se leyeron valores de metadata ni se ejecutó
+  checkpoint/escritura/reparación sobre la biblioteca.
+- El schema observado contiene 12 claves de metadata, 56 canales continuos sin
+  `ts`, 42 eventos con `ts` y 101 tablas. Frecuencias: 1/2/5/7/10/20/50/100 Hz.
+  El diccionario completo sanitizado no contiene DB, muestras, valores, rutas,
+  nombres ni IDs.
+- Implementado en `internal/telemetryanalysis` el modelo histórico v1 y el
+  parser/normalizador paginado LMU: sesión, vueltas por límites, canales,
+  columnas, unidades, calidad, provenance, fingerprint y tipos desconocidos.
+  Cero/false permanecen presentes; NULL, stale, invalid y unknown no se
+  colapsan.
+- Corrección tras review independiente: `Inspect` congela un catálogo interno
+  y `ReadPage` resuelve solo IDs descubiertos, sin confiar en descriptores
+  mutables del llamador. Hay máximo duro de 16.384 filas, contexto de una sola
+  fila para eventos, EOF/predecesor-only coherentes y duplicados de
+  identificador rechazados también por diferencias de mayúsculas.
+- Metadata nueva queda sensible por defecto mediante allowlist pública;
+  `DECIMAL` permanece `unknown` hasta demostrar su representación y las
+  vueltas revalidan timestamps finitos/no decrecientes aun si reciben muestras
+  construidas fuera del normalizador.
+- El continuo conserva eje relativo `index/frequency` con origen `unknown`; los
+  eventos conservan `ts`. No se inventa alineación entre ambos. `Lap` solo
+  forma límites y su validez sigue `unknown`.
+- `LMUDuckDBReader` es un puerto mínimo fuera de Telemetry Core. TA-03 no añade
+  `database/sql`, CGO, binarios, CLI ni dependencia DuckDB de producto. El
+  driver Go oficial es MIT, pero requiere decisión propia de build/empaquetado
+  Windows antes de integrarlo.
+- Scope cerrado: sin reader concreto, índice, galería, UI, delta, mapa,
+  coaching, live o wiring. Docs:
+  `lmu-duckdb-characterization.md` y `historical-model.md`.
+- Evidencia fresca tras la corrección: focal x20, vet, race x10 y dos fuzz de
+  10 s PASS (1.969.820 normalización; 2.377.510 redacción). Benchmark de
+  720.000 muestras paginadas: 50,03–54,95 ms/op,
+  103.686.144–103.696.720 B/op acumulados y 352–370 allocs/op. Frontend build
+  PASS para habilitar embed, con warning heredado de chunk. Suite Go global
+  serial PASS; la paralela anterior reprodujo una vez ISA-118 en
+  `TestConcurrentSavesDontCorruptFile`, y su focal x20 pasó.
+- La copia temporal de inspección fue eliminada tras derivar/verificar el schema
+  sanitizado. La re-review independiente final dio `ACCEPT` sin P0/P1/P2/P3:
+  confirmó catálogo inmutable, resolución por ID, límites, EOF, monotonicidad
+  entre páginas, privacidad por defecto, vueltas, `DECIMAL` y duplicados
+  case-insensitive. Estado preparado para commit/push, PR draft apilada sobre
+  TA-02 y Linear `In Review`; sin promoción.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

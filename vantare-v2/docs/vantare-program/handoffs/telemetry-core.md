@@ -17,9 +17,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
 - Base de ejecución:
-  `08836514d973e7833db8a58720e0aae38c47e746`, entrega ISA-38 apilada sobre
-  GOV-01 y la cadena anterior.
-- Rama: `vantareapp/isa-39-tc-05a-proyecciones-versionadas-por-producto`.
+  `efcc77c60f173a160e8c186f54ccfb43da5be692`, entrega ISA-39 / TC-05A.
+- Rama:
+  `vantareapp/isa-40-tc-05b-wails-y-sse-con-full-snapshot-sequence-y-resync`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -28,7 +28,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-04D ISA-38: implementado, entregado y presente en la base.
 - TC-05A ISA-39: cerrado técnicamente; correcciones del primer review
   aceptadas sin P0/P1/P2/P3.
-- TC-05B–TC-09: pendientes.
+- TC-05B ISA-40: cerrado técnicamente tras re-review `ACCEPT` sin
+  P0/P1/P2/P3.
+- TC-05C–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -69,6 +71,18 @@ de `unsafe.Pointer` en readers Win32.
   serializan calidad `unknown/missing` explícita en Engineer, Strategy y
   Analysis. El guard de arquitectura rechaza imports entre subárboles de
   productos y conserva únicamente raíz común + árbol propio.
+- ISA-40: hub local sin wiring global, full obligatorio, delta RFC 7396
+  equivalente y opcional, resync full ante late join/reconnect/gap/consumer
+  lento, status separado y coherente por `statusRevision`, facts con secuencia
+  independiente y adapters Wails/SSE con JSON idéntico. Constructors tipados y
+  sello privado impiden sustituir los `PayloadV1` por canonical/final/raw.
+  Cada hub y envelope quedan aislados por `ProductID`; Wails y SSE comparten
+  nombre namespaced y JSON. Epoch solo avanza, facts comprueba continuidad
+  desde `after` y el delta se reseala. Límite duro de 256 KiB; SSE
+  loopback-only. Focal x20, vet focal, race x5,
+  Telemetry, guard ADR, frontend 1851/1851, build y suite global Go PASS.
+  Benchmark full de 64 vehículos: 258–303 µs/op, ~128,7 KiB/op y
+  1.964–1.965 allocs/op.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
@@ -83,14 +97,15 @@ de `unsafe.Pointer` en readers Win32.
 | Cerradas | ISA-23–37, incluyendo ISA-96/97/100 según Linear |
 | En revisión | ISA-38 / TC-04D, implementación aceptada técnicamente |
 | Cerrada técnicamente | ISA-39 / TC-05A, re-review `ACCEPT` |
-| Siguiente | ISA-40 / TC-05B |
-| Pendientes | ISA-40–41, ISA-101–117 e ISA-87 según dependencias |
+| Cerrada técnicamente | ISA-40 / TC-05B, re-review `ACCEPT` |
+| Siguiente | ISA-41 / TC-05C |
+| Pendientes | ISA-41, ISA-101–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar commit/push/PR/Linear de ISA-39. Después ISA-40 / TC-05B debe
-envolver estas proyecciones en Wails/SSE con full snapshot y resync, sin
-serializar el snapshot canónico ni duplicar contratos.
+Entregar ISA-40 / TC-05B con commit/push/PR draft y Linear `In Review`.
+Después ISA-41 / TC-05C debe añadir decoder/store TypeScript y harness
+compartido sin migrar todavía pantallas productivas.
 
 ## Gate final
 
@@ -100,5 +115,5 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-29, ISA-39 / TC-05A cerrada técnicamente; re-review independiente
-`ACCEPT` sin P0/P1/P2/P3.
+2026-07-30, ISA-40 / TC-05B cerrada técnicamente tras tres pasadas de review;
+`ACCEPT` sin P0/P1/P2/P3. Pendiente entrega operativa; sin promoción.

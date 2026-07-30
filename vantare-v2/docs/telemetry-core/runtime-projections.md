@@ -31,9 +31,10 @@ clock monotónico, identidad interna completa y estado privado del reducer.
   incluye en envelopes live ni lo implementa este corte.
 
 Un cambio canónico no obliga a cambiar la versión de todas las proyecciones. Un
-cambio de recording tampoco altera live. ISA-40 añadirá semántica de transporte
-(`full/delta`, `statusRevision` y resync) alrededor de estos payloads; no debe
-duplicar sus campos ni serializar el snapshot canónico.
+cambio de recording tampoco altera live. ISA-40 añade semántica de transporte
+(`full/delta`, `statusRevision` y resync) alrededor de estos payloads mediante
+constructors tipados por producto; no duplica sus campos ni serializa el
+snapshot canónico. Véase `docs/telemetry-core/projection-transport.md`.
 
 ## Evolución
 

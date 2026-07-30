@@ -84,7 +84,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 |---|---|---|---|
 | Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación activa: contratos TypeScript y harness de observabilidad |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
-| Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre la cadena TC-05 | auditoría de almacenamiento, packaging y benchmark activo; sin dependencias |
+| Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
 
 ## Próximas acciones exactas
 
@@ -147,6 +147,41 @@ Preparación cerrada:
 - Harness que demuestre full/resync, secuencia, status y facts separados,
   reconexión, gaps y diagnóstico sin payload sensible.
 - Sin composición productiva, UI final ni imports de dominios internos.
+
+### TC-06A — decisión de almacenamiento histórico
+
+Preparación read-only cerrada, sin cambios de producto ni dependencias:
+
+- `SQLite` mediante un driver Go sin CGO es el candidato principal para el
+  archivo autoritativo de cada sesión, condicionado a que el benchmark de
+  ISA-101 demuestre packaging Wails/Windows, carga 4x, recuperación y RPO
+  máximo de dos segundos.
+- `MCAP` queda como candidato condicionado para exportación, importación y
+  replay interoperable. No sustituye por ahora al motor consultable.
+- `DuckDB` no es apto como recorder caliente con el packaging actual
+  `CGO_ENABLED=0`. Puede evaluarse después como caché analítica reconstruible y
+  read-only para Telemetry Analysis.
+- Un formato append-only propio solo puede participar como baseline desechable
+  del benchmark; no se aceptará como formato productivo sin demostrar que las
+  alternativas anteriores fallan.
+- El puerto `RecordingSink` permanece puro. El reducer y la ingesta live no
+  hacen I/O de disco ni importan drivers de almacenamiento.
+- La autoridad histórica se separa por sesión: `observed` y `facts` son
+  autoritativos, `derived` es reconstruible y versionado, y `raw` es separado,
+  opt-in, acotado y borrable.
+- El esquema propuesto usa manifest atómico, cursores accepted/durable,
+  chunks con versión/epoch/secuencia/tiempo/CRC, migración copy-on-write,
+  apertura segura de versiones futuras y recuperación que nunca borra el
+  original.
+- El benchmark de ISA-101 debe comparar SQLite, MCAP, DuckDB y el baseline con
+  los mismos bytes y fixtures: carga nominal, 4x, 64 vehículos, 24 h lógicas,
+  30 min reales, lectura concurrente, kill, tail truncado, disco lleno, writer
+  lento y pérdida de permisos.
+- Gates mínimos: `>=4x` sin pérdida silenciosa, RPO `<=2 s`, sesión incompleta
+  visible y recuperable, build/instalador Windows real, crecimiento acotado,
+  licencias inventariadas y consultas/replay deterministas.
+- ISA-101 no añadirá un backend a producción: entrega evidencia, ADR,
+  resultados crudos reproducibles y el contrato ejecutable de TC-06B.
 
 ## Bloqueos operativos actuales
 

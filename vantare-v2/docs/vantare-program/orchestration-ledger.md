@@ -710,6 +710,31 @@ Entrega del bloque backend ISA-104 (D1/D2/D3/D5/D6):
 - Backend queda sin commit para dos reviews read-only independientes antes de
   implementar UI. No hay merge, promoción ni sincronización Linear.
 
+Primera review doble del backend ISA-104: `REQUEST_CHANGES`.
+
+- Conteo consolidado: P0 0, P1 1, P2 5 y P3 1.
+- P1: el reemplazo Windows de `metadata.json` podía dejar únicamente
+  `.previous` tras un crash; la retención automática ignoraría después esa
+  captura sensible.
+- P2: catálogo y handles no estaban realmente acotados; `List` inspeccionaba
+  hasta 4.096 registros por sesión y conservaba `SessionRef` obsoletos.
+- P2: manifests/metadata se cargaban completos antes de sus límites y la
+  protección de symlinks/junctions era check-then-act.
+- P2: la captura persistida no registraba build/fingerprint/schema/versiones
+  del sanitizador/framing ni hash final suficiente para auditar replay.
+- P2: el driver sanitizaba ~325 KiB antes de comprobar una cola saturada; el
+  benchmark anterior solo medía `TryWrite` y no el camino real.
+- P2: fuzz/regresión no demostraban que todos los bytes fuera de la matriz de
+  offsets permitidos quedasen a cero.
+- P3: antes del wiring productivo Windows deberá derivar la raíz privada y
+  validar/endurecer su ACL.
+- Los dos reviewers confirmaron correctos allowlist, payload/hash exactos,
+  future metadata-only, apertura única de `LMU_Data`, ownership y ausencia de
+  red/dependencias/wiring. Race focal x5 pasó con UCRT64 en la review de
+  arquitectura.
+- El bloque vuelve al implementador con TDD y remedios concretos; la UI D4 no
+  comienza hasta re-review `ACCEPT`.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

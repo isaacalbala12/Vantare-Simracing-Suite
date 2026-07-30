@@ -84,7 +84,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 |---|---|---|---|
 | Telemetry Core | TC-05C / ISA-41 | `4801dce`, PR draft #36 sobre TC-05B | cerrado técnicamente; Linear pendiente; sin promoción |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
-| Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
+| Telemetry Core | TC-06A / ISA-101 | `C:\tmp\vantare-isa101\vantare-v2` sobre TC-05C `4801dce` | `In Progress`; auditoría, benchmark aislado y ADR, sin backend productivo |
 
 ## Próximas acciones exactas
 
@@ -255,6 +255,18 @@ Preparación read-only cerrada, sin cambios de producto ni dependencias:
   licencias inventariadas y consultas/replay deterministas.
 - ISA-101 no añadirá un backend a producción: entrega evidencia, ADR,
   resultados crudos reproducibles y el contrato ejecutable de TC-06B.
+
+Ejecución iniciada:
+
+- Linear sincronizado: ISA-41 está `In Review` con commit `4801dce`, PR draft
+  #36 y evidencia; ISA-101 está `In Progress`.
+- Rama exacta de Linear:
+  `vantareapp/isa-101-tc-06a-auditoria-de-almacenamiento-y-esquema-historico`.
+- Worktree limpio `C:\tmp\vantare-isa101\vantare-v2`, base exacta TC-05C
+  `4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`.
+- El corte sigue limitado a investigación, benchmark aislado, ADR, esquema,
+  recuperación y decisión GO/NO-GO. No puede añadir aún un driver de base de
+  datos al producto.
 
 ## Bloqueos operativos actuales
 

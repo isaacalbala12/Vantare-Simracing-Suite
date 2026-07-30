@@ -453,6 +453,30 @@ Entrega del worker lista para review independiente:
 - Sin commit, push, PR, Linear final ni promoción. Siguiente acción exacta:
   review adversarial completa contra la base `6aa46f1`.
 
+Primera review adversarial: `CHANGES REQUIRED`, sin P0, con cuatro P1 y tres
+P2 confirmados:
+
+- P1: `CommitBudget` se medía al retornar, pero no imponía deadline real a
+  `Append`, `Checkpoint` ni `Complete`.
+- P1: una carrera entre fallo terminal y `Stop` podía completar una sesión que
+  debía permanecer `incomplete`.
+- P1: snapshots y facts usan cursores independientes, pero los chunks podían
+  colisionar al aceptar batches solo de facts y omitían sus tiempos en batches
+  mixtos.
+- P1: el bloqueo de recovery era local a una instancia de `Store`, no
+  compartido entre instancias/procesos.
+- P2: el reader rechazaba tipos de facts válidos posteriores a
+  `FactSessionChanged`.
+- P2: manifest aceptaba cursores parciales y motivos `incomplete` no cerrados.
+- P2: throttle/brake admitían NaN y las máscaras de presencia no estaban
+  limitadas a bits v1 conocidos.
+- Los checks de la review pasaron (focal x10, Telemetry Core, suite Go global,
+  vet focal, Wails CGO-free, benchmark x5 y diff-check). `-race` sigue
+  bloqueado por ausencia de `gcc`.
+- Siguiente acción exacta: corregir los siete findings con regresiones
+  adversariales y repetir review independiente completa. TC-06C continúa
+  bloqueada.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

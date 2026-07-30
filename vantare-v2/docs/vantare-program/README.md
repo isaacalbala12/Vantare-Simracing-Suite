@@ -34,6 +34,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `project-map.md`: módulos, fronteras, dependencias y estado.
 - `execution-policy.md`: flujo Linear/Git, autonomía, reviews y promoción.
 - `research-policy.md`: investigación de productos, repositorios y apps.
+- `orchestration-ledger.md`: registro operativo de cada corte cerrado o activo,
+  con rama, SHA, PR, review, checks y siguiente acción exacta.
 - `handoff-template.md`: contrato común para los handoffs.
 - `handoffs/telemetry-core.md`: núcleo live y siguiente corte TC-04D.
 - `handoffs/telemetry-analysis.md`: análisis post-sesión.
@@ -65,3 +67,6 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - ISA-120 consolidó Strategy en `Strategy Planner — Race Strategy Suite`,
   conservó Product C como proyecto histórico y creó proyectos propios para
   Telemetry Analysis y Engineer/Spotter.
+
+La fotografía anterior es histórica. Para el estado actual de ejecución debe
+leerse primero `orchestration-ledger.md` y después el handoff vivo del proyecto.

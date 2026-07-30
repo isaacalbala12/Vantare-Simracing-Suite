@@ -33,6 +33,7 @@ permanecen apilados en ramas publicadas con PR draft.
 | Engineer | ENG-03 / ISA-127 | `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a` / `06dbfd8` | #34 | re-review `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 | Telemetry Core | TC-04D / ISA-38 | `vantareapp/isa-38-tc-04d-migracion-gradual-de-derivaciones-live` / `0883651` | #29 | `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 | Telemetry Core | TC-05A / ISA-39 | `vantareapp/isa-39-tc-05a-proyecciones-versionadas-por-producto` / `efcc77c` | #32 | `ACCEPT`, sin P0–P3 | cerrada técnicamente |
+| Telemetry Core | TC-05B / ISA-40 | `vantareapp/isa-40-tc-05b-wails-y-sse-con-full-snapshot-sequence-y-resync` / `ebb0bd7` | #35 | re-review final `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 
 ### Evidencia TA-03
 
@@ -81,12 +82,11 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | segundo fix completado; re-review final activa |
 
 ## Próximas acciones exactas
 
-1. Resolver todos los findings razonables de TC-05B, entregar commit/push/PR
-   draft apilada sobre TC-05A y actualizar Linear.
+1. Abrir ISA-41 / TC-05C sobre TC-05B para contratos TypeScript y harness de
+   observabilidad; no migrar pantallas productivas.
 2. Abrir ENG-04 sobre ENG-03 para caracterizar mediante replays una familia de
    monitores antes de migrarla; no inventar señales ni borrar el frame legacy.
 3. Abrir TA-04 sobre TA-03. Primero debe producir evidencia reproducible de
@@ -170,6 +170,10 @@ El segundo fix hace que SSE y Wails emitan exactamente el mismo nombre completo
 por producto y el mismo JSON. La regresión compara ambos. El helper de test ya
 espera una señal por canal con timeout y no contiene `time.Sleep`. Focal x20,
 Telemetry Core, vet, race x5 y diff-check pasaron; queda re-review final.
+
+La tercera review de TC-05B fue `ACCEPT` sin P0–P3. Commit `ebb0bd7`, push y PR
+draft #35 correctos; sin promoción. Linear queda pendiente de sincronización
+por ausencia del conector.
 
 El fix de ENG-03 alineó el proyector y el adaptador: `LapNumber` por sí solo
 declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y

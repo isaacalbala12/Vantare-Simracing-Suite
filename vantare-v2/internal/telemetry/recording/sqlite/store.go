@@ -367,13 +367,17 @@ func (s *Store) readManifest(path string) (recording.SessionManifest, bool, erro
 		return recording.SessionManifest{}, false, fmt.Errorf("read recording manifest: %w", err)
 	}
 	var header struct {
-		ManifestVersion uint16 `json:"manifestVersion"`
+		ManifestVersion        uint16            `json:"manifestVersion"`
+		RecordingSchemaVersion recording.Version `json:"recordingSchemaVersion"`
 	}
-	if err := json.Unmarshal(data, &header); err != nil || header.ManifestVersion == 0 {
+	if err := json.Unmarshal(data, &header); err != nil ||
+		header.ManifestVersion == 0 ||
+		header.RecordingSchemaVersion == 0 {
 		return recording.SessionManifest{}, false, recording.ErrInvalidManifest
 	}
 	var manifest recording.SessionManifest
-	if header.ManifestVersion > recording.ManifestVersionV1 {
+	if header.ManifestVersion > recording.ManifestVersionV1 ||
+		header.RecordingSchemaVersion > recording.RecordingVersionV1 {
 		if err := json.Unmarshal(data, &manifest); err != nil {
 			return recording.SessionManifest{}, false, recording.ErrInvalidManifest
 		}
@@ -395,6 +399,10 @@ func validateManifestEnvelope(manifest recording.SessionManifest, ref recording.
 		manifest.RecordingSchemaVersion == 0 ||
 		!safeSessionID(manifest.SessionID) ||
 		manifest.SessionID != ref.SessionID ||
+		manifest.SimulatorID == "" ||
+		manifest.AppBuild == "" ||
+		manifest.StartedAtUTC.IsZero() ||
+		manifest.StartedAtUTC.Location() != time.UTC ||
 		filepath.IsAbs(manifest.ActiveDatabase) ||
 		filepath.Base(manifest.ActiveDatabase) != manifest.ActiveDatabase ||
 		manifest.ActiveDatabase != fmt.Sprintf("history-v%d.sqlite", manifest.RecordingSchemaVersion) {

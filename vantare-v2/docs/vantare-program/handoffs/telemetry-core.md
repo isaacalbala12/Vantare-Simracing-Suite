@@ -16,10 +16,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ISA-102 / TC-06B:
-  `6aa46f17a613bd85b6eafbf22db5a7a70b527a00`.
+- Base de ISA-103 / TC-06C:
+  `8683f036bc1169be2e27ea50982ebf86af369bed`.
 - Rama:
-  `vantareapp/isa-102-tc-06b-recordingsink-sesiones-y-recuperacion`.
+  `vantareapp/isa-103-tc-06c-replay-raw-canonico-e-historico`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -33,6 +33,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-05C ISA-41 y TC-06A ISA-101: cerrados en la base aprobada de ISA-102.
 - TC-06B ISA-102: implementación completa y tercera review `ACCEPT` sin
   P0/P1/P2/P3 conocidos. No hay wiring productivo.
+- TC-06C ISA-103: dos reviews finales `ACCEPT`, P0/P1/P2/P3 = 0; los hallazgos
+  iniciales y los tres casos límite posteriores quedaron corregidos y están
+  cubiertos por regresiones repetidas.
+  Replay permanece exclusivamente en tests/harness y migraciones productivas
+  no tienen pasos mientras v1 sea el único schema real. El test heredado de
+  cancelación REST dejó de usar el ticker productivo y pasa x100 de forma
+  determinista; el runtime LMU no cambió.
 - TC-07–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -161,13 +168,14 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-40 / TC-05B, re-review `ACCEPT` |
 | Cerradas en la base ISA-102 | ISA-41 / TC-05C e ISA-101 / TC-06A |
 | Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
-| Pendientes | ISA-103–117 e ISA-87 según dependencias |
+| Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
+| Pendientes | ISA-104–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-102 con commit/push y PR draft apilada sobre ISA-101; actualizar
-Linear a `In Review` y después iniciar secuencialmente ISA-103 / TC-06C. No
-hacer wiring productivo ni promoción.
+Entregar ISA-103 con commit/push y PR draft apilada sobre ISA-102. Después
+iniciar secuencialmente ISA-104 / TC-06D desde ese commit. No hacer wiring
+productivo ni promoción.
 
 ## Gate final
 
@@ -177,7 +185,8 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-30, ISA-102 / TC-06B implementada sobre
-`6aa46f17a613bd85b6eafbf22db5a7a70b527a00`. RecordingSink, SQLite privado,
-reader, manifest, fallos, recovery, privacidad y packaging listos para review
-independiente; sin wiring productivo ni entrega remota.
+2026-07-30, ISA-103 / TC-06C cerrada técnicamente sobre
+`8683f036bc1169be2e27ea50982ebf86af369bed`. Dos reviews finales independientes
+emitieron `ACCEPT` con P0/P1/P2/P3 = 0. Replay raw/canónico/histórico,
+compatibilidad futura y motor de migración COW verificados; sin wiring
+productivo, schema v2 ficticio ni promoción.

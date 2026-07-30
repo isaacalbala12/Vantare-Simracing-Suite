@@ -391,9 +391,13 @@ func TestDriverDoesNotPublishOrMutateRESTAfterCancellation(t *testing.T) {
 
 	beforePublish := make(chan struct{})
 	release := make(chan struct{})
+	ticks := &manualTicker{ticks: make(chan time.Time)}
 	driver := newTestDriver(config{
 		open: func() (memoryReader, error) { return &testReader{data: knownBuffer(t)}, nil },
 		rest: testRESTConfig(server, time.Unix(100, 0)),
+		newTicker: func(time.Duration) ticker {
+			return ticks
+		},
 		beforeRESTPublish: func() {
 			close(beforePublish)
 			<-release

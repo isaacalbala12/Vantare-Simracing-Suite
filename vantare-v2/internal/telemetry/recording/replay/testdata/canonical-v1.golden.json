@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "frames": [
+    {
+      "offsetNS": 0,
+      "epoch": 1,
+      "sequence": 1,
+      "vehicleCount": 1,
+      "factSequence": 1,
+      "factKind": 1
+    },
+    {
+      "offsetNS": 1000000000,
+      "epoch": 1,
+      "sequence": 2,
+      "vehicleCount": 1,
+      "factSequence": 2,
+      "factKind": 1
+    }
+  ]
+}

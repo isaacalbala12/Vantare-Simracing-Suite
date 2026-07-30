@@ -686,6 +686,30 @@ Contrato ejecutable de ISA-104 / TC-06D congelado:
   promoción. El trabajo se ejecutará en microcortes TDD D1–D7 y pasará review
   independiente de código, privacidad y arquitectura.
 
+Entrega del bloque backend ISA-104 (D1/D2/D3/D5/D6):
+
+- Diagnóstico genérico reemplazado por un DTO allowlist y preview JSON exacta
+  con SHA-256/tamaño. Tests adversariales cubren identidad, email, Steam ID,
+  tokens, rutas, URL, argumentos, notas y hotkeys.
+- Catálogo local nuevo bajo `internal/telemetry/diagnostics`: raíz fija del
+  backend, handles opacos, límites, orden determinista y estados current/
+  future/corrupt. Una sesión futura queda metadata-only y no abre SQLite.
+- El resumen inspecciona como máximo 4.096 registros, es cancelable y solo
+  publica presencia de campos y calidad agregada realmente persistida.
+- Raw capture temporal separada: opt-in, una activa, 5 Hz, 60/120 s,
+  64/128 MiB, 2 MiB por frame, retención de siete días, cola no bloqueante,
+  drops observables y estados terminales.
+- LMU añade un sanitizador reconstructivo y un tap privado en el único driver.
+  No existe segundo attach, wiring productivo ni modificación del manifest v1.
+- Alcance raw honesto: reproduce global+player consumidos por el parser Shared
+  Memory actual. No se presenta como replay de Spotter/grid; esa ampliación
+  queda para TC-07/TC-08 con señales demostradas.
+- Focales repetidos, Telemetry Core y `internal/app/...`: PASS. Vet/fuzz/bench
+  focales del worker: PASS. Race sigue no disponible sin GCC; vet LMU conserva
+  dos avisos `unsafe.Pointer` heredados. Wails aún no aplica porque falta D4.
+- Backend queda sin commit para dos reviews read-only independientes antes de
+  implementar UI. No hay merge, promoción ni sincronización Linear.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

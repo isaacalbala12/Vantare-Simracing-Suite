@@ -82,7 +82,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | cuatro findings corregidos; segunda review independiente pendiente |
+| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | segunda review `ACCEPT`; entrega Git pendiente |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
 
@@ -205,6 +205,17 @@ Corrección recibida:
   build y `git diff --check` pasan. Persisten únicamente los avisos heredados
   de `.eslintignore` y tamaño de chunk.
 - No hay commit, push, PR, Linear ni promoción. Falta re-review independiente.
+
+Segunda review independiente: `ACCEPT`, sin P0-P3 nuevos o pendientes.
+
+- Reprodujo restauración del full con nueva revisión, rechazo de timestamp
+  contradictorio, extensiones aditivas, límites duros/incorrectos y ambos
+  fallos de lifecycle de listeners.
+- Confirmó que campos obligatorios, versiones futuras, tipos inválidos, claves
+  reservadas y prototype pollution continúan cerrados.
+- TypeScript focal 36/36, lint focal, transporte Go x20, proyecciones Go,
+  frontend TypeScript/build y diff-check pasan.
+- Playwright sigue sin aplicar porque el corte no expone ninguna UI.
 
 ### TC-06A — decisión de almacenamiento histórico
 

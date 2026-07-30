@@ -411,6 +411,24 @@ Cuarta review independiente: `ACCEPT`, cero P0-P3.
 - TC-06B queda habilitada únicamente como siguiente rama apilada sobre
   `6aa46f1`, preservando los gates deferidos del ADR.
 
+### TC-06B — RecordingSink, sesiones y recuperación
+
+Ejecución iniciada:
+
+- Linear ISA-102 está `In Progress`.
+- Rama exacta:
+  `vantareapp/isa-102-tc-06b-recordingsink-sesiones-y-recuperacion`.
+- Worktree limpio `C:\tmp\vantare-isa102\vantare-v2`, base exacta ISA-101
+  `6aa46f17a613bd85b6eafbf22db5a7a70b527a00`.
+- Alcance cerrado: store/coordinator/manifest/recovery del ADR 0005, mapping a
+  payloads históricos allowlisted, cola acotada, checkpoints, fault injection,
+  retención/crecimiento y packaging Windows/licencias.
+- Fuera de alcance: UI, MCAP productivo, replay, DuckDB, raw real, Strategy y
+  cambios al reducer.
+- Gates: live nunca bloquea; no hay drop silencioso; todos los fallos dejan
+  estado `incomplete`; recovery preserva original; RPO y presupuesto de commit
+  se demuestran con la implementación real.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

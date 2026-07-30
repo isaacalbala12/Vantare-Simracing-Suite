@@ -69,6 +69,37 @@ permanecen apilados en ramas publicadas con PR draft.
    dependencias.
 5. Actualizar este registro inmediatamente después de cada review/cierre.
 
+## Contratos preparados para los siguientes workers
+
+### TA-04 — progreso, distancia y mapa
+
+- Base obligatoria: TA-03 `15354dc`.
+- Primero caracterizar un DuckDB LMU completado mediante copia temporal
+  read-only; nunca abrir el archivo con WAL.
+- Demostrar o rechazar explícitamente continuidad, resets, origen y relación
+  entre `Lap Dist`, `Total Dist`, GPS y los eventos de vuelta.
+- Solo después crear contrato/golden sanitizado para progreso monotónico,
+  discontinuidad, longitud incompatible y cursor.
+- Sin fallback temporal, mapa sintético, delta, UI, reader productivo ni
+  dependencia DuckDB.
+
+### ENG-04 — runner y oráculo de replays
+
+- Base obligatoria: ENG-03 `06dbfd8`.
+- Runner determinista, reloj virtual y snapshots versionados propios.
+- Fixtures mínimas: identidad/epoch, missing/stale/unsupported, cero legítimo,
+  cambio de sesión/coche/piloto y capacidades parciales.
+- El oráculo comprueba resultados observables; no reproduce la implementación.
+- Sin scheduler/policy, Spotter, audio, STT, Pit, UI o lectura LMU directa.
+
+### TC-05C — contratos TypeScript y observabilidad
+
+- Base obligatoria: TC-05B una vez aceptada.
+- Espejo TypeScript versionado de los cuatro productos y del transporte.
+- Harness que demuestre full/resync, secuencia, status y facts separados,
+  reconexión, gaps y diagnóstico sin payload sensible.
+- Sin composición productiva, UI final ni imports de dominios internos.
+
 ## Bloqueos operativos actuales
 
 - La integración de Linear no está expuesta en esta sesión de Codex. Los

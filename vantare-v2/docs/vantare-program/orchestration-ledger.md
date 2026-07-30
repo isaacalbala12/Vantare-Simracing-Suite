@@ -82,7 +82,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación terminada; review independiente pendiente |
+| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | review rechazada; corrección acotada de 2 P1 y 2 P2 pendiente |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
 
@@ -171,6 +171,25 @@ Implementación recibida, aún sin commit:
   500 KiB y mensajes `AbortError` de teardown de happy-dom con salida correcta.
 - Siguiente gate: review independiente de paridad Go/TypeScript, aislamiento,
   cursor/epoch, resync/facts, límites, ownership y lifecycle de listeners.
+
+Primera review independiente: `REJECT`.
+
+- P1: si `statusRevision` avanza, se oculta el snapshot y después llega un full
+  retenido con el mismo epoch/sequence/payload y la nueva revisión, el store lo
+  trata como duplicado pero no vuelve a exponerlo. Debe publicar el estado
+  coherente y añadir una regresión observable.
+- P1: `requireExactKeys` rompe la evolución aditiva al rechazar campos
+  desconocidos opcionales en envelopes y status. Debe validar estrictamente
+  los campos conocidos e ignorar extensiones seguras dentro de la versión.
+- P2: el parámetro público de tamaño permite ampliar el máximo contractual de
+  256 KiB. Solo puede reducirse para tests; valores mayores o inválidos deben
+  quedar acotados o rechazados.
+- P2: si la segunda o tercera suscripción de `attach` falla, los listeners ya
+  montados quedan activos. El montaje debe ser transaccional y el teardown debe
+  intentar retirar todos los listeners aunque uno falle.
+- La review reprodujo los cuatro casos. Las suites existentes, build, lint
+  focal, transporte Go x20 y proyecciones Go pasaron, por lo que no hay otros
+  findings P0-P3 informados.
 
 ### TC-06A — decisión de almacenamiento histórico
 

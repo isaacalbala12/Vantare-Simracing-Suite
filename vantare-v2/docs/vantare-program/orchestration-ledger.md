@@ -378,6 +378,18 @@ Fix de segunda review completado; tercera review pendiente:
   boundaries, Telemetry Core, Go global, scope, sanitización y diff-check
   pasan.
 
+Tercera review independiente: `NEEDS FIXES` por un único P2.
+
+- Los cuatro cierres solicitados quedaron correctos y no aparecen P0, P1 ni
+  P3 nuevos.
+- P2: el decoder binario de `RecordingFactV1` valida longitud/header pero no
+  exige que los bytes reservados 57..159 permanezcan en cero. Podría aceptar
+  datos ocultos fuera de la allowlist.
+- Fix mínimo ordenado: rechazar cualquier reservado no cero y añadir una
+  regresión binaria que muta un fact válido y exige el error tipado.
+- El revisor reprodujo focal x5 y x100, tags, vet, Telemetry Core, faults,
+  48/48 filas, 16 digests, 12 agregados, gofmt y whitespace; revisión read-only.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

@@ -83,7 +83,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
 | Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación activa: contratos TypeScript y harness de observabilidad |
-| Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | inventario de replay, reloj, fixtures y oráculo activo; sin código |
+| Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre la cadena TC-05 | auditoría de almacenamiento, packaging y benchmark activo; sin dependencias |
 
 ## Próximas acciones exactas
@@ -121,6 +121,24 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
   cambio de sesión/coche/piloto y capacidades parciales.
 - El oráculo comprueba resultados observables; no reproduce la implementación.
 - Sin scheduler/policy, Spotter, audio, STT, Pit, UI o lectura LMU directa.
+
+Preparación cerrada:
+
+- Crear paquete nuevo `internal/engineer/replay/observation`; no adaptar
+  `telemetry.Frame`, replay/simulator legacy ni ejecutar `core.Runtime`.
+- Única entrada: `ObservationSnapshotV1`. Runner síncrono sin I/O, goroutines,
+  tiempo real ni sleeps; reloj virtual y trazas versionadas.
+- Sequence puede saltar por latest-wins, pero no duplicarse/regresar; epoch no
+  regresa. Evento/sesión/coche solo cambian con epoch superior. Equipo/piloto
+  pueden cambiar dentro del epoch y cancelan pendientes.
+- Fixtures: cero válido, pérdida de calidad, capabilities parciales,
+  latest-wins, epoch reset, boundaries de identidad y negativos.
+- Goldens propios y revisados, nunca generados desde el SUT; IDs sintéticos,
+  cero PII/rutas/datos LMU.
+- Budgets: 16.384 pasos, IDs 128 bytes, ownership defensivo, fuzz, determinismo
+  x100 y benchmark de 10.000 pasos.
+- El inventario legacy se conserva sin reutilizar ni borrar; este corte prepara
+  el oráculo, no demuestra todavía ningún monitor.
 
 ### TC-05C — contratos TypeScript y observabilidad
 

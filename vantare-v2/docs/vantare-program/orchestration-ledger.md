@@ -322,6 +322,28 @@ Primera review independiente: `NEEDS FIXES`.
   `RecordingPayloadV1` allowlisted con golden negativo; migración por manifest;
   afirmaciones MCAP y first/subsequent honestas; README reconciliado.
 
+Fix de primera review completado; re-review pendiente:
+
+- `RecordingPayloadV1` queda separado de Core, versionado y allowlisted, con
+  golden SHA-256 y negativos para nombres, equipos, IDs remotos/Steam, rutas y
+  metadata abierta.
+- `accepted` es ahora explícitamente volátil. El manifest `recording` se
+  persiste antes del primer accept; el watermark persistido y el commit son
+  fronteras distintas; todo estado no `complete` recupera como `incomplete`.
+- Ocho probes reproducen cuatro límites de crash para SQLite y framing,
+  incluido DB en cursor 240 con manifest/watermark en 200.
+- La migración usa nombres de DB versionados y conmuta únicamente el manifest;
+  rollback conserva reader y dependencia mientras existan sesiones antiguas.
+- MCAP queda descrito como candidato condicionado y la recuperación upstream
+  como no verificada localmente.
+- Los resultados usan `first/subsequent`, las medianas excluyen la primera
+  pasada y la fixture sintética no se presenta como footprint/retención.
+- README, plan y handoff se reconciliaron. Tests por tags x5, vet, 48 filas/16
+  grupos/12 agregados, crash boundaries, Telemetry Core, Go global y
+  diff-check pasan.
+- Siguen correctamente deferidos a TC-06B: disk-full, ACL, writer lento,
+  coordinator/RPO productivo, mapping real, retención y empaquetado SQLite.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

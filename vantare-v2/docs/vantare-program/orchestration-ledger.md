@@ -596,6 +596,35 @@ Primera review de implementación: `REQUEST_CHANGES`.
   Windows sin CGO PASS. Los checks se repetirán después de cerrar todos los
   findings.
 
+Segunda review de implementación: `REQUEST_CHANGES`.
+
+- Los 10 findings iniciales quedaron cerrados o cubiertos, pero la re-review
+  encontró tres bordes adicionales: un fact de un chunk no checkpointed podía
+  hacerse visible por apuntar a un snapshot antiguo; un ratio coprimo grande
+  podía desbordar durante la multiplicación intermedia; y Unix epoch se usaba
+  como centinela de timestamp ausente.
+- Los tres quedaron corregidos con regresiones: visibilidad de facts por chunk
+  reconocido por el manifest y causalidad global, `bits.Mul64/Div64` para
+  escalado racional y booleano explícito de timestamp inicializado.
+- Focal replay x20 e histórico x20 pasan. El diff vuelve a quedar congelado
+  para re-review final; no hay entrega ni promoción todavía.
+
+Tercera revisión adversarial de ISA-103: `REQUEST_CHANGES`.
+
+- Repitió los tres bordes ya corregidos de visibilidad por checkpoint, ratio
+  racional grande y Unix epoch, y añadió dos P2 reales.
+- La metadata confundía build del simulador con build de Vantare; ahora son
+  campos separados y el replay histórico liga `AppBuild` al manifest.
+- La regresión LMU mezclaba una captura Shared Memory sanitizada con payloads
+  REST sintéticos bajo una única procedencia. Ahora son fixtures separadas:
+  captura sanitizada para Shared Memory y fixture `synthetic` para REST.
+- El guard global de replay ignoraba Go generado aunque esos archivos sí se
+  compilan. El guard harness-only incluye ahora generados y una regresión
+  demuestra el rechazo.
+- Replay x20, histórico/migraciones x20, guard arquitectónico x20 y parsers /
+  cancelación LMU x100 pasan tras las correcciones. El corte queda congelado
+  para la re-review final; sin commit de producto, PR ni promoción todavía.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

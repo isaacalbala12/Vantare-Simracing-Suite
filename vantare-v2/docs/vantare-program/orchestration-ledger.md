@@ -82,7 +82,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | review rechazada; corrección acotada de 2 P1 y 2 P2 pendiente |
+| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | cuatro findings corregidos; segunda review independiente pendiente |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A preparación / ISA-101 | read-only sobre TC-05B `ebb0bd7` | preparación terminada; decisión condicionada, esquema y benchmark reproducible listos; sin dependencias |
 
@@ -190,6 +190,21 @@ Primera review independiente: `REJECT`.
 - La review reprodujo los cuatro casos. Las suites existentes, build, lint
   focal, transporte Go x20 y proyecciones Go pasaron, por lo que no hay otros
   findings P0-P3 informados.
+
+Corrección recibida:
+
+- Un full idéntico vuelve a exponer el snapshot después de avanzar
+  `statusRevision`; una marca temporal incoherente no se acepta como duplicado.
+- Envelopes y status toleran extensiones JSON aditivas seguras sin relajar
+  campos obligatorios, versiones, tipos ni claves prohibidas.
+- El límite público queda siempre acotado a 256 KiB; el override solo reduce y
+  los valores inválidos se rechazan.
+- El montaje de listeners es transaccional y el teardown intenta ejecutar todos
+  los removers aunque uno falle.
+- Evidencia fresca: 36/36 focales, 1.887/1.887 tests frontend, lint focal,
+  build y `git diff --check` pasan. Persisten únicamente los avisos heredados
+  de `.eslintignore` y tamaño de chunk.
+- No hay commit, push, PR, Linear ni promoción. Falta re-review independiente.
 
 ### TC-06A — decisión de almacenamiento histórico
 

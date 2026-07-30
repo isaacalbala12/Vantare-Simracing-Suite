@@ -10,6 +10,34 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-103 / TC-06C (2026-07-30):
+- Implementado replay separado raw, canónico e histórico sobre ISA-102.
+- Player síncrono con step, velocidad racional, clock determinista, ownership
+  en retry y fixtures versionadas con procedencia/SHA-256.
+- Raw atraviesa parsers Shared Memory y REST reales de LMU mediante fixtures
+  separadas por procedencia: captura sanitizada para Shared Memory y datos
+  sintéticos para REST. La metadata separa build de simulador y build de
+  Vantare. Canónico atraviesa reducer, coordinador, derive y las cuatro
+  proyecciones con golden común.
+- Reader histórico SQLite usa snapshot read-only limitado al último checkpoint,
+  páginas acotadas, orden causal, cursores separados, validación completa de
+  chunks y detección de hechos huérfanos.
+- Manifest actual con schema futuro es metadata-only y nunca abre DB/WAL/SHM.
+- Motor COW unidireccional con activación CAS; catálogo productivo vacío hasta
+  que exista un schema v2 real. Sin driver live, wiring, UI, dependencia o
+  promoción.
+- El test heredado de cancelación REST usaba el ticker real y era
+  load-sensitive. Ahora inyecta el `manualTicker` existente y pasa x100; no se
+  modificó runtime productivo del driver.
+- Dos reviews finales independientes cerraron `ACCEPT` con
+  P0/P1/P2/P3 = 0. Telemetry Core completa, suite Go global serial, vet focal,
+  regresiones repetidas y build Wails Windows pasan. La suite global paralela
+  conserva únicamente la contención Windows heredada de settings, fuera del
+  diff.
+- Guía y evidencia:
+  `docs/telemetry-core/replay-migrations-isa-103.md` y
+  `docs/telemetry-core/evidence/isa-103-replay/`.
+
 Nota ISA-102 / TC-06B (2026-07-30):
 - Implementado RecordingSink neutral, mapper cerrado y adaptador privado
   SQLite modernc sobre `6aa46f17a613bd85b6eafbf22db5a7a70b527a00`.

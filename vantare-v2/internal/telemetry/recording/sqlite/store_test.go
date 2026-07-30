@@ -986,6 +986,57 @@ func TestFutureManifestIsMetadataOnlyAndNeverOpenedOrRecovered(t *testing.T) {
 	if _, err := store.RecoverCopy(context.Background(), ref); !errors.Is(err, ErrFutureManifest) {
 		t.Fatalf("RecoverCopy() error = %v, want future manifest", err)
 	}
+	if _, err := store.OpenHistoricalReplay(context.Background(), ref); !errors.Is(err, ErrFutureManifest) {
+		t.Fatalf("OpenHistoricalReplay() error = %v, want future manifest", err)
+	}
+}
+
+func TestFutureSchemaUnderCurrentManifestIsMetadataOnly(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	ref, _ := testSession(root)
+	sessionDir := filepath.Join(ref.Root, ref.SessionID)
+	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	document := map[string]any{
+		"manifestVersion":        recording.ManifestVersionV1,
+		"recordingSchemaVersion": recording.RecordingVersionV1 + 1,
+		"activeDatabase":         "history-v2.sqlite",
+		"sessionID":              ref.SessionID,
+		"simulatorID":            "lmu",
+		"appBuild":               "future-build",
+		"integrityState":         recording.IntegrityComplete,
+		"accessMode":             recording.AccessReadOnly,
+		"startedAtUTC":           testTime(0),
+		"futureField":            "must-not-be-interpreted",
+		"rawCapture":             map[string]any{"state": "disabled"},
+	}
+	encoded, err := json.Marshal(document)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionDir, manifestName), encoded, 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	store := New(Options{})
+	summary, err := store.Inspect(context.Background(), ref)
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if summary.CountsKnown || summary.Manifest.RecordingSchemaVersion != 2 ||
+		summary.Manifest.AccessMode != recording.AccessReadOnly {
+		t.Fatalf("summary = %#v", summary)
+	}
+	if _, err := store.OpenReader(context.Background(), ref); !errors.Is(err, ErrFutureManifest) {
+		t.Fatalf("OpenReader() error = %v, want future manifest", err)
+	}
+	if _, err := store.OpenHistoricalReplay(context.Background(), ref); !errors.Is(err, ErrFutureManifest) {
+		t.Fatalf("OpenHistoricalReplay() error = %v, want future manifest", err)
+	}
+	if _, err := store.RecoverCopy(context.Background(), ref); !errors.Is(err, ErrFutureManifest) {
+		t.Fatalf("RecoverCopy() error = %v, want future manifest", err)
+	}
 }
 
 func writeFutureManifest(

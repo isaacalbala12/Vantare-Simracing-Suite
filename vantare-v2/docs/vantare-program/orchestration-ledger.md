@@ -53,7 +53,7 @@ permanecen apilados en ramas publicadas con PR draft.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | implementación local; review independiente activo |
+| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | review `REJECT`: 2 P1 y 3 P2; corrección focal activa |
 | Engineer | ENG-03 / ISA-127 | `C:\tmp\vantare-isa127\vantare-v2` sobre merge `b5d69e7` de TC-05A + ENG-02 | review `REJECT`: un P1 en `GroupStandings`; corrección focal activa |
 
 ## Próximas acciones exactas
@@ -86,3 +86,12 @@ terminaba rechazado por conflicto de capability. Se ordenó un fix mínimo que
 unifique la regla y añada una regresión del flujo completo. El resto de la
 review quedó limpio: merge, versión, ownership, identidad, latest-wins,
 calidad, manifest, golden y límites de alcance.
+
+TC-05B fue rechazada por dos P1 y tres P2: faltaba aislar e identificar los
+cuatro productos; un epoch antiguo podía reemplazar al vigente; el adapter de
+hechos no detectaba gaps; el delta retenido conservaba un sello inválido; y
+faltaban regresiones del perímetro. Se ordenó un fix acotado con `ProductID` y
+hub ligado al producto, epoch monotónico, continuidad de hechos, reseal y tests
+de routing simultáneo, límites, loopback IPv4/IPv6 y cierre concurrente. Los
+checks focales, Telemetry Core, vet, race y fronteras de imports del primer
+review sí pasaron.

@@ -363,6 +363,21 @@ Segunda review independiente: `NEEDS FIXES`.
 - El revisor repitió tests x5, vet, Telemetry Core, faults, agregados, 48/48
   filas y diff-check. El worktree permaneció read-only.
 
+Fix de segunda review completado; tercera review pendiente:
+
+- `RecordingFactV1` queda tipado, versionado y allowlisted, con codecs binario
+  y JSON, golden y negativos equivalentes a observed.
+- Los tests de privacidad parten ahora de JSON válido y exigen
+  `UnknownRecordingFieldError` con el nombre exacto del campo rechazado.
+- `integrity_state` y `access_mode` quedan separados; `read_only` no degrada
+  una sesión íntegra `complete`.
+- `before_append` declara `volatile_accepted=200`; los límites posteriores
+  declaran 240, conforme al momento real de aceptación.
+- Throughput, agregados, faults, tamaños y documentación se regeneraron.
+  Focal x5, tags combinados, vet, 48 filas/16 digests/12 agregados, ocho
+  boundaries, Telemetry Core, Go global, scope, sanitización y diff-check
+  pasan.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

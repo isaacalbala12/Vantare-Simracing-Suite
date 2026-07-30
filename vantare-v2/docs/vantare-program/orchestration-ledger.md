@@ -640,6 +640,25 @@ Cierre técnico de ISA-103 / TC-06C:
   en esta sesión.
 - Siguiente dependencia: ISA-104 / TC-06D desde el commit anterior.
 
+Inicio de ISA-104 / TC-06D:
+
+- Rama:
+  `vantareapp/isa-104-tc-06d-inspector-privacidad-y-export-diagnostico`.
+- Worktree limpio: `C:\tmp\vantare-isa104\vantare-v2`.
+- Base exacta: ISA-103
+  `8b89c0adafed46a3c2c42cd52c858c8c185aa8bf`.
+- Alcance: inspector local de sesiones/manifest/calidad, hardening de
+  diagnósticos, preview exacta antes de copiar/exportar y raw capture
+  diagnóstica opt-in con límites.
+- Fuera de alcance: Telemetry Analysis, Strategy, upload, sharing, fórmulas,
+  gráficas de conducción, wiring productivo del nuevo core y dependencias.
+- Dos auditorías read-only paralelas revisan privacidad/export y reutilización
+  UI/contratos antes de congelar el miniplan. Ningún subagente edita.
+- Baseline: diagnósticos Go x10 PASS y Settings/TelemetryPage frontend 31/31
+  PASS tras instalar dependencias desde el lockfile.
+- Linear ISA-104 sigue pendiente de sincronización porque el conector no está
+  expuesto en esta sesión.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

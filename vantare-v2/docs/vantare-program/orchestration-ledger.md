@@ -30,6 +30,7 @@ permanecen apilados en ramas publicadas con PR draft.
 | Telemetry Analysis | TA-03 / ISA-126 | `vantareapp/isa-126-ta-03-caracterizacion-duckdb-lmu-y-modelo-historico-canonico` / `15354dc` | #33 | re-review `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 | Engineer | ENG-01 / ISA-123 | `vantareapp/isa-123-eng-01-auditoria-clean-room-y-especificacion-funcional` / `7a1cd70` | #28 | `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 | Engineer | ENG-02 / ISA-125 | `vantareapp/isa-125-eng-02-contratos-engineerprojection-capabilities-y-envelope` / `df0c202` | #31 | `ACCEPT`, sin P0–P3 | cerrada técnicamente |
+| Engineer | ENG-03 / ISA-127 | `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a` / `06dbfd8` | #34 | re-review `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 | Telemetry Core | TC-04D / ISA-38 | `vantareapp/isa-38-tc-04d-migracion-gradual-de-derivaciones-live` / `0883651` | #29 | `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 | Telemetry Core | TC-05A / ISA-39 | `vantareapp/isa-39-tc-05a-proyecciones-versionadas-por-producto` / `efcc77c` | #32 | `ACCEPT`, sin P0–P3 | cerrada técnicamente |
 
@@ -54,14 +55,13 @@ permanecen apilados en ramas publicadas con PR draft.
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
 | Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | review `REJECT`: 2 P1 y 3 P2; corrección focal activa |
-| Engineer | ENG-03 / ISA-127 | `C:\tmp\vantare-isa127\vantare-v2` sobre merge `b5d69e7` de TC-05A + ENG-02 | P1 corregido; re-review independiente pendiente |
 
 ## Próximas acciones exactas
 
 1. Resolver todos los findings razonables de TC-05B, entregar commit/push/PR
    draft apilada sobre TC-05A y actualizar Linear.
-2. Resolver todos los findings razonables de ENG-03, entregar commit/push/PR
-   draft apilada sobre TC-05A y actualizar Linear.
+2. Abrir ENG-04 sobre ENG-03 para caracterizar mediante replays una familia de
+   monitores antes de migrarla; no inventar señales ni borrar el frame legacy.
 3. Abrir TA-04 sobre TA-03. Primero debe producir evidencia reproducible de
    `Lap Dist`, `Total Dist` y/o GPS; si no existe, debe degradar honestamente y
    no implementar mapa/delta sintéticos.
@@ -98,5 +98,6 @@ review sí pasaron.
 
 El fix de ENG-03 alineó el proyector y el adaptador: `LapNumber` por sí solo
 declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y
-verifica grupo exacto, presencia, frescura y usabilidad. Focal x20,
-proyecciones, vet y diff-check pasaron; queda re-review independiente.
+verifica grupo exacto, presencia, frescura y usabilidad. La re-review final fue
+`ACCEPT` sin P0–P3. Commit `06dbfd8`, push y PR draft #34 correctos; sin
+promoción. Linear queda pendiente de sincronización por ausencia del conector.

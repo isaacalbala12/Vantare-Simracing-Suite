@@ -580,6 +580,22 @@ Auditorías de diseño completadas:
 - `core.RecordingSink` está huérfano, pero su retirada queda fuera de ISA-103
   para no mezclar deuda no relacionada con este corte.
 
+Primera review de implementación: `REQUEST_CHANGES`.
+
+- Conteo inicial: P0 0, P1 5, P2 5. El corte no se acepta ni se entrega.
+- Ya quedaron corregidos y cubiertos por regresión: rango temporal por grupo
+  causal (nunca fact huérfano), transición canónica de sesión con
+  `SessionEnded` del header anterior, facts canónicos sin batch, identidad
+  exacta header/value, hash fijo de la captura LMU y guard harness-only sobre
+  todo el módulo.
+- Siguen en corrección: límite histórico según el último checkpoint del
+  manifest, activación de migración con comparación atómica de origen/destino,
+  identidad única y fija del reader, verificación de columna fact/payload,
+  integridad de chunks, binding de metadata y pacing racional sin drift.
+- Gates frescos antes de la review: Telemetry Core completa PASS y build Wails
+  Windows sin CGO PASS. Los checks se repetirán después de cerrar todos los
+  findings.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

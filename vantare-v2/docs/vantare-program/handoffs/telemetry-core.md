@@ -17,9 +17,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
 - Base de ejecución:
-  `efcc77c60f173a160e8c186f54ccfb43da5be692`, entrega ISA-39 / TC-05A.
+  `ebb0bd7abc4b2614665a1918a94cc068f6c92edc`, entrega ISA-40 / TC-05B.
 - Rama:
-  `vantareapp/isa-40-tc-05b-wails-y-sse-con-full-snapshot-sequence-y-resync`.
+  `vantareapp/isa-41-tc-05c-contratos-typescript-y-harness-de-observabilidad`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -30,7 +30,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   aceptadas sin P0/P1/P2/P3.
 - TC-05B ISA-40: cerrado técnicamente tras re-review `ACCEPT` sin
   P0/P1/P2/P3.
-- TC-05C–TC-09: pendientes.
+- TC-05C ISA-41: implementación completa; pendiente review independiente.
+- TC-06–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -83,6 +84,15 @@ de `unsafe.Pointer` en readers Win32.
   Telemetry, guard ADR, frontend 1851/1851, build y suite global Go PASS.
   Benchmark full de 64 vehículos: 258–303 µs/op, ~128,7 KiB/op y
   1.964–1.965 allocs/op.
+- ISA-41: decoder/store TypeScript compartido para cuatro productos, payloads
+  opacos y versión v1. Status/snapshot coherentes, full de resync, delta
+  continuo, facts con cursor independiente y teardown compartido. Harness
+  explícito sin ruta productiva; golden Go consumidos por tests. Un fixture
+  compartido fija rutas, eventos, estados y límites en Go y TypeScript. Focal
+  36/36, frontend 1.887/1.887, build, lint focal, TC-05B Go x20 y proyecciones
+  Go y suite global Go PASS. El primer review quedó corregido: reframe
+  coherente tras cambio de status, extensiones seguras, cap duro de 256 KiB y
+  attach/teardown transaccionales; pendiente re-review independiente.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
@@ -98,14 +108,14 @@ de `unsafe.Pointer` en readers Win32.
 | En revisión | ISA-38 / TC-04D, implementación aceptada técnicamente |
 | Cerrada técnicamente | ISA-39 / TC-05A, re-review `ACCEPT` |
 | Cerrada técnicamente | ISA-40 / TC-05B, re-review `ACCEPT` |
-| Siguiente | ISA-41 / TC-05C |
-| Pendientes | ISA-41, ISA-101–117 e ISA-87 según dependencias |
+| En review técnico | ISA-41 / TC-05C |
+| Pendientes | ISA-101–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-40 / TC-05B con commit/push/PR draft y Linear `In Review`.
-Después ISA-41 / TC-05C debe añadir decoder/store TypeScript y harness
-compartido sin migrar todavía pantallas productivas.
+Ejecutar re-review independiente de ISA-41 / TC-05C y corregir todos los
+hallazgos razonables restantes. Después entregarla con commit/push/PR draft y Linear
+`In Review`, sin migrar pantallas productivas ni promover ramas.
 
 ## Gate final
 
@@ -115,5 +125,6 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-30, ISA-40 / TC-05B cerrada técnicamente tras tres pasadas de review;
-`ACCEPT` sin P0/P1/P2/P3. Pendiente entrega operativa; sin promoción.
+2026-07-30, ISA-41 / TC-05C implementada sobre TC-05B. Decoder/store, harness,
+golden y matriz de checks completos; cuatro findings del primer review
+corregidos y pendiente re-review independiente.

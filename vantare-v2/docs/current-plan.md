@@ -45,6 +45,31 @@ Nota ISA-40 / TC-05B (2026-07-29):
 - Estado: preparado para commit/push, PR draft apilada sobre TC-05A y Linear
   `In Review`; sin promoción. ISA-41 / TC-05C sigue siendo el siguiente corte.
 
+Nota ISA-41 / TC-05C (2026-07-30):
+- Añadido un único decoder/store TypeScript puro para los envelopes de
+  Overlay, Engineer, Strategy y Analysis. Valida nombres/rutas namespaced,
+  versión v1, full/delta, epoch/sequence, revisión de status, facts separados,
+  límite de 256 KiB y ausencia de raw/PII.
+- Status y snapshot nunca se exponen con revisiones distintas. Full resuelve
+  late join/gap/reconnect; delta exige continuidad; facts conservan cursor
+  independiente y un gap exige resync explícito. Teardown de listeners es
+  compartido e idempotente.
+- Correcciones del primer review: un full semánticamente idéntico puede
+  reexponer el snapshot tras avanzar `statusRevision`, pero no puede cambiar
+  silenciosamente `capturedAt`; las extensiones JSON seguras son compatibles
+  sin relajar campos requeridos, versión o claves prohibidas; el límite
+  configurable solo puede reducir el máximo duro de 256 KiB; y el montaje y
+  desmontaje de listeners son transaccionales incluso si una suscripción o
+  cleanup falla.
+- El harness no productivo reproduce status, full, delta, gap, facts y
+  reconnect con diagnósticos sanitizados. Los tests consumen directamente los
+  cuatro golden Go v1; no se duplican payloads ni se migran pantallas.
+- Guía: `docs/telemetry-core/typescript-projection-contract.md`. Evidencia:
+  focal 36/36, frontend completo 285 archivos/1.887 tests, build, lint focal,
+  TC-05B Go x20, cuatro proyecciones Go y suite Go global PASS. Pendiente
+  re-review independiente antes de entregar ISA-41; sin wiring, persistencia,
+  dependencia nueva o promoción.
+
 Nota ISA-39 / TC-05A (2026-07-28):
 - Definidas proyecciones Go v1 puras e independientes para Overlay, Engineer,
   Strategy y Analysis. Consumen `derive.FinalState`: el guard y ADR fijan

@@ -1,0 +1,44 @@
+{
+  "projectionVersion": 1,
+  "maxPayloadBytes": 262144,
+  "statusStates": [
+    "stopped",
+    "detecting",
+    "connecting",
+    "live",
+    "degraded",
+    "stale",
+    "error",
+    "stopping"
+  ],
+  "products": {
+    "overlay": {
+      "projectionEvent": "telemetry:overlay:projection",
+      "statusEvent": "telemetry:overlay:status",
+      "factEvent": "telemetry:overlay:fact",
+      "projectionRoute": "/telemetry/overlay/projection",
+      "factsRoute": "/telemetry/overlay/facts"
+    },
+    "engineer": {
+      "projectionEvent": "telemetry:engineer:projection",
+      "statusEvent": "telemetry:engineer:status",
+      "factEvent": "telemetry:engineer:fact",
+      "projectionRoute": "/telemetry/engineer/projection",
+      "factsRoute": "/telemetry/engineer/facts"
+    },
+    "strategy": {
+      "projectionEvent": "telemetry:strategy:projection",
+      "statusEvent": "telemetry:strategy:status",
+      "factEvent": "telemetry:strategy:fact",
+      "projectionRoute": "/telemetry/strategy/projection",
+      "factsRoute": "/telemetry/strategy/facts"
+    },
+    "analysis": {
+      "projectionEvent": "telemetry:analysis:projection",
+      "statusEvent": "telemetry:analysis:status",
+      "factEvent": "telemetry:analysis:fact",
+      "projectionRoute": "/telemetry/analysis/projection",
+      "factsRoute": "/telemetry/analysis/facts"
+    }
+  }
+}

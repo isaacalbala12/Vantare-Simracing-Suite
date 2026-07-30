@@ -22,18 +22,19 @@ CrewChief, Pit Manager y wake word.
 
 ISA-123 completó la investigación primaria y una auditoría read-only del
 runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
-`ACCEPT` sin P0/P1/P2/P3: implementó el contrato específico de capabilities,
-calidad y límites de cancelación, pero todavía no proyecta datos ni cambia
-consumidores. TC-05A conserva la autoridad transversal sobre envelope,
-versionado, ownership, fan-out y puertos; ENG-03 realizará la adaptación
-explícita. El código legacy contiene lógica y
+`ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
+añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
+re-review independiente `ACCEPT` sin P0/P1/P2/P3. TC-05A conserva la autoridad transversal sobre envelope,
+versionado, ownership, fan-out y puertos. El código legacy contiene lógica y
 fixtures caracterizables, pero la ruta de producto arranca conectada al
 simulador, no recibe aún la proyección de Telemetry Core y no garantiza
 preempción de Spotter ni Pit transaccional. Por ello sigue sin ser confiable
 como beta. TC-08 migra la entrada; el producto vive aparte.
 
-- Rama activa: `vantareapp/isa-125-eng-02-contratos-engineerprojection-capabilities-y-envelope`.
-- Base: `7a1cd702bc1f50e13a3f351360e6a018d0bd7423` (ENG-01).
+- Rama activa:
+  `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a`.
+- Base: `efcc77c60f173a160e8c186f54ccfb43da5be692` (TC-05A).
+- Composición: merge local `b5d69e7` incorpora ENG-02 `df0c202`.
 - Promoción: ninguna.
 - Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
   Go PASS, race x10, vet, frontend build para embed e inventario de 34
@@ -41,6 +42,14 @@ como beta. TC-08 migra la entrada; el producto vive aparte.
   permanecen como historial, no como prueba de runtime. Una primera ejecución
   global expuso una intermitencia heredada del test de cancelación REST del
   driver LMU; focal x20 y repetición global pasaron.
+- Evidencia ENG-03: golden TC-05A + golden específico Engineer, contrato de
+  consumidor, capabilities, calidad, contradicciones e identidad. Focal x20,
+  projection, 31 paquetes Engineer, vet, race x10 y frontend build PASS.
+  Global conserva la contención Windows conocida de settings. Telemetry hizo
+  aflorar una ejecución load-sensitive heredada del teardown REST LMU; su test
+  aislado x20 pasa y el driver no forma parte del cambio. El único P1 de
+  review, capability standings ausente cuando solo `LapNumber` era usable,
+  quedó corregido con una regresión de flujo completo. Re-review `ACCEPT`.
 
 ## Decisiones
 
@@ -95,7 +104,8 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 - **P0 confirmado de honestidad:** servicio/UI arrancan conectados al simulador.
 - **P0:** no existe garantía de preempción audible ni de mensajes no caducados.
 - **P0:** Pit Manager carece de transacción y readback demostrados.
-- **P1:** no existe aún la proyección Engineer de Telemetry Core.
+- **P1 reducido:** existe proyección pura, pero aún no está cableada ni ha
+  migrado monitores legacy.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
 - **P2:** cobertura desigual en cuatro idiomas.
@@ -106,19 +116,19 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 |---|---|
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
-| Siguiente | ENG-03, payload y proyección pura desde Telemetry Core |
+| Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
+| Siguiente | ENG-04, characterization/replay parity de monitores según Linear |
 | Cutover | TC-08, sin absorber el proyecto de producto |
 
 ## Siguiente acción exacta
 
-Entregar commit/push/PR/Linear de ENG-02. ENG-03 debe adaptar el contrato
-transversal aprobado por TC-05A y añadir solo
-el payload y projector demostrables desde el snapshot final de Telemetry Core,
-con golden/replay y sin wiring productivo. No crear monitores antes de fijar
-señales. Isaac decide la promoción posterior a `nightly`, no el inicio del
-siguiente corte.
+Entregar ISA-127 con commit/push/PR draft y actualizar Linear. Después, ENG-04
+debe caracterizar antes de migrar una familia de monitores; no crear señales ni
+borrar el frame legacy. Isaac decide la promoción posterior a `nightly`.
 
 ## Última actualización
 
-2026-07-28, ISA-125 / ENG-02 cerrada técnicamente; review independiente
-`ACCEPT` sin P0/P1/P2/P3 y límites incoherentes corregidos fail-closed.
+2026-07-30, ISA-127 / ENG-03 cerrada técnicamente sobre TC-05A + ENG-02;
+re-review independiente `ACCEPT` sin P0/P1/P2/P3 tras corregir y probar el caso
+`LapNumber` como única señal standings. Pendiente entrega operativa, sin
+promoción.

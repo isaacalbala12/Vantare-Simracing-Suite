@@ -148,7 +148,9 @@ func capabilities(snapshot PayloadV1) []CapabilityGroup {
 	if projection.Available(snapshot.TrackName) || projection.Available(snapshot.SessionType) {
 		result = append(result, GroupSession)
 	}
-	if projection.Available(snapshot.Player.Position) || projection.Available(snapshot.Player.CompletedLaps) {
+	if projection.Available(snapshot.Player.LapNumber) ||
+		projection.Available(snapshot.Player.Position) ||
+		projection.Available(snapshot.Player.CompletedLaps) {
 		result = append(result, GroupStandings)
 	}
 	if projection.Available(snapshot.Player.Speed) || projection.Available(snapshot.Player.Throttle) ||

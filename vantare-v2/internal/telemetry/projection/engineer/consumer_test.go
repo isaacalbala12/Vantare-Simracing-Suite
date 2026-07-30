@@ -39,4 +39,11 @@ func TestConsumerSurfaceUsesOnlyEngineerTypes(t *testing.T) {
 
 	var field engineer.Field[int]
 	var _ engineer.Provenance = field.Provenance()
+	var observation engineer.ObservationV1
+	var _ engineer.Context = observation.Context
+	var _ engineer.Manifest = observation.Manifest
+	var _ engineer.Field[float64] = observation.Player.Speed
+	var snapshot engineer.ObservationSnapshotV1
+	var _ uint64 = uint64(snapshot.Epoch)
+	var _ engineer.ObservationV1 = snapshot.ObservationV1
 }

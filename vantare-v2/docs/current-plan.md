@@ -10,6 +10,42 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-127 / ENG-03 (2026-07-29):
+- La rama de issue parte de TC-05A `efcc77c` e integró ENG-02 `df0c202`
+  mediante el merge local real `b5d69e7`. El único conflicto,
+  `docs/current-plan.md`, se resolvió conservando ambas líneas de trabajo.
+- Implementado el adaptador puro `ProjectObservationV1` /
+  `adaptProjectedV1`: reutiliza `ProjectorV1`, `PayloadV1`, `Metadata` y
+  `VersionPolicy` de TC-05A y produce `ObservationSnapshotV1`, que contiene
+  ese único Metadata y el `ObservationV1` específico de Engineer con
+  `Context`, `Manifest` y `Field` de ENG-02.
+- La superficie final de consumidor usa primitivas/tipos de Engineer y no
+  requiere imports de schema, core, derive o envelope. No existe un segundo
+  envelope, reloj, contador de secuencia o versión.
+- Capabilities session/standings/controls/pit conservan unknown, supported,
+  unsupported y degraded. Cero, missing, stale, invalid, provenance e
+  identidad se preservan; grupos/valores contradictorios fallan cerrados.
+  Los snapshots siguen latest-wins y un salto de sequence no crea un gap falso.
+- Golden y contrato: `engineer_observation_v1.golden.txt`, el golden JSON
+  TC-05A y tests de adaptación/consumidor. Guía:
+  `docs/engineer/projection-adapter.md`.
+- Evidencia local: focal x20, árbol projection, 31 paquetes Engineer, vet,
+  race focal x10 y frontend build PASS. La suite global llegó a todos los
+  paquetes y conservó únicamente la contención Windows heredada de
+  `TestConcurrentSavesDontCorruptFile`. La pasada Telemetry final hizo aflorar
+  una ejecución load-sensitive heredada de
+  `TestDriverDoesNotPublishOrMutateRESTAfterCancellation`; el mismo test
+  aislado x20 pasa y el driver LMU no forma parte del diff.
+- Sin wiring, monitores legacy, Spotter, audio, voz, Pit, UI, I/O,
+  dependencias, goroutines o promoción.
+- Review independiente inicial detectó un P1: `LapNumber` era aceptado por el
+  adaptador como señal de standings, pero el proyector no declaraba el grupo
+  si posición y vueltas completadas faltaban. Se unificó la regla y se añadió
+  una regresión de flujo completo con `LapNumber=7` como única señal.
+- Re-review independiente final `ACCEPT` sin P0/P1/P2/P3. Focal Engineer x20,
+  árbol de proyecciones y `git diff --check` PASS. Preparado para entrega
+  apilada, sin promoción.
+
 Nota ISA-39 / TC-05A (2026-07-28):
 - Definidas proyecciones Go v1 puras e independientes para Overlay, Engineer,
   Strategy y Analysis. Consumen `derive.FinalState`: el guard y ADR fijan

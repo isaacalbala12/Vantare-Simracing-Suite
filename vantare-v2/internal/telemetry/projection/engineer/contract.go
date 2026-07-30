@@ -7,6 +7,7 @@ import (
 	"errors"
 	"slices"
 
+	telemetryprojection "github.com/vantare/overlays/v2/internal/telemetry/projection"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
@@ -15,6 +16,7 @@ var (
 	ErrDuplicateCapability   = errors.New("engineer capability manifest contains a duplicate id")
 	ErrCapabilityUnknown     = errors.New("engineer capability is unknown")
 	ErrCapabilityUnsupported = errors.New("engineer capability is unsupported")
+	ErrInvalidProjectedField = errors.New("engineer projected field has invalid quality metadata")
 )
 
 type CapabilityID string
@@ -102,37 +104,89 @@ const (
 type Field[T comparable] struct {
 	capability      CapabilityID
 	capabilityState CapabilityState
-	field           schema.Field[T]
+	value           T
+	present         bool
+	provenance      Provenance
 	state           ValueState
 }
 
 func newField[T comparable](manifest Manifest, id CapabilityID, field schema.Field[T]) (Field[T], error) {
+	state, err := valueState(field)
+	if err != nil {
+		return Field[T]{}, err
+	}
+	value, present := field.Value()
+	return newFieldValue(
+		manifest,
+		id,
+		value,
+		present,
+		projectSchemaProvenance(field.Provenance()),
+		state,
+	)
+}
+
+func newProjectedField[T comparable](
+	manifest Manifest,
+	id CapabilityID,
+	field telemetryprojection.Field[T],
+) (Field[T], error) {
+	state, err := projectedValueState(field.Freshness)
+	if err != nil {
+		return Field[T]{}, err
+	}
+	provenance, err := projectedProvenance(field.Provenance)
+	if err != nil {
+		return Field[T]{}, err
+	}
+	return newFieldValue(manifest, id, field.Value, field.Present, provenance, state)
+}
+
+func newFieldValue[T comparable](
+	manifest Manifest,
+	id CapabilityID,
+	value T,
+	present bool,
+	provenance Provenance,
+	state ValueState,
+) (Field[T], error) {
 	if id == "" {
 		return Field[T]{}, ErrInvalidCapability
 	}
 	capabilityState := manifest.State(id)
-	_, present := field.Value()
-
 	switch capabilityState {
 	case CapabilityUnsupported:
 		return Field[T]{}, ErrCapabilityUnsupported
 	case CapabilityUnknown:
-		if present || field.Freshness() != schema.FreshnessMissing {
+		if present || state != ValueMissing {
 			return Field[T]{}, ErrCapabilityUnknown
 		}
 	case CapabilitySupported, CapabilityDegraded:
 	default:
 		return Field[T]{}, ErrInvalidCapability
 	}
-
-	state, err := valueState(field)
-	if err != nil {
-		return Field[T]{}, err
+	if !present && state != ValueMissing {
+		return Field[T]{}, ErrInvalidProjectedField
+	}
+	if present && state == ValueMissing {
+		return Field[T]{}, ErrInvalidProjectedField
+	}
+	var zero T
+	if !present && value != zero {
+		return Field[T]{}, ErrInvalidProjectedField
+	}
+	if state == ValueMissing && provenance != ProvenanceUnknown {
+		return Field[T]{}, ErrInvalidProjectedField
+	}
+	if present && provenance == ProvenanceUnknown {
+		return Field[T]{}, ErrInvalidProjectedField
 	}
 	return Field[T]{
 		capability:      id,
 		capabilityState: capabilityState,
-		field:           field,
+		value:           value,
+		present:         present,
+		provenance:      provenance,
 		state:           state,
 	}, nil
 }
@@ -147,7 +201,6 @@ func newUnsupportedField[T comparable](manifest Manifest, id CapabilityID) (Fiel
 	return Field[T]{
 		capability:      id,
 		capabilityState: CapabilityUnsupported,
-		field:           schema.MissingField[T](),
 		state:           ValueUnsupported,
 	}, nil
 }
@@ -158,20 +211,9 @@ func (field Field[T]) CapabilityState() CapabilityState { return field.capabilit
 
 func (field Field[T]) State() ValueState { return field.state }
 
-func (field Field[T]) Value() (T, bool) { return field.field.Value() }
+func (field Field[T]) Value() (T, bool) { return field.value, field.present }
 
-func (field Field[T]) Provenance() Provenance {
-	switch field.field.Provenance() {
-	case schema.ProvenanceObserved:
-		return ProvenanceObserved
-	case schema.ProvenanceDerived:
-		return ProvenanceDerived
-	case schema.ProvenanceEstimated:
-		return ProvenanceEstimated
-	default:
-		return ProvenanceUnknown
-	}
-}
+func (field Field[T]) Provenance() Provenance { return field.provenance }
 
 func (field Field[T]) Usable() bool {
 	return field.state == ValueFresh && field.capabilityState == CapabilitySupported
@@ -189,5 +231,48 @@ func valueState[T comparable](field schema.Field[T]) (ValueState, error) {
 		return ValueInvalid, nil
 	default:
 		return ValueMissing, schema.ErrUnknownFreshness
+	}
+}
+
+func projectedValueState(freshness telemetryprojection.Freshness) (ValueState, error) {
+	switch freshness {
+	case telemetryprojection.FreshnessMissing:
+		return ValueMissing, nil
+	case telemetryprojection.FreshnessFresh:
+		return ValueFresh, nil
+	case telemetryprojection.FreshnessStale:
+		return ValueStale, nil
+	case telemetryprojection.FreshnessInvalid:
+		return ValueInvalid, nil
+	default:
+		return ValueMissing, ErrInvalidProjectedField
+	}
+}
+
+func projectSchemaProvenance(provenance schema.Provenance) Provenance {
+	switch provenance {
+	case schema.ProvenanceObserved:
+		return ProvenanceObserved
+	case schema.ProvenanceDerived:
+		return ProvenanceDerived
+	case schema.ProvenanceEstimated:
+		return ProvenanceEstimated
+	default:
+		return ProvenanceUnknown
+	}
+}
+
+func projectedProvenance(provenance telemetryprojection.Provenance) (Provenance, error) {
+	switch provenance {
+	case telemetryprojection.ProvenanceUnknown:
+		return ProvenanceUnknown, nil
+	case telemetryprojection.ProvenanceObserved:
+		return ProvenanceObserved, nil
+	case telemetryprojection.ProvenanceDerived:
+		return ProvenanceDerived, nil
+	case telemetryprojection.ProvenanceEstimated:
+		return ProvenanceEstimated, nil
+	default:
+		return ProvenanceUnknown, ErrInvalidProjectedField
 	}
 }

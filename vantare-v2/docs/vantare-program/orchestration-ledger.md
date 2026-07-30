@@ -268,11 +268,39 @@ Ejecución iniciada:
   recuperación y decisión GO/NO-GO. No puede añadir aún un driver de base de
   datos al producto.
 
+Entrega del worker completada; review independiente pendiente:
+
+- La rama continúa en la base exacta TC-05C `4801dce`, sin commit, push, PR ni
+  promoción. El worktree es `C:\tmp\vantare-isa101\vantare-v2`.
+- Se crearon ADR 0005, el informe reproducible de benchmark, el esquema
+  histórico v1, la evidencia cruda y un módulo Go aislado bajo
+  `tools/benchmarks/isa101-storage/`. El `go.mod` productivo no cambió.
+- Resultado propuesto: SQLite `modernc` como store autoritativo condicionado;
+  MCAP para export/import/replay; DuckDB fuera del recorder actual por
+  CGO/packaging Windows; framing propio solo como baseline desechable.
+- 48 ejecuciones pasaron y 16 grupos conservaron el mismo SHA-256 entre los
+  candidatos ejecutables. SQLite recuperó `200 accepted / 200 durable / 200`
+  tras kill coordinado; MCAP quedó en `200 / 0 / 0` antes de `Close`.
+- El contrato propuesto para TC-06B exige manifest atómico, cursores
+  accepted/durable, intervalo máximo de 1,5 s, commit máximo de 500 ms,
+  observed/facts autoritativos, derived reconstruible, raw opt-in separado y
+  migraciones copy-on-write.
+- Tests del módulo por tags, vet, builds CGO=0, Telemetry Core, Go global,
+  frontend build, Wails Windows CGO=0, licencias, sanitización y diff-check
+  pasan.
+- Limitaciones declaradas: disk-full/ACL requieren un entorno aislado; writer
+  lento se probará mediante fault injection en TC-06B; `-race` está bloqueado
+  sin compilador C; 24 h lógica tiene una repetición; DuckDB no produjo cifras
+  runtime y el CLI MCAP consultado no compiló por incompatibilidad de
+  dependencias.
+- TC-06B permanece bloqueada hasta review adversarial, resolución de todos los
+  P0-P3 razonables y aceptación explícita del ADR.
+
 ## Bloqueos operativos actuales
 
-- La integración de Linear no está expuesta en esta sesión de Codex. Los
-  commits y PR pueden cerrarse, pero los comentarios/estados de Linear deben
-  sincronizarse en cuanto vuelva el conector; no se falsificará ese estado.
+- Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`
+  e ISA-101 está `In Progress`; cualquier transición posterior debe reflejarse
+  tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos
   para sustituir `nightly` o `testers`.
 

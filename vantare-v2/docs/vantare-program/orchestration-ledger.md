@@ -82,6 +82,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
+| Telemetry Core | TC-05C / ISA-41 | `C:\tmp\vantare-isa41\vantare-v2` sobre `ebb0bd7` | implementación activa: contratos TypeScript y harness de observabilidad |
 
 ## Próximas acciones exactas
 

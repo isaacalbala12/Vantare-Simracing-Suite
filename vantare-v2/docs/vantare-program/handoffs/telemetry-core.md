@@ -16,10 +16,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ISA-101 / TC-06A:
-  `4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`.
+- Base de ISA-102 / TC-06B:
+  `6aa46f17a613bd85b6eafbf22db5a7a70b527a00`.
 - Rama:
-  `vantareapp/isa-101-tc-06a-auditoria-de-almacenamiento-y-esquema-historico`.
+  `vantareapp/isa-102-tc-06b-recordingsink-sesiones-y-recuperacion`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -30,11 +30,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   aceptadas sin P0/P1/P2/P3.
 - TC-05B ISA-40: cerrado técnicamente tras re-review `ACCEPT` sin
   P0/P1/P2/P3.
-- TC-05C ISA-41: implementación completa; pendiente review independiente.
-- TC-06A ISA-101: auditoría, benchmark, ADR y esquema implementados; hallazgos
-  de la segunda re-review corregidos y pendientes de nueva verificación. No hay
-  backend productivo.
-- TC-06B–TC-09: pendientes.
+- TC-05C ISA-41 y TC-06A ISA-101: cerrados en la base aprobada de ISA-102.
+- TC-06B ISA-102: implementación completa y tercera review `ACCEPT` sin
+  P0/P1/P2/P3 conocidos. No hay wiring productivo.
+- TC-07–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -124,6 +123,27 @@ de `unsafe.Pointer` en readers Win32.
   `RecordingPayloadV1`/`RecordingFactV1` allowlisted con golden y errores
   unknown tipados, integridad/modo de acceso separados, COW con switch solo por
   manifest, versiones futuras read-only y recovery sobre copia.
+- ISA-102 materializa ese contrato: puertos neutrales, mapper real
+  pseudonimizado, cola no bloqueante, SQLite modernc privado, manifest
+  atómico, reader por rangos, recovery COW del bundle DB/WAL/SHM, límites de
+  crecimiento y teardown. Crash boundaries, fallos, privacidad, benchmark y
+  packaging CGO=0 están en
+  `docs/telemetry-core/recording-sink-sqlite-isa-102.md`.
+- La primera review de ISA-102 detectó siete inconsistencias confirmadas,
+  corregidas sin ampliar alcance: deadlines reales en todas las operaciones,
+  fallo terminal sobre Stop, batch v1 con snapshot obligatorio y tiempos
+  mixtos, lease Windows cross-process, catálogo FactType único, cursores/reason
+  cerrados y validación NaN/Inf/presence. Pendiente re-review independiente.
+- La segunda review añadió tres correcciones: ledger RPO exacto para
+  checkpoints parciales/epochs, contexto cooperativo hasta la escritura
+  atómica del manifest y DSN URI seguro para caracteres reservados/Unicode.
+  Casos nuevos x100 y paquete completo x10 pasan. La tercera review read-only
+  del orquestador cerró `ACCEPT` sin P0/P1/P2/P3 conocidos. La repetición
+  fresca dejó recording y Telemetry Core en verde. La suite Go global falló
+  únicamente por la contención Windows heredada de ISA-118 bajo carga; su caso
+  focal x20 pasó y la suite global serial posterior quedó completamente verde.
+  Vet focal y build Wails Windows con CGO desactivado también pasan; no hay una
+  regresión atribuible a TC-06B.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
@@ -139,17 +159,15 @@ de `unsafe.Pointer` en readers Win32.
 | En revisión | ISA-38 / TC-04D, implementación aceptada técnicamente |
 | Cerrada técnicamente | ISA-39 / TC-05A, re-review `ACCEPT` |
 | Cerrada técnicamente | ISA-40 / TC-05B, re-review `ACCEPT` |
-| En review técnico | ISA-41 / TC-05C |
-| Pendiente re-review | ISA-101 / TC-06A |
-| Pendientes | ISA-102–117 e ISA-87 según dependencias |
+| Cerradas en la base ISA-102 | ISA-41 / TC-05C e ISA-101 / TC-06A |
+| Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
+| Pendientes | ISA-103–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Ejecutar re-review de ISA-101 / TC-06A sobre correcciones de payload fact,
-privacidad tipada, integrity/access mode y accepted por boundary. No iniciar
-TC-06B, añadir SQLite al `go.mod`
-principal, hacer wiring, commit/push/PR o cambiar Linear hasta cerrar ese
-review y recibir la dirección aplicable.
+Entregar ISA-102 con commit/push y PR draft apilada sobre ISA-101; actualizar
+Linear a `In Review` y después iniciar secuencialmente ISA-103 / TC-06C. No
+hacer wiring productivo ni promoción.
 
 ## Gate final
 
@@ -159,7 +177,7 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-30, ISA-101 / TC-06A implementada sobre
-`4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`. Auditoría primaria, benchmark
-aislado, resultados crudos, fallos/recuperación, ADR 0005 y esquema v1 listos
-para review independiente; sin backend productivo ni entrega remota.
+2026-07-30, ISA-102 / TC-06B implementada sobre
+`6aa46f17a613bd85b6eafbf22db5a7a70b527a00`. RecordingSink, SQLite privado,
+reader, manifest, fallos, recovery, privacidad y packaging listos para review
+independiente; sin wiring productivo ni entrega remota.

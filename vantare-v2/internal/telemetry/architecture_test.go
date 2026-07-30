@@ -93,6 +93,11 @@ func TestValidateImport(t *testing.T) {
 		{name: "telemetry rejects Wails webview module", edge: importEdge{Package: "internal/telemetry/core", Import: "github.com/wailsapp/wails/webview2"}, wantErr: true},
 		{name: "telemetry allows unrelated package containing wails", edge: importEdge{Package: "internal/telemetry/core", Import: "example.com/acme/swails-client"}},
 		{name: "telemetry rejects database sql", edge: importEdge{Package: "internal/telemetry/core", Import: "database/sql"}, wantErr: true},
+		{name: "recording root rejects database sql", edge: importEdge{Package: "internal/telemetry/recording", Import: "database/sql"}, wantErr: true},
+		{name: "private sqlite adapter may use database sql", edge: importEdge{Package: "internal/telemetry/recording/sqlite", Import: "database/sql"}},
+		{name: "private sqlite adapter may use pinned sqlite driver", edge: importEdge{Package: "internal/telemetry/recording/sqlite", Import: "modernc.org/sqlite"}},
+		{name: "recording root rejects sqlite driver", edge: importEdge{Package: "internal/telemetry/recording", Import: "modernc.org/sqlite"}, wantErr: true},
+		{name: "other telemetry package rejects sqlite driver", edge: importEdge{Package: "internal/telemetry/derive", Import: "modernc.org/sqlite"}, wantErr: true},
 		{name: "telemetry rejects DuckDB", edge: importEdge{Package: "internal/telemetry/recording", Import: "github.com/marcboeker/go-duckdb"}, wantErr: true},
 		{name: "telemetry rejects DuckDB bindings", edge: importEdge{Package: "internal/telemetry/recording", Import: "github.com/duckdb/duckdb-go-bindings/v2"}, wantErr: true},
 		{name: "telemetry allows unrelated package containing duckdb", edge: importEdge{Package: "internal/telemetry/recording", Import: "example.com/acme/duckdb-tools"}},
@@ -213,8 +218,16 @@ func validateImport(edge importEdge) error {
 		"github.com/marcboeker/go-duckdb",
 		"github.com/duckdb/duckdb-go-bindings",
 	}
-	if edge.Import == "database/sql" || hasAnyImportPrefix(edge.Import, frameworkAndDatabasePrefixes) {
+	if hasAnyImportPrefix(edge.Import, frameworkAndDatabasePrefixes) {
 		return fmt.Errorf("%s must not import framework or database package %s", edge.Package, edge.Import)
+	}
+	privateSQLiteAdapter := edge.Package == "internal/telemetry/recording/sqlite" ||
+		strings.HasPrefix(edge.Package, "internal/telemetry/recording/sqlite/")
+	if edge.Import == "database/sql" && !privateSQLiteAdapter {
+		return fmt.Errorf("%s must not import database package %s", edge.Package, edge.Import)
+	}
+	if hasImportPrefix(edge.Import, "modernc.org/sqlite") && !privateSQLiteAdapter {
+		return fmt.Errorf("%s must not import SQLite outside its private adapter: %s", edge.Package, edge.Import)
 	}
 
 	if edge.Package == "internal/telemetry/schema" || strings.HasPrefix(edge.Package, "internal/telemetry/schema/") {

@@ -12,12 +12,14 @@ producto, calidad/presencia explícitas y versiones canonical/projection/
 recording independientes. TC-05B/TC-05C ya aportan transporte y consumo
 aislados en harness, pero todavía no existe wiring productivo global.
 
-ISA-101 audita el histórico sin incorporar un backend productivo. La decisión
-propuesta es SQLite modernc condicionado para autoridad; MCAP queda candidato
-condicionado para intercambio/replay, pendiente recovery local compatible;
-DuckDB solo posible cache reconstruible futura y framing propio descartado.
+ISA-101 auditó el histórico y TC-06B / ISA-102 implementa en rama de issue el
+adaptador privado SQLite modernc, todavía sin wiring productivo. MCAP queda
+candidato condicionado para intercambio/replay; DuckDB solo posible cache
+reconstruible futura y framing propio descartado.
 [`storage-benchmark-isa-101.md`](storage-benchmark-isa-101.md),
-[`historical-storage-schema.md`](historical-storage-schema.md) y ADR 0005.
+[`historical-storage-schema.md`](historical-storage-schema.md),
+[`recording-sink-sqlite-isa-102.md`](recording-sink-sqlite-isa-102.md) y ADR
+0005.
 
 ## Jerarquía de autoridad
 
@@ -36,8 +38,8 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 - TC-02 y TC-03 están cerrados en la cadena apilada. TC-04A–C implementaron
   reducer, coordinación/hechos y derivaciones; TC-04D / ISA-38 implementa
   fan-out, backpressure y observabilidad. TC-05A/B están cerrados
-  técnicamente, TC-05C está en review, TC-06A corrige su primer review y
-  TC-06B–TC-09 siguen pendientes.
+  técnicamente, TC-05C y TC-06A están cerrados en la base de ISA-102. TC-06B
+  está implementado y pendiente review; TC-07–TC-09 siguen pendientes.
 - La cadena permanece en ramas de issue sin wiring productivo ni promoción. El
   handoff vivo de `docs/vantare-program/` contiene los SHAs y siguiente corte.
 
@@ -78,3 +80,4 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [Fan-out y backpressure](runtime-fanout.md)
 - [Benchmark de almacenamiento ISA-101](storage-benchmark-isa-101.md)
 - [Esquema histórico y contrato TC-06B](historical-storage-schema.md)
+- [RecordingSink SQLite ISA-102](recording-sink-sqlite-isa-102.md)

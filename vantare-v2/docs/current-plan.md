@@ -10,6 +10,37 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-102 / TC-06B (2026-07-30):
+- Implementado RecordingSink neutral, mapper cerrado y adaptador privado
+  SQLite modernc sobre `6aa46f17a613bd85b6eafbf22db5a7a70b527a00`.
+- Cola acotada/no bloqueante, checkpoints <=1,5 s, commit <=500 ms y deuda
+  volátil <=2 s; cola/disco/timeout/cancelación detienen solo la grabación.
+- Manifest v1 atómico con invariantes terminales, cursores coherentes y
+  privacidad allowlisted. Abort no convierte accepted volátil en watermark.
+- Recovery copy-on-write valida el bundle DB/WAL/SHM sin mutar el original;
+  manifests futuros son metadata read-only y nunca abren DB desconocida.
+- CGO=0, Wails Windows, matriz crash/fault, benchmark 64 vehículos, growth 4×,
+  fuzz y suites aplicables documentadas en
+  `docs/telemetry-core/recording-sink-sqlite-isa-102.md`.
+- Sin wiring productivo, UI, consentimiento, raw, MCAP/replay o promoción.
+  Siguiente paso: entrega de ISA-102 y apertura secuencial de TC-06C.
+- Primera review corregida: deadlines reales Append/Checkpoint/Complete, fallo
+  terminal sobre Stop, snapshot obligatorio por batch, fact namespace
+  independiente, lease Windows entre procesos, catálogos/cursor cerrados y
+  máscaras/controles finitos. Pendiente re-review.
+- Segunda review corregida: ledger de deuda accepted por cursor/tiempo con
+  checkpoint parcial y epochs; manifest context-aware sin temporales tardíos;
+  DSN URI seguro para `#`, `%`, espacios y Unicode.
+- Tercera review final (orquestador, read-only): `ACCEPT`, sin P0/P1/P2/P3
+  conocidos. Focal completo x10, RPO/off-by-one x100, filesystem/DSN x100,
+  Telemetry Core y suite Go global pasaron antes del cierre del worker. La
+  verificación fresca del orquestador repitió recording y Telemetry Core en
+  verde. La suite Go global quedó roja únicamente por la contención Windows
+  heredada `TestConcurrentSavesDontCorruptFile` (ISA-118) bajo carga; el caso
+  aislado x20 pasó y la suite global serial posterior pasó completa. Build
+  Wails Windows con CGO desactivado y vet focal también pasan. No se atribuye
+  una regresión a TC-06B. `-race` continúa bloqueado por ausencia de `gcc`.
+
 Nota ISA-101 / TC-06A (2026-07-30):
 - Auditoría y benchmark aislado completados sobre
   `4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`, sin backend productivo,
@@ -41,10 +72,9 @@ Nota ISA-101 / TC-06A (2026-07-30):
   `docs/telemetry-core/storage-benchmark-isa-101.md` y
   `docs/telemetry-core/evidence/isa-101-storage/`. Esquema/contrato TC-06B:
   `docs/telemetry-core/historical-storage-schema.md`.
-- Estado: correcciones de la segunda re-review implementadas; pendiente nueva
-  verificación independiente.
-  No iniciar TC-06B ni añadir SQLite al producto hasta aceptar findings y el
-  gate humano aplicable.
+- Estado: ISA-101 cerrada y materializada por ISA-102. SQLite continúa privado
+  y sin wiring productivo; no promover ni activarlo hasta los cortes
+  posteriores de composición, consentimiento e inspector.
 
 Nota ISA-40 / TC-05B (2026-07-29):
 - Implementado `internal/app/telemetrytransport` como adapter/harness local sin

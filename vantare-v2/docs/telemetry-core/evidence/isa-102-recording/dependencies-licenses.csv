@@ -1,0 +1,10 @@
+module,version,license,role
+modernc.org/sqlite,v1.55.0,BSD-3-Clause + SQLite Public Domain,SQLite driver
+modernc.org/libc,v1.74.1,BSD-3-Clause,transitive runtime
+modernc.org/mathutil,v1.7.1,BSD-3-Clause,transitive math
+modernc.org/memory,v1.11.0,BSD-3-Clause,transitive memory
+github.com/dustin/go-humanize,v1.0.1,MIT,transitive formatting
+github.com/google/uuid,v1.6.0,BSD-3-Clause,transitive UUID helper
+github.com/ncruces/go-strftime,v1.0.0,MIT,transitive SQLite function
+github.com/remyoudompheng/bigfft,v0.0.0-20230129092748-24d4a6f8daec,BSD-3-Clause,transitive math
+golang.org/x/sys,v0.46.0,BSD-3-Clause,Windows atomic replace/runtime

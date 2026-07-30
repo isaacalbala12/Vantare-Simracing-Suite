@@ -1,7 +1,8 @@
 # TC-06 — contrato de sesión y esquema histórico v1
 
-Estado: propuesta de ISA-101 para implementación en TC-06B. No existe todavía
-backend productivo.
+Estado: contrato implementado por ISA-102 / TC-06B en rama de issue, pendiente
+review y sin wiring productivo. Evidencia:
+[`recording-sink-sqlite-isa-102.md`](recording-sink-sqlite-isa-102.md).
 
 ## Objetivo y fronteras
 
@@ -69,9 +70,11 @@ Campos mínimos:
 | `integrity` | SHA-256/CRC de artefactos cerrados y resultado de validación |
 
 El contador `accepted` más reciente vive en memoria y es volátil. No se
-promete un ACK durable por lote. Tras un crash solo se conoce con certeza el
-último `persistedAcceptedCursor`; por ello la pérdida posterior está acotada por
-la cola y la cadencia de checkpoint, pero no puede cuantificarse exactamente.
+promete un ACK durable por lote. `Abort` no promueve ese contador al manifest:
+conserva el último `persistedAcceptedCursor` ya escrito y el committed conocido.
+Tras un crash solo se conoce con certeza ese watermark; por ello la pérdida
+posterior está acotada por la cola/cadencia, pero no puede cuantificarse
+exactamente.
 
 ## Cursores y durabilidad
 
@@ -87,6 +90,9 @@ crear manifest integrityState=recording antes de aceptar el primer lote
 ```
 
 - `accepted` significa ownership del recorder y es volátil.
+- Cada batch v1 exige al menos un snapshot; `accepted` es el cursor del último
+  snapshot. `factSequence` permanece en su namespace independiente y nunca
+  sustituye el cursor durable.
 - `committed` significa transacción confirmada por el backend.
 - `persisted accepted watermark` significa el último accepted conocido en el
   manifest; no convierte cada ACK previo en durable.
@@ -95,9 +101,13 @@ crear manifest integrityState=recording antes de aceptar el primer lote
   convierte en un estado de integridad.
 - Intervalo máximo propuesto: `1.500 ms`.
 - Presupuesto de commit/manifest: `500 ms`.
+- Edad máxima del accepted pendiente más antiguo: `2.000 ms`; estar idle no
+  consume este presupuesto.
 - Si cola, disco o commit no cumplen: no se bloquea al publisher; el recorder
   se detiene, marca `incomplete`, conserva el último watermark persistido y
   notifica.
+- Begin y recovery adquieren un lease exclusivo de filesystem compartido entre
+  procesos. En Windows el kernel libera el handle al morir el proceso.
 - No hay eviction, overwrite o drop silencioso.
 
 El objetivo RPO es `<= 2 s`, pendiente de demostrar en TC-06B con el

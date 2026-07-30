@@ -54,7 +54,7 @@ permanecen apilados en ramas publicadas con PR draft.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | review `REJECT`: 2 P1 y 3 P2; corrección focal activa |
+| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | 2 P1 y 3 P2 corregidos; re-review independiente activa |
 
 ## Próximas acciones exactas
 
@@ -126,6 +126,12 @@ hub ligado al producto, epoch monotónico, continuidad de hechos, reseal y tests
 de routing simultáneo, límites, loopback IPv4/IPv6 y cierre concurrente. Los
 checks focales, Telemetry Core, vet, race y fronteras de imports del primer
 review sí pasaron.
+
+El fix de TC-05B añadió `ProductID` cerrado y un hub ligado al producto,
+eventos/rutas inequívocos, epoch estrictamente creciente, continuidad exacta
+de facts desde `after`, reseal del delta y regresiones de cuatro productos,
+suscriptores, loopback IPv4/IPv6 y cierre concurrente. Focal x20, Telemetry
+Core, suite Go global, vet, race x5 y diff-check pasaron. Re-review activa.
 
 El fix de ENG-03 alineó el proyector y el adaptador: `LapNumber` por sí solo
 declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y

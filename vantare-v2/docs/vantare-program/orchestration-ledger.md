@@ -482,6 +482,25 @@ P2 confirmados:
   participan en los límites temporales del chunk. El lease de sesión debe ser
   real y compartido por filesystem/proceso, no un mapa local.
 
+Fix completado y listo para re-review:
+
+- Los siete findings están corregidos con tests: deadlines reales, fallo
+  terminal prioritario, namespace durable de snapshots, bounds temporales
+  mixtos, lease cross-process, filtro completo de facts e invariantes cerradas
+  de manifest/payload.
+- En Windows el lease usa un handle exclusivo que el kernel libera al terminar
+  el proceso; existe regresión con dos Stores y subproceso muerto sin `Close`.
+  El fallback no-Windows es fail-safe: un lease stale bloquea y requiere
+  retirada manual, pero nunca permite dos writers.
+- PASS: focal x5, carreras terminal/deadlines x100, lease/namespace/bounds x20,
+  fuzz 5 s (275.462 ejecuciones), Telemetry Core, suite Go global, vet focal,
+  guard arquitectónico, Wails Windows CGO-free y diff-check.
+- Benchmark de 64 vehículos x5: 4,03–6,35 ms/op, 15.900–16.606 B/op y 70–72
+  allocs/op.
+- `-race` continúa bloqueado únicamente por ausencia de `gcc`.
+- Sin commit, push, PR, promoción ni cierre de Linear. Siguiente acción exacta:
+  re-review adversarial independiente completa.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

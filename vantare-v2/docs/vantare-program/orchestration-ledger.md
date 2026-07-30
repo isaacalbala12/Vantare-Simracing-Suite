@@ -54,7 +54,7 @@ permanecen apilados en ramas publicadas con PR draft.
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
 | Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | review `REJECT`: 2 P1 y 3 P2; corrección focal activa |
-| Engineer | ENG-03 / ISA-127 | `C:\tmp\vantare-isa127\vantare-v2` sobre merge `b5d69e7` de TC-05A + ENG-02 | review `REJECT`: un P1 en `GroupStandings`; corrección focal activa |
+| Engineer | ENG-03 / ISA-127 | `C:\tmp\vantare-isa127\vantare-v2` sobre merge `b5d69e7` de TC-05A + ENG-02 | P1 corregido; re-review independiente pendiente |
 
 ## Próximas acciones exactas
 
@@ -95,3 +95,8 @@ hub ligado al producto, epoch monotónico, continuidad de hechos, reseal y tests
 de routing simultáneo, límites, loopback IPv4/IPv6 y cierre concurrente. Los
 checks focales, Telemetry Core, vet, race y fronteras de imports del primer
 review sí pasaron.
+
+El fix de ENG-03 alineó el proyector y el adaptador: `LapNumber` por sí solo
+declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y
+verifica grupo exacto, presencia, frescura y usabilidad. Focal x20,
+proyecciones, vet y diff-check pasaron; queda re-review independiente.

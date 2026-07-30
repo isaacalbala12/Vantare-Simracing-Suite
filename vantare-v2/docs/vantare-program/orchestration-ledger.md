@@ -561,6 +561,25 @@ Ejecución iniciada:
   expuesto en esta sesión; el bloqueo queda registrado sin detener el trabajo
   local autorizado.
 
+Auditorías de diseño completadas:
+
+- `RecordingPayloadV1` es deliberadamente parcial y no puede reconstruir el
+  estado canónico. Se mantienen tres replay separados: raw en el driver LMU,
+  batches canónicos que vuelven a atravesar el reducer real y registros
+  históricos del store.
+- El replay histórico tendrá un reader neutral, congelado y paginado; no
+  reutilizará las consultas ilimitadas `Observed()`/`Facts()` ni asumirá que
+  sus cursores son equivalentes.
+- Versiones futuras serán metadata-only y nunca abrirán su DB/WAL/SHM.
+- El motor de migración será unidireccional y copy-on-write. El catálogo
+  productivo permanecerá vacío hasta que exista un schema v2 real; una
+  migración sintética privada solo demostrará el motor en tests.
+- Replay no implementará `core.Driver`, no se registrará como fuente live ni
+  se conectará al composition root. Un guard arquitectónico protegerá esa
+  frontera.
+- `core.RecordingSink` está huérfano, pero su retirada queda fuera de ISA-103
+  para no mezclar deuda no relacionada con este corte.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

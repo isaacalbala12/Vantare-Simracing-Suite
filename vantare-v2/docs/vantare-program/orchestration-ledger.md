@@ -84,7 +84,8 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 |---|---|---|---|
 | Telemetry Core | TC-05C / ISA-41 | `4801dce`, PR draft #36 sobre TC-05B | cerrado técnicamente; Linear pendiente; sin promoción |
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
-| Telemetry Core | TC-06A / ISA-101 | `C:\tmp\vantare-isa101\vantare-v2` sobre TC-05C `4801dce` | `In Progress`; auditoría, benchmark aislado y ADR, sin backend productivo |
+| Telemetry Core | TC-06A / ISA-101 | `C:\tmp\vantare-isa101\vantare-v2` sobre TC-05C `4801dce` | `In Review`; commit `6aa46f1`, PR draft #37, sin promoción |
+| Telemetry Core | TC-06B / ISA-102 | `C:\tmp\vantare-isa102\vantare-v2` sobre TC-06A `6aa46f1` | implementación terminada; review adversarial pendiente |
 
 ## Próximas acciones exactas
 
@@ -428,6 +429,29 @@ Ejecución iniciada:
 - Gates: live nunca bloquea; no hay drop silencioso; todos los fallos dejan
   estado `incomplete`; recovery preserva original; RPO y presupuesto de commit
   se demuestran con la implementación real.
+
+Entrega del worker lista para review independiente:
+
+- Implementados `RecordingSink`, mapper allowlisted, coordinador, manifiestos,
+  reader histórico y adaptador SQLite privado `modernc`, sin wiring productivo.
+- Cola acotada sin expulsión silenciosa; `accepted` volátil no se promueve a
+  cursor persistido; RPO pendiente máximo de dos segundos sin penalizar una
+  sesión inactiva.
+- Recovery copy-on-write de DB/WAL/SHM, manifests futuros limitados a metadata
+  segura y cierre/abort acotados.
+- Cerrados durante implementación cinco riesgos: RPO tras idle, abort
+  bloqueable, invariantes incompletas del manifest, traversal de rutas futuras
+  y cursor volátil falsamente persistido.
+- PASS: focales x5, coordinador/contratos x100, Telemetry Core, suite Go global,
+  vet focal, guard arquitectónico, fuzz 5 s con 503.312 ejecuciones, frontend
+  build, Wails Windows con CGO desactivado y `git diff --check`.
+- `-race` no fue ejecutable porque el host carece de `gcc`; no se considera
+  evidencia equivalente y debe constar como limitación.
+- La medición actual del Wails binario crece solo 512 bytes porque el adaptador
+  aún no está conectado y el linker lo elimina. Debe repetirse cuando TC-07 lo
+  enlace realmente.
+- Sin commit, push, PR, Linear final ni promoción. Siguiente acción exacta:
+  review adversarial completa contra la base `6aa46f1`.
 
 ## Bloqueos operativos actuales
 

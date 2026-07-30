@@ -625,6 +625,21 @@ Tercera revisión adversarial de ISA-103: `REQUEST_CHANGES`.
   cancelación LMU x100 pasan tras las correcciones. El corte queda congelado
   para la re-review final; sin commit de producto, PR ni promoción todavía.
 
+Cierre técnico de ISA-103 / TC-06C:
+
+- Dos re-reviews finales independientes: `ACCEPT`, P0/P1/P2/P3 = 0 en ambas.
+- Suite Telemetry Core, suite Go global serial, vet focal, regresiones
+  repetidas y build Wails Windows con CGO desactivado: PASS.
+- Commit:
+  `8b89c0adafed46a3c2c42cd52c858c8c185aa8bf`.
+- Push sincronizado 0/0.
+- PR draft apilada sobre ISA-102:
+  `https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/39`.
+- Worktree limpio. Sin wiring productivo, merge ni promoción.
+- Linear queda pendiente de sincronización porque el conector no está expuesto
+  en esta sesión.
+- Siguiente dependencia: ISA-104 / TC-06D desde el commit anterior.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

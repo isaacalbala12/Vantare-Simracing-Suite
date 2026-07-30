@@ -501,6 +501,23 @@ Fix completado y listo para re-review:
 - Sin commit, push, PR, promoción ni cierre de Linear. Siguiente acción exacta:
   re-review adversarial independiente completa.
 
+Segunda review adversarial: `CHANGES REQUIRED`.
+
+- Cerrados seis hallazgos originales: carrera fallo/Stop, namespace facts,
+  bounds mixtos, lease cross-process, tipos de fact y validaciones cerradas de
+  cursor/reason/payload.
+- P1: `pendingSince` no avanzaba al primer batch aún volátil tras un checkpoint
+  parcial y podía disparar RPO usando la antigüedad de datos ya persistidos.
+- P1: el deadline del coordinador no alcanzaba la escritura/fsync/reemplazo
+  atómico del manifest porque el filesystem ignoraba el contexto.
+- P2: el DSN SQLite interpolaba rutas sin codificación URI; `#` y `%` podían
+  alterar o invalidar la ruta.
+- PASS: focal x10, Telemetry Core, suite Go global, vet focal y diff-check.
+  Wails no se repitió en esta review; `-race` sigue bloqueado por `gcc`.
+- Siguiente acción exacta: tracking del primer cursor realmente no persistido,
+  filesystem context-aware con regresión bloqueada y DSN seguro probado bajo
+  `folder # 100%`; después, tercera review completa. TC-06C sigue bloqueada.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

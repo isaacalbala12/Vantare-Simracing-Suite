@@ -659,6 +659,33 @@ Inicio de ISA-104 / TC-06D:
 - Linear ISA-104 sigue pendiente de sincronización porque el conector no está
   expuesto en esta sesión.
 
+Contrato ejecutable de ISA-104 / TC-06D congelado:
+
+- Plan:
+  `docs/superpowers/plans/2026-07-30-isa-104-tc-06d-inspector-privacy-export.md`.
+- Auditoría de privacidad: `REQUEST_CHANGES` sobre el flujo heredado. Los dos
+  P1 confirmados son el diagnóstico construido copiando nombres/IDs/notas/
+  argumentos/hotkeys del usuario y la copia inmediata al portapapeles sin
+  preview exacta. Se sustituye por un DTO allowlist construido desde cero.
+- Auditoría de arquitectura/UI: el inspector pertenece exclusivamente a
+  Ajustes > Diagnóstico; `TelemetryPage.tsx` queda reservado para Telemetry
+  Analysis. La UI solo recibe handles opacos y nunca rutas o tipos SQLite.
+- Export acordado: JSON determinista e inmutable con bytes visibles, tamaño y
+  SHA-256. Copiar/descargar reutiliza exactamente el mismo payload; no hay
+  upload, SSE ni regeneración TOCTOU.
+- Inspector acordado: sesiones/manifest/campos/presencia/calidad agregada.
+  Queda fuera la tabla avanzada por vuelta/muestra y no se afirmará calidad por
+  señal que el schema actual no persiste.
+- Raw capture acordada: capacidad diagnóstica separada del histórico v1,
+  desactivada por defecto, 60 s / 64 MiB por defecto, 120 s / 128 MiB de
+  máximos, 5 Hz y retención temporal de siete días.
+- LMU conservará exactamente una apertura de `LMU_Data`. Un tap privado,
+  opcional y no bloqueante recibirá copias del snapshot estable; el wiring
+  productivo queda para TC-07/TC-08.
+- Sin dependencias nuevas, sin tocar Strategy/Engineer/Overlay Studio y sin
+  promoción. El trabajo se ejecutará en microcortes TDD D1–D7 y pasará review
+  independiente de código, privacidad y arquitectura.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

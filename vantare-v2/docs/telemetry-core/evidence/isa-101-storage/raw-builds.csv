@@ -1,0 +1,11 @@
+"candidate","cgo_enabled","status","exit_code","binary_bytes","sha256","error"
+"framing","0","PASS","0","4001280","9aaaaaa8691823ced868789d3d2908d3ec3598132540986009448b5b98793f16",""
+"sqlite","0","PASS","0","10824192","07b5c120d7c98c0d8ee3332ae0ea6a929e7e9657036d44bf935d74ef4c7dd5fa",""
+"mcap","0","PASS","0","7719424","307495a7c05a47ac4e84dea125011f552c4da54217f2330ffb6dfb1408034036",""
+"duckdb","0","BLOCKED","1","0","","package github.com/vantare/isa101-storage-benchmark
+	imports github.com/duckdb/duckdb-go/v2
+	imports github.com/duckdb/duckdb-go/v2/mapping
+	imports github.com/duckdb/duckdb-go-bindings
+	imports github.com/duckdb/duckdb-go-bindings/lib/windows-amd64: build constraints exclude all Go files in <GOMODCACHE>\github.com\duckdb\duckdb-go-bindings\lib\windows-amd64@v0.10505.0"
+"duckdb","1","BLOCKED","1","0","","# runtime/cgo
+cgo: C compiler ""gcc"" not found: exec: ""gcc"": executable file not found in %PATH%"

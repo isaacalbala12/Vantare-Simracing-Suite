@@ -54,7 +54,7 @@ permanecen apilados en ramas publicadas con PR draft.
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
 | Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | implementación local; review independiente activo |
-| Engineer | ENG-03 / ISA-127 | `C:\tmp\vantare-isa127\vantare-v2` sobre merge `b5d69e7` de TC-05A + ENG-02 | implementación local; review independiente activo |
+| Engineer | ENG-03 / ISA-127 | `C:\tmp\vantare-isa127\vantare-v2` sobre merge `b5d69e7` de TC-05A + ENG-02 | review `REJECT`: un P1 en `GroupStandings`; corrección focal activa |
 
 ## Próximas acciones exactas
 
@@ -76,3 +76,13 @@ permanecen apilados en ramas publicadas con PR draft.
   sincronizarse en cuanto vuelva el conector; no se falsificará ese estado.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos
   para sustituir `nightly` o `testers`.
+
+## Última review recibida
+
+ENG-03 fue rechazada por un único P1: el proyector declaraba
+`GroupStandings` solo con posición o vueltas completadas, mientras el adaptador
+también lo exigía cuando únicamente `LapNumber` era válido. El estado parcial
+terminaba rechazado por conflicto de capability. Se ordenó un fix mínimo que
+unifique la regla y añada una regresión del flujo completo. El resto de la
+review quedó limpio: merge, versión, ownership, identidad, latest-wins,
+calidad, manifest, golden y límites de alcance.

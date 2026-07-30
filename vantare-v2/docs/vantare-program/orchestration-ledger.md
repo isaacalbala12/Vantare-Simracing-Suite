@@ -54,7 +54,7 @@ permanecen apilados en ramas publicadas con PR draft.
 
 | Proyecto | Corte | Worktree / base | Estado exacto |
 |---|---|---|---|
-| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | 2 P1 y 3 P2 corregidos; re-review independiente activa |
+| Telemetry Core | TC-05B / ISA-40 | `C:\tmp\vantare-isa40\vantare-v2` sobre `efcc77c` | findings originales cerrados; re-review detectó 1 P1 y 1 P3 nuevos; segundo fix activo |
 
 ## Próximas acciones exactas
 
@@ -132,6 +132,12 @@ eventos/rutas inequívocos, epoch estrictamente creciente, continuidad exacta
 de facts desde `after`, reseal del delta y regresiones de cuatro productos,
 suscriptores, loopback IPv4/IPv6 y cierre concurrente. Focal x20, Telemetry
 Core, suite Go global, vet, race x5 y diff-check pasaron. Re-review activa.
+
+La segunda review confirmó cerrados los cinco findings originales, pero rechazó
+el corte por dos nuevos: SSE emitía `projection/status` mientras Wails usaba el
+nombre completo por producto, y un helper de test hacía polling con
+`time.Sleep`. Se ordenó alinear nombres SSE/Wails y comparar nombre+JSON, además
+de sustituir el polling por señalización determinista. No hay otros P0–P3.
 
 El fix de ENG-03 alineó el proyector y el adaptador: `LapNumber` por sí solo
 declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y

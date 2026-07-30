@@ -86,6 +86,7 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A / ISA-101 | `C:\tmp\vantare-isa101\vantare-v2` sobre TC-05C `4801dce` | `In Review`; commit `6aa46f1`, PR draft #37, sin promoción |
 | Telemetry Core | TC-06B / ISA-102 | `8683f03`, PR draft #38 sobre TC-06A `6aa46f1` | cerrado técnicamente; Linear pendiente; sin promoción |
+| Telemetry Core | TC-06C / ISA-103 | `C:\tmp\vantare-isa103\vantare-v2\vantare-v2` sobre TC-06B `8683f03` | implementación iniciada; Linear pendiente; sin promoción |
 
 ## Próximas acciones exactas
 
@@ -539,6 +540,26 @@ Tercera review y entrega técnica: `ACCEPT`.
 - Linear queda pendiente de sincronización porque el conector no está expuesto
   en esta sesión. TC-06C puede abrirse de forma apilada sobre `8683f03`; no se
   habilita wiring productivo.
+
+### TC-06C — Replay raw, canónico e histórico
+
+Ejecución iniciada:
+
+- Rama exacta:
+  `vantareapp/isa-103-tc-06c-replay-raw-canonico-e-historico`.
+- Worktree limpio
+  `C:\tmp\vantare-isa103\vantare-v2\vantare-v2`, base exacta TC-06B
+  `8683f036bc1169be2e27ea50982ebf86af369bed`.
+- Alcance: player determinista con velocidad/step, fixtures raw sanitizadas y
+  versionadas, replay canónico tipado para harnesses, consultas históricas
+  paginadas y motor de migraciones unidireccional copy-on-write.
+- Fuera de alcance: fuente live, fallback productivo, raw capture, UI,
+  consentimiento/export, MCAP/DuckDB, Strategy y wiring del composition root.
+- Dos auditorías read-only paralelas revisan las fronteras raw/canonical e
+  histórico/migración antes de cerrar contratos. Ningún subagente edita.
+- Linear ISA-103 no pudo pasar a `In Progress` porque el conector no está
+  expuesto en esta sesión; el bloqueo queda registrado sin detener el trabajo
+  local autorizado.
 
 ## Bloqueos operativos actuales
 

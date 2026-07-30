@@ -476,6 +476,11 @@ P2 confirmados:
 - Siguiente acción exacta: corregir los siete findings con regresiones
   adversariales y repetir review independiente completa. TC-06C continúa
   bloqueada.
+- Fix iniciado en el mismo worktree. Decisión cerrada para v1: todo batch
+  durable contiene snapshot y usa su cursor como `Accepted`; facts-only se
+  rechaza, los facts conservan su secuencia independiente y sus tiempos sí
+  participan en los límites temporales del chunk. El lease de sesión debe ser
+  real y compartido por filesystem/proceso, no un mapa local.
 
 ## Bloqueos operativos actuales
 

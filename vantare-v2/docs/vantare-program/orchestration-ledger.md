@@ -296,6 +296,32 @@ Entrega del worker completada; review independiente pendiente:
 - TC-06B permanece bloqueada hasta review adversarial, resolución de todos los
   P0-P3 razonables y aceptación explícita del ADR.
 
+Primera review independiente: `NEEDS FIXES`.
+
+- P1: `acceptedCursor` solo avanza en memoria antes del checkpoint, por lo que
+  un crash no permite reconstruir ni cuantificar exactamente todos los lotes
+  aceptados. El kill actual solo cubre `accepted=durable`.
+- P1: el esquema promete ausencia de nombres e IDs remotos, pero no define un
+  `RecordingPayloadV1` allowlisted separado de los estados live que sí contienen
+  identidades. La fixture sintética no demuestra privacidad del payload real.
+- P2: DB y manifest no pueden reemplazarse atómicamente como pareja en Windows;
+  la migración necesita nombres versionados y un único punto de conmutación en
+  el manifest. El rollback tampoco puede quitar SQLite y conservar a la vez un
+  reader SQLite.
+- P2: la recuperación MCAP está documentada por upstream pero no fue verificada
+  localmente; el CLI quedó bloqueado y el harness solo detectó truncación.
+- P2: `cold/warm` no es una distinción real sin purga de caché y las medianas la
+  mezclan; la fixture sintética tampoco representa aún el footprint del payload
+  histórico final.
+- P3: el README conserva una frase obsoleta sobre TC-05–TC-09 pendientes.
+- El revisor reprodujo tests, vets, 48/48 ejecuciones, digests, faults,
+  builds/SHAs, bloqueos DuckDB, 21/21 licencias, agregados, Telemetry Core, Go
+  global y diff-check. No alteró el worktree.
+- Se ordena un fix documental/benchmark acotado: semántica
+  volatile/persisted, estado recording/incomplete y kills en boundaries;
+  `RecordingPayloadV1` allowlisted con golden negativo; migración por manifest;
+  afirmaciones MCAP y first/subsequent honestas; README reconciliado.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

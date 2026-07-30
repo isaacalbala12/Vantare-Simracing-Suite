@@ -344,6 +344,25 @@ Fix de primera review completado; re-review pendiente:
 - Siguen correctamente deferidos a TC-06B: disk-full, ACL, writer lento,
   coordinator/RPO productivo, mapping real, retención y empaquetado SQLite.
 
+Segunda review independiente: `NEEDS FIXES`.
+
+- Cerrados: semántica accepted/durable, migración/rollback, wording de MCAP,
+  separación first/subsequent y README.
+- P1 restante: `RecordingPayloadV1` protege observed, pero facts continúa como
+  bytes arbitrarios pese a que el contrato promete allowlist. Se requiere
+  `RecordingFactV1` tipado con encoder/decoder, golden y negativos.
+- P2: el negativo de privacidad de observed parte de `vehicles: []`, ya
+  inválido, y solo comprueba un error genérico. Debe usar un payload válido,
+  demostrar que sin campo extra pasa y comprobar rechazo específico de cada
+  unknown field.
+- P2: `read_only` se transforma incorrectamente en `incomplete`. Integridad de
+  sesión y modo de acceso deben ser estados separados; una sesión sana puede
+  abrirse read-only.
+- P2: el CSV declara `volatile_accepted=240` en `before_append`, aunque el hijo
+  se detiene antes de aceptar los 40 últimos y el valor correcto es 200.
+- El revisor repitió tests x5, vet, Telemetry Core, faults, agregados, 48/48
+  filas y diff-check. El worktree permaneció read-only.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

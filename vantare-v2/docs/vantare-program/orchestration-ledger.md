@@ -1331,3 +1331,30 @@ promoción. Linear queda pendiente de sincronización por ausencia del conector.
   actualizado. Sin PR, merge, promoción, wiring productivo ni cutover.
 - Siguiente acción exacta: D6 timing, gaps y delta de autorreferencia. Delta
   exige dos vueltas LMU reales comparables, sanitizadas y hash-pinned.
+
+### 2026-07-31 — ISA-129 D6 implementado y aceptado
+
+- Base: D5 `7523def`; rama ISA-129 aislada, sin promoción.
+- Resultado: `session.remaining@1`, `standings.relative-gaps@1` y
+  `session.self-delta@1` forman una cadena síncrona, transaccional, versionada
+  y acotada. No consume `mDeltaBest` ni una referencia de velocidad constante.
+- Evidencia LMU 1.4 real recuperada read-only de la grabación consolidada:
+  1.846 muestras sanitizadas a 10 Hz, tres wraps, dos vueltas comparables de
+  96,2 s y 85,8 s; SHA-256
+  `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+- El oráculo independiente compara por distancia, fija 100 ms de incertidumbre
+  y exige al menos una diferencia real/derivada superior. La fixture no incluye
+  nombres, circuito, IDs, rutas, reloj de pared ni bytes raw.
+- Hardening de review: dominio de distancia solapado obligatorio, error real
+  del driver prioritario, cierre de archivo transaccional y regresión de vuelta
+  limpiando referencia en todas las rutas especiales.
+- Gates: derive/trace/CLI x20, dos fuzzers de 10 s (~1,27 M ejecuciones),
+  Telemetry Core, vet focal, benchmarks, privacidad, hash y diff-check PASS.
+  `-race` sigue no disponible con `CGO_ENABLED=0`; vet LMU conserva dos avisos
+  Win32 heredados. La suite global solo reproduce el P3 Windows conocido de
+  `app-settings.json.tmp`.
+- Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+- Commit `496b758`; push verificado 0/0. Linear ISA-129 actualizado. Sin PR,
+  merge, promoción, wiring productivo ni cutover.
+- Siguiente acción exacta: D7 contrato Overlay v1 aditivo y adaptador
+  TypeScript, probando las cuatro celdas old/new sin debilitar validación.

@@ -37,11 +37,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   adapter real y duradero para `DriverManager`, fixture real 44/44, identidad
   opaca por slot/generación, limpieza segura del jugador y detección de reset
   de reloj entre reconexiones. Review final `APPROVE`, P0/P1/P2/P3 = 0.
+- D6 queda aceptado y publicado en `496b758`: remaining, gaps relativos y
+  self-delta deterministas, transaccionales y acotados. La evidencia LMU 1.4
+  real conserva 1.846 muestras sanitizadas, tres wraps, dos vueltas comparables
+  y SHA-256
+  `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+  Review final `APPROVE`, P0/P1/P2/P3 = 0.
 - TC-07B–TC-09: pendientes.
 
-No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
-permanecen `missing` hasta tener inputs demostrados. La captura raw diagnóstica
-de ISA-104 permanece desactivada y sin wiring productivo.
+No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta ya
+tienen inputs y semántica demostrados dentro del pipeline aislado de D6, pero
+no llegan aún a Overlay: D7 debe proyectarlos de forma aditiva. La captura raw
+diagnóstica de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Decisiones
 
@@ -64,7 +71,8 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 - **P3 heredado:** dos avisos `unsafe.Pointer` Win32 en vet LMU normal.
 - **Deuda heredada fuera del corte:** lint global con 33 errores y dos warnings.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
-- **P2 funcional conocido:** gaps/delta siguen missing hasta demostrar inputs.
+- **Resuelto en D6, aún sin proyección:** gaps/delta tienen inputs reales,
+  semántica y evidencia LMU hash-pinned; D7 debe exponerlos sin cutover.
 - **P0 ISA-129 confirmado:** el bootstrap comercial inyecta
   `createMockSource()`, normaliza el buffer sintético como `Connected=true` y
   lo publica por Wails y SSE cuando LMU no está disponible.
@@ -92,10 +100,9 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar D6 de ISA-129 / TC-07A.1 sobre `7523def`: timing de sesión, gaps y
-delta de autorreferencia. Delta solo puede admitirse tras capturar dos vueltas
-LMU reales, completas, comparables, sanitizadas y hash-pinned. Sin CSS, canvas,
-renderers, baselines ni cutover productivo.
+Ejecutar D7 de ISA-129 / TC-07A.1 sobre `496b758`: contrato Overlay v1 aditivo
+y adaptador TypeScript. Probar old→old, old→new, new→old y new→new sin debilitar
+la validación ni tocar ViewModels, CSS, canvas, renderers, baselines o cutover.
 
 Auditoría de fallback cerrada:
 
@@ -188,6 +195,16 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-07-31, ISA-129 D6 aceptado y publicado en `496b758`. Remaining, gaps
+relativos y self-delta se derivan de observaciones canónicas demostradas. La
+fixture LMU 1.4 real contiene 1.846 muestras a 10 Hz, tres wraps y dos vueltas
+comparables; su SHA-256 es
+`d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+El oráculo independiente fija 100 ms de incertidumbre, exige delta superior y
+prueba el signo. Focales x20, dos fuzzers de 10 s, Telemetry Core, vet focal,
+benchmarks y diff-check PASS. Review final `APPROVE`, P0/P1/P2/P3 = 0. Sin PR,
+merge, promoción, wiring productivo ni cutover. Siguiente corte: D7.
 
 2026-07-31, ISA-129 D5 aceptado y publicado en `7523def`. La observación LMU
 canónica atraviesa el adapter duradero hasta `core.Batch`/Reducer con la

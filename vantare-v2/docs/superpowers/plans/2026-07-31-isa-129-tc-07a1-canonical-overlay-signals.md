@@ -445,36 +445,36 @@ code starts before this gate.
 
 ### Red tests
 
-- [ ] Replace mock-preserving manager tests with:
+- [x] Replace mock-preserving manager tests with:
   - `TestTelemetrySourceManagerStartsUnavailableWithoutLMU`
   - `TestTelemetrySourceManagerOpenFailureNeverCreatesMock`
   - `TestTelemetrySourceManagerLateLMUConnectionBecomesReal`
   - `TestTelemetrySourceManagerDisconnectNeverRestoresMock`
   - `TestTelemetrySourceManagerWithoutSourceReturnsDisconnectedTelemetry`
-- [ ] Add `TestMergeWithoutSharedMemoryNeverConnects`.
-- [ ] Add Wails/SSE regression checks for:
+- [x] Add `TestMergeWithoutSharedMemoryNeverConnects`.
+- [x] Add Wails/SSE regression checks for:
   - `connected=false`;
   - zero scoring rows;
   - no `Spa`, `TestDriver` or synthetic account canary.
-- [ ] Add a static guard that fails if `internal/app` or `cmd/vantare`
+- [x] Add a static guard that fails if `internal/app` or `cmd/vantare`
   references `BuildSyntheticBuffer` or `createMockSource`.
-- [ ] Run the focused tests and observe failure before implementation.
+- [x] Run the focused tests and observe failure before implementation.
 
 ### Implementation
 
-- [ ] Remove the `Mock` field and implicit mock creation from
+- [x] Remove the `Mock` field and implicit mock creation from
   `TelemetrySourceManagerConfig`.
-- [ ] Represent unavailable telemetry with a small explicit disconnected
+- [x] Represent unavailable telemetry with a small explicit disconnected
   source/value, not a fake LMU-sized buffer.
-- [ ] Keep the live source instance available for `EnsureLive` retries when
+- [x] Keep the live source instance available for `EnsureLive` retries when
   attach has not succeeded.
-- [ ] Delete `createMockSource` from `internal/app`.
-- [ ] Remove or hard-block the distributed `-live=false` path. Do not remove
+- [x] Delete `createMockSource` from `internal/app`.
+- [x] Remove or hard-block the distributed `-live=false` path. Do not remove
   explicit `-mock` from diagnostic CLIs.
-- [ ] Make `fusion.Merge(nil, ...)` preserve disconnected state.
-- [ ] Replace the frontend initial mock import with a literal disconnected
+- [x] Make `fusion.Merge(nil, ...)` preserve disconnected state.
+- [x] Replace the frontend initial mock import with a literal disconnected
   snapshot factory.
-- [ ] Keep preview Mock selection and Vite/Wails harness aliases unchanged.
+- [x] Keep preview Mock selection and Vite/Wails harness aliases unchanged.
 
 ### Verification
 
@@ -490,8 +490,8 @@ pnpm --dir frontend test -- telemetry-rate-coordinator
 git diff --check
 ```
 
-- [ ] Commit: `fix(telemetry): remove connected production mock`.
-- [ ] Independent review.
+- [x] Commit: `fix(telemetry): remove connected production mock` (`470d6a6`).
+- [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0.
 
 ---
 

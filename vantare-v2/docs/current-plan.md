@@ -43,6 +43,12 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   Go, app/server, hashes y `git diff --check` PASS. Review independiente
   `ACCEPT`, P0/P1/P2/P3 = 0; commit publicado `6acb352`. D1 queda desbloqueado
   y es el siguiente corte, todavía sin promoción ni cutover.
+- D1 implementado y aceptado en `470d6a6`: se retiró el mock conectado de
+  producción, se conserva el objeto LMU real para attach tardío, REST no puede
+  conectar por sí solo y Wails/SSE/frontend parten desconectados. Review
+  independiente `ACCEPT`, P0/P1/P2/P3 = 0. Go completo, frontend 2001/2001,
+  build y focales PASS; `-race` omitido por CGO desactivado y lint global
+  continúa con deuda heredada. D2 queda desbloqueado sin promoción ni cutover.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

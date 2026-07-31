@@ -40,8 +40,9 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   Una no-biyección activa rechaza el frame; `lapDistMax` exacto es
   `3982.366455078125`.
 - D0 no cambia comportamiento ni conecta runtime. Baselines previo y posterior
-  Go y `git diff --check` PASS. Falta review independiente sin P0/P1/P2/P3
-  razonable antes de iniciar D1.
+  Go, app/server, hashes y `git diff --check` PASS. Review independiente
+  `ACCEPT`, P0/P1/P2/P3 = 0; commit publicado `6acb352`. D1 queda desbloqueado
+  y es el siguiente corte, todavía sin promoción ni cutover.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

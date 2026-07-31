@@ -781,6 +781,29 @@ Tercera corrección backend ISA-104 preparada para review final:
   D4 permanece bloqueada hasta obtener `ACCEPT` sin P0/P1/P2/P3 razonables.
   Sin commit, merge, promoción ni sincronización Linear.
 
+Cierre backend ISA-104 y apertura de D4:
+
+- La review final de arquitectura detectó un único P2: `List` abría
+  `manifest.json` antes de comprobar con `Lstat`, por lo que podía leer
+  metadata de un symlink estático antes de invalidarlo.
+- Corregido con `Lstat` previo, rechazo de symlink/no-regular y comprobación de
+  identidad+tamaño+mtime del descriptor abierto. La regresión enlaza un
+  manifest externo válido y conserva una sesión normal.
+- El mismo review corrigió evidencia documental obsoleta: race focal x5 pasa
+  mediante UCRT64.
+- Re-review final de arquitectura: `ACCEPT`, P0/P1/P2/P3 = 0. Review final de
+  privacidad: `ACCEPT`, P0/P1/P2/P3 = 0.
+- Evidencia consolidada: manifest/catálogo x100 PASS, diagnostics/captura/
+  arquitectura x20 PASS, sanitizador/tap LMU x100 PASS, race focal x5 PASS,
+  fuzz 10.511 ejecuciones PASS, Telemetry Core/app/vet/gofmt/diff-check PASS.
+- Linear volvió a estar disponible: ISA-104 pasó de Backlog a `In Progress` y
+  recibió rama/worktree/base/plan, estado backend y gates. El nombre real de
+  rama queda registrado en el comentario porque el slug histórico de Linear no
+  coincide exactamente.
+- D4 queda desbloqueado. Se divide en composición Go/Wails de lectura y UI
+  aislada con cliente correlacionado, preview exacta y harness. Raw capture
+  continúa sin wiring productivo. Sin commit de producto, merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

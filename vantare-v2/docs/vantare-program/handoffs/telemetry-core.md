@@ -112,6 +112,18 @@ Auditoría de fallback cerrada:
 - El simulador productivo de Engineer queda documentado y excluido de este
   corte; no debe perderse antes del cutover Engineer.
 
+Primera review del plan ISA-129:
+
+- `REQUEST CHANGES`: P0=0, P1=2, P2=4, P3=0.
+- P1: faltaba una matriz probatoria exacta por señal antes de schema/código.
+- P1: identidad, sesión y epoch no tenían una tabla de transiciones ejecutable.
+- P2: la captura 1.4 dependía circularmente del allowlist y del sanitizer
+  multivehículo posterior.
+- P2: el gate exigía pit/reconexión pero el cierre permitía omitirlos.
+- P2: compatibilidad Overlay v1 no definía old/new y extensiones desconocidas.
+- P2: comandos gofmt/fuzz necesitaban nombres literales ejecutables.
+- No se inicia comportamiento hasta corregir y obtener re-review limpia.
+
 ## Gate final
 
 TC-09 exige Core, recording, Overlay y Engineer simultáneos; soak automatizado
@@ -128,6 +140,11 @@ corte. Los fixtures reales sanitizados prueban 44 vehículos para LMU 1.3, pero
 REST modular sigue siendo sintético. LMU instalado es 1.4.0.0; el driver solo
 reconoce 1.3.0.0 y el allowlist no se ampliará sin prueba estructural. Worktree
 limpio; sin código modificado, merge, promoción ni cutover.
+
+El primer plan de 906 líneas fue revisado independientemente y rechazado con
+P0=0/P1=2/P2=4/P3=0. Las correcciones se concentran en evidencia por señal,
+transiciones de identidad, bootstrap diagnóstico 1.4, gates no omitibles,
+compatibilidad v1 y comandos literales. No comenzó implementación.
 
 Histórico ISA-105: D1–D5 aprobados y publicados en `f2a1ac3`. Cobertura real:
 18/18, con un exacto, cinco parciales, once no comparables y un externo. La

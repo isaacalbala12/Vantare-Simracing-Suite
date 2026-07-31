@@ -1111,6 +1111,19 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 - Siguiente acción: cerrar auditoría de señales, redactar/revisar el plan TDD y
   ejecutar microcortes sin CSS, canvas, renderer, baseline ni cutover.
 
+### 2026-07-31 — ISA-129, primera review del plan
+
+- Veredicto: `REQUEST CHANGES`, P0=0, P1=2, P2=4, P3=0.
+- P1: matriz de evidencia por señal ausente; no se autoriza schema/código.
+- P1: reglas EventID/SessionID/epoch ambiguas ante menú, pista, reconnect,
+  reset y cambio de jugador.
+- P2: dependencia circular entre allowlist 1.4, sanitizer y captura.
+- P2: pit/reconnect eran obligatorios en replay pero opcionales al cierre.
+- P2: política Overlay v1 no definía productores/consumidores old/new.
+- P2: corregir comandos gofmt/fuzz para que sean ejecutables literalmente.
+- Acción: corregir el plan y repetir review antes de D1. Sin código de
+  comportamiento, commit de producto, merge, promoción ni cutover.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

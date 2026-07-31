@@ -804,6 +804,30 @@ Cierre backend ISA-104 y apertura de D4:
   aislada con cliente correlacionado, preview exacta y harness. Raw capture
   continúa sin wiring productivo. Sin commit de producto, merge o promoción.
 
+Avance D4 backend/Wails ISA-104:
+
+- Nuevo bridge app correlacionado y montaje mínimo en `cmd/vantare`; sustituye
+  el evento heredado que copiaba inmediatamente.
+- Operaciones cerradas: `prepare`, `sessions.list` y `sessions.inspect`.
+  Respuestas conservan `requestId`; errores solo publican operación+código
+  allowlisted, nunca `err.Error`, rutas, SessionRef o nombres SQLite.
+- Catálogo compuesto con SQLite privado únicamente para lectura sobre una raíz
+  derivada de configuración. `cfgDir` vacío devuelve `unavailable` y no crea
+  un fallback en el directorio de trabajo.
+- Raw capture, tap LMU, `Begin` y cualquier writer continúan sin wiring.
+- Backend focal x20, app, cmd, recording/replay/SQLite, vet y diff-check PASS.
+  `frontend/dist` se generó como artefacto ignorado para validar embed/cmd.
+- Una sesión future/corrupt/unavailable se representa desde metadata de List;
+  la UI no debe intentar inspeccionarla profundamente. Solo current+ready usa
+  Inspect.
+- El frontend funcional pasa 54/54 y build. El primer harness Playwright quedó
+  bloqueado y dejó procesos Vite huérfanos; el orquestador interrumpió solo ese
+  run, terminó sus PIDs explícitos y reanudó el worker con waits deterministas,
+  timeout total <=60 s y cleanup Windows obligatorio. No se aceptan capturas
+  vacías ni se oculta el fallo.
+- Review backend D4 read-only activa. UI/harness todavía en progreso. Sin
+  commit de producto, merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

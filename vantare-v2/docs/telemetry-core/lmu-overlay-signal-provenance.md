@@ -1,6 +1,7 @@
 # ISA-129 / TC-07A.1 — Procedencia de señales LMU para Overlay
 
-Estado: contrato documental D0 pendiente de review independiente.
+Estado: D0 y D1 aceptados; contrato ejecutable D2 implementado y pendiente de
+review independiente.
 
 Este documento cierra qué señales pueden entrar en los microcortes D1–D7 de
 ISA-129. No habilita compatibilidad nueva, no conecta el runtime modular a
@@ -61,6 +62,35 @@ esa prueba.
 
 La evidencia REST modular actual es sintética y player-only. No demuestra
 semántica de parrilla completa, equipo, número ni campos no decodificados.
+
+## Contrato ejecutable de layout LMU 1.3 — D2
+
+`internal/telemetry/drivers/lmu/layout.go` materializa la matriz de admisión
+como una allowlist cerrada y tipada. El contrato fija explícitamente:
+
+- objeto `LMU_Data` de `324820` bytes;
+- scoring en base `2192`, stride `584` y máximo `104` filas;
+- telemetry en base `128468`, stride `1888` y máximo `104` filas;
+- tipos fuente Windows `int32`, `int16`, `int8`, `uint8`, `bool` de un byte,
+  `float64` y arrays acotados de `char`;
+- seis campos de sesión, diecinueve campos scoring y diez campos telemetry;
+- rechazo de cualquier índice de fila fuera de `[0,104)`.
+
+Los tests leen los dos fixtures hash-pinned y comprueban en sus bytes reales
+cada offset y tipo admitido, incluida la fila player scoring/telemetry 43. La
+región de scoring termina en `62928`, no alcanza telemetry, y la fila telemetry
+104 termina exactamente en `ObjectOutSize`. Cada ventana de campo queda dentro
+de su objeto o stride y las ventanas admitidas de un mismo scope no se solapan.
+
+La API de layout no contiene accesores para los campos excluidos de este
+documento: fases/banderas, pit-state labels, remaining raw, temperaturas,
+`FuelFraction`, native `mDeltaBest`, equipo, número, compuesto, Virtual Energy,
+daños o weather. Conocer que ciertos bytes existen no los vuelve admisibles.
+
+D2 no cambia el decoder actual ni la allowlist productiva. D4A será el corte
+que consuma este contrato al implementar el parser multivehículo. La versión
+del contrato permanece fijada literalmente a `1.3.0.0`; LMU 1.4 continúa
+bloqueado hasta la evidencia D4B.
 
 ## Reglas canónicas
 

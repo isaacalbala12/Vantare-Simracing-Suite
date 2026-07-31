@@ -735,6 +735,29 @@ Primera review doble del backend ISA-104: `REQUEST_CHANGES`.
 - El bloque vuelve al implementador con TDD y remedios concretos; la UI D4 no
   comienza hasta re-review `ACCEPT`.
 
+Resultado de las primeras correcciones y segunda re-review ISA-104:
+
+- Cerrados: reemplazo atómico/recuperable de metadata, cleanup tombstone,
+  catálogo `List` metadata-only + `Inspect(handle)`, enumeración máxima 500,
+  handles por generación/TTL, JSON acotado, procedencia/hash raw, reserva del
+  tap antes de sanitizar y máscara exhaustiva de bytes.
+- Un gate global del orquestador detectó una regresión que los focales iniciales
+  no vieron: Windows podía reutilizar File ID al reemplazar la DB. Se añadió
+  una huella acotada de cabecera/cola, tamaño y mtime. Reemplazo, rewrite
+  in-place y truncado pasan x100; diagnostics x50 y Telemetry completo PASS.
+- Segunda re-review: `REQUEST_CHANGES` por manifest reescrito in-place sin
+  invalidar el handle y ausencia de guard de imports para la nueva capa
+  `internal/telemetry/diagnostics`.
+- Se corrige el manifest con SHA-256 exacto (máximo 32 KiB) y se limita
+  diagnostics a recording/schema/su propio árbol.
+- Contrato de amenaza explícito: el handle autoriza una sesión/ruta privada,
+  no congela cada byte de una SQLite activa. Mutaciones internas legítimas son
+  verificadas por Store; no se hashea la DB completa. Un atacante con control
+  del almacenamiento privado del mismo usuario queda fuera de esta capa. El
+  wiring productivo deberá derivar la raíz privada y validar ACL.
+- La UI D4 sigue bloqueada hasta la re-review final del backend. Sin merge,
+  promoción ni Linear.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

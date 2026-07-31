@@ -163,6 +163,15 @@ El comparator mantiene un mapa tipado `ViewModel path -> source paths`. Si una
 fuente está stale, invalid o missing, la salida dependiente nunca puede quedar
 `equal` aunque el valor coincida por casualidad.
 
+Para listas, la calidad se resuelve por la identidad interna de cada vehículo y
+su índice real en la proyección. Los IDs solo sirven durante el cálculo: el
+reporte conserva paths genéricos como `vehicles[].position`. Broadcast Tower no
+usa la posición como identidad y detecta un cambio de coche en la misma plaza.
+
+Los fallbacks conservan su orden semántico. Por ejemplo,
+`lapNumber ?? totalLaps` consulta la calidad de `lapNumber` siempre que el valor
+exista; solo cae a `totalLaps` cuando el primero es realmente `undefined`.
+
 ## Historial de controles
 
 `controlsHistory` contiene cursor y ratios, pero no el tiempo individual de cada
@@ -221,6 +230,10 @@ Debe redactar o excluir:
 Los tests inyectan canarios únicos en nombre, equipo, ID, ruta y mensaje de
 error. Ningún canario puede aparecer en el objeto de reporte, su JSON ni el
 DOM. Los paths usan índices/aliases deterministas, nunca IDs reales.
+
+Se procesan y contabilizan hasta los 128 widgets válidos de un documento. El
+límite de 64 se aplica únicamente a las diferencias serializadas, no al número
+de widgets ni a los contadores completos.
 
 ## Consumidores transversales fuera de los builders
 

@@ -361,6 +361,13 @@ Cada regla de un path del ViewModel declara también sus `sourcePaths`. Si una
 fuente está stale/invalid/missing, el campo no puede clasificarse `equal` aunque
 el valor renderizable coincida.
 
+Las dependencias reproducen el consumo real del builder: `allOf` cuando todas
+las señales participan y `firstAvailable` para fallbacks ordenados como
+`lapNumber ?? totalLaps`, eligiendo por presencia real en el snapshot. La
+calidad de cada fila se resuelve mediante su identidad interna y
+`vehicles[n].field`, pero el reporte solo publica `vehicles[].field`. Broadcast
+nunca usa la posición como identidad.
+
 El resumen contiene:
 
 - número total de widgets y campos;
@@ -378,7 +385,8 @@ El informe serializable:
 - reemplaza cualquier nombre, equipo, ID o ruta por `<redacted>`;
 - no contiene el payload original;
 - no contiene `TelemetrySnapshot` completo;
-- limita longitud, profundidad y cantidad;
+- procesa y cuenta hasta los 128 widgets válidos del documento;
+- limita a 64 las diferencias serializadas, además de longitud y profundidad;
 - usa códigos estables en errores;
 - es determinista byte a byte para el mismo input.
 

@@ -1,0 +1,944 @@
+import type { WidgetInstanceV3, WidgetType } from "../core/profile-document";
+import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
+import type { WidgetViewModelBase } from "../core/widget-definition";
+import { widgetTypeRegistry } from "../core/widget-registry";
+import type { StandingsRowViewModel, StandingsViewModel } from "../widget-types/standings/standings-view-model";
+import type { BroadcastTowerRow, BroadcastTowerViewModel } from "../widget-types/broadcast-tower/broadcast-tower-view-model";
+import type { InputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
+import type { InputTelemetryContent } from "../widget-types/input-telemetry/input-telemetry-definition";
+import { buildInputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
+import { readScoringBoolean, readScoringNumber, readScoringString } from "../widget-types/shared/scoring-readers";
+import type {
+  OverlayProjectionAdaptation,
+  OverlayProjectionMapping,
+} from "./overlay-projection-adapter";
+import {
+  limitShadowEntries,
+  sanitizeShadowObservation,
+  sanitizeShadowPath,
+  type SanitizedShadowObservation,
+  type ShadowDisclosure,
+} from "./overlay-shadow-sanitizer";
+
+const CONTRACT_VERSION = 1 as const;
+const MAX_LIST_ITEMS = 104;
+const MAX_WIDGETS = 128;
+const INPUT_HISTORY_LIMIT = 120;
+const RUNTIME_STATUSES = ["ready", "missing", "stale", "disconnected", "error"] as const;
+
+export type OverlayShadowCoverage = "exact" | "partial" | "not-comparable" | "external";
+
+export type OverlayShadowClassification =
+  | "equal"
+  | "within-tolerance"
+  | "value-mismatch"
+  | "missing-legacy"
+  | "missing-projection"
+  | "stale-projection"
+  | "invalid-projection"
+  | "unsupported-by-projection"
+  | "shape-mismatch"
+  | "builder-error"
+  | "external-consumer";
+
+export type OverlayShadowRuleCode =
+  | "exact"
+  | "absolute-tolerance"
+  | "presence"
+  | "list-shape"
+  | "unit-contract"
+  | "unsupported"
+  | "external"
+  | "builder"
+  | "blocked";
+
+export type OverlayShadowEntry = Readonly<{
+  path: string;
+  classification: OverlayShadowClassification;
+  rule: OverlayShadowRuleCode;
+  sourcePaths: readonly string[];
+  tolerance?: number;
+  item?: number;
+  observation?: SanitizedShadowObservation;
+}>;
+
+export type OverlayShadowCounts = Readonly<{
+  fields: number;
+  equal: number;
+  withinTolerance: number;
+  mismatches: number;
+  external: number;
+}>;
+
+export type OverlayShadowWidgetResult = Readonly<{
+  widgetType: WidgetType;
+  instance: number;
+  coverage: OverlayShadowCoverage;
+  outcome: "equal" | "mismatch" | "not-comparable" | "external" | "blocked" | "builder-error";
+  summary: OverlayShadowCounts;
+  entries: readonly OverlayShadowEntry[];
+}>;
+
+export type OverlayShadowReport = Readonly<{
+  contractVersion: typeof CONTRACT_VERSION;
+  summary: OverlayShadowCounts & Readonly<{ widgets: number }>;
+  widgets: readonly OverlayShadowWidgetResult[];
+  truncated: boolean;
+}>;
+
+type ShadowScalar = string | number | boolean | null | undefined;
+type ViewModelReader = (model: WidgetViewModelBase) => ShadowScalar;
+type RowReader = (row: unknown) => ShadowScalar;
+
+type QualitySelector =
+  | Readonly<{ kind: "target"; path: string }>
+  | Readonly<{ kind: "source"; path: string }>
+  | Readonly<{ kind: "vehicle"; field: string }>
+  | Readonly<{ kind: "player-vehicle"; field: string }>;
+
+type QualityRequirement =
+  | Readonly<{
+      mode: "allOf" | "anyOf";
+      selectors: readonly QualitySelector[];
+    }>
+  | Readonly<{
+      mode: "firstAvailable";
+      selectors: readonly QualitySelector[];
+      select: (snapshot: TelemetrySnapshot) => number;
+    }>;
+
+type ScalarRule = Readonly<{
+  kind: "scalar";
+  path: string;
+  read: ViewModelReader;
+  quality: QualityRequirement;
+  tolerance?: number;
+  disclosure: ShadowDisclosure;
+}>;
+
+type ListFieldRule = Readonly<{
+  path: string;
+  read: RowReader;
+  quality: QualityRequirement;
+  tolerance?: number;
+  disclosure: ShadowDisclosure;
+}>;
+
+type ListRule = Readonly<{
+  kind: "list";
+  path: string;
+  read: (model: WidgetViewModelBase) => readonly unknown[];
+  identities: (
+    rows: readonly unknown[],
+    snapshot: TelemetrySnapshot,
+  ) => readonly string[] | undefined;
+  orderSignificant: boolean;
+  fields: readonly ListFieldRule[];
+}>;
+
+type UnsupportedRule = Readonly<{
+  kind: "unsupported";
+  path: string;
+  sourcePaths: readonly QualitySelector[];
+}>;
+
+type DeclaredMismatchRule = Readonly<{
+  kind: "declared-mismatch";
+  path: string;
+  quality: QualityRequirement;
+}>;
+
+type ExternalRule = Readonly<{
+  kind: "external";
+  path: string;
+}>;
+
+type ShadowPolicyRule = ScalarRule | ListRule | UnsupportedRule | DeclaredMismatchRule | ExternalRule;
+
+export type OverlayShadowPolicy = Readonly<{
+  widgetType: WidgetType;
+  coverage: OverlayShadowCoverage;
+  rules: readonly ShadowPolicyRule[];
+}>;
+
+const target = (path: string): QualitySelector => ({ kind: "target", path });
+const source = (path: string): QualitySelector => ({ kind: "source", path });
+const vehicle = (field: string): QualitySelector => ({ kind: "vehicle", field });
+const playerVehicle = (field: string): QualitySelector => ({ kind: "player-vehicle", field });
+const allOf = (...selectors: QualitySelector[]): QualityRequirement => ({ mode: "allOf", selectors });
+const firstAvailable = (
+  select: (snapshot: TelemetrySnapshot) => number,
+  ...selectors: QualitySelector[]
+): QualityRequirement => ({
+  mode: "firstAvailable",
+  selectors,
+  select,
+});
+const numberDisclosure = { kind: "number" } as const;
+const booleanDisclosure = { kind: "boolean" } as const;
+const redactedDisclosure = { kind: "redacted" } as const;
+const presenceDisclosure = { kind: "presence" } as const;
+const statusDisclosure = { kind: "enum", allowed: RUNTIME_STATUSES } as const;
+
+function scalar(
+  path: string,
+  read: ViewModelReader,
+  disclosure: ShadowDisclosure,
+  quality: QualityRequirement = allOf(),
+  tolerance?: number,
+): ScalarRule {
+  return { kind: "scalar", path, read, quality, disclosure, tolerance };
+}
+
+function unsupported(path: string, ...sourcePaths: QualitySelector[]): UnsupportedRule {
+  return { kind: "unsupported", path, sourcePaths };
+}
+
+const statusRules: readonly ScalarRule[] = [
+  scalar("status", (model) => model.status, statusDisclosure),
+  scalar("statusMessage", (model) => model.statusMessage, presenceDisclosure),
+];
+
+const controlsRules: readonly ScalarRule[] = [
+  scalar("throttle", (model) => readNumber(model, "throttle"), numberDisclosure, allOf(target("player.throttle")), 1e-9),
+  scalar("brake", (model) => readNumber(model, "brake"), numberDisclosure, allOf(target("player.brake")), 1e-9),
+  scalar("clutch", (model) => readNumber(model, "clutch"), numberDisclosure, allOf(target("player.clutch")), 1e-9),
+];
+
+const extendedInputRules: readonly ScalarRule[] = [
+  ...controlsRules,
+  scalar("speedKph", (model) => readNumber(model, "speedKph"), numberDisclosure, allOf(target("player.speedKph")), 3.6e-6),
+  scalar("rpm", (model) => readNumber(model, "rpm"), numberDisclosure, allOf(target("player.rpm")), 1e-6),
+  scalar("gear", (model) => readNumber(model, "gear"), numberDisclosure, allOf(target("player.gear"))),
+];
+
+const speedUnitMismatch: DeclaredMismatchRule = {
+  kind: "declared-mismatch",
+  path: "speedKph.unit",
+  quality: allOf(target("player.speedKph")),
+};
+
+const standingsRows: ListRule = {
+  kind: "list",
+  path: "rows",
+  read: (model) => (model as StandingsViewModel).rows,
+  identities: (rows) => rows.map((row) => (row as StandingsRowViewModel).id),
+  orderSignificant: true,
+  fields: [
+    { path: "id", read: (row) => (row as StandingsRowViewModel).id, quality: allOf(), disclosure: redactedDisclosure },
+    { path: "position", read: (row) => (row as StandingsRowViewModel).position, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
+    { path: "currentLapText", read: (row) => (row as StandingsRowViewModel).currentLapText, quality: allOf(vehicle("completedLaps")), disclosure: redactedDisclosure },
+    { path: "pitText", read: (row) => (row as StandingsRowViewModel).pitText, quality: allOf(vehicle("inPit")), disclosure: redactedDisclosure },
+    { path: "isPlayer", read: (row) => (row as StandingsRowViewModel).isPlayer, quality: allOf(source("playerVehicleId")), disclosure: booleanDisclosure },
+    { path: "isLeader", read: (row) => (row as StandingsRowViewModel).isLeader, quality: allOf(vehicle("position")), disclosure: booleanDisclosure },
+  ],
+};
+
+const broadcastRows: ListRule = {
+  kind: "list",
+  path: "rows",
+  read: (model) => (model as BroadcastTowerViewModel).rows,
+  identities: broadcastIdentities,
+  orderSignificant: true,
+  fields: [
+    { path: "place", read: (row) => (row as BroadcastTowerRow).place, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
+    { path: "isPlayer", read: (row) => (row as BroadcastTowerRow).isPlayer, quality: allOf(source("playerVehicleId")), disclosure: booleanDisclosure },
+  ],
+};
+
+export const OVERLAY_SHADOW_POLICIES = {
+  delta: {
+    widgetType: "delta",
+    coverage: "not-comparable",
+    rules: ["tone", "deltaText", "lastLapText", "bestLapText", "progress", "lapText", "predictedLapText", "splitText"].map((path) => unsupported(path, target("player.deltaSeconds"))),
+  },
+  standings: {
+    widgetType: "standings",
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      scalar("sessionLabel", (model) => (model as StandingsViewModel).sessionLabel, redactedDisclosure, allOf(target("session.type"))),
+      standingsRows,
+      unsupported("activeClass", target("scoring[].vehicleClass")),
+      unsupported("remainingText", target("session.remainingSeconds")),
+      ...["driverNumber", "driverName", "vehicleClass", "teamCode", "teamBrandColor", "gapText", "intervalText", "lastLapText", "bestLapText", "tireCompound"].map((path) => unsupported(`rows[].${path}`, target(`scoring[].${path}`))),
+    ],
+  },
+  relative: {
+    widgetType: "relative",
+    coverage: "not-comparable",
+    rules: ["rows", "rows[].gapSeconds", "rows[].driverName", "rows[].vehicleClass", "rows[].driverNumber", "rows[].bestLapText", "rows[].lastLapText"].map((path) => unsupported(path, target("scoring[].timeGapToPlayer"))),
+  },
+  pedals: {
+    widgetType: "pedals",
+    coverage: "exact",
+    rules: [
+      ...statusRules,
+      ...controlsRules,
+      scalar("throttleText", (model) => readString(model, "throttleText"), redactedDisclosure, allOf(target("player.throttle"))),
+      scalar("brakeText", (model) => readString(model, "brakeText"), redactedDisclosure, allOf(target("player.brake"))),
+      scalar("clutchText", (model) => readString(model, "clutchText"), redactedDisclosure, allOf(target("player.clutch"))),
+    ],
+  },
+  "broadcast-tower": {
+    widgetType: "broadcast-tower",
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      scalar("sessionLabel", (model) => (model as BroadcastTowerViewModel).sessionLabel, redactedDisclosure, allOf(target("session.type"))),
+      scalar("lap", (model) => (model as BroadcastTowerViewModel).lap, numberDisclosure, firstAvailable(
+        (snapshot) => snapshot.player.lapNumber === undefined ? 1 : 0,
+        target("player.lapNumber"),
+        target("player.totalLaps"),
+      )),
+      scalar("totalLaps", (model) => (model as BroadcastTowerViewModel).totalLaps, numberDisclosure, allOf(target("player.totalLaps"))),
+      broadcastRows,
+      unsupported("trackTempC", target("environment.trackC")),
+      unsupported("sof", target("scoring[].rating")),
+      ...["number", "name", "team", "className", "brandColor", "gap"].map((path) => unsupported(`rows[].${path}`, target(`scoring[].${path}`))),
+    ],
+  },
+  "fuel-strategy": {
+    widgetType: "fuel-strategy",
+    coverage: "not-comparable",
+    rules: ["fuelLiters", "fuelPercent", "avgPerLap", "lapsRemaining", "requiredFuel", "history"].map((path) => unsupported(path, target("player.fuelLiters"))),
+  },
+  "pedals-telemetry": {
+    widgetType: "pedals-telemetry",
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      ...extendedInputRules,
+      speedUnitMismatch,
+      scalar("playerPosition", (model) => readNumber(model, "playerPosition"), numberDisclosure, allOf(playerVehicle("position"))),
+      scalar("speedText", (model) => readString(model, "speedText"), redactedDisclosure, allOf(target("player.speedKph"))),
+      scalar("rpmText", (model) => readString(model, "rpmText"), redactedDisclosure, allOf(target("player.rpm"))),
+      scalar("gearText", (model) => readString(model, "gearText"), redactedDisclosure, allOf(target("player.gear"))),
+      scalar("positionText", (model) => readString(model, "positionText"), redactedDisclosure, allOf(playerVehicle("position"))),
+    ],
+  },
+  "pedals-telemetry-compact": {
+    widgetType: "pedals-telemetry-compact",
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      ...extendedInputRules,
+      speedUnitMismatch,
+      scalar("speedText", (model) => readString(model, "speedText"), redactedDisclosure, allOf(target("player.speedKph"))),
+      scalar("rpmText", (model) => readString(model, "rpmText"), redactedDisclosure, allOf(target("player.rpm"))),
+      scalar("gearText", (model) => readString(model, "gearText"), redactedDisclosure, allOf(target("player.gear"))),
+    ],
+  },
+  "racing-flags": {
+    widgetType: "racing-flags",
+    coverage: "not-comparable",
+    rules: ["globalFlag", "sectorFlags", "message", "hidden"].map((path) => unsupported(path, target("session.globalFlag"))),
+  },
+  "delta-trace": {
+    widgetType: "delta-trace",
+    coverage: "not-comparable",
+    rules: ["points", "currentDelta", "trend", "sectorDeltas", "turnInsight", "trackPath"].map((path) => unsupported(path, target("derived.deltaHistory"))),
+  },
+  "race-schedule": {
+    widgetType: "race-schedule",
+    coverage: "external",
+    rules: [{ kind: "external", path: "events" }],
+  },
+  "head-to-head": {
+    widgetType: "head-to-head",
+    coverage: "not-comparable",
+    rules: ["player", "opponent", "ahead", "behind", "gapSeconds", "sectorComparisons"].map((path) => unsupported(path, target("scoring[].timeGapToPlayer"))),
+  },
+  "delta-advanced": {
+    widgetType: "delta-advanced",
+    coverage: "not-comparable",
+    rules: ["best", "sector", "theoretical", "last", "availability"].map((path) => unsupported(path, target("player.deltaSeconds"))),
+  },
+  "input-telemetry": {
+    widgetType: "input-telemetry",
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      ...extendedInputRules,
+      speedUnitMismatch,
+      unsupported("history", source("controlsHistory")),
+    ],
+  },
+  "multiclass-relative": {
+    widgetType: "multiclass-relative",
+    coverage: "not-comparable",
+    rules: ["rows", "rows[].classId", "rows[].classColor", "rows[].number", "rows[].name", "rows[].gap"].map((path) => unsupported(path, target("scoring[].vehicleClass"))),
+  },
+  "track-weather": {
+    widgetType: "track-weather",
+    coverage: "not-comparable",
+    rules: ["ambientC", "trackC", "rainPercent", "wetnessPercent", "windKph", "windDirection", "pressureHpa"].map((path) => unsupported(path, target("environment"))),
+  },
+  "car-damage-visual": {
+    widgetType: "car-damage-visual",
+    coverage: "not-comparable",
+    rules: ["body", "aero", "suspension", "tyres"].map((path) => unsupported(path, target("damage"))),
+  },
+  "car-damage-numbers": {
+    widgetType: "car-damage-numbers",
+    coverage: "not-comparable",
+    rules: ["body", "aero", "suspension", "tyres"].map((path) => unsupported(path, target("damage"))),
+  },
+} satisfies Record<WidgetType, OverlayShadowPolicy>;
+
+export function compareOverlayShadow(input: Readonly<{
+  legacySnapshot: TelemetrySnapshot;
+  projection: OverlayProjectionAdaptation;
+  widgets: readonly WidgetInstanceV3[];
+  maxEntries?: number;
+}>): OverlayShadowReport {
+  const allSorted = input.widgets
+    .map((widget, originalIndex) => ({ widget, originalIndex }))
+    .sort((left, right) =>
+      left.widget.type.localeCompare(right.widget.type) || left.originalIndex - right.originalIndex,
+    );
+  const sorted = allSorted.slice(0, MAX_WIDGETS);
+  const instanceCounts = new Map<WidgetType, number>();
+  const fullResults = sorted.map(({ widget }) => {
+    const instance = instanceCounts.get(widget.type) ?? 0;
+    instanceCounts.set(widget.type, instance + 1);
+    return compareWidget(widget, instance, input.legacySnapshot, input.projection);
+  });
+  const fullEntries = fullResults.flatMap((result) => result.entries);
+  const bounded = limitShadowEntries(fullEntries, input.maxEntries);
+  const visibleByWidget = allocateEntries(fullResults, bounded.entries.length);
+  const widgets = fullResults.map((result, index) => ({
+    ...result,
+    entries: visibleByWidget[index],
+  }));
+  const summary = addCounts(fullResults.map((result) => result.summary));
+  return {
+    contractVersion: CONTRACT_VERSION,
+    summary: { widgets: widgets.length, ...summary },
+    widgets,
+    truncated: allSorted.length > sorted.length || bounded.truncated,
+  };
+}
+
+function allocateEntries(
+  results: readonly OverlayShadowWidgetResult[],
+  limit: number,
+): readonly (readonly OverlayShadowEntry[])[] {
+  const visible = results.map(() => [] as OverlayShadowEntry[]);
+  let remaining = limit;
+  let entryIndex = 0;
+  while (remaining > 0) {
+    let added = false;
+    for (let resultIndex = 0; resultIndex < results.length && remaining > 0; resultIndex += 1) {
+      const entry = results[resultIndex].entries[entryIndex];
+      if (!entry) continue;
+      visible[resultIndex].push(entry);
+      remaining -= 1;
+      added = true;
+    }
+    if (!added) break;
+    entryIndex += 1;
+  }
+  return visible;
+}
+
+function compareWidget(
+  widget: WidgetInstanceV3,
+  instance: number,
+  legacySnapshot: TelemetrySnapshot,
+  projection: OverlayProjectionAdaptation,
+): OverlayShadowWidgetResult {
+  const policy = OVERLAY_SHADOW_POLICIES[widget.type];
+  if (projection.kind === "blocked") {
+    const entry = policy.coverage === "external"
+      ? makeEntry("events", "external-consumer", "external", [])
+      : makeEntry("mapping", "shape-mismatch", "blocked", []);
+    return finishWidget(policy, instance, [entry], policy.coverage === "external" ? "external" : "blocked");
+  }
+
+  let models: Readonly<{ legacy: WidgetViewModelBase; projection: WidgetViewModelBase }>;
+  try {
+    models = buildViewModelPair(widget, legacySnapshot, projection.snapshot);
+  } catch {
+    return finishWidget(
+      policy,
+      instance,
+      [makeEntry("builder", "builder-error", "builder", [])],
+      "builder-error",
+    );
+  }
+
+  const entries = policy.rules.flatMap((rule) =>
+    compareRule(
+      rule,
+      models.legacy,
+      models.projection,
+      legacySnapshot,
+      projection,
+    ),
+  );
+  entries.sort(compareEntries);
+  const outcome = policy.coverage === "external"
+    ? "external"
+    : policy.coverage === "not-comparable"
+      ? "not-comparable"
+      : policy.coverage === "partial" || entries.some((entry) => isMismatch(entry.classification))
+        ? "mismatch"
+        : "equal";
+  return finishWidget(policy, instance, entries, outcome);
+}
+
+function buildViewModelPair(
+  widget: WidgetInstanceV3,
+  legacySnapshot: TelemetrySnapshot,
+  projectionSnapshot: TelemetrySnapshot,
+): Readonly<{ legacy: WidgetViewModelBase; projection: WidgetViewModelBase }> {
+  const definition = widgetTypeRegistry.get(widget.type);
+  const parsedContent = definition.parseContent(widget.content);
+  if (widget.type === "input-telemetry") {
+    const content = parsedContent as InputTelemetryContent;
+    return {
+      legacy: buildInputTelemetryViewModel(legacySnapshot, content, inputHistory(legacySnapshot)),
+      projection: buildInputTelemetryViewModel(projectionSnapshot, content, []),
+    };
+  }
+  return {
+    legacy: definition.buildViewModel(legacySnapshot, parsedContent),
+    projection: definition.buildViewModel(projectionSnapshot, parsedContent),
+  };
+}
+
+function inputHistory(snapshot: TelemetrySnapshot): readonly InputTelemetrySample[] {
+  return (snapshot.derived?.inputHistory ?? []).slice(-INPUT_HISTORY_LIMIT).map((item) => ({
+    capturedAt: item.capturedAt,
+    throttle: item.throttle ?? 0,
+    brake: item.brake ?? 0,
+    clutch: item.clutch ?? 0,
+  }));
+}
+
+function compareRule(
+  rule: ShadowPolicyRule,
+  legacy: WidgetViewModelBase,
+  projectionModel: WidgetViewModelBase,
+  legacySnapshot: TelemetrySnapshot,
+  projection: OverlayProjectionMapping,
+): OverlayShadowEntry[] {
+  switch (rule.kind) {
+    case "scalar":
+      return [compareScalarRule(rule, legacy, projectionModel, projection)];
+    case "list":
+      return compareListRule(
+        rule,
+        legacy,
+        projectionModel,
+        legacySnapshot,
+        projection,
+      );
+    case "unsupported":
+      return [makeEntry(rule.path, "unsupported-by-projection", "unsupported", sourceLabels(rule.sourcePaths))];
+    case "declared-mismatch": {
+      const qualityClassification = classifyQuality(rule.quality, projection);
+      return [makeEntry(
+        rule.path,
+        qualityClassification ?? "value-mismatch",
+        "unit-contract",
+        sourceLabels(rule.quality),
+      )];
+    }
+    case "external":
+      return [makeEntry(rule.path, "external-consumer", "external", [])];
+  }
+}
+
+function compareScalarRule(
+  rule: ScalarRule,
+  legacy: WidgetViewModelBase,
+  projectionModel: WidgetViewModelBase,
+  projection: OverlayProjectionMapping,
+): OverlayShadowEntry {
+  let legacyValue: ShadowScalar;
+  let projectionValue: ShadowScalar;
+  try {
+    legacyValue = rule.read(legacy);
+    projectionValue = rule.read(projectionModel);
+  } catch {
+    return makeEntry(rule.path, "shape-mismatch", "exact", sourceLabels(rule.quality));
+  }
+  return compareScalarValues(
+    rule.path,
+    legacyValue,
+    projectionValue,
+    rule.quality,
+    rule.disclosure,
+    projection,
+    rule.tolerance,
+  );
+}
+
+function compareListRule(
+  rule: ListRule,
+  legacy: WidgetViewModelBase,
+  projectionModel: WidgetViewModelBase,
+  legacySnapshot: TelemetrySnapshot,
+  projection: OverlayProjectionMapping,
+): OverlayShadowEntry[] {
+  let legacyRows: readonly unknown[];
+  let projectionRows: readonly unknown[];
+  try {
+    legacyRows = rule.read(legacy).slice(0, MAX_LIST_ITEMS);
+    projectionRows = rule.read(projectionModel).slice(0, MAX_LIST_ITEMS);
+  } catch {
+    return [makeEntry(`${rule.path}.shape`, "shape-mismatch", "list-shape", [])];
+  }
+
+  const entries: OverlayShadowEntry[] = [];
+  entries.push(makeEntry(
+    `${rule.path}.length`,
+    legacyRows.length === projectionRows.length ? "equal" : "shape-mismatch",
+    "list-shape",
+    [],
+    undefined,
+    undefined,
+    sanitizeShadowObservation(legacyRows.length, projectionRows.length, numberDisclosure),
+  ));
+  const legacyIdentities = rule.identities(legacyRows, legacySnapshot);
+  const projectionIdentities = rule.identities(projectionRows, projection.snapshot);
+  const legacyIndex = indexRows(legacyRows, legacyIdentities);
+  const projectionIndex = indexRows(projectionRows, projectionIdentities);
+  if (!legacyIndex || !projectionIndex) {
+    entries.push(makeEntry(`${rule.path}.identity`, "shape-mismatch", "list-shape", []));
+    return entries;
+  }
+  const legacyOrder = [...legacyIndex.keys()];
+  const projectionOrder = [...projectionIndex.keys()];
+  if (rule.orderSignificant) {
+    const classification = sameOrder(legacyOrder, projectionOrder) ? "equal" : "shape-mismatch";
+    entries.push(makeEntry(
+      `${rule.path}.order`,
+      classification,
+      "list-shape",
+      [],
+      undefined,
+      undefined,
+      sanitizeShadowObservation(legacyOrder.join("|"), projectionOrder.join("|"), redactedDisclosure),
+    ));
+  }
+  legacyOrder.forEach((identity, item) => {
+    const legacyRow = legacyIndex.get(identity);
+    const projectionRow = projectionIndex.get(identity);
+    if (!legacyRow || !projectionRow) return;
+    const projectionVehicleIndex = scoringIndexByIdentity(projection.snapshot, identity);
+    for (const field of rule.fields) {
+      entries.push(compareScalarValues(
+        `${rule.path}[].${field.path}`,
+        field.read(legacyRow),
+        field.read(projectionRow),
+        field.quality,
+        field.disclosure,
+        projection,
+        field.tolerance,
+        item,
+        projectionVehicleIndex,
+      ));
+    }
+  });
+  return entries;
+}
+
+function compareScalarValues(
+  path: string,
+  legacy: ShadowScalar,
+  projectionValue: ShadowScalar,
+  quality: QualityRequirement,
+  disclosure: ShadowDisclosure,
+  projection: OverlayProjectionMapping,
+  tolerance?: number,
+  item?: number,
+  projectionVehicleIndex?: number,
+): OverlayShadowEntry {
+  const qualityClassification = classifyQuality(
+    quality,
+    projection,
+    projectionVehicleIndex,
+  );
+  const paths = sourceLabels(quality);
+  const observation = sanitizeShadowObservation(legacy, projectionValue, disclosure);
+  if (qualityClassification) {
+    return makeEntry(path, qualityClassification, tolerance === undefined ? "exact" : "absolute-tolerance", paths, tolerance, item, observation);
+  }
+  if (legacy === undefined && projectionValue !== undefined) {
+    return makeEntry(path, "missing-legacy", "exact", paths, tolerance, item, observation);
+  }
+  if (legacy !== undefined && projectionValue === undefined) {
+    return makeEntry(path, "missing-projection", "exact", paths, tolerance, item, observation);
+  }
+  if (!isScalar(legacy) || !isScalar(projectionValue)) {
+    return makeEntry(path, "shape-mismatch", "exact", paths, tolerance, item);
+  }
+  if (
+    (typeof legacy === "number" && !Number.isFinite(legacy)) ||
+    (typeof projectionValue === "number" && !Number.isFinite(projectionValue))
+  ) {
+    return makeEntry(path, "shape-mismatch", "exact", paths, tolerance, item);
+  }
+  if (Object.is(legacy, projectionValue)) {
+    return makeEntry(path, "equal", tolerance === undefined ? "exact" : "absolute-tolerance", paths, tolerance, item, observation);
+  }
+  if (
+    tolerance !== undefined &&
+    typeof legacy === "number" &&
+    typeof projectionValue === "number" &&
+    Number.isFinite(legacy) &&
+    Number.isFinite(projectionValue) &&
+    Math.abs(legacy - projectionValue) <= tolerance
+  ) {
+    return makeEntry(path, "within-tolerance", "absolute-tolerance", paths, tolerance, item, observation);
+  }
+  return makeEntry(path, "value-mismatch", tolerance === undefined ? "exact" : "absolute-tolerance", paths, tolerance, item, observation);
+}
+
+function classifyQuality(
+  requirement: QualityRequirement,
+  projection: OverlayProjectionMapping,
+  projectionVehicleIndex?: number,
+): "missing-projection" | "stale-projection" | "invalid-projection" | "value-mismatch" | undefined {
+  if (requirement.selectors.length === 0) return undefined;
+  const states = requirement.selectors.map((selector) =>
+    classifyQualitySelector(
+      selector,
+      projection,
+      projectionVehicleIndex,
+    ),
+  );
+  if (requirement.mode === "firstAvailable") {
+    const selectedIndex = requirement.select(projection.snapshot);
+    return selectedIndex >= 0 && selectedIndex < states.length
+      ? states[selectedIndex]
+      : "missing-projection";
+  }
+  if (requirement.mode === "anyOf") {
+    return states.reduce((best, state) =>
+      qualityRank(state) < qualityRank(best) ? state : best
+    );
+  }
+  return states.reduce((worst, state) =>
+    qualityRank(state) > qualityRank(worst) ? state : worst
+  );
+}
+
+function indexRows(
+  rows: readonly unknown[],
+  identities: readonly string[] | undefined,
+): Map<string, unknown> | undefined {
+  if (!identities || identities.length !== rows.length) return undefined;
+  const result = new Map<string, unknown>();
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    const key = identities[index];
+    if (row === undefined || key === undefined) return undefined;
+    if (key.trim() === "" || result.has(key)) return undefined;
+    result.set(key, row);
+  }
+  return result;
+}
+
+function sameOrder(legacy: readonly string[], projection: readonly string[]): boolean {
+  return legacy.length === projection.length && legacy.every((value, index) => value === projection[index]);
+}
+
+function broadcastIdentities(
+  rows: readonly unknown[],
+  snapshot: TelemetrySnapshot,
+): readonly string[] | undefined {
+  const identities = [...snapshot.scoring]
+    .sort(
+      (left, right) =>
+        (readScoringNumber(left, "place") ?? 99) -
+        (readScoringNumber(right, "place") ?? 99),
+    )
+    .slice(0, rows.length)
+    .map(scoringIdentity);
+  return identities.every((identity): identity is string => identity !== undefined)
+    ? identities
+    : undefined;
+}
+
+function scoringIdentity(row: Record<string, unknown>): string | undefined {
+  return readScoringString(row, "id") ??
+    readScoringNumber(row, "id")?.toString();
+}
+
+function scoringIndexByIdentity(
+  snapshot: TelemetrySnapshot,
+  identity: string,
+): number | undefined {
+  const index = snapshot.scoring.findIndex(
+    (row) => scoringIdentity(row) === identity,
+  );
+  return index < 0 ? undefined : index;
+}
+
+function classifyQualitySelector(
+  selector: QualitySelector,
+  projection: OverlayProjectionMapping,
+  projectionVehicleIndex?: number,
+): "missing-projection" | "stale-projection" | "invalid-projection" | "value-mismatch" | undefined {
+  const matches = qualityMatches(selector, projection, projectionVehicleIndex);
+  if (matches.length === 0) return "missing-projection";
+  if (matches.some((field) => field.freshness === "invalid")) return "invalid-projection";
+  if (matches.some((field) =>
+    !field.present || field.freshness === "missing" || !field.usable
+  )) return "missing-projection";
+  if (matches.some((field) => field.freshness === "stale")) return "stale-projection";
+  if (matches.some((field) => field.provenance === "estimated")) return "value-mismatch";
+  return undefined;
+}
+
+function qualityMatches(
+  selector: QualitySelector,
+  projection: OverlayProjectionMapping,
+  projectionVehicleIndex?: number,
+): readonly OverlayProjectionMapping["quality"][number][] {
+  const sourcePath = selector.kind === "vehicle"
+    ? projectionVehicleIndex === undefined
+      ? undefined
+      : `vehicles[${projectionVehicleIndex}].${selector.field}`
+    : selector.kind === "player-vehicle"
+      ? playerVehicleSourcePath(projection.snapshot, selector.field)
+      : selector.kind === "source"
+        ? selector.path
+        : undefined;
+  return projection.quality.filter((field) =>
+    selector.kind === "target"
+      ? field.targetPath === selector.path
+      : sourcePath !== undefined && field.sourcePath === sourcePath,
+  );
+}
+
+function playerVehicleSourcePath(
+  snapshot: TelemetrySnapshot,
+  field: string,
+): string | undefined {
+  const index = snapshot.scoring.findIndex(
+    (row) => readScoringBoolean(row, "isPlayer") === true,
+  );
+  return index < 0 ? undefined : `vehicles[${index}].${field}`;
+}
+
+function qualityRank(
+  value: "missing-projection" | "stale-projection" | "invalid-projection" | "value-mismatch" | undefined,
+): number {
+  switch (value) {
+    case undefined:
+      return 0;
+    case "value-mismatch":
+      return 1;
+    case "stale-projection":
+      return 2;
+    case "missing-projection":
+      return 3;
+    case "invalid-projection":
+      return 4;
+  }
+}
+
+function selectorPath(selector: QualitySelector): string {
+  switch (selector.kind) {
+    case "target":
+    case "source":
+      return selector.path;
+    case "vehicle":
+    case "player-vehicle":
+      return `vehicles[].${selector.field}`;
+  }
+}
+
+function sourceLabels(
+  dependency: QualityRequirement | readonly QualitySelector[],
+): string[] {
+  const selectors = "selectors" in dependency ? dependency.selectors : dependency;
+  return selectors.map((selector) => sanitizeShadowPath(selectorPath(selector)));
+}
+
+function makeEntry(
+  path: string,
+  classification: OverlayShadowClassification,
+  rule: OverlayShadowRuleCode,
+  sourcePaths: readonly string[],
+  tolerance?: number,
+  item?: number,
+  observation?: SanitizedShadowObservation,
+): OverlayShadowEntry {
+  return {
+    path: sanitizeShadowPath(path),
+    classification,
+    rule,
+    sourcePaths,
+    ...(tolerance === undefined ? {} : { tolerance }),
+    ...(item === undefined ? {} : { item }),
+    ...(observation === undefined ? {} : { observation }),
+  };
+}
+
+function finishWidget(
+  policy: OverlayShadowPolicy,
+  instance: number,
+  entries: readonly OverlayShadowEntry[],
+  outcome: OverlayShadowWidgetResult["outcome"],
+): OverlayShadowWidgetResult {
+  const sortedEntries = [...entries].sort(compareEntries);
+  return {
+    widgetType: policy.widgetType,
+    instance,
+    coverage: policy.coverage,
+    outcome,
+    summary: countEntries(sortedEntries),
+    entries: sortedEntries,
+  };
+}
+
+function countEntries(entries: readonly OverlayShadowEntry[]): OverlayShadowCounts {
+  return {
+    fields: entries.length,
+    equal: entries.filter((entry) => entry.classification === "equal").length,
+    withinTolerance: entries.filter((entry) => entry.classification === "within-tolerance").length,
+    mismatches: entries.filter((entry) => isMismatch(entry.classification)).length,
+    external: entries.filter((entry) => entry.classification === "external-consumer").length,
+  };
+}
+
+function addCounts(counts: readonly OverlayShadowCounts[]): OverlayShadowCounts {
+  return counts.reduce<OverlayShadowCounts>(
+    (total, value) => ({
+      fields: total.fields + value.fields,
+      equal: total.equal + value.equal,
+      withinTolerance: total.withinTolerance + value.withinTolerance,
+      mismatches: total.mismatches + value.mismatches,
+      external: total.external + value.external,
+    }),
+    { fields: 0, equal: 0, withinTolerance: 0, mismatches: 0, external: 0 },
+  );
+}
+
+function isMismatch(classification: OverlayShadowClassification): boolean {
+  return classification !== "equal" && classification !== "within-tolerance" && classification !== "external-consumer";
+}
+
+function compareEntries(left: OverlayShadowEntry, right: OverlayShadowEntry): number {
+  return left.path.localeCompare(right.path) || (left.item ?? -1) - (right.item ?? -1) || left.classification.localeCompare(right.classification);
+}
+
+function readNumber(model: WidgetViewModelBase, key: string): number | undefined {
+  const value = (model as unknown as Record<string, unknown>)[key];
+  return typeof value === "number" ? value : undefined;
+}
+
+function readString(model: WidgetViewModelBase, key: string): string | undefined {
+  const value = (model as unknown as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function isScalar(value: unknown): value is ShadowScalar {
+  return value === undefined || value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}

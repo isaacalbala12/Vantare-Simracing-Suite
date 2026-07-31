@@ -10,6 +10,39 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
+- Microcorte documental iniciado sobre ISA-105
+  `c9acee24cf4c4d80922b380b12f7367c2a60c937`, en la rama
+  `vantareapp/isa-129-tc-07a1-senales-canonicas-overlay-y-retirada-del-mock`
+  y worktree `C:\tmp\vantare-isa129\vantare-v2`.
+- Plan ejecutable:
+  `docs/superpowers/plans/2026-07-31-isa-129-tc-07a1-canonical-overlay-signals.md`.
+  Procedencia cerrada:
+  `docs/telemetry-core/lmu-overlay-signal-provenance.md`.
+- Fixtures reales LMU 1.3 conservan los hashes
+  `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`
+  (pista, 44 vehículos) y
+  `8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a`
+  (menú). LMU 1.4 permanece pendiente de captura/proof D4B y no se habilita por
+  similitud estructural.
+- P0 confirmados: mock productivo publicable como conectado, ausencia del
+  bridge `lmu.Observation -> core.Batch` y observación modular player-only sin
+  grid/identidad multivehículo.
+- La matriz D0 fija fuente, offset, unidad, rango, referencia, signo, freshness
+  y autoridad SHM/REST. Equipo, número, compuesto, Virtual Energy, daños,
+  weather no admitido, fases/banderas, pit-state labels, remaining raw,
+  `FuelFraction` y native `mDeltaBest` continúan missing, nunca cero inventado.
+- Corrección de review D0: scoring y telemetry solo se correlacionan dentro de
+  `[0,mNumVehicles)`, con IDs activos no negativos, únicos y biyectivos. El
+  jugador procede del único `mIsPlayer` scoring y su telemetry de igual ID;
+  nunca del índice header, posición, orden ni cola inactiva. La fixture prueba
+  44/44 IDs activos, jugador row 43/ID 0 y 60 filas inactivas también con ID 0.
+  Una no-biyección activa rechaza el frame; `lapDistMax` exacto es
+  `3982.366455078125`.
+- D0 no cambia comportamiento ni conecta runtime. Baselines previo y posterior
+  Go y `git diff --check` PASS. Falta review independiente sin P0/P1/P2/P3
+  razonable antes de iniciar D1.
+
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.
   Plan ejecutable:

@@ -4,6 +4,45 @@ Estado: contrato de preflight de ISA-105. Esta matriz describe lo que existe en
 la base `3b44d36713213ab642f47174c1b5d8234362cac0`; no concede paridad a señales
 ausentes.
 
+## Contrato posterior ISA-129 / TC-07A.1 D0
+
+ISA-105 cerró el comparator, no las señales ausentes. ISA-129 parte de
+`c9acee24cf4c4d80922b380b12f7367c2a60c937` y debe cerrar primero el contrato
+de procedencia documentado en
+`docs/telemetry-core/lmu-overlay-signal-provenance.md`.
+
+Bloqueadores P0 vigentes antes de cualquier shadow wiring:
+
+1. el fallback `createMockSource()` puede llegar a producción como telemetría
+   `Connected=true`;
+2. no existe el bridge real `lmu.Observation -> core.Batch`;
+3. la observación modular es player-only y no ofrece parrilla ni identidad
+   multivehículo estable.
+
+La allowlist cerrada de ISA-129 admite desde Shared Memory, con presencia y
+calidad explícitas: sesión current/end/max laps, grid y slot numérico, labels
+de piloto/vehículo/clase, scoring, tiempos de vuelta, gaps de clasificación,
+pit/penalties, fast telemetry del jugador y fuel/capacidad. Remaining, relative
+gap y self delta son derivados con referencia y signo documentados. REST solo
+puede complementar campos equivalentes de sesión/jugador; nunca crea filas,
+IDs o valores de rivales.
+
+La unión scoring/telemetry queda cerrada sobre las filas activas
+`[0,mNumVehicles)`: ambos conjuntos de IDs deben ser no negativos, únicos y
+biyectivos. El jugador se elige por `mIsPlayer` en scoring y luego por ID igual
+en telemetry. La cola inactiva se ignora y `mPlayerVehicleIdx`,
+`mPlayerHasVehicle`, posición y orden nunca seleccionan al jugador. La fixture
+real demuestra 44/44 IDs activos y 60 filas telemetry inactivas con ID cero;
+una no-biyección activa invalida el frame completo.
+
+Permanecen missing —no cero— equipo, número, compuesto, Virtual Energy, daños,
+weather no admitido, fases/banderas, pit-state labels, el remaining raw,
+`FuelFraction` y native `mDeltaBest`. La compatibilidad productiva continúa
+fijada a los fixtures LMU 1.3; LMU 1.4 requiere la evidencia diagnóstica D4B.
+
+D0 no cambia la clasificación 18/18 que aparece debajo ni habilita señales. Su
+review sin hallazgos P0/P1/P2/P3 razonables es el gate previo a D1.
+
 ## Autoridades inspeccionadas
 
 - Legacy → `frontend/src/overlay/core/telemetry-adapter.ts`

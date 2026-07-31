@@ -49,6 +49,11 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   independiente `ACCEPT`, P0/P1/P2/P3 = 0. Go completo, frontend 2001/2001,
   build y focales PASS; `-race` omitido por CGO desactivado y lint global
   continúa con deuda heredada. D2 queda desbloqueado sin promoción ni cutover.
+- D2 implementado y aceptado en `e2c92fd`: layout LMU 1.3 nombrado y auditado,
+  35 campos admitidos, bounds/no-solape, tipos Windows, exclusiones y hashes
+  reales cubiertos. Review independiente `ACCEPT`, P0/P1/P2/P3 = 0; driver x20
+  y suite `internal/telemetry/...` PASS. LMU 1.4 permanece bloqueado para D4B;
+  D3 queda desbloqueado sin promoción ni cutover.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

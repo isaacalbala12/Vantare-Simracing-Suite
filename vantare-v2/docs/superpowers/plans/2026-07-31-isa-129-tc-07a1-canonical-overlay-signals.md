@@ -505,23 +505,23 @@ git diff --check
 
 ### Red tests
 
-- [ ] Assert every admitted offset/type in §1.4 against the pinned 1.3 fixtures.
-- [ ] Assert non-overlap, in-bounds access and 104-row maximum against
+- [x] Assert every admitted offset/type in §1.4 against the pinned 1.3 fixtures.
+- [x] Assert non-overlap, in-bounds access and 104-row maximum against
   `ObjectOutSize`.
-- [ ] Assert the scoring base/stride/count and telemetry base/stride/count do
+- [x] Assert the scoring base/stride/count and telemetry base/stride/count do
   not overlap excluded regions.
-- [ ] Assert Windows source types explicitly: `int32`, `int16`, `int8`,
+- [x] Assert Windows source types explicitly: `int32`, `int16`, `int8`,
   `uint8`, one-byte bool and `float64`.
-- [ ] Assert all excluded fields in §1.4 remain absent from the admitted layout
+- [x] Assert all excluded fields in §1.4 remain absent from the admitted layout
   accessor API.
 
 ### Implementation
 
-- [ ] Replace scattered magic offsets used by the modular driver with named,
+- [x] Replace scattered magic offsets used by the modular driver with named,
   audited layout constants.
-- [ ] Do not import the old generator or external Python module into the
+- [x] Do not import the old generator or external Python module into the
   product build. Record them as provenance only.
-- [ ] Keep the production allowlist unchanged at 1.3 in this microcut.
+- [x] Keep the production allowlist unchanged at 1.3 in this microcut.
 
 ### Verification
 
@@ -533,8 +533,8 @@ go test ./internal/telemetry/... -count=1
 git diff --check
 ```
 
-- [ ] Commit: `test(lmu): lock shared memory layout`.
-- [ ] Independent review.
+- [x] Commit: `test(lmu): lock shared memory layout` (`e2c92fd`).
+- [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0.
 
 ---
 

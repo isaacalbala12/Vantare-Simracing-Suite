@@ -1290,3 +1290,25 @@ declara `GroupStandings`. La regresión recorre el flujo completo con vuelta 7 y
 verifica grupo exacto, presencia, frescura y usabilidad. La re-review final fue
 `ACCEPT` sin P0–P3. Commit `06dbfd8`, push y PR draft #34 correctos; sin
 promoción. Linear queda pendiente de sincronización por ausencia del conector.
+
+### 2026-07-31 — ISA-129 D4B implementado y aceptado
+
+- Base: D4A `94c2994` más registro `19252a0`; rama ISA-129 sin promoción.
+- Resultado: LMU `1.4.0.0` habilitado únicamente mediante file/product version
+  coincidentes y cuatro artefactos reales sanitizados/hash-pinned.
+- Menú SHM/REST: 324820 bytes y estado REST `empty`. Pista SHM/REST: práctica,
+  38 vehículos, jugador presente y REST `live`.
+- Los ocho solapes SHM/REST se comprueban antes de persistir. El circuito real
+  se compara mediante SHA-256 privado en memoria y ambos artefactos guardan
+  únicamente `Track-01`; nombres, IDs, rutas y body REST quedan excluidos.
+- Los sentinels finitos negativos observados en `mLapDist`,
+  `mTimeBehindNext` y `mTimeBehindLeader` se normalizan a `missing`, nunca a
+  cero; NaN/Inf siguen invalidando el frame.
+- Revisión previa independiente `SAFE`, P0/P1/P2/P3 = 0. El delta final de
+  correlación de circuito se revisó adversarialmente y su mismatch pasa x20.
+- Gates: driver x20, CLI x20, Telemetry Core, suite Go global serial, lector
+  productivo opt-in, hashes/tamaños/JSON/privacidad y diff-check PASS. Vet solo
+  conserva dos avisos Win32 heredados de `unsafe.Pointer`.
+- Commits `be6563f` y `47f82d3`; push sincronizado 0/0. Linear ISA-129 y el
+  proyecto Telemetry Core actualizados. Sin PR, merge, promoción ni cutover.
+- Siguiente acción exacta: D5 Observation → `core.Batch` sobre `47f82d3`.

@@ -30,7 +30,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-07A.1 ISA-129: `In Progress`; D0 `6acb352`, D1 `470d6a6`, D2
   `e2c92fd`, D3 `462f0ee` y D4A `94c2994` aceptados (cierre documental
   `19252a0`), sin promoción. D4A publica grid real 44/44, sanitizer zero-rebuild
-  y SHM-first; review final `ACCEPT`, P0/P1/P2/P3 = 0.
+  y SHM-first; review final `ACCEPT`, P0/P1/P2/P3 = 0. D4B queda cerrado en
+  `be6563f` más registro `47f82d3`: LMU 1.4 real de menú/pista hash-pinned,
+  REST correlacionado, 38 vehículos y runtime opt-in `live`.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -69,9 +71,9 @@ de ISA-104 permanece desactivada y sin wiring productivo.
   existe `[]Vehicle` canónico ni identidad estable de parrilla.
 - **P1 fuera de ISA-129:** Engineer arranca con `source="simulator"` y
   `connected=true`; debe resolverse en su corte antes del cutover Engineer.
-- **Compatibilidad real pendiente:** LMU instalado es `1.4.0.0`; el driver
-  canónico solo permite `1.3.0.0`. El mapping conserva tamaño 324820, pero no
-  se permitirá 1.4 hasta demostrar invariantes y fixtures sanitizados.
+- **Compatibilidad real cerrada en D4B:** LMU `1.4.0.0` está allowlisted solo
+  con file/product version coincidentes y cuatro hashes reales sanitizados.
+  Versiones desconocidas o evidencia incompleta continúan rechazadas.
 
 ## Issues
 
@@ -86,9 +88,9 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar D4B de ISA-129 / TC-07A.1 sobre `19252a0`: preparar primero el perfil
-diagnóstico y captura sanitizada LMU 1.4; pedir a Isaac menú y pista solo cuando
-el CLI esté listo. Sin CSS, canvas, renderers, baselines ni cutover productivo.
+Ejecutar D5 de ISA-129 / TC-07A.1 sobre `47f82d3`: mapear la observación LMU
+validada a `core.Batch` con identidad/generaciones, sin I/O, derivaciones
+prematuras, CSS, canvas, renderers, baselines ni cutover productivo.
 
 Auditoría de fallback cerrada:
 
@@ -182,14 +184,14 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-129 iniciada sobre ISA-105 `c9acee2`. Las dos auditorías
-read-only confirmaron el fallback sintético conectado de Overlay, ausencia del
-bridge productivo `Observation → Batch` y driver modular limitado al jugador.
-También aislaron el simulador productivo de Engineer como deuda de su propio
-corte. Los fixtures reales sanitizados prueban 44 vehículos para LMU 1.3, pero
-REST modular sigue siendo sintético. LMU instalado es 1.4.0.0; el driver solo
-reconoce 1.3.0.0 y el allowlist no se ampliará sin prueba estructural. Worktree
-limpio; sin código modificado, merge, promoción ni cutover.
+2026-07-31, ISA-129 D4B cerrado y publicado. Cuatro artefactos LMU 1.4 reales,
+sanitizados y hash-pinned prueban menú y pista; el par de pista contiene 38
+vehículos y jugador, con ocho solapes SHM/REST correlacionados antes de
+anonimizar. El circuito se compara por digest privado en memoria; solo se
+persiste `Track-01`. Sentinels negativos finitos de lap distance/gaps quedan
+`missing`. Driver/CLI x20, Telemetry Core, suite Go global serial, lector
+opt-in y auditoría de privacidad PASS. Review previa independiente SAFE y
+delta final adversarial sin hallazgos. Sin PR, merge, promoción ni cutover.
 
 El plan fue revisado tres veces. La primera review rechazó con
 P0=0/P1=2/P2=4/P3=0; sus seis hallazgos quedaron corregidos. La segunda review

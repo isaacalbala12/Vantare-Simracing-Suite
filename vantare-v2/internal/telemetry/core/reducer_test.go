@@ -132,6 +132,33 @@ func TestReducerRejectsVehicleCountOutsideCompleteBatch(t *testing.T) {
 	}
 }
 
+func TestReducerPreservesExplicitFieldQualityAndLegitimateZero(t *testing.T) {
+	batch := testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 1)
+	batch.State.Vehicles[0].Gear = schema.MissingField[vehicle.Gear]()
+	invalidSpeed, err := schema.NewField(0.0, schema.ProvenanceObserved, schema.FreshnessInvalid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch.State.Vehicles[0].SpeedMPS = invalidSpeed
+	batch.State.Vehicles[0].Throttle = present(schema.Ratio(0))
+
+	snapshot, err := NewReducer().Apply(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, _ := snapshot.Value()
+	current := state.Vehicles[0]
+	if current.Gear.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("gear freshness = %v, want missing", current.Gear.Freshness())
+	}
+	if current.SpeedMPS.Freshness() != schema.FreshnessInvalid {
+		t.Fatalf("speed freshness = %v, want invalid", current.SpeedMPS.Freshness())
+	}
+	if throttle, ok := current.Throttle.Value(); !ok || throttle != 0 || current.Throttle.Freshness() != schema.FreshnessFresh {
+		t.Fatalf("throttle = (%v,%t,%v), want present fresh zero", throttle, ok, current.Throttle.Freshness())
+	}
+}
+
 func TestReducerAcceptsNextEpochReset(t *testing.T) {
 	reducer := NewReducer()
 	if _, err := reducer.Apply(testBatch(schema.Cursor{Epoch: 4, Sequence: 1}, "spa", 1)); err != nil {
@@ -242,6 +269,24 @@ func TestReducerAllowsTeamAndDriverChangesWithinRun(t *testing.T) {
 	next.Header.Identity.Driver = "driver-b"
 	if _, err := reducer.Apply(next); err != nil {
 		t.Fatalf("Apply() after team/driver change: %v", err)
+	}
+}
+
+func TestReducerAllowsActiveVehicleToClearWithinEpoch(t *testing.T) {
+	reducer := NewReducer()
+	first := testBatch(schema.Cursor{Epoch: 2, Sequence: 1}, "spa", 1)
+	first.Header.Identity.Vehicle = "vehicle-0"
+	if _, err := reducer.Apply(first); err != nil {
+		t.Fatalf("initial Apply(): %v", err)
+	}
+	next := testBatch(schema.Cursor{Epoch: 2, Sequence: 2}, "spa", 1)
+	next.Header.Identity.Vehicle = ""
+	snapshot, err := reducer.Apply(next)
+	if err != nil {
+		t.Fatalf("clear active vehicle Apply(): %v", err)
+	}
+	if snapshot.Header().Identity.Vehicle != "" {
+		t.Fatalf("active vehicle = %q, want empty", snapshot.Header().Identity.Vehicle)
 	}
 }
 

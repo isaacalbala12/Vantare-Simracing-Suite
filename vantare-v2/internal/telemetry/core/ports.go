@@ -31,6 +31,18 @@ type Derivation[T any] interface {
 	Apply(snapshot envelope.Snapshot[T]) (envelope.Snapshot[T], error)
 }
 
+// BatchSink accepts one complete canonical batch atomically. Implementations
+// must not retain mutable collections from the call without copying them.
+type BatchSink interface {
+	WriteBatch(context.Context, Batch) error
+}
+
+type BatchSinkFunc func(context.Context, Batch) error
+
+func (function BatchSinkFunc) WriteBatch(ctx context.Context, batch Batch) error {
+	return function(ctx, batch)
+}
+
 // RecordingSink is consumed by the future core. Writes are loss-intolerant:
 // an implementation that cannot keep up returns ErrBackpressure. Close must
 // flush accepted data or return an error before its context expires; it is

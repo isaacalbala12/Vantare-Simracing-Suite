@@ -341,7 +341,8 @@ func validateInput(current envelope.Header, initialized bool, next envelope.Head
 		if next.Cursor.Sequence != current.Cursor.Sequence+1 {
 			return ErrSequenceGap
 		}
-		if !current.Identity.SameRun(next.Identity) {
+		if !current.Identity.SameSession(next.Identity) ||
+			(next.Identity.Vehicle != "" && current.Identity.Vehicle != next.Identity.Vehicle) {
 			return ErrIdentityChanged
 		}
 		return nil

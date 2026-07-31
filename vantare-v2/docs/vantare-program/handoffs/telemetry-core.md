@@ -54,11 +54,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07A ISA-105: implementación y re-review D6 completas; código final
   `f6b43b7`, `ACCEPT`, P0/P1/P2/P3 = 0. PR draft `#41`; Linear `In Review`.
-- TC-07A.1 ISA-129: D0-D4A aceptados. D4B ha capturado y hash-pinned LMU 1.4
+- TC-07A.1 ISA-129: D0-D4B aceptados. D5 implementa el mapper canónico
+  `Observation → Batch`: fixture real 44/44, identidad opaca por slot y
+  generación, jugador/header coherentes cuando existe y limpieza segura al
+  desaparecer, sesión/epoch literal según §2.4 y commit de estado únicamente
+  tras aceptación del sink. El adapter real del `DriverManager` y el reloj
+  duradero conservan continuidad y detectan resets entre reconexiones. Focal
+  x20, Telemetry Core y suite Go global serial pasan. Review independiente
+  final `APPROVE`, P0/P1/P2/P3 = 0. D4B capturó y
+  hash-pinned LMU 1.4
   real en menú y pista, ha probado los ocho solapes SHM/REST —incluido circuito
   antes de anonimizar— y ha habilitado únicamente `1.4.0.0` mediante file y
   product version coincidentes. Lector productivo opt-in `live` PASS. Sin
-  mapper, derivaciones, wiring, PR, merge ni promoción todavía.
+  derivaciones, wiring, PR, merge ni promoción todavía.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -207,14 +215,15 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
-| En progreso | ISA-129 / TC-07A.1; D4B listo, D5 siguiente |
+| En progreso | ISA-129 / TC-07A.1; D5 aceptado, D6 siguiente |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias y cierre de ISA-129 |
 
 ## Siguiente acción exacta
 
-Ejecutar D5 de ISA-129: mapear la observación LMU validada a `core.Batch` con
-identidad/generaciones, sin I/O, sin derivaciones prematuras y sin wiring
-productivo. Después continuar D6–D9 antes de desbloquear ISA-106.
+Ejecutar D6 de ISA-129: derivar timing, gaps y delta de autorreferencia sin
+introducir autoridad no demostrada. Capturar dos vueltas LMU reales y
+sanitizadas antes de admitir delta. Continuar D7–D9 antes de desbloquear
+ISA-106.
 
 ## Gate final
 
@@ -223,6 +232,14 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-07-31, ISA-129 D5 aceptado: mapper síncrono fuera de cada driver, 44 identidades
+estables en la fixture real, sesión/epoch/generaciones atómicos y campos
+canónicos completos sin derivaciones. Focal x20, Telemetry Core y suite Go
+global serial PASS. Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+`go test -race` no es ejecutable en este entorno porque Go informa
+`-race requires cgo` y `CGO_ENABLED=0`; no se cambió el toolchain para ocultar
+el gate. Sin wiring productivo, PR, merge ni promoción.
 
 2026-07-31, ISA-129 D4B: cuatro evidencias LMU 1.4 reales y sanitizadas fijadas
 por SHA-256. Pista: práctica, 38 vehículos y jugador; REST live correlacionado.

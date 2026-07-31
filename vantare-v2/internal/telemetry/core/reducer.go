@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
@@ -36,19 +37,33 @@ var (
 // field uses the canonical schema contracts, including explicit presence and
 // freshness; zero values are never interpreted as absence.
 type VehicleState struct {
-	Identity      identity.RunIdentity
-	Name          schema.Field[vehicle.VehicleName]
-	LapNumber     schema.Field[session.LapNumber]
-	Gear          schema.Field[vehicle.Gear]
-	EngineRPM     schema.Field[vehicle.EngineRPM]
-	SpeedMPS      schema.Field[float64]
-	Throttle      schema.Field[schema.Ratio]
-	Brake         schema.Field[schema.Ratio]
-	Clutch        schema.Field[schema.Ratio]
-	Position      schema.Field[standings.Position]
-	CompletedLaps schema.Field[standings.CompletedLaps]
-	InPit         schema.Field[pit.InPit]
-	PitStopCount  schema.Field[pit.StopCount]
+	Identity         identity.RunIdentity
+	DriverName       schema.Field[identity.DriverName]
+	Name             schema.Field[vehicle.VehicleName]
+	VehicleClass     schema.Field[standings.VehicleClass]
+	Player           schema.Field[bool]
+	Sector           schema.Field[standings.Sector]
+	LapDistance      schema.Field[standings.LapDistance]
+	BestLapTime      schema.Field[standings.LapTime]
+	LastLapTime      schema.Field[standings.LapTime]
+	EstimatedLapTime schema.Field[standings.LapTime]
+	LapNumber        schema.Field[session.LapNumber]
+	Gear             schema.Field[vehicle.Gear]
+	EngineRPM        schema.Field[vehicle.EngineRPM]
+	SpeedMPS         schema.Field[float64]
+	Throttle         schema.Field[schema.Ratio]
+	Brake            schema.Field[schema.Ratio]
+	Clutch           schema.Field[schema.Ratio]
+	Position         schema.Field[standings.Position]
+	CompletedLaps    schema.Field[standings.CompletedLaps]
+	InPit            schema.Field[pit.InPit]
+	PitStopCount     schema.Field[pit.StopCount]
+	PenaltyCount     schema.Field[standings.PenaltyCount]
+	TimeBehindLeader schema.Field[standings.TimeGap]
+	LapsBehindLeader schema.Field[standings.LapGap]
+	TimeBehindNext   schema.Field[standings.TimeGap]
+	LapsBehindNext   schema.Field[standings.LapGap]
+	Fuel             schema.Field[energy.Fuel]
 }
 
 // ObservedState is the complete state replaced by one atomic batch. The
@@ -56,6 +71,8 @@ type VehicleState struct {
 // fields are the runtime counterparts of its canonical signal definitions.
 type ObservedState struct {
 	SourceTime    schema.Field[time.Duration]
+	EndTime       schema.Field[session.EndTime]
+	MaximumLaps   schema.Field[session.MaximumLaps]
 	TrackName     schema.Field[string]
 	SessionType   schema.Field[session.Type]
 	VehicleCount  schema.Field[schema.Count]
@@ -182,9 +199,16 @@ func validateBatchHeader(current envelope.Header, initialized bool, next envelop
 	if err := validateCursor(current.Cursor, initialized, next.Cursor); err != nil {
 		return err
 	}
-	if initialized && next.Cursor.Epoch == current.Cursor.Epoch &&
-		!current.Identity.SameRun(next.Identity) {
-		return ErrRunIdentityChanged
+	if initialized && next.Cursor.Epoch == current.Cursor.Epoch {
+		if !current.Identity.SameSession(next.Identity) {
+			return ErrRunIdentityChanged
+		}
+		// Losing the active player is not a new session or epoch. Clearing the
+		// vehicle prevents consumers from treating a stale row as the player;
+		// assigning a different non-empty vehicle still requires a new epoch.
+		if next.Identity.Vehicle != "" && current.Identity.Vehicle != next.Identity.Vehicle {
+			return ErrRunIdentityChanged
+		}
 	}
 	return nil
 }

@@ -107,6 +107,29 @@ func TestSessionCoordinatorBriefReconnectPreservesSessionAndSequence(t *testing.
 	}
 }
 
+func TestSessionCoordinatorIgnoresNonLifecycleDomainFieldChanges(t *testing.T) {
+	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
+	sink := &factSink{}
+	first := coordinatorSnapshot(t, 1, 1, "lmu", run("e", "s", "v", "", ""), 1)
+	if err := coordinator.Apply(context.Background(), first, sink); err != nil {
+		t.Fatal(err)
+	}
+	second := coordinatorSnapshot(t, 1, 2, "lmu", run("e", "s", "v", "", ""), 1)
+	value, _ := second.Value()
+	value.EndTime = present(session.EndTime(3600))
+	value.MaximumLaps = present(session.MaximumLaps(42))
+	value.Vehicles[0].VehicleClass = present(standings.VehicleClass("LMGT3"))
+	second, _ = envelope.NewSnapshot(second.Header(), value, cloneObservedState)
+	if err := coordinator.Apply(context.Background(), second, sink); err != nil {
+		t.Fatal(err)
+	}
+	got := kinds(flattenFactValues(sink.batches))
+	want := []FactKind{FactSessionStarted}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("fact kinds = %v, want %v", got, want)
+	}
+}
+
 func TestSessionCoordinatorSessionAndVehicleResetsAreDistinct(t *testing.T) {
 	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{})
 	sink := &factSink{}

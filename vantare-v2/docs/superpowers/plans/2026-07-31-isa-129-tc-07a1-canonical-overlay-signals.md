@@ -871,56 +871,67 @@ git diff --check
 
 ### Red tests
 
-- [ ] Real sanitized fixture traverses:
+- [x] Real sanitized fixture traverses:
   `Parse → Fusion → BatchMapper → Reducer`.
-- [ ] 44 stable vehicle IDs; no position fallback.
-- [ ] Player ID in header matches the unique player row.
-- [ ] Menu without player is valid; player appearance starts a new epoch.
-- [ ] Reordering rows does not change IDs.
-- [ ] A driver reconnect with no accepted intervening grid preserves vehicle
+- [x] 44 stable vehicle IDs; no position fallback.
+- [x] Player ID in header matches the unique player row.
+- [x] Menu without player is valid; player appearance starts a new epoch.
+- [x] Reordering rows does not change IDs.
+- [x] A driver reconnect with no accepted intervening grid preserves vehicle
   generations.
-- [ ] A source slot omitted from an accepted grid is vacated; reappearance
+- [x] A source slot omitted from an accepted grid is vacated; reappearance
   receives a new generation because LMU can reuse slots.
-- [ ] Brief driver reconnect preserves session ID and advances cursor.
-- [ ] Clock reset, track/session change and player vehicle change start exactly one
+- [x] Brief driver reconnect preserves session ID and advances cursor.
+- [x] `DriverManager` recreates the LMU Driver while reusing one explicit
+  `ObservationBatchSink`; session, slot generation and cursor stay continuous.
+- [x] A reconnect cannot hide a source-clock reset even when the new Driver
+  reports `ClockContinuous` for its first observation.
+- [x] Clock reset, track/session change and player vehicle change start exactly one
   epoch.
-- [ ] Clock reset allocates a new session; clock wrap preserves session but
+- [x] Clock reset allocates a new session; clock wrap preserves session but
   starts one new epoch.
-- [ ] Every row of the §2.4 transition table has a named table-driven case.
-- [ ] Duplicate or negative source slots reject the whole batch atomically.
-- [ ] Reducer count/vehicle mismatch and quality semantics remain protected.
-- [ ] Downstream backpressure/error does not advance mapper cursor/state.
+- [x] Every row of the §2.4 transition table has a named table-driven case.
+- [x] Duplicate or negative source slots reject the whole batch atomically.
+- [x] Reducer count/vehicle mismatch and quality semantics remain protected.
+- [x] Downstream backpressure/error does not advance mapper cursor/state.
+- [x] Cancellation while waiting for mapper ownership reaches neither mapper
+  state nor downstream sink.
+- [x] Player absence clears the active header identity through Reducer,
+  derivations and Overlay projection without retaining active controls.
 
 ### Implementation
 
-- [ ] Add domain fields to `core.VehicleState` and `core.ObservedState`.
-- [ ] Implement the synchronous `BatchMapper`.
-- [ ] Use opaque runtime counters such as `lmu-event-1`, `lmu-session-1` and
+- [x] Add domain fields to `core.VehicleState` and `core.ObservedState`.
+- [x] Implement the synchronous `BatchMapper`.
+- [x] Use opaque runtime counters such as `lmu-event-1`, `lmu-session-1` and
   generated aliases such as `lmu-slot-7-generation-2`; never include names or
   paths.
-- [ ] Implement the §2.4 transition table literally; keep one event per mapper
+- [x] Implement the §2.4 transition table literally; keep one event per mapper
   lifetime and increment session only on demonstrated session boundaries.
-- [ ] Keep mapper state outside individual driver instances so manager
+- [x] Keep mapper state outside individual driver instances so manager
   reconnects do not reset identity.
-- [ ] Clone all slices before writing downstream.
+- [x] Clone all slices before writing downstream.
 
 ### Verification
 
 ```powershell
 gofmt -w internal/telemetry/drivers/lmu/batch_mapper.go `
+  internal/telemetry/drivers/lmu/batch_mapper_manager_test.go `
   internal/telemetry/drivers/lmu/batch_mapper_test.go `
   internal/telemetry/core/ports.go internal/telemetry/core/ports_test.go `
   internal/telemetry/core/reducer.go internal/telemetry/core/reducer_test.go `
   internal/telemetry/core/driver_manager_test.go `
-  internal/telemetry/core/session_coordinator_test.go
-go test ./internal/telemetry/drivers/lmu ./internal/telemetry/core -count=20
+  internal/telemetry/core/session_coordinator_test.go `
+  internal/telemetry/derive/pipeline.go
+go test ./internal/telemetry/drivers/lmu ./internal/telemetry/core `
+  ./internal/telemetry/derive ./internal/telemetry/projection/overlay -count=20
 go test -race ./internal/telemetry/drivers/lmu ./internal/telemetry/core -count=5
 go test ./internal/telemetry/... -count=1
 git diff --check
 ```
 
-- [ ] Commit: `feat(telemetry): map LMU grid into canonical batches`.
-- [ ] Independent review.
+- [x] Commit: `feat(telemetry): map LMU grid into canonical batches`.
+- [x] Independent review: final `APPROVE`, P0/P1/P2/P3 = 0.
 
 ---
 

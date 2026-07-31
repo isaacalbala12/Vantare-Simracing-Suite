@@ -34,6 +34,10 @@ func (fakeDerivation) Apply(snapshot envelope.Snapshot[[]int]) (envelope.Snapsho
 	return snapshot, nil
 }
 
+type fakeBatchSink struct{}
+
+func (fakeBatchSink) WriteBatch(context.Context, Batch) error { return nil }
+
 func TestPortsAreSatisfiedByNarrowFakes(t *testing.T) {
 	t.Parallel()
 
@@ -41,6 +45,8 @@ func TestPortsAreSatisfiedByNarrowFakes(t *testing.T) {
 	var _ driver.ObservationSink[int] = fakeObservationSink{}
 	var _ RecordingSink[[]int, int] = fakeRecordingSink{}
 	var _ Derivation[[]int] = fakeDerivation{}
+	var _ BatchSink = fakeBatchSink{}
+	var _ BatchSink = BatchSinkFunc(func(context.Context, Batch) error { return nil })
 }
 
 func TestFlowControlErrorsRemainInspectableWhenWrapped(t *testing.T) {

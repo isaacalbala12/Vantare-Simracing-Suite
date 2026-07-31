@@ -75,6 +75,13 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   temporal de `app-settings.json.tmp`; su test aislado y la suite global serial
   pasaron al repetir. Siguiente corte: D5 Observation → Batch, todavía sin
   cutover ni promoción.
+- D5 implementado: la observación LMU canónica atraviesa un `BatchMapper`
+  síncrono y duradero hasta `core.Batch`/Reducer con 44 identidades estables,
+  jugador coherente, generaciones por slot, sesiones/epochs según §2.4 y
+  rollback completo ante rechazo o backpressure. Los campos canónicos nuevos
+  conservan calidad explícita y ceros legítimos. Focal x20, Telemetry Core y
+  suite Go global serial pasan. Review independiente final `APPROVE`,
+  P0/P1/P2/P3 = 0. Siguiente corte: D6 timing, gaps y delta de autorreferencia.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

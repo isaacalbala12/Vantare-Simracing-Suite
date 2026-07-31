@@ -1124,6 +1124,21 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 - Acción: corregir el plan y repetir review antes de D1. Sin código de
   comportamiento, commit de producto, merge, promoción ni cutover.
 
+### 2026-07-31 — ISA-129, segunda review del plan
+
+- Veredicto: `REQUEST CHANGES`, P0=0, P1=2, P2=1, P3=1.
+- Cerrados los seis hallazgos de la primera review.
+- P1: falta matriz de autoridad/fusión por señal SHM/REST y regresiones de
+  fresh/stale/conflicto/cero.
+- P1: Delta carece de una captura real sanitizada de vuelta completa que
+  demuestre referencia y signo.
+- P2: D3 debe mapear señales a IDs existentes/nuevos/tombstone y prohibir
+  duplicados semánticos; piloto y combustible requieren decisión explícita.
+- P3: numeración y rollback ambiguos tras separar D4A/D4B.
+- Base `c9acee24`, rama y fixture real de 44 vehículos verificados por review.
+- Acción: corregir los cuatro hallazgos y repetir review antes de D0/D1. Sin
+  código, commit de producto, merge, promoción ni cutover.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

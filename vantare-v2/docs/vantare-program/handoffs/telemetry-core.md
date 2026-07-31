@@ -124,6 +124,20 @@ Primera review del plan ISA-129:
 - P2: comandos gofmt/fuzz necesitaban nombres literales ejecutables.
 - No se inicia comportamiento hasta corregir y obtener re-review limpia.
 
+Segunda review del plan ISA-129:
+
+- `REQUEST CHANGES`: P0=0, P1=2, P2=1, P3=1.
+- Los seis hallazgos anteriores quedaron cerrados en lo esencial.
+- P1: falta una matriz por señal para autoridad/fusión Shared Memory frente a
+  REST, incluyendo preferencia, alternativa, TTL, alcance y desacuerdo.
+- P1: Delta necesita una traza real sanitizada de una vuelta completa de
+  referencia y muestras comparables; sin ella debe permanecer missing y
+  bloquear ISA-106.
+- P2: D3 debe reutilizar/endurecer IDs ya existentes del catálogo y prohibir
+  duplicados semánticos, especialmente piloto y combustible.
+- P3: renumerar D4A/D4B y fijar el orden literal de rollback.
+- Rama/base/fixture de 44 vehículos y offsets revisados; sin código iniciado.
+
 ## Gate final
 
 TC-09 exige Core, recording, Overlay y Engineer simultáneos; soak automatizado
@@ -141,10 +155,11 @@ REST modular sigue siendo sintético. LMU instalado es 1.4.0.0; el driver solo
 reconoce 1.3.0.0 y el allowlist no se ampliará sin prueba estructural. Worktree
 limpio; sin código modificado, merge, promoción ni cutover.
 
-El primer plan de 906 líneas fue revisado independientemente y rechazado con
-P0=0/P1=2/P2=4/P3=0. Las correcciones se concentran en evidencia por señal,
-transiciones de identidad, bootstrap diagnóstico 1.4, gates no omitibles,
-compatibilidad v1 y comandos literales. No comenzó implementación.
+El plan fue revisado dos veces. La primera review rechazó con
+P0=0/P1=2/P2=4/P3=0; sus seis hallazgos quedaron corregidos. La segunda review
+rechazó con P0=0/P1=2/P2=1/P3=1 por autoridad SHM/REST, evidencia real de
+Delta, reutilización de IDs del catálogo y numeración/rollback. No comenzó
+implementación.
 
 Histórico ISA-105: D1–D5 aprobados y publicados en `f2a1ac3`. Cobertura real:
 18/18, con un exacto, cinco parciales, once no comparables y un externo. La

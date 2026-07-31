@@ -139,7 +139,9 @@
           "classification": "unsupported-by-projection",
           "rule": "unsupported",
           "sourcePaths": [
-            "scoring[].vehicleClass"
+            "scoring[].isPlayer",
+            "scoring[].vehicleClass",
+            "scoring[].place"
           ]
         },
         {
@@ -175,7 +177,7 @@
           "classification": "unsupported-by-projection",
           "rule": "unsupported",
           "sourcePaths": [
-            "scoring[].bestLapText"
+            "scoring[].bestLapTime"
           ]
         },
         {
@@ -211,14 +213,24 @@
           "classification": "unsupported-by-projection",
           "rule": "unsupported",
           "sourcePaths": [
-            "scoring[].gapText"
+            "session.type",
+            "scoring[].id",
+            "scoring[].place",
+            "scoring[].vehicleClass",
+            "scoring[].isPlayer",
+            "scoring[].bestLapTime",
+            "scoring[].fastestLap",
+            "scoring[].lapsBehindLeader",
+            "scoring[].timeBehindLeader"
           ]
         },
         {
           "path": "rows[].id",
           "classification": "equal",
           "rule": "exact",
-          "sourcePaths": [],
+          "sourcePaths": [
+            "vehicles[].id"
+          ],
           "item": 0,
           "observation": {
             "kind": "redacted"
@@ -229,7 +241,7 @@
           "classification": "unsupported-by-projection",
           "rule": "unsupported",
           "sourcePaths": [
-            "scoring[].intervalText"
+            "scoring[].timeBehindNext"
           ]
         },
         {
@@ -251,6 +263,7 @@
           "classification": "equal",
           "rule": "exact",
           "sourcePaths": [
+            "vehicles[].id",
             "playerVehicleId"
           ],
           "item": 0,
@@ -265,7 +278,7 @@
           "classification": "unsupported-by-projection",
           "rule": "unsupported",
           "sourcePaths": [
-            "scoring[].lastLapText"
+            "scoring[].lastLapTime"
           ]
         },
         {

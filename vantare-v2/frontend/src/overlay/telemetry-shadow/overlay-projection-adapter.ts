@@ -273,6 +273,14 @@ function mapScoringVehicle(
   playerIndex: number,
   quality: OverlayMappedField[],
 ): Record<string, unknown> {
+  quality.push({
+    sourcePath: `vehicles[${index}].id`,
+    targetPath: "scoring[].id",
+    present: true,
+    provenance: "observed",
+    freshness: "fresh",
+    usable: true,
+  });
   const row: Record<string, unknown> = {
     id: vehicle.id,
     isPlayer: index === playerIndex,
@@ -306,16 +314,6 @@ function mapScoringVehicle(
       quality,
       `vehicles[${index}].inPit`,
       "scoring[].inPits",
-    ),
-  );
-  assignIfPresent(
-    row,
-    "pitStopCount",
-    mappedValue(
-      vehicle.pitStopCount,
-      quality,
-      `vehicles[${index}].pitStopCount`,
-      "scoring[].pitStopCount",
     ),
   );
   if (index !== playerIndex) {

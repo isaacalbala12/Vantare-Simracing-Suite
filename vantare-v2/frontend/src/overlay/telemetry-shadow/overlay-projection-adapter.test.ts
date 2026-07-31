@@ -54,6 +54,11 @@ describe("overlay projection adapter", () => {
       },
     ]);
     expect(mapping.snapshot.session.trackName).toBeUndefined();
+    expect(mapping.snapshot.scoring.every((row) => !("pitStopCount" in row))).toBe(true);
+    expect(mapping.quality.some((field) =>
+      field.sourcePath.includes("pitStopCount") ||
+      field.targetPath?.includes("pitStopCount")
+    )).toBe(false);
     expect(mapping.quality).toContainEqual({
       sourcePath: "vehicles[0].name",
       present: true,
@@ -61,6 +66,24 @@ describe("overlay projection adapter", () => {
       freshness: "fresh",
       usable: true,
     });
+    expect(mapping.quality).toEqual(expect.arrayContaining([
+      {
+        sourcePath: "vehicles[0].id",
+        targetPath: "scoring[].id",
+        present: true,
+        provenance: "observed",
+        freshness: "fresh",
+        usable: true,
+      },
+      {
+        sourcePath: "vehicles[1].id",
+        targetPath: "scoring[].id",
+        present: true,
+        provenance: "observed",
+        freshness: "fresh",
+        usable: true,
+      },
+    ]));
   });
 
   it.each([

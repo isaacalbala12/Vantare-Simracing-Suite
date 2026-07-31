@@ -24,6 +24,7 @@ const CONTRACT_VERSION = 1 as const;
 const MAX_LIST_ITEMS = 104;
 const MAX_WIDGETS = 128;
 const INPUT_HISTORY_LIMIT = 120;
+const MAX_NON_MISMATCH_SAMPLES = 64;
 const RUNTIME_STATUSES = ["ready", "missing", "stale", "disconnected", "error"] as const;
 
 export type OverlayShadowCoverage = "exact" | "partial" | "not-comparable" | "external";
@@ -225,11 +226,11 @@ const standingsRows: ListRule = {
   identities: (rows) => rows.map((row) => (row as StandingsRowViewModel).id),
   orderSignificant: true,
   fields: [
-    { path: "id", read: (row) => (row as StandingsRowViewModel).id, quality: allOf(), disclosure: redactedDisclosure },
+    { path: "id", read: (row) => (row as StandingsRowViewModel).id, quality: allOf(vehicle("id")), disclosure: redactedDisclosure },
     { path: "position", read: (row) => (row as StandingsRowViewModel).position, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
     { path: "currentLapText", read: (row) => (row as StandingsRowViewModel).currentLapText, quality: allOf(vehicle("completedLaps")), disclosure: redactedDisclosure },
     { path: "pitText", read: (row) => (row as StandingsRowViewModel).pitText, quality: allOf(vehicle("inPit")), disclosure: redactedDisclosure },
-    { path: "isPlayer", read: (row) => (row as StandingsRowViewModel).isPlayer, quality: allOf(source("playerVehicleId")), disclosure: booleanDisclosure },
+    { path: "isPlayer", read: (row) => (row as StandingsRowViewModel).isPlayer, quality: allOf(vehicle("id"), source("playerVehicleId")), disclosure: booleanDisclosure },
     { path: "isLeader", read: (row) => (row as StandingsRowViewModel).isLeader, quality: allOf(vehicle("position")), disclosure: booleanDisclosure },
   ],
 };
@@ -242,7 +243,7 @@ const broadcastRows: ListRule = {
   orderSignificant: true,
   fields: [
     { path: "place", read: (row) => (row as BroadcastTowerRow).place, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
-    { path: "isPlayer", read: (row) => (row as BroadcastTowerRow).isPlayer, quality: allOf(source("playerVehicleId")), disclosure: booleanDisclosure },
+    { path: "isPlayer", read: (row) => (row as BroadcastTowerRow).isPlayer, quality: allOf(vehicle("id"), source("playerVehicleId")), disclosure: booleanDisclosure },
   ],
 };
 
@@ -250,7 +251,26 @@ export const OVERLAY_SHADOW_POLICIES = {
   delta: {
     widgetType: "delta",
     coverage: "not-comparable",
-    rules: ["tone", "deltaText", "lastLapText", "bestLapText", "progress", "lapText", "predictedLapText", "splitText"].map((path) => unsupported(path, target("player.deltaSeconds"))),
+    rules: [
+      unsupported("tone", target("player.deltaSeconds")),
+      unsupported("deltaText", target("player.deltaSeconds")),
+      unsupported("lastLapText", target("player.lastLapSeconds")),
+      unsupported("bestLapText", target("player.bestLapSeconds")),
+      unsupported("progress", target("player.deltaSeconds")),
+      unsupported(
+        "lapText",
+        target("player.lapNumber"),
+        target("scoring[].isPlayer"),
+        target("scoring[].totalLaps"),
+      ),
+      unsupported(
+        "predictedLapText",
+        target("player.predictedLapSeconds"),
+        target("scoring[].isPlayer"),
+        target("scoring[].estimatedLapTime"),
+      ),
+      unsupported("splitText", target("player.deltaSeconds")),
+    ],
   },
   standings: {
     widgetType: "standings",
@@ -259,15 +279,63 @@ export const OVERLAY_SHADOW_POLICIES = {
       ...statusRules,
       scalar("sessionLabel", (model) => (model as StandingsViewModel).sessionLabel, redactedDisclosure, allOf(target("session.type"))),
       standingsRows,
-      unsupported("activeClass", target("scoring[].vehicleClass")),
+      unsupported(
+        "activeClass",
+        target("scoring[].isPlayer"),
+        target("scoring[].vehicleClass"),
+        target("scoring[].place"),
+      ),
       unsupported("remainingText", target("session.remainingSeconds")),
-      ...["driverNumber", "driverName", "vehicleClass", "teamCode", "teamBrandColor", "gapText", "intervalText", "lastLapText", "bestLapText", "tireCompound"].map((path) => unsupported(`rows[].${path}`, target(`scoring[].${path}`))),
+      unsupported("rows[].driverNumber", target("scoring[].driverNumber")),
+      unsupported("rows[].driverName", target("scoring[].driverName")),
+      unsupported("rows[].vehicleClass", target("scoring[].vehicleClass")),
+      unsupported("rows[].teamCode", target("scoring[].teamCode")),
+      unsupported("rows[].teamBrandColor", target("scoring[].teamBrandColor")),
+      unsupported(
+        "rows[].gapText",
+        target("session.type"),
+        target("scoring[].id"),
+        target("scoring[].place"),
+        target("scoring[].vehicleClass"),
+        target("scoring[].isPlayer"),
+        target("scoring[].bestLapTime"),
+        target("scoring[].fastestLap"),
+        target("scoring[].lapsBehindLeader"),
+        target("scoring[].timeBehindLeader"),
+      ),
+      unsupported("rows[].intervalText", target("scoring[].timeBehindNext")),
+      unsupported("rows[].lastLapText", target("scoring[].lastLapTime")),
+      unsupported("rows[].bestLapText", target("scoring[].bestLapTime")),
+      unsupported("rows[].tireCompound", target("scoring[].tireCompound")),
     ],
   },
   relative: {
     widgetType: "relative",
     coverage: "not-comparable",
-    rules: ["rows", "rows[].gapSeconds", "rows[].driverName", "rows[].vehicleClass", "rows[].driverNumber", "rows[].bestLapText", "rows[].lastLapText"].map((path) => unsupported(path, target("scoring[].timeGapToPlayer"))),
+    rules: [
+      unsupported(
+        "rows",
+        target("scoring[].isPlayer"),
+        target("scoring[].vehicleClass"),
+        target("scoring[].timeGapToPlayer"),
+        target("scoring[].id"),
+      ),
+      unsupported("rows[].id", target("scoring[].id")),
+      unsupported("rows[].position", target("scoring[].place")),
+      unsupported("rows[].vehicleClass", target("scoring[].vehicleClass")),
+      unsupported("rows[].driverNumber", target("scoring[].driverNumber")),
+      unsupported("rows[].driverName", target("scoring[].driverName")),
+      unsupported("rows[].gapText", target("scoring[].timeGapToPlayer")),
+      unsupported("rows[].bestLapText", target("scoring[].bestLapTime")),
+      unsupported("rows[].lastLapText", target("scoring[].lastLapTime")),
+      unsupported("rows[].isPlayer", target("scoring[].isPlayer")),
+      unsupported(
+        "rows[].tone",
+        target("scoring[].timeGapToPlayer"),
+        target("scoring[].isPlayer"),
+      ),
+      unsupported("rows[].gapSeconds", target("scoring[].timeGapToPlayer")),
+    ],
   },
   pedals: {
     widgetType: "pedals",
@@ -404,20 +472,50 @@ export function compareOverlayShadow(input: Readonly<{
     instanceCounts.set(widget.type, instance + 1);
     return compareWidget(widget, instance, input.legacySnapshot, input.projection);
   });
-  const fullEntries = fullResults.flatMap((result) => result.entries);
-  const bounded = limitShadowEntries(fullEntries, input.maxEntries);
-  const visibleByWidget = allocateEntries(fullResults, bounded.entries.length);
+  const mismatchResults = selectEntries(fullResults, true);
+  const sampleResults = selectEntries(fullResults, false);
+  const mismatchBounded = limitShadowEntries(
+    mismatchResults.flatMap((result) => result.entries),
+    input.maxEntries,
+  );
+  const sampleBounded = limitShadowEntries(
+    sampleResults.flatMap((result) => result.entries),
+    MAX_NON_MISMATCH_SAMPLES,
+  );
+  const visibleMismatches = allocateEntries(
+    mismatchResults,
+    mismatchBounded.entries.length,
+  );
+  const visibleSamples = allocateEntries(
+    sampleResults,
+    sampleBounded.entries.length,
+  );
   const widgets = fullResults.map((result, index) => ({
     ...result,
-    entries: visibleByWidget[index],
+    entries: [...visibleMismatches[index], ...visibleSamples[index]].sort(compareEntries),
   }));
   const summary = addCounts(fullResults.map((result) => result.summary));
   return {
     contractVersion: CONTRACT_VERSION,
     summary: { widgets: widgets.length, ...summary },
     widgets,
-    truncated: allSorted.length > sorted.length || bounded.truncated,
+    truncated:
+      allSorted.length > sorted.length ||
+      mismatchBounded.truncated ||
+      sampleBounded.truncated,
   };
+}
+
+function selectEntries(
+  results: readonly OverlayShadowWidgetResult[],
+  mismatches: boolean,
+): readonly OverlayShadowWidgetResult[] {
+  return results.map((result) => ({
+    ...result,
+    entries: result.entries.filter((entry) =>
+      isMismatch(entry.classification) === mismatches
+    ),
+  }));
 }
 
 function allocateEntries(

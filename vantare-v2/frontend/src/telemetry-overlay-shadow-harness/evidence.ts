@@ -187,6 +187,7 @@ function createMapping(
     mappedField("vehicles[0].gear", "player.gear"),
     mappedField("vehicles[0].completedLaps", "player.totalLaps"),
     mappedField("vehicles[0].completedLaps", "player.lapNumber"),
+    mappedField("vehicles[0].id", "scoring[].id"),
     mappedField("vehicles[0].position", "scoring[0].place"),
     mappedField("vehicles[0].completedLaps", "scoring[0].totalLaps"),
     mappedField("vehicles[0].inPit", "scoring[0].inPits"),

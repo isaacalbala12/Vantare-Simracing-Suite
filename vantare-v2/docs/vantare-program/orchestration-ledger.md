@@ -86,18 +86,20 @@ elegibilidad/validez de vueltas, nombres de curvas ni coaching.
 | Engineer | ENG-04 preparación | read-only sobre ENG-03 `06dbfd8` | preparación terminada; contrato y prompt ejecutable listos; sin código |
 | Telemetry Core | TC-06A / ISA-101 | `C:\tmp\vantare-isa101\vantare-v2` sobre TC-05C `4801dce` | `In Review`; commit `6aa46f1`, PR draft #37, sin promoción |
 | Telemetry Core | TC-06B / ISA-102 | `8683f03`, PR draft #38 sobre TC-06A `6aa46f1` | cerrado técnicamente; Linear pendiente; sin promoción |
-| Telemetry Core | TC-06C / ISA-103 | `C:\tmp\vantare-isa103\vantare-v2\vantare-v2` sobre TC-06B `8683f03` | implementación iniciada; Linear pendiente; sin promoción |
+| Telemetry Core | TC-06C / ISA-103 | `8b89c0a`, apilada sobre TC-06B `8683f03` | cerrado técnicamente; sin promoción |
+| Telemetry Core | TC-06D / ISA-104 | `3b44d36`, PR draft #40 sobre TC-06C `8b89c0a` | `In Review`; reviews `ACCEPT`; sin promoción |
+| Telemetry Core | TC-07A / ISA-105 | base exacta `3b44d36` | siguiente corte; aún sin worktree ni código |
 
 ## Próximas acciones exactas
 
-1. Abrir ISA-41 / TC-05C sobre TC-05B para contratos TypeScript y harness de
-   observabilidad; no migrar pantallas productivas.
+1. Abrir ISA-105 / TC-07A sobre ISA-104 `3b44d36` para proyección Overlay y
+   shadow comparator; no hacer cutover, CSS, canvas ni regenerar baselines.
 2. Abrir ENG-04 sobre ENG-03 para caracterizar mediante replays una familia de
    monitores antes de migrarla; no inventar señales ni borrar el frame legacy.
 3. Abrir TA-04 sobre TA-03. Primero debe producir evidencia reproducible de
    `Lap Dist`, `Total Dist` y/o GPS; si no existe, debe degradar honestamente y
    no implementar mapa/delta sintéticos.
-4. Continuar secuencialmente TC-05C, ENG-04 y TA-05 según sus microplanes y
+4. Continuar secuencialmente TC-07, ENG-04 y TA-05 según sus microplanes y
    dependencias.
 5. Actualizar este registro inmediatamente después de cada review/cierre.
 
@@ -913,7 +915,7 @@ Cierre definitivo frontend D4 ISA-104:
 - Evidencia visual separada: current válido, future metadata-only, corrupt
   metadata-only, y layouts wide/medium/compact. Seis capturas revisadas sin
   overflow, solapes o truncados relevantes.
-- Re-review final UI: `ACCEPT`, P0/P1/P2/P3 = 0. Vitest 63/63, build, lint
+- Re-review final UI: `ACCEPT`, P0/P1/P2/P3 = 0. Vitest 64/64, build, lint
   focal, Playwright final, consola limpia, bytes exactos, diff-check y cleanup
   del puerto: PASS.
 - D4 queda cerrado. Siguiente paso: D7, documentación/evidencia consolidada,
@@ -923,7 +925,7 @@ Cierre definitivo frontend D4 ISA-104:
 Gates D7 y review integrada ISA-104:
 
 - Gates integrados verdes: `gofmt`, diff-check, Telemetry Core, app y suite Go
-  global serial; frontend 292 archivos/1.922 tests; build frontend; lint focal;
+  global serial; frontend 292 archivos/1.923 tests; build frontend; lint focal;
   Playwright wide/medium/compact; build Wails CGO=0. El lint global conserva
   33 errores heredados fuera del corte. El vet LMU normal conserva dos avisos
   heredados Win32 y el focal con `-unsafeptr=false` pasa.
@@ -945,11 +947,28 @@ Gates D7 y review integrada ISA-104:
   global acotado. ISA-104 continúa `In Progress`; no se hace commit de producto
   hasta re-review final sin P0–P3 razonables. Sin merge o promoción.
 
+Cierre técnico y entrega ISA-104 / TC-06D:
+
+- Las correcciones integradas cerraron rechazo pre/post de
+  symlink/junction/reparse, snapshots profundos incluido `LastLaunchedAt`,
+  top-K global determinista, zero-values metadata-only y contraste AA.
+- Re-reviews finales backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
+- Commits: plan `8035a89`, producto `688f206`, handoff final `3b44d36`.
+- Rama publicada:
+  `vantareapp/isa-104-tc-06d-inspector-privacidad-y-export-diagnostico`.
+- PR draft `#40` apilada sobre ISA-103; Linear ISA-104 en `In Review`.
+- Gates finales: Go global serial, Telemetry/app, race focal, vet aplicable,
+  292 archivos/1.923 tests frontend, build frontend/Wails, lint focal,
+  Playwright wide/medium/compact, privacidad, PNG y diff-check: PASS.
+- Heredado fuera de alcance: lint global 33 errores/2 warnings, dos avisos
+  `unsafe.Pointer` LMU y contención Windows ocasional del test de settings.
+- No hubo merge, cutover ni promoción. Siguiente dependencia: ISA-105 / TC-07A
+  desde `3b44d36713213ab642f47174c1b5d8234362cac0`.
+
 ## Bloqueos operativos actuales
 
-- Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`
-  e ISA-101 está `In Progress`; cualquier transición posterior debe reflejarse
-  tanto aquí como en la issue.
+- Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
+  transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos
   para sustituir `nightly` o `testers`.
 

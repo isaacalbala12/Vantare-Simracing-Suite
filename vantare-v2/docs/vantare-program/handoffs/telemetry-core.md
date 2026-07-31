@@ -43,12 +43,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   y SHA-256
   `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
   Review final `APPROVE`, P0/P1/P2/P3 = 0.
+- D7 queda aceptado y publicado en `79bdc98`: Overlay Projection v1 se amplía
+  de forma aditiva con timing, identidad/scoring, fuel, gaps y self-delta. El
+  timestamp UTC canónico de cada muestra se conserva aunque el delta actual
+  pase a missing/stale. El decoder prueba old/new en cuatro direcciones, sector
+  cerrado e IDs únicos. La matriz 18/18 queda en 2 exactos, 10 parciales, 5 no
+  comparables y 1 externo. Frontend 297 archivos/2.019 tests, Telemetry Core,
+  Go focal x20, lint focal y build pasan; review `APPROVE`, P0/P1/P2/P3 = 0.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta ya
-tienen inputs y semántica demostrados dentro del pipeline aislado de D6, pero
-no llegan aún a Overlay: D7 debe proyectarlos de forma aditiva. La captura raw
-diagnóstica de ISA-104 permanece desactivada y sin wiring productivo.
+tienen inputs, semántica y proyección demostrados dentro de D6/D7. D8 debe
+probar ahora driver → reducer → derive → Overlay en un único harness antes de
+cualquier shadow wiring. La captura raw diagnóstica de ISA-104 permanece
+desactivada y sin wiring productivo.
 
 ## Decisiones
 
@@ -71,8 +79,8 @@ diagnóstica de ISA-104 permanece desactivada y sin wiring productivo.
 - **P3 heredado:** dos avisos `unsafe.Pointer` Win32 en vet LMU normal.
 - **Deuda heredada fuera del corte:** lint global con 33 errores y dos warnings.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
-- **Resuelto en D6, aún sin proyección:** gaps/delta tienen inputs reales,
-  semántica y evidencia LMU hash-pinned; D7 debe exponerlos sin cutover.
+- **Resuelto en D6/D7:** gaps/delta tienen inputs reales, semántica, evidencia
+  LMU hash-pinned y proyección aditiva; D8 debe verificar la cadena completa.
 - **P0 ISA-129 confirmado:** el bootstrap comercial inyecta
   `createMockSource()`, normaliza el buffer sintético como `Connected=true` y
   lo publica por Wails y SSE cuando LMU no está disponible.

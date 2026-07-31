@@ -10,6 +10,18 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-129 / TC-07A.1 D7 (2026-07-31):
+- Publicado `79bdc9881fd013c24ae7363f06dd64630519e3c4` en la rama apilada,
+  sin promoción. Overlay Projection v1 incorpora de forma aditiva timing,
+  scoring/identidad, fuel, gaps relativos y self-delta/history demostrados.
+- Cada muestra delta conserva su `ReceivedUTC`; histories retained con
+  missing/stale no cambian identidad. Compatibilidad old/new cubierta en las
+  cuatro direcciones, enum sector 1..3 e IDs duplicados fail-closed.
+- Matriz 18/18: 2 exactos, 10 parciales, 5 no comparables y 1 externo.
+  Frontend 297/2.019, Telemetry Core, focal Go x20, lint focal, build y
+  `diff --check` PASS. Review final `APPROVE`, P0/P1/P2/P3 = 0.
+- Siguiente acción: D8, harness único driver → reducer → derive → Overlay.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

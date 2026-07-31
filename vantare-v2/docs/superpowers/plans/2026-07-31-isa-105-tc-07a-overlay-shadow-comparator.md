@@ -149,12 +149,14 @@ Cubrir:
 3. missing con zero-value no disponible;
 4. invalid aunque `present=true`;
 5. stale conservado;
-6. versión distinta rechazada;
-7. enums desconocidos y formas incorrectas rechazados;
-8. `NaN`, infinito, arrays enormes o nesting abusivo rechazados por la
+6. combinaciones incoherentes de `ProjectionField<T>` rechazadas:
+   `present=false` con `fresh/stale/invalid` y `present=true` con `missing`;
+7. versión distinta rechazada;
+8. enums desconocidos y formas incorrectas rechazados;
+9. `NaN`, infinito, arrays enormes o nesting abusivo rechazados por la
    frontera de transporte antes del decoder;
-9. campos adicionales seguros compatibles con evolución aditiva;
-10. inputs no mutados y resultado profundamente inmutable.
+10. campos adicionales seguros compatibles con evolución aditiva;
+11. inputs no mutados y resultado profundamente inmutable.
 
 Ejecutar:
 
@@ -174,6 +176,11 @@ El decoder debe recibir `ProjectionEnvelope` ya validado por
 - payload con `capabilities`, `trackName`, `sessionType`,
   `playerVehicleId`, `vehicles` y `controlsHistory`;
 - `ProjectionField<T>` con `present`, `value`, `provenance`, `freshness`;
+- el zero-value serializado por Go de un `ProjectionField<T>` ausente se
+  acepta, pero su dominio solo se valida cuando `present=true`;
+- `controlsHistory.present` significa que existen muestras y su `freshness`
+  describe el estado actual: no se reutiliza la coherencia de
+  `ProjectionField<T>`;
 - IDs locales tratados como opacos;
 - límites de vehículos e historial iguales o más estrechos que el core.
 
@@ -205,7 +212,8 @@ engañosos.
 
 Validar:
 
-- `capturedAt` RFC3339 → epoch ms finito;
+- `capturedAt` RFC3339 → epoch ms finito, pero no comparable sin correlación
+  explícita del mismo frame;
 - `sessionType` solo usa valores conocidos;
 - track missing no se vuelve `""`;
 - player por igualdad con `playerVehicleId`;
@@ -213,8 +221,9 @@ Validar:
   el adapter legado etiqueta hoy m/s como `speedKph`;
 - controles `0..1`, gear y RPM del player;
 - `position → place`, `completedLaps → totalLaps`,
-  `inPit → inPits`; `name` permanece vehicle name y no se convierte en
-  `driverName`;
+  `inPit → inPits`; `name` queda solo en quality/diagnóstico y no se emite
+  como `name` ni `driverName`, porque ambos lectores actuales lo presentan
+  como piloto;
 - `isPlayer` derivado del ID del frame, no del orden;
 - status de transporte `stale` degrada el snapshot completo; un campo stale
   aislado conserva su valor y queda marcado en `quality` sin degradar widgets
@@ -224,14 +233,26 @@ Validar:
 - IDs y nombres no se incorporan a mensajes de error;
 - no se fabrican delta, gaps, fuel, tiempos, clase, flags, ambiente o daño.
 
-El resultado debe incluir:
+El resultado debe ser una unión explícita:
 
 ```ts
-type OverlayProjectionMapping = {
-  snapshot: TelemetrySnapshot;
-  quality: readonly OverlayMappedField[];
-  unsupported: readonly OverlayUnsupportedField[];
-};
+type OverlayProjectionMapping =
+  | {
+      kind: "mapped";
+      snapshot: TelemetrySnapshot;
+      quality: readonly OverlayMappedField[];
+      unsupported: readonly OverlayUnsupportedField[];
+    }
+  | {
+      kind: "blocked";
+      code:
+        | "captured-at-invalid"
+        | "session-type-unavailable"
+        | "player-unavailable"
+        | "player-in-pit-unavailable";
+      quality: readonly OverlayMappedField[];
+      unsupported: readonly OverlayUnsupportedField[];
+    };
 ```
 
 La metadata de calidad es diagnóstica y separada: no ampliar
@@ -241,6 +262,9 @@ La metadata de calidad es diagnóstica y separada: no ampliar
 
 - Construir objetos nuevos; nunca mutar payload.
 - Mantener `scoring` como registros compatibles solo con claves demostradas.
+- Solo construir `TelemetrySnapshot` cuando `session.type`, player e `inPit`
+  satisfacen sus invariantes obligatorios. No usar `race`/`false`, casts o
+  snapshots placeholder cuando falten.
 - No mapear `controlsHistory` a tiempos inventados. Exponer su cobertura en
   `quality/unsupported`; el historial continuo se evaluará con frames reales en
   ISA-106.
@@ -281,7 +305,8 @@ git diff --check
 La función de comparación recibe:
 
 - snapshot legado ya normalizado;
-- `OverlayProjectionMapping`;
+- un `OverlayProjectionMapping` de clase `mapped`; `blocked` produce reporte
+  no comparable sin invocar builders;
 - widgets/documento explícito;
 - políticas cerradas.
 
@@ -327,6 +352,14 @@ Usar un vocabulario cerrado:
 - `unsupported-by-projection`
 - `shape-mismatch`
 - `builder-error`
+- `external-consumer`
+
+Race Schedule usa `external-consumer`: sigue cubierto entre los 18 tipos, pero
+queda fuera del denominador de paridad telemétrica.
+
+Cada regla de un path del ViewModel declara también sus `sourcePaths`. Si una
+fuente está stale/invalid/missing, el campo no puede clasificarse `equal` aunque
+el valor renderizable coincida.
 
 El resumen contiene:
 
@@ -348,6 +381,10 @@ El informe serializable:
 - limita longitud, profundidad y cantidad;
 - usa códigos estables en errores;
 - es determinista byte a byte para el mismo input.
+
+Los tests inyectan canarios únicos en nombres, equipos, IDs, rutas y errores.
+Ninguno puede aparecer en el reporte, JSON o DOM. Los paths solo pueden usar
+índices o aliases deterministas, nunca IDs del payload.
 
 ### Paso 5 — Verificar
 

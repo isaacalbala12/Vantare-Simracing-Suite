@@ -38,23 +38,53 @@ ausentes.
 | Tipo registrado | Consumo real del ViewModel | Campo nuevo disponible | Campo ausente o incompatible | Cobertura |
 |---|---|---|---|---|
 | `delta` | `player.deltaSeconds`, last/best/predicted lap, lap y player scoring | player ID, lap/completed laps parciales | delta con referencia/signo, tiempos de vuelta, predicción | Not comparable |
-| `standings` | sesión/remaining, id, place, número, nombre, clase, equipo/color, gaps/interval, vueltas, pit, compuesto | id, name, position, completedLaps, inPit, sessionType | remaining, número, clase, equipo/color, gaps, tiempos, compuesto | Partial |
-| `relative` | id, place, isPlayer, `timeGapToPlayer`, clase, número, nombre y tiempos | id, name, position, isPlayer derivable | gap relativo demostrado, clase, número y tiempos | Not comparable |
+| `standings` | sesión/remaining, id, place, número, piloto, clase, equipo/color, gaps/interval, vueltas, pit, compuesto | id, position, completedLaps, inPit, sessionType | remaining, piloto, número, clase, equipo/color, gaps, tiempos, compuesto | Partial |
+| `relative` | id, place, isPlayer, `timeGapToPlayer`, clase, número, piloto y tiempos | id, position, isPlayer derivable | gap relativo demostrado, piloto, clase, número y tiempos | Not comparable |
 | `pedals` | throttle, brake, clutch y status | los tres ratios del player | nada para el valor instantáneo | Exact para valor instantáneo |
-| `broadcast-tower` | sesión, lap/total, place, número, piloto, equipo, clase, gap, color y player | sessionType, lap/completedLaps, position, vehicle name, player ID | número, piloto, equipo, clase, gap, color; vehicle name no sustituye driver name | Partial |
+| `broadcast-tower` | sesión, lap/total, place, número, piloto, equipo, clase, gap, color y player | sessionType, lap/completedLaps, position, player ID | número, piloto, equipo, clase, gap y color | Partial |
 | `fuel-strategy` | fuel, remaining, last lap y fuel history | ninguno | fuel, remaining, last lap e historial de consumo | Not comparable |
 | `pedals-telemetry` | controles, speed, rpm, gear, player place y status | controles, speedMps, rpm, gear, position | legacy etiqueta m/s como `speedKph`; no se acepta el factor 3,6 como tolerancia | Partial hasta corregir la unidad legacy |
 | `pedals-telemetry-compact` | controles, speed, rpm, gear y status | todos los valores instantáneos | legacy etiqueta m/s como `speedKph`; no se acepta el factor 3,6 como tolerancia | Partial hasta corregir la unidad legacy |
 | `racing-flags` | global flag y sector flags | ninguno | control de carrera y flags | Not comparable |
 | `delta-trace` | `derived.deltaHistory` | ninguno; `derive.Delta` está missing | delta e historial con referencia/signo | Not comparable |
 | `race-schedule` | `auxiliary.scheduleEvents` | no aplica | calendario local/remoto, ajeno a live telemetry | External |
-| `head-to-head` | place, piloto, equipo, clase, gap y sectores | position y vehicle name | piloto, equipo, clase, gap y sectores | Not comparable |
+| `head-to-head` | place, piloto, equipo, clase, gap y sectores | position | piloto, equipo, clase, gap y sectores | Not comparable |
 | `delta-advanced` | delta best/sector/theoretical/last | ninguno | todas las variantes de delta | Not comparable |
 | `input-telemetry` | controles, speed, rpm, gear e historial recibido aparte | valores instantáneos y muestras sin tiempo individual | timestamp exacto de cada muestra para la traza | Partial |
-| `multiclass-relative` | place, class, color, number, piloto, gap y player | position, vehicle name, player ID | piloto, clase, color, número y gap | Not comparable |
+| `multiclass-relative` | place, class, color, number, piloto, gap y player | position, player ID | piloto, clase, color, número y gap | Not comparable |
 | `track-weather` | ambient, track temp, rain, wetness, wind y pressure | ninguno; `trackName` no alimenta este ViewModel | todas las condiciones ambientales | Not comparable |
 | `car-damage-visual` | body, aero, suspension y tyres | ninguno | todos los daños | Not comparable |
 | `car-damage-numbers` | body, aero, suspension y tyres | ninguno | todos los daños | Not comparable |
+
+## Evidencia exacta por builder
+
+La policy TypeScript debe repetir estos 18 contratos y el test compara sus keys
+con `widgetTypeRegistry.list()` para detectar tipos nuevos u huérfanos.
+
+| Tipo | Builder | Paths de telemetría activables |
+|---|---|---|
+| `delta` | `buildDeltaViewModel` en `widget-types/delta/delta-view-model.ts` | `player.deltaSeconds`, `bestLapSeconds`, `lastLapSeconds`, `predictedLapSeconds`, `lapNumber`; player scoring `totalLaps/estimatedLapTime` |
+| `standings` | `buildStandingsViewModel` en `widget-types/standings/standings-view-model.ts` | `session.type/remainingSeconds`; scoring `id/place/isPlayer/driverNumber/driverName/vehicleClass/teamCode/teamBrandColor/gaps/laps/lap times/pit/tireCompound` según columnas |
+| `relative` | `buildRelativeViewModel` en `widget-types/relative/relative-view-model.ts` | scoring `id/place/isPlayer/timeGapToPlayer/vehicleClass/driverNumber/driverName/bestLapTime/lastLapTime` según columnas |
+| `pedals` | `buildPedalsViewModel` en `widget-types/pedals/pedals-view-model.ts` | `player.throttle/brake/clutch` |
+| `broadcast-tower` | `buildBroadcastTowerViewModel` en `widget-types/broadcast-tower/broadcast-tower-view-model.ts` | `session.type`, `player.lapNumber/totalLaps`; scoring `place/isPlayer/driverNumber/name/team/class/gap/color` |
+| `fuel-strategy` | `buildFuelStrategyViewModel` en `widget-types/fuel-strategy/fuel-strategy-view-model.ts` | `session.remainingSeconds`, `player.fuelLiters/lastLapSeconds`, `derived.fuelHistory` |
+| `pedals-telemetry` | `buildPedalsTelemetryViewModel` en `widget-types/pedals-telemetry/pedals-telemetry-view-model.ts` | `player.throttle/brake/clutch/speedKph/rpm/gear`; player scoring `place` |
+| `pedals-telemetry-compact` | `buildPedalsTelemetryCompactViewModel` en `widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model.ts` | `player.throttle/brake/clutch/speedKph/rpm/gear` |
+| `racing-flags` | `buildRacingFlagsViewModel` en `widget-types/racing-flags/racing-flags-view-model.ts` | `session.globalFlag/sectorFlags` |
+| `delta-trace` | `buildDeltaTraceViewModel` en `widget-types/delta-trace/delta-trace-view-model.ts` | `derived.deltaHistory` |
+| `race-schedule` | `buildRaceScheduleViewModel` en `widget-types/race-schedule/race-schedule-view-model.ts` | `auxiliary.scheduleEvents`; externo al core live |
+| `head-to-head` | `buildHeadToHeadViewModel` en `widget-types/head-to-head/head-to-head-view-model.ts` | scoring `place/isPlayer/name/team/class/gap/sectorComparisons` |
+| `delta-advanced` | `buildDeltaAdvancedViewModel` en `widget-types/delta-advanced/delta-advanced-view-model.ts` | `player.deltaSeconds` |
+| `input-telemetry` | `buildInputTelemetryViewModel` en `widget-types/input-telemetry/input-telemetry-view-model.ts` | `player.throttle/brake/clutch/speedKph/rpm/gear`; historial explícito separado |
+| `multiclass-relative` | `buildMulticlassRelativeViewModel` en `widget-types/multiclass-relative/multiclass-relative-view-model.ts` | scoring `place/isPlayer/class/name/driverNumber/teamBrandColor/gap` |
+| `track-weather` | `buildTrackWeatherViewModel` en `widget-types/track-weather/track-weather-view-model.ts` | `environment.*` |
+| `car-damage-visual` | `buildCarDamageVisualViewModel` en `widget-types/car-damage-visual/car-damage-visual-view-model.ts` | `damage.body/aero/suspension/tyres` |
+| `car-damage-numbers` | `buildCarDamageNumbersViewModel` en `widget-types/car-damage-numbers/car-damage-numbers-view-model.ts` | `damage.body/aero/suspension/tyres` |
+
+La policy usa contenidos no predeterminados que activen columnas/campos
+opcionales. Campos derivados solo del content se comprueban como invariantes,
+no como evidencia de paridad telemétrica.
 
 ## Campos old/new
 
@@ -62,7 +92,7 @@ ausentes.
 
 | Frontera ViewModel | Legacy | Overlay v1 | Regla |
 |---|---|---|---|
-| `capturedAt` | tiempo de recepción del adapter | envelope `capturedAt` | convertir RFC3339 a ms; exacto |
+| `capturedAt` | tiempo del adapter frontend | `ReceivedUTC` del envelope | no comparable salvo correlación explícita del mismo frame |
 | `status` | connected/error/stale de adapter/store | estado de transporte | no inferir de valores |
 | `session.type` | `sessionType/sessionName` | `sessionType` tipado | exacto para valores conocidos |
 | `session.trackName` | `trackName` | `trackName` Field | solo si usable |
@@ -89,14 +119,14 @@ ausentes.
 Cada vehículo nuevo puede producir únicamente:
 
 - `id`;
-- `name`, si `name` es usable;
 - `place`, si `position` es usable;
 - `totalLaps`, si `completedLaps` es usable;
 - `inPits`, si `inPit` es usable;
 - `isPlayer`, derivado por igualdad de ID.
 
-`vehicle.name` no se renombra a `driverName`: son identidades semánticamente
-distintas. No debe producir claves con un zero-value que simule:
+`vehicle.name` queda solo en quality/diagnóstico: no se emite como `name` ni
+`driverName`, porque `readScoringName` interpreta ambas claves como piloto. No
+debe producir claves con un zero-value que simule:
 
 - número del coche;
 - clase;
@@ -129,6 +159,10 @@ La calidad se conserva en metadata diagnóstica por path:
 Un campo stale aislado no degrada widgets que no lo consumen. El status global
 del transporte sí se traduce al status global del snapshot.
 
+El comparator mantiene un mapa tipado `ViewModel path -> source paths`. Si una
+fuente está stale, invalid o missing, la salida dependiente nunca puede quedar
+`equal` aunque el valor coincida por casualidad.
+
 ## Historial de controles
 
 `controlsHistory` contiene cursor y ratios, pero no el tiempo individual de cada
@@ -138,6 +172,11 @@ muestra. `DerivedInputSample` exige `capturedAt`. ISA-105 no debe:
 - asumir una frecuencia;
 - reconstruir tiempo desde sequence;
 - inventar offsets.
+
+En este bloque, `present` significa que hay muestras almacenadas y `freshness`
+describe el estado actual de la señal. Por ello son estados legítimos tanto
+`present=true` con `missing/invalid` como `present=false` con `stale`; solo se
+exige coherencia entre `present` y la existencia real de muestras.
 
 El valor instantáneo se compara. El historial se clasifica `partial` y el
 informe registra `controlsHistory.samples[*].capturedAt` como no representable.
@@ -150,7 +189,8 @@ el contrato histórico.
 |---|---|
 | presencia/status/boolean/enum/posición/vueltas | exacta |
 | ratio de controles | abs `<= 1e-9` para el mismo frame |
-| velocidad | abs `<= 1e-6 m/s` antes de presentación; factor 3,6 nunca es tolerancia |
+| velocidad raw | abs `<= 1e-6 m/s` para el mismo frame; factor 3,6 nunca es tolerancia |
+| velocidad ViewModel | comprobar conversión `m/s × 3,6`; abs `<= 3,6e-6 km/h` |
 | RPM | abs `<= 1e-6 rpm` para el mismo frame |
 | tiempo/delta | abs `<= 1e-6 s` solo con la misma referencia/frame |
 | strings sensibles | igualdad interna; valores redactados en el reporte |
@@ -177,6 +217,10 @@ Debe redactar o excluir:
 - payload completo;
 - estrategias, voz, tokens, logs y raw;
 - mensajes de error externos.
+
+Los tests inyectan canarios únicos en nombre, equipo, ID, ruta y mensaje de
+error. Ningún canario puede aparecer en el objeto de reporte, su JSON ni el
+DOM. Los paths usan índices/aliases deterministas, nunca IDs reales.
 
 ## Consumidores transversales fuera de los builders
 

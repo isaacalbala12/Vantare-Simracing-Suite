@@ -20,8 +20,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `8b89c0adafed46a3c2c42cd52c858c8c185aa8bf`.
 - Rama:
   `vantareapp/isa-104-tc-06d-inspector-privacidad-y-export-diagnostico`.
-- HEAD previo al commit de producto:
-  `8035a891186743539b8504e29508daef376dc574` (plan D1–D7).
+- Plan D1–D7:
+  `8035a891186743539b8504e29508daef376dc574`.
+- Commit de producto:
+  `688f206737d53734f51a70fd98039ff1eefa25c0`.
+- PR draft apilado sobre ISA-103:
+  `#40`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -199,8 +203,9 @@ de `unsafe.Pointer` en readers Win32.
 
 ## Siguiente acción exacta
 
-Entregar ISA-104 con commit/push y PR draft apilada sobre ISA-103. Después
-iniciar ISA-105 / TC-07A sin wiring productivo global ni promoción.
+Cerrar ISA-104 en Linear como `In Review` y después iniciar ISA-105 / TC-07A
+desde `688f206737d53734f51a70fd98039ff1eefa25c0`, sin wiring productivo global
+ni promoción.
 
 ## Gate final
 
@@ -213,5 +218,6 @@ y evidencia para Isaac.
 2026-07-31, ISA-104 / TC-06D implementada y verificada sobre ISA-103. Backend y
 UI tienen reviews integradas `ACCEPT` con P0/P1/P2/P3 = 0. Inspector,
 privacidad, export local, captura limitada y tap quedan verificados; la captura
-raw continúa sin wiring productivo. Pendiente únicamente la entrega Git/Linear
-y apertura secuencial de ISA-105; sin promoción.
+raw continúa sin wiring productivo. Commit de producto publicado y PR draft
+`#40` abierto contra ISA-103. Pendiente cerrar Linear y abrir secuencialmente
+ISA-105; sin promoción.

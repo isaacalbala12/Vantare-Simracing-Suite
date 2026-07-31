@@ -1190,6 +1190,23 @@ ISA-105 / TC-07A — cierre D6 y entrega:
   sincronizado. Sin PR, merge, promoción ni cutover.
 - Siguiente acción: D2 sobre `f4988e0`; no iniciar D3 hasta review D2.
 
+### 2026-07-31 — ISA-129 D2 implementado y aceptado
+
+- Base: D1 `470d6a6` más documentación `f4988e0`; rama ISA-129 sin promoción.
+- Alcance exacto: `internal/telemetry/drivers/lmu/layout.go`, su suite y la
+  procedencia LMU. Contrato LMU 1.3 con 35 campos, offsets/strides/tipos
+  Windows explícitos, bounds, no-solape, exclusiones y máximo de 104 filas.
+- Fixtures reales hash-pinned de 324820 bytes verificados; no se habilita LMU
+  1.4 ni se importan generadores, módulo legacy o Python externo.
+- RED estructural y GREEN focal reproducidos. Review independiente final:
+  `ACCEPT`, P0/P1/P2/P3 = 0.
+- Checks: driver `-count=20`, suite `internal/telemetry/...`, gofmt y
+  `git diff --check` PASS. La suite global reproduce únicamente el P3
+  intermitente heredado de Windows en `app-settings.json.tmp`.
+- Commit de producto `e2c92fd`; documentación de cierre `b12176d`; push
+  sincronizado. Sin PR, merge, promoción ni cutover.
+- Siguiente acción: D3 sobre `b12176d`; no iniciar D4A hasta review D3.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

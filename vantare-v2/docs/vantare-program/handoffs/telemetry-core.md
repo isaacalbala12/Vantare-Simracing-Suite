@@ -215,15 +215,15 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
-| En progreso | ISA-129 / TC-07A.1; D5 aceptado, D6 siguiente |
+| En progreso | ISA-129 / TC-07A.1; D0-D6 aceptados, D7 siguiente |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias y cierre de ISA-129 |
 
 ## Siguiente acción exacta
 
-Ejecutar D6 de ISA-129: derivar timing, gaps y delta de autorreferencia sin
-introducir autoridad no demostrada. Capturar dos vueltas LMU reales y
-sanitizadas antes de admitir delta. Continuar D7–D9 antes de desbloquear
-ISA-106.
+Ejecutar D7 de ISA-129: ampliar de forma aditiva Overlay Projection v1 y el
+adaptador TypeScript con las señales ya demostradas. Probar las cuatro celdas
+de compatibilidad old/new sin debilitar la validación. Continuar D8–D9 antes
+de desbloquear ISA-106.
 
 ## Gate final
 
@@ -232,6 +232,17 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-07-31, ISA-129 D6 aceptado: remaining, gaps relativos y self-delta se
+derivan exclusivamente de observaciones canónicas demostradas. La sesión LMU
+real queda preservada como fixture sanitizada de 1.846 muestras a 10 Hz, tres
+wraps y dos vueltas comparables, con SHA-256
+`d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+El test compara contra un oráculo independiente por distancia, fija 100 ms de
+incertidumbre y exige una diferencia superior. Focales x20, dos fuzzers de
+10 s, Telemetry Core, vet focal, benchmarks y `diff --check` PASS. Review final
+`APPROVE`, P0/P1/P2/P3 = 0. Sin proyección Overlay, wiring productivo, PR,
+merge ni promoción. Siguiente: D7.
 
 2026-07-31, ISA-129 D5 aceptado: mapper síncrono fuera de cada driver, 44 identidades
 estables en la fixture real, sesión/epoch/generaciones atómicos y campos

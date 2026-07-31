@@ -8,6 +8,7 @@
 //	go run ./cmd/lmu-debug -hz 10       # poll rate (default 10)
 //	go run ./cmd/lmu-debug -once -probe-sanitized
 //	go run ./cmd/lmu-debug -once -capture-sanitized <shared-path> -capture-rest-sanitized <rest-path>
+//	go run ./cmd/lmu-debug -capture-delta-trace <path> -trace-duration 30m
 package main
 
 import (
@@ -34,7 +35,33 @@ func main() {
 	probeSanitized := flag.Bool("probe-sanitized", false, "validate one sanitized Shared Memory snapshot without writing a file")
 	captureSanitized := flag.String("capture-sanitized", "", "write one zero-rebuilt diagnostic Shared Memory capture")
 	captureRESTSanitized := flag.String("capture-rest-sanitized", "", "write one sanitized REST overlap capture")
+	captureDeltaTrace := flag.String("capture-delta-trace", "", "write a sanitized canonical player delta trace after two comparable laps")
+	traceDuration := flag.Duration("trace-duration", driverlmu.DeltaTraceMaxDuration, "maximum delta trace capture duration")
 	flag.Parse()
+	var traceDurationSet, hzSet bool
+	flag.Visit(func(current *flag.Flag) {
+		switch current.Name {
+		case "trace-duration":
+			traceDurationSet = true
+		case "hz":
+			hzSet = true
+		}
+	})
+
+	if *captureDeltaTrace != "" {
+		if err := runDeltaTraceCapture(
+			*captureDeltaTrace, *traceDuration, *once, *mock, *probeSanitized,
+			*captureSanitized, *captureRESTSanitized, hzSet,
+		); err != nil {
+			fmt.Fprintf(os.Stderr, "delta trace capture failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if traceDurationSet {
+		fmt.Fprintln(os.Stderr, "delta trace capture failed: -trace-duration requires -capture-delta-trace")
+		os.Exit(1)
+	}
 
 	if *probeSanitized {
 		if err := runDiagnosticProbe(*once, *mock, *captureSanitized, *captureRESTSanitized); err != nil {
@@ -65,6 +92,55 @@ func main() {
 	defer reader.Close()
 
 	runLoop(reader.Bytes, *once, *hz, "live")
+}
+
+func runDeltaTraceCapture(
+	path string,
+	duration time.Duration,
+	once, mock, probe bool,
+	sharedPath, restPath string,
+	hzExplicit bool,
+) error {
+	if err := validateDeltaTraceOptions(path, duration, once, mock, probe, sharedPath, restPath, hzExplicit); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	artifact, err := driverlmu.CaptureDeltaTrace(ctx, duration)
+	if err != nil {
+		return err
+	}
+	if err := driverlmu.WriteDeltaTrace(path, artifact); err != nil {
+		return err
+	}
+	summary := artifact.Summary()
+	fmt.Printf(
+		"delta-trace sha256=%s | samples=%d completed_laps=%d duration=%s\n",
+		artifact.SHA256(), summary.Samples, summary.CompletedLaps, summary.Duration,
+	)
+	return nil
+}
+
+func validateDeltaTraceOptions(
+	path string,
+	duration time.Duration,
+	once, mock, probe bool,
+	sharedPath, restPath string,
+	hzExplicit bool,
+) error {
+	if path == "" {
+		return errors.New("delta trace destination is empty")
+	}
+	if duration <= 0 || duration > driverlmu.DeltaTraceMaxDuration {
+		return fmt.Errorf("delta trace duration must be within (0,%s]", driverlmu.DeltaTraceMaxDuration)
+	}
+	if once || mock || probe || sharedPath != "" || restPath != "" || hzExplicit {
+		return errors.New("delta trace mode is exclusive and refuses -once, -mock, -probe-sanitized, other captures and -hz")
+	}
+	if _, err := os.Lstat(path); err == nil || !errors.Is(err, os.ErrNotExist) {
+		return errors.New("delta trace destination already exists or cannot be inspected")
+	}
+	return nil
 }
 
 type pendingCapture struct {

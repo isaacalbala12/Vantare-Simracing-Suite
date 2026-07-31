@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "trace_sha256": "d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938",
+  "sample_count": 1846,
+  "sample_frequency_hz": 10,
+  "wrap_sample_indices": [15, 977, 1835],
+  "completed_comparable_laps": 2,
+  "first_lap_duration_ns": 96200000000,
+  "second_lap_duration_ns": 85800000000,
+  "second_lap_expected_sign": "negative",
+  "sample_uncertainty_ns": 100000000
+}

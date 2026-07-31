@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	driverlmu "github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu"
 )
 
 func TestValidateDiagnosticCaptureOptionsRejectsUnsafeRequestsWithoutCreatingFiles(t *testing.T) {
@@ -139,5 +142,66 @@ func TestRunDiagnosticProbeRejectsUnsafeOptionsWithoutCreatingFiles(t *testing.T
 				t.Fatalf("probe guard created %d files", len(entries))
 			}
 		})
+	}
+}
+
+func TestValidateDeltaTraceOptionsIsExclusiveBoundedAndNeverCreatesFiles(t *testing.T) {
+	tests := []struct {
+		name       string
+		duration   time.Duration
+		once       bool
+		mock       bool
+		probe      bool
+		shared     bool
+		rest       bool
+		hzExplicit bool
+	}{
+		{name: "valid", duration: driverlmu.DeltaTraceMaxDuration},
+		{name: "zero duration"},
+		{name: "too long", duration: driverlmu.DeltaTraceMaxDuration + time.Second},
+		{name: "once", duration: time.Minute, once: true},
+		{name: "mock", duration: time.Minute, mock: true},
+		{name: "probe", duration: time.Minute, probe: true},
+		{name: "shared capture", duration: time.Minute, shared: true},
+		{name: "REST capture", duration: time.Minute, rest: true},
+		{name: "custom hz", duration: time.Minute, hzExplicit: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			path := filepath.Join(directory, "trace.jsonl")
+			sharedPath, restPath := "", ""
+			if test.shared {
+				sharedPath = filepath.Join(directory, "shared.bin")
+			}
+			if test.rest {
+				restPath = filepath.Join(directory, "rest.json")
+			}
+			err := validateDeltaTraceOptions(path, test.duration, test.once, test.mock, test.probe, sharedPath, restPath, test.hzExplicit)
+			if test.name == "valid" && err != nil {
+				t.Fatalf("valid options rejected: %v", err)
+			}
+			if test.name != "valid" && err == nil {
+				t.Fatal("unsafe options accepted")
+			}
+			entries, readErr := os.ReadDir(directory)
+			if readErr != nil || len(entries) != 0 {
+				t.Fatalf("validation created files: entries=%d error=%v", len(entries), readErr)
+			}
+		})
+	}
+}
+
+func TestValidateDeltaTraceOptionsRefusesExistingDestination(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	if err := os.WriteFile(path, []byte("existing"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateDeltaTraceOptions(path, time.Minute, false, false, false, "", "", false); err == nil {
+		t.Fatal("existing trace destination accepted")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != "existing" {
+		t.Fatalf("existing destination changed: %q, %v", got, err)
 	}
 }

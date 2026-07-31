@@ -81,7 +81,17 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   rollback completo ante rechazo o backpressure. Los campos canónicos nuevos
   conservan calidad explícita y ceros legítimos. Focal x20, Telemetry Core y
   suite Go global serial pasan. Review independiente final `APPROVE`,
-  P0/P1/P2/P3 = 0. Siguiente corte: D6 timing, gaps y delta de autorreferencia.
+  P0/P1/P2/P3 = 0.
+- D6 implementado y aceptado: remaining, gaps relativos y self-delta forman
+  una cadena determinista, transaccional y acotada. La evidencia LMU 1.4 real
+  preserva 1.846 muestras sanitizadas, tres wraps y dos vueltas comparables
+  bajo SHA-256
+  `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+  El oráculo independiente fija 100 ms de incertidumbre y prueba signo real;
+  regresiones, fallos del driver y escritura incompleta fallan de forma segura.
+  Focales x20, dos fuzzers de 10 s, Telemetry Core, vet focal, benchmarks y
+  `diff --check` pasan. Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+  Siguiente corte: D7 contrato Overlay v1 y adaptador TypeScript.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

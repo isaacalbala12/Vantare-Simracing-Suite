@@ -1,8 +1,9 @@
 # ISA-129 / TC-07A.1 — Procedencia de señales LMU para Overlay
 
-Estado: D0-D4A aceptados. D4B ha probado y habilitado exclusivamente el layout
-LMU `1.4.0.0` con evidencia real sanitizada de menú y pista. El cutover de
-producto permanece fuera de este corte.
+Estado: D0-D6 aceptados. D7 es el siguiente microcorte.
+D4B probó y habilitó exclusivamente el layout LMU `1.4.0.0`; D6 añade evidencia
+real sanitizada de vueltas completas. El cutover de producto permanece fuera de
+este corte.
 
 Este documento cierra qué señales pueden entrar en los microcortes D1–D7 de
 ISA-129. No habilita compatibilidad nueva, no conecta el runtime modular a
@@ -19,20 +20,23 @@ producción y no convierte campos legacy en autoridad canónica.
   `docs/superpowers/plans/2026-07-31-isa-129-tc-07a1-canonical-overlay-signals.md`.
 - Orden: ISA-129 bloquea ISA-106.
 
-## Estado del programa al cerrar D4B
+## Estado del programa al cerrar D6
 
 1. D1 retiró el mock conectado productivo (`470d6a6`). La preview explícita de
    Studio y los harnesses siguen permitidos.
 2. D2 y D3 cerraron la allowlist binaria, el catálogo de señales y la matriz de
    autoridad que D4A implementa sin ampliaciones.
 3. D4A publica la parrilla multivehículo owned y correlaciona el jugador por ID
-   activo. La identidad canónica con generaciones pertenece a D5.
+   activo. D5 materializa la identidad canónica con generaciones y el mapper
+   `Observation -> Batch`.
 4. D4B demuestra el layout 1.4 con cuatro artefactos reales hash-pinned y pasa
-   el lector productivo opt-in. Antes del uso de producto aún faltan el mapper
-   D5, las derivaciones D6 y el wiring productivo D7.
+   el lector productivo opt-in.
+5. D6 deriva remaining, gaps relativos y self-delta con contratos de calidad,
+   signo, reset y memoria acotada. D7 sigue siendo el gate de proyección y wiring
+   productivo.
 
-No queda activo ningún gate histórico de D0 o D1. El único gate de este corte
-es el veredicto independiente final de D4A.
+No queda activo ningún gate histórico de D0-D5. El gate actual es la revisión
+independiente de D6 antes de continuar con D7.
 
 ## Evidencia real fijada
 
@@ -44,6 +48,7 @@ es el veredicto independiente final de D4A.
 | `testdata/lmu-1.4-rest-menu-fixture.json` | REST LMU 1.4 en menú | estado `empty`; ocho solapamientos missing | `325d40882d718e7cb36837b0d3f77575eca72008ecef9bdb436325af1a285312` |
 | `testdata/lmu-1.4-track-fixture.bin` | LMU 1.4 en pista, práctica, 38 vehículos y jugador | captura real zero-rebuild, 324820 bytes | `c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5` |
 | `testdata/lmu-1.4-rest-track-fixture.json` | REST LMU 1.4 correlacionado en pista | estado `live`, 38 vehículos y jugador | `bb89380fb672387b97735b2d318c0c8d0a246eaf2f34adbe799f17daa6f0fa36` |
+| `derive/testdata/lmu-1.4-self-delta-trace-v1.jsonl` | LMU 1.4, 1.846 muestras a 10 Hz, tres wraps y dos vueltas comparables | allowlist sin identidad: reloj, vuelta, distancia, velocidad, InPit y calidad | `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938` |
 
 Layout demostrado:
 
@@ -165,7 +170,7 @@ Esta tabla es una allowlist. D3–D7 no pueden incorporar señales fuera de ella
 | Fuel / capacity | telemetry `mFuel/+524`, `mFuelCapacity/+608`, `2×float64` | litros; invariantes de fuel/capacidad | Admitir solo para jugador; fixture `99.586.../100`. |
 | Session remaining | derivado `end-current` | segundos; inputs fresh, finitos y ordenados; cero válido | Admitir derivado. `mSessionTimeRemaining` no es autoridad. |
 | Relative gap | derivado de leader/lap | signo documentado arriba; segundos solo en misma vuelta | Admitir derivado; doblados solo lap delta. |
-| Player delta | derivado de muestras de vuelta completada | positivo más lento, negativo más rápido; referencia explícita | Admitir solo tras la traza real obligatoria de D6. |
+| Player delta | derivado de muestras de vuelta completada | positivo más lento, negativo más rápido; referencia explícita | Admitido por D6 con traza LMU 1.4 real hash-pinned y oráculo independiente por distancia. |
 
 ## Matriz de autoridad Shared Memory / REST
 
@@ -299,10 +304,34 @@ jugador. Los cuatro hashes se compilan en la allowlist, que exige además acuerd
 exacto de file/product version para 1.4. El opt-in productivo confirmó runtime
 `live`, jugador presente, compatibilidad conocida y fingerprint 1.4.
 
+## D6 — derivaciones y traza real de self-delta
+
+La captura diagnóstica `lmu-debug -capture-delta-trace` usa el Driver canónico,
+muestrea como máximo a 10 Hz, mantiene todo en memoria y solo escribe de forma
+exclusiva después de cerrar dos vueltas comparables. Un error o una captura
+incompleta no deja artefacto parcial. La allowlist JSONL no contiene nombres,
+circuito, IDs, rutas, reloj de pared ni bytes raw.
+
+La sesión real fue preservada por LMU en su grabación DuckDB. La fixture se
+recuperó de esa grabación de manera read-only después de que la captura directa
+no pudiera cerrarse; se seleccionaron exactamente los mismos canales de la
+allowlist y el replay demuestra que el collector produce byte por byte el mismo
+artefacto y hash. El archivo original, sus metadatos personales y sus canales
+no admitidos no forman parte del repositorio.
+
+La evidencia también cerró comportamiento no visible en fixtures estáticas:
+
+- frames idénticos pueden repetirse con el mismo source time;
+- el reset de `Lap Dist` puede preceder al cambio de `LapNumber` unos `200 ms`;
+- existen oscilaciones normales de `Lap Dist` de hasta varios metros dentro de
+  una vuelta. El high-water mark impide incorporarlas a la referencia; una
+  caída de `100 m` o más solo se acepta como wrap si el contador de vuelta la
+  confirma dentro de `500 ms`.
+
 ## Estado de revisión y siguiente corte
 
-D4A permanece aceptado y D4B queda listo para el veredicto final del corte.
-Debe conservar:
+D0-D6 permanecen aceptados tras review final `APPROVE`, P0/P1/P2/P3 = 0. D7 debe
+conservar:
 
 - la allowlist cerrada y los hashes de LMU 1.3/1.4;
 - el rechazo atómico de frames estructuralmente ambiguos;
@@ -310,8 +339,10 @@ Debe conservar:
   SHM-first/REST player-only;
 - las exclusiones como missing explícito;
 - los tests del parser, fusión, sanitizer, replay y golden;
-- la ausencia de mapper canónico, derivaciones y wiring productivo.
+- el mapper D5 y la cadena D6 determinista, acotada y sin I/O;
+- la traza D6 sanitizada y su oráculo independiente de signo por distancia;
+- la ausencia de proyección Overlay, cutover y wiring productivo.
 
-El siguiente corte es D5, Observation → Batch. D4B no autoriza cutover,
-promoción, CSS, renderizadores, canvas, Wails/SSE ni una segunda adquisición
-LMU.
+El siguiente corte es D7, contrato Overlay v1 y adaptador TypeScript. D6 no
+autoriza cutover, promoción, CSS, renderizadores, canvas, Wails/SSE ni una
+segunda adquisición LMU.

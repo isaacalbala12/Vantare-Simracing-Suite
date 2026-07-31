@@ -960,43 +960,43 @@ git diff --check
 
 ### Red tests
 
-- [ ] Session remaining is derived from observed end/current time only when both
+- [x] Session remaining is derived from observed end/current time only when both
   are finite and ordered; provenance is derived.
-- [ ] Timed sessions preserve remaining zero.
-- [ ] Lap-limited sessions preserve maximum laps and do not invent time.
-- [ ] Same-lap relative gaps obey the documented sign.
-- [ ] Lapped vehicles expose lap delta and no fabricated seconds.
-- [ ] Gaps reject missing, stale-incompatible, invalid or non-finite inputs.
-- [ ] Delta is missing until one complete valid reference lap exists.
-- [ ] A completed reference lap produces interpolated delta by lap distance.
-- [ ] Positive delta is slower; negative is faster.
-- [ ] The hash-pinned real LMU trace contains at least one complete valid
+- [x] Timed sessions preserve remaining zero.
+- [x] Lap-limited sessions preserve maximum laps and do not invent time.
+- [x] Same-lap relative gaps obey the documented sign.
+- [x] Lapped vehicles expose lap delta and no fabricated seconds.
+- [x] Gaps reject missing, stale-incompatible, invalid or non-finite inputs.
+- [x] Delta is missing until one complete valid reference lap exists.
+- [x] A completed reference lap produces interpolated delta by lap distance.
+- [x] Positive delta is slower; negative is faster.
+- [x] The hash-pinned real LMU trace contains at least one complete valid
   reference lap and one subsequent complete comparable lap.
-- [ ] At each comparable real sample, derived sign equals the measured
+- [x] At each comparable real sample, derived sign equals the measured
   elapsed-time difference at the same interpolated distance; at least one
   sample must be non-zero beyond numeric epsilon.
-- [ ] Pit, wrap, epoch reset and missing samples reset/hold the tracker safely.
-- [ ] Memory remains bounded and no algorithm uses a synthetic constant-speed
+- [x] Pit, wrap, epoch reset and missing samples reset/hold the tracker safely.
+- [x] Memory remains bounded and no algorithm uses a synthetic constant-speed
   reference.
 
 ### Implementation
 
-- [ ] Add diagnostic-only
+- [x] Add diagnostic-only
   `lmu-debug -capture-delta-trace <path> -trace-duration 30m`.
-- [ ] Sample the already-sanitized canonical player observation at a bounded
+- [x] Sample the already-sanitized canonical player observation at a bounded
   `10 Hz`; never write raw Shared Memory, names, track, Steam IDs or source slot.
-- [ ] Trace schema is versioned and contains only:
+- [x] Trace schema is versioned and contains only:
   sample index, monotonic elapsed offset, source time, lap number, lap distance,
   speed, InPit and quality. Cap at 18,000 samples / 30 minutes.
-- [ ] Stop successfully only after two complete comparable non-pit laps.
+- [x] Stop successfully only after two complete comparable non-pit laps.
   Otherwise delete the incomplete output and return a non-zero error.
-- [ ] Hash the JSONL, emit a sanitized semantic summary and pin both in tests.
-- [ ] Register `gaps.v1` and `self-delta.v1` in the fixed derivation chain.
-- [ ] Store explicit gap fields per vehicle in `DerivedState`.
-- [ ] Store delta value, reference kind and bounded history for the player.
-- [ ] Use actual observed lap samples. Promote a completed lap only after
+- [x] Hash the JSONL, emit a sanitized semantic summary and pin both in tests.
+- [x] Register `gaps.v1` and `self-delta.v1` in the fixed derivation chain.
+- [x] Store explicit gap fields per vehicle in `DerivedState`.
+- [x] Store delta value, reference kind and bounded history for the player.
+- [x] Use actual observed lap samples. Promote a completed lap only after
   monotonic distance/time validation.
-- [ ] Keep native LMU `mDeltaBest` unconsumed until separately demonstrated.
+- [x] Keep native LMU `mDeltaBest` unconsumed until separately demonstrated.
 
 ### Verification
 
@@ -1025,8 +1025,8 @@ go test ./internal/telemetry/... -count=1
 git diff --check
 ```
 
-- [ ] Commit: `feat(telemetry): derive canonical gaps and delta`.
-- [ ] Independent review.
+- [x] Commit: `feat(telemetry): derive canonical gaps and delta`.
+- [x] Independent review: final `APPROVE`, P0/P1/P2/P3 = 0.
 
 ---
 

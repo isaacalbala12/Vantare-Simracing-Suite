@@ -28,10 +28,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-07A ISA-105: cerrado técnicamente en `c9acee2`; PR draft `#41`; Linear
   `In Review`; re-review D6 `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07A.1 ISA-129: `In Progress`; D0 `6acb352`, D1 `470d6a6`, D2
-  `e2c92fd` y D3 `462f0ee` aceptados (cierre documental `fa7bab0`), sin
-  promoción. D1 retira el mock conectado; D2 fija el layout LMU 1.3; D3
-  cierra schema/catalog append-only IDs 1–24 estables y 25–43 añadidos.
-  Reviews independientes `ACCEPT`, P0/P1/P2/P3 = 0.
+  `e2c92fd`, D3 `462f0ee` y D4A `94c2994` aceptados (cierre documental
+  `19252a0`), sin promoción. D4A publica grid real 44/44, sanitizer zero-rebuild
+  y SHM-first; review final `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -87,9 +86,9 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar D4A de ISA-129 / TC-07A.1 para parser/sanitizer multivehículo LMU 1.3
-sobre la base `fa7bab0`. Sin CSS, canvas, renderers, regeneración de baselines
-ni cutover productivo.
+Ejecutar D4B de ISA-129 / TC-07A.1 sobre `19252a0`: preparar primero el perfil
+diagnóstico y captura sanitizada LMU 1.4; pedir a Isaac menú y pista solo cuando
+el CLI esté listo. Sin CSS, canvas, renderers, baselines ni cutover productivo.
 
 Auditoría de fallback cerrada:
 

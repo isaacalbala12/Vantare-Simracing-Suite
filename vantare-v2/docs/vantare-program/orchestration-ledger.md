@@ -1222,6 +1222,24 @@ ISA-105 / TC-07A — cierre D6 y entrega:
   sincronizado. Sin PR, merge, promoción ni cutover.
 - Siguiente acción: D4A sobre `fa7bab0`; no iniciar D4B hasta review D4A.
 
+### 2026-07-31 — ISA-129 D4A implementado y aceptado
+
+- Base: D3 `462f0ee` más documentación `fa7bab0`; rama ISA-129 sin promoción.
+- Alcance: 10 rutas D4A más la excepción mínima autorizada `rest_test.go`.
+  Parser real 44/44, biyección scoring/telemetry, jugador por `mIsPlayer` + ID,
+  cola/header ignorados, sanitizer zero-rebuild y autoridad SHM-first con REST
+  limitado al jugador identificado.
+- Review inicial `REQUEST CHANGES`, P2 por mapear `0=test` a Practice y P3 por
+  gates D0/D1 obsoletos. Ambos corregidos: `0` queda invalid/missing y la
+  documentación refleja D4A/D4B. Re-review final `ACCEPT`, P0/P1/P2/P3 = 0.
+- Checks: focal x20, Telemetry/global, dos fuzzers, cinco benchmarks, gofmt y
+  diff-check PASS. El P3 Windows de settings apareció una vez y la repetición
+  global completa pasó.
+- Commit de producto `94c2994`; documentación `19252a0`; push sincronizado.
+  Sin PR, merge, promoción ni cutover.
+- Siguiente acción: D4B diagnóstico LMU 1.4. No pedir captura real hasta que el
+  CLI zero-rebuild esté implementado y revisado.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

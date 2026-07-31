@@ -847,7 +847,7 @@ go test ./internal/telemetry/... -count=1
 git diff --check
 ```
 
-- [ ] Commit: `feat(lmu): prove and allow LMU 1.4 layout`.
+- [x] Commit: `be6563f` — `feat(lmu): prove and allow LMU 1.4 layout`.
 - [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0.
 
 ---

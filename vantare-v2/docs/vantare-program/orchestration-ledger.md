@@ -1075,6 +1075,42 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 
 ## Bloqueos operativos actuales
 
+### 2026-07-31 — ISA-129 / TC-07A.1, auditoría de fallback sintético
+
+- Rama:
+  `vantareapp/isa-129-tc-07a1-senales-canonicas-overlay-y-retirada-del-mock`.
+- Base exacta: ISA-105 `c9acee24cf4c4d80922b380b12f7367c2a60c937`.
+- Worktree: `C:\tmp\vantare-isa129\vantare-v2`.
+- Linear: `In Progress`; sin promoción.
+- Auditoría read-only: `ACCEPT` como inventario y `NO-GO` para cutover.
+- P0: el ejecutable productivo usa `createMockSource()` cuando LMU no está
+  disponible; `BuildSyntheticBuffer()` termina como `Connected=true` y llega
+  a Desktop/Studio por Wails y a OBS por SSE.
+- P0: falta el bridge productivo `lmu.Observation → core.Batch`; los replays
+  actuales fabrican batches y no validan el driver.
+- P0: el driver modular publica únicamente al jugador y no ofrece parrilla ni
+  identidad estable multivehículo.
+- P1 separado: Engineer arranca conectado al simulador y no consume todavía
+  el runtime LMU compartido. Se conserva como bloqueo de su corte.
+- Fragilidad adicional: `fusion.Merge(nil, ...)` puede conceder conexión y el
+  coordinador frontend importa un fixture mock para su estado desconectado.
+- Excepciones preservadas: preview Mock seleccionada, harnesses, fixtures,
+  replay y CLIs de diagnóstico explícitos.
+- Checks de auditoría:
+  `go test ./internal/app ./internal/server ./internal/engineer/service` PASS.
+- Segundo inventario read-only: driver LMU, catálogo, core, derive, overlay
+  projection, delta, gap y fusion PASS; diff-check PASS. Frontend no ejecutado
+  por dependencias ausentes en el worktree de auditoría.
+- P2: `InPit` no se degrada con `withFreshness`; el historial de controles no
+  contiene timestamp individual por muestra.
+- Evidencia: fixtures SHM reales sanitizados de menú y pista/44 vehículos;
+  REST modular y replays canónicos todavía son sintéticos o construidos a
+  mano. VE, daños, compuesto y clima sin fuente probada siguen missing.
+- Compatibilidad observada: proceso LMU `1.4.0.0`, mapping `LMU_Data` de
+  324820 bytes; el driver canónico solo admite 1.3.0.0 y todavía no publica.
+- Siguiente acción: cerrar auditoría de señales, redactar/revisar el plan TDD y
+  ejecutar microcortes sin CSS, canvas, renderer, baseline ni cutover.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

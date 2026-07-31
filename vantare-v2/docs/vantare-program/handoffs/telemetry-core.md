@@ -54,6 +54,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07A ISA-105: implementación y re-review D6 completas; código final
   `f6b43b7`, `ACCEPT`, P0/P1/P2/P3 = 0. PR draft `#41`; Linear `In Review`.
+- TC-07A.1 ISA-129: D0-D4A aceptados. D4B ha capturado y hash-pinned LMU 1.4
+  real en menú y pista, ha probado los ocho solapes SHM/REST —incluido circuito
+  antes de anonimizar— y ha habilitado únicamente `1.4.0.0` mediante file y
+  product version coincidentes. Lector productivo opt-in `live` PASS. Sin
+  mapper, derivaciones, wiring, PR, merge ni promoción todavía.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -202,13 +207,14 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
-| Pendientes | ISA-106–117 e ISA-87 según dependencias |
+| En progreso | ISA-129 / TC-07A.1; D4B listo, D5 siguiente |
+| Pendientes | ISA-106–117 e ISA-87 según dependencias y cierre de ISA-129 |
 
 ## Siguiente acción exacta
 
-Crear y cerrar ISA-129 / TC-07A.1 antes de ISA-106 para
-parrilla/timing/gaps/delta/sesión-unidades y retirada del fallback mock
-conectado. Sin wiring productivo global ni promoción.
+Ejecutar D5 de ISA-129: mapear la observación LMU validada a `core.Batch` con
+identidad/generaciones, sin I/O, sin derivaciones prematuras y sin wiring
+productivo. Después continuar D6–D9 antes de desbloquear ISA-106.
 
 ## Gate final
 
@@ -218,13 +224,12 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-105 D1–D5 publicados hasta `f2a1ac3`: decoder, adapter,
-comparator, sanitizador, harness `NO LIVE` y evidencia 18/18. Go
-telemetry/app, frontend 297/1.993, build y Playwright pasan; visual Crystal y
-benchmark reproducen deuda de la base exacta sin cambios de baselines/canvas.
-D6 solicitó cuatro P2 y un P3; todos quedaron corregidos con TDD en `f6b43b7`:
-cap separado 64+64, `pitStopCount` retirado, `sourcePaths` reales,
-`vehicles[].id`/`playerVehicleId` explícitos, handoff sincronizado y ADR válido.
-Re-review final `ACCEPT`, P0/P1/P2/P3 = 0. ISA-129 sigue ordenada antes de
-ISA-106. Suite frontend final 297/2.000 y Playwright shadow PASS. PR draft
-`#41`; Linear `In Review`. Sin merge, wiring productivo ni promoción.
+2026-07-31, ISA-129 D4B: cuatro evidencias LMU 1.4 reales y sanitizadas fijadas
+por SHA-256. Pista: práctica, 38 vehículos y jugador; REST live correlacionado.
+Los sentinels negativos finitos de lap distance y gaps son `missing`, nunca
+cero. La revisión adversarial añadió correlación de circuito mediante digest
+privado en memoria y recapturó el par final. Driver y CLI x20, Telemetry Core,
+lector opt-in y auditoría de privacidad PASS. La suite Go global reprodujo solo
+la contención Windows heredada de `app-settings.json.tmp`; el focal aislado
+pasó al repetir y la suite global serial quedó verde. Siguiente: D5. Sin PR,
+merge, wiring productivo ni promoción.

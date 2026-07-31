@@ -23,8 +23,8 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`
   (pista, 44 vehículos) y
   `8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a`
-  (menú). LMU 1.4 permanece pendiente de captura/proof D4B y no se habilita por
-  similitud estructural.
+  (menú). D4B añade evidencia real LMU 1.4 de menú y pista sin habilitar nada
+  por mera similitud estructural.
 - P0 confirmados: mock productivo publicable como conectado, ausencia del
   bridge `lmu.Observation -> core.Batch` y observación modular player-only sin
   grid/identidad multivehículo.
@@ -64,7 +64,17 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   canaries, autoridad SHM-first y REST limitado al jugador. Focal x20,
   Telemetry/global, fuzzers y benchmarks PASS. Review final `ACCEPT`,
   P0/P1/P2/P3 = 0; el código LMU `0=test` queda invalid/missing, no Practice.
-  D4B queda desbloqueado solo para prueba diagnóstica LMU 1.4, sin promoción.
+  D4B quedó desbloqueado solo para prueba diagnóstica LMU 1.4.
+- D4B implementado: menú SHM/REST hash-pinned, pista real de práctica con 38
+  vehículos y jugador hash-pinned, correlación exacta de los ocho solapes
+  SHM/REST (incluido circuito antes del alias), allowlist cerrada `1.4.0.0` con
+  file/product version coincidentes y lector productivo opt-in `live` PASS.
+  Los sentinels negativos finitos de lap distance y gaps quedan `missing`, no
+  cero. Driver y CLI x20, Telemetry Core y auditoría de privacidad PASS. La
+  suite Go global concurrente solo reprodujo el P3 heredado de contención
+  temporal de `app-settings.json.tmp`; su test aislado y la suite global serial
+  pasaron al repetir. Siguiente corte: D5 Observation → Batch, todavía sin
+  cutover ni promoción.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

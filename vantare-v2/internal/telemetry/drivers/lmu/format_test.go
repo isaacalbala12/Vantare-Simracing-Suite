@@ -476,6 +476,43 @@ func TestParsePreservesLegitimateZeroAndFalseInPlayerRow(t *testing.T) {
 	assertFieldValue(t, got.MaximumLaps, session.MaximumLaps(0))
 }
 
+func TestParseNormalizesFiniteNegativeOptionalScoringSentinelsToMissing(t *testing.T) {
+	buf := knownBuffer(t)
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	binary.LittleEndian.PutUint64(
+		buf[base+lmu13Layout.Scoring.TimeBehindNext.Offset:],
+		math.Float64bits(-0.5),
+	)
+	binary.LittleEndian.PutUint64(
+		buf[base+lmu13Layout.Scoring.TimeBehindLeader.Offset:],
+		math.Float64bits(-1),
+	)
+	binary.LittleEndian.PutUint64(
+		buf[base+lmu13Layout.Scoring.LapDistance.Offset:],
+		math.Float64bits(-1),
+	)
+	got, err := parseSupported(buf, time.Unix(0, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Compatibility != CompatibilityKnown || len(got.Vehicles) == 0 {
+		t.Fatalf("compatibility=%v vehicles=%d", got.Compatibility, len(got.Vehicles))
+	}
+	if _, present := got.Vehicles[0].TimeBehindNext.Value(); present ||
+		got.Vehicles[0].TimeBehindNext.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("time behind next = %#v, want missing", got.Vehicles[0].TimeBehindNext)
+	}
+	if _, present := got.Vehicles[0].TimeBehindLeader.Value(); present ||
+		got.Vehicles[0].TimeBehindLeader.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("time behind leader = %#v, want missing", got.Vehicles[0].TimeBehindLeader)
+	}
+	if _, present := got.Vehicles[0].LapDistance.Value(); present ||
+		got.Vehicles[0].LapDistance.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("lap distance = %#v, want missing", got.Vehicles[0].LapDistance)
+	}
+	assertFieldValue(t, got.Vehicles[0].LapsBehindNext, standings.LapGap(0))
+}
+
 func playerVehicle(t testing.TB, observation Observation) VehicleObservation {
 	t.Helper()
 	for _, row := range observation.Vehicles {

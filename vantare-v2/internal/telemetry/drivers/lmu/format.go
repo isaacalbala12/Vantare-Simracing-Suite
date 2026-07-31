@@ -260,11 +260,23 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 	timeLeader := readFloat64(buf, base+lmu13Layout.Scoring.TimeBehindLeader.Offset)
 	lapsLeader := readInt32(buf, base+lmu13Layout.Scoring.LapsBehindLeader.Offset)
 	if !driverOK || !nameOK || !classOK || playerRaw > 1 || inPitRaw > 1 ||
-		completed < 0 || !sectorOK || !finite(lapDistance) || lapDistance < 0 ||
+		completed < 0 || !sectorOK || !finite(lapDistance) ||
 		position < 1 || position > maxVehicles || pitStops < 0 || penalties < 0 ||
-		!finite(timeNext) || timeNext < 0 || lapsNext < 0 ||
-		!finite(timeLeader) || timeLeader < 0 || lapsLeader < 0 {
+		!finite(timeNext) || lapsNext < 0 ||
+		!finite(timeLeader) || lapsLeader < 0 {
 		return VehicleObservation{}, false
+	}
+	var timeBehindNext schema.Field[standings.TimeGap]
+	if timeNext >= 0 {
+		timeBehindNext = observed(standings.TimeGap(timeNext))
+	}
+	var timeBehindLeader schema.Field[standings.TimeGap]
+	if timeLeader >= 0 {
+		timeBehindLeader = observed(standings.TimeGap(timeLeader))
+	}
+	var lapDistanceField schema.Field[standings.LapDistance]
+	if lapDistance >= 0 {
+		lapDistanceField = observed(standings.LapDistance(lapDistance))
 	}
 	best, bestOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.BestLapTime.Offset))
 	last, lastOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.LastLapTime.Offset))
@@ -277,12 +289,12 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 		DriverName: observed(identity.DriverName(driver)), VehicleName: observed(vehicle.VehicleName(name)),
 		VehicleClass: observed(standings.VehicleClass(class)), Player: observed(playerRaw == 1),
 		Position: observed(standings.Position(position)), CompletedLaps: observed(standings.CompletedLaps(completed)),
-		Sector: sector, LapDistance: observed(standings.LapDistance(lapDistance)),
+		Sector: sector, LapDistance: lapDistanceField,
 		BestLapTime: best, LastLapTime: last, EstimatedLapTime: estimated,
 		InPit: observed(pit.InPit(inPitRaw == 1)), PitStopCount: observed(pit.StopCount(pitStops)),
 		PenaltyCount:     observed(standings.PenaltyCount(penalties)),
-		TimeBehindLeader: observed(standings.TimeGap(timeLeader)), LapsBehindLeader: observed(standings.LapGap(lapsLeader)),
-		TimeBehindNext: observed(standings.TimeGap(timeNext)), LapsBehindNext: observed(standings.LapGap(lapsNext)),
+		TimeBehindLeader: timeBehindLeader, LapsBehindLeader: observed(standings.LapGap(lapsLeader)),
+		TimeBehindNext: timeBehindNext, LapsBehindNext: observed(standings.LapGap(lapsNext)),
 	}, true
 }
 

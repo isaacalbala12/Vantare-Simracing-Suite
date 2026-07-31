@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -70,6 +74,615 @@ func TestFrameSanitizerRejectsUnknownBuildFingerprintAndShortFrames(t *testing.T
 		if _, err := sanitizer.Sanitize(input); !errors.Is(err, ErrUnsanitizableFrame) {
 			t.Fatalf("Sanitize(len=%d) error = %v", len(input), err)
 		}
+	}
+}
+
+func TestDiagnosticCandidateSanitizerRebuildsPinnedLMU14WithoutLeaking(t *testing.T) {
+	input := knownBuffer(t)
+	writeCString(input[lmu13Layout.Session.TrackName.Offset:lmu13Layout.Session.TrackName.end()], "Private Circuit")
+	firstScoring, _ := lmu13Layout.ScoringRows.rowBase(0)
+	writeCString(input[firstScoring+lmu13Layout.Scoring.DriverLabel.Offset:firstScoring+lmu13Layout.Scoring.DriverLabel.end()], "Private Driver")
+	input[500] = 0xa5
+
+	build := BuildEvidence{FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion}
+	sanitizer, err := newDiagnosticFrameSanitizer(build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := sanitizer.Sanitize(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertOnlyAllowedDiagnosticBytes(t, input, output)
+	if bytes.Contains(output, []byte("Private")) || output[500] != 0 {
+		t.Fatal("candidate sanitizer retained PII or an excluded byte")
+	}
+	production, err := parseWithBuild(output, time.Unix(1, 0).UTC(), build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if production.Compatibility != CompatibilityKnown ||
+		!strings.Contains(production.Fingerprint, "build="+diagnosticLMUVersion) {
+		t.Fatalf("compatibility=%v fingerprint=%q", production.Compatibility, production.Fingerprint)
+	}
+	for _, size := range []int{ObjectOutSize - 1, ObjectOutSize + 1} {
+		if _, err := sanitizer.Sanitize(make([]byte, size)); !errors.Is(err, ErrUnsanitizableFrame) {
+			t.Fatalf("candidate Sanitize(len=%d) error = %v", size, err)
+		}
+	}
+}
+
+func TestFrameSanitizerReportsClosedFailureCodesWithoutRawValues(t *testing.T) {
+	tests := []struct {
+		name string
+		code SanitizationFailureCode
+		edit func([]byte)
+	}{
+		{
+			name: "vehicle count",
+			code: SanitizationVehicleCount,
+			edit: func(input []byte) {
+				binary.LittleEndian.PutUint32(input[lmu13Layout.Session.VehicleCount.Offset:], maxVehicles+1)
+			},
+		},
+		{
+			name: "scoring position",
+			code: SanitizationScoringPosition,
+			edit: func(input []byte) {
+				base, _ := lmu13Layout.ScoringRows.rowBase(0)
+				writeCString(input[base+lmu13Layout.Scoring.DriverLabel.Offset:base+lmu13Layout.Scoring.DriverLabel.end()], "Private Driver Canary")
+				input[base+lmu13Layout.Scoring.Position.Offset] = 0
+			},
+		},
+		{
+			name: "scoring boolean",
+			code: SanitizationScoringBoolean,
+			edit: func(input []byte) {
+				base, _ := lmu13Layout.ScoringRows.rowBase(0)
+				input[base+lmu13Layout.Scoring.PlayerMarker.Offset] = 2
+			},
+		},
+		{
+			name: "ID bijection",
+			code: SanitizationIDBijection,
+			edit: func(input []byte) {
+				base, _ := lmu13Layout.TelemetryRows.rowBase(0)
+				binary.LittleEndian.PutUint32(input[base+lmu13Layout.Telemetry.VehicleSourceSlot.Offset:], 999_999)
+			},
+		},
+		{
+			name: "duplicate player",
+			code: SanitizationPlayerDuplicate,
+			edit: func(input []byte) {
+				base, _ := lmu13Layout.ScoringRows.rowBase(0)
+				input[base+lmu13Layout.Scoring.PlayerMarker.Offset] = 1
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := knownBuffer(t)
+			test.edit(input)
+			sanitizer, err := newDiagnosticFrameSanitizer(BuildEvidence{
+				FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = sanitizer.Sanitize(input)
+			if !errors.Is(err, ErrUnsanitizableFrame) {
+				t.Fatalf("Sanitize() error = %v", err)
+			}
+			code, ok := SanitizationCode(err)
+			if !ok || code != test.code {
+				t.Fatalf("SanitizationCode() = %q,%v, want %q", code, ok, test.code)
+			}
+			for _, forbidden := range []string{"Private Driver Canary", "999999", "raw", "offset"} {
+				if strings.Contains(err.Error(), forbidden) {
+					t.Fatalf("diagnostic error leaked %q: %v", forbidden, err)
+				}
+			}
+		})
+	}
+}
+
+func TestDiagnoseScoringRowFailureReportsExactClosedRangeCode(t *testing.T) {
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	tests := []struct {
+		name string
+		code SanitizationFailureCode
+		edit func([]byte)
+	}{
+		{name: "completed laps", code: SanitizationScoringCompletedLaps, edit: func(input []byte) {
+			binary.LittleEndian.PutUint16(input[base+lmu13Layout.Scoring.CompletedLaps.Offset:], ^uint16(0))
+		}},
+		{name: "sector", code: SanitizationScoringSector, edit: func(input []byte) {
+			input[base+lmu13Layout.Scoring.Sector.Offset] = 3
+		}},
+		{name: "position", code: SanitizationScoringPosition, edit: func(input []byte) {
+			input[base+lmu13Layout.Scoring.Position.Offset] = 0
+		}},
+		{name: "pit stops", code: SanitizationScoringPitStops, edit: func(input []byte) {
+			binary.LittleEndian.PutUint16(input[base+lmu13Layout.Scoring.PitStopCount.Offset:], ^uint16(0))
+		}},
+		{name: "penalties", code: SanitizationScoringPenalties, edit: func(input []byte) {
+			binary.LittleEndian.PutUint16(input[base+lmu13Layout.Scoring.PenaltyCount.Offset:], ^uint16(0))
+		}},
+		{name: "laps next", code: SanitizationScoringLapsNext, edit: func(input []byte) {
+			binary.LittleEndian.PutUint32(input[base+lmu13Layout.Scoring.LapsBehindNext.Offset:], ^uint32(0))
+		}},
+		{name: "laps leader", code: SanitizationScoringLapsLeader, edit: func(input []byte) {
+			binary.LittleEndian.PutUint32(input[base+lmu13Layout.Scoring.LapsBehindLeader.Offset:], ^uint32(0))
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := knownBuffer(t)
+			test.edit(input)
+			if code := diagnoseScoringRowFailure(input, base); code != test.code {
+				t.Fatalf("code = %q, want %q", code, test.code)
+			}
+		})
+	}
+}
+
+func TestDiagnosticCapturePreservesSanitizedFailureCode(t *testing.T) {
+	input := knownBuffer(t)
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	writeCString(input[base+lmu13Layout.Scoring.DriverLabel.Offset:base+lmu13Layout.Scoring.DriverLabel.end()], "Private Driver Canary")
+	input[base+lmu13Layout.Scoring.InPits.Offset] = 2
+	reader := &testReader{data: input}
+	_, err := captureSanitizedSharedMemory(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			return BuildEvidence{FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion}, nil
+		},
+		func() (memoryReader, error) { return reader, nil },
+		func() time.Time { return time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC) },
+	)
+	if !errors.Is(err, ErrDiagnosticCapture) || !errors.Is(err, ErrUnsanitizableFrame) {
+		t.Fatalf("capture error chain = %v", err)
+	}
+	code, ok := SanitizationCode(err)
+	if !ok || code != SanitizationScoringBoolean {
+		t.Fatalf("SanitizationCode() = %q,%v", code, ok)
+	}
+	if strings.Contains(err.Error(), "Private Driver Canary") {
+		t.Fatalf("capture error leaked PII: %v", err)
+	}
+}
+
+func TestDiagnosticCaptureRetriesTransientInvariantThenAccepts(t *testing.T) {
+	invalid := knownBuffer(t)
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	invalid[base+lmu13Layout.Scoring.Position.Offset] = 0
+	valid := knownBuffer(t)
+	reader := &testReader{snapshots: [][]byte{invalid, invalid, valid, valid}}
+	waits := 0
+	artifact, err := captureSanitizedSharedMemoryWithRetry(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			return BuildEvidence{FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion}, nil
+		},
+		func() (memoryReader, error) { return reader, nil },
+		func() time.Time { return time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC) },
+		func(context.Context) error {
+			waits++
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !artifact.valid() || reader.reads != 4 || reader.closes != 1 || waits != 1 {
+		t.Fatalf("artifact valid=%t reads=%d closes=%d waits=%d", artifact.valid(), reader.reads, reader.closes, waits)
+	}
+}
+
+func TestDiagnosticCaptureExhaustsTwentyInvalidAttemptsWithoutPersistence(t *testing.T) {
+	invalid := knownBuffer(t)
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	writeCString(invalid[base+lmu13Layout.Scoring.DriverLabel.Offset:base+lmu13Layout.Scoring.DriverLabel.end()], "Private Driver Canary")
+	invalid[base+lmu13Layout.Scoring.Position.Offset] = 0
+	reader := &testReader{data: invalid}
+	waits := 0
+	artifact, err := captureSanitizedSharedMemoryWithRetry(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			return BuildEvidence{FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion}, nil
+		},
+		func() (memoryReader, error) { return reader, nil },
+		func() time.Time { return time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC) },
+		func(context.Context) error {
+			waits++
+			return nil
+		},
+	)
+	if artifact.valid() || !errors.Is(err, ErrDiagnosticCapture) || !errors.Is(err, ErrUnsanitizableFrame) {
+		t.Fatalf("artifact=%#v error=%v", artifact, err)
+	}
+	var exhausted *DiagnosticRetryError
+	if !errors.As(err, &exhausted) {
+		t.Fatalf("error type = %T, want *DiagnosticRetryError", err)
+	}
+	counts := exhausted.FailureCounts()
+	if exhausted.AttemptCount() != diagnosticCaptureAttempts ||
+		counts[string(SanitizationScoringPosition)] != diagnosticCaptureAttempts ||
+		len(counts) != 1 || reader.reads != diagnosticCaptureAttempts*2 || waits != diagnosticCaptureAttempts-1 {
+		t.Fatalf("attempts=%d counts=%v reads=%d waits=%d", exhausted.AttemptCount(), counts, reader.reads, waits)
+	}
+	for _, forbidden := range []string{"Private Driver Canary", "raw", "offset"} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Fatalf("retry error leaked %q: %v", forbidden, err)
+		}
+	}
+	directory := t.TempDir()
+	entries, readErr := os.ReadDir(directory)
+	if readErr != nil || len(entries) != 0 {
+		t.Fatalf("diagnostic retry persisted files: entries=%d error=%v", len(entries), readErr)
+	}
+}
+
+func TestDiagnosticCaptureRejectsPermanentBuildOnce(t *testing.T) {
+	buildCalls, opens, waits := 0, 0, 0
+	_, err := captureSanitizedSharedMemoryWithRetry(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			buildCalls++
+			return BuildEvidence{FileVersion: "9.9.9.9", ProductVersion: "9.9.9.9"}, nil
+		},
+		func() (memoryReader, error) {
+			opens++
+			return &testReader{data: knownBuffer(t)}, nil
+		},
+		func() time.Time { return time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC) },
+		func(context.Context) error {
+			waits++
+			return nil
+		},
+	)
+	if !errors.Is(err, ErrDiagnosticCapture) || buildCalls != 1 || opens != 0 || waits != 0 {
+		t.Fatalf("error=%v buildCalls=%d opens=%d waits=%d", err, buildCalls, opens, waits)
+	}
+	var exhausted *DiagnosticRetryError
+	if errors.As(err, &exhausted) {
+		t.Fatal("permanent version failure entered retry loop")
+	}
+}
+
+func TestDiagnosticSharedMemoryCaptureUsesOneMappingAndNeverReturnsRaw(t *testing.T) {
+	input := knownBuffer(t)
+	writeCString(input[lmu13Layout.Session.TrackName.Offset:lmu13Layout.Session.TrackName.end()], "Private Circuit")
+	reader := &testReader{data: input}
+	opens := 0
+	at := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+	artifact, err := captureSanitizedSharedMemory(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			return BuildEvidence{FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion}, nil
+		},
+		func() (memoryReader, error) {
+			opens++
+			return reader, nil
+		},
+		func() time.Time { return at },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opens != 1 || reader.closes != 1 || reader.reads != 2 {
+		t.Fatalf("opens=%d closes=%d reads=%d", opens, reader.closes, reader.reads)
+	}
+	if len(artifact.payload) != ObjectOutSize || artifact.capturedAtUTC != at || len(artifact.sha256) != 64 {
+		t.Fatalf("artifact = %#v", artifact)
+	}
+	if bytes.Contains(artifact.payload, []byte("Private Circuit")) || strings.Contains(artifact.summary, "Private Circuit") {
+		t.Fatal("diagnostic artifact retained raw input")
+	}
+}
+
+func TestRESTDiagnosticCaptureWritesOnlySanitizedOverlap(t *testing.T) {
+	now := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case standingsEndpoint:
+			fmt.Fprint(w, `[{"player":true,"position":9,"lapsCompleted":0,"pitstops":0,"driverName":"Private Driver","steamId":"76561198000000000"}]`)
+		case sessionInfoEndpoint:
+			fmt.Fprint(w, `{"trackName":"Private Circuit","session":"PRACTICE","numberOfVehicles":44,"currentEventTime":112.6,"path":"C:\\Users\\Private","secret":"raw-body-canary"}`)
+		default:
+			http.NotFound(w, request)
+		}
+	})
+	artifact, err := captureSanitizedRESTForSharedMemory(
+		t.Context(),
+		testRESTConfig(server, now),
+		diagnosticTrackArtifact(t),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(artifact.sha256) != 64 || !json.Valid(artifact.payload) {
+		t.Fatalf("invalid REST artifact: %#v", artifact)
+	}
+	text := string(artifact.payload)
+	for _, forbidden := range []string{
+		"Private Driver", "Private Circuit", "76561198000000000", "Users", "raw-body-canary", "driverName", "steamId", "path", "secret",
+	} {
+		if strings.Contains(text, forbidden) || strings.Contains(artifact.summary, forbidden) {
+			t.Fatalf("REST diagnostic artifact leaked %q: %s", forbidden, text)
+		}
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(artifact.payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"schema", "captured_at_utc", "status", "endpoints", "session", "player"} {
+		if _, present := decoded[key]; !present {
+			t.Fatalf("sanitized REST artifact omitted %q: %s", key, text)
+		}
+	}
+	if len(decoded) != 6 {
+		t.Fatalf("unexpected top-level REST keys: %#v", decoded)
+	}
+}
+
+func TestRESTDiagnosticCaptureRejectsMismatchedTrackBeforeAliasing(t *testing.T) {
+	now := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case standingsEndpoint:
+			fmt.Fprint(w, `[{"player":true,"position":9,"lapsCompleted":0,"pitstops":0}]`)
+		case sessionInfoEndpoint:
+			fmt.Fprint(w, `{"trackName":"Different Circuit","session":"PRACTICE","numberOfVehicles":44,"currentEventTime":112.6}`)
+		default:
+			http.NotFound(w, request)
+		}
+	})
+	if _, err := captureSanitizedRESTForSharedMemory(
+		t.Context(),
+		testRESTConfig(server, now),
+		diagnosticTrackArtifact(t),
+	); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("mismatched track error = %v", err)
+	}
+}
+
+func TestRESTDiagnosticCaptureAcceptsTypedUnavailableMenuWithoutOverlap(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		statusCode int
+		wantStatus string
+	}{
+		{name: "unavailable", statusCode: http.StatusServiceUnavailable, wantStatus: "unavailable"},
+		{name: "empty", statusCode: http.StatusOK, wantStatus: "empty"},
+		{name: "unsupported", statusCode: http.StatusNotFound, wantStatus: "unsupported"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			now := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+			server := newRESTServer(t, func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(test.statusCode)
+			})
+			artifact, err := captureSanitizedRESTForSharedMemory(
+				t.Context(),
+				testRESTConfig(server, now),
+				diagnosticMenuArtifact(t),
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var document diagnosticRESTDocument
+			if err := json.Unmarshal(artifact.payload, &document); err != nil {
+				t.Fatal(err)
+			}
+			if document.Status != test.wantStatus {
+				t.Fatalf("status = %q, want %q", document.Status, test.wantStatus)
+			}
+			for name, field := range diagnosticRESTOverlapFields(document) {
+				if field.Freshness != "missing" || field.UpdatedUTC != "" || field.Value != nil {
+					t.Fatalf("%s overlap = %#v, want missing without value/timestamp", name, field)
+				}
+			}
+			if document.Endpoints.Standings.LastAttemptUTC.IsZero() || document.Endpoints.SessionInfo.LastAttemptUTC.IsZero() {
+				t.Fatal("menu status artifact omitted allowed attempt timestamps")
+			}
+		})
+	}
+}
+
+func TestRESTDiagnosticCaptureRejectsUnavailableTrackAndMalformedMenu(t *testing.T) {
+	now := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+	unavailable := newRESTServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+	if _, err := captureSanitizedRESTForSharedMemory(
+		t.Context(),
+		testRESTConfig(unavailable, now),
+		diagnosticTrackArtifact(t),
+	); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("track unavailable error = %v", err)
+	}
+
+	malformed := newRESTServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{broken`)
+	})
+	if _, err := captureSanitizedRESTForSharedMemory(
+		t.Context(),
+		testRESTConfig(malformed, now),
+		diagnosticMenuArtifact(t),
+	); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("menu malformed error = %v", err)
+	}
+
+	staleTrack := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case standingsEndpoint:
+			fmt.Fprint(w, `[{"player":true,"position":9,"lapsCompleted":0,"pitstops":0}]`)
+		case sessionInfoEndpoint:
+			fmt.Fprint(w, `{"trackName":"Previous Track","session":"PRACTICE","numberOfVehicles":44,"currentEventTime":112.6}`)
+		default:
+			http.NotFound(w, request)
+		}
+	})
+	if _, err := captureSanitizedRESTForSharedMemory(
+		t.Context(),
+		testRESTConfig(staleTrack, now),
+		diagnosticMenuArtifact(t),
+	); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("uncorrelated live REST beside menu error = %v", err)
+	}
+
+	correlatedMenu := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case standingsEndpoint:
+			fmt.Fprint(w, `[]`)
+		case sessionInfoEndpoint:
+			fmt.Fprint(w, `{"trackName":"Private Circuit","session":"PRACTICE","numberOfVehicles":44,"currentEventTime":112.6}`)
+		default:
+			http.NotFound(w, request)
+		}
+	})
+	if _, err := captureSanitizedRESTForSharedMemory(
+		t.Context(),
+		testRESTConfig(correlatedMenu, now),
+		diagnosticMenuArtifact(t),
+	); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("correlated live REST beside menu error = %v", err)
+	}
+}
+
+func TestWriteSanitizedCaptureNeverOverwritesOrAcceptsTampering(t *testing.T) {
+	sanitizer, err := newDiagnosticFrameSanitizer(BuildEvidence{
+		FileVersion:    diagnosticLMUVersion,
+		ProductVersion: diagnosticLMUVersion,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := buildSharedMemoryDiagnosticArtifact(
+		knownBuffer(t),
+		time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC),
+		sanitizer,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "capture.bin")
+	if err := WriteSanitizedCapture(path, artifact); err != nil {
+		t.Fatal(err)
+	}
+	written, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(written, artifact.payload) {
+		t.Fatalf("written artifact mismatch: bytes=%d error=%v", len(written), err)
+	}
+	if err := WriteSanitizedCapture(path, artifact); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("overwrite error = %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(after, written) {
+		t.Fatal("failed overwrite changed the existing evidence")
+	}
+
+	tampered := artifact
+	tampered.payload = append([]byte(nil), artifact.payload...)
+	tampered.payload[500] = 0xa5
+	tamperedPath := filepath.Join(filepath.Dir(path), "tampered.bin")
+	if err := WriteSanitizedCapture(tamperedPath, tampered); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("tampered artifact error = %v", err)
+	}
+	if _, err := os.Stat(tamperedPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("tampered artifact was persisted: %v", err)
+	}
+}
+
+func TestWriteSanitizedCapturePairIsFailClosedWhenEitherTargetExists(t *testing.T) {
+	shared := diagnosticTrackArtifact(t)
+	rest := newDiagnosticArtifact(
+		DiagnosticCaptureREST,
+		shared.capturedAtUTC,
+		[]byte("{}\n"),
+		"status=live",
+	)
+	directory := t.TempDir()
+	sharedPath := filepath.Join(directory, "shared.bin")
+	restPath := filepath.Join(directory, "rest.json")
+	if err := os.WriteFile(restPath, []byte("existing"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteSanitizedCapturePair(sharedPath, shared, restPath, rest); !errors.Is(err, ErrDiagnosticCapture) {
+		t.Fatalf("pair error = %v", err)
+	}
+	if _, err := os.Stat(sharedPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("pair left partial Shared Memory artifact: %v", err)
+	}
+	existing, err := os.ReadFile(restPath)
+	if err != nil || string(existing) != "existing" {
+		t.Fatal("pair overwrote the existing REST target")
+	}
+}
+
+func diagnosticTrackArtifact(t testing.TB) DiagnosticCaptureArtifact {
+	t.Helper()
+	input := knownBuffer(t)
+	if !writeCString(
+		input[lmu13Layout.Session.TrackName.Offset:lmu13Layout.Session.TrackName.end()],
+		"Private Circuit",
+	) {
+		t.Fatal("write private track fixture")
+	}
+	sanitizer, err := newDiagnosticFrameSanitizer(BuildEvidence{
+		FileVersion:    diagnosticLMUVersion,
+		ProductVersion: diagnosticLMUVersion,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := buildSharedMemoryDiagnosticArtifact(
+		input,
+		time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC),
+		sanitizer,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return artifact
+}
+
+func diagnosticMenuArtifact(t testing.TB) DiagnosticCaptureArtifact {
+	t.Helper()
+	input := knownBuffer(t)
+	vehicles := int(readInt32(input, lmu13Layout.Session.VehicleCount.Offset))
+	for row := range vehicles {
+		base, _ := lmu13Layout.ScoringRows.rowBase(row)
+		input[base+lmu13Layout.Scoring.PlayerMarker.Offset] = 0
+	}
+	sanitizer, err := newDiagnosticFrameSanitizer(BuildEvidence{
+		FileVersion:    diagnosticLMUVersion,
+		ProductVersion: diagnosticLMUVersion,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := buildSharedMemoryDiagnosticArtifact(
+		input,
+		time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC),
+		sanitizer,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return artifact
+}
+
+func diagnosticRESTOverlapFields(document diagnosticRESTDocument) map[string]diagnosticRESTField {
+	return map[string]diagnosticRESTField{
+		"track":           document.Session.Track,
+		"source_time":     document.Session.SourceTimeSeconds,
+		"session_type":    document.Session.Type,
+		"vehicle_count":   document.Session.VehicleCount,
+		"player_present":  document.Player.Present,
+		"player_position": document.Player.Position,
+		"completed_laps":  document.Player.CompletedLaps,
+		"pit_stop_count":  document.Player.PitStopCount,
 	}
 }
 

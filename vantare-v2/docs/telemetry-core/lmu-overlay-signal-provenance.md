@@ -1,8 +1,8 @@
 # ISA-129 / TC-07A.1 — Procedencia de señales LMU para Overlay
 
-Estado: D0-D3 aceptados; D4A corregido tras la revisión P2/P3 y pendiente del
-veredicto final independiente. LMU 1.4 y el cutover productivo permanecen fuera
-de este corte.
+Estado: D0-D4A aceptados. D4B ha probado y habilitado exclusivamente el layout
+LMU `1.4.0.0` con evidencia real sanitizada de menú y pista. El cutover de
+producto permanece fuera de este corte.
 
 Este documento cierra qué señales pueden entrar en los microcortes D1–D7 de
 ISA-129. No habilita compatibilidad nueva, no conecta el runtime modular a
@@ -19,7 +19,7 @@ producción y no convierte campos legacy en autoridad canónica.
   `docs/superpowers/plans/2026-07-31-isa-129-tc-07a1-canonical-overlay-signals.md`.
 - Orden: ISA-129 bloquea ISA-106.
 
-## Estado del programa al cerrar D4A
+## Estado del programa al cerrar D4B
 
 1. D1 retiró el mock conectado productivo (`470d6a6`). La preview explícita de
    Studio y los harnesses siguen permitidos.
@@ -27,8 +27,9 @@ producción y no convierte campos legacy en autoridad canónica.
    autoridad que D4A implementa sin ampliaciones.
 3. D4A publica la parrilla multivehículo owned y correlaciona el jugador por ID
    activo. La identidad canónica con generaciones pertenece a D5.
-4. Antes del uso de producto aún faltan la evidencia D4B, el mapper D5, las
-   derivaciones D6 y el wiring productivo D7.
+4. D4B demuestra el layout 1.4 con cuatro artefactos reales hash-pinned y pasa
+   el lector productivo opt-in. Antes del uso de producto aún faltan el mapper
+   D5, las derivaciones D6 y el wiring productivo D7.
 
 No queda activo ningún gate histórico de D0 o D1. El único gate de este corte
 es el veredicto independiente final de D4A.
@@ -39,6 +40,10 @@ es el veredicto independiente final de D4A.
 |---|---|---|---|
 | `testdata/lmu-fixture.bin` | LMU 1.3 en pista, 44 vehículos | captura real sanitizada, 324820 bytes | `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff` |
 | `testdata/lmu-menu-fixture.bin` | LMU 1.3 en menú | captura real sanitizada, 324820 bytes | `8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a` |
+| `testdata/lmu-1.4-menu-fixture.bin` | LMU 1.4 en menú | captura real zero-rebuild, 324820 bytes | `0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0` |
+| `testdata/lmu-1.4-rest-menu-fixture.json` | REST LMU 1.4 en menú | estado `empty`; ocho solapamientos missing | `325d40882d718e7cb36837b0d3f77575eca72008ecef9bdb436325af1a285312` |
+| `testdata/lmu-1.4-track-fixture.bin` | LMU 1.4 en pista, práctica, 38 vehículos y jugador | captura real zero-rebuild, 324820 bytes | `c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5` |
+| `testdata/lmu-1.4-rest-track-fixture.json` | REST LMU 1.4 correlacionado en pista | estado `live`, 38 vehículos y jugador | `bb89380fb672387b97735b2d318c0c8d0a246eaf2f34adbe799f17daa6f0fa36` |
 
 Layout demostrado:
 
@@ -55,14 +60,12 @@ ID `0`, y solo correlaciona con la fila telemetry activa 43. Las 60 filas
 telemetry inactivas restantes están a cero y también exponen ID `0`; por ello
 nunca se busca por ID en las 104 filas completas.
 
-La ejecución local observada para el plan corresponde a LMU `1.4.0.0`, pero
-todavía no existe una captura 1.4 sanitizada, correlacionada y hash-pinned.
-Por tanto, la allowlist productiva continúa limitada a la evidencia 1.3. D4B
-debe demostrar 1.4 antes de habilitarla; la similitud estructural no sustituye
-esa prueba.
-
-La evidencia REST modular actual es sintética y player-only. No demuestra
-semántica de parrilla completa, equipo, número ni campos no decodificados.
+La ejecución real corresponde a LMU `1.4.0.0`. El par de pista fue recapturado
+después de exigir correlación exacta de circuito, sesión, vehículos, presencia,
+posición, vueltas y paradas, más una tolerancia de `500 ms` para el reloj de
+sesión. El circuito original solo se compara mediante un SHA-256 privado en
+memoria: ambos artefactos persistidos usan `Track-01`. Esta prueba no amplía
+REST a parrilla completa, equipo, número ni campos no decodificados.
 
 ## Contrato ejecutable de layout LMU 1.3 — D2
 
@@ -139,7 +142,7 @@ Esta tabla es una allowlist. D3–D7 no pueden incorporar señales fuera de ella
 | Vehicle label | `mVehicleName`, fila `+36`, `char[64]` | texto de display | Admitir; fixture sanitizada. |
 | Completed laps | `mTotalLaps`, fila `+100`, `int16` | count `>=0`; cero válido | Admitir. |
 | Scoring sector | `mSector`, fila `+102`, `int8` | `0=sector3`, `1=sector1`, `2=sector2` | Admitir únicamente este mapping. |
-| Lap distance | `mLapDist`, fila `+104`, `float64` | metros, finito y `>=0` | Admitir; máximo exacto de fixture `3982.366455078125` (`3982.37` a dos decimales). |
+| Lap distance | `mLapDist`, fila `+104`, `float64` | metros; un valor finito `>=0` está presente y cualquier sentinel finito negativo se normaliza a `missing` | Admitir; máximo 1.3 exacto `3982.366455078125` y probe live 1.4 D4B con sentinel negativo, nunca convertido a cero. |
 | Best lap | `mBestLapTime`, fila `+144`, `float64` | segundos; present solo si finito y `>0` | Admitir; `-1` real se normaliza a missing. |
 | Last lap | `mLastLapTime`, fila `+168`, `float64` | segundos; present solo si finito y `>0` | Admitir; cero real se normaliza a missing. |
 | Pit-stop count | `mNumPitstops`, fila `+192`, `int16` | count `>=0`; cero válido | Admitir. |
@@ -148,9 +151,9 @@ Esta tabla es una allowlist. D3–D7 no pueden incorporar señales fuera de ella
 | In pits | `mInPits`, fila `+198`, C++ `bool` de un byte | entre entrada y salida de pit; `0/1` | Admitir como observado, no como garage/box; hereda stale del frame. |
 | Position | `mPlace`, fila `+199`, `uint8` | one-based `1..104` | Admitir; nunca identidad. |
 | Vehicle class | `mVehicleClass`, fila `+200`, `char[32]` | texto de display/agrupación | Admitir; fixture sanitizada. |
-| Time behind next | `mTimeBehindNext`, fila `+232`, `float64` | segundos detrás del puesto anterior; finito y `>=0` | Admitir; fixture `0..17.88`. |
+| Time behind next | `mTimeBehindNext`, fila `+232`, `float64` | segundos detrás del puesto anterior; un valor finito `>=0` está presente y cualquier sentinel finito negativo se normaliza a `missing` | Admitir; fixture 1.3 `0..17.88` y probe live 1.4 D4B con sentinel negativo, nunca convertido a cero. |
 | Laps behind next | `mLapsBehindNext`, fila `+240`, `int32` | count `>=0` | Admitir. |
-| Time behind leader | `mTimeBehindLeader`, fila `+244`, `float64` | segundos detrás del líder; finito y `>=0` | Admitir; fixture `0..85.08`. |
+| Time behind leader | `mTimeBehindLeader`, fila `+244`, `float64` | segundos detrás del líder; un valor finito `>=0` está presente y cualquier sentinel finito negativo se normaliza a `missing` | Admitir; fixture 1.3 `0..85.08` y probe live 1.4 D4B con sentinel negativo, nunca convertido a cero. |
 | Laps behind leader | `mLapsBehindLeader`, fila `+252`, `int32` | count `>=0` | Admitir. |
 | Estimated lap | `mEstimatedLapTime`, fila `+472`, `float64` | segundos; present solo si finito y `>0` | Admitir como estimación observada con procedencia explícita. |
 | Active telemetry grid correlation | telemetry `mID`, fila `+0`, `int32`, solo `[0,mNumVehicles)` | IDs activos no negativos y únicos; biyección exacta con scoring; cola inactiva ignorada | Admitir; fixture 44/44 y 60 IDs cero fuera del rango activo. Mismatch, duplicado o negativo activo rechaza el frame. |
@@ -255,12 +258,53 @@ derivaciones ni wiring productivo. Esas responsabilidades continúan en D5-D7.
 Tampoco habilita LMU 1.4: D4B requiere fixtures sanitizadas y hash-pinned de
 menú y pista antes de tocar la allowlist.
 
+## D4B — prueba diagnóstica y allowlist LMU 1.4
+
+D4B añade una ruta diagnóstica separada del runtime productivo y la usa para
+demostrar el layout antes de habilitarlo:
+
+- el perfil candidato admite solo un par coherente file/product `1.4.0.0`; no
+  acepta una versión parcial, contradictoria, desconocida ni seleccionable por
+  flag;
+- el probe live 1.4 demostró que `mLapDist`, `mTimeBehindNext` y
+  `mTimeBehindLeader` pueden usar sentinels finitos negativos cuando la señal
+  no está disponible. El parser conserva el frame y normaliza únicamente esas
+  señales a `missing`; no publica el sentinel, no inventa cero y mantiene no
+  finitos como frame inválido;
+- la captura Shared Memory abre una sola vez el mapping modular existente,
+  exige un snapshot estable de tamaño exacto y aplica el mismo zero-rebuild de
+  D4A antes de devolver un byte persistible;
+- la captura REST decodifica primero los endpoints loopback y serializa solo
+  los ocho solapamientos de sesión/jugador, sus estados y timestamps; nombres,
+  IDs, rutas, campos extra y el body original no forman parte del artefacto;
+- un frame Shared Memory válido de menú, sin jugador, puede acompañarse de un
+  artefacto REST de estado `unavailable`, `empty` o `unsupported`: sus ocho
+  solapamientos quedan obligatoriamente `missing`. Cualquier REST live/complete
+  junto a un frame de menú se rechaza, aunque sus campos parezcan correlacionar;
+  una respuesta malformada también se rechaza siempre;
+- una captura de pista, con jugador, exige REST live y correlacionado con Shared
+  Memory en circuito, sesión, vehículos, presencia, posición, vueltas, paradas
+  y tiempo. El circuito se compara antes de sustituirlo por alias y solo queda
+  una huella SHA-256 privada en memoria. Si falla una equivalencia, no se
+  persiste ninguno de los dos artefactos;
+- ambos artefactos incluyen SHA-256, resumen sanitizado y escritura exclusiva:
+  un fichero existente nunca se reemplaza, un payload alterado se rechaza y la
+  reserva del par es fail-closed para evitar dejar una captura parcial;
+- `lmu-debug -once -capture-sanitized <path>` y
+  `-capture-rest-sanitized <path>` no aceptan `-mock`, no exponen un flag de
+  versión/layout y no pueden promocionar el candidato a producción.
+
+La secuencia real capturó primero el menú y después pista con 38 vehículos y
+jugador. Los cuatro hashes se compilan en la allowlist, que exige además acuerdo
+exacto de file/product version para 1.4. El opt-in productivo confirmó runtime
+`live`, jugador presente, compatibilidad conocida y fingerprint 1.4.
+
 ## Estado de revisión y siguiente corte
 
-D4A queda implementado con las correcciones solicitadas y pendiente del
-veredicto independiente final. Debe conservar:
+D4A permanece aceptado y D4B queda listo para el veredicto final del corte.
+Debe conservar:
 
-- la allowlist cerrada y los hashes de LMU 1.3;
+- la allowlist cerrada y los hashes de LMU 1.3/1.4;
 - el rechazo atómico de frames estructuralmente ambiguos;
 - la parrilla completa, la correlación player por ID activo y la fusión
   SHM-first/REST player-only;
@@ -268,7 +312,6 @@ veredicto independiente final. Debe conservar:
 - los tests del parser, fusión, sanitizer, replay y golden;
 - la ausencia de mapper canónico, derivaciones y wiring productivo.
 
-D4B solo puede empezar tras un veredicto `ACCEPT`. Será un corte de evidencia
-diagnóstica: LMU 1.4 permanece bloqueado hasta disponer de fixtures sanitizadas
-y hash-pinned de menú y pista. D4A no autoriza cutover, promoción, CSS,
-renderizadores, canvas, Wails/SSE ni una segunda adquisición LMU.
+El siguiente corte es D5, Observation → Batch. D4B no autoriza cutover,
+promoción, CSS, renderizadores, canvas, Wails/SSE ni una segunda adquisición
+LMU.

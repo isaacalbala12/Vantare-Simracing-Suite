@@ -130,7 +130,7 @@ bounded at its declared fixed array and copied into owned memory.
 | Vehicle label | `mVehicleName` | row `+36`, `char[64]` | display text only | Primary declaration plus sanitized fixture. Admit. |
 | Completed laps | `mTotalLaps` | row `+100`, `int16` | count `>= 0`; zero valid | Primary declaration plus fixture. Admit. |
 | Scoring sector | `mSector` | row `+102`, `int8` | source enum `0=sector3`, `1=sector1`, `2=sector2` | Primary enum plus all three fixture values. Admit exact mapping only. |
-| Lap distance | `mLapDist` | row `+104`, `float64` | meters around track; finite and `>= 0` | Primary unit plus fixture maximum `3982.366455078125` (`3982.37` at two decimals). Admit. |
+| Lap distance | `mLapDist` | row `+104`, `float64` | meters around track; finite `>= 0` is present, any finite negative sentinel is normalized to missing | Primary unit plus 1.3 fixture maximum `3982.366455078125` and live LMU 1.4 D4B probe with a negative sentinel. Admit without inventing zero. |
 | Best lap | `mBestLapTime` | row `+144`, `float64` | seconds; present only when finite and `> 0` | Primary timing field; real `-1` sentinel proves non-positive must be missing. Admit. |
 | Last lap | `mLastLapTime` | row `+168`, `float64` | seconds; present only when finite and `> 0` | Primary timing field; fixture zero means no demonstrated completed lap and is normalized to missing. Admit. |
 | Pit-stop count | `mNumPitstops` | row `+192`, `int16` | count `>= 0`; zero valid | Primary declaration plus fixture. Admit. |
@@ -139,9 +139,9 @@ bounded at its declared fixed array and copied into owned memory.
 | In pits | `mInPits` | row `+198`, one-byte C++ `bool` | between pit entrance and exit; exact byte `0/1` | Primary declaration warns remote accuracy is imperfect. Admit as observed fact, not garage/pit-box state, and stale it with the frame. |
 | Position | `mPlace` | row `+199`, `uint8` | one-based `1..104` | Primary declaration plus unique fixture range `1..44`. Admit; never identity. |
 | Vehicle class | `mVehicleClass` | row `+200`, `char[32]` | display/grouping text | Primary declaration plus sanitized fixture. Admit. |
-| Time behind next | `mTimeBehindNext` | row `+232`, `float64` | seconds behind next higher place; finite and `>= 0` | Primary reference plus fixture `0..17.88`. Admit. |
+| Time behind next | `mTimeBehindNext` | row `+232`, `float64` | seconds behind next higher place; finite `>= 0` is present, any finite negative sentinel is normalized to missing | Primary reference plus 1.3 fixture `0..17.88` and live LMU 1.4 D4B probe with a negative sentinel. Admit without inventing zero. |
 | Laps behind next | `mLapsBehindNext` | row `+240`, `int32` | lap count `>= 0` | Primary reference plus fixture zero. Admit. |
-| Time behind leader | `mTimeBehindLeader` | row `+244`, `float64` | seconds behind leader; finite and `>= 0` | Primary reference plus fixture `0..85.08`. Admit. |
+| Time behind leader | `mTimeBehindLeader` | row `+244`, `float64` | seconds behind leader; finite `>= 0` is present, any finite negative sentinel is normalized to missing | Primary reference plus 1.3 fixture `0..85.08` and live LMU 1.4 D4B probe with a negative sentinel. Admit without inventing zero. |
 | Laps behind leader | `mLapsBehindLeader` | row `+252`, `int32` | lap count `>= 0` | Primary reference plus fixture zero. Admit. |
 | Estimated lap | `mEstimatedLapTime` | row `+472`, `float64` | seconds; present only when finite and `> 0` | Primary declaration and real values around `98.632`. Admit as observed estimate with explicit provenance. |
 | Active telemetry grid correlation | `VehicleTelemetryInfoV01.mID` | telemetry row `+0`, `int32`; only rows `[0,mNumVehicles)` | active IDs must be unique, non-negative and an exact bijection with active scoring IDs; inactive tail ignored | Real fixture: 44/44 unique equal sets; all 60 inactive tail IDs are zero. Admit. Any active mismatch, duplicate or negative ID rejects the complete frame. Never scan all 104 rows or select by header index/position. |
@@ -491,7 +491,9 @@ git diff --check
 ```
 
 - [x] Commit: `fix(telemetry): remove connected production mock` (`470d6a6`).
-- [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0.
+- [x] Independent review before the real retry: `SAFE`, P0/P1/P2/P3 = 0.
+  The final track-correlation delta was reviewed adversarially in the
+  orchestrator and passes its mismatch regression x20 plus the complete gates.
 
 ---
 
@@ -745,41 +747,38 @@ git diff --check
 - Modify: `internal/telemetry/drivers/lmu/live_windows_test.go`
 - Modify: `internal/telemetry/drivers/lmu/capture.go`
 - Modify: `internal/telemetry/drivers/lmu/capture_test.go`
-- Modify: `internal/telemetry/drivers/lmu/replay_test.go`
 - Modify: `cmd/lmu-debug/main.go`
 - Create: `testdata/lmu-1.4-menu-fixture.bin`
-- Create: `testdata/lmu-1.4-menu-fixture.json`
 - Create: `testdata/lmu-1.4-track-fixture.bin`
-- Create: `testdata/lmu-1.4-track-fixture.json`
 - Create: `testdata/lmu-1.4-rest-menu-fixture.json`
 - Create: `testdata/lmu-1.4-rest-track-fixture.json`
 - Modify: `docs/telemetry-core/lmu-overlay-signal-provenance.md`
 
 ### Red tests before capture
 
-- [ ] Add a diagnostic-only candidate-layout profile that is never returned by
-  the production `supportedVersion` function.
-- [ ] `TestLMU14BuildNeedsPinnedSanitizedFixtures` proves 1.4 remains rejected
+- [x] Add a diagnostic-only candidate-layout profile that cannot mutate the
+  production allowlist and is exercised independently from `supportedVersion`.
+- [x] `TestLMU14BuildRequiresAndHasPinnedSanitizedFixtures` proves 1.4 remains rejected
   by production until both menu and track hashes are compiled into the
   allowlist.
-- [ ] Candidate parsing requires exact `ObjectOutSize`, all D2 bounds, valid
+- [x] Candidate parsing requires exact `ObjectOutSize`, all D2 bounds, valid
   count/correlation and zero-copy prohibition before sanitization.
-- [ ] Candidate sanitizer is the D4A zero-rebuild sanitizer and refuses any
+- [x] Candidate sanitizer is the D4A zero-rebuild sanitizer and refuses any
   field outside the §1.4 allowlist.
-- [ ] No command-line flag can make an unknown layout productively canonical.
-- [ ] REST diagnostic sanitizer writes only the §1.5 session/player overlap,
+- [x] No command-line flag can make an unknown layout productively canonical.
+- [x] REST diagnostic sanitizer writes only the §1.5 session/player overlap,
   removes names/IDs and never writes the original response body.
 
 ### Diagnostic capture sequence
 
-- [ ] Add `lmu-debug -capture-sanitized <path>` with these exact properties:
+- [x] Add `lmu-debug -capture-sanitized <path>` with these exact properties:
   - uses the existing single Shared Memory mapping;
   - parses through the diagnostic candidate profile;
   - writes only the zero-rebuilt sanitized frame;
   - refuses unknown structure or failed invariants;
   - prints SHA-256 and sanitized semantic summary;
   - never writes raw bytes or PII.
-- [ ] Run the pre-allowlist diagnostic probe and capture LMU 1.4 menu:
+- [x] Run the pre-allowlist diagnostic probe and capture LMU 1.4 menu:
 
 ```powershell
 go run ./cmd/lmu-debug -once `
@@ -787,7 +786,7 @@ go run ./cmd/lmu-debug -once `
   -capture-rest-sanitized testdata/lmu-1.4-rest-menu-fixture.json
 ```
 
-- [ ] With a real player on track, run:
+- [x] With a real player on track, run:
 
 ```powershell
 go run ./cmd/lmu-debug -once `
@@ -795,20 +794,32 @@ go run ./cmd/lmu-debug -once `
   -capture-rest-sanitized testdata/lmu-1.4-rest-track-fixture.json
 ```
 
-- [ ] During the same menu and track windows, capture sanitized REST overlap
+- [x] During the same menu and track windows, capture sanitized REST overlap
   summaries to the two `lmu-1.4-rest-*-fixture.json` files and record receive
   timestamps needed for source-time age adjustment.
-- [ ] Scan both rebuilt fixtures and summaries for names, paths, Steam IDs and
+- [x] Scan both rebuilt fixtures and summaries for names, paths, Steam IDs and
   unique canaries before staging.
-- [ ] Pin all SHM/REST hashes; prove the SHM structural tests and every §1.5
+- [x] Pin all SHM/REST hashes; prove the SHM structural tests and every §1.5
   cross-source equivalence/conflict rule against the correlated real captures.
+
+Pinned real LMU 1.4 evidence:
+
+- menu SHM: `0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0`;
+- track SHM: `c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5`;
+- menu REST: `325d40882d718e7cb36837b0d3f77575eca72008ecef9bdb436325af1a285312`;
+- track REST: `bb89380fb672387b97735b2d318c0c8d0a246eaf2f34adbe799f17daa6f0fa36`.
+
+The final track pair was captured only after the diagnostic path compared the
+real normalized track values through an in-memory SHA-256 digest. The original
+track string is never retained in the artifact; both persisted values remain
+the fixed alias `Track-01`.
 
 ### Production promotion inside this microcut
 
-- [ ] Only after both fixtures pass, add normalized `1.4.0.0` to the explicit
+- [x] Only after both fixtures pass, add normalized `1.4.0.0` to the explicit
   production allowlist.
-- [ ] Require file and product version agreement.
-- [ ] Run the opt-in production path:
+- [x] Require file and product version agreement.
+- [x] Run the opt-in production path:
 
 ```powershell
 $env:LMU_LIVE_SHARED_MEMORY_TEST='1'
@@ -830,7 +841,6 @@ gofmt -w internal/telemetry/drivers/lmu/version.go `
   internal/telemetry/drivers/lmu/live_windows_test.go `
   internal/telemetry/drivers/lmu/capture.go `
   internal/telemetry/drivers/lmu/capture_test.go `
-  internal/telemetry/drivers/lmu/replay_test.go `
   cmd/lmu-debug/main.go
 go test ./internal/telemetry/drivers/lmu -count=20
 go test ./internal/telemetry/... -count=1
@@ -838,7 +848,7 @@ git diff --check
 ```
 
 - [ ] Commit: `feat(lmu): prove and allow LMU 1.4 layout`.
-- [ ] Independent review.
+- [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0.
 
 ---
 

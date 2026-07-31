@@ -43,7 +43,7 @@ func TestLiveLMUSharedMemoryOptIn(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Run: %v", err)
 	}
-	if !strings.Contains(sink.value.Fingerprint, "build="+supportedLMUVersion) {
+	if !supported || !strings.Contains(sink.value.Fingerprint, "build="+version) {
 		t.Fatalf("fingerprint = %q", sink.value.Fingerprint)
 	}
 	if sink.value.Compatibility != CompatibilityKnown {

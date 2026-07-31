@@ -828,6 +828,35 @@ Avance D4 backend/Wails ISA-104:
 - Review backend D4 read-only activa. UI/harness todavía en progreso. Sin
   commit de producto, merge o promoción.
 
+Cierre inicial D4 frontend e inicio de correcciones backend ISA-104:
+
+- El panel aislado de Ajustes ya cubre conexión, sesiones locales, detalle
+  metadata-only, paquete sanitizado, hash, tamaño y preview exacta. La UI
+  consume únicamente DTOs cerrados y conserva SQLite, rutas e IDs internos
+  detrás del bridge.
+- Vitest focal: 54/54 PASS. Build frontend y lint focal: PASS; el único aviso
+  es el `.eslintignore` heredado. El harness Playwright pasa en wide
+  1440x1000, medium 1024x900 y compact 390x844, sin overflow ni errores de
+  consola. Preview, copy y download conservan exactamente los mismos bytes.
+- `current+ready` invoca Inspect una vez. Future y corrupt se resuelven solo
+  con metadata de List y nunca abren el histórico. Las tres capturas son no
+  vacías y el puerto 5184 queda libre, sin procesos huérfanos.
+- El fallo Playwright anterior era un selector exacto frágil porque el texto
+  `Velocidad` compartía nodo con el indicador visual. Se sustituyó por el
+  testid estable `diagnostics-field-speed`; no hubo cambio de diseño ni de
+  comportamiento.
+- La review backend D4 devuelve `REQUEST_CHANGES`: P1 por escape de raíz si un
+  parent es junction/symlink; P2 por situar histórico dentro de `cfgDir`, P2
+  porque cancelación/shutdown y un límite de concurrencia no alcanzan al
+  backend, y P2 por lectura concurrente insegura del perfil al preparar el
+  informe.
+- Se ordenó el remedio TDD acotado: raíz canónica compartible con el futuro
+  writer (LocalAppData en instalación y data portable explícita), validación
+  de toda la cadena de directorios, contexto de aplicación + cancelación
+  correlacionada + concurrencia limitada, y snapshot de perfil sincronizado.
+  Después se repetirá review backend y del contrato frontend. Sin commit de
+  producto, merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

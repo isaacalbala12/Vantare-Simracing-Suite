@@ -381,6 +381,87 @@ func TestIncompatibilityTakesPriorityOverStale(t *testing.T) {
 	}
 }
 
+func TestWithFreshnessExpiresEverySharedMemoryVehicleFieldWithoutMutatingInput(t *testing.T) {
+	received := time.Date(2026, 7, 31, 18, 0, 0, 0, time.UTC)
+	input, err := parseWithBuild(knownBuffer(t), received, BuildEvidence{FileVersion: supportedLMUVersion})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(input.Vehicles) == 0 {
+		t.Fatal("fixture has no vehicles")
+	}
+	stale := withFreshness(input, schema.FreshnessStale)
+	if input.Vehicles[0].InPit.Freshness() != schema.FreshnessFresh {
+		t.Fatal("withFreshness mutated its input vehicle slice")
+	}
+	assertFreshnessTransition(t, "session", map[string][2]schema.Freshness{
+		"source time":     {input.SourceTime.Freshness(), stale.SourceTime.Freshness()},
+		"end time":        {input.EndTime.Freshness(), stale.EndTime.Freshness()},
+		"maximum laps":    {input.MaximumLaps.Freshness(), stale.MaximumLaps.Freshness()},
+		"track":           {input.TrackName.Freshness(), stale.TrackName.Freshness()},
+		"session type":    {input.SessionType.Freshness(), stale.SessionType.Freshness()},
+		"vehicle count":   {input.VehicleCount.Freshness(), stale.VehicleCount.Freshness()},
+		"player present":  {input.PlayerPresent.Freshness(), stale.PlayerPresent.Freshness()},
+		"vehicle name":    {input.VehicleName.Freshness(), stale.VehicleName.Freshness()},
+		"lap number":      {input.LapNumber.Freshness(), stale.LapNumber.Freshness()},
+		"gear":            {input.Gear.Freshness(), stale.Gear.Freshness()},
+		"engine rpm":      {input.EngineRPM.Freshness(), stale.EngineRPM.Freshness()},
+		"speed":           {input.SpeedMPS.Freshness(), stale.SpeedMPS.Freshness()},
+		"throttle":        {input.Throttle.Freshness(), stale.Throttle.Freshness()},
+		"brake":           {input.Brake.Freshness(), stale.Brake.Freshness()},
+		"clutch":          {input.Clutch.Freshness(), stale.Clutch.Freshness()},
+		"player position": {input.PlayerPosition.Freshness(), stale.PlayerPosition.Freshness()},
+		"completed laps":  {input.CompletedLaps.Freshness(), stale.CompletedLaps.Freshness()},
+		"pit stop count":  {input.PitStopCount.Freshness(), stale.PitStopCount.Freshness()},
+		"player in pit":   {input.InPit.Freshness(), stale.InPit.Freshness()},
+		"player fuel":     {input.Fuel.Freshness(), stale.Fuel.Freshness()},
+	})
+	for index := range input.Vehicles {
+		before, after := input.Vehicles[index], stale.Vehicles[index]
+		assertFreshnessTransition(t, fmt.Sprintf("vehicle %d", index), map[string][2]schema.Freshness{
+			"driver":             {before.DriverName.Freshness(), after.DriverName.Freshness()},
+			"vehicle":            {before.VehicleName.Freshness(), after.VehicleName.Freshness()},
+			"class":              {before.VehicleClass.Freshness(), after.VehicleClass.Freshness()},
+			"player":             {before.Player.Freshness(), after.Player.Freshness()},
+			"position":           {before.Position.Freshness(), after.Position.Freshness()},
+			"completed laps":     {before.CompletedLaps.Freshness(), after.CompletedLaps.Freshness()},
+			"sector":             {before.Sector.Freshness(), after.Sector.Freshness()},
+			"lap distance":       {before.LapDistance.Freshness(), after.LapDistance.Freshness()},
+			"best lap":           {before.BestLapTime.Freshness(), after.BestLapTime.Freshness()},
+			"last lap":           {before.LastLapTime.Freshness(), after.LastLapTime.Freshness()},
+			"estimated lap":      {before.EstimatedLapTime.Freshness(), after.EstimatedLapTime.Freshness()},
+			"in pit":             {before.InPit.Freshness(), after.InPit.Freshness()},
+			"pit stop count":     {before.PitStopCount.Freshness(), after.PitStopCount.Freshness()},
+			"penalty count":      {before.PenaltyCount.Freshness(), after.PenaltyCount.Freshness()},
+			"time behind leader": {before.TimeBehindLeader.Freshness(), after.TimeBehindLeader.Freshness()},
+			"laps behind leader": {before.LapsBehindLeader.Freshness(), after.LapsBehindLeader.Freshness()},
+			"time behind next":   {before.TimeBehindNext.Freshness(), after.TimeBehindNext.Freshness()},
+			"laps behind next":   {before.LapsBehindNext.Freshness(), after.LapsBehindNext.Freshness()},
+			"lap number":         {before.LapNumber.Freshness(), after.LapNumber.Freshness()},
+			"gear":               {before.Gear.Freshness(), after.Gear.Freshness()},
+			"engine rpm":         {before.EngineRPM.Freshness(), after.EngineRPM.Freshness()},
+			"speed":              {before.SpeedMPS.Freshness(), after.SpeedMPS.Freshness()},
+			"throttle":           {before.Throttle.Freshness(), after.Throttle.Freshness()},
+			"brake":              {before.Brake.Freshness(), after.Brake.Freshness()},
+			"clutch":             {before.Clutch.Freshness(), after.Clutch.Freshness()},
+			"fuel":               {before.Fuel.Freshness(), after.Fuel.Freshness()},
+		})
+	}
+}
+
+func assertFreshnessTransition(t testing.TB, scope string, fields map[string][2]schema.Freshness) {
+	t.Helper()
+	for name, transition := range fields {
+		want := transition[0]
+		if want != schema.FreshnessMissing && want != schema.FreshnessInvalid {
+			want = schema.FreshnessStale
+		}
+		if transition[1] != want {
+			t.Errorf("%s %s freshness = %v, want %v (before %v)", scope, name, transition[1], want, transition[0])
+		}
+	}
+}
+
 type countingSink struct{ calls atomic.Int32 }
 
 func (sink *countingSink) WriteObservation(context.Context, Observation) error {

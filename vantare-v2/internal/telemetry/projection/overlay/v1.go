@@ -285,9 +285,15 @@ func capabilities(snapshot PayloadV1) []Capability {
 }
 
 func clonePayload(value PayloadV1) PayloadV1 {
-	value.Capabilities = append([]Capability(nil), value.Capabilities...)
-	value.Vehicles = append([]VehicleV1(nil), value.Vehicles...)
-	value.History.Samples = append([]ControlSampleV1(nil), value.History.Samples...)
+	capabilities := value.Capabilities
+	value.Capabilities = make([]Capability, len(capabilities))
+	copy(value.Capabilities, capabilities)
+	vehicles := value.Vehicles
+	value.Vehicles = make([]VehicleV1, len(vehicles))
+	copy(value.Vehicles, vehicles)
+	historySamples := value.History.Samples
+	value.History.Samples = make([]ControlSampleV1, len(historySamples))
+	copy(value.History.Samples, historySamples)
 	deltaSamples := value.DeltaHistory.Samples
 	value.DeltaHistory.Samples = make([]DeltaSampleV1, len(deltaSamples))
 	copy(value.DeltaHistory.Samples, deltaSamples)

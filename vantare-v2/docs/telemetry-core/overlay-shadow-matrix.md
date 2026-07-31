@@ -439,3 +439,64 @@ La policy mantiene 18/18 tipos: 2 exactos, 10 parciales, 5 no comparables y 1
 externo. Nombres e IDs participan en la correlación interna, pero el informe
 diagnóstico solo conserva paths y observaciones redactadas. Los cuatro cruces
 old/new están fijados por tests; el golden anterior se conserva intacto.
+
+## Resultado parcial D8 de ISA-129
+
+El harness único ya recorre una captura Shared Memory real y sanitizada de
+LMU 1.4 por la cadena:
+
+```text
+Driver/Fusion -> BatchMapper -> Reducer -> SessionCoordinator
+-> Derive -> Overlay Projection v1
+```
+
+La captura de pista conserva su hash fijado, 38 vehículos y un jugador
+correlacionado. Veinte ejecuciones independientes producen bytes idénticos en
+la proyección (`2ef6f2cbe10973b12bdc8a695dfc5578501c05e48c06079e8cd20e03a47f605c`),
+con una sola apertura y un solo cierre de `LMU_Data` por ejecución. La captura
+real de menú se detiene antes de `Batch`: no tiene identidad de sesión válida,
+no tiene jugador ni parrilla y no puede convertirse en payload live.
+
+Sobre la observación real de pista, una secuencia canónica controlada prueba
+que reordenar filas no cambia identidades, omitir y readmitir un slot incrementa
+su generación, y un reset de sesión o cambio de vehículo jugador avanza el
+epoch. Estas transiciones son tests de contrato; no se presentan como capturas
+reales adicionales. El test de reloj congelado verifica además la transición
+live -> stale -> live y ahora enumera todos los campos admitidos de sesión y de
+cada vehículo.
+
+El trace real D6 de 1.846 muestras y tres cruces de meta ya no se limita a un
+hash. Se reproduce por `BatchMapper -> Reducer -> SessionCoordinator -> Derive
+-> Overlay v1`: antes de completar una vuelta de referencia, Delta permanece
+missing; después aparece como valor derivado fresh. La primera proyección real
+con delta queda fijada en un golden que atraviesa también el decoder de
+transporte, el decoder Overlay v1 y el adapter TypeScript. Ese cruce descubrió
+y corrigió que el clon de una proyección vacía convertía arrays JSON vacíos en
+`null`, forma que el contrato TypeScript rechaza.
+
+El gate también encontró y corrigió una pérdida de semántica de freshness: al
+congelarse el reloj de origen, el driver marcaba stale el reloj pero no todos
+los campos admitidos del vehículo. Ahora todas las señales Shared Memory,
+incluido `InPit`, fuel, gaps y controles, caducan juntas sin mutar el snapshot
+anterior.
+
+La evidencia ejecutable está fijada en
+`internal/telemetry/drivers/lmu/testdata/menu_track_pit_disconnect_v1.golden.json`.
+Ese golden declara de forma cerrada dos gates que **siguen pendientes**:
+
+- no existe una secuencia sanitizada y verificable de LMU 1.4
+  garaje -> pit lane -> outlap con `InPit=false/true/false`;
+- no existe una secuencia real grabada de estado disconnect/reconnect.
+
+Se localizaron capturas históricas de boxes y outlap del antiguo módulo
+Engineer, pero no demuestran de forma verificable el build LMU 1.4 y no se han
+reclasificado ni copiado. No se permite reemplazar ninguno de los dos gates
+por fixtures sintéticos. Las vueltas reales válidas para Delta sí se conservan
+en el trace hash-pinned D6 y no necesitan repetirse.
+
+Por tanto, D8 cubre menú, pista, determinismo, ownership, freshness,
+reorden/generaciones, resets/cambio de jugador y las vueltas Delta reales hasta
+Go y TypeScript. Los dos gates reales de pit y desconexión permanecen abiertos.
+ISA-129 debe seguir `In Progress` e ISA-106 bloqueada hasta que D9 pueda aportar
+esas secuencias; no se permite cerrarlas con transiciones controladas ni con
+capturas históricas sin build verificable.

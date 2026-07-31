@@ -358,6 +358,8 @@ func runtimeState(observation Observation) drivercontract.State {
 
 func withFreshness(value Observation, freshness schema.Freshness) Observation {
 	value.SourceTime = copyFreshness(value.SourceTime, freshness)
+	value.EndTime = copyFreshness(value.EndTime, freshness)
+	value.MaximumLaps = copyFreshness(value.MaximumLaps, freshness)
 	value.TrackName = copyFreshness(value.TrackName, freshness)
 	value.SessionType = copyFreshness(value.SessionType, freshness)
 	value.VehicleCount = copyFreshness(value.VehicleCount, freshness)
@@ -370,6 +372,41 @@ func withFreshness(value Observation, freshness schema.Freshness) Observation {
 	value.Throttle = copyFreshness(value.Throttle, freshness)
 	value.Brake = copyFreshness(value.Brake, freshness)
 	value.Clutch = copyFreshness(value.Clutch, freshness)
+	value.PlayerPosition = copyFreshness(value.PlayerPosition, freshness)
+	value.CompletedLaps = copyFreshness(value.CompletedLaps, freshness)
+	value.PitStopCount = copyFreshness(value.PitStopCount, freshness)
+	value.InPit = copyFreshness(value.InPit, freshness)
+	value.Fuel = copyFreshness(value.Fuel, freshness)
+	value.Vehicles = append([]VehicleObservation(nil), value.Vehicles...)
+	for index := range value.Vehicles {
+		vehicle := &value.Vehicles[index]
+		vehicle.DriverName = copyFreshness(vehicle.DriverName, freshness)
+		vehicle.VehicleName = copyFreshness(vehicle.VehicleName, freshness)
+		vehicle.VehicleClass = copyFreshness(vehicle.VehicleClass, freshness)
+		vehicle.Player = copyFreshness(vehicle.Player, freshness)
+		vehicle.Position = copyFreshness(vehicle.Position, freshness)
+		vehicle.CompletedLaps = copyFreshness(vehicle.CompletedLaps, freshness)
+		vehicle.Sector = copyFreshness(vehicle.Sector, freshness)
+		vehicle.LapDistance = copyFreshness(vehicle.LapDistance, freshness)
+		vehicle.BestLapTime = copyFreshness(vehicle.BestLapTime, freshness)
+		vehicle.LastLapTime = copyFreshness(vehicle.LastLapTime, freshness)
+		vehicle.EstimatedLapTime = copyFreshness(vehicle.EstimatedLapTime, freshness)
+		vehicle.InPit = copyFreshness(vehicle.InPit, freshness)
+		vehicle.PitStopCount = copyFreshness(vehicle.PitStopCount, freshness)
+		vehicle.PenaltyCount = copyFreshness(vehicle.PenaltyCount, freshness)
+		vehicle.TimeBehindLeader = copyFreshness(vehicle.TimeBehindLeader, freshness)
+		vehicle.LapsBehindLeader = copyFreshness(vehicle.LapsBehindLeader, freshness)
+		vehicle.TimeBehindNext = copyFreshness(vehicle.TimeBehindNext, freshness)
+		vehicle.LapsBehindNext = copyFreshness(vehicle.LapsBehindNext, freshness)
+		vehicle.LapNumber = copyFreshness(vehicle.LapNumber, freshness)
+		vehicle.Gear = copyFreshness(vehicle.Gear, freshness)
+		vehicle.EngineRPM = copyFreshness(vehicle.EngineRPM, freshness)
+		vehicle.SpeedMPS = copyFreshness(vehicle.SpeedMPS, freshness)
+		vehicle.Throttle = copyFreshness(vehicle.Throttle, freshness)
+		vehicle.Brake = copyFreshness(vehicle.Brake, freshness)
+		vehicle.Clutch = copyFreshness(vehicle.Clutch, freshness)
+		vehicle.Fuel = copyFreshness(vehicle.Fuel, freshness)
+	}
 	return value
 }
 

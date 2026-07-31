@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "simulatorBuild": "1.4.0.0",
+  "menuFixtureSha256": "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0",
+  "trackFixtureSha256": "c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5",
+  "trackOverlayProjectionSha256": "2ef6f2cbe10973b12bdc8a695dfc5578501c05e48c06079e8cd20e03a47f605c",
+  "deterministicRuns": 20,
+  "trackVehicleCount": 38,
+  "trackPlayerPresent": true,
+  "deltaTraceSha256": "d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938",
+  "garagePitOutlap": {
+    "status": "missing-real-lmu-1.4-evidence",
+    "syntheticSubstitutionAllowed": false
+  },
+  "disconnectReconnect": {
+    "status": "missing-real-recorded-status-sequence",
+    "syntheticSubstitutionAllowed": false
+  }
+}

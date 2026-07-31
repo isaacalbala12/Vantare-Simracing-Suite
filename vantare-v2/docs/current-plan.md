@@ -101,6 +101,20 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   frontend 297/297 archivos y 2.019/2.019 tests, lint focal, build y
   `diff --check` pasan. Review final `APPROVE`, P0/P1/P2/P3 = 0. Siguiente
   microcorte: D8.
+- D8 implementado hasta el límite de evidencia real disponible: el harness
+  recorre LMU 1.4 Shared Memory -> Fusion -> BatchMapper -> Reducer ->
+  SessionCoordinator -> Derive -> Overlay Projection v1 con una sola apertura,
+  38 vehículos y salida byte-idéntica en 20 ejecuciones. Menú falla cerrado y
+  no genera payload live. Se corrigió la caducidad incompleta de todos los
+  campos cuando se congela el reloj de origen. Sobre la observación real, tests
+  canónicos separados cubren reorder, vacancy/generation, reset de sesión y
+  cambio de jugador sin presentarlos como capturas. El trace real D6 atraviesa
+  BatchMapper -> Reducer -> SessionCoordinator -> Derive -> Overlay v1 y su
+  primera proyección delta atraviesa decoder/adapter TypeScript; Delta es
+  missing antes de una referencia completa y fresh después. Este cruce corrigió
+  además arrays vacíos serializados como `null`. Siguen faltando dos gates no
+  sustituibles por datos sintéticos: secuencia LMU 1.4 garaje/pit/outlap y estado
+  real disconnect/reconnect. ISA-129 permanece `In Progress` e ISA-106 bloqueada.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

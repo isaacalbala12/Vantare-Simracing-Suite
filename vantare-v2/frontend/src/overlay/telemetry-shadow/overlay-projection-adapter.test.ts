@@ -18,6 +18,46 @@ import {
 } from "./overlay-projection-adapter";
 
 describe("overlay projection adapter", () => {
+  it("decodes and adapts the first real LMU delta projection produced by Go", () => {
+    const projection = readGolden("lmu-1.4-delta-overlay-v1.golden.json");
+    const mapping = requireMapped(
+      adaptOverlayProjectionToSnapshot(projection, {
+        transportState: "live",
+      }),
+    );
+
+    expect(projection).toMatchObject({
+      epoch: 1,
+      sequence: 981,
+      payload: {
+        playerVehicleId: "lmu-slot-7-generation-1",
+        playerDeltaSeconds: {
+          present: true,
+          value: -0.030563504,
+          provenance: "derived",
+          freshness: "fresh",
+        },
+      },
+    });
+    expect(mapping.snapshot).toMatchObject({
+      status: "ready",
+      player: {
+        inPit: false,
+        deltaSeconds: -0.030563504,
+      },
+    });
+    expect(mapping.snapshot.scoring).toHaveLength(1);
+    expect(mapping.snapshot.scoring[0]).toMatchObject({
+      id: "lmu-slot-7-generation-1",
+      isPlayer: true,
+      inPits: false,
+      lapDistanceMeters: 19.51011848449707,
+    });
+    expect(mapping.snapshot.derived?.deltaHistory).toEqual([
+      { capturedAt: Date.parse("2026-07-31T18:01:38Z"), deltaSeconds: -0.030563504 },
+    ]);
+  });
+
   it("maps the demonstrated golden fields and identifies the player by ID", () => {
     const mapping = requireMapped(
       adaptOverlayProjectionToSnapshot(readGolden(), {

@@ -60,6 +60,43 @@ func TestHarnessOnlyReplayIsNotImportedByProductionAnywhere(t *testing.T) {
 	}
 }
 
+func TestLMUOverlayRuntimeChainHasNoLegacyMockOrProductUICoupling(t *testing.T) {
+	t.Parallel()
+
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate architecture test")
+	}
+	telemetryRoot := filepath.Dir(filename)
+	files := []string{
+		"drivers/lmu/driver.go",
+		"drivers/lmu/batch_mapper.go",
+		"core/reducer.go",
+		"core/session_coordinator.go",
+		"derive/pipeline.go",
+		"projection/overlay/v1.go",
+	}
+	forbidden := []string{
+		modulePath + "/internal/telemetry/lmu",
+		"BuildSyntheticBuffer",
+		"createMockSource",
+		modulePath + "/internal/app",
+		modulePath + "/internal/server",
+		modulePath + "/internal/overlay",
+	}
+	for _, relative := range files {
+		contents, err := os.ReadFile(filepath.Join(telemetryRoot, filepath.FromSlash(relative)))
+		if err != nil {
+			t.Fatalf("read runtime chain file %s: %v", relative, err)
+		}
+		for _, token := range forbidden {
+			if strings.Contains(string(contents), token) {
+				t.Errorf("runtime chain file %s references forbidden %s", relative, token)
+			}
+		}
+	}
+}
+
 func TestValidateImport(t *testing.T) {
 	t.Parallel()
 

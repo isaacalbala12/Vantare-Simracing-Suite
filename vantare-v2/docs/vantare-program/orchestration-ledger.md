@@ -1045,6 +1045,18 @@ ISA-105 / TC-07A — cierre D5:
 - D6 review adversarial del delta completo en ejecución. Sin merge, promoción
   ni cutover.
 
+ISA-105 / TC-07A — primera review D6:
+
+- Veredicto `REQUEST CHANGES`: P0=0, P1=0, P2=4, P3=1.
+- P2: el cap de 64 entradas podía consumir igualdad y ocultar todos los paths
+  mismatch; `pitStopCount` se exponía sin consumidor; varios `sourcePaths`
+  explicaban dependencias incorrectas; el handoff de producto seguía
+  describiendo ISA-105 como pendiente.
+- P3: el plan enlazaba un nombre inexistente para ADR 0004.
+- Corrección delegada con TDD para los tres hallazgos de código; documentos y
+  continuidad se corrigen en ambos handoffs. Re-review obligatoria antes de PR
+  o transición de Linear. Sin merge, promoción ni cutover.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

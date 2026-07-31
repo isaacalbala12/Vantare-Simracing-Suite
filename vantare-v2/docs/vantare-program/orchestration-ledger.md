@@ -898,6 +898,28 @@ Cierre definitivo backend D4 ISA-104:
 - Solo queda cerrar los findings UI/runner y la evidencia final D4. Sin commit
   de producto, merge o promoción.
 
+Cierre definitivo frontend D4 ISA-104:
+
+- El cliente recalcula SHA-256 mediante Web Crypto sobre los bytes UTF-8 y
+  rechaza hash o tamaño incoherentes antes de mostrar, copiar o descargar.
+  Fixture y tests usan un digest real.
+- El runner lanza Vite directamente y solo termina su propio PID/árbol; un
+  puerto 5184 ajeno provoca fallo sin terminar procesos de terceros.
+- Contraste de labels diagnostics cumple AA, los campos comunican presencia de
+  forma accesible, current no disponible explica el motivo sin Inspect y todo
+  el bloque portugués usa pt-BR.
+- `DiagnosticsPanel` baja de 666 a 262 líneas; conexión, sesiones, detalle y
+  paquete son vistas puras pequeñas, sin managers ni abstracciones nuevas.
+- Evidencia visual separada: current válido, future metadata-only, corrupt
+  metadata-only, y layouts wide/medium/compact. Seis capturas revisadas sin
+  overflow, solapes o truncados relevantes.
+- Re-review final UI: `ACCEPT`, P0/P1/P2/P3 = 0. Vitest 63/63, build, lint
+  focal, Playwright final, consola limpia, bytes exactos, diff-check y cleanup
+  del puerto: PASS.
+- D4 queda cerrado. Siguiente paso: D7, documentación/evidencia consolidada,
+  gates globales, reviews finales y entrega de ISA-104. Sin commit de producto,
+  merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

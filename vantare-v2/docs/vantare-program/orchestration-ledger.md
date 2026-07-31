@@ -1028,6 +1028,23 @@ ISA-105 / TC-07A — cierre D4:
   Playwright 3×5, lint focal, build y diff-check: PASS.
 - D5 evidencia y gates globales en ejecución. Sin wiring ni promoción.
 
+ISA-105 / TC-07A — cierre D5:
+
+- Evidencia y documentación publicadas hasta `f2a1ac3`.
+- `coverage.json` deriva del registro/políticas reales: 18/18, con un exacto,
+  cinco parciales, once no comparables y un externo.
+- `report.json` deriva del comparator real: 2 widgets, 31 campos, 19 iguales y
+  12 diferencias; sin PII, canarios, rutas ni payload raw.
+- Capturas wide/medium/compact e índice SHA-256 reproducibles. Review
+  independiente: `APPROVE`, P0/P1/P2/P3 = 0.
+- Gates: Go telemetry/app PASS; frontend 297 archivos/1.993 tests PASS; build y
+  Playwright PASS; alcance, privacidad y teardown PASS.
+- Visual Crystal conserva el fallo 100 % reproducido en la base exacta; los
+  tres Original quedan en 0 %. Benchmark canvas incumple en ISA-105 y base.
+  No se actualizaron baselines ni se tocó canvas/renderers.
+- D6 review adversarial del delta completo en ejecución. Sin merge, promoción
+  ni cutover.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

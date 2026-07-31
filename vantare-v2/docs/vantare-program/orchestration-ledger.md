@@ -1153,6 +1153,18 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 - Plan global aprobado contra Linear/AGENTS; siguiente acción D0 documental.
 - Sin código de comportamiento, merge, promoción ni cutover.
 
+### 2026-07-31 — ISA-129 D0 implementado, pendiente de review
+
+- Alcance exacto: plan ISA-129, nueva procedencia LMU/Overlay, matriz shadow y
+  `docs/current-plan.md`.
+- Documentadas admisión, autoridad SHM/REST, hashes 1.3, LMU 1.4 pendiente,
+  P0 mock/bridge/grid y señales que permanecen missing.
+- Baseline anterior/posterior, Telemetry focal, app/server, hashes de fixtures
+  y diff-check PASS.
+- Sin código de comportamiento, commit de producto, push, PR, Linear
+  transition, merge, promoción ni cutover.
+- Siguiente acción: review independiente D0; no comenzar D1 antes de aceptar.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

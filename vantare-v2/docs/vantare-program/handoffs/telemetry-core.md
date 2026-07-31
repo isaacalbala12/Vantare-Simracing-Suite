@@ -151,6 +151,16 @@ Tercera review del plan ISA-129:
   literal.
 - Plan global aprobado contra ISA-129 y AGENTS; D0 puede comenzar.
 
+D0 documental implementado, pendiente de review:
+
+- Cuatro documentos exactos: plan ISA-129, nueva procedencia LMU/Overlay,
+  matriz shadow y `docs/current-plan.md`.
+- Matrices §1.4/§1.5, hashes LMU 1.3, incompatibilidad 1.4 pendiente,
+  P0 mock/bridge/grid y exclusiones missing registrados.
+- Baseline previo/posterior, Telemetry focal, app/server, hashes y diff-check
+  pasan.
+- Sin código, commit de producto, push, PR, merge, promoción ni cutover.
+
 ## Gate final
 
 TC-09 exige Core, recording, Overlay y Engineer simultáneos; soak automatizado
@@ -173,7 +183,8 @@ P0=0/P1=2/P2=4/P3=0; sus seis hallazgos quedaron corregidos. La segunda review
 rechazó con P0=0/P1=2/P2=1/P3=1 por autoridad SHM/REST, evidencia real de
 Delta, reutilización de IDs del catálogo y numeración/rollback. La tercera
 review fue `APPROVE`, P0/P1/P2/P3=0. Puede comenzar D0; todavía no hay código
-de comportamiento.
+de comportamiento. D0 documental ya está implementado con checks en verde y
+espera review independiente antes de commit.
 
 Histórico ISA-105: D1–D5 aprobados y publicados en `f2a1ac3`. Cobertura real:
 18/18, con un exacto, cinco parciales, once no comparables y un externo. La

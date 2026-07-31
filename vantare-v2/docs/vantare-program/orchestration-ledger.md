@@ -1001,6 +1001,21 @@ ISA-105 / TC-07A — decoder y adapter D1/D2:
   contents no predeterminados. Corrección TDD en curso. Sin wiring ni
   promoción.
 
+ISA-105 / TC-07A — cierre D3:
+
+- Comparator y sanitizador publicados en `f2f1c3c`; contratos alineados en
+  `351863d`.
+- Tres ciclos de review cerraron calidad exacta por vehículo, identidad real de
+  Broadcast, dependencias reales del builder, fallback
+  `lapNumber ?? totalLaps`, 128 widgets contabilizados con 64 diferencias
+  serializadas, overflow extremo y fixtures no predeterminadas.
+- Re-review final D3: `APPROVE`, P0/P1/P2/P3 = 0.
+- Gates D1–D3: 62 tests focales, ESLint focal, build frontend y diff-check:
+  PASS. La suite global reproducida durante el worker conserva un único test
+  heredado de drag fuera del corte.
+- D4 harness diagnóstico explícito delegado. Sigue prohibido cualquier wiring
+  productivo, cambio de renderer/CSS/canvas o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

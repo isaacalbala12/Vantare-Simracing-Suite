@@ -61,7 +61,7 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 | Cerradas | ISA-23–37, incluyendo ISA-96/97/100 según Linear |
 | Cerradas técnicamente | ISA-38–41 e ISA-101–103 en la cadena apilada |
 | En revisión | ISA-104 / TC-06D, PR draft `#40` |
-| En ejecución | ISA-105 / TC-07A, D1/D2 publicados en `2de5165` |
+| En ejecución | ISA-105 / TC-07A, D1–D3 publicados en `351863d` |
 | Nuevo bloqueo previo a shadow | ISA-129 / TC-07A.1 |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
@@ -82,9 +82,9 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-105 D1/D2 aprobados y publicados en `2de5165`: decoder fiel al
-productor Go y adapter `mapped | blocked`, sin datos inventados ni wiring
-productivo. La review obligó a aceptar el zero-value missing real, separar la
-semántica de `controlsHistory`, rechazar identidades vacías y contener overflow
-de velocidad. D3 está en corrección adversarial; ISA-129 sigue siendo
-dependencia obligatoria previa a ISA-106. Sin promoción.
+2026-07-31, ISA-105 D1–D3 aprobados y publicados en `351863d`: decoder,
+adapter y comparator sanitizado de los 18 widgets. D3 cerró calidad por
+vehículo, identidad real, fallback ordenado, 128 widgets/64 diferencias y
+overflow extremo tras tres reviews adversariales; P0/P1/P2/P3 = 0. D4 harness
+explícito en ejecución. ISA-129 sigue siendo dependencia obligatoria previa a
+ISA-106. Sin wiring productivo ni promoción.

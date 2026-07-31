@@ -77,6 +77,13 @@ func TestValidateImport(t *testing.T) {
 		{name: "catalog rejects third party", edge: importEdge{Package: "internal/telemetry/catalog", Import: "example.com/dependency"}, wantErr: true},
 		{name: "catalog rejects core", edge: importEdge{Package: "internal/telemetry/catalog", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
 		{name: "catalog rejects legacy telemetry", edge: importEdge{Package: "internal/telemetry/catalog", Import: modulePath + "/internal/telemetry/diff"}, wantErr: true},
+		{name: "diagnostics may use recording", edge: importEdge{Package: "internal/telemetry/diagnostics", Import: modulePath + "/internal/telemetry/recording"}},
+		{name: "diagnostics may use own tree", edge: importEdge{Package: "internal/telemetry/diagnostics/export", Import: modulePath + "/internal/telemetry/diagnostics/model"}},
+		{name: "diagnostics rejects core", edge: importEdge{Package: "internal/telemetry/diagnostics", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
+		{name: "diagnostics rejects derive", edge: importEdge{Package: "internal/telemetry/diagnostics", Import: modulePath + "/internal/telemetry/derive"}, wantErr: true},
+		{name: "diagnostics rejects projection", edge: importEdge{Package: "internal/telemetry/diagnostics", Import: modulePath + "/internal/telemetry/projection/analysis"}, wantErr: true},
+		{name: "diagnostics rejects driver contracts", edge: importEdge{Package: "internal/telemetry/diagnostics", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
+		{name: "diagnostics rejects concrete driver", edge: importEdge{Package: "internal/telemetry/diagnostics", Import: modulePath + "/internal/telemetry/drivers/lmu"}, wantErr: true},
 		{name: "driver contract may use schema", edge: importEdge{Package: "internal/telemetry/driver", Import: modulePath + "/internal/telemetry/schema/envelope"}},
 		{name: "driver contract rejects core", edge: importEdge{Package: "internal/telemetry/driver", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
 		{name: "concrete driver may use core port", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/core"}},
@@ -429,6 +436,15 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/recording",
 		) {
 			return fmt.Errorf("recording may only import schema, core, and its own tree within telemetry, not %s", edge.Import)
+		}
+	}
+
+	if edge.Package == "internal/telemetry/diagnostics" || strings.HasPrefix(edge.Package, "internal/telemetry/diagnostics/") {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/recording",
+			modulePath+"/internal/telemetry/diagnostics",
+		) {
+			return fmt.Errorf("diagnostics may only import recording and its own tree within telemetry, not %s", edge.Import)
 		}
 	}
 	return nil

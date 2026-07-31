@@ -116,6 +116,23 @@ type ProfileConfig struct {
 	Source        *ProfileSourceMeta           `json:"source,omitempty"`
 }
 
+// CopyProfile returns a deep copy suitable for crossing service boundaries.
+// Callers may mutate the result without changing the source profile.
+func CopyProfile(profile *ProfileConfig) *ProfileConfig {
+	if profile == nil {
+		return nil
+	}
+	copied := *profile
+	copied.Widgets = copyWidgetConfigs(profile.Widgets)
+	copied.Layouts = CopyProfileLayouts(profile.Layouts)
+	copied.Variants = CopyProfileVariants(profile.Variants)
+	if profile.Source != nil {
+		source := *profile.Source
+		copied.Source = &source
+	}
+	return &copied
+}
+
 // LoadFile reads a profile JSON from disk.
 func LoadFile(path string) (*ProfileConfig, error) {
 	data, err := os.ReadFile(path)

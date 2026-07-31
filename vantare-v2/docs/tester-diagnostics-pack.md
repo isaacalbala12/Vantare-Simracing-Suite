@@ -1,5 +1,13 @@
 # Tester Diagnostics Pack y Bug-Report Bundle
 
+> **Guía histórica sustituida para el paquete automático (ISA-104 / TC-06D).**
+> No se deben solicitar ni empaquetar perfiles, ajustes, logs generales o rutas
+> personales siguiendo las instrucciones antiguas de este documento. El
+> diagnóstico vigente es un JSON versionado construido mediante allowlist, se
+> muestra completo antes de copiar/descargar y no contiene telemetría, bases de
+> datos, identidad ni secretos. Las secciones siguientes se mantienen solo para
+> documentar el proceso Alpha anterior.
+
 Este documento sirve como inventario y guía para recopilar diagnósticos detallados de los testers privados de **Vantare Suite**, además de presentar el plan técnico para una futura funcionalidad de "Copiar Diagnóstico" integrada en la aplicación.
 
 ---

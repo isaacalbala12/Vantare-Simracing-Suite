@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -119,6 +120,59 @@ func configsDir() string {
 	}
 
 	return ""
+}
+
+// telemetrySessionsRoot is the single composition authority for the current
+// and future telemetry session writer. Installed builds keep session data in
+// LocalAppData; portable and development builds keep it beside their root.
+func telemetrySessionsRoot(cfgDir string) (string, error) {
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve user config directory: %w", err)
+	}
+	localDataDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve local data directory: %w", err)
+	}
+	return resolveTelemetrySessionsRoot(cfgDir, userConfigDir, localDataDir)
+}
+
+func resolveTelemetrySessionsRoot(
+	cfgDir string,
+	userConfigDir string,
+	localDataDir string,
+) (string, error) {
+	if cfgDir == "" || !filepath.IsAbs(cfgDir) {
+		return "", fmt.Errorf("configs directory must be absolute")
+	}
+	cfgDir = filepath.Clean(cfgDir)
+	installedConfigDir := filepath.Join(userConfigDir, "Vantare", "configs")
+	if samePath(cfgDir, installedConfigDir) {
+		if localDataDir == "" || !filepath.IsAbs(localDataDir) {
+			return "", fmt.Errorf("local data directory must be absolute")
+		}
+		return filepath.Join(
+			filepath.Clean(localDataDir),
+			"Vantare",
+			"telemetry",
+			"sessions",
+		), nil
+	}
+	return filepath.Join(
+		filepath.Dir(cfgDir),
+		"data",
+		"telemetry",
+		"sessions",
+	), nil
+}
+
+func samePath(left, right string) bool {
+	left = filepath.Clean(left)
+	right = filepath.Clean(right)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(left, right)
+	}
+	return left == right
 }
 
 type wailsEmitter struct {
@@ -593,6 +647,7 @@ func main() {
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
 	var launcherSvc *launcher.Service
+	var diagnosticsBridge *app.DiagnosticsBridge
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			if overlayController != nil {
@@ -619,6 +674,9 @@ func main() {
 			// the defer path but valid in the Wails OnShutdown path).
 			if launcherSvc != nil {
 				launcherSvc.CancelAll()
+			}
+			if diagnosticsBridge != nil {
+				diagnosticsBridge.Close()
 			}
 			vapp.StopTelemetry()
 		})
@@ -929,7 +987,14 @@ func main() {
 
 	// Diagnostics service
 	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, vapp)
-	wailsApp.RegisterService(application.NewService(diagSvc))
+	sessionsRoot, err := telemetrySessionsRoot(cfgDir)
+	if err != nil {
+		// Keep the client on a closed unavailable state without logging paths.
+		log.Printf("warning: diagnostics session storage is unavailable")
+		sessionsRoot = ""
+	}
+	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
+	diagnosticsBridge.RegisterHandlers(wailsApp)
 
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
@@ -1141,16 +1206,6 @@ func main() {
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
 		emitter.Emit("settings", settingsSvc.Settings())
-	})
-
-	wailsApp.Event.On("diagnostics:get", func(event *application.CustomEvent) {
-		diag, err := diagSvc.GetDiagnostics()
-		if err != nil {
-			log.Printf("diagnostics:get error: %v", err)
-			emitter.Emit("diagnostics:error", map[string]any{"message": err.Error()})
-			return
-		}
-		emitter.Emit("diagnostics", diag)
 	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {

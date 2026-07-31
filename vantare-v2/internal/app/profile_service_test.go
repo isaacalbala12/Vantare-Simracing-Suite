@@ -61,6 +61,34 @@ func TestProfileServiceLoadAndGet(t *testing.T) {
 	}
 }
 
+func TestProfileServiceGetProfileReturnsDefensiveCopy(t *testing.T) {
+	svc := app.NewProfileService("unused", nil, nil)
+	svc.SetProfile(&config.ProfileConfig{
+		DisplayMode: config.ModeRacing,
+		Widgets: []config.WidgetConfig{{
+			ID:      "delta",
+			Type:    "delta",
+			Enabled: true,
+			Props: map[string]any{
+				"style": map[string]any{"accent": "red"},
+			},
+		}},
+	})
+
+	first := svc.GetProfile()
+	first.DisplayMode = config.ModeEdit
+	first.Widgets[0].Props["style"].(map[string]any)["accent"] = "blue"
+
+	second := svc.GetProfile()
+	if second.DisplayMode != config.ModeRacing {
+		t.Fatalf("internal display mode mutated through DTO: %q", second.DisplayMode)
+	}
+	accent := second.Widgets[0].Props["style"].(map[string]any)["accent"]
+	if accent != "red" {
+		t.Fatalf("internal props mutated through DTO: %v", accent)
+	}
+}
+
 func TestProfileServiceSaveLayout(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.json")

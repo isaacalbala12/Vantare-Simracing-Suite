@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -13,6 +14,8 @@ import (
 
 // ProfileService exposes profile management to the Wails frontend.
 type ProfileService struct {
+	mu          sync.RWMutex
+	operationMu sync.Mutex
 	path        string
 	profile     *config.ProfileConfig
 	mgr         *window.Manager
@@ -31,42 +34,64 @@ func NewProfileService(path string, mgr *window.Manager, emitter EventEmitter) *
 
 // SetProfilesDir sets the directory used to discover profiles for cycling.
 func (s *ProfileService) SetProfilesDir(dir string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.profilesDir = dir
 }
 
 // Load reads the profile from disk and stores it in memory.
 func (s *ProfileService) Load() error {
-	return s.LoadActiveProfile(s.path)
+	s.mu.RLock()
+	path := s.path
+	s.mu.RUnlock()
+	return s.LoadActiveProfile(path)
 }
 
 // LoadActiveProfile loads a profile file and sets it as the active save target.
 func (s *ProfileService) LoadActiveProfile(path string) error {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
 	p, err := config.LoadFile(path)
 	if err != nil {
 		return err
 	}
+	s.mu.Lock()
 	s.path = path
-	s.profile = p
+	s.profile = config.CopyProfile(p)
+	s.mu.Unlock()
 	return nil
 }
 
 // GetProfile returns the current profile (callable from frontend).
 func (s *ProfileService) GetProfile() *config.ProfileConfig {
-	return s.profile
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return config.CopyProfile(s.profile)
 }
 
 // SaveProfile persists the given profile to the configured profile path.
 func (s *ProfileService) SaveProfile(p *config.ProfileConfig) error {
-	if s.path == "" {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	candidate := config.CopyProfile(p)
+	if candidate == nil {
+		return fmt.Errorf("profile is required")
+	}
+	s.mu.RLock()
+	path := s.path
+	s.mu.RUnlock()
+	if path == "" {
 		return fmt.Errorf("profile path not configured")
 	}
-	if err := config.SaveFile(s.path, p); err != nil {
+	if err := config.SaveFile(path, candidate); err != nil {
 		return fmt.Errorf("save profile: %w", err)
 	}
-	s.profile = p
-	s.EmitLoaded()
+	s.mu.Lock()
+	s.profile = candidate
+	s.mu.Unlock()
+	s.emitLoaded(config.CopyProfile(candidate))
 	if s.emitter != nil {
-		s.emitter.Emit("hub:profile", map[string]any{"profile": p})
+		s.emitter.Emit("hub:profile", map[string]any{"profile": config.CopyProfile(candidate)})
 		s.emitter.Emit("profile:saved", map[string]any{"ok": true})
 	}
 	return nil
@@ -83,36 +108,38 @@ func (s *ProfileService) SaveLayout(widgets []config.WidgetConfig) error {
 // Uses skipWindowRefresh (bounds-only resize) and re-emits profile:loaded for layoutOrigin sync.
 // On a disk write error the in-memory profile is rolled back to its previous state.
 func (s *ProfileService) SaveProfileState(widgets []config.WidgetConfig, variants []config.WidgetVariantConfig) error {
-	if s.profile == nil {
-		return fmt.Errorf("profile not loaded")
-	}
 	if len(widgets) == 0 {
 		return fmt.Errorf("no widgets to save")
 	}
-	// Persist first; only mutate memory after success so an I/O error leaves
-	// the in-memory profile consistent with disk.
-	backupWidgets := s.profile.Widgets
-	backupLayouts := config.CopyProfileLayouts(s.profile.Layouts)
-	backupVariants := config.CopyProfileVariants(s.profile.Variants)
-	config.SetGeneralLayoutWidgets(s.profile, widgets)
-	if variants != nil {
-		s.profile.Variants = variants
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	s.mu.RLock()
+	candidate := config.CopyProfile(s.profile)
+	path := s.path
+	s.mu.RUnlock()
+	if candidate == nil {
+		return fmt.Errorf("profile not loaded")
 	}
-	if err := config.SaveFile(s.path, s.profile); err != nil {
-		s.profile.Widgets = backupWidgets
-		s.profile.Layouts = backupLayouts
-		s.profile.Variants = backupVariants
+	config.SetGeneralLayoutWidgets(candidate, widgets)
+	if variants != nil {
+		candidate.Variants = config.CopyProfileVariants(variants)
+	}
+	if err := config.SaveFile(path, candidate); err != nil {
 		return err
 	}
+	s.mu.Lock()
+	s.profile = candidate
+	s.mu.Unlock()
+	snapshot := config.CopyProfile(candidate)
 	// skipWindowRefresh: bounds only, then refresh frontend layout origin
 	if s.mgr != nil {
-		s.mgr.ApplyProfile(s.profile, true)
+		s.mgr.ApplyProfile(snapshot, true)
 	}
 
 	if s.emitter != nil {
 		s.emitter.Emit("layout:saved", map[string]any{
 			"ok":      true,
-			"profile": s.profile,
+			"profile": config.CopyProfile(snapshot),
 		})
 		s.emitter.Emit("profile:saved", map[string]any{"ok": true})
 	}
@@ -121,19 +148,32 @@ func (s *ProfileService) SaveProfileState(widgets []config.WidgetConfig, variant
 
 // SetDisplayMode changes the mode and applies it to the window.
 func (s *ProfileService) SetDisplayMode(mode config.DisplayMode) error {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	s.mu.Lock()
 	if s.profile == nil {
+		s.mu.Unlock()
 		return fmt.Errorf("profile not loaded")
 	}
 	s.profile.DisplayMode = mode
+	snapshot := config.CopyProfile(s.profile)
+	s.mu.Unlock()
 	if s.mgr != nil {
-		s.mgr.ApplyProfile(s.profile, false)
+		s.mgr.ApplyProfile(snapshot, false)
 	}
 	return nil
 }
 
 // EmitLoaded emits the profile:loaded event with layout origin.
 func (s *ProfileService) EmitLoaded() {
-	if s.emitter == nil || s.profile == nil {
+	s.mu.RLock()
+	profile := config.CopyProfile(s.profile)
+	s.mu.RUnlock()
+	s.emitLoaded(profile)
+}
+
+func (s *ProfileService) emitLoaded(profile *config.ProfileConfig) {
+	if s.emitter == nil || profile == nil {
 		return
 	}
 	var origin config.Rect
@@ -141,10 +181,10 @@ func (s *ProfileService) EmitLoaded() {
 		// Desktop runtime overlay is always fullscreen for racing and edit modes,
 		// so profile coordinates are already window-local. Streaming keeps the
 		// shrink-wrap origin for any consumer that still needs it.
-		if s.profile.DisplayMode == config.ModeRacing || s.profile.DisplayMode == config.ModeEdit {
+		if profile.DisplayMode == config.ModeRacing || profile.DisplayMode == config.ModeEdit {
 			origin = config.Rect{}
 		} else {
-			origin = s.mgr.LayoutOrigin(s.profile)
+			origin = s.mgr.LayoutOrigin(profile)
 		}
 	} else {
 		// The hub-owned runtime overlay is fullscreen, so profile coordinates
@@ -152,47 +192,65 @@ func (s *ProfileService) EmitLoaded() {
 		origin = config.Rect{}
 	}
 	s.emitter.Emit("profile:loaded", map[string]any{
-		"profile":      s.profile,
+		"profile":      config.CopyProfile(profile),
 		"layoutOrigin": origin,
-		"windowMode":   string(s.profile.DisplayMode),
+		"windowMode":   string(profile.DisplayMode),
 	})
 }
 
 // Profile returns the loaded profile (for main.go startup).
 func (s *ProfileService) Profile() *config.ProfileConfig {
-	return s.profile
+	return s.GetProfile()
 }
 
 // Path returns the active profile file path.
 func (s *ProfileService) Path() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.path
 }
 
 // SetProfile replaces the in-memory profile (for fallback defaults).
 func (s *ProfileService) SetProfile(p *config.ProfileConfig) {
-	s.profile = p
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	s.mu.Lock()
+	s.profile = config.CopyProfile(p)
+	s.mu.Unlock()
 }
 
 // ApplyToWindow applies the current profile to the window.
 func (s *ProfileService) ApplyToWindow(skipRefresh bool) {
-	if s.profile != nil && s.mgr != nil {
-		s.mgr.ApplyProfile(s.profile, skipRefresh)
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	s.mu.RLock()
+	profile := config.CopyProfile(s.profile)
+	s.mu.RUnlock()
+	if profile != nil && s.mgr != nil {
+		s.mgr.ApplyProfile(profile, skipRefresh)
 	}
 }
 
 // listProfileFiles returns sorted profile JSON file paths from profilesDir.
 func (s *ProfileService) listProfileFiles() []string {
-	if s.profilesDir == "" {
+	s.mu.RLock()
+	profilesDir := s.profilesDir
+	s.mu.RUnlock()
+	return listProfileFiles(profilesDir)
+}
+
+func listProfileFiles(profilesDir string) []string {
+	if profilesDir == "" {
 		return nil
 	}
-	entries, err := os.ReadDir(s.profilesDir)
+	entries, err := os.ReadDir(profilesDir)
 	if err != nil {
 		return nil
 	}
 	var files []string
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && !strings.Contains(e.Name(), "app-settings") {
-			files = append(files, filepath.Join(s.profilesDir, e.Name()))
+			files = append(files, filepath.Join(profilesDir, e.Name()))
 		}
 	}
 	sort.Strings(files)
@@ -210,7 +268,13 @@ func (s *ProfileService) PreviousProfile() error {
 }
 
 func (s *ProfileService) cycleProfile(direction int) error {
-	files := s.listProfileFiles()
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	s.mu.RLock()
+	profilesDir := s.profilesDir
+	activePath := s.path
+	s.mu.RUnlock()
+	files := listProfileFiles(profilesDir)
 	if len(files) == 0 {
 		return fmt.Errorf("no profiles available")
 	}
@@ -219,7 +283,7 @@ func (s *ProfileService) cycleProfile(direction int) error {
 	currentIdx := -1
 	for i, f := range files {
 		// Match by resolved path or filename
-		if f == s.path || filepath.Base(f) == filepath.Base(s.path) {
+		if f == activePath || filepath.Base(f) == filepath.Base(activePath) {
 			currentIdx = i
 			break
 		}
@@ -237,10 +301,14 @@ func (s *ProfileService) cycleProfile(direction int) error {
 	}
 
 	target := files[currentIdx]
-	if err := s.LoadActiveProfile(target); err != nil {
+	profile, err := config.LoadFile(target)
+	if err != nil {
 		return fmt.Errorf("loading profile %s: %w", target, err)
 	}
-
-	s.EmitLoaded()
+	s.mu.Lock()
+	s.path = target
+	s.profile = config.CopyProfile(profile)
+	s.mu.Unlock()
+	s.emitLoaded(config.CopyProfile(profile))
 	return nil
 }

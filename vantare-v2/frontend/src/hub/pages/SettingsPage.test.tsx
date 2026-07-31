@@ -41,6 +41,14 @@ vi.mock('../../lib/supabase-auth', () => ({
   getSession: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock('../settings/diagnostics/WailsDiagnosticsPanel', () => ({
+  WailsDiagnosticsPanel: () => (
+    <section data-testid="diagnostics-panel">
+      <h2>Inspector y paquete de diagnóstico</h2>
+    </section>
+  ),
+}));
+
 function dispatch(name: string, data: unknown) {
   act(() => {
     for (const handler of runtimeMock.handlers.get(name) ?? []) {
@@ -187,8 +195,8 @@ describe('SettingsPage', () => {
   it('shows diagnostics when clicking Diagnóstico tab', () => {
     render(<SettingsPage />);
     clickTab('Diagnóstico');
-    expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Inspector y paquete de diagnóstico' })).toBeDefined();
+    expect(screen.getByTestId('diagnostics-panel')).toBeDefined();
   });
 
   it('shows Condiciones and Información when clicking Avanzado tab', () => {
@@ -280,46 +288,14 @@ describe('SettingsPage', () => {
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
     clickTab('Diagnóstico');
-    expect(screen.getByRole('heading', { name: 'Soporte Técnico y Diagnósticos' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Inspector y paquete de diagnóstico' })).toBeDefined();
   });
 
-  it('emits diagnostics:get when diagnostics button is clicked and shows success feedback on success', async () => {
-    const writeTextMock = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal('navigator', {
-      clipboard: {
-        writeText: writeTextMock,
-      },
-    });
-
+  it('does not retain the legacy immediate diagnostics copy flow', () => {
     render(<SettingsPage />);
     clickTab('Diagnóstico');
-
-    const button = screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' });
-    fireEvent.click(button);
-
-    expect(runtimeMock.emit).toHaveBeenCalledWith('diagnostics:get');
-
-    act(() => {
-      dispatch('diagnostics', { appVersion: 'v0.3.10.0', os: 'windows' });
-    });
-
-    expect(writeTextMock).toHaveBeenCalledWith(JSON.stringify({ appVersion: 'v0.3.10.0', os: 'windows' }, null, 2));
-    expect(await screen.findByText('✓ ¡Copiado al Portapapeles!')).toBeDefined();
-  });
-
-  it('shows error feedback when diagnostics request fails', () => {
-    render(<SettingsPage />);
-    clickTab('Diagnóstico');
-
-    const button = screen.getByRole('button', { name: 'Copiar paquete de diagnóstico' });
-    fireEvent.click(button);
-
-    act(() => {
-      dispatch('diagnostics:error', { message: 'Failed to retrieve diagnostics' });
-    });
-
-    expect(screen.getByText('Failed to retrieve diagnostics')).toBeDefined();
+    expect(runtimeMock.emit).not.toHaveBeenCalledWith('diagnostics:get');
+    expect(runtimeMock.handlers.has('diagnostics')).toBe(false);
   });
 
   it('emits updater:install:verified (never legacy updater:install) when installing', () => {

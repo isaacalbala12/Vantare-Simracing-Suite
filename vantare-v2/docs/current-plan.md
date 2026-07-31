@@ -10,6 +10,29 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-104 / TC-06D (2026-07-31):
+- Implementados informe allowlisted, catálogo metadata-only, inspector local y
+  export JSON exacto. Frontend nunca recibe rutas, SessionRef, nombres SQLite,
+  IDs internos, telemetría, identidad, voz, estrategias, tokens o logs.
+- Raíz histórica canónica: LocalAppData en instalación y data explícita en
+  portable/desarrollo. Toda la cadena rechaza symlinks, junctions y reparse.
+- Prepare/List/Inspect heredan lifecycle, máximo dos operaciones y cancelación
+  correlacionada. Cancel-before-request usa TTL 30 s y cap 64 sin goroutines.
+  El snapshot de perfil queda sincronizado y defensivo.
+- UI aislada en Ajustes con preview/copy/download byte-exacto, SHA-256
+  recalculado, current/future/corrupt/current-unavailable, es/en/it/pt-BR,
+  contraste AA y responsive wide/medium/compact.
+- Captura raw desactivada y sin wiring: límites 60/120 s, 64/128 MiB, 5 Hz,
+  retención siete días, metadata/hashes/procedencia y tap LMU no bloqueante
+  tras una única apertura de Shared Memory.
+- Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0 después de
+  corregir cadena symlink/junction, snapshots profundos, top-K global,
+  zero-values metadata-only y contraste AA. Evidencia visual:
+  `docs/telemetry-core/evidence/isa-104-inspector/`.
+- D7 queda cerrado con suites Go/frontend, build Wails, Playwright, privacidad
+  y documentación verificadas. Entrega apilada sobre ISA-103, sin merge ni
+  promoción. Siguiente corte: ISA-105 / TC-07A.
+
 Nota ISA-103 / TC-06C (2026-07-30):
 - Implementado replay separado raw, canónico e histórico sobre ISA-102.
 - Player síncrono con step, velocidad racional, clock determinista, ownership

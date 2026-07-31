@@ -1,4 +1,5 @@
 import { studioV3Pt } from "./studio-v3/pt";
+import { diagnosticsPt } from "../../hub/settings/diagnostics/translations";
 
 export const pt: Record<string, string> = {
   // Onboarding
@@ -454,6 +455,8 @@ export const pt: Record<string, string> = {
   "license.unconfiguredTitle": "Configuração incompleta",
   "license.unconfiguredDesc1": "O app não pode validar sua licença porque os valores públicos do Supabase estão faltando nesta build. Este é um problema de configuração do instalador, não da sua conta.",
   "license.unconfiguredDesc2": "Baixe a versão mais recente do canal de beta ou entre em contato com o suporte se o problema persistir.",
+  // Diagnostics
+  ...diagnosticsPt,
   // Overlay Studio V3
   ...studioV3Pt,
 };

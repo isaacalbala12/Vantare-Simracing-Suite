@@ -16,10 +16,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ISA-103 / TC-06C:
-  `8683f036bc1169be2e27ea50982ebf86af369bed`.
+- Base de ISA-104 / TC-06D:
+  `8b89c0adafed46a3c2c42cd52c858c8c185aa8bf`.
 - Rama:
-  `vantareapp/isa-103-tc-06c-replay-raw-canonico-e-historico`.
+  `vantareapp/isa-104-tc-06d-inspector-privacidad-y-export-diagnostico`.
+- HEAD previo al commit de producto:
+  `8035a891186743539b8504e29508daef376dc574` (plan D1–D7).
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -40,6 +42,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   no tienen pasos mientras v1 sea el único schema real. El test heredado de
   cancelación REST dejó de usar el ticker productivo y pasa x100 de forma
   determinista; el runtime LMU no cambió.
+- TC-06D ISA-104: implementación y gates D7 completos; preparada para entrega
+  apilada sobre ISA-103.
+  Catálogo metadata-only, inspector local, paquete sanitizado byte-exacto,
+  eventos Wails correlacionados, cancelación acotada, UI responsive e
+  internacionalizada, captura raw limitada y tap LMU sin wiring productivo.
+  Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -154,6 +162,23 @@ de `unsafe.Pointer` en readers Win32.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
+- ISA-104 backend: raíz histórica canónica en LocalAppData o data portable;
+  toda la cadena rechaza symlinks/junctions/reparse. Prepare/List/Inspect
+  comparten máximo dos operaciones, lifecycle de aplicación y cancelación
+  correlacionada; cancel-before-request usa TTL 30 s y cap 64 sin goroutine.
+  `ProfileService` entrega snapshots defensivos bajo sincronización.
+- ISA-104 UI: solo current+ready abre Inspect; future/corrupt/current no
+  disponible son metadata-only. El cliente recalcula SHA-256 y tamaño antes de
+  preview/copy/download. Los estados no inspeccionados muestran `—` en lugar
+  de zero-values desconocidos y el contraste local medido es 4,592:1. Vitest
+  focal 64/64, suite frontend 1.923/1.923, build, lint focal y Playwright con
+  seis capturas pasan; consola/overflow/procesos residuales en cero. Evidencia:
+  `docs/telemetry-core/evidence/isa-104-inspector/`.
+- ISA-104 hardening final: la raíz raw valida toda la cadena antes y después de
+  crear y rechaza symlink/junction/reparse; Settings/Launcher entrega snapshots
+  profundos, incluido `LastLaunchedAt`; el catálogo conserva top-K global
+  determinista con más de 500 entradas. Tests junction Windows, focales
+  repetidos y race pasan. Suite Go global serial final: PASS.
 - **P3 heredado:** tres avisos `unsafe.Pointer` Win32 en vet.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
 - **P2 funcional conocido:** gaps/delta siguen missing hasta demostrar inputs.
@@ -169,13 +194,13 @@ de `unsafe.Pointer` en readers Win32.
 | Cerradas en la base ISA-102 | ISA-41 / TC-05C e ISA-101 / TC-06A |
 | Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
-| Pendientes | ISA-104–117 e ISA-87 según dependencias |
+| Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
+| Pendientes | ISA-105–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-103 con commit/push y PR draft apilada sobre ISA-102. Después
-iniciar secuencialmente ISA-104 / TC-06D desde ese commit. No hacer wiring
-productivo ni promoción.
+Entregar ISA-104 con commit/push y PR draft apilada sobre ISA-103. Después
+iniciar ISA-105 / TC-07A sin wiring productivo global ni promoción.
 
 ## Gate final
 
@@ -185,8 +210,8 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-30, ISA-103 / TC-06C cerrada técnicamente sobre
-`8683f036bc1169be2e27ea50982ebf86af369bed`. Dos reviews finales independientes
-emitieron `ACCEPT` con P0/P1/P2/P3 = 0. Replay raw/canónico/histórico,
-compatibilidad futura y motor de migración COW verificados; sin wiring
-productivo, schema v2 ficticio ni promoción.
+2026-07-31, ISA-104 / TC-06D implementada y verificada sobre ISA-103. Backend y
+UI tienen reviews integradas `ACCEPT` con P0/P1/P2/P3 = 0. Inspector,
+privacidad, export local, captura limitada y tap quedan verificados; la captura
+raw continúa sin wiring productivo. Pendiente únicamente la entrega Git/Linear
+y apertura secuencial de ISA-105; sin promoción.

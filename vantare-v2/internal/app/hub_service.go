@@ -265,8 +265,9 @@ func (s *HubService) DeleteProfile(idOrFile string) error {
 		}
 		activeID := s.settingsSvc.Settings().ActiveOverlayProfileID
 		if activeID == idOrFile || activeID == resolvedID {
-			s.settingsSvc.Settings().ActiveOverlayProfileID = ""
-			if saveErr := s.settingsSvc.Save(s.settingsSvc.Settings()); saveErr != nil {
+			settings := s.settingsSvc.Settings()
+			settings.ActiveOverlayProfileID = ""
+			if saveErr := s.settingsSvc.Save(settings); saveErr != nil {
 				return fmt.Errorf("clearing active profile setting: %w", saveErr)
 			}
 		}
@@ -316,8 +317,9 @@ func (s *HubService) SetActiveProfile(idOrFile string) error {
 		return fmt.Errorf("loaded profile has no id")
 	}
 	if s.settingsSvc != nil {
-		s.settingsSvc.Settings().ActiveOverlayProfileID = profile.ID
-		if err := s.settingsSvc.Save(s.settingsSvc.Settings()); err != nil {
+		settings := s.settingsSvc.Settings()
+		settings.ActiveOverlayProfileID = profile.ID
+		if err := s.settingsSvc.Save(settings); err != nil {
 			return fmt.Errorf("persisting active profile id: %w", err)
 		}
 	}

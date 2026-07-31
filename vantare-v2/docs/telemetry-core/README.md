@@ -21,6 +21,13 @@ reconstruible futura y framing propio descartado.
 [`recording-sink-sqlite-isa-102.md`](recording-sink-sqlite-isa-102.md) y ADR
 0005.
 
+TC-06C / ISA-103 añade replay raw, canónico e histórico y migraciones COW.
+TC-06D / ISA-104 añade catálogo metadata-only, inspector local, paquete
+sanitizado byte-exacto, UI correlacionada y una capacidad raw limitada todavía
+sin wiring. Guías:
+[`replay-migrations-isa-103.md`](replay-migrations-isa-103.md) e
+[`inspector-privacy-diagnostic-export-isa-104.md`](inspector-privacy-diagnostic-export-isa-104.md).
+
 ## Jerarquía de autoridad
 
 1. `AGENTS.md` y `docs/agent-workflow.md` gobiernan el proceso.
@@ -38,8 +45,9 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 - TC-02 y TC-03 están cerrados en la cadena apilada. TC-04A–C implementaron
   reducer, coordinación/hechos y derivaciones; TC-04D / ISA-38 implementa
   fan-out, backpressure y observabilidad. TC-05A/B están cerrados
-  técnicamente, TC-05C y TC-06A están cerrados en la base de ISA-102. TC-06B
-  está implementado y pendiente review; TC-07–TC-09 siguen pendientes.
+  técnicamente, TC-05C y TC-06A están cerrados en la base de ISA-102. TC-06B y
+  TC-06C y TC-06D están cerrados técnicamente, sin promoción.
+  TC-07–TC-09 siguen pendientes.
 - La cadena permanece en ramas de issue sin wiring productivo ni promoción. El
   handoff vivo de `docs/vantare-program/` contiene los SHAs y siguiente corte.
 
@@ -81,3 +89,5 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [Benchmark de almacenamiento ISA-101](storage-benchmark-isa-101.md)
 - [Esquema histórico y contrato TC-06B](historical-storage-schema.md)
 - [RecordingSink SQLite ISA-102](recording-sink-sqlite-isa-102.md)
+- [Replay y migraciones ISA-103](replay-migrations-isa-103.md)
+- [Inspector, privacidad y export ISA-104](inspector-privacy-diagnostic-export-isa-104.md)

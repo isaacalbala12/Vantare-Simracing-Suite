@@ -45,6 +45,7 @@ type config struct {
 	build             buildProvider
 	rest              *restConfig
 	beforeRESTPublish func()
+	captureTap        *CaptureTap
 }
 
 // Driver owns exactly one LMU_Data mapping for the duration of each Run.
@@ -119,6 +120,9 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		}
 		driver.mu.Unlock()
 	}()
+	if driver.config.captureTap != nil {
+		defer driver.config.captureTap.Close()
+	}
 
 	if err := ctx.Err(); err != nil {
 		return err
@@ -128,6 +132,10 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		build = BuildEvidence{}
 	}
 	profile := profileFromBuild(build)
+	var captureSanitizer *FrameSanitizer
+	if driver.config.captureTap != nil {
+		captureSanitizer, _ = NewFrameSanitizer(build)
+	}
 	reader, err := driver.config.open()
 	if err != nil {
 		return fmt.Errorf("%w: open %s: %w", ErrDisconnected, MemoryName, err)
@@ -189,6 +197,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			return fmt.Errorf("%w: snapshot %s: %w", ErrDisconnected, MemoryName, err)
 		}
 		now := driver.config.now()
+		driver.captureDiagnosticFrame(now.Round(0).UTC(), buffer, captureSanitizer)
 		elapsed := driver.config.elapsed()
 		observation, err := parseWithProfile(buffer, now, profile)
 		if err != nil {
@@ -249,6 +258,31 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			}
 		}
 	}
+}
+
+func (driver *Driver) captureDiagnosticFrame(
+	at time.Time,
+	buffer []byte,
+	sanitizer *FrameSanitizer,
+) {
+	tap := driver.config.captureTap
+	if tap == nil {
+		return
+	}
+	reservation, ok := tap.Reserve(at)
+	if !ok {
+		return
+	}
+	if sanitizer == nil {
+		reservation.Drop()
+		return
+	}
+	sanitized, err := sanitizer.Sanitize(buffer)
+	if err != nil {
+		reservation.Drop()
+		return
+	}
+	reservation.commitOwned(sanitized)
 }
 
 func (driver *Driver) RuntimeSnapshot() drivercontract.RuntimeSnapshot {

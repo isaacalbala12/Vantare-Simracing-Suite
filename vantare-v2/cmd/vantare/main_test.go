@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -12,6 +14,93 @@ import (
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestResolveTelemetrySessionsRoot(t *testing.T) {
+	base := t.TempDir()
+	userConfigDir := filepath.Join(base, "roaming")
+	localDataDir := filepath.Join(base, "local")
+	installedConfigDir := filepath.Join(userConfigDir, "Vantare", "configs")
+
+	tests := []struct {
+		name    string
+		cfgDir  string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:   "installed uses LocalAppData",
+			cfgDir: installedConfigDir,
+			want: filepath.Join(
+				localDataDir,
+				"Vantare",
+				"telemetry",
+				"sessions",
+			),
+		},
+		{
+			name:   "portable uses sibling data directory",
+			cfgDir: filepath.Join(base, "portable", "configs"),
+			want: filepath.Join(
+				base,
+				"portable",
+				"data",
+				"telemetry",
+				"sessions",
+			),
+		},
+		{
+			name:    "empty config is rejected",
+			cfgDir:  "",
+			wantErr: true,
+		},
+		{
+			name:    "relative config is rejected",
+			cfgDir:  filepath.Join("relative", "configs"),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveTelemetrySessionsRoot(
+				tt.cfgDir,
+				userConfigDir,
+				localDataDir,
+			)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("resolve root = %q, want error", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolve root: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("resolve root = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveTelemetrySessionsRootMatchesInstalledPathCaseInsensitivelyOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows path comparison only")
+	}
+	base := t.TempDir()
+	userConfigDir := filepath.Join(base, "Roaming")
+	localDataDir := filepath.Join(base, "Local")
+	cfgDir := strings.ToLower(filepath.Join(userConfigDir, "Vantare", "configs"))
+
+	got, err := resolveTelemetrySessionsRoot(cfgDir, userConfigDir, localDataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(localDataDir, "Vantare", "telemetry", "sessions")
+	if got != want {
+		t.Fatalf("resolve root = %q, want %q", got, want)
+	}
+}
 
 type fakeOverlayWindow struct {
 	appliedModes []config.DisplayMode

@@ -198,9 +198,59 @@ func normalizeProfiles(profiles []LaunchProfile) []LaunchProfile {
 	out := make([]LaunchProfile, len(profiles))
 	for i, profile := range profiles {
 		out[i] = profile
+		out[i].Steps = append([]LaunchStep(nil), profile.Steps...)
 		out[i].Policy = NormalizeLaunchPolicy(profile.Policy)
+		out[i].LastLaunchedAt = cloneTime(profile.LastLaunchedAt)
 	}
 	return out
+}
+
+func cloneProfiles(profiles []LaunchProfile) []LaunchProfile {
+	if profiles == nil {
+		return nil
+	}
+	out := make([]LaunchProfile, len(profiles))
+	for i, profile := range profiles {
+		out[i] = profile
+		out[i].Steps = append([]LaunchStep(nil), profile.Steps...)
+		if profile.Policy != nil {
+			policy := *profile.Policy
+			out[i].Policy = &policy
+		}
+		out[i].LastLaunchedAt = cloneTime(profile.LastLaunchedAt)
+	}
+	return out
+}
+
+func cloneTime(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func cloneAppSettings(settings *AppSettings) *AppSettings {
+	if settings == nil {
+		return nil
+	}
+	copy := *settings
+	if settings.Hotkeys != nil {
+		copy.Hotkeys = make(map[string]string, len(settings.Hotkeys))
+		for name, value := range settings.Hotkeys {
+			copy.Hotkeys[name] = value
+		}
+	}
+	if settings.LauncherApps != nil {
+		copy.LauncherApps = make(map[string]LauncherAppEntry, len(settings.LauncherApps))
+		for id, entry := range settings.LauncherApps {
+			copy.LauncherApps[id] = entry
+		}
+	}
+	if settings.LauncherProfiles != nil {
+		copy.LauncherProfiles = cloneProfiles(settings.LauncherProfiles)
+	}
+	return &copy
 }
 
 // migrateSettings applies additive schema migrations in place.
@@ -274,12 +324,20 @@ func NewSettingsService(path string, emitter EventEmitter, logger *slog.Logger) 
 	}
 }
 
-// Settings returns the current in-memory settings with a read lock.
+// Settings returns a deep snapshot of the current settings. Mutations must be
+// persisted explicitly through Save or the focused setter methods.
 func (s *SettingsService) Settings() *AppSettings {
+	return s.Snapshot()
+}
+
+// Snapshot returns a deep copy that can be inspected without holding the
+// service lock. Callers may mutate the copy without touching live settings.
+func (s *SettingsService) Snapshot() *AppSettings {
 	s.mu.RLock()
 	if s.settings != nil {
+		result := cloneAppSettings(s.settings)
 		s.mu.RUnlock()
-		return s.settings
+		return result
 	}
 	s.mu.RUnlock()
 
@@ -288,7 +346,7 @@ func (s *SettingsService) Settings() *AppSettings {
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
-	return s.settings
+	return cloneAppSettings(s.settings)
 }
 
 // GetLauncherApps returns the current launcher apps map with a read lock.
@@ -298,7 +356,11 @@ func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
 	if s.settings == nil {
 		return nil
 	}
-	return s.settings.LauncherApps
+	result := make(map[string]LauncherAppEntry, len(s.settings.LauncherApps))
+	for id, entry := range s.settings.LauncherApps {
+		result[id] = entry
+	}
+	return result
 }
 
 // SetLauncherApps replaces the entire LauncherApps map and persists the change.
@@ -330,7 +392,7 @@ func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
 	if s.settings == nil {
 		return nil
 	}
-	return s.settings.LauncherProfiles
+	return cloneProfiles(s.settings.LauncherProfiles)
 }
 
 // SetLauncherProfiles replaces the entire LaunchProfiles slice and persists the change.
@@ -556,12 +618,13 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 	if s.path == "" {
 		return ErrSettingsPathEmpty
 	}
-	data, err := json.MarshalIndent(settings, "", "  ")
+	snapshot := cloneAppSettings(settings)
+	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
 	// Directory is ensured at the top of saveWithRetry (idempotent).
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(snapshot, data, 0)
 }
 
 // saveWithRetry attempts to persist data atomically, retrying with backoff
@@ -577,7 +640,7 @@ func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, atte
 	if err == nil {
 		_ = os.Remove(s.path + ".failed")
 		s.mu.Lock()
-		s.settings = settings
+		s.settings = cloneAppSettings(settings)
 		s.mu.Unlock()
 		return nil
 	}

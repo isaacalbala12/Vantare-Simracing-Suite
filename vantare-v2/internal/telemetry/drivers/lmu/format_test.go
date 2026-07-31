@@ -394,7 +394,7 @@ func plausibleUnknownBuffer() []byte {
 	return buf
 }
 
-func knownBuffer(t *testing.T) []byte {
+func knownBuffer(t testing.TB) []byte {
 	t.Helper()
 	buf, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
 	if err != nil {

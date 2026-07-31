@@ -584,14 +584,14 @@ Stable IDs and keys are never renumbered or silently duplicated.
 
 Required catalog guards:
 
-- [ ] One canonical key per semantic concept, including aliases such as
+- [x] One canonical key per semantic concept, including aliases such as
   `driver name/display label` and `fuel amount/liters`.
-- [ ] Exact reuse/append map above; IDs 1–24 remain numerically stable.
-- [ ] Metadata hardening of an existing ID is allowed only with the §1.4
+- [x] Exact reuse/append map above; IDs 1–24 remain numerically stable.
+- [x] Metadata hardening of an existing ID is allowed only with the §1.4
   evidence and a regression proving no unit/meaning contradiction.
-- [ ] Generated Markdown identifies reused, hardened, newly appended,
+- [x] Generated Markdown identifies reused, hardened, newly appended,
   unproduced-existing and tombstoned entries.
-- [ ] `catalog.Validate` plus a semantic-alias test rejects a duplicate meaning
+- [x] `catalog.Validate` plus a semantic-alias test rejects a duplicate meaning
   even when its key text differs.
 
 ### Additive signal IDs
@@ -611,15 +611,15 @@ Do not catalog team, car number, compound, VE or damage in this cut.
 
 ### Red tests
 
-- [ ] Catalog length and exact append-only IDs.
-- [ ] Exact reuse/harden/append matrix and no semantic aliases.
-- [ ] Units:
+- [x] Catalog length and exact append-only IDs.
+- [x] Exact reuse/harden/append matrix and no semantic aliases.
+- [x] Units:
   seconds, meters, liters, count, boolean or text.
-- [ ] Closed ranges where demonstrated:
+- [x] Closed ranges where demonstrated:
   count `0..104`, ratios `0..1`, non-negative time/distance/liters.
-- [ ] Comparable domain structs preserve a legitimate zero.
-- [ ] Unknown enum values are invalid, not silently mapped.
-- [ ] Generated Markdown matches the Go ledger.
+- [x] Comparable domain structs preserve a legitimate zero.
+- [x] Unknown enum values are invalid, not silently mapped.
+- [x] Generated Markdown matches the Go ledger.
 
 ### Verification
 
@@ -639,8 +639,8 @@ go test ./internal/telemetry/... -count=1
 git diff --check
 ```
 
-- [ ] Commit: `feat(telemetry): add overlay signal schema`.
-- [ ] Independent review.
+- [x] Commit: `feat(telemetry): add overlay signal schema` (`462f0ee`).
+- [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0.
 
 ---
 

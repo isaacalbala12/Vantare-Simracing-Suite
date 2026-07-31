@@ -54,6 +54,11 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   reales cubiertos. Review independiente `ACCEPT`, P0/P1/P2/P3 = 0; driver x20
   y suite `internal/telemetry/...` PASS. LMU 1.4 permanece bloqueado para D4B;
   D3 queda desbloqueado sin promoción ni cutover.
+- D3 implementado y aceptado en `462f0ee`: schema/catalog append-only con IDs
+  1–24 estables y 25–43 añadidos, aliases semánticos rechazados, unidades,
+  rangos, ceros legítimos, enums y Markdown golden sincronizados. Review
+  independiente `ACCEPT`, P0/P1/P2/P3 = 0; focales x20 y suite telemetry PASS.
+  D4A queda desbloqueado sin promoción ni cutover.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

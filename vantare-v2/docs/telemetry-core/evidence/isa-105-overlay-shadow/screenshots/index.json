@@ -1,0 +1,33 @@
+{
+  "contractVersion": 1,
+  "scenario": "partial",
+  "screenshots": [
+    {
+      "file": "telemetry-overlay-shadow-wide.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scenario": "partial",
+      "sha256": "ccbdc09d17969d5c253a2405ae277818157de6e1230bb70938a656a9665f85a7"
+    },
+    {
+      "file": "telemetry-overlay-shadow-medium.png",
+      "viewport": {
+        "width": 1024,
+        "height": 900
+      },
+      "scenario": "partial",
+      "sha256": "f530c9eebc4422b0d75a203559865975d09c17c17da55e16f1ab759526e4763f"
+    },
+    {
+      "file": "telemetry-overlay-shadow-compact.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scenario": "partial",
+      "sha256": "6e1555cd6a02deae1d5234dc592a32099c55ff0c01716f80b81675be70de8dd5"
+    }
+  ]
+}

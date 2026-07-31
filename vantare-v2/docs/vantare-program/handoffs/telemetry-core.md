@@ -16,16 +16,16 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ISA-104 / TC-06D:
-  `8b89c0adafed46a3c2c42cd52c858c8c185aa8bf`.
+- Base final de ISA-105 / TC-07A:
+  `3b44d36713213ab642f47174c1b5d8234362cac0`.
 - Rama:
-  `vantareapp/isa-104-tc-06d-inspector-privacidad-y-export-diagnostico`.
-- Plan D1–D7:
-  `8035a891186743539b8504e29508daef376dc574`.
-- Commit de producto:
-  `688f206737d53734f51a70fd98039ff1eefa25c0`.
-- PR draft apilado sobre ISA-103:
-  `#40`.
+  `vantareapp/isa-105-tc-07a-proyeccion-overlay-y-shadow-comparator`.
+- Plan TC-07A:
+  `docs/superpowers/plans/2026-07-31-isa-105-tc-07a-overlay-shadow-comparator.md`.
+- Commit de plan publicado:
+  `a42c0c5`.
+- Matriz de preflight:
+  `docs/telemetry-core/overlay-shadow-matrix.md`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -52,7 +52,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   eventos Wails correlacionados, cancelación acotada, UI responsive e
   internacionalizada, captura raw limitada y tap LMU sin wiring productivo.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07–TC-09: pendientes.
+- TC-07A ISA-105: implementación y re-review D6 completas; código final
+  `f6b43b7`, `ACCEPT`, P0/P1/P2/P3 = 0. PR draft `#41`; Linear `In Review`.
+- TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -199,13 +201,14 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
-| Pendientes | ISA-105–117 e ISA-87 según dependencias |
+| En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
+| Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Cerrar ISA-104 en Linear como `In Review` y después iniciar ISA-105 / TC-07A
-desde `688f206737d53734f51a70fd98039ff1eefa25c0`, sin wiring productivo global
-ni promoción.
+Crear y cerrar ISA-129 / TC-07A.1 antes de ISA-106 para
+parrilla/timing/gaps/delta/sesión-unidades y retirada del fallback mock
+conectado. Sin wiring productivo global ni promoción.
 
 ## Gate final
 
@@ -215,9 +218,13 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-104 / TC-06D implementada y verificada sobre ISA-103. Backend y
-UI tienen reviews integradas `ACCEPT` con P0/P1/P2/P3 = 0. Inspector,
-privacidad, export local, captura limitada y tap quedan verificados; la captura
-raw continúa sin wiring productivo. Commit de producto publicado y PR draft
-`#40` abierto contra ISA-103. Pendiente cerrar Linear y abrir secuencialmente
-ISA-105; sin promoción.
+2026-07-31, ISA-105 D1–D5 publicados hasta `f2a1ac3`: decoder, adapter,
+comparator, sanitizador, harness `NO LIVE` y evidencia 18/18. Go
+telemetry/app, frontend 297/1.993, build y Playwright pasan; visual Crystal y
+benchmark reproducen deuda de la base exacta sin cambios de baselines/canvas.
+D6 solicitó cuatro P2 y un P3; todos quedaron corregidos con TDD en `f6b43b7`:
+cap separado 64+64, `pitStopCount` retirado, `sourcePaths` reales,
+`vehicles[].id`/`playerVehicleId` explícitos, handoff sincronizado y ADR válido.
+Re-review final `ACCEPT`, P0/P1/P2/P3 = 0. ISA-129 sigue ordenada antes de
+ISA-106. Suite frontend final 297/2.000 y Playwright shadow PASS. PR draft
+`#41`; Linear `In Review`. Sin merge, wiring productivo ni promoción.

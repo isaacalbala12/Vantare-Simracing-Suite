@@ -965,6 +965,25 @@ Cierre técnico y entrega ISA-104 / TC-06D:
 - No hubo merge, cutover ni promoción. Siguiente dependencia: ISA-105 / TC-07A
   desde `3b44d36713213ab642f47174c1b5d8234362cac0`.
 
+Inicio y auditoría de inventario ISA-105 / TC-07A:
+
+- Rama/worktree:
+  `vantareapp/isa-105-tc-07a-proyeccion-overlay-y-shadow-comparator`,
+  `C:\tmp\vantare-isa105\vantare-v2`, base `3b44d367`.
+- Plan publicado en commit `a42c0c5`; Linear ISA-105 está `In Progress`.
+- Auditoría read-only cerrada después de revisar los 18 tipos, el pipeline
+  legacy y Overlay Projection v1.
+- Resultado: un tipo exacto, cinco parciales, once no comparables y un
+  consumidor externo. Delta/Gaps siguen missing; la parrilla canónica y el
+  wiring productivo no están completos.
+- Hallazgos de cutover: unidad m/s etiquetada legacy como kph, vehicle name no
+  equivale a driver name y el fallback mock puede anunciarse conectado.
+- Creada ISA-129 / TC-07A.1 entre ISA-105 e ISA-106 para cerrar señales
+  demostrables y retirar el mock conectado. No se absorbe ese refactor en el
+  comparator.
+- D1/D2 delegados con TDD; sin cambios en renderizadores, CSS, canvas, Wails/SSE
+  ni wiring productivo. Sin merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

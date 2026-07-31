@@ -1,0 +1,99 @@
+{
+  "contractVersion": 1,
+  "registeredDefinitions": 18,
+  "policyDefinitions": 18,
+  "coveredDefinitions": 18,
+  "complete": true,
+  "widgets": [
+    {
+      "widgetType": "broadcast-tower",
+      "coverage": "partial",
+      "ruleCount": 14
+    },
+    {
+      "widgetType": "car-damage-numbers",
+      "coverage": "not-comparable",
+      "ruleCount": 4
+    },
+    {
+      "widgetType": "car-damage-visual",
+      "coverage": "not-comparable",
+      "ruleCount": 4
+    },
+    {
+      "widgetType": "delta",
+      "coverage": "not-comparable",
+      "ruleCount": 8
+    },
+    {
+      "widgetType": "delta-advanced",
+      "coverage": "not-comparable",
+      "ruleCount": 5
+    },
+    {
+      "widgetType": "delta-trace",
+      "coverage": "not-comparable",
+      "ruleCount": 6
+    },
+    {
+      "widgetType": "fuel-strategy",
+      "coverage": "not-comparable",
+      "ruleCount": 6
+    },
+    {
+      "widgetType": "head-to-head",
+      "coverage": "not-comparable",
+      "ruleCount": 6
+    },
+    {
+      "widgetType": "input-telemetry",
+      "coverage": "partial",
+      "ruleCount": 10
+    },
+    {
+      "widgetType": "multiclass-relative",
+      "coverage": "not-comparable",
+      "ruleCount": 6
+    },
+    {
+      "widgetType": "pedals",
+      "coverage": "exact",
+      "ruleCount": 8
+    },
+    {
+      "widgetType": "pedals-telemetry",
+      "coverage": "partial",
+      "ruleCount": 14
+    },
+    {
+      "widgetType": "pedals-telemetry-compact",
+      "coverage": "partial",
+      "ruleCount": 12
+    },
+    {
+      "widgetType": "race-schedule",
+      "coverage": "external",
+      "ruleCount": 1
+    },
+    {
+      "widgetType": "racing-flags",
+      "coverage": "not-comparable",
+      "ruleCount": 4
+    },
+    {
+      "widgetType": "relative",
+      "coverage": "not-comparable",
+      "ruleCount": 7
+    },
+    {
+      "widgetType": "standings",
+      "coverage": "partial",
+      "ruleCount": 16
+    },
+    {
+      "widgetType": "track-weather",
+      "coverage": "not-comparable",
+      "ruleCount": 7
+    }
+  ]
+}

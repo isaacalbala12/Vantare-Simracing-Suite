@@ -2,8 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   TelemetryOverlayShadowHarness,
-  type ShadowHarnessScenario,
 } from "./TelemetryOverlayShadowHarness";
+import {
+  SHADOW_HARNESS_SCENARIOS,
+  type ShadowHarnessScenario,
+} from "./evidence";
 
 const root = document.getElementById("root");
 if (!root) {
@@ -11,7 +14,7 @@ if (!root) {
 }
 
 const requested = new URLSearchParams(window.location.search).get("scenario");
-const initialScenario = ["equal", "partial", "stale", "disconnected", "unsupported"].includes(
+const initialScenario = SHADOW_HARNESS_SCENARIOS.includes(
   requested as ShadowHarnessScenario,
 )
   ? requested as ShadowHarnessScenario

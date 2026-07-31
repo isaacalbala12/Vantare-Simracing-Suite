@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -6,7 +7,17 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const output = path.join(frontend, "test-results", "telemetry-overlay-shadow");
+const evidenceArgument = process.argv.indexOf("--evidence-dir");
+const evidenceOutput = evidenceArgument >= 0
+  ? process.argv[evidenceArgument + 1]
+  : undefined;
+if (evidenceArgument >= 0 && !evidenceOutput) {
+  throw new Error("--evidence-dir requires a target directory");
+}
+const output = evidenceOutput
+  ? path.resolve(frontend, evidenceOutput)
+  : path.join(frontend, "test-results", "telemetry-overlay-shadow");
+const screenshotOutput = evidenceOutput ? path.join(output, "screenshots") : output;
 const port = 5185;
 const baseUrl = `http://127.0.0.1:${port}/telemetry-overlay-shadow-harness.html`;
 const hardTimeoutMs = 55_000;
@@ -39,10 +50,10 @@ const forbiddenDomValues = [
   "LMU conectado",
 ];
 
-fs.mkdirSync(output, { recursive: true });
-for (const name of fs.readdirSync(output)) {
+fs.mkdirSync(screenshotOutput, { recursive: true });
+for (const name of fs.readdirSync(screenshotOutput)) {
   if (/^telemetry-overlay-shadow-(?:wide|medium|compact)\.png$/u.test(name)) {
-    fs.rmSync(path.join(output, name));
+    fs.rmSync(path.join(screenshotOutput, name));
   }
 }
 
@@ -185,6 +196,7 @@ async function assertSafeResponsiveDom(page, viewportName) {
 let browser;
 let hardTimeout;
 let runError;
+let generatedEvidence;
 
 try {
   hardTimeout = setTimeout(async () => {
@@ -220,7 +232,19 @@ try {
       await assertSafeResponsiveDom(page, `${viewport.name}/${scenario}`);
     }
     await page.getByLabel("Escenario diagnóstico").selectOption("partial");
-    const screenshot = path.join(output, `telemetry-overlay-shadow-${viewport.name}.png`);
+    if (!generatedEvidence) {
+      generatedEvidence = await page.evaluate(async () => {
+        const evidence = await import("/src/telemetry-overlay-shadow-harness/evidence.ts");
+        return {
+          coverage: evidence.buildShadowHarnessCoverage(),
+          report: evidence.buildShadowHarnessReport("partial"),
+        };
+      });
+    }
+    const screenshot = path.join(
+      screenshotOutput,
+      `telemetry-overlay-shadow-${viewport.name}.png`,
+    );
     await page.screenshot({ path: screenshot, fullPage: true, timeout: locatorTimeoutMs });
     if (!fs.existsSync(screenshot) || fs.statSync(screenshot).size === 0) {
       throw new Error(`${viewport.name}: screenshot is missing or empty`);
@@ -249,5 +273,33 @@ if (runError) {
   if (serverOutput.trim()) console.error(`Vite output:\n${serverOutput}`);
   process.exitCode = 1;
 } else {
+  if (evidenceOutput) {
+    if (!generatedEvidence) {
+      throw new Error("evidence was not generated from the browser harness");
+    }
+    writeJson(path.join(output, "coverage.json"), generatedEvidence.coverage);
+    writeJson(path.join(output, "report.json"), generatedEvidence.report);
+    writeJson(path.join(screenshotOutput, "index.json"), {
+      contractVersion: 1,
+      scenario: "partial",
+      screenshots: viewports.map((viewport) => {
+        const file = `telemetry-overlay-shadow-${viewport.name}.png`;
+        return {
+          file,
+          viewport: { width: viewport.width, height: viewport.height },
+          scenario: "partial",
+          sha256: sha256(path.join(screenshotOutput, file)),
+        };
+      }),
+    });
+  }
   console.log(`Telemetry shadow harness PASS. Captures: ${output}`);
+}
+
+function writeJson(file, value) {
+  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function sha256(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }

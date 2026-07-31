@@ -1,6 +1,11 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TelemetryOverlayShadowHarness } from "./TelemetryOverlayShadowHarness";
+import {
+  SHADOW_HARNESS_SCENARIOS,
+  buildShadowHarnessCoverage,
+  buildShadowHarnessReport,
+} from "./evidence";
 
 afterEach(() => cleanup());
 
@@ -22,7 +27,7 @@ describe("TelemetryOverlayShadowHarness", () => {
     const values = within(selector).getAllByRole("option").map((option) =>
       (option as HTMLOptionElement).value
     );
-    expect(values).toEqual(["equal", "partial", "stale", "disconnected", "unsupported"]);
+    expect(values).toEqual(SHADOW_HARNESS_SCENARIOS);
     expect(screen.getByTestId("shadow-contract-version").textContent).toBe("v1");
     expect(screen.getByTestId("shadow-widget-count").textContent).toBe("1");
     expect(screen.getByTestId("shadow-result-list").children).toHaveLength(1);
@@ -97,5 +102,24 @@ describe("TelemetryOverlayShadowHarness", () => {
     expect(screen.getByTestId("shadow-result-list").getAttribute("data-essential"))
       .toBe("true");
     expect(screen.getByTestId("shadow-report-status").textContent).not.toBe("");
+  });
+
+  it("derives reproducible evidence from the real registry, policies and comparator", () => {
+    const coverage = buildShadowHarnessCoverage();
+    const report = buildShadowHarnessReport("partial");
+
+    expect(coverage).toMatchObject({
+      contractVersion: 1,
+      registeredDefinitions: 18,
+      policyDefinitions: 18,
+      coveredDefinitions: 18,
+      complete: true,
+    });
+    expect(coverage.widgets).toHaveLength(18);
+    expect(report.summary.widgets).toBe(2);
+    expect(report.widgets.map((widget) => widget.widgetType)).toEqual(["pedals", "standings"]);
+    expect(JSON.stringify({ coverage, report })).not.toMatch(
+      /PRIVATE_(?:DRIVER|TEAM|VEHICLE_ID|TRACK)_SHADOW_105|C:\\Users\\|C:\/Users\//,
+    );
   });
 });

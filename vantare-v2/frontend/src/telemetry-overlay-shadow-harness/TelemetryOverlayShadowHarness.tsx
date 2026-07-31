@@ -1,91 +1,22 @@
 import { useMemo, useState } from "react";
-import type { WidgetInstanceV3, WidgetType } from "../overlay/core/profile-document";
-import type { TelemetrySnapshot } from "../overlay/core/telemetry-snapshot";
-import { widgetTypeRegistry } from "../overlay/core/widget-registry";
-import type {
-  OverlayMappedField,
-  OverlayProjectionAdaptation,
-  OverlayProjectionMapping,
-} from "../overlay/telemetry-shadow/overlay-projection-adapter";
+import type { WidgetType } from "../overlay/core/profile-document";
 import {
-  compareOverlayShadow,
   type OverlayShadowEntry,
-  type OverlayShadowReport,
   type OverlayShadowWidgetResult,
 } from "../overlay/telemetry-shadow/overlay-shadow-comparator";
-
-const SHADOW_HARNESS_SCENARIOS = [
-  "equal",
-  "partial",
-  "stale",
-  "disconnected",
-  "unsupported",
-] as const;
-
-export type ShadowHarnessScenario = typeof SHADOW_HARNESS_SCENARIOS[number];
-
-type ScenarioDefinition = Readonly<{
-  label: string;
-  stateLabel: string;
-  description: string;
-  widgets: readonly WidgetType[];
-  projection: OverlayProjectionAdaptation;
-}>;
-
-const LEGACY_SNAPSHOT = createSnapshot("ready");
-const MAPPED_PROJECTION = createMapping(createSnapshot("ready"));
-
-const SCENARIOS: Readonly<Record<ShadowHarnessScenario, ScenarioDefinition>> = {
-  equal: {
-    label: "Igualdad exacta",
-    stateLabel: "Paridad exacta",
-    description: "Pedals conserva tres ceros legítimos en ambos pipelines.",
-    widgets: ["pedals"],
-    projection: MAPPED_PROJECTION,
-  },
-  partial: {
-    label: "Cobertura parcial",
-    stateLabel: "Parcial",
-    description: "Standings compara señales demostradas y enumera las ausentes.",
-    widgets: ["pedals", "standings"],
-    projection: MAPPED_PROJECTION,
-  },
-  stale: {
-    label: "Dato stale",
-    stateLabel: "Stale",
-    description: "El valor permanece visible, pero su calidad impide declararlo igual.",
-    widgets: ["pedals"],
-    projection: createMapping(createSnapshot("stale"), [
-      mappedField("vehicles[0].throttle", "player.throttle", "stale"),
-    ]),
-  },
-  disconnected: {
-    label: "Fuente desconectada",
-    stateLabel: "Desconectado",
-    description: "Sin un frame utilizable, el comparator queda bloqueado de forma explícita.",
-    widgets: ["pedals"],
-    projection: {
-      kind: "blocked",
-      code: "player-unavailable",
-      quality: [],
-      unsupported: [],
-    },
-  },
-  unsupported: {
-    label: "Cobertura no disponible",
-    stateLabel: "Unsupported",
-    description: "Delta y Relative no se aprueban mientras falten sus señales canónicas.",
-    widgets: ["delta", "relative"],
-    projection: MAPPED_PROJECTION,
-  },
-};
+import {
+  SHADOW_HARNESS_SCENARIOS,
+  buildShadowHarnessReport,
+  getShadowHarnessScenario,
+  type ShadowHarnessScenario,
+} from "./evidence";
 
 export function TelemetryOverlayShadowHarness({
   initialScenario = "equal",
 }: Readonly<{ initialScenario?: ShadowHarnessScenario }>) {
   const [scenario, setScenario] = useState(initialScenario);
-  const selected = SCENARIOS[scenario];
-  const report = useMemo(() => buildReport(selected), [selected]);
+  const selected = getShadowHarnessScenario(scenario);
+  const report = useMemo(() => buildShadowHarnessReport(scenario), [scenario]);
 
   return (
     <main
@@ -116,7 +47,7 @@ export function TelemetryOverlayShadowHarness({
           onChange={(event) => setScenario(readScenario(event.target.value))}
         >
           {SHADOW_HARNESS_SCENARIOS.map((value) => (
-            <option key={value} value={value}>{SCENARIOS[value].label}</option>
+            <option key={value} value={value}>{getShadowHarnessScenario(value).label}</option>
           ))}
         </select>
         <div className="shadow-scenario-copy">
@@ -243,103 +174,6 @@ function Observation({ entry }: Readonly<{ entry: OverlayShadowEntry }>) {
       <span>Projection <b>{displayValue(observation.projection)}</b></span>
     </div>
   );
-}
-
-function buildReport(definition: ScenarioDefinition): OverlayShadowReport {
-  return compareOverlayShadow({
-    legacySnapshot: LEGACY_SNAPSHOT,
-    projection: definition.projection,
-    widgets: definition.widgets.map(createWidget),
-  });
-}
-
-function createWidget(type: WidgetType): WidgetInstanceV3 {
-  return widgetTypeRegistry.get(type).createDefault(`shadow-fixture-${type}`);
-}
-
-function createSnapshot(status: TelemetrySnapshot["status"]): TelemetrySnapshot {
-  return {
-    status,
-    capturedAt: 1_785_430_800_000,
-    session: {
-      type: "race",
-      trackName: "PRIVATE_TRACK_SHADOW_105",
-    },
-    player: {
-      inPit: false,
-      throttle: 0,
-      brake: 0,
-      clutch: 0,
-      speedKph: 0,
-      rpm: 0,
-      gear: 0,
-      totalLaps: 0,
-      lapNumber: 0,
-    },
-    scoring: [
-      {
-        id: "PRIVATE_VEHICLE_ID_SHADOW_105",
-        place: 1,
-        totalLaps: 0,
-        inPits: false,
-        isPlayer: true,
-        driverName: "PRIVATE_DRIVER_SHADOW_105",
-        teamName: "PRIVATE_TEAM_SHADOW_105",
-      },
-    ],
-  };
-}
-
-function createMapping(
-  snapshot: TelemetrySnapshot,
-  overrides: readonly OverlayMappedField[] = [],
-): OverlayProjectionMapping {
-  const fields = [
-    mappedField("sessionType", "session.type"),
-    mappedField("playerVehicleId", "player"),
-    mappedField("vehicles[0].inPit", "player.inPit"),
-    mappedField("vehicles[0].throttle", "player.throttle"),
-    mappedField("vehicles[0].brake", "player.brake"),
-    mappedField("vehicles[0].clutch", "player.clutch"),
-    mappedField("vehicles[0].speedMps", "player.speedKph"),
-    mappedField("vehicles[0].engineRpm", "player.rpm"),
-    mappedField("vehicles[0].gear", "player.gear"),
-    mappedField("vehicles[0].completedLaps", "player.totalLaps"),
-    mappedField("vehicles[0].completedLaps", "player.lapNumber"),
-    mappedField("vehicles[0].position", "scoring[0].place"),
-    mappedField("vehicles[0].completedLaps", "scoring[0].totalLaps"),
-    mappedField("vehicles[0].inPit", "scoring[0].inPits"),
-  ];
-  const bySourceAndTarget = new Map(
-    fields.map((field) => [`${field.sourcePath}|${field.targetPath ?? ""}`, field]),
-  );
-  for (const field of overrides) {
-    bySourceAndTarget.set(`${field.sourcePath}|${field.targetPath ?? ""}`, field);
-  }
-  return {
-    kind: "mapped",
-    snapshot,
-    quality: [...bySourceAndTarget.values()],
-    unsupported: [
-      { targetPath: "player.deltaSeconds", reason: "unsupported-by-projection" },
-      { targetPath: "scoring[].timeGapToPlayer", reason: "unsupported-by-projection" },
-    ],
-  };
-}
-
-function mappedField(
-  sourcePath: string,
-  targetPath: string,
-  freshness: OverlayMappedField["freshness"] = "fresh",
-): OverlayMappedField {
-  return {
-    sourcePath,
-    targetPath,
-    present: freshness !== "missing",
-    provenance: freshness === "missing" ? "unknown" : "observed",
-    freshness,
-    usable: freshness === "fresh" || freshness === "stale",
-  };
 }
 
 function readScenario(value: string): ShadowHarnessScenario {

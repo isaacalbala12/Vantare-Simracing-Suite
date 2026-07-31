@@ -3,6 +3,7 @@ package lmu
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -158,8 +159,15 @@ func (tap *CaptureTap) Stats() CaptureTapStats {
 type FrameSanitizer struct {
 	profile compatibilityProfile
 	mu      sync.Mutex
-	ids     map[int32]int32
-	nextID  int32
+	ids     map[int32]sanitizedIdentity
+	usedIDs map[int32]struct{}
+	next    int
+	nextID  int64
+}
+
+type sanitizedIdentity struct {
+	ID    int32
+	Alias int
 }
 
 func NewFrameSanitizer(build BuildEvidence) (*FrameSanitizer, error) {
@@ -168,7 +176,11 @@ func NewFrameSanitizer(build BuildEvidence) (*FrameSanitizer, error) {
 		return nil, ErrUnsanitizableFrame
 	}
 	return &FrameSanitizer{
-		profile: profile, ids: make(map[int32]int32), nextID: -1,
+		profile: profile,
+		ids:     make(map[int32]sanitizedIdentity),
+		usedIDs: make(map[int32]struct{}),
+		next:    1,
+		nextID:  1_000_001,
 	}, nil
 }
 
@@ -176,80 +188,159 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 	if sanitizer == nil || len(input) != ObjectOutSize {
 		return nil, ErrUnsanitizableFrame
 	}
-	if observation, err := parseWithProfile(input, time.Unix(1, 0).UTC(), sanitizer.profile); err != nil ||
+	observation, err := parseWithProfile(input, time.Unix(1, 0).UTC(), sanitizer.profile)
+	if err != nil ||
 		observation.Compatibility != CompatibilityKnown {
 		return nil, ErrUnsanitizableFrame
 	}
 	output := make([]byte, ObjectOutSize)
-	copyRange(output, input, 1696, 4) // session type
-	copyRange(output, input, 1700, 8) // source time
-	copyRange(output, input, 1736, 4) // vehicle count
-	copyRange(output, input, 1740, 1) // phase
-	if !writeCString(output[1632:1696], "Track-01") {
+	for _, field := range []layoutField{
+		lmu13Layout.Session.SessionType,
+		lmu13Layout.Session.CurrentTime,
+		lmu13Layout.Session.EndTime,
+		lmu13Layout.Session.MaximumLaps,
+		lmu13Layout.Session.VehicleCount,
+	} {
+		copyLayoutField(output, input, field, 0)
+	}
+	if !writeCString(
+		output[lmu13Layout.Session.TrackName.Offset:lmu13Layout.Session.TrackName.end()],
+		"Track-01",
+	) {
 		return nil, ErrUnsanitizableFrame
 	}
 
-	playerIndex := int(input[128465])
-	playerPresent := input[128466] == 1
-	output[128465] = input[128465]
-	output[128466] = input[128466]
-	if !playerPresent {
-		return output, nil
+	playerID := VehicleSourceID(-1)
+	for _, vehicle := range observation.Vehicles {
+		if player, present := vehicle.Player.Value(); present && player {
+			playerID = vehicle.SourceID
+			break
+		}
 	}
-	scoringBase, ok := playerScoringEvidence(
-		input,
-		int32(binary.LittleEndian.Uint32(input[1736:])),
-		playerIndex,
-	)
-	if !ok {
-		return nil, ErrUnsanitizableFrame
+	count := len(observation.Vehicles)
+	forbiddenIDs := make(map[int32]struct{}, count)
+	for _, row := range observation.Vehicles {
+		forbiddenIDs[int32(row.SourceID)] = struct{}{}
 	}
-	telemetryBase := telemetryOffset + playerIndex*telemetryStride
-	identifier := sanitizer.remapID(
-		int32(binary.LittleEndian.Uint32(input[telemetryBase:])),
-	)
-	binary.LittleEndian.PutUint32(output[telemetryBase:], uint32(identifier))
-	binary.LittleEndian.PutUint32(output[scoringBase:], uint32(identifier))
-	if !writeCString(output[telemetryBase+32:telemetryBase+96], "Vehicle-01") ||
-		!writeCString(output[telemetryBase+96:telemetryBase+160], "Track-01") ||
-		!writeCString(output[scoringBase+36:scoringBase+100], "Vehicle-01") {
-		return nil, ErrUnsanitizableFrame
+	for row := 0; row < count; row++ {
+		base, _ := lmu13Layout.ScoringRows.rowBase(row)
+		sourceID := readInt32(input, base+lmu13Layout.Scoring.VehicleSourceSlot.Offset)
+		identity, ok := sanitizer.remapID(sourceID, forbiddenIDs)
+		if !ok {
+			return nil, ErrUnsanitizableFrame
+		}
+		binary.LittleEndian.PutUint32(
+			output[base+lmu13Layout.Scoring.VehicleSourceSlot.Offset:],
+			uint32(identity.ID),
+		)
+		for _, field := range []layoutField{
+			lmu13Layout.Scoring.CompletedLaps,
+			lmu13Layout.Scoring.Sector,
+			lmu13Layout.Scoring.LapDistance,
+			lmu13Layout.Scoring.BestLapTime,
+			lmu13Layout.Scoring.LastLapTime,
+			lmu13Layout.Scoring.PitStopCount,
+			lmu13Layout.Scoring.PenaltyCount,
+			lmu13Layout.Scoring.PlayerMarker,
+			lmu13Layout.Scoring.InPits,
+			lmu13Layout.Scoring.Position,
+			lmu13Layout.Scoring.TimeBehindNext,
+			lmu13Layout.Scoring.LapsBehindNext,
+			lmu13Layout.Scoring.TimeBehindLeader,
+			lmu13Layout.Scoring.LapsBehindLeader,
+			lmu13Layout.Scoring.EstimatedLapTime,
+		} {
+			copyLayoutField(output, input, field, base)
+		}
+		if !writeCString(
+			output[base+lmu13Layout.Scoring.DriverLabel.Offset:base+lmu13Layout.Scoring.DriverLabel.end()],
+			fmt.Sprintf("Driver-%03d", identity.Alias),
+		) || !writeCString(
+			output[base+lmu13Layout.Scoring.VehicleLabel.Offset:base+lmu13Layout.Scoring.VehicleLabel.end()],
+			fmt.Sprintf("Vehicle-%03d", identity.Alias),
+		) || !writeCString(
+			output[base+lmu13Layout.Scoring.VehicleClass.Offset:base+lmu13Layout.Scoring.VehicleClass.end()],
+			fmt.Sprintf("Class-%03d", identity.Alias),
+		) {
+			return nil, ErrUnsanitizableFrame
+		}
 	}
-	output[scoringBase+scoringIsPlayerOffset] = 1
-	output[scoringBase+scoringInPitsOffset] = input[scoringBase+scoringInPitsOffset]
-	for _, span := range []struct {
-		offset int
-		size   int
-	}{
-		{telemetryBase + 20, 4},
-		{telemetryBase + 184, 8},
-		{telemetryBase + 192, 8},
-		{telemetryBase + 200, 8},
-		{telemetryBase + 352, 4},
-		{telemetryBase + 356, 8},
-		{telemetryBase + 420, 8},
-		{telemetryBase + 428, 8},
-		{telemetryBase + 444, 8},
-	} {
-		copyRange(output, input, span.offset, span.size)
+	for row := 0; row < count; row++ {
+		base, _ := lmu13Layout.TelemetryRows.rowBase(row)
+		sourceID := readInt32(input, base+lmu13Layout.Telemetry.VehicleSourceSlot.Offset)
+		identity, ok := sanitizer.remapID(sourceID, forbiddenIDs)
+		if !ok {
+			return nil, ErrUnsanitizableFrame
+		}
+		binary.LittleEndian.PutUint32(
+			output[base+lmu13Layout.Telemetry.VehicleSourceSlot.Offset:],
+			uint32(identity.ID),
+		)
+		if VehicleSourceID(sourceID) != playerID {
+			continue
+		}
+		for _, field := range []layoutField{
+			lmu13Layout.Telemetry.LapNumber,
+			lmu13Layout.Telemetry.LocalVelocity,
+			lmu13Layout.Telemetry.Gear,
+			lmu13Layout.Telemetry.EngineRPM,
+			lmu13Layout.Telemetry.Throttle,
+			lmu13Layout.Telemetry.Brake,
+			lmu13Layout.Telemetry.Clutch,
+			lmu13Layout.Telemetry.FuelLiters,
+			lmu13Layout.Telemetry.FuelCapacityLiters,
+		} {
+			copyLayoutField(output, input, field, base)
+		}
 	}
 	return output, nil
 }
 
-func (sanitizer *FrameSanitizer) remapID(value int32) int32 {
+func (sanitizer *FrameSanitizer) remapID(value int32, forbidden map[int32]struct{}) (sanitizedIdentity, bool) {
 	sanitizer.mu.Lock()
 	defer sanitizer.mu.Unlock()
 	if mapped, ok := sanitizer.ids[value]; ok {
-		return mapped
+		if _, collision := forbidden[mapped.ID]; !collision {
+			return mapped, true
+		}
+		mappedID, available := sanitizer.allocateID(forbidden)
+		if !available {
+			return sanitizedIdentity{}, false
+		}
+		mapped.ID = mappedID
+		sanitizer.ids[value] = mapped
+		return mapped, true
 	}
-	mapped := sanitizer.nextID
-	sanitizer.nextID--
-	if mapped == value {
-		mapped = sanitizer.nextID
-		sanitizer.nextID--
+	alias := sanitizer.next
+	sanitizer.next++
+	mapped, available := sanitizer.allocateID(forbidden)
+	if !available {
+		return sanitizedIdentity{}, false
 	}
-	sanitizer.ids[value] = mapped
-	return mapped
+	identity := sanitizedIdentity{ID: mapped, Alias: alias}
+	sanitizer.ids[value] = identity
+	return identity, true
+}
+
+func (sanitizer *FrameSanitizer) allocateID(forbidden map[int32]struct{}) (int32, bool) {
+	const maximumInt32 = int64(1<<31 - 1)
+	for sanitizer.nextID <= maximumInt32 {
+		candidate := int32(sanitizer.nextID)
+		sanitizer.nextID++
+		if _, collision := forbidden[candidate]; collision {
+			continue
+		}
+		if _, used := sanitizer.usedIDs[candidate]; used {
+			continue
+		}
+		sanitizer.usedIDs[candidate] = struct{}{}
+		return candidate, true
+	}
+	return 0, false
+}
+
+func copyLayoutField(destination, source []byte, field layoutField, base int) {
+	copyRange(destination, source, base+field.Offset, field.width())
 }
 
 func copyRange(destination, source []byte, offset, size int) {

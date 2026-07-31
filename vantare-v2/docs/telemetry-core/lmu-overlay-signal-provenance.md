@@ -1,7 +1,8 @@
 # ISA-129 / TC-07A.1 — Procedencia de señales LMU para Overlay
 
-Estado: D0 y D1 aceptados; contrato ejecutable D2 implementado y pendiente de
-review independiente.
+Estado: D0-D3 aceptados; D4A corregido tras la revisión P2/P3 y pendiente del
+veredicto final independiente. LMU 1.4 y el cutover productivo permanecen fuera
+de este corte.
 
 Este documento cierra qué señales pueden entrar en los microcortes D1–D7 de
 ISA-129. No habilita compatibilidad nueva, no conecta el runtime modular a
@@ -18,19 +19,19 @@ producción y no convierte campos legacy en autoridad canónica.
   `docs/superpowers/plans/2026-07-31-isa-129-tc-07a1-canonical-overlay-signals.md`.
 - Orden: ISA-129 bloquea ISA-106.
 
-## Bloqueadores P0
+## Estado del programa al cerrar D4A
 
-1. Producción puede seleccionar `createMockSource()`. Su buffer sintético pasa
-   por el normalizador legacy como `Connected=true` y puede llegar a
-   Studio/Desktop/OBS.
-2. No existe un adaptador productivo de `lmu.Observation` a `core.Batch`.
-   Los replays canónicos actuales construyen `core.Batch` directamente y no
-   demuestran el recorrido desde LMU.
-3. La observación modular LMU solo contiene campos del jugador. No publica una
-   parrilla multivehículo ni una identidad estable por vehículo.
+1. D1 retiró el mock conectado productivo (`470d6a6`). La preview explícita de
+   Studio y los harnesses siguen permitidos.
+2. D2 y D3 cerraron la allowlist binaria, el catálogo de señales y la matriz de
+   autoridad que D4A implementa sin ampliaciones.
+3. D4A publica la parrilla multivehículo owned y correlaciona el jugador por ID
+   activo. La identidad canónica con generaciones pertenece a D5.
+4. Antes del uso de producto aún faltan la evidencia D4B, el mapper D5, las
+   derivaciones D6 y el wiring productivo D7.
 
-Ningún código de comportamiento posterior puede iniciarse hasta que este D0
-pase review independiente sin P0/P1/P2 ni P3 razonable abierto.
+No queda activo ningún gate histórico de D0 o D1. El único gate de este corte
+es el veredicto independiente final de D4A.
 
 ## Evidencia real fijada
 
@@ -87,10 +88,9 @@ documento: fases/banderas, pit-state labels, remaining raw, temperaturas,
 `FuelFraction`, native `mDeltaBest`, equipo, número, compuesto, Virtual Energy,
 daños o weather. Conocer que ciertos bytes existen no los vuelve admisibles.
 
-D2 no cambia el decoder actual ni la allowlist productiva. D4A será el corte
-que consuma este contrato al implementar el parser multivehículo. La versión
-del contrato permanece fijada literalmente a `1.3.0.0`; LMU 1.4 continúa
-bloqueado hasta la evidencia D4B.
+D4A consume este contrato sin ampliar la allowlist productiva. La versión
+permanece fijada literalmente a `1.3.0.0`; LMU 1.4 continúa bloqueado hasta la
+evidencia D4B.
 
 ## Reglas canónicas
 
@@ -129,7 +129,7 @@ Esta tabla es una allowlist. D3–D7 no pueden incorporar señales fuera de ella
 | Señal canónica | Fuente y offset/tipo | Unidad, referencia, signo o rango | Decisión y evidencia |
 |---|---|---|---|
 | Track name | `ScoringInfoV01.mTrackName`, abs. `1632`, `char[64]` | texto acotado; nunca identidad | Admitir; declaración primaria y fixtures 1.3 menú/pista. Sanitizar al almacenar evidencia. |
-| Session type | `mSession`, abs. `1696`, `int32` | `0` test, `1..4` practice, `5..8` qualifying, `9` warmup, `10..13` race | Admitir mediante enum cerrado; código desconocido es invalid. |
+| Session type | `mSession`, abs. `1696`, `int32` | la fuente define `0=test`, pero D3 no tiene un enum canónico Test: D4A lo publica invalid; `1..4` practice, `5..8` qualifying, `9` warmup, `10..13` race | Admitir los códigos representables mediante enum cerrado; código desconocido o sin representación canónica es invalid. |
 | Source/current time | `mCurrentET`, abs. `1700`, `float64` | segundos del reloj de sesión, finito y `>=0` | Admitir; fixture `112.6`. |
 | Session end time | `mEndET`, abs. `1708`, `float64` | mismo reloj; finito y `>= current` | Admitir; fixture `3605`. |
 | Maximum laps | `mMaxLaps`, abs. `1716`, `int32` | count `>=0`; cero válido en sesión por tiempo | Admitir; fixture cero. |
@@ -214,19 +214,61 @@ La temperatura ambiente/pista, aunque existe en código legacy, tampoco entra
 en D3–D7 porque el corte no dispone de procedencia LMU admitida completa para
 weather.
 
-## Gate para continuar
+## Implementación D4A — parser, fusión y evidencia sanitizada
 
-D0 se considera cerrado únicamente cuando:
+El parser productivo 1.3 ahora:
 
-- plan, este documento, matriz Overlay y `current-plan.md` coinciden;
-- los hashes 1.3 permanecen exactos;
-- LMU 1.4 figura como pendiente de D4B;
-- mock productivo, bridge ausente y grid player-only siguen registrados como
-  P0;
-- las exclusiones anteriores son missing explícito;
-- baseline D0 y `git diff --check` pasan;
-- review independiente no deja P0/P1/P2 ni P3 razonable abierto.
+- lee exactamente las primeras `mNumVehicles` filas scoring y telemetry;
+- exige IDs activos no negativos, únicos y con biyección exacta;
+- ignora las 60 filas inactivas de la fixture, por lo que el ID activo `0` es
+  válido;
+- conserva el orden scoring y no usa posición como identidad;
+- selecciona cero o un jugador únicamente desde scoring `mIsPlayer` y une sus
+  señales rápidas por el mismo ID telemetry activo;
+- ignora `mPlayerVehicleIdx`, `mPlayerHasVehicle`, orden REST y cola inactiva;
+- rechaza el frame completo ante ambigüedad estructural, sin publicar una
+  parrilla parcial;
+- conserva cero/false presentes y normaliza únicamente los sentinels de tiempo
+  de vuelta no positivos a missing;
+- publica end time, maximum laps, grid scoring completo y fuel/capacity del
+  jugador bajo las invariantes cerradas de este documento.
 
-No se inicia D1 antes de ese review. Este documento no autoriza cutover,
-promoción, CSS, renderizadores, canvas, Wails/SSE ni una segunda adquisición
-LMU.
+`FrameSanitizer` valida primero el frame y después lo reconstruye desde un
+buffer completamente a cero. Solo copia ventanas numéricas admitidas, sustituye
+track, driver, vehicle y class por aliases estables y cambia todos los IDs. Un
+alias no puede coincidir con ningún ID activo del frame. Solo conserva telemetry
+rápida de la fila player; la telemetry de rivales mantiene únicamente el ID
+necesario para revalidar la biyección. Canarios en todos los rangos excluidos
+demuestran que ningún byte desconocido sobrevive. El golden
+`internal/telemetry/drivers/lmu/testdata/grid_v1.golden.json` fija 44 filas,
+orden, aliases e identificación del jugador sin incluir PII.
+
+La fusión utiliza la matriz v3 documentada en
+`docs/telemetry-core/lmu-authority-matrix.md`: 33 señales, ocho solapamientos,
+SHM-first y REST player-only. `source_time` se compara después de proyectar
+ambas muestras al instante monotónico de decisión, con conflicto por encima de
+`500 ms`. Un frame SHM congelado vuelve stale todo el grid, incluido
+`InPit=false`.
+
+Este corte no crea `VehicleID` canónico, generaciones, `core.Batch`,
+derivaciones ni wiring productivo. Esas responsabilidades continúan en D5-D7.
+Tampoco habilita LMU 1.4: D4B requiere fixtures sanitizadas y hash-pinned de
+menú y pista antes de tocar la allowlist.
+
+## Estado de revisión y siguiente corte
+
+D4A queda implementado con las correcciones solicitadas y pendiente del
+veredicto independiente final. Debe conservar:
+
+- la allowlist cerrada y los hashes de LMU 1.3;
+- el rechazo atómico de frames estructuralmente ambiguos;
+- la parrilla completa, la correlación player por ID activo y la fusión
+  SHM-first/REST player-only;
+- las exclusiones como missing explícito;
+- los tests del parser, fusión, sanitizer, replay y golden;
+- la ausencia de mapper canónico, derivaciones y wiring productivo.
+
+D4B solo puede empezar tras un veredicto `ACCEPT`. Será un corte de evidencia
+diagnóstica: LMU 1.4 permanece bloqueado hasta disponer de fixtures sanitizadas
+y hash-pinned de menú y pista. D4A no autoriza cutover, promoción, CSS,
+renderizadores, canvas, Wails/SSE ni una segunda adquisición LMU.

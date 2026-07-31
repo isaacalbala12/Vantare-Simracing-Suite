@@ -5,11 +5,10 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
 func TestFrameSanitizerRebuildsFromZeroAndPreservesParserFacts(t *testing.T) {
@@ -36,7 +35,8 @@ func TestFrameSanitizerRebuildsFromZeroAndPreservesParserFacts(t *testing.T) {
 			t.Fatalf("sanitized frame leaked %q", forbidden)
 		}
 	}
-	if !strings.Contains(body, "Track-01") || !strings.Contains(body, "Vehicle-01") {
+	if !strings.Contains(body, "Track-01") || !strings.Contains(body, "Driver-001") ||
+		!strings.Contains(body, "Vehicle-001") || !strings.Contains(body, "Class-001") {
 		t.Fatal("synthetic aliases are absent")
 	}
 	parsed, err := parseWithBuild(output, time.Unix(2, 0).UTC(), BuildEvidence{FileVersion: supportedLMUVersion})
@@ -47,8 +47,11 @@ func TestFrameSanitizerRebuildsFromZeroAndPreservesParserFacts(t *testing.T) {
 	if !ok || track != "Track-01" {
 		t.Fatalf("track = %q,%v", track, ok)
 	}
-	vehicle, ok := parsed.VehicleName.Value()
-	if !ok || string(vehicle) != "Vehicle-01" {
+	if len(parsed.Vehicles) != 44 {
+		t.Fatalf("sanitized grid rows=%d, want 44", len(parsed.Vehicles))
+	}
+	vehicle, ok := parsed.Vehicles[0].VehicleName.Value()
+	if !ok || string(vehicle) != "Vehicle-001" {
 		t.Fatalf("vehicle = %q,%v", vehicle, ok)
 	}
 	originalParsed, err := parseWithBuild(input, time.Unix(2, 0).UTC(), BuildEvidence{FileVersion: supportedLMUVersion})
@@ -72,24 +75,81 @@ func TestFrameSanitizerRejectsUnknownBuildFingerprintAndShortFrames(t *testing.T
 
 func TestFrameSanitizerRemapsIdentityStablyWithinCapture(t *testing.T) {
 	input := knownBuffer(t)
-	playerIndex := int(input[128465])
-	base := telemetryOffset + playerIndex*telemetryStride
 	sanitizer, _ := NewFrameSanitizer(BuildEvidence{FileVersion: supportedLMUVersion})
 	first, err := sanitizer.Sanitize(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	secondInput := append([]byte(nil), input...)
-	binary.LittleEndian.PutUint32(secondInput[base:], binary.LittleEndian.Uint32(input[base:]))
 	second, err := sanitizer.Sanitize(secondInput)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if binary.LittleEndian.Uint32(first[base:]) != binary.LittleEndian.Uint32(second[base:]) {
-		t.Fatal("same source ID received different aliases")
+	for index := 0; index < 44; index++ {
+		scoringBase, _ := lmu13Layout.ScoringRows.rowBase(index)
+		telemetryBase, _ := lmu13Layout.TelemetryRows.rowBase(index)
+		if binary.LittleEndian.Uint32(first[scoringBase:]) != binary.LittleEndian.Uint32(second[scoringBase:]) ||
+			binary.LittleEndian.Uint32(first[telemetryBase:]) != binary.LittleEndian.Uint32(second[telemetryBase:]) {
+			t.Fatalf("row %d source ID received unstable aliases", index)
+		}
+		if binary.LittleEndian.Uint32(first[scoringBase:]) == binary.LittleEndian.Uint32(input[scoringBase:]) {
+			t.Fatalf("row %d source ID survived sanitization", index)
+		}
 	}
-	if binary.LittleEndian.Uint32(first[base:]) == binary.LittleEndian.Uint32(input[base:]) {
-		t.Fatal("source ID survived sanitization")
+}
+
+func TestFrameSanitizerNeverUsesAnyActiveSourceIDAsAnAlias(t *testing.T) {
+	input := knownBuffer(t)
+	activeIDs := make(map[uint32]struct{}, 44)
+	for row := 0; row < 44; row++ {
+		id := uint32(1_000_001 + row)
+		activeIDs[id] = struct{}{}
+		scoringBase, _ := lmu13Layout.ScoringRows.rowBase(row)
+		telemetryBase, _ := lmu13Layout.TelemetryRows.rowBase(row)
+		binary.LittleEndian.PutUint32(input[scoringBase:], id)
+		binary.LittleEndian.PutUint32(input[telemetryBase:], id)
+	}
+	sanitizer, _ := NewFrameSanitizer(BuildEvidence{FileVersion: supportedLMUVersion})
+	output, err := sanitizer.Sanitize(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for row := 0; row < 44; row++ {
+		scoringBase, _ := lmu13Layout.ScoringRows.rowBase(row)
+		telemetryBase, _ := lmu13Layout.TelemetryRows.rowBase(row)
+		for _, id := range []uint32{
+			binary.LittleEndian.Uint32(output[scoringBase:]),
+			binary.LittleEndian.Uint32(output[telemetryBase:]),
+		} {
+			if _, leaked := activeIDs[id]; leaked {
+				t.Fatalf("row %d sanitized source ID %d matches an active source ID", row, id)
+			}
+		}
+	}
+}
+
+func TestFrameSanitizerRebuildsFullGridAndDropsCanariesFromEveryExcludedRange(t *testing.T) {
+	input := knownBuffer(t)
+	allowed := diagnosticAllowedByteMask(input)
+	for index := range input {
+		if !allowed[index] {
+			input[index] = 0xa5
+		}
+	}
+	sanitizer, _ := NewFrameSanitizer(BuildEvidence{FileVersion: supportedLMUVersion})
+	output, err := sanitizer.Sanitize(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertOnlyAllowedDiagnosticBytes(t, input, output)
+	for index, value := range output {
+		if !allowed[index] && value != 0 {
+			t.Fatalf("excluded byte %d survived as 0x%02x", index, value)
+		}
+	}
+	parsed, err := parseSupported(output, time.Unix(0, 0).UTC())
+	if err != nil || parsed.Compatibility != CompatibilityKnown || len(parsed.Vehicles) != 44 {
+		t.Fatalf("rebuilt parse=(compatibility=%v rows=%d error=%v)", parsed.Compatibility, len(parsed.Vehicles), err)
 	}
 }
 
@@ -221,23 +281,26 @@ func assertDiagnosticPlayerScopeEqual(t testing.TB, original, sanitized Observat
 		original.SessionType != sanitized.SessionType ||
 		original.VehicleCount != sanitized.VehicleCount ||
 		original.PlayerPresent != sanitized.PlayerPresent ||
-		original.LapNumber != sanitized.LapNumber ||
-		original.Gear != sanitized.Gear ||
-		original.EngineRPM != sanitized.EngineRPM ||
-		original.SpeedMPS != sanitized.SpeedMPS ||
-		original.Throttle != sanitized.Throttle ||
-		original.Brake != sanitized.Brake ||
-		original.Clutch != sanitized.Clutch ||
-		original.InPit != sanitized.InPit {
+		original.EndTime != sanitized.EndTime ||
+		original.MaximumLaps != sanitized.MaximumLaps ||
+		len(original.Vehicles) != len(sanitized.Vehicles) {
 		t.Fatalf("sanitized replay changed audited player/global fields:\noriginal=%#v\nsanitized=%#v", original, sanitized)
 	}
-	for _, field := range []schema.Freshness{
-		sanitized.PlayerPosition.Freshness(),
-		sanitized.CompletedLaps.Freshness(),
-		sanitized.PitStopCount.Freshness(),
-	} {
-		if field != schema.FreshnessMissing {
-			t.Fatalf("sanitized frame invented an unparsed grid field: %v", field)
+	for index := range original.Vehicles {
+		left, right := original.Vehicles[index], sanitized.Vehicles[index]
+		if left.SourceID == right.SourceID ||
+			left.Player != right.Player || left.Position != right.Position ||
+			left.CompletedLaps != right.CompletedLaps || left.Sector != right.Sector ||
+			left.LapDistance != right.LapDistance || left.BestLapTime != right.BestLapTime ||
+			left.LastLapTime != right.LastLapTime || left.EstimatedLapTime != right.EstimatedLapTime ||
+			left.InPit != right.InPit || left.PitStopCount != right.PitStopCount ||
+			left.PenaltyCount != right.PenaltyCount || left.TimeBehindLeader != right.TimeBehindLeader ||
+			left.LapsBehindLeader != right.LapsBehindLeader || left.TimeBehindNext != right.TimeBehindNext ||
+			left.LapsBehindNext != right.LapsBehindNext || left.LapNumber != right.LapNumber ||
+			left.Gear != right.Gear || left.EngineRPM != right.EngineRPM || left.SpeedMPS != right.SpeedMPS ||
+			left.Throttle != right.Throttle || left.Brake != right.Brake || left.Clutch != right.Clutch ||
+			left.Fuel != right.Fuel {
+			t.Fatalf("sanitized row %d changed numeric facts:\noriginal=%#v\nsanitized=%#v", index, left, right)
 		}
 	}
 }
@@ -310,63 +373,98 @@ func BenchmarkDriverCapturePath(b *testing.B) {
 	})
 }
 
+func BenchmarkSanitizeObjectOut44Vehicles(b *testing.B) {
+	input := knownBuffer(b)
+	sanitizer, err := NewFrameSanitizer(BuildEvidence{FileVersion: supportedLMUVersion})
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.SetBytes(ObjectOutSize)
+	for b.Loop() {
+		if _, err := sanitizer.Sanitize(input); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func assertOnlyAllowedDiagnosticBytes(t testing.TB, input, output []byte) {
 	t.Helper()
 	if len(input) != ObjectOutSize || len(output) != ObjectOutSize {
 		t.Fatalf("unexpected frame lengths: input=%d output=%d", len(input), len(output))
 	}
+	allowed := diagnosticAllowedByteMask(input)
+	assertCStringEquals(t, output[1632:1696], "Track-01")
+	vehicles := int(readInt32(input, lmu13Layout.Session.VehicleCount.Offset))
+	for row := 0; row < vehicles; row++ {
+		base, _ := lmu13Layout.ScoringRows.rowBase(row)
+		assertCStringEquals(t, output[base+4:base+36], fmt.Sprintf("Driver-%03d", row+1))
+		assertCStringEquals(t, output[base+36:base+100], fmt.Sprintf("Vehicle-%03d", row+1))
+		assertCStringEquals(t, output[base+200:base+232], fmt.Sprintf("Class-%03d", row+1))
+	}
+	for index, value := range output {
+		if !allowed[index] && value != 0 {
+			t.Fatalf("byte %d outside allowlist = 0x%02x", index, value)
+		}
+	}
+}
+
+func diagnosticAllowedByteMask(input []byte) []bool {
 	allowed := make([]bool, ObjectOutSize)
 	mark := func(offset, size int) {
 		for index := offset; index < offset+size; index++ {
 			allowed[index] = true
 		}
 	}
-	mark(1632, 64)
-	mark(1696, 4)
-	mark(1700, 8)
-	mark(1736, 4)
-	mark(1740, 1)
-	mark(128465, 2)
-
-	playerIndex := int(input[128465])
-	if input[128466] == 1 {
-		scoringBase, ok := playerScoringEvidence(
-			input,
-			int32(binary.LittleEndian.Uint32(input[1736:])),
-			playerIndex,
-		)
-		if !ok {
-			t.Fatal("accepted frame lacks player scoring evidence")
-		}
-		telemetryBase := telemetryOffset + playerIndex*telemetryStride
-		for _, span := range []struct {
-			offset int
-			size   int
-		}{
-			{telemetryBase, 4},
-			{telemetryBase + 20, 4},
-			{telemetryBase + 32, 128},
-			{telemetryBase + 184, 24},
-			{telemetryBase + 352, 12},
-			{telemetryBase + 420, 16},
-			{telemetryBase + 444, 8},
-			{scoringBase, 4},
-			{scoringBase + 36, 64},
-			{scoringBase + scoringIsPlayerOffset, 1},
-			{scoringBase + scoringInPitsOffset, 1},
+	for _, field := range []layoutField{
+		lmu13Layout.Session.TrackName, lmu13Layout.Session.SessionType,
+		lmu13Layout.Session.CurrentTime, lmu13Layout.Session.EndTime,
+		lmu13Layout.Session.MaximumLaps, lmu13Layout.Session.VehicleCount,
+	} {
+		mark(field.Offset, field.width())
+	}
+	vehicles := int(readInt32(input, lmu13Layout.Session.VehicleCount.Offset))
+	if vehicles < 0 || vehicles > lmu13Layout.ScoringRows.Maximum {
+		return allowed
+	}
+	playerID := VehicleSourceID(-1)
+	for row := 0; row < vehicles; row++ {
+		base, _ := lmu13Layout.ScoringRows.rowBase(row)
+		for _, field := range []layoutField{
+			lmu13Layout.Scoring.VehicleSourceSlot, lmu13Layout.Scoring.DriverLabel,
+			lmu13Layout.Scoring.VehicleLabel, lmu13Layout.Scoring.CompletedLaps,
+			lmu13Layout.Scoring.Sector, lmu13Layout.Scoring.LapDistance,
+			lmu13Layout.Scoring.BestLapTime, lmu13Layout.Scoring.LastLapTime,
+			lmu13Layout.Scoring.PitStopCount, lmu13Layout.Scoring.PenaltyCount,
+			lmu13Layout.Scoring.PlayerMarker, lmu13Layout.Scoring.InPits,
+			lmu13Layout.Scoring.Position, lmu13Layout.Scoring.VehicleClass,
+			lmu13Layout.Scoring.TimeBehindNext, lmu13Layout.Scoring.LapsBehindNext,
+			lmu13Layout.Scoring.TimeBehindLeader, lmu13Layout.Scoring.LapsBehindLeader,
+			lmu13Layout.Scoring.EstimatedLapTime,
 		} {
-			mark(span.offset, span.size)
+			mark(base+field.Offset, field.width())
 		}
-		assertCStringEquals(t, output[telemetryBase+32:telemetryBase+96], "Vehicle-01")
-		assertCStringEquals(t, output[telemetryBase+96:telemetryBase+160], "Track-01")
-		assertCStringEquals(t, output[scoringBase+36:scoringBase+100], "Vehicle-01")
-	}
-	assertCStringEquals(t, output[1632:1696], "Track-01")
-	for index, value := range output {
-		if !allowed[index] && value != 0 {
-			t.Fatalf("byte %d outside allowlist = 0x%02x", index, value)
+		if input[base+lmu13Layout.Scoring.PlayerMarker.Offset] == 1 {
+			playerID = VehicleSourceID(readInt32(input, base+lmu13Layout.Scoring.VehicleSourceSlot.Offset))
 		}
 	}
+	for row := 0; row < vehicles; row++ {
+		base, _ := lmu13Layout.TelemetryRows.rowBase(row)
+		mark(base+lmu13Layout.Telemetry.VehicleSourceSlot.Offset, lmu13Layout.Telemetry.VehicleSourceSlot.width())
+		if VehicleSourceID(readInt32(input, base+lmu13Layout.Telemetry.VehicleSourceSlot.Offset)) != playerID {
+			continue
+		}
+		for _, field := range []layoutField{
+			lmu13Layout.Telemetry.LapNumber, lmu13Layout.Telemetry.LocalVelocity,
+			lmu13Layout.Telemetry.Gear, lmu13Layout.Telemetry.EngineRPM,
+			lmu13Layout.Telemetry.Throttle, lmu13Layout.Telemetry.Brake,
+			lmu13Layout.Telemetry.Clutch, lmu13Layout.Telemetry.FuelLiters,
+			lmu13Layout.Telemetry.FuelCapacityLiters,
+		} {
+			mark(base+field.Offset, field.width())
+		}
+	}
+	return allowed
 }
 
 func assertCStringEquals(t testing.TB, value []byte, expected string) {

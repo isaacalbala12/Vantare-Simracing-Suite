@@ -1,106 +1,119 @@
 # LMU — matriz de autoridad y fusión por campo
 
-Estado: ISA-36 / TC-04B, matriz `v2` aditiva sobre ISA-34.
+Estado: ISA-129 / TC-07A.1, microcorte D4A implementado y pendiente de
+revisión independiente. Matriz ejecutable `v3`.
 
 ## Contrato
 
 `internal/telemetry/drivers/lmu` conserva como máximo la última observación
-tipada que llegó de Shared Memory y la última que llegó de REST. Cada entrada produce un lote
-canónico `Observation` con `SourceCanonical`, versión de matriz, una decisión
-por señal del catálogo y conflictos acotados a cinco. El orden de llegada y la
-edad se registran con secuencia/tiempo monotónico internos; UTC es solo metadata
-observable y nunca decide qué muestra es la más reciente ni cuándo vence el TTL.
-No conserva ni expone bytes raw, JSON, nombres
-de piloto, rutas o payloads diagnósticos. La salida canónica tampoco conserva el
-snapshot REST interno: los consumidores solo ven el resultado de autoridad.
+tipada de Shared Memory y la última de REST. Cada entrada produce una
+`Observation` canónica con una decisión por señal admitida. La secuencia y la
+edad monotónica gobiernan autoridad y TTL; UTC es solo metadata.
 
-El orden de calidad es `fresh` válido, `stale` válido, `invalid` y `missing`;
-dentro de la misma calidad manda la fuente preferida. `0`, `false` y texto vacío
-presente no significan ausencia. Si la fuente preferida no es usable, solo se
-admite una alternativa marcada como semánticamente equivalente. Si ninguna
-fuente aporta valor se emite `missing`; nunca se inventa un valor.
+Shared Memory es la fuente atómica de sesión y parrilla. REST solo puede
+completar los ocho solapamientos demostrados. En posición, vueltas completadas
+y paradas, REST se aplica exclusivamente a la fila que Shared Memory ya marcó
+como jugador. No crea filas, IDs, rivales ni identidad de jugador.
 
-Cuando dos alternativas usables discrepan, gana la preferida. No se promedian
-valores ni se sustituyen sesiones, standings u otros bloques. El diagnóstico
-solo contiene ID de campo y fuentes en conflicto; la calidad seleccionada vive
-en la decisión del campo y no se incluyen valores.
+El orden de selección es:
 
-## Matriz v2
+1. preferida fresh;
+2. alternativa equivalente fresh;
+3. preferida stale;
+4. alternativa equivalente stale;
+5. preferida invalid/presente;
+6. alternativa equivalente invalid/presente;
+7. missing.
 
-| Orden | Campo estable | Preferida | Alternativa equivalente | TTL preferida | TTL alternativa |
-|---:|---|---|---|---:|---:|
-| 1 | `session.source_time` | Shared Memory | REST | 500 ms | 2 s |
-| 2 | `session.track_name` | Shared Memory | REST | 500 ms | 2 s |
-| 3 | `session.type` | Shared Memory | REST | 500 ms | 2 s |
-| 4 | `session.vehicle_count` | Shared Memory | REST | 500 ms | 2 s |
-| 5 | `vehicle.player_present` | Shared Memory | REST | 500 ms | 2 s |
-| 6 | `vehicle.name` | Shared Memory | ninguna | 500 ms | — |
-| 7 | `session.lap_number` | Shared Memory | ninguna | 500 ms | — |
-| 8 | `vehicle.gear` | Shared Memory | ninguna | 500 ms | — |
-| 9 | `vehicle.engine_rpm` | Shared Memory | ninguna | 500 ms | — |
-| 10 | `vehicle.speed_mps` | Shared Memory | ninguna | 500 ms | — |
-| 11 | `controls.throttle` | Shared Memory | ninguna | 500 ms | — |
-| 12 | `controls.brake` | Shared Memory | ninguna | 500 ms | — |
-| 13 | `controls.clutch` | Shared Memory | ninguna | 500 ms | — |
-| 14 | `standings.position` | REST | ninguna | 2 s | — |
-| 15 | `standings.completed_laps` | REST | ninguna | 2 s | — |
-| 16 | `pit.stop_count` | REST | ninguna | 2 s | — |
-| 17 | `pit.in_pit` | Shared Memory | ninguna | 500 ms | — |
+`0`, `false` y texto vacío presente son valores. Una discrepancia entre valores
+comparables genera un diagnóstico acotado a cinco, pero no cambia la autoridad.
+La salida nunca conserva el snapshot REST privado ni bytes raw.
 
-Los cinco primeros son todo el solapamiento demostrado por los contratos
-actuales. Los ocho siguientes son señales rápidas o de vehículo demostradas
-solo en Shared Memory. Las tres siguientes proceden realmente de standings
-REST. La última es el booleano observado `VehicleScoring.InPits` de Shared
-Memory.
-Ampliar esta tabla exige una nueva versión, evidencia de semántica/unidad y
-tests; no se reutilizan IDs ni se activa una alternativa por conveniencia.
+## Matriz v3
 
-## Evidencia y límite de `pit.in_pit`
+TTL Shared Memory: `500 ms`. TTL REST: `2 s`.
 
-La matriz `v2` añade únicamente `pit.in_pit` a la `v1`. La señal representa
-exactamente el byte booleano `VehicleScoring.InPits` del vehículo jugador
-correlacionado con su slot de telemetría: `0` es `false` presente, `1` es
-`true` presente y cualquier otro byte es `invalid`. No se combina con
-`PitState`, no demuestra por sí sola lane/box/garage y no tiene alternativa
-REST.
+| Orden | Señal canónica | Preferida | Alternativa equivalente | Scope |
+|---:|---|---|---|---|
+| 1 | `session.source_time` | SHM | REST | sesión |
+| 2 | `session.track_name` | SHM | REST | sesión |
+| 3 | `session.type` | SHM | REST | sesión |
+| 4 | `session.vehicle_count` | SHM | REST | sesión; REST no crea grid |
+| 5 | `vehicle.player_present` | SHM | REST | REST no crea identidad |
+| 6 | `identity.driver_name` | SHM | — | cada fila scoring |
+| 7 | `vehicle.name` | SHM | — | cada fila scoring |
+| 8 | `standings.completed_laps` | SHM | REST | REST solo jugador identificado |
+| 9 | `pit.stop_count` | SHM | REST | REST solo jugador identificado |
+| 10 | `standings.position` | SHM | REST | REST solo jugador identificado |
+| 11 | `pit.in_pit` | SHM | — | cada fila scoring |
+| 12 | `session.lap_number` | SHM | — | telemetry del jugador |
+| 13 | `vehicle.gear` | SHM | — | telemetry del jugador |
+| 14 | `vehicle.engine_rpm` | SHM | — | telemetry del jugador |
+| 15 | `vehicle.speed_mps` | SHM | — | telemetry del jugador |
+| 16 | `controls.throttle` | SHM | — | telemetry del jugador |
+| 17 | `controls.brake` | SHM | — | telemetry del jugador |
+| 18 | `controls.clutch` | SHM | — | telemetry del jugador |
+| 19 | `session.end_time` | SHM | — | sesión |
+| 20 | `session.maximum_laps` | SHM | — | sesión |
+| 21 | `vehicle.class` | SHM | — | cada fila scoring |
+| 22 | `standings.sector` | SHM | — | cada fila scoring |
+| 23 | `standings.lap_distance` | SHM | — | cada fila scoring |
+| 24 | `standings.best_lap_time` | SHM | — | cada fila scoring |
+| 25 | `standings.last_lap_time` | SHM | — | cada fila scoring |
+| 26 | `standings.estimated_lap_time` | SHM | — | cada fila scoring |
+| 27 | `standings.penalty_count` | SHM | — | cada fila scoring |
+| 28 | `standings.time_behind_leader` | SHM | — | cada fila scoring |
+| 29 | `standings.laps_behind_leader` | SHM | — | cada fila scoring |
+| 30 | `standings.time_behind_next` | SHM | — | cada fila scoring |
+| 31 | `standings.laps_behind_next` | SHM | — | cada fila scoring |
+| 32 | `energy.fuel_amount` | SHM | — | telemetry del jugador |
+| 33 | `energy.fuel_capacity` | SHM | — | telemetry del jugador |
 
-La evidencia existente y sanitizada de pista contiene ambas ramas del booleano
-entre las 44 filas de scoring (34 `true`, 10 `false`) y confirma `false` para el
-jugador correlacionado. Los tests modifican únicamente esa copia sanitizada
-para demostrar `true` e `invalid` sin leer ni regenerar raw. Siguen pendientes
-capturas reales específicas de transición, boxes y garaje; por eso el contrato
-no afirma esas semánticas.
+La matriz es cerrada, ordenada y copiada al exponerla. Ampliarla requiere una
+nueva versión, evidencia de significado/unidad y tests. Las decisiones de
+señales por vehículo resumen la autoridad del grid; la presencia y calidad
+exactas permanecen en cada `schema.Field` de cada fila.
 
-## Equivalencia de los cinco solapamientos
+## Equivalencia de los ocho solapamientos
 
-| Señal canónica | Shared Memory raw | Endpoint/campo REST | Unidad canónica | Normalización común | Divergencia conocida y regla | Evidencia automática |
-|---|---|---|---|---|---|---|
-| `session.source_time` | `LMU_Data` scoring, `float64` offset 1700 | `/rest/watch/sessionInfo.currentEventTime` | `time.Duration` desde segundos | Una sola conversión acotada: rechaza negativo, NaN, infinito y overflow; conserva cero | Las fuentes se muestrean en instantes distintos. Solo se compara/fusiona el valor canónico válido; no se interpola | `TestOverlapNormalizationsAreEquivalent/source_time_bounded_conversion` y límites REST |
-| `session.track_name` | C string UTF-8 de 64 bytes, offset 1632 | `/rest/watch/sessionInfo.trackName` | texto | `normalizeTrackName`: elimina espacio exterior en ambos bordes | Política única de presencia: si el campo existe, `""` y solo espacios normalizado a `""` siguen presentes en ambas fuentes; nunca se convierten a `missing`. Una clave REST omitida sí es ausencia explícita. Freshness y autoridad deciden | `TestOverlapNormalizationsAreEquivalent/track_name` cubre omitido, `""`, espacios y texto normal en ambas transformaciones; fixtures SHM y validación transaccional REST |
-| `session.type` | `int32` offset 1696: 1 practice, 3 qualify, 4/5 race | `/rest/watch/sessionInfo.session`: prefijos `PRACTICE`, `QUALIFY`, `RACE`, `WARMUP` | `schema/session.Type` | Ambos decoders producen el mismo enum para practice/qualify/race | REST observa `warmup`, sin código SHM demostrado; sigue siendo un valor canónico REST válido cuando SHM no aporta uno. No se equipara a otra fase | `TestOverlapNormalizationsAreEquivalent/session_type` y tests unitarios de ambos decoders |
-| `session.vehicle_count` | `int32` offset 1736 | `/rest/watch/sessionInfo.numberOfVehicles` | `schema.Count` | Mismo rango cerrado 0–104; cero es válido | Una respuesta REST parcial puede retrasarse respecto al scoring; no se suman ni promedian conteos | `TestOverlapNormalizationsAreEquivalent/vehicle_count` y validación de rangos |
-| `vehicle.player_present` | byte booleano offset 128466, solo 0/1 válido | `/rest/watch/standings`: existe una fila con `player=true` | booleano | Shared Memory valida 0/1; REST reduce las filas válidas con `any(player)` | REST vacío significa `false` observado para ese snapshot, pero un endpoint fallido conserva freshness previa; no confunde fallo con ausencia | `TestOverlapNormalizationsAreEquivalent/player_present`, tests de standings y fixtures SHM |
+| Señal | Normalización/comparación | Regla de fallback |
+|---|---|---|
+| `session.source_time` | Proyectar ambas muestras al instante de decisión mediante su edad monotónica; conflicto solo si la diferencia es `>500 ms` | REST solo si SHM no usable |
+| `session.track_name` | trim exterior común y comparación exacta | REST solo si SHM no usable |
+| `session.type` | enum canónico cerrado | REST desconocido nunca sustituye SHM válido |
+| `session.vehicle_count` | entero exacto `0..104` | REST puede describir count, nunca crear filas |
+| `vehicle.player_present` | booleano exacto | sin slot SHM, REST no crea identidad |
+| `standings.position` | one-based `1..104` | solo jugador ya identificado por SHM |
+| `standings.completed_laps` | count no negativo | solo jugador ya identificado por SHM |
+| `pit.stop_count` | count no negativo | solo jugador ya identificado por SHM |
 
-La alternativa solo opera después de estas transformaciones. Los tests comparan
-ambas rutas con casos table-driven; no existe una segunda conversión de
-`source_time` ni una segunda política de presencia para `track_name`.
+Fresh SHM gana incluso si REST discrepa. REST fresh puede sustituir SHM
+missing, invalid o stale. Si ambos son stale, se conserva SHM stale. Las
+comparaciones incluyen cero y `false`. Los valores REST del jugador jamás se
+propagan a rivales.
 
-## Verificación
+## Staleness del grid
 
-Automática:
+La parrilla es una copia owned de la observación SHM. Si vence el TTL del frame
+o `source_time` llega stale, todos los campos presentes del grid pasan a stale
+de forma conjunta, incluido `pit.in_pit=false`. Los campos invalid permanecen
+invalid y los missing permanecen missing. REST puede refrescar únicamente los
+tres campos player-only declarados, sin refrescar el resto del frame.
+
+## Evidencia automática D4A
+
+- matriz v3 exacta, sin duplicados y con los 33 IDs del catálogo;
+- tabla de fresh/equal, fresh/conflict, missing, invalid, stale, ambos stale y
+  cero para los ocho solapamientos;
+- comparación proyectada del reloj de sesión;
+- REST limitado al jugador SHM y SHM fresh como autoridad;
+- grid completo stale, incluido `InPit=false`;
+- conflictos limitados a cinco y decisiones completas.
 
 ```powershell
-go test ./internal/telemetry/drivers/lmu -count=1
+go test ./internal/telemetry/drivers/lmu -count=20
 go test ./internal/telemetry/... -count=1
 ```
 
-La suite cubre matriz completa `v2` 1:1 con `catalog.Definitions`, preferred
-stale/invalid/missing, REST parcial, recuperación, cero válido, las cuatro
-combinaciones fresh/stale en conflictos, clamp explícito a cinco, borde TTL,
-saltos del reloj civil, orden de llegada, equivalencias, fuzz, benchmark y
-lifecycle/cancelación heredado del único driver.
-
-Manual (gate TC-03, no ejecutado en ISA-34): con LMU real, observar conexión y
-desconexión read-only, confirmar transición honesta de estado y que no aparece
-telemetría ficticia. No cerrar ni manipular LMU desde el harness. Esta prueba
-queda para Isaac antes de TC-04.
+La validación LMU 1.4 y el cutover productivo no pertenecen a D4A. La matriz v3
+permanece limitada al layout LMU 1.3 hash-pinned hasta D4B.

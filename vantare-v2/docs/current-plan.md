@@ -59,6 +59,12 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   rangos, ceros legítimos, enums y Markdown golden sincronizados. Review
   independiente `ACCEPT`, P0/P1/P2/P3 = 0; focales x20 y suite telemetry PASS.
   D4A queda desbloqueado sin promoción ni cutover.
+- D4A implementado y aceptado en `94c2994`: parser/sanitizer LMU 1.3 con grid
+  real 44/44, identidad por `mIsPlayer` + ID activo, zero-rebuild, aliases,
+  canaries, autoridad SHM-first y REST limitado al jugador. Focal x20,
+  Telemetry/global, fuzzers y benchmarks PASS. Review final `ACCEPT`,
+  P0/P1/P2/P3 = 0; el código LMU `0=test` queda invalid/missing, no Practice.
+  D4B queda desbloqueado solo para prueba diagnóstica LMU 1.4, sin promoción.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

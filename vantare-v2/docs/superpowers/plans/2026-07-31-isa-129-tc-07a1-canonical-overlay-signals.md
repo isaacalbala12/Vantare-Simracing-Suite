@@ -662,50 +662,50 @@ git diff --check
 
 ### Red tests
 
-- [ ] Parse all 44 sanitized scoring rows from the real 1.3 fixture.
-- [ ] Assert the real track fixture has 44 unique active scoring IDs, 44 unique
+- [x] Parse all 44 sanitized scoring rows from the real 1.3 fixture.
+- [x] Assert the real track fixture has 44 unique active scoring IDs, 44 unique
   active telemetry IDs, exact set equality and one scoring player whose ID maps
   to exactly one active telemetry row.
-- [ ] Prove the 60 zero-filled inactive telemetry rows are ignored, so active ID
+- [x] Prove the 60 zero-filled inactive telemetry rows are ignored, so active ID
   `0` remains valid and a full-104-row ID scan cannot select the player.
-- [ ] Prove the parser does not depend on `mPlayerVehicleIdx` or
+- [x] Prove the parser does not depend on `mPlayerVehicleIdx` or
   `mPlayerHasVehicle` for player selection.
-- [ ] Preserve row order but make identity independent of position.
-- [ ] Reject duplicate/negative IDs in either active grid, any active scoring ↔
+- [x] Preserve row order but make identity independent of position.
+- [x] Reject duplicate/negative IDs in either active grid, any active scoring ↔
   telemetry non-bijection, multiple players, invalid booleans, out-of-range
   rows, unterminated strings, non-finite time and out-of-bounds counts.
-- [ ] Prove false/zero fields remain present.
-- [ ] Prove `InPit` becomes stale with the rest of a frozen SHM frame.
-- [ ] Prove the sanitizer aliases all 44 identities/strings and retains only
+- [x] Prove false/zero fields remain present.
+- [x] Prove `InPit` becomes stale with the rest of a frozen SHM frame.
+- [x] Prove the sanitizer aliases all 44 identities/strings and retains only
   allowlisted numeric ranges.
-- [ ] Rebuild the complete admitted frame from a zero-filled buffer, including
+- [x] Rebuild the complete admitted frame from a zero-filled buffer, including
   the full grid; never copy unknown byte ranges.
-- [ ] Add canaries across every excluded byte range and prove none survive.
-- [ ] Add table-driven SHM/REST authority tests for every §1.5 overlap:
+- [x] Add canaries across every excluded byte range and prove none survive.
+- [x] Add table-driven SHM/REST authority tests for every §1.5 overlap:
   fresh/equal, fresh/conflict, preferred missing, preferred stale, both stale
   and legitimate zero/false.
-- [ ] Prove REST fallback can update only the already SHM-identified player and
+- [x] Prove REST fallback can update only the already SHM-identified player and
   cannot create/modify rival rows or vehicle identity.
-- [ ] Fuzz the parser and sanitizer with no panic or leak.
+- [x] Fuzz the parser and sanitizer with no panic or leak.
 
 ### Implementation
 
-- [ ] Add owned `[]VehicleObservation` to `Observation`.
-- [ ] Parse each scoring row with helpers that return typed `schema.Field`.
-- [ ] Parse exactly the first `mNumVehicles` scoring and telemetry rows; validate
+- [x] Add owned `[]VehicleObservation` to `Observation`.
+- [x] Parse each scoring row with helpers that return typed `schema.Field`.
+- [x] Parse exactly the first `mNumVehicles` scoring and telemetry rows; validate
   their unique non-negative ID bijection before accepting the frame and ignore
   the inactive tail.
-- [ ] Select the optional player only from scoring `mIsPlayer`; join fast
+- [x] Select the optional player only from scoring `mIsPlayer`; join fast
   telemetry only through the unique equal active telemetry ID, never through
   the header player index, position or full-array search.
-- [ ] Parse session end and maximum laps.
-- [ ] Parse fuel/fuel capacity for the player only after finite and
+- [x] Parse session end and maximum laps.
+- [x] Parse fuel/fuel capacity for the player only after finite and
   `0 <= fuel <= capacity` checks.
-- [ ] Keep phase/flags, pit-state enum, native delta, weather and every other
+- [x] Keep phase/flags, pit-state enum, native delta, weather and every other
   excluded field from §1.4 absent.
-- [ ] Extend authority matrix additively; do not copy legacy zero-as-missing
+- [x] Extend authority matrix additively; do not copy legacy zero-as-missing
   behavior.
-- [ ] Change player position/completed-laps/pit-stop authority from
+- [x] Change player position/completed-laps/pit-stop authority from
   REST-preferred to the exact SHM-preferred player-only fallback in §1.5.
 
 ### Verification
@@ -730,8 +730,8 @@ go test ./internal/telemetry/drivers/lmu -run '^$' `
 git diff --check
 ```
 
-- [ ] Commit: `feat(lmu): parse and sanitize multivehicle observations`.
-- [ ] Independent review.
+- [x] Commit: `feat(lmu): parse sanitized multivehicle grid` (`94c2994`).
+- [x] Independent review: `ACCEPT`, P0/P1/P2/P3 = 0 after one fix cycle.
 
 ---
 

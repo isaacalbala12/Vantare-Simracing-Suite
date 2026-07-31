@@ -880,6 +880,24 @@ Corrección backend D4 ISA-104 completada y enviada a re-review:
   implementador con esos remedios cerrados y una única pasada Playwright
   post-fix autorizada. Sin commit de producto, merge o promoción.
 
+Cierre definitivo backend D4 ISA-104:
+
+- La re-review descubrió una última carrera Wails: `diagnostics:cancel` podía
+  llegar antes de que la petición quedase registrada y perderse.
+- El bridge conserva cancelaciones tempranas por clave exacta
+  requestId+operation con TTL de 30 s, máximo 64 entradas y purga lazy. No crea
+  timers ni goroutines de mantenimiento. La petición consume la cancelación
+  antes de slot, contexto, goroutine o acceso al catálogo y emite `canceled`
+  correlacionado.
+- La regresión demuestra cero llamadas al catálogo y estado
+  active/pending/slots vacío; también cubre límite, duplicado, expiración,
+  cancel activo y Close.
+- Re-review final backend: `ACCEPT`, P0/P1/P2/P3 = 0. Reviewer focal x100,
+  race UCRT64 x10, vet app y diff-check: PASS. Los gates previos app/cmd,
+  pkg/config, Telemetry focal y frontend client permanecen verdes.
+- Solo queda cerrar los findings UI/runner y la evidencia final D4. Sin commit
+  de producto, merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

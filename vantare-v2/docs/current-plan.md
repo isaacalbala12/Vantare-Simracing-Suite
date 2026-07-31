@@ -29,6 +29,23 @@ Nota ISA-105 / TC-07A (2026-07-31):
 - Alcance actual: decoder, adapter, ViewModels old/new, comparator sanitizado y
   harness diagnóstico. Sin CSS/renderizadores/canvas, baselines, Wails/SSE,
   merge ni promoción.
+- Implementación D1–D5 completada y publicada hasta `210513f`: decoder estricto,
+  adapter de señales demostradas, comparator acotado/sanitizado, harness
+  explícitamente `NO LIVE` y evidencia reproducible bajo
+  `docs/telemetry-core/evidence/isa-105-overlay-shadow/`.
+- Cobertura derivada del registro real: 18/18 tipos; un `exact`, cinco
+  `partial`, once `not-comparable` y uno `external`. El escenario de evidencia
+  conserva 2 widgets, 31 campos, 19 iguales y 12 diferencias explicadas.
+- Gates D5: Go telemetry/app PASS; frontend 297 archivos/1.993 tests PASS;
+  frontend build PASS; Playwright shadow PASS; privacidad, hashes, alcance y
+  `diff --check` PASS. Review independiente D5: `APPROVE`, P0/P1/P2/P3 = 0.
+- `visual:overlay-studio` conserva el fallo Crystal histórico del 100 % tanto
+  en ISA-105 como en la base exacta `3b44d367`; los tres casos Original quedan
+  en 0 %. No se regeneró ningún baseline. El benchmark del canvas también
+  incumple sus umbrales en ambas ramas y queda clasificado como deuda
+  heredada/de entorno, no como regresión de este corte sin cambios de canvas.
+- Pendiente únicamente D6: review adversarial final, entrega draft contra
+  ISA-104 y actualización de Linear/handoff. Sin cutover productivo.
 
 Nota ISA-104 / TC-06D (2026-07-31):
 - Implementados informe allowlisted, catálogo metadata-only, inspector local y

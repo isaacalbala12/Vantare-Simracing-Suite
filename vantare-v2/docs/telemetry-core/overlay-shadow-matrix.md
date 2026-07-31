@@ -318,3 +318,35 @@ no pertenece al comparator y no puede rellenarse con fixtures.
 - Resto: no comparable hasta incorporar señales demostradas.
 - Renderizadores/CSS/canvas inspeccionados como consumidores de ViewModels, no
   como fuentes de datos.
+
+## Resultado ejecutado de TC-07A
+
+La evidencia reproducible vive en
+`docs/telemetry-core/evidence/isa-105-overlay-shadow/`:
+
+- `coverage.json` se deriva de `widgetTypeRegistry` y
+  `OVERLAY_SHADOW_POLICIES`: 18 registrados, 18 políticas y 18 cubiertos;
+- `report.json` es la salida sanitizada real del comparator para el escenario
+  `partial`: 2 widgets, 31 campos, 19 iguales y 12 diferencias;
+- las capturas wide, medium y compact están indexadas con escenario, viewport y
+  SHA-256 verificado;
+- los canarios de nombre, equipo, vehículo y circuito no aparecen en JSON, DOM
+  ni capturas;
+- el harness conserva cinco escenarios fijos y las etiquetas `NO LIVE` y
+  `NO PRODUCTIVO`; no usa Wails, SSE, red, persistencia ni runtime Overlay.
+
+Los gates D5 terminaron así:
+
+| Gate | Resultado |
+|---|---|
+| `go test ./internal/telemetry/... ./internal/app/... -count=1` | PASS |
+| `pnpm --dir frontend test` | PASS — 297 archivos / 1.993 tests |
+| `pnpm --dir frontend build` | PASS |
+| `pnpm --dir frontend test:telemetry-overlay-shadow` | PASS |
+| Privacidad, hashes, alcance y `git diff --check` | PASS |
+| `visual:overlay-studio` | FAIL heredado: Crystal 100 % también en `3b44d367`; Original 0 % |
+| `bench:overlay-studio-drag` | FAIL heredado/de entorno en ISA-105 y base exacta |
+
+No se actualizó ningún baseline. ISA-105 no toca renderizadores, CSS, canvas,
+drag/resize ni el benchmark productivo. La review independiente D5 concluyó
+`APPROVE` con P0/P1/P2/P3 = 0.

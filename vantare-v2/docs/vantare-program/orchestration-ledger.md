@@ -1207,6 +1207,21 @@ ISA-105 / TC-07A — cierre D6 y entrega:
   sincronizado. Sin PR, merge, promoción ni cutover.
 - Siguiente acción: D3 sobre `b12176d`; no iniciar D4A hasta review D3.
 
+### 2026-07-31 — ISA-129 D3 implementado y aceptado
+
+- Base: D2 `e2c92fd` más documentación `b12176d`; rama ISA-129 sin promoción.
+- Alcance exacto: 11 rutas de schema/catalog/docs. IDs 1–24 permanecen
+  estables y 25–43 se añaden en el orden contractual; aliases semánticos de
+  conductor/combustible se rechazan, y unidades, rangos, ceros y enums quedan
+  validados. Markdown golden coincide con el ledger Go.
+- RED estructural y GREEN reproducidos. Review independiente final:
+  `ACCEPT`, P0/P1/P2/P3 = 0.
+- Checks: catalog/schema x20, suite `internal/telemetry/...`, gofmt y
+  `git diff --check` PASS; alcance exacto 11/11. Sin D4A.
+- Commit de producto `462f0ee`; documentación de cierre `fa7bab0`; push
+  sincronizado. Sin PR, merge, promoción ni cutover.
+- Siguiente acción: D4A sobre `fa7bab0`; no iniciar D4B hasta review D4A.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

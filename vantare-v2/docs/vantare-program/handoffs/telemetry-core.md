@@ -27,10 +27,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-06A–D: cerrados técnicamente; ISA-104 está `In Review`.
 - TC-07A ISA-105: cerrado técnicamente en `c9acee2`; PR draft `#41`; Linear
   `In Review`; re-review D6 `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07A.1 ISA-129: `In Progress`; D0 `6acb352`, D1 `470d6a6` y D2
-  `e2c92fd` aceptados (cierre documental `b12176d`), sin promoción. D1 retira
-  el mock conectado y D2 fija el layout LMU 1.3 con 35 campos, bounds,
-  exclusiones y hashes reales; reviews independientes `ACCEPT`, P0/P1/P2/P3=0.
+- TC-07A.1 ISA-129: `In Progress`; D0 `6acb352`, D1 `470d6a6`, D2
+  `e2c92fd` y D3 `462f0ee` aceptados (cierre documental `fa7bab0`), sin
+  promoción. D1 retira el mock conectado; D2 fija el layout LMU 1.3; D3
+  cierra schema/catalog append-only IDs 1–24 estables y 25–43 añadidos.
+  Reviews independientes `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -86,8 +87,8 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar D3 de ISA-129 / TC-07A.1 para cerrar el catálogo/schema append-only
-sobre la base `b12176d`. Sin CSS, canvas, renderers, regeneración de baselines
+Ejecutar D4A de ISA-129 / TC-07A.1 para parser/sanitizer multivehículo LMU 1.3
+sobre la base `fa7bab0`. Sin CSS, canvas, renderers, regeneración de baselines
 ni cutover productivo.
 
 Auditoría de fallback cerrada:

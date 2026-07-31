@@ -1,4 +1,3 @@
-import { buildMockTelemetry } from "./mock-scenarios";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import { createDerivedTelemetryStore } from "./derived-telemetry-store";
 
@@ -51,11 +50,13 @@ function isImmediateStatus(status: TelemetrySnapshot["status"]): boolean {
 }
 
 function emptySnapshot(): TelemetrySnapshot {
-  return buildMockTelemetry({
-    session: "race",
-    location: "track",
-    state: "disconnected",
-  });
+  return {
+    status: "disconnected",
+    capturedAt: 0,
+    session: { type: "race" },
+    player: { inPit: false },
+    scoring: [],
+  };
 }
 
 export function createTelemetryRateCoordinator(

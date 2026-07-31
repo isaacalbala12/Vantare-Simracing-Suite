@@ -11,13 +11,25 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
 )
 
-func TestNewMockMode(t *testing.T) {
+func TestNewWithoutLiveStartsDisconnected(t *testing.T) {
 	a := app.New(false)
 	if a.Telemetry == nil {
 		t.Fatal("expected telemetry service")
 	}
 	if a.LMUSource() != nil {
-		t.Fatal("mock mode should not keep LMU source")
+		t.Fatal("disabled live mode should not keep LMU source")
+	}
+	info := a.SourceInfo()
+	if info.Kind == service.SimulatorMock || info.Live || info.Available {
+		t.Fatalf("SourceInfo()=%+v, want unavailable non-mock source", info)
+	}
+	direct, ok := a.TelemetrySource().(service.TelemetrySource)
+	if !ok {
+		t.Fatalf("TelemetrySource()=%T, want explicit disconnected telemetry source", a.TelemetrySource())
+	}
+	telemetry := direct.ReadTelemetry()
+	if telemetry == nil || telemetry.Connected || telemetry.Player != nil || len(telemetry.Vehicles) != 0 {
+		t.Fatalf("ReadTelemetry()=%#v, want disconnected telemetry without synthetic data", telemetry)
 	}
 }
 
@@ -43,16 +55,13 @@ func TestFrontendDistFS(t *testing.T) {
 	}
 }
 
-func TestAppEnsureLiveTelemetryRetriesAndKeepsFallbackWhenLiveUnavailable(t *testing.T) {
+func TestAppEnsureLiveTelemetryRetriesWithoutMockWhenOpenFails(t *testing.T) {
 	t.Cleanup(func() { app.SetOpenLMUSource(service.OpenLMUSource) })
 
 	var calls int32
 	app.SetOpenLMUSource(func() (*service.LMUSource, error) {
-		call := atomic.AddInt32(&calls, 1)
-		if call == 1 {
-			return nil, errors.New("lmu unavailable")
-		}
-		return &service.LMUSource{}, nil
+		atomic.AddInt32(&calls, 1)
+		return nil, errors.New("lmu unavailable")
 	})
 
 	a := app.New(true)
@@ -62,8 +71,15 @@ func TestAppEnsureLiveTelemetryRetriesAndKeepsFallbackWhenLiveUnavailable(t *tes
 	if got := atomic.LoadInt32(&calls); got != 2 {
 		t.Fatalf("OpenLMUSource calls=%d, want 2", got)
 	}
-	if info := a.SourceInfo(); info.Kind != service.SimulatorMock {
-		t.Fatalf("SourceInfo()=%+v, want mock fallback", info)
+	if info := a.SourceInfo(); info.Kind == service.SimulatorMock || info.Live || info.Available {
+		t.Fatalf("SourceInfo()=%+v, want unavailable non-mock source", info)
+	}
+	direct, ok := a.TelemetrySource().(service.TelemetrySource)
+	if !ok {
+		t.Fatalf("TelemetrySource()=%T, want disconnected telemetry source", a.TelemetrySource())
+	}
+	if telemetry := direct.ReadTelemetry(); telemetry == nil || telemetry.Connected || len(telemetry.Vehicles) != 0 {
+		t.Fatalf("ReadTelemetry()=%#v, want disconnected telemetry", telemetry)
 	}
 }
 

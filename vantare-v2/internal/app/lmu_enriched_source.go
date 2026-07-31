@@ -11,7 +11,6 @@ import (
 	engineertelemetry "github.com/vantare/overlays/v2/internal/engineer/telemetry"
 	"github.com/vantare/overlays/v2/internal/telemetry/delta"
 	"github.com/vantare/overlays/v2/internal/telemetry/fusion"
-	publiclmu "github.com/vantare/overlays/v2/internal/telemetry/lmu"
 	"github.com/vantare/overlays/v2/internal/telemetry/lmuapi"
 	"github.com/vantare/overlays/v2/internal/telemetry/normalizer"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
@@ -329,17 +328,4 @@ func (c *lmuRESTCache) Close() {
 		close(c.stop)
 		<-c.done
 	})
-}
-
-func createMockSource() service.Source {
-	buf := publiclmu.BuildSyntheticBuffer()
-	return service.FuncSource{
-		ReadFunc: func() []byte { return buf },
-		InfoData: service.SourceInfo{
-			Kind:      service.SimulatorMock,
-			Name:      "Mock telemetry",
-			Live:      false,
-			Available: true,
-		},
-	}
 }

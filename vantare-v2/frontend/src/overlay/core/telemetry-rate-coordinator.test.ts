@@ -7,6 +7,22 @@ describe("createTelemetryRateCoordinator", () => {
     vi.useRealTimers();
   });
 
+  it("starts with a literal disconnected snapshot without mock data", () => {
+    const coordinator = createTelemetryRateCoordinator({ now: () => 1_000 });
+
+    expect(coordinator.getSnapshot(15)).toEqual({
+      status: "disconnected",
+      capturedAt: 0,
+      session: { type: "race" },
+      player: { inPit: false },
+      scoring: [],
+    });
+    expect(JSON.stringify(coordinator.getSnapshot(15))).not.toMatch(
+      /TOYOTA|Spa|TestDriver|test@example\.com|mock-user/i,
+    );
+    coordinator.dispose();
+  });
+
   it("shares one scheduler for the same hz bucket", () => {
     let tick: (() => void) | null = null;
     const createScheduler = vi.fn(() => ({

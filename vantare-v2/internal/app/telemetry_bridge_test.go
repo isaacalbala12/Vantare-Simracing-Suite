@@ -10,11 +10,26 @@ import (
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/telemetry/lmu"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/pkg/models"
 )
 
 type captureEmitter struct {
 	names []string
 	last  any
+}
+
+type channelEmitter struct {
+	updates chan any
+}
+
+func (e *channelEmitter) Emit(name string, data any) {
+	if name != "telemetry:update" {
+		return
+	}
+	select {
+	case e.updates <- data:
+	default:
+	}
 }
 
 func (f *captureEmitter) Emit(name string, data any) {
@@ -147,6 +162,47 @@ func TestUpdateWireFromSyntheticService(t *testing.T) {
 	}
 	if !jsonContainsKeys(t, raw, `"connected"`, `"engineRPM"`, `"player"`) {
 		t.Fatalf("missing camelCase keys in %s", raw)
+	}
+}
+
+func TestTelemetryBridgeDisconnectedSourceNeverPublishesSyntheticData(t *testing.T) {
+	application := app.New(false)
+	svc := application.Telemetry
+	emitter := &channelEmitter{updates: make(chan any, 1)}
+	bridge := app.NewTelemetryBridge(svc, emitter)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = svc.Run(ctx) }()
+	bridge.Start()
+	defer bridge.Stop()
+
+	var payload any
+	select {
+	case payload = <-emitter.updates:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout waiting for disconnected bridge payload")
+	}
+
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Snapshot struct {
+			Connected bool                    `json:"connected"`
+			Vehicles  []models.VehicleScoring `json:"vehicles"`
+		} `json:"snapshot"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("unmarshal wire: %v", err)
+	}
+	if doc.Snapshot.Connected || len(doc.Snapshot.Vehicles) != 0 {
+		t.Fatalf("snapshot=%s, want connected=false and zero scoring rows", raw)
+	}
+	for _, forbidden := range []string{"Spa", "TestDriver", "synthetic-account-id"} {
+		if strings.Contains(string(raw), forbidden) {
+			t.Fatalf("disconnected bridge payload leaked synthetic canary %q: %s", forbidden, raw)
+		}
 	}
 }
 

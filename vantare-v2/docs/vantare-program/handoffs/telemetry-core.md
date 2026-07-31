@@ -33,6 +33,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   y SHM-first; review final `ACCEPT`, P0/P1/P2/P3 = 0. D4B queda cerrado en
   `be6563f` más registro `47f82d3`: LMU 1.4 real de menú/pista hash-pinned,
   REST correlacionado, 38 vehículos y runtime opt-in `live`.
+- D5 queda aceptado y publicado en `7523def`: mapper canónico síncrono,
+  adapter real y duradero para `DriverManager`, fixture real 44/44, identidad
+  opaca por slot/generación, limpieza segura del jugador y detección de reset
+  de reloj entre reconexiones. Review final `APPROVE`, P0/P1/P2/P3 = 0.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -64,11 +68,11 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 - **P0 ISA-129 confirmado:** el bootstrap comercial inyecta
   `createMockSource()`, normaliza el buffer sintético como `Connected=true` y
   lo publica por Wails y SSE cuando LMU no está disponible.
-- **P0 ISA-129 confirmado:** no existe adaptador productivo
-  `lmu.Observation → core.Batch`; los replays crean batches manuales y no
-  prueban el pipeline real.
-- **P0 ISA-129 confirmado:** el driver modular publica solo al jugador; no
-  existe `[]Vehicle` canónico ni identidad estable de parrilla.
+- **Resuelto en D5, aún sin wiring productivo:** existe el adapter duradero
+  `lmu.Observation → core.Batch`; la cadena real DriverManager → mapper →
+  reducer conserva sesión/cursor/generaciones entre reconexiones.
+- **Resuelto en D4A/D5:** el driver publica `[]Vehicle` canónico y D5 asigna
+  identidades estables por slot/generación. El cutover sigue fuera de alcance.
 - **P1 fuera de ISA-129:** Engineer arranca con `source="simulator"` y
   `connected=true`; debe resolverse en su corte antes del cutover Engineer.
 - **Compatibilidad real cerrada en D4B:** LMU `1.4.0.0` está allowlisted solo
@@ -88,9 +92,10 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar D5 de ISA-129 / TC-07A.1 sobre `47f82d3`: mapear la observación LMU
-validada a `core.Batch` con identidad/generaciones, sin I/O, derivaciones
-prematuras, CSS, canvas, renderers, baselines ni cutover productivo.
+Ejecutar D6 de ISA-129 / TC-07A.1 sobre `7523def`: timing de sesión, gaps y
+delta de autorreferencia. Delta solo puede admitirse tras capturar dos vueltas
+LMU reales, completas, comparables, sanitizadas y hash-pinned. Sin CSS, canvas,
+renderers, baselines ni cutover productivo.
 
 Auditoría de fallback cerrada:
 
@@ -183,6 +188,15 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-07-31, ISA-129 D5 aceptado y publicado en `7523def`. La observación LMU
+canónica atraviesa el adapter duradero hasta `core.Batch`/Reducer con la
+fixture real 44/44. Slots, generaciones, sesión, jugador y cursor son atómicos;
+rechazo, backpressure y cancelación no avanzan estado. La desaparición del
+jugador limpia header, derivaciones y Overlay; una reconexión no oculta resets
+de reloj. Focal x20, Telemetry Core y suite Go global serial PASS. Review final
+`APPROVE`, P0/P1/P2/P3 = 0. `-race` queda no ejecutable por `CGO_ENABLED=0`.
+Sin PR, merge, promoción, wiring productivo ni cutover. Siguiente corte: D6.
 
 2026-07-31, ISA-129 D4B cerrado y publicado. Cuatro artefactos LMU 1.4 reales,
 sanitizados y hash-pinned prueban menú y pista; el par de pista contiene 38

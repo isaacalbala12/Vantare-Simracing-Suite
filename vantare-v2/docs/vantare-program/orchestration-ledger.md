@@ -1312,3 +1312,22 @@ promoción. Linear queda pendiente de sincronización por ausencia del conector.
 - Commits `be6563f` y `47f82d3`; push sincronizado 0/0. Linear ISA-129 y el
   proyecto Telemetry Core actualizados. Sin PR, merge, promoción ni cutover.
 - Siguiente acción exacta: D5 Observation → `core.Batch` sobre `47f82d3`.
+
+### 2026-07-31 — ISA-129 D5 implementado y aceptado
+
+- Base: D4B `47f82d3`; rama ISA-129 aislada, sin promoción.
+- Resultado: adapter duradero `DriverManager → ObservationBatchSink →
+  BatchMapper → BatchSink`, mapper canónico síncrono y fixture LMU real 44/44.
+- Identidad opaca `event/session/slot-generation`; jugador/header coherentes y
+  limpieza segura al desaparecer sin inventar sesión o epoch.
+- El mapper conserva el último reloj aceptado: una reconexión no puede ocultar
+  reset/wrap aunque el Driver recreado marque su primera muestra continua.
+- Estado confirmado solo tras aceptación del sink; rechazo, backpressure y
+  cancelación no avanzan reloj, slots, generaciones, jugador, sesión o cursor.
+- Gates: focal LMU/Core/Derive/Overlay x20, Telemetry Core, suite Go global
+  serial y diff-check PASS. `-race` no disponible con `CGO_ENABLED=0`.
+- Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+- Commit `7523def`; push verificado con ref remota idéntica. Linear ISA-129
+  actualizado. Sin PR, merge, promoción, wiring productivo ni cutover.
+- Siguiente acción exacta: D6 timing, gaps y delta de autorreferencia. Delta
+  exige dos vueltas LMU reales comparables, sanitizadas y hash-pinned.

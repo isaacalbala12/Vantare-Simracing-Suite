@@ -138,6 +138,19 @@ Segunda review del plan ISA-129:
 - P3: renumerar D4A/D4B y fijar el orden literal de rollback.
 - Rama/base/fixture de 44 vehículos y offsets revisados; sin código iniciado.
 
+Tercera review del plan ISA-129:
+
+- `APPROVE`: P0=0, P1=0, P2=0, P3=0.
+- Cerrada la autoridad SHM/REST por señal, scope, TTL, equivalencia,
+  fresh/stale/conflicto y cero/false.
+- Delta exige traza real LMU 1.4 sanitizada/hash-pinned con una vuelta de
+  referencia y otra comparable; sin ella ISA-129/106 quedan bloqueadas.
+- Catálogo define reuse/harden/append/unproduced/tombstone y reutiliza los IDs
+  existentes de piloto y combustible.
+- Once microcortes/commits D0–D9, incluyendo D4A/D4B, y rollback inverso
+  literal.
+- Plan global aprobado contra ISA-129 y AGENTS; D0 puede comenzar.
+
 ## Gate final
 
 TC-09 exige Core, recording, Overlay y Engineer simultáneos; soak automatizado
@@ -155,11 +168,12 @@ REST modular sigue siendo sintético. LMU instalado es 1.4.0.0; el driver solo
 reconoce 1.3.0.0 y el allowlist no se ampliará sin prueba estructural. Worktree
 limpio; sin código modificado, merge, promoción ni cutover.
 
-El plan fue revisado dos veces. La primera review rechazó con
+El plan fue revisado tres veces. La primera review rechazó con
 P0=0/P1=2/P2=4/P3=0; sus seis hallazgos quedaron corregidos. La segunda review
 rechazó con P0=0/P1=2/P2=1/P3=1 por autoridad SHM/REST, evidencia real de
-Delta, reutilización de IDs del catálogo y numeración/rollback. No comenzó
-implementación.
+Delta, reutilización de IDs del catálogo y numeración/rollback. La tercera
+review fue `APPROVE`, P0/P1/P2/P3=0. Puede comenzar D0; todavía no hay código
+de comportamiento.
 
 Histórico ISA-105: D1–D5 aprobados y publicados en `f2a1ac3`. Cobertura real:
 18/18, con un exacto, cinco parciales, once no comparables y un externo. La

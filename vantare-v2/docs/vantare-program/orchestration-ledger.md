@@ -1139,6 +1139,20 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 - Acción: corregir los cuatro hallazgos y repetir review antes de D0/D1. Sin
   código, commit de producto, merge, promoción ni cutover.
 
+### 2026-07-31 — ISA-129, tercera review del plan
+
+- Veredicto: `APPROVE`, P0=0, P1=0, P2=0, P3=0.
+- Cerrados los cuatro findings de la segunda review.
+- §1.5 fija autoridad SHM/REST por señal, scope, TTL, equivalencia,
+  fresh/stale/conflicto y cero/false.
+- D6/D9 obligan a capturar una traza real LMU 1.4 sanitizada/hash-pinned con
+  vuelta completa de referencia y vuelta comparable; sin ella no se cierra
+  ISA-129 ni se avanza ISA-106.
+- D3 reutiliza/endurece IDs existentes y prohíbe aliases semánticos.
+- Once commits D0–D9 con D4A/D4B y rollback inverso exacto.
+- Plan global aprobado contra Linear/AGENTS; siguiente acción D0 documental.
+- Sin código de comportamiento, merge, promoción ni cutover.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

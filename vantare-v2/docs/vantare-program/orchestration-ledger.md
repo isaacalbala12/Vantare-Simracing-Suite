@@ -1016,6 +1016,18 @@ ISA-105 / TC-07A — cierre D3:
 - D4 harness diagnóstico explícito delegado. Sigue prohibido cualquier wiring
   productivo, cambio de renderer/CSS/canvas o promoción.
 
+ISA-105 / TC-07A — cierre D4:
+
+- Harness explícito publicado en `714e45b`; no entra en navegación ni en el
+  artefacto productivo.
+- Cinco escenarios recorren el comparator real; wide/medium/compact no muestran
+  consola, page errors, overflow, canarios, payload, IDs ni falsa conexión LMU.
+- Prueba adversarial del puerto ocupado preservó el proceso ajeno; el teardown
+  normal cerró únicamente su Vite y liberó el puerto 5185.
+- Review D4: `APPROVE`, P0/P1/P2/P3 = 0. Gates: 7 tests de componente,
+  Playwright 3×5, lint focal, build y diff-check: PASS.
+- D5 evidencia y gates globales en ejecución. Sin wiring ni promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

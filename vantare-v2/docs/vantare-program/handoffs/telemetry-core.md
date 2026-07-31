@@ -25,8 +25,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-01–TC-03: cerrados.
 - TC-04A–D y TC-05A–C: cerrados técnicamente en la cadena apilada.
 - TC-06A–D: cerrados técnicamente; ISA-104 está `In Review`.
-- TC-07A ISA-105: D1–D5 completos; D6 solicitó cuatro P2 y un P3.
-  Correcciones focales y re-review activas.
+- TC-07A ISA-105: cerrado técnicamente en `c9acee2`; PR draft `#41`; Linear
+  `In Review`; re-review D6 `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -63,16 +63,13 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 | Cerradas | ISA-23–37, incluyendo ISA-96/97/100 según Linear |
 | Cerradas técnicamente | ISA-38–41 e ISA-101–103 en la cadena apilada |
 | En revisión | ISA-104 / TC-06D, PR draft `#40` |
-| En ejecución | ISA-105 / TC-07A, correcciones D6 activas sobre `f2a1ac3` |
+| En revisión | ISA-105 / TC-07A, `c9acee2`, PR draft `#41` |
 | Nuevo bloqueo previo a shadow | ISA-129 / TC-07A.1 |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Corregir D6 de ISA-105 / TC-07A: priorizar las diferencias bajo el cap,
-retirar `pitStopCount` sin consumidor, precisar `sourcePaths` y repetir review.
-Después crear PR draft contra ISA-104 y pasar a `In Review`. A continuación
-ejecutar ISA-129 / TC-07A.1 para
+Ejecutar ISA-129 / TC-07A.1 para
 parrilla/timing/gaps/delta/sesión/unidades y retirar el fallback mock conectado
 antes de ISA-106. Sin CSS, canvas, renderers, regeneración de baselines ni
 cutover productivo.
@@ -92,7 +89,9 @@ explicadas; tres capturas y hashes verificados. Go telemetry/app, frontend
 297/1.993, build y Playwright pasan. Visual Crystal falla al 100 % también en
 la base exacta y el benchmark incumple umbrales en ambas ramas; no se tocaron
 ni regeneraron baselines, canvas o renderers. Review D5 `APPROVE`,
-P0/P1/P2/P3 = 0. D6 completo rechazó el delta por cuatro P2 y un P3: cap de
-entradas que podía ocultar diferencias, `pitStopCount` sin consumidor,
-`sourcePaths` imprecisos, handoff de producto obsoleto y enlace ADR inválido.
-Correcciones focales activas; ISA-129 sigue siendo la siguiente dependencia.
+P0/P1/P2/P3 = 0. D6 detectó cuatro P2 y un P3; todos quedaron corregidos:
+cap separado 64+64, `pitStopCount` retirado, sourcePaths reales, identidad
+`vehicles[].id` + `playerVehicleId`, handoff sincronizado y ADR válido.
+Re-review final `ACCEPT`, P0/P1/P2/P3 = 0. Suite frontend final
+297 archivos/2.000 tests y Playwright PASS. HEAD `c9acee2`, PR draft `#41`,
+Linear `In Review`; ISA-129 es la siguiente dependencia.

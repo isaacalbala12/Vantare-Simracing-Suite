@@ -1057,6 +1057,22 @@ ISA-105 / TC-07A — primera review D6:
   continuidad se corrigen en ambos handoffs. Re-review obligatoria antes de PR
   o transición de Linear. Sin merge, promoción ni cutover.
 
+ISA-105 / TC-07A — cierre D6 y entrega:
+
+- Los cuatro P2 y el P3 iniciales quedaron cerrados con TDD: diferencias
+  priorizadas bajo cap 64, muestra no-mismatch separada, `pitStopCount`
+  retirado, sourcePaths reales y procedencia estructural de
+  `vehicles[].id`/`playerVehicleId`.
+- TDD final 77/77; suite frontend final 297 archivos/2.000 tests; build,
+  Playwright, privacidad, hashes, determinismo, teardown y diff-check PASS.
+- Evidencia final: 18/18 tipos; escenario Pedals+Standings con 31 campos,
+  19 iguales y 12 diferencias; tres capturas byte-idénticas.
+- Re-review D6 final: `ACCEPT`, P0/P1/P2/P3 = 0.
+- Entrega: HEAD `c9acee2`, push sincronizado, PR draft `#41` contra la rama
+  final ISA-104 y Linear ISA-105 `In Review`.
+- Sin merge, promoción, cutover, wiring productivo, baseline regenerado ni
+  cambio de CSS/canvas/renderers. Siguiente acción: ISA-129 antes de ISA-106.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

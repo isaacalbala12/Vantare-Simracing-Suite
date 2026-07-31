@@ -2,6 +2,7 @@ import type { ProjectionEnvelope } from "../../telemetry-transport/contracts";
 
 export const OVERLAY_PROJECTION_MAX_VEHICLES = 104;
 export const OVERLAY_PROJECTION_MAX_CONTROL_SAMPLES = 120;
+export const OVERLAY_PROJECTION_MAX_DELTA_SAMPLES = 120;
 
 const CAPABILITIES = [
   "session",
@@ -19,11 +20,13 @@ const SESSION_TYPES = [
   "warmup",
   "endurance",
 ] as const;
+const DELTA_REFERENCES = ["best-completed-player-lap"] as const;
 
 export type OverlayCapability = (typeof CAPABILITIES)[number];
 export type OverlayProvenance = (typeof PROVENANCE)[number];
 export type OverlayFreshness = (typeof FRESHNESS)[number];
 export type OverlaySessionType = (typeof SESSION_TYPES)[number];
+export type OverlayDeltaReference = (typeof DELTA_REFERENCES)[number];
 
 export type OverlayProjectionPresentField<T> = Readonly<{
   present: true;
@@ -57,6 +60,22 @@ export type OverlayVehicleV1 = Readonly<{
   completedLaps: OverlayProjectionField<number>;
   inPit: OverlayProjectionField<boolean>;
   pitStopCount: OverlayProjectionField<number>;
+  driverName: OverlayProjectionField<string>;
+  vehicleClass: OverlayProjectionField<string>;
+  sector: OverlayProjectionField<number>;
+  lapDistanceMeters: OverlayProjectionField<number>;
+  bestLapSeconds: OverlayProjectionField<number>;
+  lastLapSeconds: OverlayProjectionField<number>;
+  estimatedLapSeconds: OverlayProjectionField<number>;
+  penaltyCount: OverlayProjectionField<number>;
+  timeBehindLeaderSeconds: OverlayProjectionField<number>;
+  lapsBehindLeader: OverlayProjectionField<number>;
+  timeBehindNextSeconds: OverlayProjectionField<number>;
+  lapsBehindNext: OverlayProjectionField<number>;
+  fuelLiters: OverlayProjectionField<number>;
+  fuelCapacityLiters: OverlayProjectionField<number>;
+  relativeTimeGapSeconds: OverlayProjectionField<number>;
+  relativeLapDelta: OverlayProjectionField<number>;
 }>;
 
 export type OverlayControlSampleV1 = Readonly<{
@@ -75,6 +94,22 @@ export type OverlayControlHistoryV1 = Readonly<{
   samples: readonly OverlayControlSampleV1[];
 }>;
 
+export type OverlayDeltaSampleV1 = Readonly<{
+  epoch: number;
+  sequence: number;
+  capturedAt: number;
+  sourceTimeSeconds: number;
+  lapDistanceMeters: number;
+  deltaSeconds: number;
+}>;
+
+export type OverlayDeltaHistoryV1 = Readonly<{
+  present: boolean;
+  provenance: OverlayProvenance;
+  freshness: OverlayFreshness;
+  samples: readonly OverlayDeltaSampleV1[];
+}>;
+
 export type OverlayPayloadV1 = Readonly<{
   capabilities: readonly OverlayCapability[];
   trackName: OverlayProjectionField<string>;
@@ -82,6 +117,12 @@ export type OverlayPayloadV1 = Readonly<{
   playerVehicleId: string;
   vehicles: readonly OverlayVehicleV1[];
   controlsHistory: OverlayControlHistoryV1;
+  endTimeSeconds: OverlayProjectionField<number>;
+  remainingSeconds: OverlayProjectionField<number>;
+  maximumLaps: OverlayProjectionField<number>;
+  playerDeltaSeconds: OverlayProjectionField<number>;
+  playerDeltaReference: OverlayProjectionField<OverlayDeltaReference>;
+  deltaHistory: OverlayDeltaHistoryV1;
 }>;
 
 export type OverlayProjectionV1 = Readonly<{
@@ -152,6 +193,39 @@ export function decodeOverlayProjectionV1(
       playerVehicleId: requireString(payload.playerVehicleId),
       vehicles: decodeVehicles(payload.vehicles),
       controlsHistory: decodeHistory(payload.controlsHistory),
+      endTimeSeconds: decodeOptionalField(
+        payload,
+        "endTimeSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      remainingSeconds: decodeOptionalField(
+        payload,
+        "remainingSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      maximumLaps: decodeOptionalField(
+        payload,
+        "maximumLaps",
+        requireNonNegativeSafeInteger,
+        0,
+      ),
+      playerDeltaSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaReference: decodeOptionalField(
+        payload,
+        "playerDeltaReference",
+        requireDeltaReference,
+        "best-completed-player-lap",
+      ),
+      deltaHistory: Object.hasOwn(payload, "deltaHistory")
+        ? decodeDeltaHistory(payload.deltaHistory)
+        : missingHistory(),
     },
   });
 }
@@ -214,8 +288,119 @@ function decodeVehicles(value: unknown): OverlayVehicleV1[] {
         object.pitStopCount,
         requireNonNegativeSafeInteger,
       ),
+      driverName: decodeOptionalField(object, "driverName", requireString, ""),
+      vehicleClass: decodeOptionalField(
+        object,
+        "vehicleClass",
+        requireString,
+        "",
+      ),
+      sector: decodeOptionalField(
+        object,
+        "sector",
+        requireKnownSector,
+        0,
+      ),
+      lapDistanceMeters: decodeOptionalField(
+        object,
+        "lapDistanceMeters",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      bestLapSeconds: decodeOptionalField(
+        object,
+        "bestLapSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      lastLapSeconds: decodeOptionalField(
+        object,
+        "lastLapSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      estimatedLapSeconds: decodeOptionalField(
+        object,
+        "estimatedLapSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      penaltyCount: decodeOptionalField(
+        object,
+        "penaltyCount",
+        requireNonNegativeSafeInteger,
+        0,
+      ),
+      timeBehindLeaderSeconds: decodeOptionalField(
+        object,
+        "timeBehindLeaderSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      lapsBehindLeader: decodeOptionalField(
+        object,
+        "lapsBehindLeader",
+        requireNonNegativeSafeInteger,
+        0,
+      ),
+      timeBehindNextSeconds: decodeOptionalField(
+        object,
+        "timeBehindNextSeconds",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      lapsBehindNext: decodeOptionalField(
+        object,
+        "lapsBehindNext",
+        requireNonNegativeSafeInteger,
+        0,
+      ),
+      fuelLiters: decodeOptionalField(
+        object,
+        "fuelLiters",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      fuelCapacityLiters: decodeOptionalField(
+        object,
+        "fuelCapacityLiters",
+        requireNonNegativeFiniteNumber,
+        0,
+      ),
+      relativeTimeGapSeconds: decodeOptionalField(
+        object,
+        "relativeTimeGapSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      relativeLapDelta: decodeOptionalField(
+        object,
+        "relativeLapDelta",
+        requireSafeInteger,
+        0,
+      ),
     };
   });
+}
+
+function decodeOptionalField<T>(
+  object: Record<string, unknown>,
+  key: string,
+  decodeValue: (input: unknown) => T,
+  missingValue: T,
+): OverlayProjectionField<T> {
+  return Object.hasOwn(object, key)
+    ? decodeField(object[key], decodeValue)
+    : missingField(missingValue);
+}
+
+function missingField<T>(value: T): OverlayProjectionField<T> {
+  return {
+    present: false,
+    value,
+    provenance: "unknown",
+    freshness: "missing",
+  };
 }
 
 function decodeHistory(value: unknown): OverlayControlHistoryV1 {
@@ -252,6 +437,69 @@ function decodeHistory(value: unknown): OverlayControlHistoryV1 {
     provenance: requireEnum(object.provenance, PROVENANCE),
     freshness: requireEnum(object.freshness, FRESHNESS),
     samples,
+  };
+}
+
+function decodeDeltaHistory(value: unknown): OverlayDeltaHistoryV1 {
+  const object = requireObject(value);
+  requireKeys(object, ["present", "provenance", "freshness", "samples"]);
+  const present = requireBoolean(object.present);
+  const freshness = requireEnum(object.freshness, FRESHNESS);
+  const samples = requireArray(
+    object.samples,
+    OVERLAY_PROJECTION_MAX_DELTA_SAMPLES,
+  ).map((entry) => {
+    const sample = requireObject(entry);
+    requireKeys(sample, [
+      "epoch",
+      "sequence",
+      "capturedAt",
+      "sourceTimeSeconds",
+      "lapDistanceMeters",
+      "deltaSeconds",
+    ]);
+    return {
+      epoch: requirePositiveSafeInteger(sample.epoch),
+      sequence: requirePositiveSafeInteger(sample.sequence),
+      capturedAt: requireNonNegativeSafeInteger(sample.capturedAt),
+      sourceTimeSeconds: requireNonNegativeFiniteNumber(
+        sample.sourceTimeSeconds,
+      ),
+      lapDistanceMeters: requireNonNegativeFiniteNumber(
+        sample.lapDistanceMeters,
+      ),
+      deltaSeconds: requireFiniteNumber(sample.deltaSeconds),
+    };
+  });
+  for (let index = 1; index < samples.length; index += 1) {
+    const previous = samples[index - 1]!;
+    const current = samples[index]!;
+    if (
+      current.epoch !== previous.epoch ||
+      current.sequence <= previous.sequence ||
+      current.capturedAt < previous.capturedAt ||
+      current.sourceTimeSeconds < previous.sourceTimeSeconds
+    ) {
+      invalid();
+    }
+  }
+  if (present !== (samples.length > 0)) {
+    invalid();
+  }
+  return {
+    present,
+    provenance: requireEnum(object.provenance, PROVENANCE),
+    freshness,
+    samples,
+  };
+}
+
+function missingHistory(): OverlayDeltaHistoryV1 {
+  return {
+    present: false,
+    provenance: "unknown",
+    freshness: "missing",
+    samples: [],
   };
 }
 
@@ -369,8 +617,23 @@ function requireNonNegativeSafeInteger(value: unknown): number {
   return number;
 }
 
+function requireKnownSector(value: unknown): number {
+  const sector = requireSafeInteger(value);
+  if (sector < 1 || sector > 3) {
+    invalid();
+  }
+  return sector;
+}
+
 function requireNonNegativeFiniteNumber(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    invalid();
+  }
+  return value;
+}
+
+function requireFiniteNumber(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
     invalid();
   }
   return value;
@@ -390,6 +653,10 @@ function requireRatio(value: unknown): number {
 
 function requireSessionType(value: unknown): OverlaySessionType {
   return requireEnum(value, SESSION_TYPES);
+}
+
+function requireDeltaReference(value: unknown): OverlayDeltaReference {
+  return requireEnum(value, DELTA_REFERENCES);
 }
 
 function requireEnum<const Values extends readonly string[]>(

@@ -77,3 +77,40 @@ No corresponde Playwright: no hay UI, route productiva ni harness browser.
 
 Rollback: eliminar el subpaquete y revertir estas notas. Al no existir wiring,
 persistencia o migración de datos, no requiere conversión ni cleanup runtime.
+
+## Overlay Projection v1 aditiva — ISA-129 D7
+
+D7 conserva `projectionVersion=1` y todas las claves base. Añade únicamente
+campos opcionales ya demostrados por el pipeline canónico:
+
+- sesión: end, remaining y maximum laps;
+- vehículos: piloto, clase, sector, distancia, tiempos de vuelta, penalties,
+  gaps e inventario fuel amount/capacity;
+- derivados: relative gap/lap delta y self-delta con referencia e historial.
+
+Cada muestra pública de delta incluye su `capturedAt` canónico en milisegundos
+UTC. `present` describe si el historial conserva muestras; `freshness` describe
+el delta actual. Por ello `present=true` con `missing`, `stale` o `invalid` es
+válido. El adapter puede conservar la traza ante `missing/stale`, pero quality
+impide declararla comparable como fresca. Nunca recalcula timestamps usando el
+frame exterior.
+
+El decoder TypeScript exige siempre las claves base. Si una clave D7 no existe,
+la normaliza a missing explícito; si existe con tipo, enum, presencia, calidad o
+número inválido, rechaza todo el payload. Extensiones futuras desconocidas y
+seguras se ignoran después de que el envelope haya pasado el límite de 256 KiB,
+profundidad y valores JSON finitos.
+
+La compatibilidad está ejecutada en cuatro direcciones con dos goldens:
+
+| Productor | Consumidor | Resultado |
+|---|---|---|
+| v1 pre-D7 | v1 pre-D7 | superficie base sin cambios |
+| v1 pre-D7 | v1 D7 | campos aditivos missing explícitos |
+| v1 D7 | v1 pre-D7 | claves aditivas ignoradas |
+| v1 D7 | v1 D7 | Go → JSON → transporte → decoder → adapter |
+
+No se añadieron capabilities nuevas: su enum era obligatorio en el consumidor
+antiguo y ampliarlo habría roto el cruce nuevo → antiguo. La disponibilidad se
+expresa por `Field` y quality metadata. D7 tampoco añade wiring Wails/SSE ni
+modifica renderizadores, ViewModels, CSS, canvas o runtime productivo.

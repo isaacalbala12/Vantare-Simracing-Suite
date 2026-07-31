@@ -54,7 +54,14 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07A ISA-105: implementación y re-review D6 completas; código final
   `f6b43b7`, `ACCEPT`, P0/P1/P2/P3 = 0. PR draft `#41`; Linear `In Review`.
-- TC-07A.1 ISA-129: D0-D4B aceptados. D5 implementa el mapper canónico
+- TC-07A.1 ISA-129: D0-D6 aceptados. D7 está implementado y pendiente de
+  veredicto independiente. Overlay v1 conserva versión y claves base; añade
+  campos opcionales de sesión, scoring, fuel, gaps y self-delta/history. Los
+  dos goldens prueban old/old, old/new, new/old y new/new sin relajar el
+  decoder. Adapter y comparator consumen solo señales demostradas; flags,
+  equipo, número, compuesto, weather y daños siguen missing. Focal Go x20,
+  Telemetry Core completo, frontend 297 archivos/2.019 tests, lint focal y
+  build pasan. D5 implementó el mapper canónico
   `Observation → Batch`: fixture real 44/44, identidad opaca por slot y
   generación, jugador/header coherentes cuando existe y limpieza segura al
   desaparecer, sesión/epoch literal según §2.4 y commit de estado únicamente
@@ -69,8 +76,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   derivaciones, wiring, PR, merge ni promoción todavía.
 - TC-07B–TC-09: pendientes.
 
-No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
-permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
+No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta ya
+tienen inputs, algoritmo, fixture real y proyección demostrados en D6-D7, pero
+no pueden considerarse live hasta cerrar el harness único D8 y los gates D9.
+La suite global de ISA-37
 pasó después de generar `frontend/dist`; `go vet` conserva tres avisos heredados
 de `unsafe.Pointer` en readers Win32.
 
@@ -200,7 +209,8 @@ de `unsafe.Pointer` en readers Win32.
   repetidos y race pasan. Suite Go global serial final: PASS.
 - **P3 heredado:** tres avisos `unsafe.Pointer` Win32 en vet.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
-- **P2 funcional conocido:** gaps/delta siguen missing hasta demostrar inputs.
+- **P2 funcional conocido:** falta el harness único D8 y los gates D9 antes de
+  cualquier shadow wiring/cutover.
 
 ## Issues
 
@@ -215,14 +225,14 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
-| En progreso | ISA-129 / TC-07A.1; D0-D6 aceptados, D7 siguiente |
+| En progreso | ISA-129 / TC-07A.1; D0-D6 aceptados, D7 en review independiente |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias y cierre de ISA-129 |
 
 ## Siguiente acción exacta
 
-Ejecutar D7 de ISA-129: ampliar de forma aditiva Overlay Projection v1 y el
-adaptador TypeScript con las señales ya demostradas. Probar las cuatro celdas
-de compatibilidad old/new sin debilitar la validación. Continuar D8–D9 antes
+Cerrar la review independiente de D7. Si queda limpia, commit/push y ejecutar
+D8: un único harness determinista LMU → Parse/Fusion → BatchMapper → Reducer →
+SessionCoordinator → Derive → Overlay v1 → decoder/adapter. Completar D9 antes
 de desbloquear ISA-106.
 
 ## Gate final
@@ -232,6 +242,15 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-07-31, ISA-129 D7 aceptado: contrato Overlay v1 aditivo con dos
+goldens y matriz de compatibilidad completa. El decoder normaliza ausencias y
+rechaza campos conocidos inválidos; el adapter conserva calidad y no inventa
+datos. La matriz 18/18 queda en 2 exactos, 10 parciales, 5 no comparables y 1
+externo. El cambio legítimo del payload actualizó el hash del replay canónico y
+la expectativa del harness; las suites amplias pasan. Review final `APPROVE`,
+P0/P1/P2/P3 = 0. Siguiente acción exacta: D8, sin wiring productivo, PR, merge
+ni promoción en este punto.
 
 2026-07-31, ISA-129 D6 aceptado: remaining, gaps relativos y self-delta se
 derivan exclusivamente de observaciones canónicas demostradas. La sesión LMU

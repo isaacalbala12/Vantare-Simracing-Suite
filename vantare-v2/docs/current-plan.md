@@ -91,7 +91,16 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   regresiones, fallos del driver y escritura incompleta fallan de forma segura.
   Focales x20, dos fuzzers de 10 s, Telemetry Core, vet focal, benchmarks y
   `diff --check` pasan. Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
-  Siguiente corte: D7 contrato Overlay v1 y adaptador TypeScript.
+- D7 implementado y aceptado: Overlay Projection
+  v1 se amplía de forma aditiva con timing, identidad/scoring, fuel,
+  gaps relativos y self-delta/history ya demostrados. El golden exacto pre-D7
+  prueba las cuatro combinaciones old/new; los campos conocidos inválidos
+  fallan cerrados. El adapter no toca ViewModels/renderers y la matriz pasa a
+  2 exactos, 10 parciales, 5 no comparables y 1 externo, sin inventar flags,
+  equipo, número, compuesto, weather o daños. Go focal x20, Telemetry Core,
+  frontend 297/297 archivos y 2.019/2.019 tests, lint focal, build y
+  `diff --check` pasan. Review final `APPROVE`, P0/P1/P2/P3 = 0. Siguiente
+  microcorte: D8.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

@@ -48,6 +48,9 @@ func TestSelfDeltaRequiresCompletedReferenceAndInterpolatesDocumentedSign(t *tes
 
 	faster := apply(3, 100, 59*time.Second)
 	assertDeltaSeconds(t, faster, -1)
+	if len(faster.History) != 1 || !faster.History[0].CapturedAt.Equal(deltaCapturedAt(6)) {
+		t.Fatalf("delta history capture time = %+v, want %s", faster.History, deltaCapturedAt(6))
+	}
 	slower := apply(3, 150, 66*time.Second)
 	assertDeltaSeconds(t, slower, 1)
 }
@@ -504,10 +507,20 @@ func FuzzSelfDeltaStateMachine(f *testing.F) {
 func deltaHeader(sequence schema.Sequence) envelope.Header {
 	return envelope.Header{
 		Cursor: schema.Cursor{Epoch: 1, Sequence: sequence},
+		Clock: schema.NewClock(
+			schema.MissingField[time.Duration](),
+			schema.MissingField[time.Duration](),
+			deltaCapturedAt(sequence),
+		),
 		Identity: identity.RunIdentity{
 			Event: "event", Session: "session", Vehicle: "player",
 		},
 	}
+}
+
+func deltaCapturedAt(sequence schema.Sequence) time.Time {
+	return time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC).
+		Add(time.Duration(sequence) * 100 * time.Millisecond)
 }
 
 func deltaObserved(lap session.LapNumber, distance standings.LapDistance, at time.Duration, inPit bool, freshness schema.Freshness) core.ObservedState {

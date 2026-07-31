@@ -42,13 +42,17 @@ describe("TelemetryOverlayShadowHarness", () => {
     expect(within(pedals).queryByText(/missing-projection/i)).toBeNull();
   });
 
-  it("makes Delta and Relative unsupported coverage explicit", () => {
+  it("shows the D7 Delta and Relative coverage without claiming missing fields", () => {
     render(<TelemetryOverlayShadowHarness initialScenario="unsupported" />);
 
     expect(screen.getByTestId("shadow-widget-delta").textContent)
-      .toMatch(/no comparable|unsupported-by-projection/i);
+      .toMatch(/cobertura exacta/i);
+    expect(screen.getByTestId("shadow-widget-delta").textContent)
+      .toMatch(/missing-projection/i);
     expect(screen.getByTestId("shadow-widget-relative").textContent)
-      .toMatch(/no comparable|unsupported-by-projection/i);
+      .toMatch(/cobertura parcial/i);
+    expect(screen.getByTestId("shadow-widget-relative").textContent)
+      .toMatch(/missing-projection|unsupported-by-projection/i);
   });
 
   it("distinguishes partial, stale and disconnected without implying live data", () => {

@@ -28,6 +28,7 @@ const (
 // interpolation samples used to build the reference lap are never exposed.
 type DeltaSample struct {
 	Cursor      schema.Cursor
+	CapturedAt  time.Time
 	SourceTime  time.Duration
 	LapDistance standings.LapDistance
 	Seconds     session.DeltaSeconds
@@ -143,7 +144,7 @@ func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.Obs
 			if tracker.pendingWrap {
 				return tracker.output(schema.FreshnessMissing, schema.MissingField[session.DeltaSeconds]())
 			}
-			return tracker.currentDelta(header.Cursor, input)
+			return tracker.currentDelta(header, input)
 		}
 		tracker.invalidateCurrentLap()
 		tracker.remember(input)
@@ -212,7 +213,7 @@ func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.Obs
 		if input.distance < tracker.lastDistance {
 			if tracker.lastDistance-input.distance < selfDeltaWrapMinimumDrop {
 				tracker.rememberSourceTime(input.sourceTime)
-				return tracker.currentDelta(header.Cursor, input)
+				return tracker.currentDelta(header, input)
 			}
 			tracker.pendingReset = true
 			tracker.pendingAt = input.sourceTime
@@ -225,7 +226,7 @@ func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.Obs
 			return tracker.output(schema.FreshnessInvalid, invalidDerived[session.DeltaSeconds]())
 		}
 		tracker.remember(input)
-		return tracker.currentDelta(header.Cursor, input)
+		return tracker.currentDelta(header, input)
 
 	case lapStep == 1 && input.sourceTime > tracker.lastTime:
 		if input.distance >= tracker.lastDistance {
@@ -369,7 +370,7 @@ func (tracker *selfDeltaTracker) completeCandidate(boundary time.Duration) {
 	}
 }
 
-func (tracker *selfDeltaTracker) currentDelta(cursor schema.Cursor, input selfDeltaInput) SelfDelta {
+func (tracker *selfDeltaTracker) currentDelta(header envelope.Header, input selfDeltaInput) SelfDelta {
 	if !tracker.synchronized || !tracker.hasReference || !tracker.candidateOK {
 		return tracker.output(schema.FreshnessMissing, schema.MissingField[session.DeltaSeconds]())
 	}
@@ -386,7 +387,8 @@ func (tracker *selfDeltaTracker) currentDelta(cursor schema.Cursor, input selfDe
 	value := session.DeltaSeconds(seconds)
 	if tracker.lastPublic == 0 || input.sourceTime-tracker.lastPublic >= selfDeltaSampleInterval {
 		tracker.history = append(tracker.history, DeltaSample{
-			Cursor: cursor, SourceTime: input.sourceTime, LapDistance: input.distance, Seconds: value,
+			Cursor: header.Cursor, CapturedAt: header.Clock.ReceivedUTC,
+			SourceTime: input.sourceTime, LapDistance: input.distance, Seconds: value,
 		})
 		if overflow := len(tracker.history) - MaxSelfDeltaHistory; overflow > 0 {
 			tracker.history = slices.Clone(tracker.history[overflow:])

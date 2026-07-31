@@ -1034,6 +1034,8 @@ git diff --check
 
 ### Files
 
+- Modify: `internal/telemetry/derive/delta.go`
+- Modify: `internal/telemetry/derive/delta_test.go`
 - Modify: `internal/telemetry/projection/overlay/v1.go`
 - Modify: `internal/telemetry/projection/overlay/v1_test.go`
 - Modify:
@@ -1047,11 +1049,15 @@ git diff --check
 - Modify:
   `frontend/src/overlay/telemetry-shadow/overlay-projection-adapter.test.ts`
 - Modify:
-  `frontend/src/overlay/telemetry-shadow/overlay-shadow-policy.ts`
+  `frontend/src/overlay/telemetry-shadow/overlay-shadow-comparator.ts`
 - Modify:
-  `frontend/src/overlay/telemetry-shadow/overlay-shadow-policy.test.ts`
+  `frontend/src/overlay/telemetry-shadow/overlay-shadow-comparator.test.ts`
 - Modify:
   `frontend/src/telemetry-transport/projection-golden.test.ts`
+- Modify:
+  `frontend/src/telemetry-overlay-shadow-harness/TelemetryOverlayShadowHarness.test.tsx`
+- Modify:
+  `internal/telemetry/recording/replay/testdata/canonical-integration-v1.golden.json`
 - Modify: `docs/telemetry-core/overlay-shadow-matrix.md`
 - Modify: `docs/telemetry-core/projection-transport.md`
 
@@ -1061,6 +1067,8 @@ git diff --check
 - vehicles: driver label, class, sector, lap distance, best/last/estimated lap,
   penalties, gaps/intervals, fuel for player;
 - derived: relative gap/lap delta and player self-reference delta/history;
+- each public delta sample preserves its canonical `ReceivedUTC` capture time,
+  so a retained sample keeps one stable identity across later frames;
 - quality metadata for every field;
 - existing v1 keys unchanged.
 
@@ -1095,46 +1103,51 @@ Rules:
 
 ### Red tests
 
-- [ ] Old v1 golden without new keys still decodes with explicit missing fields.
-- [ ] New v1 golden round-trips Go → JSON → TypeScript.
-- [ ] New v1 golden decodes through the frozen pre-D7 consumer and safely
+- [x] Old v1 golden without new keys still decodes with explicit missing fields.
+- [x] New v1 golden round-trips Go → JSON → TypeScript.
+- [x] New v1 golden decodes through the frozen pre-D7 consumer and safely
   ignores additive fields.
-- [ ] Safe unknown extension keys remain ignored; invalid known keys and unsafe
+- [x] Safe unknown extension keys remain ignored; invalid known keys and unsafe
   transport values still fail.
-- [ ] m/s → km/h is exactly `value * 3.6`.
-- [ ] Zero, false and empty-but-present values survive.
-- [ ] Driver names and IDs are used internally but redacted from diagnostic
+- [x] m/s → km/h is exactly `value * 3.6`.
+- [x] Zero, false and empty-but-present values survive.
+- [x] Driver names and IDs are used internally but redacted from diagnostic
   reports.
-- [ ] Comparator uses same-frame fields and never treats missing/stale/invalid
+- [x] Comparator uses same-frame fields and never treats missing/stale/invalid
   as equal.
-- [ ] The 18-widget matrix improves only for signals actually admitted.
-- [ ] Phase/flags, team/number/compound/weather/damage remain explicit
+- [x] The 18-widget matrix improves only for signals actually admitted.
+- [x] Phase/flags, team/number/compound/weather/damage remain explicit
   mismatches.
 
 ### Implementation
 
-- [ ] Extend v1 with optional `projection.Field` members.
-- [ ] Keep `CurrentVersion` and `MinimumSupportedVersion` at v1.
-- [ ] Make the TypeScript decoder normalize absent additive fields to missing.
-- [ ] Extend the adapter without touching ViewModels or renderers.
-- [ ] Update comparator source paths and capability rules.
+- [x] Extend v1 with optional `projection.Field` members.
+- [x] Keep `CurrentVersion` and `MinimumSupportedVersion` at v1.
+- [x] Make the TypeScript decoder normalize absent additive fields to missing.
+- [x] Extend the adapter without touching ViewModels or renderers.
+- [x] Update comparator source paths and capability rules.
 
 ### Verification
 
 ```powershell
-gofmt -w internal/telemetry/projection/overlay/v1.go `
+gofmt -w internal/telemetry/derive/delta.go `
+  internal/telemetry/derive/delta_test.go `
+  internal/telemetry/projection/overlay/v1.go `
   internal/telemetry/projection/overlay/v1_test.go
-go test ./internal/telemetry/projection/overlay ./internal/app/telemetrytransport -count=20
+go test ./internal/telemetry/derive ./internal/telemetry/projection/overlay `
+  ./internal/app/telemetrytransport -count=20
 pnpm --dir frontend test -- overlay-projection-v1 `
-  overlay-projection-adapter overlay-shadow-policy projection-golden
+  overlay-projection-adapter overlay-shadow-comparator projection-golden
 pnpm --dir frontend exec eslint `
   src/overlay/telemetry-shadow src/telemetry-transport
 pnpm --dir frontend build
 git diff --check
 ```
 
-- [ ] Commit: `feat(overlay): project canonical LMU signals`.
-- [ ] Independent review.
+- [x] Commit: `feat(overlay): project canonical LMU signals`.
+- [x] Independent review: final `APPROVE`, P0/P1/P2/P3 = 0 after one fix
+  cycle covering stable delta timestamps, enum/identity validation and
+  per-vehicle comparator quality.
 
 ---
 

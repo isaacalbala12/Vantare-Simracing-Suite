@@ -56,27 +56,14 @@ type AdapterOptions = Readonly<{
 }>;
 
 const UNSUPPORTED_FIELDS: readonly OverlayUnsupportedField[] = [
-  { targetPath: "session.remainingSeconds", reason: "unsupported-by-projection" },
   { targetPath: "session.key", reason: "unsupported-by-projection" },
   { targetPath: "session.globalFlag", reason: "unsupported-by-projection" },
   { targetPath: "session.sectorFlags", reason: "unsupported-by-projection" },
-  { targetPath: "player.fuelLiters", reason: "unsupported-by-projection" },
-  { targetPath: "player.deltaSeconds", reason: "unsupported-by-projection" },
-  { targetPath: "player.lastLapSeconds", reason: "unsupported-by-projection" },
-  { targetPath: "player.bestLapSeconds", reason: "unsupported-by-projection" },
-  { targetPath: "player.predictedLapSeconds", reason: "unsupported-by-projection" },
-  { targetPath: "scoring[].driverName", reason: "unsupported-by-projection" },
   { targetPath: "scoring[].driverNumber", reason: "unsupported-by-projection" },
   { targetPath: "scoring[].teamName", reason: "unsupported-by-projection" },
-  { targetPath: "scoring[].vehicleClass", reason: "unsupported-by-projection" },
-  { targetPath: "scoring[].timeGapToPlayer", reason: "unsupported-by-projection" },
-  { targetPath: "scoring[].lastLapTime", reason: "unsupported-by-projection" },
-  { targetPath: "scoring[].bestLapTime", reason: "unsupported-by-projection" },
-  { targetPath: "scoring[].estimatedLapTime", reason: "unsupported-by-projection" },
   { targetPath: "scoring[].tireCompound", reason: "unsupported-by-projection" },
   { targetPath: "derived.inputHistory", reason: "history-without-timestamps" },
   { targetPath: "derived.fuelHistory", reason: "unsupported-by-projection" },
-  { targetPath: "derived.deltaHistory", reason: "unsupported-by-projection" },
   { targetPath: "environment", reason: "unsupported-by-projection" },
   { targetPath: "damage", reason: "unsupported-by-projection" },
 ];
@@ -101,6 +88,19 @@ export function adaptOverlayProjectionToSnapshot(
     "trackName",
     "session.trackName",
   );
+  const remainingSeconds = mappedValue(
+    projection.payload.remainingSeconds,
+    quality,
+    "remainingSeconds",
+    "session.remainingSeconds",
+  );
+  recordQuality(projection.payload.endTimeSeconds, quality, "endTimeSeconds");
+  recordQuality(projection.payload.maximumLaps, quality, "maximumLaps");
+  recordQuality(
+    projection.payload.playerDeltaReference,
+    quality,
+    "playerDeltaReference",
+  );
 
   const playerIndex = projection.payload.vehicles.findIndex(
     (vehicle) => vehicle.id === projection.payload.playerVehicleId,
@@ -118,7 +118,12 @@ export function adaptOverlayProjectionToSnapshot(
   const scoring = projection.payload.vehicles.map((vehicle, index) =>
     mapScoringVehicle(vehicle, index, playerIndex, quality),
   );
-  const player = mapPlayer(playerVehicle, playerIndex, quality);
+  const player = mapPlayer(
+    playerVehicle,
+    playerIndex,
+    projection.payload.playerDeltaSeconds,
+    quality,
+  );
   quality.push({
     sourcePath: "controlsHistory",
     present: projection.payload.controlsHistory.present,
@@ -147,6 +152,9 @@ export function adaptOverlayProjectionToSnapshot(
   if (trackName !== undefined) {
     session.trackName = trackName;
   }
+  if (remainingSeconds !== undefined) {
+    session.remainingSeconds = remainingSeconds;
+  }
   const transportStatus = snapshotStatus(options.transportState);
   const snapshot: TelemetrySnapshot = {
     status: transportStatus,
@@ -155,6 +163,14 @@ export function adaptOverlayProjectionToSnapshot(
     player,
     scoring,
   };
+  const deltaHistory = mapDeltaHistory(projection, quality);
+  if (deltaHistory !== undefined) {
+    snapshot.derived = {
+      fuelHistory: [],
+      inputHistory: [],
+      deltaHistory,
+    };
+  }
   if (options.transportState === "error") {
     snapshot.errorMessage = "overlay-projection-transport-error";
   }
@@ -170,6 +186,7 @@ export function adaptOverlayProjectionToSnapshot(
 function mapPlayer(
   vehicle: OverlayVehicleV1 | undefined,
   index: number,
+  playerDelta: OverlayProjectionField<number>,
   quality: OverlayMappedField[],
 ): TelemetrySnapshot["player"] | undefined {
   if (!vehicle || index < 0) {
@@ -192,6 +209,61 @@ function mapPlayer(
       `vehicles[${index}].speedMps`,
       "player.speedKph",
       3.6,
+    ),
+  );
+  assignIfPresent(
+    optional,
+    "fuelLiters",
+    mappedValue(
+      vehicle.fuelLiters,
+      quality,
+      `vehicles[${index}].fuelLiters`,
+      "player.fuelLiters",
+    ),
+  );
+  recordQuality(
+    vehicle.fuelCapacityLiters,
+    quality,
+    `vehicles[${index}].fuelCapacityLiters`,
+  );
+  assignIfPresent(
+    optional,
+    "deltaSeconds",
+    mappedValue(
+      playerDelta,
+      quality,
+      "playerDeltaSeconds",
+      "player.deltaSeconds",
+    ),
+  );
+  assignIfPresent(
+    optional,
+    "lastLapSeconds",
+    mappedValue(
+      vehicle.lastLapSeconds,
+      quality,
+      `vehicles[${index}].lastLapSeconds`,
+      "player.lastLapSeconds",
+    ),
+  );
+  assignIfPresent(
+    optional,
+    "bestLapSeconds",
+    mappedValue(
+      vehicle.bestLapSeconds,
+      quality,
+      `vehicles[${index}].bestLapSeconds`,
+      "player.bestLapSeconds",
+    ),
+  );
+  assignIfPresent(
+    optional,
+    "predictedLapSeconds",
+    mappedValue(
+      vehicle.estimatedLapSeconds,
+      quality,
+      `vehicles[${index}].estimatedLapSeconds`,
+      "player.predictedLapSeconds",
     ),
   );
   assignIfPresent(
@@ -288,6 +360,26 @@ function mapScoringVehicle(
   recordQuality(vehicle.name, quality, `vehicles[${index}].name`);
   assignIfPresent(
     row,
+    "driverName",
+    mappedValue(
+      vehicle.driverName,
+      quality,
+      `vehicles[${index}].driverName`,
+      "scoring[].driverName",
+    ),
+  );
+  assignIfPresent(
+    row,
+    "vehicleClass",
+    mappedValue(
+      vehicle.vehicleClass,
+      quality,
+      `vehicles[${index}].vehicleClass`,
+      "scoring[].vehicleClass",
+    ),
+  );
+  assignIfPresent(
+    row,
     "place",
     mappedValue(
       vehicle.position,
@@ -296,6 +388,40 @@ function mapScoringVehicle(
       "scoring[].place",
     ),
   );
+  const scoringFields = [
+    ["sector", vehicle.sector, "sector"],
+    ["lapDistanceMeters", vehicle.lapDistanceMeters, "lapDistanceMeters"],
+    ["lastLapTime", vehicle.lastLapSeconds, "lastLapSeconds"],
+    ["bestLapTime", vehicle.bestLapSeconds, "bestLapSeconds"],
+    ["estimatedLapTime", vehicle.estimatedLapSeconds, "estimatedLapSeconds"],
+    ["penaltyCount", vehicle.penaltyCount, "penaltyCount"],
+    [
+      "timeBehindLeader",
+      vehicle.timeBehindLeaderSeconds,
+      "timeBehindLeaderSeconds",
+    ],
+    ["lapsBehindLeader", vehicle.lapsBehindLeader, "lapsBehindLeader"],
+    ["timeBehindNext", vehicle.timeBehindNextSeconds, "timeBehindNextSeconds"],
+    ["lapsBehindNext", vehicle.lapsBehindNext, "lapsBehindNext"],
+    [
+      "timeGapToPlayer",
+      vehicle.relativeTimeGapSeconds,
+      "relativeTimeGapSeconds",
+    ],
+    ["relativeLapDelta", vehicle.relativeLapDelta, "relativeLapDelta"],
+  ] as const;
+  for (const [targetKey, field, sourceName] of scoringFields) {
+    assignIfPresent(
+      row,
+      targetKey,
+      mappedValue(
+        field,
+        quality,
+        `vehicles[${index}].${sourceName}`,
+        `scoring[].${targetKey}`,
+      ),
+    );
+  }
   assignIfPresent(
     row,
     "totalLaps",
@@ -320,6 +446,32 @@ function mapScoringVehicle(
     recordUnmappedVehicleFields(vehicle, index, quality);
   }
   return row;
+}
+
+function mapDeltaHistory(
+  projection: OverlayProjectionV1,
+  quality: OverlayMappedField[],
+): NonNullable<TelemetrySnapshot["derived"]>["deltaHistory"] | undefined {
+  const history = projection.payload.deltaHistory;
+  const mappable =
+    history.present &&
+    history.freshness !== "invalid";
+  const usable = mappable && history.freshness !== "missing";
+  quality.push({
+    sourcePath: "deltaHistory",
+    targetPath: "derived.deltaHistory",
+    present: history.present,
+    provenance: history.provenance,
+    freshness: history.freshness,
+    usable,
+  });
+  if (!mappable) {
+    return undefined;
+  }
+  return history.samples.map((sample) => ({
+    capturedAt: sample.capturedAt,
+    deltaSeconds: sample.deltaSeconds,
+  }));
 }
 
 function recordUnmappedVehicleFields(

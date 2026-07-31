@@ -7,6 +7,12 @@ import type { BroadcastTowerRow, BroadcastTowerViewModel } from "../widget-types
 import type { InputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryContent } from "../widget-types/input-telemetry/input-telemetry-definition";
 import { buildInputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
+import type { DeltaViewModel } from "../widget-types/delta/delta-view-model";
+import type { DeltaAdvancedViewModel } from "../widget-types/delta-advanced/delta-advanced-view-model";
+import type { DeltaTraceViewModel } from "../widget-types/delta-trace/delta-trace-view-model";
+import type { FuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
+import type { MulticlassRelativeRow, MulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
+import type { RelativeRowViewModel, RelativeViewModel } from "../widget-types/relative/relative-view-model";
 import { readScoringBoolean, readScoringNumber, readScoringString } from "../widget-types/shared/scoring-readers";
 import type {
   OverlayProjectionAdaptation,
@@ -232,6 +238,69 @@ const standingsRows: ListRule = {
     { path: "pitText", read: (row) => (row as StandingsRowViewModel).pitText, quality: allOf(vehicle("inPit")), disclosure: redactedDisclosure },
     { path: "isPlayer", read: (row) => (row as StandingsRowViewModel).isPlayer, quality: allOf(vehicle("id"), source("playerVehicleId")), disclosure: booleanDisclosure },
     { path: "isLeader", read: (row) => (row as StandingsRowViewModel).isLeader, quality: allOf(vehicle("position")), disclosure: booleanDisclosure },
+    { path: "driverName", read: (row) => (row as StandingsRowViewModel).driverName, quality: allOf(vehicle("driverName")), disclosure: redactedDisclosure },
+    { path: "vehicleClass", read: (row) => (row as StandingsRowViewModel).vehicleClass, quality: allOf(vehicle("vehicleClass")), disclosure: redactedDisclosure },
+    { path: "intervalText", read: (row) => (row as StandingsRowViewModel).intervalText, quality: allOf(vehicle("timeBehindNextSeconds")), disclosure: redactedDisclosure },
+    { path: "lastLapText", read: (row) => (row as StandingsRowViewModel).lastLapText, quality: allOf(vehicle("lastLapSeconds")), disclosure: redactedDisclosure },
+    { path: "bestLapText", read: (row) => (row as StandingsRowViewModel).bestLapText, quality: allOf(vehicle("bestLapSeconds")), disclosure: redactedDisclosure },
+  ],
+};
+
+const relativeRows: ListRule = {
+  kind: "list",
+  path: "rows",
+  read: (model) => (model as RelativeViewModel).rows,
+  identities: (rows) => rows.map((row) => (row as RelativeRowViewModel).id),
+  orderSignificant: true,
+  fields: [
+    { path: "id", read: (row) => (row as RelativeRowViewModel).id, quality: allOf(vehicle("id")), disclosure: redactedDisclosure },
+    { path: "position", read: (row) => (row as RelativeRowViewModel).position, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
+    { path: "vehicleClass", read: (row) => (row as RelativeRowViewModel).vehicleClass, quality: allOf(vehicle("vehicleClass")), disclosure: redactedDisclosure },
+    { path: "driverName", read: (row) => (row as RelativeRowViewModel).driverName, quality: allOf(vehicle("driverName")), disclosure: redactedDisclosure },
+    { path: "gapText", read: (row) => (row as RelativeRowViewModel).gapText, quality: allOf(vehicle("relativeTimeGapSeconds")), disclosure: redactedDisclosure },
+    { path: "bestLapText", read: (row) => (row as RelativeRowViewModel).bestLapText, quality: allOf(vehicle("bestLapSeconds")), disclosure: redactedDisclosure },
+    { path: "lastLapText", read: (row) => (row as RelativeRowViewModel).lastLapText, quality: allOf(vehicle("lastLapSeconds")), disclosure: redactedDisclosure },
+    { path: "isPlayer", read: (row) => (row as RelativeRowViewModel).isPlayer, quality: allOf(vehicle("id"), source("playerVehicleId")), disclosure: booleanDisclosure },
+    { path: "tone", read: (row) => (row as RelativeRowViewModel).tone, quality: allOf(vehicle("relativeTimeGapSeconds")), disclosure: redactedDisclosure },
+    { path: "gapSeconds", read: (row) => (row as RelativeRowViewModel).gapSeconds, quality: allOf(vehicle("relativeTimeGapSeconds")), disclosure: numberDisclosure, tolerance: 1e-6 },
+  ],
+};
+
+const deltaTracePoints: ListRule = {
+  kind: "list",
+  path: "points",
+  read: (model) => (model as DeltaTraceViewModel).points,
+  identities: (rows) => rows.map((row) => String((row as { capturedAt: number }).capturedAt)),
+  orderSignificant: true,
+  fields: [
+    { path: "capturedAt", read: (row) => (row as { capturedAt: number }).capturedAt, quality: allOf(target("derived.deltaHistory")), disclosure: numberDisclosure },
+    { path: "deltaSeconds", read: (row) => (row as { deltaSeconds: number }).deltaSeconds, quality: allOf(target("derived.deltaHistory")), disclosure: numberDisclosure, tolerance: 1e-6 },
+  ],
+};
+
+const multiclassRelativeRows: ListRule = {
+  kind: "list",
+  path: "rows",
+  read: (model) => (model as MulticlassRelativeViewModel).rows,
+  identities: (rows, snapshot) => {
+    const identities = rows.map((row) => {
+      const place = (row as MulticlassRelativeRow).place;
+      const scoring = snapshot.scoring.find(
+        (candidate) => readScoringNumber(candidate, "place") === place,
+      );
+      return scoring === undefined ? undefined : scoringIdentity(scoring);
+    });
+    return identities.every((identity): identity is string => identity !== undefined)
+      ? identities
+      : undefined;
+  },
+  orderSignificant: true,
+  fields: [
+    { path: "place", read: (row) => (row as MulticlassRelativeRow).place, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
+    { path: "classId", read: (row) => (row as MulticlassRelativeRow).classId, quality: allOf(vehicle("vehicleClass")), disclosure: redactedDisclosure },
+    { path: "name", read: (row) => (row as MulticlassRelativeRow).name, quality: allOf(vehicle("driverName")), disclosure: redactedDisclosure },
+    { path: "gap", read: (row) => (row as MulticlassRelativeRow).gap, quality: allOf(vehicle("relativeTimeGapSeconds")), disclosure: numberDisclosure, tolerance: 1e-6 },
+    { path: "isPlayer", read: (row) => (row as MulticlassRelativeRow).isPlayer, quality: allOf(vehicle("id"), source("playerVehicleId")), disclosure: booleanDisclosure },
   ],
 };
 
@@ -243,6 +312,9 @@ const broadcastRows: ListRule = {
   orderSignificant: true,
   fields: [
     { path: "place", read: (row) => (row as BroadcastTowerRow).place, quality: allOf(vehicle("position")), disclosure: numberDisclosure },
+    { path: "name", read: (row) => (row as BroadcastTowerRow).name, quality: allOf(vehicle("driverName")), disclosure: redactedDisclosure },
+    { path: "className", read: (row) => (row as BroadcastTowerRow).className, quality: allOf(vehicle("vehicleClass")), disclosure: redactedDisclosure },
+    { path: "gap", read: (row) => (row as BroadcastTowerRow).gap, quality: allOf(vehicle("relativeTimeGapSeconds")), disclosure: numberDisclosure, tolerance: 1e-6 },
     { path: "isPlayer", read: (row) => (row as BroadcastTowerRow).isPlayer, quality: allOf(vehicle("id"), source("playerVehicleId")), disclosure: booleanDisclosure },
   ],
 };
@@ -250,26 +322,21 @@ const broadcastRows: ListRule = {
 export const OVERLAY_SHADOW_POLICIES = {
   delta: {
     widgetType: "delta",
-    coverage: "not-comparable",
+    coverage: "exact",
     rules: [
-      unsupported("tone", target("player.deltaSeconds")),
-      unsupported("deltaText", target("player.deltaSeconds")),
-      unsupported("lastLapText", target("player.lastLapSeconds")),
-      unsupported("bestLapText", target("player.bestLapSeconds")),
-      unsupported("progress", target("player.deltaSeconds")),
-      unsupported(
-        "lapText",
+      ...statusRules,
+      scalar("tone", (model) => (model as DeltaViewModel).tone, redactedDisclosure, allOf(target("player.deltaSeconds"))),
+      scalar("deltaText", (model) => (model as DeltaViewModel).deltaText, redactedDisclosure, allOf(target("player.deltaSeconds"))),
+      scalar("lastLapText", (model) => (model as DeltaViewModel).lastLapText, redactedDisclosure, allOf(target("player.lastLapSeconds"))),
+      scalar("bestLapText", (model) => (model as DeltaViewModel).bestLapText, redactedDisclosure, allOf(target("player.bestLapSeconds"))),
+      scalar("progress", (model) => (model as DeltaViewModel).progress, numberDisclosure, allOf(target("player.deltaSeconds")), 1e-6),
+      scalar("lapText", (model) => (model as DeltaViewModel).lapText, redactedDisclosure, firstAvailable(
+        (snapshot) => snapshot.player.lapNumber === undefined ? 1 : 0,
         target("player.lapNumber"),
-        target("scoring[].isPlayer"),
-        target("scoring[].totalLaps"),
-      ),
-      unsupported(
-        "predictedLapText",
-        target("player.predictedLapSeconds"),
-        target("scoring[].isPlayer"),
-        target("scoring[].estimatedLapTime"),
-      ),
-      unsupported("splitText", target("player.deltaSeconds")),
+        target("player.totalLaps"),
+      )),
+      scalar("predictedLapText", (model) => (model as DeltaViewModel).predictedLapText, redactedDisclosure, allOf(target("player.predictedLapSeconds"))),
+      scalar("splitText", (model) => (model as DeltaViewModel).splitText, redactedDisclosure, allOf(target("player.deltaSeconds"))),
     ],
   },
   standings: {
@@ -279,16 +346,9 @@ export const OVERLAY_SHADOW_POLICIES = {
       ...statusRules,
       scalar("sessionLabel", (model) => (model as StandingsViewModel).sessionLabel, redactedDisclosure, allOf(target("session.type"))),
       standingsRows,
-      unsupported(
-        "activeClass",
-        target("scoring[].isPlayer"),
-        target("scoring[].vehicleClass"),
-        target("scoring[].place"),
-      ),
-      unsupported("remainingText", target("session.remainingSeconds")),
+      scalar("activeClass", (model) => (model as StandingsViewModel).activeClass, redactedDisclosure, allOf(target("scoring[].vehicleClass"))),
+      scalar("remainingText", (model) => (model as StandingsViewModel).remainingText, redactedDisclosure, allOf(target("session.remainingSeconds"))),
       unsupported("rows[].driverNumber", target("scoring[].driverNumber")),
-      unsupported("rows[].driverName", target("scoring[].driverName")),
-      unsupported("rows[].vehicleClass", target("scoring[].vehicleClass")),
       unsupported("rows[].teamCode", target("scoring[].teamCode")),
       unsupported("rows[].teamBrandColor", target("scoring[].teamBrandColor")),
       unsupported(
@@ -303,38 +363,16 @@ export const OVERLAY_SHADOW_POLICIES = {
         target("scoring[].lapsBehindLeader"),
         target("scoring[].timeBehindLeader"),
       ),
-      unsupported("rows[].intervalText", target("scoring[].timeBehindNext")),
-      unsupported("rows[].lastLapText", target("scoring[].lastLapTime")),
-      unsupported("rows[].bestLapText", target("scoring[].bestLapTime")),
       unsupported("rows[].tireCompound", target("scoring[].tireCompound")),
     ],
   },
   relative: {
     widgetType: "relative",
-    coverage: "not-comparable",
+    coverage: "partial",
     rules: [
-      unsupported(
-        "rows",
-        target("scoring[].isPlayer"),
-        target("scoring[].vehicleClass"),
-        target("scoring[].timeGapToPlayer"),
-        target("scoring[].id"),
-      ),
-      unsupported("rows[].id", target("scoring[].id")),
-      unsupported("rows[].position", target("scoring[].place")),
-      unsupported("rows[].vehicleClass", target("scoring[].vehicleClass")),
+      ...statusRules,
+      relativeRows,
       unsupported("rows[].driverNumber", target("scoring[].driverNumber")),
-      unsupported("rows[].driverName", target("scoring[].driverName")),
-      unsupported("rows[].gapText", target("scoring[].timeGapToPlayer")),
-      unsupported("rows[].bestLapText", target("scoring[].bestLapTime")),
-      unsupported("rows[].lastLapText", target("scoring[].lastLapTime")),
-      unsupported("rows[].isPlayer", target("scoring[].isPlayer")),
-      unsupported(
-        "rows[].tone",
-        target("scoring[].timeGapToPlayer"),
-        target("scoring[].isPlayer"),
-      ),
-      unsupported("rows[].gapSeconds", target("scoring[].timeGapToPlayer")),
     ],
   },
   pedals: {
@@ -363,13 +401,21 @@ export const OVERLAY_SHADOW_POLICIES = {
       broadcastRows,
       unsupported("trackTempC", target("environment.trackC")),
       unsupported("sof", target("scoring[].rating")),
-      ...["number", "name", "team", "className", "brandColor", "gap"].map((path) => unsupported(`rows[].${path}`, target(`scoring[].${path}`))),
+      ...["number", "team", "brandColor"].map((path) => unsupported(`rows[].${path}`, target(`scoring[].${path}`))),
     ],
   },
   "fuel-strategy": {
     widgetType: "fuel-strategy",
-    coverage: "not-comparable",
-    rules: ["fuelLiters", "fuelPercent", "avgPerLap", "lapsRemaining", "requiredFuel", "history"].map((path) => unsupported(path, target("player.fuelLiters"))),
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      scalar("fuelLiters", (model) => (model as FuelStrategyViewModel).fuelLiters, numberDisclosure, allOf(target("player.fuelLiters")), 1e-6),
+      scalar("lapsRemaining", (model) => (model as FuelStrategyViewModel).lapsRemaining, numberDisclosure, allOf(target("session.remainingSeconds"), target("player.lastLapSeconds"))),
+      unsupported("fuelPercent", target("player.fuelLiters")),
+      unsupported("avgPerLap", target("derived.fuelHistory")),
+      unsupported("requiredFuel", target("derived.fuelHistory")),
+      unsupported("history", target("derived.fuelHistory")),
+    ],
   },
   "pedals-telemetry": {
     widgetType: "pedals-telemetry",
@@ -404,8 +450,16 @@ export const OVERLAY_SHADOW_POLICIES = {
   },
   "delta-trace": {
     widgetType: "delta-trace",
-    coverage: "not-comparable",
-    rules: ["points", "currentDelta", "trend", "sectorDeltas", "turnInsight", "trackPath"].map((path) => unsupported(path, target("derived.deltaHistory"))),
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      deltaTracePoints,
+      scalar("currentDelta", (model) => (model as DeltaTraceViewModel).currentDelta, numberDisclosure, allOf(target("derived.deltaHistory")), 1e-6),
+      scalar("trend", (model) => (model as DeltaTraceViewModel).trend, redactedDisclosure, allOf(target("derived.deltaHistory"))),
+      unsupported("sectorDeltas", target("derived.deltaHistory")),
+      unsupported("turnInsight", target("derived.deltaHistory")),
+      unsupported("trackPath", target("derived.deltaHistory")),
+    ],
   },
   "race-schedule": {
     widgetType: "race-schedule",
@@ -415,12 +469,38 @@ export const OVERLAY_SHADOW_POLICIES = {
   "head-to-head": {
     widgetType: "head-to-head",
     coverage: "not-comparable",
-    rules: ["player", "opponent", "ahead", "behind", "gapSeconds", "sectorComparisons"].map((path) => unsupported(path, target("scoring[].timeGapToPlayer"))),
+    rules: [
+      ...statusRules,
+      unsupported("player.place", target("scoring[].place")),
+      unsupported("player.name", target("scoring[].driverName")),
+      unsupported("player.className", target("scoring[].vehicleClass")),
+      unsupported("opponent.place", target("scoring[].place")),
+      unsupported("opponent.name", target("scoring[].driverName")),
+      unsupported("opponent.className", target("scoring[].vehicleClass")),
+      unsupported("gapSeconds", target("scoring[].timeGapToPlayer")),
+      unsupported("player.number", target("scoring[].driverNumber")),
+      unsupported("player.team", target("scoring[].teamName")),
+      unsupported("opponent.number", target("scoring[].driverNumber")),
+      unsupported("opponent.team", target("scoring[].teamName")),
+      unsupported("ahead", target("scoring[].timeGapToPlayer")),
+      unsupported("behind", target("scoring[].timeGapToPlayer")),
+      unsupported("sectorComparisons", target("scoring[].sectorComparisons")),
+    ],
   },
   "delta-advanced": {
     widgetType: "delta-advanced",
-    coverage: "not-comparable",
-    rules: ["best", "sector", "theoretical", "last", "availability"].map((path) => unsupported(path, target("player.deltaSeconds"))),
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      scalar("best", (model) => (model as DeltaAdvancedViewModel).best, numberDisclosure, allOf(target("player.deltaSeconds")), 1e-6),
+      scalar("availability.best", (model) => (model as DeltaAdvancedViewModel).availability.best, booleanDisclosure, allOf(target("player.deltaSeconds"))),
+      unsupported("sector", target("player.deltaSeconds")),
+      unsupported("theoretical", target("player.deltaSeconds")),
+      unsupported("last", target("player.deltaSeconds")),
+      unsupported("availability.sector", target("player.deltaSeconds")),
+      unsupported("availability.theoretical", target("player.deltaSeconds")),
+      unsupported("availability.last", target("player.deltaSeconds")),
+    ],
   },
   "input-telemetry": {
     widgetType: "input-telemetry",
@@ -434,8 +514,13 @@ export const OVERLAY_SHADOW_POLICIES = {
   },
   "multiclass-relative": {
     widgetType: "multiclass-relative",
-    coverage: "not-comparable",
-    rules: ["rows", "rows[].classId", "rows[].classColor", "rows[].number", "rows[].name", "rows[].gap"].map((path) => unsupported(path, target("scoring[].vehicleClass"))),
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      multiclassRelativeRows,
+      unsupported("rows[].classColor", target("scoring[].teamBrandColor")),
+      unsupported("rows[].number", target("scoring[].driverNumber")),
+    ],
   },
   "track-weather": {
     widgetType: "track-weather",

@@ -32,6 +32,11 @@ describe("overlay projection adapter", () => {
       player: {
         inPit: false,
         speedKph: 0,
+        fuelLiters: 40,
+        deltaSeconds: -0.25,
+        lastLapSeconds: 91.25,
+        bestLapSeconds: 90.5,
+        predictedLapSeconds: 90.75,
         throttle: 0,
         brake: 1,
         clutch: 0,
@@ -45,15 +50,50 @@ describe("overlay projection adapter", () => {
         totalLaps: 4,
         inPits: false,
         isPlayer: true,
+        driverName: "Player",
+        vehicleClass: "HYPERCAR",
+        sector: 2,
+        lapDistanceMeters: 1234.5,
+        lastLapTime: 91.25,
+        bestLapTime: 90.5,
+        estimatedLapTime: 90.75,
+        penaltyCount: 0,
+        timeBehindLeader: 10,
+        lapsBehindLeader: 0,
+        timeBehindNext: 1.5,
+        lapsBehindNext: 0,
+        timeGapToPlayer: 0,
+        relativeLapDelta: 0,
       },
       {
         id: "car-9",
         place: 1,
         totalLaps: 4,
         isPlayer: false,
+        driverName: "Rival Driver",
+        vehicleClass: "HYPERCAR",
+        sector: 3,
+        lapDistanceMeters: 1300,
+        lastLapTime: 90.8,
+        bestLapTime: 89.75,
+        estimatedLapTime: 90.2,
+        penaltyCount: 0,
+        timeBehindLeader: 8,
+        lapsBehindLeader: 0,
+        timeBehindNext: 2,
+        lapsBehindNext: 0,
+        timeGapToPlayer: 2,
+        relativeLapDelta: 0,
       },
     ]);
     expect(mapping.snapshot.session.trackName).toBeUndefined();
+    expect(mapping.snapshot.session.remainingSeconds).toBe(3600);
+    expect(mapping.snapshot.derived?.deltaHistory).toEqual([
+      {
+        capturedAt: Date.parse("2026-07-28T09:00:00Z"),
+        deltaSeconds: -0.25,
+      },
+    ]);
     expect(mapping.snapshot.scoring.every((row) => !("pitStopCount" in row))).toBe(true);
     expect(mapping.quality.some((field) =>
       field.sourcePath.includes("pitStopCount") ||
@@ -85,6 +125,63 @@ describe("overlay projection adapter", () => {
       },
     ]));
   });
+
+  it.each(["missing", "stale"] as const)(
+    "keeps retained delta samples stable when current delta becomes %s",
+    (freshness) => {
+      const firstEnvelope = mutableProjection();
+      const history = firstEnvelope.payload.deltaHistory as Record<string, unknown>;
+      const latest = structuredClone(
+        (history.samples as Record<string, unknown>[])[0]!,
+      );
+      history.freshness = freshness;
+      history.samples = [
+        {
+          ...latest,
+          sequence: (latest.sequence as number) - 1,
+          capturedAt: (latest.capturedAt as number) - 100,
+          sourceTimeSeconds: (latest.sourceTimeSeconds as number) - 0.1,
+          lapDistanceMeters: (latest.lapDistanceMeters as number) - 5,
+          deltaSeconds: (latest.deltaSeconds as number) + 0.01,
+        },
+        latest,
+      ];
+      const secondEnvelope = structuredClone(firstEnvelope);
+      secondEnvelope.capturedAt = "2026-07-28T09:00:05Z";
+
+      const first = requireMapped(
+        adaptOverlayProjectionToSnapshot(decode(firstEnvelope), {
+          transportState: "live",
+        }),
+      );
+      const second = requireMapped(
+        adaptOverlayProjectionToSnapshot(decode(secondEnvelope), {
+          transportState: "live",
+        }),
+      );
+
+      expect(first.snapshot.derived?.deltaHistory).toEqual(
+        second.snapshot.derived?.deltaHistory,
+      );
+      expect(first.snapshot.derived?.deltaHistory).toEqual([
+        {
+          capturedAt: Date.parse("2026-07-28T08:59:59.900Z"),
+          deltaSeconds: -0.24,
+        },
+        {
+          capturedAt: Date.parse("2026-07-28T09:00:00Z"),
+          deltaSeconds: -0.25,
+        },
+      ]);
+      expect(first.quality).toContainEqual(
+        expect.objectContaining({
+          sourcePath: "deltaHistory",
+          freshness,
+          usable: freshness === "stale",
+        }),
+      );
+    },
+  );
 
   it.each([
     ["stale", "stale"],
@@ -275,33 +372,59 @@ describe("overlay projection adapter", () => {
     );
   });
 
-  it("never fabricates unsupported delta, gaps, fuel, lap times, classes, flags, weather or damage", () => {
+  it("maps admitted signals and keeps phase, flags, team, number, compound, weather and damage unsupported", () => {
     const mapping = requireMapped(
       adaptOverlayProjectionToSnapshot(readGolden(), {
         transportState: "live",
       }),
     );
 
-    expect(mapping.snapshot.player).not.toHaveProperty("deltaSeconds");
-    expect(mapping.snapshot.player).not.toHaveProperty("fuelLiters");
-    expect(mapping.snapshot.player).not.toHaveProperty("lastLapSeconds");
+    expect(mapping.snapshot.player).toMatchObject({
+      deltaSeconds: -0.25,
+      fuelLiters: 40,
+      lastLapSeconds: 91.25,
+      bestLapSeconds: 90.5,
+      predictedLapSeconds: 90.75,
+    });
     expect(mapping.snapshot.session).not.toHaveProperty("globalFlag");
     expect(mapping.snapshot).not.toHaveProperty("environment");
     expect(mapping.snapshot).not.toHaveProperty("damage");
-    expect(mapping.snapshot).not.toHaveProperty("derived");
+    expect(mapping.snapshot.derived?.deltaHistory).toHaveLength(1);
     for (const row of mapping.snapshot.scoring) {
-      expect(row).not.toHaveProperty("timeGapToPlayer");
-      expect(row).not.toHaveProperty("vehicleClass");
-      expect(row).not.toHaveProperty("lastLapTime");
+      expect(row).toHaveProperty("timeGapToPlayer");
+      expect(row).toHaveProperty("vehicleClass");
+      expect(row).toHaveProperty("lastLapTime");
+      expect(row).not.toHaveProperty("driverNumber");
+      expect(row).not.toHaveProperty("teamName");
+      expect(row).not.toHaveProperty("tireCompound");
     }
     expect(mapping.unsupported).toEqual(
       expect.arrayContaining([
-        { targetPath: "player.deltaSeconds", reason: "unsupported-by-projection" },
-        { targetPath: "scoring[].driverName", reason: "unsupported-by-projection" },
-        { targetPath: "scoring[].timeGapToPlayer", reason: "unsupported-by-projection" },
+        { targetPath: "session.globalFlag", reason: "unsupported-by-projection" },
+        { targetPath: "scoring[].driverNumber", reason: "unsupported-by-projection" },
+        { targetPath: "scoring[].teamName", reason: "unsupported-by-projection" },
+        { targetPath: "scoring[].tireCompound", reason: "unsupported-by-projection" },
         { targetPath: "derived.inputHistory", reason: "history-without-timestamps" },
       ]),
     );
+  });
+
+  it("does not fabricate D7 fields when adapting the exact pre-D7 golden", () => {
+    const mapping = requireMapped(
+      adaptOverlayProjectionToSnapshot(readGolden("overlay_v1_pre_d7.golden.json"), {
+        transportState: "live",
+      }),
+    );
+
+    expect(mapping.snapshot.session).not.toHaveProperty("remainingSeconds");
+    expect(mapping.snapshot.player).not.toHaveProperty("deltaSeconds");
+    expect(mapping.snapshot.player).not.toHaveProperty("fuelLiters");
+    expect(mapping.snapshot).not.toHaveProperty("derived");
+    for (const row of mapping.snapshot.scoring) {
+      expect(row).not.toHaveProperty("driverName");
+      expect(row).not.toHaveProperty("vehicleClass");
+      expect(row).not.toHaveProperty("timeGapToPlayer");
+    }
   });
 
   it("returns deeply immutable objects without mutating the decoded projection", () => {
@@ -325,8 +448,8 @@ describe("overlay projection adapter", () => {
   });
 });
 
-function readGolden(): OverlayProjectionV1 {
-  return decode(readGoldenEnvelope());
+function readGolden(fileName = "overlay_v1.golden.json"): OverlayProjectionV1 {
+  return decode(readGoldenEnvelope(fileName));
 }
 
 function mutableProjection(): MutableProjectionEnvelope {
@@ -337,12 +460,14 @@ function decode(value: ProjectionEnvelope): OverlayProjectionV1 {
   return decodeOverlayProjectionV1(value);
 }
 
-function readGoldenEnvelope(): ProjectionEnvelope {
+function readGoldenEnvelope(
+  fileName = "overlay_v1.golden.json",
+): ProjectionEnvelope {
   const snapshot = JSON.parse(
     readFileSync(
       path.resolve(
         process.cwd(),
-        "../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json",
+        `../internal/telemetry/projection/overlay/testdata/${fileName}`,
       ),
       "utf8",
     ),

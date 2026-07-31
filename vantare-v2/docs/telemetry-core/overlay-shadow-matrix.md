@@ -40,8 +40,26 @@ weather no admitido, fases/banderas, pit-state labels, el remaining raw,
 `FuelFraction` y native `mDeltaBest`. La compatibilidad productiva continúa
 fijada a los fixtures LMU 1.3; LMU 1.4 requiere la evidencia diagnóstica D4B.
 
-D0 no cambia la clasificación 18/18 que aparece debajo ni habilita señales. Su
-review sin hallazgos P0/P1/P2/P3 razonables es el gate previo a D1.
+D0 no cambió la clasificación original. D1-D6 cerraron el mock, el driver, la
+normalización, el bridge canónico y las derivaciones. D7 proyecta solo esas
+señales ya demostradas y actualiza la clasificación 18/18 que aparece debajo.
+
+## Contrato aditivo D7
+
+Overlay Projection continúa en v1. Las claves base no cambian y las nuevas son
+opcionales para mantener las cuatro combinaciones old/new. El golden exacto
+anterior a D7 vive en `overlay_v1_pre_d7.golden.json`:
+
+- productor antiguo → consumidor antiguo: superficie base idéntica;
+- productor antiguo → consumidor nuevo: cada campo D7 se normaliza a
+  `present=false`, `freshness=missing`, `provenance=unknown`;
+- productor nuevo → consumidor antiguo: las extensiones seguras se ignoran;
+- productor nuevo → consumidor nuevo: Go, transporte, decoder y adapter
+  conservan valores, calidad y ceros legítimos.
+
+Una clave D7 conocida pero inválida se rechaza; no se interpreta como ausente.
+No se amplió `capabilities`, porque añadir enums rompería al consumidor v1
+anterior. La disponibilidad fina está en cada `Field` y en quality metadata.
 
 ## Autoridades inspeccionadas
 
@@ -76,21 +94,21 @@ review sin hallazgos P0/P1/P2/P3 razonables es el gate previo a D1.
 
 | Tipo registrado | Consumo real del ViewModel | Campo nuevo disponible | Campo ausente o incompatible | Cobertura |
 |---|---|---|---|---|
-| `delta` | `player.deltaSeconds`, last/best/predicted lap, lap y player scoring | player ID, lap/completed laps parciales | delta con referencia/signo, tiempos de vuelta, predicción | Not comparable |
-| `standings` | sesión/remaining, id, place, número, piloto, clase, equipo/color, gaps/interval, vueltas, pit, compuesto | id, position, completedLaps, inPit, sessionType | remaining, piloto, número, clase, equipo/color, gaps, tiempos, compuesto | Partial |
-| `relative` | id, place, isPlayer, `timeGapToPlayer`, clase, número, piloto y tiempos | id, position, isPlayer derivable | gap relativo demostrado, piloto, clase, número y tiempos | Not comparable |
+| `delta` | `player.deltaSeconds`, last/best/predicted lap, lap y player scoring | delta self-reference, last/best/estimated lap, lap/completed laps | nada central; referencia limitada a mejor vuelta completa del jugador | Exact |
+| `standings` | sesión/remaining, id, place, número, piloto, clase, equipo/color, gaps/interval, vueltas, pit, compuesto | remaining, id, position, piloto, clase, completedLaps, pit, gaps y tiempos | número, equipo/color, fastest lap y compuesto; gap de modo qualifying sigue parcial | Partial |
+| `relative` | id, place, isPlayer, `timeGapToPlayer`, clase, número, piloto y tiempos | id, position, isPlayer, gap relativo, piloto, clase y tiempos | número de coche | Partial |
 | `pedals` | throttle, brake, clutch y status | los tres ratios del player | nada para el valor instantáneo | Exact para valor instantáneo |
-| `broadcast-tower` | sesión, lap/total, place, número, piloto, equipo, clase, gap, color y player | sessionType, lap/completedLaps, position, player ID | número, piloto, equipo, clase, gap y color | Partial |
-| `fuel-strategy` | fuel, remaining, last lap y fuel history | ninguno | fuel, remaining, last lap e historial de consumo | Not comparable |
+| `broadcast-tower` | sesión, lap/total, place, número, piloto, equipo, clase, gap, color y player | sessionType, lap/completedLaps, position, player ID, piloto, clase y gap | número, equipo y color | Partial |
+| `fuel-strategy` | fuel, remaining, last lap y fuel history | fuel del jugador, remaining y last lap | historial de consumo, promedio y required fuel | Partial |
 | `pedals-telemetry` | controles, speed, rpm, gear, player place y status | controles, speedMps, rpm, gear, position | legacy etiqueta m/s como `speedKph`; no se acepta el factor 3,6 como tolerancia | Partial hasta corregir la unidad legacy |
 | `pedals-telemetry-compact` | controles, speed, rpm, gear y status | todos los valores instantáneos | legacy etiqueta m/s como `speedKph`; no se acepta el factor 3,6 como tolerancia | Partial hasta corregir la unidad legacy |
 | `racing-flags` | global flag y sector flags | ninguno | control de carrera y flags | Not comparable |
-| `delta-trace` | `derived.deltaHistory` | ninguno; `derive.Delta` está missing | delta e historial con referencia/signo | Not comparable |
+| `delta-trace` | `derived.deltaHistory` | historial acotado con tiempo de fuente, distancia y delta self-reference | sectores, insight y mapa | Partial |
 | `race-schedule` | `auxiliary.scheduleEvents` | no aplica | calendario local/remoto, ajeno a live telemetry | External |
-| `head-to-head` | place, piloto, equipo, clase, gap y sectores | position | piloto, equipo, clase, gap y sectores | Not comparable |
-| `delta-advanced` | delta best/sector/theoretical/last | ninguno | todas las variantes de delta | Not comparable |
+| `head-to-head` | place, piloto, equipo, clase, gap y sectores | señales proyectadas, pero aún sin correlación de calidad específica para el rival seleccionado | todos los campos quedan bloqueados hasta atribuir calidad por entidad | Not comparable |
+| `delta-advanced` | delta best/sector/theoretical/last | best self-reference | sector, theoretical y last | Partial |
 | `input-telemetry` | controles, speed, rpm, gear e historial recibido aparte | valores instantáneos y muestras sin tiempo individual | timestamp exacto de cada muestra para la traza | Partial |
-| `multiclass-relative` | place, class, color, number, piloto, gap y player | position, player ID | piloto, clase, color, número y gap | Not comparable |
+| `multiclass-relative` | place, class, color, number, piloto, gap y player | position, player ID, piloto, clase y gap relativo | color y número | Partial |
 | `track-weather` | ambient, track temp, rain, wetness, wind y pressure | ninguno; `trackName` no alimenta este ViewModel | todas las condiciones ambientales | Not comparable |
 | `car-damage-visual` | body, aero, suspension y tyres | ninguno | todos los daños | Not comparable |
 | `car-damage-numbers` | body, aero, suspension y tyres | ninguno | todos los daños | Not comparable |
@@ -135,7 +153,7 @@ no como evidencia de paridad telemétrica.
 | `status` | connected/error/stale de adapter/store | estado de transporte | no inferir de valores |
 | `session.type` | `sessionType/sessionName` | `sessionType` tipado | exacto para valores conocidos |
 | `session.trackName` | `trackName` | `trackName` Field | solo si usable |
-| `remainingSeconds` | `timeRemaining` | ausente | mismatch |
+| `remainingSeconds` | `timeRemaining` | derivado de end/source time | exacto si ambos campos fuente son válidos |
 | `session.key/epoch` | clave/epoch legacy | epoch solo en envelope | no fabricar key; epoch puede conservarse |
 | flags | global/sector legacy | ausente | mismatch |
 
@@ -151,30 +169,31 @@ no como evidencia de paridad telemétrica.
 | `inPit` | `inPit` | exacto; preservar false |
 | `lapNumber` | `lapNumber` | exacto si está presente |
 | `totalLaps` | `completedLaps` | exacto con esa semántica |
-| delta/fuel/lap times | ausentes | no fabricar |
+| `deltaSeconds` | self delta contra mejor vuelta completa del jugador | preservar signo y referencia explícita |
+| fuel/lap times | fuel split amount/capacity y best/last/estimated lap | emitir solo cada campo usable; capacidad no se fuerza en un target sin consumidor |
 
 ### Scoring
 
-Cada vehículo nuevo puede producir únicamente:
+Cada vehículo nuevo puede producir:
 
 - `id`;
 - `place`, si `position` es usable;
 - `totalLaps`, si `completedLaps` es usable;
 - `inPits`, si `inPit` es usable;
 - `isPlayer`, derivado por igualdad de ID.
+- `driverName`, `vehicleClass`, sector y distancia de vuelta;
+- best/last/estimated lap;
+- penalties, gaps al líder/siguiente y relative gap/lap delta;
+- fuel del jugador cuando está presente.
 
-`vehicle.name` queda solo en quality/diagnóstico: no se emite como `name` ni
-`driverName`, porque `readScoringName` interpreta ambas claves como piloto. No
-debe producir claves con un zero-value que simule:
+`vehicle.name` sigue solo en quality/diagnóstico: el nombre de piloto procede
+exclusivamente de `driverName`. No debe producir claves con un zero-value que
+simule:
 
 - número del coche;
-- clase;
 - equipo;
 - color;
-- gaps;
-- tiempos;
 - compuesto;
-- penalizaciones;
 - pit-stop count visible, salvo que un consumidor lo adopte explícitamente.
 
 ## Calidad y estado
@@ -310,21 +329,21 @@ LMU Shared Memory + REST
   -> ViewModels
 ```
 
-El reducer/proyector nuevo todavía no tiene wiring productivo. Además,
-`TelemetrySourceManager` puede volver al source mock y ese mock construye
-telemetría sintética marcada como conectada. Esto contradice el contrato
-«mock solo harness» y bloquea ISA-107 aunque el comparator de ISA-105 funcione.
+El reducer/proyector nuevo todavía no tiene wiring productivo. D1 retiró el
+mock conectado del camino productivo y D4-D7 materializaron driver, mapper,
+derivaciones y proyección, pero D8 aún debe probar la cadena completa en un
+único harness antes del shadow wiring.
 
 Otros bloqueadores:
 
-- el driver canónico LMU todavía no proyecta una parrilla real completa;
-- `derive.Delta` y `derive.Gaps` están deliberadamente missing;
+- falta el harness único que recorra driver → reducer → derive → Overlay;
+- fases/banderas, equipo/número/compuesto, weather y daños siguen missing;
 - `session.type` y `player.inPit` son obligatorios en `TelemetrySnapshot`, pero
   pueden faltar correctamente en la proyección;
 - el timestamp legacy es tiempo de adaptación frontend y el nuevo es tiempo de
   adquisición; no son comparables sin correlacionar el mismo frame;
-- el fixture visual incluye fuel, delta, clima, daño y calendario que no son
-  señales productivas y no puede usarse para declarar paridad de datos.
+- el fixture visual puede incluir clima, daño y calendario, pero ninguno se usa
+  para declarar paridad de datos productivos.
 
 ## Decisión de ISA-105
 
@@ -344,19 +363,22 @@ comparable`.
 
 Antes de ISA-106 se ejecutará ISA-129 / TC-07A.1, microcorte canónico aditivo
 que debe cerrar, con
-evidencia real, identidad de parrilla, timing/gaps/delta, sesión/flags y las
-unidades requeridas; también debe retirar el fallback mock conectado. Ese corte
-no pertenece al comparator y no puede rellenarse con fixtures.
+evidencia real, identidad de parrilla, timing/gaps/delta y las unidades
+requeridas; fases/flags permanecen explícitamente fuera del allowlist. También
+debe retirar el fallback mock conectado. Ese corte no puede rellenarse con
+fixtures visuales.
 
 ## Gate de inventario
 
 - Tipos registrados: 18.
 - Tipos inventariados: 18.
-- Tipos exactos completos actuales: Pedals instantáneo.
-- Tipos parciales: Standings, Broadcast Tower, los dos Pedals Telemetry e Input
-  Telemetry.
+- Tipos exactos completos actuales: Delta y Pedals instantáneo.
+- Tipos parciales: Standings, Relative, Broadcast Tower, Fuel Strategy, los dos
+  Pedals Telemetry, Delta Trace, Delta Advanced, Input Telemetry y Multiclass
+  Relative.
 - Tipos externos: Race Schedule.
-- Resto: no comparable hasta incorporar señales demostradas.
+- Resto: cinco no comparables hasta incorporar señales demostradas o una
+  correlación de calidad segura por entidad.
 - Renderizadores/CSS/canvas inspeccionados como consumidores de ViewModels, no
   como fuentes de datos.
 
@@ -402,3 +424,18 @@ drag/resize ni el benchmark productivo. La review independiente D5 concluyó
 P0/P1/P2/P3 = 0 tras cerrar todos los hallazgos razonables. Después del último
 fix, la suite frontend completa pasó 297 archivos / 2.000 tests y el Playwright
 shadow volvió a pasar.
+
+## Resultado D7 de ISA-129
+
+D7 amplía el payload v1 sin cambiar versión ni claves base. El adapter mapea
+remaining, fuel, delta y tiempos del jugador; identidad de piloto, clase,
+sector, distancia, tiempos, penalizaciones y gaps por vehículo; y delta history
+con el `ReceivedUTC` canónico preservado en cada muestra. Una muestra retenida
+con delta actual missing o stale mantiene así timestamp e identidad estables.
+No crea fuel history, input history, flags, equipo, número, compuesto, weather
+ni daños.
+
+La policy mantiene 18/18 tipos: 2 exactos, 10 parciales, 5 no comparables y 1
+externo. Nombres e IDs participan en la correlación interna, pero el informe
+diagnóstico solo conserva paths y observaciones redactadas. Los cuatro cruces
+old/new están fijados por tests; el golden anterior se conserva intacto.

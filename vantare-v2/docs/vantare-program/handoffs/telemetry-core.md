@@ -50,13 +50,29 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   cerrado e IDs únicos. La matriz 18/18 queda en 2 exactos, 10 parciales, 5 no
   comparables y 1 externo. Frontend 297 archivos/2.019 tests, Telemetry Core,
   Go focal x20, lint focal y build pasan; review `APPROVE`, P0/P1/P2/P3 = 0.
+- D8 queda aceptado y publicado en `0d741e0`: un único harness recorre la
+  captura real LMU 1.4 por Driver/Fusion -> BatchMapper -> Reducer ->
+  SessionCoordinator -> Derive -> Overlay Projection v1, con una apertura,
+  38 vehículos y bytes idénticos en 20 ejecuciones. Menú falla cerrado; el
+  trace real D6 demuestra Delta desde missing hasta fresh y cruza Go,
+  transporte y adaptador TypeScript. Review independiente final `APPROVE`,
+  P0/P1/P2/P3 = 0. Las vueltas válidas quedan conservadas y no deben repetirse.
+- D9 está en ejecución. La prueba live opt-in reconoce LMU `1.4.0.0`, práctica,
+  38 vehículos y jugador correlacionado. Se conservó fuera del repo un frame
+  real sanitizado de pit (`InPit=true`, SHA-256
+  `ba49316490704be63b100b509676e151aa23115c083255175d098dd5bbd07dc2`).
+  Los cuatro benchmarks, Telemetry Core completo, frontend completo, build,
+  lint focal y `diff --check` pasan. `-race` no está disponible con
+  `CGO_ENABLED=0`. Los fallos globales de app/lint/vet se reprodujeron en la
+  base exacta ISA-105 y son heredados; ISA-118 cubre la contención Windows.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta ya
-tienen inputs, semántica y proyección demostrados dentro de D6/D7. D8 debe
-probar ahora driver → reducer → derive → Overlay en un único harness antes de
-cualquier shadow wiring. La captura raw diagnóstica de ISA-104 permanece
-desactivada y sin wiring productivo.
+tienen inputs, semántica y proyección demostrados; D8 prueba la cadena completa
+en un único harness. D9 no puede cerrar hasta observar y sanitizar la transición
+real de salida de boxes (`InPit=true -> false`) y un disconnect/reconnect real.
+La captura raw diagnóstica de ISA-104 permanece desactivada y sin wiring
+productivo.
 
 ## Decisiones
 
@@ -76,11 +92,16 @@ desactivada y sin wiring productivo.
 - Gates finales ISA-104: Go global serial, Telemetry, app, race focal, vet
   aplicable, 1.923 tests frontend, build frontend/Wails y Playwright
   wide/medium/compact en verde. Privacidad y seis capturas verificadas.
-- **P3 heredado:** dos avisos `unsafe.Pointer` Win32 en vet LMU normal.
+- **P3 heredado:** seis avisos `unsafe.Pointer` Win32 en vet global. Los seis
+  archivos son idénticos a la base exacta ISA-105; dos pertenecen al driver LMU
+  modular y cuatro a readers/iconos legacy.
 - **Deuda heredada fuera del corte:** lint global con 33 errores y dos warnings.
+- **Deuda heredada reproducida:** `TestConcurrentSavesDontCorruptFile` falla
+  tanto en ISA-129 como en la base exacta ISA-105 por contención de
+  `app-settings.json.tmp`; seguimiento en ISA-118.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
-- **Resuelto en D6/D7:** gaps/delta tienen inputs reales, semántica, evidencia
-  LMU hash-pinned y proyección aditiva; D8 debe verificar la cadena completa.
+- **Resuelto en D6–D8:** gaps/delta tienen inputs reales, semántica, evidencia
+  LMU hash-pinned, proyección aditiva y cadena única verificada hasta TypeScript.
 - **P0 ISA-129 confirmado:** el bootstrap comercial inyecta
   `createMockSource()`, normaliza el buffer sintético como `Connected=true` y
   lo publica por Wails y SSE cuando LMU no está disponible.
@@ -108,9 +129,13 @@ desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar D7 de ISA-129 / TC-07A.1 sobre `496b758`: contrato Overlay v1 aditivo
-y adaptador TypeScript. Probar old→old, old→new, new→old y new→new sin debilitar
-la validación ni tocar ViewModels, CSS, canvas, renderers, baselines o cutover.
+Completar D9 de ISA-129 sobre `0d741e0` sin repetir las vueltas Delta. Capturar
+con el flujo sanitizado ya existente una muestra posterior de outlap/track con
+`InPit=false` después del pit real ya observado, y una secuencia real
+disconnect/reconnect. Después ejecutar documentación final, review independiente,
+commit D9, push, PR draft contra ISA-105 y mover ISA-129 a `In Review`. Hasta
+entonces ISA-129 permanece `In Progress` e ISA-106 bloqueada; no se permiten
+fixtures sintéticos, promoción ni cutover.
 
 Auditoría de fallback cerrada:
 

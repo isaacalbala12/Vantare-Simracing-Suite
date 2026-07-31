@@ -758,6 +758,29 @@ Resultado de las primeras correcciones y segunda re-review ISA-104:
 - La UI D4 sigue bloqueada hasta la re-review final del backend. Sin merge,
   promoción ni Linear.
 
+Tercera corrección backend ISA-104 preparada para review final:
+
+- `manifest.json` queda ligado al handle mediante SHA-256 exacto del documento
+  acotado, tamaño, mtime e identidad de archivo. La revalidación ocurre antes y
+  después de la lectura.
+- La regresión sobrescribe el manifest in-place con un cambio semántico,
+  conserva File ID/tamaño/mtime y demuestra invalidación x100.
+- SQLite conserva revisiones legítimas durante una sesión activa: el handle
+  autoriza la sesión y su ruta, mientras Store/replay valida el contenido. No
+  se confunde una sesión mutable con un snapshot inmutable.
+- El guard arquitectónico permite a `internal/telemetry/diagnostics` importar
+  únicamente recording, schema cuando proceda y su propio árbol; rechaza
+  core, derive, projection, driver, drivers y productos.
+- El documento ISA-104 registra el modelo de amenaza, el límite frente a un
+  atacante con control del almacenamiento privado del mismo usuario y el gate
+  futuro obligatorio de raíz privada/ACL en el wiring.
+- Verificación fresca del orquestador: manifest/invalidación x100 PASS, guard
+  real x20 PASS, diagnostics x20 PASS, Telemetry Core completo PASS, gofmt y
+  `git diff --check` PASS.
+- Dos reviewers read-only finales de arquitectura y privacidad están activos.
+  D4 permanece bloqueada hasta obtener `ACCEPT` sin P0/P1/P2/P3 razonables.
+  Sin commit, merge, promoción ni sincronización Linear.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

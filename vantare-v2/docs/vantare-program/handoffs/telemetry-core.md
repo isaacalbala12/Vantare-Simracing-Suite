@@ -16,16 +16,16 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
-- Base de ISA-104 / TC-06D:
-  `8b89c0adafed46a3c2c42cd52c858c8c185aa8bf`.
+- Base final de ISA-105 / TC-07A:
+  `3b44d36713213ab642f47174c1b5d8234362cac0`.
 - Rama:
-  `vantareapp/isa-104-tc-06d-inspector-privacidad-y-export-diagnostico`.
-- Plan D1–D7:
-  `8035a891186743539b8504e29508daef376dc574`.
-- Commit de producto:
-  `688f206737d53734f51a70fd98039ff1eefa25c0`.
-- PR draft apilado sobre ISA-103:
-  `#40`.
+  `vantareapp/isa-105-tc-07a-proyeccion-overlay-y-shadow-comparator`.
+- Plan TC-07A:
+  `docs/superpowers/plans/2026-07-31-isa-105-tc-07a-overlay-shadow-comparator.md`.
+- Commit de plan publicado:
+  `a42c0c5`.
+- Matriz de preflight:
+  `docs/telemetry-core/overlay-shadow-matrix.md`.
 - Promoción: ninguna; la cadena permanece en ramas de issue.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -52,7 +52,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   eventos Wails correlacionados, cancelación acotada, UI responsive e
   internacionalizada, captura raw limitada y tap LMU sin wiring productivo.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07–TC-09: pendientes.
+- TC-07A ISA-105: en ejecución. Preflight de los 18 tipos completado; decoder,
+  adapter, comparator y harness pendientes.
+- TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
 permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
@@ -199,13 +201,16 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
-| Pendientes | ISA-105–117 e ISA-87 según dependencias |
+| En ejecución | ISA-105 / TC-07A |
+| Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Cerrar ISA-104 en Linear como `In Review` y después iniciar ISA-105 / TC-07A
-desde `688f206737d53734f51a70fd98039ff1eefa25c0`, sin wiring productivo global
-ni promoción.
+Implementar ISA-105 / TC-07A desde `3b44d367`, empezando por decoder y adapter
+puros con TDD. Entregar comparator/harness sanitizados que cubran los 18 tipos.
+Después crear y cerrar ISA-129 / TC-07A.1 antes de ISA-106 para
+parrilla/timing/gaps/delta/sesión-unidades y retirada del fallback mock
+conectado. Sin wiring productivo global ni promoción.
 
 ## Gate final
 
@@ -215,9 +220,9 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-104 / TC-06D implementada y verificada sobre ISA-103. Backend y
-UI tienen reviews integradas `ACCEPT` con P0/P1/P2/P3 = 0. Inspector,
-privacidad, export local, captura limitada y tap quedan verificados; la captura
-raw continúa sin wiring productivo. Commit de producto publicado y PR draft
-`#40` abierto contra ISA-103. Pendiente cerrar Linear y abrir secuencialmente
-ISA-105; sin promoción.
+2026-07-31, ISA-105 / TC-07A iniciada sobre la entrega final de ISA-104.
+Inventario read-only de los 18 tipos completado: un exacto, cinco parciales,
+once no comparables y un consumidor externo. Delta/gaps, parrilla canónica y
+wiring siguen ausentes; fallback mock conectado bloquea el cutover. ISA-129
+queda ordenada entre ISA-105 e ISA-106. Plan y matriz old/new publicados;
+implementación TDD en curso. Sin merge ni promoción.

@@ -10,6 +10,26 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-105 / TC-07A (2026-07-31):
+- Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.
+  Plan ejecutable:
+  `docs/superpowers/plans/2026-07-31-isa-105-tc-07a-overlay-shadow-comparator.md`.
+- El inventario cubre los 18 tipos registrados. Overlay Projection v1 solo
+  permite paridad exacta del valor instantáneo de Pedals; Standings,
+  Broadcast Tower, los dos Pedals Telemetry e Input Telemetry son parciales;
+  Race Schedule es externo y los once restantes no son comparables todavía.
+- `Delta` y `Gaps` continúan missing por contrato. El comparator debe mostrar
+  carencias, freshness/provenance y el error de unidad legacy m/s/kph; nunca
+  inventar datos, aceptar un factor 3,6 como tolerancia o usar fixtures visuales
+  como verdad productiva.
+- Hallazgos previos al cutover: no existe wiring productivo del core nuevo, la
+  parrilla canónica LMU es incompleta y el fallback mock puede publicarse como
+  conectado. ISA-129 / TC-07A.1 queda creado como microcorte canónico aditivo
+  obligatorio antes de ISA-106.
+- Alcance actual: decoder, adapter, ViewModels old/new, comparator sanitizado y
+  harness diagnóstico. Sin CSS/renderizadores/canvas, baselines, Wails/SSE,
+  merge ni promoción.
+
 Nota ISA-104 / TC-06D (2026-07-31):
 - Implementados informe allowlisted, catálogo metadata-only, inspector local y
   export JSON exacto. Frontend nunca recibe rutas, SessionRef, nombres SQLite,

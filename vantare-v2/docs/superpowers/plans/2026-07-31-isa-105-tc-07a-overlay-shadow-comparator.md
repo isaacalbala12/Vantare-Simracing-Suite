@@ -107,11 +107,11 @@ consume cada campo.
 Documentar:
 
 - campos exactos: estado, booleanos, enums, posición, vueltas y presencia;
-- ratio de controles: tolerancia absoluta `1e-6`;
-- velocidad después de `m/s × 3.6`: tolerancia absoluta `0.01 km/h`;
-- RPM: exacta si ambos lados son enteros; `0.5` solo si existe redondeo
-  documentado;
-- tiempo/delta: `0.001 s` únicamente cuando ambos pipelines entreguen una
+- ratio de controles: tolerancia absoluta `1e-9` para el mismo frame;
+- velocidad: tolerancia absoluta `1e-6 m/s` antes de presentación. El factor
+  `3.6` entre m/s y kph es una incompatibilidad de unidad, nunca tolerancia;
+- RPM: tolerancia absoluta `1e-6 rpm` para el mismo frame;
+- tiempo/delta: `1e-6 s` únicamente cuando ambos pipelines entreguen una
   señal con la misma referencia;
 - listas: identidad lógica, longitud y orden comparados por separado;
 - strings sensibles: comparar igualdad internamente, pero redactar valores;
@@ -209,12 +209,16 @@ Validar:
 - `sessionType` solo usa valores conocidos;
 - track missing no se vuelve `""`;
 - player por igualdad con `playerVehicleId`;
-- `speedMps × 3.6`;
+- `speedMps × 3.6` en el nuevo `TelemetrySnapshot`, mostrando como mismatch que
+  el adapter legado etiqueta hoy m/s como `speedKph`;
 - controles `0..1`, gear y RPM del player;
 - `position → place`, `completedLaps → totalLaps`,
-  `inPit → inPits`, `name → driverName`;
+  `inPit → inPits`; `name` permanece vehicle name y no se convierte en
+  `driverName`;
 - `isPlayer` derivado del ID del frame, no del orden;
-- stale en cualquier señal utilizada degrada el estado de la proyección;
+- status de transporte `stale` degrada el snapshot completo; un campo stale
+  aislado conserva su valor y queda marcado en `quality` sin degradar widgets
+  que no consumen ese campo;
 - invalid/missing queda `undefined`;
 - no-player no contamina los controles del player;
 - IDs y nombres no se incorporan a mensajes de error;
@@ -241,7 +245,9 @@ La metadata de calidad es diagnóstica y separada: no ampliar
   `quality/unsupported`; el historial continuo se evaluará con frames reales en
   ISA-106.
 - Si el status de transporte es `stale/degraded/error`, respetarlo mediante un
-  argumento explícito; no leer stores globales.
+  argumento explícito; no leer stores globales. La frescura por campo permanece
+  en `quality`: `TelemetrySnapshot` no puede representarla sin perder
+  granularidad y esta issue no debe ampliar todos los ViewModels.
 - El estado `ready` solo significa que el frame es utilizable, no que todos los
   widgets tengan datos.
 

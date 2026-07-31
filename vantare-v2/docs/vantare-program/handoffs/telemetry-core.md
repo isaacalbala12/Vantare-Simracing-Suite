@@ -27,8 +27,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-06A–D: cerrados técnicamente; ISA-104 está `In Review`.
 - TC-07A ISA-105: cerrado técnicamente en `c9acee2`; PR draft `#41`; Linear
   `In Review`; re-review D6 `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07A.1 ISA-129: `In Progress`; auditoría read-only de fuentes sintéticas
-  cerrada; plan e implementación pendientes.
+- TC-07A.1 ISA-129: `In Progress`; D0 documental cerrado con review
+  independiente `ACCEPT`, commit `6acb352` y push sincronizado; D1 es el
+  siguiente corte y todavía no hay código de comportamiento promovido.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -151,7 +152,7 @@ Tercera review del plan ISA-129:
   literal.
 - Plan global aprobado contra ISA-129 y AGENTS; D0 puede comenzar.
 
-D0 documental implementado, pendiente de review:
+D0 documental implementado y aceptado:
 
 - Cuatro documentos exactos: plan ISA-129, nueva procedencia LMU/Overlay,
   matriz shadow y `docs/current-plan.md`.
@@ -159,7 +160,13 @@ D0 documental implementado, pendiente de review:
   P0 mock/bridge/grid y exclusiones missing registrados.
 - Baseline previo/posterior, Telemetry focal, app/server, hashes y diff-check
   pasan.
-- Sin código, commit de producto, push, PR, merge, promoción ni cutover.
+- Review independiente `ACCEPT`, P0/P1/P2/P3 = 0. La corrección final fija
+  correlación únicamente en `[0,mNumVehicles)`, IDs activos únicos/no
+  negativos/biyectivos, jugador por `mIsPlayer` + ID telemetry activa y
+  `lapDistMax=3982.366455078125`.
+- Commit de producto `6acb352`, push sincronizado, sin merge, promoción ni
+  cutover. D1 queda desbloqueado; LMU 1.4 y los gates físicos siguen
+  pendientes en sus cortes explícitos.
 
 ## Gate final
 
@@ -182,9 +189,9 @@ El plan fue revisado tres veces. La primera review rechazó con
 P0=0/P1=2/P2=4/P3=0; sus seis hallazgos quedaron corregidos. La segunda review
 rechazó con P0=0/P1=2/P2=1/P3=1 por autoridad SHM/REST, evidencia real de
 Delta, reutilización de IDs del catálogo y numeración/rollback. La tercera
-review fue `APPROVE`, P0/P1/P2/P3=0. Puede comenzar D0; todavía no hay código
-de comportamiento. D0 documental ya está implementado con checks en verde y
-espera review independiente antes de commit.
+review fue `APPROVE`, P0/P1/P2/P3=0. D0 documental está aceptado, con checks
+en verde y publicado en `6acb352`; D1 es la próxima acción y todavía no hay
+código de comportamiento promovido.
 
 Histórico ISA-105: D1–D5 aprobados y publicados en `f2a1ac3`. Cobertura real:
 18/18, con un exacto, cinco parciales, once no comparables y un externo. La

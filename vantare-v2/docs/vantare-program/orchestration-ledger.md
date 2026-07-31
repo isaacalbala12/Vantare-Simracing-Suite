@@ -1153,7 +1153,7 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 - Plan global aprobado contra Linear/AGENTS; siguiente acción D0 documental.
 - Sin código de comportamiento, merge, promoción ni cutover.
 
-### 2026-07-31 — ISA-129 D0 implementado, pendiente de review
+### 2026-07-31 — ISA-129 D0 implementado y aceptado
 
 - Alcance exacto: plan ISA-129, nueva procedencia LMU/Overlay, matriz shadow y
   `docs/current-plan.md`.
@@ -1161,9 +1161,15 @@ ISA-105 / TC-07A — cierre D6 y entrega:
   P0 mock/bridge/grid y señales que permanecen missing.
 - Baseline anterior/posterior, Telemetry focal, app/server, hashes de fixtures
   y diff-check PASS.
-- Sin código de comportamiento, commit de producto, push, PR, Linear
-  transition, merge, promoción ni cutover.
-- Siguiente acción: review independiente D0; no comenzar D1 antes de aceptar.
+- Review independiente final: `ACCEPT`, P0/P1/P2/P3 = 0. La corrección final
+  fija la correlación activa `[0,mNumVehicles)`, IDs no negativos/únicos y
+  biyectivos, jugador por `mIsPlayer` + ID telemetry activa, y el máximo
+  exacto de `mLapDist`.
+- Commit de producto: `6acb352`; push sincronizado. Sin PR, merge, promoción
+  ni cutover. D1 queda desbloqueado; LMU 1.4 y los gates físicos siguen
+  bloqueados hasta sus microcortes y evidencia obligatoria.
+- Siguiente acción: iniciar D1 sobre la base `6acb352`; no modificar CSS,
+  canvas, renderizadores, baselines ni wiring de otros productos.
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.

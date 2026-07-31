@@ -984,6 +984,23 @@ Inicio y auditoría de inventario ISA-105 / TC-07A:
 - D1/D2 delegados con TDD; sin cambios en renderizadores, CSS, canvas, Wails/SSE
   ni wiring productivo. Sin merge o promoción.
 
+ISA-105 / TC-07A — decoder y adapter D1/D2:
+
+- Publicados de forma apilada los commits `c0048fa` (contrato endurecido) y
+  `2de5165` (decoder/adapter) en la rama de ISA-105.
+- Review inicial rechazó cuatro bordes reales: `sessionType` missing con
+  zero-value Go, semántica propia de `controlsHistory`, identidad vacía y
+  overflow al convertir m/s a km/h.
+- Todos fueron cerrados con regresiones. Re-review: `APPROVE`; el P3 de fixture
+  integrada también se corrigió antes del commit.
+- Gates D1/D2: 38 tests focales, ESLint focal, build frontend y diff-check:
+  PASS. Avisos heredados: `.eslintignore` y tamaño de chunk.
+- D3 produjo una primera implementación 18/18, pero la review adversarial la
+  devolvió por calidad por fila, identidad de Broadcast, dependencias
+  `allOf/anyOf`, cap incorrecto de widgets, overflow del sanitizador y falta de
+  contents no predeterminados. Corrección TDD en curso. Sin wiring ni
+  promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier

@@ -920,6 +920,31 @@ Cierre definitivo frontend D4 ISA-104:
   gates globales, reviews finales y entrega de ISA-104. Sin commit de producto,
   merge o promoción.
 
+Gates D7 y review integrada ISA-104:
+
+- Gates integrados verdes: `gofmt`, diff-check, Telemetry Core, app y suite Go
+  global serial; frontend 292 archivos/1.922 tests; build frontend; lint focal;
+  Playwright wide/medium/compact; build Wails CGO=0. El lint global conserva
+  33 errores heredados fuera del corte. El vet LMU normal conserva dos avisos
+  heredados Win32 y el focal con `-unsafeptr=false` pasa.
+- Escaneo del corte: cero secretos; las seis PNG no contienen chunks de texto
+  o metadata textual; no cambian TelemetryPage, lockfiles ni dependencias; no
+  existe wiring productivo de raw capture ni segunda apertura de `LMU_Data`.
+- La review UI integrada detectó un P2: future/corrupt/current-unavailable
+  presentaban los zero-values desconocidos de vueltas/vehículos como datos
+  reales. Detectó además un P3 de contraste 4,466:1, apenas por debajo de AA.
+  El implementador UI corrige ambos con guiones metadata-only, ajuste local de
+  contraste, regresiones y nuevas capturas.
+- La review backend integrada detectó dos P1: `NewCaptureManager` creaba la
+  raíz antes de rechazar parents symlink/junction/reparse, y Diagnostics podía
+  iterar Settings/Launcher compartidos mientras callers los mutaban fuera del
+  lock. Detectó P3 en fixtures con identidad real y en el top-500 aplicado
+  antes de ordenar/validar sesiones.
+- Un worker backend separado ejecuta fixes TDD: validación pre/post de cadena y
+  target intacto, snapshot profundo concurrente, fixtures sintéticas y top-K
+  global acotado. ISA-104 continúa `In Progress`; no se hace commit de producto
+  hasta re-review final sin P0–P3 razonables. Sin merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

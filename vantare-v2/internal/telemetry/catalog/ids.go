@@ -29,4 +29,23 @@ const (
 	SignalVehiclePlayerPresent
 	SignalVehicleSpeedMPS
 	SignalPitInPit
+	SignalSessionEndTime
+	SignalSessionRemainingTime
+	SignalSessionMaximumLaps
+	SignalVehicleClass
+	SignalStandingsSector
+	SignalStandingsLapDistance
+	SignalStandingsBestLapTime
+	SignalStandingsLastLapTime
+	SignalStandingsEstimatedLapTime
+	SignalStandingsPenaltyCount
+	SignalStandingsTimeBehindLeader
+	SignalStandingsLapsBehindLeader
+	SignalStandingsTimeBehindNext
+	SignalStandingsLapsBehindNext
+	SignalStandingsRelativeTimeGap
+	SignalStandingsRelativeLapDelta
+	SignalEnergyFuelCapacity
+	SignalSessionSelfDeltaSeconds
+	SignalSessionSelfDeltaReference
 )

@@ -1171,6 +1171,25 @@ ISA-105 / TC-07A — cierre D6 y entrega:
 - Siguiente acción: iniciar D1 sobre la base `6acb352`; no modificar CSS,
   canvas, renderizadores, baselines ni wiring de otros productos.
 
+### 2026-07-31 — ISA-129 D1 implementado y aceptado
+
+- Base: D0 `6acb352` más el estado documental `efcdddc`; rama
+  `vantareapp/isa-129-tc-07a1-senales-canonicas-overlay-y-retirada-del-mock`.
+- Alcance exacto: 13 rutas del plan D1; mock conectado retirado de producción,
+  fuente LMU real retenida para attach tardío, REST-only no conecta y
+  Wails/SSE/frontend parten desconectados. Preview Mock, harnesses y CLIs
+  diagnósticos permanecen intactos.
+- RED contra HEAD confirmado para manager, fusion, transporte y snapshot
+  frontend; GREEN focal confirmado después de la implementación.
+- Review independiente final: `ACCEPT`, P0/P1/P2/P3 = 0.
+- Checks: Go focal y completo PASS, frontend 2001/2001 PASS, build PASS,
+  `gofmt` y `git diff --check` PASS, guard estático sin builders sintéticos.
+  `-race` omitido por CGO desactivado; lint global conserva deuda heredada sin
+  errores nuevos en archivos tocados.
+- Commit de producto `470d6a6`; documentación de cierre `f4988e0`; push
+  sincronizado. Sin PR, merge, promoción ni cutover.
+- Siguiente acción: D2 sobre `f4988e0`; no iniciar D3 hasta review D2.
+
 - Linear está disponible. ISA-104 está sincronizada en `In Review`; cualquier
   transición posterior debe reflejarse tanto aquí como en la issue.
 - Ninguna promoción está autorizada. No crear ni usar destinos alternativos

@@ -85,10 +85,9 @@ de ISA-104 permanece desactivada y sin wiring productivo.
 
 ## Siguiente acción exacta
 
-Ejecutar ISA-129 / TC-07A.1 para
-parrilla/timing/gaps/delta/sesión/unidades y retirar el fallback mock conectado
-antes de ISA-106. Sin CSS, canvas, renderers, regeneración de baselines ni
-cutover productivo.
+Ejecutar D2 de ISA-129 / TC-07A.1 para fijar el layout LMU 1.3 sobre fixtures
+hash-pinned antes de D3/D4. Sin CSS, canvas, renderers, regeneración de
+baselines ni cutover productivo.
 
 Auditoría de fallback cerrada:
 
@@ -164,9 +163,15 @@ D0 documental implementado y aceptado:
   correlación únicamente en `[0,mNumVehicles)`, IDs activos únicos/no
   negativos/biyectivos, jugador por `mIsPlayer` + ID telemetry activa y
   `lapDistMax=3982.366455078125`.
-- Commit de producto `6acb352`, push sincronizado, sin merge, promoción ni
-  cutover. D1 queda desbloqueado; LMU 1.4 y los gates físicos siguen
-  pendientes en sus cortes explícitos.
+- Commit de producto D0 `6acb352`, push sincronizado, sin merge, promoción ni
+  cutover. D1 también fue aceptado en `470d6a6` (estado documental
+  `f4988e0`): elimina el mock conectado de producción, conserva el objeto LMU
+  real para attach tardío, bloquea REST-only como connected y publica
+  desconectado por Wails/SSE/frontend. Review independiente `ACCEPT`,
+  P0/P1/P2/P3 = 0; Go completo, frontend 2001/2001 y build pasan. `-race`
+  está omitido por CGO desactivado y el lint global conserva deuda heredada.
+  D2 queda desbloqueado; LMU 1.4 y los gates físicos siguen pendientes en sus
+  cortes explícitos.
 
 ## Gate final
 

@@ -360,4 +360,6 @@ Los gates D5 terminaron así:
 No se actualizó ningún baseline. ISA-105 no toca renderizadores, CSS, canvas,
 drag/resize ni el benchmark productivo. La review independiente D5 concluyó
 `APPROVE` y la re-review adversarial D6 final concluyó `ACCEPT`, ambas con
-P0/P1/P2/P3 = 0 tras cerrar todos los hallazgos razonables.
+P0/P1/P2/P3 = 0 tras cerrar todos los hallazgos razonables. Después del último
+fix, la suite frontend completa pasó 297 archivos / 2.000 tests y el Playwright
+shadow volvió a pasar.

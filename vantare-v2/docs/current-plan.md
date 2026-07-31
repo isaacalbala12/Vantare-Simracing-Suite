@@ -48,9 +48,11 @@ Nota ISA-105 / TC-07A (2026-07-31):
   frente a una muestra no-mismatch separada; `pitStopCount` sin consumidor fue
   retirado; Delta, Standings y Relative declaran dependencias reales; la
   identidad de fila y `isPlayer` conservan procedencia estructural explícita.
-- Re-review D6 final: `ACCEPT`, P0/P1/P2/P3 = 0. Pendiente solo materializar la
-  entrega draft/Linear/handoff; después se ejecuta ISA-129 antes de ISA-106.
-  Sin cutover productivo.
+- Re-review D6 final: `ACCEPT`, P0/P1/P2/P3 = 0. Suite frontend final: 297
+  archivos / 2.000 tests PASS; Playwright shadow final PASS.
+- Entrega materializada en PR draft `#41` contra ISA-104 y Linear `ISA-105`
+  `In Review`. Siguiente corte obligatorio: ISA-129 antes de ISA-106. Sin
+  merge, promoción ni cutover productivo.
 
 Nota ISA-104 / TC-06D (2026-07-31):
 - Implementados informe allowlisted, catálogo metadata-only, inspector local y

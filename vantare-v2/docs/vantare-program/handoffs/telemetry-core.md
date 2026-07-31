@@ -52,8 +52,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   eventos Wails correlacionados, cancelación acotada, UI responsive e
   internacionalizada, captura raw limitada y tap LMU sin wiring productivo.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07A ISA-105: implementación y re-review D6 completas hasta `f6b43b7`;
-  `ACCEPT`, P0/P1/P2/P3 = 0. Entrega draft/Linear en materialización.
+- TC-07A ISA-105: implementación y re-review D6 completas; código final
+  `f6b43b7`, `ACCEPT`, P0/P1/P2/P3 = 0. PR draft `#41`; Linear `In Review`.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -201,13 +201,12 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
-| Entrega técnica completa | ISA-105 / TC-07A, `f6b43b7`, D6 `ACCEPT` |
+| En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Materializar PR draft y Linear `In Review` de ISA-105. Después crear y cerrar
-ISA-129 / TC-07A.1 antes de ISA-106 para
+Crear y cerrar ISA-129 / TC-07A.1 antes de ISA-106 para
 parrilla/timing/gaps/delta/sesión-unidades y retirada del fallback mock
 conectado. Sin wiring productivo global ni promoción.
 
@@ -227,4 +226,5 @@ D6 solicitó cuatro P2 y un P3; todos quedaron corregidos con TDD en `f6b43b7`:
 cap separado 64+64, `pitStopCount` retirado, `sourcePaths` reales,
 `vehicles[].id`/`playerVehicleId` explícitos, handoff sincronizado y ADR válido.
 Re-review final `ACCEPT`, P0/P1/P2/P3 = 0. ISA-129 sigue ordenada antes de
-ISA-106. Sin merge, wiring productivo ni promoción.
+ISA-106. Suite frontend final 297/2.000 y Playwright shadow PASS. PR draft
+`#41`; Linear `In Review`. Sin merge, wiring productivo ni promoción.

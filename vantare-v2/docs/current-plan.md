@@ -44,8 +44,13 @@ Nota ISA-105 / TC-07A (2026-07-31):
   en 0 %. No se regeneró ningún baseline. El benchmark del canvas también
   incumple sus umbrales en ambas ramas y queda clasificado como deuda
   heredada/de entorno, no como regresión de este corte sin cambios de canvas.
-- Pendiente únicamente D6: review adversarial final, entrega draft contra
-  ISA-104 y actualización de Linear/handoff. Sin cutover productivo.
+- Correcciones D6 publicadas en `f6b43b7`: las 64 diferencias se priorizan
+  frente a una muestra no-mismatch separada; `pitStopCount` sin consumidor fue
+  retirado; Delta, Standings y Relative declaran dependencias reales; la
+  identidad de fila y `isPlayer` conservan procedencia estructural explícita.
+- Re-review D6 final: `ACCEPT`, P0/P1/P2/P3 = 0. Pendiente solo materializar la
+  entrega draft/Linear/handoff; después se ejecuta ISA-129 antes de ISA-106.
+  Sin cutover productivo.
 
 Nota ISA-104 / TC-06D (2026-07-31):
 - Implementados informe allowlisted, catálogo metadata-only, inspector local y

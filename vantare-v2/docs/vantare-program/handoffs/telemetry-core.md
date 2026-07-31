@@ -52,8 +52,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   eventos Wails correlacionados, cancelación acotada, UI responsive e
   internacionalizada, captura raw limitada y tap LMU sin wiring productivo.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07A ISA-105: en ejecución. Preflight de los 18 tipos completado; decoder,
-  adapter, comparator y harness pendientes.
+- TC-07A ISA-105: implementación y re-review D6 completas hasta `f6b43b7`;
+  `ACCEPT`, P0/P1/P2/P3 = 0. Entrega draft/Linear en materialización.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -201,14 +201,13 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-102 / TC-06B, tercera review `ACCEPT` |
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
-| En ejecución | ISA-105 / TC-07A |
+| Entrega técnica completa | ISA-105 / TC-07A, `f6b43b7`, D6 `ACCEPT` |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Implementar ISA-105 / TC-07A desde `3b44d367`, empezando por decoder y adapter
-puros con TDD. Entregar comparator/harness sanitizados que cubran los 18 tipos.
-Después crear y cerrar ISA-129 / TC-07A.1 antes de ISA-106 para
+Materializar PR draft y Linear `In Review` de ISA-105. Después crear y cerrar
+ISA-129 / TC-07A.1 antes de ISA-106 para
 parrilla/timing/gaps/delta/sesión-unidades y retirada del fallback mock
 conectado. Sin wiring productivo global ni promoción.
 
@@ -220,9 +219,12 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-105 / TC-07A iniciada sobre la entrega final de ISA-104.
-Inventario read-only de los 18 tipos completado: un exacto, cinco parciales,
-once no comparables y un consumidor externo. Delta/gaps, parrilla canónica y
-wiring siguen ausentes; fallback mock conectado bloquea el cutover. ISA-129
-queda ordenada entre ISA-105 e ISA-106. Plan y matriz old/new publicados;
-implementación TDD en curso. Sin merge ni promoción.
+2026-07-31, ISA-105 D1–D5 publicados hasta `f2a1ac3`: decoder, adapter,
+comparator, sanitizador, harness `NO LIVE` y evidencia 18/18. Go
+telemetry/app, frontend 297/1.993, build y Playwright pasan; visual Crystal y
+benchmark reproducen deuda de la base exacta sin cambios de baselines/canvas.
+D6 solicitó cuatro P2 y un P3; todos quedaron corregidos con TDD en `f6b43b7`:
+cap separado 64+64, `pitStopCount` retirado, `sourcePaths` reales,
+`vehicles[].id`/`playerVehicleId` explícitos, handoff sincronizado y ADR válido.
+Re-review final `ACCEPT`, P0/P1/P2/P3 = 0. ISA-129 sigue ordenada antes de
+ISA-106. Sin merge, wiring productivo ni promoción.

@@ -28,7 +28,7 @@ scripts visuales/benchmark actuales. No añadir dependencias.
 - `docs/current-plan.md`
 - `docs/vantare-program/execution-policy.md`
 - `docs/vantare-program/handoffs/telemetry-core.md`
-- `docs/adr/0004-telemetry-core-runtime.md`
+- `docs/adr/0004-telemetry-core-modular-observation-architecture.md`
 - `docs/adr/0003-overlay-studio-v3-rebuild.md`
 - `docs/superpowers/plans/2026-07-19-telemetry-core-microplan-07-overlay-cutover.md`
 - `docs/overlays-studio/parity/isa-93/README.md`

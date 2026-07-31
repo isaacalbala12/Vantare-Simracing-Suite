@@ -232,8 +232,10 @@ error. Ningún canario puede aparecer en el objeto de reporte, su JSON ni el
 DOM. Los paths usan índices/aliases deterministas, nunca IDs reales.
 
 Se procesan y contabilizan hasta los 128 widgets válidos de un documento. El
-límite de 64 se aplica únicamente a las diferencias serializadas, no al número
-de widgets ni a los contadores completos.
+límite configurable de 64 se aplica únicamente a las diferencias serializadas,
+no al número de widgets ni a los contadores completos. Una muestra diagnóstica
+independiente de resultados iguales/tolerados/externos queda también acotada a
+64 entradas; nunca consume el cupo de diferencias ni puede ocultarlas.
 
 ## Consumidores transversales fuera de los builders
 
@@ -335,6 +337,14 @@ La evidencia reproducible vive en
 - el harness conserva cinco escenarios fijos y las etiquetas `NO LIVE` y
   `NO PRODUCTIVO`; no usa Wails, SSE, red, persistencia ni runtime Overlay.
 
+La corrección D6 asegura que las 64 diferencias se seleccionan antes y por
+separado de la muestra no-mismatch, retira `pitStopCount` sin consumidor de la
+proyección adaptada y declara por campo las dependencias reales de Delta,
+Standings y Relative. La identidad estructural `vehicles[].id` también forma
+parte de `rows[].id` y, junto con `playerVehicleId`, de `rows[].isPlayer`.
+Los resúmenes siguen contabilizando todo el documento aunque las entradas
+serializadas estén acotadas.
+
 Los gates D5 terminaron así:
 
 | Gate | Resultado |
@@ -349,4 +359,5 @@ Los gates D5 terminaron así:
 
 No se actualizó ningún baseline. ISA-105 no toca renderizadores, CSS, canvas,
 drag/resize ni el benchmark productivo. La review independiente D5 concluyó
-`APPROVE` con P0/P1/P2/P3 = 0.
+`APPROVE` y la re-review adversarial D6 final concluyó `ACCEPT`, ambas con
+P0/P1/P2/P3 = 0 tras cerrar todos los hallazgos razonables.

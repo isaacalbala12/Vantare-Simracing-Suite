@@ -20,6 +20,10 @@ ni OBS. Los datos proceden exclusivamente de fixtures locales sanitizadas.
 significa que los 18 tengan paridad: cada entrada conserva `exact`, `partial`,
 `not-comparable` o `external` según su política real.
 
+El reporte contabiliza todos los widgets y campos. Solo serializa hasta 64
+diferencias y, por separado, hasta 64 muestras no-mismatch; una igualdad nunca
+puede consumir el cupo ni ocultar una diferencia.
+
 ## Regeneración
 
 Desde `frontend`:

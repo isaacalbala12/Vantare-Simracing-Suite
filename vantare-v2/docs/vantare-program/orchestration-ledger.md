@@ -857,6 +857,29 @@ Cierre inicial D4 frontend e inicio de correcciones backend ISA-104:
   Después se repetirá review backend y del contrato frontend. Sin commit de
   producto, merge o promoción.
 
+Corrección backend D4 ISA-104 completada y enviada a re-review:
+
+- El bridge recibe una raíz canónica resuelta por composición. Instalación usa
+  `LocalAppData/Vantare/telemetry/sessions`; portable/desarrollo usa
+  `<root>/data/telemetry/sessions`. El resolver queda preparado para ser
+  compartido con el futuro writer y no deriva histórico desde `cfgDir`.
+- Toda la cadena de la raíz rechaza symlinks, junctions y reparse points antes
+  de abrir el catálogo.
+- Operaciones diagnósticas heredan el contexto de aplicación, tienen máximo
+  dos ejecuciones simultáneas y cancelación correlacionada mediante
+  `diagnostics:cancel`. Timeout y shutdown liberan operaciones y slots.
+- `ProfileService` sincroniza sus mutaciones y entrega copias defensivas; la
+  preparación concurrente del informe queda cubierta bajo race.
+- App/cmd, pkg/config, Telemetry diagnostics/recording/replay/SQLite, vet y
+  `git diff --check`: PASS. Race focal x5 mediante UCRT64: PASS. Frontend
+  diagnostics 29/29 y cliente 8/8: PASS; build frontend: PASS.
+- Re-review backend original activa. La review UI mantiene abiertos:
+  cleanup seguro del runner, verificación real SHA-256, contraste AA, pt-BR,
+  semántica accesible, estado current no disponible, simplificación de vistas
+  y evidencia separada para current/future/corrupt. El frontend vuelve al
+  implementador con esos remedios cerrados y una única pasada Playwright
+  post-fix autorizada. Sin commit de producto, merge o promoción.
+
 ## Bloqueos operativos actuales
 
 - Linear volvió a estar disponible. ISA-41 ya está sincronizada en `In Review`

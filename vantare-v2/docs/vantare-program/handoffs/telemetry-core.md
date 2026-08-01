@@ -105,11 +105,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   sesión, parrilla completa, fuel, gaps y geometría con calidad explícita. Se
   reutiliza el contrato ENG-02/03 aprobado, incorporado como segundo padre de
   la rama; no se arrastran su UI ni sus assets de investigación. No hay wiring.
-- TC-08C–TC-09: pendientes desde ISA-110.
+- TC-08C ISA-110: matriz ejecutable 21/21 y bridge replay fail-closed.
+  Spotter normal, fuel, contador genérico de sanciones, laps, timings y
+  entrada/salida de pit tienen escenarios de paridad. El resto permanece
+  parcial o disabled; no hay wiring productivo.
+- TC-08D–TC-09: pendientes desde ISA-111.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-110 / TC-08C. `go vet` conserva seis avisos heredados
+El siguiente corte es ISA-111 / TC-08D. `go vet` conserva seis avisos heredados
 de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones
@@ -262,14 +266,16 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
 | Cerrada técnicamente | ISA-129 / TC-07A.1; D0-D9 aceptados |
 | En revisión | ISA-106 / TC-07B, ISA-107 / TC-07C e ISA-108 / TC-08A |
-| Preparada para revisión | ISA-130 / TC-08A.1, bloqueante espacial de ISA-109 |
-| Pendientes | ISA-109–117 e ISA-87 según dependencias |
+| Cerradas técnicamente | ISA-130 / TC-08A.1 e ISA-109 / TC-08B |
+| En implementación aislada | ISA-110 / TC-08C, replay parity sin wiring |
+| Pendientes | ISA-111–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-130 y ejecutar ISA-109 / TC-08B sobre su commit. ISA-109 debe
-ampliar `projection/engineer` y adaptar el Engineer sin abrir readers ni
-reactivar capabilities aún no demostradas. Sin merge ni promoción.
+Entregar ISA-110 y ejecutar ISA-111 / TC-08D sobre su commit. ISA-111 debe
+cambiar la entrada del runtime usando los gates aprobados, mantener shadow
+para comparación y no abrir readers ni reactivar capabilities parciales.
+Sin merge ni promoción.
 
 ## Gate final
 
@@ -278,6 +284,12 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-110: el replay enumera Spotter + 20 monitores y falla cerrado
+para cualquier familia o señal no aprobada. Seis escenarios atraviesan la
+proyección canónica y reproducen geometría/transiciones observables; el bridge
+solo acepta fresh+supported y no está conectado a producción. Documento:
+`docs/telemetry-core/engineer-replay-parity-isa-110.md`. Siguiente: ISA-111.
 
 2026-08-01, ISA-130: posición mundo, velocidad local y orientación se admiten
 por vehículo desde el único reader LMU hasta Reducer. La fixture real LMU 1.3

@@ -10,6 +10,18 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-110 / TC-08C (2026-08-01):
+- Replay parity caracteriza Spotter + 20/20 monitores antes del cutover.
+- Se aprueban únicamente seis escenarios acotados: Spotter normal, fuel,
+  contador genérico de sanciones, vueltas, timings y entrada/salida de pit.
+- Engine, tyre, flags, driver swaps, damage y conditions fallan cerrados; las
+  demás familias siguen parciales y no se activan todavía.
+- El bridge temporal exige familia explícita, solo copia campos fresh con
+  capability supported y usa IDs locales reiniciados por epoch. No existe un
+  conversor general ni wiring productivo.
+- Documento: `docs/telemetry-core/engineer-replay-parity-isa-110.md`.
+- Siguiente corte: ISA-111 / TC-08D. Sin merge ni promoción.
+
 Nota ISA-109 / TC-08B (2026-08-01):
 - La proyección Engineer v1 expone sesión admitida, parrilla completa,
   scoring, controles, pit, fuel, gaps y geometría con calidad explícita.

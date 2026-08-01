@@ -9,8 +9,8 @@ import (
 
 func Merge(base *models.Telemetry, standings []lmuapi.StandingRow, session *lmuapi.SessionInfo, deltaBest float64) *models.Telemetry {
 	out := cloneTelemetry(base)
-	if out == nil {
-		out = &models.Telemetry{Connected: true}
+	if out == nil || !out.Connected {
+		return &models.Telemetry{Connected: false}
 	}
 	if session != nil {
 		out.Session = mergeSession(out.Session, session)

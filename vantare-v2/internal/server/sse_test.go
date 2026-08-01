@@ -3,12 +3,14 @@ package server_test
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/telemetry/lmu"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
@@ -154,5 +156,51 @@ func TestTelemetryStreamNoService(t *testing.T) {
 
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rr.Code)
+	}
+}
+
+func TestTelemetryStreamDisconnectedSourceNeverPublishesSyntheticData(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	application := app.New(false)
+	svc := application.Telemetry
+	go func() { _ = svc.Run(ctx) }()
+
+	srv := server.New(server.ServerConfig{Svc: svc})
+	s := httptest.NewServer(srv.Handler())
+	defer s.Close()
+
+	lines, err := sseLines(ctx, s.URL+"/telemetry/stream", 2)
+	if err != nil {
+		t.Fatalf("sseLines: %v", err)
+	}
+	var data string
+	for _, line := range lines {
+		if strings.HasPrefix(line, "data: ") {
+			data = strings.TrimPrefix(line, "data: ")
+			break
+		}
+	}
+	if data == "" {
+		t.Fatalf("no SSE data line in %v", lines)
+	}
+
+	var doc struct {
+		Snapshot struct {
+			Connected bool  `json:"connected"`
+			Vehicles  []any `json:"vehicles"`
+		} `json:"snapshot"`
+	}
+	if err := json.Unmarshal([]byte(data), &doc); err != nil {
+		t.Fatalf("unmarshal SSE data: %v", err)
+	}
+	if doc.Snapshot.Connected || len(doc.Snapshot.Vehicles) != 0 {
+		t.Fatalf("snapshot=%s, want connected=false and zero scoring rows", data)
+	}
+	for _, forbidden := range []string{"Spa", "TestDriver", "synthetic-account-id"} {
+		if strings.Contains(data, forbidden) {
+			t.Fatalf("disconnected SSE leaked synthetic canary %q: %s", forbidden, data)
+		}
 	}
 }

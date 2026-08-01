@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
@@ -59,6 +61,8 @@ type Observation struct {
 	Fingerprint    string
 	ClockChange    ClockChange
 	SourceTime     schema.Field[time.Duration]
+	EndTime        schema.Field[session.EndTime]
+	MaximumLaps    schema.Field[session.MaximumLaps]
 	TrackName      schema.Field[string]
 	SessionType    schema.Field[session.Type]
 	VehicleCount   schema.Field[schema.Count]
@@ -75,10 +79,48 @@ type Observation struct {
 	CompletedLaps  schema.Field[standings.CompletedLaps]
 	PitStopCount   schema.Field[pit.StopCount]
 	InPit          schema.Field[pit.InPit]
+	Fuel           schema.Field[energy.Fuel]
+	Vehicles       []VehicleObservation
 	REST           RESTObservation
 	MatrixVersion  uint16
 	Decisions      []FieldDecision
 	Conflicts      []ConflictDiagnostic
+}
+
+// VehicleSourceID is the LMU slot ID for one continuously occupied row. It is
+// not a durable canonical identity and is never derived from position or text.
+type VehicleSourceID int32
+
+// VehicleObservation owns the admitted values for one scoring row. Fast
+// telemetry and fuel are present only on the scoring-selected player row.
+type VehicleObservation struct {
+	SourceID         VehicleSourceID
+	DriverName       schema.Field[identity.DriverName]
+	VehicleName      schema.Field[vehicle.VehicleName]
+	VehicleClass     schema.Field[standings.VehicleClass]
+	Player           schema.Field[bool]
+	Position         schema.Field[standings.Position]
+	CompletedLaps    schema.Field[standings.CompletedLaps]
+	Sector           schema.Field[standings.Sector]
+	LapDistance      schema.Field[standings.LapDistance]
+	BestLapTime      schema.Field[standings.LapTime]
+	LastLapTime      schema.Field[standings.LapTime]
+	EstimatedLapTime schema.Field[standings.LapTime]
+	InPit            schema.Field[pit.InPit]
+	PitStopCount     schema.Field[pit.StopCount]
+	PenaltyCount     schema.Field[standings.PenaltyCount]
+	TimeBehindLeader schema.Field[standings.TimeGap]
+	LapsBehindLeader schema.Field[standings.LapGap]
+	TimeBehindNext   schema.Field[standings.TimeGap]
+	LapsBehindNext   schema.Field[standings.LapGap]
+	LapNumber        schema.Field[session.LapNumber]
+	Gear             schema.Field[vehicle.Gear]
+	EngineRPM        schema.Field[vehicle.EngineRPM]
+	SpeedMPS         schema.Field[float64]
+	Throttle         schema.Field[schema.Ratio]
+	Brake            schema.Field[schema.Ratio]
+	Clutch           schema.Field[schema.Ratio]
+	Fuel             schema.Field[energy.Fuel]
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
@@ -103,119 +145,243 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	if !profile.supported {
 		return result, nil
 	}
-	vehicles := readInt32(buf, 1736)
-	phase := buf[1740]
-	playerIndex := int(buf[128465])
-	if !hasScoringInvariants(buf, vehicles, phase, playerIndex) {
-		result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=menu-invariants-invalid", profile.version)
-		return result, nil
+	vehicles := readInt32(buf, lmu13Layout.Session.VehicleCount.Offset)
+	if vehicles < 0 || vehicles > int32(lmu13Layout.ScoringRows.Maximum) {
+		return rejectedObservation(result, profile, "vehicle-count-invalid"), nil
 	}
-	playerPresent := buf[128466] != 0
-	evidence := "menu-invariants"
+	track, ok := readCStringField(buf, lmu13Layout.Session.TrackName, 0, true)
+	if !ok {
+		return rejectedObservation(result, profile, "session-string-invalid"), nil
+	}
+	currentSeconds := readFloat64(buf, lmu13Layout.Session.CurrentTime.Offset)
+	currentTime, currentValid := durationFromSeconds(currentSeconds)
+	endSeconds := readFloat64(buf, lmu13Layout.Session.EndTime.Offset)
+	maximumLaps := readInt32(buf, lmu13Layout.Session.MaximumLaps.Offset)
+	if !currentValid || !finite(endSeconds) || endSeconds < currentSeconds || maximumLaps < 0 {
+		return rejectedObservation(result, profile, "session-values-invalid"), nil
+	}
+	grid, playerIndex, valid := parseActiveGrid(buf, int(vehicles))
+	if !valid {
+		return rejectedObservation(result, profile, "active-grid-invalid"), nil
+	}
+	playerPresent := playerIndex >= 0
+	evidence := "active-grid-bijective"
 	telemetryEvidence := "not-required-no-player"
-	playerScoringBase := -1
 	if playerPresent {
-		var correlated bool
-		playerScoringBase, correlated = playerScoringEvidence(buf, vehicles, playerIndex)
-		if !correlated {
-			result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=telemetry-insufficient", profile.version)
-			return result, nil
-		}
-		evidence = "player-correlated"
-		telemetryEvidence = "player-slot-correlated"
+		telemetryEvidence = "player-id-correlated"
 	}
 	result.Compatibility = CompatibilityKnown
 	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, evidence, telemetryEvidence)
 	result.PlayerPresent = observed(playerPresent)
-
-	result.TrackName = observed(normalizeTrackName(readString(buf, 1632, 64)))
+	result.TrackName = observed(normalizeTrackName(track))
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
-	result.SessionType = validateSessionType(readInt32(buf, 1696))
-	result.SourceTime = validateDuration(readFloat64(buf, 1700))
-
-	if !bufBool(result.PlayerPresent) || playerIndex < 0 || playerIndex >= maxVehicles {
-		return result, nil
+	result.SessionType = validateSessionType(readInt32(buf, lmu13Layout.Session.SessionType.Offset))
+	result.SourceTime = observed(currentTime)
+	result.EndTime = observed(session.EndTime(endSeconds))
+	result.MaximumLaps = observed(session.MaximumLaps(maximumLaps))
+	result.Vehicles = grid
+	if playerPresent {
+		publishPlayer(&result, grid[playerIndex])
 	}
-	base := telemetryOffset + playerIndex*telemetryStride
-	result.InPit = validateInPit(buf[playerScoringBase+scoringInPitsOffset])
-	result.VehicleName = observed(vehicle.VehicleName(readString(buf, base+32, 64)))
-	result.LapNumber = observed(session.LapNumber(readInt32(buf, base+20)))
-	result.Gear = observed(vehicle.Gear(readInt32(buf, base+352)))
-	rpm := readFloat64(buf, base+356)
-	if finite(rpm) && rpm >= 0 {
-		result.EngineRPM = observed(vehicle.EngineRPM(rpm))
-	} else {
-		result.EngineRPM = invalid[vehicle.EngineRPM]()
-	}
-
-	vx, vy, vz := readFloat64(buf, base+184), readFloat64(buf, base+192), readFloat64(buf, base+200)
-	if finite(vx) && finite(vy) && finite(vz) {
-		speed := math.Sqrt(vx*vx + vy*vy + vz*vz)
-		if finite(speed) {
-			result.SpeedMPS = observed(speed)
-		} else {
-			result.SpeedMPS = invalid[float64]()
-		}
-	} else {
-		result.SpeedMPS = invalid[float64]()
-	}
-	throttle, brake, clutch := readFloat64(buf, base+420), readFloat64(buf, base+428), readFloat64(buf, base+444)
-	result.Throttle = validateRatio(throttle)
-	result.Brake = validateRatio(brake)
-	result.Clutch = validateRatio(clutch)
 	return result, nil
 }
 
-func hasScoringInvariants(buf []byte, vehicles int32, phase byte, playerIndex int) bool {
-	playerMarker := buf[128466]
-	if vehicles < 0 || vehicles > maxVehicles || phase > 9 || playerMarker > 1 {
-		return false
-	}
-	if playerMarker == 1 && playerIndex >= maxVehicles {
-		return false
-	}
-	if playerMarker == 0 && playerIndex >= maxVehicles && playerIndex != 255 {
-		return false
-	}
-	seconds := readFloat64(buf, 1700)
-	return finite(seconds) && seconds >= 0 && seconds <= float64(math.MaxInt64)/float64(time.Second)
+func rejectedObservation(result Observation, profile compatibilityProfile, evidence string) Observation {
+	result.Fingerprint = fmt.Sprintf("LMU_Data/runtime:build=%s;evidence=%s", profile.version, evidence)
+	return result
 }
 
-func playerScoringEvidence(buf []byte, vehicles int32, playerIndex int) (int, bool) {
-	if vehicles <= 0 {
-		return 0, false
-	}
-	playerScoring := -1
-	for index := 0; index < int(vehicles); index++ {
-		base := scoringOffset + index*scoringStride
-		if buf[base+scoringIsPlayerOffset] == 1 {
-			if playerScoring != -1 {
-				return 0, false
-			}
-			playerScoring = base
+func parseActiveGrid(buf []byte, count int) ([]VehicleObservation, int, bool) {
+	telemetryByID := make(map[VehicleSourceID]int, count)
+	for index := 0; index < count; index++ {
+		base, ok := lmu13Layout.TelemetryRows.rowBase(index)
+		if !ok {
+			return nil, -1, false
 		}
+		id := VehicleSourceID(readInt32(buf, base+lmu13Layout.Telemetry.VehicleSourceSlot.Offset))
+		if id < 0 {
+			return nil, -1, false
+		}
+		if _, duplicate := telemetryByID[id]; duplicate {
+			return nil, -1, false
+		}
+		telemetryByID[id] = base
 	}
-	if playerScoring < 0 {
-		return 0, false
+
+	rows := make([]VehicleObservation, 0, count)
+	scoringIDs := make(map[VehicleSourceID]struct{}, count)
+	playerIndex := -1
+	for index := 0; index < count; index++ {
+		base, ok := lmu13Layout.ScoringRows.rowBase(index)
+		if !ok {
+			return nil, -1, false
+		}
+		row, valid := parseScoringRow(buf, base)
+		if !valid || row.SourceID < 0 {
+			return nil, -1, false
+		}
+		if _, duplicate := scoringIDs[row.SourceID]; duplicate {
+			return nil, -1, false
+		}
+		scoringIDs[row.SourceID] = struct{}{}
+		telemetryBase, matched := telemetryByID[row.SourceID]
+		if !matched {
+			return nil, -1, false
+		}
+		if player, _ := row.Player.Value(); player {
+			if playerIndex >= 0 {
+				return nil, -1, false
+			}
+			playerIndex = index
+			parsePlayerTelemetry(buf, telemetryBase, &row)
+		}
+		rows = append(rows, row)
 	}
-	telemetry := telemetryOffset + playerIndex*telemetryStride
-	if readInt32(buf, playerScoring) != readInt32(buf, telemetry) {
-		return 0, false
+	if len(scoringIDs) != len(telemetryByID) {
+		return nil, -1, false
 	}
-	scoringVehicle, ok := reasonableCString(buf[playerScoring+36:playerScoring+100], false)
-	if !ok {
-		return 0, false
+	return rows, playerIndex, true
+}
+
+func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
+	driver, driverOK := readCStringField(buf, lmu13Layout.Scoring.DriverLabel, base, true)
+	name, nameOK := readCStringField(buf, lmu13Layout.Scoring.VehicleLabel, base, true)
+	class, classOK := readCStringField(buf, lmu13Layout.Scoring.VehicleClass, base, true)
+	playerRaw := buf[base+lmu13Layout.Scoring.PlayerMarker.Offset]
+	inPitRaw := buf[base+lmu13Layout.Scoring.InPits.Offset]
+	completed := readInt16(buf, base+lmu13Layout.Scoring.CompletedLaps.Offset)
+	sector, sectorOK := parseSector(readInt8(buf, base+lmu13Layout.Scoring.Sector.Offset))
+	lapDistance := readFloat64(buf, base+lmu13Layout.Scoring.LapDistance.Offset)
+	position := int32(buf[base+lmu13Layout.Scoring.Position.Offset])
+	pitStops := readInt16(buf, base+lmu13Layout.Scoring.PitStopCount.Offset)
+	penalties := readInt16(buf, base+lmu13Layout.Scoring.PenaltyCount.Offset)
+	timeNext := readFloat64(buf, base+lmu13Layout.Scoring.TimeBehindNext.Offset)
+	lapsNext := readInt32(buf, base+lmu13Layout.Scoring.LapsBehindNext.Offset)
+	timeLeader := readFloat64(buf, base+lmu13Layout.Scoring.TimeBehindLeader.Offset)
+	lapsLeader := readInt32(buf, base+lmu13Layout.Scoring.LapsBehindLeader.Offset)
+	if !driverOK || !nameOK || !classOK || playerRaw > 1 || inPitRaw > 1 ||
+		completed < 0 || !sectorOK || !finite(lapDistance) ||
+		position < 1 || position > maxVehicles || pitStops < 0 || penalties < 0 ||
+		!finite(timeNext) || lapsNext < 0 ||
+		!finite(timeLeader) || lapsLeader < 0 {
+		return VehicleObservation{}, false
 	}
-	telemetryVehicle, ok := reasonableCString(buf[telemetry+32:telemetry+96], false)
-	if !ok || scoringVehicle != telemetryVehicle {
-		return 0, false
+	var timeBehindNext schema.Field[standings.TimeGap]
+	if timeNext >= 0 {
+		timeBehindNext = observed(standings.TimeGap(timeNext))
 	}
-	scoringTrack, ok := reasonableCString(buf[1632:1696], false)
-	if !ok {
-		return 0, false
+	var timeBehindLeader schema.Field[standings.TimeGap]
+	if timeLeader >= 0 {
+		timeBehindLeader = observed(standings.TimeGap(timeLeader))
 	}
-	telemetryTrack, ok := reasonableCString(buf[telemetry+96:telemetry+160], false)
-	return playerScoring, ok && scoringTrack == telemetryTrack
+	var lapDistanceField schema.Field[standings.LapDistance]
+	if lapDistance >= 0 {
+		lapDistanceField = observed(standings.LapDistance(lapDistance))
+	}
+	best, bestOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.BestLapTime.Offset))
+	last, lastOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.LastLapTime.Offset))
+	estimated, estimatedOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.EstimatedLapTime.Offset))
+	if !bestOK || !lastOK || !estimatedOK {
+		return VehicleObservation{}, false
+	}
+	return VehicleObservation{
+		SourceID:   VehicleSourceID(readInt32(buf, base+lmu13Layout.Scoring.VehicleSourceSlot.Offset)),
+		DriverName: observed(identity.DriverName(driver)), VehicleName: observed(vehicle.VehicleName(name)),
+		VehicleClass: observed(standings.VehicleClass(class)), Player: observed(playerRaw == 1),
+		Position: observed(standings.Position(position)), CompletedLaps: observed(standings.CompletedLaps(completed)),
+		Sector: sector, LapDistance: lapDistanceField,
+		BestLapTime: best, LastLapTime: last, EstimatedLapTime: estimated,
+		InPit: observed(pit.InPit(inPitRaw == 1)), PitStopCount: observed(pit.StopCount(pitStops)),
+		PenaltyCount:     observed(standings.PenaltyCount(penalties)),
+		TimeBehindLeader: timeBehindLeader, LapsBehindLeader: observed(standings.LapGap(lapsLeader)),
+		TimeBehindNext: timeBehindNext, LapsBehindNext: observed(standings.LapGap(lapsNext)),
+	}, true
+}
+
+func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
+	lap := readInt32(buf, base+lmu13Layout.Telemetry.LapNumber.Offset)
+	if lap >= 0 {
+		row.LapNumber = observed(session.LapNumber(lap))
+	} else {
+		row.LapNumber = invalid[session.LapNumber]()
+	}
+	row.Gear = observed(vehicle.Gear(readInt32(buf, base+lmu13Layout.Telemetry.Gear.Offset)))
+	rpm := readFloat64(buf, base+lmu13Layout.Telemetry.EngineRPM.Offset)
+	if finite(rpm) && rpm >= 0 {
+		row.EngineRPM = observed(vehicle.EngineRPM(rpm))
+	} else {
+		row.EngineRPM = invalid[vehicle.EngineRPM]()
+	}
+	velocityOffset := base + lmu13Layout.Telemetry.LocalVelocity.Offset
+	vx, vy, vz := readFloat64(buf, velocityOffset), readFloat64(buf, velocityOffset+8), readFloat64(buf, velocityOffset+16)
+	if finite(vx) && finite(vy) && finite(vz) {
+		speed := math.Sqrt(vx*vx + vy*vy + vz*vz)
+		if finite(speed) {
+			row.SpeedMPS = observed(speed)
+		} else {
+			row.SpeedMPS = invalid[float64]()
+		}
+	} else {
+		row.SpeedMPS = invalid[float64]()
+	}
+	row.Throttle = validateRatio(readFloat64(buf, base+lmu13Layout.Telemetry.Throttle.Offset))
+	row.Brake = validateRatio(readFloat64(buf, base+lmu13Layout.Telemetry.Brake.Offset))
+	row.Clutch = validateRatio(readFloat64(buf, base+lmu13Layout.Telemetry.Clutch.Offset))
+	fuel := energy.Fuel{
+		Amount:   energy.FuelAmount(readFloat64(buf, base+lmu13Layout.Telemetry.FuelLiters.Offset)),
+		Capacity: energy.FuelCapacity(readFloat64(buf, base+lmu13Layout.Telemetry.FuelCapacityLiters.Offset)),
+	}
+	if fuel.Valid() {
+		row.Fuel = observed(fuel)
+	} else {
+		row.Fuel = invalid[energy.Fuel]()
+	}
+}
+
+func publishPlayer(result *Observation, player VehicleObservation) {
+	result.VehicleName = player.VehicleName
+	result.LapNumber = player.LapNumber
+	result.Gear = player.Gear
+	result.EngineRPM = player.EngineRPM
+	result.SpeedMPS = player.SpeedMPS
+	result.Throttle = player.Throttle
+	result.Brake = player.Brake
+	result.Clutch = player.Clutch
+	result.PlayerPosition = player.Position
+	result.CompletedLaps = player.CompletedLaps
+	result.PitStopCount = player.PitStopCount
+	result.InPit = player.InPit
+	result.Fuel = player.Fuel
+}
+
+func parseSector(value int8) (schema.Field[standings.Sector], bool) {
+	var sector standings.Sector
+	switch value {
+	case 0:
+		sector = standings.SectorThree
+	case 1:
+		sector = standings.SectorOne
+	case 2:
+		sector = standings.SectorTwo
+	default:
+		return schema.MissingField[standings.Sector](), false
+	}
+	return observed(sector), true
+}
+
+func optionalPositiveLapTime(value float64) (schema.Field[standings.LapTime], bool) {
+	if !finite(value) {
+		return schema.MissingField[standings.LapTime](), false
+	}
+	if value <= 0 {
+		return schema.MissingField[standings.LapTime](), true
+	}
+	return observed(standings.LapTime(value)), true
+}
+
+func readCStringField(buf []byte, field layoutField, base int, allowEmpty bool) (string, bool) {
+	start := base + field.Offset
+	return reasonableCString(buf[start:start+field.width()], allowEmpty)
 }
 
 func reasonableCString(value []byte, allowEmpty bool) (string, bool) {
@@ -282,16 +448,15 @@ func validateInPit(value byte) schema.Field[pit.InPit] {
 }
 
 func validateSessionType(value int32) schema.Field[session.Type] {
-	// Only codes demonstrated by the audited fixture and existing LMU monitors
-	// are translated. Other source codes remain explicitly invalid until TC-03
-	// has real captures proving their semantics.
 	var canonical session.Type
-	switch value {
-	case 1:
+	switch {
+	case value >= 1 && value <= 4:
 		canonical = session.TypePractice
-	case 3:
+	case value >= 5 && value <= 8:
 		canonical = session.TypeQualifying
-	case 4, 5:
+	case value == 9:
+		canonical = session.TypeWarmup
+	case value >= 10 && value <= 13:
 		canonical = session.TypeRace
 	default:
 		return invalid[session.Type]()
@@ -303,6 +468,8 @@ func bufBool(field schema.Field[bool]) bool { value, present := field.Value(); r
 func finite(value float64) bool             { return !math.IsNaN(value) && !math.IsInf(value, 0) }
 func finiteRatio(value float64) bool        { return finite(value) && value >= 0 && value <= 1 }
 func readInt32(buf []byte, off int) int32   { return int32(binary.LittleEndian.Uint32(buf[off:])) }
+func readInt16(buf []byte, off int) int16   { return int16(binary.LittleEndian.Uint16(buf[off:])) }
+func readInt8(buf []byte, off int) int8     { return int8(buf[off]) }
 func readFloat64(buf []byte, off int) float64 {
 	return math.Float64frombits(binary.LittleEndian.Uint64(buf[off:]))
 }

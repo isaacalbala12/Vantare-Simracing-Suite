@@ -67,9 +67,12 @@ const (
 	UnitRPM
 	UnitCelsius
 	UnitMetersPerSecond
+	UnitText
+	UnitMeters
+	UnitLiters
 )
 
-func (u Unit) Known() bool { return u >= UnitUnsupported && u <= UnitMetersPerSecond }
+func (u Unit) Known() bool { return u >= UnitUnsupported && u <= UnitLiters }
 
 func (u Unit) Supported() bool { return u != UnitUnknown && u != UnitUnsupported && u.Known() }
 
@@ -93,6 +96,12 @@ func (u Unit) String() string {
 		return "celsius"
 	case UnitMetersPerSecond:
 		return "m/s"
+	case UnitText:
+		return "text"
+	case UnitMeters:
+		return "meters"
+	case UnitLiters:
+		return "liters"
 	default:
 		return "unknown"
 	}
@@ -104,6 +113,7 @@ const (
 	RangeUnknown RangeKind = iota
 	RangeUnsupported
 	RangeClosed
+	RangeNonNegative
 )
 
 // Range describes only a demonstrated semantic range.
@@ -121,6 +131,8 @@ func ClosedRange(minimum, maximum float64) Range {
 	return Range{Kind: RangeClosed, Min: minimum, Max: maximum}
 }
 
+func NonNegativeRange() Range { return Range{Kind: RangeNonNegative} }
+
 func (r Range) Validate() error {
 	switch r.Kind {
 	case RangeUnknown, RangeUnsupported:
@@ -136,6 +148,11 @@ func (r Range) Validate() error {
 			return fmt.Errorf("closed range minimum %g exceeds maximum %g", r.Min, r.Max)
 		}
 		return nil
+	case RangeNonNegative:
+		if r.Min != 0 || r.Max != 0 {
+			return fmt.Errorf("non-negative range must not carry numeric bounds")
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown range kind %d", r.Kind)
 	}
@@ -147,6 +164,8 @@ func (r Range) String() string {
 		return "unsupported"
 	case RangeClosed:
 		return fmt.Sprintf("[%g,%g]", r.Min, r.Max)
+	case RangeNonNegative:
+		return "[0,+inf)"
 	default:
 		return "unknown"
 	}

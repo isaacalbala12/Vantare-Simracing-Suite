@@ -36,18 +36,17 @@ func New(useLiveLMU bool) *App {
 		OpenLive: func() (service.Source, error) {
 			s, err := openLMUSource()
 			if err != nil {
-				log.Printf("warning: live LMU source unavailable: %v (falling back to mock)", err)
+				log.Printf("warning: live LMU source unavailable: %v (telemetry remains disconnected)", err)
 				return nil, err
 			}
 			lmuSrc = s
-			log.Printf("live LMU source opened")
+			log.Printf("live LMU source initialized")
 			enriched := wrapLMUSourceWithREST(s)
 			if mode, ok := deltaModeValue.Load().(delta.ReferenceMode); ok {
 				enriched.SetDeltaMode(mode)
 			}
 			return enriched, nil
 		},
-		Mock: createMockSource(),
 	})
 
 	svc := service.New(service.Config{

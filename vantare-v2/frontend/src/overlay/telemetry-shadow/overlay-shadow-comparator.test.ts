@@ -112,10 +112,16 @@ function mapped(
     quality("player.totalLaps"),
     vehicleQuality(0, "id", "scoring[].id"),
     vehicleQuality(0, "position", "scoring[].place"),
+    vehicleQuality(0, "driverName", "scoring[].driverName"),
+    vehicleQuality(0, "vehicleClass", "scoring[].vehicleClass"),
+    vehicleQuality(0, "relativeTimeGapSeconds", "scoring[].timeGapToPlayer"),
     vehicleQuality(0, "completedLaps", "scoring[].totalLaps"),
     vehicleQuality(0, "inPit", "scoring[].inPits"),
     vehicleQuality(1, "id", "scoring[].id"),
     vehicleQuality(1, "position", "scoring[].place"),
+    vehicleQuality(1, "driverName", "scoring[].driverName"),
+    vehicleQuality(1, "vehicleClass", "scoring[].vehicleClass"),
+    vehicleQuality(1, "relativeTimeGapSeconds", "scoring[].timeGapToPlayer"),
     vehicleQuality(1, "completedLaps", "scoring[].totalLaps"),
     vehicleQuality(1, "inPit", "scoring[].inPits"),
   ];
@@ -187,9 +193,9 @@ describe("overlay shadow comparator policies", () => {
         {},
       ),
     ).toEqual({
-      exact: 1,
-      partial: 5,
-      "not-comparable": 11,
+      exact: 2,
+      partial: 10,
+      "not-comparable": 5,
       external: 1,
     });
     for (const [type, policy] of Object.entries(OVERLAY_SHADOW_POLICIES)) {
@@ -237,27 +243,24 @@ describe("overlay shadow comparator policies", () => {
   });
 
   it("declares the real Delta builder dependencies per output field", () => {
-    expect(unsupportedSources("delta", "tone")).toEqual(["player.deltaSeconds"]);
-    expect(unsupportedSources("delta", "lastLapText")).toEqual(["player.lastLapSeconds"]);
-    expect(unsupportedSources("delta", "bestLapText")).toEqual(["player.bestLapSeconds"]);
-    expect(unsupportedSources("delta", "lapText")).toEqual([
+    expect(scalarSources("delta", "tone")).toEqual(["player.deltaSeconds"]);
+    expect(scalarSources("delta", "lastLapText")).toEqual(["player.lastLapSeconds"]);
+    expect(scalarSources("delta", "bestLapText")).toEqual(["player.bestLapSeconds"]);
+    expect(scalarSources("delta", "lapText")).toEqual([
       "player.lapNumber",
-      "scoring[].isPlayer",
-      "scoring[].totalLaps",
+      "player.totalLaps",
     ]);
-    expect(unsupportedSources("delta", "predictedLapText")).toEqual([
+    expect(scalarSources("delta", "predictedLapText")).toEqual([
       "player.predictedLapSeconds",
-      "scoring[].isPlayer",
-      "scoring[].estimatedLapTime",
     ]);
-    expect(unsupportedSources("delta", "splitText")).toEqual(["player.deltaSeconds"]);
+    expect(scalarSources("delta", "splitText")).toEqual(["player.deltaSeconds"]);
   });
 
   it("declares real Standings sources instead of ViewModel-only aliases", () => {
-    expect(unsupportedSources("standings", "rows[].driverName"))
-      .toEqual(["scoring[].driverName"]);
-    expect(unsupportedSources("standings", "rows[].intervalText"))
-      .toEqual(["scoring[].timeBehindNext"]);
+    expect(listFieldSources("standings", "rows", "driverName"))
+      .toEqual(["vehicles[].driverName"]);
+    expect(listFieldSources("standings", "rows", "intervalText"))
+      .toEqual(["vehicles[].timeBehindNextSeconds"]);
     expect(unsupportedSources("standings", "rows[].gapText")).toEqual([
       "session.type",
       "scoring[].id",
@@ -274,22 +277,16 @@ describe("overlay shadow comparator policies", () => {
   });
 
   it("declares Relative selection and row dependencies independently", () => {
-    expect(unsupportedSources("relative", "rows")).toEqual([
-      "scoring[].isPlayer",
-      "scoring[].vehicleClass",
-      "scoring[].timeGapToPlayer",
-      "scoring[].id",
-    ]);
-    expect(unsupportedSources("relative", "rows[].driverName"))
-      .toEqual(["scoring[].driverName"]);
-    expect(unsupportedSources("relative", "rows[].position"))
-      .toEqual(["scoring[].place"]);
-    expect(unsupportedSources("relative", "rows[].tone")).toEqual([
-      "scoring[].timeGapToPlayer",
-      "scoring[].isPlayer",
-    ]);
-    expect(unsupportedSources("relative", "rows[].bestLapText"))
-      .toEqual(["scoring[].bestLapTime"]);
+    expect(listFieldSources("relative", "rows", "id"))
+      .toEqual(["vehicles[].id"]);
+    expect(listFieldSources("relative", "rows", "driverName"))
+      .toEqual(["vehicles[].driverName"]);
+    expect(listFieldSources("relative", "rows", "position"))
+      .toEqual(["vehicles[].position"]);
+    expect(listFieldSources("relative", "rows", "tone"))
+      .toEqual(["vehicles[].relativeTimeGapSeconds"]);
+    expect(listFieldSources("relative", "rows", "bestLapText"))
+      .toEqual(["vehicles[].bestLapSeconds"]);
   });
 
   it("declares structural ID quality for Standings and Broadcast player flags", () => {
@@ -503,6 +500,24 @@ describe("overlay shadow comparator behavior", () => {
     );
   });
 
+  it("scores Broadcast identity fields per row without contamination from another car", () => {
+    const report = resultFor(
+      "broadcast-tower",
+      snapshot(),
+      mapped(snapshot(), [
+        vehicleQuality(1, "driverName", "scoring[].driverName", "stale"),
+      ]),
+    ).widget;
+    const names = report.entries.filter((entry) => entry.path === "rows[].name");
+
+    expect(names).toContainEqual(
+      expect.objectContaining({ item: 0, classification: "equal" }),
+    );
+    expect(names).toContainEqual(
+      expect.objectContaining({ item: 1, classification: "stale-projection" }),
+    );
+  });
+
   it("classifies stale structural IDs for Standings and Broadcast", () => {
     const projection = mapped(snapshot(), [
       vehicleQuality(0, "id", "scoring[].id", "stale"),
@@ -638,7 +653,7 @@ describe("overlay shadow comparator behavior", () => {
     expect(JSON.stringify(builderReport)).not.toContain(PII.error);
   });
 
-  it("processes 128 widgets while capping only serialized entries at 64", () => {
+  it("processes 128 widgets while independently capping mismatches and samples", () => {
     const widgets = Array.from({ length: 128 }, (_, index) => ({
       ...widget("delta"),
       id: `PII_WIDGET_${index}`,
@@ -650,7 +665,15 @@ describe("overlay shadow comparator behavior", () => {
       maxEntries: 1_000,
     });
 
-    expect(report.widgets.flatMap((entry) => entry.entries)).toHaveLength(64);
+    const visible = report.widgets.flatMap((entry) => entry.entries);
+    const mismatches = visible.filter((entry) =>
+      !["equal", "within-tolerance", "external-consumer"].includes(
+        entry.classification,
+      ),
+    );
+    expect(mismatches.length).toBeLessThanOrEqual(64);
+    expect(visible.length - mismatches.length).toBeLessThanOrEqual(64);
+    expect(visible.length).toBeLessThanOrEqual(128);
     expect(report.widgets).toHaveLength(128);
     expect(report.summary.widgets).toBe(128);
     expect(report.truncated).toBe(true);
@@ -714,6 +737,20 @@ function unsupportedSources(
   if (!rule || rule.kind !== "unsupported") return [];
   return rule.sourcePaths.map((selector) => {
     if (selector.kind === "target" || selector.kind === "source") return selector.path;
+    return `vehicles[].${selector.field}`;
+  });
+}
+
+function scalarSources(type: WidgetType, path: string): string[] {
+  const rule = OVERLAY_SHADOW_POLICIES[type].rules.find(
+    (candidate) => candidate.kind === "scalar" && candidate.path === path,
+  );
+  expect(rule).toBeDefined();
+  if (!rule || rule.kind !== "scalar") return [];
+  return rule.quality.selectors.map((selector) => {
+    if (selector.kind === "target" || selector.kind === "source") {
+      return selector.path;
+    }
     return `vehicles[].${selector.field}`;
   });
 }

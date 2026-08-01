@@ -458,15 +458,15 @@ func TestDriverFusesBothInternalChannelsAndReportsCapabilities(t *testing.T) {
 			}
 			position, present := observation.PlayerPosition.Value()
 			if present {
-				if position != 1 {
-					t.Fatalf("player position = %d, want 1", position)
+				if position != 9 {
+					t.Fatalf("player position = %d, want SHM value 9", position)
 				}
 				fused = observation
 			}
 		case <-timeout.C:
 			t.Fatal("timed out waiting for canonical observation containing REST standings")
 		}
-		if _, present := fused.PlayerPosition.Value(); present {
+		if _, present := fused.PlayerPosition.Value(); present && len(driver.RuntimeSnapshot().Capabilities) == 2 {
 			break
 		}
 	}

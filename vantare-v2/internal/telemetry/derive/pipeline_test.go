@@ -17,18 +17,25 @@ func TestRegistryIsOrderedVersionedAndAcyclic(t *testing.T) {
 	if err := ValidateDefinitions(definitions); err != nil {
 		t.Fatalf("validate canonical registry: %v", err)
 	}
-	if len(definitions) != 1 {
-		t.Fatalf("registered derivations = %d, want 1", len(definitions))
+	if len(definitions) != 4 {
+		t.Fatalf("registered derivations = %d, want 4", len(definitions))
 	}
-	definition := definitions[0]
-	if definition.ID != DerivationControlsHistory || definition.Version != 1 || definition.Order != 1 {
-		t.Fatalf("unexpected canonical definition: %+v", definition)
+	wantIDs := []DerivationID{DerivationControlsHistory, DerivationSessionRemaining, DerivationRelativeGaps, DerivationSelfDelta}
+	for index, definition := range definitions {
+		if definition.ID != wantIDs[index] || definition.Version != 1 || definition.Order != uint16(index+1) {
+			t.Fatalf("unexpected canonical definition %d: %+v", index, definition)
+		}
 	}
-	if definition.HistoryLimit != MaxControlsHistory {
-		t.Fatalf("history limit = %d, want %d", definition.HistoryLimit, MaxControlsHistory)
+	controls := definitions[0]
+	if controls.HistoryLimit != MaxControlsHistory {
+		t.Fatalf("controls history limit = %d, want %d", controls.HistoryLimit, MaxControlsHistory)
 	}
-	if definition.Reset != (ResetEpoch | ResetSession | ResetRun | ResetVehicle) {
-		t.Fatalf("reset policy = %d", definition.Reset)
+	if controls.Reset != (ResetEpoch | ResetSession | ResetRun | ResetVehicle) {
+		t.Fatalf("controls reset policy = %d", controls.Reset)
+	}
+	delta := definitions[len(definitions)-1]
+	if delta.HistoryLimit != MaxSelfDeltaSamples {
+		t.Fatalf("delta private history limit = %d, want %d", delta.HistoryLimit, MaxSelfDeltaSamples)
 	}
 
 	definitions[0].Inputs[0] = SignalControlsHistory
@@ -120,9 +127,12 @@ func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 		got.Derived.Delta.Freshness != schema.FreshnessMissing {
 		t.Fatal("unproven gap/delta must remain explicitly missing")
 	}
-	if !reflect.DeepEqual(got.Derived.Algorithms, []AlgorithmVersion{{
-		ID: DerivationControlsHistory, Version: 1,
-	}}) {
+	if !reflect.DeepEqual(got.Derived.Algorithms, []AlgorithmVersion{
+		{ID: DerivationControlsHistory, Version: 1},
+		{ID: DerivationSessionRemaining, Version: 1},
+		{ID: DerivationRelativeGaps, Version: 1},
+		{ID: DerivationSelfDelta, Version: 1},
+	}) {
 		t.Fatalf("snapshot algorithms = %+v", got.Derived.Algorithms)
 	}
 

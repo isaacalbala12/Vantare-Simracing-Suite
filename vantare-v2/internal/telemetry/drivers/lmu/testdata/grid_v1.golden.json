@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 1,
+  "track": "Track-01",
+  "rows": [
+    {
+      "sourceId": 1000001,
+      "driver": "Driver-001",
+      "vehicle": "Vehicle-001",
+      "class": "Class-001",
+      "player": false
+    },
+    {
+      "sourceId": 1000002,
+      "driver": "Driver-002",
+      "vehicle": "Vehicle-002",
+      "class": "Class-002",
+      "player": false
+    },
+    {
+      "sourceId": 1000003,
+      "driver": "Driver-003",
+      "vehicle": "Vehicle-003",
+      "class": "Class-003",
+      "player": false
+    },
+    {
+      "sourceId": 1000004,
+      "driver": "Driver-004",
+      "vehicle": "Vehicle-004",
+      "class": "Class-004",
+      "player": false
+    },
+    {
+      "sourceId": 1000005,
+      "driver": "Driver-005",
+      "vehicle": "Vehicle-005",
+      "class": "Class-005",
+      "player": false
+    },
+    {
+      "sourceId": 1000006,
+      "driver": "Driver-006",
+      "vehicle": "Vehicle-006",
+      "class": "Class-006",
+      "player": false
+    },
+    {
+      "sourceId": 1000007,
+      "driver": "Driver-007",
+      "vehicle": "Vehicle-007",
+      "class": "Class-007",
+      "player": false
+    },
+    {
+      "sourceId": 1000008,
+      "driver": "Driver-008",
+      "vehicle": "Vehicle-008",
+      "class": "Class-008",
+      "player": false
+    },
+    {
+      "sourceId": 1000009,
+      "driver": "Driver-009",
+      "vehicle": "Vehicle-009",
+      "class": "Class-009",
+      "player": false
+    },
+    {
+      "sourceId": 1000010,
+      "driver": "Driver-010",
+      "vehicle": "Vehicle-010",
+      "class": "Class-010",
+      "player": false
+    },
+    {
+      "sourceId": 1000011,
+      "driver": "Driver-011",
+      "vehicle": "Vehicle-011",
+      "class": "Class-011",
+      "player": false
+    },
+    {
+      "sourceId": 1000012,
+      "driver": "Driver-012",
+      "vehicle": "Vehicle-012",
+      "class": "Class-012",
+      "player": false
+    },
+    {
+      "sourceId": 1000013,
+      "driver": "Driver-013",
+      "vehicle": "Vehicle-013",
+      "class": "Class-013",
+      "player": false
+    },
+    {
+      "sourceId": 1000014,
+      "driver": "Driver-014",
+      "vehicle": "Vehicle-014",
+      "class": "Class-014",
+      "player": false
+    },
+    {
+      "sourceId": 1000015,
+      "driver": "Driver-015",
+      "vehicle": "Vehicle-015",
+      "class": "Class-015",
+      "player": false
+    },
+    {
+      "sourceId": 1000016,
+      "driver": "Driver-016",
+      "vehicle": "Vehicle-016",
+      "class": "Class-016",
+      "player": false
+    },
+    {
+      "sourceId": 1000017,
+      "driver": "Driver-017",
+      "vehicle": "Vehicle-017",
+      "class": "Class-017",
+      "player": false
+    },
+    {
+      "sourceId": 1000018,
+      "driver": "Driver-018",
+      "vehicle": "Vehicle-018",
+      "class": "Class-018",
+      "player": false
+    },
+    {
+      "sourceId": 1000019,
+      "driver": "Driver-019",
+      "vehicle": "Vehicle-019",
+      "class": "Class-019",
+      "player": false
+    },
+    {
+      "sourceId": 1000020,
+      "driver": "Driver-020",
+      "vehicle": "Vehicle-020",
+      "class": "Class-020",
+      "player": false
+    },
+    {
+      "sourceId": 1000021,
+      "driver": "Driver-021",
+      "vehicle": "Vehicle-021",
+      "class": "Class-021",
+      "player": false
+    },
+    {
+      "sourceId": 1000022,
+      "driver": "Driver-022",
+      "vehicle": "Vehicle-022",
+      "class": "Class-022",
+      "player": false
+    },
+    {
+      "sourceId": 1000023,
+      "driver": "Driver-023",
+      "vehicle": "Vehicle-023",
+      "class": "Class-023",
+      "player": false
+    },
+    {
+      "sourceId": 1000024,
+      "driver": "Driver-024",
+      "vehicle": "Vehicle-024",
+      "class": "Class-024",
+      "player": false
+    },
+    {
+      "sourceId": 1000025,
+      "driver": "Driver-025",
+      "vehicle": "Vehicle-025",
+      "class": "Class-025",
+      "player": false
+    },
+    {
+      "sourceId": 1000026,
+      "driver": "Driver-026",
+      "vehicle": "Vehicle-026",
+      "class": "Class-026",
+      "player": false
+    },
+    {
+      "sourceId": 1000027,
+      "driver": "Driver-027",
+      "vehicle": "Vehicle-027",
+      "class": "Class-027",
+      "player": false
+    },
+    {
+      "sourceId": 1000028,
+      "driver": "Driver-028",
+      "vehicle": "Vehicle-028",
+      "class": "Class-028",
+      "player": false
+    },
+    {
+      "sourceId": 1000029,
+      "driver": "Driver-029",
+      "vehicle": "Vehicle-029",
+      "class": "Class-029",
+      "player": false
+    },
+    {
+      "sourceId": 1000030,
+      "driver": "Driver-030",
+      "vehicle": "Vehicle-030",
+      "class": "Class-030",
+      "player": false
+    },
+    {
+      "sourceId": 1000031,
+      "driver": "Driver-031",
+      "vehicle": "Vehicle-031",
+      "class": "Class-031",
+      "player": false
+    },
+    {
+      "sourceId": 1000032,
+      "driver": "Driver-032",
+      "vehicle": "Vehicle-032",
+      "class": "Class-032",
+      "player": false
+    },
+    {
+      "sourceId": 1000033,
+      "driver": "Driver-033",
+      "vehicle": "Vehicle-033",
+      "class": "Class-033",
+      "player": false
+    },
+    {
+      "sourceId": 1000034,
+      "driver": "Driver-034",
+      "vehicle": "Vehicle-034",
+      "class": "Class-034",
+      "player": false
+    },
+    {
+      "sourceId": 1000035,
+      "driver": "Driver-035",
+      "vehicle": "Vehicle-035",
+      "class": "Class-035",
+      "player": false
+    },
+    {
+      "sourceId": 1000036,
+      "driver": "Driver-036",
+      "vehicle": "Vehicle-036",
+      "class": "Class-036",
+      "player": false
+    },
+    {
+      "sourceId": 1000037,
+      "driver": "Driver-037",
+      "vehicle": "Vehicle-037",
+      "class": "Class-037",
+      "player": false
+    },
+    {
+      "sourceId": 1000038,
+      "driver": "Driver-038",
+      "vehicle": "Vehicle-038",
+      "class": "Class-038",
+      "player": false
+    },
+    {
+      "sourceId": 1000039,
+      "driver": "Driver-039",
+      "vehicle": "Vehicle-039",
+      "class": "Class-039",
+      "player": false
+    },
+    {
+      "sourceId": 1000040,
+      "driver": "Driver-040",
+      "vehicle": "Vehicle-040",
+      "class": "Class-040",
+      "player": false
+    },
+    {
+      "sourceId": 1000041,
+      "driver": "Driver-041",
+      "vehicle": "Vehicle-041",
+      "class": "Class-041",
+      "player": false
+    },
+    {
+      "sourceId": 1000042,
+      "driver": "Driver-042",
+      "vehicle": "Vehicle-042",
+      "class": "Class-042",
+      "player": false
+    },
+    {
+      "sourceId": 1000043,
+      "driver": "Driver-043",
+      "vehicle": "Vehicle-043",
+      "class": "Class-043",
+      "player": false
+    },
+    {
+      "sourceId": 1000044,
+      "driver": "Driver-044",
+      "vehicle": "Vehicle-044",
+      "class": "Class-044",
+      "player": true
+    }
+  ]
+}

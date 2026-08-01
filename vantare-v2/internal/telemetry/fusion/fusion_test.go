@@ -121,3 +121,33 @@ func TestMergePreservesExistingSessionFields(t *testing.T) {
 		t.Fatalf("session merge failed: %#v", out.Session)
 	}
 }
+
+func TestMergeWithoutSharedMemoryNeverConnects(t *testing.T) {
+	tests := []struct {
+		name string
+		base *models.Telemetry
+	}{
+		{name: "nil base"},
+		{name: "explicit disconnected base", base: &models.Telemetry{Connected: false}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := fusion.Merge(
+				tt.base,
+				[]lmuapi.StandingRow{{DriverName: "REST only", Player: true}},
+				&lmuapi.SessionInfo{TrackName: "REST only"},
+				-0.25,
+			)
+			if out == nil {
+				t.Fatal("Merge()=nil, want explicit disconnected telemetry")
+			}
+			if out.Connected {
+				t.Fatalf("Merge()=%#v, REST-only data must not create a connected state", out)
+			}
+			if out.Session != nil || out.Player != nil || len(out.Vehicles) != 0 || out.PlayerHasVehicle {
+				t.Fatalf("Merge()=%#v, disconnected output must not expose REST-only scoring or player data", out)
+			}
+		})
+	}
+}

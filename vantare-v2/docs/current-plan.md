@@ -10,6 +10,135 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
+- Microcorte documental iniciado sobre ISA-105
+  `c9acee24cf4c4d80922b380b12f7367c2a60c937`, en la rama
+  `vantareapp/isa-129-tc-07a1-senales-canonicas-overlay-y-retirada-del-mock`
+  y worktree `C:\tmp\vantare-isa129\vantare-v2`.
+- Plan ejecutable:
+  `docs/superpowers/plans/2026-07-31-isa-129-tc-07a1-canonical-overlay-signals.md`.
+  Procedencia cerrada:
+  `docs/telemetry-core/lmu-overlay-signal-provenance.md`.
+- Fixtures reales LMU 1.3 conservan los hashes
+  `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`
+  (pista, 44 vehículos) y
+  `8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a`
+  (menú). D4B añade evidencia real LMU 1.4 de menú y pista sin habilitar nada
+  por mera similitud estructural.
+- P0 confirmados: mock productivo publicable como conectado, ausencia del
+  bridge `lmu.Observation -> core.Batch` y observación modular player-only sin
+  grid/identidad multivehículo.
+- La matriz D0 fija fuente, offset, unidad, rango, referencia, signo, freshness
+  y autoridad SHM/REST. Equipo, número, compuesto, Virtual Energy, daños,
+  weather no admitido, fases/banderas, pit-state labels, remaining raw,
+  `FuelFraction` y native `mDeltaBest` continúan missing, nunca cero inventado.
+- Corrección de review D0: scoring y telemetry solo se correlacionan dentro de
+  `[0,mNumVehicles)`, con IDs activos no negativos, únicos y biyectivos. El
+  jugador procede del único `mIsPlayer` scoring y su telemetry de igual ID;
+  nunca del índice header, posición, orden ni cola inactiva. La fixture prueba
+  44/44 IDs activos, jugador row 43/ID 0 y 60 filas inactivas también con ID 0.
+  Una no-biyección activa rechaza el frame; `lapDistMax` exacto es
+  `3982.366455078125`.
+- D0 no cambia comportamiento ni conecta runtime. Baselines previo y posterior
+  Go, app/server, hashes y `git diff --check` PASS. Review independiente
+  `ACCEPT`, P0/P1/P2/P3 = 0; commit publicado `6acb352`. D1 queda desbloqueado
+  y es el siguiente corte, todavía sin promoción ni cutover.
+- D1 implementado y aceptado en `470d6a6`: se retiró el mock conectado de
+  producción, se conserva el objeto LMU real para attach tardío, REST no puede
+  conectar por sí solo y Wails/SSE/frontend parten desconectados. Review
+  independiente `ACCEPT`, P0/P1/P2/P3 = 0. Go completo, frontend 2001/2001,
+  build y focales PASS; `-race` omitido por CGO desactivado y lint global
+  continúa con deuda heredada. D2 queda desbloqueado sin promoción ni cutover.
+- D2 implementado y aceptado en `e2c92fd`: layout LMU 1.3 nombrado y auditado,
+  35 campos admitidos, bounds/no-solape, tipos Windows, exclusiones y hashes
+  reales cubiertos. Review independiente `ACCEPT`, P0/P1/P2/P3 = 0; driver x20
+  y suite `internal/telemetry/...` PASS. LMU 1.4 permanece bloqueado para D4B;
+  D3 queda desbloqueado sin promoción ni cutover.
+- D3 implementado y aceptado en `462f0ee`: schema/catalog append-only con IDs
+  1–24 estables y 25–43 añadidos, aliases semánticos rechazados, unidades,
+  rangos, ceros legítimos, enums y Markdown golden sincronizados. Review
+  independiente `ACCEPT`, P0/P1/P2/P3 = 0; focales x20 y suite telemetry PASS.
+  D4A queda desbloqueado sin promoción ni cutover.
+- D4A implementado y aceptado en `94c2994`: parser/sanitizer LMU 1.3 con grid
+  real 44/44, identidad por `mIsPlayer` + ID activo, zero-rebuild, aliases,
+  canaries, autoridad SHM-first y REST limitado al jugador. Focal x20,
+  Telemetry/global, fuzzers y benchmarks PASS. Review final `ACCEPT`,
+  P0/P1/P2/P3 = 0; el código LMU `0=test` queda invalid/missing, no Practice.
+  D4B quedó desbloqueado solo para prueba diagnóstica LMU 1.4.
+- D4B implementado: menú SHM/REST hash-pinned, pista real de práctica con 38
+  vehículos y jugador hash-pinned, correlación exacta de los ocho solapes
+  SHM/REST (incluido circuito antes del alias), allowlist cerrada `1.4.0.0` con
+  file/product version coincidentes y lector productivo opt-in `live` PASS.
+  Los sentinels negativos finitos de lap distance y gaps quedan `missing`, no
+  cero. Driver y CLI x20, Telemetry Core y auditoría de privacidad PASS. La
+  suite Go global concurrente solo reprodujo el P3 heredado de contención
+  temporal de `app-settings.json.tmp`; su test aislado y la suite global serial
+  pasaron al repetir. Siguiente corte: D5 Observation → Batch, todavía sin
+  cutover ni promoción.
+- D5 implementado: la observación LMU canónica atraviesa un `BatchMapper`
+  síncrono y duradero hasta `core.Batch`/Reducer con 44 identidades estables,
+  jugador coherente, generaciones por slot, sesiones/epochs según §2.4 y
+  rollback completo ante rechazo o backpressure. Los campos canónicos nuevos
+  conservan calidad explícita y ceros legítimos. Focal x20, Telemetry Core y
+  suite Go global serial pasan. Review independiente final `APPROVE`,
+  P0/P1/P2/P3 = 0.
+- D6 implementado y aceptado: remaining, gaps relativos y self-delta forman
+  una cadena determinista, transaccional y acotada. La evidencia LMU 1.4 real
+  preserva 1.846 muestras sanitizadas, tres wraps y dos vueltas comparables
+  bajo SHA-256
+  `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+  El oráculo independiente fija 100 ms de incertidumbre y prueba signo real;
+  regresiones, fallos del driver y escritura incompleta fallan de forma segura.
+  Focales x20, dos fuzzers de 10 s, Telemetry Core, vet focal, benchmarks y
+  `diff --check` pasan. Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+- D7 implementado y aceptado: Overlay Projection
+  v1 se amplía de forma aditiva con timing, identidad/scoring, fuel,
+  gaps relativos y self-delta/history ya demostrados. El golden exacto pre-D7
+  prueba las cuatro combinaciones old/new; los campos conocidos inválidos
+  fallan cerrados. El adapter no toca ViewModels/renderers y la matriz pasa a
+  2 exactos, 10 parciales, 5 no comparables y 1 externo, sin inventar flags,
+  equipo, número, compuesto, weather o daños. Go focal x20, Telemetry Core,
+  frontend 297/297 archivos y 2.019/2.019 tests, lint focal, build y
+  `diff --check` pasan. Review final `APPROVE`, P0/P1/P2/P3 = 0. Siguiente
+  microcorte: D8.
+- D8 implementado hasta el límite de evidencia real disponible: el harness
+  recorre LMU 1.4 Shared Memory -> Fusion -> BatchMapper -> Reducer ->
+  SessionCoordinator -> Derive -> Overlay Projection v1 con una sola apertura,
+  38 vehículos y salida byte-idéntica en 20 ejecuciones. Menú falla cerrado y
+  no genera payload live. Se corrigió la caducidad incompleta de todos los
+  campos cuando se congela el reloj de origen. Sobre la observación real, tests
+  canónicos separados cubren reorder, vacancy/generation, reset de sesión y
+  cambio de jugador sin presentarlos como capturas. El trace real D6 atraviesa
+  BatchMapper -> Reducer -> SessionCoordinator -> Derive -> Overlay v1 y su
+  primera proyección delta atraviesa decoder/adapter TypeScript; Delta es
+  missing antes de una referencia completa y fresh después. Este cruce corrigió
+  además arrays vacíos serializados como `null`. Los dos gates reales quedaron
+  pendientes de D9 y nunca se sustituyeron por datos sintéticos.
+- D9 cerró la evidencia real LMU 1.4. Una única sesión sanitizada y hash-pinned
+  prueba `InPit=false -> true -> false` con la misma identidad canónica en
+  pista previa, estado in-pit observado y outlap. La señal no distingue garaje,
+  box ni fase de pit. El cierre completo de LMU produce ausencia
+  real de proceso y fallo cerrado de Shared Memory sin payload; la reapertura
+  aporta un mapping nuevo, reloj reiniciado y una nueva sesión/epoch, mientras
+  conserva el VehicleID porque ningún grid vacío fue aceptado. Los hashes son
+  `eb79ec2a…f6fcc`, `262700e5…ede1`, `c495da06…e4a6` y `a31a1495…a707`.
+  El replay x20 valida sidecars zero-rebuild, hashes, metadatos, estados y
+  ausencia de sustitución sintética.
+- Rendimiento D9: parser de 44 vehículos 23,6–29,7 µs/op; sanitizer diagnóstico
+  116,9–152,8 µs/op; gaps 4,19–4,46 µs/op; self-delta 3,21–6,00 µs/op. El parser
+  completo es ~1,5–2,2 veces el baseline histórico de 13,5–15,6 µs/op, con
+  margen amplio para la cadencia live y sin logging por frame, goroutines
+  productivas nuevas ni buffers sin límite. Telemetry Core, mi ejecución de la
+  suite Go global, frontend completo (297 archivos/2.020 tests), build, lint
+  focal y `diff --check` pasan. La review independiente reprodujo el P3 Windows
+  heredado ISA-118 de `app-settings.json.tmp`, incluso en serial y en su test
+  focal; está fuera del diff y no se corrige en ISA-129. `-race` no está
+  disponible con `CGO_ENABLED=0`. El lint
+  global conserva 32 errores y 2 warnings heredados fuera del área focal; un
+  error heredado del archivo tocado se eliminó. Los seis warnings Win32 de vet
+  se reproducen también en la base exacta ISA-105 y permanecen fuera del diff.
+  Review independiente final `APPROVE`, P0/P1/P2/P3 abiertos = 0.
+
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.
   Plan ejecutable:

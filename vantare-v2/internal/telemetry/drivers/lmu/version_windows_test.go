@@ -110,6 +110,28 @@ func TestBuildEvidenceFromFixedRequiresSignature(t *testing.T) {
 	}
 }
 
+func TestBuildEvidenceFromFixedAdmitsPinnedLMU14Pair(t *testing.T) {
+	fixed := fixedFileInfo{
+		Signature:        fixedFileInfoSignature,
+		FileVersionMS:    1<<16 | 4,
+		ProductVersionMS: 1<<16 | 4,
+	}
+	evidence, err := buildEvidenceFromFixed(fixed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.FileVersion != diagnosticLMUVersion || evidence.ProductVersion != diagnosticLMUVersion {
+		t.Fatalf("evidence = %#v", evidence)
+	}
+	if version, supported := evidence.supportedVersion(); !supported || version != diagnosticLMUVersion {
+		t.Fatalf("LMU 1.4 pinned evidence not admitted: %q,%v", version, supported)
+	}
+	profile, ok := diagnosticCandidateProfile(evidence)
+	if !ok || !profile.supported || profile.version != diagnosticLMUVersion {
+		t.Fatalf("diagnostic profile = %#v,%v", profile, ok)
+	}
+}
+
 func setProcessName(entry *processEntry32, name string) {
 	encoded := append(utf16.Encode([]rune(name)), 0)
 	copy(entry.ExeFile[:], encoded)

@@ -13,6 +13,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 )
 
 var (
@@ -33,12 +34,27 @@ type DerivationID string
 type SignalID string
 
 const (
-	DerivationControlsHistory DerivationID = "controls.history"
+	DerivationSessionRemaining DerivationID = "session.remaining"
+	DerivationRelativeGaps     DerivationID = "standings.relative-gaps"
+	DerivationSelfDelta        DerivationID = "session.self-delta"
+	DerivationControlsHistory  DerivationID = "controls.history"
 
-	SignalObservedThrottle SignalID = "observed.vehicle.throttle"
-	SignalObservedBrake    SignalID = "observed.vehicle.brake"
-	SignalObservedClutch   SignalID = "observed.vehicle.clutch"
-	SignalControlsHistory  SignalID = "derived.controls.history"
+	SignalObservedSourceTime       SignalID = "observed.session.source-time"
+	SignalObservedEndTime          SignalID = "observed.session.end-time"
+	SignalObservedTimeBehindLeader SignalID = "observed.standings.time-behind-leader"
+	SignalObservedLapsBehindLeader SignalID = "observed.standings.laps-behind-leader"
+	SignalObservedLapNumber        SignalID = "observed.session.lap-number"
+	SignalObservedLapDistance      SignalID = "observed.standings.lap-distance"
+	SignalObservedInPit            SignalID = "observed.pit.in-pit"
+	SignalObservedThrottle         SignalID = "observed.vehicle.throttle"
+	SignalObservedBrake            SignalID = "observed.vehicle.brake"
+	SignalObservedClutch           SignalID = "observed.vehicle.clutch"
+	SignalSessionRemaining         SignalID = "derived.session.remaining"
+	SignalRelativeTimeGap          SignalID = "derived.standings.relative-time-gap"
+	SignalRelativeLapDelta         SignalID = "derived.standings.relative-lap-delta"
+	SignalSelfDeltaSeconds         SignalID = "derived.session.self-delta-seconds"
+	SignalSelfDeltaRef             SignalID = "derived.session.self-delta-reference"
+	SignalControlsHistory          SignalID = "derived.controls.history"
 )
 
 type ResetPolicy uint8
@@ -62,19 +78,38 @@ type Definition struct {
 	HistoryLimit int
 }
 
-var canonicalRegistry = []Definition{{
-	ID:      DerivationControlsHistory,
-	Version: 1,
-	Order:   1,
-	Inputs: []SignalID{
-		SignalObservedThrottle,
-		SignalObservedBrake,
-		SignalObservedClutch,
+var canonicalRegistry = []Definition{
+	{
+		ID: DerivationControlsHistory, Version: 1, Order: 1,
+		Inputs: []SignalID{
+			SignalObservedThrottle,
+			SignalObservedBrake,
+			SignalObservedClutch,
+		},
+		Outputs:      []SignalID{SignalControlsHistory},
+		Reset:        ResetEpoch | ResetSession | ResetRun | ResetVehicle,
+		HistoryLimit: MaxControlsHistory,
 	},
-	Outputs:      []SignalID{SignalControlsHistory},
-	Reset:        ResetEpoch | ResetSession | ResetRun | ResetVehicle,
-	HistoryLimit: MaxControlsHistory,
-}}
+	{
+		ID: DerivationSessionRemaining, Version: 1, Order: 2,
+		Inputs:  []SignalID{SignalObservedSourceTime, SignalObservedEndTime},
+		Outputs: []SignalID{SignalSessionRemaining},
+		Reset:   ResetEpoch | ResetSession,
+	},
+	{
+		ID: DerivationRelativeGaps, Version: 1, Order: 3,
+		Inputs:  []SignalID{SignalObservedTimeBehindLeader, SignalObservedLapsBehindLeader},
+		Outputs: []SignalID{SignalRelativeTimeGap, SignalRelativeLapDelta},
+		Reset:   ResetEpoch | ResetSession | ResetRun | ResetVehicle,
+	},
+	{
+		ID: DerivationSelfDelta, Version: 1, Order: 4,
+		Inputs:       []SignalID{SignalObservedSourceTime, SignalObservedLapNumber, SignalObservedLapDistance, SignalObservedInPit},
+		Outputs:      []SignalID{SignalSelfDeltaSeconds, SignalSelfDeltaRef},
+		Reset:        ResetEpoch | ResetSession | ResetRun | ResetVehicle,
+		HistoryLimit: MaxSelfDeltaSamples,
+	},
+}
 
 // Registry returns an owned copy of the fixed, explicitly ordered registry.
 func Registry() []Definition {
@@ -168,13 +203,11 @@ type AlgorithmVersion struct {
 }
 
 type DerivedState struct {
-	// Gaps and Delta remain missing until their required canonical inputs and
-	// sign/reference semantics are demonstrated. They are not registered as
-	// algorithms in this cut.
-	Gaps            Availability
-	Delta           Availability
-	ControlsHistory ControlHistory
-	Algorithms      []AlgorithmVersion
+	SessionRemaining schema.Field[session.RemainingTime]
+	Gaps             GapSet
+	Delta            SelfDelta
+	ControlsHistory  ControlHistory
+	Algorithms       []AlgorithmVersion
 }
 
 type FinalState struct {
@@ -195,6 +228,7 @@ type Pipeline struct {
 	header      envelope.Header
 	state       FinalState
 	maxHistory  int
+	delta       *selfDeltaTracker
 }
 
 func NewPipeline(config Config) *Pipeline {
@@ -202,7 +236,7 @@ func NewPipeline(config Config) *Pipeline {
 	if limit <= 0 || limit > MaxControlsHistory {
 		limit = MaxControlsHistory
 	}
-	return &Pipeline{maxHistory: limit}
+	return &Pipeline{maxHistory: limit, delta: newSelfDeltaTracker(MaxSelfDeltaSamples)}
 }
 
 // Apply runs the fixed chain synchronously. It performs no I/O and commits the
@@ -235,13 +269,15 @@ func (pipeline *Pipeline) Apply(
 		history = nil
 	}
 	derivedHistory := deriveControlsHistory(header, observedState, history, pipeline.maxHistory)
+	deltaTracker := cloneSelfDeltaTracker(pipeline.delta)
 	next := FinalState{
 		Observed: cloneObserved(observedState),
 		Derived: DerivedState{
-			Gaps:            Availability{Freshness: schema.FreshnessMissing},
-			Delta:           Availability{Freshness: schema.FreshnessMissing},
-			ControlsHistory: derivedHistory,
-			Algorithms:      canonicalVersions(),
+			SessionRemaining: deriveSessionRemaining(observedState.SourceTime, observedState.EndTime),
+			Gaps:             deriveRelativeGaps(header.Identity.Vehicle, observedState.PlayerPresent, observedState.Vehicles),
+			Delta:            deltaTracker.Apply(header, observedState),
+			ControlsHistory:  derivedHistory,
+			Algorithms:       canonicalVersions(),
 		},
 	}
 	if err := ctx.Err(); err != nil {
@@ -254,6 +290,7 @@ func (pipeline *Pipeline) Apply(
 
 	pipeline.header = header
 	pipeline.state = cloneFinal(next)
+	pipeline.delta = deltaTracker
 	pipeline.initialized = true
 	return snapshot, nil
 }
@@ -341,7 +378,8 @@ func validateInput(current envelope.Header, initialized bool, next envelope.Head
 		if next.Cursor.Sequence != current.Cursor.Sequence+1 {
 			return ErrSequenceGap
 		}
-		if !current.Identity.SameRun(next.Identity) {
+		if !current.Identity.SameSession(next.Identity) ||
+			(next.Identity.Vehicle != "" && current.Identity.Vehicle != next.Identity.Vehicle) {
 			return ErrIdentityChanged
 		}
 		return nil
@@ -371,6 +409,8 @@ func cloneObserved(state core.ObservedState) core.ObservedState {
 func cloneFinal(state FinalState) FinalState {
 	result := state
 	result.Observed = cloneObserved(state.Observed)
+	result.Derived.Gaps.Vehicles = slices.Clone(state.Derived.Gaps.Vehicles)
+	result.Derived.Delta.History = slices.Clone(state.Derived.Delta.History)
 	result.Derived.ControlsHistory.Samples = slices.Clone(state.Derived.ControlsHistory.Samples)
 	result.Derived.Algorithms = slices.Clone(state.Derived.Algorithms)
 	return result

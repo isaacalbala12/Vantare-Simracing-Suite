@@ -11,17 +11,80 @@ import (
 )
 
 type managerTestDriver struct {
-	state   driver.State
-	runtime func() driver.RuntimeSnapshot
-	run     func(context.Context) error
+	state       driver.State
+	runtime     func() driver.RuntimeSnapshot
+	run         func(context.Context) error
+	runWithSink func(context.Context, driver.ObservationSink[int]) error
 }
 
-func (d *managerTestDriver) Run(ctx context.Context, _ driver.ObservationSink[int]) error {
+func (d *managerTestDriver) Run(ctx context.Context, sink driver.ObservationSink[int]) error {
+	if d.runWithSink != nil {
+		return d.runWithSink(ctx, sink)
+	}
 	if d.run != nil {
 		return d.run(ctx)
 	}
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func TestDriverManagerReconnectReusesTheLongLivedObservationSink(t *testing.T) {
+	transient := errors.New("transient disconnect")
+	wrongSink := errors.New("driver manager replaced the long-lived observation sink")
+	constructed := 0
+	sink := &collectingManagerSink{values: make(chan int, 2)}
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (Driver[int], error) {
+				constructed++
+				value := constructed
+				return &managerTestDriver{state: driver.StateLive, runWithSink: func(ctx context.Context, got driver.ObservationSink[int]) error {
+					if got != sink {
+						return wrongSink
+					}
+					if err := got.WriteObservation(ctx, value); err != nil {
+						return err
+					}
+					if value == 1 {
+						return transient
+					}
+					<-ctx.Done()
+					return ctx.Err()
+				}}, nil
+			},
+			Retryable: func(err error) bool { return errors.Is(err, transient) },
+		},
+	}, ManagerConfig{Retry: RetryPolicy{MaxReconnects: 1, Wait: func(context.Context, time.Duration) error { return nil }}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), sink); err != nil {
+		t.Fatal(err)
+	}
+	for want := 1; want <= 2; want++ {
+		select {
+		case got := <-sink.values:
+			if got != want {
+				t.Fatalf("observation = %d, want %d", got, want)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("driver cycle %d did not publish", want)
+		}
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type collectingManagerSink struct {
+	values chan int
+}
+
+func (sink *collectingManagerSink) WriteObservation(_ context.Context, value int) error {
+	sink.values <- value
+	return nil
 }
 
 func (d *managerTestDriver) RuntimeSnapshot() driver.RuntimeSnapshot {

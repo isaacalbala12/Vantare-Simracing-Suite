@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,6 +13,20 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/recording/replay"
 )
+
+type gridGoldenV1 struct {
+	SchemaVersion int               `json:"schemaVersion"`
+	Track         string            `json:"track"`
+	Rows          []gridGoldenRowV1 `json:"rows"`
+}
+
+type gridGoldenRowV1 struct {
+	SourceID int32  `json:"sourceId"`
+	Driver   string `json:"driver"`
+	Vehicle  string `json:"vehicle"`
+	Class    string `json:"class"`
+	Player   bool   `json:"player"`
+}
 
 const sanitizedSharedMemoryFixtureSHA256 = "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff"
 
@@ -121,6 +136,53 @@ func TestRawReplayExercisesRealSharedMemoryAndRESTParsers(t *testing.T) {
 				t.Fatalf("Step(%d, %d) error = %v", fixtureIndex, recordIndex, err)
 			}
 		}
+	}
+}
+
+func TestSanitizedGridReplayMatchesGoldenV1(t *testing.T) {
+	source := knownBuffer(t)
+	sanitizer, err := NewFrameSanitizer(BuildEvidence{FileVersion: supportedLMUVersion})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sanitized, err := sanitizer.Sanitize(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation, err := parseSupported(sanitized, time.Unix(0, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	track, present := observation.TrackName.Value()
+	if !present {
+		t.Fatal("sanitized replay lost track")
+	}
+	projection := gridGoldenV1{SchemaVersion: 1, Track: track, Rows: make([]gridGoldenRowV1, 0, len(observation.Vehicles))}
+	for _, vehicle := range observation.Vehicles {
+		driver, driverPresent := vehicle.DriverName.Value()
+		name, namePresent := vehicle.VehicleName.Value()
+		class, classPresent := vehicle.VehicleClass.Value()
+		player, playerPresent := vehicle.Player.Value()
+		if !driverPresent || !namePresent || !classPresent || !playerPresent {
+			t.Fatalf("sanitized row %d has missing identity/display field", vehicle.SourceID)
+		}
+		projection.Rows = append(projection.Rows, gridGoldenRowV1{
+			SourceID: int32(vehicle.SourceID), Driver: string(driver), Vehicle: string(name),
+			Class: string(class), Player: player,
+		})
+	}
+	got, err := json.MarshalIndent(projection, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = append(got, '\n')
+	want, err := os.ReadFile(filepath.Join("testdata", "grid_v1.golden.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))
+	if !bytes.Equal(got, want) {
+		t.Fatalf("grid golden mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
 }
 

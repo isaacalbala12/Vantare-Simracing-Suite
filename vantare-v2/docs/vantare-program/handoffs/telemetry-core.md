@@ -54,12 +54,44 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0.
 - TC-07A ISA-105: implementación y re-review D6 completas; código final
   `f6b43b7`, `ACCEPT`, P0/P1/P2/P3 = 0. PR draft `#41`; Linear `In Review`.
+- TC-07A.1 ISA-129: D0-D8 aceptados y publicados; D9 ha cerrado la evidencia
+  real y está en gates/review final. Overlay v1
+  conserva versión y claves base; añade
+  campos opcionales de sesión, scoring, fuel, gaps y self-delta/history. Los
+  dos goldens prueban old/old, old/new, new/old y new/new sin relajar el
+  decoder. Adapter y comparator consumen solo señales demostradas; flags,
+  equipo, número, compuesto, weather y daños siguen missing. Focal Go x20,
+  Telemetry Core completo, frontend 297 archivos/2.020 tests, lint focal y
+  build pasan. El harness D8 recorre una captura real LMU 1.4 de 38 vehículos
+  por Driver/Fusion -> BatchMapper -> Reducer -> SessionCoordinator -> Derive
+  -> Overlay v1, con una apertura/cierre y bytes idénticos en 20 ejecuciones.
+  El trace real Delta de 1.846 muestras atraviesa la cadena canónica y el mismo
+  golden exacto consumido por decoder/adapter TypeScript. Reorder, vacancy y
+  generación, reset de sesión, cambio de jugador y freshness completo se
+  prueban como transiciones controladas, no como evidencia real adicional. El
+  cruce corrigió arrays vacíos `null` a `[]`. D9 añade una secuencia real
+  sanitizada `InPit=false -> true -> false` dentro de la misma sesión —sin
+  inferir garaje, box, pit lane o fase de parada— y un ciclo
+  real connected -> disconnected -> reconnected sin payload desconectado. D5
+  implementó el mapper canónico
+  `Observation → Batch`: fixture real 44/44, identidad opaca por slot y
+  generación, jugador/header coherentes cuando existe y limpieza segura al
+  desaparecer, sesión/epoch literal según §2.4 y commit de estado únicamente
+  tras aceptación del sink. El adapter real del `DriverManager` y el reloj
+  duradero conservan continuidad y detectan resets entre reconexiones. Focal
+  x20 y Telemetry Core pasan. Review D8 final `APPROVE`, P0/P1/P2/P3 = 0. D4B capturó y
+  hash-pinned LMU 1.4
+  real en menú y pista, ha probado los ocho solapes SHM/REST —incluido circuito
+  antes de anonimizar— y ha habilitado únicamente `1.4.0.0` mediante file y
+  product version coincidentes. Lector productivo opt-in `live` PASS. Sin
+  derivaciones, wiring, PR, merge ni promoción todavía.
 - TC-07B–TC-09: pendientes.
 
-No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
-permanecen `missing` hasta tener inputs demostrados. La suite global de ISA-37
-pasó después de generar `frontend/dist`; `go vet` conserva tres avisos heredados
-de `unsafe.Pointer` en readers Win32.
+No existe wiring productivo del nuevo reducer/derivaciones. Gaps, delta, pit y
+reconexión tienen inputs, algoritmo, fixtures reales y proyección demostrados
+en D6-D9. El siguiente corte puede preparar el shadow wiring después de cerrar
+review y entrega de ISA-129. `go vet` conserva seis avisos heredados de
+`unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones
 
@@ -185,9 +217,16 @@ de `unsafe.Pointer` en readers Win32.
   profundos, incluido `LastLaunchedAt`; el catálogo conserva top-K global
   determinista con más de 500 entradas. Tests junction Windows, focales
   repetidos y race pasan. Suite Go global serial final: PASS.
-- **P3 heredado:** tres avisos `unsafe.Pointer` Win32 en vet.
+- **P3 heredado:** seis avisos `unsafe.Pointer` Win32 en vet global; los seis
+  archivos son idénticos a la base ISA-105.
+- **Deuda heredada reproducida:** ISA-118 conserva historial de flakiness por
+  contención Windows de `app-settings.json.tmp`, pero la ejecución global final
+  de ISA-129 queda PASS. El lint global conserva 32 errores y 2 warnings fuera
+  del área focal; el único error heredado dentro de un archivo tocado se cerró.
 - **P2 operativo:** Nightly/Testers no existen; ISA-121 bloquea promoción.
-- **P2 funcional conocido:** gaps/delta siguen missing hasta demostrar inputs.
+- **Gates funcionales ISA-129 cerrados:** pit/outlap, disconnect/reconnect y las
+  dos vueltas Delta proceden de evidencia real sanitizada; no hay sustitución
+  sintética ni cutover.
 
 ## Issues
 
@@ -202,13 +241,14 @@ de `unsafe.Pointer` en readers Win32.
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
-| Pendientes | ISA-106–117 e ISA-87 según dependencias |
+| Cerrada técnicamente | ISA-129 / TC-07A.1; D0-D9 aceptados, entrega operativa pendiente |
+| Pendientes | ISA-106–117 e ISA-87 según dependencias y cierre de ISA-129 |
 
 ## Siguiente acción exacta
 
-Crear y cerrar ISA-129 / TC-07A.1 antes de ISA-106 para
-parrilla/timing/gaps/delta/sesión-unidades y retirada del fallback mock
-conectado. Sin wiring productivo global ni promoción.
+Cerrar el único commit D9, push, PR draft apilada sobre ISA-105 y Linear
+`In Review`. Después actualizar el ledger global en su rama de gobernanza; sin
+merge, promoción, shadow wiring ni cutover.
 
 ## Gate final
 
@@ -218,13 +258,58 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-31, ISA-105 D1–D5 publicados hasta `f2a1ac3`: decoder, adapter,
-comparator, sanitizador, harness `NO LIVE` y evidencia 18/18. Go
-telemetry/app, frontend 297/1.993, build y Playwright pasan; visual Crystal y
-benchmark reproducen deuda de la base exacta sin cambios de baselines/canvas.
-D6 solicitó cuatro P2 y un P3; todos quedaron corregidos con TDD en `f6b43b7`:
-cap separado 64+64, `pitStopCount` retirado, `sourcePaths` reales,
-`vehicles[].id`/`playerVehicleId` explícitos, handoff sincronizado y ADR válido.
-Re-review final `ACCEPT`, P0/P1/P2/P3 = 0. ISA-129 sigue ordenada antes de
-ISA-106. Suite frontend final 297/2.000 y Playwright shadow PASS. PR draft
-`#41`; Linear `In Review`. Sin merge, wiring productivo ni promoción.
+2026-08-01, ISA-129 D9: el harness D8 y el trace Delta real se conservan sin
+repetir las vueltas. Cuatro frames LMU 1.4 zero-rebuild cierran una secuencia
+`InPit=false -> true -> false` dentro de la misma sesión, sin ampliar el
+booleano a etiquetas de garaje/box/pit lane, y la reconexión después
+de ausencia completa de proceso/mapping. Los hashes y sidecars se reproducen
+x20; la desconexión no contiene payload y el reconnect abre una sesión/epoch
+nueva sin aceptar un grid vacío. Los cuatro benchmarks, Telemetry Core,
+frontend 297/2.020, build, lint focal y `diff --check` pasan. `-race` sigue no
+disponible con CGO desactivado. Mi suite Go global final pasa; la review
+independiente reprodujo el P3 Windows heredado ISA-118 de
+`app-settings.json.tmp` en global, serial y focal. Está fuera del diff y no se
+corrige en ISA-129. Lint global y seis warnings Win32 siguen fuera del área
+focal y reproducidos en la base exacta. La review independiente final cerró
+`APPROVE`, P0/P1/P2/P3 abiertos = 0, después de endurecer los JSON de evidencia,
+forzar el tracking de los cuatro binarios y resolver el ledger sin duplicarlo.
+Pendientes solo commit D9, push, PR draft, Linear y ledger global; no hay merge
+ni promoción.
+
+2026-07-31, ISA-129 D7 aceptado: contrato Overlay v1 aditivo con dos
+goldens y matriz de compatibilidad completa. El decoder normaliza ausencias y
+rechaza campos conocidos inválidos; el adapter conserva calidad y no inventa
+datos. La matriz 18/18 queda en 2 exactos, 10 parciales, 5 no comparables y 1
+externo. El cambio legítimo del payload actualizó el hash del replay canónico y
+la expectativa del harness; las suites amplias pasan. Review final `APPROVE`,
+P0/P1/P2/P3 = 0. Siguiente acción exacta: D8, sin wiring productivo, PR, merge
+ni promoción en este punto.
+
+2026-07-31, ISA-129 D6 aceptado: remaining, gaps relativos y self-delta se
+derivan exclusivamente de observaciones canónicas demostradas. La sesión LMU
+real queda preservada como fixture sanitizada de 1.846 muestras a 10 Hz, tres
+wraps y dos vueltas comparables, con SHA-256
+`d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+El test compara contra un oráculo independiente por distancia, fija 100 ms de
+incertidumbre y exige una diferencia superior. Focales x20, dos fuzzers de
+10 s, Telemetry Core, vet focal, benchmarks y `diff --check` PASS. Review final
+`APPROVE`, P0/P1/P2/P3 = 0. Sin proyección Overlay, wiring productivo, PR,
+merge ni promoción. Siguiente: D7.
+
+2026-07-31, ISA-129 D5 aceptado: mapper síncrono fuera de cada driver, 44 identidades
+estables en la fixture real, sesión/epoch/generaciones atómicos y campos
+canónicos completos sin derivaciones. Focal x20, Telemetry Core y suite Go
+global serial PASS. Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+`go test -race` no es ejecutable en este entorno porque Go informa
+`-race requires cgo` y `CGO_ENABLED=0`; no se cambió el toolchain para ocultar
+el gate. Sin wiring productivo, PR, merge ni promoción.
+
+2026-07-31, ISA-129 D4B: cuatro evidencias LMU 1.4 reales y sanitizadas fijadas
+por SHA-256. Pista: práctica, 38 vehículos y jugador; REST live correlacionado.
+Los sentinels negativos finitos de lap distance y gaps son `missing`, nunca
+cero. La revisión adversarial añadió correlación de circuito mediante digest
+privado en memoria y recapturó el par final. Driver y CLI x20, Telemetry Core,
+lector opt-in y auditoría de privacidad PASS. La suite Go global reprodujo solo
+la contención Windows heredada de `app-settings.json.tmp`; el focal aislado
+pasó al repetir y la suite global serial quedó verde. Siguiente: D5. Sin PR,
+merge, wiring productivo ni promoción.

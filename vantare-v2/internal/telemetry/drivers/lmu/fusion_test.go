@@ -13,19 +13,31 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestAuthorityMatrixV2ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
+func TestAuthorityMatrixV3ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
 	want := []catalog.SignalID{
 		catalog.SignalSessionSourceTime, catalog.SignalSessionTrackName, catalog.SignalSessionType,
-		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent, catalog.SignalVehicleName,
+		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent,
+		catalog.SignalIdentityDriverName, catalog.SignalVehicleName, catalog.SignalStandingsCompletedLaps,
+		catalog.SignalPitStopCount, catalog.SignalStandingsPosition, catalog.SignalPitInPit,
 		catalog.SignalSessionLapNumber, catalog.SignalVehicleGear, catalog.SignalVehicleEngineRPM,
 		catalog.SignalVehicleSpeedMPS, catalog.SignalControlsThrottle, catalog.SignalControlsBrake,
-		catalog.SignalControlsClutch, catalog.SignalStandingsPosition, catalog.SignalStandingsCompletedLaps,
-		catalog.SignalPitStopCount,
-		catalog.SignalPitInPit,
+		catalog.SignalControlsClutch, catalog.SignalSessionEndTime, catalog.SignalSessionMaximumLaps,
+		catalog.SignalVehicleClass, catalog.SignalStandingsSector, catalog.SignalStandingsLapDistance,
+		catalog.SignalStandingsBestLapTime, catalog.SignalStandingsLastLapTime,
+		catalog.SignalStandingsEstimatedLapTime, catalog.SignalStandingsPenaltyCount,
+		catalog.SignalStandingsTimeBehindLeader, catalog.SignalStandingsLapsBehindLeader,
+		catalog.SignalStandingsTimeBehindNext, catalog.SignalStandingsLapsBehindNext,
+		catalog.SignalEnergyFuelAmount, catalog.SignalEnergyFuelCapacity,
 	}
 	first, second := AuthorityMatrix(), AuthorityMatrix()
-	if MatrixVersion != 2 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
+	if MatrixVersion != 3 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
 		t.Fatalf("version=%d matrix=%#v", MatrixVersion, first)
+	}
+	overlaps := map[catalog.SignalID]bool{
+		catalog.SignalSessionSourceTime: true, catalog.SignalSessionTrackName: true,
+		catalog.SignalSessionType: true, catalog.SignalSessionVehicleCount: true,
+		catalog.SignalVehiclePlayerPresent: true, catalog.SignalStandingsPosition: true,
+		catalog.SignalStandingsCompletedLaps: true, catalog.SignalPitStopCount: true,
 	}
 	seen := make(map[catalog.SignalID]bool, len(first))
 	for index, rule := range first {
@@ -36,7 +48,7 @@ func TestAuthorityMatrixV2ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
 		if definition, ok := catalog.ByID(rule.Signal); !ok || definition.ID != rule.Signal {
 			t.Fatalf("rule %d references non-canonical signal %d", index, rule.Signal)
 		}
-		if index < 5 {
+		if overlaps[rule.Signal] {
 			if rule.Preferred != SourceSharedMemory || rule.Alternative != SourceREST || !rule.Equivalent || rule.AlternativeTTL <= 0 {
 				t.Fatalf("overlap rule %d = %#v", index, rule)
 			}
@@ -50,6 +62,187 @@ func TestAuthorityMatrixV2ReferencesCanonicalCatalogExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestSourceTimeConflictProjectsBothSamplesToDecisionInstant(t *testing.T) {
+	wall := time.Unix(899, 0).UTC()
+	shared := Observation{Source: SourceSharedMemory, SourceTime: observed(time.Second)}
+	rest := Observation{Source: SourceREST, REST: RESTObservation{
+		SourceTime: timedObservedAt(1100*time.Millisecond, wall, monotonicStamp{elapsed: 100 * time.Millisecond, set: true}),
+	}}
+	var fusion Fusion
+	_ = fusion.Merge(wall, 0, shared)
+	equivalent := fusion.Merge(wall.Add(100*time.Millisecond), 100*time.Millisecond, rest)
+	if len(equivalent.Conflicts) != 0 {
+		t.Fatalf("projected-equivalent source clocks conflict: %#v", equivalent.Conflicts)
+	}
+	assertFieldValue(t, equivalent.SourceTime, time.Second)
+
+	rest.REST.SourceTime = timedObservedAt(2*time.Second, wall, monotonicStamp{elapsed: 200 * time.Millisecond, set: true})
+	conflicting := fusion.Merge(wall.Add(200*time.Millisecond), 200*time.Millisecond, rest)
+	if len(conflicting.Conflicts) != 1 || conflicting.Conflicts[0].Signal != catalog.SignalSessionSourceTime {
+		t.Fatalf("projected source-clock conflicts = %#v", conflicting.Conflicts)
+	}
+}
+
+func TestEveryAuthorityOverlapUsesTheClosedQualityTable(t *testing.T) {
+	overlaps := []catalog.SignalID{
+		catalog.SignalSessionSourceTime,
+		catalog.SignalSessionTrackName,
+		catalog.SignalSessionType,
+		catalog.SignalSessionVehicleCount,
+		catalog.SignalVehiclePlayerPresent,
+		catalog.SignalStandingsPosition,
+		catalog.SignalStandingsCompletedLaps,
+		catalog.SignalPitStopCount,
+	}
+	tests := []struct {
+		name          string
+		preferred     schema.Field[time.Duration]
+		alternative   schema.Field[time.Duration]
+		wantSource    ObservationSource
+		wantFreshness schema.Freshness
+		wantFallback  bool
+		wantConflict  bool
+	}{
+		{name: "fresh equal", preferred: observed(time.Duration(0)), alternative: observed(time.Duration(0)), wantSource: SourceSharedMemory, wantFreshness: schema.FreshnessFresh},
+		{name: "fresh conflict", preferred: observed(time.Duration(0)), alternative: observed(time.Second), wantSource: SourceSharedMemory, wantFreshness: schema.FreshnessFresh, wantConflict: true},
+		{name: "preferred missing", preferred: schema.MissingField[time.Duration](), alternative: observed(time.Duration(0)), wantSource: SourceREST, wantFreshness: schema.FreshnessFresh, wantFallback: true},
+		{name: "preferred invalid", preferred: fieldWithFreshness(time.Duration(0), schema.FreshnessInvalid), alternative: observed(time.Duration(0)), wantSource: SourceREST, wantFreshness: schema.FreshnessFresh, wantFallback: true},
+		{name: "preferred stale", preferred: fieldWithFreshness(time.Duration(0), schema.FreshnessStale), alternative: observed(time.Duration(0)), wantSource: SourceREST, wantFreshness: schema.FreshnessFresh, wantFallback: true},
+		{name: "both stale", preferred: fieldWithFreshness(time.Duration(0), schema.FreshnessStale), alternative: fieldWithFreshness(time.Second, schema.FreshnessStale), wantSource: SourceSharedMemory, wantFreshness: schema.FreshnessStale, wantConflict: true},
+		{name: "zero is present", preferred: observed(time.Duration(0)), alternative: schema.MissingField[time.Duration](), wantSource: SourceSharedMemory, wantFreshness: schema.FreshnessFresh},
+	}
+	stamp := monotonicStamp{set: true}
+	for _, signal := range overlaps {
+		rule := ruleFor(signal)
+		for _, tt := range tests {
+			t.Run(catalogKey(t, signal)+"/"+tt.name, func(t *testing.T) {
+				result := Observation{}
+				var got schema.Field[time.Duration]
+				if signal == catalog.SignalSessionSourceTime {
+					got = chooseSourceTime(0, rule, tt.preferred, stamp, tt.alternative, stamp, &result)
+				} else {
+					got = chooseField(0, rule, tt.preferred, stamp, tt.alternative, stamp, &result)
+				}
+				if len(result.Decisions) != 1 {
+					t.Fatalf("decisions=%#v", result.Decisions)
+				}
+				decision := result.Decisions[0]
+				if decision.Source != tt.wantSource || decision.Freshness != tt.wantFreshness || decision.Fallback != tt.wantFallback {
+					t.Fatalf("decision=%+v want source=%v freshness=%v fallback=%v", decision, tt.wantSource, tt.wantFreshness, tt.wantFallback)
+				}
+				if got.Freshness() != tt.wantFreshness || (len(result.Conflicts) == 1) != tt.wantConflict {
+					t.Fatalf("field=%v conflicts=%#v", got.Freshness(), result.Conflicts)
+				}
+			})
+		}
+	}
+}
+
+func catalogKey(t *testing.T, signal catalog.SignalID) string {
+	t.Helper()
+	definition, ok := catalog.ByID(signal)
+	if !ok {
+		t.Fatalf("unknown signal %d", signal)
+	}
+	return definition.Key
+}
+
+func TestFusionRESTFallbackIsLimitedToSHMIdentifiedPlayer(t *testing.T) {
+	wall := time.Unix(900, 0).UTC()
+	player := VehicleObservation{
+		SourceID:      7,
+		Player:        observed(true),
+		Position:      invalid[standings.Position](),
+		CompletedLaps: invalid[standings.CompletedLaps](),
+		PitStopCount:  invalid[pit.StopCount](),
+	}
+	rival := VehicleObservation{
+		SourceID:      8,
+		Player:        observed(false),
+		Position:      observed(standings.Position(2)),
+		CompletedLaps: observed(standings.CompletedLaps(4)),
+		PitStopCount:  observed(pit.StopCount(0)),
+	}
+	shared := sharedObservation(wall, "track")
+	shared.PlayerPresent = observed(true)
+	shared.Vehicles = []VehicleObservation{rival, player}
+	rest := restObservation(wall, 0, "track")
+	rest.REST.PlayerPosition = timedObservedAt(standings.Position(3), wall, monotonicStamp{set: true})
+	rest.REST.CompletedLaps = timedObservedAt(standings.CompletedLaps(0), wall, monotonicStamp{set: true})
+	rest.REST.PitStopCount = timedObservedAt(pit.StopCount(0), wall, monotonicStamp{set: true})
+
+	got := (&Fusion{}).Merge(wall, 0, shared, rest)
+	if len(got.Vehicles) != 2 || got.Vehicles[0].SourceID != 8 || got.Vehicles[1].SourceID != 7 {
+		t.Fatalf("grid identity/order changed: %#v", got.Vehicles)
+	}
+	assertFieldValue(t, got.Vehicles[0].Position, standings.Position(2))
+	assertFieldValue(t, got.Vehicles[1].Position, standings.Position(3))
+	assertFieldValue(t, got.Vehicles[1].CompletedLaps, standings.CompletedLaps(0))
+	assertFieldValue(t, got.Vehicles[1].PitStopCount, pit.StopCount(0))
+	for _, signal := range []catalog.SignalID{catalog.SignalStandingsPosition, catalog.SignalStandingsCompletedLaps, catalog.SignalPitStopCount} {
+		decision := decisionFor(t, got, signal)
+		if decision.Source != SourceREST || !decision.Fallback {
+			t.Fatalf("decision %d = %+v", signal, decision)
+		}
+	}
+
+	withoutGrid := sharedObservation(wall, "track")
+	withoutGrid.PlayerPresent = schema.MissingField[bool]()
+	got = (&Fusion{}).Merge(wall, 0, withoutGrid, rest)
+	if len(got.Vehicles) != 0 {
+		t.Fatalf("REST created grid: %#v", got.Vehicles)
+	}
+	for _, field := range []schema.Freshness{got.PlayerPosition.Freshness(), got.CompletedLaps.Freshness(), got.PitStopCount.Freshness()} {
+		if field != schema.FreshnessMissing {
+			t.Fatalf("REST created player field without SHM identity: %v", field)
+		}
+	}
+}
+
+func TestFusionFreshSHMPlayerWinsConflictAndRESTNeverModifiesRival(t *testing.T) {
+	wall := time.Unix(901, 0).UTC()
+	shared := sharedObservation(wall, "track")
+	shared.PlayerPresent = observed(true)
+	shared.Vehicles = []VehicleObservation{
+		{SourceID: 11, Player: observed(false), Position: observed(standings.Position(1)), CompletedLaps: observed(standings.CompletedLaps(9)), PitStopCount: observed(pit.StopCount(2))},
+		{SourceID: 12, Player: observed(true), Position: observed(standings.Position(4)), CompletedLaps: observed(standings.CompletedLaps(0)), PitStopCount: observed(pit.StopCount(0))},
+	}
+	rest := restObservation(wall, 0, "track")
+	rest.REST.PlayerPosition = timedObservedAt(standings.Position(40), wall, monotonicStamp{set: true})
+	rest.REST.CompletedLaps = timedObservedAt(standings.CompletedLaps(30), wall, monotonicStamp{set: true})
+	rest.REST.PitStopCount = timedObservedAt(pit.StopCount(10), wall, monotonicStamp{set: true})
+	got := (&Fusion{}).Merge(wall, 0, shared, rest)
+	assertFieldValue(t, got.Vehicles[0].Position, standings.Position(1))
+	assertFieldValue(t, got.Vehicles[1].Position, standings.Position(4))
+	assertFieldValue(t, got.Vehicles[1].CompletedLaps, standings.CompletedLaps(0))
+	assertFieldValue(t, got.Vehicles[1].PitStopCount, pit.StopCount(0))
+	for _, signal := range []catalog.SignalID{catalog.SignalStandingsPosition, catalog.SignalStandingsCompletedLaps, catalog.SignalPitStopCount} {
+		decision := decisionFor(t, got, signal)
+		if decision.Source != SourceSharedMemory || decision.Fallback {
+			t.Fatalf("decision %d = %+v", signal, decision)
+		}
+	}
+}
+
+func TestFusionFrozenSharedMemoryStalesWholeGridIncludingFalseInPit(t *testing.T) {
+	wall := time.Unix(902, 0).UTC()
+	shared := sharedObservation(wall, "track")
+	shared.SourceTime = fieldWithFreshness(time.Duration(0), schema.FreshnessStale)
+	shared.PlayerPresent = fieldWithFreshness(true, schema.FreshnessStale)
+	shared.Vehicles = []VehicleObservation{{
+		SourceID: 1, Player: observed(true), Position: observed(standings.Position(1)),
+		InPit: observed(pit.InPit(false)),
+	}}
+	got := (&Fusion{}).Merge(wall, 0, shared)
+	if len(got.Vehicles) != 1 || got.Vehicles[0].InPit.Freshness() != schema.FreshnessStale {
+		t.Fatalf("stale grid=%#v", got.Vehicles)
+	}
+	value, present := got.Vehicles[0].InPit.Value()
+	if !present || bool(value) {
+		t.Fatalf("stale false in-pit=(%v,%v)", value, present)
+	}
+}
+
 func TestFusionPublishesInPitOnlyFromSharedMemoryWithExplicitFalsePresence(t *testing.T) {
 	shared := Observation{Source: SourceSharedMemory, InPit: fieldWithFreshness(pit.InPit(false), schema.FreshnessFresh)}
 	rest := restObservation(time.Unix(0, 0), time.Second, "track")
@@ -58,7 +251,7 @@ func TestFusionPublishesInPitOnlyFromSharedMemoryWithExplicitFalsePresence(t *te
 	if !present || bool(value) || got.InPit.Freshness() != schema.FreshnessFresh {
 		t.Fatalf("in_pit = (%v,%v,%v)", value, present, got.InPit.Freshness())
 	}
-	decision := got.Decisions[len(got.Decisions)-1]
+	decision := decisionFor(t, got, catalog.SignalPitInPit)
 	if decision.Signal != catalog.SignalPitInPit || decision.Source != SourceSharedMemory || decision.Fallback {
 		t.Fatalf("decision = %+v", decision)
 	}
@@ -74,7 +267,9 @@ func TestFusionPreferredFallbackPartialRecoveryAndZero(t *testing.T) {
 	assertFieldValue(t, batch.SourceTime, time.Duration(0))
 	assertFieldValue(t, batch.VehicleCount, schema.Count(0))
 	assertFieldValue(t, batch.PlayerPresent, false)
-	assertFieldValue(t, batch.CompletedLaps, standings.CompletedLaps(0))
+	if batch.CompletedLaps.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("REST created completed laps without SHM player identity: %v", batch.CompletedLaps.Freshness())
+	}
 	if batch.Source != SourceCanonical || len(batch.Decisions) != len(AuthorityMatrix()) || batch.REST != (RESTObservation{}) {
 		t.Fatalf("canonical metadata = %#v", batch)
 	}
@@ -208,7 +403,7 @@ func TestOverlapNormalizationsAreEquivalent(t *testing.T) {
 			shm  int32
 			rest string
 		}{
-			{1, "PRACTICE1"}, {3, "QUALIFY"}, {4, "RACE1"}, {5, "RACE2"},
+			{1, "PRACTICE1"}, {5, "QUALIFY"}, {10, "RACE1"}, {11, "RACE2"},
 		} {
 			shmValue, _ := validateSessionType(pair.shm).Value()
 			restValue, _ := parseRESTSessionType(pair.rest).Value()

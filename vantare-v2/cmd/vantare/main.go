@@ -607,12 +607,15 @@ func main() {
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
-	live := flag.Bool("live", true, "use LMU shared memory (use -live=false for mock telemetry)")
+	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
 	reorderArgs()
 	flag.Parse()
+	if !*live {
+		log.Printf("live telemetry disabled explicitly; disconnected state will be published")
+	}
 
 	if err := server.ValidateAddr(*httpAddr); err != nil {
 		log.Fatalf("http: %v", err)
@@ -1351,7 +1354,7 @@ func main() {
 	wailsApp.Event.On("overlay:start", func(event *application.CustomEvent) {
 		target := readProfileTarget(event)
 		if err := vapp.EnsureLiveTelemetry(); err != nil {
-			log.Printf("overlay:start live telemetry unavailable, using fallback: %v", err)
+			log.Printf("overlay:start live telemetry unavailable; telemetry remains disconnected: %v", err)
 		}
 		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
 
@@ -1380,7 +1383,7 @@ func main() {
 
 	wailsApp.Event.On("overlay:start-active", func(event *application.CustomEvent) {
 		if err := vapp.EnsureLiveTelemetry(); err != nil {
-			log.Printf("overlay:start-active live telemetry unavailable, using fallback: %v", err)
+			log.Printf("overlay:start-active live telemetry unavailable; telemetry remains disconnected: %v", err)
 		}
 		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
 

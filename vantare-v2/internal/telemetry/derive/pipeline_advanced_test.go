@@ -1,8 +1,10 @@
 package derive
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -14,6 +16,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 func TestReducerCoordinatorAndDerivationPipelineComposeWithoutProductWiring(t *testing.T) {
@@ -58,6 +62,255 @@ func TestReducerCoordinatorAndDerivationPipelineComposeWithoutProductWiring(t *t
 	if len(state.Derived.ControlsHistory.Samples) != 1 {
 		t.Fatalf("derived history = %+v", state.Derived.ControlsHistory.Samples)
 	}
+}
+
+func TestPipelineDerivesSessionRemainingAndRelativeGaps(t *testing.T) {
+	header := envelope.Header{
+		Cursor:   schema.Cursor{Epoch: 1, Sequence: 1},
+		Identity: identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player"},
+	}
+	state := core.ObservedState{
+		SourceTime:    derivedInput(25*time.Second, schema.FreshnessFresh),
+		EndTime:       derivedInput(session.EndTime(100), schema.FreshnessFresh),
+		PlayerPresent: derivedInput(true, schema.FreshnessFresh),
+		Vehicles: []core.VehicleState{
+			gapVehicle("player", 10, 0, schema.FreshnessFresh),
+			gapVehicle("other", 15, 0, schema.FreshnessFresh),
+		},
+	}
+	snapshot, err := envelope.NewSnapshot(header, state, cloneObservedForTest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := NewPipeline(Config{}).Apply(context.Background(), snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := output.Value()
+	remaining, present := got.Derived.SessionRemaining.Value()
+	if !present || remaining != 75 || got.Derived.SessionRemaining.Provenance() != schema.ProvenanceDerived {
+		t.Fatalf("remaining = (%v,%t,%v)", remaining, present, got.Derived.SessionRemaining.Provenance())
+	}
+	assertGap(t, got.Derived.Gaps, "other", -5, true, 0)
+}
+
+func TestPipelineLapLimitedSessionPreservesMaximumLapsWithoutInventingRemainingTime(t *testing.T) {
+	header := envelope.Header{
+		Cursor:   schema.Cursor{Epoch: 1, Sequence: 1},
+		Identity: identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player"},
+	}
+	state := core.ObservedState{
+		SourceTime:  derivedInput(25*time.Second, schema.FreshnessFresh),
+		EndTime:     schema.MissingField[session.EndTime](),
+		MaximumLaps: derivedInput(session.MaximumLaps(100), schema.FreshnessFresh),
+	}
+	snapshot, err := envelope.NewSnapshot(header, state, cloneObservedForTest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := NewPipeline(Config{}).Apply(context.Background(), snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := output.Value()
+	maximum, present := got.Observed.MaximumLaps.Value()
+	if !present || maximum != 100 {
+		t.Fatalf("maximum laps = (%v,%t)", maximum, present)
+	}
+	if _, present := got.Derived.SessionRemaining.Value(); present || got.Derived.SessionRemaining.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("lap-limited session invented remaining time: %+v", got.Derived.SessionRemaining)
+	}
+}
+
+func TestPipelineSelfDeltaStateSurvivesContinuousSnapshots(t *testing.T) {
+	pipeline := NewPipeline(Config{})
+	inputs := []struct {
+		lap      session.LapNumber
+		distance standings.LapDistance
+		at       time.Duration
+	}{
+		{1, 100, 10 * time.Second},
+		{2, 0, 20 * time.Second},
+		{2, 100, 30 * time.Second},
+		{2, 200, 40 * time.Second},
+		{3, 0, 50 * time.Second},
+		{3, 100, 59 * time.Second},
+	}
+	var got FinalState
+	for index, input := range inputs {
+		header := deltaHeader(schema.Sequence(index + 1))
+		snapshot, err := envelope.NewSnapshot(header, deltaObserved(input.lap, input.distance, input.at, false, schema.FreshnessFresh), cloneObservedForTest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := pipeline.Apply(context.Background(), snapshot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, _ = output.Value()
+	}
+	assertDeltaSeconds(t, got.Derived.Delta, -1)
+}
+
+func TestPipelineOverlayTimingMatchesGolden(t *testing.T) {
+	pipeline := NewPipeline(Config{})
+	inputs := []struct {
+		lap      session.LapNumber
+		distance standings.LapDistance
+		at       time.Duration
+	}{
+		{1, 100, 10 * time.Second},
+		{2, 0, 20 * time.Second},
+		{2, 100, 30 * time.Second},
+		{2, 200, 40 * time.Second},
+		{3, 0, 50 * time.Second},
+		{3, 100, 59 * time.Second},
+	}
+	var final FinalState
+	for index, input := range inputs {
+		state := deltaObserved(input.lap, input.distance, input.at, false, schema.FreshnessFresh)
+		state.EndTime = derivedInput(session.EndTime(1000), schema.FreshnessFresh)
+		state.Vehicles[0].TimeBehindLeader = derivedInput(standings.TimeGap(10), schema.FreshnessFresh)
+		state.Vehicles[0].LapsBehindLeader = derivedInput(standings.LapGap(0), schema.FreshnessFresh)
+		state.Vehicles = append(state.Vehicles, gapVehicle("other", 15, 0, schema.FreshnessFresh))
+		snapshot, err := envelope.NewSnapshot(deltaHeader(schema.Sequence(index+1)), state, cloneObservedForTest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := pipeline.Apply(context.Background(), snapshot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		final, _ = output.Value()
+	}
+
+	remaining, _ := final.Derived.SessionRemaining.Value()
+	delta, _ := final.Derived.Delta.Seconds.Value()
+	reference, _ := final.Derived.Delta.Reference.Value()
+	other := final.Derived.Gaps.Vehicles[1]
+	gapSeconds, _ := other.Time.Value()
+	gapLaps, _ := other.Laps.Value()
+	history := make([]overlayDeltaSampleGolden, len(final.Derived.Delta.History))
+	for index, sample := range final.Derived.Delta.History {
+		history[index] = overlayDeltaSampleGolden{
+			Epoch: uint64(sample.Cursor.Epoch), Sequence: uint64(sample.Cursor.Sequence),
+			SourceTimeNS: int64(sample.SourceTime), LapDistanceMeters: float64(sample.LapDistance),
+			Seconds: float64(sample.Seconds),
+		}
+	}
+	algorithms := make([]string, len(final.Derived.Algorithms))
+	for index, algorithm := range final.Derived.Algorithms {
+		algorithms[index] = fmt.Sprintf("%s@%d", algorithm.ID, algorithm.Version)
+	}
+	view := overlayTimingGolden{
+		SessionRemainingSeconds: float64(remaining),
+		Gap:                     overlayGapGolden{Vehicle: string(other.Vehicle), Seconds: float64(gapSeconds), Laps: int32(gapLaps)},
+		Delta: overlayDeltaGolden{
+			Seconds: float64(delta), Reference: uint8(reference), History: history,
+		},
+		Algorithms: algorithms,
+	}
+	got, err := json.MarshalIndent(view, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = append(got, '\n')
+	want, err := os.ReadFile("testdata/overlay_timing_v1.golden.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("overlay timing golden mismatch:\n%s", got)
+	}
+}
+
+type overlayTimingGolden struct {
+	SessionRemainingSeconds float64            `json:"sessionRemainingSeconds"`
+	Gap                     overlayGapGolden   `json:"gap"`
+	Delta                   overlayDeltaGolden `json:"delta"`
+	Algorithms              []string           `json:"algorithms"`
+}
+
+type overlayGapGolden struct {
+	Vehicle string  `json:"vehicle"`
+	Seconds float64 `json:"seconds"`
+	Laps    int32   `json:"laps"`
+}
+
+type overlayDeltaGolden struct {
+	Seconds   float64                    `json:"seconds"`
+	Reference uint8                      `json:"reference"`
+	History   []overlayDeltaSampleGolden `json:"history"`
+}
+
+type overlayDeltaSampleGolden struct {
+	Epoch             uint64  `json:"epoch"`
+	Sequence          uint64  `json:"sequence"`
+	SourceTimeNS      int64   `json:"sourceTimeNs"`
+	LapDistanceMeters float64 `json:"lapDistanceMeters"`
+	Seconds           float64 `json:"seconds"`
+}
+
+func TestPipelineCancellationAfterDerivationDoesNotAdvanceDeltaTracker(t *testing.T) {
+	baseline := NewPipeline(Config{})
+	retried := NewPipeline(Config{})
+	inputs := []struct {
+		lap      session.LapNumber
+		distance standings.LapDistance
+		at       time.Duration
+	}{
+		{1, 100, 10 * time.Second},
+		{2, 0, 20 * time.Second},
+		{2, 100, 30 * time.Second},
+		{2, 200, 40 * time.Second},
+		{3, 0, 50 * time.Second},
+		{3, 100, 59 * time.Second},
+	}
+	for index, input := range inputs {
+		sequence := schema.Sequence(index + 1)
+		snapshot, err := envelope.NewSnapshot(
+			deltaHeader(sequence),
+			deltaObserved(input.lap, input.distance, input.at, false, schema.FreshnessFresh),
+			cloneObservedForTest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if index == 3 {
+			if _, err := retried.Apply(&cancelOnErrCall{cancelAt: 3}, snapshot); !errors.Is(err, context.Canceled) {
+				t.Fatalf("cancelled apply error = %v", err)
+			}
+		}
+		if _, err := baseline.Apply(context.Background(), snapshot); err != nil {
+			t.Fatalf("baseline sequence %d: %v", sequence, err)
+		}
+		if _, err := retried.Apply(context.Background(), snapshot); err != nil {
+			t.Fatalf("retry sequence %d: %v", sequence, err)
+		}
+	}
+	baselineSnapshot, _ := baseline.Current()
+	retriedSnapshot, _ := retried.Current()
+	baselineState, _ := baselineSnapshot.Value()
+	retriedState, _ := retriedSnapshot.Value()
+	if !reflect.DeepEqual(baselineState.Derived.Delta, retriedState.Derived.Delta) {
+		t.Fatalf("cancelled tracker diverged\nbaseline=%+v\nretried=%+v", baselineState.Derived.Delta, retriedState.Derived.Delta)
+	}
+}
+
+type cancelOnErrCall struct {
+	calls    int
+	cancelAt int
+}
+
+func (ctx *cancelOnErrCall) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (ctx *cancelOnErrCall) Done() <-chan struct{}       { return nil }
+func (ctx *cancelOnErrCall) Value(any) any               { return nil }
+func (ctx *cancelOnErrCall) Err() error {
+	ctx.calls++
+	if ctx.calls >= ctx.cancelAt {
+		return context.Canceled
+	}
+	return nil
 }
 
 type factCollector struct {

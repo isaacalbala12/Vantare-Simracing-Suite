@@ -48,6 +48,39 @@ No se conectan Driver LMU, DriverManager, Wails/SSE, Overlay, Engineer,
 Strategy, recording, replay, fan-out o derivaciones. La traducción del lote
 fusionado LMU al estado neutral y todo wiring pertenecen a cortes posteriores.
 
+## Mapper LMU Observation → Batch (ISA-129 D5)
+
+`internal/telemetry/drivers/lmu.BatchMapper` materializa ahora esa traducción
+sin conectarla todavía al composition root productivo:
+
+- acepta únicamente una `Observation` canónica, compatible y fusionada;
+- exige firma de sesión, conteo completo, slots no negativos/únicos y como
+  máximo un jugador coherente con `PlayerPresent`;
+- asigna un único `lmu-event-1` por vida del mapper, sesiones opacas y vehículos
+  `slot + generación`, sin usar nombre, posición, clase u otro dato personal;
+- conserva identidad, sesión y cursor entre reconexiones del driver porque el
+  mapper vive fuera de cada instancia; `ObservationBatchSink` enlaza ese owner
+  duradero con el `DriverManager` y el `BatchSink` del reducer;
+- conserva también el último reloj fuente aceptado, de modo que una
+  reconexión no puede ocultar un reset o wrap porque la nueva instancia del
+  driver haya perdido su comparación anterior;
+- vacía slots solo al aceptar una parrilla que los omite; reutilizar el slot
+  crea una generación nueva;
+- cuando el jugador deja de estar presente, limpia el vehículo activo del
+  header sin inventar una sesión o epoch nuevos; reducer y derivaciones
+  aceptan únicamente este cambio hacia vacío y eliminan el historial activo;
+- aplica literalmente la tabla §2.4 del plan ISA-129 para reset, wrap, cambio
+  de circuito/tipo y cambio del jugador;
+- escribe un lote completo una sola vez y confirma cursor/identidad únicamente
+  si `BatchSink` lo acepta. Backpressure, cancelación o rechazo dejan el estado
+  previo intacto. La cancelación se comprueba también después de adquirir la
+  propiedad exclusiva, antes de mapear o escribir.
+
+Los nuevos campos de `ObservedState` y `VehicleState` son copias directas de
+los tipos canónicos admitidos en D3/D4A. Conservan `fresh`, `stale`, `missing`,
+`invalid` y ceros legítimos; el mapper no deriva gaps, delta ni decisiones de
+producto.
+
 ## Verificación
 
 ```powershell

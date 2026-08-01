@@ -1,4 +1,4 @@
-# Derivaciones canónicas ordenadas (ISA-37 / TC-04C)
+# Derivaciones canónicas ordenadas (ISA-129 / TC-07A.1 D6)
 
 ## Resultado
 
@@ -22,11 +22,14 @@ Cada derivación registrada declara:
 - límites de historia;
 - límites de reset.
 
-El registro canónico de este corte contiene una sola derivación:
+El registro canónico contiene cuatro derivaciones fijas:
 
 | Orden | ID | Versión | Inputs | Output | Historia | Reset |
 |---|---|---:|---|---|---:|---|
 | 1 | `controls.history` | 1 | throttle, brake y clutch observados del vehículo activo | historial de controles | 120 muestras | epoch, sesión, run y vehículo |
+| 2 | `session.remaining` | 1 | reloj actual y fin observado de sesión | segundos restantes | — | epoch y sesión |
+| 3 | `standings.relative-gaps` | 1 | tiempo y vueltas detrás del líder de jugador y rivales | gap temporal o delta de vueltas por vehículo | — | epoch, sesión, run y vehículo |
+| 4 | `session.self-delta` | 1 | reloj, vuelta, distancia e InPit observados del jugador | delta, referencia y tendencia | 18.000 muestras privadas; 120 públicas | epoch, sesión, run y vehículo |
 
 `Registry` devuelve copias defensivas. `ValidateDefinitions` rechaza ID+versión
 duplicados, órdenes duplicados/no contiguos, outputs con más de un productor,
@@ -56,24 +59,53 @@ real de sesión/evento y cambio de vehículo/run. Un cambio de piloto o equipo
 dentro del mismo run no resetea historia, igual que en reducer y
 `SessionCoordinator`.
 
-## Gaps y delta
+## Remaining, gaps y delta
 
-Gaps y delta permanecen explícitamente `missing` y no aparecen en el registro
-de algoritmos.
+`session.remaining@1` calcula únicamente `end-current`. Ambos inputs deben ser
+finitos, compatibles y estar ordenados. Cero sigue siendo un resultado válido;
+una sesión limitada por vueltas conserva `MaximumLaps` y no recibe un tiempo
+inventado.
 
-No se migra el paquete legacy `gap`: el estado observado canónico todavía no
-incluye distancia de vuelta, longitud de pista ni tiempos de referencia con
-unidad, presencia y convención de signo demostradas. El inventario deja esas
-preguntas abiertas.
+`standings.relative-gaps@1` usa
+`player.timeBehindLeader - vehicle.timeBehindLeader`. Positivo significa rival
+por delante y negativo rival por detrás. Si existe diferencia de vueltas, solo
+publica el delta de vueltas: nunca transforma una vuelta en segundos ficticios.
+Player markers, procedencia observada, presencia, finitud y calidad deben ser
+demostrables.
 
-No se migra el paquete legacy `delta`: el estado observado tampoco incluye
-distancia recorrida, tiempo dentro de vuelta, clase ni una referencia canónica.
-El fallback sintético legacy supone velocidad constante y no es evidencia
-suficiente para convertirlo en algoritmo canónico.
+`session.self-delta@1` usa la mejor vuelta válida completada por el jugador como
+referencia. Positivo significa que la vuelta actual es más lenta y negativo que
+es más rápida. La referencia se interpola por distancia exclusivamente entre
+muestras observadas; no extrapola, no consume `mDeltaBest` y no usa el fallback
+legacy de velocidad constante.
 
-Registrar una versión para cualquiera de esos cálculos antes de cerrar esos
-inputs daría autoridad a una semántica no demostrada. Un corte futuro deberá
-añadir characterization/golden de fuente real antes de cambiar `missing`.
+La primera vuelta parcial solo sincroniza. Pit, dato missing/invalid, regresión
+de vuelta, cambio de epoch/sesión/run/vehículo o una discontinuidad grande
+invalidan la candidata. La evidencia LMU 1.4 demostró dos particularidades del
+stream real:
+
+- LMU puede repetir frames fresh con el mismo reloj; una repetición idéntica se
+  ignora, mientras que datos distintos con el mismo reloj se rechazan;
+- `Lap Dist` puede oscilar unos pocos metros y el contador de vuelta puede
+  cambiar hasta `500 ms` antes o después del reset de distancia. El tracker
+  conserva un high-water mark, ignora esas oscilaciones para construir la
+  referencia y solo considera wrap una caída de al menos `100 m` confirmada por
+  el cambio de vuelta dentro de esa ventana.
+
+La traza sanitizada real contiene 1.846 muestras a 10 Hz, tres wraps y dos
+vueltas comparables. Su SHA-256 es
+`d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+La primera vuelta midió `96,2 s`, la segunda `85,8 s`, y el test independiente
+comprueba en cada muestra comparable no nula que el signo derivado coincide con
+la diferencia temporal medida a la misma distancia interpolada. El golden fija
+la incertidumbre de muestreo en `100 ms` y exige al menos una diferencia real y
+derivada superior a ese umbral.
+
+Dos vueltas solo son comparables si sus dominios de distancia tienen un tramo
+real solapado. Una regresión de vuelta elimina referencia e historial antes de
+cualquier ruta especial de timestamp o wrap pendiente. El capturador aplica el
+mismo contrato, propaga fallos reales del driver aunque ya tenga dos vueltas y
+elimina el destino si escritura, sincronización o cierre no terminan bien.
 
 ## Orden, atomicidad y ownership
 
@@ -101,10 +133,10 @@ go test ./internal/telemetry/... -run 'TestTelemetryProductionImportsFollowADR00
 go vet ./internal/telemetry/derive
 ```
 
-La verificación manual consiste en ejecutar el test golden/replay y revisar que
-la secuencia `fresh -> stale -> fresh` conserva solo las muestras fresh, limita
-la historia y mantiene gaps/delta missing. No se conecta LMU real, no se altera
-producción y no hay UI nueva que probar.
+La verificación manual consiste en ejecutar el golden/replay y comprobar que la
+traza real reproduce dos vueltas comparables, que los gaps conservan el signo
+documentado y que remaining preserva cero. El corte no modifica UI ni conecta
+todavía el pipeline a producción.
 
 Rollback: revertir el commit de ISA-37. Al no existir wiring productivo,
 persistencia ni formato externo, no requiere migración de datos o configuración.
@@ -128,5 +160,5 @@ Evidencia de este worktree:
 - proyecciones, Wails/SSE, fan-out o transporte;
 - recording/replay productivo;
 - driver LMU, composition root o hot callbacks;
-- migración de gaps/delta sin evidencia;
+- proyección Overlay/TypeScript y wiring productivo, que pertenecen a D7;
 - DAG, plugins o dependencias nuevas.

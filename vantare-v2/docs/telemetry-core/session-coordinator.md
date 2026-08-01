@@ -23,6 +23,13 @@ canónicos de evento, sesión, vehículo, equipo y piloto ya resueltos aguas
 arriba. Para el coche activo, equipo y piloto se toman de la identidad del
 vehículo dentro del snapshot completo.
 
+Desde ISA-129 D5, el `BatchMapper` LMU es el owner anterior al reducer que
+genera evento, sesión, vehículo y cursor. Permanece fuera de las instancias del
+driver para que una reconexión breve no cambie identidades. El coordinator no
+interpreta los campos adicionales de parrilla (clase, sector, tiempos, gaps,
+combustible o controles) como límites de sesión: solo reacciona a las
+identidades y transiciones canónicas ya documentadas.
+
 - Cambio de `SourceID`: conserva sesión e historial.
 - Cambio del número/lista de participantes: no crea una sesión.
 - Desconexión breve y recuperación: emite hechos, pero conserva sesión y epoch.

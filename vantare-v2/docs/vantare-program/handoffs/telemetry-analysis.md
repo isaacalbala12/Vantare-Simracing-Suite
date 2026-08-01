@@ -210,6 +210,12 @@ presencia. La corrección compara ahora bidireccionalmente el conjunto exacto
 fail-closed para módulo adicional, esperado ausente y versión distinta. El
 generador real volvió a producir dos SBOM idénticos con el mismo SHA; spike de
 50 páginas, test/vet focales y tamper de extracción siguen PASS. Pendiente una
-última re-review focal de esta corrección.
+última re-review focal de esta corrección. Esa revisión detectó además un P3:
+PowerShell aceptaba diferencias solo de mayúsculas. La corrección ordinal usa
+comparación case-sensitive para ruta y versión, y añade dos regresiones
+fail-closed (`github.com/Google/uuid` y `V1.6.0`). Las cinco regresiones pasan
+en PowerShell 7 y Windows PowerShell 5.1; el SBOM real conserva 37 componentes y
+el SHA aprobado. Pendiente review independiente de este último delta; ISA-135
+no se considera aprobada.
 Sin dependencias o código de producto, LMU, datos personales, integración ni
 promoción. Pendiente re-review; el gate humano de ADR 0005 viene después.

@@ -43,9 +43,10 @@ un SPDX 2.3 determinista. Dos ejecuciones limpias deben producir el mismo hash.
 La definición reproducible está en `sbom-components.json`; el inventario humano
 y el SPDX resultante viven en `../../evidence/`.
 
-La allowlist de módulos se compara en ambos sentidos contra `go version -m`:
-falla si falta un módulo esperado, aparece uno adicional, cambia una versión o
-existe un reemplazo. La regresión fail-closed se ejecuta con:
+La allowlist de módulos se compara en ambos sentidos y de forma ordinal,
+distinguiendo mayúsculas, contra `go version -m`: falla si falta un módulo
+esperado, aparece uno adicional, cambia una ruta o versión —incluido su
+`casing`— o existe un reemplazo. La regresión fail-closed se ejecuta con:
 
 ```powershell
 ./test-sbom-module-inventory.ps1

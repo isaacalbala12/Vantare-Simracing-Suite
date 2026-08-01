@@ -157,10 +157,14 @@ Nota ISA-135 / TA-03B (2026-08-01):
 - Una re-review focal dejó únicamente un P2 en la allowlist Go del SBOM. Ya se
   compara bidireccionalmente el conjunto exacto `módulo@versión` de
   `go version -m` y se rechazan replacements, módulos añadidos, esperados
-  ausentes y cambios de versión. Las tres regresiones fail-closed PASS; dos
-  generaciones reales limpias conservaron el mismo SHA del SBOM; spike 50
-  páginas, test/vet focales y tamper de extracción PASS. Pendiente re-review
-  focal final; ISA-135 sigue `In Progress`.
+  ausentes y cambios de versión. Una segunda revisión encontró que PowerShell
+  comparaba sin distinguir mayúsculas; ahora rutas y versiones usan igualdad
+  ordinal y cinco regresiones fail-closed cubren también ambos cambios de
+  `casing`. Las cinco regresiones pasan también en Windows PowerShell 5.1 y una
+  regeneración real conserva el mismo SBOM de 37 componentes y SHA. Dos
+  generaciones limpias anteriores conservaron igualmente ese SHA; spike 50
+  páginas, test/vet focales y tamper de extracción PASS. Pendiente una nueva
+  review independiente de la corrección ordinal; ISA-135 sigue `In Progress`.
 
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.

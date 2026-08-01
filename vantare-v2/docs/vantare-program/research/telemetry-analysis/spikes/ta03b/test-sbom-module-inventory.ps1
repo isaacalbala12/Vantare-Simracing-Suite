@@ -30,6 +30,16 @@ $cases = @(
         Name = "changed version"
         Lines = @($validBuildInfo -replace "github.com/google/uuid`tv1\.6\.0", "github.com/google/uuid`tv1.7.0")
         Pattern = "version-mismatch=\[github.com/google/uuid expected=v1.6.0 actual=v1.7.0\]"
+    },
+    [ordered]@{
+        Name = "changed module casing"
+        Lines = @($validBuildInfo -replace "github.com/google/uuid", "github.com/Google/uuid")
+        Pattern = "missing=\[github.com/google/uuid\].*unexpected=\[github.com/Google/uuid\]"
+    },
+    [ordered]@{
+        Name = "changed version casing"
+        Lines = @($validBuildInfo -replace "github.com/google/uuid`tv1\.6\.0", "github.com/google/uuid`tV1.6.0")
+        Pattern = "version-mismatch=\[github.com/google/uuid expected=v1.6.0 actual=V1.6.0\]"
     }
 )
 
@@ -45,4 +55,4 @@ foreach ($case in $cases) {
     }
 }
 
-Write-Output "PASS exact Go module inventory and three fail-closed regressions."
+Write-Output "PASS exact Go module inventory and five fail-closed regressions."

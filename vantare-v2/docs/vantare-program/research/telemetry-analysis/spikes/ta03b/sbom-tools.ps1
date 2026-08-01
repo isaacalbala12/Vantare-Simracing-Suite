@@ -4,7 +4,9 @@ function Assert-ExactGoModuleInventory {
         [Parameter(Mandatory = $true)][object[]]$ExpectedModules
     )
 
-    $expected = @{}
+    $expected = [System.Collections.Generic.Dictionary[string, string]]::new(
+        [System.StringComparer]::Ordinal
+    )
     foreach ($module in $ExpectedModules) {
         $key = [string]$module.module
         if ($expected.ContainsKey($key)) {
@@ -13,7 +15,9 @@ function Assert-ExactGoModuleInventory {
         $expected[$key] = [string]$module.version
     }
 
-    $actual = @{}
+    $actual = [System.Collections.Generic.Dictionary[string, string]]::new(
+        [System.StringComparer]::Ordinal
+    )
     foreach ($line in $BuildInfoLines) {
         if ($line -match '^\s*=>\s+') {
             throw "Unexpected Go module replacement in build information: $($line.Trim())."
@@ -41,7 +45,14 @@ function Assert-ExactGoModuleInventory {
     )
     $versionMismatches = @(
         $expected.Keys |
-            Where-Object { $actual.ContainsKey($_) -and $actual[$_] -ne $expected[$_] } |
+            Where-Object {
+                $actual.ContainsKey($_) -and
+                    -not [string]::Equals(
+                        $actual[$_],
+                        $expected[$_],
+                        [System.StringComparison]::Ordinal
+                    )
+            } |
             Sort-Object |
             ForEach-Object { "$_ expected=$($expected[$_]) actual=$($actual[$_])" }
     )

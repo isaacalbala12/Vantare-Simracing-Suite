@@ -338,7 +338,7 @@ class SafetyTests(unittest.TestCase):
         development = (root / ".github/workflows/discord-known-issues.yml").read_text(encoding="utf-8")
         release = (root / ".github/workflows/discord-release.yml").read_text(encoding="utf-8")
         build = (root / ".github/workflows/discord-build-available.yml").read_text(encoding="utf-8")
-        self.assertRegex(tester, r"branches:\s*\[develop\]")
+        self.assertRegex(tester, r"branches:\s*\[testers\]")
         self.assertNotIn("current-plan.md", tester)
         self.assertIn("LINEAR_API_KEY", development)
         self.assertIn("schedule:", development)

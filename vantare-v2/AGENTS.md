@@ -15,6 +15,14 @@ Regla central: hacer el cambio seguro mas pequeno posible.
 
 - Lee este archivo antes de editar.
 - Lee `docs/current-plan.md` antes de empezar cualquier tarea.
+- Lee `docs/agent-workflow.md` antes de crear ramas, worktrees, PRs o cambiar
+  el estado de una issue de Linear.
+- El flujo canónico es `rama de issue -> nightly -> testers -> master`.
+  `nightly` requiere aprobación inicial de Isaac; `testers` recibe el conjunto
+  corregido; solo Isaac puede autorizar la promoción final a `master`.
+- `develop` es una referencia histórica congelada y no recibe trabajo nuevo.
+- Ninguna rama de issue puede saltarse un canal o integrarse directamente en
+  `testers` o `master`.
 - Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
 - Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - No hagas features, refactors o limpieza general si no están en el alcance.

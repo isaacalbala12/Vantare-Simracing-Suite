@@ -1,5 +1,23 @@
 # Workflow de agentes
 
+## Fuente operativa y ramas
+
+- Linear es la fuente operativa para proyectos, issues y dependencias.
+- Una issue ejecutable con cambios en el repo utiliza una rama Linear, un
+  worktree y una tarea Codex propios.
+- El flujo canónico está documentado en `docs/branch-channels.md`:
+
+```text
+rama de issue -> nightly -> testers -> master
+```
+
+- Isaac aprueba una implementación antes de que entre en `nightly`.
+- El feedback de Nightly se corrige antes de promover el conjunto a `testers`.
+- Solo Isaac puede autorizar `testers -> master`.
+- `develop` queda congelada como referencia histórica y no es un destino.
+- Una promoción es una issue de integración propia; terminar una feature no la
+  promociona automáticamente.
+
 ## Roles
 
 ## Orquestador
@@ -67,13 +85,19 @@ Debe buscar:
 7. Reviewer audita sin editar.
 8. Orquestador recomienda aceptar, corregir, dividir o revertir.
 9. Si se acepta, se hace commit pequeno cuando el usuario lo pida.
-10. Se actualiza `docs/current-plan.md` y `docs/roadmap-execution-board.md`.
+10. El worker deja la issue en `In Review`; no promociona por su cuenta.
+11. Tras la aprobación inicial de Isaac, una issue de integración promueve la
+    entrega a `nightly`.
+12. Después del feedback y sus correcciones, otra promoción lleva `nightly` a
+    `testers`.
+13. Solo una aprobación final de Isaac permite `testers` a `master`.
+14. Se actualiza `docs/current-plan.md` y `docs/roadmap-execution-board.md`.
 
 ## Comunicación de cambios visibles
 
 Si una issue cambia comportamiento que deben conocer o probar los testers, el worker añade un fragmento válido en `docs/changelog/fragments/ISA-N.json` siguiendo `docs/changelog/fragments/schema.json`. No edita mensajes acumulativos ni publica directamente en Discord.
 
-El fragmento debe explicar en español claro el resultado, los detalles técnicos útiles, la validación manual y las limitaciones conocidas. El anuncio se producirá únicamente cuando el fragmento alcance `develop`, después del gate humano. Consulta `docs/discord-communications.md` para la distribución de canales.
+El fragmento debe explicar en español claro el resultado, los detalles técnicos útiles, la validación manual y las limitaciones conocidas. El anuncio amplio para testers se producirá únicamente cuando el fragmento alcance `testers`. Consulta `docs/discord-communications.md` para la distribución de canales.
 
 ## Documentos ejecutables y orquestables
 

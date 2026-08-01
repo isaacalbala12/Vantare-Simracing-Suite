@@ -41,6 +41,7 @@ vantare-v2/*.exe~
 vantare-v2/*.csv
 vantare-v2/frontend/.tmp/
 tools/__pycache__/
+.github/scripts/__pycache__/
 supabase/.temp/
 _lmu-sr-dr-investigation/
 

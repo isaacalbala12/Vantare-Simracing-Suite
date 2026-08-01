@@ -2,7 +2,7 @@ name: Discord tester progress
 
 on:
   push:
-    branches: [develop]
+    branches: [testers]
     paths:
       - "vantare-v2/docs/changelog/fragments/*.json"
   workflow_dispatch:
@@ -23,6 +23,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Verify tester channel
+        run: |
+          test "$GITHUB_REF" = "refs/heads/testers" || {
+            echo "::error::Tester progress can only be published from testers"
+            exit 1
+          }
 
       - name: Collect canonical tester fragments
         id: fragments

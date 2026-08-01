@@ -204,7 +204,7 @@ def render_testers(fragments: list[dict[str, Any]], revision: str, *, include_im
         "allowed_mentions": {"parse": []},
         "embeds": [{
             "title": "Vantare — actualización para testers",
-            "description": f"Build candidata de `develop` · revisión `{revision[:12]}`",
+            "description": f"Build candidata de `testers` · revisión `{revision[:12]}`",
             "color": VANTARE_RED,
             "fields": [
                 {"name": "Resumen", "value": _embed_field(summary), "inline": False},
@@ -230,7 +230,7 @@ def render_testers_html(fragments: list[dict[str, Any]], revision: str) -> str:
         ("LIMITACIÓN CONOCIDA", primary["knownLimitations"][0], ""),
     ]
     return _branded_html(eyebrow="ACTUALIZACIÓN PARA TESTERS", title="Cambios", accent="para validar",
-                         stamp=f"DEVELOP · {revision[:12]}", cards=cards,
+                         stamp=f"TESTERS · {revision[:12]}", cards=cards,
                          footer_left="REVISA LOS TRES PUNTOS", footer_right="VANTARE · CANAL DE TESTERS")
 
 

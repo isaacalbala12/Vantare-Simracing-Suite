@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-121",
+  "type": "change",
+  "summary": "Vantare separa las pruebas tempranas, la validación amplia y las versiones públicas en canales independientes.",
+  "technicalNotes": [
+    "Cada desarrollo se revisa de forma aislada antes de entrar en Nightly.",
+    "Los cambios corregidos pasan de Nightly a Testers y únicamente una aprobación final permite publicarlos desde Master.",
+    "Las notificaciones para testers solo se generan cuando los cambios alcanzan el canal Testers."
+  ],
+  "testing": [
+    "Confirmar que una rama de trabajo solo puede proponer cambios a Nightly.",
+    "Comprobar que Testers únicamente acepta promociones desde Nightly.",
+    "Verificar que Master únicamente acepta promociones desde Testers."
+  ],
+  "knownLimitations": [
+    "La selección de Nightly o Testers dentro de la aplicación se habilitará cuando Billing pueda validar el plan del usuario de forma segura."
+  ]
+}

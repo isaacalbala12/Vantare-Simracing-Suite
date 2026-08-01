@@ -1,3 +1,11 @@
+Nota REL-00 / ISA-121 (2026-08-02):
+- El flujo canónico de entrega pasa a ser `rama de issue -> nightly -> testers -> master`.
+- `nightly` recibe únicamente implementaciones aprobadas inicialmente por Isaac; allí prueba el grupo Pro Plus. Tras corregir el feedback, el conjunto pasa a `testers`; solo Isaac puede autorizar la promoción final a `master`.
+- `develop@f492007ced82766873890990ddebf73e87486dec` queda congelada como referencia histórica mientras existan PRs, worktrees o documentos dependientes. No recibe trabajo nuevo y no se elimina en este corte.
+- Las ramas remotas `nightly` y `testers` nacen exactamente del último `develop`; crear los canales no promociona por sí mismo Telemetry Core ni otros módulos aislados.
+- Contrato operativo y rollback: `docs/branch-channels.md`. La autorización del actualizador por plan requiere ISA-169, ligada a Billing; una selección de UI no es una barrera de acceso.
+- Baseline local del corte: Go PASS, frontend 280/280 archivos y 1851/1851 tests PASS en la ejecución principal, build PASS; una revisión independiente reprodujo un fallo intermitente de `useCanvasInteraction`, y el lint global conserva 33 errores/2 warnings heredados. Ambos checks permanecen visibles como avisos hasta cerrar ISA-172 e ISA-170, sin ocultarlos ni rebajar reglas.
+
 Nota INTEGRACION-ISA-93 (2026-07-19):
 - Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.
 - Se integra la rama publicada `vantareapp/isa-93-os-03-paridad-11-de-los-21-disenos-vantare-crystal` en un worktree limpio basado en `develop@93d52bc`; se conserva íntegramente la historia vigente de `develop`.

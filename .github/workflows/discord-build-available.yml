@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify tester channel
+        run: |
+          test "$GITHUB_REF" = "refs/heads/testers" || {
+            echo "::error::Tester build changelog can only be published from testers"
+            exit 1
+          }
+
       - name: Resolve release metadata
         id: metadata
         env:

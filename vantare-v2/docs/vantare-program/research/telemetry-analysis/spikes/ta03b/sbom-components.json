@@ -1,0 +1,75 @@
+{
+  "duckdb": {
+    "version": "1.5.5",
+    "commit": "d8cdaa33fda8df955cc76ef58a280f68f4cd43fa",
+    "sourceArchiveSha256": "102813201cf8072b8a56b6013978963f3c89202a148fd152d06909477e36fbf8",
+    "binaryArchiveSha256": "8375eb1fcf2212e8a0817950354815d4dde9dd383c2d9fa7b8975b71e278c1bd",
+    "dllSha256": "2b7468a4ad844429e6af2fde0b5f91893e8130a5686a88f11442ab547c7ede46",
+    "licenseSha256": "7e17fd31249fa875cb3b1c5e05c6c3e99b75509f6a2804ca176c217834de1dcb",
+    "staticExtensions": [
+      "autocomplete",
+      "core_functions",
+      "icu",
+      "json",
+      "parquet"
+    ]
+  },
+  "goModules": [
+    {
+      "name": "duckdb-go",
+      "module": "github.com/duckdb/duckdb-go/v2",
+      "version": "v2.10505.0",
+      "license": "MIT",
+      "licenseSha256": "1c80811fb9a8e4f9ec842a2573d118f56605b757f8fa40940f26ae4c495ffaae"
+    },
+    {
+      "name": "duckdb-go-bindings",
+      "module": "github.com/duckdb/duckdb-go-bindings",
+      "version": "v0.10505.0",
+      "license": "MIT",
+      "licenseSha256": "075c33400ffcb0c586dd106a029d3e733e9da3693f8fcb9cebfc651c8a2f14e3"
+    },
+    {
+      "name": "mapstructure",
+      "module": "github.com/go-viper/mapstructure/v2",
+      "version": "v2.5.0",
+      "license": "MIT",
+      "licenseSha256": "22adc4abdece712a737573672f082fd61ac2b21df878efb87ffcff4354a07f26"
+    },
+    {
+      "name": "google-uuid",
+      "module": "github.com/google/uuid",
+      "version": "v1.6.0",
+      "license": "BSD-3-Clause",
+      "licenseSha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d"
+    }
+  ],
+  "vendoredComponents": [
+    { "name": "fmt", "path": "third_party/fmt/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "825c9324e70f8c839c8ba910543dd4a7daee243b86ef960594c11381a19980b8" },
+    { "name": "yyjson", "path": "third_party/yyjson/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "734d7fb3eb56f0a04e6b7ab0c5d3634624a8bfaa2acc87a2c03a029b20868cf8" },
+    { "name": "utf8proc", "path": "third_party/utf8proc/LICENSE", "licenseDeclared": "MIT AND Unicode-3.0", "licenseConcluded": "MIT AND Unicode-3.0", "licenseSha256": "fbc720fcc90fb44396985646f67e4d19be03e0c0539f7138ed9dc6efba49dc49" },
+    { "name": "mbedtls", "path": "third_party/mbedtls/LICENSE", "licenseDeclared": "Apache-2.0 OR GPL-2.0-or-later", "licenseConcluded": "Apache-2.0", "licenseSha256": "9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b" },
+    { "name": "fsst", "path": "third_party/fsst/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "20e9c14ff437a73a6e2b105f1b5aaf9ef24a84d962741c0ab01d04b4910294ab" },
+    { "name": "miniz", "path": "third_party/miniz/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "0115478d567121238cf6cc1c0c361926cf07a49d9e4c9e66da97fac6a01646b3" },
+    { "name": "fast-float", "path": "third_party/fast_float/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3" },
+    { "name": "pcg", "path": "third_party/pcg/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "3febf788fd814bf1f350db169bdc51b28ff7e7596ff1f09cc0181e4fde42b480" },
+    { "name": "re2", "path": "third_party/re2/LICENSE", "licenseDeclared": "BSD-3-Clause", "licenseConcluded": "BSD-3-Clause", "licenseSha256": "6040cda75d90b1738292a631d89934c411ef7ffd543c4d6a1b7edfc8edf29449" },
+    { "name": "vergesort", "path": "third_party/vergesort/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "12dd392860ea2a3633bce5f33d7eebd4308a7e3386b4372260e5e72be7a64033" },
+    { "name": "ska-sort", "path": "third_party/ska_sort/LICENSE", "licenseDeclared": "BSL-1.0", "licenseConcluded": "BSL-1.0", "licenseSha256": "3c3a838f6ac2201bb8255b374fad34e3e1de07940c3acdc09e661e118fb75078" },
+    { "name": "pdqsort", "path": "third_party/pdqsort/LICENSE", "licenseDeclared": "Zlib", "licenseConcluded": "Zlib", "licenseSha256": "323fc18e35fcf058d69d684022ef844f206cb8fefb2bac1298fa1767e0b9ae38" },
+    { "name": "jaro-winkler", "path": "third_party/jaro_winkler/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "077815ffd10f0677d060e9d5c0059592d28c41d1e9985c848435e0ea17ea06c3" },
+    { "name": "hyperloglog", "path": "third_party/hyperloglog/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "3a3fcdbaecbeb1e7dea97843961100c637766e59de4674fed809760283b716e1" },
+    { "name": "cpp-httplib", "path": "third_party/httplib/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "4b45cbe16d7b71b89ae6127e26e0d90a029198ca5e958ad8e3d0b8bbed364d8b" },
+    { "name": "concurrentqueue", "path": "third_party/concurrentqueue/LICENSE", "licenseDeclared": "(BSD-2-Clause OR BSL-1.0) AND Zlib", "licenseConcluded": "BSD-2-Clause AND Zlib", "licenseSha256": "eaf0df40f77e929cd83cd4485de2bdf806c7908db84a52007a700588f6566331" },
+    { "name": "libpg-query", "path": "third_party/libpg_query/LICENSE", "licenseDeclared": "BSD-3-Clause", "licenseConcluded": "BSD-3-Clause", "licenseSha256": "2780b6375a5ab1901472b7694958dd0c8c1381a21f0765cbb64e1923d94c6717" },
+    { "name": "fastpforlib", "path": "third_party/fastpforlib/LICENSE", "licenseDeclared": "Apache-2.0", "licenseConcluded": "Apache-2.0", "licenseSha256": "9ff562631a04b8cb1030c53fdf461bd749c9af0655d86e4f17eb270e935a7fe2" },
+    { "name": "zstd", "path": "third_party/zstd/LICENSE", "licenseDeclared": "BSD-3-Clause OR GPL-2.0-only", "licenseConcluded": "BSD-3-Clause", "licenseSha256": "8b7bc50ec3ecee27224e17d4d316a939fa2ddda9c88e0ddc2f059ce432edbfb9" },
+    { "name": "skiplist", "path": "third_party/skiplist/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "3b9cac57dbb2d7ec76298cb0d33afe12f891e1d0dbb38ff17993a14f3480ee7c" },
+    { "name": "brotli", "path": "third_party/brotli/LICENSE", "licenseDeclared": "MIT", "licenseConcluded": "MIT", "licenseSha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94" },
+    { "name": "lz4", "path": "third_party/lz4/LICENSE", "licenseDeclared": "BSD-2-Clause", "licenseConcluded": "BSD-2-Clause", "licenseSha256": "99b8d2d8011d1ce548c5aaf3270c6bee014507fa821c4f9a7e300a9e11015db7" },
+    { "name": "parquet-format", "path": "third_party/parquet/LICENSE", "licenseDeclared": "Apache-2.0", "licenseConcluded": "Apache-2.0", "licenseSha256": "70b6a7d630fae9f49643f9b16bee42a2feda68301f9c14470e7fb5ad0599bb9f" },
+    { "name": "snappy", "path": "third_party/snappy/LICENSE", "licenseDeclared": "BSD-3-Clause", "licenseConcluded": "BSD-3-Clause", "licenseSha256": "55172044f7e241207117448a4d9d6ba1d0925c8ad66b5d4c08c70adfa9cc3de6" },
+    { "name": "apache-thrift", "path": "third_party/thrift/thrift/LICENSE", "licenseDeclared": "Apache-2.0", "licenseConcluded": "Apache-2.0", "licenseSha256": "23df881cec3192d1f4474633c14eb2ec30a45b84f8daeb82b9de5d2bd3ac8218" },
+    { "name": "icu", "path": "extension/icu/third_party/icu/LICENSE", "licenseDeclared": "ICU", "licenseConcluded": "ICU", "licenseSha256": "f0e4446e54a2cee165d69e007f4787183d497c709664e79d6955691bfeb3f837" }
+  ]
+}

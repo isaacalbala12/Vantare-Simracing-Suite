@@ -110,6 +110,62 @@ Nota ISA-126 / TA-03 (actualizada 2026-08-01):
   ello TA-03 permanece abierta en su PR draft/Linear actuales y TA-04 queda
   bloqueada. Sin promoción.
 
+Nota ISA-135 / TA-03B (2026-08-01):
+- Comparadas cinco rutas de integración DuckDB en Windows: driver oficial
+  estático/dinámico dentro de Wails, CLI gestionado y helper propio con enlace
+  estático/dinámico. La recomendación es un helper local de corta vida,
+  propiedad de Vantare, con `duckdb-go/v2` y `duckdb.dll` oficial fijados. La
+  app principal permanece en `CGO_ENABLED=0`; no se crea daemon ni SQL remoto.
+- Se descarta el CLI porque la guía oficial de DuckDB no lo recomienda para
+  embedding y expone capacidades innecesarias. Se descarta el enlace estático
+  actual porque el spike reprodujo una incompatibilidad entre los archivos
+  precompilados 1.5.5 y MSYS2 UCRT64 GCC 16 tras el cambio a TLS nativo.
+- Spike aislado, solo sintético y sin dependencias de producto: enlace dinámico
+  1.5.5 PASS, helper reproducible en dos rutas, 44.317.091 bytes totales,
+  read-only/NULL/cero/bool/identificadores/hash estable y cancelación coordinada
+  con `context.Canceled` PASS. En
+  720.000 filas, apertura 17–27 ms y páginas de 16.384 filas 20,72–23,84 ms de
+  media en la pasada de 50 páginas.
+- La v1 acepta exclusivamente archivos LMU locales descubiertos e indexados por
+  Vantare. El helper fuera de proceso, Job Object y límites son defensa en
+  profundidad, no un sandbox. Imports externos/comunitarios quedan bloqueados
+  por ISA-164 / TA-03D hasta demostrar una frontera real.
+- La arquitectura exige staging privado desde el handle autorizado TA-02,
+  revalidación antes/después, límites de memoria/threads/tiempo/disco,
+  extensiones/red desactivadas, protocolo tipado sin SQL, manifest/checksums y
+  rollback atómico de helper + DLL.
+- Inventario exacto cerrado con fuentes primarias: cuatro módulos Go, cinco
+  extensiones estáticas y 26 componentes C/C++ vendorizados. El SBOM SPDX de 37
+  componentes se regeneró dos veces con SHA
+  `959ab3ae08e2a6ff36c28c0773552a81048700c123dc899d2af89d48f1d4bfa5`;
+  todas las opciones elegidas son permisivas y compatibles con uso comercial.
+- No se añadió DuckDB/CGO al `go.mod` principal, no se abrió LMU ni archivos
+  personales, no se tocó Telemetry Core, UI, packaging de release o producto.
+- Documentos: `duckdb-adapter-decision.md`, ADR 0005 propuesta,
+  `ta03c-duckdb-adapter-plan.md` y spike reproducible `spikes/ta03b/`.
+- El primer review independiente dio `REQUEST CHANGES`; las cuatro objeciones
+  están corregidas en rama, pero ISA-135 permanece `In Progress` hasta una nueva
+  review. Después, Isaac deberá aprobar dependencia fijada, redistribución del
+  DLL, incremento aproximado de 44,32 MB, VC++ runtime y packaging/notices
+  atómicos antes de TA-03C. TA-04 continúa bloqueada hasta implementar TA-03C.
+  Sin promoción.
+- Evidencia fresca de corrección: spike 50 páginas, test y vet focales PASS;
+  cancelación coordinada 5/5; una extracción temporal manipulada fue rechazada
+  por SHA; dos SBOM limpios fueron idénticos; suite Go global PASS en 231,4 s y
+  `git diff --check` PASS. Un primer intento global agotó el timeout externo de
+  cuatro minutos sin reportar fallo y no se contabilizó.
+- Una re-review focal dejó únicamente un P2 en la allowlist Go del SBOM. Ya se
+  compara bidireccionalmente el conjunto exacto `módulo@versión` de
+  `go version -m` y se rechazan replacements, módulos añadidos, esperados
+  ausentes y cambios de versión. Una segunda revisión encontró que PowerShell
+  comparaba sin distinguir mayúsculas; ahora rutas y versiones usan igualdad
+  ordinal y cinco regresiones fail-closed cubren también ambos cambios de
+  `casing`. Las cinco regresiones pasan también en Windows PowerShell 5.1 y una
+  regeneración real conserva el mismo SBOM de 37 componentes y SHA. Dos
+  generaciones limpias anteriores conservaron igualmente ese SHA; spike 50
+  páginas, test/vet focales y tamper de extracción PASS. Pendiente una nueva
+  review independiente de la corrección ordinal; ISA-135 sigue `In Progress`.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

@@ -165,6 +165,49 @@ func TestSpotterCurrentStateSurvivesEqualPriorityQueuePressure(t *testing.T) {
 	}
 }
 
+func TestSpotterThreeWideSupersedesCompatibleSideAtCapacityOne(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		sideIntent string
+		left       bool
+		right      bool
+	}{
+		{name: "left to three-wide", sideIntent: IntentSpotterCarLeft, left: true},
+		{name: "right to three-wide", sideIntent: IntentSpotterCarRight, right: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			clock := &testClock{now: 1_000}
+			scheduler := newTestScheduler(t, clock, 1)
+			evidence := validEvidence(t, 5_000)
+			evidence.Semantic.SpotterKnown = true
+			evidence.Semantic.SpotterLeft = tt.left
+			evidence.Semantic.SpotterRight = tt.right
+			scheduler.Observe(evidence)
+			side := candidateFor("side", FamilySpotter, tt.sideIntent, "player", PrioritySpotter, 1_000)
+			if accepted, outcomes := scheduler.Submit(side); !accepted || len(outcomes) != 0 {
+				t.Fatalf("side submit = %t, %+v", accepted, outcomes)
+			}
+
+			evidence.Semantic.SpotterLeft = true
+			evidence.Semantic.SpotterRight = true
+			scheduler.Observe(evidence)
+			threeWide := candidateFor("three-wide", FamilySpotter, IntentSpotterThreeWide, "player", PrioritySpotter, 1_000)
+			accepted, outcomes := scheduler.Submit(threeWide)
+			if !accepted {
+				t.Fatalf("three-wide lost behind compatible side: %+v", outcomes)
+			}
+			decision, _, ok := scheduler.Next()
+			if !ok || decision.CandidateID != threeWide.ID {
+				t.Fatalf("decision = %+v, ok=%t", decision, ok)
+			}
+		})
+	}
+}
+
 func TestSpotterEqualPriorityTransitionsReplaceObsoleteState(t *testing.T) {
 	t.Parallel()
 

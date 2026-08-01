@@ -67,6 +67,25 @@ acotado permite emitir el candidato inferior más antiguo después de una racha
 máxima de decisiones superiores. Esto evita starvation bajo cola sostenida sin
 retrasar nunca un aviso crítico de Spotter.
 
+### Supersession de estado Spotter
+
+La igualdad de prioridad no basta para ordenar mensajes compatibles. La policy
+deriva uno de cuatro estados finitos desde la evidencia (`all-clear`, `left`,
+`right`, `three-wide`) y aplica esta tabla tipada de valor:
+
+| Estado probado | Aviso vigente | Avisos compatibles | Recordatorio |
+| --- | --- | --- | --- |
+| all-clear | `all_clear` | `clear_left`, `clear_right` | — |
+| left | `clear_right` | `car_left` | `still_there` |
+| right | `clear_left` | `car_right` | `still_there` |
+| three-wide | `three_wide` | `car_left`, `car_right` | `still_there` |
+
+El aviso de mayor valor reemplaza pendientes Spotter menos informativos con
+`suppressed / spotter_state_superseded`, incluso si siguen siendo literalmente
+ciertos. Un aviso posterior de menor valor no puede reemplazar al más específico
+sin un cambio de evidencia. Los empates conservan el orden determinista de
+admisión. Esta regla no se aplica a ninguna otra familia.
+
 ## Admisión y revalidación
 
 Antes de encolar y antes de emitir se comprueba:
@@ -107,8 +126,9 @@ vencido, stale o semánticamente falso nunca se emite tarde.
   reciente cuando se llena.
 - La cola tiene capacidad fija. Bajo presión, un candidato solo desplaza a uno
   de prioridad inferior; nunca expulsa seguridad para admitir información.
-- Antes de coalescing y presión, la cola poda contra la última evidencia todo
-  hecho que ya sea stale, inválido o semánticamente falso. Así un
+- Cuando la cola está llena, se poda contra la última evidencia todo hecho que
+  ya sea stale, inválido o semánticamente falso antes de coalescing y presión.
+  Spotter hace además esta poda antes de su regla de supersession. Así un
   `all_clear` vigente no se pierde frente al `car_left` obsoleto que sustituye,
   incluso con capacidad uno y la misma prioridad P0.
 - Los diagnósticos recientes son un ring lógico con límite fijo.
@@ -165,8 +185,9 @@ Las regresiones cubren:
 - TTL y revalidación al emitir;
 - invalidación semántica de car-left/clear, repostaje, pit entry/exit, gaps,
   sanciones y vueltas;
-- transiciones Spotter de igual prioridad con cola de capacidad uno, orden y
-  diagnóstico deterministas, y coalescing neutral de sanciones 1 -> 2;
+- matriz exhaustiva de estados y mensajes Spotter de igual prioridad con colas
+  de capacidad uno y mayor que uno, orden/diagnóstico deterministas, y
+  coalescing neutral de sanciones 1 -> 2;
 - límites de payload, dedup, cola, cooldown y diagnósticos;
 - copias de ownership;
 - cancelaciones de lifecycle;

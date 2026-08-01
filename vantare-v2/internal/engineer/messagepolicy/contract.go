@@ -98,6 +98,7 @@ const (
 	ReasonPreemptedBySpotter       Reason = "preempted_by_spotter"
 	ReasonQueuePressure            Reason = "queue_pressure"
 	ReasonSemanticInvalidated      Reason = "semantic_invalidated"
+	ReasonSpotterStateSuperseded   Reason = "spotter_state_superseded"
 )
 
 // SemanticRule identifies the observable claim that must still be true when a

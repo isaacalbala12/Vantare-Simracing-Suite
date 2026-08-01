@@ -195,8 +195,15 @@ func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) 
 	}
 
 	var outcomes []PolicyOutcome
+	if candidate.Family == FamilySpotter {
+		accepted, spotterOutcomes := scheduler.applySpotterSupersession(candidate, now)
+		outcomes = append(outcomes, spotterOutcomes...)
+		if !accepted {
+			return false, outcomes
+		}
+	}
 	if len(scheduler.pending) == scheduler.limits.MaxPending {
-		outcomes = scheduler.pruneInvalidPending(now)
+		outcomes = append(outcomes, scheduler.pruneInvalidPending(now)...)
 	}
 	for index := 0; index < len(scheduler.pending); index++ {
 		if dedupKey(scheduler.pending[index].candidate) != key {
@@ -233,6 +240,56 @@ func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) 
 	scheduler.next++
 	scheduler.pending = append(scheduler.pending, queuedCandidate{candidate: cloneCandidate(candidate), sequence: scheduler.next})
 	scheduler.state.Accepted++
+	scheduler.state.Pending = len(scheduler.pending)
+	return true, outcomes
+}
+
+// applySpotterSupersession keeps the most valuable message for the current
+// proven Spotter situation. It is intentionally isolated from every other
+// family: equal-priority does not imply common replacement semantics.
+func (scheduler *Scheduler) applySpotterSupersession(candidate Candidate, now int64) (bool, []PolicyOutcome) {
+	var outcomes []PolicyOutcome
+	for index := 0; index < len(scheduler.pending); {
+		queued := scheduler.pending[index].candidate
+		if queued.Family != FamilySpotter {
+			index++
+			continue
+		}
+		state, reason := scheduler.revalidate(queued, now)
+		if reason == "" {
+			index++
+			continue
+		}
+		outcomes = append(outcomes, scheduler.outcome(queued, state, reason, now))
+		scheduler.removePending(index)
+	}
+	scheduler.state.Pending = len(scheduler.pending)
+
+	candidateValue := currentSpotterMessageValue(candidate.Intent, scheduler.evidence.Semantic)
+	if candidateValue == spotterMessageNotApplicable {
+		outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeUnavailable, ReasonDecisionNotApproved, now))
+		return false, outcomes
+	}
+	for _, queued := range scheduler.pending {
+		if queued.candidate.Family != FamilySpotter {
+			continue
+		}
+		if currentSpotterMessageValue(queued.candidate.Intent, scheduler.evidence.Semantic) > candidateValue {
+			outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeSuppressed, ReasonSpotterStateSuperseded, now))
+			return false, outcomes
+		}
+	}
+
+	for index := 0; index < len(scheduler.pending); {
+		queued := scheduler.pending[index].candidate
+		if queued.Family != FamilySpotter ||
+			currentSpotterMessageValue(queued.Intent, scheduler.evidence.Semantic) >= candidateValue {
+			index++
+			continue
+		}
+		outcomes = append(outcomes, scheduler.outcome(queued, OutcomeSuppressed, ReasonSpotterStateSuperseded, now))
+		scheduler.removePending(index)
+	}
 	scheduler.state.Pending = len(scheduler.pending)
 	return true, outcomes
 }
@@ -885,7 +942,7 @@ func knownReason(reason Reason) bool {
 		ReasonDecisionNotApproved, ReasonPriorityMismatch,
 		ReasonInvalidCandidate, ReasonPayloadLimit, ReasonDedupKeyLimit,
 		ReasonCoalesced, ReasonCooldownActive, ReasonPreemptedBySpotter,
-		ReasonQueuePressure, ReasonSemanticInvalidated:
+		ReasonQueuePressure, ReasonSemanticInvalidated, ReasonSpotterStateSuperseded:
 		return true
 	default:
 		return false

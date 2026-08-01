@@ -24,6 +24,11 @@ Nota ISA-158 / ENG-05 (2026-08-01):
 - La re-review detectó y corrigió presión P0 con capacidad uno: pendientes
   invalidados se podan antes de competir por cola, por lo que el estado Spotter
   vigente reemplaza siempre al obsoleto con diagnósticos deterministas.
+- Una segunda re-review detectó estados compatibles con distinto valor
+  informativo (`left/right -> three_wide`). Una tabla tipada y exclusiva de
+  Spotter hace supersession del aviso menos específico, impide el reemplazo
+  inverso sin cambio de evidencia y cubre la matriz completa con capacidad uno
+  y mayor que uno.
 - ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
   únicamente entry/exit. El contador genérico de sanción se convierte a
   `penalties.count_increased` y nunca afirma drive-through.
@@ -34,8 +39,8 @@ Nota ISA-158 / ENG-05 (2026-08-01):
   no un bloqueo de ENG-05. Contrato:
   `docs/engineer/message-policy-scheduler.md`.
 - No hay audio/TTS/STT, UI, Wails/SSE, wiring productivo, nueva capability,
-  dependencia, migración, merge o promoción. Pendiente: review independiente
-  antes de commit/push/Linear.
+  dependencia, migración, merge o promoción. Pendiente: re-review independiente
+  después de publicar la corrección en la misma rama y PR draft.
 
 Nota ISA-133 / ENG-04 (2026-08-01):
 - Runner/oráculo determinista test-only creado sobre ISA-117 para escenarios

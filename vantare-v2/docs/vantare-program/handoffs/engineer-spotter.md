@@ -90,6 +90,11 @@ productivo sin crear un segundo reader.
   de coalescing/presión. Con `MaxPending=1`, `car_left -> all_clear` conserva y
   emite el estado vigente; las transiciones P0 equivalentes y penalty neutral
   1 -> 2 tienen regresión y diagnóstico/orden reproducibles.
+- Segunda corrección de re-review: `left/right -> three_wide` ya no pierde el
+  aviso más específico aunque el lateral anterior siga siendo cierto. Una tabla
+  tipada de cuatro estados Spotter define supersession, conserva el mejor aviso
+  vigente con capacidades uno y mayores y rechaza degradaciones posteriores sin
+  cambio de evidencia. No afecta fairness ni otras familias.
 
 ## Decisiones
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/telemetry/lmu"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
@@ -40,6 +41,7 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
 	engSvc.Start(ctx)
 	defer engSvc.Stop()
+	go feedEngineerHarness(ctx, engSvc)
 
 	srv := server.New(server.ServerConfig{EngineerSvc: engSvc})
 	s := httptest.NewServer(srv.Handler())
@@ -57,7 +59,7 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 
-	// Read lines from the stream. The simulator runs at 60Hz and generates spotter notifications.
+	// Read lines from the stream while an explicit harness feeds fixtures.
 	lines, err := sseLines(ctx, s.URL+"/engineer/stream", 2)
 	if err != nil {
 		t.Fatalf("sseLines: %v", err)
@@ -93,10 +95,11 @@ func TestEngineerAndTelemetryStreamCoexistence(t *testing.T) {
 	go teleSvc.Run(ctx)
 	time.Sleep(50 * time.Millisecond)
 
-	// Start engineer service (simulator)
+	// Start Engineer and feed only its explicit test harness.
 	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
 	engSvc.Start(ctx)
 	defer engSvc.Stop()
+	go feedEngineerHarness(ctx, engSvc)
 
 	// Create a single server with both services
 	srv := server.New(server.ServerConfig{
@@ -152,8 +155,8 @@ func TestEngineerHealth_NoService(t *testing.T) {
 	}
 }
 
-// TestEngineerHealth_OK: /api/engineer/health devuelve 200 con snapshot del servicio.
-func TestEngineerHealth_OK(t *testing.T) {
+// A configured canonical input is not healthy until the first observation.
+func TestEngineerHealth_WaitsForCanonicalObservation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
@@ -164,8 +167,8 @@ func TestEngineerHealth_OK(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/engineer/health", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rr.Code)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", rr.Code)
 	}
 
 	var h engineerservice.EngineerHealth
@@ -173,14 +176,30 @@ func TestEngineerHealth_OK(t *testing.T) {
 	if err := json.Unmarshal(body, &h); err != nil {
 		t.Fatalf("invalid JSON: %v\nbody: %s", err, body)
 	}
-	if !h.OK {
-		t.Errorf("expected OK=true, got %+v", h)
+	if h.OK || h.Connected {
+		t.Errorf("expected disconnected health before canonical input, got %+v", h)
 	}
-	if h.Source != "simulator" {
-		t.Errorf("Source = %q, want simulator", h.Source)
+	if h.Source != "telemetry-core" {
+		t.Errorf("Source = %q, want telemetry-core", h.Source)
 	}
 	if h.Subs != 0 {
 		t.Errorf("Subs = %d, want 0 (no SSE clients)", h.Subs)
+	}
+}
+
+func feedEngineerHarness(ctx context.Context, svc *engineerservice.EngineerService) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		for index, frame := range simulator.Build(simulator.ScenarioLeftBasic) {
+			frame := frame
+			svc.ProcessHarnessFrame(time.Now().UnixMilli()+int64(index), &frame)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }
 

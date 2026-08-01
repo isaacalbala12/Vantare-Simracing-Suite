@@ -126,17 +126,22 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
-| En implementación aislada | ISA-110 / TC-08C, matriz 21/21 y replay parity fail-closed |
-| Cutover | ISA-111/112, sin absorber el proyecto de producto |
+| Cerradas técnicamente | ISA-110 / TC-08C e ISA-111 / TC-08D |
+| Cutover | ISA-112, sin absorber el proyecto de producto |
 
 ## Siguiente acción exacta
 
-Entregar ISA-110 con commit/push/PR draft y actualizar Linear. Después ISA-111
-debe conectar únicamente las familias/escenarios aprobados, conservar shadow
-y evitar un segundo reader; no crear señales ni borrar aún el frame legacy.
-No hay promoción en esta cadena.
+Entregar ISA-111 con commit/push/PR draft y actualizar Linear. Después ISA-112
+debe conectar el único productor canónico a las seis familias aprobadas,
+validar LMU real y evitar un segundo reader; no crear señales ni borrar aún el
+frame legacy. No hay promoción en esta cadena.
 
 ## Última actualización
+
+2026-08-01, ISA-111 / TC-08D elimina la adquisición propia de
+`EngineerService`. El servicio consume observaciones/hechos, falla cerrado por
+familia y mantiene simulator/replay únicamente como harness explícito. Health
+ya no anuncia una conexión sintética. La raíz productiva se cablea en ISA-112.
 
 2026-08-01, ISA-109 / TC-08B amplía y endurece ENG-03 sobre ISA-130. La entrada
 de producto conserva full grid, fuel, gaps, geometría y calidad; sigue sin

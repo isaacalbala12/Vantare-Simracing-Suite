@@ -156,3 +156,15 @@ func TestQueue_FIFO_SameTime(t *testing.T) {
 		t.Errorf("expected msg2, got %v", res2)
 	}
 }
+
+func TestQueueClearDropsPendingMessages(t *testing.T) {
+	q := NewQueue()
+	q.Enqueue(Message{ID: "pending", Priority: PriorityNormal, CreatedAt: 1})
+	q.Clear()
+	if q.Len() != 0 {
+		t.Fatalf("queue length = %d, want 0 after boundary reset", q.Len())
+	}
+	if message, ok := q.Next(2); ok {
+		t.Fatalf("Next returned %+v after Clear", message)
+	}
+}

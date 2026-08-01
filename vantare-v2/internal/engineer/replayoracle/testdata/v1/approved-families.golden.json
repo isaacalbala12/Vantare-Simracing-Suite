@@ -47,10 +47,10 @@
       "step": 4,
       "atMs": 31501,
       "family": "penalties",
-      "state": "unavailable",
-      "reason": "decision_not_approved",
+      "state": "emitted",
+      "reason": "candidate_emitted",
       "messageId": "mon-penalties.new_drivethrough-31501",
-      "textKey": "penalties.new_drivethrough",
+      "textKey": "penalties.count_increased",
       "expiresAt": 36501
     },
     {
@@ -126,17 +126,6 @@
       "step": 12,
       "atMs": 134501,
       "family": "pitstops",
-      "state": "emitted",
-      "reason": "candidate_emitted",
-      "messageId": "mon-pitstops.entry-134501",
-      "textKey": "pitstops.entry",
-      "expiresAt": 139501
-    },
-    {
-      "sequence": 14,
-      "step": 12,
-      "atMs": 134501,
-      "family": "pitstops",
       "state": "unavailable",
       "reason": "decision_not_approved",
       "messageId": "mon-pitstops.box_now-134501",
@@ -144,7 +133,7 @@
       "expiresAt": 142501
     },
     {
-      "sequence": 15,
+      "sequence": 14,
       "step": 12,
       "atMs": 134501,
       "family": "pitstops",
@@ -155,7 +144,7 @@
       "expiresAt": 144501
     },
     {
-      "sequence": 16,
+      "sequence": 15,
       "step": 12,
       "atMs": 134501,
       "family": "pitstops",
@@ -166,7 +155,7 @@
       "expiresAt": 139501
     },
     {
-      "sequence": 17,
+      "sequence": 16,
       "step": 12,
       "atMs": 134501,
       "family": "pitstops",
@@ -177,18 +166,18 @@
       "expiresAt": 139501
     },
     {
-      "sequence": 18,
-      "step": 13,
-      "atMs": 135501,
+      "sequence": 17,
+      "step": 12,
+      "atMs": 134501,
       "family": "pitstops",
       "state": "emitted",
       "reason": "candidate_emitted",
-      "messageId": "mon-pitstops.exit-135501",
-      "textKey": "pitstops.exit",
-      "expiresAt": 140501
+      "messageId": "mon-pitstops.entry-134501",
+      "textKey": "pitstops.entry",
+      "expiresAt": 139501
     },
     {
-      "sequence": 19,
+      "sequence": 18,
       "step": 13,
       "atMs": 135501,
       "family": "pitstops",
@@ -199,7 +188,7 @@
       "expiresAt": 140501
     },
     {
-      "sequence": 20,
+      "sequence": 19,
       "step": 13,
       "atMs": 135501,
       "family": "pitstops",
@@ -207,6 +196,17 @@
       "reason": "decision_not_approved",
       "messageId": "mon-pitstops.exit_traffic_behind-135501",
       "textKey": "pitstops.exit_traffic_behind",
+      "expiresAt": 140501
+    },
+    {
+      "sequence": 20,
+      "step": 13,
+      "atMs": 135501,
+      "family": "pitstops",
+      "state": "emitted",
+      "reason": "candidate_emitted",
+      "messageId": "mon-pitstops.exit-135501",
+      "textKey": "pitstops.exit",
       "expiresAt": 140501
     }
   ]

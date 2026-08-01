@@ -27,6 +27,8 @@ runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
 re-review independiente `ACCEPT` sin P0/P1/P2/P3. ISA-133 / ENG-04 añade el
 runner y oráculo determinista test-only sobre la base final de Telemetry Core.
+ISA-158 / ENG-05 introduce la policy y el scheduler determinista, todavía sin
+wiring productivo y pendiente de review independiente.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
@@ -43,8 +45,8 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-133-eng-04-runner-y-oraculo-determinista-de-replays`.
-- Base: `170eaebbaa6744019ead96a2c78201b4da2fb9bb` (ISA-117 / TC-09F).
+  `vantareapp/isa-158-eng-05-policy-y-scheduler-determinista-de-mensajes`.
+- Base: `6861bd1a1b3ae9f221e701c1db7396c8d8a07650` (ISA-133 / ENG-04 aceptada).
 - Composición: ENG-03 ya está en la base; su única regresión test-only
   posterior se reaplica sin importar documentación o producto ajenos.
 - Promoción: ninguna.
@@ -73,6 +75,47 @@ productivo sin crear un segundo reader.
   avisos Win32 heredados fuera del diff. `docs/engineer/replay-oracle.md`
   conserva el contrato, comandos y hallazgos. Re-review independiente final:
   `ACCEPT`, P0/P1/P2/P3 = 0.
+- Evidencia ENG-05: contratos v1, orden total estable, preempción P0,
+  revalidación de TTL/evidencia/claim semántico, dedupe/coalescing/cooldowns,
+  límites de memoria y diagnósticos, lifecycle sin evidencia reutilizable,
+  protección contra starvation, soak y benchmark saturado. El golden ENG-04
+  atraviesa la policy; sanciones son neutrales y pits sigue limitado a
+  entry/exit. Focal, Engineer completo, race focal, vet focal y gate Go global
+  PASS. Review independiente aún pendiente. El test heredado
+  `cmd/vantare.TestHandleDiscoverAppsEmitsDetected` usa discovery real de
+  Windows y es lento, pero pasa sin cambios; es deuda ajena, no bloqueo de
+  ENG-05. Esta rama no toca Launcher ni `cmd/vantare`. El vet global conserva
+  tres avisos Win32 heredados por `unsafe.Pointer`; vet focal pasa.
+- Corrección de re-review: la cola poda hechos semánticamente invalidados antes
+  de coalescing/presión. Con `MaxPending=1`, `car_left -> all_clear` conserva y
+  emite el estado vigente; las transiciones P0 equivalentes y penalty neutral
+  1 -> 2 tienen regresión y diagnóstico/orden reproducibles.
+- Segunda corrección de re-review: `left/right -> three_wide` ya no pierde el
+  aviso más específico aunque el lateral anterior siga siendo cierto. Una tabla
+  tipada de cuatro estados Spotter define supersession, conserva el mejor aviso
+  vigente con capacidades uno y mayores y rechaza degradaciones posteriores sin
+  cambio de evidencia. No afecta fairness ni otras familias.
+- Tercera corrección de re-review: los clears parciales son delivery-aware.
+  Solo pueden depender de un estado autosuficiente compatible que ya haya sido
+  devuelto por `Next` en la misma generación; un pendiente nunca cuenta como
+  comunicado. Sin contexto se sustituyen por `car_left`, `car_right`,
+  `three_wide` o `all_clear` según la Evidence actual. La matriz 1/4/64 cubre
+  `both -> left/right`, cambios laterales, antecedente pending/dispatched,
+  expiración, cancelación, transiciones intermedias y cambio de evidencia con
+  el clear ya pendiente. Admisión y `Next` revalidan el mismo permiso. El
+  estado registrado es `dispatched` al transporte, no confirmación de audio;
+  esa frontera sigue en el corte posterior. Focal x50, fuzz 10 s, benchmarks
+  x5, Engineer, Telemetry Core, Go global y vet focal pasan. El race no pudo
+  repetirse tras esta corrección porque el entorno no dispone de toolchain C
+  con headers Win32; el vet global conserva solo tres avisos heredados fuera
+  del diff.
+- Cuarta corrección de re-review: epoch/identidad válidos resetean la entrega
+  Spotter antes de observar el estado del nuevo lifecycle; una transición de
+  identidad inválida queda fail-closed. El contexto despachado conserva el
+  `ExpiresAtMS` de su antecedente y se revalida justo antes de `Next`: válido
+  antes del límite, inválido en y después del límite. `still_there` no renueva
+  estado completo y las decisiones expiradas/canceladas no crean contexto. La
+  matriz vuelve a cubrir capacidades 1/4/64.
 
 ## Decisiones
 
@@ -126,13 +169,14 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 - **Cerrado en ISA-111/112:** servicio/UI ya no arrancan conectados ni ofrecen
   simulator/replay como fuente productiva.
-- **P0:** no existe garantía de preempción audible ni de mensajes no caducados.
+- **P0 reducido:** la policy garantiza preempción de decisiones pendientes y
+  ausencia de mensajes caducados; la preempción audible se probará al cablear
+  el transporte.
 - **P0:** Pit Manager carece de transacción y readback demostrados.
 - **P1 reducido:** la proyección pura está cableada a seis familias aprobadas;
   las familias parciales siguen correctamente deshabilitadas.
-- **P1 visible para ENG-05:** el runtime legacy de pits genera decisiones no
-  caracterizadas y el contador genérico de sanciones se etiqueta como
-  drive-through. ENG-04 las marca `decision_not_approved`, no las legitima.
+- **Cerrado en ENG-05:** pits solo admite entry/exit y el contador genérico de
+  sanción se expresa como `penalties.count_increased`, nunca drive-through.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
 - **P2:** cobertura desigual en cuatro idiomas.
@@ -145,16 +189,25 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-133 / ENG-04, runner/oráculo determinista; review `ACCEPT` |
+| En implementación | ISA-158 / ENG-05, policy/scheduler; review independiente pendiente |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Revisar ISA-133 y, cuando quede aceptada técnicamente, continuar con ENG-05.
-Engineer ya consume solo Telemetry Core en producto; los siguientes cortes no
-deben añadir una fuente alternativa. No hay promoción en esta cadena.
+Revisar ISA-158 / ENG-05. Si queda aceptada, el siguiente corte puede cablear
+decisiones al runtime/transporte sin añadir una fuente alternativa y deberá
+probar la preempción audible. No hay promoción en esta cadena.
 
 ## Última actualización
+
+2026-08-01, ISA-158 / ENG-05 añade una policy/scheduler síncrona, versionada y
+acotada. Revalida evidencia y claims semánticos antes de encolar y emitir,
+prioriza Spotter, evita starvation no crítico, coalesce duplicados, aplica
+cooldowns, invalida evidencia en lifecycle y evita mensajes caducados. El
+oráculo ENG-04 la prueba con Runtime real; pits solo admite entry/exit y la
+sanción genérica ya no afirma drive-through. No hay wiring, audio, UI, fuente,
+I/O, goroutine o dependencia nueva. Pendiente de review.
 
 2026-08-01, ISA-133 / ENG-04 crea un runner test-only con reloj virtual,
 fixtures sanitizadas y un oráculo v1 de emitted/suppressed/expired/cancelled/

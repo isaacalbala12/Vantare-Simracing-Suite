@@ -10,6 +10,54 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-158 / ENG-05 (2026-08-01):
+- Policy y scheduler determinista implementados de forma síncrona y acotada en
+  `internal/engineer/messagepolicy/`; contratos v1: Candidate, Decision,
+  PolicyOutcome y SchedulerState, con reloj y evidencia inyectados.
+- Admisión y emisión revalidan versión, epoch, identidad, fuente, freshness,
+  capabilities, prioridad, TTL y el claim semántico contra la observación más
+  reciente. `Cancel` invalida la evidencia hasta recibir otra observación.
+  Spotter P0 cancela pendientes inferiores; dedupe, coalescing, cooldown, cola,
+  identidades y diagnósticos tienen límites duros.
+- Spotter conserva prioridad absoluta. El resto de prioridades tiene un burst
+  máximo determinista para impedir starvation sin debilitar mensajes críticos.
+- La re-review detectó y corrigió presión P0 con capacidad uno: pendientes
+  invalidados se podan antes de competir por cola, por lo que el estado Spotter
+  vigente reemplaza siempre al obsoleto con diagnósticos deterministas.
+- Una segunda re-review detectó estados compatibles con distinto valor
+  informativo (`left/right -> three_wide`). Una tabla tipada y exclusiva de
+  Spotter hace supersession del aviso menos específico, impide el reemplazo
+  inverso sin cambio de evidencia y cubre la matriz completa con capacidad uno
+  y mayor que uno.
+- Una tercera re-review cerró el contexto delivery-aware de los clears
+  parciales. `clear_left/right` solo conserva su forma contextual si un
+  antecedente autosuficiente compatible ya fue devuelto por `Next` dentro de
+  la misma generación de ocupación. Un pendiente, `still_there` o un lateral
+  parcial de `three_wide` no cuentan. Sin contexto, el scheduler sustituye el
+  clear por el estado autosuficiente derivado de Evidence; expiración,
+  cancelación y otra transición eliminan el permiso. La condición se revalida
+  también inmediatamente antes de `Next`, por lo que un clear ya encolado no
+  puede cruzar una generación posterior. El registro significa `dispatched`
+  al transporte siguiente, todavía no confirmación audible.
+- Una cuarta re-review cerró lifecycle y caducidad del contexto Spotter. Los
+  boundaries válidos resetean delivery state antes de observar el nuevo estado
+  en la misma llamada; una identidad inválida falla cerrada. Cada antecedente
+  conserva su `ExpiresAtMS`: justo antes autoriza el clear, en el límite o
+  después se sustituye por estado autosuficiente. `still_there` no renueva el
+  contexto, y una decisión expirada/cancelada antes de `Next` nunca lo crea.
+- ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
+  únicamente entry/exit. El contador genérico de sanción se convierte a
+  `penalties.count_increased` y nunca afirma drive-through.
+- Golden v1 actualizado deliberadamente; tests de tabla, invariantes,
+  invalidación semántica, presión/starvation, ownership, lifecycle, fuzz, soak
+  virtual, benchmark saturado, Engineer y race focal pasan. El gate Go global
+  también pasa; el test real de discovery de Launcher es deuda heredada lenta,
+  no un bloqueo de ENG-05. Contrato:
+  `docs/engineer/message-policy-scheduler.md`.
+- No hay audio/TTS/STT, UI, Wails/SSE, wiring productivo, nueva capability,
+  dependencia, migración, merge o promoción. Pendiente: re-review independiente
+  después de publicar la corrección en la misma rama y PR draft.
+
 Nota ISA-133 / ENG-04 (2026-08-01):
 - Runner/oráculo determinista test-only creado sobre ISA-117 para escenarios
   Engineer/Spotter. Consume exclusivamente `ObservationSnapshotV1` y

@@ -10,6 +10,21 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-87 / TC-09E (2026-08-01):
+- Wails y SSE publican el mismo status y Overlay Projection v1 byte a byte;
+  cursor verificado `v1 / epoch 2 / sequence 8 / statusRevision 1`.
+- El composition root posee un shutdown ordenado de Overlay, Telemetry Core,
+  HTTP/SSE, Ops, ambos managers de hotkeys, Engineer, Launcher, diagnósticos y
+  contexto general. Los errores no omiten recursos posteriores.
+- El timeout Win32 histórico queda corregido enviando `WM_QUIT` al hilo dueño
+  de la message queue y desregistrando allí los hotkeys. Los cambios de ajustes
+  sustituyen el manager completo en vez de registrar desde Wails.
+- El harness no productivo prueba SQLite real, puerto, suscriptores, bridges,
+  goroutines y owners de handles. Evidencia:
+  `docs/telemetry-core/wails-lifecycle-teardown-isa-87.md`.
+- Siguiente y último corte: ISA-117 / TC-09F, gate final y handoff. Sin merge
+  ni promoción.
+
 Nota ISA-116 / TC-09D (2026-08-01):
 - Las siete fronteras de entrada críticas pasan fuzzing: Shared Memory,
   saneado, REST, fusión, recording payload/fact y transport envelope.

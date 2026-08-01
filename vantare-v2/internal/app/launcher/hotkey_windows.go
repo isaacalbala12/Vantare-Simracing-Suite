@@ -151,6 +151,18 @@ func (h *HotkeyManager) Unregister(profileID string) {
 	}
 }
 
+// Stop releases every profile hotkey registered by this manager. It is safe
+// to call more than once during application shutdown.
+func (h *HotkeyManager) Stop() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for profileID, id := range h.active {
+		unregisterHotKey(0, int32(id))
+		delete(h.active, profileID)
+		delete(h.combos, id)
+	}
+}
+
 // ReRegisterAll unregisters and re-registers every active profile hotkey.
 // This is intended for use after WM_POWERBROADCAST (system resume) where the
 // OS may have invalidated previous hotkey registrations. If a single

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseLMUDuckDBCatalogPreservesObservedShape(t *testing.T) {
@@ -66,12 +67,13 @@ func TestParseLMUDuckDBCatalogPreservesObservedShape(t *testing.T) {
 	if got, want := len(session.Metadata), 2; got != want {
 		t.Fatalf("len(Metadata) = %d, want %d", got, want)
 	}
-	if !session.Metadata[1].Sensitive || session.Metadata[1].Key != "DriverName" {
-		t.Fatalf("sensitive metadata = %#v, want DriverName marked sensitive", session.Metadata[1])
+	driverName := metadataByKey(t, session, "DriverName")
+	if !driverName.Sensitive || driverName.Redacted {
+		t.Fatalf("sensitive metadata = %#v, want absent DriverName marked sensitive", driverName)
 	}
-	if !session.Metadata[0].Present || session.Metadata[0].Quality != QualityValid ||
-		session.Metadata[0].Value != "" {
-		t.Fatalf("present empty metadata was lost: %#v", session.Metadata[0])
+	sessionType := metadataByKey(t, session, "SessionType")
+	if !sessionType.Present || sessionType.Quality != QualityValid || sessionType.Value != "" {
+		t.Fatalf("present empty metadata was lost: %#v", sessionType)
 	}
 	if got, want := len(session.Channels), 4; got != want {
 		t.Fatalf("len(Channels) = %d, want %d", got, want)
@@ -221,6 +223,38 @@ func TestParseLMUDuckDBCatalogRejectsInvalidShape(t *testing.T) {
 	}
 }
 
+func TestParseLMUDuckDBCatalogIsDeterministicAcrossCatalogOrder(t *testing.T) {
+	manifest := historicalTestManifest()
+	first := LMUDuckDBCatalog{
+		Metadata: []LMUDuckDBMetadata{{Key: "TrackName", Present: true, Value: "Spa"}, {Key: "SessionType"}},
+		Continuous: []LMUDuckDBChannel{
+			{Name: "Throttle", FrequencyHz: 50, Columns: []LMUDuckDBColumn{{Name: "value", Type: "FLOAT"}}},
+			{Name: "Brake", FrequencyHz: 50, Columns: []LMUDuckDBColumn{{Name: "value", Type: "FLOAT"}}},
+		},
+		Events: []LMUDuckDBChannel{
+			{Name: "Lap", Columns: []LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "USMALLINT"}}},
+			{Name: "Gear", Columns: []LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "TINYINT"}}},
+		},
+	}
+	shuffled := LMUDuckDBCatalog{
+		Metadata:   []LMUDuckDBMetadata{first.Metadata[1], first.Metadata[0]},
+		Continuous: []LMUDuckDBChannel{first.Continuous[1], first.Continuous[0]},
+		Events:     []LMUDuckDBChannel{first.Events[1], first.Events[0]},
+	}
+
+	want, err := ParseLMUDuckDBCatalog(manifest, first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ParseLMUDuckDBCatalog(manifest, shuffled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("catalog order changed canonical session:\n got %#v\nwant %#v", got, want)
+	}
+}
+
 func TestNormalizeLMUDuckDBPagePreservesQualityZeroAndOrder(t *testing.T) {
 	session, err := ParseLMUDuckDBCatalog(historicalTestManifest(), LMUDuckDBCatalog{
 		Continuous: []LMUDuckDBChannel{{
@@ -300,7 +334,7 @@ func TestNormalizeLMUDuckDBPageRejectsDecreasingEventTimestamp(t *testing.T) {
 	}
 }
 
-func TestBuildHistoricalLapsUsesBoundariesWithoutInventingValidity(t *testing.T) {
+func TestLapChannelDoesNotInventLapBoundaries(t *testing.T) {
 	session, err := ParseLMUDuckDBCatalog(historicalTestManifest(), LMUDuckDBCatalog{
 		Events: []LMUDuckDBChannel{{
 			Name:    "Lap",
@@ -310,29 +344,8 @@ func TestBuildHistoricalLapsUsesBoundariesWithoutInventingValidity(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lapChannel := session.Channels[0]
-	page, err := NormalizeLMUDuckDBPage(lapChannel, 0, []LMUDuckDBRow{
-		{TimestampSeconds: numberPointer(11.625), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 0}}},
-		{TimestampSeconds: numberPointer(95), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 1}}},
-		{TimestampSeconds: numberPointer(178), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 2}}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	laps, err := BuildHistoricalLaps(lapChannel, page.Samples)
-	if err != nil {
-		t.Fatalf("BuildHistoricalLaps() error = %v", err)
-	}
-	if got, want := len(laps), 3; got != want {
-		t.Fatalf("len(laps) = %d, want %d", got, want)
-	}
-	if laps[0].Number != 0 || laps[0].StartSeconds != 11.625 ||
-		laps[0].EndSeconds == nil || *laps[0].EndSeconds != 95 {
-		t.Fatalf("first lap = %#v", laps[0])
-	}
-	if laps[0].Validity != QualityUnknown || laps[2].EndSeconds != nil {
-		t.Fatalf("lap validity/end were invented: %#v %#v", laps[0], laps[2])
+	if len(session.Laps) != 0 {
+		t.Fatalf("schema-only Lap channel invented boundaries: %#v", session.Laps)
 	}
 }
 
@@ -347,7 +360,7 @@ func TestLMUDuckDBParserUsesBoundedSourceWithoutLeakingErrors(t *testing.T) {
 			{Values: []LMUDuckDBValue{{Kind: ScalarNumber, Number: 1}}},
 		},
 	}
-	parser, err := NewLMUDuckDBParser(historicalTestManifest(), source, 2)
+	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +393,7 @@ func TestLMUDuckDBParserUsesBoundedSourceWithoutLeakingErrors(t *testing.T) {
 
 func TestLMUDuckDBParserHonorsCancellationBeforeSource(t *testing.T) {
 	source := &historicalSourceStub{}
-	parser, err := NewLMUDuckDBParser(historicalTestManifest(), source, 8)
+	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,7 +419,7 @@ func TestLMUDuckDBParserChecksEventOrderAcrossPageBoundary(t *testing.T) {
 			{TimestampSeconds: numberPointer(9), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 2}}},
 		},
 	}
-	parser, err := NewLMUDuckDBParser(historicalTestManifest(), source, 2)
+	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -432,7 +445,7 @@ func TestLMUDuckDBParserFreezesInspectedCatalog(t *testing.T) {
 		}}},
 		rows: []LMUDuckDBRow{{Values: []LMUDuckDBValue{{Kind: ScalarNumber, Number: 1}}}},
 	}
-	parser, err := NewLMUDuckDBParser(historicalTestManifest(), source, 8)
+	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,10 +477,10 @@ func TestLMUDuckDBParserFreezesInspectedCatalog(t *testing.T) {
 
 func TestLMUDuckDBParserRequiresInspectAndHardPageBudget(t *testing.T) {
 	source := &historicalSourceStub{}
-	if _, err := NewLMUDuckDBParser(historicalTestManifest(), source, MaxLMUDuckDBPageRows+1); !errors.Is(err, ErrInvalidHistoricalPage) {
+	if _, err := NewLMUDuckDBParser(historicalTestArtifact(), source, MaxLMUDuckDBPageRows+1); !errors.Is(err, ErrInvalidHistoricalPage) {
 		t.Fatalf("oversized constructor error = %v, want ErrInvalidHistoricalPage", err)
 	}
-	parser, err := NewLMUDuckDBParser(historicalTestManifest(), source, MaxLMUDuckDBPageRows)
+	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, MaxLMUDuckDBPageRows)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,7 +494,7 @@ func TestLMUDuckDBParserEventEOFRestoresRequestedStart(t *testing.T) {
 		Name:    "Gear",
 		Columns: []LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "TINYINT"}},
 	}}}}
-	parser, err := NewLMUDuckDBParser(historicalTestManifest(), source, MaxLMUDuckDBPageRows)
+	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, MaxLMUDuckDBPageRows)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,51 +530,90 @@ func TestUnknownMetadataDefaultsSensitive(t *testing.T) {
 	session, err := ParseLMUDuckDBCatalog(historicalTestManifest(), LMUDuckDBCatalog{
 		Metadata: []LMUDuckDBMetadata{
 			{Key: "CarName", Present: true, Value: "Synthetic Car"},
-			{Key: "FutureIdentity", Present: true, Value: "private"},
+			{Key: "FutureIdentity", Present: true, Value: strings.Repeat("private", 100)},
+			{Key: "TrackName", Present: true, Value: strings.Repeat("x", maxHistoricalNameLen+1)},
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session.Metadata[0].Sensitive {
-		t.Fatalf("CarName should be explicitly public: %#v", session.Metadata[0])
+	carName := metadataByKey(t, session, "CarName")
+	if carName.Sensitive {
+		t.Fatalf("CarName should be explicitly public: %#v", carName)
 	}
-	if !session.Metadata[1].Sensitive {
-		t.Fatalf("unknown metadata must default sensitive: %#v", session.Metadata[1])
+	futureIdentity := metadataByKey(t, session, "FutureIdentity")
+	if !futureIdentity.Sensitive || !futureIdentity.Redacted ||
+		futureIdentity.Value != "" || !futureIdentity.Present {
+		t.Fatalf("unknown metadata must be present but redacted: %#v", futureIdentity)
+	}
+	trackName := metadataByKey(t, session, "TrackName")
+	if trackName.Present || trackName.Quality != QualityInvalid {
+		t.Fatalf("oversized public metadata should not reject session or leak value: %#v", trackName)
 	}
 }
 
-func TestBuildHistoricalLapsRejectsInvalidTimestampInput(t *testing.T) {
+func TestNormalizeLMUDuckDBPageRejectsUnboundedDirectBatch(t *testing.T) {
 	channel := HistoricalChannel{
-		SourceName: "Lap",
-		Sampling:   HistoricalSampling{Kind: SamplingEventTimestamped},
-		Columns:    []HistoricalColumn{{Name: "value", Type: ScalarInteger}},
+		ID: "bounded", Sampling: HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1},
+		Columns: []HistoricalColumn{{Name: "value", Type: ScalarNumber}},
 	}
-	value := HistoricalValue{
-		Column: "value", Present: true, Quality: QualityValid,
-		Scalar: HistoricalScalar{Kind: ScalarInteger, Integer: 1},
+	rows := make([]LMUDuckDBRow, MaxLMUDuckDBPageRows+1)
+	if _, err := NormalizeLMUDuckDBPage(channel, 0, rows); !errors.Is(err, ErrInvalidHistoricalPage) {
+		t.Fatalf("error = %v, want ErrInvalidHistoricalPage", err)
 	}
-	tests := []struct {
-		name    string
-		samples []HistoricalSample
+}
+
+func TestLMUDuckDBParserRejectsArtifactMismatchAndTOCTOU(t *testing.T) {
+	artifact := historicalTestArtifact()
+	matching := artifact.evidence
+	changedHash := matching
+	changedHash.ContentSHA256 = strings.Repeat("f", 64)
+	changedIdentity := matching
+	changedIdentity.Metadata.Identity = "different-artifact"
+	catalog := LMUDuckDBCatalog{Continuous: []LMUDuckDBChannel{{
+		Name: "Speed", FrequencyHz: 100, Columns: []LMUDuckDBColumn{{Name: "value", Type: "FLOAT"}},
+	}}}
+
+	for _, test := range []struct {
+		name     string
+		evidence HistoricalArtifactEvidence
 	}{
-		{name: "nan", samples: []HistoricalSample{{TimestampSeconds: numberPointer(math.NaN()), Values: []HistoricalValue{value}}}},
-		{name: "infinite", samples: []HistoricalSample{{TimestampSeconds: numberPointer(math.Inf(1)), Values: []HistoricalValue{value}}}},
-		{name: "decreasing", samples: []HistoricalSample{
-			{TimestampSeconds: numberPointer(2), Values: []HistoricalValue{value}},
-			{TimestampSeconds: numberPointer(1), Values: []HistoricalValue{{
-				Column: "value", Present: true, Quality: QualityValid,
-				Scalar: HistoricalScalar{Kind: ScalarInteger, Integer: 2},
-			}}},
-		}},
-	}
-	for _, test := range tests {
+		{name: "hash mismatch before catalog", evidence: changedHash},
+		{name: "identity mismatch before catalog", evidence: changedIdentity},
+	} {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := BuildHistoricalLaps(channel, test.samples); !errors.Is(err, ErrInvalidHistoricalLaps) {
-				t.Fatalf("error = %v, want ErrInvalidHistoricalLaps", err)
+			source := &historicalSourceStub{catalog: catalog, evidence: []HistoricalArtifactEvidence{test.evidence}}
+			parser, err := NewLMUDuckDBParser(artifact, source, 8)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := parser.Inspect(context.Background()); !errors.Is(err, ErrHistoricalArtifactChanged) {
+				t.Fatalf("Inspect() error = %v, want ErrHistoricalArtifactChanged", err)
+			}
+			if source.catalogCalls != 0 {
+				t.Fatalf("Catalog() calls = %d, want 0", source.catalogCalls)
 			}
 		})
 	}
+
+	t.Run("change after row read", func(t *testing.T) {
+		source := &historicalSourceStub{
+			catalog:  catalog,
+			rows:     []LMUDuckDBRow{{Values: []LMUDuckDBValue{{Kind: ScalarNumber, Number: 1}}}},
+			evidence: []HistoricalArtifactEvidence{matching, matching, matching, changedHash},
+		}
+		parser, err := NewLMUDuckDBParser(artifact, source, 8)
+		if err != nil {
+			t.Fatal(err)
+		}
+		session, err := parser.Inspect(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := parser.ReadPage(context.Background(), session.Channels[0].ID, 0, 1); !errors.Is(err, ErrHistoricalArtifactChanged) {
+			t.Fatalf("ReadPage() error = %v, want ErrHistoricalArtifactChanged", err)
+		}
+	})
 }
 
 func TestDecimalRemainsUnknown(t *testing.T) {
@@ -590,6 +642,17 @@ func channelBySourceName(t *testing.T, session HistoricalSession, name string) H
 	return HistoricalChannel{}
 }
 
+func metadataByKey(t *testing.T, session HistoricalSession, key string) HistoricalMetadata {
+	t.Helper()
+	for _, metadata := range session.Metadata {
+		if metadata.Key == key {
+			return metadata
+		}
+	}
+	t.Fatalf("metadata %q not found", key)
+	return HistoricalMetadata{}
+}
+
 func historicalTestManifest() Manifest {
 	manifest := Manifest{
 		Version:       ManifestVersion,
@@ -607,20 +670,48 @@ func historicalTestManifest() Manifest {
 	return manifest
 }
 
+func historicalTestArtifact() AuthorizedHistoricalArtifact {
+	manifest := historicalTestManifest()
+	return AuthorizedHistoricalArtifact{
+		manifest: manifest,
+		evidence: HistoricalArtifactEvidence{
+			ContentSHA256: manifest.ContentSHA256,
+			Metadata: ContentMetadata{
+				Size: manifest.Size, ModTime: time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC),
+				IsRegular: true, Identity: "ta03-artifact",
+			},
+		},
+	}
+}
+
 func numberPointer(value float64) *float64 {
 	return &value
 }
 
 type historicalSourceStub struct {
-	catalog LMUDuckDBCatalog
-	rows    []LMUDuckDBRow
-	err     error
+	catalog  LMUDuckDBCatalog
+	rows     []LMUDuckDBRow
+	err      error
+	evidence []HistoricalArtifactEvidence
 
-	catalogCalls int
-	readCalls    int
-	lastTable    string
-	lastStart    int64
-	lastLimit    int
+	catalogCalls  int
+	readCalls     int
+	lastTable     string
+	lastStart     int64
+	lastLimit     int
+	evidenceCalls int
+}
+
+func (s *historicalSourceStub) ArtifactEvidence(context.Context) (HistoricalArtifactEvidence, error) {
+	index := s.evidenceCalls
+	s.evidenceCalls++
+	if len(s.evidence) == 0 {
+		return historicalTestArtifact().evidence, s.err
+	}
+	if index >= len(s.evidence) {
+		index = len(s.evidence) - 1
+	}
+	return s.evidence[index], s.err
 }
 
 func (s *historicalSourceStub) Catalog(context.Context) (LMUDuckDBCatalog, error) {

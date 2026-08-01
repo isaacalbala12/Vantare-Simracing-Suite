@@ -111,9 +111,10 @@ origen universal de todos los canales. TA-03 marca por tanto:
 TA-04 deberá demostrar un ancla o una regla de alineación antes de calcular
 delta, mapa o comparación espacial. No existe fallback silencioso por tiempo.
 
-`Lap` puede describir límites observados. El modelo genera rangos entre dos
-límites consecutivos, pero deja la validez como `unknown`: no deduce vuelta
-válida, in-lap, out-lap, Safety Car ni bandera.
+La tabla `Lap` observada demuestra nombre, columnas y tipos, pero no la
+semántica de sus valores. TA-03 no genera límites de vuelta a partir de ese
+nombre. TA-04 deberá demostrar valores/transiciones y su relación temporal
+antes de poblar vueltas; hasta entonces `HistoricalSession.Laps` queda vacío.
 
 ## Dependencia DuckDB
 
@@ -125,9 +126,11 @@ legítima, pero cambia build, cross-compilation, tamaño, supply chain y
 empaquetado.
 
 TA-03 no añade esa dependencia. El código define un puerto mínimo
-`LMUDuckDBReader` y normaliza catálogo/páginas. La CLI y el módulo Python ya
-instalados se usaron solo como tooling local de caracterización. Elegir y
-empaquetar un reader productivo requiere un corte explícito con:
+`LMUDuckDBReader`, liga cada parser a una capability emitida por el gate TA-02
+y revalida hash/identidad antes y después de catálogo/páginas. La CLI y el
+módulo Python ya instalados se usaron solo como tooling local de
+caracterización. Elegir y empaquetar un reader productivo requiere un corte
+explícito con:
 
 - auditoría de licencia y artefactos;
 - build reproducible Windows 10/11;
@@ -142,6 +145,9 @@ su presencia, versión y procedencia no están garantizadas.
 ## Límites
 
 - No hay reader productivo DuckDB ni wiring.
+- La caracterización real es evidencia manual sanitizada; aún no existe un
+  test de integración sobre un DuckDB sintético real. TA-03 no puede cerrarse
+  hasta que el corte del adapter aporte ambos.
 - No se importan valores de metadatos reales.
 - No se indexan sesiones ni se crea una galería.
 - No se calculan mapa, delta, comparación o coaching.

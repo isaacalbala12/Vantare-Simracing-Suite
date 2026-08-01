@@ -23,11 +23,13 @@ independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable
 del producto: discovery metadata-only, estabilidad LMU, manifest sanitizado,
 corpus sintético y presupuestos. La aprobación inicial de Isaac se reserva para
 promover el conjunto aceptado a `nightly`.
-TA-03 / ISA-126 está técnicamente cerrada sobre TA-02 tras re-review
-independiente `ACCEPT` sin P0/P1/P2/P3. Caracteriza un DuckDB LMU completado
-mediante copia temporal read-only y añade modelo/parser histórico v1 sin
-integrar un driver DuckDB concreto. Los seis findings P1/P2 del primer review
-quedaron cerrados con regresiones no complacientes.
+TA-03 / ISA-126 permanece abierta sobre TA-02. Caracteriza un DuckDB LMU
+completado mediante copia temporal read-only y añade el modelo/parser histórico
+v1, pero el review adversarial del 2026-08-01 demostró que faltaba ligar el
+reader al artefacto autorizado y que no existe aún el adapter DuckDB productivo
+ni su integración reproducible. El contrato ya corrige los P2/P3 y la frontera
+arquitectónica del P1 sin añadir dependencias; el P1 operativo solo se cierra
+con un corte explícito de decisión/adapter.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: ninguna.
@@ -58,17 +60,15 @@ quedaron cerrados con regresiones no complacientes.
   101 tablas. Original/copia con hash coincidente y metadata original intacta;
   la copia se abrió read-only. No se versionó DB, muestra, ruta, valor de
   metadata, nombre o identificador.
-- Corrección de review TA-03: catálogo inmutable y resolución interna por
-  `channelID`; máximo duro y predecesora acotada; EOF de eventos coherente;
-  metadata desconocida sensible; validación directa de timestamps de vueltas;
-  `DECIMAL` desconocido; duplicados case-insensitive rechazados.
-- Checks TA-03 tras corrección: focal x20, vet, race x10 y fuzz de
-  normalización/redacción 10 s PASS; suite Go global serial PASS; build
-  frontend PASS para embed. La global paralela anterior reprodujo una vez el
-  flake ISA-118 de settings y el focal x20 pasó. Benchmark de dos horas/100 Hz:
-  720.000 muestras en 50,03–54,95 ms, unas 103,69 MB de asignación acumulada y
-  352–370 asignaciones paginadas. La copia temporal read-only se eliminó al
-  finalizar.
+- Corrección de review TA-03: parser exige una capability emitida por TA-02 y
+  revalida hash/tamaño/mtime/identidad antes y después; catálogo canónico
+  determinista y resolución interna por `channelID`; máximo duro y predecesora
+  acotada; metadata sensible redacted sin invalidar la sesión; `Lap` no genera
+  límites sin evidencia; `DECIMAL` desconocido y duplicados case-insensitive.
+- Checks TA-03 previos: focal x20, vet, race x10, fuzz y suite Go global serial
+  PASS. Los checks frescos del endurecimiento se registrarán en el cierre del
+  commit. La copia temporal read-only se eliminó al finalizar la
+  caracterización; no se abrió de nuevo durante la corrección.
 
 ## Experiencia cerrada
 
@@ -112,8 +112,9 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
   distancia o geometría suficientes para implementar comparación espacial LMU;
   delta/mapa deben degradar honestamente hasta TA-04 con evidencia real.
 - **P2 privacidad, reducido por TA-02/03:** ya existe contrato metadata-first,
-  locator/error sanitizados y un schema real sanitizado sin valores. El reader
-  productivo aún debe demostrar que nunca expone rutas o metadatos sensibles.
+  locator/error sanitizados, valores sensibles redacted y un schema real
+  sanitizado sin valores. El reader productivo aún debe demostrar que nunca
+  expone rutas o metadatos sensibles.
 - **P1 integridad, reducido por TA-02/03:** WAL presente bloquea la apertura y se
   revalida antes/después de leer. El gate exige ausencia + ventana estable y la
   lectura verifica que path y handle siguen siendo el mismo archivo regular,
@@ -136,22 +137,30 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 |---|---|
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
-| Cerrada técnicamente | TA-03 / ISA-126, caracterización DuckDB y modelo histórico canónico; re-review independiente `ACCEPT` |
-| Siguiente corte | TA-04, progreso/distancia y mapa con evidencia |
+| Abierta / corregida parcialmente | TA-03 / ISA-126, modelo y capability endurecidos; falta decisión/adapter DuckDB e integración reproducible |
+| Bloqueada por adapter | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Cerrar la entrega operativa de TA-03 con commit, push, PR draft y Linear
-`In Review`; después abrir TA-04 apilada. TA-04 debe demostrar semántica y
-continuidad de `Lap Dist`, `Total Dist` y/o GPS antes de mapa/delta; no puede
-asumir que la mera presencia del canal prueba el algoritmo. Isaac decide la
-promoción posterior a `nightly`.
+Cerrar el endurecimiento actual con commit/push en la PR draft existente, sin
+cambiar Linear. Después, el orquestador debe abrir y aprobar un corte pequeño
+para seleccionar/empaquetar el driver DuckDB e implementar un adapter read-only
+ligado a `AuthorizedHistoricalArtifact`, con DuckDB sintético real, mismatch y
+TOCTOU. Solo entonces TA-03 puede volver a review de cierre y desbloquear
+TA-04. No hay promoción a `nightly`.
 
 ## Última actualización
 
-2026-07-30, ISA-126 / TA-03 cerrada técnicamente: re-review independiente
-`ACCEPT` sin P0/P1/P2/P3 tras verificar los seis findings corregidos. DuckDB
-LMU caracterizado read-only, schema sanitizado, modelo histórico v1, parser por
-catálogo/páginas, calidad/provenance y ejes honestos. Sin dependencia DuckDB de
-producto, integración o promoción.
+2026-08-01, ISA-126 / TA-03 reabierta tras review adversarial `REQUEST
+CHANGES`. Corregidos sin dependencia nueva: capability TA-02 no intercambiable,
+revalidación antes/después, orden canónico, redacción de metadata, límite duro
+y retirada de límites de vuelta especulativos. Sigue pendiente el adapter
+DuckDB productivo y su integración reproducible; sin cambio de Linear,
+integración ni promoción.
+
+Evidencia fresca del endurecimiento: focal x20, vet, race x10 con GCC UCRT64,
+dos fuzz de 10 s, benchmark de dos horas a 100 Hz y suite Go global PASS. El
+benchmark quedó en 58,04–75,16 ms/op, 103.686.400–103.696.592 B/op acumulados
+y 355–368 allocs/op. No hay cambios frontend; sus checks no aplican a este
+delta.

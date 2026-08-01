@@ -1,17 +1,17 @@
 # Modelo histórico canónico v1
 
-Estado: TA-03 / ISA-126, preparado para review.
+Estado: TA-03 / ISA-126, modelo corregido; adapter DuckDB productivo pendiente.
 
 ## Objetivo y frontera
 
 El modelo histórico pertenece a `internal/telemetryanalysis`, fuera de
 `internal/telemetry`. No lee Shared Memory, REST, drivers LMU ni snapshots live.
-Recibe un manifest aceptado por TA-02 y un catálogo/páginas de un reader
-histórico.
+Recibe una `AuthorizedHistoricalArtifact` emitida por el gate TA-02 y un
+catálogo/páginas de un reader histórico ligado al mismo artefacto.
 
 El corte entrega:
 
-- sesión, vuelta, canal, columnas, unidades, calidad y procedencia;
+- sesión, canal, columnas, unidades, calidad y procedencia;
 - parser de catálogo LMU DuckDB;
 - normalización paginada;
 - ejes continuos implícitos y eventos timestamped;
@@ -87,12 +87,11 @@ ownership de la página y evitando una asignación por muestra.
 
 ### Vueltas
 
-`BuildHistoricalLaps` acepta únicamente el evento `Lap` timestamped y entero.
-También valida por sí misma que cada timestamp sea finito y no decreciente,
-aunque las muestras no hayan pasado por el normalizador. Cada evento crea un
-inicio; el siguiente crea el final del anterior. La última vuelta queda
-abierta. `Validity` permanece `unknown` hasta combinar flags y reglas
-demostradas en cortes posteriores.
+La presencia de una tabla llamada `Lap` no demuestra por sí sola que cada fila
+sea un inicio de vuelta ni cuál sea su semántica. TA-03 conserva ese evento
+como canal histórico, pero no construye límites ni publica `Boundary=valid`.
+TA-04 debe observar valores/transiciones sanitizados y definir la regla antes
+de poblar `HistoricalSession.Laps`.
 
 ### Metadata
 
@@ -100,19 +99,27 @@ Las claves desconocidas son sensibles por defecto. Solo `CarClass`, `CarName`,
 `SessionType`, `TrackLayout`, `TrackName`, `Version` y `WeatherConditions`
 forman la allowlist pública demostrada. Setup, identidad, Steam ID, tiempos de
 grabación/sesión y cualquier clave futura no salen de un límite de privacidad
-sin una decisión posterior.
+sin una decisión posterior. Los valores sensibles nunca se copian al modelo:
+se conserva presencia y `redacted=true`. Un valor público que supera el
+presupuesto o contiene controles queda `invalid` sin invalidar el catálogo ni
+ocultar sus canales.
 
 ## Puerto de infraestructura
 
-`LMUDuckDBReader` tiene dos operaciones:
+`LMUDuckDBReader` tiene tres operaciones:
 
 ```text
+ArtifactEvidence(ctx) -> hash + tamaño/mtime + identidad, sin ruta
 Catalog(ctx) -> schema sanitizable
 ReadRows(ctx, sourceTable, start, limit) -> página tipada
 ```
 
 El parser:
 
+- exige una capability emitida por `BuildAuthorizedHistoricalArtifact`, no un
+  manifest construible por separado;
+- revalida hash, tamaño/mtime e identidad antes y después de catálogo/página;
+- no publica datos si el artefacto cambia durante la lectura;
 - valida manifest/schema;
 - congela una copia interna del catálogo tras `Inspect`;
 - resuelve `channelID` contra esa copia y nunca confía en nombres, columnas o
@@ -125,8 +132,10 @@ El parser:
 - no crea goroutines.
 
 El reader concreto deberá citar/escapar identificadores, abrir únicamente una
-copia estable en read-only y materializar NULL/tipos sin usar `any` en el
-modelo. Esa implementación no forma parte de TA-03.
+copia estable en read-only, recalcular evidencia para cada revalidación y
+materializar NULL/tipos sin usar `any` en el modelo. Esa implementación no
+forma parte de este commit y mantiene TA-03 abierta hasta un corte explícito de
+dependencia/build/empaquetado Windows y adapter.
 
 ## Presupuestos
 
@@ -134,12 +143,15 @@ modelo. Esa implementación no forma parte de TA-03.
 - máximo 64 columnas por canal;
 - máximo 512 claves de metadata;
 - nombres/unidades limitados a 256 bytes y sin caracteres de control;
+- valores sensibles siempre redacted; valores públicos fuera del presupuesto
+  se marcan invalid sin rechazar la sesión;
 - páginas acotadas por el constructor del parser a un máximo de 16.384 filas
   publicadas, más una única predecesora interna para eventos.
+- el normalizador público también rechaza directamente más de 16.384 filas.
 
 El benchmark modela dos horas a 100 Hz (720.000 muestras) en páginas de 4.096.
-Cinco pasadas midieron 56,15–70,99 ms/op,
-103.686.144–103.691.528 B/op acumulados y 352–364 allocs/op. Las asignaciones
+Cinco pasadas midieron 58,04–75,16 ms/op,
+103.686.400–103.696.592 B/op acumulados y 355–368 allocs/op. Las asignaciones
 son acumuladas para todo el recorrido; cada página se libera antes de la
 siguiente y el modelo no retiene simultáneamente las 720.000 muestras.
 

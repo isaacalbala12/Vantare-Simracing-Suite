@@ -97,6 +97,33 @@ func TestBuildManifestProducesReproducibleSanitizedIdentityAndDedupe(t *testing.
 	}
 }
 
+func TestBuildAuthorizedHistoricalArtifactBindsManifestToStableIdentity(t *testing.T) {
+	candidate := readyCandidate(t, Candidate{
+		Kind: SourceLMU, Format: "lmu-duckdb", Locator: "lmu://0123456789abcdef",
+		sourcePath: "private/session.duckdb", Size: int64(len("synthetic")),
+	})
+	options := testImportOptions(1024)
+	options.ParserID = LMUDuckDBParserID
+	options.ParserVersion = LMUDuckDBParserVersion
+
+	artifact, err := BuildAuthorizedHistoricalArtifact(
+		context.Background(),
+		&memoryContentSource{content: "synthetic", modTime: candidate.ModTime, identity: "stable-file"},
+		candidate,
+		options,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := artifact.Manifest()
+	if manifest.ContentSHA256 == "" || artifact.evidence.ContentSHA256 != manifest.ContentSHA256 {
+		t.Fatalf("artifact hash is not bound to manifest: %#v", artifact)
+	}
+	if artifact.evidence.Metadata.Identity != "stable-file" || artifact.evidence.Metadata.Size != manifest.Size {
+		t.Fatalf("artifact identity is not bound to stable handle: %#v", artifact.evidence)
+	}
+}
+
 func TestBuildManifestRevalidatesWALBeforeAndAfterRead(t *testing.T) {
 	t.Parallel()
 

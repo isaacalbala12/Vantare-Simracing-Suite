@@ -27,12 +27,12 @@ const (
 )
 
 var (
-	ErrInvalidHistoricalCatalog = errors.New("invalid historical telemetry catalog")
-	ErrInvalidHistoricalPage    = errors.New("invalid historical telemetry page")
-	ErrHistoricalTimestampOrder = errors.New("historical telemetry timestamp order violation")
-	ErrInvalidHistoricalLaps    = errors.New("invalid historical lap boundaries")
-	ErrHistoricalSource         = errors.New("historical telemetry source error")
-	ErrHistoricalNotInspected   = errors.New("historical telemetry source not inspected")
+	ErrInvalidHistoricalCatalog  = errors.New("invalid historical telemetry catalog")
+	ErrInvalidHistoricalPage     = errors.New("invalid historical telemetry page")
+	ErrHistoricalTimestampOrder  = errors.New("historical telemetry timestamp order violation")
+	ErrHistoricalSource          = errors.New("historical telemetry source error")
+	ErrHistoricalNotInspected    = errors.New("historical telemetry source not inspected")
+	ErrHistoricalArtifactChanged = errors.New("authorized historical telemetry artifact changed")
 )
 
 // Quality is independent from a scalar value: zero, false and an empty string
@@ -121,6 +121,7 @@ type ChannelProvenance struct {
 type HistoricalMetadata struct {
 	Key       string  `json:"key"`
 	Sensitive bool    `json:"sensitive"`
+	Redacted  bool    `json:"redacted,omitempty"`
 	Present   bool    `json:"present"`
 	Value     string  `json:"value,omitempty"`
 	Quality   Quality `json:"quality"`
@@ -215,30 +216,41 @@ type LMUDuckDBRow struct {
 // implementation. The historical model remains independent from database/sql,
 // CGO, the DuckDB CLI and the live Telemetry Core.
 type LMUDuckDBReader interface {
+	ArtifactEvidence(context.Context) (HistoricalArtifactEvidence, error)
 	Catalog(context.Context) (LMUDuckDBCatalog, error)
 	ReadRows(context.Context, string, int64, int) ([]LMUDuckDBRow, error)
 }
 
 type LMUDuckDBParser struct {
-	manifest    Manifest
+	artifact    AuthorizedHistoricalArtifact
 	reader      LMUDuckDBReader
 	maxPageRows int
 	mu          sync.RWMutex
 	channels    map[string]HistoricalChannel
 }
 
-func NewLMUDuckDBParser(manifest Manifest, reader LMUDuckDBReader, maxPageRows int) (*LMUDuckDBParser, error) {
+func NewLMUDuckDBParser(
+	artifact AuthorizedHistoricalArtifact,
+	reader LMUDuckDBReader,
+	maxPageRows int,
+) (*LMUDuckDBParser, error) {
 	if reader == nil || maxPageRows <= 0 || maxPageRows > MaxLMUDuckDBPageRows {
 		return nil, ErrInvalidHistoricalPage
 	}
-	if _, err := ParseLMUDuckDBCatalog(manifest, LMUDuckDBCatalog{}); err != nil {
+	if !validAuthorizedHistoricalArtifact(artifact) {
+		return nil, fmt.Errorf("%w: artifact", ErrInvalidHistoricalCatalog)
+	}
+	if _, err := ParseLMUDuckDBCatalog(artifact.manifest, LMUDuckDBCatalog{}); err != nil {
 		return nil, err
 	}
-	return &LMUDuckDBParser{manifest: manifest, reader: reader, maxPageRows: maxPageRows}, nil
+	return &LMUDuckDBParser{artifact: artifact, reader: reader, maxPageRows: maxPageRows}, nil
 }
 
 func (p *LMUDuckDBParser) Inspect(ctx context.Context) (HistoricalSession, error) {
 	if err := ctx.Err(); err != nil {
+		return HistoricalSession{}, err
+	}
+	if err := p.revalidateArtifact(ctx); err != nil {
 		return HistoricalSession{}, err
 	}
 	catalog, err := p.reader.Catalog(ctx)
@@ -248,7 +260,10 @@ func (p *LMUDuckDBParser) Inspect(ctx context.Context) (HistoricalSession, error
 		}
 		return HistoricalSession{}, ErrHistoricalSource
 	}
-	session, err := ParseLMUDuckDBCatalog(p.manifest, catalog)
+	if err := p.revalidateArtifact(ctx); err != nil {
+		return HistoricalSession{}, err
+	}
+	session, err := ParseLMUDuckDBCatalog(p.artifact.manifest, catalog)
 	if err != nil {
 		return HistoricalSession{}, err
 	}
@@ -291,6 +306,9 @@ func (p *LMUDuckDBParser) ReadPage(
 		sourceStart--
 		sourceLimit++
 	}
+	if err := p.revalidateArtifact(ctx); err != nil {
+		return HistoricalPage{}, err
+	}
 	rows, err := p.reader.ReadRows(ctx, channel.SourceName, sourceStart, sourceLimit)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
@@ -301,10 +319,13 @@ func (p *LMUDuckDBParser) ReadPage(
 	if err := ctx.Err(); err != nil {
 		return HistoricalPage{}, err
 	}
+	if err := p.revalidateArtifact(ctx); err != nil {
+		return HistoricalPage{}, err
+	}
 	if len(rows) > sourceLimit {
 		return HistoricalPage{}, ErrInvalidHistoricalPage
 	}
-	page, err := NormalizeLMUDuckDBPage(channel, sourceStart, rows)
+	page, err := normalizeLMUDuckDBPage(channel, sourceStart, rows, sourceLimit)
 	if err != nil {
 		return HistoricalPage{}, err
 	}
@@ -313,6 +334,20 @@ func (p *LMUDuckDBParser) ReadPage(
 		page.Samples = page.Samples[1:]
 	}
 	return page, nil
+}
+
+func (p *LMUDuckDBParser) revalidateArtifact(ctx context.Context) error {
+	evidence, err := p.reader.ArtifactEvidence(ctx)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+		return ErrHistoricalSource
+	}
+	if !historicalArtifactEvidenceMatches(p.artifact.evidence, evidence) {
+		return ErrHistoricalArtifactChanged
+	}
+	return nil
 }
 
 func cloneHistoricalChannel(channel HistoricalChannel) HistoricalChannel {
@@ -344,10 +379,17 @@ func ParseLMUDuckDBCatalog(manifest Manifest, catalog LMUDuckDBCatalog) (Histori
 		Metadata: make([]HistoricalMetadata, 0, len(catalog.Metadata)),
 		Channels: make([]HistoricalChannel, 0, len(catalog.Continuous)+len(catalog.Events)),
 	}
-	for _, source := range catalog.Metadata {
+	metadata := append([]LMUDuckDBMetadata(nil), catalog.Metadata...)
+	continuous := append([]LMUDuckDBChannel(nil), catalog.Continuous...)
+	events := append([]LMUDuckDBChannel(nil), catalog.Events...)
+	sort.Slice(metadata, func(i, j int) bool { return canonicalLess(metadata[i].Key, metadata[j].Key) })
+	sort.Slice(continuous, func(i, j int) bool { return canonicalLess(continuous[i].Name, continuous[j].Name) })
+	sort.Slice(events, func(i, j int) bool { return canonicalLess(events[i].Name, events[j].Name) })
+	for _, source := range metadata {
 		quality := source.Quality
 		present := source.Present
 		value := source.Value
+		sensitive := sensitiveMetadataKey(source.Key)
 		if !present {
 			value = ""
 			switch quality {
@@ -361,17 +403,25 @@ func ParseLMUDuckDBCatalog(manifest Manifest, catalog LMUDuckDBCatalog) (Histori
 			present = false
 			value = ""
 		}
+		redacted := sensitive && present
+		if redacted {
+			value = ""
+		} else if present && !validHistoricalUnit(value) {
+			present = false
+			value = ""
+			quality = QualityInvalid
+		}
 		session.Metadata = append(session.Metadata, HistoricalMetadata{
-			Key: source.Key, Sensitive: sensitiveMetadataKey(source.Key),
+			Key: source.Key, Sensitive: sensitive, Redacted: redacted,
 			Present: present, Value: value, Quality: quality,
 		})
 	}
-	for _, source := range catalog.Continuous {
+	for _, source := range continuous {
 		session.Channels = append(session.Channels, historicalChannel(
 			len(session.Channels), source, manifest, SamplingContinuousImplicitFrequency,
 		))
 	}
-	for _, source := range catalog.Events {
+	for _, source := range events {
 		session.Channels = append(session.Channels, historicalChannel(
 			len(session.Channels), source, manifest, SamplingEventTimestamped,
 		))
@@ -418,7 +468,19 @@ func historicalChannel(order int, source LMUDuckDBChannel, manifest Manifest, sa
 }
 
 func NormalizeLMUDuckDBPage(channel HistoricalChannel, start int64, rows []LMUDuckDBRow) (HistoricalPage, error) {
+	return normalizeLMUDuckDBPage(channel, start, rows, MaxLMUDuckDBPageRows)
+}
+
+func normalizeLMUDuckDBPage(
+	channel HistoricalChannel,
+	start int64,
+	rows []LMUDuckDBRow,
+	maxRows int,
+) (HistoricalPage, error) {
 	if start < 0 || channel.ID == "" || len(channel.Columns) == 0 {
+		return HistoricalPage{}, ErrInvalidHistoricalPage
+	}
+	if maxRows <= 0 || len(rows) > maxRows {
 		return HistoricalPage{}, ErrInvalidHistoricalPage
 	}
 	if int64(len(rows)) > math.MaxInt64-start {
@@ -512,38 +574,6 @@ func validSourceScalar(value LMUDuckDBValue) bool {
 	}
 }
 
-// BuildHistoricalLaps converts only the observed "Lap" boundary event. It does
-// not infer whether a lap is valid, complete, an in-lap or an out-lap.
-func BuildHistoricalLaps(channel HistoricalChannel, samples []HistoricalSample) ([]HistoricalLap, error) {
-	if channel.SourceName != "Lap" || channel.Sampling.Kind != SamplingEventTimestamped ||
-		len(channel.Columns) != 1 || channel.Columns[0].Type != ScalarInteger {
-		return nil, ErrInvalidHistoricalLaps
-	}
-	laps := make([]HistoricalLap, len(samples))
-	for index, sample := range samples {
-		if sample.TimestampSeconds == nil || len(sample.Values) != 1 ||
-			!sample.Values[0].Present || sample.Values[0].Quality != QualityValid ||
-			sample.Values[0].Scalar.Kind != ScalarInteger ||
-			math.IsNaN(*sample.TimestampSeconds) || math.IsInf(*sample.TimestampSeconds, 0) ||
-			(index > 0 && *sample.TimestampSeconds < laps[index-1].StartSeconds) {
-			return nil, ErrInvalidHistoricalLaps
-		}
-		number := sample.Values[0].Scalar.Integer
-		if index > 0 && number <= laps[index-1].Number {
-			return nil, ErrInvalidHistoricalLaps
-		}
-		laps[index] = HistoricalLap{
-			Number: number, StartSeconds: *sample.TimestampSeconds,
-			Boundary: QualityValid, Validity: QualityUnknown,
-		}
-		if index > 0 {
-			end := *sample.TimestampSeconds
-			laps[index-1].EndSeconds = &end
-		}
-	}
-	return laps, nil
-}
-
 func validateLMUDuckDBCatalog(catalog LMUDuckDBCatalog) error {
 	if len(catalog.Metadata) > maxHistoricalMetadata ||
 		len(catalog.Continuous)+len(catalog.Events) > maxHistoricalChannels {
@@ -552,7 +582,7 @@ func validateLMUDuckDBCatalog(catalog LMUDuckDBCatalog) error {
 	names := make(map[string]struct{}, len(catalog.Continuous)+len(catalog.Events))
 	metadata := make(map[string]struct{}, len(catalog.Metadata))
 	for _, field := range catalog.Metadata {
-		if !validHistoricalName(field.Key) || !validHistoricalUnit(field.Value) ||
+		if !validHistoricalName(field.Key) ||
 			(field.Quality != "" && field.Quality != QualityValid &&
 				field.Quality != QualityStale && field.Quality != QualityMissing &&
 				field.Quality != QualityInvalid && field.Quality != QualityUnknown) {
@@ -646,6 +676,29 @@ func fingerprintLMUDuckDBCatalog(catalog LMUDuckDBCatalog) (string, error) {
 	}
 	sum := sha256.Sum256(encoded)
 	return hex.EncodeToString(sum[:]), nil
+}
+
+func validAuthorizedHistoricalArtifact(artifact AuthorizedHistoricalArtifact) bool {
+	return ValidateManifest(artifact.manifest) == nil &&
+		artifact.evidence.ContentSHA256 == artifact.manifest.ContentSHA256 &&
+		artifact.evidence.Metadata.Size == artifact.manifest.Size &&
+		artifact.evidence.Metadata.IsRegular &&
+		!artifact.evidence.Metadata.IsSymlink &&
+		hasIdentity(artifact.evidence.Metadata)
+}
+
+func historicalArtifactEvidenceMatches(expected, actual HistoricalArtifactEvidence) bool {
+	return actual.ContentSHA256 == expected.ContentSHA256 &&
+		sameMetadata(expected.Metadata, actual.Metadata)
+}
+
+func canonicalLess(first, second string) bool {
+	firstFolded := strings.ToLower(first)
+	secondFolded := strings.ToLower(second)
+	if firstFolded == secondFolded {
+		return first < second
+	}
+	return firstFolded < secondFolded
 }
 
 func historicalChannelID(sampling SamplingKind, name string) string {

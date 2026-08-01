@@ -15,19 +15,47 @@ CrewChief, Pit Manager y wake word.
 - ADR 0004 y el handoff de Telemetry Core.
 - `docs/telemetry-core/engineer-rescue-matrix.md` y
   `docs/engineer/audits/g3-parity-audit.md` son evidencia histórica.
-- El futuro informe clean-room, spec, HTML, ADR y plan serán autoridad detallada.
+- La investigación clean-room y su interfaz de referencia permanecen en la
+  rama/PR de ISA-123; TC-08 incorpora solo los contratos necesarios, no sus
+  assets ni su UI experimental.
 
 ## Estado
 
-Existe código importado de DeepSeek/Engineer Release con monitores, audio,
-comandos, SSE/Wails y UI. Se trata como no confiable hasta una auditoría.
-La auditoría G3 y la matriz de rescate no demuestran funcionamiento. El
-proyecto Linear `Engineer & Spotter — LMU Race Companion` ya existe. TC-08
-migra la entrada; el producto vive aparte.
+ISA-123 completó la investigación primaria y una auditoría read-only del
+runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
+`ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
+añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
+re-review independiente `ACCEPT` sin P0/P1/P2/P3. TC-05A conserva la autoridad transversal sobre envelope,
+versionado, ownership, fan-out y puertos. El código legacy contiene lógica y
+fixtures caracterizables, pero la ruta de producto arranca conectada al
+simulador, no recibe aún la proyección de Telemetry Core y no garantiza
+preempción de Spotter ni Pit transaccional. Por ello sigue sin ser confiable
+como beta. TC-08 migra la entrada; el producto vive aparte.
 
-- Rama/base/SHA: aún no existen; la research issue debe fijarlos.
+ISA-109 / TC-08B compone esos contratos aprobados sobre la base canónica más
+reciente y amplía la observación a sesión, parrilla, fuel, gaps y geometría.
+No convierte a `telemetry.Frame`, porque perdería missing e identidades
+generacionales. ISA-110 demostrará paridad por monitor antes del cutover.
+
+- Rama activa:
+  `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a`.
+- Base: `efcc77c60f173a160e8c186f54ccfb43da5be692` (TC-05A).
+- Composición: merge local `b5d69e7` incorpora ENG-02 `df0c202`.
 - Promoción: ninguna.
-- Evidencia: auditoría G3 parcial y matriz de rescate; insuficientes.
+- Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
+  Go PASS, race x10, vet, frontend build para embed e inventario de 34
+  consumidores productivos legacy. La auditoría G3 y matriz de rescate
+  permanecen como historial, no como prueba de runtime. Una primera ejecución
+  global expuso una intermitencia heredada del test de cancelación REST del
+  driver LMU; focal x20 y repetición global pasaron.
+- Evidencia ENG-03: golden TC-05A + golden específico Engineer, contrato de
+  consumidor, capabilities, calidad, contradicciones e identidad. Focal x20,
+  projection, 31 paquetes Engineer, vet, race x10 y frontend build PASS.
+  Global conserva la contención Windows conocida de settings. Telemetry hizo
+  aflorar una ejecución load-sensitive heredada del teardown REST LMU; su test
+  aislado x20 pasa y el driver no forma parte del cambio. El único P1 de
+  review, capability standings ausente cuando solo `LapNumber` era usable,
+  quedó corregido con una regresión de flujo completo. Re-review `ACCEPT`.
 
 ## Decisiones
 
@@ -48,6 +76,16 @@ migra la entrada; el producto vive aparte.
 - Strategy solo cambia tras aceptación.
 - Subtítulos y widget de radio Crystal forman parte del proyecto.
 - Spotter p95 <150 ms desde decisión estable a inicio del audio.
+- TC-05A define el envelope transversal; ENG-02 no duplica su versionado,
+  clocks, ownership, fan-out ni puertos.
+- La API visible por Engineer usa tipos de producto y no exige importar
+  schema/envelope.
+- Los snapshots son latest-wins: un salto entre versiones observadas no es un
+  gap de hechos ni exige resync.
+- Capability unknown, unsupported y degraded son diferentes. Solo un campo
+  fresh con capability supported es utilizable sin decisión adicional.
+- Reset de epoch y cambios de equipo, piloto, coche, sesión o evento cancelan
+  decisiones pendientes de Engineer.
 
 ## Alcance Beta
 
@@ -69,9 +107,11 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Riesgos
 
-- **P0 potencial:** falsos positivos del Spotter o mensajes caducados.
-- **P0 potencial:** Pit Manager actúa sin verificación/fail-closed.
-- **P1:** código importado cableado a mock/simulator.
+- **P0 confirmado de honestidad:** servicio/UI arrancan conectados al simulador.
+- **P0:** no existe garantía de preempción audible ni de mensajes no caducados.
+- **P0:** Pit Manager carece de transacción y readback demostrados.
+- **P1 reducido:** existe proyección pura, pero aún no está cableada ni ha
+  migrado monitores legacy.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
 - **P2:** cobertura desigual en cuatro idiomas.
@@ -80,17 +120,21 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
-| Activa | Ninguna |
-| Siguiente | ENG-01, investigación clean-room y auditoría read-only |
-| Cutover | TC-08, sin absorber el proyecto de producto |
+| En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
+| Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
+| Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
+| En implementación aislada | ISA-109 / TC-08B, entrada pura completa sin wiring |
+| Siguiente | ISA-110 / TC-08C, replay parity de monitores y eventos |
+| Cutover | ISA-111/112, sin absorber el proyecto de producto |
 
 ## Siguiente acción exacta
 
-Crear la issue de investigación; usar LMU, SimHub y replays sin modificar
-producción. Base: GOV-01 publicado o la base limpia indicada en Linear.
-Entregar matriz, capabilities, licencias, HTML, arquitectura, plan y handoff.
-No crear monitores antes de demostrar wiring y señales.
+Entregar ISA-109 con commit/push/PR draft y actualizar Linear. Después ISA-110
+debe comparar fixtures legacy y canónicos antes de migrar monitores; no crear
+señales ni borrar el frame legacy. No hay promoción en esta cadena.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-08-01, ISA-109 / TC-08B amplía y endurece ENG-03 sobre ISA-130. La entrada
+de producto conserva full grid, fuel, gaps, geometría y calidad; sigue sin
+wiring, sin retirada legacy y sin promoción.

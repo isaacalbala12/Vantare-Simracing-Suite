@@ -1,0 +1,9 @@
+context epoch=3 event=event-2 session=session-2 vehicle=car-4 team=team-2 driver=driver-2
+capability session=1
+capability standings=1
+capability controls=1
+capability pit=2
+track state=0 capability=1 provenance=0 present=false usable=false value=
+speed state=2 capability=1 provenance=1 present=true usable=false value=64.25
+throttle state=1 capability=1 provenance=1 present=true usable=true value=0
+inPit state=4 capability=2 provenance=0 present=false usable=false value=false

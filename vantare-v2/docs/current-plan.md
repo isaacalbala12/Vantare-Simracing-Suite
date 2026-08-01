@@ -10,6 +10,20 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-109 / TC-08B (2026-08-01):
+- La proyección Engineer v1 expone sesión admitida, parrilla completa,
+  scoring, controles, pit, fuel, gaps y geometría con calidad explícita.
+- `ObservationSnapshotV1` es la entrada pura de producto. No abre LMU/REST,
+  no contiene decisiones y no se conecta todavía al runtime Engineer.
+- Se rechaza el bridge directo a `telemetry.Frame`: perdería missing y las
+  identidades opacas. ISA-110 caracteriza los monitores mediante replay antes
+  de adaptar su consumo; el frame legacy permanece intacto.
+- La geometría conserva `float64`, orientación completa y ejes documentados
+  por ISA-130. Flags, tyre, damage, weather y demás señales no demostradas
+  siguen deshabilitadas.
+- Documento: `docs/engineer/projection-adapter.md`.
+- Siguiente corte: ISA-110 / TC-08C. Sin merge ni promoción.
+
 Nota ISA-130 / TC-08A.1 (2026-08-01):
 - Geometría canónica añadida de forma aditiva: posición mundo en metros,
   velocidad local en m/s y orientación right-handed por vehículo.

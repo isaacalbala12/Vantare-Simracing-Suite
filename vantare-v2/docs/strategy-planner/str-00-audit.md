@@ -43,10 +43,12 @@ completo: solo se auditó el objeto Git `b9f1937`.
 
 ## 3. Inventario completo de Product A
 
-El delta exacto desde su merge-base contiene **87 archivos**, con
-**6.751 inserciones y 5 eliminaciones** en la simulación de composición.
+El delta exacto desde su merge-base contiene **94 paths**: **87 auto-merged y
+7 conflictos**, con **6.751 inserciones y 5 eliminaciones** en la simulación de
+composición. La matriz exhaustiva enumera los 94 individualmente y fija la
+allowlist de STR-01.
 
-### 3.1 Dominio Go — 26 archivos
+### 3.1 Dominio Go — 25 paths
 
 | Área | Producción | Pruebas/evidencia | Decisión preliminar |
 | --- | --- | --- | --- |
@@ -61,7 +63,7 @@ El delta exacto desde su merge-base contiene **87 archivos**, con
 | Sensibilidad | `sensitivity.go` | `sensitivity_test.go` | HARDEN |
 | Fixtures | — | `canonical_fixture_test.go`, `testdata/canonical-cases.json` | KEEP como caracterización |
 
-### 3.2 Aplicación Go — 8 archivos añadidos y 2 modificados
+### 3.2 Aplicación Go — 8 paths
 
 - Añadidos: `internal/app/strategy_service.go`, `strategy_bridge.go`,
   `strategy_export.go` y sus tres tests.
@@ -73,7 +75,7 @@ contratos anteriores. El exportador exacto de `b9f1937` conserva `mustJSON`;
 unas correcciones posteriores solo existen como cambios sin commit y no son
 evidencia recuperable.
 
-### 3.3 Frontend Strategy — 34 archivos
+### 3.3 Frontend Strategy — 32 paths
 
 Componentes:
 
@@ -108,7 +110,7 @@ El harness carga y el build pasa, pero el smoke se queda bloqueado incluso con
 Vite ya disponible. Se registra como bloqueo del propio harness; no demuestra
 por sí mismo un fallo de la UI.
 
-### 3.5 Integraciones transversales — 15 archivos
+### 3.5 Integraciones transversales — 17 paths
 
 - `cmd/vantare/main.go`.
 - `frontend/src/hub/HubApp.tsx`.
@@ -123,7 +125,7 @@ Estas rutas son las de mayor riesgo de merge porque han evolucionado mucho
 desde Product A. Deben reimplementarse sobre la base actual, no rescatarse en
 bloque.
 
-### 3.6 Documentación — 9 archivos
+### 3.6 Documentación — 8 paths
 
 - `docs/analysis/strategy-bridge-decision.md`.
 - `docs/research/strategy-planner-tinypedal-analysis.md`.
@@ -134,6 +136,11 @@ bloque.
 
 Se conserva como antecedente. El ADR, este informe, el mapa PB -> STR y el plan
 unificado pasan a ser la autoridad.
+
+Reconciliación: 25 dominio + 8 aplicación + 32 frontend Strategy + 4 harness +
+8 documentación + 17 integraciones = **94**. Solo el fixture JSON puede
+copiarse de forma exacta en STR-01; los otros 24 paths del dominio se portan
+manualmente bajo tests y los 69 restantes quedan en denylist.
 
 ## 4. Baseline reproducible de Product A
 
@@ -158,6 +165,9 @@ No se ejecutó ninguna prueba monetaria, publicación, merge o promoción.
 
 Se simuló un merge `--no-commit --no-ff` en un worktree temporal de la base
 exacta y después se abortó. El worktree volvió limpio.
+
+Resultado total: **94 paths = 87 auto-merged + 7 conflictos**. `auto-merged`
+solo describe la mecánica de Git y no autoriza rescate.
 
 Conflictos de contenido exactos:
 
@@ -216,7 +226,7 @@ La cadena histórica es serial y va de ISA-42 a ISA-67:
 | ISA-48 | PB-02D Dataset/consultas | TEL; Strategy consume STR-10 |
 | ISA-49 | PB-03A Correcciones no destructivas | TEL; Strategy consume STR-10 |
 | ISA-50 | PB-03B Derivados/confianza | TEL + STR-11 |
-| ISA-51 | PB-03C Biblioteca/revisiones | STR-03 y STR-15 |
+| ISA-51 | PB-03C Biblioteca/revisiones | STR-03 y STR-15A/B/C |
 | ISA-52 | PB-03D Dirty/concurrencia | STR-03 y STR-04 |
 | ISA-53 | PB-04A Baseline visual/harness | STR-07 |
 | ISA-54 | PB-04B Galería/navegación | STR-03 y STR-07 |
@@ -236,6 +246,24 @@ La cadena histórica es serial y va de ISA-42 a ISA-67:
 
 No se elimina ninguna issue, milestone, documento o rama histórica.
 
+El backlog ejecutable contiene **24 cortes Strategy**: STR-01..14, STR-15A,
+STR-15B, STR-15C y STR-16..22. La antigua ISA-150 se reduce a galería privada;
+ISA-162 posee el catálogo oficial firmado e ISA-163 posee comunidad,
+moderación y retirada. Comunidad no bloquea el desarrollo live, pero sí el gate
+integral final.
+
+Tres issues productoras transversales cierran las entradas que STR-00 no puede
+asumir:
+
+- ISA-159 / TA-05: `StrategyInputProjection v1`, owner Telemetry Analysis;
+  bloquea ISA-145 / STR-10.
+- ISA-160 / TC-10A: auditoría/schema live para Fuel, VE, tyres y weather.
+- ISA-161 / TC-10B: `StrategyLiveProjection v1`, owner Telemetry Core; bloquea
+  ISA-152 / STR-17.
+
+La proyección live Strategy existente en ISA-117 solo demuestra sesión,
+progreso y pit. Es compile-only para el producto y no habilita STR-17.
+
 ## 8. Riesgos y gates
 
 | Severidad | Riesgo | Mitigación |
@@ -243,6 +271,7 @@ No se elimina ninguna issue, milestone, documento o rama histórica.
 | P1 | Rescatar el branch entero arrastra integraciones obsoletas | STR-01 selectivo y lista permitida |
 | P1 | Strategy duplica importación/corrección/almacenamiento de Analysis | ADR de ownership + STR-10 por proyección |
 | P1 | Solver parece óptimo sin incluir degradación ni unidades correctas | Reescritura STR-12 con oráculo y propiedades |
+| P1 | Productores histórico/live ausentes o incompletos | ISA-159 y ISA-160/161 bloquean consumidores |
 | P1 | Cambios live aplicados sin aceptación | ActivePlan versionado y flujo de comandos |
 | P2 | Harness histórico se bloquea | Rehacer smoke en STR-07 sin bajar gates |
 | P2 | Fórmulas LMU asumidas | Presets versionados y evidencia real/manual |

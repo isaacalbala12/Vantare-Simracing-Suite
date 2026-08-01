@@ -14,6 +14,9 @@ con neumáticos físicos, Fuel y Virtual Energy separados, riesgo explícito e
 integraciones seguras con Telemetry Analysis, Telemetry Core, Engineer y
 Overlays.
 
+El backlog contiene 24 cortes Strategy: STR-01..14, STR-15A/B/C y STR-16..22,
+más tres producer issues transversales (ISA-159..161).
+
 ## Reglas para cada worker
 
 1. Leer `AGENTS.md`, `docs/current-plan.md`, `docs/agent-workflow.md`, el
@@ -51,12 +54,13 @@ STR-01 -> STR-02 -> STR-03 -> STR-04
                                       \       /
                                        STR-07
 
-Telemetry Analysis projection -> STR-10 -> STR-11
+ISA-159 (Analysis producer) -> STR-10 -> STR-11
 STR-05/06/08/09/11 -> STR-12 -> STR-13 -> STR-14
-STR-03/04/13 -> STR-15 -> STR-16
-Telemetry Core projection + STR-16 -> STR-17 -> STR-18
+STR-03/04/13 -> STR-15A -> STR-16
+                         \-> STR-15B -> STR-15C
+ISA-160 -> ISA-161 (Core producer) + STR-16 -> STR-17 -> STR-18
 STR-18 -> STR-19 and STR-20
-all implementation cuts -> STR-21 -> STR-22
+STR-15C + all implementation cuts -> STR-21 -> STR-22
 ```
 
 Los cortes independientes con dependencias satisfechas pueden ejecutarse en
@@ -145,7 +149,8 @@ paralelo/secuencial; repairs/penalties opcionales.
 compuesto, stints y esquina persistente.
 
 **Incluye:** máximo individual, clasificación 80–90 % o valor exacto, mezclas,
-estado libre/montado/usado/descartado y rangos 40–70 % cuando no hay datos.
+estado libre/montado/usado/descartado, compuestos **Soft/Medium/Hard/Wet** y
+rangos 40–70 % cuando no hay datos.
 
 **Tests:** no mover entre esquinas después del primer uso, duplicados,
 inventario insuficiente, mixed compounds y trazabilidad de estimación.
@@ -189,8 +194,9 @@ validación y actualización coherente de tarjetas.
 
 **Objetivo:** consumir la proyección histórica publicada por Telemetry Analysis.
 
-**Precondición:** contrato versionado de Analysis disponible. Si no existe, la
-issue documenta el schema requerido y queda bloqueada sin crear un parser local.
+**Precondición ejecutable:** ISA-159 / TA-05 debe producir el contrato
+versionado de Analysis. ISA-145 / STR-10 está bloqueada por esa issue y no puede
+crear un parser local como sustituto.
 
 **Incluye:** selección de sesión/vueltas, capabilities, procedencia,
 compatibilidad, freshness y ausencia de datos. Nunca SQL ni rutas LMU.
@@ -249,15 +255,32 @@ capability ausente.
 
 ## Milestone STR-06 — Galería y ejecución live
 
-### STR-15 — Galerías, revisiones y paquetes compartibles
+### STR-15A / ISA-150 — Galería privada local y paquetes
 
-**Objetivo:** separar `Vantare`, `Comunidad` y `Mis planes`.
+**Owner:** Strategy Planner.
 
-**Incluye:** planes oficiales firmados/versionados, publicación comunitaria
-voluntaria, privacidad por defecto, import/export local, metadatos de
-compatibilidad y retirada por autor.
+**Objetivo:** implementar `Mis planes`, revisiones e import/export local sin
+sincronización ni publicación. Privado por defecto, migraciones, checksum,
+backup y rollback. No almacena sesiones de Telemetry Analysis.
 
-**No incluye:** publicar automáticamente planes privados.
+### STR-15B / ISA-162 — Catálogo oficial firmado
+
+**Owner:** Strategy Planner posee schema, verificación, caché y UI; el workflow
+de release produce y firma los bundles.
+
+**Dependencia:** ISA-150. Incluye manifest, versión, checksum/firma, trusted
+keys, caché last-known-good, rollback y rechazo de contenido manipulado. No
+incluye comunidad.
+
+### STR-15C / ISA-163 — Comunidad, moderación y retirada
+
+**Owner:** Strategy Planner posee recurso, compatibilidad y UI; la plataforma
+de cuenta/Supabase posee autenticación, autorización y persistencia remota.
+
+**Dependencias:** ISA-162 e ISA-88. Incluye publicación opt-in con preview,
+reportes, moderación, retirada por autor/admin, tombstones, rate limits,
+sanitización y degradación offline. Nunca publica un plan privado de forma
+automática.
 
 ### STR-16 — Activación y lifecycle del plan
 
@@ -272,8 +295,11 @@ lectores concurrentes.
 **Objetivo:** consumir `StrategyLiveProjection v1` de Telemetry Core y mantener
 stint, recursos, desviación y próxima acción sin adquirir LMU.
 
-**Precondición:** proyección Core disponible. Si falta una señal, publicar
-missing/stale y continuar parcialmente.
+**Precondición ejecutable:** ISA-160 / TC-10A audita schema/señales y ISA-161 /
+TC-10B produce y cablea `StrategyLiveProjection v1`. El contrato actual de
+ISA-117 es compile-only y no basta para Fuel/VE/tyres/weather. ISA-152 / STR-17
+está bloqueada por ISA-161. Si falta una señal, publicar missing/stale y
+continuar parcialmente.
 
 **Tests:** replays, epoch/reset, duplicados, out-of-order, stale, reconexión,
 backpressure y cero valores inventados.
@@ -311,6 +337,9 @@ de dependencias del editor.
 
 **Objetivo:** cerrar accesibilidad, cuatro idiomas, diagnósticos, privacidad,
 errores, onboarding, benchmarks, soak y E2E.
+
+**Precondición:** ISA-163 / STR-15C cerrada además de STR-19/20; la comunidad
+no bloquea el desarrollo live, pero sí el gate del alcance final acordado.
 
 **Matriz mínima:** manual sin telemetría, histórico completo/parcial, live,
 reconexión, parrilla grande, Overlay+Engineer+Strategy simultáneos, 24 h lógico,

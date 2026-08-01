@@ -24,7 +24,7 @@ respeta los contratos de Telemetry Core/Analysis.
 | ISA-48 / PB-02D | Move ownership | TEL + STR-10 | Dataset histórico pertenece a Analysis |
 | ISA-49 / PB-03A | Move ownership | TEL + STR-10 | Corrección de sesión pertenece a Analysis |
 | ISA-50 / PB-03B | Split | TEL + STR-11 | Analysis calcula métricas; Strategy crea input de plan |
-| ISA-51 / PB-03C | Supersede | STR-03, STR-15 | Biblioteca Strategy conserva solo planes/revisiones |
+| ISA-51 / PB-03C | Supersede | STR-03, STR-15A/B/C | Biblioteca privada, oficial y comunidad quedan separadas |
 | ISA-52 / PB-03D | Supersede | STR-03, STR-04 | Dirty/concurrencia del documento Strategy |
 | ISA-53 / PB-04A | Supersede | STR-07 | Nuevo harness autocontenido y visual contract |
 | ISA-54 / PB-04B | Supersede | STR-03, STR-07 | Galería privada y navegación unificadas |
@@ -58,14 +58,25 @@ respeta los contratos de Telemetry Core/Analysis.
 12. STR-12 / ISA-147 — Solver determinista v2.
 13. STR-13 / ISA-148 — Variantes y comparación.
 14. STR-14 / ISA-149 — Escenarios dinámicos.
-15. STR-15 / ISA-150 — Galerías y paquetes.
-16. STR-16 / ISA-151 — Activación y lifecycle.
-17. STR-17 / ISA-152 — Ejecución live.
-18. STR-18 / ISA-153 — Replanificación y aceptación.
-19. STR-19 / ISA-154 — Engineer/Pit Manager.
-20. STR-20 / ISA-155 — Overlays/widgets.
-21. STR-21 / ISA-156 — Gate integral.
-22. STR-22 / ISA-157 — Cutover.
+15. STR-15A / ISA-150 — Galería privada local y paquetes.
+16. STR-15B / ISA-162 — Catálogo oficial firmado.
+17. STR-15C / ISA-163 — Comunidad, moderación y retirada.
+18. STR-16 / ISA-151 — Activación y lifecycle.
+19. STR-17 / ISA-152 — Ejecución live.
+20. STR-18 / ISA-153 — Replanificación y aceptación.
+21. STR-19 / ISA-154 — Engineer/Pit Manager.
+22. STR-20 / ISA-155 — Overlays/widgets.
+23. STR-21 / ISA-156 — Gate integral.
+24. STR-22 / ISA-157 — Cutover.
+
+## Productores transversales
+
+Estos blockers no sustituyen issues PB y viven en el proyecto que posee cada
+fuente:
+
+- ISA-159 / TA-05 produce `StrategyInputProjection v1`; bloquea ISA-145.
+- ISA-160 / TC-10A audita las señales live.
+- ISA-161 / TC-10B produce `StrategyLiveProjection v1`; bloquea ISA-152.
 
 ## Regla de Linear
 

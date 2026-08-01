@@ -54,7 +54,9 @@ Strategy no posee:
 
 ```text
 Telemetry Analysis -- StrategyInputProjection v1 --> Strategy Planner
+                      producer ISA-159             consumer ISA-145
 Telemetry Core ----- StrategyLiveProjection v1 ---> Strategy Planner
+                     audit ISA-160 / producer 161  consumer ISA-152
 Calendar ----------- StrategyEventRules v1 --------> Strategy Planner
 
 Strategy Planner --- StrategyPlanReadModel v1 -----> Engineer
@@ -65,6 +67,11 @@ Engineer ----------- StrategyCommand v1 -----------> Strategy Planner
 Todos los contratos son snapshots/eventos versionados, inmutables para el
 consumidor y con procedencia, freshness/confianza y capacidades explícitas.
 Ningún módulo accede al almacenamiento privado de otro.
+
+El `projection/strategy/v1.go` presente en ISA-117 solo demuestra sesión,
+progreso y pit; es compile-only para Strategy y no habilita el modo live. Los
+blockers y gaps de Fuel/VE/tyres/weather se fijan en
+`docs/strategy-planner/projection-ownership.md`.
 
 ### Modelo de documento
 

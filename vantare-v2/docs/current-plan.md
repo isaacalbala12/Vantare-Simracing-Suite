@@ -4,16 +4,20 @@ Nota ISA-134 / STR-00 (2026-08-01):
 - Product A exacto `b9f1937` fue auditado contra `ISA-117@170eaeb`: Go focal,
   vet, 25 tests frontend y build pasan; el smoke Playwright histórico se queda
   bloqueado y debe sustituirse en STR-07.
-- La simulación de merge produce 87 archivos y 7 conflictos. Queda prohibido
-  mezclar o cherry-pickear el branch completo; el rescate será selectivo.
+- La simulación contiene 94 paths: 87 auto-merged + 7 conflictos. La matriz
+  enumera 94/94 y limita STR-01 a un fixture exacto y 24 ports manuales; los
+  otros 69 paths quedan en denylist.
 - ADR 0006 fija ownership: Analysis publica histórico, Core publica live,
   Strategy posee planes/cálculo, Engineer envía comandos y Overlays solo leen.
 - Evidencia y ejecución: `docs/strategy-planner/str-00-audit.md`,
-  `rescue-matrix.md`, `pb-to-str-map.md` y
+  `rescue-matrix.md`, `pb-to-str-map.md`, `projection-ownership.md` y
   `docs/superpowers/plans/2026-08-01-strategy-planner-unified-master.md`.
-- Linear conserva ISA-42..67 como `Canceled`/superseded y crea
-  ISA-136..157 / STR-01..22 con milestones y dependencias nuevas.
-- Siguiente corte: ISA-136 / STR-01 sobre `ISA-117@170eaeb`. Sin merge ni
+- Linear conserva ISA-42..67 como `Canceled`/superseded y define 24 cortes:
+  ISA-136..157 más ISA-162/163 (galería privada, oficial y comunidad).
+- Productores explícitos: ISA-159 / TA-05 para histórico e ISA-160/161 /
+  TC-10A/B para live. Bloquean ISA-145 y ISA-152 respectivamente.
+- Estado: correcciones del primer review aplicadas; ISA-134 permanece
+  `In Progress` hasta nueva re-review. Después, ISA-136 / STR-01. Sin merge ni
   promoción.
 
 Nota VANTARE-PROGRAM (2026-07-27):

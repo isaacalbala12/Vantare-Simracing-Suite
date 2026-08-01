@@ -49,6 +49,10 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 - Las builds de canal se generan manualmente desde `nightly` o `testers` con
   `release.yml` y `create_release=false`; nunca crean una GitHub Release
   pública. Un tag solo puede crear una release si pertenece a `master`.
+- Las builds internas aíslan como avisos únicamente las deudas inventariadas
+  en ISA-118, ISA-170 e ISA-172. Todo lo demás sigue bloqueando. Una release
+  pública ejecuta siempre la suite Go, frontend y lint completas como gates
+  estrictos, sin excepciones de canal.
 
 ## Acceso a builds
 

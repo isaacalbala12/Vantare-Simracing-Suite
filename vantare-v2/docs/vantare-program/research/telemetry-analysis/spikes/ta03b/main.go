@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,27 +14,31 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
+	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
 const syntheticRows = 720_000
 
 type result struct {
-	GoVersion          string  `json:"goVersion"`
-	OperatingSystem    string  `json:"operatingSystem"`
-	Architecture       string  `json:"architecture"`
-	Rows               int     `json:"rows"`
-	CreateMilliseconds int64   `json:"createMilliseconds"`
-	OpenMilliseconds   int64   `json:"openMilliseconds"`
-	PageMilliseconds   float64 `json:"meanPageMilliseconds"`
-	Pages              int     `json:"pages"`
-	HashStable         bool    `json:"hashStable"`
-	ReadOnlyEnforced   bool    `json:"readOnlyEnforced"`
-	Cancellation       bool    `json:"cancellationObserved"`
-	TypesAndNulls      bool    `json:"typesAndNullsPreserved"`
-	QuotedIdentifier   bool    `json:"quotedIdentifierAccepted"`
+	GoVersion          string   `json:"goVersion"`
+	DuckDBVersion      string   `json:"duckdbVersion"`
+	OperatingSystem    string   `json:"operatingSystem"`
+	Architecture       string   `json:"architecture"`
+	StaticExtensions   []string `json:"staticExtensions"`
+	Rows               int      `json:"rows"`
+	CreateMilliseconds int64    `json:"createMilliseconds"`
+	OpenMilliseconds   int64    `json:"openMilliseconds"`
+	PageMilliseconds   float64  `json:"meanPageMilliseconds"`
+	Pages              int      `json:"pages"`
+	HashStable         bool     `json:"hashStable"`
+	ReadOnlyEnforced   bool     `json:"readOnlyEnforced"`
+	Cancellation       bool     `json:"cancellationObserved"`
+	CancelMilliseconds float64  `json:"cancellationMilliseconds"`
+	TypesAndNulls      bool     `json:"typesAndNullsPreserved"`
+	QuotedIdentifier   bool     `json:"quotedIdentifierAccepted"`
 }
 
 func main() {
@@ -72,13 +77,30 @@ func main() {
 		fatal(fmt.Errorf("open read-only database: %w", err))
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	extensionDir := filepath.Join(*workDir, "extensions")
+	if err := os.MkdirAll(extensionDir, 0o700); err != nil {
+		fatal(fmt.Errorf("create private extension directory: %w", err))
+	}
+	tempDir := filepath.Join(*workDir, "duckdb-temp")
+	if err := os.MkdirAll(tempDir, 0o700); err != nil {
+		fatal(fmt.Errorf("create private DuckDB temp directory: %w", err))
+	}
 	if err := db.PingContext(ctx); err != nil {
 		fatal(fmt.Errorf("ping read-only database: %w", err))
 	}
-	if err := hardenConnection(ctx, db); err != nil {
+	if err := prepareConnection(ctx, db, extensionDir, tempDir); err != nil {
+		fatal(err)
+	}
+	duckDBVersion, staticExtensions, err := runtimeInventory(ctx, db)
+	if err != nil {
+		fatal(err)
+	}
+	if err := lockDownConnection(ctx, db); err != nil {
 		fatal(err)
 	}
 	openDuration := time.Since(openStarted)
@@ -92,7 +114,10 @@ func main() {
 		fatal(err)
 	}
 	readOnlyEnforced := verifyReadOnly(ctx, db)
-	cancellationObserved := verifyCancellation(db)
+	cancellationObserved, cancellationDuration, err := verifyCancellation(db)
+	if err != nil {
+		fatal(err)
+	}
 	pageDuration, err := benchmarkPages(ctx, db, *pages)
 	if err != nil {
 		fatal(err)
@@ -105,8 +130,10 @@ func main() {
 
 	answer := result{
 		GoVersion:          runtime.Version(),
+		DuckDBVersion:      duckDBVersion,
 		OperatingSystem:    runtime.GOOS,
 		Architecture:       runtime.GOARCH,
+		StaticExtensions:   staticExtensions,
 		Rows:               syntheticRows,
 		CreateMilliseconds: createDuration.Milliseconds(),
 		OpenMilliseconds:   openDuration.Milliseconds(),
@@ -115,6 +142,7 @@ func main() {
 		HashStable:         before == after,
 		ReadOnlyEnforced:   readOnlyEnforced,
 		Cancellation:       cancellationObserved,
+		CancelMilliseconds: float64(cancellationDuration.Microseconds()) / 1000,
 		TypesAndNulls:      typesAndNulls,
 		QuotedIdentifier:   quotedIdentifier,
 	}
@@ -168,19 +196,37 @@ func createSyntheticDatabase(path string) error {
 	return nil
 }
 
-func hardenConnection(ctx context.Context, db *sql.DB) error {
+func prepareConnection(ctx context.Context, db *sql.DB, extensionDir, tempDir string) error {
+	if _, err := db.ExecContext(ctx, `SET extension_directory = ?`, extensionDir); err != nil {
+		return fmt.Errorf("set private DuckDB extension directory: %w", err)
+	}
+	if _, err := db.ExecContext(ctx, `SET temp_directory = ?`, tempDir); err != nil {
+		return fmt.Errorf("set private DuckDB temp directory: %w", err)
+	}
 	settings := []string{
 		`SET threads = 2`,
 		`SET memory_limit = '256MB'`,
+		`SET max_temp_directory_size = '64MB'`,
 		`SET autoinstall_known_extensions = false`,
 		`SET autoload_known_extensions = false`,
 		`SET allow_community_extensions = false`,
+	}
+	for _, setting := range settings {
+		if _, err := db.ExecContext(ctx, setting); err != nil {
+			return fmt.Errorf("apply DuckDB hardening %q: %w", setting, err)
+		}
+	}
+	return nil
+}
+
+func lockDownConnection(ctx context.Context, db *sql.DB) error {
+	settings := []string{
 		`SET enable_external_access = false`,
 		`SET lock_configuration = true`,
 	}
 	for _, setting := range settings {
 		if _, err := db.ExecContext(ctx, setting); err != nil {
-			return fmt.Errorf("apply DuckDB hardening %q: %w", setting, err)
+			return fmt.Errorf("apply DuckDB lockdown %q: %w", setting, err)
 		}
 	}
 	return nil
@@ -214,12 +260,107 @@ func verifyReadOnly(ctx context.Context, db *sql.DB) bool {
 	return err != nil
 }
 
-func verifyCancellation(db *sql.DB) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+type cancellationProbe struct {
+	entered    chan struct{}
+	resultType duckdb.TypeInfo
+	once       sync.Once
+}
+
+func newCancellationProbe() (*cancellationProbe, error) {
+	resultType, err := duckdb.NewTypeInfo(duckdb.TYPE_INTEGER)
+	if err != nil {
+		return nil, fmt.Errorf("create cancellation probe result type: %w", err)
+	}
+	return &cancellationProbe{
+		entered:    make(chan struct{}),
+		resultType: resultType,
+	}, nil
+}
+
+func (p *cancellationProbe) Config() duckdb.ScalarFuncConfig {
+	return duckdb.ScalarFuncConfig{ResultTypeInfo: p.resultType, Volatile: true}
+}
+
+func (p *cancellationProbe) Executor() duckdb.ScalarFuncExecutor {
+	return duckdb.ScalarFuncExecutor{
+		RowContextExecutor: func(ctx context.Context, _ []driver.Value) (any, error) {
+			p.once.Do(func() { close(p.entered) })
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	}
+}
+
+func verifyCancellation(db *sql.DB) (bool, time.Duration, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var count int64
-	err := db.QueryRowContext(ctx, `SELECT count(*) FROM range(1000000000000) a, range(1000000000000) b`).Scan(&count)
-	return errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		return false, 0, fmt.Errorf("open cancellation connection: %w", err)
+	}
+	defer conn.Close()
+	probe, err := newCancellationProbe()
+	if err != nil {
+		return false, 0, err
+	}
+	if err := duckdb.RegisterScalarUDF(conn, "ta03b_cancellation_probe", probe); err != nil {
+		return false, 0, fmt.Errorf("register cancellation probe: %w", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		var value int32
+		done <- conn.QueryRowContext(ctx, `SELECT ta03b_cancellation_probe()`).Scan(&value)
+	}()
+
+	startupTimer := time.NewTimer(2 * time.Second)
+	defer startupTimer.Stop()
+	select {
+	case <-probe.entered:
+	case err := <-done:
+		return false, 0, fmt.Errorf("cancellation query finished before cancellation: %w", err)
+	case <-startupTimer.C:
+		return false, 0, errors.New("cancellation query did not begin within 2s")
+	}
+
+	cancelledAt := time.Now()
+	cancel()
+	completionTimer := time.NewTimer(2 * time.Second)
+	defer completionTimer.Stop()
+	select {
+	case err := <-done:
+		duration := time.Since(cancelledAt)
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			return false, duration, fmt.Errorf("cancellation query returned incompatible error: %w", err)
+		}
+		return true, duration, nil
+	case <-completionTimer.C:
+		return false, time.Since(cancelledAt), errors.New("cancellation query did not stop within 2s")
+	}
+}
+
+func runtimeInventory(ctx context.Context, db *sql.DB) (string, []string, error) {
+	var version string
+	if err := db.QueryRowContext(ctx, `SELECT version()`).Scan(&version); err != nil {
+		return "", nil, fmt.Errorf("read DuckDB version: %w", err)
+	}
+	rows, err := db.QueryContext(ctx, `SELECT extension_name FROM duckdb_extensions() WHERE install_mode = 'STATICALLY_LINKED' ORDER BY extension_name`)
+	if err != nil {
+		return "", nil, fmt.Errorf("inventory static DuckDB extensions: %w", err)
+	}
+	defer rows.Close()
+	var extensions []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return "", nil, fmt.Errorf("scan static DuckDB extension: %w", err)
+		}
+		extensions = append(extensions, name)
+	}
+	if err := rows.Err(); err != nil {
+		return "", nil, fmt.Errorf("iterate static DuckDB extensions: %w", err)
+	}
+	return version, extensions, nil
 }
 
 func benchmarkPages(ctx context.Context, db *sql.DB, pages int) (time.Duration, error) {

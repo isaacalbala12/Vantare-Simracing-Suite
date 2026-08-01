@@ -1,8 +1,10 @@
-# ADR 0005: helper DuckDB aislado para telemetría histórica
+# ADR 0005: helper DuckDB fuera de proceso para telemetría histórica
 
 ## Estado
 
-Propuesto. Requiere aprobación explícita de Isaac antes de TA-03C.
+Propuesto. ISA-135 permanece en `In Progress` hasta superar review
+independiente; solo después procede la aprobación explícita de Isaac antes de
+TA-03C.
 
 ## Fecha
 
@@ -31,11 +33,21 @@ reader histórico:
 - enlace dinámico a `duckdb.dll` oficial y fijado;
 - app principal sin CGO;
 - IPC local mínimo por stdin/stdout, versionado y sin SQL arbitrario;
+- en v1, solo archivos locales LMU descubiertos e indexados por Vantare;
 - solo copia privada emitida desde un handle autorizado por TA-02;
 - read-only, extensiones/red desactivadas, límites de memoria/threads/tiempo;
-- proceso contenido por Windows Job Object;
+- directorios privados de extensiones y temporales, con cuota temporal;
+- proceso limitado y terminado en conjunto mediante Windows Job Object;
 - helper/DLL/manifest/notices instalados y revertidos como unidad;
 - ninguna dependencia desde Telemetry Core live.
+
+Esta decisión **no llama sandbox** al proceso separado, al Job Object ni a los
+settings DuckDB. El helper continúa ejecutándose con la identidad del usuario;
+una vulnerabilidad nativa podría acceder a otros recursos del usuario. Por
+ello, la v1 bloquea selectores arbitrarios, paquetes compartidos, descargas y
+archivos comunitarios. ISA-164 / TA-03D debe demostrar token restringido,
+AppContainer o aislamiento equivalente, ACL mínima, ausencia de red y límites
+externos antes de habilitar cualquier procedencia no confiable.
 
 ## Consecuencias positivas
 
@@ -45,14 +57,17 @@ reader histórico:
 - El contrato histórico permanece independiente de DuckDB.
 - El runtime puede verificarse por hash, versionarse y reemplazarse de forma
   atómica.
-- El proceso se puede cancelar y limitar con primitives estándar de Windows.
+- El proceso se puede cancelar y acotar con primitivas estándar de Windows,
+  como defensa en profundidad y no como frontera de seguridad.
 
 ## Costes
 
-- Aproximadamente 44,18 MB sin comprimir en el spike.
+- Aproximadamente 44,32 MB sin comprimir en el spike corregido.
 - Nuevo pipeline de build, notices, hashes, smoke y rollback.
+- Notices de 37 paquetes/componentes inventariados en el SBOM exacto.
 - Requisito de Microsoft Visual C++ Redistributable.
 - Protocolo IPC y staging privado que deben probarse contra TOCTOU.
+- Importaciones externas/comunitarias aplazadas hasta ISA-164.
 - Seguimiento de releases y vulnerabilidades DuckDB.
 
 ## Alternativas descartadas
@@ -65,10 +80,14 @@ reader histórico:
 
 ## Condiciones de aceptación
 
-Esta ADR pasa a `Aceptado` únicamente si Isaac aprueba dependencia,
-redistribución, tamaño y packaging. TA-03C debe demostrar el contrato mediante
-DuckDB sintético, mismatch de versiones, TOCTOU, read-only, tipos/NULL,
-identificadores, límites, cancelación y shutdown sin procesos huérfanos.
+Esta ADR pasa a `Aceptado` únicamente después de review independiente limpia y
+si Isaac aprueba dependencia, redistribución, tamaño y packaging. La licencia
+comercial y los avisos del artefacto exacto ya están inventariados en un SBOM
+SPDX reproducible. TA-03C debe demostrar el contrato mediante DuckDB sintético,
+mismatch de versiones, TOCTOU, allowlist de procedencia LMU local, read-only,
+tipos/NULL, identificadores, límites, cancelación y shutdown sin procesos
+huérfanos. TA-03C no puede habilitar archivos externos ni afirmar que su Job
+Object constituye un sandbox.
 
 ## Referencia
 

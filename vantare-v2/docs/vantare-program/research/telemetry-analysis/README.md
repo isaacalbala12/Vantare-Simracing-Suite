@@ -25,7 +25,9 @@ aceptado términos adicionales ni inspeccionado binarios de terceros.
 | [Arquitectura](architecture.md) | importación, índice, normalización, comparación y recomendaciones |
 | [Caracterización LMU DuckDB](lmu-duckdb-characterization.md) | schema real sanitizado, tiempo, integridad y decisión de dependencia |
 | [Decisión del adapter DuckDB](duckdb-adapter-decision.md) | matriz de opciones, spike Windows, seguridad, packaging y recomendación TA-03B |
-| [Microplan TA-03C](ta03c-duckdb-adapter-plan.md) | ejecución TDD del helper aislado tras aprobar ADR 0005 |
+| [Microplan TA-03C](ta03c-duckdb-adapter-plan.md) | ejecución TDD del helper fuera de proceso tras re-review y aprobación de ADR 0005 |
+| [Inventario de licencias DuckDB 1.5.5](evidence/duckdb-1.5.5-windows-amd64-license-inventory.md) | componentes exactos, hashes, obligaciones y conclusión comercial |
+| [SBOM SPDX DuckDB 1.5.5](evidence/duckdb-1.5.5-windows-amd64.spdx.json) | SBOM reproducible del runtime Windows amd64 evaluado |
 | [Modelo histórico v1](historical-model.md) | contratos compilables de sesión/canal/vuelta/calidad y parser paginado |
 | [UI/UX](ui-ux.md) | flujo, accesibilidad, estados y criterios visuales |
 | [Plan y microcortes](plan-microcuts.md) | backlog TDD ordenado, dependencias y gates |

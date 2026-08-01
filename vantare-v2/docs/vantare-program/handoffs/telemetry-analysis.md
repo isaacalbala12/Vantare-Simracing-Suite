@@ -30,12 +30,15 @@ reader al artefacto autorizado y que no existe aún el adapter DuckDB productivo
 ni su integración reproducible. El contrato ya corrige los P2/P3 y la frontera
 arquitectónica del P1 sin añadir dependencias; el P1 operativo solo se cierra
 con un corte explícito de decisión/adapter.
-TA-03B / ISA-135 completa ahora ese corte de decisión sin modificar producto:
-recomienda un helper local aislado con `duckdb-go/v2` y `duckdb.dll` dinámico,
-descarta el CLI y el CGO dentro de Wails, documenta seguridad/packaging/rollback
-y entrega un spike sintético reproducible. TA-03C está completamente
-microplaneada, pero requiere aprobación humana de la nueva dependencia y su
-distribución antes de escribir código de producto.
+TA-03B / ISA-135 corrige ahora el corte de decisión tras un primer review
+`REQUEST CHANGES`: recomienda un helper local fuera de proceso con
+`duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
+documenta seguridad/packaging/rollback y entrega un spike sintético y un SBOM
+reproducibles. La v1 queda limitada a archivos locales LMU descubiertos e
+indexados por Vantare. No se llama sandbox al proceso/Job Object y los imports
+externos o comunitarios quedan bloqueados por ISA-164 / TA-03D. TA-03C está
+microplaneada, pero no puede comenzar hasta una re-review limpia y la aprobación
+humana posterior de dependencia y distribución.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: ninguna.
@@ -82,9 +85,12 @@ distribución antes de escribir código de producto.
   `research/telemetry-analysis/duckdb-adapter-decision.md`, ADR 0005 propuesta,
   `research/telemetry-analysis/ta03c-duckdb-adapter-plan.md` y
   `research/telemetry-analysis/spikes/ta03b/`.
-- Evidencia TA-03B: helper + DLL 44.183.277 bytes; build reproducible en dos
-  rutas; apertura read-only, rechazo de escrituras, hash estable, cancelación,
-  tipos/NULL/cero e identificador citado PASS sobre 720.000 filas sintéticas.
+- Evidencia TA-03B corregida: helper + DLL 44.317.091 bytes; build reproducible
+  en dos rutas; apertura read-only, rechazo de escrituras, hash estable,
+  cancelación coordinada con `context.Canceled`, tipos/NULL/cero e identificador
+  citado PASS sobre 720.000 filas sintéticas. Un SBOM SPDX de 37 componentes se
+  regeneró dos veces con SHA
+  `959ab3ae08e2a6ff36c28c0773552a81048700c123dc899d2af89d48f1d4bfa5`.
   El enlace estático falló de forma reproducible con GCC 16 por símbolos
   `emutls`; el dinámico oficial 1.5.5 funcionó. No se abrió LMU, base personal o
   Telemetry Core y los módulos/dependencias de producto permanecen intactos.
@@ -140,18 +146,22 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
   incluso si un reemplazo conserva tamaño/mtime. La caracterización usó una
   copia autorizada read-only y verificó hash/metadata original antes/después;
   el reader productivo y su empaquetado siguen pendientes.
-- **P2 dependencia, resuelto como decisión en TA-03B:** el cliente Go oficial
-  DuckDB es MIT. Se propone confinarlo a un helper dinámico separado; Wails y
-  el `go.mod` principal permanecen sin DuckDB/CGO. La implementación no puede
-  empezar sin aprobación humana de dependencia, DLL, ~44,18 MB, VC++ runtime y
+- **P2 dependencia/licencia, cerrado técnicamente en TA-03B:** el artefacto
+  exacto se inventarió con fuentes primarias y SBOM reproducible: cuatro módulos
+  Go, cinco extensiones estáticas y 26 componentes C/C++ vendorizados, todos
+  bajo opciones permisivas compatibles con uso comercial. Wails y el `go.mod`
+  principal permanecen sin DuckDB/CGO. Tras re-review limpia, la implementación
+  requiere aprobación humana de dependencia, DLL, ~44,32 MB, VC++ runtime y
   packaging/notices/rollback.
 - **P1 toolchain, reducido por TA-03B:** el enlace estático oficial 1.5.5 falló
   con MSYS2 GCC 16 por la transición de `emutls` a TLS nativo. El enlace
   dinámico contra el paquete oficial con SHA publicado sí pasó y es la ruta
   recomendada. CI debe fijar y repetir esa prueba.
-- **P1 aislamiento/TOCTOU, especificado por TA-03B:** el helper solo recibe una
-  copia privada producida desde el handle autorizado, nunca la ruta original;
-  Job Object, hashes, protocolo sin SQL y límites son gates de TA-03C.
+- **P1 aislamiento/TOCTOU, acotado por procedencia en TA-03B:** la v1 acepta
+  solo LMU local descubierto/indexado y el helper recibe una copia privada
+  producida desde el handle autorizado. Job Object, hashes, protocolo sin SQL y
+  límites son defensa en profundidad, no un sandbox. Imports externos y
+  comunitarios permanecen deshabilitados hasta ISA-164 / TA-03D.
 - **P1 temporal, explicitado por TA-03:** el catálogo continuo no declara el
   origen que lo alinea con `ts`. `Lap Dist`, `Total Dist` y GPS aparecen en el
   schema, pero TA-04 debe demostrar su comportamiento antes de mapa/delta.
@@ -165,26 +175,34 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
 | Abierta / corregida parcialmente | TA-03 / ISA-126, modelo y capability endurecidos; falta adapter DuckDB productivo |
-| Lista para review independiente | TA-03B / ISA-135, decisión, ADR propuesta, packaging y spike DuckDB Windows |
-| Lista tras aprobación | TA-03C, helper/adaptador aislado según microplan TDD |
+| En corrección / nueva review pendiente | TA-03B / ISA-135, límite LMU local, cancelación, hashes y SBOM corregidos tras `REQUEST CHANGES` |
+| Bloqueada por re-review + aprobación | TA-03C, helper/adaptador fuera de proceso según microplan TDD |
+| Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
 | Bloqueada por adapter | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Isaac debe revisar y aceptar ADR 0005: dependencia
-`duckdb-go/v2@v2.10505.0` aislada, `duckdb.dll` 1.5.5, unos 44,18 MB,
-prerrequisito VC++ y packaging atómico. Tras esa aprobación, abrir TA-03C y
-ejecutar `ta03c-duckdb-adapter-plan.md` por microcortes TDD. Solo entonces
-TA-03 puede volver a review de cierre y desbloquear TA-04. No hay promoción a
-`nightly`.
+Ejecutar una nueva review independiente de ISA-135. Si queda limpia, presentar
+a Isaac ADR 0005: dependencia `duckdb-go/v2@v2.10505.0` separada,
+`duckdb.dll` 1.5.5, unos 44,32 MB, VC++ runtime y packaging/notices atómicos.
+Solo tras esa aprobación puede abrirse TA-03C. ISA-164 / TA-03D no bloquea la
+lectura LMU local, pero sí cualquier import externo o comunitario. TA-04 sigue
+bloqueada hasta implementar TA-03C. No hay promoción a `nightly`.
 
 ## Última actualización
 
-2026-08-01, ISA-135 / TA-03B investigada y demostrada mediante spike sintético.
-Recomendación inequívoca: helper local corto, `duckdb-go/v2` + DLL oficial
-dinámica, app principal sin CGO, staging desde capability TA-02, Job Object y
-protocolo sin SQL. El enlace estático falló con GCC 16; el dinámico pasó
-read-only, tipos/NULL, quoting, cancelación, integridad y reproducibilidad. Sin
-dependencias o código de producto, LMU, datos personales, integración ni
-promoción. Pendiente aprobación humana de ADR 0005 antes de TA-03C.
+2026-08-01, ISA-135 / TA-03B corregida tras `REQUEST CHANGES`. Recomendación:
+helper local corto fuera de proceso, `duckdb-go/v2` + DLL oficial dinámica, app
+principal sin CGO, staging desde capability TA-02 y protocolo sin SQL. El spike
+ahora prueba cancelación coordinada y revalida cada binario extraído; el SBOM
+SPDX exacto cierra la compatibilidad comercial de 37 componentes. Job Object no
+es sandbox: la v1 solo acepta LMU local y ISA-164 bloquea contenido externo.
+Evidencia fresca: spike de 50 páginas PASS; test y vet focales con enlace
+dinámico PASS; cancelación repetida 5/5; extracción manipulada rechazada por
+hash; dos SBOM limpios idénticos; suite Go global PASS en 231,4 s;
+`git diff --check` PASS. La primera ejecución global agotó el límite externo de
+cuatro minutos sin emitir fallo y no se contó; la repetición acotada terminó
+correctamente.
+Sin dependencias o código de producto, LMU, datos personales, integración ni
+promoción. Pendiente re-review; el gate humano de ADR 0005 viene después.

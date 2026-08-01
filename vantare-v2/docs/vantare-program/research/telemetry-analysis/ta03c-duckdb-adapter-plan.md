@@ -1,21 +1,28 @@
-# TA-03C — microplan del adapter DuckDB aislado
+# TA-03C — microplan del adapter DuckDB fuera de proceso
 
-- Estado: listo para ejecutar tras aceptar ADR 0005
-- Base requerida: ISA-135 / TA-03B en review y TA-03 / ISA-126
+- Estado: preparado, no ejecutable hasta re-review limpia de ISA-135 y
+  aceptación posterior de ADR 0005
+- Base requerida: ISA-135 / TA-03B corregida y TA-03 / ISA-126
 - Método: TDD, microcortes acumulativos y review independiente
 
 ## Objetivo
 
-Implementar `LMUDuckDBReader` mediante un helper local read-only, aislado y
+Implementar `LMUDuckDBReader` mediante un helper local read-only fuera de proceso y
 empaquetable, sin añadir CGO/DuckDB al proceso principal, sin tocar Telemetry
-Core y sin abrir aún datos personales.
+Core y aceptando en v1 únicamente archivos locales LMU descubiertos e indexados
+por Vantare. El helper, sus límites y el Job Object son defensa en profundidad,
+no un sandbox.
 
 ## Decisiones previas obligatorias
 
-- [ ] Isaac acepta ADR 0005.
+- [ ] ISA-135 supera una nueva review independiente sin P0/P1/P2 ni P3
+  razonables pendientes.
+- [ ] Isaac acepta ADR 0005 después de esa review.
 - [ ] Se autoriza `duckdb-go/v2@v2.10505.0` en un módulo Go separado.
-- [ ] Se autoriza redistribuir `duckdb.dll` 1.5.5 y notices MIT.
-- [ ] Se acepta el coste aproximado de 44,18 MB sin comprimir.
+- [ ] Se autoriza redistribuir `duckdb.dll` 1.5.5 y los notices exactos del
+  inventario/SBOM de 37 componentes.
+- [ ] Se acepta el coste aproximado de 44,32 MB sin comprimir observado en el
+  helper de investigación.
 - [ ] Se acepta VC++ Redistributable como prerrequisito del runtime.
 
 ## Alcance
@@ -25,6 +32,8 @@ Core y sin abrir aún datos personales.
 - helper Windows amd64 separado;
 - protocolo versionado mínimo;
 - staging privado desde artefacto autorizado;
+- allowlist de procedencia limitada a archivos locales LMU descubiertos e
+  indexados por Vantare;
 - adapter que implementa `LMUDuckDBReader`;
 - catálogo y páginas contra DuckDB sintético real;
 - read-only/hardening/límites;
@@ -41,6 +50,9 @@ Core y sin abrir aún datos personales.
 - daemon o servidor HTTP;
 - ejecución de SQL elegido por el cliente;
 - archivos personales o base LMU sin el gate ya aprobado;
+- selector arbitrario, archivos recibidos, paquetes compartidos, descargas,
+  referencias públicas o imports comunitarios;
+- afirmar que Job Object, límites de proceso o settings DuckDB son un sandbox;
 - publicación del instalador final;
 - promoción a `nightly`, `testers` o `master`.
 
@@ -66,7 +78,9 @@ Gate:
 
 - build reproducible en dos rutas con SHA idéntico;
 - `go list -m all` guardado;
-- `go list -deps` y SBOM/licencias del grafo enlazado guardados;
+- SBOM SPDX reproducible regenerado desde artefactos y licencias fijados;
+- lista exacta de extensiones estáticas igual a la aprobada;
+- generación de notices falla ante cambios de hash, componente o licencia;
 - root `go.mod`/`go.sum` sin cambios.
 
 ### C2 — Manifest de runtime y launcher seguro
@@ -75,6 +89,7 @@ Tests primero:
 
 - ruta absoluta esperada;
 - helper/DLL alterados o ausentes se rechazan;
+- cada miembro reutilizado de la extracción oficial se revalida por SHA-256;
 - manifest incompatible se rechaza;
 - nunca busca en `PATH` ni current directory.
 
@@ -93,11 +108,15 @@ Gate:
 
 Tests primero:
 
+- origen que no sea un archivo local LMU descubierto/indexado se rechaza antes
+  del staging;
+- rutas arbitrarias, imports comunitarios y paquetes compartidos se rechazan;
 - copia desde handle autorizado;
 - cambio de identidad, mtime, tamaño o hash antes/después aborta;
 - WAL antes/durante/después aborta;
 - symlink/reparse/archivo no regular aborta;
 - destino privado no colisiona y se limpia al cancelar;
+- el directorio privado reduce ACL al usuario actual;
 - el helper nunca recibe la ruta original.
 
 Implementación:
@@ -117,6 +136,8 @@ Tests primero sobre DuckDB sintético:
 
 - read-only rechaza DDL/DML;
 - external access y autoload/autoinstall quedan desactivados;
+- extension/temp directories son privados y el temporal no puede superar
+  64 MiB;
 - configuración queda locked;
 - catálogo continuo/evento/metadata respeta orden y presupuestos;
 - metadata no permitida nunca cruza el IPC;
@@ -174,6 +195,8 @@ Implementación:
 Gate:
 
 - cero procesos, handles o goroutines propios tras cada escenario.
+- la documentación y los errores describen Job Object como lifecycle/cuotas,
+  nunca como sandbox o frontera de privilegios.
 
 ### C7 — Build, compatibilidad y evidencia
 
@@ -183,6 +206,7 @@ Automatizar:
   `8375eb1fcf2212e8a0817950354815d4dde9dd383c2d9fa7b8975b71e278c1bd`;
 - build con toolchain fijada;
 - helper + DLL + manifest + notices;
+- SBOM SPDX determinista y notices derivados del inventario exacto;
 - hash reproducible;
 - smoke Windows 10 y 11 x64;
 - instalación sin VC++ produce error accionable;
@@ -236,8 +260,13 @@ corte se detiene: no se debe añadir la dependencia al root solo por comodidad.
 ## Condición de cierre
 
 TA-03C solo queda lista para review si el parser TA-03 consume un DuckDB
-sintético real de extremo a extremo, el proceso queda aislado/cancelable,
-read-only y TOCTOU están demostrados, y el build principal no ha ganado CGO ni
-DuckDB. La integración final en installer/updater puede ser un corte release
-posterior, pero debe estar bloqueada para cualquier build de usuario hasta
-completarse.
+sintético real de extremo a extremo, el proceso es cancelable y acotado,
+read-only y TOCTOU están demostrados, la procedencia local LMU se aplica por
+allowlist y el build principal no ha ganado CGO ni DuckDB. La integración final
+en installer/updater puede ser un corte release posterior, pero debe estar
+bloqueada para cualquier build de usuario hasta completarse.
+
+TA-03C no habilita archivos externos o comunitarios. Ese alcance pertenece a
+ISA-164 / TA-03D y exige una frontera real —token restringido, AppContainer o
+equivalente—, staging con ACL para la identidad aislada, red bloqueada y límites
+externos de CPU, memoria, handles, procesos, tiempo y disco.

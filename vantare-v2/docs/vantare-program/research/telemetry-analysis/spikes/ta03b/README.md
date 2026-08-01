@@ -15,13 +15,15 @@ Este módulo Go está aislado del producto. Su única finalidad es comprobar el 
 ./run.ps1
 ```
 
-El script descarga el paquete oficial fijado, comprueba su SHA-256 publicado por DuckDB, compila dinámicamente un ejecutable desechable en `%TEMP%`, copia `duckdb.dll`, crea una base sintética de 720.000 filas y verifica:
+El script descarga el paquete oficial fijado, comprueba su SHA-256 publicado por DuckDB, valida por SHA-256 cada uno de los cinco miembros utilizados aunque la extracción ya exista, compila dinámicamente un ejecutable desechable en `%TEMP%`, revalida el `duckdb.dll` copiado, crea una base sintética de 720.000 filas y verifica:
 
 - apertura `read_only` y rechazo de escrituras;
 - hash del archivo estable antes/después de la lectura;
 - tipos escalares, `NULL` y ceros legítimos;
 - identificadores SQL con comillas;
-- cancelación mediante `context.Context`;
+- cancelación coordinada de una consulta realmente iniciada, con error
+  compatible con `context.Canceled`/`DeadlineExceeded` y retorno acotado;
+- versión DuckDB y lista exacta de extensiones enlazadas estáticamente;
 - lectura repetida de páginas de 16.384 filas;
 - tiempo de build, tamaño y SHA-256 del binario.
 
@@ -29,8 +31,27 @@ Se usa enlace dinámico de forma deliberada. El enlace estático oficial `duckdb
 
 El resultado JSON puede guardarse como evidencia, pero ni el ejecutable ni la base generada deben versionarse.
 
+## SBOM y licencias
+
+```powershell
+./generate-sbom.ps1
+```
+
+El generador construye y verifica primero el runtime exacto, descarga el asset
+de fuentes 1.5.5 fijado, valida todos los textos de licencia por SHA-256 y emite
+un SPDX 2.3 determinista. Dos ejecuciones limpias deben producir el mismo hash.
+La definición reproducible está en `sbom-components.json`; el inventario humano
+y el SPDX resultante viven en `../../evidence/`.
+
+El inventario contiene el helper, el DLL, los cuatro módulos Go externos
+realmente enlazados, cinco extensiones estáticas y 26 componentes C/C++
+vendorizados. No sustituye el futuro `THIRD_PARTY_NOTICES`: TA-03C deberá
+generarlo desde la misma entrada y fallar cerrado ante cualquier diferencia.
+
 ## Límites
 
 - No prueba todavía el protocolo del helper propuesto ni Job Objects de Windows.
+- No es un sandbox y no autoriza archivos externos o comunitarios. La v1 queda
+  limitada a archivos LMU locales descubiertos e indexados por Vantare.
 - No abre archivos reales de LMU.
 - No representa un benchmark completo del producto; solo reduce incertidumbre antes de TA-03C.

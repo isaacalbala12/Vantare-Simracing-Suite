@@ -15,13 +15,21 @@ La opción recomendada es un **helper local, corto y propiedad de Vantare** que:
 3. enlaza dinámicamente el `duckdb.dll` oficial y fijado;
 4. vive fuera del proceso Wails y fuera del pipeline live;
 5. recibe operaciones tipadas, nunca SQL arbitrario;
-6. abre únicamente una copia estable y autorizada por TA-02;
+6. en v1, solo acepta archivos locales LMU descubiertos e indexados por
+   Vantare, convertidos en una copia estable autorizada por TA-02;
 7. aplica read-only, límites de CPU/memoria/tiempo y configuración segura;
 8. termina al completar o cancelar la operación.
 
 No es un microservicio, daemon ni segundo producto. Es un adaptador de proceso
 local que conserva la aplicación principal en `CGO_ENABLED=0` y contiene el
 riesgo nativo de DuckDB.
+
+**No es un sandbox.** Separar el proceso, usar Job Object y limitar DuckDB
+reduce crashes y agotamiento de recursos, pero el helper conserva la identidad
+del usuario. La v1 no acepta un selector arbitrario, paquetes compartidos,
+descargas, referencias comunitarias ni archivos recibidos de terceros. Ese
+alcance queda bloqueado por ISA-164 / TA-03D hasta demostrar una frontera real
+con token restringido/AppContainer o aislamiento equivalente.
 
 Se descartan:
 
@@ -38,26 +46,39 @@ Se descartan:
   16 tras el cambio de TLS nativo. Fijar una toolchain antigua ocultaría deuda
   y haría más frágil la release.
 
-## Decisión humana requerida
+## Decisión humana requerida después de la re-review
 
-TA-03C no debe comenzar hasta que Isaac apruebe explícitamente:
+No se solicita aún el gate humano: ISA-135 debe superar primero la re-review.
+Después, TA-03C no debe comenzar hasta que Isaac apruebe explícitamente:
 
 - añadir `github.com/duckdb/duckdb-go/v2@v2.10505.0` **solo al módulo del
   helper**, no al `go.mod` de la app principal;
 - redistribuir `duckdb.dll` 1.5.5 y sus avisos MIT;
-- añadir unos **44,18 MB sin comprimir** al paquete Windows actual
-  (7.458.757 bytes de helper + 36.724.520 bytes de DLL en el spike);
+- añadir unos **44,32 MB sin comprimir** al paquete Windows actual
+  (7.592.571 bytes de helper de investigación + 36.724.520 bytes de DLL);
 - detectar/instalar Microsoft Visual C++ Redistributable como prerrequisito;
 - versionar e instalar helper y DLL de forma atómica con Vantare.
 
-La licencia no impide un producto comercial: DuckDB, `duckdb-go`, sus bindings
-y `mapstructure` usan MIT; `google/uuid` usa BSD-3-Clause. `go list -deps` del
-spike dinámico mostró únicamente esas cuatro familias externas enlazadas al
-helper. La obligación operativa es conservar los avisos de copyright y licencia
-en `THIRD_PARTY_NOTICES` y en el paquete distribuido. El grafo completo del
-módulo es mayor que el binario realmente enlazado; TA-03C debe generar SBOM y
-repetir un escaneo de licencias sobre el artefacto exacto, incluida cualquier
-third-party notice que acompañe al `duckdb.dll`, antes de release.
+La compatibilidad comercial del artefacto exacto ya está cerrada con fuentes
+primarias, no inferida únicamente desde `go.mod`:
+
+- `go version -m` confirmó cuatro módulos externos realmente enlazados;
+- el DLL informó cinco extensiones estáticas: `autocomplete`,
+  `core_functions`, `icu`, `json` y `parquet`;
+- se inventariaron DuckDB y 26 componentes C/C++ vendorizados;
+- las opciones elegidas son permisivas: Mbed TLS bajo Apache-2.0 y Zstd bajo
+  BSD-3-Clause, además de MIT/BSD/Apache/Boost/zlib/ICU;
+- el SBOM SPDX 2.3 tiene 37 paquetes/componentes y se regeneró dos veces con
+  el mismo SHA-256
+  `959ab3ae08e2a6ff36c28c0773552a81048700c123dc899d2af89d48f1d4bfa5`.
+
+La evidencia y obligaciones están en
+[`duckdb-1.5.5-windows-amd64-license-inventory.md`](evidence/duckdb-1.5.5-windows-amd64-license-inventory.md)
+y el
+[`SBOM SPDX`](evidence/duckdb-1.5.5-windows-amd64.spdx.json). TA-03C deberá
+generar `THIRD_PARTY_NOTICES` desde ese inventario y fallar si cambia cualquier
+hash, extensión o licencia; no necesita reabrir la compatibilidad comercial de
+1.5.5 salvo que cambie el artefacto.
 
 ## Restricciones comprobadas en Vantare
 
@@ -208,6 +229,29 @@ LMUDuckDBCatalog / LMUDuckDBRow
 El helper nunca conoce Telemetry Core, Wails, usuario, licencia, UI, overlays,
 Strategy o Engineer.
 
+## Límite de confianza v1
+
+TA-03C aplica una allowlist de procedencia, no una extensión o un diálogo de
+archivos genérico. El único origen aceptado en v1 es:
+
+1. archivo local creado por LMU bajo su directorio de telemetría conocido;
+2. descubierto e indexado por Vantare mediante TA-02;
+3. estable, sin WAL y autorizado explícitamente;
+4. copiado desde el handle ya validado a staging gestionado;
+5. leído por el helper únicamente desde esa copia.
+
+Quedan rechazados aunque tengan extensión DuckDB válida:
+
+- rutas elegidas mediante selector arbitrario;
+- archivos copiados manualmente a otra biblioteca;
+- paquetes Vantare recibidos de otro piloto;
+- descargas, referencias públicas o contenido comunitario;
+- recordings importados de procedencia desconocida.
+
+Este límite permite construir la lectura histórica local sin fingir un
+sandbox. ISA-164 / TA-03D deberá sustituir la confianza por procedencia por una
+frontera técnica antes de ampliar el origen de los archivos.
+
 ## Protocolo mínimo
 
 No se recomienda gRPC, HTTP local, sockets persistentes ni una dependencia de
@@ -245,6 +289,8 @@ ningún campo SQL.
 - catálogo 15 s y página 30 s como topes iniciales medibles;
 - máximo dos threads DuckDB;
 - `memory_limit` inicial 256 MiB;
+- `temp_directory` bajo un staging privado por operación;
+- `max_temp_directory_size` inicial 64 MiB, medible y no ampliable desde IPC;
 - proceso dentro de un Job Object con kill-on-close y límite de memoria
   coherente con el límite DuckDB.
 
@@ -262,8 +308,8 @@ TOCTOU. Por tanto:
    ruta elegida por el helper.
 3. Antes y después de copiar se validan identidad, tamaño, mtime, hash y
    ausencia de WAL del original.
-4. La copia se guarda bajo un directorio temporal propio con ACL normal del
-   usuario, nombre no controlado y sin WAL hermano.
+4. La copia se guarda bajo un directorio temporal propio, con ACL reducida al
+   usuario actual, nombre no controlado y sin WAL hermano.
 5. El helper recibe únicamente la ruta absoluta de esa copia gestionada y la
    evidencia esperada.
 6. El helper valida hash/tamaño antes de abrir, usa read-only y repite la
@@ -277,11 +323,20 @@ del WAL.
 
 ## Seguridad de DuckDB
 
+Las medidas de esta sección son defensa en profundidad. No convierten el
+helper en un sandbox ni impiden que código nativo comprometido actúe con los
+permisos normales del usuario. Job Object sirve para lifecycle y cuotas; los
+settings DuckDB reducen capacidades de la base. Ninguno sustituye token
+restringido, AppContainer, ACL para una identidad aislada o bloqueo de red.
+
 El helper aplicará antes de cualquier consulta:
 
 - `access_mode=read_only` en DSN;
 - `threads=2`;
 - `memory_limit='256MB'`;
+- `extension_directory` privado;
+- `temp_directory` privado;
+- `max_temp_directory_size='64MB'`;
 - `autoinstall_known_extensions=false`;
 - `autoload_known_extensions=false`;
 - `allow_community_extensions=false`;
@@ -298,6 +353,15 @@ Además:
 - su hash y el de la DLL se comprueban contra el manifest instalado;
 - stderr solo contiene códigos y mensajes sanitizados, nunca rutas o valores;
 - el helper opera con los privilegios del usuario, sin elevación.
+
+Antes de archivos externos/comunitarios, ISA-164 deberá demostrar además:
+
+- token restringido, AppContainer o aislamiento equivalente;
+- staging con ACL mínima legible solo por la identidad aislada;
+- proceso sin red y sin capacidad de crear descendientes;
+- límites externos de CPU, memoria, handles, procesos, tiempo y disco;
+- ausencia de acceso a rutas ajenas a staging/runtime;
+- corpus adversarial y pruebas de escape/DoS.
 
 ## SQL e identificadores
 
@@ -371,7 +435,8 @@ THIRD_PARTY_NOTICES.md
 Reglas:
 
 - build de helper separado, con Go/toolchain/versiones fijados;
-- SBOM y allowlist de licencias del grafo realmente enlazado;
+- SBOM SPDX reproducible y allowlist de licencias del grafo realmente
+  enlazado; el pipeline falla ante cualquier diferencia;
 - descarga de `libduckdb` solo en CI, desde URL oficial y con SHA publicado;
 - ninguna descarga en runtime;
 - installer y portable ZIP incluyen exactamente el mismo runtime;
@@ -403,6 +468,11 @@ convertirla en dependencia de TA-04 para desarrollar el parser.
 - La firma de terceros no sustituye los checksums ni la futura firma propia del
   helper Vantare.
 
+El script de evidencia fija y verifica los cinco miembros utilizados del ZIP
+oficial (`duckdb.dll`, `.lib` y tres headers), además de revalidar el DLL
+copiado. Una extracción reutilizada nunca se acepta solo porque el ZIP conserve
+su hash.
+
 ## Spike reproducible
 
 Ubicación:
@@ -429,33 +499,38 @@ Resultado reproducible en dos directorios limpios:
 | Métrica | Resultado |
 |---|---:|
 | Build frío | 8.084–8.619 ms |
-| Helper | 7.458.757 bytes |
+| Helper | 7.592.571 bytes |
 | `duckdb.dll` | 36.724.520 bytes |
-| Total sin comprimir | 44.183.277 bytes |
-| SHA helper en dos rutas | idéntico (`bb70e10…efd2`) |
+| Total sin comprimir | 44.317.091 bytes |
+| SHA helper en dos rutas | idéntico (`2f320418…e2d`) |
 | Apertura read-only | 17–20 ms |
 | Creación fixture 720k | 384–385 ms |
 | Página 16.384 filas | 19,10–20,00 ms media en muestra corta |
 | Muestra repetida 50 páginas | 20,72–23,84 ms/página |
 | Hash DB antes/después | estable |
 | Escritura en read-only | rechazada |
-| Cancelación | observada |
+| Cancelación | `context.Canceled`, coordinada y acotada a <2 s (≈501 ms observado) |
 | Tipos/NULL/cero | preservados |
 | Identificador citado | aceptado |
 
 El benchmark no demuestra rendimiento final de LMU: es una prueba sintética de
-factibilidad y regresión. TA-03C debe repetirla en CI y, después, sobre el
-artefacto LMU autorizado ya caracterizado sin versionarlo.
+factibilidad y regresión. La cancelación ya no acepta `ctx.Err()` como prueba:
+un UDF consciente del contexto confirma que la consulta entró en ejecución,
+después se cancela sin `Sleep`, exige un error compatible con
+`context.Canceled`/`DeadlineExceeded` y aplica un límite externo de dos
+segundos. TA-03C debe repetir el benchmark en CI y, después, sobre el artefacto
+LMU autorizado ya caracterizado sin versionarlo.
 
 ## Riesgos residuales
 
 | Riesgo | Severidad | Mitigación/gate |
 |---|---|---|
-| Nueva dependencia nativa | P1 | Aprobación explícita, pin, notices, CVE/release watch. |
-| Aviso transitive omitido | P1 | SBOM y escaneo de licencias del helper/DLL exactos. |
+| Nueva dependencia nativa | P1 | Aprobación explícita tras re-review, pin, notices, CVE/release watch. |
+| Aviso transitivo omitido | P2 reducido | SBOM reproducible de 37 componentes, hashes de licencia y fallo cerrado ante cambios. |
 | Helper/DLL incompatibles | P1 | Manifest y handshake; instalación/rollback atómicos. |
 | TOCTOU entre procesos | P1 | Copia desde handle autorizado; hashes antes/después. |
-| DB maliciosa/agota recursos | P1 | Proceso separado, Job Object, límites DuckDB, timeout. |
+| DB local LMU corrupta/agota recursos | P1 | Allowlist de procedencia, proceso separado, Job Object, límites DuckDB y timeout; no se llama sandbox. |
+| DB externa/comunitaria maliciosa | P1 bloqueado | Entrada deshabilitada hasta ISA-164: token restringido/AppContainer, ACL, sin red y cuotas externas. |
 | Build GCC cambia otra vez | P2 | Enlace dinámico oficial y job de CI reproducible. |
 | VC++ Redistributable ausente | P2 | Detección/instalación y smoke en máquina limpia. |
 | DLL/helper manipulados | P1 | Ruta absoluta, hashes de manifest, firma/checksum. |
@@ -475,7 +550,7 @@ Consultadas el 2026-08-01:
 - [Instalación oficial DuckDB](https://duckdb.org/install/): artefactos 1.5.5,
   SHA-256 de `libduckdb-windows-amd64` y requisito VC++.
 - [Release DuckDB 1.5.5](https://github.com/duckdb/duckdb/releases/tag/v1.5.5):
-  versión actual y correcciones publicadas.
+  versión, commit y digests de los assets publicados.
 - [Licencia de DuckDB](https://github.com/duckdb/duckdb/blob/main/LICENSE),
   [licencia duckdb-go](https://github.com/duckdb/duckdb-go/blob/main/LICENSE) y
   [licencia bindings](https://github.com/duckdb/duckdb-go-bindings/blob/main/LICENSE):
@@ -497,10 +572,17 @@ Consultadas el 2026-08-01:
   [`database/sql.DB.QueryContext`](https://pkg.go.dev/database/sql#DB.QueryContext):
   cancelación del proceso y de consultas.
 - [Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects):
-  límites y terminación conjunta del proceso aislado.
+  límites y terminación conjunta; no se interpreta como sandbox.
+- [Windows AppContainer](https://learn.microsoft.com/en-us/windows/win32/secauthz/appcontainer-isolation):
+  frontera candidata requerida para el futuro alcance de archivos externos.
 
 ## Veredicto
 
-**GO condicionado para TA-03C** con helper dinámico aislado. No hay GO para
-añadir DuckDB al proceso principal ni para usar el CLI como runtime. El único
-bloqueo humano es aceptar dependencia, tamaño, redistribución y packaging.
+**GO técnico condicionado para TA-03C** con helper dinámico fuera de proceso y
+procedencia limitada a LMU local. No hay GO para añadir DuckDB al proceso
+principal, usar el CLI como runtime ni aceptar archivos externos/comunitarios.
+La licencia comercial del artefacto exacto está cerrada; ISA-135 permanece en
+`In Progress` hasta que la re-review independiente confirme estas correcciones.
+Solo entonces se presenta a Isaac el gate de dependencia, tamaño,
+redistribución y packaging. ISA-164 es obligatoria antes de ampliar el límite de
+confianza, no antes de la v1 local.

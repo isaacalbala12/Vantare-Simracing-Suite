@@ -35,7 +35,9 @@ como beta. TC-08 migra la entrada; el producto vive aparte.
 ISA-109 / TC-08B compone esos contratos aprobados sobre la base canónica más
 reciente y amplía la observación a sesión, parrilla, fuel, gaps y geometría.
 No convierte a `telemetry.Frame`, porque perdería missing e identidades
-generacionales. ISA-110 demostrará paridad por monitor antes del cutover.
+generacionales. ISA-110 ha añadido un bridge exclusivamente de replay y
+fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
+conversión general ni wiring productivo.
 
 - Rama activa:
   `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a`.
@@ -123,18 +125,24 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
-| En implementación aislada | ISA-109 / TC-08B, entrada pura completa sin wiring |
-| Siguiente | ISA-110 / TC-08C, replay parity de monitores y eventos |
+| Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
+| En implementación aislada | ISA-110 / TC-08C, matriz 21/21 y replay parity fail-closed |
 | Cutover | ISA-111/112, sin absorber el proyecto de producto |
 
 ## Siguiente acción exacta
 
-Entregar ISA-109 con commit/push/PR draft y actualizar Linear. Después ISA-110
-debe comparar fixtures legacy y canónicos antes de migrar monitores; no crear
-señales ni borrar el frame legacy. No hay promoción en esta cadena.
+Entregar ISA-110 con commit/push/PR draft y actualizar Linear. Después ISA-111
+debe conectar únicamente las familias/escenarios aprobados, conservar shadow
+y evitar un segundo reader; no crear señales ni borrar aún el frame legacy.
+No hay promoción en esta cadena.
 
 ## Última actualización
 
 2026-08-01, ISA-109 / TC-08B amplía y endurece ENG-03 sobre ISA-130. La entrada
 de producto conserva full grid, fuel, gaps, geometría y calidad; sigue sin
 wiring, sin retirada legacy y sin promoción.
+
+2026-08-01, ISA-110 / TC-08C caracteriza Spotter + 20 monitores. Se aprueban
+Spotter normal, fuel, penalties genéricas, laps, timings y pit entry/exit;
+las familias parciales o sin capability quedan explícitamente bloqueadas. El
+bridge temporal solo existe en replay y no puede alimentar el runtime entero.

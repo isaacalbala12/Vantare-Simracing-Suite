@@ -112,9 +112,32 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
   BatchMapper -> Reducer -> SessionCoordinator -> Derive -> Overlay v1 y su
   primera proyección delta atraviesa decoder/adapter TypeScript; Delta es
   missing antes de una referencia completa y fresh después. Este cruce corrigió
-  además arrays vacíos serializados como `null`. Siguen faltando dos gates no
-  sustituibles por datos sintéticos: secuencia LMU 1.4 garaje/pit/outlap y estado
-  real disconnect/reconnect. ISA-129 permanece `In Progress` e ISA-106 bloqueada.
+  además arrays vacíos serializados como `null`. Los dos gates reales quedaron
+  pendientes de D9 y nunca se sustituyeron por datos sintéticos.
+- D9 cerró la evidencia real LMU 1.4. Una única sesión sanitizada y hash-pinned
+  prueba `InPit=false -> true -> false` con la misma identidad canónica en
+  pista previa, estado in-pit observado y outlap. La señal no distingue garaje,
+  box ni fase de pit. El cierre completo de LMU produce ausencia
+  real de proceso y fallo cerrado de Shared Memory sin payload; la reapertura
+  aporta un mapping nuevo, reloj reiniciado y una nueva sesión/epoch, mientras
+  conserva el VehicleID porque ningún grid vacío fue aceptado. Los hashes son
+  `eb79ec2a…f6fcc`, `262700e5…ede1`, `c495da06…e4a6` y `a31a1495…a707`.
+  El replay x20 valida sidecars zero-rebuild, hashes, metadatos, estados y
+  ausencia de sustitución sintética.
+- Rendimiento D9: parser de 44 vehículos 23,6–29,7 µs/op; sanitizer diagnóstico
+  116,9–152,8 µs/op; gaps 4,19–4,46 µs/op; self-delta 3,21–6,00 µs/op. El parser
+  completo es ~1,5–2,2 veces el baseline histórico de 13,5–15,6 µs/op, con
+  margen amplio para la cadencia live y sin logging por frame, goroutines
+  productivas nuevas ni buffers sin límite. Telemetry Core, mi ejecución de la
+  suite Go global, frontend completo (297 archivos/2.020 tests), build, lint
+  focal y `diff --check` pasan. La review independiente reprodujo el P3 Windows
+  heredado ISA-118 de `app-settings.json.tmp`, incluso en serial y en su test
+  focal; está fuera del diff y no se corrige en ISA-129. `-race` no está
+  disponible con `CGO_ENABLED=0`. El lint
+  global conserva 32 errores y 2 warnings heredados fuera del área focal; un
+  error heredado del archivo tocado se eliminó. Los seis warnings Win32 de vet
+  se reproducen también en la base exacta ISA-105 y permanecen fuera del diff.
+  Review independiente final `APPROVE`, P0/P1/P2/P3 abiertos = 0.
 
 Nota ISA-105 / TC-07A (2026-07-31):
 - Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.

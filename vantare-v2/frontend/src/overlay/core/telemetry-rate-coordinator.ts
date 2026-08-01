@@ -91,7 +91,7 @@ export function createTelemetryRateCoordinator(
   };
 
   return {
-    getSnapshot(_hz: number) {
+    getSnapshot() {
       return latest;
     },
     subscribe(hz, listener) {

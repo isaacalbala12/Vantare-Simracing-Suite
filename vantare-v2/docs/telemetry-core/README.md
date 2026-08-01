@@ -47,7 +47,9 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
   fan-out, backpressure y observabilidad. TC-05A/B están cerrados
   técnicamente, TC-05C y TC-06A están cerrados en la base de ISA-102. TC-06B y
   TC-06C y TC-06D están cerrados técnicamente, sin promoción.
-  TC-07–TC-09 siguen pendientes.
+  TC-07A.1 / ISA-129 ha cerrado sus señales y evidencia real en su rama: grid
+  LMU 1.4, timing/gaps/delta, Overlay v1 aditivo, secuencia real de pit y
+  disconnect/reconnect. TC-07B–TC-09 siguen pendientes.
 - La cadena permanece en ramas de issue sin wiring productivo ni promoción. El
   handoff vivo de `docs/vantare-program/` contiene los SHAs y siguiente corte.
 
@@ -91,3 +93,20 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [RecordingSink SQLite ISA-102](recording-sink-sqlite-isa-102.md)
 - [Replay y migraciones ISA-103](replay-migrations-isa-103.md)
 - [Inspector, privacidad y export ISA-104](inspector-privacy-diagnostic-export-isa-104.md)
+- [Procedencia LMU/Overlay ISA-129](lmu-overlay-signal-provenance.md)
+- [Matriz Overlay y evidencia ISA-129](overlay-shadow-matrix.md)
+
+## Evidencia real ISA-129
+
+Las fixtures `lmu-1.4-pre-pit-track`, `lmu-1.4-pit`, `lmu-1.4-outlap` y
+`lmu-1.4-garage` son capturas Shared Memory reconstruidas desde cero mediante
+allowlist. Sus manifiestos y hashes están cerrados en
+`internal/telemetry/drivers/lmu/testdata/menu_track_pit_disconnect_v1.golden.json`.
+Demuestran `InPit=false -> true -> false` dentro de una sesión y un ciclo real
+connected -> disconnected -> reconnected sin payload durante la desconexión.
+Los nombres históricos de las fixtures no amplían la semántica: `mInPits`
+solo demuestra un booleano in-pit, no garaje, box, pit lane ni fase de parada.
+
+Esto no habilita todavía el wiring productivo ni el cutover de Overlay. Equipo,
+número, compuesto, Virtual Energy, daños, weather y flags/fases sin fuente
+demostrada siguen `missing` de forma explícita.

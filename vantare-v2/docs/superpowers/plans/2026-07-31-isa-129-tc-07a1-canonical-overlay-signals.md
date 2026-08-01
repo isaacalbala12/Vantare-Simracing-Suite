@@ -1175,18 +1175,19 @@ git diff --check
 
 ### Scenarios
 
-- [ ] Menu: no player, no invented grid identity or live payload.
-- [ ] Track: real sanitized 44-vehicle grid.
-- [ ] Garage → pit lane → outlap uses real sanitized LMU 1.4 frames and proves
-  player `InPit` false/true/false where the source actually reports it.
-- [ ] Row reorder preserves identities; an accepted omitted slot followed by
+- [x] Menu: no player, no invented grid identity or live payload.
+- [x] Track: real sanitized multivehicle grid.
+- [x] Pre-pit track → observed in-pit state → outlap uses real sanitized LMU
+  1.4 frames and proves player `InPit` false/true/false without inferring a
+  garage, box, pit-lane or pit-phase label the source cannot demonstrate.
+- [x] Row reorder preserves identities; an accepted omitted slot followed by
   reappearance receives a new generation.
-- [ ] Source clock freeze and stale transition.
-- [ ] A real recorded driver disconnect/reconnect status sequence replays
+- [x] Source clock freeze and stale transition.
+- [x] A real recorded driver disconnect/reconnect status sequence replays
   without mock and preserves IDs only when no accepted grid vacated them.
-- [ ] Session reset and player vehicle change.
-- [ ] First valid completed lap enables delta; before it delta is missing.
-- [ ] Every raw-frame input above is a zero-rebuilt, hash-pinned sanitized
+- [x] Session reset and player vehicle change.
+- [x] First valid completed lap enables delta; before it delta is missing.
+- [x] Every raw-frame input above is a zero-rebuilt, hash-pinned sanitized
   fixture. Connection-state events contain no telemetry payload.
 
 ### End-to-end path
@@ -1203,10 +1204,10 @@ sanitized LMU frame
 → TypeScript decoder/adapter golden
 ```
 
-- [ ] Assert one driver/open per run.
-- [ ] Assert no imports from legacy `internal/telemetry/lmu`, mock fixtures or
+- [x] Assert one driver/open per run.
+- [x] Assert no imports from legacy `internal/telemetry/lmu`, mock fixtures or
   product UI inside the new runtime chain.
-- [ ] Assert deterministic byte-identical golden across 20 runs.
+- [x] Assert deterministic byte-identical golden across 20 runs.
 
 ### Verification
 
@@ -1220,8 +1221,8 @@ pnpm --dir frontend build
 git diff --check
 ```
 
-- [ ] Commit: `test(telemetry): prove LMU to Overlay pipeline`.
-- [ ] Independent review.
+- [x] Commit: `test(telemetry): prove LMU to Overlay pipeline`.
+- [x] Independent review.
 
 ---
 
@@ -1229,9 +1230,9 @@ git diff --check
 
 ### Real LMU checks
 
-- [ ] With LMU 1.4 in menu, run the opt-in driver test and record sanitized
+- [x] With LMU 1.4 in menu, run the opt-in driver test and record sanitized
   state only.
-- [ ] When a player session is available, verify:
+- [x] When a player session is available, verify:
   - one Shared Memory open;
   - player correlation;
   - real vehicle count;
@@ -1241,15 +1242,16 @@ git diff --check
   - fuel invariants;
   - no mock strings;
   - no PII in stored evidence.
-- [ ] Perform and record the real sequence:
-  menu → garage → pit lane → outlap/track → disconnect → reconnect.
-- [ ] Capture and hash-pin two complete comparable non-pit player laps for
+- [x] Perform and record the real sequence: menu evidence, pre-pit track,
+  observed in-pit state, outlap/track, disconnect and reconnect. Preserve
+  `mInPits` as a boolean only; do not infer garage/box/pit-lane semantics.
+- [x] Capture and hash-pin two complete comparable non-pit player laps for
   self-delta; prove measured and derived sign at real shared distances.
-- [ ] Pit/outlap and disconnect/reconnect are mandatory ISA-129 gates. If any
+- [x] Pit/outlap and disconnect/reconnect are mandatory ISA-129 gates. If any
   cannot be observed and sanitized, leave ISA-129 `In Progress`, document the
   exact missing evidence and do not open/advance ISA-106. Never synthesize,
   mutate or waive these gates.
-- [ ] The two-lap delta trace is equally mandatory. Without it, keep Delta
+- [x] The two-lap delta trace is equally mandatory. Without it, keep Delta
   missing and keep ISA-129/ISA-106 blocked.
 
 ### Performance checks
@@ -1266,8 +1268,8 @@ go test ./internal/telemetry/derive -run '^$' `
 go test -race ./internal/telemetry/... -count=1
 ```
 
-- [ ] Compare against the prior driver/parser budget.
-- [ ] Confirm no per-frame logging, unbounded slices or new goroutines.
+- [x] Compare against the prior driver/parser budget.
+- [x] Confirm no per-frame logging, unbounded slices or new goroutines.
 
 ### Global gates
 
@@ -1286,48 +1288,57 @@ classified as inherited. Do not hide them.
 
 ### Documentation and delivery
 
-- [ ] Update:
+The module-level canonical record is
+`docs/vantare-program/handoffs/telemetry-core.md` in this branch. The
+program-wide `docs/vantare-program/orchestration-ledger.md` belongs to the
+isolated governance worktree/branch and is intentionally not copied into this
+issue branch. Update that single global ledger after the final D9 commit and PR
+exist, so it can record their exact identifiers without creating two competing
+ledgers.
+
+- [x] Update in the issue branch:
   - `docs/current-plan.md`;
   - `docs/telemetry-core/README.md`;
   - `docs/telemetry-core/lmu-overlay-signal-provenance.md`;
   - `docs/telemetry-core/overlay-shadow-matrix.md`;
-  - `docs/vantare-program/handoffs/telemetry-core.md`;
-  - `docs/vantare-program/orchestration-ledger.md`.
-- [ ] Include the before/after 18-widget matrix.
-- [ ] Include all remaining missing signals and why.
-- [ ] Run final independent review over the full delta.
-- [ ] Resolve every P0/P1/P2 and reasonable P3.
+  - `docs/vantare-program/handoffs/telemetry-core.md`.
+- [ ] After commit/PR, update the single program-wide orchestration ledger in
+  its governance branch; do not create a parallel copy here.
+- [x] Include the before/after 18-widget matrix.
+- [x] Include all remaining missing signals and why.
+- [x] Run final independent review over the full delta.
+- [x] Resolve every P0/P1/P2 and reasonable P3.
 - [ ] Commit D9 exactly once as:
   `docs(telemetry): close ISA-129 overlay signal evidence`.
 - [ ] Push the issue branch.
 - [ ] Open a draft PR against the exact ISA-105 branch.
 - [ ] Move ISA-129 to `In Review`.
-- [ ] Do not merge or promote.
+- [x] Do not merge or promote.
 
 ---
 
 ## 14. Reviewer checklist
 
-- [ ] No synthetic source can become connected/live outside explicit
+- [x] No synthetic source can become connected/live outside explicit
   preview/harness/debug.
-- [ ] One LMU mapping and one runtime owner.
-- [ ] `Observation → Batch` is a real path, not a test-only shortcut.
-- [ ] Vehicle identity never falls back to position or PII.
-- [ ] Reconnect, session and vehicle transitions advance cursor/epoch exactly.
-- [ ] Multivehicle slices are bounded, owned and duplicate-free.
-- [ ] Source/unit/range/reference/sign/provenance/freshness are explicit.
-- [ ] Zero and false survive every layer.
-- [ ] Stale fields do not remain fresh.
-- [ ] Gaps and delta use demonstrated inputs and reset correctly.
-- [ ] Native delta, team, number, compound, VE, damage and unsupported weather
+- [x] One LMU mapping and one runtime owner.
+- [x] `Observation → Batch` is a real path, not a test-only shortcut.
+- [x] Vehicle identity never falls back to position or PII.
+- [x] Reconnect, session and vehicle transitions advance cursor/epoch exactly.
+- [x] Multivehicle slices are bounded, owned and duplicate-free.
+- [x] Source/unit/range/reference/sign/provenance/freshness are explicit.
+- [x] Zero and false survive every layer.
+- [x] Stale fields do not remain fresh.
+- [x] Gaps and delta use demonstrated inputs and reset correctly.
+- [x] Native delta, team, number, compound, VE, damage and unsupported weather
   remain missing unless new real evidence is added.
-- [ ] Overlay v1 remains backward-compatible.
-- [ ] No CSS, canvas, renderer or visual baseline changed.
-- [ ] Engineer simulator debt is preserved in the handoff, not silently fixed
+- [x] Overlay v1 remains backward-compatible.
+- [x] No CSS, canvas, renderer or visual baseline changed.
+- [x] Engineer simulator debt is preserved in the handoff, not silently fixed
   or forgotten.
-- [ ] All fixtures are sanitized from zero and hash-pinned.
-- [ ] No raw, names, Steam IDs, paths or payloads appear in evidence.
-- [ ] No new dependency, speculative plugin layer or unnecessary abstraction.
+- [x] All fixtures are sanitized from zero and hash-pinned.
+- [x] No raw, names, Steam IDs, paths or payloads appear in evidence.
+- [x] No new dependency, speculative plugin layer or unnecessary abstraction.
 - [ ] Final branch is pushed with draft PR and Linear evidence, with no merge
   or promotion.
 

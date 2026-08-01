@@ -222,6 +222,31 @@ La temperatura ambiente/pista, aunque existe en código legacy, tampoco entra
 en D3–D7 porque el corte no dispone de procedencia LMU admitida completa para
 weather.
 
+## Evidencia real D9 — pit y reconexión
+
+El 2026-08-01 se capturó con el sanitizer zero-rebuild una secuencia LMU 1.4
+de una sola sesión y una sola identidad de jugador:
+
+| Estado | Source time | `InPit` | SHA-256 |
+|---|---:|---:|---|
+| Pista antes de pit | 216,8 s | `false` | `eb79ec2a7806e217d4ef16dd2a93f3795b98234adbcb0dddba984651a5fd6fcc` |
+| Estado in-pit observado | 337,4 s | `true` | `262700e53e722b46e1b03940e13be83cf4aa73bf9f5ebdd8b9814b7161c9ede1` |
+| Outlap | 418,2 s | `false` | `c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6` |
+
+`mInPits` queda demostrado únicamente como booleano observado. Estas capturas
+no autorizan a inferir etiquetas más específicas de garaje, box, pit lane o
+fase de pit. El nombre de archivo `lmu-1.4-garage-fixture` se conserva por el
+contrato de entrega, pero su rol semántico es únicamente `reconnected-in-pit`.
+
+Después de cerrar LMU por completo, el proceso desapareció y el probe falló
+cerrado al leer build evidence: no hubo frame ni payload. Al reabrir LMU, un
+mapping nuevo produjo source time 35,8 s y SHA-256
+`a31a149597b14b291ffea4ef1a7e7e86e736e3ac553b53c90f1fcd7c9c1aa707`.
+El replay interpreta el retroceso como sesión/epoch nuevos y conserva la
+identidad del vehículo únicamente porque durante la desconexión no se aceptó
+un grid vacío. El evento disconnected del golden contiene estado y código
+cerrado, nunca telemetría.
+
 ## Implementación D4A — parser, fusión y evidencia sanitizada
 
 El parser productivo 1.3 ahora:

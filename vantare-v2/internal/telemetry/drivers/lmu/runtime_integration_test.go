@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,13 +42,90 @@ type runtimeIntegrationGoldenV1 struct {
 	TrackVehicleCount            int                   `json:"trackVehicleCount"`
 	TrackPlayerPresent           bool                  `json:"trackPlayerPresent"`
 	DeltaTraceSHA256             string                `json:"deltaTraceSha256"`
-	GaragePitOutlap              runtimeEvidenceGateV1 `json:"garagePitOutlap"`
+	InPitTransition              runtimeEvidenceGateV1 `json:"inPitTransition"`
 	DisconnectReconnect          runtimeEvidenceGateV1 `json:"disconnectReconnect"`
 }
 
 type runtimeEvidenceGateV1 struct {
-	Status                       string `json:"status"`
-	SyntheticSubstitutionAllowed bool   `json:"syntheticSubstitutionAllowed"`
+	Status                       string                        `json:"status"`
+	SyntheticSubstitutionAllowed bool                          `json:"syntheticSubstitutionAllowed"`
+	Frames                       []runtimeFrameEvidenceV1      `json:"frames,omitempty"`
+	Events                       []runtimeConnectionEvidenceV1 `json:"events,omitempty"`
+}
+
+type runtimeFrameEvidenceV1 struct {
+	Role              string  `json:"role"`
+	File              string  `json:"file"`
+	SHA256            string  `json:"sha256"`
+	SourceTimeSeconds float64 `json:"sourceTimeSeconds"`
+	VehicleCount      int     `json:"vehicleCount"`
+	PlayerPresent     bool    `json:"playerPresent"`
+	PlayerInPit       bool    `json:"playerInPit"`
+}
+
+type runtimeConnectionEvidenceV1 struct {
+	State       string `json:"state"`
+	FrameSHA256 string `json:"frameSha256,omitempty"`
+	FailureCode string `json:"failureCode,omitempty"`
+}
+
+type runtimeFrameManifestV1 struct {
+	Schema            string  `json:"schema"`
+	Build             string  `json:"build"`
+	Role              string  `json:"role"`
+	SHA256            string  `json:"sha256"`
+	Sanitization      string  `json:"sanitization"`
+	SourceTimeSeconds float64 `json:"sourceTimeSeconds"`
+	VehicleCount      int     `json:"vehicleCount"`
+	PlayerPresent     bool    `json:"playerPresent"`
+	PlayerInPit       bool    `json:"playerInPit"`
+}
+
+func decodeStrictJSON(data []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("unexpected trailing JSON value")
+		}
+		return err
+	}
+	return nil
+}
+
+func TestRuntimeEvidenceJSONRejectsUnknownAndTrailingFields(t *testing.T) {
+	tests := []struct {
+		name string
+		data string
+		out  any
+	}{
+		{
+			name: "manifest unknown field",
+			data: `{"schema":"vantare.lmu-shared-memory-evidence.v1","build":"1.4.0.0","role":"in-pit-observed","sha256":"abc","sanitization":"zero-rebuilt-allowlist","sourceTimeSeconds":1,"vehicleCount":1,"playerPresent":true,"playerInPit":true,"driverName":"forbidden"}`,
+			out:  &runtimeFrameManifestV1{},
+		},
+		{
+			name: "disconnect payload",
+			data: `{"state":"disconnected","failureCode":"build-evidence-unavailable","payload":{"driver":"forbidden"}}`,
+			out:  &runtimeConnectionEvidenceV1{},
+		},
+		{
+			name: "trailing value",
+			data: `{"state":"disconnected","failureCode":"build-evidence-unavailable"} {}`,
+			out:  &runtimeConnectionEvidenceV1{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := decodeStrictJSON([]byte(test.data), test.out); err == nil {
+				t.Fatal("strict JSON decoder accepted forbidden evidence data")
+			}
+		})
+	}
 }
 
 type runtimeDeltaSampleV1 struct {
@@ -63,9 +141,16 @@ type runtimeDeltaSampleV1 struct {
 }
 
 type runtimeDeltaGoldenV1 struct {
-	TraceSHA256       string `json:"trace_sha256"`
-	SampleCount       int    `json:"sample_count"`
-	WrapSampleIndices []int  `json:"wrap_sample_indices"`
+	Version                 int    `json:"version"`
+	TraceSHA256             string `json:"trace_sha256"`
+	SampleCount             int    `json:"sample_count"`
+	SampleFrequencyHz       int    `json:"sample_frequency_hz"`
+	WrapSampleIndices       []int  `json:"wrap_sample_indices"`
+	CompletedComparableLaps int    `json:"completed_comparable_laps"`
+	FirstLapDurationNS      int64  `json:"first_lap_duration_ns"`
+	SecondLapDurationNS     int64  `json:"second_lap_duration_ns"`
+	SecondLapExpectedSign   string `json:"second_lap_expected_sign"`
+	SampleUncertaintyNS     int64  `json:"sample_uncertainty_ns"`
 }
 
 type runtimeProjectionSink struct {
@@ -166,17 +251,165 @@ func TestSingleLMU14RuntimeReachesOverlayProjectionDeterministically(t *testing.
 		gate       runtimeEvidenceGateV1
 		wantStatus string
 	}{
-		"garage/pit/outlap": {
-			gate: golden.GaragePitOutlap, wantStatus: "missing-real-lmu-1.4-evidence",
+		"in-pit transition": {
+			gate: golden.InPitTransition, wantStatus: "real-lmu-1.4-sanitized-sequence",
 		},
 		"disconnect/reconnect": {
-			gate: golden.DisconnectReconnect, wantStatus: "missing-real-recorded-status-sequence",
+			gate: golden.DisconnectReconnect, wantStatus: "real-recorded-status-sequence",
 		},
 	} {
 		if entry.gate.Status != entry.wantStatus || entry.gate.SyntheticSubstitutionAllowed {
 			t.Fatalf("%s evidence gate = %#v, want status %q and no synthetic substitution", name, entry.gate, entry.wantStatus)
 		}
 	}
+}
+
+func TestRealLMU14PitAndReconnectEvidenceReplays(t *testing.T) {
+	golden := readRuntimeIntegrationGolden(t)
+	root := filepath.Join("..", "..", "..", "..", "testdata")
+	if len(golden.InPitTransition.Frames) != 3 {
+		t.Fatalf("in-pit transition frames = %d, want 3", len(golden.InPitTransition.Frames))
+	}
+
+	received := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	fusion := &Fusion{}
+	mapper := NewBatchMapper()
+	downstream := &runtimeProjectionSink{
+		reducer: telemetrycore.NewReducer(),
+		coordinator: telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{
+			Now: func() time.Time { return received },
+		}),
+		pipeline: derive.NewPipeline(derive.Config{}),
+		results:  make(chan runtimeProjectionResult, 4),
+	}
+
+	wantPit := []bool{false, true, false}
+	var first runtimeProjectionResult
+	for index, evidence := range golden.InPitTransition.Frames {
+		observation := readRealEvidenceFrame(t, root, evidence, received.Add(time.Duration(index)*time.Second))
+		fused := fusion.Merge(observation.ReceivedUTC, time.Duration(index)*time.Second, observation)
+		result := writeRuntimeObservation(t, mapper, downstream, fused)
+		assertProjectedPlayerInPit(t, result.projection, wantPit[index])
+		if index == 0 {
+			first = result
+			continue
+		}
+		if result.run.Session != first.run.Session || result.projection.Epoch != first.projection.Epoch {
+			t.Fatalf("in-pit transition changed session/epoch at frame %d: first=%+v/%d got=%+v/%d", index, first.run, first.projection.Epoch, result.run, result.projection.Epoch)
+		}
+		assertSameVehicleIDs(t, first.projection.Vehicles, result.projection.Vehicles)
+	}
+
+	events := golden.DisconnectReconnect.Events
+	if len(events) != 3 || events[0].State != "connected" || events[1].State != "disconnected" || events[2].State != "reconnected" {
+		t.Fatalf("disconnect/reconnect events = %#v", events)
+	}
+	if events[0].FrameSHA256 == "" || events[1].FrameSHA256 != "" || events[1].FailureCode != "build-evidence-unavailable" || events[2].FrameSHA256 == "" {
+		t.Fatalf("disconnect/reconnect payload contract = %#v", events)
+	}
+	if len(golden.DisconnectReconnect.Frames) != 2 ||
+		golden.DisconnectReconnect.Frames[0].SHA256 != events[0].FrameSHA256 ||
+		golden.DisconnectReconnect.Frames[1].SHA256 != events[2].FrameSHA256 {
+		t.Fatalf("disconnect/reconnect frame references do not match events")
+	}
+
+	before := readRealEvidenceFrame(t, root, golden.DisconnectReconnect.Frames[0], received.Add(10*time.Second))
+	after := readRealEvidenceFrame(t, root, golden.DisconnectReconnect.Frames[1], received.Add(11*time.Second))
+	if beforeTime, _ := before.SourceTime.Value(); beforeTime <= 0 {
+		t.Fatalf("connected source time = %v", beforeTime)
+	} else if afterTime, _ := after.SourceTime.Value(); afterTime >= beforeTime {
+		t.Fatalf("reconnected source time = %v, want reset below %v", afterTime, beforeTime)
+	}
+
+	reconnectFusion := &Fusion{}
+	reconnectMapper := NewBatchMapper()
+	reconnectDownstream := &runtimeProjectionSink{
+		reducer: telemetrycore.NewReducer(),
+		coordinator: telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{
+			Now: func() time.Time { return received },
+		}),
+		pipeline: derive.NewPipeline(derive.Config{}),
+		results:  make(chan runtimeProjectionResult, 2),
+	}
+	beforeResult := writeRuntimeObservation(t, reconnectMapper, reconnectDownstream,
+		reconnectFusion.Merge(before.ReceivedUTC, 10*time.Second, before))
+	afterResult := writeRuntimeObservation(t, reconnectMapper, reconnectDownstream,
+		reconnectFusion.Merge(after.ReceivedUTC, 11*time.Second, after))
+	if afterResult.run.Session == beforeResult.run.Session || afterResult.projection.Epoch != beforeResult.projection.Epoch+1 {
+		t.Fatalf("reconnect session/epoch = %+v/%d, want one new epoch after %+v/%d", afterResult.run, afterResult.projection.Epoch, beforeResult.run, beforeResult.projection.Epoch)
+	}
+	assertSameVehicleIDs(t, beforeResult.projection.Vehicles, afterResult.projection.Vehicles)
+}
+
+func readRealEvidenceFrame(t testing.TB, root string, evidence runtimeFrameEvidenceV1, received time.Time) Observation {
+	t.Helper()
+	path := filepath.Join(root, evidence.File)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestData, err := os.ReadFile(path[:len(path)-len(filepath.Ext(path))] + ".json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest runtimeFrameManifestV1
+	if err := decodeStrictJSON(manifestData, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Schema != "vantare.lmu-shared-memory-evidence.v1" ||
+		manifest.Build != diagnosticLMUVersion || manifest.Sanitization != "zero-rebuilt-allowlist" ||
+		(runtimeFrameEvidenceV1{
+			Role: manifest.Role, File: evidence.File, SHA256: manifest.SHA256,
+			SourceTimeSeconds: manifest.SourceTimeSeconds, VehicleCount: manifest.VehicleCount,
+			PlayerPresent: manifest.PlayerPresent, PlayerInPit: manifest.PlayerInPit,
+		}) != evidence {
+		t.Fatalf("%s manifest does not match closed golden evidence: %#v", evidence.Role, manifest)
+	}
+	assertSHA256Hex(t, data, evidence.SHA256, evidence.Role)
+	observation, err := parseWithBuild(data, received, BuildEvidence{
+		FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceTime, sourceTimePresent := observation.SourceTime.Value()
+	wantSourceTime := time.Duration(evidence.SourceTimeSeconds * float64(time.Second))
+	sourceTimeDelta := sourceTime - wantSourceTime
+	if sourceTimeDelta < 0 {
+		sourceTimeDelta = -sourceTimeDelta
+	}
+	playerPresent, playerPresenceKnown := observation.PlayerPresent.Value()
+	player, playerFound := findPlayerVehicle(observation)
+	inPit, inPitPresent := player.InPit.Value()
+	if !sourceTimePresent || sourceTimeDelta > time.Microsecond ||
+		len(observation.Vehicles) != evidence.VehicleCount || !playerPresenceKnown ||
+		playerPresent != evidence.PlayerPresent || !playerFound || !inPitPresent || bool(inPit) != evidence.PlayerInPit {
+		t.Fatalf("%s metadata mismatch: source=%v/%v vehicles=%d player=%v/%v found=%v inPit=%v/%v", evidence.Role, sourceTime, sourceTimePresent, len(observation.Vehicles), playerPresent, playerPresenceKnown, playerFound, inPit, inPitPresent)
+	}
+	return observation
+}
+
+func findPlayerVehicle(observation Observation) (VehicleObservation, bool) {
+	for _, current := range observation.Vehicles {
+		if player, present := current.Player.Value(); present && player {
+			return current, true
+		}
+	}
+	return VehicleObservation{}, false
+}
+
+func assertProjectedPlayerInPit(t testing.TB, projection overlayprojection.SnapshotV1, want bool) {
+	t.Helper()
+	for _, current := range projection.Vehicles {
+		if current.ID != projection.Player {
+			continue
+		}
+		if !current.InPit.Present || bool(current.InPit.Value) != want {
+			t.Fatalf("player InPit = %+v, want %v", current.InPit, want)
+		}
+		return
+	}
+	t.Fatalf("projection player %q not found", projection.Player)
 }
 
 func TestLMU14MenuCannotBecomeAnInventedLivePayload(t *testing.T) {
@@ -207,9 +440,8 @@ func TestLMU14MenuCannotBecomeAnInventedLivePayload(t *testing.T) {
 }
 
 // TestLMU14CanonicalTransitions starts from the real, sanitized LMU 1.4 track
-// frame and then applies controlled canonical transitions. The transitions are
-// contract tests, not substitutes for the still-missing real pit and reconnect
-// recordings declared in the golden evidence gates.
+// frame and then applies controlled canonical transitions. These contract tests
+// complement the real pit and reconnect recordings declared in the golden gates.
 func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 	frame, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-1.4-track-fixture.bin"))
 	if err != nil {
@@ -306,7 +538,7 @@ func TestRealLMU14DeltaTraceCrossesCanonicalRuntimeBeforeOverlay(t *testing.T) {
 		t.Fatal(err)
 	}
 	var golden runtimeDeltaGoldenV1
-	if err := json.Unmarshal(goldenData, &golden); err != nil {
+	if err := decodeStrictJSON(goldenData, &golden); err != nil {
 		t.Fatal(err)
 	}
 	assertSHA256Hex(t, trace, golden.TraceSHA256, "real delta trace")
@@ -330,7 +562,7 @@ func TestRealLMU14DeltaTraceCrossesCanonicalRuntimeBeforeOverlay(t *testing.T) {
 	var firstDelta overlayprojection.SnapshotV1
 	for scanner.Scan() {
 		var sample runtimeDeltaSampleV1
-		if err := json.Unmarshal(scanner.Bytes(), &sample); err != nil {
+		if err := decodeStrictJSON(scanner.Bytes(), &sample); err != nil {
 			t.Fatal(err)
 		}
 		if sample.Version != 1 || sample.SampleIndex != index || sample.Quality != "fresh" {
@@ -526,7 +758,7 @@ func readRuntimeIntegrationGolden(t testing.TB) runtimeIntegrationGoldenV1 {
 		t.Fatal(err)
 	}
 	var golden runtimeIntegrationGoldenV1
-	if err := json.Unmarshal(data, &golden); err != nil {
+	if err := decodeStrictJSON(data, &golden); err != nil {
 		t.Fatal(err)
 	}
 	return golden

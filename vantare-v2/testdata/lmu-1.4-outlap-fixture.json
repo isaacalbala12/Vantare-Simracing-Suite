@@ -1,0 +1,11 @@
+{
+  "schema": "vantare.lmu-shared-memory-evidence.v1",
+  "build": "1.4.0.0",
+  "role": "outlap-track",
+  "sha256": "c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6",
+  "sanitization": "zero-rebuilt-allowlist",
+  "sourceTimeSeconds": 418.2,
+  "vehicleCount": 1,
+  "playerPresent": true,
+  "playerInPit": false
+}

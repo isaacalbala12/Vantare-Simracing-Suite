@@ -482,21 +482,40 @@ anterior.
 
 La evidencia ejecutable está fijada en
 `internal/telemetry/drivers/lmu/testdata/menu_track_pit_disconnect_v1.golden.json`.
-Ese golden declara de forma cerrada dos gates que **siguen pendientes**:
+D8 dejó declarados dos gates no sustituibles. D9 los cerró con evidencia LMU
+1.4 nueva, sanitizada y hash-pinned; no reutilizó las capturas históricas del
+módulo Engineer ni transiciones sintéticas. Las vueltas Delta válidas siguen
+siendo el trace real D6 y no se repitieron.
 
-- no existe una secuencia sanitizada y verificable de LMU 1.4
-  garaje -> pit lane -> outlap con `InPit=false/true/false`;
-- no existe una secuencia real grabada de estado disconnect/reconnect.
+## Resultado D9 de ISA-129
 
-Se localizaron capturas históricas de boxes y outlap del antiguo módulo
-Engineer, pero no demuestran de forma verificable el build LMU 1.4 y no se han
-reclasificado ni copiado. No se permite reemplazar ninguno de los dos gates
-por fixtures sintéticos. Las vueltas reales válidas para Delta sí se conservan
-en el trace hash-pinned D6 y no necesitan repetirse.
+La secuencia real `InPit=false -> true -> false` usa tres frames de una misma
+sesión y conserva identidad, sesión y epoch. Los source times son 216,8 s,
+337,4 s y 418,2 s. El replay x20 verifica hashes, sidecars zero-rebuild,
+presencia del jugador y proyección canónica.
+`mInPits` no se interpreta como garaje, box, pit lane ni fase de parada: solo
+se proyecta el booleano observado.
 
-Por tanto, D8 cubre menú, pista, determinismo, ownership, freshness,
-reorden/generaciones, resets/cambio de jugador y las vueltas Delta reales hasta
-Go y TypeScript. Los dos gates reales de pit y desconexión permanecen abiertos.
-ISA-129 debe seguir `In Progress` e ISA-106 bloqueada hasta que D9 pueda aportar
-esas secuencias; no se permite cerrarlas con transiciones controladas ni con
-capturas históricas sin build verificable.
+El cierre completo de LMU dejó proceso y mapping ausentes; el diagnóstico
+falló cerrado antes de producir payload. Tras reabrir, el mapping nuevo parte
+de 35,8 s. El replay produce sesión/epoch nuevos por reset de reloj, conserva
+VehicleID porque no se aceptó un grid vacío y prueba que el evento disconnected
+no contiene telemetría.
+
+D9 también completa los cuatro benchmarks y los gates focales. El parser de 44
+vehículos queda en 23,6–29,7 µs/op frente al baseline anterior de 13,5–15,6
+µs/op; el contrato ampliado conserva margen holgado a la cadencia live. No se
+añaden goroutines productivas, logging por frame ni slices sin cota. Telemetry
+Core, mi ejecución de la suite Go global, frontend 297/2.020, build, lint focal
+y `diff --check` pasan. La review independiente reprodujo el P3 Windows
+heredado ISA-118 de `app-settings.json.tmp`, también en serial y focal; está
+fuera del diff y no se corrige en este corte. `-race` no está disponible con
+CGO desactivado. El lint global conserva
+32 errores + 2 warnings heredados fuera del área focal; un error heredado del
+archivo tocado se eliminó. Seis avisos Win32 de vet se reprodujeron sobre la
+base exacta ISA-105 y no pertenecen al delta.
+
+La matriz 18/18 permanece honestamente en **2 exactos, 10 parciales, 5 no
+comparables y 1 externo**. D9 cierra evidencia y lifecycle; no inventa equipo,
+número, compuesto, weather, daños, flags o fases y no convierte una señal
+parcial de producto en paridad visual exacta.

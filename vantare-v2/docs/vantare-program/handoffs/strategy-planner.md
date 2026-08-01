@@ -16,10 +16,10 @@ son fases históricas.
 
 ## Estado
 
-STR-00 está corrigiendo su primera review independiente. El calculador
-manual de Product A sigue siendo evidencia útil, pero no se integrará como
-rama completa. La UI canónica usa estrategias a la izquierda, stints al centro
-e inventario/entrada a la derecha.
+STR-00 quedó aceptado tras review independiente. STR-01 rescata Product A solo
+como oráculo histórico aislado; no integra su rama ni conecta sus contratos al
+producto. La UI canónica usa estrategias a la izquierda, stints al centro e
+inventario/entrada a la derecha.
 
 Actualización ISA-134 / STR-00:
 
@@ -37,7 +37,8 @@ Actualización ISA-134 / STR-00:
   borrar historia. El backlog canónico son 24 cortes: ISA-136..157 más
   ISA-162/163.
 - Productores: ISA-159 (Analysis histórico) e ISA-160/161 (Core live).
-- Promoción: ninguna; ISA-134 permanece `In Progress` hasta nueva re-review.
+- Promoción: ninguna; ISA-136 está implementada en su rama y pendiente de
+  review independiente.
 
 ## Decisiones
 
@@ -78,14 +79,21 @@ Actualización ISA-134 / STR-00:
 - Ownership: `docs/strategy-planner/projection-ownership.md`.
 - Product A exacto: Go focal/vet, 25 tests frontend y build pasan; el smoke
   Playwright histórico se bloquea y debe reemplazarse en STR-07.
-- Issue activa: ISA-134 / STR-00, corrección de review.
+- Caracterización STR-01:
+  `docs/strategy-planner/str-01-product-a-characterization.md`.
+- Paquete histórico: `internal/strategy/producta`; 25/25 paths de la allowlist,
+  fixture exacto y 24 blobs Go iguales salvo el namespace.
+- Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
+  de raíz compatible con `-trimpath`.
+- Issue activa: ISA-136 / STR-01, pendiente de review independiente.
 
 ## Siguiente acción exacta
 
-Re-review independiente de ISA-134 sobre el commit correctivo. Solo si queda
-`ACCEPT`, ejecutar ISA-136 / STR-01 desde `ISA-117@170eaeb` usando la allowlist
-exacta. No tocar HubApp, topbar, locales, CSS global, Calendar ni access policy.
+Review independiente de ISA-136. Si queda `ACCEPT`, entregar commit/push/PR
+draft y continuar ISA-137 / STR-02 sobre esta rama apilada. No convertir
+`internal/strategy/producta` en contrato productivo ni tocar integraciones
+transversales antes de sus cortes.
 
 ## Última actualización
 
-2026-08-01, ISA-134 / STR-00, Codex.
+2026-08-01, ISA-136 / STR-01, Codex.

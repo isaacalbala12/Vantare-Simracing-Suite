@@ -1,3 +1,23 @@
+Nota ISA-136 / STR-01 (2026-08-01):
+- Product A queda rescatado únicamente como oráculo histórico aislado en
+  `internal/strategy/producta`; no existe wiring ni consumidor productivo.
+- La allowlist está completa: fixture JSON exacto y 24 archivos Go idénticos a
+  `b9f1937` salvo `package producta`; un guard verifica blobs y manifiesto.
+- La denylist 69/69 se valida contra la matriz y contra un manifiesto versionado
+  del delta; tests de regresión rechazan app service, Hub, locales y CSS. El
+  discovery de raíz pasa también con `-trimpath`.
+- Se reproducen casos canónicos, 10.000 seeds, carrera, recursos, pit,
+  neumáticos, stints, unidades, ranking y sensibilidad sin elevar el solver
+  histórico a autoridad.
+- Se conservan explícitos los defectos históricos: degradación fuera del tiempo
+  total, margen Fuel+VE inválido, optimalidad no demostrada y semánticas LMU
+  pendientes. STR-02/05/06/08/12 poseen sus reemplazos.
+- TDD rojo antes del port y Go focal verde después. Evidencia:
+  `docs/strategy-planner/str-01-product-a-characterization.md`.
+- Estado: implementación lista para review independiente; sin commit, push,
+  PR, merge ni promoción en este punto. Siguiente corte tras `ACCEPT`:
+  ISA-137 / STR-02.
+
 Nota ISA-134 / STR-00 (2026-08-01):
 - Strategy Planner queda replanificado como un solo producto; Product A/B/C
   pasan a ser fases históricas.
@@ -20,9 +40,8 @@ Nota ISA-134 / STR-00 (2026-08-01):
   persistencia.
 - Productores explícitos: ISA-159 / TA-05 para histórico e ISA-160/161 /
   TC-10A/B para live. Bloquean ISA-145 y ISA-152 respectivamente.
-- Estado: correcciones del primer review aplicadas; ISA-134 permanece
-  `In Progress` hasta nueva re-review. Después, ISA-136 / STR-01. Sin merge ni
-  promoción.
+- Estado: `ACCEPT` tras review; ISA-136 / STR-01 está en ejecución apilada. Sin
+  merge ni promoción.
 
 Nota VANTARE-PROGRAM (2026-07-27):
 - ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.

@@ -123,7 +123,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   no crea `app.App` ni un segundo reader/poller. Status, diagnostics y ops usan
   `TelemetryCoreRuntime`; solo el driver canónico contiene APIs de adquisición
   LMU. El backend legacy y sus CLIs quedan retirados.
-- TC-09C–F: pendientes desde ISA-115.
+- TC-09C ISA-115: implementación completa en revisión. Un único decoder/mapper
+  Overlay y lifecycle compartido para Wails/SSE; eventos, adapters y selector
+  shadow legacy retirados sin cambiar UI.
+- TC-09D–F: pendientes desde ISA-116.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
@@ -284,13 +287,14 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 | Auditoría cerrada | ISA-113 / TC-09A, matriz proof-first sin borrados |
 | En revisión | ISA-114 / TC-09B, backend duplicado retirado |
-| Pendientes | ISA-115–117 e ISA-87 según dependencias |
+| En revisión | ISA-115 / TC-09C, frontend/transporte legacy retirado |
+| Pendientes | ISA-116–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-114 y ejecutar ISA-115 / TC-09C sobre su commit. ISA-115 debe
-retirar adapters, eventos y nombres de transporte frontend legacy sin cambiar
-UI ni estilos. Sin merge ni promoción.
+Entregar ISA-115 y ejecutar ISA-116 / TC-09D sobre su commit. ISA-116 debe
+endurecer seguridad, límites, rendimiento y observabilidad sobre el único
+pipeline, sin reabrir contratos ni añadir transporte. Sin merge ni promoción.
 
 ## Gate final
 
@@ -299,6 +303,14 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-115: `telemetry:update`, los adapters Wails/SSE antiguos,
+`normalizeLegacyTelemetry`, el selector fail-open y el harness shadow runtime
+quedan retirados. Studio/Desktop/OBS comparten Overlay Projection v1; el
+decoder/mapper autoritativo vive en `overlay/projection` y el comparador
+histórico queda no productivo hasta ISA-117. Source status usa un contrato y
+eventos `telemetry-core:*` únicos. Documento:
+`docs/telemetry-core/frontend-retirement-isa-115.md`. Siguiente: ISA-116.
 
 2026-08-01, ISA-114: status, diagnostics y métricas leen el runtime canónico y
 el segundo grafo LMU se retira completo. Solo

@@ -6,7 +6,7 @@ import {
   createSseProjectionTelemetryAdapter,
   createWailsProjectionTelemetryAdapter,
 } from "../overlay/transports/projection-telemetry-adapter";
-import type { OverlayShadowRuntime, ProjectionEventSourceLike } from "../overlay/transports/projection-shadow-adapter";
+import type { OverlayRuntime, ProjectionEventSourceLike } from "../overlay/transports/projection-observer";
 
 class HarnessEventSource implements ProjectionEventSourceLike {
   private readonly listeners = new Map<string, (event: { data: unknown }) => void>();
@@ -15,7 +15,7 @@ class HarnessEventSource implements ProjectionEventSourceLike {
   close(): void {}
 }
 
-const runtime = new URLSearchParams(location.search).get("runtime") as OverlayShadowRuntime;
+const runtime = new URLSearchParams(location.search).get("runtime") as OverlayRuntime;
 if (!(["studio", "desktop", "obs"] as const).includes(runtime)) throw new Error("invalid runtime");
 const published: TelemetrySnapshot[] = [];
 const coordinator = {
@@ -28,7 +28,6 @@ const status = {
   capturedAt: projection.capturedAt,
   payload: { state: "live", reconnectAttempt: 0 },
 };
-let legacySubscriptions = 0;
 
 if (runtime === "obs") {
   const source = new HarnessEventSource();
@@ -46,7 +45,6 @@ if (runtime === "obs") {
     coordinator,
     runtime,
     subscribe: (name, listener) => {
-      if (name === "telemetry:update") legacySubscriptions += 1;
       handlers.set(name, listener);
       return () => handlers.delete(name);
     },
@@ -59,7 +57,7 @@ if (runtime === "obs") {
 const last = published.at(-1);
 const root = document.querySelector<HTMLElement>("#app");
 if (!root || !last) throw new Error("canonical snapshot not published");
-root.innerHTML = `<h1>${runtime}</h1><output data-testid="status">${last.status}</output><output data-testid="writes">${published.length}</output><output data-testid="legacy">${legacySubscriptions}</output>`;
+root.innerHTML = `<h1>${runtime}</h1><output data-testid="status">${last.status}</output><output data-testid="writes">${published.length}</output>`;
 
 function envelope() {
   const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;

@@ -1,19 +1,17 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { eventName, type JSONObject, type ProjectionEnvelope } from "../../telemetry-transport/contracts";
-import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import {
-  createShadowedTelemetryAdapter,
-  createSseProjectionShadowObserver,
-  createWailsProjectionShadowObserver,
+  createSseProjectionObserver,
+  createWailsProjectionObserver,
   type ProjectionEventSourceLike,
-} from "./projection-shadow-adapter";
+} from "./projection-observer";
 
-describe("projection shadow adapters", () => {
-  it("observes identical Wails and SSE projection state without becoming render authority", () => {
+describe("projection observers", () => {
+  it("observes identical authoritative Wails and SSE projection state", () => {
     const handlers = new Map<string, (data: unknown) => void>();
-    const wails = createWailsProjectionShadowObserver({
+    const wails = createWailsProjectionObserver({
       runtime: "studio",
       subscribe: (name, listener) => {
         handlers.set(name, listener);
@@ -21,7 +19,7 @@ describe("projection shadow adapters", () => {
       },
     });
     const source = new FakeEventSource();
-    const sse = createSseProjectionShadowObserver({
+    const sse = createSseProjectionObserver({
       runtime: "obs",
       createEventSource: () => source,
     });
@@ -67,9 +65,9 @@ describe("projection shadow adapters", () => {
     sse.stop();
   });
 
-  it("keeps menu/no-session as a waiting shadow state", () => {
+  it("keeps menu/no-session as a waiting state", () => {
     const handlers = new Map<string, (data: unknown) => void>();
-    const observer = createWailsProjectionShadowObserver({
+    const observer = createWailsProjectionObserver({
       runtime: "desktop",
       subscribe: (name, listener) => {
         handlers.set(name, listener);
@@ -89,26 +87,6 @@ describe("projection shadow adapters", () => {
       result: "waiting",
     });
     observer.stop();
-  });
-
-  it("fails open when shadow startup fails", () => {
-    const coordinator = {} as TelemetryRateCoordinator;
-    const authoritative = {
-      coordinator,
-      start: vi.fn(),
-      stop: vi.fn(),
-    };
-    const adapter = createShadowedTelemetryAdapter(authoritative, {
-      start: () => {
-        throw new Error("shadow unavailable");
-      },
-      stop: vi.fn(),
-      getDiagnostics: () => ({ runtime: "studio", result: "error" }),
-    });
-    expect(() => adapter.start()).not.toThrow();
-    expect(authoritative.start).toHaveBeenCalledOnce();
-    adapter.stop();
-    expect(authoritative.stop).toHaveBeenCalledOnce();
   });
 });
 

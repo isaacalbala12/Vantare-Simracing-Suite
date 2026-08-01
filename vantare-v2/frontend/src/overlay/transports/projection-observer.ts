@@ -9,17 +9,15 @@ import { createProjectionTransportStore } from "../../telemetry-transport/store"
 import {
   adaptOverlayProjectionToSnapshot,
   type OverlayProjectionAdaptation,
-} from "../telemetry-shadow/overlay-projection-adapter";
+} from "../projection/overlay-projection-adapter";
 import {
   decodeOverlayProjectionV1,
   OverlayProjectionDecodeError,
-} from "../telemetry-shadow/overlay-projection-v1";
-import type { TelemetryAdapter } from "./wails-telemetry-adapter";
+} from "../projection/overlay-projection-v1";
+export type OverlayRuntime = "studio" | "desktop" | "obs";
 
-export type OverlayShadowRuntime = "studio" | "desktop" | "obs";
-
-export type OverlayShadowDiagnostics = Readonly<{
-  runtime: OverlayShadowRuntime;
+export type OverlayProjectionDiagnostics = Readonly<{
+  runtime: OverlayRuntime;
   status?: StatusState;
   epoch?: number;
   sequence?: number;
@@ -28,10 +26,10 @@ export type OverlayShadowDiagnostics = Readonly<{
   errorCode?: string;
 }>;
 
-export type ProjectionShadowObserver = {
+export type ProjectionObserver = {
   start(): void;
   stop(): void;
-  getDiagnostics(): OverlayShadowDiagnostics;
+  getDiagnostics(): OverlayProjectionDiagnostics;
 };
 
 export type OverlayProjectionObservation = Readonly<{
@@ -42,19 +40,19 @@ export type OverlayProjectionObservation = Readonly<{
 }>;
 
 type ObserverOptions = Readonly<{
-  runtime: OverlayShadowRuntime;
+  runtime: OverlayRuntime;
   source: TransportEventSource;
-  onDiagnostics?: (diagnostics: OverlayShadowDiagnostics) => void;
+  onDiagnostics?: (diagnostics: OverlayProjectionDiagnostics) => void;
   onObservation?: (observation: OverlayProjectionObservation) => void;
 }>;
 
-export function createWailsProjectionShadowObserver(options: Readonly<{
-  runtime: OverlayShadowRuntime;
+export function createWailsProjectionObserver(options: Readonly<{
+  runtime: OverlayRuntime;
   subscribe: TransportEventSource["subscribe"];
-  onDiagnostics?: (diagnostics: OverlayShadowDiagnostics) => void;
+  onDiagnostics?: (diagnostics: OverlayProjectionDiagnostics) => void;
   onObservation?: (observation: OverlayProjectionObservation) => void;
-}>): ProjectionShadowObserver {
-  return createProjectionShadowObserver({
+}>): ProjectionObserver {
+  return createProjectionObserver({
     runtime: options.runtime,
     source: { subscribe: options.subscribe },
     onDiagnostics: options.onDiagnostics,
@@ -62,19 +60,19 @@ export function createWailsProjectionShadowObserver(options: Readonly<{
   });
 }
 
-export function createProjectionShadowObserver(
+export function createProjectionObserver(
   options: ObserverOptions,
-): ProjectionShadowObserver {
+): ProjectionObserver {
   const store = createProjectionTransportStore("overlay");
   let started = false;
   let detach: (() => void) | undefined;
   let unsubscribeStore: (() => void) | undefined;
-  let diagnostics: OverlayShadowDiagnostics = {
+  let diagnostics: OverlayProjectionDiagnostics = {
     runtime: options.runtime,
     result: "stopped",
   };
 
-  const publish = (next: OverlayShadowDiagnostics) => {
+  const publish = (next: OverlayProjectionDiagnostics) => {
     diagnostics = Object.freeze(next);
     options.onDiagnostics?.(diagnostics);
   };
@@ -162,13 +160,13 @@ export type ProjectionEventSourceLike = {
   close(): void;
 };
 
-export function createSseProjectionShadowObserver(options: Readonly<{
-  runtime: OverlayShadowRuntime;
+export function createSseProjectionObserver(options: Readonly<{
+  runtime: OverlayRuntime;
   url?: string;
   createEventSource?: (url: string) => ProjectionEventSourceLike;
-  onDiagnostics?: (diagnostics: OverlayShadowDiagnostics) => void;
+  onDiagnostics?: (diagnostics: OverlayProjectionDiagnostics) => void;
   onObservation?: (observation: OverlayProjectionObservation) => void;
-}>): ProjectionShadowObserver {
+}>): ProjectionObserver {
   const listeners = new Map<string, Set<(data: unknown) => void>>();
   const factory = options.createEventSource ?? ((url: string) => new EventSource(url));
   let source: ProjectionEventSourceLike | undefined;
@@ -183,7 +181,7 @@ export function createSseProjectionShadowObserver(options: Readonly<{
       return () => group?.delete(listener);
     },
   };
-  const buildObserver = () => createProjectionShadowObserver({
+  const buildObserver = () => createProjectionObserver({
       runtime: options.runtime,
       source: transportSource,
       onDiagnostics: options.onDiagnostics,
@@ -224,40 +222,13 @@ export function createSseProjectionShadowObserver(options: Readonly<{
   };
 }
 
-export function createShadowedTelemetryAdapter(
-  authoritative: TelemetryAdapter,
-  shadow: ProjectionShadowObserver,
-): TelemetryAdapter {
-  let started = false;
-  return {
-    coordinator: authoritative.coordinator,
-    start() {
-      if (started) return;
-      authoritative.start();
-      try {
-        shadow.start();
-      } catch {
-        // Shadow observation is deliberately fail-open during TC-07B. The
-        // legacy adapter remains the only render authority.
-      }
-      started = true;
-    },
-    stop() {
-      if (!started) return;
-      started = false;
-      shadow.stop();
-      authoritative.stop();
-    },
-  };
-}
-
 function adaptationDiagnostics(
-  runtime: OverlayShadowRuntime,
+  runtime: OverlayRuntime,
   status: StatusState,
   epoch: number,
   sequence: number,
   result: OverlayProjectionAdaptation,
-): OverlayShadowDiagnostics {
+): OverlayProjectionDiagnostics {
   if (result.kind === "blocked") {
     return { runtime, status, result: "blocked", blockCode: result.code };
   }
@@ -274,5 +245,5 @@ function stableErrorCode(error: unknown): string {
   if (error instanceof TransportContractError || error instanceof OverlayProjectionDecodeError) {
     return error.code;
   }
-  return "shadow-observer-error";
+  return "projection-observer-error";
 }

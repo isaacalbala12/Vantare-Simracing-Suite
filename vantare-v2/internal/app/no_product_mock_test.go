@@ -98,6 +98,8 @@ func TestRetiredTelemetryBackendStaysRemoved(t *testing.T) {
 		"app.New(*live)",
 		"EnsureLiveTelemetry",
 		"TelemetrySource()",
+		"telemetry:update",
+		"telemetry:source-status",
 		"/telemetry/stream",
 		"internal/telemetry/service",
 		"internal/telemetry/lmu\"",

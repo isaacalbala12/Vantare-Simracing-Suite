@@ -17,7 +17,7 @@ import {
   type OverlayProjectionMapping,
 } from "./overlay-projection-adapter";
 
-describe("overlay projection adapter", () => {
+describe("authoritative overlay projection adapter", () => {
   it("decodes and adapts the first real LMU delta projection produced by Go", () => {
     const projection = readGolden("lmu-1.4-delta-overlay-v1.golden.json");
     const mapping = requireMapped(

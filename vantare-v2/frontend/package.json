@@ -10,7 +10,6 @@
     "test": "vitest run",
     "test:isa13-mono": "node scripts/isa-13-mono-legibility.playwright.mjs",
     "test:telemetry-overlay-shadow": "node scripts/telemetry-overlay-shadow.playwright.mjs",
-    "test:telemetry-shadow-runtimes": "node scripts/telemetry-shadow-runtimes.playwright.mjs",
     "test:telemetry-cutover-runtimes": "node scripts/telemetry-cutover-runtimes.playwright.mjs",
     "e2e:diagnostics": "node scripts/diagnostics-inspector.playwright.mjs",
     "lint": "eslint .",

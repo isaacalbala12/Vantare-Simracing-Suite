@@ -8,7 +8,7 @@ import {
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
-import type { TelemetryAdapter } from "../../../overlay/transports/wails-telemetry-adapter";
+import type { TelemetryAdapter } from "../../../overlay/transports/telemetry-adapter";
 import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
 import { useStudioPreview } from "../state/studio-store";
 

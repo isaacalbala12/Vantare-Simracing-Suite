@@ -14,6 +14,10 @@ import {
 } from "../overlay-harness/hub-profile-mock-state";
 import { licenseDebugWarn } from "./license-debug";
 import { setWailsRuntimeMockActive } from "./license-debug-log";
+import {
+  telemetrySourceStatusEvent,
+  telemetrySourceStatusRequestEvent,
+} from "../telemetry-transport/source-status";
 
 setWailsRuntimeMockActive(true);
 licenseDebugWarn(
@@ -124,10 +128,10 @@ export const Events = {
     }
 
     // Auto-respond to telemetry source status
-    if (name === "telemetry:source-status:get") {
+    if (name === telemetrySourceStatusRequestEvent) {
       setTimeout(
         () =>
-          broadcast("telemetry:source-status", {
+          broadcast(telemetrySourceStatusEvent, {
             kind: "none",
             name: "No source",
             live: false,

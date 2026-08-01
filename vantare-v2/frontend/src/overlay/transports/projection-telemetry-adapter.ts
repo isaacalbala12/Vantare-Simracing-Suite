@@ -6,19 +6,19 @@ import {
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import {
-  createSseProjectionShadowObserver,
-  createWailsProjectionShadowObserver,
+  createSseProjectionObserver,
+  createWailsProjectionObserver,
   type OverlayProjectionObservation,
-  type OverlayShadowDiagnostics,
-  type OverlayShadowRuntime,
+  type OverlayProjectionDiagnostics,
+  type OverlayRuntime,
   type ProjectionEventSourceLike,
-  type ProjectionShadowObserver,
-} from "./projection-shadow-adapter";
-import type { TelemetryAdapter } from "./wails-telemetry-adapter";
+  type ProjectionObserver,
+} from "./projection-observer";
+import type { TelemetryAdapter } from "./telemetry-adapter";
 
 type CommonOptions = Readonly<{
   coordinator: TelemetryRateCoordinator;
-  runtime: OverlayShadowRuntime;
+  runtime: OverlayRuntime;
   now?: () => number;
 }>;
 
@@ -26,7 +26,7 @@ export function createWailsProjectionTelemetryAdapter(options: CommonOptions & R
   subscribe: (event: string, handler: (data: unknown) => void) => () => void;
 }>): TelemetryAdapter {
   return createProjectionTelemetryAdapter(options, (callbacks) =>
-    createWailsProjectionShadowObserver({
+    createWailsProjectionObserver({
       runtime: options.runtime,
       subscribe: options.subscribe,
       ...callbacks,
@@ -38,7 +38,7 @@ export function createSseProjectionTelemetryAdapter(options: CommonOptions & Rea
   createEventSource?: (url: string) => ProjectionEventSourceLike;
 }>): TelemetryAdapter {
   return createProjectionTelemetryAdapter(options, (callbacks) =>
-    createSseProjectionShadowObserver({
+    createSseProjectionObserver({
       runtime: options.runtime,
       url: options.url,
       createEventSource: options.createEventSource,
@@ -50,8 +50,8 @@ function createProjectionTelemetryAdapter(
   options: CommonOptions,
   buildObserver: (callbacks: Readonly<{
     onObservation: (observation: OverlayProjectionObservation) => void;
-    onDiagnostics: (diagnostics: OverlayShadowDiagnostics) => void;
-  }>) => ProjectionShadowObserver,
+    onDiagnostics: (diagnostics: OverlayProjectionDiagnostics) => void;
+  }>) => ProjectionObserver,
 ): TelemetryAdapter {
   const now = options.now ?? (() => Date.now());
   let started = false;

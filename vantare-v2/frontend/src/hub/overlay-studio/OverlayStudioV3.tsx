@@ -5,7 +5,7 @@ import "./overlay-studio-v3.css";
 import { openBrowserView, type BrowserViewDecision } from "./browser-view";
 import type { TelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector } from "../../overlay/core/widget-diagnostics";
-import type { TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
+import type { TelemetryAdapter } from "../../overlay/transports/telemetry-adapter";
 import { StudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
 import { DirtyChangesDialog } from "./components/DirtyChangesDialog";

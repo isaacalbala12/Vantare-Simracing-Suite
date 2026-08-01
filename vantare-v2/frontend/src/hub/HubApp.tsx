@@ -23,13 +23,11 @@ import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
 import { ChainRunnerProvider } from './launcher/chain-store';
 import { LauncherStoreProvider } from './launcher/launcher-store';
-
-type SourceStatus = {
-  kind: string;
-  name: string;
-  live: boolean;
-  available: boolean;
-};
+import {
+  telemetrySourceStatusEvent,
+  telemetrySourceStatusRequestEvent,
+  type TelemetrySourceStatus,
+} from '../telemetry-transport/source-status';
 
 // LicenseGate is the production blocker for the beta pública: no se permite
 // uso normal de la app sin sesión válida. Google OAuth es el acceso mínimo
@@ -84,7 +82,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
 function HubShell() {
   const [section, setSection] = useState<Section>('dashboard');
   const [version, setVersion] = useState<string | null>(null);
-  const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
+  const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
@@ -96,7 +94,7 @@ function HubShell() {
     const unsub = Events.On('app:version', (event: { data: { version?: string } }) => {
       setVersion(event.data.version ?? null);
     });
-    const unsubSource = Events.On('telemetry:source-status', (event: { data: SourceStatus }) => {
+    const unsubSource = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
       setSourceStatus(event.data);
     });
     const unsubSettings = Events.On('settings', (event: { data: Record<string, unknown> }) => {
@@ -112,7 +110,7 @@ function HubShell() {
       setSection('profiles');
     });
     Events.Emit('app:version:get');
-    Events.Emit('telemetry:source-status:get');
+    Events.Emit(telemetrySourceStatusRequestEvent);
     Events.Emit('settings:get');
     return () => {
       document.body.classList.remove('hub');

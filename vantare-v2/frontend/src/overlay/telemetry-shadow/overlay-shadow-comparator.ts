@@ -17,7 +17,7 @@ import { readScoringBoolean, readScoringNumber, readScoringString } from "../wid
 import type {
   OverlayProjectionAdaptation,
   OverlayProjectionMapping,
-} from "./overlay-projection-adapter";
+} from "../projection/overlay-projection-adapter";
 import {
   limitShadowEntries,
   sanitizeShadowObservation,

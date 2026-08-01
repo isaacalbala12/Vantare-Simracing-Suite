@@ -641,7 +641,6 @@ func main() {
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
 	var cleanup sync.Once
-	var bridge *app.TelemetryBridge
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
@@ -652,7 +651,7 @@ func main() {
 	var engBridge *app.EngineerBridge
 	var launcherSvc *launcher.Service
 	var diagnosticsBridge *app.DiagnosticsBridge
-	var telemetryCoreShadow *app.TelemetryCoreShadow
+	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			if overlayController != nil {
@@ -663,18 +662,15 @@ func main() {
 					log.Printf("HTTP server shutdown error: %v", err)
 				}
 			}
-			if telemetryCoreShadow != nil {
+			if telemetryCoreRuntime != nil {
 				stopCtx, cancelShadow := context.WithTimeout(context.Background(), 2*time.Second)
-				if err := telemetryCoreShadow.Stop(stopCtx); err != nil {
-					log.Printf("telemetry core shadow shutdown error: %v", err)
+				if err := telemetryCoreRuntime.Stop(stopCtx); err != nil {
+					log.Printf("telemetry core shutdown error: %v", err)
 				}
 				cancelShadow()
 			}
 			if opsBridge != nil {
 				opsBridge.Stop()
-			}
-			if bridge != nil {
-				bridge.Stop()
 			}
 			if hkMgr != nil {
 				hkMgr.Stop()
@@ -690,7 +686,6 @@ func main() {
 			if diagnosticsBridge != nil {
 				diagnosticsBridge.Close()
 			}
-			vapp.StopTelemetry()
 		})
 	}
 	wailsApp.OnShutdown(cleanupApp)
@@ -904,15 +899,13 @@ func main() {
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
 
-	// TC-07B runs the canonical LMU pipeline in shadow. The legacy telemetry
-	// service remains the sole render authority until the following cutover.
-	telemetryCoreShadow, err = app.NewTelemetryCoreShadow(app.TelemetryCoreShadowConfig{
+	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
 		Enabled: *live,
 		Emitter: emitter,
 	})
 	if err != nil {
-		log.Printf("telemetry core shadow init error: %v", err)
-		telemetryCoreShadow = nil
+		log.Printf("telemetry core init error: %v", err)
+		telemetryCoreRuntime = nil
 	}
 
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
@@ -920,14 +913,13 @@ func main() {
 		Addr:        *httpAddr,
 		DistFS:      distFS,
 		CfgDir:      cfgDir,
-		Svc:         vapp.Telemetry,
 		EngineerSvc: engSvc,
 		Emitter:     emitter,
 		OverlayProjection: func() *telemetrytransport.Hub {
-			if telemetryCoreShadow == nil {
+			if telemetryCoreRuntime == nil {
 				return nil
 			}
-			return telemetryCoreShadow.Hub()
+			return telemetryCoreRuntime.Hub()
 		}(),
 	})
 	httpSrv.Start()
@@ -1458,12 +1450,9 @@ func main() {
 	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v", vapp.SourceInfo().Kind, vapp.SourceInfo().Name, vapp.SourceInfo().Live, vapp.SourceInfo().Available)
 
 	// Start telemetry
-	bridge = app.NewTelemetryBridge(vapp.Telemetry, emitter)
-	vapp.StartTelemetry(ctx)
-	bridge.Start()
-	if telemetryCoreShadow != nil {
-		if err := telemetryCoreShadow.Start(ctx); err != nil {
-			log.Printf("telemetry core shadow start error: %v", err)
+	if telemetryCoreRuntime != nil {
+		if err := telemetryCoreRuntime.Start(ctx); err != nil {
+			log.Printf("telemetry core start error: %v", err)
 		}
 	}
 	sourceInfo := service.InfoForSource(vapp.TelemetrySource())

@@ -11,8 +11,8 @@ import (
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 )
 
-func TestTelemetryCoreShadowDisabledPublishesStoppedWithoutStartingLMU(t *testing.T) {
-	runtime, err := NewTelemetryCoreShadow(TelemetryCoreShadowConfig{Enabled: false})
+func TestTelemetryCoreRuntimeDisabledPublishesStoppedWithoutStartingLMU(t *testing.T) {
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,8 +51,8 @@ func TestTelemetryCoreShadowDisabledPublishesStoppedWithoutStartingLMU(t *testin
 	}
 }
 
-func TestTelemetryCoreShadowLifecycleGuards(t *testing.T) {
-	runtime, err := NewTelemetryCoreShadow(TelemetryCoreShadowConfig{})
+func TestTelemetryCoreRuntimeLifecycleGuards(t *testing.T) {
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}

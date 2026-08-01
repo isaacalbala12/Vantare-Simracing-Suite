@@ -133,7 +133,7 @@ Los perfiles definen widgets con posiciones, tipo y props:
 ## Modos
 
 - **Racing desktop**: ventana fullscreen, transparente, always-on-top y click-through.
-- **Streaming/OBS**: página HTTP en `/overlay?profile=...` + SSE `/telemetry/stream`.
+- **Streaming/OBS**: página HTTP en `/overlay?profile=...` + proyección canónica SSE `/telemetry/overlay/projection`.
 - **Preview**: editor dentro del Hub; la ventana desktop no se usa para editar.
 
 ## Próximos pasos

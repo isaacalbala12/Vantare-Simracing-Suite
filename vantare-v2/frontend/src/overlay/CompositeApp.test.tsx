@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
 import { relativeDefinition } from "./widget-types/relative/relative-definition";
+import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -50,6 +51,24 @@ function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1") {
   };
 }
 
+function canonicalEnvelope() {
+  const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;
+  const payload = { ...snapshot };
+  for (const key of ["canonicalVersion", "projectionVersion", "epoch", "sequence", "capturedAt"]) {
+    delete payload[key];
+  }
+  return {
+    product: "overlay",
+    projectionVersion: snapshot.projectionVersion,
+    epoch: snapshot.epoch,
+    sequence: snapshot.sequence,
+    kind: "full",
+    capturedAt: snapshot.capturedAt,
+    statusRevision: 1,
+    payload,
+  };
+}
+
 function buildRelativeDocument(): ProfileDocumentV3 {
   return {
     schemaVersion: 3,
@@ -80,10 +99,12 @@ describe("CompositeApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("subscribes once to overlay:profile-v3-loaded and telemetry:update", () => {
+  it("subscribes once to the profile and canonical Overlay transport", () => {
     render(<CompositeApp />);
     expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
-    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(1);
   });
 
   it("renders runtime widgets after overlay:profile-v3-loaded", () => {
@@ -93,24 +114,21 @@ describe("CompositeApp", () => {
     expect(screen.getByText("RELATIVE")).toBeTruthy();
   });
 
-  it("applies telemetry updates through the Wails adapter", () => {
+  it("applies canonical Overlay projections through Wails", () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
-    dispatch("telemetry:update", {
-      seq: 1,
-      snapshot: {
-        connected: true,
-        vehicles: [
-          { id: 1, driverName: "Other Driver", place: 1, timeBehindLeader: 0 },
-          { id: 2, driverName: "Isaac Albala", place: 2, isPlayer: true, timeBehindLeader: 1.2 },
-        ],
-      },
+    dispatch("telemetry:overlay:status", {
+      product: "overlay",
+      statusRevision: 1,
+      capturedAt: "2026-07-28T09:00:00Z",
+      payload: { state: "live", reconnectAttempt: 0 },
     });
+    dispatch("telemetry:overlay:projection", canonicalEnvelope());
     tick(200);
 
-    expect(screen.getByText("Isaac Albala")).toBeTruthy();
+    expect(screen.getByText("Player")).toBeTruthy();
   });
 
   it("renders a transparent empty surface for an empty profile", () => {

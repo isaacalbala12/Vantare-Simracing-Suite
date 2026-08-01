@@ -88,12 +88,14 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-07B ISA-106: shadow Wails/SSE implementado sobre ISA-129. Legacy conserva
   autoridad de render; Studio/Desktop/OBS observan el contrato canónico sin
   dirty ni mutaciones visuales. Gates Go, frontend y Playwright verdes.
-- TC-07C–TC-09: pendientes.
+- TC-07C ISA-107: cutover implementado. Overlay Projection v1 es la única
+  fuente alcanzable de Studio/Desktop/OBS; el runtime legacy dejó de arrancar.
+  Código legacy inerte se elimina en TC-09, no durante el cutover.
+- TC-08–TC-09: pendientes.
 
-Existe wiring productivo únicamente en modo shadow; todavía no alimenta el
-render. Gaps, delta, pit y reconexión tienen inputs, algoritmo, fixtures reales
-y proyección demostrados en D6-D9. El siguiente corte es ISA-107, cutover
-Overlay. `go vet` conserva seis avisos heredados de
+Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
+tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
+El siguiente corte es ISA-108, auditoría Engineer. `go vet` conserva seis avisos heredados de
 `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones

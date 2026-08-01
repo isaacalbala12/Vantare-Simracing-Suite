@@ -31,6 +31,26 @@ Nota ISA-106 / TC-07B (2026-08-01):
   y no actualiza baselines ni relaja umbrales.
 - Siguiente corte: ISA-107 / TC-07C, cutover Overlay. Sin merge ni promoción.
 
+Nota ISA-107 / TC-07C (2026-08-01):
+- Cutover implementado sobre ISA-106 `e3bacdb`: Studio, Desktop y OBS publican
+  exclusivamente snapshots adaptados desde Overlay Projection v1 al
+  coordinator existente. Ningún renderer, ViewModel, widget, CSS, documento o
+  canvas cambia.
+- El composition root ya no inicia `TelemetryBridge`, el servicio legacy ni
+  `/telemetry/stream`; el único runtime activo es `TelemetryCoreRuntime` y la
+  única ruta OBS consumida es `/telemetry/overlay/projection`.
+- Los adapters y rutas legacy permanecen como código muerto hasta la
+  eliminación auditada TC-09; no existe consumer alcanzable desde producción.
+- El cutover es reversible volviendo al commit ISA-106. Sigue sin merge ni
+  promoción. El gate manual LMU de Isaac se agrupa con la revisión final del
+  módulo, conforme a su instrucción de no detener la cadena por gates humanos.
+- Gates frescos: frontend 299 archivos/2.025 tests PASS tras repetir dos flakes
+  de temporización heredados que pasan aislados; build y Playwright
+  Studio/Desktop/OBS wide+compact PASS; Go app/server/cmd y Telemetry Core
+  PASS; vet/lint focal y diff-check PASS. Visual conserva Original 0 % y
+  Crystal Studio 100 %; canvas reproduce sus umbrales heredados.
+- Siguiente corte: ISA-108 / TC-08A.
+
 Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
 - Microcorte documental iniciado sobre ISA-105
   `c9acee24cf4c4d80922b380b12f7367c2a60c937`, en la rama

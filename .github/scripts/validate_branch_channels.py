@@ -15,6 +15,9 @@ ALLOWED_PULL_REQUESTS = {
     "master": "testers",
 }
 ISSUE_BRANCH = re.compile(r"^vantareapp/isa-[1-9][0-9]*(?:-[a-z0-9]+)*$")
+HOTFIX_BRANCH = re.compile(
+    r"^vantareapp/hotfix-isa-[1-9][0-9]*(?:-[a-z0-9]+)*$"
+)
 
 
 def validate(event: str, ref: str, base: str, head: str) -> str:
@@ -27,6 +30,9 @@ def validate(event: str, ref: str, base: str, head: str) -> str:
         raise ValueError(f"unsupported event {event!r}")
     if base not in ALLOWED_PULL_REQUESTS:
         raise ValueError(f"unsupported promotion target {base!r}")
+
+    if base == "master" and HOTFIX_BRANCH.fullmatch(head):
+        return f"emergency hotfix accepted: {head} -> master"
 
     required_head = ALLOWED_PULL_REQUESTS[base]
     if required_head is not None and head != required_head:

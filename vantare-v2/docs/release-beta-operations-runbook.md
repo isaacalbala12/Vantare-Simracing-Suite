@@ -279,20 +279,24 @@ Ejecuta `Discord public beta changelog` aportando versión, enlace y SHA256. `Di
 
 ### B. Si el tag apunta a un commit incorrecto
 
-```bash
-git tag -d v0.1.0.0
-git push origin --delete v0.1.0.0
-git tag -a v0.1.0.0 <commit_hash> -m "Release v0.1.0.0"
-git push origin v0.1.0.0
-```
+1. No borres, muevas ni reutilices el tag distribuido.
+2. Corrige la causa mediante una rama
+   `vantareapp/hotfix-isa-<número>-<descripción>` basada en `master`.
+3. Integra el hotfix mediante PR, gates estrictos y aprobación explícita de Isaac.
+4. Incrementa el cuarto segmento del parche (`v0.1.0.0` -> `v0.1.0.1`).
+5. Crea el tag nuevo únicamente sobre el commit ya contenido en `master`.
+6. Documenta que el tag anterior queda retirado, sin alterar su referencia histórica.
 
 ### C. Si se descubre un bug critico post-tag
 
 1. No reutilices la etiqueta.
-2. Commitea el fix en `master`.
-3. Incrementa el cuarto segmento del parche (`v0.1.0.0` -> `v0.1.0.1`).
-4. Etiqueta y publica la nueva build siguiendo el flujo ordinario.
-5. Documenta el fix en `docs/changelog.md` bajo la nueva version.
+2. Crea `vantareapp/hotfix-isa-<número>-<descripción>` desde `master`; nunca hagas commit directo en una rama protegida.
+3. Abre PR a `master`, ejecuta todos los gates y obtén la aprobación explícita de Isaac.
+4. Lleva el mismo cambio de vuelta a `nightly` mediante una rama de issue normal
+   y PR; desde allí fluirá a `testers` sin saltarse canales.
+5. Incrementa el cuarto segmento del parche (`v0.1.0.0` -> `v0.1.0.1`).
+6. Etiqueta y publica la nueva build siguiendo el flujo ordinario.
+7. Documenta el fix en `docs/changelog.md` bajo la nueva version.
 
 ### D. Troubleshooting especifico de Discord
 

@@ -86,10 +86,28 @@ jobs:
         continue-on-error: true
         run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
 
-      - name: Frontend tests
+      - name: Frontend tests (blocking except exact registered debt)
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: >-
+          pnpm exec vitest run
+          --exclude scripts/crystal-reference-manifest.test.mjs
+          --exclude src/hub/calendar/CalendarMonthView.test.tsx
+          --exclude src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
+
+      - name: ISA-173 Crystal manifest runner (advisory)
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm test
+        run: pnpm exec vitest run scripts/crystal-reference-manifest.test.mjs
+
+      - name: ISA-174 Calendar month boundary (advisory)
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm exec vitest run src/hub/calendar/CalendarMonthView.test.tsx
+
+      - name: ISA-172 canvas interaction flake (advisory)
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm exec vitest run src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
 
       - name: Frontend lint (advisory while inherited debt is isolated)
         continue-on-error: true

@@ -49,10 +49,13 @@ type spotterDeliveryState struct {
 	generation           uint64
 	dispatchedSituation  spotterSituation
 	dispatchedGeneration uint64
+	dispatchedUntilMS    int64
 	clearLeftGeneration  uint64
 	clearRightGeneration uint64
 	clearLeftFrom        spotterSituation
 	clearRightFrom       spotterSituation
+	clearLeftUntilMS     int64
+	clearRightUntilMS    int64
 }
 
 // spotterMessageValues is the auditable supersession contract. A larger value
@@ -133,7 +136,7 @@ func (state *spotterDeliveryState) reset() {
 	*state = spotterDeliveryState{}
 }
 
-func (state *spotterDeliveryState) observe(situation spotterSituation) {
+func (state *spotterDeliveryState) observe(situation spotterSituation, now int64) {
 	if situation == spotterSituationUnknown {
 		state.reset()
 		return
@@ -150,42 +153,47 @@ func (state *spotterDeliveryState) observe(situation spotterSituation) {
 
 	previous := state.situation
 	previousGeneration := state.generation
+	previousUntilMS := state.dispatchedUntilMS
 	state.generation++
 	state.situation = situation
 	state.clearLeftGeneration = 0
 	state.clearRightGeneration = 0
 	state.clearLeftFrom = spotterSituationUnknown
 	state.clearRightFrom = spotterSituationUnknown
-	if state.dispatchedGeneration != previousGeneration || state.dispatchedSituation != previous {
+	state.clearLeftUntilMS = 0
+	state.clearRightUntilMS = 0
+	if state.dispatchedGeneration != previousGeneration || state.dispatchedSituation != previous || previousUntilMS <= now {
 		return
 	}
 	if spotterSituationHasLeft(previous) && !spotterSituationHasLeft(situation) {
 		state.clearLeftGeneration = state.generation
 		state.clearLeftFrom = previous
+		state.clearLeftUntilMS = previousUntilMS
 	}
 	if spotterSituationHasRight(previous) && !spotterSituationHasRight(situation) {
 		state.clearRightGeneration = state.generation
 		state.clearRightFrom = previous
+		state.clearRightUntilMS = previousUntilMS
 	}
 }
 
-func (state *spotterDeliveryState) clearCanDeliver(intent string) bool {
+func (state *spotterDeliveryState) clearCanDeliver(intent string, now int64) bool {
 	if !state.observed {
 		return false
 	}
 	switch intent {
 	case IntentSpotterClearLeft:
-		if state.clearLeftGeneration != state.generation {
+		if state.clearLeftGeneration != state.generation || state.clearLeftUntilMS <= now {
 			return false
 		}
-		return state.currentSituationDispatched() ||
+		return state.currentSituationDispatched(now) ||
 			(state.clearLeftFrom == spotterSituationLeft && state.situation == spotterSituationAllClear) ||
 			(state.clearLeftFrom == spotterSituationThreeWide && state.situation == spotterSituationRight)
 	case IntentSpotterClearRight:
-		if state.clearRightGeneration != state.generation {
+		if state.clearRightGeneration != state.generation || state.clearRightUntilMS <= now {
 			return false
 		}
-		return state.currentSituationDispatched() ||
+		return state.currentSituationDispatched(now) ||
 			(state.clearRightFrom == spotterSituationRight && state.situation == spotterSituationAllClear) ||
 			(state.clearRightFrom == spotterSituationThreeWide && state.situation == spotterSituationLeft)
 	default:
@@ -193,29 +201,32 @@ func (state *spotterDeliveryState) clearCanDeliver(intent string) bool {
 	}
 }
 
-func (state *spotterDeliveryState) currentSituationDispatched() bool {
+func (state *spotterDeliveryState) currentSituationDispatched(now int64) bool {
 	return state.observed && state.dispatchedGeneration == state.generation &&
-		state.dispatchedSituation == state.situation
+		state.dispatchedSituation == state.situation && state.dispatchedUntilMS > now
 }
 
-func (state *spotterDeliveryState) recordDispatch(intent string) {
+func (state *spotterDeliveryState) recordDispatch(intent string, expiresAtMS, now int64) {
 	if !state.observed {
 		return
 	}
 	currentIntent, selfContained := selfContainedSpotterIntent(state.situation)
-	contextualClear := isContextualSpotterClear(intent) && state.clearCanDeliver(intent)
+	contextualClear := isContextualSpotterClear(intent) && state.clearCanDeliver(intent, now)
 	if !contextualClear && (!selfContained || intent != currentIntent) {
 		return
 	}
 	state.dispatchedSituation = state.situation
 	state.dispatchedGeneration = state.generation
+	state.dispatchedUntilMS = expiresAtMS
 	switch intent {
 	case IntentSpotterClearLeft:
 		state.clearLeftGeneration = 0
 		state.clearLeftFrom = spotterSituationUnknown
+		state.clearLeftUntilMS = 0
 	case IntentSpotterClearRight:
 		state.clearRightGeneration = 0
 		state.clearRightFrom = spotterSituationUnknown
+		state.clearRightUntilMS = 0
 	}
 }
 

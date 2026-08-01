@@ -39,6 +39,12 @@ Nota ISA-158 / ENG-05 (2026-08-01):
   también inmediatamente antes de `Next`, por lo que un clear ya encolado no
   puede cruzar una generación posterior. El registro significa `dispatched`
   al transporte siguiente, todavía no confirmación audible.
+- Una cuarta re-review cerró lifecycle y caducidad del contexto Spotter. Los
+  boundaries válidos resetean delivery state antes de observar el nuevo estado
+  en la misma llamada; una identidad inválida falla cerrada. Cada antecedente
+  conserva su `ExpiresAtMS`: justo antes autoriza el clear, en el límite o
+  después se sustituye por estado autosuficiente. `still_there` no renueva el
+  contexto, y una decisión expirada/cancelada antes de `Next` nunca lo crea.
 - ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
   únicamente entry/exit. El contador genérico de sanción se convierte a
   `penalties.count_increased` y nunca afirma drive-through.

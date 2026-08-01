@@ -109,6 +109,13 @@ productivo sin crear un segundo reader.
   repetirse tras esta corrección porque el entorno no dispone de toolchain C
   con headers Win32; el vet global conserva solo tres avisos heredados fuera
   del diff.
+- Cuarta corrección de re-review: epoch/identidad válidos resetean la entrega
+  Spotter antes de observar el estado del nuevo lifecycle; una transición de
+  identidad inválida queda fail-closed. El contexto despachado conserva el
+  `ExpiresAtMS` de su antecedente y se revalida justo antes de `Next`: válido
+  antes del límite, inválido en y después del límite. `still_there` no renueva
+  estado completo y las decisiones expiradas/canceladas no crean contexto. La
+  matriz vuelve a cubrir capacidades 1/4/64.
 
 ## Decisiones
 

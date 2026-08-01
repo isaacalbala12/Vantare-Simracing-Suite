@@ -92,11 +92,16 @@ misma comprobación se repite justo antes de `Next`: un clear que pierde su
 contexto mientras espera tampoco puede salir con una generación antigua.
 
 El permiso se liga a una generación de ocupación y se pierde al expirar el
-antecedente, cambiar otra vez el estado, cancelar o cruzar un boundary. Cada
-`Decision` Spotter devuelta por `Next` registra únicamente que el scheduler la
-despachó al siguiente transporte. No confirma que el audio se haya iniciado o
-escuchado; esa confirmación y la preempción audible pertenecen al siguiente
-corte. `all_clear` sigue siendo autosuficiente y no necesita historial.
+antecedente, cambiar otra vez el estado, cancelar o cruzar un boundary. El
+límite es exactamente el `ExpiresAtMS` de la decisión autosuficiente: justo
+antes sigue siendo válido; en el límite y después ya no autoriza un clear.
+`still_there` no renueva ese deadline ni convierte un recordatorio en estado
+completo. Cada `Decision` Spotter devuelta por `Next` registra únicamente que
+el scheduler la despachó al siguiente transporte. Una decisión expirada o
+cancelada antes de `Next` nunca establece contexto. El registro no confirma
+que el audio se haya iniciado o escuchado; esa confirmación y la preempción
+audible pertenecen al siguiente corte. `all_clear` sigue siendo autosuficiente
+y no necesita historial.
 
 El aviso de mayor valor reemplaza pendientes Spotter menos informativos con
 `suppressed / spotter_state_superseded`, incluso si siguen siendo literalmente
@@ -128,11 +133,14 @@ espera —por ejemplo `car_left` pasa a clear, se reposta, se sale del pit o
 cambia el gap— se cancela con `semantic_invalidated`; nunca se verbaliza un
 hecho caducado.
 
-Un cambio de epoch, evento, sesión, coche, equipo o piloto cancela pendientes.
+Un cambio válido de epoch, evento, sesión, coche, equipo o piloto cancela
+pendientes y resetea completamente el contexto Spotter antes de observar el
+nuevo estado incluido en esa misma llamada. Un cambio de identidad inválido
+según el contrato de proyección falla cerrado y no conserva su evidencia.
 `session.started`, desconexión y demás hechos de lifecycle llaman a `Cancel`,
-limpian cooldowns e invalidan la evidencia. No se admite otro candidato hasta
-que `Observe` entregue una observación posterior al boundary. Un candidato
-vencido, stale o semánticamente falso nunca se emite tarde.
+limpian cooldowns e invalidan la evidencia. Tras `Cancel` no se admite otro
+candidato hasta recibir una observación nueva. Un candidato vencido, stale o
+semánticamente falso nunca se emite tarde.
 
 ## Dedupe, coalescing y presión
 
@@ -211,6 +219,9 @@ Las regresiones cubren:
   cancelación y ocupaciones intermedias no comunicadas; ningún clear contextual
   omite el estado lateral vigente, incluso si la evidencia cambia mientras el
   clear ya está pendiente;
+- boundaries válidos de epoch/identidad con estado nuevo igual o distinto,
+  rechazo de identidad inválida, deadline del antecedente justo antes/en/después
+  del límite, recordatorio sin renovación y revalidación del deadline en `Next`;
 - límites de payload, dedup, cola, cooldown y diagnósticos;
 - copias de ownership;
 - cancelaciones de lifecycle;

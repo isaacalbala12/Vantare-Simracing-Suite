@@ -133,13 +133,17 @@ func (scheduler *Scheduler) Observe(evidence Evidence) []PolicyOutcome {
 	boundaryDetected := false
 	if reason == "" && scheduler.hasEvidence && scheduler.evidenceErr == "" {
 		boundary, err := engineerprojection.ClassifyBoundary(scheduler.evidence.Context, evidence.Context)
-		if err != nil || boundary.CancelsPending() {
+		if err != nil {
 			boundaryDetected = true
-			reason := ReasonIdentityChanged
-			if err == nil && boundary == engineerprojection.BoundaryEpochReset {
-				reason = ReasonEpochReset
-			}
+			reason = ReasonIdentityChanged
 			outcomes = scheduler.cancelAll(reason)
+		} else if boundary.CancelsPending() {
+			boundaryDetected = true
+			boundaryReason := ReasonIdentityChanged
+			if boundary == engineerprojection.BoundaryEpochReset {
+				boundaryReason = ReasonEpochReset
+			}
+			outcomes = scheduler.cancelAll(boundaryReason)
 		}
 	}
 	if reason != "" && len(scheduler.pending) != 0 {
@@ -155,7 +159,10 @@ func (scheduler *Scheduler) Observe(evidence Evidence) []PolicyOutcome {
 	if reason == "" {
 		evidence.ReadyFamilies = append([]Family(nil), evidence.ReadyFamilies...)
 		scheduler.evidence = evidence
-		scheduler.spotter.observe(currentSpotterSituation(evidence.Semantic))
+		if boundaryDetected {
+			scheduler.spotter.reset()
+		}
+		scheduler.spotter.observe(currentSpotterSituation(evidence.Semantic), now)
 	} else {
 		// Invalid evidence is untrusted and may contain arbitrarily large
 		// strings or slices. Retain only the bounded reason, never its envelope.
@@ -278,7 +285,7 @@ func (scheduler *Scheduler) applySpotterSupersession(candidate Candidate, now in
 		return false, outcomes
 	}
 	currentIntent, hasCurrentIntent := selfContainedSpotterIntent(currentSpotterSituation(scheduler.evidence.Semantic))
-	if hasCurrentIntent && !scheduler.spotter.currentSituationDispatched() {
+	if hasCurrentIntent && !scheduler.spotter.currentSituationDispatched(now) {
 		if isContextualSpotterClear(candidate.Intent) {
 			for _, queued := range scheduler.pending {
 				if queued.candidate.Family == FamilySpotter && queued.candidate.Intent == currentIntent {
@@ -387,7 +394,7 @@ func (scheduler *Scheduler) Next() (Decision, []PolicyOutcome, bool) {
 		scheduler.recordPriorityChoice(index, candidate.Priority)
 		scheduler.rememberCooldown(key, cooldownFor(candidate), now)
 		if decision.Family == FamilySpotter {
-			scheduler.spotter.recordDispatch(decision.Intent)
+			scheduler.spotter.recordDispatch(decision.Intent, decision.ExpiresAtMS, now)
 		}
 		outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeEmitted, ReasonCandidateEmitted, now))
 		return decision, outcomes, true
@@ -397,7 +404,7 @@ func (scheduler *Scheduler) Next() (Decision, []PolicyOutcome, bool) {
 
 func (scheduler *Scheduler) replaceContextlessSpotterClear(candidate Candidate, now int64) (Candidate, []PolicyOutcome, bool) {
 	if candidate.Family != FamilySpotter || !isContextualSpotterClear(candidate.Intent) ||
-		scheduler.spotter.clearCanDeliver(candidate.Intent) {
+		scheduler.spotter.clearCanDeliver(candidate.Intent, now) {
 		return candidate, nil, true
 	}
 	original := candidate

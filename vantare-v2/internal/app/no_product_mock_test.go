@@ -40,3 +40,25 @@ func TestProductionPackagesDoNotReferenceSyntheticTelemetryBuilders(t *testing.T
 		}
 	}
 }
+
+func TestProductionEngineerIsWiredOnlyThroughTelemetryCore(t *testing.T) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot locate test source")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+	mainSource, err := os.ReadFile(filepath.Join(repoRoot, "cmd", "vantare", "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(mainSource), "Engineer: engSvc") {
+		t.Fatal("composition root does not inject Engineer into TelemetryCoreRuntime")
+	}
+	bridgeSource, err := os.ReadFile(filepath.Join(repoRoot, "internal", "app", "engineer_bridge.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(bridgeSource), "engineer:source:set") {
+		t.Fatal("production Engineer bridge still exposes a telemetry source selector")
+	}
+}

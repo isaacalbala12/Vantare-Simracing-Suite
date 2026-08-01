@@ -111,11 +111,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   parcial o disabled; no hay wiring productivo.
 - TC-08D ISA-111: runtime Engineer separado de toda fuente live/sintética;
   entrada canónica acotada por familia, todavía sin wiring LMU productivo.
-- TC-08E–TC-09: pendientes desde ISA-112.
+- TC-08E ISA-112: cutover productivo implementado. El único runtime LMU
+  publica estado, observación y hechos hacia Engineer, sin segundo reader y
+  con errores aislados de Overlay. La captura real de 38 coches demuestra la
+  cadena completa y ausencia de falsos Spotter ante tráfico lejano.
+- TC-09: pendiente desde ISA-113.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-112 / TC-08E. `go vet` conserva seis avisos heredados
+El siguiente corte es ISA-113 / TC-09A. `go vet` conserva seis avisos heredados
 de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones
@@ -269,15 +273,15 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | Cerrada técnicamente | ISA-129 / TC-07A.1; D0-D9 aceptados |
 | En revisión | ISA-106 / TC-07B, ISA-107 / TC-07C e ISA-108 / TC-08A |
 | Cerradas técnicamente | ISA-130 / TC-08A.1 e ISA-109 / TC-08B |
-| Cerradas técnicamente | ISA-110 / TC-08C e ISA-111 / TC-08D |
-| Pendientes | ISA-112–117 e ISA-87 según dependencias |
+| Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
+| Pendientes | ISA-113–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-111 y ejecutar ISA-112 / TC-08E sobre su commit. ISA-112 debe
-publicar proyección/hechos Engineer desde el único runtime LMU, cablear la
-entrada ya acotada y producir evidencia real sin abrir readers ni reactivar
-capabilities parciales. Sin merge ni promoción.
+Entregar ISA-112 y ejecutar ISA-113 / TC-09A sobre su commit. ISA-113 debe
+inventariar todos los consumidores todavía alcanzables, demostrar su fuente y
+clasificarlos antes de retirar backend legacy. Sin borrados, merge ni
+promoción en el corte de auditoría.
 
 ## Gate final
 
@@ -286,6 +290,15 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-112: la composición productiva inyecta `EngineerService` en el
+único `TelemetryCoreRuntime`. Estado de fuente, observaciones y hechos siguen
+contratos separados; live no conecta sin datos usables y stale/error/stop
+desconectan. Los errores Engineer no interrumpen LMU ni Overlay. El fixture
+real LMU 1.4 de 38 coches atraviesa la cadena con una apertura de `LMU_Data` y
+no produce falsos Spotter ante tráfico lejano. El solape audible real queda en
+el gate manual final. Documento:
+`docs/telemetry-core/engineer-cutover-isa-112.md`. Siguiente: ISA-113.
 
 2026-08-01, ISA-111: `EngineerService` ya no construye fuentes. Solo consume
 snapshot/hechos canónicos; ejecuta seis familias aprobadas de forma aislada,

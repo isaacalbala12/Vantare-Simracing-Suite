@@ -10,6 +10,22 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-112 / TC-08E (2026-08-01):
+- La raíz productiva inyecta `EngineerService` en el único
+  `TelemetryCoreRuntime`; LMU se abre una vez y Overlay/Engineer reciben
+  proyecciones independientes del mismo lote canónico.
+- Estado de fuente, observación y hechos permanecen separados. Un status live
+  no declara conexión sin snapshot usable; stale/error/stop cancelan estado y
+  mensajes pendientes.
+- Fallos Engineer se aíslan y no derriban Overlay ni el driver. El selector
+  Wails de simulator/replay queda retirado de producto.
+- La captura LMU 1.4 real de 38 coches atraviesa toda la cadena y conserva
+  silencio Spotter ante tráfico lejano. El solape real audible queda agrupado
+  en el gate manual final, sin sustituirse por evidencia sintética.
+- Documento: `docs/telemetry-core/engineer-cutover-isa-112.md`.
+- Siguiente corte: ISA-113 / TC-09A, auditoría final de consumidores y matriz
+  de retirada. Sin merge ni promoción.
+
 Nota ISA-111 / TC-08D (2026-08-01):
 - `EngineerService` deja de poseer simulator, replay, parser LMU y
   `telemetry/service`; arranca desconectado y solo acepta `telemetry-core`.

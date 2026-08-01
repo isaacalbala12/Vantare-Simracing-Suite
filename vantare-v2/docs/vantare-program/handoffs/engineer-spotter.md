@@ -23,8 +23,8 @@ CrewChief, Pit Manager y wake word.
 ISA-123 completó la investigación primaria y una auditoría read-only del
 runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 `ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
-añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
-re-review independiente `ACCEPT` sin P0/P1/P2/P3. TC-05A conserva la autoridad transversal sobre envelope,
+añadió el adaptador puro hacia `ObservationV1`; la corrección del último P3 de
+cobertura está implementada y pendiente de re-review. TC-05A conserva la autoridad transversal sobre envelope,
 versionado, ownership, fan-out y puertos. El código legacy contiene lógica y
 fixtures caracterizables, pero la ruta de producto arranca conectada al
 simulador, no recibe aún la proyección de Telemetry Core y no garantiza
@@ -49,7 +49,9 @@ como beta. TC-08 migra la entrada; el producto vive aparte.
   aflorar una ejecución load-sensitive heredada del teardown REST LMU; su test
   aislado x20 pasa y el driver no forma parte del cambio. El único P1 de
   review, capability standings ausente cuando solo `LapNumber` era usable,
-  quedó corregido con una regresión de flujo completo. Re-review `ACCEPT`.
+  quedó corregido con una regresión de flujo completo. Una revisión de entrega
+  posterior detectó un P3 de cobertura y ya existe una regresión end-to-end
+  para `invalid`, `derived` y `estimated`; pendiente re-review final.
 
 ## Decisiones
 
@@ -116,7 +118,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 |---|---|
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
-| Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
+| Corrección lista para re-review | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; P3 de cobertura corregido |
 | Siguiente | ENG-04, characterization/replay parity de monitores según Linear |
 | Cutover | TC-08, sin absorber el proyecto de producto |
 
@@ -128,7 +130,7 @@ borrar el frame legacy. Isaac decide la promoción posterior a `nightly`.
 
 ## Última actualización
 
-2026-07-30, ISA-127 / ENG-03 cerrada técnicamente sobre TC-05A + ENG-02;
-re-review independiente `ACCEPT` sin P0/P1/P2/P3 tras corregir y probar el caso
-`LapNumber` como única señal standings. Pendiente entrega operativa, sin
-promoción.
+2026-08-01, ISA-127 / ENG-03 cerrada técnicamente sobre TC-05A + ENG-02. El
+caso `LapNumber` como única señal standings y la preservación end-to-end de
+`invalid`, `derived` y `estimated` tienen regresión. Pendiente re-review final
+y entrega operativa, sin promoción.

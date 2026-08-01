@@ -81,7 +81,9 @@ identidad de vehículo incoherente fallan cerrados.
 - Golden JSON transversal TC-05A:
   `internal/telemetry/projection/engineer/testdata/engineer_v1.golden.json`.
 - Contratos: cero, missing, stale, invalid, unsupported, degraded, ownership,
-  contradicciones, identidad y latest-wins.
+  provenance observed/derived/estimated, contradicciones, identidad y
+  latest-wins. `invalid`, `derived` y `estimated` atraviesan el adaptador real
+  en una regresión table-driven.
 - Superficie externa:
   `consumer_test.go` usa únicamente tipos de
   `internal/telemetry/projection/engineer`.

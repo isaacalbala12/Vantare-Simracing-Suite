@@ -42,9 +42,12 @@ Nota ISA-127 / ENG-03 (2026-07-29):
   adaptador como señal de standings, pero el proyector no declaraba el grupo
   si posición y vueltas completadas faltaban. Se unificó la regla y se añadió
   una regresión de flujo completo con `LapNumber=7` como única señal.
-- Re-review independiente final `ACCEPT` sin P0/P1/P2/P3. Focal Engineer x20,
-  árbol de proyecciones y `git diff --check` PASS. Preparado para entrega
-  apilada, sin promoción.
+- Una revisión de entrega posterior detectó un P3 de cobertura: la ruta real
+  del adaptador no demostraba explícitamente `invalid` ni la preservación de
+  provenance `derived`/`estimated`. Se añadió una regresión table-driven
+  end-to-end sin cambiar código productivo. Focal Engineer x20, árbol de
+  proyecciones, 31 paquetes Engineer y vet focal PASS; pendiente confirmación
+  independiente final. La entrega sigue apilada y sin promoción.
 
 Nota ISA-39 / TC-05A (2026-07-28):
 - Definidas proyecciones Go v1 puras e independientes para Overlay, Engineer,

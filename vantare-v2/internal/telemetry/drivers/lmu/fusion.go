@@ -8,12 +8,13 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
 const (
-	MatrixVersion          uint16 = 3
+	MatrixVersion          uint16 = 4
 	maxConflictDiagnostics        = 5
 )
 
@@ -26,7 +27,7 @@ type AuthorityRule struct {
 	AlternativeTTL time.Duration
 }
 
-var authorityMatrixV3 = [...]AuthorityRule{
+var authorityMatrixV4 = [...]AuthorityRule{
 	{catalog.SignalSessionSourceTime, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
 	{catalog.SignalSessionTrackName, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
 	{catalog.SignalSessionType, SourceSharedMemory, SourceREST, true, defaultFreshnessLimit, defaultRESTTTL},
@@ -60,11 +61,14 @@ var authorityMatrixV3 = [...]AuthorityRule{
 	{catalog.SignalStandingsLapsBehindNext, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalEnergyFuelAmount, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalEnergyFuelCapacity, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalSpatialPosition, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalSpatialOrientation, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalSpatialLocalVelocity, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 }
 
 func AuthorityMatrix() []AuthorityRule {
-	result := make([]AuthorityRule, len(authorityMatrixV3))
-	copy(result, authorityMatrixV3[:])
+	result := make([]AuthorityRule, len(authorityMatrixV4))
+	copy(result, authorityMatrixV4[:])
 	return result
 }
 
@@ -116,7 +120,7 @@ func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs
 		Source:        SourceCanonical,
 		ReceivedUTC:   receivedUTC.Round(0).UTC(),
 		MatrixVersion: MatrixVersion,
-		Decisions:     make([]FieldDecision, 0, len(authorityMatrixV3)),
+		Decisions:     make([]FieldDecision, 0, len(authorityMatrixV4)),
 		Conflicts:     make([]ConflictDiagnostic, 0, maxConflictDiagnostics),
 	}
 	if fusion.shared.sequence != 0 {
@@ -171,7 +175,7 @@ func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs
 }
 
 func ruleFor(signal catalog.SignalID) AuthorityRule {
-	for _, rule := range authorityMatrixV3 {
+	for _, rule := range authorityMatrixV4 {
 		if rule.Signal == signal {
 			return rule
 		}
@@ -226,6 +230,9 @@ func ageVehicleGrid(elapsed time.Duration, updated monotonicStamp, sourceTime sc
 		row.Brake = ageGridField(elapsed, updated, forceStale, row.Brake)
 		row.Clutch = ageGridField(elapsed, updated, forceStale, row.Clutch)
 		row.Fuel = ageGridField(elapsed, updated, forceStale, row.Fuel)
+		row.WorldPosition = ageGridField(elapsed, updated, forceStale, row.WorldPosition)
+		row.LocalVelocity = ageGridField(elapsed, updated, forceStale, row.LocalVelocity)
+		row.Orientation = ageGridField(elapsed, updated, forceStale, row.Orientation)
 		result[index] = row
 	}
 	return result
@@ -244,8 +251,8 @@ func orderDecisions(result *Observation) {
 	for _, decision := range result.Decisions {
 		existing[decision.Signal] = decision
 	}
-	ordered := make([]FieldDecision, 0, len(authorityMatrixV3))
-	for _, rule := range authorityMatrixV3 {
+	ordered := make([]FieldDecision, 0, len(authorityMatrixV4))
+	for _, rule := range authorityMatrixV4 {
 		decision, ok := existing[rule.Signal]
 		if !ok {
 			decision = inferredDecision(*result, rule)
@@ -308,6 +315,12 @@ func inferredDecision(result Observation, rule AuthorityRule) FieldDecision {
 		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[standings.LapGap] { return row.LapsBehindNext })
 	case catalog.SignalEnergyFuelAmount, catalog.SignalEnergyFuelCapacity:
 		return decisionFromField(rule, result.Fuel)
+	case catalog.SignalSpatialPosition:
+		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[spatial.Position] { return row.WorldPosition })
+	case catalog.SignalSpatialOrientation:
+		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[spatial.Orientation] { return row.Orientation })
+	case catalog.SignalSpatialLocalVelocity:
+		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[spatial.LocalVelocity] { return row.LocalVelocity })
 	default:
 		return FieldDecision{Signal: rule.Signal, Source: SourceUnknown, Freshness: schema.FreshnessMissing}
 	}

@@ -67,13 +67,13 @@ var definitions = []Definition{
 	{ID: SignalPitStopCount, Key: "pit.stop_count", Domain: schema.DomainPit, Unit: schema.UnitCount, Range: schema.NonNegativeRange(), Action: LedgerHardened, Notes: "Pit-stop count cannot be negative."},
 	{ID: SignalStandingsPosition, Key: "standings.position", Domain: schema.DomainStandings, Unit: schema.UnitCount, Range: schema.ClosedRange(1, 104), Action: LedgerHardened, Notes: "One-based position within the demonstrated LMU vehicle bound."},
 	{ID: SignalWeatherAmbientTemperature, Key: "weather.ambient_temperature", Domain: schema.DomainWeather, Unit: schema.UnitUnknown, Range: schema.UnknownRange(), Action: LedgerExistingUnproduced, Notes: "Existing contract; not produced by ISA-129."},
-	{ID: SignalSpatialPosition, Key: "spatial.position", Domain: schema.DomainSpatial, Unit: schema.UnitUnknown, Range: schema.UnknownRange(), Action: LedgerExistingUnproduced, Notes: "Existing contract; not produced by ISA-129."},
+	{ID: SignalSpatialPosition, Key: "spatial.position", Domain: schema.DomainSpatial, Unit: schema.UnitMeters, Range: schema.UnknownRange(), Action: LedgerHardened, Notes: "World-space XYZ in meters; legitimate zero is preserved."},
 	{ID: SignalSessionLapNumber, Key: "session.lap_number", Domain: schema.DomainSession, Unit: schema.UnitCount, Range: schema.NonNegativeRange(), Action: LedgerHardened, Notes: "Session lap number preserves legitimate zero."},
 	{ID: SignalVehicleGear, Key: "vehicle.gear", Domain: schema.DomainVehicle, Unit: schema.UnitUnsupported, Range: schema.UnknownRange(), Action: LedgerReused, Notes: "Existing canonical gear representation reused unchanged."},
 	{ID: SignalVehicleTeamName, Key: "vehicle.team_name", Domain: schema.DomainVehicle, Unit: schema.UnitUnsupported, Range: schema.UnsupportedRange(), Action: LedgerExistingUnproduced, Notes: "Existing contract; not produced by ISA-129."},
 	{ID: SignalVehicleName, Key: "vehicle.name", Domain: schema.DomainVehicle, Unit: schema.UnitText, Range: schema.UnsupportedRange(), Action: LedgerHardened, Notes: "Canonical vehicle display name."},
 	{ID: SignalStandingsCompletedLaps, Key: "standings.completed_laps", Domain: schema.DomainStandings, Unit: schema.UnitCount, Range: schema.NonNegativeRange(), Action: LedgerHardened, Notes: "Completed laps preserve legitimate zero."},
-	{ID: SignalSpatialOrientation, Key: "spatial.orientation", Domain: schema.DomainSpatial, Unit: schema.UnitUnknown, Range: schema.UnknownRange(), Action: LedgerExistingUnproduced, Notes: "Existing contract; not produced by ISA-129."},
+	{ID: SignalSpatialOrientation, Key: "spatial.orientation", Domain: schema.DomainSpatial, Unit: schema.UnitUnsupported, Range: schema.UnknownRange(), Action: LedgerHardened, Notes: "Right-handed orthonormal matrix; columns map local left/up/rearward axes into world space."},
 	{ID: SignalSessionSourceTime, Key: "session.source_time", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.NonNegativeRange(), Action: LedgerHardened, Notes: "Non-negative timestamp supplied by the source."},
 	{ID: SignalSessionTrackName, Key: "session.track_name", Domain: schema.DomainSession, Unit: schema.UnitText, Range: schema.UnsupportedRange(), Action: LedgerHardened, Notes: "Canonical track display name."},
 	{ID: SignalSessionVehicleCount, Key: "session.vehicle_count", Domain: schema.DomainSession, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 104), Action: LedgerReused, Notes: "Existing demonstrated LMU vehicle-count bound."},
@@ -99,6 +99,7 @@ var definitions = []Definition{
 	{ID: SignalEnergyFuelCapacity, Key: "energy.fuel_capacity", Domain: schema.DomainEnergy, Unit: schema.UnitLiters, Range: schema.NonNegativeRange(), Action: LedgerAppended, Notes: "Must be finite and > 0 when the joint fuel value is present."},
 	{ID: SignalSessionSelfDeltaSeconds, Key: "session.self_delta_seconds", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Signed player delta against the declared reference."},
 	{ID: SignalSessionSelfDeltaReference, Key: "session.self_delta_reference", Domain: schema.DomainSession, Unit: schema.UnitText, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Known canonical self-delta reference enum only."},
+	{ID: SignalSpatialLocalVelocity, Key: "spatial.local_velocity", Domain: schema.DomainSpatial, Unit: schema.UnitMetersPerSecond, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Vehicle-local XYZ velocity in m/s; LMU axes are +X left, +Y up and +Z rearward."},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

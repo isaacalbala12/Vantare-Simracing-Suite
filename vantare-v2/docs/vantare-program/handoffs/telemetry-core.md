@@ -96,16 +96,17 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   comportamiento ni elimina funcionalidad. Confirma que sesión, grid, fuel,
   pit, laps y gaps son proyectables, mientras flags, engine, tyre, damage,
   conditions y driver swaps deben quedar deshabilitados sin capability.
-- TC-08A.1 ISA-130: requerido antes de ISA-109. Debe admitir world position,
-  orientation y local velocity con evidencia LMU real; los offsets y tests
-  sintéticos legacy no bastan para activar Spotter.
-- TC-08B–TC-09: pendientes.
+- TC-08A.1 ISA-130: geometría implementada y verificada antes de ISA-109.
+  World position, orientation y local velocity atraviesan el core con
+  evidencia LMU real; los offsets y tests sintéticos legacy no se usan como
+  autoridad. Suite global, repeticiones, fuzzing y benchmarks pasan; los dos
+  avisos Win32 de vet son heredados.
+- TC-08B–TC-09: pendientes desde ISA-109.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-130 / TC-08A.1, geometría canónica Spotter con evidencia real;
-después ISA-109. `go vet` conserva seis avisos heredados de
-`unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
+El siguiente corte es ISA-109 / TC-08B. `go vet` conserva seis avisos heredados
+de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones
 
@@ -255,14 +256,16 @@ después ISA-109. `go vet` conserva seis avisos heredados de
 | Cerrada técnicamente | ISA-103 / TC-06C, dos reviews finales `ACCEPT` |
 | Cerrada técnicamente | ISA-104 / TC-06D, reviews integradas `ACCEPT` |
 | En revisión | ISA-105 / TC-07A, PR draft `#41`, D6 `ACCEPT` |
-| Cerrada técnicamente | ISA-129 / TC-07A.1; D0-D9 aceptados, entrega operativa pendiente |
-| Pendientes | ISA-106–117 e ISA-87 según dependencias y cierre de ISA-129 |
+| Cerrada técnicamente | ISA-129 / TC-07A.1; D0-D9 aceptados |
+| En revisión | ISA-106 / TC-07B, ISA-107 / TC-07C e ISA-108 / TC-08A |
+| Preparada para revisión | ISA-130 / TC-08A.1, bloqueante espacial de ISA-109 |
+| Pendientes | ISA-109–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-108 como docs-only y ejecutar ISA-130 / TC-08A.1 sobre su commit.
-TC-08A.1 debe cerrar la procedencia espacial real antes de permitir que
-ISA-109 proyecte y adapte Engineer. Sin merge ni promoción.
+Entregar ISA-130 y ejecutar ISA-109 / TC-08B sobre su commit. ISA-109 debe
+ampliar `projection/engineer` y adaptar el Engineer sin abrir readers ni
+reactivar capabilities aún no demostradas. Sin merge ni promoción.
 
 ## Gate final
 
@@ -271,6 +274,20 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-130: posición mundo, velocidad local y orientación se admiten
+por vehículo desde el único reader LMU hasta Reducer. La fixture real LMU 1.3
+`959c5142…e5ff` demuestra 44/44 filas, matriz right-handed y el signo local
+mediante un oráculo independiente. Cero permanece presente; NaN/Inf y matriz
+degenerada quedan invalid por campo; la caducidad vuelve stale toda la
+geometría. El sanitizador zero-rebuild conserva ya esos spans para una futura
+captura 1.4. No se activa Spotter y las fixtures 1.4 anteriores a cero no se
+presentan como prueba espacial. Siguiente corte: ISA-109.
+
+Gates finales ISA-130: Telemetry Core x10, focal x20, suite Go global, build
+frontend y dos fuzzers pasan. Parse de 44 vehículos: 49,3–53,7 µs/op;
+sanitización diagnóstica: 164,5–201,2 µs/op. Vet focal conserva solo dos avisos
+Win32 heredados de `unsafe.Pointer`. No hay wiring Spotter ni promoción.
 
 2026-08-01, ISA-129 D9: el harness D8 y el trace Delta real se conservan sin
 repetir las vueltas. Cuatro frames LMU 1.4 zero-rebuild cierran una secuencia

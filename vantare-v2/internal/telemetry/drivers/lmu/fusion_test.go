@@ -10,10 +10,11 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestAuthorityMatrixV3ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
+func TestAuthorityMatrixV4ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
 	want := []catalog.SignalID{
 		catalog.SignalSessionSourceTime, catalog.SignalSessionTrackName, catalog.SignalSessionType,
 		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent,
@@ -28,9 +29,11 @@ func TestAuthorityMatrixV3ReferencesEveryParsedCanonicalSignalExactlyOnce(t *tes
 		catalog.SignalStandingsTimeBehindLeader, catalog.SignalStandingsLapsBehindLeader,
 		catalog.SignalStandingsTimeBehindNext, catalog.SignalStandingsLapsBehindNext,
 		catalog.SignalEnergyFuelAmount, catalog.SignalEnergyFuelCapacity,
+		catalog.SignalSpatialPosition, catalog.SignalSpatialOrientation,
+		catalog.SignalSpatialLocalVelocity,
 	}
 	first, second := AuthorityMatrix(), AuthorityMatrix()
-	if MatrixVersion != 3 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
+	if MatrixVersion != 4 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
 		t.Fatalf("version=%d matrix=%#v", MatrixVersion, first)
 	}
 	overlaps := map[catalog.SignalID]bool{
@@ -231,7 +234,12 @@ func TestFusionFrozenSharedMemoryStalesWholeGridIncludingFalseInPit(t *testing.T
 	shared.PlayerPresent = fieldWithFreshness(true, schema.FreshnessStale)
 	shared.Vehicles = []VehicleObservation{{
 		SourceID: 1, Player: observed(true), Position: observed(standings.Position(1)),
-		InPit: observed(pit.InPit(false)),
+		InPit:         observed(pit.InPit(false)),
+		WorldPosition: observed(spatial.Position{}),
+		LocalVelocity: observed(spatial.LocalVelocity{}),
+		Orientation: observed(spatial.Orientation{
+			Row0: spatial.Vector3{X: 1}, Row1: spatial.Vector3{Y: 1}, Row2: spatial.Vector3{Z: 1},
+		}),
 	}}
 	got := (&Fusion{}).Merge(wall, 0, shared)
 	if len(got.Vehicles) != 1 || got.Vehicles[0].InPit.Freshness() != schema.FreshnessStale {
@@ -240,6 +248,11 @@ func TestFusionFrozenSharedMemoryStalesWholeGridIncludingFalseInPit(t *testing.T
 	value, present := got.Vehicles[0].InPit.Value()
 	if !present || bool(value) {
 		t.Fatalf("stale false in-pit=(%v,%v)", value, present)
+	}
+	if got.Vehicles[0].WorldPosition.Freshness() != schema.FreshnessStale ||
+		got.Vehicles[0].LocalVelocity.Freshness() != schema.FreshnessStale ||
+		got.Vehicles[0].Orientation.Freshness() != schema.FreshnessStale {
+		t.Fatalf("stale spatial grid=%#v", got.Vehicles[0])
 	}
 }
 

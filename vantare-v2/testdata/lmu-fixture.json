@@ -9,7 +9,7 @@
   },
   "sanitization": {
     "version": "numeric-whitelist-v1",
-    "policy": "zero-filled buffer plus audited numeric fields; identities replaced with deterministic aliases"
+    "policy": "zero-filled buffer plus audited numeric and spatial fields; identities replaced with deterministic aliases"
   },
   "sha256": "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff",
   "session": {
@@ -25,6 +25,23 @@
   "telemetry": {
     "playerVehicleIdx": 43,
     "playerHasVehicle": true
+  },
+  "spatial": {
+    "source": "LMU InternalsPlugin-compatible layout plus hash-pinned real fixture",
+    "worldPositionUnit": "meters",
+    "localVelocityUnit": "meters/second",
+    "localAxes": "+X left, +Y up, +Z rearward",
+    "orientation": "stored rows; columns map local axes into world space; right-handed determinant approximately +1",
+    "scoringOffsets": {
+      "worldPosition": 264,
+      "localVelocity": 288,
+      "orientation": 336
+    },
+    "telemetryOffsets": {
+      "worldPosition": 160,
+      "localVelocity": 184,
+      "orientation": 232
+    }
   },
   "vehicles": [
     {

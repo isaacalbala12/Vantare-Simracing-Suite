@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -163,6 +165,12 @@ func testFirstTrackBatch(t *testing.T) {
 	assertCursor(t, batch, 1, 1)
 	assertVehicleID(t, batch, 10, "lmu-slot-10-generation-1")
 	assertVehicleID(t, batch, 20, "lmu-slot-20-generation-1")
+	for _, current := range batch.State.Vehicles {
+		position, present := current.WorldPosition.Value()
+		if !present || position.X != float64(sourceSlotFromVehicleID(current.Identity.Vehicle)) {
+			t.Fatalf("vehicle %q spatial position = (%+v,%v)", current.Identity.Vehicle, position, present)
+		}
+	}
 }
 
 func testContinuousReorderedBatch(t *testing.T) {
@@ -613,9 +621,22 @@ func trackObservation(slots ...VehicleSourceID) Observation {
 			Player:        observed(index == 0),
 			Position:      observed(standings.Position(index + 1)),
 			CompletedLaps: observed(standings.CompletedLaps(0)),
+			WorldPosition: observed(spatial.Position{X: float64(slot)}),
+			LocalVelocity: observed(spatial.LocalVelocity{Z: -1}),
+			Orientation: observed(spatial.Orientation{
+				Row0: spatial.Vector3{X: 1},
+				Row1: spatial.Vector3{Y: 1},
+				Row2: spatial.Vector3{Z: 1},
+			}),
 		}
 	}
 	return result
+}
+
+func sourceSlotFromVehicleID(value identity.VehicleID) int {
+	var slot, generation int
+	_, _ = fmt.Sscanf(string(value), "lmu-slot-%d-generation-%d", &slot, &generation)
+	return slot
 }
 
 func assertCursor(t testing.TB, batch telemetrycore.Batch, epoch, sequence uint64) {

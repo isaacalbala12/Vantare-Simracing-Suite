@@ -1129,6 +1129,9 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 			lmu13Layout.Scoring.TimeBehindLeader,
 			lmu13Layout.Scoring.LapsBehindLeader,
 			lmu13Layout.Scoring.EstimatedLapTime,
+			lmu13Layout.Scoring.WorldPosition,
+			lmu13Layout.Scoring.LocalVelocity,
+			lmu13Layout.Scoring.Orientation,
 		} {
 			copyLayoutField(output, input, field, base)
 		}
@@ -1161,7 +1164,9 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 		}
 		for _, field := range []layoutField{
 			lmu13Layout.Telemetry.LapNumber,
+			lmu13Layout.Telemetry.WorldPosition,
 			lmu13Layout.Telemetry.LocalVelocity,
+			lmu13Layout.Telemetry.Orientation,
 			lmu13Layout.Telemetry.Gear,
 			lmu13Layout.Telemetry.EngineRPM,
 			lmu13Layout.Telemetry.Throttle,

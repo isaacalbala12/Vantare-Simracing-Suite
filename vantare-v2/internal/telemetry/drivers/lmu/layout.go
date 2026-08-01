@@ -103,12 +103,17 @@ type scoringLayout struct {
 	TimeBehindLeader  layoutField
 	LapsBehindLeader  layoutField
 	EstimatedLapTime  layoutField
+	WorldPosition     layoutField
+	LocalVelocity     layoutField
+	Orientation       layoutField
 }
 
 type telemetryLayout struct {
 	VehicleSourceSlot  layoutField
 	LapNumber          layoutField
+	WorldPosition      layoutField
 	LocalVelocity      layoutField
+	Orientation        layoutField
 	Gear               layoutField
 	EngineRPM          layoutField
 	Throttle           layoutField
@@ -176,11 +181,16 @@ var lmu13Layout = layoutContract{
 		TimeBehindLeader:  scoringField("scoring.time_behind_leader", 244, sourceFloat64, 1),
 		LapsBehindLeader:  scoringField("scoring.laps_behind_leader", 252, sourceInt32, 1),
 		EstimatedLapTime:  scoringField("scoring.estimated_lap_time", 472, sourceFloat64, 1),
+		WorldPosition:     scoringField("scoring.world_position", 264, sourceFloat64, 3),
+		LocalVelocity:     scoringField("scoring.local_velocity", 288, sourceFloat64, 3),
+		Orientation:       scoringField("scoring.orientation", 336, sourceFloat64, 9),
 	},
 	Telemetry: telemetryLayout{
 		VehicleSourceSlot:  telemetryField("telemetry.vehicle_source_slot", 0, sourceInt32, 1),
 		LapNumber:          telemetryField("telemetry.lap_number", 20, sourceInt32, 1),
+		WorldPosition:      telemetryField("telemetry.world_position", 160, sourceFloat64, 3),
 		LocalVelocity:      telemetryField("telemetry.local_velocity", 184, sourceFloat64, 3),
+		Orientation:        telemetryField("telemetry.orientation", 232, sourceFloat64, 9),
 		Gear:               telemetryField("telemetry.gear", 352, sourceInt32, 1),
 		EngineRPM:          telemetryField("telemetry.engine_rpm", 356, sourceFloat64, 1),
 		Throttle:           telemetryField("telemetry.throttle", 420, sourceFloat64, 1),
@@ -218,9 +228,14 @@ func (layout layoutContract) admittedFields() []layoutField {
 		layout.Scoring.TimeBehindLeader,
 		layout.Scoring.LapsBehindLeader,
 		layout.Scoring.EstimatedLapTime,
+		layout.Scoring.WorldPosition,
+		layout.Scoring.LocalVelocity,
+		layout.Scoring.Orientation,
 		layout.Telemetry.VehicleSourceSlot,
 		layout.Telemetry.LapNumber,
+		layout.Telemetry.WorldPosition,
 		layout.Telemetry.LocalVelocity,
+		layout.Telemetry.Orientation,
 		layout.Telemetry.Gear,
 		layout.Telemetry.EngineRPM,
 		layout.Telemetry.Throttle,

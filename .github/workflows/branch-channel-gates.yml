@@ -68,6 +68,10 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm install --frozen-lockfile
 
+      - name: Frontend build
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm build
+
       - name: Go tests
         run: go test ./...
 
@@ -75,10 +79,6 @@ jobs:
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm test
-
-      - name: Frontend build
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm build
 
       - name: Frontend lint (advisory while inherited debt is isolated)
         continue-on-error: true

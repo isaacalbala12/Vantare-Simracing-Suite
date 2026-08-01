@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
+	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
@@ -72,17 +73,15 @@ func TestVirtualClockRejectsOverflowAndUnsafeTime(t *testing.T) {
 func TestRunnerRejectsOverflowedMessageDeadline(t *testing.T) {
 	t.Parallel()
 
-	state := newRunState(Scenario{Version: ScenarioVersionV1, ID: "invalid-deadline", StartMS: 1_000})
-	state.queue.Enqueue(audio.Message{
+	_, reason := candidateFromLegacy(audio.Message{
 		ID:        "overflowed",
 		TextKey:   "spotter.car_left",
 		Category:  audio.CategorySpotter,
 		CreatedAt: MaxVirtualTimeMS,
 		ExpiresAt: -1,
-	})
-	state.drain(0, OutcomeEmitted, ReasonCandidateEmitted)
-	if !hasOutcome(state.report, OutcomeUnavailable, ReasonInvalidObservation, projectioninput.FamilySpotter) {
-		t.Fatalf("overflowed deadline was not rejected: %+v", state.report.Outcomes)
+	}, fixtureObservation(t, fixtureValues{}), messagepolicy.SemanticEvidence{})
+	if reason != ReasonInvalidObservation {
+		t.Fatalf("overflowed deadline reason = %q, want %q", reason, ReasonInvalidObservation)
 	}
 }
 
@@ -116,6 +115,51 @@ func TestRunnerApprovedFamiliesAreDeterministicAndMatchGolden(t *testing.T) {
 	}
 	if !bytes.Equal(baseline, want) {
 		t.Fatalf("golden drift (-want +got):\nwant:\n%s\ngot:\n%s", want, baseline)
+	}
+}
+
+func TestRunnerRevalidatesHeldSpotterAgainstLatestObservation(t *testing.T) {
+	t.Parallel()
+
+	left := fixtureObservation(t, fixtureValues{rivalX: 2.8})
+	clear := fixtureObservation(t, fixtureValues{rivalX: 25})
+	report, err := NewRunner().Run(Scenario{
+		Version: ScenarioVersionV1,
+		ID:      "held-left-becomes-clear",
+		StartMS: 1_000,
+		Steps: []Step{
+			{Snapshot: &left, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}, Hold: true},
+			{AdvanceMS: 100, Snapshot: &clear, Drain: true},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasOutcome(report, OutcomeCancelled, ReasonSemanticInvalidated, projectioninput.FamilySpotter) {
+		t.Fatalf("latest clear observation did not invalidate held car-left: %+v", report.Outcomes)
+	}
+	for _, outcome := range report.Outcomes {
+		if outcome.TextKey == messagepolicy.IntentSpotterCarLeft && outcome.State == OutcomeEmitted {
+			t.Fatalf("stale car-left escaped: %+v", outcome)
+		}
+	}
+}
+
+func TestLegacySpotterValidityRuleBecomesTypedSemanticClaim(t *testing.T) {
+	t.Parallel()
+
+	snapshot := fixtureObservation(t, fixtureValues{rivalX: 2.8})
+	evidence := semanticEvidence(snapshot, projectioninput.NewAdapter())
+	candidate, reason := candidateFromLegacy(audio.Message{
+		ID: "left", TextKey: messagepolicy.IntentSpotterCarLeft,
+		Category: audio.CategorySpotter, CreatedAt: 1_000, ExpiresAt: 2_000,
+		ValidityRule: "spotter.active_left",
+	}, snapshot, evidence)
+	if reason != "" {
+		t.Fatal(reason)
+	}
+	if candidate.Semantic.Rule != messagepolicy.SemanticSpotterLeftActive {
+		t.Fatalf("semantic rule = %v", candidate.Semantic.Rule)
 	}
 }
 
@@ -252,7 +296,7 @@ func TestRunnerOrdersFactsAndCancelsAtLifecycleBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasOutcome(report, OutcomeCancelled, ReasonFactBoundary, projectioninput.FamilySpotter) {
+	if !hasOutcome(report, OutcomeCancelled, ReasonLifecycleBoundary, projectioninput.FamilySpotter) {
 		t.Fatalf("connection loss did not cancel the pending spotter decision: %+v", report.Outcomes)
 	}
 	if !hasOutcome(report, OutcomeUnavailable, ReasonStaleFact, "") {
@@ -279,7 +323,7 @@ func TestRunnerSessionStartedFactCancelsPendingFromPreviousSession(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasOutcome(report, OutcomeCancelled, ReasonFactBoundary, projectioninput.FamilySpotter) {
+	if !hasOutcome(report, OutcomeCancelled, ReasonLifecycleBoundary, projectioninput.FamilySpotter) {
 		t.Fatalf("session start did not cancel prior pending decision: %+v", report.Outcomes)
 	}
 	for _, outcome := range report.Outcomes {
@@ -472,7 +516,7 @@ func TestRunnerDoesNotApproveLegacyDecisionsOutsideCharacterizedScenarios(t *tes
 	}
 
 	for _, outcome := range report.Outcomes {
-		if outcome.Family == projectioninput.FamilyPenalties && outcome.TextKey == "penalties.new_drivethrough" && outcome.State != OutcomeUnavailable {
+		if outcome.Family == projectioninput.FamilyPenalties && outcome.TextKey == "penalties.new_drivethrough" {
 			t.Fatalf("generic penalty counter was presented as proven drive-through: %+v", outcome)
 		}
 		if outcome.Family == projectioninput.FamilyPitStops &&
@@ -481,30 +525,40 @@ func TestRunnerDoesNotApproveLegacyDecisionsOutsideCharacterizedScenarios(t *tes
 			t.Fatalf("unapproved pit decision was presented as emitted: %+v", outcome)
 		}
 	}
-	if !hasOutcome(report, OutcomeUnavailable, ReasonDecisionNotApproved, projectioninput.FamilyPenalties) {
-		t.Fatalf("specific penalty claim was not surfaced as unapproved: %+v", report.Outcomes)
+	if !hasTextOutcome(report, OutcomeEmitted, ReasonCandidateEmitted, projectioninput.FamilyPenalties, "penalties.count_increased") {
+		t.Fatalf("generic penalty counter was not converted to a neutral intent: %+v", report.Outcomes)
 	}
 	if !hasOutcome(report, OutcomeUnavailable, ReasonDecisionNotApproved, projectioninput.FamilyPitStops) {
 		t.Fatalf("extra pit decisions were not surfaced as unapproved: %+v", report.Outcomes)
 	}
 }
 
-func TestDecisionApprovalMatchesTheCharacterizedBoundary(t *testing.T) {
+func hasTextOutcome(report Report, state OutcomeState, reason Reason, family projectioninput.MonitorFamily, textKey string) bool {
+	for _, outcome := range report.Outcomes {
+		if outcome.State == state && outcome.Reason == reason && outcome.Family == family && outcome.TextKey == textKey {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLegacyCandidateTranslationMatchesTheCharacterizedBoundary(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		family  projectioninput.MonitorFamily
-		textKey string
-		want    bool
+		name       string
+		family     projectioninput.MonitorFamily
+		textKey    string
+		wantIntent string
+		values     fixtureValues
 	}{
-		{name: "spotter left", family: projectioninput.FamilySpotter, textKey: "spotter.car_left", want: true},
-		{name: "fuel half tank", family: projectioninput.FamilyFuel, textKey: "fuel.low_half_tank", want: true},
-		{name: "lap complete", family: projectioninput.FamilyLaps, textKey: "laps.lap_completed", want: true},
-		{name: "timing gap", family: projectioninput.FamilyTimings, textKey: "timings.gap_report", want: true},
-		{name: "pit entry", family: projectioninput.FamilyPitStops, textKey: "pitstops.entry", want: true},
-		{name: "pit exit", family: projectioninput.FamilyPitStops, textKey: "pitstops.exit", want: true},
-		{name: "specific penalty from generic counter", family: projectioninput.FamilyPenalties, textKey: "penalties.new_drivethrough"},
+		{name: "spotter left", family: projectioninput.FamilySpotter, textKey: "spotter.car_left", wantIntent: "spotter.car_left"},
+		{name: "fuel half tank", family: projectioninput.FamilyFuel, textKey: "fuel.low_half_tank", wantIntent: "fuel.low_half_tank", values: fixtureValues{fuelSet: true, fuel: 40}},
+		{name: "lap complete", family: projectioninput.FamilyLaps, textKey: "laps.lap_completed", wantIntent: "laps.lap_completed"},
+		{name: "timing gap", family: projectioninput.FamilyTimings, textKey: "timings.gap_report", wantIntent: "timings.gap_report"},
+		{name: "pit entry", family: projectioninput.FamilyPitStops, textKey: "pitstops.entry", wantIntent: "pitstops.entry", values: fixtureValues{inPit: true}},
+		{name: "pit exit", family: projectioninput.FamilyPitStops, textKey: "pitstops.exit", wantIntent: "pitstops.exit"},
+		{name: "generic penalty is neutral", family: projectioninput.FamilyPenalties, textKey: "penalties.new_drivethrough", wantIntent: "penalties.count_increased", values: fixtureValues{penalties: 1}},
 		{name: "pit box now", family: projectioninput.FamilyPitStops, textKey: "pitstops.box_now"},
 		{name: "pit limiter", family: projectioninput.FamilyPitStops, textKey: "pitstops.engage_limiter"},
 		{name: "pit window", family: projectioninput.FamilyPitStops, textKey: "pitstops.pit_window_open"},
@@ -513,8 +567,34 @@ func TestDecisionApprovalMatchesTheCharacterizedBoundary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := decisionApproved(tt.family, tt.textKey); got != tt.want {
-				t.Fatalf("decisionApproved(%q, %q) = %t, want %t", tt.family, tt.textKey, got, tt.want)
+			snapshot := fixtureObservation(t, tt.values)
+			semantic := semanticEvidence(snapshot, projectioninput.NewAdapter())
+			message := audio.Message{
+				ID: "candidate", TextKey: tt.textKey, Category: audio.Category(tt.family),
+				CreatedAt: 1_000, ExpiresAt: 2_000,
+			}
+			candidate, reason := candidateFromLegacy(message, snapshot, semantic)
+			if reason != "" {
+				t.Fatalf("candidateFromLegacy() = %s", reason)
+			}
+			if candidate.Intent != tt.wantIntent && tt.wantIntent != "" {
+				t.Fatalf("intent = %q, want %q", candidate.Intent, tt.wantIntent)
+			}
+			clock := NewVirtualClock(1_000)
+			scheduler, err := messagepolicy.NewScheduler(clock, messagepolicy.Limits{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			scheduler.Observe(messagepolicy.Evidence{
+				CanonicalVersion: snapshot.CanonicalVersion, ProjectionVersion: snapshot.ProjectionVersion,
+				Context: snapshot.Context, Manifest: snapshot.Manifest,
+				Source: engineerprojection.SourceLive, FreshUntilMS: 2_000,
+				ReadyFamilies: readyFamilies(snapshot),
+				Semantic:      semantic,
+			})
+			accepted, _ := scheduler.Submit(candidate)
+			if accepted != (tt.wantIntent != "") {
+				t.Fatalf("accepted = %t, want %t", accepted, tt.wantIntent != "")
 			}
 		})
 	}

@@ -69,18 +69,26 @@ La familia puede estar aprobada y una decisión concreta no estarlo. El runner
 mantiene una allowlist explícita de las decisiones caracterizadas; todo mensaje
 legacy que exceda esa lista aparece como `unavailable / decision_not_approved`.
 
-## Hallazgo que ENG-05 debe resolver
+ENG-05 conserva la `ValidityRule` de Spotter como un claim semántico tipado y
+construye evidencia fija desde cada observación. Antes de emitir, la policy
+vuelve a comprobar el claim contra la observación más reciente. El runner
+demuestra que un `car_left` retenido no se emite después de que el coche haya
+dejado la zona. Combustible, pit, sanciones, vueltas y timings siguen el mismo
+contrato fail-closed sin expresiones libres ni acceso a telemetry raw.
+
+## Hallazgo resuelto por ENG-05
 
 El runtime legacy de `pitstops` produce, al observar una entrada/salida, avisos
 de box-now, limitador, velocidad, ventana y tráfico además de `entry`/`exit`.
-TC-08C solo demostró entrada y salida. El runner conserva todos esos resultados
-para diagnóstico, pero no los presenta como emitidos.
+TC-08C solo demostró entrada y salida. ENG-05 conserva todos esos resultados
+para diagnóstico, pero la policy solo admite `entry` y `exit`.
 
 El monitor de penalizaciones recibe únicamente un contador genérico y, en
 ausencia del antiguo reader Extended, lo etiqueta por defecto como
-`penalties.new_drivethrough`. Ese contador no demuestra un drive-through. El
-oráculo lo marca como decisión no aprobada. ENG-05 deberá crear una intención
-genérica o una señal real; ENG-04 no cambia reglas ni runtime productivo.
+`penalties.new_drivethrough`. Ese contador no demuestra un drive-through.
+ENG-05 lo transforma en la intención neutral `penalties.count_increased` en la
+frontera test-only; el claim específico nunca atraviesa la policy. ENG-04 y el
+runtime productivo no adquieren nuevas señales.
 
 ## Reproducibilidad y goldens
 
@@ -134,6 +142,7 @@ configurarlo únicamente para el proceso, el mismo gate x10 pasó.
 Rollback: revertir el commit de ISA-133. No hay datos, migraciones ni estado
 persistente que recuperar.
 
-Siguiente corte: ENG-05 define policy/scheduler a partir de estas evidencias.
-Debe decidir qué candidato se emite, reemplaza, expira o cancela sin ampliar
-capabilities y debe corregir expresamente las dos deudas legacy anteriores.
+ENG-05 define policy/scheduler a partir de estas evidencias en
+`docs/engineer/message-policy-scheduler.md`. Decide qué candidato se emite,
+reemplaza, expira o cancela sin ampliar capabilities y mantiene la integración
+exclusivamente test-only.

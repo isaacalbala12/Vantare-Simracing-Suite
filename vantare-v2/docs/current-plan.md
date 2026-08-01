@@ -10,6 +10,30 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-158 / ENG-05 (2026-08-01):
+- Policy y scheduler determinista implementados de forma síncrona y acotada en
+  `internal/engineer/messagepolicy/`; contratos v1: Candidate, Decision,
+  PolicyOutcome y SchedulerState, con reloj y evidencia inyectados.
+- Admisión y emisión revalidan versión, epoch, identidad, fuente, freshness,
+  capabilities, prioridad, TTL y el claim semántico contra la observación más
+  reciente. `Cancel` invalida la evidencia hasta recibir otra observación.
+  Spotter P0 cancela pendientes inferiores; dedupe, coalescing, cooldown, cola,
+  identidades y diagnósticos tienen límites duros.
+- Spotter conserva prioridad absoluta. El resto de prioridades tiene un burst
+  máximo determinista para impedir starvation sin debilitar mensajes críticos.
+- ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
+  únicamente entry/exit. El contador genérico de sanción se convierte a
+  `penalties.count_increased` y nunca afirma drive-through.
+- Golden v1 actualizado deliberadamente; tests de tabla, invariantes,
+  invalidación semántica, presión/starvation, ownership, lifecycle, fuzz, soak
+  virtual, benchmark saturado, Engineer y race focal pasan. El gate Go global
+  también pasa; el test real de discovery de Launcher es deuda heredada lenta,
+  no un bloqueo de ENG-05. Contrato:
+  `docs/engineer/message-policy-scheduler.md`.
+- No hay audio/TTS/STT, UI, Wails/SSE, wiring productivo, nueva capability,
+  dependencia, migración, merge o promoción. Pendiente: review independiente
+  antes de commit/push/Linear.
+
 Nota ISA-133 / ENG-04 (2026-08-01):
 - Runner/oráculo determinista test-only creado sobre ISA-117 para escenarios
   Engineer/Spotter. Consume exclusivamente `ObservationSnapshotV1` y

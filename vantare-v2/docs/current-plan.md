@@ -10,6 +10,21 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-117 / TC-09F (2026-08-01):
+- Telemetry Core queda técnicamente cerrado sobre ISA-87 `4233c9f`: una sola
+  adquisición LMU, un runtime canónico y proyecciones separadas por producto.
+- Go global, 7/7 fuzzers, replay, soak de dos horas, lifecycle x5, frontend
+  2.016/2.016, build, Playwright cutover/shadow, Crystal 21/21, fixtures LMU
+  reales x5 y lectura live LMU 1.4 pasan.
+- Cero P0/P1/P2 atribuibles a Telemetry Core. Deuda externa registrada:
+  ISA-118 (Settings P3), ISA-131/ISA-94 (smoke, visual y canvas Overlay),
+  toolchain race sin GCC y tres avisos Win32 vet heredados.
+- Evidencia, rollback y checklist manual:
+  `docs/telemetry-core/final-gate-isa-117.md`.
+- Estado: `In Review`; sin merge ni promoción. Siguiente acción solo después
+  de la aprobación explícita de Isaac: issue separada de promoción a
+  `nightly`.
+
 Nota ISA-87 / TC-09E (2026-08-01):
 - Wails y SSE publican el mismo status y Overlay Projection v1 byte a byte;
   cursor verificado `v1 / epoch 2 / sequence 8 / statusRevision 1`.

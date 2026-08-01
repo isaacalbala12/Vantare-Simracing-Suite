@@ -129,12 +129,17 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-09D ISA-116: implementación y review completadas. Fuzzing de siete
   fronteras, métricas payload-free, benchmarks de la cadena y soak lógico de
   dos horas con 64 vehículos, seis consumidores, Engineer y SQLite pasan.
-- TC-09E–F: pendientes desde ISA-87 e ISA-117.
+- TC-09E ISA-87: lifecycle productivo y harness Wails/SSE cerrados; shutdown
+  ordenado, hotkeys Win32 corregidos y owners de recursos verificados.
+- TC-09F ISA-117: gate técnico final cerrado. Auditoría, fuzz, replay, soak,
+  lifecycle, frontend, Playwright, Crystal y evidencia LMU real pasan. Sigue
+  `In Review` hasta el checklist humano de Isaac; sin promoción.
 
-Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
-tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-114 / TC-09B. `go vet` conserva seis avisos heredados
-de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
+Existe wiring productivo canónico para Overlay y Engineer. Gaps, delta, pit y
+reconexión tienen inputs, algoritmo, fixtures reales y proyección demostrados.
+No queda otro corte de implementación de Telemetry Core: la siguiente acción
+es el gate manual de ISA-117. `go vet` conserva tres avisos heredados de
+`unsafe.Pointer` Win32; ISA-118 e ISA-131/ISA-94 poseen la deuda externa.
 
 ## Decisiones
 
@@ -293,13 +298,14 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | En revisión | ISA-115 / TC-09C, frontend/transporte legacy retirado |
 | Cerrada técnicamente | ISA-116 / TC-09D, hardening y soak `APPROVE` |
 | Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
-| Pendiente | ISA-117 / TC-09F, gate final y handoff |
+| En revisión | ISA-117 / TC-09F, gate final completo; sin merge ni promoción |
 
 ## Siguiente acción exacta
 
-Entregar ISA-87 y ejecutar ISA-117 / TC-09F sobre su commit. ISA-117 debe
-consolidar todos los gates, deuda residual y evidencia final para Isaac sin
-reabrir contratos ni añadir otro runtime. Sin merge ni promoción.
+Isaac debe ejecutar el checklist de
+`docs/telemetry-core/final-gate-isa-117.md`. Solo una aprobación explícita
+autoriza crear una issue separada de promoción de la cadena apilada a
+`nightly`. Antes de esa aprobación: sin merge ni promoción.
 
 ## Gate final
 
@@ -308,6 +314,16 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-117: gate técnico final completado sobre ISA-87 `4233c9f`.
+La auditoría demuestra un solo owner LMU y cero rutas legacy productivas. Go
+global, siete fuzzers, replay, soak de dos horas, lifecycle x5, frontend
+2.016/2.016, build, Playwright cutover/shadow, Crystal 21/21, fixtures LMU
+reales x5 y lectura live LMU 1.4 pasan. Cero P0/P1/P2 atribuibles a Telemetry
+Core. Deuda externa: ISA-118 e ISA-131/ISA-94; `-race` sin GCC y tres avisos
+Win32 vet heredados. Documento, rollback y checklist:
+`docs/telemetry-core/final-gate-isa-117.md`. Estado: `In Review`; sin merge ni
+promoción.
 
 2026-08-01, ISA-87: status y Overlay Projection v1 coinciden byte a byte entre
 el transporte real de eventos Wails y SSE. El composition root posee un

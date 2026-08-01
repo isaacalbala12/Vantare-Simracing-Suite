@@ -47,11 +47,13 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
   fan-out, backpressure y observabilidad. TC-05A/B están cerrados
   técnicamente, TC-05C y TC-06A están cerrados en la base de ISA-102. TC-06B y
   TC-06C y TC-06D están cerrados técnicamente, sin promoción.
-  TC-07A.1 / ISA-129 ha cerrado sus señales y evidencia real en su rama: grid
-  LMU 1.4, timing/gaps/delta, Overlay v1 aditivo, secuencia real de pit y
-  disconnect/reconnect. TC-07B–TC-09 siguen pendientes.
-- La cadena permanece en ramas de issue sin wiring productivo ni promoción. El
-  handoff vivo de `docs/vantare-program/` contiene los SHAs y siguiente corte.
+  TC-07A.1 / ISA-129 cerró sus señales y evidencia real. TC-07B–TC-09F están
+  cerrados técnicamente en la cadena apilada culminada por ISA-117: cutover
+  productivo de Overlay y Engineer, retirada legacy, hardening, lifecycle y
+  gate final.
+- La cadena permanece en ramas de issue sin promoción. El handoff vivo de
+  `docs/vantare-program/` contiene los SHAs, deuda residual y siguiente gate
+  humano.
 
 ## Fronteras
 
@@ -99,6 +101,7 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [Retirada frontend y transportes ISA-115](frontend-retirement-isa-115.md)
 - [Hardening, rendimiento y observabilidad ISA-116](hardening-isa-116.md)
 - [Wails, lifecycle y teardown ISA-87](wails-lifecycle-teardown-isa-87.md)
+- [Gate final y checklist ISA-117](final-gate-isa-117.md)
 
 ## Evidencia real ISA-129
 

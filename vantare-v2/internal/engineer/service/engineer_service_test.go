@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 )
 
 type mockEmitter struct {
@@ -78,8 +79,11 @@ func TestEngineerService_InitialStateAndValidation(t *testing.T) {
 	svc := service.NewEngineerService(emitter)
 
 	status := svc.Status()
-	if status.Source != "simulator" {
-		t.Errorf("expected initial source to be 'simulator', got %q", status.Source)
+	if status.Source != "telemetry-core" {
+		t.Errorf("expected initial source to be 'telemetry-core', got %q", status.Source)
+	}
+	if status.Connected {
+		t.Error("canonical Engineer must not report connected before its first observation")
 	}
 	if !status.Enabled {
 		t.Errorf("expected initial enabled to be true")
@@ -144,12 +148,10 @@ func TestEngineerService_ToggleDoesNotDuplicateLoops(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Toggle source multiple times
+	// The bridge-compatible setter accepts only the canonical source and never
+	// starts a second telemetry loop.
 	for i := 0; i < 3; i++ {
-		_ = svc.SetSource("simulator")
-		time.Sleep(100 * time.Millisecond)
-		_ = svc.SetSource("simulator")
-		time.Sleep(100 * time.Millisecond)
+		_ = svc.SetSource("telemetry-core")
 	}
 
 	svc.Stop()
@@ -172,13 +174,14 @@ func TestEngineerService_NoPanicWithoutTTS(t *testing.T) {
 	defer cancel()
 
 	svc.Start(ctx)
+	feedScenario(svc, simulator.ScenarioLeftBasic)
 
 	// Let the loops run briefly to ensure no panics
 	time.Sleep(100 * time.Millisecond)
 	svc.Stop()
 }
 
-func TestEngineerService_SimulatorGeneratesNotifications(t *testing.T) {
+func TestEngineerService_ExplicitHarnessGeneratesNotifications(t *testing.T) {
 	emitter := &mockEmitter{}
 	svc := service.NewEngineerService(emitter)
 
@@ -186,8 +189,9 @@ func TestEngineerService_SimulatorGeneratesNotifications(t *testing.T) {
 	defer cancel()
 
 	svc.Start(ctx)
+	feedScenario(svc, simulator.ScenarioLeftBasic)
 
-	// Wait up to 2 seconds for the simulator to tick and generate a spotter notification
+	// Wait for queueLoop to publish the explicitly injected harness frames.
 	var foundNotification bool
 	start := time.Now()
 	for time.Since(start) < 2*time.Second {
@@ -202,78 +206,46 @@ func TestEngineerService_SimulatorGeneratesNotifications(t *testing.T) {
 	svc.Stop()
 
 	if !foundNotification {
-		t.Error("expected simulator to generate at least one notification, but none was found")
+		t.Error("expected harness frames to generate at least one notification, but none was found")
 	}
 }
 
-// fakeBufferProvider expone un buffer para tests del servicio con source="lmu".
+// fakeBufferProvider expone un buffer solo para el harness explícito del
+// adapter legacy. EngineerService no lo posee ni lo abre.
 type fakeBufferProvider struct {
 	buf []byte
 }
 
 func (f fakeBufferProvider) Read() []byte { return f.buf }
 
-func TestEngineerService_SetSource_LMU_BuildsAdapter(t *testing.T) {
+func TestEngineerService_RejectsLegacyLiveSources(t *testing.T) {
 	emitter := &mockEmitter{}
 	svc := service.NewEngineerService(emitter)
 
-	// Sin BufferProvider debe rechazar "lmu".
-	if err := svc.SetSource("lmu"); err == nil {
-		t.Error("expected error setting 'lmu' without BufferProvider, got nil")
-	}
-
-	// Con BufferProvider debe aceptar "lmu".
-	svc.SetBufferProvider(fakeBufferProvider{buf: buildSyntheticEngineerFrameBufferPublic()}, true)
-	if err := svc.SetSource("lmu"); err != nil {
-		t.Fatalf("unexpected error setting 'lmu' with BufferProvider: %v", err)
-	}
-	if svc.Status().Source != "lmu" {
-		t.Errorf("expected source 'lmu', got %q", svc.Status().Source)
+	for _, source := range []string{"lmu", "simulator", "replay"} {
+		if err := svc.SetSource(source); err == nil {
+			t.Errorf("expected production service to reject %q", source)
+		}
 	}
 }
 
-func TestEngineerService_Loop_LMU_ProcessesFrame(t *testing.T) {
+func TestEngineerService_HarnessFrameDoesNotChangeCanonicalSource(t *testing.T) {
 	emitter := &mockEmitter{}
 	svc := service.NewEngineerService(emitter)
-	svc.SetBufferProvider(fakeBufferProvider{buf: buildSyntheticEngineerFrameBufferPublic()}, true)
-	if err := svc.SetSource("lmu"); err != nil {
-		t.Fatalf("SetSource(lmu) error: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	svc.Start(ctx)
-	defer svc.Stop()
-
-	// Esperar hasta 1s: el loop debe procesar al menos un frame sin panic.
-	// No exigimos notificación (el fixture sintético puede no disparar spotter),
-	// solo que el servicio no paniquea y queda conectado/ procesando.
-	time.Sleep(500 * time.Millisecond)
-	st := svc.Status()
-	if st.Source != "lmu" {
-		t.Errorf("expected source 'lmu', got %q", st.Source)
+	adapter := service.NewOverlaysLiveAdapter(fakeBufferProvider{buf: buildSyntheticEngineerFrameBufferPublic()}, true)
+	frame := adapter.ReadFrame()
+	svc.ProcessHarnessFrame(time.Now().UnixMilli(), frame)
+	if got := svc.Status().Source; got != "telemetry-core" {
+		t.Fatalf("source = %q, want telemetry-core", got)
 	}
 }
 
-func TestEngineerService_LMU_FallsBackWhenNoLiveSource(t *testing.T) {
+func TestEngineerService_HarnessNilFrameFailsClosed(t *testing.T) {
 	emitter := &mockEmitter{}
 	svc := service.NewEngineerService(emitter)
-	// BufferProvider con buffer nil → adapter devuelve nil frames.
-	svc.SetBufferProvider(fakeBufferProvider{buf: nil}, false)
-	if err := svc.SetSource("lmu"); err != nil {
-		t.Fatalf("SetSource(lmu) error: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	svc.Start(ctx)
-	defer svc.Stop()
-
-	time.Sleep(300 * time.Millisecond)
-	st := svc.Status()
-	// No debe paniquear; el estado debe reflejar source lmu pero no conectado.
-	if st.Source != "lmu" {
-		t.Errorf("expected source 'lmu', got %q", st.Source)
+	svc.ProcessHarnessFrame(time.Now().UnixMilli(), nil)
+	if svc.Status().Connected {
+		t.Error("nil harness frame must not mark canonical input connected")
 	}
 }
 
@@ -342,6 +314,14 @@ type mapResolver struct{ m map[string]string }
 
 func (r mapResolver) Resolve(textKey string) string { return r.m[textKey] }
 
+func feedScenario(svc *service.EngineerService, scenario simulator.Scenario) {
+	base := time.Now().UnixMilli()
+	for index, frame := range simulator.Build(scenario) {
+		frame := frame
+		svc.ProcessHarnessFrame(base+int64(index*500), &frame)
+	}
+}
+
 // Encolar directamente un mensaje spotter en la cola y verificar que se invoca Player.Play.
 func TestEngineerService_QueueLoop_InvokesPlayerPlay(t *testing.T) {
 	emitter := &mockEmitter{}
@@ -355,6 +335,7 @@ func TestEngineerService_QueueLoop_InvokesPlayerPlay(t *testing.T) {
 	defer cancel()
 	svc.Start(ctx)
 	defer svc.Stop()
+	feedScenario(svc, simulator.ScenarioLeftBasic)
 
 	// Acceder a la cola via reflection no es ideal; en su lugar, ejercitar
 	// el runtime vía el simulador (ScenarioLeftBasic emite car_left en frame 1).
@@ -386,6 +367,7 @@ func TestEngineerService_QueueLoop_NoPlayer_NoCall(t *testing.T) {
 	defer cancel()
 	svc.Start(ctx)
 	defer svc.Stop()
+	feedScenario(svc, simulator.ScenarioLeftBasic)
 
 	time.Sleep(1200 * time.Millisecond)
 	// Sin player, el código de audio no se invoca. Verificar que no hay panic
@@ -406,6 +388,7 @@ func TestEngineerService_QueueLoop_NoopResolver_NoCall(t *testing.T) {
 	defer cancel()
 	svc.Start(ctx)
 	defer svc.Stop()
+	feedScenario(svc, simulator.ScenarioLeftBasic)
 
 	time.Sleep(1200 * time.Millisecond)
 	if c := len(player.Calls()); c != 0 {
@@ -425,6 +408,7 @@ func TestEngineerService_QueueLoop_Cooldown(t *testing.T) {
 	defer cancel()
 	svc.Start(ctx)
 	defer svc.Stop()
+	feedScenario(svc, simulator.ScenarioLeftBasic)
 
 	// Esperar 3s: con cooldown 2500ms, solo debería escucharse el primer spotter.
 	deadline := time.Now().Add(3 * time.Second)
@@ -496,10 +480,9 @@ func TestEngineerService_EndToEnd_MonitorEventViaSSE(t *testing.T) {
 	binary.LittleEndian.PutUint64(buf[off0+104:], math.Float64bits(5000))
 	binary.LittleEndian.PutUint64(buf[off0+264:], math.Float64bits(100))
 
-	svc.SetBufferProvider(fakeBufferProvider{buf: buf}, true)
-	if err := svc.SetSource("lmu"); err != nil {
-		t.Fatalf("SetSource(lmu) error: %v", err)
-	}
+	adapter := service.NewOverlaysLiveAdapter(fakeBufferProvider{buf: buf}, true)
+	frame := adapter.ReadFrame()
+	svc.ProcessHarnessFrame(time.Now().UnixMilli(), frame)
 
 	// Wait for the monitor event to arrive on the SSE channel.
 	deadline := time.Now().Add(3 * time.Second)

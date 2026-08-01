@@ -1,4 +1,7 @@
-package replay
+// Package projectioninput adapts the canonical Engineer projection to the
+// bounded legacy monitor inputs whose parity has been demonstrated. It owns no
+// telemetry source, goroutine or product lifecycle.
+package projectioninput
 
 import (
 	"errors"
@@ -187,9 +190,9 @@ func usable[T comparable](field engineer.Field[T]) (T, bool) {
 	return field.Value()
 }
 
-// Adapter is a replay-only compatibility bridge. Callers must request one
-// approved monitor family; there is deliberately no method that returns a
-// catch-all legacy frame for the production runtime.
+// Adapter is a bounded compatibility bridge. Callers must request one approved
+// monitor family; there is deliberately no method that returns a catch-all
+// legacy frame for the production runtime.
 type Adapter struct {
 	epoch uint64
 	next  int32

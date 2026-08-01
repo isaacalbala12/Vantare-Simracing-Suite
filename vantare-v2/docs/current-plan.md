@@ -10,6 +10,23 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-111 / TC-08D (2026-08-01):
+- `EngineerService` deja de poseer simulator, replay, parser LMU y
+  `telemetry/service`; arranca desconectado y solo acepta `telemetry-core`.
+- La entrada canónica procesa por separado únicamente Spotter, fuel,
+  penalties, laps, timings y pitstops, las seis familias aprobadas en ISA-110.
+  No existe un frame general capaz de reactivar monitores parciales.
+- Epoch/identidad y hechos ordenados resetean estado y cola; recovery no marca
+  conectado hasta observar un snapshot usable. Health deja de presentar una
+  configuración como conexión real.
+- Simulator/replay permanecen solo como inyección explícita de harness.
+  Audio/TTS, commands, store, SSE y Pit Manager se conservan.
+- Suite Engineer, Telemetry Core, servidor, build frontend y suite Go global
+  serial pasan. `-race` no es ejecutable con CGO desactivado.
+- Documento: `docs/telemetry-core/engineer-runtime-separation-isa-111.md`.
+- Siguiente corte: ISA-112 / TC-08E, wiring canónico y validación LMU real.
+  Sin merge ni promoción.
+
 Nota ISA-110 / TC-08C (2026-08-01):
 - Replay parity caracteriza Spotter + 20/20 monitores antes del cutover.
 - Se aprueban únicamente seis escenarios acotados: Spotter normal, fuel,

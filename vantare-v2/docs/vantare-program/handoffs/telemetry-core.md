@@ -16,6 +16,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
+- Follow-up Strategy live: ISA-160 / TC-10A audita las señales y ISA-161 /
+  TC-10B produce/cablea `StrategyLiveProjection v1`; ambas están bloqueadas
+  detrás de ISA-117 y no reabren la adquisición LMU.
 - Base final de ISA-105 / TC-07A:
   `3b44d36713213ab642f47174c1b5d8234362cac0`.
 - Rama:
@@ -299,13 +302,15 @@ es el gate manual de ISA-117. `go vet` conserva tres avisos heredados de
 | Cerrada técnicamente | ISA-116 / TC-09D, hardening y soak `APPROVE` |
 | Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
 | En revisión | ISA-117 / TC-09F, gate final completo; sin merge ni promoción |
+| Backlog follow-up | ISA-160 / TC-10A e ISA-161 / TC-10B, readiness live Strategy |
 
 ## Siguiente acción exacta
 
 Isaac debe ejecutar el checklist de
-`docs/telemetry-core/final-gate-isa-117.md`. Solo una aprobación explícita
-autoriza crear una issue separada de promoción de la cadena apilada a
-`nightly`. Antes de esa aprobación: sin merge ni promoción.
+`docs/telemetry-core/final-gate-isa-117.md`. Sin promoción, TC-10A puede empezar
+después de cerrar ISA-117 para auditar Fuel/VE/tyres/weather. TC-10B solo
+implementa señales demostradas y bloquea ISA-152 / STR-17. El contrato Strategy
+presente en ISA-117 sigue siendo compile-only para el producto live.
 
 ## Gate final
 

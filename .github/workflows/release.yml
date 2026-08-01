@@ -24,8 +24,42 @@ env:
   VANTARE_DIR: "vantare-v2"
 
 jobs:
+  source:
+    name: Validate release channel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify source ref
+        env:
+          CREATE_RELEASE: ${{ inputs.create_release }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$CREATE_RELEASE" != "true" ]; then
+            case "$GITHUB_REF" in
+              refs/heads/nightly|refs/heads/testers) ;;
+              *) echo "::error::Internal builds can only run from nightly or testers"; exit 1 ;;
+            esac
+            exit 0
+          fi
+
+          case "$GITHUB_REF" in
+            refs/tags/v*) ;;
+            *) echo "::error::Public releases require a v* tag"; exit 1 ;;
+          esac
+          git fetch origin master --no-tags
+          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          test -n "$tag_commit" || { echo "::error::Unable to resolve $GITHUB_REF_NAME"; exit 1; }
+          git merge-base --is-ancestor "$tag_commit" origin/master || {
+            echo "::error::$GITHUB_REF_NAME is not contained in origin/master"
+            exit 1
+          }
+
   build:
     name: Build Windows release artifacts
+    needs: source
     runs-on: windows-latest
     env:
       # Frontend (Vite consumes these at build time)
@@ -155,8 +189,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify release tag belongs to master
+        shell: bash
+        run: |
+          git fetch origin master --no-tags
+          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          test -n "$tag_commit" || { echo "::error::Unable to resolve $GITHUB_REF_NAME"; exit 1; }
+          git merge-base --is-ancestor "$tag_commit" origin/master || {
+            echo "::error::$GITHUB_REF_NAME is not contained in origin/master"
+            exit 1
+          }
 
       - name: Download release artifacts
         uses: actions/download-artifact@v4

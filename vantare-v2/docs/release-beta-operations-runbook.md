@@ -40,12 +40,13 @@ El etiquetado en Git es el desencadenante de la automatizacion de publicaciones 
 
 ### Flujo
 
-1. **Confirmar cambios de version**: el commit que actualiza `VERSION` y el changelog va a `master` con mensaje claro (`release: bump version to v0.1.0.0`).
-2. **Push a remoto**:
-   ```bash
-   git push origin master
-   ```
-3. **Crear etiqueta anotada** (prefijo `v` + 4 segmentos):
+1. **Confirmar cambios de versión**: el commit que actualiza `VERSION` y el
+   changelog se prepara en `testers` y se incluye en el PR final
+   `testers -> master`.
+2. **Validación final de Isaac**: solo después de su aprobación se integra ese
+   PR en `master`. No se permite push directo.
+3. **Crear etiqueta anotada desde el commit ya integrado en `master`**
+   (prefijo `v` + 4 segmentos):
    ```bash
    git tag -a v0.1.0.0 -m "Release v0.1.0.0"
    ```
@@ -56,7 +57,9 @@ El etiquetado en Git es el desencadenante de la automatizacion de publicaciones 
 
 ### Cuando NO crear un tag
 
-- **Cambios puramente documentales**: si solo actualizas guias, analisis o planes, no incrementes la version. Comitea con la categoria `docs:` directamente en `master`.
+- **Cambios puramente documentales**: si solo actualizas guías, análisis o
+  planes, no incrementes la versión, pero utiliza igualmente una rama de issue
+  y la ruta completa de promoción. Nunca comitees directamente en `master`.
 - **Fallo en tests o build**: si alguna verificacion automatizada falla, corrigelo antes de etiquetar.
 
 ### Politica de rebase de tags
@@ -73,7 +76,7 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 | Workflow | Trigger | Secreto | Canal Discord |
 |----------|---------|---------|---------------|
 | Release announcement | push tag `v*` o manual | `DISCORD_RELEASE_WEBHOOK_URL` | `#beta-announcements` |
-| Tester progress | fragmento `docs/changelog/fragments/*.json` que alcanza `develop` | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
+| Tester progress | fragmento `docs/changelog/fragments/*.json` que alcanza `testers` | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
 | Public beta changelog | manual (`workflow_dispatch`) | `DISCORD_BUILD_WEBHOOK_URL` | changelog |
 | Active development | diario o manual, desde proyectos Linear con opt-in | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
 
@@ -86,23 +89,23 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 gh workflow run "Discord release announcement" --ref master -f tag=v0.1.0.0
 
 # Publicar progreso
-gh workflow run "Discord tester progress" --ref develop -f base_revision=HEAD^
+gh workflow run "Discord tester progress" --ref testers -f base_revision=HEAD^
 
 # Anunciar build disponible (automatica desde release)
-gh workflow run "Discord public beta changelog" --ref master \
+gh workflow run "Discord public beta changelog" --ref testers \
   -f version=v0.1.0.0 \
   -f release_tag=v0.1.0.0 \
   -f notes="Notas opcionales para testers"
 
 # Anunciar build disponible (manual con URL externa)
-gh workflow run "Discord public beta changelog" --ref master \
+gh workflow run "Discord public beta changelog" --ref testers \
   -f version=v0.1.0.0 \
   -f download_url="https://github.com/usuario/repo/releases/download/v0.1.0.0/vantare-amd64-installer.exe" \
   -f sha256="HASH_SHA256_AQUI" \
   -f notes="Notas opcionales"
 
 # Publicar el digest aprobado de proyectos activos
-gh workflow run "Discord active development" --ref refactor
+gh workflow run "Discord active development" --ref master
 ```
 
 ### Re-run seguro
@@ -114,7 +117,14 @@ Todos los workflows de Discord detectan `github.run_attempt > 1` y se saltan el 
 
 ### Separacion de triggers
 
-`Discord tester progress` solo escucha fragmentos en `develop`; `Discord active development` solo se ejecuta por horario o dispatch; y el changelog beta solo por dispatch. Un tag no puede activar ninguna de esas tres vías.
+`Discord tester progress` solo escucha fragmentos en `testers`; una rama de issue
+o `nightly` no anuncia cambios al grupo amplio. `Discord active development`
+solo se ejecuta por horario o dispatch; y el changelog beta solo por dispatch.
+Un tag no puede activar ninguna de esas tres vías.
+
+La ruta de promoción es `rama de issue -> nightly -> testers -> master`.
+`develop` permanece congelada como referencia histórica. Consulta
+`docs/branch-channels.md` antes de crear una build o promover un conjunto.
 
 ---
 

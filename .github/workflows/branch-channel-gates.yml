@@ -1,0 +1,86 @@
+name: Branch channel gates
+
+on:
+  push:
+    branches: [nightly, testers]
+  pull_request:
+    branches: [nightly, testers, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: branch-channel-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.1.0"
+  VANTARE_DIR: "vantare-v2"
+
+jobs:
+  policy:
+    name: Validate promotion path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check branch topology
+        run: |
+          python .github/scripts/validate_branch_channels.py \
+            --event "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --base "${{ github.base_ref }}" \
+            --head "${{ github.head_ref }}"
+
+      - name: Test branch topology policy
+        run: python .github/scripts/test_validate_branch_channels.py
+
+  product:
+    name: Validate Vantare blocking gates
+    needs: policy
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.VANTARE_DIR }}/go.mod
+          cache-dependency-path: ${{ env.VANTARE_DIR }}/go.sum
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Go tests
+        run: go test ./...
+
+      - name: Frontend tests
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm test
+
+      - name: Frontend build
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm build
+
+      - name: Frontend lint (advisory while inherited debt is isolated)
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm lint

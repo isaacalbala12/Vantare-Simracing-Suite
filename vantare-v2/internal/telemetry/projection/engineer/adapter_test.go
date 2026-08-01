@@ -141,6 +141,103 @@ func TestAdaptProjectedV1TreatsUnknownSupportedUnsupportedAndDegradedSafely(t *t
 	}
 }
 
+func TestAdaptProjectedV1PreservesInvalidAndNonObservedProvenance(t *testing.T) {
+	t.Parallel()
+
+	projected, err := ProjectV1(engineerInput(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := mustManifest(t,
+		Capability{ID: CapabilitySession, State: CapabilitySupported},
+		Capability{ID: CapabilityStandings, State: CapabilitySupported},
+		Capability{ID: CapabilityControls, State: CapabilitySupported},
+	)
+	identity := identityFromHeader(engineerHeader())
+
+	tests := []struct {
+		name           string
+		field          projection.Field[float64]
+		wantState      ValueState
+		wantProvenance Provenance
+		wantValue      float64
+		wantUsable     bool
+	}{
+		{
+			name: "derived fresh value",
+			field: projection.Field[float64]{
+				Present:    true,
+				Value:      0.25,
+				Provenance: projection.ProvenanceDerived,
+				Freshness:  projection.FreshnessFresh,
+			},
+			wantState:      ValueFresh,
+			wantProvenance: ProvenanceDerived,
+			wantValue:      0.25,
+			wantUsable:     true,
+		},
+		{
+			name: "estimated fresh value",
+			field: projection.Field[float64]{
+				Present:    true,
+				Value:      0.5,
+				Provenance: projection.ProvenanceEstimated,
+				Freshness:  projection.FreshnessFresh,
+			},
+			wantState:      ValueFresh,
+			wantProvenance: ProvenanceEstimated,
+			wantValue:      0.5,
+			wantUsable:     true,
+		},
+		{
+			name: "invalid observed value remains diagnostic only",
+			field: projection.Field[float64]{
+				Present:    true,
+				Value:      0.75,
+				Provenance: projection.ProvenanceObserved,
+				Freshness:  projection.FreshnessInvalid,
+			},
+			wantState:      ValueInvalid,
+			wantProvenance: ProvenanceObserved,
+			wantValue:      0.75,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := adaptProjectedV1(
+				projected.Metadata,
+				identity,
+				withThrottle(projected.PayloadV1, tt.field),
+				manifest,
+			)
+			if err != nil {
+				t.Fatalf("adaptProjectedV1() error = %v", err)
+			}
+			value, present := got.Player.Throttle.Value()
+			if !present || value != tt.wantValue ||
+				got.Player.Throttle.State() != tt.wantState ||
+				got.Player.Throttle.Provenance() != tt.wantProvenance ||
+				got.Player.Throttle.Usable() != tt.wantUsable {
+				t.Fatalf(
+					"throttle = value:%v present:%t state:%v provenance:%v usable:%t, want value:%v present:true state:%v provenance:%v usable:%t",
+					value,
+					present,
+					got.Player.Throttle.State(),
+					got.Player.Throttle.Provenance(),
+					got.Player.Throttle.Usable(),
+					tt.wantValue,
+					tt.wantState,
+					tt.wantProvenance,
+					tt.wantUsable,
+				)
+			}
+		})
+	}
+}
+
 func TestAdaptProjectedV1FailsClosedOnContradictions(t *testing.T) {
 	t.Parallel()
 

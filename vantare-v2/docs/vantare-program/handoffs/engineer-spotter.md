@@ -25,13 +25,14 @@ ISA-123 completó la investigación primaria y una auditoría read-only del
 runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 `ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
 añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
-re-review independiente `ACCEPT` sin P0/P1/P2/P3. TC-05A conserva la autoridad transversal sobre envelope,
-versionado, ownership, fan-out y puertos. El código legacy contiene lógica y
-fixtures caracterizables. ISA-111 retiró su adquisición de telemetría e
-ISA-112 conectó la ruta productiva al único Telemetry Core. La preempción
-audible y Pit transaccional todavía no están demostrados, por lo que Engineer
-sigue sin ser confiable como beta completa. TC-08 migra la entrada; el
-producto vive aparte.
+re-review independiente `ACCEPT` sin P0/P1/P2/P3. ISA-133 / ENG-04 añade el
+runner y oráculo determinista test-only sobre la base final de Telemetry Core.
+TC-05A conserva la autoridad transversal sobre envelope, versionado,
+ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
+caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
+la ruta productiva al único Telemetry Core. La preempción audible y Pit
+transaccional todavía no están demostrados, por lo que Engineer sigue sin ser
+confiable como beta completa. TC-08 migra la entrada; el producto vive aparte.
 
 ISA-109 / TC-08B compone esos contratos aprobados sobre la base canónica más
 reciente y amplía la observación a sesión, parrilla, fuel, gaps y geometría.
@@ -42,9 +43,10 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a`.
-- Base: `efcc77c60f173a160e8c186f54ccfb43da5be692` (TC-05A).
-- Composición: merge local `b5d69e7` incorpora ENG-02 `df0c202`.
+  `vantareapp/isa-133-eng-04-runner-y-oraculo-determinista-de-replays`.
+- Base: `170eaebbaa6744019ead96a2c78201b4da2fb9bb` (ISA-117 / TC-09F).
+- Composición: ENG-03 ya está en la base; su única regresión test-only
+  posterior se reaplica sin importar documentación o producto ajenos.
 - Promoción: ninguna.
 - Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
   Go PASS, race x10, vet, frontend build para embed e inventario de 34
@@ -60,6 +62,17 @@ productivo sin crear un segundo reader.
   aislado x20 pasa y el driver no forma parte del cambio. El único P1 de
   review, capability standings ausente cuando solo `LapNumber` era usable,
   quedó corregido con una regresión de flujo completo. Re-review `ACCEPT`.
+- Evidencia ENG-04: reloj virtual, informe versionado, golden deliberado y
+  fixtures sintéticas; determinismo x50, cinco estados observables, matriz
+  21/21, boundaries de lifecycle y fail-closed por calidad/capability/versión.
+  El reloj hace suma checked con headroom de deadlines, `session.started`
+  cancela pendientes y el límite canónico de 104 vehículos se valida antes
+  del bridge.
+  Engineer, Telemetry, Go global serial, race focal x10, build de embed y
+  aislamiento productivo PASS. El vet focal pasa; el vet amplio conserva dos
+  avisos Win32 heredados fuera del diff. `docs/engineer/replay-oracle.md`
+  conserva el contrato, comandos y hallazgos. Re-review independiente final:
+  `ACCEPT`, P0/P1/P2/P3 = 0.
 
 ## Decisiones
 
@@ -117,6 +130,9 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 - **P0:** Pit Manager carece de transacción y readback demostrados.
 - **P1 reducido:** la proyección pura está cableada a seis familias aprobadas;
   las familias parciales siguen correctamente deshabilitadas.
+- **P1 visible para ENG-05:** el runtime legacy de pits genera decisiones no
+  caracterizadas y el contador genérico de sanciones se etiqueta como
+  drive-through. ENG-04 las marca `decision_not_approved`, no las legitima.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
 - **P2:** cobertura desigual en cuatro idiomas.
@@ -128,16 +144,24 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
+| Cerrada técnicamente | ISA-133 / ENG-04, runner/oráculo determinista; review `ACCEPT` |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Continuar desde ISA-115 después de entregar ISA-114. Engineer ya consume solo
-Telemetry Core en producto; el resto de TC-09 no debe reabrir su funcionalidad
-ni añadir una fuente alternativa. No hay promoción en esta cadena.
+Revisar ISA-133 y, cuando quede aceptada técnicamente, continuar con ENG-05.
+Engineer ya consume solo Telemetry Core en producto; los siguientes cortes no
+deben añadir una fuente alternativa. No hay promoción en esta cadena.
 
 ## Última actualización
+
+2026-08-01, ISA-133 / ENG-04 crea un runner test-only con reloj virtual,
+fixtures sanitizadas y un oráculo v1 de emitted/suppressed/expired/cancelled/
+unavailable. Recorre las seis familias aprobadas y bloquea toda familia o
+decisión sin evidencia. El golden deja visibles dos deudas para ENG-05: pits
+solo aprueba entry/exit y el contador de sanción no demuestra drive-through.
+No existe wiring productivo, fuente, audio, I/O o goroutine nueva.
 
 2026-08-01, ISA-114 retira el selector y adapters de fuente muertos, el parser
 LMU paralelo y los readers experimentales sin instancia productiva. Se

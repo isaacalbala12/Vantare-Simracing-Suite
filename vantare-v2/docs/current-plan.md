@@ -10,6 +10,33 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-133 / ENG-04 (2026-08-01):
+- Runner/oráculo determinista test-only creado sobre ISA-117 para escenarios
+  Engineer/Spotter. Consume exclusivamente `ObservationSnapshotV1` y
+  `FactEnvelopeV1`, usa reloj virtual y produce resultados versionados con
+  motivos explícitos.
+- La matriz 21/21 permanece fail-closed: seis familias acotadas y quince
+  parciales/deshabilitadas. Incluso dentro de una familia aprobada, una salida
+  legacy no demostrada se marca `decision_not_approved`.
+- Hallazgo para ENG-05: pits solo autoriza entry/exit; box-now, limitador,
+  ventana y tráfico no están demostrados. El contador genérico de sanción no
+  permite afirmar drive-through.
+- Golden v1, fixtures sintéticas, límites y regresiones de epoch, identidad,
+  freshness, capabilities, hechos y versiones quedan en
+  `internal/engineer/replayoracle/`. Contrato y rollback:
+  `docs/engineer/replay-oracle.md`.
+- La re-review endurece tres fronteras: suma checked y headroom para deadlines,
+  máximo canónico de 104 vehículos antes del adapter y `session.started` como
+  cancelación de lifecycle incluso sin snapshot posterior.
+- Evidencia fresca: oracle x50, regresión ENG-03 x20, Engineer, Telemetry, Go
+  global serial, race focal x10, build de embed y aislamiento de producto PASS.
+  El vet focal pasa; el amplio conserva dos warnings Win32 heredados fuera del
+  diff. La ejecución global paralela reprodujo la contención Settings conocida
+  y la repetición serial pasó.
+- Re-review independiente final: `ACCEPT`, P0/P1/P2/P3 = 0.
+- No hay wiring, audio, UI, fuente de telemetría, dependencia, merge o
+  promoción. Siguiente corte tras review: ENG-05 policy/scheduler.
+
 Nota ISA-117 / TC-09F (2026-08-01):
 - Telemetry Core queda técnicamente cerrado sobre ISA-87 `4233c9f`: una sola
   adquisición LMU, un runtime canónico y proyecciones separadas por producto.

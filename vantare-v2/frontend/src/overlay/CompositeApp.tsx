@@ -6,11 +6,7 @@ import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinato
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
-import { createWailsTelemetryAdapter } from "./transports/wails-telemetry-adapter";
-import {
-  createShadowedTelemetryAdapter,
-  createWailsProjectionShadowObserver,
-} from "./transports/projection-shadow-adapter";
+import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -32,10 +28,11 @@ export function CompositeApp() {
         const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
         return () => unsub?.();
       };
-      return createShadowedTelemetryAdapter(createWailsTelemetryAdapter({
+      return createWailsProjectionTelemetryAdapter({
         coordinator,
+        runtime: "desktop",
         subscribe,
-      }), createWailsProjectionShadowObserver({ runtime: "desktop", subscribe }));
+      });
     },
     [coordinator],
   );

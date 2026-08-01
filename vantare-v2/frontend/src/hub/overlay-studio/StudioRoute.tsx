@@ -2,11 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import { createTelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
-import { createWailsTelemetryAdapter, type TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
-import {
-  createShadowedTelemetryAdapter,
-  createWailsProjectionShadowObserver,
-} from "../../overlay/transports/projection-shadow-adapter";
+import type { TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
+import { createWailsProjectionTelemetryAdapter } from "../../overlay/transports/projection-telemetry-adapter";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
 import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
@@ -372,10 +369,11 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
       return () => unsub?.();
     };
-    return createShadowedTelemetryAdapter(createWailsTelemetryAdapter({
+    return createWailsProjectionTelemetryAdapter({
       coordinator,
+      runtime: "studio",
       subscribe,
-    }), createWailsProjectionShadowObserver({ runtime: "studio", subscribe }));
+    });
   }, [coordinator, telemetryAdapterProp]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);

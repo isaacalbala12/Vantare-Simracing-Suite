@@ -16,19 +16,17 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
 
-const telemetryCoreShadowStatusInterval = 100 * time.Millisecond
+const telemetryCoreStatusInterval = 100 * time.Millisecond
 
-// TelemetryCoreShadowConfig keeps the canonical runtime opt-in while the
-// legacy Overlay transport remains authoritative during TC-07B.
-type TelemetryCoreShadowConfig struct {
+// TelemetryCoreRuntimeConfig configures the canonical product runtime.
+type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
 	Emitter telemetrytransport.EventEmitter
 }
 
-// TelemetryCoreShadow owns the temporary canonical LMU shadow runtime. It
-// publishes only the versioned Overlay projection; it never mutates the
-// legacy service or any Overlay document.
-type TelemetryCoreShadow struct {
+// TelemetryCoreRuntime owns the canonical LMU pipeline and publishes only
+// versioned product projections.
+type TelemetryCoreRuntime struct {
 	mu sync.Mutex
 
 	enabled bool
@@ -49,9 +47,9 @@ type TelemetryCoreShadow struct {
 	runErr error
 }
 
-// NewTelemetryCoreShadow builds the isolated TC-07B runtime. Construction is
-// side-effect free; Start owns all goroutines and the LMU mapping lifecycle.
-func NewTelemetryCoreShadow(config TelemetryCoreShadowConfig) (*TelemetryCoreShadow, error) {
+// NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
+// the LMU mapping lifecycle.
+func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreRuntime, error) {
 	manager, err := telemetrycore.NewDriverManager(
 		[]telemetrycore.DriverCandidate[lmu.Observation]{
 			{
@@ -71,9 +69,9 @@ func NewTelemetryCoreShadow(config TelemetryCoreShadowConfig) (*TelemetryCoreSha
 		telemetrycore.ManagerConfig{Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000}},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("build telemetry core shadow manager: %w", err)
+		return nil, fmt.Errorf("build telemetry core manager: %w", err)
 	}
-	return &TelemetryCoreShadow{
+	return &TelemetryCoreRuntime{
 		enabled: config.Enabled,
 		emitter: config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
@@ -87,16 +85,16 @@ func NewTelemetryCoreShadow(config TelemetryCoreShadowConfig) (*TelemetryCoreSha
 	}, nil
 }
 
-func (runtime *TelemetryCoreShadow) Hub() *telemetrytransport.Hub {
+func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
 	if runtime == nil {
 		return nil
 	}
 	return runtime.hub
 }
 
-func (runtime *TelemetryCoreShadow) Start(parent context.Context) error {
+func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 	if runtime == nil || parent == nil {
-		return errors.New("telemetry core shadow requires a parent context")
+		return errors.New("telemetry core runtime requires a parent context")
 	}
 	runtime.mu.Lock()
 	if runtime.cancel != nil {
@@ -127,16 +125,16 @@ func (runtime *TelemetryCoreShadow) Start(parent context.Context) error {
 		return nil
 	}
 
-	if err := runtime.manager.Start(ctx, shadowObservationSink{runtime: runtime}); err != nil {
+	if err := runtime.manager.Start(ctx, runtimeObservationSink{runtime: runtime}); err != nil {
 		cancel()
-		return fmt.Errorf("start telemetry core shadow manager: %w", err)
+		return fmt.Errorf("start telemetry core manager: %w", err)
 	}
 	runtime.wg.Add(1)
 	go runtime.monitor(ctx)
 	return nil
 }
 
-func (runtime *TelemetryCoreShadow) Stop(ctx context.Context) error {
+func (runtime *TelemetryCoreRuntime) Stop(ctx context.Context) error {
 	if runtime == nil || ctx == nil {
 		return nil
 	}
@@ -163,7 +161,7 @@ func (runtime *TelemetryCoreShadow) Stop(ctx context.Context) error {
 	select {
 	case <-done:
 	case <-ctx.Done():
-		stopErr = errors.Join(stopErr, fmt.Errorf("stop telemetry core shadow: %w", ctx.Err()))
+		stopErr = errors.Join(stopErr, fmt.Errorf("stop telemetry core runtime: %w", ctx.Err()))
 	}
 	runtime.mu.Lock()
 	runErr := runtime.runErr
@@ -171,9 +169,9 @@ func (runtime *TelemetryCoreShadow) Stop(ctx context.Context) error {
 	return errors.Join(stopErr, runErr)
 }
 
-func (runtime *TelemetryCoreShadow) monitor(ctx context.Context) {
+func (runtime *TelemetryCoreRuntime) monitor(ctx context.Context) {
 	defer runtime.wg.Done()
-	ticker := time.NewTicker(telemetryCoreShadowStatusInterval)
+	ticker := time.NewTicker(telemetryCoreStatusInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -189,10 +187,10 @@ func (runtime *TelemetryCoreShadow) monitor(ctx context.Context) {
 	}
 }
 
-type shadowObservationSink struct{ runtime *TelemetryCoreShadow }
+type runtimeObservationSink struct{ runtime *TelemetryCoreRuntime }
 
-func (sink shadowObservationSink) WriteObservation(ctx context.Context, observation lmu.Observation) error {
-	err := sink.runtime.mapper.WriteObservation(ctx, observation, shadowBatchSink{runtime: sink.runtime})
+func (sink runtimeObservationSink) WriteObservation(ctx context.Context, observation lmu.Observation) error {
+	err := sink.runtime.mapper.WriteObservation(ctx, observation, runtimeBatchSink{runtime: sink.runtime})
 	if errors.Is(err, lmu.ErrInvalidSessionIdentity) {
 		// LMU menu has no session identity and therefore no product payload. It
 		// is a valid no-snapshot state, not a reason to terminate the driver.
@@ -201,9 +199,9 @@ func (sink shadowObservationSink) WriteObservation(ctx context.Context, observat
 	return err
 }
 
-type shadowBatchSink struct{ runtime *TelemetryCoreShadow }
+type runtimeBatchSink struct{ runtime *TelemetryCoreRuntime }
 
-func (sink shadowBatchSink) WriteBatch(ctx context.Context, batch telemetrycore.Batch) error {
+func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore.Batch) error {
 	observed, err := sink.runtime.reducer.Apply(batch)
 	if err != nil {
 		return err
@@ -229,7 +227,7 @@ func (discardTelemetryFacts) WriteFacts(context.Context, []envelope.Fact[telemet
 	return nil
 }
 
-func (runtime *TelemetryCoreShadow) publishProjection(
+func (runtime *TelemetryCoreRuntime) publishProjection(
 	projected overlayprojection.SnapshotV1,
 	state driver.State,
 	attempt int,
@@ -241,21 +239,21 @@ func (runtime *TelemetryCoreShadow) publishProjection(
 	}
 	frame, err := telemetrytransport.NewOverlayFull(projected.Metadata, runtime.statusRev, projected.PayloadV1)
 	if err != nil {
-		return fmt.Errorf("build telemetry core shadow projection: %w", err)
+		return fmt.Errorf("build telemetry core projection: %w", err)
 	}
 	if err := runtime.hub.PublishSnapshot(frame, nil); err != nil {
-		return fmt.Errorf("publish telemetry core shadow projection: %w", err)
+		return fmt.Errorf("publish telemetry core projection: %w", err)
 	}
 	return nil
 }
 
-func (runtime *TelemetryCoreShadow) setStatus(state driver.State, attempt int) error {
+func (runtime *TelemetryCoreRuntime) setStatus(state driver.State, attempt int) error {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 	return runtime.setStatusLocked(state, attempt)
 }
 
-func (runtime *TelemetryCoreShadow) setStatusLocked(state driver.State, attempt int) error {
+func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt int) error {
 	if !state.Known() || attempt < 0 {
 		return telemetrytransport.ErrInvalidEnvelope
 	}
@@ -270,17 +268,17 @@ func (runtime *TelemetryCoreShadow) setStatusLocked(state driver.State, attempt 
 		telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt},
 	)
 	if err != nil {
-		return fmt.Errorf("build telemetry core shadow status: %w", err)
+		return fmt.Errorf("build telemetry core status: %w", err)
 	}
 	if err := runtime.hub.PublishStatus(status); err != nil {
-		return fmt.Errorf("publish telemetry core shadow status: %w", err)
+		return fmt.Errorf("publish telemetry core status: %w", err)
 	}
 	runtime.statusState = state
 	runtime.statusAttempt = attempt
 	return nil
 }
 
-func (runtime *TelemetryCoreShadow) recordRunError(err error) {
+func (runtime *TelemetryCoreRuntime) recordRunError(err error) {
 	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, telemetrytransport.ErrClosed) {
 		return
 	}

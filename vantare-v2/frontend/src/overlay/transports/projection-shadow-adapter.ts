@@ -34,21 +34,31 @@ export type ProjectionShadowObserver = {
   getDiagnostics(): OverlayShadowDiagnostics;
 };
 
+export type OverlayProjectionObservation = Readonly<{
+  status?: StatusState;
+  epoch?: number;
+  sequence?: number;
+  adaptation?: OverlayProjectionAdaptation;
+}>;
+
 type ObserverOptions = Readonly<{
   runtime: OverlayShadowRuntime;
   source: TransportEventSource;
   onDiagnostics?: (diagnostics: OverlayShadowDiagnostics) => void;
+  onObservation?: (observation: OverlayProjectionObservation) => void;
 }>;
 
 export function createWailsProjectionShadowObserver(options: Readonly<{
   runtime: OverlayShadowRuntime;
   subscribe: TransportEventSource["subscribe"];
   onDiagnostics?: (diagnostics: OverlayShadowDiagnostics) => void;
+  onObservation?: (observation: OverlayProjectionObservation) => void;
 }>): ProjectionShadowObserver {
   return createProjectionShadowObserver({
     runtime: options.runtime,
     source: { subscribe: options.subscribe },
     onDiagnostics: options.onDiagnostics,
+    onObservation: options.onObservation,
   });
 }
 
@@ -73,6 +83,7 @@ export function createProjectionShadowObserver(
     const state = store.getSnapshot();
     const status = state.status?.payload.state;
     if (!state.snapshot || !status) {
+      options.onObservation?.({ status });
       publish({ runtime: options.runtime, status, result: "waiting" });
       return;
     }
@@ -80,6 +91,12 @@ export function createProjectionShadowObserver(
       const projection = decodeOverlayProjectionV1(state.snapshot);
       const result = adaptOverlayProjectionToSnapshot(projection, {
         transportState: status,
+      });
+      options.onObservation?.({
+        status,
+        epoch: state.snapshot.epoch,
+        sequence: state.snapshot.sequence,
+        adaptation: result,
       });
       publish(adaptationDiagnostics(
         options.runtime,
@@ -150,6 +167,7 @@ export function createSseProjectionShadowObserver(options: Readonly<{
   url?: string;
   createEventSource?: (url: string) => ProjectionEventSourceLike;
   onDiagnostics?: (diagnostics: OverlayShadowDiagnostics) => void;
+  onObservation?: (observation: OverlayProjectionObservation) => void;
 }>): ProjectionShadowObserver {
   const listeners = new Map<string, Set<(data: unknown) => void>>();
   const factory = options.createEventSource ?? ((url: string) => new EventSource(url));
@@ -169,6 +187,7 @@ export function createSseProjectionShadowObserver(options: Readonly<{
       runtime: options.runtime,
       source: transportSource,
       onDiagnostics: options.onDiagnostics,
+      onObservation: options.onObservation,
     });
   let observer = buildObserver();
   return {

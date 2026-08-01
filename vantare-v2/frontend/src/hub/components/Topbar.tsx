@@ -5,22 +5,16 @@ import vantareLite from '../../themes/vantare-lite.json';
 import { NAV_ITEMS, type Section } from '../navigation';
 import { useAccess } from '../../lib/access';
 import { canSeeSection, type SectionId } from '../../lib/access-policy';
+import type { TelemetrySourceStatus } from '../../telemetry-transport/source-status';
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
-
-type SourceStatus = {
-  kind: string;
-  name: string;
-  live: boolean;
-  available: boolean;
-};
 
 type TopbarProps = {
   activeSection: Section;
   onNavigate: (id: Section) => void;
   version?: string | null;
-  sourceStatus?: SourceStatus | null;
+  sourceStatus?: TelemetrySourceStatus | null;
 };
 
 const SECTION_TO_FEATURE: Record<string, SectionId> = {

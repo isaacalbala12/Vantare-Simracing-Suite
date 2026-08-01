@@ -15,7 +15,7 @@ import {
 const golden = readGoldenEnvelope();
 const preD7Golden = readGoldenEnvelope("overlay_v1_pre_d7.golden.json");
 
-describe("overlay projection v1 decoder", () => {
+describe("authoritative overlay projection v1 decoder", () => {
   it("decodes the Go overlay golden and preserves legitimate zero and false values", () => {
     const decoded = decodeOverlayProjectionV1(golden);
 

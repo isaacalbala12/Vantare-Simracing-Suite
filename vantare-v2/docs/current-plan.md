@@ -24,6 +24,18 @@ Nota ISA-114 / TC-09B (2026-08-01):
 - Siguiente corte: ISA-115 / TC-09C, retirada frontend/transporte legacy. Sin
   merge ni promoción.
 
+Nota ISA-115 / TC-09C (2026-08-01):
+- Studio, Desktop y OBS usan exclusivamente Overlay Projection v1 mediante un
+  lifecycle común y transports Wails/SSE equivalentes.
+- Se retiraron `telemetry:update`, `/telemetry/stream` frontend,
+  `normalizeLegacyTelemetry`, adapters antiguos, el selector fail-open y el
+  harness shadow runtime ya sustituido.
+- Decoder/mapper autoritativos viven en `overlay/projection`; el comparador
+  histórico shadow queda aislado hasta ISA-117.
+- El estado cerrado usa `telemetry-core:source-status` y un contrato frontend
+  único. Evidencia: `docs/telemetry-core/frontend-retirement-isa-115.md`.
+- Siguiente corte: ISA-116 / TC-09D. Sin merge ni promoción.
+
 Nota ISA-113 / TC-09A (2026-08-01):
 - Auditoría reproducible completada sin borrados ni cambios de comportamiento.
 - Hallazgo P0 de migración: `app.New(-live)` todavía abre el mapping y poller

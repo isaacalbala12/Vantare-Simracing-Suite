@@ -38,6 +38,11 @@ import (
 // version is the current application version.
 var version = "v0.1.0.5"
 
+const (
+	telemetrySourceStatusEvent        = "telemetry-core:source-status"
+	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
+)
+
 // supabaseURL and supabaseAnonKey are injected at build time via ldflags
 // (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
 // can validate OAuth tokens without requiring end users to set environment
@@ -1123,8 +1128,8 @@ func main() {
 		emitter.Emit("app:version", map[string]any{"version": version})
 	})
 
-	wailsApp.Event.On("telemetry:source-status:get", func(event *application.CustomEvent) {
-		emitter.Emit("telemetry:source-status", telemetrySourceStatus())
+	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {
+		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 	})
 
 	if updaterSvc != nil {
@@ -1366,7 +1371,7 @@ func main() {
 
 	wailsApp.Event.On("overlay:start", func(event *application.CustomEvent) {
 		target := readProfileTarget(event)
-		emitter.Emit("telemetry:source-status", telemetrySourceStatus())
+		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 
 		status, err := hubSvc.StartOverlay(target)
 		if err != nil {
@@ -1392,7 +1397,7 @@ func main() {
 	})
 
 	wailsApp.Event.On("overlay:start-active", func(event *application.CustomEvent) {
-		emitter.Emit("telemetry:source-status", telemetrySourceStatus())
+		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 
 		status, err := hubSvc.StartActiveOverlay()
 		if err != nil {

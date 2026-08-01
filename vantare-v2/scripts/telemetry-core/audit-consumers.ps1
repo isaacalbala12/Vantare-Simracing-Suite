@@ -51,7 +51,9 @@ $frontendCandidates = @(
     "/telemetry/stream",
     "normalizeLegacyTelemetry",
     "createWailsTelemetryAdapter",
-    "createSseTelemetryAdapter"
+    "createSseTelemetryAdapter",
+    "projection-shadow-adapter",
+    "telemetry-shadow-runtime-harness"
 )
 
 Write-Output "FRONTEND_AND_TRANSPORT_REFERENCES"

@@ -1,5 +1,7 @@
 import type { ProjectionEnvelope } from "../../telemetry-transport/contracts";
 
+// Authoritative Overlay Projection v1 decoder shared by every runtime.
+
 export const OVERLAY_PROJECTION_MAX_VEHICLES = 104;
 export const OVERLAY_PROJECTION_MAX_CONTROL_SAMPLES = 120;
 export const OVERLAY_PROJECTION_MAX_DELTA_SAMPLES = 120;

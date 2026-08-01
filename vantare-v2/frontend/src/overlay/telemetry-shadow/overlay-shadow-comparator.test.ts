@@ -6,7 +6,7 @@ import type {
   OverlayMappedField,
   OverlayProjectionAdaptation,
   OverlayProjectionMapping,
-} from "./overlay-projection-adapter";
+} from "../projection/overlay-projection-adapter";
 import {
   OVERLAY_SHADOW_POLICIES,
   compareOverlayShadow,

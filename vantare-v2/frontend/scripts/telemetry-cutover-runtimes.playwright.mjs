@@ -41,7 +41,6 @@ try {
       await page.goto(`${base}?runtime=${runtime}`);
       if ((await page.getByTestId("status").textContent()) !== "ready") throw new Error(`${runtime}: not ready`);
       if (Number(await page.getByTestId("writes").textContent()) < 1) throw new Error(`${runtime}: no canonical write`);
-      if ((await page.getByTestId("legacy").textContent()) !== "0") throw new Error(`${runtime}: legacy subscription`);
       if (errors.length) throw new Error(`${runtime}: ${errors.join("; ")}`);
       await page.close();
     }

@@ -1,5 +1,7 @@
 import type { StatusState } from "../../telemetry-transport/contracts";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
+
+// Maps the authoritative projection contract into renderer input only.
 import type {
   OverlayFreshness,
   OverlayProjectionField,

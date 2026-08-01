@@ -95,6 +95,8 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [Inspector, privacidad y export ISA-104](inspector-privacy-diagnostic-export-isa-104.md)
 - [Procedencia LMU/Overlay ISA-129](lmu-overlay-signal-provenance.md)
 - [Matriz Overlay y evidencia ISA-129](overlay-shadow-matrix.md)
+- [Retirada backend duplicado ISA-114](backend-retirement-isa-114.md)
+- [Retirada frontend y transportes ISA-115](frontend-retirement-isa-115.md)
 
 ## Evidencia real ISA-129
 

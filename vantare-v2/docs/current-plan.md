@@ -10,6 +10,23 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-116 / TC-09D (2026-08-01):
+- Las siete fronteras de entrada críticas pasan fuzzing: Shared Memory,
+  saneado, REST, fusión, recording payload/fact y transport envelope.
+- El soak lógico de dos horas combina 64 vehículos, seis consumidores,
+  Overlay Projection v1, Engineer y SQLite: 121/121 lotes committed, cola
+  vacía, cero rechazos/fallos y teardown completo de suscriptores.
+- Las métricas nuevas contienen solo contadores/límites y ninguna identidad o
+  payload. La validación JSON conserva claves prohibidas anidadas/escapadas.
+- El Hub de 64 vehículos baja de 258–303 µs y ~128,7 KiB históricos a
+  47,2–50,5 µs y 12.631 B por operación. La cadena combinada queda en
+  3,83–4,79 ms por lote de 64 vehículos.
+- Go global, frontend 2.016/2.016, build y Playwright cutover pasan. Race no es
+  ejecutable sin GCC; vet conserva tres avisos Win32 heredados.
+- Evidencia: `docs/telemetry-core/hardening-isa-116.md`.
+- Siguiente corte: ISA-87 / TC-09E, harness Wails/lifecycle/teardown. Sin merge
+  ni promoción.
+
 Nota ISA-114 / TC-09B (2026-08-01):
 - El backend duplicado de telemetría queda retirado después de migrar status,
   diagnostics y ops al `TelemetryCoreRuntime` canónico.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
@@ -35,6 +36,32 @@ type TelemetryCoreRuntimeConfig struct {
 	Engineer EngineerProjectionConsumer
 }
 
+// TelemetryCoreMetrics is a payload-free operational summary. It is safe to
+// expose through local diagnostics because it contains only counters and
+// bounded transport state.
+type TelemetryCoreMetrics struct {
+	ObservationsReceived      uint64
+	ObservationsRejected      uint64
+	BatchesApplied            uint64
+	ProjectionsPublished      uint64
+	EngineerStatusesDelivered uint64
+	EngineerObservations      uint64
+	EngineerFacts             uint64
+	EngineerDeliveryFailures  uint64
+	Transport                 telemetrytransport.HubMetrics
+}
+
+type telemetryCoreCounters struct {
+	observationsReceived      atomic.Uint64
+	observationsRejected      atomic.Uint64
+	batchesApplied            atomic.Uint64
+	projectionsPublished      atomic.Uint64
+	engineerStatusesDelivered atomic.Uint64
+	engineerObservations      atomic.Uint64
+	engineerFacts             atomic.Uint64
+	engineerFailures          atomic.Uint64
+}
+
 // TelemetryCoreRuntime owns the canonical LMU pipeline and publishes only
 // versioned product projections.
 type TelemetryCoreRuntime struct {
@@ -60,6 +87,7 @@ type TelemetryCoreRuntime struct {
 	runErr            error
 	engineerErr       error
 	engineerStatusErr error
+	counters          telemetryCoreCounters
 }
 
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
@@ -119,6 +147,23 @@ func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
 		return nil
 	}
 	return runtime.hub
+}
+
+func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
+	if runtime == nil {
+		return TelemetryCoreMetrics{}
+	}
+	return TelemetryCoreMetrics{
+		ObservationsReceived:      runtime.counters.observationsReceived.Load(),
+		ObservationsRejected:      runtime.counters.observationsRejected.Load(),
+		BatchesApplied:            runtime.counters.batchesApplied.Load(),
+		ProjectionsPublished:      runtime.counters.projectionsPublished.Load(),
+		EngineerStatusesDelivered: runtime.counters.engineerStatusesDelivered.Load(),
+		EngineerObservations:      runtime.counters.engineerObservations.Load(),
+		EngineerFacts:             runtime.counters.engineerFacts.Load(),
+		EngineerDeliveryFailures:  runtime.counters.engineerFailures.Load(),
+		Transport:                 runtime.hub.Metrics(),
+	}
 }
 
 // SourceStatus returns the canonical runtime's closed connection summary.
@@ -255,11 +300,15 @@ func (runtime *TelemetryCoreRuntime) monitor(ctx context.Context) {
 type runtimeObservationSink struct{ runtime *TelemetryCoreRuntime }
 
 func (sink runtimeObservationSink) WriteObservation(ctx context.Context, observation lmu.Observation) error {
+	sink.runtime.counters.observationsReceived.Add(1)
 	err := sink.runtime.mapper.WriteObservation(ctx, observation, runtimeBatchSink{runtime: sink.runtime})
 	if errors.Is(err, lmu.ErrInvalidSessionIdentity) {
 		// LMU menu has no session identity and therefore no product payload. It
 		// is a valid no-snapshot state, not a reason to terminate the driver.
 		return nil
+	}
+	if err != nil {
+		sink.runtime.counters.observationsRejected.Add(1)
 	}
 	return err
 }
@@ -271,6 +320,7 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	if err != nil {
 		return err
 	}
+	sink.runtime.counters.batchesApplied.Add(1)
 	facts := &collectTelemetryFacts{}
 	if err := sink.runtime.coord.Apply(ctx, observed, facts); err != nil {
 		return err
@@ -287,6 +337,7 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	if err := sink.runtime.publishProjection(projected, status.State, status.ReconnectAttempt); err != nil {
 		return err
 	}
+	sink.runtime.counters.projectionsPublished.Add(1)
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
 	sink.runtime.deliverEngineer(final, facts.values)
 	return nil
@@ -311,6 +362,9 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 	observation, err := engineerprojection.ProjectObservationV1(final, runtime.engineerManifest)
 	if err == nil {
 		err = runtime.engineer.ConsumeObservation(observation)
+		if err == nil {
+			runtime.counters.engineerObservations.Add(1)
+		}
 	}
 	for _, fact := range facts {
 		projected, projectErr := engineerprojection.ProjectFactV1(fact)
@@ -318,7 +372,14 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 			err = errors.Join(err, projectErr)
 			continue
 		}
-		err = errors.Join(err, runtime.engineer.ConsumeFact(projected))
+		consumeErr := runtime.engineer.ConsumeFact(projected)
+		if consumeErr == nil {
+			runtime.counters.engineerFacts.Add(1)
+		}
+		err = errors.Join(err, consumeErr)
+	}
+	if err != nil {
+		runtime.counters.engineerFailures.Add(1)
 	}
 	runtime.mu.Lock()
 	runtime.engineerErr = err
@@ -332,6 +393,12 @@ func (runtime *TelemetryCoreRuntime) deliverEngineerStatus(state driver.State, a
 	status, err := engineerprojection.NewSourceStatusV1(engineerSourceState(state), attempt)
 	if err == nil {
 		err = runtime.engineer.ConsumeSourceStatus(status)
+		if err == nil {
+			runtime.counters.engineerStatusesDelivered.Add(1)
+		}
+	}
+	if err != nil {
+		runtime.counters.engineerFailures.Add(1)
 	}
 	runtime.mu.Lock()
 	runtime.engineerStatusErr = err

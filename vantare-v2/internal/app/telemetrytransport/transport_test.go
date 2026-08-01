@@ -136,6 +136,28 @@ func TestInvalidOrOversizedPayloadAndUnequalDeltaAreRejectedAtomically(t *testin
 	assertSnapshot(t, mustNext(t, subscription), Full, 2)
 }
 
+func TestPayloadKeyScannerRejectsNestedCanonicalDataWithoutRejectingValues(t *testing.T) {
+	for _, payload := range []json.RawMessage{
+		json.RawMessage(`{"vehicles":[{"nested":{"source":"private"}}]}`),
+		json.RawMessage(`{"items":[[{"canonicalVersion":1}]]}`),
+		json.RawMessage(`{"derived":{"speed":1}}`),
+		json.RawMessage(`{"r\u0061w":{"speed":1}}`),
+	} {
+		if err := validatePayload(payload, MaxPayloadBytes); !errors.Is(err, ErrInvalidPayload) {
+			t.Fatalf("payload %s error = %v", payload, err)
+		}
+	}
+	for _, payload := range []json.RawMessage{
+		json.RawMessage(`{"label":"source","values":["raw","derived"]}`),
+		json.RawMessage(`{"vehicles":[{"driverName":"Private Driver"}]}`),
+		json.RawMessage(`{}`),
+	} {
+		if err := validatePayload(payload, MaxPayloadBytes); err != nil {
+			t.Fatalf("payload %s error = %v", payload, err)
+		}
+	}
+}
+
 func TestPublisherGapAcceptsFullAndDropsDelta(t *testing.T) {
 	hub := NewHub(HubConfig{Product: ProductOverlay})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
@@ -671,6 +693,67 @@ func TestSubscriberLimitLoopbackRoutesAndConcurrentClose(t *testing.T) {
 	if _, err := closeHub.Subscribe(context.Background()); !errors.Is(err, ErrClosed) {
 		t.Fatalf("subscribe after close error = %v", err)
 	}
+}
+
+func TestHubMetricsStayBoundedAndContainNoPayload(t *testing.T) {
+	hub := NewHub(HubConfig{Product: ProductOverlay, MaxSubscribers: 6, MaxPayloadBytes: 1024})
+	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
+		t.Fatal(err)
+	}
+	first := mustSnapshot(t, 1, 1, Full, 1, map[string]any{"driverName": "Private Driver"})
+	if err := hub.PublishSnapshot(first, nil); err != nil {
+		t.Fatal(err)
+	}
+	second := mustSnapshot(t, 1, 2, Full, 1, map[string]any{"driverName": "Private Driver"})
+	if err := hub.PublishSnapshot(second, json.RawMessage(`{"driverName":"Private Driver"}`)); err != nil {
+		t.Fatal(err)
+	}
+	subscription := mustSubscribe(t, hub)
+
+	metrics := hub.Metrics()
+	if metrics.CurrentSubscribers != 1 || metrics.MaxSubscribers != 6 ||
+		metrics.MaxPayloadBytes != 1024 || metrics.StatusPublications != 1 ||
+		metrics.SnapshotPublications != 2 || metrics.SnapshotReplacements != 1 ||
+		metrics.DeltasRetained != 1 {
+		t.Fatalf("metrics = %#v", metrics)
+	}
+	encoded, err := json.Marshal(metrics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(encoded, []byte("Private Driver")) || bytes.Contains(encoded, first.Payload) {
+		t.Fatalf("metrics leaked payload: %s", encoded)
+	}
+	if err := subscription.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if current := hub.Metrics().CurrentSubscribers; current != 0 {
+		t.Fatalf("subscribers after close = %d", current)
+	}
+}
+
+func FuzzTransportEnvelopeValidationNeverPanics(f *testing.F) {
+	f.Add([]byte(`{"speed":50,"vehicles":[]}`))
+	f.Add([]byte(`{"raw":{"driverName":"private"}}`))
+	f.Add([]byte(`{"nested":[[[[{"value":1}]]]]}`))
+	f.Fuzz(func(t *testing.T, payload []byte) {
+		frame := Envelope{
+			Product:           ProductOverlay,
+			ProjectionVersion: 1,
+			Epoch:             1,
+			Sequence:          1,
+			Kind:              Full,
+			CapturedAt:        "2026-08-01T12:00:00Z",
+			StatusRevision:    1,
+			Payload:           append(json.RawMessage(nil), payload...),
+		}
+		frame.seal = envelopeSeal(frame)
+		if err := validateEnvelope(frame, MaxPayloadBytes); err == nil {
+			if !json.Valid(payload) || len(payload) > MaxPayloadBytes {
+				t.Fatalf("accepted invalid payload of %d bytes", len(payload))
+			}
+		}
+	})
 }
 
 func BenchmarkHubPublishSnapshot(b *testing.B) {

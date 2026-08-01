@@ -6,6 +6,7 @@ Nota REL-00 / ISA-121 (2026-08-02):
 - Contrato operativo y rollback: `docs/branch-channels.md`. La autorización del actualizador por plan requiere ISA-169, ligada a Billing; una selección de UI no es una barrera de acceso.
 - Baseline local del corte: Go PASS, frontend 280/280 archivos y 1851/1851 tests PASS en la ejecución principal, build PASS; una revisión independiente reprodujo un fallo intermitente de `useCanvasInteraction`, y el lint global conserva 33 errores/2 warnings heredados. Ambos checks permanecen visibles como avisos hasta cerrar ISA-172 e ISA-170, sin ocultarlos ni rebajar reglas.
 - El primer run remoto confirmó que Go necesita el `frontend/dist` generado antes de compilar el embed. El gate construye frontend antes de `go test ./...`; la ausencia del artefacto ya no se presenta como fallo de código.
+- El segundo run remoto reprodujo la colisión Windows conocida de `TestConcurrentSavesDontCorruptFile` (`app-settings.json.tmp`, ISA-118). El gate mantiene bloqueantes todos los demás paquetes y todos los demás tests de `internal/app`; solo ese caso se ejecuta como aviso explícito hasta su corrección determinista.
 
 Nota INTEGRACION-ISA-93 (2026-07-19):
 - Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.

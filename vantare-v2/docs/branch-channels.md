@@ -32,11 +32,12 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.
-- Go y build frontend son bloqueantes. La suite frontend y el lint global se
-  informan sin ocultarlos pero permanecen temporalmente como avisos: la base
-  heredada contiene un test intermitente y 33 errores/2 warnings de lint ya
-  inventariados. ISA-172 y ISA-170 deben cerrarlos antes de convertir ambos en
-  gates obligatorios.
+- Go y build frontend son bloqueantes, salvo el único test Windows aislado en
+  ISA-118. Ese test, la suite frontend y el lint global se ejecutan y se
+  informan sin ocultarlos, pero permanecen temporalmente como avisos: la base
+  heredada contiene dos tests intermitentes y 33 errores/2 warnings de lint ya
+  inventariados. ISA-118, ISA-172 e ISA-170 deben cerrarlos antes de convertir
+  los tres en gates obligatorios.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
 - El workflow de Discord para testers solo publica fragmentos que alcanzan

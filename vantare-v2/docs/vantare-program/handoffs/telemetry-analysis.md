@@ -165,7 +165,7 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
 | Abierta / corregida parcialmente | TA-03 / ISA-126, modelo y capability endurecidos; falta adapter DuckDB productivo |
-| En review | TA-03B / ISA-135, decisión, ADR propuesta, packaging y spike DuckDB Windows |
+| Lista para review independiente | TA-03B / ISA-135, decisión, ADR propuesta, packaging y spike DuckDB Windows |
 | Lista tras aprobación | TA-03C, helper/adaptador aislado según microplan TDD |
 | Bloqueada por adapter | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |

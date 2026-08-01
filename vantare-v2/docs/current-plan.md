@@ -110,6 +110,34 @@ Nota ISA-126 / TA-03 (actualizada 2026-08-01):
   ello TA-03 permanece abierta en su PR draft/Linear actuales y TA-04 queda
   bloqueada. Sin promoción.
 
+Nota ISA-135 / TA-03B (2026-08-01):
+- Comparadas cinco rutas de integración DuckDB en Windows: driver oficial
+  estático/dinámico dentro de Wails, CLI gestionado y helper propio con enlace
+  estático/dinámico. La recomendación es un helper local de corta vida,
+  propiedad de Vantare, con `duckdb-go/v2` y `duckdb.dll` oficial fijados. La
+  app principal permanece en `CGO_ENABLED=0`; no se crea daemon ni SQL remoto.
+- Se descarta el CLI porque la guía oficial de DuckDB no lo recomienda para
+  embedding y expone capacidades innecesarias. Se descarta el enlace estático
+  actual porque el spike reprodujo una incompatibilidad entre los archivos
+  precompilados 1.5.5 y MSYS2 UCRT64 GCC 16 tras el cambio a TLS nativo.
+- Spike aislado, solo sintético y sin dependencias de producto: enlace dinámico
+  1.5.5 PASS, helper reproducible en dos rutas, 44.183.277 bytes totales,
+  read-only/NULL/cero/bool/identificadores/cancelación/hash estable PASS. En
+  720.000 filas, apertura 17–27 ms y páginas de 16.384 filas 20,72–23,84 ms de
+  media en la pasada de 50 páginas.
+- La arquitectura exige staging privado desde el handle autorizado TA-02,
+  revalidación antes/después, Job Object, límites de memoria/threads/tiempo,
+  extensiones/red desactivadas, protocolo tipado sin SQL, manifest/checksums,
+  notices MIT y rollback atómico de helper + DLL.
+- No se añadió DuckDB/CGO al `go.mod` principal, no se abrió LMU ni archivos
+  personales, no se tocó Telemetry Core, UI, packaging de release o producto.
+- Documentos: `duckdb-adapter-decision.md`, ADR 0005 propuesta,
+  `ta03c-duckdb-adapter-plan.md` y spike reproducible `spikes/ta03b/`.
+- Gate humano: antes de TA-03C, Isaac debe aprobar dependencia MIT fijada,
+  redistribución de la DLL, incremento aproximado de 44,18 MB, VC++ runtime y
+  packaging atómico. TA-04 continúa bloqueada hasta implementar TA-03C. Sin
+  promoción.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

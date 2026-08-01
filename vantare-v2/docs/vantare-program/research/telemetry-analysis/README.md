@@ -24,6 +24,8 @@ aceptado términos adicionales ni inspeccionado binarios de terceros.
 | [Contrato de producto](product-contract.md) | comportamiento observable del primer producto |
 | [Arquitectura](architecture.md) | importación, índice, normalización, comparación y recomendaciones |
 | [Caracterización LMU DuckDB](lmu-duckdb-characterization.md) | schema real sanitizado, tiempo, integridad y decisión de dependencia |
+| [Decisión del adapter DuckDB](duckdb-adapter-decision.md) | matriz de opciones, spike Windows, seguridad, packaging y recomendación TA-03B |
+| [Microplan TA-03C](ta03c-duckdb-adapter-plan.md) | ejecución TDD del helper aislado tras aprobar ADR 0005 |
 | [Modelo histórico v1](historical-model.md) | contratos compilables de sesión/canal/vuelta/calidad y parser paginado |
 | [UI/UX](ui-ux.md) | flujo, accesibilidad, estados y criterios visuales |
 | [Plan y microcortes](plan-microcuts.md) | backlog TDD ordenado, dependencias y gates |

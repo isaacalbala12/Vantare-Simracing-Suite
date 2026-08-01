@@ -30,6 +30,12 @@ reader al artefacto autorizado y que no existe aún el adapter DuckDB productivo
 ni su integración reproducible. El contrato ya corrige los P2/P3 y la frontera
 arquitectónica del P1 sin añadir dependencias; el P1 operativo solo se cierra
 con un corte explícito de decisión/adapter.
+TA-03B / ISA-135 completa ahora ese corte de decisión sin modificar producto:
+recomienda un helper local aislado con `duckdb-go/v2` y `duckdb.dll` dinámico,
+descarta el CLI y el CGO dentro de Wails, documenta seguridad/packaging/rollback
+y entrega un spike sintético reproducible. TA-03C está completamente
+microplaneada, pero requiere aprobación humana de la nueva dependencia y su
+distribución antes de escribir código de producto.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: ninguna.
@@ -69,6 +75,19 @@ con un corte explícito de decisión/adapter.
   PASS. Los checks frescos del endurecimiento se registrarán en el cierre del
   commit. La copia temporal read-only se eliminó al finalizar la
   caracterización; no se abrió de nuevo durante la corrección.
+- Rama TA-03B/base:
+  `vantareapp/isa-135-ta-03b-decision-y-packaging-del-adaptador-duckdb-en-windows`
+  sobre TA-03 `dc215665a0060147e1e8f36d23b128339beab241`.
+- Contratos TA-03B:
+  `research/telemetry-analysis/duckdb-adapter-decision.md`, ADR 0005 propuesta,
+  `research/telemetry-analysis/ta03c-duckdb-adapter-plan.md` y
+  `research/telemetry-analysis/spikes/ta03b/`.
+- Evidencia TA-03B: helper + DLL 44.183.277 bytes; build reproducible en dos
+  rutas; apertura read-only, rechazo de escrituras, hash estable, cancelación,
+  tipos/NULL/cero e identificador citado PASS sobre 720.000 filas sintéticas.
+  El enlace estático falló de forma reproducible con GCC 16 por símbolos
+  `emutls`; el dinámico oficial 1.5.5 funcionó. No se abrió LMU, base personal o
+  Telemetry Core y los módulos/dependencias de producto permanecen intactos.
 
 ## Experiencia cerrada
 
@@ -121,10 +140,18 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
   incluso si un reemplazo conserva tamaño/mtime. La caracterización usó una
   copia autorizada read-only y verificó hash/metadata original antes/después;
   el reader productivo y su empaquetado siguen pendientes.
-- **P2 dependencia, explicitado por TA-03:** el cliente Go oficial DuckDB es
-  MIT, pero introduce CGO/GCC, binarios y empaquetado Windows. TA-03 conserva
-  un puerto neutral y no añade la dependencia; un reader productivo necesita
-  decisión/corte propio.
+- **P2 dependencia, resuelto como decisión en TA-03B:** el cliente Go oficial
+  DuckDB es MIT. Se propone confinarlo a un helper dinámico separado; Wails y
+  el `go.mod` principal permanecen sin DuckDB/CGO. La implementación no puede
+  empezar sin aprobación humana de dependencia, DLL, ~44,18 MB, VC++ runtime y
+  packaging/notices/rollback.
+- **P1 toolchain, reducido por TA-03B:** el enlace estático oficial 1.5.5 falló
+  con MSYS2 GCC 16 por la transición de `emutls` a TLS nativo. El enlace
+  dinámico contra el paquete oficial con SHA publicado sí pasó y es la ruta
+  recomendada. CI debe fijar y repetir esa prueba.
+- **P1 aislamiento/TOCTOU, especificado por TA-03B:** el helper solo recibe una
+  copia privada producida desde el handle autorizado, nunca la ruta original;
+  Job Object, hashes, protocolo sin SQL y límites son gates de TA-03C.
 - **P1 temporal, explicitado por TA-03:** el catálogo continuo no declara el
   origen que lo alinea con `ts`. `Lap Dist`, `Total Dist` y GPS aparecen en el
   schema, pero TA-04 debe demostrar su comportamiento antes de mapa/delta.
@@ -137,30 +164,27 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 |---|---|
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
-| Abierta / corregida parcialmente | TA-03 / ISA-126, modelo y capability endurecidos; falta decisión/adapter DuckDB e integración reproducible |
+| Abierta / corregida parcialmente | TA-03 / ISA-126, modelo y capability endurecidos; falta adapter DuckDB productivo |
+| En review | TA-03B / ISA-135, decisión, ADR propuesta, packaging y spike DuckDB Windows |
+| Lista tras aprobación | TA-03C, helper/adaptador aislado según microplan TDD |
 | Bloqueada por adapter | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Cerrar el endurecimiento actual con commit/push en la PR draft existente, sin
-cambiar Linear. Después, el orquestador debe abrir y aprobar un corte pequeño
-para seleccionar/empaquetar el driver DuckDB e implementar un adapter read-only
-ligado a `AuthorizedHistoricalArtifact`, con DuckDB sintético real, mismatch y
-TOCTOU. Solo entonces TA-03 puede volver a review de cierre y desbloquear
-TA-04. No hay promoción a `nightly`.
+Isaac debe revisar y aceptar ADR 0005: dependencia
+`duckdb-go/v2@v2.10505.0` aislada, `duckdb.dll` 1.5.5, unos 44,18 MB,
+prerrequisito VC++ y packaging atómico. Tras esa aprobación, abrir TA-03C y
+ejecutar `ta03c-duckdb-adapter-plan.md` por microcortes TDD. Solo entonces
+TA-03 puede volver a review de cierre y desbloquear TA-04. No hay promoción a
+`nightly`.
 
 ## Última actualización
 
-2026-08-01, ISA-126 / TA-03 reabierta tras review adversarial `REQUEST
-CHANGES`. Corregidos sin dependencia nueva: capability TA-02 no intercambiable,
-revalidación antes/después, orden canónico, redacción de metadata, límite duro
-y retirada de límites de vuelta especulativos. Sigue pendiente el adapter
-DuckDB productivo y su integración reproducible; sin cambio de Linear,
-integración ni promoción.
-
-Evidencia fresca del endurecimiento: focal x20, vet, race x10 con GCC UCRT64,
-dos fuzz de 10 s, benchmark de dos horas a 100 Hz y suite Go global PASS. El
-benchmark quedó en 58,04–75,16 ms/op, 103.686.400–103.696.592 B/op acumulados
-y 355–368 allocs/op. No hay cambios frontend; sus checks no aplican a este
-delta.
+2026-08-01, ISA-135 / TA-03B investigada y demostrada mediante spike sintético.
+Recomendación inequívoca: helper local corto, `duckdb-go/v2` + DLL oficial
+dinámica, app principal sin CGO, staging desde capability TA-02, Job Object y
+protocolo sin SQL. El enlace estático falló con GCC 16; el dinámico pasó
+read-only, tipos/NULL, quoting, cancelación, integridad y reproducibilidad. Sin
+dependencias o código de producto, LMU, datos personales, integración ni
+promoción. Pendiente aprobación humana de ADR 0005 antes de TA-03C.

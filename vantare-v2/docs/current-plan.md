@@ -1,3 +1,21 @@
+Nota ISA-134 / STR-00 (2026-08-01):
+- Strategy Planner queda replanificado como un solo producto; Product A/B/C
+  pasan a ser fases históricas.
+- Product A exacto `b9f1937` fue auditado contra `ISA-117@170eaeb`: Go focal,
+  vet, 25 tests frontend y build pasan; el smoke Playwright histórico se queda
+  bloqueado y debe sustituirse en STR-07.
+- La simulación de merge produce 87 archivos y 7 conflictos. Queda prohibido
+  mezclar o cherry-pickear el branch completo; el rescate será selectivo.
+- ADR 0006 fija ownership: Analysis publica histórico, Core publica live,
+  Strategy posee planes/cálculo, Engineer envía comandos y Overlays solo leen.
+- Evidencia y ejecución: `docs/strategy-planner/str-00-audit.md`,
+  `rescue-matrix.md`, `pb-to-str-map.md` y
+  `docs/superpowers/plans/2026-08-01-strategy-planner-unified-master.md`.
+- Linear conserva ISA-42..67 como `Canceled`/superseded y crea
+  ISA-136..157 / STR-01..22 con milestones y dependencias nuevas.
+- Siguiente corte: ISA-136 / STR-01 sobre `ISA-117@170eaeb`. Sin merge ni
+  promoción.
+
 Nota VANTARE-PROGRAM (2026-07-27):
 - ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.
 - Lectura obligatoria: `docs/vantare-program/README.md` y el handoff vivo.

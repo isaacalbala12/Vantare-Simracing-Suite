@@ -16,16 +16,22 @@ son fases históricas.
 
 ## Estado
 
-El calculador manual está validado. Linear conserva proyectos B/C que deben
-unificarse sin perder documentos, issues ni historial. La UI canónica usa
-estrategias a la izquierda, stints al centro e inventario/entrada a la derecha.
+STR-00 ha terminado la auditoría técnica y la replanificación. El calculador
+manual de Product A sigue siendo evidencia útil, pero no se integrará como
+rama completa. La UI canónica usa estrategias a la izquierda, stints al centro
+e inventario/entrada a la derecha.
 
-Actualización ISA-120:
+Actualización ISA-134 / STR-00:
 
 - Proyecto activo: `Strategy Planner — Race Strategy Suite`.
-- Product C queda cancelado como contenedor histórico.
-- Rama histórica Product A: `codex/strategy-product-a`; su SHA se reaudita.
-- Base de nueva implementación: no fijada.
+- Product A/B/C quedan como fases históricas de un único producto.
+- Product A auditado: `codex/strategy-product-a@b9f1937`.
+- Base aprobada: `ISA-117@170eaeb`.
+- Divergencia: 371 commits de la base y 44 de Product A.
+- Simulación: 87 archivos, 6.751 inserciones, 5 eliminaciones y 7 conflictos.
+- Veredicto: rescate selectivo; prohibido merge/cherry-pick por rango.
+- Las 26 issues PB están `Canceled` como superseded, enlazadas al mapa y sin
+  borrar historia. El backlog canónico es ISA-136..ISA-157 / STR-01..STR-22.
 - Promoción: ninguna.
 
 ## Decisiones
@@ -54,17 +60,21 @@ Actualización ISA-120:
 
 ## Evidencia e issues
 
-- Product A declaró frontend, build, Playwright y Go focal en verde, pero debe
-  revalidarse desde la base integrada real.
-- Backlog ISA-42–67 conserva nomenclatura PB y debe reauditarse.
-- Issue activa: ninguna.
+- Auditoría: `docs/strategy-planner/str-00-audit.md`.
+- Matriz: `docs/strategy-planner/rescue-matrix.md`.
+- Mapa: `docs/strategy-planner/pb-to-str-map.md`.
+- ADR: `docs/adr/0006-strategy-planner-unified-domain-and-ownership.md`.
+- Plan: `docs/superpowers/plans/2026-08-01-strategy-planner-unified-master.md`.
+- Product A exacto: Go focal/vet, 25 tests frontend y build pasan; el smoke
+  Playwright histórico se bloquea y debe reemplazarse en STR-07.
+- Issue activa: ISA-134 / STR-00, en review documental.
 
 ## Siguiente acción exacta
 
-Unificar Linear, inventariar Product A/docs B/C, crear matriz de rescate y plan
-único por fases sobre TC-06. Primera issue: STR-00, auditoría y replanificación
-del backlog. Sin código hasta cerrar esa matriz.
+Ejecutar ISA-136 / STR-01 desde `ISA-117@170eaeb`: rescate selectivo y caracterización de
+Product A. No tocar HubApp, topbar, locales, CSS global, Calendar ni access
+policy. No integrar todavía código productivo fuera de la lista permitida.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-08-01, ISA-134 / STR-00, Codex.

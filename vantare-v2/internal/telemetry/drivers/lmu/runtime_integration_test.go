@@ -14,9 +14,11 @@ import (
 	"testing"
 	"time"
 
+	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	drivercontract "github.com/vantare/overlays/v2/internal/telemetry/driver"
+	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
@@ -28,6 +30,7 @@ import (
 
 type runtimeProjectionResult struct {
 	projection overlayprojection.SnapshotV1
+	final      envelope.Snapshot[derive.FinalState]
 	facts      []envelope.Fact[telemetrycore.SessionFact]
 	run        identity.RunIdentity
 }
@@ -179,6 +182,7 @@ func (sink *runtimeProjectionSink) WriteBatch(ctx context.Context, batch telemet
 	}
 	result := runtimeProjectionResult{
 		projection: projection,
+		final:      final,
 		facts:      append([]envelope.Fact[telemetrycore.SessionFact](nil), facts.values...),
 		run:        observed.Header().Identity,
 	}
@@ -187,6 +191,75 @@ func (sink *runtimeProjectionSink) WriteBatch(ctx context.Context, batch telemet
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+func TestSingleLMU14RuntimeFeedsEngineerAndKeepsDistantTrafficSilent(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..", "testdata")
+	frame, err := os.ReadFile(filepath.Join(root, "lmu-1.4-track-fixture.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	golden := readRuntimeIntegrationGolden(t)
+	assertSHA256Hex(t, frame, golden.TrackFixtureSHA256, "track fixture")
+
+	result, opens := runSingleLMU14Frame(t, frame)
+	if opens != 1 {
+		t.Fatalf("LMU_Data opens = %d, want exactly one", opens)
+	}
+	manifest, err := engineerprojection.NewManifest([]engineerprojection.Capability{
+		{ID: engineerprojection.CapabilitySession, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityStandings, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityControls, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityPit, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityFuel, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityGaps, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilitySpatial, State: engineerprojection.CapabilitySupported},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation, err := engineerprojection.ProjectObservationV1(result.final, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	service := engineerservice.NewEngineerService(nil)
+	service.Start(ctx)
+	defer service.Stop()
+	notifications, unsubscribe := service.Subscribe()
+	defer unsubscribe()
+	if err := service.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ConsumeObservation(observation); err != nil {
+		t.Fatal(err)
+	}
+	for _, fact := range result.facts {
+		projected, err := engineerprojection.ProjectFactV1(fact)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := service.ConsumeFact(projected); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if status := service.Status(); !status.Connected || status.Source != "telemetry-core" || status.LastError != "" {
+		t.Fatalf("Engineer status = %#v", status)
+	}
+	timer := time.NewTimer(250 * time.Millisecond)
+	defer timer.Stop()
+	for {
+		select {
+		case notification := <-notifications:
+			if notification.Category == "spotter" {
+				t.Fatalf("distant real LMU traffic produced false Spotter notification: %#v", notification)
+			}
+		case <-timer.C:
+			return
+		}
 	}
 }
 

@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -74,6 +75,53 @@ func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	}
 	if err := svc.ConsumeFact(fact); err == nil {
 		t.Fatal("duplicate fact cursor must fail closed")
+	}
+}
+
+func TestEngineerServiceSourceStatusDisconnectsAndRequiresFreshLiveObservation(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive}); err != nil {
+		t.Fatal(err)
+	}
+	eventsAfterFirstLive := len(emitter.Events())
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive, ReconnectAttempt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(emitter.Events()); got != eventsAfterFirstLive {
+		t.Fatalf("unchanged source state emitted duplicate status: got %d events, want %d", got, eventsAfterFirstLive)
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("fresh live observation did not connect Engineer")
+	}
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceStale, ReconnectAttempt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Status().Connected {
+		t.Fatal("stale canonical source left Engineer connected")
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, -2.8)); !errors.Is(err, service.ErrCanonicalSourceUnavailable) {
+		t.Fatalf("observation while stale error = %v", err)
+	}
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive, ReconnectAttempt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Status().Connected {
+		t.Fatal("live status alone must not reconnect Engineer")
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, -2.8)); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("fresh observation after recovery did not reconnect Engineer")
 	}
 }
 

@@ -20,6 +20,8 @@ type EventEmitter interface {
 	Emit(name string, data any)
 }
 
+var ErrCanonicalSourceUnavailable = errors.New("canonical Engineer source is unavailable")
+
 // EngineerService coordinates the telemetry input, runtime spotter engine, and notification store.
 type EngineerService struct {
 	mu             sync.Mutex
@@ -39,6 +41,7 @@ type EngineerService struct {
 	lastContext  engineerprojection.Context
 	factEpoch    uint64
 	factSequence uint64
+	sourceState  engineerprojection.SourceState
 
 	// Loop management
 	ctx      context.Context
@@ -337,6 +340,34 @@ var approvedProjectionFamilies = []projectioninput.MonitorFamily{
 	projectioninput.FamilyPitStops,
 }
 
+// ConsumeSourceStatus keeps source availability separate from telemetry
+// values. A live source is not enough to declare Engineer connected; only a
+// subsequent usable observation can do that.
+func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceStatusV1) error {
+	if !status.State.Known() || status.ReconnectAttempt < 0 {
+		return engineerprojection.ErrInvalidSourceStatus
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.running || !s.enabled {
+		return nil
+	}
+	if s.sourceState == status.State {
+		return nil
+	}
+	wasAvailable := s.sourceState.Available()
+	s.sourceState = status.State
+	if !status.State.Available() {
+		s.connected = false
+		if wasAvailable {
+			s.runtime.Reset()
+			s.queue.Clear()
+		}
+	}
+	s.emitStatusLocked()
+	return nil
+}
+
 // ConsumeObservation is the sole production telemetry entry for Engineer.
 // It accepts an already projected, owned snapshot and never opens a simulator,
 // file, mapping or network source.
@@ -346,6 +377,9 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 
 	if !s.running || !s.enabled {
 		return nil
+	}
+	if s.sourceState.Known() && !s.sourceState.Available() {
+		return ErrCanonicalSourceUnavailable
 	}
 	if s.lastContext.Epoch != 0 {
 		boundary, err := engineerprojection.ClassifyBoundary(s.lastContext, snapshot.Context)
@@ -361,6 +395,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 		}
 	}
 
+	processed := false
 	for _, family := range approvedProjectionFamilies {
 		if family == projectioninput.FamilySpotter && !s.spotterEnabled {
 			continue
@@ -377,6 +412,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 		}
 		if family == projectioninput.FamilySpotter {
 			s.runtime.ProcessSpotterFrame(frame.TimestampUnixMS, frame)
+			processed = true
 			continue
 		}
 		if !s.runtime.ProcessMonitorFrame(string(family), frame.TimestampUnixMS, frame) {
@@ -386,6 +422,13 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			s.emitStatusLocked()
 			return err
 		}
+		processed = true
+	}
+	if !processed {
+		s.connected = false
+		s.lastError = projectioninput.ErrObservationNotReady.Error()
+		s.emitStatusLocked()
+		return projectioninput.ErrObservationNotReady
 	}
 
 	s.lastContext = snapshot.Context

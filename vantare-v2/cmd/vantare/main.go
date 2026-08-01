@@ -890,7 +890,8 @@ func main() {
 		wailsApp.RegisterService(application.NewService(updaterSvc))
 	}
 
-	// Create and start EngineerService (core & simulator/replay)
+	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
+	// sole production telemetry source.
 	engSvc := engineerservice.NewEngineerService(emitter)
 	engSvc.Start(ctx)
 	defer engSvc.Stop()
@@ -900,8 +901,9 @@ func main() {
 	engBridge.Start()
 
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
-		Enabled: *live,
-		Emitter: emitter,
+		Enabled:  *live,
+		Emitter:  emitter,
+		Engineer: engSvc,
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)

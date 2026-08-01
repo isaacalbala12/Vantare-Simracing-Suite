@@ -27,17 +27,19 @@ runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
 re-review independiente `ACCEPT` sin P0/P1/P2/P3. TC-05A conserva la autoridad transversal sobre envelope,
 versionado, ownership, fan-out y puertos. El código legacy contiene lógica y
-fixtures caracterizables, pero la ruta de producto arranca conectada al
-simulador, no recibe aún la proyección de Telemetry Core y no garantiza
-preempción de Spotter ni Pit transaccional. Por ello sigue sin ser confiable
-como beta. TC-08 migra la entrada; el producto vive aparte.
+fixtures caracterizables. ISA-111 retiró su adquisición de telemetría e
+ISA-112 conectó la ruta productiva al único Telemetry Core. La preempción
+audible y Pit transaccional todavía no están demostrados, por lo que Engineer
+sigue sin ser confiable como beta completa. TC-08 migra la entrada; el
+producto vive aparte.
 
 ISA-109 / TC-08B compone esos contratos aprobados sobre la base canónica más
 reciente y amplía la observación a sesión, parrilla, fuel, gaps y geometría.
 No convierte a `telemetry.Frame`, porque perdería missing e identidades
 generacionales. ISA-110 ha añadido un bridge exclusivamente de replay y
 fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
-conversión general ni wiring productivo.
+conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
+productivo sin crear un segundo reader.
 
 - Rama activa:
   `vantareapp/isa-127-eng-03-adaptacion-del-payload-engineer-sobre-tc-05a`.
@@ -109,11 +111,12 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Riesgos
 
-- **P0 confirmado de honestidad:** servicio/UI arrancan conectados al simulador.
+- **Cerrado en ISA-111/112:** servicio/UI ya no arrancan conectados ni ofrecen
+  simulator/replay como fuente productiva.
 - **P0:** no existe garantía de preempción audible ni de mensajes no caducados.
 - **P0:** Pit Manager carece de transacción y readback demostrados.
-- **P1 reducido:** existe proyección pura, pero aún no está cableada ni ha
-  migrado monitores legacy.
+- **P1 reducido:** la proyección pura está cableada a seis familias aprobadas;
+  las familias parciales siguen correctamente deshabilitadas.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
 - **P2:** cobertura desigual en cuatro idiomas.
@@ -126,17 +129,22 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
-| Cerradas técnicamente | ISA-110 / TC-08C e ISA-111 / TC-08D |
-| Cutover | ISA-112, sin absorber el proyecto de producto |
+| Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Entregar ISA-111 con commit/push/PR draft y actualizar Linear. Después ISA-112
-debe conectar el único productor canónico a las seis familias aprobadas,
-validar LMU real y evitar un segundo reader; no crear señales ni borrar aún el
-frame legacy. No hay promoción en esta cadena.
+Entregar ISA-112 con commit/push/PR draft y actualizar Linear. Después ISA-113
+debe auditar consumidores alcanzables antes de que ISA-114/115 retiren el
+backend y transporte legacy. No hay promoción en esta cadena.
 
 ## Última actualización
+
+2026-08-01, ISA-112 / TC-08E conecta `EngineerService` al mismo lote canónico
+que alimenta Overlay. El estado de fuente no se confunde con datos; un snapshot
+usable completa la conexión y stale/error/stop resetean pendientes. La captura
+real LMU 1.4 de 38 coches atraviesa driver, reducer, proyección y servicio con
+una sola apertura y silencio Spotter ante tráfico lejano. El solape audible
+real se valida en el gate manual final.
 
 2026-08-01, ISA-111 / TC-08D elimina la adquisición propia de
 `EngineerService`. El servicio consume observaciones/hechos, falla cerrado por

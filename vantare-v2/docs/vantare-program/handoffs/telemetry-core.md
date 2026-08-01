@@ -27,7 +27,7 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-06A–D: cerrados técnicamente; ISA-104 está `In Review`.
 - TC-07A ISA-105: cerrado técnicamente en `c9acee2`; PR draft `#41`; Linear
   `In Review`; re-review D6 `ACCEPT`, P0/P1/P2/P3 = 0.
-- TC-07A.1 ISA-129: `In Progress`; D0 `6acb352`, D1 `470d6a6`, D2
+- TC-07A.1 ISA-129: `In Review`; D0 `6acb352`, D1 `470d6a6`, D2
   `e2c92fd`, D3 `462f0ee` y D4A `94c2994` aceptados (cierre documental
   `19252a0`), sin promoción. D4A publica grid real 44/44, sanitizer zero-rebuild
   y SHM-first; review final `ACCEPT`, P0/P1/P2/P3 = 0. D4B queda cerrado en
@@ -57,22 +57,23 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   trace real D6 demuestra Delta desde missing hasta fresh y cruza Go,
   transporte y adaptador TypeScript. Review independiente final `APPROVE`,
   P0/P1/P2/P3 = 0. Las vueltas válidas quedan conservadas y no deben repetirse.
-- D9 está en ejecución. La prueba live opt-in reconoce LMU `1.4.0.0`, práctica,
-  38 vehículos y jugador correlacionado. Se conservó fuera del repo un frame
-  real sanitizado de pit (`InPit=true`, SHA-256
-  `ba49316490704be63b100b509676e151aa23115c083255175d098dd5bbd07dc2`).
-  Los cuatro benchmarks, Telemetry Core completo, frontend completo, build,
-  lint focal y `diff --check` pasan. `-race` no está disponible con
-  `CGO_ENABLED=0`. Los fallos globales de app/lint/vet se reprodujeron en la
-  base exacta ISA-105 y son heredados; ISA-118 cubre la contención Windows.
+- D9 queda aceptado y publicado en `7f679e6`; PR draft `#42` contra la rama
+  exacta de ISA-105 y Linear `In Review`. Cuatro frames LMU 1.4 reales,
+  zero-rebuild y hash-pinned demuestran `InPit=false -> true -> false`,
+  disconnect fail-closed sin payload y reconnect con sesión nueva y exactamente
+  un epoch adicional. El decoder de evidencia rechaza campos desconocidos,
+  payloads y valores JSON extra. Review final `APPROVE`, P0/P1/P2/P3 abiertos
+  = 0. Telemetry Core, frontend 297/2.020, build, lint focal, replay x20,
+  benchmarks y diff-check pasan. La review reprodujo ISA-118 en Windows fuera
+  del diff; `-race` no está disponible con `CGO_ENABLED=0`. Sin merge,
+  promoción, wiring productivo ni cutover.
 - TC-07B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta ya
 tienen inputs, semántica y proyección demostrados; D8 prueba la cadena completa
-en un único harness. D9 no puede cerrar hasta observar y sanitizar la transición
-real de salida de boxes (`InPit=true -> false`) y un disconnect/reconnect real.
-La captura raw diagnóstica de ISA-104 permanece desactivada y sin wiring
-productivo.
+en un único harness y D9 cierra la evidencia real de pit/outlap y
+disconnect/reconnect. La captura raw diagnóstica de ISA-104 permanece
+desactivada y sin wiring productivo.
 
 ## Decisiones
 
@@ -124,18 +125,16 @@ productivo.
 | Cerradas técnicamente | ISA-38–41 e ISA-101–103 en la cadena apilada |
 | En revisión | ISA-104 / TC-06D, PR draft `#40` |
 | En revisión | ISA-105 / TC-07A, `c9acee2`, PR draft `#41` |
-| En progreso | ISA-129 / TC-07A.1 |
+| En revisión | ISA-129 / TC-07A.1, `7f679e6`, PR draft `#42` |
 | Pendientes | ISA-106–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Completar D9 de ISA-129 sobre `0d741e0` sin repetir las vueltas Delta. Capturar
-con el flujo sanitizado ya existente una muestra posterior de outlap/track con
-`InPit=false` después del pit real ya observado, y una secuencia real
-disconnect/reconnect. Después ejecutar documentación final, review independiente,
-commit D9, push, PR draft contra ISA-105 y mover ISA-129 a `In Review`. Hasta
-entonces ISA-129 permanece `In Progress` e ISA-106 bloqueada; no se permiten
-fixtures sintéticos, promoción ni cutover.
+Mantener ISA-129 y su PR draft `#42` sin merge ni promoción. ISA-106 permanece
+bloqueada por la dependencia formal y no debe iniciarse desde esta entrega. El
+siguiente corte solo puede comenzar mediante su propio preflight, rama y plan,
+con la evidencia ISA-129 como base; no se permiten fixtures sintéticos ni
+cutover implícito.
 
 Auditoría de fallback cerrada:
 

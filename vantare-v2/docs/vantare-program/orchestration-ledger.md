@@ -1358,3 +1358,37 @@ promoción. Linear queda pendiente de sincronización por ausencia del conector.
   merge, promoción, wiring productivo ni cutover.
 - Siguiente acción exacta: D7 contrato Overlay v1 aditivo y adaptador
   TypeScript, probando las cuatro celdas old/new sin debilitar validación.
+
+### 2026-08-01 — ISA-129 D7–D9 cerrados y entrega en revisión
+
+- Rama aislada:
+  `vantareapp/isa-129-tc-07a1-senales-canonicas-overlay-y-retirada-del-mock`;
+  base exacta ISA-105
+  `c9acee24cf4c4d80922b380b12f7367c2a60c937`.
+- D7 `79bdc98`: Overlay Projection v1 aditiva, contratos old/new en ambas
+  direcciones y matriz 18/18 en 2 exactos, 10 parciales, 5 no comparables y 1
+  externo. Review `APPROVE`, P0/P1/P2/P3 = 0.
+- D8 `0d741e0`: un único harness real recorre Driver/Fusion -> BatchMapper ->
+  Reducer -> SessionCoordinator -> Derive -> Overlay y TypeScript, 20 veces,
+  sin segunda apertura ni shortcut. Menú falla cerrado; el trace Delta real se
+  conserva sin repetir vueltas. Review `APPROVE`, P0/P1/P2/P3 = 0.
+- D9 `7f679e6160be95d8d7be2409f273f9f5f5e7dc7f`: cuatro frames LMU 1.4
+  zero-rebuild y hash-pinned prueban `InPit=false -> true -> false`, disconnect
+  sin payload y reconnect con nueva sesión y exactamente un epoch adicional.
+  Los sidecars/golden usan JSON estricto y rechazan unknown fields, payloads y
+  valores adicionales.
+- Evidencia SHA-256: pre-pit
+  `eb79ec2a7806e217d4ef16dd2a93f3795b98234adbcb0dddba984651a5fd6fcc`;
+  pit `262700e53e722b46e1b03940e13be83cf4aa73bf9f5ebdd8b9814b7161c9ede1`;
+  outlap `c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6`;
+  reconnect `a31a149597b14b291ffea4ef1a7e7e86e736e3ac553b53c90f1fcd7c9c1aa707`.
+- Gates: Telemetry Core PASS; ejecución Go global del autor PASS; frontend
+  297/2.020 PASS; build, lint focal, replay/evidencia estricta x20, benchmarks
+  y diff-check PASS. Review independiente final `APPROVE`, P0/P1/P2/P3
+  abiertos = 0.
+- Deuda ajena: la review reprodujo ISA-118 (`app-settings.json.tmp`) en
+  Windows global/serial/focal; está fuera del diff. `-race` no disponible con
+  `CGO_ENABLED=0`; lint global y seis avisos Win32 de vet heredados.
+- Entrega: push sincronizado 0/0; PR draft `#42` contra ISA-105; Linear ISA-129
+  en `In Review` con comentario completo. No hubo merge, promoción, wiring
+  productivo ni cutover. ISA-106 permanece bloqueada y no fue iniciada.

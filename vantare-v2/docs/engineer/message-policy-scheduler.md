@@ -80,6 +80,24 @@ deriva uno de cuatro estados finitos desde la evidencia (`all-clear`, `left`,
 | right | `clear_left` | `car_right` | `still_there` |
 | three-wide | `three_wide` | `car_left`, `car_right` | `still_there` |
 
+`clear_left` y `clear_right` son transiciones contextuales, no estados
+autosuficientes. Solo se entregan como tales cuando un antecedente compatible
+ya salió por `Next` en el mismo lifecycle y la transición de ocupación actual
+lo conserva. Haber estado pendiente no cuenta como comunicación. Tampoco
+cuentan `still_there` ni un aviso lateral parcial de `three-wide`. Si falta ese
+contexto, la policy sustituye el clear por el estado autosuficiente demostrado
+por la evidencia actual (`car_left`, `car_right`, `three_wide` o `all_clear`) y
+registra `suppressed / spotter_context_replaced`; no inventa un lateral. La
+misma comprobación se repite justo antes de `Next`: un clear que pierde su
+contexto mientras espera tampoco puede salir con una generación antigua.
+
+El permiso se liga a una generación de ocupación y se pierde al expirar el
+antecedente, cambiar otra vez el estado, cancelar o cruzar un boundary. Cada
+`Decision` Spotter devuelta por `Next` registra únicamente que el scheduler la
+despachó al siguiente transporte. No confirma que el audio se haya iniciado o
+escuchado; esa confirmación y la preempción audible pertenecen al siguiente
+corte. `all_clear` sigue siendo autosuficiente y no necesita historial.
+
 El aviso de mayor valor reemplaza pendientes Spotter menos informativos con
 `suppressed / spotter_state_superseded`, incluso si siguen siendo literalmente
 ciertos. Un aviso posterior de menor valor no puede reemplazar al más específico
@@ -188,6 +206,11 @@ Las regresiones cubren:
 - matriz exhaustiva de estados y mensajes Spotter de igual prioridad con colas
   de capacidad uno y mayor que uno, orden/diagnóstico deterministas, y
   coalescing neutral de sanciones 1 -> 2;
+- matriz delivery-aware Spotter con capacidades 1/4/64: antecedente pendiente
+  frente a despachado, `both -> left/right`, cambios laterales, expiración,
+  cancelación y ocupaciones intermedias no comunicadas; ningún clear contextual
+  omite el estado lateral vigente, incluso si la evidencia cambia mientras el
+  clear ya está pendiente;
 - límites de payload, dedup, cola, cooldown y diagnósticos;
 - copias de ownership;
 - cancelaciones de lifecycle;
@@ -206,6 +229,11 @@ no modifica Launcher ni `cmd/vantare`.
 `go vet` pasa en los paquetes focales. El vet global conserva tres avisos
 Win32 preexistentes por `unsafe.Pointer` en el reader/versionado LMU y en la
 extracción de iconos de Launcher; ninguno de esos archivos pertenece al diff.
+La corrección delivery-aware pasa el focal 50 veces, fuzz 10 s, ambos
+benchmarks cinco veces, Engineer, Telemetry Core y el gate Go global. El race
+no pudo repetirse después de esta corrección en el entorno actual: Go requiere
+CGO y no existe un toolchain C con headers Win32; no se añadió una dependencia
+para alterar ese entorno.
 
 ## Fuera de alcance y siguiente corte
 

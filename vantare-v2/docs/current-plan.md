@@ -29,6 +29,16 @@ Nota ISA-158 / ENG-05 (2026-08-01):
   Spotter hace supersession del aviso menos específico, impide el reemplazo
   inverso sin cambio de evidencia y cubre la matriz completa con capacidad uno
   y mayor que uno.
+- Una tercera re-review cerró el contexto delivery-aware de los clears
+  parciales. `clear_left/right` solo conserva su forma contextual si un
+  antecedente autosuficiente compatible ya fue devuelto por `Next` dentro de
+  la misma generación de ocupación. Un pendiente, `still_there` o un lateral
+  parcial de `three_wide` no cuentan. Sin contexto, el scheduler sustituye el
+  clear por el estado autosuficiente derivado de Evidence; expiración,
+  cancelación y otra transición eliminan el permiso. La condición se revalida
+  también inmediatamente antes de `Next`, por lo que un clear ya encolado no
+  puede cruzar una generación posterior. El registro significa `dispatched`
+  al transporte siguiente, todavía no confirmación audible.
 - ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
   únicamente entry/exit. El contador genérico de sanción se convierte a
   `penalties.count_increased` y nunca afirma drive-through.

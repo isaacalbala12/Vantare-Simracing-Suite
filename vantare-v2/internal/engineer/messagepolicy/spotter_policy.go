@@ -39,6 +39,22 @@ const (
 	spotterMessageCurrent
 )
 
+// spotterDeliveryState records only handoff through Next. Pending candidates
+// are not communication: a later contextual clear cannot rely on them.
+// generation changes with every proven occupancy transition and prevents an
+// older dispatched state from authorizing a clear after an unseen transition.
+type spotterDeliveryState struct {
+	observed             bool
+	situation            spotterSituation
+	generation           uint64
+	dispatchedSituation  spotterSituation
+	dispatchedGeneration uint64
+	clearLeftGeneration  uint64
+	clearRightGeneration uint64
+	clearLeftFrom        spotterSituation
+	clearRightFrom       spotterSituation
+}
+
 // spotterMessageValues is the auditable supersession contract. A larger value
 // carries more useful information for the proven current situation. Equal
 // values retain admission order; a later, less specific message never replaces
@@ -111,4 +127,121 @@ func currentSpotterMessageValue(intent string, evidence SemanticEvidence) spotte
 		return spotterMessageNotApplicable
 	}
 	return spotterMessageValues[situation][kind]
+}
+
+func (state *spotterDeliveryState) reset() {
+	*state = spotterDeliveryState{}
+}
+
+func (state *spotterDeliveryState) observe(situation spotterSituation) {
+	if situation == spotterSituationUnknown {
+		state.reset()
+		return
+	}
+	if !state.observed {
+		state.observed = true
+		state.situation = situation
+		state.generation = 1
+		return
+	}
+	if state.situation == situation {
+		return
+	}
+
+	previous := state.situation
+	previousGeneration := state.generation
+	state.generation++
+	state.situation = situation
+	state.clearLeftGeneration = 0
+	state.clearRightGeneration = 0
+	state.clearLeftFrom = spotterSituationUnknown
+	state.clearRightFrom = spotterSituationUnknown
+	if state.dispatchedGeneration != previousGeneration || state.dispatchedSituation != previous {
+		return
+	}
+	if spotterSituationHasLeft(previous) && !spotterSituationHasLeft(situation) {
+		state.clearLeftGeneration = state.generation
+		state.clearLeftFrom = previous
+	}
+	if spotterSituationHasRight(previous) && !spotterSituationHasRight(situation) {
+		state.clearRightGeneration = state.generation
+		state.clearRightFrom = previous
+	}
+}
+
+func (state *spotterDeliveryState) clearCanDeliver(intent string) bool {
+	if !state.observed {
+		return false
+	}
+	switch intent {
+	case IntentSpotterClearLeft:
+		if state.clearLeftGeneration != state.generation {
+			return false
+		}
+		return state.currentSituationDispatched() ||
+			(state.clearLeftFrom == spotterSituationLeft && state.situation == spotterSituationAllClear) ||
+			(state.clearLeftFrom == spotterSituationThreeWide && state.situation == spotterSituationRight)
+	case IntentSpotterClearRight:
+		if state.clearRightGeneration != state.generation {
+			return false
+		}
+		return state.currentSituationDispatched() ||
+			(state.clearRightFrom == spotterSituationRight && state.situation == spotterSituationAllClear) ||
+			(state.clearRightFrom == spotterSituationThreeWide && state.situation == spotterSituationLeft)
+	default:
+		return true
+	}
+}
+
+func (state *spotterDeliveryState) currentSituationDispatched() bool {
+	return state.observed && state.dispatchedGeneration == state.generation &&
+		state.dispatchedSituation == state.situation
+}
+
+func (state *spotterDeliveryState) recordDispatch(intent string) {
+	if !state.observed {
+		return
+	}
+	currentIntent, selfContained := selfContainedSpotterIntent(state.situation)
+	contextualClear := isContextualSpotterClear(intent) && state.clearCanDeliver(intent)
+	if !contextualClear && (!selfContained || intent != currentIntent) {
+		return
+	}
+	state.dispatchedSituation = state.situation
+	state.dispatchedGeneration = state.generation
+	switch intent {
+	case IntentSpotterClearLeft:
+		state.clearLeftGeneration = 0
+		state.clearLeftFrom = spotterSituationUnknown
+	case IntentSpotterClearRight:
+		state.clearRightGeneration = 0
+		state.clearRightFrom = spotterSituationUnknown
+	}
+}
+
+func spotterSituationHasLeft(situation spotterSituation) bool {
+	return situation == spotterSituationLeft || situation == spotterSituationThreeWide
+}
+
+func spotterSituationHasRight(situation spotterSituation) bool {
+	return situation == spotterSituationRight || situation == spotterSituationThreeWide
+}
+
+func selfContainedSpotterIntent(situation spotterSituation) (string, bool) {
+	switch situation {
+	case spotterSituationAllClear:
+		return IntentSpotterAllClear, true
+	case spotterSituationLeft:
+		return IntentSpotterCarLeft, true
+	case spotterSituationRight:
+		return IntentSpotterCarRight, true
+	case spotterSituationThreeWide:
+		return IntentSpotterThreeWide, true
+	default:
+		return "", false
+	}
+}
+
+func isContextualSpotterClear(intent string) bool {
+	return intent == IntentSpotterClearLeft || intent == IntentSpotterClearRight
 }

@@ -95,6 +95,20 @@ productivo sin crear un segundo reader.
   tipada de cuatro estados Spotter define supersession, conserva el mejor aviso
   vigente con capacidades uno y mayores y rechaza degradaciones posteriores sin
   cambio de evidencia. No afecta fairness ni otras familias.
+- Tercera corrección de re-review: los clears parciales son delivery-aware.
+  Solo pueden depender de un estado autosuficiente compatible que ya haya sido
+  devuelto por `Next` en la misma generación; un pendiente nunca cuenta como
+  comunicado. Sin contexto se sustituyen por `car_left`, `car_right`,
+  `three_wide` o `all_clear` según la Evidence actual. La matriz 1/4/64 cubre
+  `both -> left/right`, cambios laterales, antecedente pending/dispatched,
+  expiración, cancelación, transiciones intermedias y cambio de evidencia con
+  el clear ya pendiente. Admisión y `Next` revalidan el mismo permiso. El
+  estado registrado es `dispatched` al transporte, no confirmación de audio;
+  esa frontera sigue en el corte posterior. Focal x50, fuzz 10 s, benchmarks
+  x5, Engineer, Telemetry Core, Go global y vet focal pasan. El race no pudo
+  repetirse tras esta corrección porque el entorno no dispone de toolchain C
+  con headers Win32; el vet global conserva solo tres avisos heredados fuera
+  del diff.
 
 ## Decisiones
 

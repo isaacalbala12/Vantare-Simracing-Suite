@@ -73,12 +73,12 @@ func TestSpotterMessageValueContract(t *testing.T) {
 	}
 }
 
-func TestSpotterSupersessionExhaustiveForCurrentSituation(t *testing.T) {
+func TestSpotterSupersessionExhaustiveForSelfContainedSituation(t *testing.T) {
 	t.Parallel()
 
 	for _, capacity := range []int{1, 4} {
 		for _, situation := range spotterTestSituations() {
-			validIntents := validSpotterIntents(situation.evidence)
+			validIntents := validAutonomousSpotterIntents(situation.evidence)
 			for _, pendingIntent := range validIntents {
 				for _, candidateIntent := range validIntents {
 					name := fmt.Sprintf("capacity=%d/%s/%s->%s", capacity, situation.name, pendingIntent, candidateIntent)
@@ -167,6 +167,334 @@ func TestSpotterSituationTransitionMatrixPreservesCurrentMessage(t *testing.T) {
 	}
 }
 
+func TestSpotterClearRequiresDispatchedAntecedent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		before        SemanticEvidence
+		beforeIntent  string
+		after         SemanticEvidence
+		clearIntent   string
+		wantSelfState string
+	}{
+		{
+			name: "both to left", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true},
+			beforeIntent: IntentSpotterThreeWide, after: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+			clearIntent: IntentSpotterClearRight, wantSelfState: IntentSpotterCarLeft,
+		},
+		{
+			name: "both to right", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true},
+			beforeIntent: IntentSpotterThreeWide, after: SemanticEvidence{SpotterKnown: true, SpotterRight: true},
+			clearIntent: IntentSpotterClearLeft, wantSelfState: IntentSpotterCarRight,
+		},
+		{
+			name: "right to left", before: SemanticEvidence{SpotterKnown: true, SpotterRight: true},
+			beforeIntent: IntentSpotterCarRight, after: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+			clearIntent: IntentSpotterClearRight, wantSelfState: IntentSpotterCarLeft,
+		},
+		{
+			name: "left to right", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+			beforeIntent: IntentSpotterCarLeft, after: SemanticEvidence{SpotterKnown: true, SpotterRight: true},
+			clearIntent: IntentSpotterClearLeft, wantSelfState: IntentSpotterCarRight,
+		},
+	}
+	for _, capacity := range []int{1, 4, 64} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("capacity=%d/%s", capacity, tt.name), func(t *testing.T) {
+				t.Parallel()
+				clock := &testClock{now: 1_000}
+				scheduler := newTestScheduler(t, clock, capacity)
+				evidence := validEvidence(t, 5_000)
+				evidence.Semantic = tt.before
+				scheduler.Observe(evidence)
+				antecedent := candidateFor("antecedent", FamilySpotter, tt.beforeIntent, "player", PrioritySpotter, 1_000)
+				if accepted, _ := scheduler.Submit(antecedent); !accepted {
+					t.Fatal("antecedent was rejected")
+				}
+
+				evidence.Semantic = tt.after
+				scheduler.Observe(evidence)
+				clear := candidateFor("clear", FamilySpotter, tt.clearIntent, "player", PrioritySpotter, 1_000)
+				clear.Payload = map[string]string{"context": "clear-only"}
+				accepted, outcomes := scheduler.Submit(clear)
+				if !accepted {
+					t.Fatalf("clear replacement was rejected: %+v", outcomes)
+				}
+				if !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+					t.Fatalf("missing typed replacement outcome: %+v", outcomes)
+				}
+				decision, _, ok := scheduler.Next()
+				if !ok || decision.Intent != tt.wantSelfState {
+					t.Fatalf("decision = %+v, ok=%t, want self-contained %s", decision, ok, tt.wantSelfState)
+				}
+				wantRule, _ := semanticRuleForIntent(tt.wantSelfState)
+				if decision.Semantic.Rule != wantRule || len(decision.Payload) != 0 {
+					t.Fatalf("replacement retained contextual data: %+v", decision)
+				}
+			})
+		}
+	}
+}
+
+func TestSpotterClearUsesDispatchedAntecedent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		before           SemanticEvidence
+		antecedentIntent string
+		after            SemanticEvidence
+		clearIntent      string
+	}{
+		{
+			name: "both to left", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true},
+			antecedentIntent: IntentSpotterThreeWide, after: SemanticEvidence{SpotterKnown: true, SpotterLeft: true}, clearIntent: IntentSpotterClearRight,
+		},
+		{
+			name: "both to right", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true},
+			antecedentIntent: IntentSpotterThreeWide, after: SemanticEvidence{SpotterKnown: true, SpotterRight: true}, clearIntent: IntentSpotterClearLeft,
+		},
+		{
+			name: "left to all-clear", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+			antecedentIntent: IntentSpotterCarLeft, after: SemanticEvidence{SpotterKnown: true}, clearIntent: IntentSpotterClearLeft,
+		},
+		{
+			name: "right to all-clear", before: SemanticEvidence{SpotterKnown: true, SpotterRight: true},
+			antecedentIntent: IntentSpotterCarRight, after: SemanticEvidence{SpotterKnown: true}, clearIntent: IntentSpotterClearRight,
+		},
+	}
+	for _, capacity := range []int{1, 4, 64} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("capacity=%d/%s", capacity, tt.name), func(t *testing.T) {
+				t.Parallel()
+				clock := &testClock{now: 1_000}
+				scheduler := newTestScheduler(t, clock, capacity)
+				observeSpotterSituation(t, scheduler, tt.before)
+				submitAndDispatchSpotter(t, scheduler, tt.antecedentIntent, clock.now)
+				observeSpotterSituation(t, scheduler, tt.after)
+
+				clear := candidateFor("clear", FamilySpotter, tt.clearIntent, "player", PrioritySpotter, clock.now)
+				accepted, outcomes := scheduler.Submit(clear)
+				if !accepted || containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+					t.Fatalf("contextual clear submit = %t, %+v", accepted, outcomes)
+				}
+				decision, _, ok := scheduler.Next()
+				if !ok || decision.Intent != tt.clearIntent {
+					t.Fatalf("decision = %+v, ok=%t, want %s", decision, ok, tt.clearIntent)
+				}
+			})
+		}
+	}
+}
+
+func TestSpotterLateralClearNeverOmitsCurrentSide(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		before           SemanticEvidence
+		antecedentIntent string
+		after            SemanticEvidence
+		currentIntent    string
+		clearIntent      string
+	}{
+		{
+			name: "right to left", before: SemanticEvidence{SpotterKnown: true, SpotterRight: true}, antecedentIntent: IntentSpotterCarRight,
+			after: SemanticEvidence{SpotterKnown: true, SpotterLeft: true}, currentIntent: IntentSpotterCarLeft, clearIntent: IntentSpotterClearRight,
+		},
+		{
+			name: "left to right", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true}, antecedentIntent: IntentSpotterCarLeft,
+			after: SemanticEvidence{SpotterKnown: true, SpotterRight: true}, currentIntent: IntentSpotterCarRight, clearIntent: IntentSpotterClearLeft,
+		},
+	}
+	for _, capacity := range []int{1, 4, 64} {
+		for _, tt := range tests {
+			for _, currentMode := range []string{"absent", "pending", "dispatched"} {
+				t.Run(fmt.Sprintf("capacity=%d/%s/current=%s", capacity, tt.name, currentMode), func(t *testing.T) {
+					t.Parallel()
+					clock := &testClock{now: 1_000}
+					scheduler := newTestScheduler(t, clock, capacity)
+					observeSpotterSituation(t, scheduler, tt.before)
+					submitAndDispatchSpotter(t, scheduler, tt.antecedentIntent, clock.now)
+					observeSpotterSituation(t, scheduler, tt.after)
+
+					if currentMode != "absent" {
+						current := candidateFor("current-side", FamilySpotter, tt.currentIntent, "player", PrioritySpotter, clock.now)
+						if accepted, outcomes := scheduler.Submit(current); !accepted || len(outcomes) != 0 {
+							t.Fatalf("current side submit = %t, %+v", accepted, outcomes)
+						}
+						if currentMode == "dispatched" {
+							assertNextIntent(t, scheduler, tt.currentIntent)
+						}
+					}
+
+					clear := candidateFor("clear", FamilySpotter, tt.clearIntent, "player", PrioritySpotter, clock.now)
+					accepted, outcomes := scheduler.Submit(clear)
+					if !accepted {
+						t.Fatalf("clear submit = %t, %+v", accepted, outcomes)
+					}
+					if currentMode == "dispatched" {
+						if containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+							t.Fatalf("delivered current side did not unlock clear: %+v", outcomes)
+						}
+						assertNextIntent(t, scheduler, tt.clearIntent)
+						return
+					}
+					if !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+						t.Fatalf("unsafe clear was not replaced: %+v", outcomes)
+					}
+					assertNextIntent(t, scheduler, tt.currentIntent)
+				})
+			}
+		}
+	}
+}
+
+func TestSpotterClearContextResetsOnExpiryAndCancel(t *testing.T) {
+	t.Parallel()
+
+	for _, mode := range []string{"expired-pending", "cancelled-after-dispatch"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
+			clock := &testClock{now: 1_000}
+			scheduler := newTestScheduler(t, clock, 4)
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true})
+			antecedent := candidateFor("antecedent", FamilySpotter, IntentSpotterThreeWide, "player", PrioritySpotter, clock.now)
+			if accepted, _ := scheduler.Submit(antecedent); !accepted {
+				t.Fatal("antecedent was rejected")
+			}
+			if mode == "expired-pending" {
+				clock.now = antecedent.ExpiresAtMS
+			} else {
+				assertNextIntent(t, scheduler, IntentSpotterThreeWide)
+				scheduler.Cancel(ReasonLifecycleBoundary)
+			}
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true})
+			clear := candidateFor("clear", FamilySpotter, IntentSpotterClearRight, "player", PrioritySpotter, clock.now)
+			accepted, outcomes := scheduler.Submit(clear)
+			if !accepted || !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+				t.Fatalf("clear after %s = %t, %+v", mode, accepted, outcomes)
+			}
+			if mode == "expired-pending" && !containsOutcome(outcomes, OutcomeExpired, ReasonDeadlineElapsed) {
+				t.Fatalf("expired antecedent was not reported: %+v", outcomes)
+			}
+			assertNextIntent(t, scheduler, IntentSpotterCarLeft)
+		})
+	}
+}
+
+func TestSpotterContextRequiresSelfContainedDispatchedAntecedent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		before            SemanticEvidence
+		partialIntent     string
+		after             SemanticEvidence
+		clearIntent       string
+		wantSelfContained string
+	}{
+		{
+			name: "still-there does not communicate left", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+			partialIntent: IntentSpotterStillThere, after: SemanticEvidence{SpotterKnown: true},
+			clearIntent: IntentSpotterClearLeft, wantSelfContained: IntentSpotterAllClear,
+		},
+		{
+			name: "car-left does not communicate three-wide", before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true},
+			partialIntent: IntentSpotterCarLeft, after: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+			clearIntent: IntentSpotterClearRight, wantSelfContained: IntentSpotterCarLeft,
+		},
+	}
+	for _, capacity := range []int{1, 4, 64} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("capacity=%d/%s", capacity, tt.name), func(t *testing.T) {
+				t.Parallel()
+				clock := &testClock{now: 1_000}
+				scheduler := newTestScheduler(t, clock, capacity)
+				observeSpotterSituation(t, scheduler, tt.before)
+				submitAndDispatchSpotter(t, scheduler, tt.partialIntent, clock.now)
+				observeSpotterSituation(t, scheduler, tt.after)
+
+				clear := candidateFor("clear", FamilySpotter, tt.clearIntent, "player", PrioritySpotter, clock.now)
+				accepted, outcomes := scheduler.Submit(clear)
+				if !accepted || !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+					t.Fatalf("clear after partial antecedent = %t, %+v", accepted, outcomes)
+				}
+				assertNextIntent(t, scheduler, tt.wantSelfContained)
+			})
+		}
+	}
+}
+
+func TestSpotterContextDoesNotCrossUnannouncedOccupancy(t *testing.T) {
+	t.Parallel()
+
+	for _, capacity := range []int{1, 4, 64} {
+		t.Run(fmt.Sprintf("capacity=%d", capacity), func(t *testing.T) {
+			t.Parallel()
+			clock := &testClock{now: 1_000}
+			scheduler := newTestScheduler(t, clock, capacity)
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true})
+			submitAndDispatchSpotter(t, scheduler, IntentSpotterThreeWide, clock.now)
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true})
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterRight: true})
+
+			clear := candidateFor("clear", FamilySpotter, IntentSpotterClearLeft, "player", PrioritySpotter, clock.now)
+			accepted, outcomes := scheduler.Submit(clear)
+			if !accepted || !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+				t.Fatalf("clear across unseen occupancy = %t, %+v", accepted, outcomes)
+			}
+			assertNextIntent(t, scheduler, IntentSpotterCarRight)
+		})
+	}
+}
+
+func TestSpotterClearContextIsRevalidatedBeforeDispatch(t *testing.T) {
+	t.Parallel()
+
+	for _, capacity := range []int{1, 4, 64} {
+		t.Run(fmt.Sprintf("capacity=%d", capacity), func(t *testing.T) {
+			t.Parallel()
+			clock := &testClock{now: 1_000}
+			scheduler := newTestScheduler(t, clock, capacity)
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true})
+			submitAndDispatchSpotter(t, scheduler, IntentSpotterThreeWide, clock.now)
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true})
+
+			clear := candidateFor("clear", FamilySpotter, IntentSpotterClearRight, "player", PrioritySpotter, clock.now)
+			if accepted, outcomes := scheduler.Submit(clear); !accepted || len(outcomes) != 0 {
+				t.Fatalf("contextual clear submit = %t, %+v", accepted, outcomes)
+			}
+
+			// The clear remains literally true, but belongs to the previous
+			// occupancy generation and can no longer communicate all-clear.
+			observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true})
+			decision, outcomes, ok := scheduler.Next()
+			if !ok || decision.Intent != IntentSpotterAllClear {
+				t.Fatalf("decision = %+v, ok=%t, want all-clear", decision, ok)
+			}
+			if !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+				t.Fatalf("stale delivery context was not reported: %+v", outcomes)
+			}
+		})
+	}
+}
+
+func TestSpotterAllClearIsSelfContainedWithoutDeliveryHistory(t *testing.T) {
+	t.Parallel()
+
+	clock := &testClock{now: 1_000}
+	scheduler := newTestScheduler(t, clock, 1)
+	observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true})
+	allClear := candidateFor("all-clear", FamilySpotter, IntentSpotterAllClear, "player", PrioritySpotter, clock.now)
+	accepted, outcomes := scheduler.Submit(allClear)
+	if !accepted || containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+		t.Fatalf("all-clear submit = %t, %+v", accepted, outcomes)
+	}
+	assertNextIntent(t, scheduler, IntentSpotterAllClear)
+}
+
 func TestSpotterSupersessionDiagnosticsAndQueueRemainDeterministic(t *testing.T) {
 	t.Parallel()
 
@@ -234,11 +562,11 @@ func spotterTestSituations() []spotterSituationTestCase {
 	}
 }
 
-func validSpotterIntents(evidence SemanticEvidence) []string {
+func validAutonomousSpotterIntents(evidence SemanticEvidence) []string {
 	intents := allSpotterIntents()
 	valid := make([]string, 0, len(intents))
 	for _, intent := range intents {
-		if semanticClaimMatches(testSemanticClaim(intent), evidence) {
+		if !isContextualSpotterClear(intent) && semanticClaimMatches(testSemanticClaim(intent), evidence) {
 			valid = append(valid, intent)
 		}
 	}
@@ -305,4 +633,30 @@ func assertNextCandidate(t *testing.T, scheduler *Scheduler, want string) {
 	if !ok || decision.CandidateID != want {
 		t.Fatalf("decision = %+v, ok=%t, want=%s", decision, ok, want)
 	}
+}
+
+func assertNextIntent(t *testing.T, scheduler *Scheduler, want string) {
+	t.Helper()
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.Intent != want {
+		t.Fatalf("decision = %+v, ok=%t, want intent=%s", decision, ok, want)
+	}
+}
+
+func observeSpotterSituation(t *testing.T, scheduler *Scheduler, semantic SemanticEvidence) {
+	t.Helper()
+	evidence := validEvidence(t, 10_000)
+	evidence.Semantic = semantic
+	if outcomes := scheduler.Observe(evidence); len(outcomes) != 0 {
+		t.Fatalf("observe outcomes = %+v", outcomes)
+	}
+}
+
+func submitAndDispatchSpotter(t *testing.T, scheduler *Scheduler, intent string, now int64) {
+	t.Helper()
+	candidate := candidateFor("dispatched-"+intent, FamilySpotter, intent, "player", PrioritySpotter, now)
+	if accepted, outcomes := scheduler.Submit(candidate); !accepted || len(outcomes) != 0 {
+		t.Fatalf("dispatch submit = %t, %+v", accepted, outcomes)
+	}
+	assertNextIntent(t, scheduler, intent)
 }

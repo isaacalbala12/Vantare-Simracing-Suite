@@ -65,6 +65,7 @@ type Scheduler struct {
 	next        uint64
 	priorityRun int
 	state       SchedulerState
+	spotter     spotterDeliveryState
 }
 
 func NewScheduler(clock Clock, limits Limits) (*Scheduler, error) {
@@ -154,10 +155,12 @@ func (scheduler *Scheduler) Observe(evidence Evidence) []PolicyOutcome {
 	if reason == "" {
 		evidence.ReadyFamilies = append([]Family(nil), evidence.ReadyFamilies...)
 		scheduler.evidence = evidence
+		scheduler.spotter.observe(currentSpotterSituation(evidence.Semantic))
 	} else {
 		// Invalid evidence is untrusted and may contain arbitrarily large
 		// strings or slices. Retain only the bounded reason, never its envelope.
 		scheduler.evidence = Evidence{}
+		scheduler.spotter.reset()
 	}
 	scheduler.evidenceErr = reason
 	scheduler.hasEvidence = true
@@ -176,6 +179,7 @@ func (scheduler *Scheduler) Cancel(reason Reason) []PolicyOutcome {
 	scheduler.evidenceErr = ReasonSourceUnavailable
 	scheduler.hasEvidence = false
 	scheduler.priorityRun = 0
+	scheduler.spotter.reset()
 	return outcomes
 }
 
@@ -186,15 +190,18 @@ func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) 
 	if reason := scheduler.validateCandidate(candidate, now); reason != "" {
 		return false, []PolicyOutcome{scheduler.outcome(candidate, OutcomeUnavailable, reason, now)}
 	}
+	candidate, outcomes, accepted := scheduler.replaceContextlessSpotterClear(candidate, now)
+	if !accepted {
+		return false, outcomes
+	}
 	key := dedupKey(candidate)
 	if len(key) > scheduler.limits.MaxDedupKeyBytes {
-		return false, []PolicyOutcome{scheduler.outcome(candidate, OutcomeUnavailable, ReasonDedupKeyLimit, now)}
+		return false, append(outcomes, scheduler.outcome(candidate, OutcomeUnavailable, ReasonDedupKeyLimit, now))
 	}
 	if scheduler.cooldownActive(key, cooldownFor(candidate), now) {
-		return false, []PolicyOutcome{scheduler.outcome(candidate, OutcomeSuppressed, ReasonCooldownActive, now)}
+		return false, append(outcomes, scheduler.outcome(candidate, OutcomeSuppressed, ReasonCooldownActive, now))
 	}
 
-	var outcomes []PolicyOutcome
 	if candidate.Family == FamilySpotter {
 		accepted, spotterOutcomes := scheduler.applySpotterSupersession(candidate, now)
 		outcomes = append(outcomes, spotterOutcomes...)
@@ -270,6 +277,29 @@ func (scheduler *Scheduler) applySpotterSupersession(candidate Candidate, now in
 		outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeUnavailable, ReasonDecisionNotApproved, now))
 		return false, outcomes
 	}
+	currentIntent, hasCurrentIntent := selfContainedSpotterIntent(currentSpotterSituation(scheduler.evidence.Semantic))
+	if hasCurrentIntent && !scheduler.spotter.currentSituationDispatched() {
+		if isContextualSpotterClear(candidate.Intent) {
+			for _, queued := range scheduler.pending {
+				if queued.candidate.Family == FamilySpotter && queued.candidate.Intent == currentIntent {
+					outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeSuppressed, ReasonSpotterStateSuperseded, now))
+					return false, outcomes
+				}
+			}
+		}
+		if candidate.Intent == currentIntent {
+			for index := 0; index < len(scheduler.pending); {
+				queued := scheduler.pending[index].candidate
+				if queued.Family != FamilySpotter || !isContextualSpotterClear(queued.Intent) {
+					index++
+					continue
+				}
+				outcomes = append(outcomes, scheduler.outcome(queued, OutcomeSuppressed, ReasonSpotterStateSuperseded, now))
+				scheduler.removePending(index)
+			}
+			scheduler.state.Pending = len(scheduler.pending)
+		}
+	}
 	for _, queued := range scheduler.pending {
 		if queued.candidate.Family != FamilySpotter {
 			continue
@@ -339,13 +369,50 @@ func (scheduler *Scheduler) Next() (Decision, []PolicyOutcome, bool) {
 			outcomes = append(outcomes, scheduler.outcome(queued.candidate, state, reason, now))
 			continue
 		}
-		decision := decisionFrom(queued.candidate)
-		scheduler.recordPriorityChoice(index, queued.candidate.Priority)
-		scheduler.rememberCooldown(dedupKey(queued.candidate), cooldownFor(queued.candidate), now)
-		outcomes = append(outcomes, scheduler.outcome(queued.candidate, OutcomeEmitted, ReasonCandidateEmitted, now))
+		candidate, contextOutcomes, accepted := scheduler.replaceContextlessSpotterClear(queued.candidate, now)
+		outcomes = append(outcomes, contextOutcomes...)
+		if !accepted {
+			continue
+		}
+		key := dedupKey(candidate)
+		if len(key) > scheduler.limits.MaxDedupKeyBytes {
+			outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeUnavailable, ReasonDedupKeyLimit, now))
+			continue
+		}
+		if scheduler.cooldownActive(key, cooldownFor(candidate), now) {
+			outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeSuppressed, ReasonCooldownActive, now))
+			continue
+		}
+		decision := decisionFrom(candidate)
+		scheduler.recordPriorityChoice(index, candidate.Priority)
+		scheduler.rememberCooldown(key, cooldownFor(candidate), now)
+		if decision.Family == FamilySpotter {
+			scheduler.spotter.recordDispatch(decision.Intent)
+		}
+		outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeEmitted, ReasonCandidateEmitted, now))
 		return decision, outcomes, true
 	}
 	return Decision{}, outcomes, false
+}
+
+func (scheduler *Scheduler) replaceContextlessSpotterClear(candidate Candidate, now int64) (Candidate, []PolicyOutcome, bool) {
+	if candidate.Family != FamilySpotter || !isContextualSpotterClear(candidate.Intent) ||
+		scheduler.spotter.clearCanDeliver(candidate.Intent) {
+		return candidate, nil, true
+	}
+	original := candidate
+	intent, ok := selfContainedSpotterIntent(currentSpotterSituation(scheduler.evidence.Semantic))
+	if !ok {
+		return candidate, []PolicyOutcome{scheduler.outcome(candidate, OutcomeUnavailable, ReasonEvidenceNotReady, now)}, false
+	}
+	rule, ok := semanticRuleForIntent(intent)
+	if !ok {
+		return candidate, []PolicyOutcome{scheduler.outcome(candidate, OutcomeUnavailable, ReasonDecisionNotApproved, now)}, false
+	}
+	candidate.Intent = intent
+	candidate.Semantic = SemanticClaim{Rule: rule}
+	candidate.Payload = nil
+	return candidate, []PolicyOutcome{scheduler.outcome(original, OutcomeSuppressed, ReasonSpotterContextReplaced, now)}, true
 }
 
 func (scheduler *Scheduler) State() SchedulerState {
@@ -942,7 +1009,8 @@ func knownReason(reason Reason) bool {
 		ReasonDecisionNotApproved, ReasonPriorityMismatch,
 		ReasonInvalidCandidate, ReasonPayloadLimit, ReasonDedupKeyLimit,
 		ReasonCoalesced, ReasonCooldownActive, ReasonPreemptedBySpotter,
-		ReasonQueuePressure, ReasonSemanticInvalidated, ReasonSpotterStateSuperseded:
+		ReasonQueuePressure, ReasonSemanticInvalidated, ReasonSpotterStateSuperseded,
+		ReasonSpotterContextReplaced:
 		return true
 	default:
 		return false

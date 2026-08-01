@@ -99,6 +99,7 @@ const (
 	ReasonQueuePressure            Reason = "queue_pressure"
 	ReasonSemanticInvalidated      Reason = "semantic_invalidated"
 	ReasonSpotterStateSuperseded   Reason = "spotter_state_superseded"
+	ReasonSpotterContextReplaced   Reason = "spotter_context_replaced"
 )
 
 // SemanticRule identifies the observable claim that must still be true when a

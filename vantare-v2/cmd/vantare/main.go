@@ -644,6 +644,7 @@ func main() {
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
 	var cleanup sync.Once
+	var hotkeyMu sync.Mutex
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
@@ -652,42 +653,89 @@ func main() {
 	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
+	var engSvc *engineerservice.EngineerService
 	var launcherSvc *launcher.Service
+	var profileHkMgr *launcher.HotkeyManager
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
-			if overlayController != nil {
-				overlayController.Stop()
-			}
-			if httpSrv != nil {
-				if err := httpSrv.Stop(); err != nil {
-					log.Printf("HTTP server shutdown error: %v", err)
+			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
+			defer cancelShutdown()
+			results := runShutdown(shutdownCtx, []shutdownStep{
+				{name: "overlay", stop: func(context.Context) error {
+					if overlayController != nil {
+						overlayController.Stop()
+					}
+					return nil
+				}},
+				{name: "telemetry-core", stop: func(ctx context.Context) error {
+					if telemetryCoreRuntime == nil {
+						return nil
+					}
+					return telemetryCoreRuntime.Stop(ctx)
+				}},
+				{name: "http", stop: func(context.Context) error {
+					if httpSrv == nil {
+						return nil
+					}
+					return httpSrv.Stop()
+				}},
+				{name: "ops", stop: func(context.Context) error {
+					if opsBridge != nil {
+						opsBridge.Stop()
+					}
+					return nil
+				}},
+				{name: "global-hotkeys", stop: func(context.Context) error {
+					hotkeyMu.Lock()
+					manager := hkMgr
+					hkMgr = nil
+					hotkeyMu.Unlock()
+					if manager != nil {
+						manager.Stop()
+					}
+					return nil
+				}},
+				{name: "profile-hotkeys", stop: func(context.Context) error {
+					if profileHkMgr != nil {
+						profileHkMgr.Stop()
+					}
+					return nil
+				}},
+				{name: "engineer-bridge", stop: func(context.Context) error {
+					if engBridge != nil {
+						engBridge.Stop()
+					}
+					return nil
+				}},
+				{name: "launcher", stop: func(context.Context) error {
+					if launcherSvc != nil {
+						launcherSvc.CancelAll()
+					}
+					return nil
+				}},
+				{name: "diagnostics", stop: func(context.Context) error {
+					if diagnosticsBridge != nil {
+						diagnosticsBridge.Close()
+					}
+					return nil
+				}},
+				{name: "engineer", stop: func(context.Context) error {
+					if engSvc != nil {
+						engSvc.Stop()
+					}
+					return nil
+				}},
+				{name: "application-context", stop: func(context.Context) error {
+					stop()
+					return nil
+				}},
+			})
+			for _, result := range results {
+				if result.err != nil {
+					log.Printf("shutdown %s error after %s: %v", result.name, result.duration, result.err)
 				}
-			}
-			if telemetryCoreRuntime != nil {
-				stopCtx, cancelShadow := context.WithTimeout(context.Background(), 2*time.Second)
-				if err := telemetryCoreRuntime.Stop(stopCtx); err != nil {
-					log.Printf("telemetry core shutdown error: %v", err)
-				}
-				cancelShadow()
-			}
-			if opsBridge != nil {
-				opsBridge.Stop()
-			}
-			if hkMgr != nil {
-				hkMgr.Stop()
-			}
-			if engBridge != nil {
-				engBridge.Stop()
-			}
-			// Cancel any active launch chains (launcherSvc is nil during
-			// the defer path but valid in the Wails OnShutdown path).
-			if launcherSvc != nil {
-				launcherSvc.CancelAll()
-			}
-			if diagnosticsBridge != nil {
-				diagnosticsBridge.Close()
 			}
 		})
 	}
@@ -895,9 +943,8 @@ func main() {
 
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
-	engSvc := engineerservice.NewEngineerService(emitter)
+	engSvc = engineerservice.NewEngineerService(emitter)
 	engSvc.Start(ctx)
-	defer engSvc.Stop()
 
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
@@ -1025,74 +1072,13 @@ func main() {
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
 
-	// Hotkey manager
-	hkMgr = app.NewHotkeyManager()
-	profileHkMgr := launcher.NewHotkeyManager()
-
-	// Register default hotkey actions
-	hkMgr.Register("toggleOverlay", settingsSvc.Settings().Hotkeys["toggleOverlay"], func() {
-		if hubSvc == nil {
-			return
-		}
-		if overlayRunning.Load() {
-			hubSvc.StopOverlay()
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
-			overlayRunning.Store(false)
-			return
-		}
-		status, err := hubSvc.StartActiveOverlay()
-		if err != nil {
-			log.Printf("hotkey toggle overlay error: %v", err)
-			if !status.Running {
-				overlayRunning.Store(false)
-			}
-			return
-		}
-		overlayRunning.Store(status.Running)
-		resetOverlayDisplayMode(overlayController, studioProfileSvc)
-	})
-
-	hkMgr.Register("nextProfile", settingsSvc.Settings().Hotkeys["nextProfile"], func() {
-		if !overlayRunning.Load() || studioProfileSvc == nil {
-			return
-		}
-		if err := studioProfileSvc.NextProfile(); err != nil {
-			log.Printf("hotkey next profile error: %v", err)
-			return
-		}
-		if status, err := hubSvc.StartActiveOverlay(); err != nil {
-			log.Printf("hotkey next profile restart overlay error: %v", err)
-			if !status.Running {
-				overlayRunning.Store(false)
-			}
-		} else {
-			overlayRunning.Store(status.Running)
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
-		}
-	})
-
-	hkMgr.Register("prevProfile", settingsSvc.Settings().Hotkeys["prevProfile"], func() {
-		if !overlayRunning.Load() || studioProfileSvc == nil {
-			return
-		}
-		if err := studioProfileSvc.PreviousProfile(); err != nil {
-			log.Printf("hotkey prev profile error: %v", err)
-			return
-		}
-		if status, err := hubSvc.StartActiveOverlay(); err != nil {
-			log.Printf("hotkey prev profile restart overlay error: %v", err)
-			if !status.Running {
-				overlayRunning.Store(false)
-			}
-		} else {
-			overlayRunning.Store(status.Running)
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
-		}
-	})
-
-	hkMgr.Register("toggleEditMode", settingsSvc.Settings().Hotkeys["toggleEditMode"], func() {
-		handleOpenOverlayStudio(studioProfileSvc, emitter)
-	})
+	// Hotkey managers. Global registrations are always built before Start so
+	// RegisterHotKey and UnregisterHotKey run on the message-loop owner thread.
+	hkMgr = configuredHotkeyManager(
+		settingsSvc.Settings(),
+		buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter),
+	)
+	profileHkMgr = launcher.NewHotkeyManager()
 
 	// Silent update check on startup (after a short delay so the UI is ready).
 	if updaterSvc != nil {
@@ -1227,7 +1213,19 @@ func main() {
 
 	// Keep a helper to rebuild hotkey registrations when settings change.
 	rebuildHotkeys := func() {
-		hkMgr.UpdateFromSettings(settingsSvc.Settings(), buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter))
+		hotkeyMu.Lock()
+		defer hotkeyMu.Unlock()
+		if hkMgr != nil {
+			hkMgr.Stop()
+		}
+		replacement := configuredHotkeyManager(
+			settingsSvc.Settings(),
+			buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter),
+		)
+		if err := replacement.Start(); err != nil {
+			log.Printf("warning: hotkey manager rebuild error: %v", err)
+		}
+		hkMgr = replacement
 	}
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
@@ -2163,4 +2161,21 @@ func buildHotkeyActionMap(
 			handleOpenOverlayStudio(studioProfileSvc, emitter)
 		},
 	}
+}
+
+func configuredHotkeyManager(settings *app.AppSettings, actions map[string]func()) *app.HotkeyManager {
+	manager := app.NewHotkeyManager()
+	if settings == nil {
+		return manager
+	}
+	for name, action := range actions {
+		combo := settings.Hotkeys[name]
+		if combo == "" {
+			continue
+		}
+		if err := manager.Register(name, combo, action); err != nil {
+			log.Printf("hotkey: skip %q: %v", name, err)
+		}
+	}
+	return manager
 }

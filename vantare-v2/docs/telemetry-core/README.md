@@ -98,6 +98,7 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [Retirada backend duplicado ISA-114](backend-retirement-isa-114.md)
 - [Retirada frontend y transportes ISA-115](frontend-retirement-isa-115.md)
 - [Hardening, rendimiento y observabilidad ISA-116](hardening-isa-116.md)
+- [Wails, lifecycle y teardown ISA-87](wails-lifecycle-teardown-isa-87.md)
 
 ## Evidencia real ISA-129
 

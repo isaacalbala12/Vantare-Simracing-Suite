@@ -292,13 +292,14 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | En revisión | ISA-114 / TC-09B, backend duplicado retirado |
 | En revisión | ISA-115 / TC-09C, frontend/transporte legacy retirado |
 | Cerrada técnicamente | ISA-116 / TC-09D, hardening y soak `APPROVE` |
-| Pendientes | ISA-87 / TC-09E e ISA-117 / TC-09F |
+| Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
+| Pendiente | ISA-117 / TC-09F, gate final y handoff |
 
 ## Siguiente acción exacta
 
-Entregar ISA-116 y ejecutar ISA-87 / TC-09E sobre su commit. ISA-87 debe cerrar
-observabilidad Wails, lifecycle y teardown del proceso sin reabrir contratos ni
-añadir otro runtime. Sin merge ni promoción.
+Entregar ISA-87 y ejecutar ISA-117 / TC-09F sobre su commit. ISA-117 debe
+consolidar todos los gates, deuda residual y evidencia final para Isaac sin
+reabrir contratos ni añadir otro runtime. Sin merge ni promoción.
 
 ## Gate final
 
@@ -307,6 +308,13 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-87: status y Overlay Projection v1 coinciden byte a byte entre
+el transporte real de eventos Wails y SSE. El composition root posee un
+shutdown único y ordenado; Engineer forma parte de él y los hotkeys terminan
+su hilo Win32 mediante `PostThreadMessageW`. El harness integrado prueba
+SQLite, puerto, suscriptores, goroutines, bridges y owners de handles. Documento:
+`docs/telemetry-core/wails-lifecycle-teardown-isa-87.md`. Siguiente: ISA-117.
 
 2026-08-01, ISA-116: siete fronteras pasan fuzzing; métricas runtime/transporte
 sin payload; soak lógico exacto de dos horas con 64 vehículos, seis

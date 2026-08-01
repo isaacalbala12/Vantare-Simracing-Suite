@@ -148,3 +148,18 @@ func TestHotkeyManagerReRegisterAll(t *testing.T) {
 		t.Error("profile-2 should still be active")
 	}
 }
+
+func TestHotkeyManagerStopClearsAllRegistrations(t *testing.T) {
+	mgr := NewHotkeyManager()
+	mgr.active["one"] = 101
+	mgr.active["two"] = 102
+	mgr.combos[101] = "ctrl+1"
+	mgr.combos[102] = "ctrl+2"
+
+	mgr.Stop()
+	mgr.Stop()
+
+	if len(mgr.active) != 0 || len(mgr.combos) != 0 {
+		t.Fatalf("hotkeys retained after Stop: active=%v combos=%v", mgr.active, mgr.combos)
+	}
+}

@@ -16,6 +16,7 @@ import (
 
 // Windows constants for RegisterHotKey.
 const (
+	WM_QUIT   = 0x0012
 	WM_HOTKEY = 0x0312
 
 	MOD_ALT     = 0x0001
@@ -70,12 +71,13 @@ var (
 	user32   = syscall.NewLazyDLL("user32.dll")
 	kernel32 = syscall.NewLazyDLL("kernel32.dll")
 
-	procRegisterHotKey   = user32.NewProc("RegisterHotKey")
-	procUnregisterHotKey = user32.NewProc("UnregisterHotKey")
-	procGetMessageW      = user32.NewProc("GetMessageW")
-	procPeekMessageW     = user32.NewProc("PeekMessageW")
-	procDispatchMessageW = user32.NewProc("DispatchMessageW")
-	procPostQuitMessage  = user32.NewProc("PostQuitMessage")
+	procRegisterHotKey     = user32.NewProc("RegisterHotKey")
+	procUnregisterHotKey   = user32.NewProc("UnregisterHotKey")
+	procGetMessageW        = user32.NewProc("GetMessageW")
+	procPeekMessageW       = user32.NewProc("PeekMessageW")
+	procDispatchMessageW   = user32.NewProc("DispatchMessageW")
+	procPostThreadMessageW = user32.NewProc("PostThreadMessageW")
+	procGetCurrentThreadID = kernel32.NewProc("GetCurrentThreadId")
 )
 
 // ParseHotkeyCombo converts "ctrl+shift+v" into modifier flags and virtual key code.
@@ -118,13 +120,15 @@ type hotkeyEntry struct {
 
 // HotkeyManager manages global Windows hotkeys via RegisterHotKey/GetMessage.
 type HotkeyManager struct {
-	mu      sync.Mutex
-	entries []hotkeyEntry
-	actions map[int]func()
-	nextID  int
-	stop    atomic.Bool
-	done    chan struct{}
-	started bool
+	mu       sync.Mutex
+	entries  []hotkeyEntry
+	actions  map[int]func()
+	nextID   int
+	stop     atomic.Bool
+	threadID atomic.Uint32
+	ready    chan struct{}
+	done     chan struct{}
+	started  bool
 }
 
 // NewHotkeyManager creates a hotkey manager. Call Start() after all Register calls.
@@ -133,6 +137,7 @@ func NewHotkeyManager() *HotkeyManager {
 		actions: make(map[int]func()),
 		nextID:  1,
 		done:    make(chan struct{}),
+		ready:   make(chan struct{}),
 	}
 }
 
@@ -173,20 +178,29 @@ func (m *HotkeyManager) Start() error {
 		return nil
 	}
 	m.started = true
+	ready := m.ready
 	m.mu.Unlock()
 
 	go m.messageLoop()
+	<-ready
 	return nil
 }
 
 // Stop terminates the hotkey message loop and unregisters all hotkeys.
 func (m *HotkeyManager) Stop() {
-	if m.stop.Load() {
+	m.mu.Lock()
+	started := m.started
+	m.mu.Unlock()
+	if !started || !m.stop.CompareAndSwap(false, true) {
 		return
 	}
-	m.stop.Store(true)
-	m.UnregisterAll()
-	procPostQuitMessage.Call(0)
+	threadID := m.threadID.Load()
+	if threadID != 0 {
+		result, _, callErr := procPostThreadMessageW.Call(uintptr(threadID), WM_QUIT, 0, 0)
+		if result == 0 {
+			log.Printf("hotkey: PostThreadMessageW failed: %v", callErr)
+		}
+	}
 
 	// Wait for the message loop to finish, but never block shutdown.
 	select {
@@ -198,6 +212,8 @@ func (m *HotkeyManager) Stop() {
 
 func (m *HotkeyManager) messageLoop() {
 	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	defer m.threadID.Store(0)
 	defer close(m.done)
 
 	var msg struct {
@@ -210,7 +226,10 @@ func (m *HotkeyManager) messageLoop() {
 	}
 
 	// Ensure this thread has a message queue before registering.
+	threadID, _, _ := procGetCurrentThreadID.Call()
 	_, _, _ = procPeekMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0, 0)
+	m.threadID.Store(uint32(threadID))
+	close(m.ready)
 
 	// Register all queued entries on this same thread.
 	m.mu.Lock()
@@ -220,13 +239,18 @@ func (m *HotkeyManager) messageLoop() {
 	for _, e := range entries {
 		m.registerOne(e)
 	}
+	defer func() {
+		for _, entry := range entries {
+			_, _, _ = procUnregisterHotKey.Call(0, uintptr(entry.id))
+		}
+	}()
 
-	for !m.stop.Load() {
+	for {
 		ret, _, _ := procGetMessageW.Call(
 			uintptr(unsafe.Pointer(&msg)),
 			0, 0, 0,
 		)
-		if ret == 0 {
+		if int32(ret) <= 0 {
 			return // WM_QUIT
 		}
 

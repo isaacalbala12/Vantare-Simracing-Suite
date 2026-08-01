@@ -121,6 +121,26 @@ func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
 	return runtime.hub
 }
 
+// SourceStatus returns the canonical runtime's closed connection summary.
+// Live identifies a real simulator source; Available requires a usable live or
+// degraded driver state. No telemetry payload or internal error crosses this
+// boundary.
+func (runtime *TelemetryCoreRuntime) SourceStatus() driver.SourceStatus {
+	if runtime == nil || !runtime.enabled {
+		return driver.UnknownSourceStatus()
+	}
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	return driver.SourceStatus{
+		Kind:             "lmu",
+		Name:             "Le Mans Ultimate",
+		Live:             true,
+		Available:        runtime.statusState == driver.StateLive || runtime.statusState == driver.StateDegraded,
+		State:            runtime.statusState.String(),
+		ReconnectAttempt: runtime.statusAttempt,
+	}
+}
+
 // EngineerError reports only the current product-consumer failure. Engineer
 // delivery is isolated: a consumer failure never stops LMU or Overlay.
 func (runtime *TelemetryCoreRuntime) EngineerError() error {
@@ -207,6 +227,8 @@ func (runtime *TelemetryCoreRuntime) Stop(ctx context.Context) error {
 	}
 	runtime.mu.Lock()
 	runErr := runtime.runErr
+	runtime.statusState = driver.StateStopped
+	runtime.statusAttempt = 0
 	runtime.mu.Unlock()
 	return errors.Join(stopErr, runErr)
 }

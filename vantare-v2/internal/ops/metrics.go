@@ -3,7 +3,7 @@ package ops
 import (
 	"time"
 
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
 
 type ProcessMetrics struct {
@@ -13,7 +13,7 @@ type ProcessMetrics struct {
 }
 
 type MetricsSnapshot struct {
-	Timestamp time.Time          `json:"timestamp"`
-	App       ProcessMetrics     `json:"app"`
-	Source    service.SourceInfo `json:"source"`
+	Timestamp time.Time           `json:"timestamp"`
+	App       ProcessMetrics      `json:"app"`
+	Source    driver.SourceStatus `json:"source"`
 }

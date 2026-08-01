@@ -5,16 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
 
+func fixedSourceStatus(status driver.SourceStatus) func() driver.SourceStatus {
+	return func() driver.SourceStatus { return status }
+}
+
 func TestDefaultSamplerReturnsProcessMetrics(t *testing.T) {
-	sampler := NewRuntimeSampler(service.SourceInfo{
-		Kind:      service.SimulatorMock,
-		Name:      "Mock telemetry",
-		Live:      false,
-		Available: true,
-	})
+	sampler := NewRuntimeSampler(fixedSourceStatus(driver.SourceStatus{
+		Kind: "lmu", Name: "Le Mans Ultimate", Live: true, Available: true, State: "live",
+	}))
 
 	snapshot := sampler.Sample()
 
@@ -27,8 +28,8 @@ func TestDefaultSamplerReturnsProcessMetrics(t *testing.T) {
 	if snapshot.App.Goroutines <= 0 {
 		t.Fatalf("expected positive goroutine count, got %d", snapshot.App.Goroutines)
 	}
-	if snapshot.Source.Kind != service.SimulatorMock {
-		t.Fatalf("expected mock source, got %q", snapshot.Source.Kind)
+	if snapshot.Source.Kind != "lmu" {
+		t.Fatalf("expected LMU source, got %q", snapshot.Source.Kind)
 	}
 }
 
@@ -39,11 +40,9 @@ func TestDefaultIntervalIsOneSecond(t *testing.T) {
 }
 
 func TestMetricsSnapshotDoesNotExposeFakeSystemMetrics(t *testing.T) {
-	sampler := NewRuntimeSampler(service.SourceInfo{
-		Kind:      service.SimulatorMock,
-		Name:      "Mock telemetry",
-		Available: true,
-	})
+	sampler := NewRuntimeSampler(fixedSourceStatus(driver.SourceStatus{
+		Kind: "lmu", Name: "Le Mans Ultimate", Live: true, Available: true, State: "live",
+	}))
 
 	raw, err := json.Marshal(sampler.Sample())
 	if err != nil {
@@ -58,11 +57,7 @@ func TestMetricsSnapshotDoesNotExposeFakeSystemMetrics(t *testing.T) {
 	}
 }
 func TestSamplerCPUDisabledReturnsNil(t *testing.T) {
-	s := NewRuntimeSampler(service.SourceInfo{
-		Kind:      service.SimulatorMock,
-		Name:      "Mock telemetry",
-		Available: true,
-	})
+	s := NewRuntimeSampler(fixedSourceStatus(driver.SourceStatus{Kind: "lmu", Name: "Le Mans Ultimate"}))
 	snapshot := s.Sample()
 	if snapshot.App.CPUPercent != nil {
 		t.Fatal("expected nil CPUPercent when CPU sampling disabled")
@@ -70,11 +65,7 @@ func TestSamplerCPUDisabledReturnsNil(t *testing.T) {
 }
 
 func TestSamplerCPUEnabledDoesNotPanic(t *testing.T) {
-	s := NewRuntimeSampler(service.SourceInfo{
-		Kind:      service.SimulatorMock,
-		Name:      "Mock telemetry",
-		Available: true,
-	})
+	s := NewRuntimeSampler(fixedSourceStatus(driver.SourceStatus{Kind: "lmu", Name: "Le Mans Ultimate"}))
 	// Enable — starts a background goroutine with a 2s ticker.
 	// We can't guarantee the value in a short test, but we verify no panic
 	// and that the goroutine starts cleanly.

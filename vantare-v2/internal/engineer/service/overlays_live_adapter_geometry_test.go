@@ -1,8 +1,6 @@
 package service
 
 import (
-	"encoding/binary"
-	"math"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
@@ -118,28 +116,5 @@ func buildSpotterFrame(player *engineertelemetry.PlayerTelemetry, orient enginee
 		PlayerHasVehicle: true,
 		Player:           player,
 		Vehicles:         vehicles,
-	}
-}
-
-// Sanity check: el helper de buffer produce bytes escribibles del tamaño correcto.
-func TestBuildEngineerAdapterBuffer_SanitySize(t *testing.T) {
-	buf := buildSyntheticEngineerFrameBuffer()
-	if len(buf) != 324820 {
-		t.Errorf("buffer size = %d, want 324820", len(buf))
-	}
-	// Verificar que player idx está marcado.
-	if buf[128465] != 0 {
-		t.Errorf("player idx = %d, want 0", buf[128465])
-	}
-	if buf[128466] != 1 {
-		t.Errorf("player has vehicle = %d, want 1", buf[128466])
-	}
-	// NumVehicles = 2.
-	if n := binary.LittleEndian.Uint32(buf[1736:]); n != 2 {
-		t.Errorf("NumVehicles = %d, want 2", n)
-	}
-	// Player X = 100.
-	if x := math.Float64frombits(binary.LittleEndian.Uint64(buf[128468+160:])); x != 100 {
-		t.Errorf("player X = %v, want 100", x)
 	}
 }

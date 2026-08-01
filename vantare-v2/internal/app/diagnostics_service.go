@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
 
@@ -102,20 +102,26 @@ type DiagnosticsResponse struct {
 }
 
 type DiagnosticsService struct {
-	version     string
-	profileSvc  *ProfileService
-	settingsSvc *SettingsService
-	app         *App
-	now         func() time.Time
+	version      string
+	profileSvc   *ProfileService
+	settingsSvc  *SettingsService
+	sourceStatus func() driver.SourceStatus
+	now          func() time.Time
 }
 
-func NewDiagnosticsService(version string, _ string, pSvc *ProfileService, sSvc *SettingsService, app *App) *DiagnosticsService {
+func NewDiagnosticsService(
+	version string,
+	_ string,
+	pSvc *ProfileService,
+	sSvc *SettingsService,
+	sourceStatus func() driver.SourceStatus,
+) *DiagnosticsService {
 	return &DiagnosticsService{
-		version:     version,
-		profileSvc:  pSvc,
-		settingsSvc: sSvc,
-		app:         app,
-		now:         time.Now,
+		version:      version,
+		profileSvc:   pSvc,
+		settingsSvc:  sSvc,
+		sourceStatus: sourceStatus,
+		now:          time.Now,
 	}
 }
 
@@ -131,10 +137,10 @@ func (s *DiagnosticsService) GetDiagnostics() (*DiagnosticsReport, error) {
 			GoVersion: runtime.Version(),
 			NumCPU:    runtime.NumCPU(),
 		},
-		Telemetry: DiagnosticsTelemetry{Source: string(service.SimulatorUnknown)},
+		Telemetry: DiagnosticsTelemetry{Source: string(driver.UnknownSourceStatus().Kind)},
 	}
-	if s.app != nil {
-		info := s.app.SourceInfo()
+	if s.sourceStatus != nil {
+		info := s.sourceStatus()
 		report.Telemetry = DiagnosticsTelemetry{
 			Source:    closedTelemetrySource(info.Kind),
 			Live:      info.Live,
@@ -268,12 +274,12 @@ func sortedCounts(values map[string]int) []DiagnosticsCount {
 	return result
 }
 
-func closedTelemetrySource(kind service.SimulatorKind) string {
+func closedTelemetrySource(kind driver.ID) string {
 	switch kind {
-	case service.SimulatorLMU, service.SimulatorIRacing, service.SimulatorAC, service.SimulatorMock:
+	case "lmu", "iracing", "ac":
 		return string(kind)
 	default:
-		return string(service.SimulatorUnknown)
+		return string(driver.UnknownSourceStatus().Kind)
 	}
 }
 

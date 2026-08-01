@@ -147,7 +147,6 @@ func TestValidateImport(t *testing.T) {
 		{name: "replay may use its own tree", edge: importEdge{Package: "internal/telemetry/recording/replay", Import: modulePath + "/internal/telemetry/recording"}},
 		{name: "driver rejects productive replay import", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/recording/replay"}, wantErr: true},
 		{name: "core rejects productive replay import", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/recording/replay"}, wantErr: true},
-		{name: "legacy telemetry package may use internal core thresholds", edge: importEdge{Package: "internal/telemetry/diff", Import: modulePath + "/internal/core"}},
 		{name: "core rejects concrete LMU driver", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/drivers/lmu"}, wantErr: true},
 		{name: "core rejects legacy concrete LMU", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/lmu"}, wantErr: true},
 		{name: "schema rejects core", edge: importEdge{Package: "internal/telemetry/schema", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},

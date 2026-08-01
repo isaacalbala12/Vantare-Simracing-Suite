@@ -68,3 +68,22 @@ foreach ($candidate in $frontendCandidates) {
     $tests = @($normalized | Where-Object { $_ -match '(_test\.go|\.test\.(ts|tsx))$' })
     Write-Output "$candidate|$($nonTest -join ';')|$($tests -join ';')"
 }
+
+$liveAcquisitionTokens = @(
+    "OpenFileMappingW",
+    "MapViewOfFile",
+    '$rFactor2SMMP_Telemetry$',
+    "ParseEngineerFrame"
+)
+
+Write-Output "LIVE_ACQUISITION_REFERENCES"
+Write-Output "token|production_references"
+foreach ($token in $liveAcquisitionTokens) {
+    $matches = @(
+        & rg -l --glob '*.go' --glob '!**/*_test.go' --fixed-strings $token cmd internal 2>$null
+    )
+    if ($LASTEXITCODE -gt 1) {
+        throw "rg failed for $token"
+    }
+    Write-Output "$token|$(@($matches | Sort-Object) -join ';')"
+}

@@ -11,7 +11,6 @@ package pitstops
 import (
 	"sync"
 
-	"github.com/vantare/overlays/v2/internal/engineer/lmu"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
 )
 
@@ -70,9 +69,6 @@ type Monitor struct {
 	lastDisengageCheckMS int64
 	inDisengageCheck     bool
 
-	// Optional PitInfoReader for extended pit data.
-	pitInfoReader *lmu.PitInfoReader
-
 	// Lap-distance tracking for pit entry warnings.
 	trackLength     float64 // stored track length (set via SetTrackLength or from SessionInfo)
 	lastLapDistance float64
@@ -105,14 +101,6 @@ type Monitor struct {
 // NewMonitor creates a Monitor.
 func NewMonitor() *Monitor {
 	return &Monitor{}
-}
-
-// SetPitInfoReader sets an optional PitInfoReader for extended pit data.
-// The reader must already be Open()'d before being passed here.
-func (m *Monitor) SetPitInfoReader(reader *lmu.PitInfoReader) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.pitInfoReader = reader
 }
 
 // SetTrackLength sets the track length in metres. Used for distance-based

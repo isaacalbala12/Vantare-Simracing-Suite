@@ -2,8 +2,6 @@ package service_test
 
 import (
 	"context"
-	"encoding/binary"
-	"math"
 	"sync"
 	"testing"
 	"time"
@@ -92,14 +90,8 @@ func TestEngineerService_InitialStateAndValidation(t *testing.T) {
 		t.Errorf("expected initial spotterEnabled to be true")
 	}
 
-	// Invalid source validation
-	err := svc.SetSource("invalid-source")
-	if err == nil {
-		t.Error("expected error for invalid source, got nil")
-	}
-
 	// Invalid sensitivity validation
-	err = svc.SetSensitivity("invalid-sensitivity")
+	err := svc.SetSensitivity("invalid-sensitivity")
 	if err == nil {
 		t.Error("expected error for invalid sensitivity, got nil")
 	}
@@ -146,12 +138,6 @@ func TestEngineerService_ToggleDoesNotDuplicateLoops(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		_ = svc.SetEnabled(true)
 		time.Sleep(100 * time.Millisecond)
-	}
-
-	// The bridge-compatible setter accepts only the canonical source and never
-	// starts a second telemetry loop.
-	for i := 0; i < 3; i++ {
-		_ = svc.SetSource("telemetry-core")
 	}
 
 	svc.Stop()
@@ -210,36 +196,6 @@ func TestEngineerService_ExplicitHarnessGeneratesNotifications(t *testing.T) {
 	}
 }
 
-// fakeBufferProvider expone un buffer solo para el harness explícito del
-// adapter legacy. EngineerService no lo posee ni lo abre.
-type fakeBufferProvider struct {
-	buf []byte
-}
-
-func (f fakeBufferProvider) Read() []byte { return f.buf }
-
-func TestEngineerService_RejectsLegacyLiveSources(t *testing.T) {
-	emitter := &mockEmitter{}
-	svc := service.NewEngineerService(emitter)
-
-	for _, source := range []string{"lmu", "simulator", "replay"} {
-		if err := svc.SetSource(source); err == nil {
-			t.Errorf("expected production service to reject %q", source)
-		}
-	}
-}
-
-func TestEngineerService_HarnessFrameDoesNotChangeCanonicalSource(t *testing.T) {
-	emitter := &mockEmitter{}
-	svc := service.NewEngineerService(emitter)
-	adapter := service.NewOverlaysLiveAdapter(fakeBufferProvider{buf: buildSyntheticEngineerFrameBufferPublic()}, true)
-	frame := adapter.ReadFrame()
-	svc.ProcessHarnessFrame(time.Now().UnixMilli(), frame)
-	if got := svc.Status().Source; got != "telemetry-core" {
-		t.Fatalf("source = %q, want telemetry-core", got)
-	}
-}
-
 func TestEngineerService_HarnessNilFrameFailsClosed(t *testing.T) {
 	emitter := &mockEmitter{}
 	svc := service.NewEngineerService(emitter)
@@ -247,37 +203,6 @@ func TestEngineerService_HarnessNilFrameFailsClosed(t *testing.T) {
 	if svc.Status().Connected {
 		t.Error("nil harness frame must not mark canonical input connected")
 	}
-}
-
-// buildSyntheticEngineerFrameBufferPublic construye un buffer mmap válido con
-// geometría conocida (player en X=100) para tests del servicio con source="lmu".
-// Vive en service_test (paquete externo) para no depender de helpers internos.
-func buildSyntheticEngineerFrameBufferPublic() []byte {
-	const objectOutSize = 324820
-	buf := make([]byte, objectOutSize)
-	buf[128466] = 1 // player has vehicle
-	buf[128465] = 0 // player idx 0
-	binary.LittleEndian.PutUint32(buf[1736:], 2)
-
-	po := 128468
-	binary.LittleEndian.PutUint32(buf[po:], 11)
-	binary.LittleEndian.PutUint64(buf[po+160:], math.Float64bits(100))
-	binary.LittleEndian.PutUint64(buf[po+168:], math.Float64bits(0))
-	binary.LittleEndian.PutUint64(buf[po+176:], math.Float64bits(200))
-
-	off0 := 2192
-	binary.LittleEndian.PutUint32(buf[off0:], 11)
-	copy(buf[off0+4:], "Player")
-	buf[off0+196] = 1
-	binary.LittleEndian.PutUint64(buf[off0+104:], math.Float64bits(5000))
-	binary.LittleEndian.PutUint64(buf[off0+264:], math.Float64bits(100))
-
-	off1 := 2192 + 584
-	binary.LittleEndian.PutUint32(buf[off1:], 22)
-	copy(buf[off1+4:], "Opponent")
-	binary.LittleEndian.PutUint64(buf[off1+104:], math.Float64bits(5050))
-	binary.LittleEndian.PutUint64(buf[off1+264:], math.Float64bits(103))
-	return buf
 }
 
 // --- G0.9 Player.Play en queueLoop ---
@@ -456,33 +381,11 @@ func TestEngineerService_EndToEnd_MonitorEventViaSSE(t *testing.T) {
 	svc.Start(ctx)
 	defer svc.Stop()
 
-	// Build a synthetic LMU buffer with high water temp (106°C) so the
-	// engine monitor fires. Use Green phase (5) so the engine monitor
-	// doesn't skip (CC parity gate from iter-3).
-	const objectOutSize = 324820
-	buf := make([]byte, objectOutSize)
-	buf[128466] = 1 // player has vehicle
-	buf[128465] = 0 // player idx 0
-	binary.LittleEndian.PutUint32(buf[1736:], 2)
-	buf[1740] = 5 // GamePhase = Green
-
-	po := 128468
-	binary.LittleEndian.PutUint32(buf[po:], 11)
-	binary.LittleEndian.PutUint64(buf[po+160:], math.Float64bits(100))
-	binary.LittleEndian.PutUint64(buf[po+168:], math.Float64bits(0))
-	binary.LittleEndian.PutUint64(buf[po+176:], math.Float64bits(200))
-	buf[po+191] = 106 // engine water temp = 106°C → fires EventWaterTempHigh
-
-	off0 := 2192
-	binary.LittleEndian.PutUint32(buf[off0:], 11)
-	copy(buf[off0+4:], "Player")
-	buf[off0+196] = 1
-	binary.LittleEndian.PutUint64(buf[off0+104:], math.Float64bits(5000))
-	binary.LittleEndian.PutUint64(buf[off0+264:], math.Float64bits(100))
-
-	adapter := service.NewOverlaysLiveAdapter(fakeBufferProvider{buf: buf}, true)
-	frame := adapter.ReadFrame()
-	svc.ProcessHarnessFrame(time.Now().UnixMilli(), frame)
+	frames := simulator.Build(simulator.ScenarioAllClear)
+	frame := frames[0]
+	frame.Player.EngineWaterTemp = 106
+	frame.Session.GamePhase = 5
+	svc.ProcessHarnessFrame(time.Now().UnixMilli(), &frame)
 
 	// Wait for the monitor event to arrive on the SSE channel.
 	deadline := time.Now().Add(3 * time.Second)

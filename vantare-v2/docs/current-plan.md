@@ -10,6 +10,20 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-114 / TC-09B (2026-08-01):
+- El backend duplicado de telemetría queda retirado después de migrar status,
+  diagnostics y ops al `TelemetryCoreRuntime` canónico.
+- Solo `internal/telemetry/drivers/lmu` puede abrir memoria compartida LMU;
+  Engineer conserva su funcionalidad mediante la proyección canónica y sus
+  decoders de fixture no poseen I/O.
+- Se retiraron source manager, reader/REST legacy, App/bridge, servicios,
+  modelos, SSE backend y tooling sin consumidores. `deltaMode` permanece como
+  preferencia sin side effect ficticio.
+- Evidencia: `docs/telemetry-core/backend-retirement-isa-114.md` y
+  `scripts/telemetry-core/audit-consumers.ps1`.
+- Siguiente corte: ISA-115 / TC-09C, retirada frontend/transporte legacy. Sin
+  merge ni promoción.
+
 Nota ISA-113 / TC-09A (2026-08-01):
 - Auditoría reproducible completada sin borrados ni cambios de comportamiento.
 - Hallazgo P0 de migración: `app.New(-live)` todavía abre el mapping y poller

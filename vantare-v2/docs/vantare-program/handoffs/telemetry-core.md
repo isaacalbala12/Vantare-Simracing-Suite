@@ -119,7 +119,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-09A ISA-113: auditoría completada. El runtime canónico es único productor
   de Overlay/Engineer, pero `app.New(-live)` todavía abre una adquisición LMU
   y REST legacy para status/diagnostics/ops. ISA-114 debe migrarlos y retirarla.
-- TC-09B–F: pendientes desde ISA-114.
+- TC-09B ISA-114: implementación completa en revisión. El composition root ya
+  no crea `app.App` ni un segundo reader/poller. Status, diagnostics y ops usan
+  `TelemetryCoreRuntime`; solo el driver canónico contiene APIs de adquisición
+  LMU. El backend legacy y sus CLIs quedan retirados.
+- TC-09C–F: pendientes desde ISA-115.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
@@ -279,14 +283,14 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | Cerradas técnicamente | ISA-130 / TC-08A.1 e ISA-109 / TC-08B |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 | Auditoría cerrada | ISA-113 / TC-09A, matriz proof-first sin borrados |
-| Pendientes | ISA-114–117 e ISA-87 según dependencias |
+| En revisión | ISA-114 / TC-09B, backend duplicado retirado |
+| Pendientes | ISA-115–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-113 y ejecutar ISA-114 / TC-09B sobre su commit. ISA-114 debe
-migrar status, diagnostics y ops al runtime canónico, demostrar una sola
-adquisición y retirar únicamente el backend clasificado DELETE. Sin cambios de
-UI, merge ni promoción.
+Entregar ISA-114 y ejecutar ISA-115 / TC-09C sobre su commit. ISA-115 debe
+retirar adapters, eventos y nombres de transporte frontend legacy sin cambiar
+UI ni estilos. Sin merge ni promoción.
 
 ## Gate final
 
@@ -295,6 +299,14 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-114: status, diagnostics y métricas leen el runtime canónico y
+el segundo grafo LMU se retira completo. Solo
+`internal/telemetry/drivers/lmu` utiliza APIs de memoria compartida. Engineer
+conserva monitores, audio, comandos, Pit Manager y SSE; los readers
+experimentales sin wiring se eliminan y las fixtures Extended restantes son
+decoders puros sin I/O. Documento:
+`docs/telemetry-core/backend-retirement-isa-114.md`. Siguiente: ISA-115.
 
 2026-08-01, ISA-113: la matriz final demuestra que `app.New(true)` todavía
 abre el reader y poller REST legacy, aunque ya no publique widgets. El status

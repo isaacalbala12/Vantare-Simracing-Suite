@@ -7,6 +7,10 @@ import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
 import { createWailsTelemetryAdapter } from "./transports/wails-telemetry-adapter";
+import {
+  createShadowedTelemetryAdapter,
+  createWailsProjectionShadowObserver,
+} from "./transports/projection-shadow-adapter";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -23,14 +27,16 @@ export function CompositeApp() {
 
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
   const adapter = useMemo(
-    () =>
-      createWailsTelemetryAdapter({
+    () => {
+      const subscribe = (event: string, handler: (data: unknown) => void) => {
+        const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
+        return () => unsub?.();
+      };
+      return createShadowedTelemetryAdapter(createWailsTelemetryAdapter({
         coordinator,
-        subscribe: (event, handler) => {
-          const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
-          return () => unsub?.();
-        },
-      }),
+        subscribe,
+      }), createWailsProjectionShadowObserver({ runtime: "desktop", subscribe }));
+    },
     [coordinator],
   );
 

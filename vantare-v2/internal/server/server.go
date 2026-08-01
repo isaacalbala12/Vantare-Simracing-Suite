@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/telemetry/service"
 )
@@ -155,37 +156,38 @@ type EventEmitter interface {
 }
 
 type Server struct {
-	mux         *http.ServeMux
-	srv         *http.Server
-	svc         *service.Service
-	engineerSvc *engineerservice.EngineerService
-	distFS      fs.FS
-	cfgDir      string
-	emitter     EventEmitter
-	nonceStore  *nonceStore
-	rateLimiter *rateLimiter
+	mux               *http.ServeMux
+	srv               *http.Server
+	svc               *service.Service
+	engineerSvc       *engineerservice.EngineerService
+	distFS            fs.FS
+	cfgDir            string
+	emitter           EventEmitter
+	nonceStore        *nonceStore
+	rateLimiter       *rateLimiter
 }
 
 type ServerConfig struct {
-	Addr        string
-	DistFS      fs.FS
-	CfgDir      string
-	Svc         *service.Service
-	EngineerSvc *engineerservice.EngineerService
-	Emitter     EventEmitter
+	Addr              string
+	DistFS            fs.FS
+	CfgDir            string
+	Svc               *service.Service
+	EngineerSvc       *engineerservice.EngineerService
+	Emitter           EventEmitter
+	OverlayProjection *telemetrytransport.Hub
 }
 
 func New(cfg ServerConfig) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
-		mux:         mux,
-		svc:         cfg.Svc,
-		engineerSvc: cfg.EngineerSvc,
-		distFS:      cfg.DistFS,
-		cfgDir:      cfg.CfgDir,
-		emitter:     cfg.Emitter,
-		nonceStore:  newNonceStore(),
-		rateLimiter: newRateLimiter(10, 1*time.Minute),
+		mux:               mux,
+		svc:               cfg.Svc,
+		engineerSvc:       cfg.EngineerSvc,
+		distFS:            cfg.DistFS,
+		cfgDir:            cfg.CfgDir,
+		emitter:           cfg.Emitter,
+		nonceStore:        newNonceStore(),
+		rateLimiter:       newRateLimiter(10, 1*time.Minute),
 	}
 
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -194,6 +196,12 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /api/profile-v3", s.handleProfileV3)
 	mux.HandleFunc("GET /api/engineer/health", s.handleEngineerHealth)
 	mux.HandleFunc("GET /telemetry/stream", s.handleSSE)
+	if cfg.OverlayProjection != nil {
+		mux.Handle(
+			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
+			telemetrytransport.SSEHandler(cfg.OverlayProjection),
+		)
+	}
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)
 	mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)
 	mux.HandleFunc("POST /auth/token", s.handleAuthToken)

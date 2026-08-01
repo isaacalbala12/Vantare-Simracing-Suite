@@ -23,6 +23,8 @@ aceptado términos adicionales ni inspeccionado binarios de terceros.
 | [LMU y repo](lmu-repository-findings.md) | evidencia local, canales, fixtures y fronteras |
 | [Contrato de producto](product-contract.md) | comportamiento observable del primer producto |
 | [Arquitectura](architecture.md) | importación, índice, normalización, comparación y recomendaciones |
+| [Caracterización LMU DuckDB](lmu-duckdb-characterization.md) | schema real sanitizado, tiempo, integridad y decisión de dependencia |
+| [Modelo histórico v1](historical-model.md) | contratos compilables de sesión/canal/vuelta/calidad y parser paginado |
 | [UI/UX](ui-ux.md) | flujo, accesibilidad, estados y criterios visuales |
 | [Plan y microcortes](plan-microcuts.md) | backlog TDD ordenado, dependencias y gates |
 | [Referencia HTML](telemetry-analysis-reference.html) | prototipo propio, local y navegable |

@@ -61,6 +61,55 @@ Nota ISA-124 / TA-02 (2026-07-28):
 - Estado: técnicamente cerrado y preparado para commit/push, PR draft apilada
   sobre TA-01 y Linear `In Review`; sin promoción a `nightly`.
 
+Nota ISA-126 / TA-03 (actualizada 2026-08-01):
+- Caracterizado read-only un DuckDB LMU completado mediante copia temporal:
+  original y copia con SHA-256 coincidente, metadata original intacta, cero
+  WAL y conexión `read_only`. No se leyeron valores de metadata ni se ejecutó
+  checkpoint/escritura/reparación sobre la biblioteca.
+- El schema observado contiene 12 claves de metadata, 56 canales continuos sin
+  `ts`, 42 eventos con `ts` y 101 tablas. Frecuencias: 1/2/5/7/10/20/50/100 Hz.
+  El diccionario completo sanitizado no contiene DB, muestras, valores, rutas,
+  nombres ni IDs.
+- Implementado en `internal/telemetryanalysis` el modelo histórico v1 y el
+  parser/normalizador paginado LMU: sesión, canales,
+  columnas, unidades, calidad, provenance, fingerprint y tipos desconocidos.
+  Cero/false permanecen presentes; NULL, stale, invalid y unknown no se
+  colapsan.
+- Corrección tras review independiente: `Inspect` congela un catálogo interno
+  y `ReadPage` resuelve solo IDs descubiertos, sin confiar en descriptores
+  mutables del llamador. Hay máximo duro de 16.384 filas, contexto de una sola
+  fila para eventos, EOF/predecesor-only coherentes y duplicados de
+  identificador rechazados también por diferencias de mayúsculas.
+- Metadata nueva queda sensible por defecto mediante allowlist pública y sus
+  valores se redacted antes de entrar al modelo. Metadata pública fuera de
+  presupuesto queda invalid sin invalidar la sesión. `DECIMAL` permanece
+  `unknown` hasta demostrar su representación.
+- El continuo conserva eje relativo `index/frequency` con origen `unknown`; los
+  eventos conservan `ts`. No se inventa alineación entre ambos. El nombre
+  `Lap` no forma límites: esa semántica queda pendiente de evidencia en TA-04.
+- `LMUDuckDBReader` es un puerto mínimo fuera de Telemetry Core. El parser ya
+  exige una `AuthorizedHistoricalArtifact` emitida por el gate TA-02 y
+  revalida hash/tamaño/mtime/identidad antes y después de catálogo y páginas.
+  TA-03 no añade `database/sql`, CGO, binarios, CLI ni dependencia DuckDB de
+  producto. El driver Go oficial es MIT, pero requiere decisión propia de
+  build/empaquetado Windows antes de integrarlo.
+- Alcance actual: sin reader concreto, índice, galería, UI, delta, mapa,
+  coaching, live o wiring. Docs:
+  `lmu-duckdb-characterization.md` y `historical-model.md`.
+- Evidencia fresca tras la corrección: focal x20, vet, race x10 y dos fuzz de
+  10 s PASS (1.091.635 normalización; 1.436.728 redacción). Benchmark de
+  720.000 muestras paginadas: 58,04–75,16 ms/op,
+  103.686.400–103.696.592 B/op acumulados y 355–368 allocs/op. Suite Go global
+  paralela PASS. No se repitieron frontend/build porque este delta no toca
+  frontend ni contratos embebidos.
+- La copia temporal de inspección fue eliminada tras derivar/verificar el schema
+  sanitizado. Un review adversarial posterior dio `REQUEST CHANGES`: P2/P3 y
+  la frontera arquitectónica del P1 están corregidos con regresiones de
+  mismatch/TOCTOU, determinismo, redacción y límite. Sigue faltando el reader
+  DuckDB productivo y un test de integración sobre DuckDB sintético real; por
+  ello TA-03 permanece abierta en su PR draft/Linear actuales y TA-04 queda
+  bloqueada. Sin promoción.
+
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
 - La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.

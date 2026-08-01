@@ -100,6 +100,25 @@ type Manifest struct {
 	Provenance    Provenance     `json:"provenance"`
 }
 
+// HistoricalArtifactEvidence identifies the exact stable bytes authorized by
+// the import gate without exposing their filesystem path.
+type HistoricalArtifactEvidence struct {
+	ContentSHA256 string
+	Metadata      ContentMetadata
+}
+
+// AuthorizedHistoricalArtifact is issued only after BuildManifest has proven
+// user approval, stability, file identity and content hash. Its private fields
+// prevent a raw Manifest from being used as authority to read historical data.
+type AuthorizedHistoricalArtifact struct {
+	manifest Manifest
+	evidence HistoricalArtifactEvidence
+}
+
+func (a AuthorizedHistoricalArtifact) Manifest() Manifest {
+	return a.manifest
+}
+
 type ManifestSource struct {
 	Kind    SourceKind  `json:"kind"`
 	Format  string      `json:"format"`

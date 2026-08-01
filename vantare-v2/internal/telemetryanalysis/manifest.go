@@ -91,44 +91,69 @@ func contentMetadata(info os.FileInfo) ContentMetadata {
 }
 
 func BuildManifest(ctx context.Context, source ContentSource, candidate Candidate, options ImportOptions) (Manifest, error) {
+	manifest, _, err := buildManifest(ctx, source, candidate, options)
+	return manifest, err
+}
+
+// BuildAuthorizedHistoricalArtifact applies the same gate as BuildManifest
+// and retains the stable file evidence required to bind a historical reader.
+func BuildAuthorizedHistoricalArtifact(
+	ctx context.Context,
+	source ContentSource,
+	candidate Candidate,
+	options ImportOptions,
+) (AuthorizedHistoricalArtifact, error) {
+	manifest, evidence, err := buildManifest(ctx, source, candidate, options)
+	if err != nil {
+		return AuthorizedHistoricalArtifact{}, err
+	}
+	return AuthorizedHistoricalArtifact{manifest: manifest, evidence: evidence}, nil
+}
+
+func buildManifest(
+	ctx context.Context,
+	source ContentSource,
+	candidate Candidate,
+	options ImportOptions,
+) (Manifest, HistoricalArtifactEvidence, error) {
 	if err := ctx.Err(); err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
 	if candidate.State != StateReady || !candidate.stabilityGate || candidate.WALPresent {
-		return Manifest{}, ErrNotReady
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrNotReady
 	}
 	if !validImportContract(candidate, options) {
-		return Manifest{}, ErrInvalidOptions
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrInvalidOptions
 	}
 	if options.MaxBytes <= 0 || candidate.Size > options.MaxBytes {
-		return Manifest{}, ErrByteLimit
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrByteLimit
 	}
 	if present, err := walPresent(ctx, source, candidate.walPath); err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	} else if present {
-		return Manifest{}, ErrNotReady
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrNotReady
 	}
 
 	beforePath, err := source.Metadata(ctx, candidate.sourcePath)
 	if err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
 	if !metadataMatchesCandidate(beforePath, candidate) || !hasIdentity(beforePath) {
-		return Manifest{}, ErrSourceChanged
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrSourceChanged
 	}
 
 	reader, err := source.OpenRead(ctx, candidate.sourcePath)
 	if err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
 	defer reader.Close()
 
 	openedBefore, err := reader.Metadata()
 	if err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
 	if !metadataMatchesCandidate(openedBefore, candidate) || !sameIdentity(beforePath, openedBefore) {
-		return Manifest{}, ErrSourceChanged
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrSourceChanged
 	}
 
 	hash := sha256.New()
@@ -136,49 +161,49 @@ func BuildManifest(ctx context.Context, source ContentSource, candidate Candidat
 	var size int64
 	for {
 		if err := ctx.Err(); err != nil {
-			return Manifest{}, err
+			return Manifest{}, HistoricalArtifactEvidence{}, err
 		}
 		read, readErr := reader.Read(buffer)
 		if read > 0 {
 			size += int64(read)
 			if size > options.MaxBytes {
-				return Manifest{}, ErrByteLimit
+				return Manifest{}, HistoricalArtifactEvidence{}, ErrByteLimit
 			}
 			if _, err := hash.Write(buffer[:read]); err != nil {
-				return Manifest{}, err
+				return Manifest{}, HistoricalArtifactEvidence{}, err
 			}
 		}
 		if readErr == io.EOF {
 			break
 		}
 		if readErr != nil {
-			return Manifest{}, sanitizedError("read_source")
+			return Manifest{}, HistoricalArtifactEvidence{}, sanitizedError("read_source")
 		}
 	}
 	if candidate.Size != size {
-		return Manifest{}, ErrSourceChanged
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrSourceChanged
 	}
 
 	openedAfter, err := reader.Metadata()
 	if err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
 	if !sameMetadata(openedBefore, openedAfter) {
-		return Manifest{}, ErrSourceChanged
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrSourceChanged
 	}
 	afterPath, err := source.Metadata(ctx, candidate.sourcePath)
 	if err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
 	if !metadataMatchesCandidate(afterPath, candidate) ||
 		!sameMetadata(beforePath, afterPath) ||
 		!sameIdentity(afterPath, openedAfter) {
-		return Manifest{}, ErrSourceChanged
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrSourceChanged
 	}
 	if present, err := walPresent(ctx, source, candidate.walPath); err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	} else if present {
-		return Manifest{}, ErrNotReady
+		return Manifest{}, HistoricalArtifactEvidence{}, ErrNotReady
 	}
 
 	contentHash := hex.EncodeToString(hash.Sum(nil))
@@ -195,9 +220,12 @@ func BuildManifest(ctx context.Context, source ContentSource, candidate Candidat
 		Provenance: options.Provenance,
 	}
 	if err := ValidateManifest(manifest); err != nil {
-		return Manifest{}, err
+		return Manifest{}, HistoricalArtifactEvidence{}, err
 	}
-	return manifest, nil
+	return manifest, HistoricalArtifactEvidence{
+		ContentSHA256: contentHash,
+		Metadata:      openedAfter,
+	}, nil
 }
 
 func walPresent(ctx context.Context, source ContentSource, walPath string) (bool, error) {

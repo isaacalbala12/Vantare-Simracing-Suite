@@ -86,6 +86,10 @@ productivo sin crear un segundo reader.
   Windows y es lento, pero pasa sin cambios; es deuda ajena, no bloqueo de
   ENG-05. Esta rama no toca Launcher ni `cmd/vantare`. El vet global conserva
   tres avisos Win32 heredados por `unsafe.Pointer`; vet focal pasa.
+- Corrección de re-review: la cola poda hechos semánticamente invalidados antes
+  de coalescing/presión. Con `MaxPending=1`, `car_left -> all_clear` conserva y
+  emite el estado vigente; las transiciones P0 equivalentes y penalty neutral
+  1 -> 2 tienen regresión y diagnóstico/orden reproducibles.
 
 ## Decisiones
 

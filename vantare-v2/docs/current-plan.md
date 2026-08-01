@@ -21,6 +21,9 @@ Nota ISA-158 / ENG-05 (2026-08-01):
   identidades y diagnósticos tienen límites duros.
 - Spotter conserva prioridad absoluta. El resto de prioridades tiene un burst
   máximo determinista para impedir starvation sin debilitar mensajes críticos.
+- La re-review detectó y corrigió presión P0 con capacidad uno: pendientes
+  invalidados se podan antes de competir por cola, por lo que el estado Spotter
+  vigente reemplaza siempre al obsoleto con diagnósticos deterministas.
 - ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
   únicamente entry/exit. El contador genérico de sanción se convierte a
   `penalties.count_increased` y nunca afirma drive-through.

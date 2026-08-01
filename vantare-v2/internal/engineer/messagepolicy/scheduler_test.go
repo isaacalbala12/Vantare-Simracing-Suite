@@ -135,6 +135,149 @@ func TestSpotterPreemptsEveryLowerPendingCandidate(t *testing.T) {
 	}
 }
 
+func TestSpotterCurrentStateSurvivesEqualPriorityQueuePressure(t *testing.T) {
+	t.Parallel()
+
+	clock := &testClock{now: 1_000}
+	scheduler := newTestScheduler(t, clock, 1)
+	left := validEvidence(t, 5_000)
+	left.Semantic.SpotterKnown, left.Semantic.SpotterLeft = true, true
+	scheduler.Observe(left)
+	carLeft := candidateFor("left", FamilySpotter, IntentSpotterCarLeft, "player", PrioritySpotter, 1_000)
+	if accepted, outcomes := scheduler.Submit(carLeft); !accepted || len(outcomes) != 0 {
+		t.Fatalf("car-left submit = %t, %+v", accepted, outcomes)
+	}
+
+	clear := left
+	clear.Semantic.SpotterLeft = false
+	scheduler.Observe(clear)
+	allClear := candidateFor("clear", FamilySpotter, IntentSpotterAllClear, "player", PrioritySpotter, 1_000)
+	accepted, outcomes := scheduler.Submit(allClear)
+	if !accepted {
+		t.Fatalf("current all-clear lost under equal-priority pressure: %+v", outcomes)
+	}
+	if !containsOutcome(outcomes, OutcomeCancelled, ReasonSemanticInvalidated) {
+		t.Fatalf("obsolete car-left was not pruned: %+v", outcomes)
+	}
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.CandidateID != allClear.ID {
+		t.Fatalf("decision = %+v, ok=%t", decision, ok)
+	}
+}
+
+func TestSpotterEqualPriorityTransitionsReplaceObsoleteState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		beforeIntent string
+		afterIntent  string
+		before       SemanticEvidence
+		after        SemanticEvidence
+	}{
+		{
+			name: "left to clear-left", beforeIntent: IntentSpotterCarLeft, afterIntent: IntentSpotterClearLeft,
+			before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true}, after: SemanticEvidence{SpotterKnown: true},
+		},
+		{
+			name: "right to clear-right", beforeIntent: IntentSpotterCarRight, afterIntent: IntentSpotterClearRight,
+			before: SemanticEvidence{SpotterKnown: true, SpotterRight: true}, after: SemanticEvidence{SpotterKnown: true},
+		},
+		{
+			name: "three-wide to clear-left", beforeIntent: IntentSpotterThreeWide, afterIntent: IntentSpotterClearLeft,
+			before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true, SpotterRight: true}, after: SemanticEvidence{SpotterKnown: true, SpotterRight: true},
+		},
+		{
+			name: "still-there to all-clear", beforeIntent: IntentSpotterStillThere, afterIntent: IntentSpotterAllClear,
+			before: SemanticEvidence{SpotterKnown: true, SpotterLeft: true}, after: SemanticEvidence{SpotterKnown: true},
+		},
+		{
+			name: "all-clear to left", beforeIntent: IntentSpotterAllClear, afterIntent: IntentSpotterCarLeft,
+			before: SemanticEvidence{SpotterKnown: true}, after: SemanticEvidence{SpotterKnown: true, SpotterLeft: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			clock := &testClock{now: 1_000}
+			scheduler := newTestScheduler(t, clock, 1)
+			evidence := validEvidence(t, 5_000)
+			evidence.Semantic = tt.before
+			scheduler.Observe(evidence)
+			before := candidateFor("before", FamilySpotter, tt.beforeIntent, "player", PrioritySpotter, 1_000)
+			if accepted, _ := scheduler.Submit(before); !accepted {
+				t.Fatal("before candidate was rejected")
+			}
+
+			evidence.Semantic = tt.after
+			scheduler.Observe(evidence)
+			after := candidateFor("after", FamilySpotter, tt.afterIntent, "player", PrioritySpotter, 1_000)
+			accepted, outcomes := scheduler.Submit(after)
+			if !accepted || !containsOutcome(outcomes, OutcomeCancelled, ReasonSemanticInvalidated) {
+				t.Fatalf("transition submit = %t, %+v", accepted, outcomes)
+			}
+			decision, _, ok := scheduler.Next()
+			if !ok || decision.CandidateID != after.ID {
+				t.Fatalf("decision = %+v, ok=%t", decision, ok)
+			}
+		})
+	}
+}
+
+func TestNeutralPenaltyIncreaseCoalescesOneToTwo(t *testing.T) {
+	t.Parallel()
+
+	clock := &testClock{now: 1_000}
+	scheduler := newTestScheduler(t, clock, 1)
+	evidence := validEvidence(t, 5_000)
+	evidence.Semantic.PenaltyKnown, evidence.Semantic.PenaltyCount = true, 1
+	scheduler.Observe(evidence)
+	first := candidateFor("penalty-1", FamilyPenalties, IntentPenaltyCountIncreased, "player", PriorityPenalty, 1_000)
+	first.Semantic.Integer = 1
+	if accepted, _ := scheduler.Submit(first); !accepted {
+		t.Fatal("first neutral penalty candidate was rejected")
+	}
+
+	evidence.Semantic.PenaltyCount = 2
+	scheduler.Observe(evidence)
+	second := candidateFor("penalty-2", FamilyPenalties, IntentPenaltyCountIncreased, "player", PriorityPenalty, 1_000)
+	second.Semantic.Integer = 2
+	accepted, outcomes := scheduler.Submit(second)
+	if !accepted || !containsOutcome(outcomes, OutcomeSuppressed, ReasonCoalesced) ||
+		containsOutcome(outcomes, OutcomeCancelled, ReasonSemanticInvalidated) {
+		t.Fatalf("neutral 1->2 transition = %t, %+v", accepted, outcomes)
+	}
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.Intent != IntentPenaltyCountIncreased || decision.Semantic.Integer != 2 {
+		t.Fatalf("decision = %+v, ok=%t", decision, ok)
+	}
+}
+
+func TestEqualPriorityTransitionDiagnosticsRemainDeterministic(t *testing.T) {
+	t.Parallel()
+
+	run := func() ([]PolicyOutcome, SchedulerState) {
+		clock := &testClock{now: 1_000}
+		scheduler := newTestScheduler(t, clock, 1)
+		evidence := validEvidence(t, 5_000)
+		evidence.Semantic.SpotterKnown, evidence.Semantic.SpotterLeft = true, true
+		scheduler.Observe(evidence)
+		scheduler.Submit(candidateFor("left", FamilySpotter, IntentSpotterCarLeft, "player", PrioritySpotter, 1_000))
+		evidence.Semantic.SpotterLeft = false
+		scheduler.Observe(evidence)
+		_, submitted := scheduler.Submit(candidateFor("clear", FamilySpotter, IntentSpotterAllClear, "player", PrioritySpotter, 1_000))
+		_, emitted, _ := scheduler.Next()
+		return append(submitted, emitted...), scheduler.State()
+	}
+	wantOutcomes, wantState := run()
+	for iteration := 0; iteration < 50; iteration++ {
+		gotOutcomes, gotState := run()
+		if !reflect.DeepEqual(gotOutcomes, wantOutcomes) || !reflect.DeepEqual(gotState, wantState) {
+			t.Fatalf("iteration %d drifted: outcomes=%+v state=%+v", iteration, gotOutcomes, gotState)
+		}
+	}
+}
+
 func TestSchedulerCoalescesAndAppliesCooldown(t *testing.T) {
 	t.Parallel()
 

@@ -107,6 +107,10 @@ vencido, stale o semánticamente falso nunca se emite tarde.
   reciente cuando se llena.
 - La cola tiene capacidad fija. Bajo presión, un candidato solo desplaza a uno
   de prioridad inferior; nunca expulsa seguridad para admitir información.
+- Antes de coalescing y presión, la cola poda contra la última evidencia todo
+  hecho que ya sea stale, inválido o semánticamente falso. Así un
+  `all_clear` vigente no se pierde frente al `car_left` obsoleto que sustituye,
+  incluso con capacidad uno y la misma prioridad P0.
 - Los diagnósticos recientes son un ring lógico con límite fijo.
 
 Límites por defecto: 64 pendientes, 16 campos y 2 KiB de payload por candidato,
@@ -161,6 +165,8 @@ Las regresiones cubren:
 - TTL y revalidación al emitir;
 - invalidación semántica de car-left/clear, repostaje, pit entry/exit, gaps,
   sanciones y vueltas;
+- transiciones Spotter de igual prioridad con cola de capacidad uno, orden y
+  diagnóstico deterministas, y coalescing neutral de sanciones 1 -> 2;
 - límites de payload, dedup, cola, cooldown y diagnósticos;
 - copias de ownership;
 - cancelaciones de lifecycle;

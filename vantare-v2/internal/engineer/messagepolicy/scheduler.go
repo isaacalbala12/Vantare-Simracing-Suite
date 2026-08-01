@@ -195,6 +195,9 @@ func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) 
 	}
 
 	var outcomes []PolicyOutcome
+	if len(scheduler.pending) == scheduler.limits.MaxPending {
+		outcomes = scheduler.pruneInvalidPending(now)
+	}
 	for index := 0; index < len(scheduler.pending); index++ {
 		if dedupKey(scheduler.pending[index].candidate) != key {
 			continue
@@ -232,6 +235,26 @@ func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) 
 	scheduler.state.Accepted++
 	scheduler.state.Pending = len(scheduler.pending)
 	return true, outcomes
+}
+
+// pruneInvalidPending removes facts that the latest observation has already
+// disproved before a current fact competes for bounded queue capacity. This is
+// especially important for equal-priority state transitions such as
+// car_left -> all_clear: obsolete safety state must not evict its replacement.
+func (scheduler *Scheduler) pruneInvalidPending(now int64) []PolicyOutcome {
+	var outcomes []PolicyOutcome
+	for index := 0; index < len(scheduler.pending); {
+		candidate := scheduler.pending[index].candidate
+		state, reason := scheduler.revalidate(candidate, now)
+		if reason == "" {
+			index++
+			continue
+		}
+		outcomes = append(outcomes, scheduler.outcome(candidate, state, reason, now))
+		scheduler.removePending(index)
+	}
+	scheduler.state.Pending = len(scheduler.pending)
+	return outcomes
 }
 
 // Next returns at most one decision. It discards and reports every invalid

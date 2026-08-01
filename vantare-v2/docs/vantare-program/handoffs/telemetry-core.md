@@ -112,14 +112,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-08D ISA-111: runtime Engineer separado de toda fuente live/sintética;
   entrada canónica acotada por familia, todavía sin wiring LMU productivo.
 - TC-08E ISA-112: cutover productivo implementado. El único runtime LMU
-  publica estado, observación y hechos hacia Engineer, sin segundo reader y
-  con errores aislados de Overlay. La captura real de 38 coches demuestra la
-  cadena completa y ausencia de falsos Spotter ante tráfico lejano.
-- TC-09: pendiente desde ISA-113.
+  publica estado, observación y hechos hacia Engineer; Engineer no abre un
+  reader propio y sus errores quedan aislados de Overlay. La captura real de
+  38 coches demuestra la cadena completa y ausencia de falsos Spotter ante
+  tráfico lejano. ISA-113 detectó que el shell aún abre otro grafo legacy.
+- TC-09A ISA-113: auditoría completada. El runtime canónico es único productor
+  de Overlay/Engineer, pero `app.New(-live)` todavía abre una adquisición LMU
+  y REST legacy para status/diagnostics/ops. ISA-114 debe migrarlos y retirarla.
+- TC-09B–F: pendientes desde ISA-114.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-113 / TC-09A. `go vet` conserva seis avisos heredados
+El siguiente corte es ISA-114 / TC-09B. `go vet` conserva seis avisos heredados
 de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones
@@ -274,14 +278,15 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | En revisión | ISA-106 / TC-07B, ISA-107 / TC-07C e ISA-108 / TC-08A |
 | Cerradas técnicamente | ISA-130 / TC-08A.1 e ISA-109 / TC-08B |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
-| Pendientes | ISA-113–117 e ISA-87 según dependencias |
+| Auditoría cerrada | ISA-113 / TC-09A, matriz proof-first sin borrados |
+| Pendientes | ISA-114–117 e ISA-87 según dependencias |
 
 ## Siguiente acción exacta
 
-Entregar ISA-112 y ejecutar ISA-113 / TC-09A sobre su commit. ISA-113 debe
-inventariar todos los consumidores todavía alcanzables, demostrar su fuente y
-clasificarlos antes de retirar backend legacy. Sin borrados, merge ni
-promoción en el corte de auditoría.
+Entregar ISA-113 y ejecutar ISA-114 / TC-09B sobre su commit. ISA-114 debe
+migrar status, diagnostics y ops al runtime canónico, demostrar una sola
+adquisición y retirar únicamente el backend clasificado DELETE. Sin cambios de
+UI, merge ni promoción.
 
 ## Gate final
 
@@ -291,12 +296,20 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-08-01, ISA-112: la composición productiva inyecta `EngineerService` en el
-único `TelemetryCoreRuntime`. Estado de fuente, observaciones y hechos siguen
+2026-08-01, ISA-113: la matriz final demuestra que `app.New(true)` todavía
+abre el reader y poller REST legacy, aunque ya no publique widgets. El status
+visible, diagnostics y ops mantienen ese grafo alcanzable junto al driver
+canónico. Se clasificaron backend, Engineer, frontend, transports, fixtures y
+tooling con KEEP/MOVE/DELETE y orden de retirada. Cero borrados. Documento:
+`docs/telemetry-core/consumer-retirement-matrix-isa-113.md`. Siguiente: ISA-114.
+
+2026-08-01, ISA-112: la composición productiva inyecta `EngineerService` en
+`TelemetryCoreRuntime`. Estado de fuente, observaciones y hechos siguen
 contratos separados; live no conecta sin datos usables y stale/error/stop
 desconectan. Los errores Engineer no interrumpen LMU ni Overlay. El fixture
-real LMU 1.4 de 38 coches atraviesa la cadena con una apertura de `LMU_Data` y
-no produce falsos Spotter ante tráfico lejano. El solape audible real queda en
+real LMU 1.4 de 38 coches atraviesa ese runtime con una apertura de `LMU_Data`
+y no produce falsos Spotter ante tráfico lejano. ISA-113 encontró otra apertura
+legacy en el shell, fuera del runtime Engineer. El solape audible real queda en
 el gate manual final. Documento:
 `docs/telemetry-core/engineer-cutover-isa-112.md`. Siguiente: ISA-113.
 

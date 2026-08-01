@@ -10,6 +10,19 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-113 / TC-09A (2026-08-01):
+- Auditoría reproducible completada sin borrados ni cambios de comportamiento.
+- Hallazgo P0 de migración: `app.New(-live)` todavía abre el mapping y poller
+  REST legacy antes de arrancar el driver canónico. El grafo ya no publica
+  widgets, pero status, diagnostics y ops mantienen dos adquisiciones vivas.
+- ISA-114 debe migrar primero esos consumidores al estado canónico y después
+  retirar App/source/service/readers/parsers/REST legacy y tooling obsoleto.
+- ISA-115 retirará `telemetry:update`, `/telemetry/stream` y adapters frontend
+  legacy tras mover el tipo/status compartido. La UI y renderers no cambian.
+- Matriz: `docs/telemetry-core/consumer-retirement-matrix-isa-113.md`.
+- Script: `scripts/telemetry-core/audit-consumers.ps1`.
+- Siguiente corte: ISA-114 / TC-09B. Sin merge ni promoción.
+
 Nota ISA-112 / TC-08E (2026-08-01):
 - La raíz productiva inyecta `EngineerService` en el único
   `TelemetryCoreRuntime`; LMU se abre una vez y Overlay/Engineer reciben

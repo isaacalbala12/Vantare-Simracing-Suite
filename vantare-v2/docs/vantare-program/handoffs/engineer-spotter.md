@@ -143,8 +143,10 @@ backend y transporte legacy. No hay promoción en esta cadena.
 que alimenta Overlay. El estado de fuente no se confunde con datos; un snapshot
 usable completa la conexión y stale/error/stop resetean pendientes. La captura
 real LMU 1.4 de 38 coches atraviesa driver, reducer, proyección y servicio con
-una sola apertura y silencio Spotter ante tráfico lejano. El solape audible
-real se valida en el gate manual final.
+una apertura dentro de ese runtime y silencio Spotter ante tráfico lejano.
+ISA-113 detectó una segunda adquisición del shell legacy, que no alimenta
+Engineer y se retira en ISA-114. El solape audible real se valida en el gate
+manual final.
 
 2026-08-01, ISA-111 / TC-08D elimina la adquisición propia de
 `EngineerService`. El servicio consume observaciones/hechos, falla cerrado por

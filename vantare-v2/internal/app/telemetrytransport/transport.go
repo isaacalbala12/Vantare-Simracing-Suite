@@ -4,11 +4,15 @@
 package telemetrytransport
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -121,6 +125,19 @@ type HubConfig struct {
 	Versions        projection.VersionPolicy
 }
 
+// HubMetrics exposes bounded operational state only. It deliberately omits
+// projection payloads and simulator/user identifiers so it is safe for local
+// diagnostics and support exports.
+type HubMetrics struct {
+	CurrentSubscribers   int
+	MaxSubscribers       int
+	MaxPayloadBytes      int
+	StatusPublications   uint64
+	SnapshotPublications uint64
+	SnapshotReplacements uint64
+	DeltasRetained       uint64
+}
+
 type pendingSubscriber struct {
 	signal          chan struct{}
 	done            chan struct{}
@@ -151,6 +168,7 @@ type Hub struct {
 	latest         publication
 	hasSnapshot    bool
 	subscribers    map[*Subscription]*pendingSubscriber
+	metrics        HubMetrics
 }
 
 func NewHub(config HubConfig) *Hub {
@@ -158,12 +176,18 @@ func NewHub(config HubConfig) *Hub {
 	if versions.Current == 0 && versions.MinimumSupported == 0 {
 		versions = projection.VersionPolicy{Current: 1, MinimumSupported: 1}
 	}
+	maxPayload := bounded(config.MaxPayloadBytes, DefaultMaxPayloadBytes, MaxPayloadBytes)
+	maxSubscribers := bounded(config.MaxSubscribers, DefaultMaxSubscribers, MaxSubscribers)
 	return &Hub{
-		maxPayload:     bounded(config.MaxPayloadBytes, DefaultMaxPayloadBytes, MaxPayloadBytes),
-		maxSubscribers: bounded(config.MaxSubscribers, DefaultMaxSubscribers, MaxSubscribers),
+		maxPayload:     maxPayload,
+		maxSubscribers: maxSubscribers,
 		product:        config.Product,
 		versions:       versions,
 		subscribers:    make(map[*Subscription]*pendingSubscriber),
+		metrics: HubMetrics{
+			MaxSubscribers:  maxSubscribers,
+			MaxPayloadBytes: maxPayload,
+		},
 	}
 }
 
@@ -303,6 +327,7 @@ func (hub *Hub) PublishStatus(status StatusEnvelope) error {
 	}
 	hub.status = cloneStatus(status)
 	hub.hasStatus = true
+	hub.metrics.StatusPublications++
 	for _, subscriber := range hub.subscribers {
 		subscriber.pendingStatus = true
 		if hub.hasSnapshot && hub.latest.full.StatusRevision != status.StatusRevision {
@@ -362,12 +387,17 @@ func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
 					Epoch:    hub.latest.full.Epoch,
 					Sequence: hub.latest.full.Sequence,
 				}
+				hub.metrics.DeltasRetained++
 			}
 		}
 	}
 
+	if hub.hasSnapshot {
+		hub.metrics.SnapshotReplacements++
+	}
 	hub.latest = next
 	hub.hasSnapshot = true
+	hub.metrics.SnapshotPublications++
 	for _, subscriber := range hub.subscribers {
 		subscriber.pendingSnapshot = true
 		notify(subscriber)
@@ -415,6 +445,19 @@ func (hub *Hub) Close() error {
 		delete(hub.subscribers, subscription)
 	}
 	return nil
+}
+
+// Metrics returns a value copy of bounded transport counters. Payload content
+// never participates in these metrics.
+func (hub *Hub) Metrics() HubMetrics {
+	if hub == nil {
+		return HubMetrics{}
+	}
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	result := hub.metrics
+	result.CurrentSubscribers = len(hub.subscribers)
+	return result
 }
 
 type Subscription struct {
@@ -538,43 +581,79 @@ func validatePayload(payload json.RawMessage, maximum int) error {
 	if len(payload) > maximum {
 		return ErrPayloadTooLarge
 	}
-	if !json.Valid(payload) {
-		return ErrInvalidPayload
-	}
-	var object map[string]json.RawMessage
-	if err := json.Unmarshal(payload, &object); err != nil || object == nil {
-		return ErrInvalidPayload
-	}
-	if hasForbiddenKey(object) {
+	validObject, forbidden := inspectPayloadKeys(payload)
+	if !validObject || forbidden {
 		return ErrInvalidPayload
 	}
 	return nil
 }
 
-func hasForbiddenKey(object map[string]json.RawMessage) bool {
-	for key, child := range object {
-		switch strings.ToLower(key) {
-		case "raw", "source", "clock", "observed", "derived", "finalstate",
-			"canonicalversion":
-			return true
+// inspectPayloadKeys validates one top-level JSON object, then scans only JSON
+// member names. json.Valid owns structural validation; this avoids decoding a
+// high-frequency projection merely to enforce forbidden internal keys.
+func inspectPayloadKeys(payload json.RawMessage) (validObject bool, forbidden bool) {
+	trimmed := bytes.TrimSpace(payload)
+	if len(trimmed) < 2 || trimmed[0] != '{' || trimmed[len(trimmed)-1] != '}' ||
+		!json.Valid(trimmed) {
+		return false, false
+	}
+	for index := 0; index < len(trimmed); index++ {
+		if trimmed[index] != '"' {
+			continue
 		}
-		var nestedObject map[string]json.RawMessage
-		if json.Unmarshal(child, &nestedObject) == nil && nestedObject != nil &&
-			hasForbiddenKey(nestedObject) {
-			return true
-		}
-		var nestedArray []json.RawMessage
-		if json.Unmarshal(child, &nestedArray) == nil {
-			for _, item := range nestedArray {
-				var itemObject map[string]json.RawMessage
-				if json.Unmarshal(item, &itemObject) == nil && itemObject != nil &&
-					hasForbiddenKey(itemObject) {
-					return true
+		start := index + 1
+		escaped := false
+		for index++; index < len(trimmed); index++ {
+			switch trimmed[index] {
+			case '\\':
+				escaped = true
+				index++
+			case '"':
+				end := index
+				next := index + 1
+				for next < len(trimmed) && isJSONSpace(trimmed[next]) {
+					next++
 				}
+				if next < len(trimmed) && trimmed[next] == ':' &&
+					forbiddenPayloadKeyBytes(trimmed[start:end], escaped) {
+					return true, true
+				}
+				goto nextToken
 			}
 		}
+	nextToken:
 	}
-	return false
+	return true, false
+}
+
+func isJSONSpace(value byte) bool {
+	return value == ' ' || value == '\t' || value == '\n' || value == '\r'
+}
+
+func forbiddenPayloadKeyBytes(raw []byte, escaped bool) bool {
+	if !escaped {
+		for _, forbidden := range [...][]byte{
+			[]byte("raw"), []byte("source"), []byte("clock"), []byte("observed"),
+			[]byte("derived"), []byte("finalstate"), []byte("canonicalversion"),
+		} {
+			if bytes.EqualFold(raw, forbidden) {
+				return true
+			}
+		}
+		return false
+	}
+	decoded, err := strconv.Unquote(`"` + string(raw) + `"`)
+	return err == nil && forbiddenPayloadKey(decoded)
+}
+
+func forbiddenPayloadKey(key string) bool {
+	switch strings.ToLower(key) {
+	case "raw", "source", "clock", "observed", "derived", "finalstate",
+		"canonicalversion":
+		return true
+	default:
+		return false
+	}
 }
 
 func cursorRelation(previous, next Envelope) (contiguous bool, valid bool) {
@@ -623,41 +702,59 @@ func cloneStatus(status StatusEnvelope) StatusEnvelope {
 }
 
 func envelopeSeal(frame Envelope) [sha256.Size]byte {
-	return sha256.Sum256([]byte(fmt.Sprintf(
-		"%s\x00%d\x00%d\x00%d\x00%s\x00%s\x00%d\x00%s",
-		frame.Product,
-		frame.ProjectionVersion,
-		frame.Epoch,
-		frame.Sequence,
-		frame.Kind,
-		frame.CapturedAt,
-		frame.StatusRevision,
-		frame.Payload,
-	)))
+	digest := sha256.New()
+	sealString(digest, string(frame.Product))
+	sealUint64(digest, uint64(frame.ProjectionVersion))
+	sealUint64(digest, uint64(frame.Epoch))
+	sealUint64(digest, uint64(frame.Sequence))
+	sealString(digest, string(frame.Kind))
+	sealString(digest, frame.CapturedAt)
+	sealUint64(digest, frame.StatusRevision)
+	sealBytes(digest, frame.Payload)
+	return sealSum(digest)
 }
 
 func statusSeal(status StatusEnvelope) [sha256.Size]byte {
-	return sha256.Sum256([]byte(fmt.Sprintf(
-		"%s\x00%d\x00%s\x00%s",
-		status.Product,
-		status.StatusRevision,
-		status.CapturedAt,
-		status.Payload,
-	)))
+	digest := sha256.New()
+	sealString(digest, string(status.Product))
+	sealUint64(digest, status.StatusRevision)
+	sealString(digest, status.CapturedAt)
+	sealBytes(digest, status.Payload)
+	return sealSum(digest)
 }
 
 func factSeal(fact FactEnvelope) [sha256.Size]byte {
-	return sha256.Sum256([]byte(fmt.Sprintf(
-		"%s\x00%d\x00%d\x00%d\x00%d\x00%s\x00%d\x00%s",
-		fact.Product,
-		fact.ProjectionVersion,
-		fact.Epoch,
-		fact.Sequence,
-		fact.FactSequence,
-		fact.CapturedAt,
-		fact.StatusRevision,
-		fact.Payload,
-	)))
+	digest := sha256.New()
+	sealString(digest, string(fact.Product))
+	sealUint64(digest, uint64(fact.ProjectionVersion))
+	sealUint64(digest, uint64(fact.Epoch))
+	sealUint64(digest, uint64(fact.Sequence))
+	sealUint64(digest, fact.FactSequence)
+	sealString(digest, fact.CapturedAt)
+	sealUint64(digest, fact.StatusRevision)
+	sealBytes(digest, fact.Payload)
+	return sealSum(digest)
+}
+
+func sealString(digest hash.Hash, value string) {
+	sealBytes(digest, []byte(value))
+}
+
+func sealUint64(digest hash.Hash, value uint64) {
+	var encoded [8]byte
+	binary.BigEndian.PutUint64(encoded[:], value)
+	sealBytes(digest, encoded[:])
+}
+
+func sealBytes(digest hash.Hash, value []byte) {
+	digest.Write(value)
+	digest.Write([]byte{0})
+}
+
+func sealSum(digest hash.Hash) [sha256.Size]byte {
+	var result [sha256.Size]byte
+	digest.Sum(result[:0])
+	return result
 }
 
 func bounded(value, fallback, maximum int) int {

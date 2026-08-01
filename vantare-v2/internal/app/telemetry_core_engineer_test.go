@@ -77,6 +77,11 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromOverlay(t *testing.T) {
 	if runtime.EngineerError() == nil {
 		t.Fatal("EngineerError() = nil, want isolated diagnostic")
 	}
+	metrics := runtime.Metrics()
+	if metrics.EngineerObservations != 0 || metrics.EngineerDeliveryFailures != 1 ||
+		metrics.ProjectionsPublished != 1 {
+		t.Fatalf("isolated Engineer metrics = %#v", metrics)
+	}
 }
 
 func TestTelemetryCoreRuntimeReplacesRecoveredEngineerStatusError(t *testing.T) {
@@ -94,6 +99,10 @@ func TestTelemetryCoreRuntimeReplacesRecoveredEngineerStatusError(t *testing.T) 
 	runtime.deliverEngineerStatus(driver.StateLive, 0)
 	if err := runtime.EngineerError(); err != nil {
 		t.Fatalf("EngineerError() after status recovery = %v", err)
+	}
+	metrics := runtime.Metrics()
+	if metrics.EngineerStatusesDelivered != 1 || metrics.EngineerDeliveryFailures != 1 {
+		t.Fatalf("recovered Engineer metrics = %#v", metrics)
 	}
 }
 

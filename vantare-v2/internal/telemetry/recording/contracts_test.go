@@ -197,6 +197,23 @@ func FuzzDecodePayloadV1(f *testing.F) {
 	})
 }
 
+func FuzzDecodeFactV1(f *testing.F) {
+	seed, err := EncodeFactV1(validFact(1))
+	if err != nil {
+		f.Fatalf("EncodeFactV1(seed) error = %v", err)
+	}
+	f.Add(seed)
+	f.Add([]byte(`{"version":1,"driverName":"private"}`))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		fact, decodeErr := DecodeFactV1(data)
+		if decodeErr == nil {
+			if err := fact.Validate(); err != nil {
+				t.Fatalf("successful decode produced invalid fact: %v", err)
+			}
+		}
+	})
+}
+
 func validPayload(sequence uint64) RecordingPayloadV1 {
 	return RecordingPayloadV1{
 		Version:       RecordingVersionV1,

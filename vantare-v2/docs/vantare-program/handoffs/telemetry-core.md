@@ -126,7 +126,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-09C ISA-115: implementación completa en revisión. Un único decoder/mapper
   Overlay y lifecycle compartido para Wails/SSE; eventos, adapters y selector
   shadow legacy retirados sin cambiar UI.
-- TC-09D–F: pendientes desde ISA-116.
+- TC-09D ISA-116: implementación y review completadas. Fuzzing de siete
+  fronteras, métricas payload-free, benchmarks de la cadena y soak lógico de
+  dos horas con 64 vehículos, seis consumidores, Engineer y SQLite pasan.
+- TC-09E–F: pendientes desde ISA-87 e ISA-117.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
@@ -288,13 +291,14 @@ de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 | Auditoría cerrada | ISA-113 / TC-09A, matriz proof-first sin borrados |
 | En revisión | ISA-114 / TC-09B, backend duplicado retirado |
 | En revisión | ISA-115 / TC-09C, frontend/transporte legacy retirado |
-| Pendientes | ISA-116–117 e ISA-87 según dependencias |
+| Cerrada técnicamente | ISA-116 / TC-09D, hardening y soak `APPROVE` |
+| Pendientes | ISA-87 / TC-09E e ISA-117 / TC-09F |
 
 ## Siguiente acción exacta
 
-Entregar ISA-115 y ejecutar ISA-116 / TC-09D sobre su commit. ISA-116 debe
-endurecer seguridad, límites, rendimiento y observabilidad sobre el único
-pipeline, sin reabrir contratos ni añadir transporte. Sin merge ni promoción.
+Entregar ISA-116 y ejecutar ISA-87 / TC-09E sobre su commit. ISA-87 debe cerrar
+observabilidad Wails, lifecycle y teardown del proceso sin reabrir contratos ni
+añadir otro runtime. Sin merge ni promoción.
 
 ## Gate final
 
@@ -303,6 +307,15 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-01, ISA-116: siete fronteras pasan fuzzing; métricas runtime/transporte
+sin payload; soak lógico exacto de dos horas con 64 vehículos, seis
+consumidores, Engineer y SQLite sin rechazos ni crecimiento; benchmarks de
+toda la cadena documentados. La validación del Hub conserva seguridad y reduce
+el full de 64 vehículos desde 258–303 µs históricos a 47,2–50,5 µs. Go global,
+frontend 2.016/2.016, build y Playwright cutover pasan. `-race` queda no
+ejecutable por ausencia de GCC; vet conserva tres avisos Win32 heredados.
+Documento: `docs/telemetry-core/hardening-isa-116.md`. Siguiente: ISA-87.
 
 2026-08-01, ISA-115: `telemetry:update`, los adapters Wails/SSE antiguos,
 `normalizeLegacyTelemetry`, el selector fail-open y el harness shadow runtime

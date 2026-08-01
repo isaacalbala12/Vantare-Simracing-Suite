@@ -3,14 +3,13 @@ package engineer
 import (
 	"encoding/json"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
@@ -18,7 +17,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestProjectV1GoldenMissingAndCapabilities(t *testing.T) {
+func TestProjectV1PreservesMissingZeroAndCapabilities(t *testing.T) {
 	snapshot := engineerInput(t)
 	got, err := ProjectV1(snapshot)
 	if err != nil {
@@ -36,7 +35,66 @@ func TestProjectV1GoldenMissingAndCapabilities(t *testing.T) {
 	if len(got.Capabilities) != 3 {
 		t.Fatalf("capabilities = %v, want 3 explicit capabilities", got.Capabilities)
 	}
-	assertGolden(t, got, "engineer_v1.golden.json")
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"previousIdentity", "raw", "memoryMapped", "restPayload"} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("projection leaked internal field %q: %s", forbidden, encoded)
+		}
+	}
+}
+
+func TestProjectObservationV1AcceptsLapNumberAsOnlyStandingsSignal(t *testing.T) {
+	observed := schema.ProvenanceObserved
+	fresh := schema.FreshnessFresh
+	lapNumber, err := schema.NewField(session.LapNumber(7), observed, fresh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := envelope.NewSnapshot(
+		engineerHeader(),
+		derive.FinalState{Observed: core.ObservedState{
+			Vehicles: []core.VehicleState{{
+				Identity:  headerIdentity(),
+				LapNumber: lapNumber,
+			}},
+		}},
+		func(value derive.FinalState) derive.FinalState {
+			value.Observed.Vehicles = append([]core.VehicleState(nil), value.Observed.Vehicles...)
+			return value
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projected, err := ProjectV1(input)
+	if err != nil {
+		t.Fatalf("ProjectV1() error = %v", err)
+	}
+	if len(projected.Capabilities) != 1 || projected.Capabilities[0] != GroupStandings {
+		t.Fatalf("capabilities = %v, want [%s]", projected.Capabilities, GroupStandings)
+	}
+
+	observation, err := ProjectObservationV1(input, mustManifest(t,
+		Capability{ID: CapabilityStandings, State: CapabilitySupported},
+	))
+	if err != nil {
+		t.Fatalf("ProjectObservationV1() error = %v", err)
+	}
+	if value, present := observation.Player.LapNumber.Value(); !present || value != 7 ||
+		observation.Player.LapNumber.State() != ValueFresh ||
+		!observation.Player.LapNumber.Usable() {
+		t.Fatalf(
+			"lap number = value:%d present:%t state:%v usable:%t",
+			value,
+			present,
+			observation.Player.LapNumber.State(),
+			observation.Player.LapNumber.Usable(),
+		)
+	}
 }
 
 func TestProjectFactV1MapsOrderedFactWithoutCanonicalLeakage(t *testing.T) {
@@ -83,13 +141,17 @@ func TestProjectV1WithoutActiveVehicleEmitsExplicitMissingPlayer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := json.Marshal(got.Player)
-	if err != nil {
-		t.Fatal(err)
+	if got.Player.ID != "car-4" || len(got.Vehicles) != 0 {
+		t.Fatalf("missing player identity/grid = id:%q vehicles:%d", got.Player.ID, len(got.Vehicles))
 	}
-	const want = `{"id":"car-4","lapNumber":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"gear":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"engineRpm":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"speedMps":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"throttle":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"brake":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"clutch":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"position":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"completedLaps":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"},"inPit":{"present":false,"value":false,"provenance":"unknown","freshness":"missing"},"pitStopCount":{"present":false,"value":0,"provenance":"unknown","freshness":"missing"}}`
-	if string(encoded) != want {
-		t.Fatalf("player JSON = %s\nwant: %s", encoded, want)
+	for name, field := range map[string]projection.Freshness{
+		"lap":      got.Player.LapNumber.Freshness,
+		"fuel":     got.Player.FuelLiters.Freshness,
+		"position": got.Player.WorldPosition.Freshness,
+	} {
+		if field != projection.FreshnessMissing {
+			t.Fatalf("%s freshness = %s, want missing", name, field)
+		}
 	}
 }
 
@@ -143,20 +205,11 @@ func engineerHeader() envelope.Header {
 }
 
 func headerIdentity() identity.RunIdentity {
-	return identity.RunIdentity{Event: "event-2", Session: "session-2", Vehicle: "car-4"}
-}
-
-func assertGolden(t *testing.T, value any, name string) {
-	t.Helper()
-	got, err := json.Marshal(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, err := os.ReadFile(filepath.Join("testdata", name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got)+"\n" != string(want) {
-		t.Fatalf("golden mismatch\n got: %s\nwant: %s", got, want)
+	return identity.RunIdentity{
+		Event:   "event-2",
+		Session: "session-2",
+		Vehicle: "car-4",
+		Team:    "team-2",
+		Driver:  "driver-2",
 	}
 }

@@ -101,11 +101,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   evidencia LMU real; los offsets y tests sintéticos legacy no se usan como
   autoridad. Suite global, repeticiones, fuzzing y benchmarks pasan; los dos
   avisos Win32 de vet son heredados.
-- TC-08B–TC-09: pendientes desde ISA-109.
+- TC-08B ISA-109: proyección y entrada pura implementadas. El payload contiene
+  sesión, parrilla completa, fuel, gaps y geometría con calidad explícita. Se
+  reutiliza el contrato ENG-02/03 aprobado, incorporado como segundo padre de
+  la rama; no se arrastran su UI ni sus assets de investigación. No hay wiring.
+- TC-08C–TC-09: pendientes desde ISA-110.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-109 / TC-08B. `go vet` conserva seis avisos heredados
+El siguiente corte es ISA-110 / TC-08C. `go vet` conserva seis avisos heredados
 de `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones

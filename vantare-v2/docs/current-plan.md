@@ -10,6 +10,22 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-108 / TC-08A (2026-08-01):
+- Auditoría documental completa de 30/30 directorios y 20/20 monitores
+  Engineer contra el estado canónico posterior a ISA-107.
+- Sesión, parrilla, vueltas, fuel, pit y gaps permiten adaptar una parte amplia
+  del Engineer. Flags, engine, tyre, damage, conditions y driver swaps quedan
+  deshabilitados cuando falta una capability real; no se inventan datos.
+- `projection/engineer` v1 es insuficiente y debe ampliarse en ISA-109 desde
+  `derive.FinalState`, sin importar la proyección Overlay ni abrir LMU/REST.
+- Spotter está bloqueado por geometría no demostrada: world position,
+  orientation y local velocity existen solo como offsets legacy con tests
+  sintéticos; las fixtures reales versionadas no los preservan.
+- Se requiere ISA-130 / TC-08A.1 aditivo antes de ISA-109 para admitir geometría con
+  captura real, schema, parser y tests. REPLACE/DELETE funcional = 0.
+- Documento: `docs/telemetry-core/engineer-capability-audit-isa-108.md`.
+- Sin cambio de comportamiento, merge ni promoción.
+
 Nota ISA-106 / TC-07B (2026-08-01):
 - Shadow productivo implementado sobre ISA-129 `7f679e6`, sin cutover: el
   servicio legacy sigue siendo la única autoridad de render y persistencia.

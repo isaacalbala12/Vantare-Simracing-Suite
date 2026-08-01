@@ -91,11 +91,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-07C ISA-107: cutover implementado. Overlay Projection v1 es la única
   fuente alcanzable de Studio/Desktop/OBS; el runtime legacy dejó de arrancar.
   Código legacy inerte se elimina en TC-09, no durante el cutover.
-- TC-08–TC-09: pendientes.
+- TC-08A ISA-108: auditoría 30/30 completa. La matriz vigente está en
+  `docs/telemetry-core/engineer-capability-audit-isa-108.md`. No cambia
+  comportamiento ni elimina funcionalidad. Confirma que sesión, grid, fuel,
+  pit, laps y gaps son proyectables, mientras flags, engine, tyre, damage,
+  conditions y driver swaps deben quedar deshabilitados sin capability.
+- TC-08A.1 ISA-130: requerido antes de ISA-109. Debe admitir world position,
+  orientation y local velocity con evidencia LMU real; los offsets y tests
+  sintéticos legacy no bastan para activar Spotter.
+- TC-08B–TC-09: pendientes.
 
 Existe wiring productivo canónico para Overlay. Gaps, delta, pit y reconexión
 tienen inputs, algoritmo, fixtures reales y proyección demostrados en D6-D9.
-El siguiente corte es ISA-108, auditoría Engineer. `go vet` conserva seis avisos heredados de
+El siguiente corte es ISA-130 / TC-08A.1, geometría canónica Spotter con evidencia real;
+después ISA-109. `go vet` conserva seis avisos heredados de
 `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones
@@ -251,9 +260,9 @@ El siguiente corte es ISA-108, auditoría Engineer. `go vet` conserva seis aviso
 
 ## Siguiente acción exacta
 
-Cerrar el único commit D9, push, PR draft apilada sobre ISA-105 y Linear
-`In Review`. Después actualizar el ledger global en su rama de gobernanza; sin
-merge, promoción, shadow wiring ni cutover.
+Entregar ISA-108 como docs-only y ejecutar ISA-130 / TC-08A.1 sobre su commit.
+TC-08A.1 debe cerrar la procedencia espacial real antes de permitir que
+ISA-109 proyecte y adapte Engineer. Sin merge ni promoción.
 
 ## Gate final
 

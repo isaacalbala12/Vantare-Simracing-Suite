@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "sbom-tools.ps1")
+
 function Get-Sha256 {
     param([Parameter(Mandatory = $true)][string]$Path)
     return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
@@ -66,11 +68,9 @@ foreach ($component in $components.vendoredComponents) {
 }
 
 $helperBinary = Join-Path $WorkDirectory "runtime\ta03b-duckdb-spike.exe"
-$buildInfo = (& go version -m $helperBinary) -join "`n"
+$buildInfo = @(& go version -m $helperBinary)
+Assert-ExactGoModuleInventory -BuildInfoLines $buildInfo -ExpectedModules $components.goModules
 foreach ($module in $components.goModules) {
-    if ($buildInfo -notmatch [regex]::Escape("$($module.module)`t$($module.version)")) {
-        throw "Go build information does not contain $($module.module) $($module.version)."
-    }
     $moduleInfo = & go mod download -json "$($module.module)@$($module.version)" | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0 -or -not $moduleInfo.Dir) {
         throw "Unable to resolve Go module $($module.module) $($module.version)."

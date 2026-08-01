@@ -154,6 +154,13 @@ Nota ISA-135 / TA-03B (2026-08-01):
   por SHA; dos SBOM limpios fueron idénticos; suite Go global PASS en 231,4 s y
   `git diff --check` PASS. Un primer intento global agotó el timeout externo de
   cuatro minutos sin reportar fallo y no se contabilizó.
+- Una re-review focal dejó únicamente un P2 en la allowlist Go del SBOM. Ya se
+  compara bidireccionalmente el conjunto exacto `módulo@versión` de
+  `go version -m` y se rechazan replacements, módulos añadidos, esperados
+  ausentes y cambios de versión. Las tres regresiones fail-closed PASS; dos
+  generaciones reales limpias conservaron el mismo SHA del SBOM; spike 50
+  páginas, test/vet focales y tamper de extracción PASS. Pendiente re-review
+  focal final; ISA-135 sigue `In Progress`.
 
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.

@@ -204,5 +204,12 @@ hash; dos SBOM limpios idénticos; suite Go global PASS en 231,4 s;
 `git diff --check` PASS. La primera ejecución global agotó el límite externo de
 cuatro minutos sin emitir fallo y no se contó; la repetición acotada terminó
 correctamente.
+La re-review focal posterior dejó un único P2: la allowlist Go solo comprobaba
+presencia. La corrección compara ahora bidireccionalmente el conjunto exacto
+`módulo@versión` de `go version -m`, rechaza replacements y tiene regresiones
+fail-closed para módulo adicional, esperado ausente y versión distinta. El
+generador real volvió a producir dos SBOM idénticos con el mismo SHA; spike de
+50 páginas, test/vet focales y tamper de extracción siguen PASS. Pendiente una
+última re-review focal de esta corrección.
 Sin dependencias o código de producto, LMU, datos personales, integración ni
 promoción. Pendiente re-review; el gate humano de ADR 0005 viene después.

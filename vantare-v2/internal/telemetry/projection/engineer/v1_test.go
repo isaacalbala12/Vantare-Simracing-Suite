@@ -39,6 +39,57 @@ func TestProjectV1GoldenMissingAndCapabilities(t *testing.T) {
 	assertGolden(t, got, "engineer_v1.golden.json")
 }
 
+func TestProjectObservationV1AcceptsLapNumberAsOnlyStandingsSignal(t *testing.T) {
+	observed := schema.ProvenanceObserved
+	fresh := schema.FreshnessFresh
+	lapNumber, err := schema.NewField(session.LapNumber(7), observed, fresh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := envelope.NewSnapshot(
+		engineerHeader(),
+		derive.FinalState{Observed: core.ObservedState{
+			Vehicles: []core.VehicleState{{
+				Identity:  headerIdentity(),
+				LapNumber: lapNumber,
+			}},
+		}},
+		func(value derive.FinalState) derive.FinalState {
+			value.Observed.Vehicles = append([]core.VehicleState(nil), value.Observed.Vehicles...)
+			return value
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projected, err := ProjectV1(input)
+	if err != nil {
+		t.Fatalf("ProjectV1() error = %v", err)
+	}
+	if len(projected.Capabilities) != 1 || projected.Capabilities[0] != GroupStandings {
+		t.Fatalf("capabilities = %v, want [%s]", projected.Capabilities, GroupStandings)
+	}
+
+	observation, err := ProjectObservationV1(input, mustManifest(t,
+		Capability{ID: CapabilityStandings, State: CapabilitySupported},
+	))
+	if err != nil {
+		t.Fatalf("ProjectObservationV1() error = %v", err)
+	}
+	if value, present := observation.Player.LapNumber.Value(); !present || value != 7 ||
+		observation.Player.LapNumber.State() != ValueFresh ||
+		!observation.Player.LapNumber.Usable() {
+		t.Fatalf(
+			"lap number = value:%d present:%t state:%v usable:%t",
+			value,
+			present,
+			observation.Player.LapNumber.State(),
+			observation.Player.LapNumber.Usable(),
+		)
+	}
+}
+
 func TestProjectFactV1MapsOrderedFactWithoutCanonicalLeakage(t *testing.T) {
 	header := engineerHeader()
 	fact := envelope.NewFact(header, core.SessionFact{
@@ -143,7 +194,13 @@ func engineerHeader() envelope.Header {
 }
 
 func headerIdentity() identity.RunIdentity {
-	return identity.RunIdentity{Event: "event-2", Session: "session-2", Vehicle: "car-4"}
+	return identity.RunIdentity{
+		Event:   "event-2",
+		Session: "session-2",
+		Vehicle: "car-4",
+		Team:    "team-2",
+		Driver:  "driver-2",
+	}
 }
 
 func assertGolden(t *testing.T, value any, name string) {

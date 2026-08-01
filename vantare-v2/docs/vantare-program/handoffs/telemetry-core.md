@@ -28,6 +28,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - TC-04D ISA-38: implementado, entregado y presente en la base.
 - TC-05A ISA-39: cerrado técnicamente; correcciones del primer review
   aceptadas sin P0/P1/P2/P3.
+- ENG-03 ISA-127: adaptación pura de la proyección Engineer implementada sobre
+  TC-05A mediante composición explícita con ENG-02; pendiente review.
 - TC-05B–TC-09: pendientes.
 
 No existe wiring productivo del nuevo reducer/derivaciones. Gaps y delta
@@ -69,6 +71,15 @@ de `unsafe.Pointer` en readers Win32.
   serializan calidad `unknown/missing` explícita en Engineer, Strategy y
   Analysis. El guard de arquitectura rechaza imports entre subárboles de
   productos y conserva únicamente raíz común + árbol propio.
+- ISA-127 reutiliza el único `ProjectorV1`, `PayloadV1`, `Metadata` y
+  `VersionPolicy` de TC-05A. La capa Engineer añade solo su `Context`,
+  `Manifest`, `Field` y `ObservationV1`; no crea transporte, wiring ni otro
+  envelope. Guía: `docs/engineer/projection-adapter.md`.
+- La verificación ISA-127 mantiene focal/árbol projection/Engineer/vet/race y
+  frontend build en verde. La pasada Telemetry volvió a exponer una ejecución
+  load-sensitive heredada de
+  `TestDriverDoesNotPublishOrMutateRESTAfterCancellation`; aislado x20 pasa.
+  No hay cambios bajo `drivers/lmu`.
 - Bench ISA-38 fechado: snapshot escalar 231,1–251,6 ns/op y hecho
   129,1–136,2 ns/op, ambos 0 B/op/0 allocs; snapshot con copia de 64 vehículos
   3,753–5,432 µs/op, 16.384 B/op y 1 alloc.
@@ -88,9 +99,10 @@ de `unsafe.Pointer` en readers Win32.
 
 ## Siguiente acción exacta
 
-Entregar commit/push/PR/Linear de ISA-39. Después ISA-40 / TC-05B debe
-envolver estas proyecciones en Wails/SSE con full snapshot y resync, sin
-serializar el snapshot canónico ni duplicar contratos.
+ISA-40 / TC-05B debe envolver estas proyecciones en Wails/SSE con full
+snapshot y resync, sin serializar el snapshot canónico ni duplicar contratos.
+En paralelo, el review de ISA-127 debe confirmar que la adaptación Engineer no
+introduce otra versión, envelope o semántica de gaps.
 
 ## Gate final
 
@@ -100,5 +112,5 @@ y evidencia para Isaac.
 
 ## Última actualización
 
-2026-07-29, ISA-39 / TC-05A cerrada técnicamente; re-review independiente
-`ACCEPT` sin P0/P1/P2/P3.
+2026-07-29, ISA-39 / TC-05A cerrada técnicamente e ISA-127 / ENG-03
+implementada localmente; adaptación Engineer pendiente de review.

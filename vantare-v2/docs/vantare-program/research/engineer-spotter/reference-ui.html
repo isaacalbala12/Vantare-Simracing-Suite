@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vantare Engineer — Reference Scenario</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05080c;
+      --panel: rgba(15, 21, 28, .82);
+      --panel-2: rgba(23, 31, 40, .72);
+      --line: rgba(255, 255, 255, .1);
+      --muted: #8895a3;
+      --text: #edf4f8;
+      --cyan: #66e0ff;
+      --mint: #87f3c2;
+      --amber: #ffc35b;
+      --red: #ff6577;
+      --violet: #b59aff;
+      --radius: 18px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(56, 186, 224, .14), transparent 31rem),
+        radial-gradient(circle at 85% 18%, rgba(115, 75, 218, .12), transparent 27rem),
+        linear-gradient(145deg, #05080c 0%, #090e14 48%, #06090d 100%);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .22;
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, black, transparent 78%);
+    }
+    button, select { font: inherit; }
+    button { color: inherit; }
+    .shell { width: min(1420px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
+    .reference-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 36px;
+      padding: 8px 14px;
+      border: 1px solid rgba(255, 195, 91, .34);
+      border-radius: 10px;
+      color: #ffe1a4;
+      background: rgba(91, 59, 12, .28);
+      font: 700 11px/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace;
+      letter-spacing: .16em;
+      text-align: center;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      padding: 38px 2px 26px;
+    }
+    .eyebrow { color: var(--cyan); font-size: 12px; font-weight: 760; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 750px; margin: 8px 0 10px; font-size: clamp(34px, 5vw, 68px); line-height: .97; letter-spacing: -.055em; }
+    .lede { max-width: 720px; margin: 0; color: #9eacb9; font-size: 15px; line-height: 1.65; }
+    .session-card {
+      min-width: 270px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(10, 15, 21, .72);
+    }
+    .label { color: var(--muted); font-size: 10px; font-weight: 720; letter-spacing: .12em; text-transform: uppercase; }
+    .session-value { display: flex; align-items: center; gap: 9px; margin-top: 7px; font-size: 15px; font-weight: 680; }
+    .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--amber); box-shadow: 0 0 14px rgba(255,195,91,.65); }
+
+    .tabs {
+      display: flex;
+      gap: 7px;
+      margin-bottom: 18px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tab {
+      min-width: max-content;
+      padding: 10px 14px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: #8f9aa7;
+      background: transparent;
+      cursor: pointer;
+    }
+    .tab[aria-selected="true"] { color: white; border-color: var(--line); background: rgba(255,255,255,.07); }
+    .page { display: none; }
+    .page.active { display: block; animation: reveal .22s ease-out; }
+    @keyframes reveal { from { opacity: .35; transform: translateY(4px); } }
+
+    .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(150deg, rgba(22,29,38,.88), rgba(10,15,21,.82));
+      box-shadow: 0 20px 60px rgba(0,0,0,.16);
+      backdrop-filter: blur(18px);
+    }
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+    .card-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 18px; }
+    .card h2 { margin: 4px 0 0; font-size: 20px; letter-spacing: -.025em; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px;
+      color: #aeb9c4; background: rgba(255,255,255,.04); font-size: 10px; font-weight: 720;
+      letter-spacing: .06em; text-transform: uppercase;
+    }
+    .chip.amber { color: #ffe2a6; border-color: rgba(255,195,91,.3); background: rgba(255,195,91,.08); }
+    .chip.mint { color: var(--mint); border-color: rgba(135,243,194,.25); background: rgba(135,243,194,.07); }
+    .chip.red { color: #ffacb6; border-color: rgba(255,101,119,.3); background: rgba(255,101,119,.07); }
+    .metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .metric { padding: 14px; border: 1px solid rgba(255,255,255,.07); border-radius: 13px; background: rgba(0,0,0,.16); }
+    .metric strong { display: block; margin-top: 8px; font-size: 21px; letter-spacing: -.03em; }
+    .metric small { color: var(--muted); }
+
+    .radio {
+      position: relative;
+      overflow: hidden;
+      min-height: 270px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .radio::after {
+      content: ""; position: absolute; width: 230px; height: 230px; right: -80px; top: -90px;
+      border-radius: 50%; background: rgba(102,224,255,.12); filter: blur(18px);
+    }
+    .radio-top { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; }
+    .speaker { display: flex; align-items: center; gap: 11px; }
+    .avatar {
+      display: grid; place-items: center; width: 42px; height: 42px;
+      border-radius: 13px; background: linear-gradient(135deg, rgba(102,224,255,.25), rgba(181,154,255,.15));
+      border: 1px solid rgba(102,224,255,.27); font-weight: 800;
+    }
+    .wave { display: flex; gap: 4px; align-items: center; height: 34px; }
+    .wave i { width: 3px; height: var(--h); border-radius: 4px; background: var(--cyan); opacity: .78; animation: pulse 1.1s ease-in-out infinite alternate; animation-delay: var(--d); }
+    @keyframes pulse { to { height: 7px; opacity: .35; } }
+    .callout { position: relative; z-index: 1; margin-top: 44px; }
+    .callout p { max-width: 610px; margin: 8px 0 0; font-size: clamp(24px, 3vw, 40px); line-height: 1.08; letter-spacing: -.04em; }
+    .radio-foot { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 26px; color: var(--muted); font-size: 11px; }
+
+    .lane { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(255,255,255,.07); }
+    .lane:first-of-type { border-top: 0; }
+    .lane-code { font: 720 11px ui-monospace, Consolas, monospace; }
+    .lane-title { font-size: 13px; font-weight: 680; }
+    .lane-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .bar { width: 84px; height: 5px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.07); }
+    .bar::after { content:""; display:block; width: var(--w); height:100%; border-radius:inherit; background: var(--c); }
+
+    .capability { display: flex; justify-content: space-between; gap: 14px; padding: 11px 0; border-top: 1px solid rgba(255,255,255,.07); font-size: 12px; }
+    .capability:first-of-type { border-top: 0; }
+    .capability span:last-child { color: var(--muted); }
+    .danger-text { color: #ff9cab !important; }
+    .ok-text { color: var(--mint) !important; }
+    .warning-text { color: var(--amber) !important; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 9px; }
+    .control, select {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 11px;
+      color: #cbd5df;
+      background: rgba(0,0,0,.23);
+    }
+    .control { cursor: pointer; }
+    .control.active { color: var(--mint); border-color: rgba(135,243,194,.25); background: rgba(135,243,194,.08); }
+    .scenario-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+    .scenario {
+      padding: 13px; text-align: left; cursor: pointer; border: 1px solid var(--line);
+      border-radius: 12px; color: #aeb9c4; background: rgba(255,255,255,.025);
+    }
+    .scenario:hover, .scenario.active { color: white; border-color: rgba(102,224,255,.28); background: rgba(102,224,255,.07); }
+    .scenario strong { display: block; margin-bottom: 3px; }
+    .scenario small { color: var(--muted); }
+
+    .pit-step { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.07); }
+    .pit-step:first-of-type { border-top: 0; }
+    .step-num { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:rgba(255,255,255,.06); font-size:11px; font-weight:750; }
+    .pit-step.done .step-num { color:#07130e; background:var(--mint); }
+    .pit-step.current .step-num { color:#1d1403; background:var(--amber); box-shadow:0 0 18px rgba(255,195,91,.24); }
+    .pit-step strong { font-size: 13px; }
+    .pit-step p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+
+    .log { display: grid; gap: 8px; font: 11px/1.45 ui-monospace, Consolas, monospace; }
+    .log-row { display: grid; grid-template-columns: 76px 74px 1fr; gap: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.06); border-radius: 9px; background: rgba(0,0,0,.14); }
+    .log-time { color: #667482; }
+    .log-kind { color: var(--cyan); }
+    footer { padding: 28px 2px 0; color: #687582; font-size: 11px; line-height: 1.6; }
+
+    @media (max-width: 980px) {
+      header { grid-template-columns: 1fr; align-items: start; }
+      .session-card { min-width: 0; max-width: 420px; }
+      .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; }
+    }
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 20px, 1420px); padding-top: 10px; }
+      header { padding: 28px 2px 20px; }
+      .metric-row, .scenario-buttons { grid-template-columns: 1fr; }
+      .lane { grid-template-columns: 50px 1fr; }
+      .lane .bar { grid-column: 2; }
+      .radio-foot { align-items: start; flex-direction: column; }
+      .log-row { grid-template-columns: 1fr; gap: 3px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="reference-banner" role="note">REFERENCE SCENARIO · SYNTHETIC DATA · NOT CONNECTED TO LMU</div>
+
+    <header>
+      <div>
+        <div class="eyebrow">Engineer &amp; Spotter / ENG-01</div>
+        <h1>A radio that tells the truth.</h1>
+        <p class="lede">Interaction reference for priority, pit confirmation and diagnostics. It demonstrates information hierarchy only; every value on this page is a deterministic scenario.</p>
+      </div>
+      <div class="session-card">
+        <div class="label">Telemetry source</div>
+        <div class="session-value"><span class="dot"></span> Reference harness · offline</div>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Reference views">
+      <button class="tab" id="overview-tab" role="tab" aria-controls="overview" aria-selected="true" data-page="overview">Overview</button>
+      <button class="tab" id="radio-tab" role="tab" aria-controls="radio" aria-selected="false" data-page="radio">Radio Crystal</button>
+      <button class="tab" id="pit-tab" role="tab" aria-controls="pit" aria-selected="false" data-page="pit">Pit transaction</button>
+      <button class="tab" id="diagnostics-tab" role="tab" aria-controls="diagnostics" aria-selected="false" data-page="diagnostics">Diagnostics</button>
+    </nav>
+
+    <section class="page active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+      <div class="grid">
+        <article class="card span-8 radio" aria-live="polite">
+          <div class="radio-top">
+            <div class="speaker">
+              <div class="avatar">V</div>
+              <div><div class="label" id="radio-role">Spotter · P0</div><strong id="radio-speaker">Critical bank · ES</strong></div>
+            </div>
+            <div class="wave" role="img" aria-label="Reference waveform">
+              <i style="--h:10px;--d:-.2s"></i><i style="--h:24px;--d:-.6s"></i><i style="--h:16px;--d:-.4s"></i><i style="--h:31px;--d:-.8s"></i><i style="--h:18px;--d:-.1s"></i><i style="--h:27px;--d:-.7s"></i>
+            </div>
+          </div>
+          <div class="callout">
+            <div class="chip red" id="radio-state">Reference playback · started</div>
+            <p id="radio-copy">Coche a la izquierda. Mantén tu línea.</p>
+          </div>
+          <div class="radio-foot">
+            <span id="radio-meta">Scenario epoch 04 · spatial snapshot age 18 ms</span>
+            <span>Subtitle follows <strong>playback.started</strong></span>
+          </div>
+        </article>
+
+        <article class="card span-4">
+          <div class="card-head"><div><div class="label">Scenario controls</div><h2>Exercise the contract</h2></div></div>
+          <div class="scenario-buttons">
+            <button class="scenario active" data-scenario="danger" aria-pressed="true"><strong>Left car</strong><small>P0 preempts</small></button>
+            <button class="scenario" data-scenario="fuel" aria-pressed="false"><strong>Fuel window</strong><small>P2 waits</small></button>
+            <button class="scenario" data-scenario="stale" aria-pressed="false"><strong>Core stale</strong><small>Fail silent</small></button>
+            <button class="scenario" data-scenario="voice" aria-pressed="false"><strong>PTT intent</strong><small>Exact match</small></button>
+          </div>
+          <div style="height:16px"></div>
+          <div class="controls">
+            <select id="language" aria-label="Language">
+              <option value="es">ES · International</option>
+              <option value="en">EN</option>
+              <option value="it">IT</option>
+              <option value="pt">PT-BR</option>
+            </select>
+            <button class="control active" id="ptt" aria-pressed="true">PTT ready</button>
+            <button class="control" id="wake" aria-pressed="false">Wake off</button>
+          </div>
+        </article>
+
+        <article class="card span-7">
+          <div class="card-head"><div><div class="label">Bounded scheduler</div><h2>Priority lanes</h2></div><span class="chip mint">single audio owner</span></div>
+          <div class="lane">
+            <div class="lane-code danger-text">P0</div>
+            <div><div class="lane-title">Danger / Spotter</div><div class="lane-note">Preempt · critical bank · revalidate now</div></div>
+            <div class="bar" style="--w:94%;--c:var(--red)"></div>
+          </div>
+          <div class="lane">
+            <div class="lane-code warning-text">P1</div>
+            <div><div class="lane-title">Critical race facts</div><div class="lane-note">Short TTL · may interrupt Engineer</div></div>
+            <div class="bar" style="--w:61%;--c:var(--amber)"></div>
+          </div>
+          <div class="lane">
+            <div class="lane-code" style="color:var(--cyan)">P2</div>
+            <div><div class="lane-title">Race engineer</div><div class="lane-note">Wait safe window · coalesce by domain</div></div>
+            <div class="bar" style="--w:34%;--c:var(--cyan)"></div>
+          </div>
+          <div class="lane">
+            <div class="lane-code" style="color:var(--violet)">P3</div>
+            <div><div class="lane-title">Advisory</div><div class="lane-note">First to suppress · never delays safety</div></div>
+            <div class="bar" style="--w:18%;--c:var(--violet)"></div>
+          </div>
+        </article>
+
+        <article class="card span-5">
+          <div class="card-head"><div><div class="label">Capability manifest</div><h2>Honest availability</h2></div><span class="chip amber">reference</span></div>
+          <div class="capability"><strong>Spatial rivals</strong><span class="ok-text">Available · 18 ms</span></div>
+          <div class="capability"><strong>Virtual Energy</strong><span class="warning-text">Unavailable</span></div>
+          <div class="capability"><strong>Tyre wear</strong><span class="ok-text">Available · 84 ms</span></div>
+          <div class="capability"><strong>Pit write + readback</strong><span class="danger-text">Disabled</span></div>
+          <div class="capability"><strong>Wake word PT-BR</strong><span class="warning-text">Not validated</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="page" id="radio" role="tabpanel" aria-labelledby="radio-tab">
+      <div class="grid">
+        <article class="card span-8 radio">
+          <div class="radio-top">
+            <div class="speaker"><div class="avatar">E</div><div><div class="label">Engineer · P2</div><strong>Professional · EN</strong></div></div>
+            <span class="chip">safe window</span>
+          </div>
+          <div class="callout"><div class="chip mint">Reference playback · started</div><p>Fuel estimate is stable. Target one lift-and-coast zone next lap.</p></div>
+          <div class="radio-foot"><span>Template ENG.FUEL.WINDOW.02 · facts remain immutable</span><span>Source age 72 ms</span></div>
+        </article>
+        <article class="card span-4">
+          <div class="card-head"><div><div class="label">Radio contract</div><h2>What the driver sees</h2></div></div>
+          <div class="capability"><strong>Who</strong><span>Spotter / Engineer</span></div>
+          <div class="capability"><strong>Urgency</strong><span>Color + P0–P3</span></div>
+          <div class="capability"><strong>Playback</strong><span>Started / ended</span></div>
+          <div class="capability"><strong>Data</strong><span>Source + freshness</span></div>
+          <div class="capability"><strong>Voice input</strong><span>PTT / wake state</span></div>
+        </article>
+        <article class="card span-12">
+          <div class="card-head"><div><div class="label">Personality boundary</div><h2>Style may change. Safety may not.</h2></div><span class="chip mint">declarative</span></div>
+          <div class="metric-row">
+            <div class="metric"><div class="label">Professional</div><strong>Concise</strong><small>Neutral phrasing and cadence</small></div>
+            <div class="metric"><div class="label">Close</div><strong>Warm</strong><small>Same facts, priority and timing</small></div>
+            <div class="metric"><div class="label">Demanding</div><strong>Direct</strong><small>No extra authority or invented fact</small></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="page" id="pit" role="tabpanel" aria-labelledby="pit-tab">
+      <div class="grid">
+        <article class="card span-7">
+          <div class="card-head"><div><div class="label">Reference transaction PT-204</div><h2>Prepare, confirm, verify</h2></div><span class="chip amber">no write executed</span></div>
+          <div class="pit-step done"><div class="step-num">1</div><div><strong>Draft</strong><p>Fuel +22 L, tyres unchanged, repairs off</p></div><span class="ok-text">Bound to epoch 04</span></div>
+          <div class="pit-step done"><div class="step-num">2</div><div><strong>Explained</strong><p>Exact localized summary generated from typed values</p></div><span class="ok-text">Complete</span></div>
+          <div class="pit-step current"><div class="step-num">3</div><div><strong>Awaiting confirmation</strong><p>PTT or UI confirmation; expires in scenario time</p></div><span class="warning-text">Pending</span></div>
+          <div class="pit-step"><div class="step-num">4</div><div><strong>Send once</strong><p>Nonce + idempotency key</p></div><span>Blocked</span></div>
+          <div class="pit-step"><div class="step-num">5</div><div><strong>Readback verify</strong><p>Applied only when observed state matches</p></div><span>Blocked</span></div>
+        </article>
+        <article class="card span-5">
+          <div class="card-head"><div><div class="label">Fail-closed policy</div><h2>No ambiguous success</h2></div></div>
+          <div class="capability"><strong>Session changed</strong><span class="danger-text">Abort</span></div>
+          <div class="capability"><strong>Telemetry stale</strong><span class="danger-text">Abort</span></div>
+          <div class="capability"><strong>Capability missing</strong><span class="danger-text">Abort</span></div>
+          <div class="capability"><strong>Readback mismatch</strong><span class="danger-text">FailedClosed</span></div>
+          <div class="capability"><strong>Dry-run</strong><span class="warning-text">Simulated, never Applied</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="page" id="diagnostics" role="tabpanel" aria-labelledby="diagnostics-tab">
+      <div class="grid">
+        <article class="card span-8">
+          <div class="card-head"><div><div class="label">Sanitized decision timeline</div><h2>Why a message did—or did not—play</h2></div><span class="chip">no microphone audio</span></div>
+          <div class="log">
+            <div class="log-row"><span class="log-time">14:32:08.114</span><span class="log-kind">CANDIDATE</span><span>SPOTTER.LEFT · epoch=04 · spatialAge=18ms</span></div>
+            <div class="log-row"><span class="log-time">14:32:08.119</span><span class="log-kind">PREEMPT</span><span>Cancelled ENG.FUEL.WINDOW.02 · reason=P0_DANGER</span></div>
+            <div class="log-row"><span class="log-time">14:32:08.186</span><span class="log-kind">STARTED</span><span>SPOTTER.LEFT · device=reference · elapsed=72ms</span></div>
+            <div class="log-row"><span class="log-time">14:32:09.006</span><span class="log-kind">ENDED</span><span>SPOTTER.LEFT · result=completed</span></div>
+            <div class="log-row"><span class="log-time">14:32:10.421</span><span class="log-kind">SUPPRESS</span><span>ENG.TYRE.TREND · reason=SIGNAL_STALE</span></div>
+          </div>
+        </article>
+        <article class="card span-4">
+          <div class="card-head"><div><div class="label">Runtime posture</div><h2>Safe degradation</h2></div></div>
+          <div class="capability"><strong>Cloud calls</strong><span class="ok-text">None</span></div>
+          <div class="capability"><strong>Mic recordings</strong><span class="ok-text">None</span></div>
+          <div class="capability"><strong>Queue capacity</strong><span>Bounded reference</span></div>
+          <div class="capability"><strong>Expired messages</strong><span class="ok-text">0 started</span></div>
+          <div class="capability"><strong>Latency</strong><span class="warning-text">Scenario, not benchmark</span></div>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      ISA-123 / ENG-01 interaction reference. Interactive, dependency-free and synthetic. It does not prove LMU connectivity, audio latency, language quality, licensing, wake-word accuracy or Pit Manager support.
+    </footer>
+  </main>
+
+  <script>
+    const tabs = [...document.querySelectorAll(".tab")];
+    const pages = [...document.querySelectorAll(".page")];
+    const scenarios = {
+      danger: {
+        role: "Spotter · P0",
+        speaker: "Critical bank · {lang}",
+        state: "Reference playback · started",
+        meta: "Scenario epoch 04 · spatial snapshot age 18 ms",
+        copy: {
+          es: "Coche a la izquierda. Mantén tu línea.",
+          en: "Car left. Hold your line.",
+          it: "Auto a sinistra. Mantieni la traiettoria.",
+          pt: "Carro à esquerda. Mantenha sua linha."
+        }
+      },
+      fuel: {
+        role: "Engineer · P2",
+        speaker: "Professional · {lang}",
+        state: "Reference message · safe window",
+        meta: "Fuel capability available · source age 72 ms",
+        copy: {
+          es: "Estimación estable. Ahorra en una zona la próxima vuelta.",
+          en: "Estimate stable. Save fuel in one zone next lap.",
+          it: "Stima stabile. Risparmia in una zona nel prossimo giro.",
+          pt: "Estimativa estável. Economize em uma zona na próxima volta."
+        }
+      },
+      stale: {
+        role: "Policy · silence",
+        speaker: "No audio · {lang}",
+        state: "Suppressed · signal stale",
+        meta: "No invented fallback · diagnostic only",
+        copy: {
+          es: "Sin mensaje: la señal requerida está obsoleta.",
+          en: "No message: the required signal is stale.",
+          it: "Nessun messaggio: il segnale richiesto è obsoleto.",
+          pt: "Sem mensagem: o sinal necessário está desatualizado."
+        }
+      },
+      voice: {
+        role: "Voice intent · P1",
+        speaker: "PTT exact match · {lang}",
+        state: "Reference intent · recognized",
+        meta: "Volatile buffer cleared · no recording",
+        copy: {
+          es: "Intención reconocida: preparar combustible. Falta confirmar.",
+          en: "Intent recognized: prepare fuel. Confirmation required.",
+          it: "Intento riconosciuto: prepara carburante. Conferma richiesta.",
+          pt: "Intenção reconhecida: preparar combustível. Confirmação necessária."
+        }
+      }
+    };
+    const languageNames = { es: "ES", en: "EN", it: "IT", pt: "PT-BR" };
+    let currentScenario = "danger";
+
+    function setPage(id) {
+      tabs.forEach(tab => {
+        const selected = tab.dataset.page === id;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      pages.forEach(page => page.classList.toggle("active", page.id === id));
+      document.querySelector(`#${id}-tab`).focus();
+    }
+    tabs.forEach((tab, index) => {
+      tab.tabIndex = index === 0 ? 0 : -1;
+      tab.addEventListener("click", () => setPage(tab.dataset.page));
+      tab.addEventListener("keydown", event => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === "Home" ? 0 :
+          event.key === "End" ? tabs.length - 1 :
+          (index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+        tabs[next].click();
+      });
+    });
+
+    function renderScenario() {
+      const language = document.querySelector("#language").value;
+      const scenario = scenarios[currentScenario];
+      document.querySelector("#radio-role").textContent = scenario.role;
+      document.querySelector("#radio-speaker").textContent = scenario.speaker.replace("{lang}", languageNames[language]);
+      document.querySelector("#radio-state").textContent = scenario.state;
+      document.querySelector("#radio-meta").textContent = scenario.meta;
+      document.querySelector("#radio-copy").textContent = scenario.copy[language];
+    }
+    document.querySelectorAll(".scenario").forEach(button => {
+      button.addEventListener("click", () => {
+        currentScenario = button.dataset.scenario;
+        document.querySelectorAll(".scenario").forEach(item => {
+          const active = item === button;
+          item.classList.toggle("active", active);
+          item.setAttribute("aria-pressed", String(active));
+        });
+        renderScenario();
+      });
+    });
+    document.querySelector("#language").addEventListener("change", renderScenario);
+    document.querySelectorAll(".control").forEach(button => {
+      button.addEventListener("click", () => {
+        const active = !button.classList.contains("active");
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+        button.textContent = button.id === "ptt" ? `PTT ${active ? "ready" : "off"}` : `Wake ${active ? "armed" : "off"}`;
+      });
+    });
+  </script>
+</body>
+</html>

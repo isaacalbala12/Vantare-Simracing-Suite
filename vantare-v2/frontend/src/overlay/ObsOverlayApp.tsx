@@ -9,6 +9,10 @@ import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { ObsOverlayStudioPreview } from "./ObsOverlayStudioPreview";
 import { ObsOverlayRuntime } from "./runtime/ObsOverlayRuntime";
 import { createSseTelemetryAdapter } from "./transports/sse-telemetry-adapter";
+import {
+  createShadowedTelemetryAdapter,
+  createSseProjectionShadowObserver,
+} from "./transports/projection-shadow-adapter";
 
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
@@ -31,10 +35,10 @@ export function ObsOverlayApp() {
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
   const adapter = useMemo(
     () =>
-      createSseTelemetryAdapter({
+      createShadowedTelemetryAdapter(createSseTelemetryAdapter({
         coordinator,
         url: "/telemetry/stream",
-      }),
+      }), createSseProjectionShadowObserver({ runtime: "obs" })),
     [coordinator],
   );
 

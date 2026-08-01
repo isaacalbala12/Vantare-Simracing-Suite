@@ -10,6 +10,27 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-106 / TC-07B (2026-08-01):
+- Shadow productivo implementado sobre ISA-129 `7f679e6`, sin cutover: el
+  servicio legacy sigue siendo la única autoridad de render y persistencia.
+- El runtime canónico LMU recorre Driver -> BatchMapper -> Reducer ->
+  SessionCoordinator -> Derive -> Overlay Projection v1 y publica el mismo
+  contrato versionado por eventos Wails y SSE
+  (`/telemetry/overlay/projection`). Menú/sesión ausente no genera payload
+  inventado; `-live=false` publica estado detenido sin abrir LMU.
+- Studio, Desktop y OBS consumen la proyección en un observer separado que
+  conserva únicamente diagnóstico sanitizado y nunca escribe en el
+  coordinator legacy, el documento Studio, el canvas ni los renderizadores.
+- Gates frescos: Go focal/runtime/server PASS; Telemetry Core PASS; resto Go
+  segmentado PASS; frontend 298 archivos/2.023 tests PASS; build PASS;
+  Playwright Studio/Desktop/OBS PASS. La invocación Go global concurrente
+  excedió 180 s sin producir un fallo; las mismas familias pasaron segmentadas.
+- Los gates visual/canvas reproducen las deudas heredadas ya documentadas en
+  ISA-105: tres casos Original a 0 %, Crystal Studio a 100 % y umbrales del
+  benchmark de drag incumplidos. TC-07B no cambia CSS, canvas ni renderizadores
+  y no actualiza baselines ni relaja umbrales.
+- Siguiente corte: ISA-107 / TC-07C, cutover Overlay. Sin merge ni promoción.
+
 Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
 - Microcorte documental iniciado sobre ISA-105
   `c9acee24cf4c4d80922b380b12f7367c2a60c937`, en la rama

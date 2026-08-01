@@ -85,12 +85,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   antes de anonimizar— y ha habilitado únicamente `1.4.0.0` mediante file y
   product version coincidentes. Lector productivo opt-in `live` PASS. Sin
   derivaciones, wiring, PR, merge ni promoción todavía.
-- TC-07B–TC-09: pendientes.
+- TC-07B ISA-106: shadow Wails/SSE implementado sobre ISA-129. Legacy conserva
+  autoridad de render; Studio/Desktop/OBS observan el contrato canónico sin
+  dirty ni mutaciones visuales. Gates Go, frontend y Playwright verdes.
+- TC-07C–TC-09: pendientes.
 
-No existe wiring productivo del nuevo reducer/derivaciones. Gaps, delta, pit y
-reconexión tienen inputs, algoritmo, fixtures reales y proyección demostrados
-en D6-D9. El siguiente corte puede preparar el shadow wiring después de cerrar
-review y entrega de ISA-129. `go vet` conserva seis avisos heredados de
+Existe wiring productivo únicamente en modo shadow; todavía no alimenta el
+render. Gaps, delta, pit y reconexión tienen inputs, algoritmo, fixtures reales
+y proyección demostrados en D6-D9. El siguiente corte es ISA-107, cutover
+Overlay. `go vet` conserva seis avisos heredados de
 `unsafe.Pointer` Win32, reproducidos sin cambios en la base exacta ISA-105.
 
 ## Decisiones

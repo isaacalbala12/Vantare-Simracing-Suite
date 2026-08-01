@@ -21,6 +21,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
@@ -651,6 +652,7 @@ func main() {
 	var engBridge *app.EngineerBridge
 	var launcherSvc *launcher.Service
 	var diagnosticsBridge *app.DiagnosticsBridge
+	var telemetryCoreShadow *app.TelemetryCoreShadow
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			if overlayController != nil {
@@ -660,6 +662,13 @@ func main() {
 				if err := httpSrv.Stop(); err != nil {
 					log.Printf("HTTP server shutdown error: %v", err)
 				}
+			}
+			if telemetryCoreShadow != nil {
+				stopCtx, cancelShadow := context.WithTimeout(context.Background(), 2*time.Second)
+				if err := telemetryCoreShadow.Stop(stopCtx); err != nil {
+					log.Printf("telemetry core shadow shutdown error: %v", err)
+				}
+				cancelShadow()
 			}
 			if opsBridge != nil {
 				opsBridge.Stop()
@@ -895,6 +904,17 @@ func main() {
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
 
+	// TC-07B runs the canonical LMU pipeline in shadow. The legacy telemetry
+	// service remains the sole render authority until the following cutover.
+	telemetryCoreShadow, err = app.NewTelemetryCoreShadow(app.TelemetryCoreShadowConfig{
+		Enabled: *live,
+		Emitter: emitter,
+	})
+	if err != nil {
+		log.Printf("telemetry core shadow init error: %v", err)
+		telemetryCoreShadow = nil
+	}
+
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
 	httpSrv = server.New(server.ServerConfig{
 		Addr:        *httpAddr,
@@ -903,6 +923,12 @@ func main() {
 		Svc:         vapp.Telemetry,
 		EngineerSvc: engSvc,
 		Emitter:     emitter,
+		OverlayProjection: func() *telemetrytransport.Hub {
+			if telemetryCoreShadow == nil {
+				return nil
+			}
+			return telemetryCoreShadow.Hub()
+		}(),
 	})
 	httpSrv.Start()
 	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
@@ -1435,6 +1461,11 @@ func main() {
 	bridge = app.NewTelemetryBridge(vapp.Telemetry, emitter)
 	vapp.StartTelemetry(ctx)
 	bridge.Start()
+	if telemetryCoreShadow != nil {
+		if err := telemetryCoreShadow.Start(ctx); err != nil {
+			log.Printf("telemetry core shadow start error: %v", err)
+		}
+	}
 	sourceInfo := service.InfoForSource(vapp.TelemetrySource())
 	rtSampler = ops.NewRuntimeSampler(sourceInfo)
 	opsBridge = app.NewOpsBridge(rtSampler, emitter, ops.DefaultInterval)

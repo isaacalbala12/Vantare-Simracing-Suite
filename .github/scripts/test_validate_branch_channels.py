@@ -1,3 +1,4 @@
+from pathlib import Path
 import unittest
 
 from validate_branch_channels import validate
@@ -26,6 +27,28 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must come from 'testers'"):
             validate("pull_request", "refs/pull/5/merge", "master", "nightly")
 
+    def test_accepts_only_linear_hotfix_branches_as_master_exception(self) -> None:
+        self.assertEqual(
+            validate(
+                "pull_request",
+                "refs/pull/8/merge",
+                "master",
+                "vantareapp/hotfix-isa-175-critical-license-fix",
+            ),
+            "emergency hotfix accepted: "
+            "vantareapp/hotfix-isa-175-critical-license-fix -> master",
+        )
+        for head in (
+            "hotfix/isa-175",
+            "vantareapp/hotfix-175",
+            "vantareapp/hotfix-isa-0-invalid",
+            "vantareapp/hotfix-isa-175_Invalid",
+        ):
+            with self.subTest(head=head), self.assertRaisesRegex(
+                ValueError, "must come from 'testers'"
+            ):
+                validate("pull_request", "refs/pull/9/merge", "master", head)
+
     def test_rejects_non_issue_branches_into_nightly(self) -> None:
         for head in ("testers", "master", "develop", "feature/x", "codex/isa-121"):
             with self.subTest(head=head), self.assertRaisesRegex(ValueError, "Linear issue branch"):
@@ -45,6 +68,42 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             validate("workflow_dispatch", "refs/heads/nightly", "", "")
         with self.assertRaisesRegex(ValueError, "unsupported promotion target"):
             validate("pull_request", "refs/pull/7/merge", "develop", "feature/x")
+
+    def test_frontend_test_debt_is_an_exact_allowlist(self) -> None:
+        workflows = Path(__file__).resolve().parents[1] / "workflows"
+        channel_gate = (workflows / "branch-channel-gates.yml").read_text(encoding="utf-8")
+        release_gate = (workflows / "release.yml").read_text(encoding="utf-8")
+        excluded_tests = (
+            "scripts/crystal-reference-manifest.test.mjs",
+            "src/hub/calendar/CalendarMonthView.test.tsx",
+            "src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx",
+        )
+
+        self.assertNotIn(
+            "- name: Frontend tests\n        continue-on-error: true",
+            channel_gate,
+        )
+        for test_file in excluded_tests:
+            with self.subTest(workflow="channel", test_file=test_file):
+                self.assertEqual(channel_gate.count(f"--exclude {test_file}"), 1)
+                self.assertIn(f"vitest run {test_file}", channel_gate)
+            with self.subTest(workflow="release", test_file=test_file):
+                self.assertEqual(release_gate.count(f"--exclude {test_file}"), 1)
+                self.assertIn(f"vitest run {test_file}", release_gate)
+
+    def test_runbook_never_reuses_tags_or_commits_to_master(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        runbook = (
+            repo_root / "vantare-v2" / "docs" / "release-beta-operations-runbook.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("git push origin --delete", runbook)
+        self.assertNotIn("Commitea el fix en `master`", runbook)
+        self.assertIn("No borres, muevas ni reutilices el tag distribuido", runbook)
+        self.assertIn(
+            "`vantareapp/hotfix-isa-<número>-<descripción>` desde `master`",
+            runbook,
+        )
 
 
 if __name__ == "__main__":

@@ -4,10 +4,10 @@ Nota REL-00 / ISA-121 (2026-08-02):
 - `develop@f492007ced82766873890990ddebf73e87486dec` queda congelada como referencia histórica mientras existan PRs, worktrees o documentos dependientes. No recibe trabajo nuevo y no se elimina en este corte.
 - Las ramas remotas `nightly` y `testers` nacen exactamente del último `develop`; crear los canales no promociona por sí mismo Telemetry Core ni otros módulos aislados.
 - Contrato operativo y rollback: `docs/branch-channels.md`. La autorización del actualizador por plan requiere ISA-169, ligada a Billing; una selección de UI no es una barrera de acceso.
-- Baseline local del corte: Go PASS, frontend 280/280 archivos y 1851/1851 tests PASS en la ejecución principal, build PASS; una revisión independiente reprodujo un fallo intermitente de `useCanvasInteraction`, y el lint global conserva 33 errores/2 warnings heredados. Ambos checks permanecen visibles como avisos hasta cerrar ISA-172 e ISA-170, sin ocultarlos ni rebajar reglas.
+- Baseline local del corte: Go PASS, frontend 280/280 archivos y 1851/1851 tests PASS en la ejecución principal, build PASS; una revisión independiente reprodujo un fallo intermitente de `useCanvasInteraction`, y el lint global conserva 33 errores/2 warnings heredados. El run remoto añadió dos deudas de entorno/fecha, registradas en ISA-173 e ISA-174. La suite bloqueante excluye únicamente esos tres archivos exactos y ejecuta 277 archivos/1812 tests PASS; cada excepción se ejecuta por separado y sigue visible.
 - El primer run remoto confirmó que Go necesita el `frontend/dist` generado antes de compilar el embed. El gate construye frontend antes de `go test ./...`; la ausencia del artefacto ya no se presenta como fallo de código.
 - El segundo run remoto reprodujo la colisión Windows conocida de `TestConcurrentSavesDontCorruptFile` (`app-settings.json.tmp`, ISA-118). El gate mantiene bloqueantes todos los demás paquetes y todos los demás tests de `internal/app`; solo ese caso se ejecuta como aviso explícito hasta su corrección determinista.
-- Las builds internas de `nightly`/`testers` aplican el mismo aislamiento temporal a ISA-118/170/172. Las releases públicas desde `master` conservan Go, frontend y lint completos como gates estrictos.
+- Las builds internas de `nightly`/`testers` aplican el mismo aislamiento temporal y exacto a ISA-118/170/172/173/174. Las releases públicas desde `master` conservan Go, frontend y lint completos como gates estrictos.
 
 Nota INTEGRACION-ISA-93 (2026-07-19):
 - Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.
@@ -92,6 +92,7 @@ Nota LAUNCHER-V3-PLAN (2026-07-11):
 - La skill `vantare-core` no se usa como fuente de verdad por indicación expresa del usuario.
 - Estado: PLANIFICADO, sin cambios de código.
 Nota ISA-95 (2026-07-14):
+- **HISTÓRICO, SUPERADO POR REL-00 / ISA-121 (2026-08-02):** las referencias siguientes a `develop`, dispatch beta y gates previos a `develop` describen el flujo anterior. El contrato vigente es `rama de issue -> nightly -> testers -> master`; consulta `docs/branch-channels.md`.
 - Redistribución de Discord implementada en rama aislada: releases públicas desde `master`, testers desde fragmentos que alcanzan `develop`, builds beta por dispatch y desarrollo activo desde proyectos Linear con opt-in público.
 - Fuente tester: `docs/changelog/fragments/*.json`; se elimina el parser de primeras coincidencias históricas de este documento.
 - Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.

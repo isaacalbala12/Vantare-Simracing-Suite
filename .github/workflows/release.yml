@@ -154,9 +154,38 @@ jobs:
         run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
 
       - name: Gate - Frontend tests
-        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm test
+        env:
+          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
+        run: |
+          if ($env:INTERNAL_BUILD -ne "true") {
+            pnpm test
+            exit $LASTEXITCODE
+          }
+
+          pnpm exec vitest run `
+            --exclude scripts/crystal-reference-manifest.test.mjs `
+            --exclude src/hub/calendar/CalendarMonthView.test.tsx `
+            --exclude src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
+          if ($LASTEXITCODE -ne 0) { throw "Blocking frontend tests failed" }
+
+      - name: Gate - ISA-173 Crystal manifest runner (internal advisory)
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm exec vitest run scripts/crystal-reference-manifest.test.mjs
+
+      - name: Gate - ISA-174 Calendar month boundary (internal advisory)
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm exec vitest run src/hub/calendar/CalendarMonthView.test.tsx
+
+      - name: Gate - ISA-172 canvas interaction flake (internal advisory)
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm exec vitest run src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
 
       - name: Gate - Frontend lint
         continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}

@@ -32,14 +32,20 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.
-- Go y build frontend son bloqueantes, salvo el único test Windows aislado en
-  ISA-118. Ese test, la suite frontend y el lint global se ejecutan y se
-  informan sin ocultarlos, pero permanecen temporalmente como avisos: la base
-  heredada contiene dos tests intermitentes y 33 errores/2 warnings de lint ya
-  inventariados. ISA-118, ISA-172 e ISA-170 deben cerrarlos antes de convertir
-  los tres en gates obligatorios.
+- Go, build frontend y todos los tests frontend no inventariados son
+  bloqueantes. Solo se aíslan en pasos advisory los archivos exactos de
+  ISA-172 (`useCanvasInteraction`), ISA-173 (runner del manifiesto Crystal) e
+  ISA-174 (`CalendarMonthView`), además del test Windows de ISA-118. El lint
+  global también permanece advisory por los 33 errores/2 warnings registrados
+  en ISA-170. Cada excepción se ejecuta y muestra por separado; una regresión
+  en cualquier otro test bloquea la promoción.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
+- La única excepción es un hotfix crítico aprobado expresamente por Isaac:
+  parte de `master`, utiliza una rama
+  `vantareapp/hotfix-isa-<número>-<descripción>`, conserva PR y todos los gates
+  estrictos, y vuelve después a `nightly` mediante una rama de issue normal.
+  Nunca se reutiliza un tag publicado.
 - El workflow de Discord para testers solo publica fragmentos que alcanzan
   `testers`; un commit de una rama de issue o de `nightly` no puede anunciarse
   como disponible para el grupo amplio.
@@ -50,9 +56,9 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
   `release.yml` y `create_release=false`; nunca crean una GitHub Release
   pública. Un tag solo puede crear una release si pertenece a `master`.
 - Las builds internas aíslan como avisos únicamente las deudas inventariadas
-  en ISA-118, ISA-170 e ISA-172. Todo lo demás sigue bloqueando. Una release
-  pública ejecuta siempre la suite Go, frontend y lint completas como gates
-  estrictos, sin excepciones de canal.
+  en ISA-118, ISA-170, ISA-172, ISA-173 e ISA-174. Todo lo demás sigue
+  bloqueando. Una release pública ejecuta siempre la suite Go, frontend y lint
+  completas como gates estrictos, sin excepciones de canal.
 
 ## Acceso a builds
 

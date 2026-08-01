@@ -67,10 +67,15 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		{lmu13Layout.Scoring.TimeBehindLeader, scopeScoringRow, 244, sourceFloat64, 1},
 		{lmu13Layout.Scoring.LapsBehindLeader, scopeScoringRow, 252, sourceInt32, 1},
 		{lmu13Layout.Scoring.EstimatedLapTime, scopeScoringRow, 472, sourceFloat64, 1},
+		{lmu13Layout.Scoring.WorldPosition, scopeScoringRow, 264, sourceFloat64, 3},
+		{lmu13Layout.Scoring.LocalVelocity, scopeScoringRow, 288, sourceFloat64, 3},
+		{lmu13Layout.Scoring.Orientation, scopeScoringRow, 336, sourceFloat64, 9},
 
 		{lmu13Layout.Telemetry.VehicleSourceSlot, scopeTelemetryRow, 0, sourceInt32, 1},
 		{lmu13Layout.Telemetry.LapNumber, scopeTelemetryRow, 20, sourceInt32, 1},
+		{lmu13Layout.Telemetry.WorldPosition, scopeTelemetryRow, 160, sourceFloat64, 3},
 		{lmu13Layout.Telemetry.LocalVelocity, scopeTelemetryRow, 184, sourceFloat64, 3},
+		{lmu13Layout.Telemetry.Orientation, scopeTelemetryRow, 232, sourceFloat64, 9},
 		{lmu13Layout.Telemetry.Gear, scopeTelemetryRow, 352, sourceInt32, 1},
 		{lmu13Layout.Telemetry.EngineRPM, scopeTelemetryRow, 356, sourceFloat64, 1},
 		{lmu13Layout.Telemetry.Throttle, scopeTelemetryRow, 420, sourceFloat64, 1},
@@ -142,12 +147,20 @@ func TestLMU13LayoutReadsPinnedTrackFixture(t *testing.T) {
 	assertLayoutFloatAt(t, buf, scoringBase, lmu13Layout.Scoring.TimeBehindLeader, 66.6352081298828)
 	assertLayoutInt64At(t, buf, scoringBase, lmu13Layout.Scoring.LapsBehindLeader, 0)
 	assertLayoutFloatAt(t, buf, scoringBase, lmu13Layout.Scoring.EstimatedLapTime, 98.6324920654297)
+	assertLayoutFloatElementAt(t, buf, scoringBase, lmu13Layout.Scoring.WorldPosition, 0, -485.3604736328125)
+	assertLayoutFloatElementAt(t, buf, scoringBase, lmu13Layout.Scoring.WorldPosition, 2, -481.41119384765625)
+	assertLayoutFloatElementAt(t, buf, scoringBase, lmu13Layout.Scoring.Orientation, 6, -0.866686701774597)
+	assertLayoutFloatElementAt(t, buf, scoringBase, lmu13Layout.Scoring.Orientation, 8, 0.497451931238174)
 
 	assertLayoutInt64At(t, buf, telemetryBase, lmu13Layout.Telemetry.VehicleSourceSlot, 0)
 	assertLayoutInt64At(t, buf, telemetryBase, lmu13Layout.Telemetry.LapNumber, 0)
+	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.WorldPosition, 0, -487.8100280761719)
+	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.WorldPosition, 2, -482.815948486328)
 	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.LocalVelocity, 0, 0.00766611099243164)
 	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.LocalVelocity, 1, 0.171518176794052)
 	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.LocalVelocity, 2, -15.5912675857544)
+	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.Orientation, 6, -0.8669500350952148)
+	assertLayoutFloatElementAt(t, buf, telemetryBase, lmu13Layout.Telemetry.Orientation, 8, 0.4970053732395172)
 	assertLayoutInt64At(t, buf, telemetryBase, lmu13Layout.Telemetry.Gear, 1)
 	assertLayoutFloatAt(t, buf, telemetryBase, lmu13Layout.Telemetry.EngineRPM, 3395.99191193568)
 	assertLayoutFloatAt(t, buf, telemetryBase, lmu13Layout.Telemetry.Throttle, 0)

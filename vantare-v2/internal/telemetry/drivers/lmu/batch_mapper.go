@@ -305,6 +305,9 @@ func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID iden
 		TimeBehindNext:   source.TimeBehindNext,
 		LapsBehindNext:   source.LapsBehindNext,
 		Fuel:             source.Fuel,
+		WorldPosition:    source.WorldPosition,
+		LocalVelocity:    source.LocalVelocity,
+		Orientation:      source.Orientation,
 	}
 }
 

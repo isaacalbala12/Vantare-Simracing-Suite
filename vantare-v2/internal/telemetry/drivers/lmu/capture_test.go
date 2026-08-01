@@ -912,7 +912,8 @@ func assertDiagnosticPlayerScopeEqual(t testing.TB, original, sanitized Observat
 			left.LapsBehindNext != right.LapsBehindNext || left.LapNumber != right.LapNumber ||
 			left.Gear != right.Gear || left.EngineRPM != right.EngineRPM || left.SpeedMPS != right.SpeedMPS ||
 			left.Throttle != right.Throttle || left.Brake != right.Brake || left.Clutch != right.Clutch ||
-			left.Fuel != right.Fuel {
+			left.Fuel != right.Fuel || left.WorldPosition != right.WorldPosition ||
+			left.LocalVelocity != right.LocalVelocity || left.Orientation != right.Orientation {
 			t.Fatalf("sanitized row %d changed numeric facts:\noriginal=%#v\nsanitized=%#v", index, left, right)
 		}
 	}
@@ -1054,6 +1055,8 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 			lmu13Layout.Scoring.TimeBehindNext, lmu13Layout.Scoring.LapsBehindNext,
 			lmu13Layout.Scoring.TimeBehindLeader, lmu13Layout.Scoring.LapsBehindLeader,
 			lmu13Layout.Scoring.EstimatedLapTime,
+			lmu13Layout.Scoring.WorldPosition, lmu13Layout.Scoring.LocalVelocity,
+			lmu13Layout.Scoring.Orientation,
 		} {
 			mark(base+field.Offset, field.width())
 		}
@@ -1068,7 +1071,8 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 			continue
 		}
 		for _, field := range []layoutField{
-			lmu13Layout.Telemetry.LapNumber, lmu13Layout.Telemetry.LocalVelocity,
+			lmu13Layout.Telemetry.LapNumber, lmu13Layout.Telemetry.WorldPosition,
+			lmu13Layout.Telemetry.LocalVelocity, lmu13Layout.Telemetry.Orientation,
 			lmu13Layout.Telemetry.Gear, lmu13Layout.Telemetry.EngineRPM,
 			lmu13Layout.Telemetry.Throttle, lmu13Layout.Telemetry.Brake,
 			lmu13Layout.Telemetry.Clutch, lmu13Layout.Telemetry.FuelLiters,

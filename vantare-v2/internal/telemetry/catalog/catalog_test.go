@@ -53,6 +53,7 @@ var (
 	_ weather.Temperature     = 0
 	_ spatial.Position        = spatial.Position{}
 	_ spatial.Orientation     = spatial.Orientation{}
+	_ spatial.LocalVelocity   = spatial.LocalVelocity{}
 	_ wheels.BrakeTemperature = wheels.BrakeTemperature{}
 )
 
@@ -107,6 +108,7 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalEnergyFuelCapacity, "energy.fuel_capacity", schema.DomainEnergy},
 		{SignalSessionSelfDeltaSeconds, "session.self_delta_seconds", schema.DomainSession},
 		{SignalSessionSelfDeltaReference, "session.self_delta_reference", schema.DomainSession},
+		{SignalSpatialLocalVelocity, "spatial.local_velocity", schema.DomainSpatial},
 	}
 
 	got := All()
@@ -148,14 +150,15 @@ func TestCatalogISA129IDsAreStableAndAppendOnly(t *testing.T) {
 		SignalStandingsTimeBehindNext, SignalStandingsLapsBehindNext,
 		SignalStandingsRelativeTimeGap, SignalStandingsRelativeLapDelta,
 		SignalEnergyFuelCapacity, SignalSessionSelfDeltaSeconds, SignalSessionSelfDeltaReference,
+		SignalSpatialLocalVelocity,
 	}
 	for index, id := range appended {
 		if want := SignalID(25 + index); id != want {
 			t.Fatalf("appended ID at index %d = %d, want %d", index, id, want)
 		}
 	}
-	if got := len(All()); got != 43 {
-		t.Fatalf("catalog definitions = %d, want 43", got)
+	if got := len(All()); got != 44 {
+		t.Fatalf("catalog definitions = %d, want 44", got)
 	}
 }
 
@@ -179,13 +182,13 @@ func TestCatalogISA129ReuseHardenAppendMatrix(t *testing.T) {
 		{SignalPitStopCount, LedgerHardened, schema.UnitCount, schema.NonNegativeRange()},
 		{SignalStandingsPosition, LedgerHardened, schema.UnitCount, schema.ClosedRange(1, 104)},
 		{SignalWeatherAmbientTemperature, LedgerExistingUnproduced, schema.UnitUnknown, schema.UnknownRange()},
-		{SignalSpatialPosition, LedgerExistingUnproduced, schema.UnitUnknown, schema.UnknownRange()},
+		{SignalSpatialPosition, LedgerHardened, schema.UnitMeters, schema.UnknownRange()},
 		{SignalSessionLapNumber, LedgerHardened, schema.UnitCount, schema.NonNegativeRange()},
 		{SignalVehicleGear, LedgerReused, schema.UnitUnsupported, schema.UnknownRange()},
 		{SignalVehicleTeamName, LedgerExistingUnproduced, schema.UnitUnsupported, schema.UnsupportedRange()},
 		{SignalVehicleName, LedgerHardened, schema.UnitText, schema.UnsupportedRange()},
 		{SignalStandingsCompletedLaps, LedgerHardened, schema.UnitCount, schema.NonNegativeRange()},
-		{SignalSpatialOrientation, LedgerExistingUnproduced, schema.UnitUnknown, schema.UnknownRange()},
+		{SignalSpatialOrientation, LedgerHardened, schema.UnitUnsupported, schema.UnknownRange()},
 		{SignalSessionSourceTime, LedgerHardened, schema.UnitSeconds, schema.NonNegativeRange()},
 		{SignalSessionTrackName, LedgerHardened, schema.UnitText, schema.UnsupportedRange()},
 		{SignalSessionVehicleCount, LedgerReused, schema.UnitCount, schema.ClosedRange(0, 104)},
@@ -211,6 +214,7 @@ func TestCatalogISA129ReuseHardenAppendMatrix(t *testing.T) {
 		{SignalEnergyFuelCapacity, LedgerAppended, schema.UnitLiters, schema.NonNegativeRange()},
 		{SignalSessionSelfDeltaSeconds, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
 		{SignalSessionSelfDeltaReference, LedgerAppended, schema.UnitText, schema.UnsupportedRange()},
+		{SignalSpatialLocalVelocity, LedgerAppended, schema.UnitMetersPerSecond, schema.UnknownRange()},
 	}
 
 	for _, tt := range tests {

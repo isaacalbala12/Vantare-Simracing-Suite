@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -64,6 +65,9 @@ type VehicleState struct {
 	TimeBehindNext   schema.Field[standings.TimeGap]
 	LapsBehindNext   schema.Field[standings.LapGap]
 	Fuel             schema.Field[energy.Fuel]
+	WorldPosition    schema.Field[spatial.Position]
+	LocalVelocity    schema.Field[spatial.LocalVelocity]
+	Orientation      schema.Field[spatial.Orientation]
 }
 
 // ObservedState is the complete state replaced by one atomic batch. The

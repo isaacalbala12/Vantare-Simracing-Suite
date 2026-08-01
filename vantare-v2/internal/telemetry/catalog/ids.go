@@ -48,4 +48,5 @@ const (
 	SignalEnergyFuelCapacity
 	SignalSessionSelfDeltaSeconds
 	SignalSessionSelfDeltaReference
+	SignalSpatialLocalVelocity
 )

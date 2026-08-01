@@ -10,6 +10,23 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-130 / TC-08A.1 (2026-08-01):
+- Geometría canónica añadida de forma aditiva: posición mundo en metros,
+  velocidad local en m/s y orientación right-handed por vehículo.
+- El parser une scoring y telemetry por `mID` activo; la muestra rápida solo
+  sustituye al jugador correlacionado. Cero sigue presente y NaN/Inf o matriz
+  inválida fallan cerrados por campo.
+- La fixture LMU 1.3 real hash-pinned prueba 44/44 geometrías y un oráculo
+  independiente de transformación mundo -> local. Las fixtures LMU 1.4
+  anteriores tenían esos bytes a cero por su allowlist, no por el simulador.
+- El sanitizador conserva ahora únicamente estos campos espaciales para una
+  futura captura 1.4 real sin PII. El gate perceptual de tráfico se agrupa con
+  ISA-112; no se inventa evidencia.
+- Fusion pasa a matriz v4 y la cadena Driver -> Batch -> Reducer conserva
+  freshness y generaciones. No se activa Spotter ni se añade otro reader.
+- Documento: `docs/telemetry-core/lmu-spotter-spatial-provenance.md`.
+- Siguiente corte: ISA-109 / TC-08B.
+
 Nota ISA-108 / TC-08A (2026-08-01):
 - Auditoría documental completa de 30/30 directorios y 20/20 monitores
   Engineer contra el estado canónico posterior a ISA-107.

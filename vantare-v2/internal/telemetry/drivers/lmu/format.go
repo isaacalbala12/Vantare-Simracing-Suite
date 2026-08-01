@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -121,6 +122,9 @@ type VehicleObservation struct {
 	Brake            schema.Field[schema.Ratio]
 	Clutch           schema.Field[schema.Ratio]
 	Fuel             schema.Field[energy.Fuel]
+	WorldPosition    schema.Field[spatial.Position]
+	LocalVelocity    schema.Field[spatial.LocalVelocity]
+	Orientation      schema.Field[spatial.Orientation]
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
@@ -284,6 +288,9 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 	if !bestOK || !lastOK || !estimatedOK {
 		return VehicleObservation{}, false
 	}
+	worldPosition := readPositionField(buf, base+lmu13Layout.Scoring.WorldPosition.Offset)
+	localVelocity := readLocalVelocityField(buf, base+lmu13Layout.Scoring.LocalVelocity.Offset)
+	orientation := readOrientationField(buf, base+lmu13Layout.Scoring.Orientation.Offset)
 	return VehicleObservation{
 		SourceID:   VehicleSourceID(readInt32(buf, base+lmu13Layout.Scoring.VehicleSourceSlot.Offset)),
 		DriverName: observed(identity.DriverName(driver)), VehicleName: observed(vehicle.VehicleName(name)),
@@ -295,6 +302,7 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 		PenaltyCount:     observed(standings.PenaltyCount(penalties)),
 		TimeBehindLeader: timeBehindLeader, LapsBehindLeader: observed(standings.LapGap(lapsLeader)),
 		TimeBehindNext: timeBehindNext, LapsBehindNext: observed(standings.LapGap(lapsNext)),
+		WorldPosition: worldPosition, LocalVelocity: localVelocity, Orientation: orientation,
 	}, true
 }
 
@@ -312,9 +320,20 @@ func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
 	} else {
 		row.EngineRPM = invalid[vehicle.EngineRPM]()
 	}
-	velocityOffset := base + lmu13Layout.Telemetry.LocalVelocity.Offset
-	vx, vy, vz := readFloat64(buf, velocityOffset), readFloat64(buf, velocityOffset+8), readFloat64(buf, velocityOffset+16)
-	if finite(vx) && finite(vy) && finite(vz) {
+	row.WorldPosition = preferFresh(
+		readPositionField(buf, base+lmu13Layout.Telemetry.WorldPosition.Offset),
+		row.WorldPosition,
+	)
+	telemetryVelocity := readLocalVelocityField(buf, base+lmu13Layout.Telemetry.LocalVelocity.Offset)
+	row.LocalVelocity = preferFresh(telemetryVelocity, row.LocalVelocity)
+	row.Orientation = preferFresh(
+		readOrientationField(buf, base+lmu13Layout.Telemetry.Orientation.Offset),
+		row.Orientation,
+	)
+	velocity, velocityPresent := telemetryVelocity.Value()
+	velocityPresent = velocityPresent && telemetryVelocity.Freshness() == schema.FreshnessFresh
+	vx, vy, vz := velocity.X, velocity.Y, velocity.Z
+	if velocityPresent {
 		speed := math.Sqrt(vx*vx + vy*vy + vz*vz)
 		if finite(speed) {
 			row.SpeedMPS = observed(speed)
@@ -336,6 +355,79 @@ func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
 	} else {
 		row.Fuel = invalid[energy.Fuel]()
 	}
+}
+
+func readPositionField(buf []byte, offset int) schema.Field[spatial.Position] {
+	value := readVector3(buf, offset)
+	if !finiteVector(value) {
+		return invalid[spatial.Position]()
+	}
+	return observed(spatial.Position(value))
+}
+
+func readLocalVelocityField(buf []byte, offset int) schema.Field[spatial.LocalVelocity] {
+	value := readVector3(buf, offset)
+	if !finiteVector(value) {
+		return invalid[spatial.LocalVelocity]()
+	}
+	return observed(spatial.LocalVelocity(value))
+}
+
+func readOrientationField(buf []byte, offset int) schema.Field[spatial.Orientation] {
+	value := spatial.Orientation{
+		Row0: readVector3(buf, offset),
+		Row1: readVector3(buf, offset+24),
+		Row2: readVector3(buf, offset+48),
+	}
+	if !validOrientation(value) {
+		return invalid[spatial.Orientation]()
+	}
+	return observed(value)
+}
+
+func readVector3(buf []byte, offset int) spatial.Vector3 {
+	return spatial.Vector3{
+		X: readFloat64(buf, offset),
+		Y: readFloat64(buf, offset+8),
+		Z: readFloat64(buf, offset+16),
+	}
+}
+
+func finiteVector(value spatial.Vector3) bool {
+	return finite(value.X) && finite(value.Y) && finite(value.Z)
+}
+
+func validOrientation(value spatial.Orientation) bool {
+	if !finiteVector(value.Row0) || !finiteVector(value.Row1) || !finiteVector(value.Row2) {
+		return false
+	}
+	const tolerance = 1e-3
+	rows := [...]spatial.Vector3{value.Row0, value.Row1, value.Row2}
+	for _, row := range rows {
+		if math.Abs(dot(row, row)-1) > tolerance {
+			return false
+		}
+	}
+	if math.Abs(dot(rows[0], rows[1])) > tolerance ||
+		math.Abs(dot(rows[0], rows[2])) > tolerance ||
+		math.Abs(dot(rows[1], rows[2])) > tolerance {
+		return false
+	}
+	determinant := rows[0].X*(rows[1].Y*rows[2].Z-rows[1].Z*rows[2].Y) -
+		rows[0].Y*(rows[1].X*rows[2].Z-rows[1].Z*rows[2].X) +
+		rows[0].Z*(rows[1].X*rows[2].Y-rows[1].Y*rows[2].X)
+	return math.Abs(determinant-1) <= tolerance
+}
+
+func dot(left, right spatial.Vector3) float64 {
+	return left.X*right.X + left.Y*right.Y + left.Z*right.Z
+}
+
+func preferFresh[T comparable](preferred, fallback schema.Field[T]) schema.Field[T] {
+	if preferred.Freshness() == schema.FreshnessFresh {
+		return preferred
+	}
+	return fallback
 }
 
 func publishPlayer(result *Observation, player VehicleObservation) {

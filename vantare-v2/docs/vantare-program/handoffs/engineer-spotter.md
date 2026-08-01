@@ -133,11 +133,18 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Entregar ISA-112 con commit/push/PR draft y actualizar Linear. Después ISA-113
-debe auditar consumidores alcanzables antes de que ISA-114/115 retiren el
-backend y transporte legacy. No hay promoción en esta cadena.
+Continuar desde ISA-115 después de entregar ISA-114. Engineer ya consume solo
+Telemetry Core en producto; el resto de TC-09 no debe reabrir su funcionalidad
+ni añadir una fuente alternativa. No hay promoción en esta cadena.
 
 ## Última actualización
+
+2026-08-01, ISA-114 retira el selector y adapters de fuente muertos, el parser
+LMU paralelo y los readers experimentales sin instancia productiva. Se
+conservan monitores, Spotter, audio/TTS, commands, Pit Manager, store, SSE y
+replay explícito. Los monitores Extended mantienen únicamente un decoder puro
+de buffer para tests: no puede abrir memoria compartida ni REST. La aplicación
+solo los alimenta mediante la proyección canónica de ISA-112.
 
 2026-08-01, ISA-112 / TC-08E conecta `EngineerService` al mismo lote canónico
 que alimenta Overlay. El estado de fuente no se confunde con datos; un snapshot

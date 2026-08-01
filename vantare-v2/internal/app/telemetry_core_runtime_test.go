@@ -9,7 +9,39 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
+
+func TestTelemetryCoreRuntimeSourceStatusIsCanonicalAndFailClosed(t *testing.T) {
+	disabled, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := disabled.SourceStatus(); got != driver.UnknownSourceStatus() {
+		t.Fatalf("disabled status = %#v, want %#v", got, driver.UnknownSourceStatus())
+	}
+
+	live, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := live.SourceStatus(); got.Kind != "lmu" || got.Name != "Le Mans Ultimate" ||
+		!got.Live || got.Available || got.State != driver.StateStopped.String() {
+		t.Fatalf("initial live status = %#v", got)
+	}
+	if err := live.setStatus(driver.StateLive, 2); err != nil {
+		t.Fatal(err)
+	}
+	if got := live.SourceStatus(); !got.Available || got.State != "live" || got.ReconnectAttempt != 2 {
+		t.Fatalf("connected status = %#v", got)
+	}
+	if err := live.setStatus(driver.StateStale, 3); err != nil {
+		t.Fatal(err)
+	}
+	if got := live.SourceStatus(); got.Available || got.State != "stale" || got.ReconnectAttempt != 3 {
+		t.Fatalf("stale status = %#v", got)
+	}
+}
 
 func TestTelemetryCoreRuntimeDisabledPublishesStoppedWithoutStartingLMU(t *testing.T) {
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})

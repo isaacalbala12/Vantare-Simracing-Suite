@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"io"
@@ -13,13 +14,41 @@ import (
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 	"github.com/vantare/overlays/v2/internal/server"
-	"github.com/vantare/overlays/v2/internal/telemetry/lmu"
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
 )
 
 type dummyEmitter struct{}
 
 func (d dummyEmitter) Emit(name string, data any) {}
+
+func sseLines(ctx context.Context, url string, count int) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	lines := make(chan string, count)
+	go func() {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+	}()
+	result := make([]string, 0, count)
+	for range count {
+		select {
+		case line := <-lines:
+			result = append(result, line)
+		case <-ctx.Done():
+			return result, ctx.Err()
+		}
+	}
+	return result, nil
+}
 
 func TestEngineerStreamNoService(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
@@ -75,72 +104,6 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 
 	if !foundEvent {
 		t.Errorf("expected event: engineer-notification in stream, got lines: %v", lines)
-	}
-}
-
-// TestEngineerAndTelemetryStreamCoexistence verifies that /engineer/stream and
-// /telemetry/stream can both be served by the same Server without interference.
-func TestEngineerAndTelemetryStreamCoexistence(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Start telemetry service (fast synthetic source)
-	teleSvc := service.New(service.Config{
-		ReadHz: 1000,
-		EmitHz: 100,
-		Source: service.FuncSource{ReadFunc: func() []byte {
-			return lmu.BuildSyntheticBuffer()
-		}},
-	})
-	go teleSvc.Run(ctx)
-	time.Sleep(50 * time.Millisecond)
-
-	// Start Engineer and feed only its explicit test harness.
-	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
-	engSvc.Start(ctx)
-	defer engSvc.Stop()
-	go feedEngineerHarness(ctx, engSvc)
-
-	// Create a single server with both services
-	srv := server.New(server.ServerConfig{
-		Svc:         teleSvc,
-		EngineerSvc: engSvc,
-	})
-	s := httptest.NewServer(srv.Handler())
-	defer s.Close()
-
-	// 1. Telemetry stream responds and emits events
-	telLines, err := sseLines(ctx, s.URL+"/telemetry/stream", 2)
-	if err != nil {
-		t.Fatalf("telemetry sseLines: %v", err)
-	}
-	if len(telLines) == 0 || !strings.HasPrefix(telLines[0], "event: telemetry") {
-		t.Errorf("expected telemetry events, got lines: %v", telLines)
-	}
-
-	// 2. Engineer stream responds and emits events
-	engLines, err := sseLines(ctx, s.URL+"/engineer/stream", 2)
-	if err != nil {
-		t.Fatalf("engineer sseLines: %v", err)
-	}
-	foundEngEvent := false
-	for _, line := range engLines {
-		if strings.HasPrefix(line, "event: engineer-notification") {
-			foundEngEvent = true
-			break
-		}
-	}
-	if !foundEngEvent {
-		t.Errorf("expected engineer-notification events, got lines: %v", engLines)
-	}
-
-	// 3. Confirm telemetry still works after engineer stream consumed
-	telLines2, err := sseLines(ctx, s.URL+"/telemetry/stream", 1)
-	if err != nil {
-		t.Fatalf("telemetry second sseLines: %v", err)
-	}
-	if len(telLines2) == 0 {
-		t.Errorf("expected telemetry events after engineer stream consumed, got none")
 	}
 }
 

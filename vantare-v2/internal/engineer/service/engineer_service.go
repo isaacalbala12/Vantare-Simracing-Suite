@@ -242,22 +242,6 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	return nil
 }
 
-// SetSource is retained for bridge compatibility. Production accepts only the
-// canonical Telemetry Core source; simulator and replay live in explicit
-// harnesses and can no longer be selected by the application.
-func (s *EngineerService) SetSource(source string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if source != "telemetry-core" {
-		return errors.New("invalid source: production Engineer only accepts 'telemetry-core'")
-	}
-
-	s.source = source
-	s.emitStatusLocked()
-	return nil
-}
-
 // SetSpotterEnabled enables or disables the spotter engine.
 func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	s.mu.Lock()

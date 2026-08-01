@@ -11,8 +11,32 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestDiagnosticsUsesCanonicalSourceStatus(t *testing.T) {
+	status := driver.SourceStatus{
+		Kind: "lmu", Name: "Le Mans Ultimate", Live: true, Available: true, State: "live",
+	}
+	service := NewDiagnosticsService("v1", "", nil, nil, func() driver.SourceStatus { return status })
+	report, err := service.GetDiagnostics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Telemetry.Source != "lmu" || !report.Telemetry.Live || !report.Telemetry.Available {
+		t.Fatalf("telemetry diagnostics = %#v", report.Telemetry)
+	}
+
+	status.Kind = "private-driver"
+	report, err = service.GetDiagnostics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Telemetry.Source != "unknown" {
+		t.Fatalf("unknown source crossed allowlist: %#v", report.Telemetry)
+	}
+}
 
 func TestDiagnosticsAllowlistRejectsIdentityAndSecrets(t *testing.T) {
 	const (

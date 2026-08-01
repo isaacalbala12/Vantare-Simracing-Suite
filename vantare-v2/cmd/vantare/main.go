@@ -27,8 +27,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
-	"github.com/vantare/overlays/v2/internal/telemetry/delta"
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -628,7 +627,6 @@ func main() {
 
 	distFS := frontend.DistFS()
 
-	vapp := app.New(*live)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -909,6 +907,12 @@ func main() {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
+	telemetrySourceStatus := func() driver.SourceStatus {
+		if telemetryCoreRuntime == nil {
+			return driver.UnknownSourceStatus()
+		}
+		return telemetryCoreRuntime.SourceStatus()
+	}
 
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
 	httpSrv = server.New(server.ServerConfig{
@@ -1002,14 +1006,8 @@ func main() {
 		}
 	}
 
-	mode := delta.ReferenceMode(settingsSvc.Settings().DeltaMode)
-	if mode == "" {
-		mode = delta.ModeSelf
-	}
-	vapp.SetDeltaMode(mode)
-
 	// Diagnostics service
-	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, vapp)
+	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, telemetrySourceStatus)
 	sessionsRoot, err := telemetrySessionsRoot(cfgDir)
 	if err != nil {
 		// Keep the client on a closed unavailable state without logging paths.
@@ -1126,7 +1124,7 @@ func main() {
 	})
 
 	wailsApp.Event.On("telemetry:source-status:get", func(event *application.CustomEvent) {
-		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+		emitter.Emit("telemetry:source-status", telemetrySourceStatus())
 	})
 
 	if updaterSvc != nil {
@@ -1247,11 +1245,6 @@ func main() {
 		if rtSampler != nil {
 			rtSampler.SetCPUEnabled(s.CpuSampling)
 		}
-		mode := delta.ReferenceMode(s.DeltaMode)
-		if mode == "" {
-			mode = delta.ModeSelf
-		}
-		vapp.SetDeltaMode(mode)
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
@@ -1373,10 +1366,7 @@ func main() {
 
 	wailsApp.Event.On("overlay:start", func(event *application.CustomEvent) {
 		target := readProfileTarget(event)
-		if err := vapp.EnsureLiveTelemetry(); err != nil {
-			log.Printf("overlay:start live telemetry unavailable; telemetry remains disconnected: %v", err)
-		}
-		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+		emitter.Emit("telemetry:source-status", telemetrySourceStatus())
 
 		status, err := hubSvc.StartOverlay(target)
 		if err != nil {
@@ -1402,10 +1392,7 @@ func main() {
 	})
 
 	wailsApp.Event.On("overlay:start-active", func(event *application.CustomEvent) {
-		if err := vapp.EnsureLiveTelemetry(); err != nil {
-			log.Printf("overlay:start-active live telemetry unavailable; telemetry remains disconnected: %v", err)
-		}
-		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+		emitter.Emit("telemetry:source-status", telemetrySourceStatus())
 
 		status, err := hubSvc.StartActiveOverlay()
 		if err != nil {
@@ -1449,16 +1436,15 @@ func main() {
 		profileSvc.EmitLoaded()
 	})
 
-	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v", vapp.SourceInfo().Kind, vapp.SourceInfo().Name, vapp.SourceInfo().Live, vapp.SourceInfo().Available)
-
 	// Start telemetry
 	if telemetryCoreRuntime != nil {
 		if err := telemetryCoreRuntime.Start(ctx); err != nil {
 			log.Printf("telemetry core start error: %v", err)
 		}
 	}
-	sourceInfo := service.InfoForSource(vapp.TelemetrySource())
-	rtSampler = ops.NewRuntimeSampler(sourceInfo)
+	status := telemetrySourceStatus()
+	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v state=%s", status.Kind, status.Name, status.Live, status.Available, status.State)
+	rtSampler = ops.NewRuntimeSampler(telemetrySourceStatus)
 	opsBridge = app.NewOpsBridge(rtSampler, emitter, ops.DefaultInterval)
 	opsBridge.Start()
 

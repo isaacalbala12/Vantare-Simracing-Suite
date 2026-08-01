@@ -14,6 +14,10 @@ Nota ISA-134 / STR-00 (2026-08-01):
   `docs/superpowers/plans/2026-08-01-strategy-planner-unified-master.md`.
 - Linear conserva ISA-42..67 como `Canceled`/superseded y define 24 cortes:
   ISA-136..157 más ISA-162/163 (galería privada, oficial y comunidad).
+- Ownership de planes locales: ISA-138/STR-03 posee repositorio, atomicidad,
+  migraciones, drafts, revisiones y recovery; ISA-150/STR-15A consume ese
+  repositorio para la UI de `Mis planes` y paquetes import/export, sin duplicar
+  persistencia.
 - Productores explícitos: ISA-159 / TA-05 para histórico e ISA-160/161 /
   TC-10A/B para live. Bloquean ISA-145 y ISA-152 respectivamente.
 - Estado: correcciones del primer review aplicadas; ISA-134 permanece

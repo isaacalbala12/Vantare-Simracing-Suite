@@ -77,8 +77,8 @@ semántica física ni integración actual.
 | 42 | `frontend/src/hub/strategy/StrategyInputs.tsx` | REIMPLEMENT | E-AUTO, frontend PASS | STR-07/09 entrada | P2: no cumple shell final |
 | 43 | `frontend/src/hub/strategy/StrategyOnboarding.test.tsx` | KEEP comportamiento | E-AUTO, frontend PASS | STR-21 tests | P3: flujo previo |
 | 44 | `frontend/src/hub/strategy/StrategyOnboarding.tsx` | REIMPLEMENT | E-AUTO, frontend PASS | STR-21 onboarding | P2: producto renombrado |
-| 45 | `frontend/src/hub/strategy/StrategyPlanManager.test.tsx` | KEEP comportamiento | E-AUTO, frontend PASS | STR-03/15A tests | P3: storage previo |
-| 46 | `frontend/src/hub/strategy/StrategyPlanManager.tsx` | REIMPLEMENT | E-AUTO, frontend PASS | STR-03/15A galería | P2: no separa galerías |
+| 45 | `frontend/src/hub/strategy/StrategyPlanManager.test.tsx` | KEEP comportamiento | E-AUTO, frontend PASS | STR-15A tests UI/query | P3: storage previo debe sustituirse por contrato de repositorio |
+| 46 | `frontend/src/hub/strategy/StrategyPlanManager.tsx` | REIMPLEMENT | E-AUTO, frontend PASS | STR-15A UI de Mis planes | P2: no separa presentación de persistencia ni galerías |
 | 47 | `frontend/src/hub/strategy/StrategyPlannerPage.test.tsx` | KEEP comportamiento | E-AUTO, frontend PASS | STR-07 tests | P2: no es contrato visual |
 | 48 | `frontend/src/hub/strategy/StrategyPlannerPage.tsx` | REIMPLEMENT | E-AUTO, frontend PASS | STR-07 workspace | P1: UI Product A no final |
 | 49 | `frontend/src/hub/strategy/StrategyPrintView.test.tsx` | KEEP comportamiento | E-AUTO, frontend PASS | STR-15A tests | P3: print histórico |

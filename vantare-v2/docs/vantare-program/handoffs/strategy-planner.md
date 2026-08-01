@@ -52,6 +52,10 @@ Actualización ISA-134 / STR-00:
 - Objetivo: menor tiempo total con incertidumbre; rápida, robusta y conservadora.
 - Safety Car/FCY/lluvia/daños/penalizaciones forman parte del producto final.
 - Galerías separan Vantare, Comunidad y Mis planes; privado por defecto.
+- STR-03/ISA-138 posee en exclusiva repositorio, atomicidad, migraciones,
+  drafts, revisiones y recovery. STR-15A/ISA-150 solo posee queries/UI de `Mis
+  planes` y paquetes import/export a través de ese repositorio; no duplica
+  persistencia.
 - Correcciones no destructivas y tabla avanzada.
 - Live explica cambio, impacto, propuesta y consecuencia.
 - Engineer propone, piloto acepta, Strategy actualiza, Overlays leen.

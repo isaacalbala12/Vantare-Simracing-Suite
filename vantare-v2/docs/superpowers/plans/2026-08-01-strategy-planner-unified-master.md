@@ -106,18 +106,23 @@ procedencia/confianza.
 **Tests:** round-trip, migrations iniciales, invariantes, property tests de
 unidades, hash reproducible y compilación espejo TypeScript.
 
-### STR-03 — Persistencia local, recuperación y galería privada
+### STR-03 — Repositorio local y dominio de persistencia
 
-**Objetivo:** almacenar documentos Strategy con migraciones, recuperación de
-borrador, revisiones y galería `Mis planes`.
+**Owner:** Strategy Planner, capa de dominio/persistencia.
 
-**Incluye:** escritura atómica, backup/rollback, duplicación, etiquetas, filtro
-por simulador/circuito/coche/evento, borrado seguro y límites.
+**Objetivo:** ofrecer el repositorio canónico de documentos Strategy con
+migraciones, recuperación de borrador y revisiones inmutables.
 
-**No incluye:** sesiones de telemetría, cuenta cloud ni comunidad.
+**Incluye:** API de repositorio, escritura atómica, backup/rollback interno,
+persistencia de `PlanDraft` y `PlanRevision`, recuperación tras cierre,
+migraciones versionadas, límites y primitivas de borrado seguras.
+
+**No incluye:** galería o queries de presentación, componentes frontend,
+import/export de paquetes, sesiones de telemetría, cuenta cloud ni comunidad.
 
 **Tests:** corrupción/interrupción, dos escritores, migration fixtures,
-recuperación tras cierre y borrado sin afectar archivos externos.
+recuperación tras cierre, revisiones inmutables y borrado sin afectar archivos
+externos.
 
 ### STR-04 — Servicio de aplicación, comandos, dirty y undo/redo
 
@@ -255,13 +260,25 @@ capability ausente.
 
 ## Milestone STR-06 — Galería y ejecución live
 
-### STR-15A / ISA-150 — Galería privada local y paquetes
+### STR-15A / ISA-150 — UI de Mis planes y paquetes import/export
 
-**Owner:** Strategy Planner.
+**Owner:** Strategy Planner, capa de aplicación/presentación.
 
-**Objetivo:** implementar `Mis planes`, revisiones e import/export local sin
-sincronización ni publicación. Privado por defecto, migraciones, checksum,
-backup y rollback. No almacena sesiones de Telemetry Analysis.
+**Objetivo:** implementar las queries y la UI de `Mis planes`, más el formato y
+flujo de paquetes import/export local, consumiendo exclusivamente el repositorio
+publicado por STR-03.
+
+**Incluye:** listar, buscar, filtrar, ordenar, abrir y seleccionar planes;
+estados empty/loading/error; paquetes versionados con checksum, preview y
+round-trip; importación transaccional mediante la API del repositorio.
+
+**No incluye:** acceso directo al filesystem, escritura atómica, backups,
+migraciones del repositorio, almacenamiento de revisiones, semántica de borrado,
+rutas de datos, sincronización, publicación ni sesiones de Telemetry Analysis.
+ISA-150 no reimplementa ninguna responsabilidad de STR-03.
+
+**Tests:** UI/queries contra el contrato de repositorio, accesibilidad,
+round-trip de paquetes y rechazo de paquetes inválidos sin mutar el repositorio.
 
 ### STR-15B / ISA-162 — Catálogo oficial firmado
 

@@ -24,10 +24,10 @@ respeta los contratos de Telemetry Core/Analysis.
 | ISA-48 / PB-02D | Move ownership | TEL + STR-10 | Dataset histórico pertenece a Analysis |
 | ISA-49 / PB-03A | Move ownership | TEL + STR-10 | Corrección de sesión pertenece a Analysis |
 | ISA-50 / PB-03B | Split | TEL + STR-11 | Analysis calcula métricas; Strategy crea input de plan |
-| ISA-51 / PB-03C | Supersede | STR-03, STR-15A/B/C | Biblioteca privada, oficial y comunidad quedan separadas |
+| ISA-51 / PB-03C | Supersede | STR-03, STR-15A/B/C | STR-03 posee repositorio/revisiones; STR-15A presenta Mis planes y paquetes; oficial y comunidad quedan separadas |
 | ISA-52 / PB-03D | Supersede | STR-03, STR-04 | Dirty/concurrencia del documento Strategy |
 | ISA-53 / PB-04A | Supersede | STR-07 | Nuevo harness autocontenido y visual contract |
-| ISA-54 / PB-04B | Supersede | STR-03, STR-07 | Galería privada y navegación unificadas |
+| ISA-54 / PB-04B | Supersede | STR-07, STR-15A | Shell/navegación y UI de Mis planes quedan separadas del repositorio |
 | ISA-55 / PB-04C | Move ownership | TEL + STR-10 | Strategy selecciona una proyección, no importa LMU |
 | ISA-56 / PB-04D | Supersede | STR-07, STR-09 | Editor manual unificado |
 | ISA-57 / PB-04E | Supersede | STR-07 | Shell de tres columnas conservado |
@@ -46,7 +46,7 @@ respeta los contratos de Telemetry Core/Analysis.
 
 1. STR-01 / ISA-136 — Rescate selectivo Product A.
 2. STR-02 / ISA-137 — Contrato, unidades y estados.
-3. STR-03 / ISA-138 — Persistencia y galería privada.
+3. STR-03 / ISA-138 — Repositorio local y dominio de persistencia.
 4. STR-04 / ISA-139 — Servicio/store/dirty/undo.
 5. STR-05 / ISA-140 — Carrera, recursos y pit.
 6. STR-06 / ISA-141 — Inventario físico de neumáticos.
@@ -58,7 +58,7 @@ respeta los contratos de Telemetry Core/Analysis.
 12. STR-12 / ISA-147 — Solver determinista v2.
 13. STR-13 / ISA-148 — Variantes y comparación.
 14. STR-14 / ISA-149 — Escenarios dinámicos.
-15. STR-15A / ISA-150 — Galería privada local y paquetes.
+15. STR-15A / ISA-150 — UI de Mis planes y paquetes import/export.
 16. STR-15B / ISA-162 — Catálogo oficial firmado.
 17. STR-15C / ISA-163 — Comunidad, moderación y retirada.
 18. STR-16 / ISA-151 — Activación y lifecycle.

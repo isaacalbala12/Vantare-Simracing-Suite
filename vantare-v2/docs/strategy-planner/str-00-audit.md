@@ -226,10 +226,10 @@ La cadena histórica es serial y va de ISA-42 a ISA-67:
 | ISA-48 | PB-02D Dataset/consultas | TEL; Strategy consume STR-10 |
 | ISA-49 | PB-03A Correcciones no destructivas | TEL; Strategy consume STR-10 |
 | ISA-50 | PB-03B Derivados/confianza | TEL + STR-11 |
-| ISA-51 | PB-03C Biblioteca/revisiones | STR-03 y STR-15A/B/C |
+| ISA-51 | PB-03C Biblioteca/revisiones | STR-03 repositorio; STR-15A UI/paquetes; STR-15B/C catálogos |
 | ISA-52 | PB-03D Dirty/concurrencia | STR-03 y STR-04 |
 | ISA-53 | PB-04A Baseline visual/harness | STR-07 |
-| ISA-54 | PB-04B Galería/navegación | STR-03 y STR-07 |
+| ISA-54 | PB-04B Galería/navegación | STR-07 shell; STR-15A UI de Mis planes |
 | ISA-55 | PB-04C Importación LMU | TEL; Strategy consume STR-10 |
 | ISA-56 | PB-04D Editor básico/tabla | STR-07 y STR-09 |
 | ISA-57 | PB-04E Shell de tres columnas | STR-07 |
@@ -247,10 +247,12 @@ La cadena histórica es serial y va de ISA-42 a ISA-67:
 No se elimina ninguna issue, milestone, documento o rama histórica.
 
 El backlog ejecutable contiene **24 cortes Strategy**: STR-01..14, STR-15A,
-STR-15B, STR-15C y STR-16..22. La antigua ISA-150 se reduce a galería privada;
-ISA-162 posee el catálogo oficial firmado e ISA-163 posee comunidad,
-moderación y retirada. Comunidad no bloquea el desarrollo live, pero sí el gate
-integral final.
+STR-15B, STR-15C y STR-16..22. ISA-138 posee en exclusiva el repositorio,
+atomicidad, migraciones, drafts, revisiones y recovery. ISA-150 se limita a las
+queries/UI de `Mis planes` y los paquetes import/export que consumen ese
+repositorio; no reimplementa persistencia. ISA-162 posee el catálogo oficial
+firmado e ISA-163 posee comunidad, moderación y retirada. Comunidad no bloquea
+el desarrollo live, pero sí el gate integral final.
 
 Tres issues productoras transversales cierran las entradas que STR-00 no puede
 asumir:

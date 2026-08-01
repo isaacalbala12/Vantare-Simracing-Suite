@@ -108,9 +108,15 @@ calcula ni interpreta como autoridad.
 
 ### Persistencia
 
-Persistencia local versionada y con migraciones. El repositorio almacena
-documentos Strategy, no duplicados de sesiones de Telemetry Analysis. Las
-galerías se separan en:
+Persistencia local versionada y con migraciones. STR-03 posee en exclusiva el
+repositorio, la atomicidad, las migraciones, los drafts, las revisiones y la
+recuperación. El repositorio almacena documentos Strategy, no duplicados de
+sesiones de Telemetry Analysis.
+
+STR-15A consume ese repositorio desde aplicación/presentación para las queries y
+la UI de `Mis planes`, además del formato import/export. No accede directamente
+al filesystem ni reimplementa backup, revisiones, borrado, atomicidad o
+migraciones. Las superficies de galería se separan en:
 
 - Diseños/planes oficiales de Vantare.
 - Comunidad, únicamente mediante publicación voluntaria.

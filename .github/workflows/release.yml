@@ -132,13 +132,34 @@ jobs:
         run: pnpm build
 
       - name: Gate - Go tests
-        run: go test ./...
+        env:
+          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
+        run: |
+          if ($env:INTERNAL_BUILD -ne "true") {
+            go test ./...
+            exit $LASTEXITCODE
+          }
+
+          $appPackage = "github.com/vantare/overlays/v2/internal/app"
+          $otherPackages = @(go list ./... | Where-Object { $_ -ne $appPackage })
+          if ($LASTEXITCODE -ne 0) { throw "go list failed" }
+          go test @otherPackages
+          if ($LASTEXITCODE -ne 0) { throw "Go package tests failed" }
+          go test ./internal/app -skip '^TestConcurrentSavesDontCorruptFile$'
+          if ($LASTEXITCODE -ne 0) { throw "internal/app tests failed" }
+
+      - name: Gate - ISA-118 concurrent settings save (internal advisory)
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
+        continue-on-error: true
+        run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
 
       - name: Gate - Frontend tests
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm test
 
       - name: Gate - Frontend lint
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm lint
 

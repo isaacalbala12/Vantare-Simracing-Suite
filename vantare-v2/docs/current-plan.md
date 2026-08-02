@@ -25,7 +25,8 @@ Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
   se añadió un guard de regresión y la reanudación forward-only terminó verde.
 - El smoke no monetario pasó con una cuenta sintética eliminada al final:
   checkout fail-closed por mapping vacío, portal sin customer, credencial
-  Ed25519 sin grants, guards del webhook y snapshot agregado.
+  Ed25519 sin grants, guards del webhook y snapshot agregado. La reconciliación
+  dry-run procesó cero customers y escribió cero cambios.
 - El apply de producción queda bloqueado hasta disponer de un backup remoto real
   o una autorización explícita para otro procedimiento de backup seguro.
 - BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue

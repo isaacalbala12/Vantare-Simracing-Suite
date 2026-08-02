@@ -125,6 +125,9 @@ project ref aprobado sigue siendo la única diana posible.
   real en Polar.
 - No se llamó a Polar, no se creó checkout, pago, refund, grant comercial,
   replay ni reconciliación apply.
+- La reconciliación manual en modo dry-run terminó con `processed=0`,
+  `applied=0` y `quarantined=0` sobre staging vacío; utilizó un mapping sintético
+  válido solo en memoria y no hizo escrituras ni llamadas a Polar.
 
 ### Preflight posterior de producción
 

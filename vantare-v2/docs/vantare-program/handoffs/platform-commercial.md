@@ -17,8 +17,11 @@
 - Calendar/Settings/Installer/Roadmap/Migración: proyecto o reconciliación
   pendientes.
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
-- Nightly/Testers: no existen; workflows siguen ligados a `develop`.
-- Base/rama/SHA de próximo corte: no fijados.
+- Nightly/Testers: materializados por ISA-121; el flujo vigente es
+  `issue -> nightly -> testers -> master` y `develop` está congelada.
+- Testing Automation: ISA-205 / TAU-00 define el plan; no hay integración
+  activada. Su handoff propio es `testing-automation.md`.
+- Base de TAU-00: `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6`.
 - Promoción nueva: ninguna.
 
 ## Cuenta
@@ -63,6 +66,9 @@ Archivar primero, preservar historia/secrets, simular y probar rollback. Borrado
 masivo requiere Isaac. La migración de ramas materializa issue → Nightly →
 Testers → Master y actualiza CI/webhooks/updater.
 
+Testing Automation no modifica esa topología: consume los canales existentes y
+deja `master` bajo aprobación exclusiva de Isaac.
+
 ## Billing
 
 Véase `../product-contract.md` y el proyecto Billing. NO-GO hasta webhooks
@@ -79,7 +85,7 @@ seguridad Supabase y matriz monetaria.
 
 ## Issues y siguiente acción
 
-1. ISA-121 / REL-00: migrar ramas/CI/webhooks con simulación y rollback.
+1. ISA-205 / TAU-00: revisar plan/ADR; después crear TAU-01 por separado.
 2. Continuar Billing tras ISA-7.
 3. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 4. Reauditar ISA-14 cuando se cierren worktrees grandes.
@@ -89,4 +95,4 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-08-02, ISA-205 / TAU-00, Codex orquestador.

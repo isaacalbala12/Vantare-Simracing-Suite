@@ -1,3 +1,20 @@
+Nota ISA-205 / TAU-00 (2026-08-02):
+- Plan maestro y ADR propuestos para `Testing Center` y el circuito
+  `reporte in-app -> Supabase -> GitHub Issue -> Codex PR -> candidata ->
+  validación -> promoción`.
+- Supabase será la autoridad de auth, roles, estados, idempotencia y
+  deduplicación; PostHog solo evidencia opcional; Discord solo comunica; Linear
+  conserva la planificación interna.
+- El MVP es serial, acepta una validación primary tester en nightly y una beta
+  en testers, liga toda aceptación al SHA exacto y permite un solo reintento.
+- Isaac revisa el PR antes de nightly y conserva la aprobación exclusiva de
+  master. Seguridad, privacidad, Billing, migraciones, dependencias,
+  arquitectura, workflows y secretos nunca se asignan automáticamente a Codex.
+- Corte documental únicamente sobre
+  `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6`: no activa PostHog,
+  Supabase, Codex Action, Discord, builds ni promociones. Siguiente corte, solo
+  tras review: TAU-01, spike PostHog/Wails con datos sintéticos.
+
 Nota ISA-202 / STR-N01 (2026-08-02):
 - Promoción acumulativa de Strategy Planner STR-00…STR-09 reconstruida sobre
   `nightly@1f3bcc825d45b5900eb798cbeedf7dd3ac2d06fa` desde el stack técnico

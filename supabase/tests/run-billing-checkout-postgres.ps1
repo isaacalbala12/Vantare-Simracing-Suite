@@ -6,6 +6,17 @@ $ErrorActionPreference = "Stop"
 $container = "vantare-billing-test-$([Guid]::NewGuid().ToString('N').Substring(0, 10))"
 $postgresPassword = [Guid]::NewGuid().ToString("N")
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$dockerLogStdout = Join-Path $env:TEMP "$container-docker-logs.stdout"
+$dockerLogStderr = Join-Path $env:TEMP "$container-docker-logs.stderr"
+
+function Write-Utf8NoBom {
+  param([string]$Path, [string]$Content)
+  [IO.File]::WriteAllText(
+    $Path,
+    $Content,
+    (New-Object Text.UTF8Encoding($false))
+  )
+}
 
 try {
   docker run --rm -d --name $container `
@@ -14,7 +25,17 @@ try {
     $Image postgres -D /var/lib/postgresql/data | Out-Null
   $initialized = $false
   for ($attempt = 0; $attempt -lt 120; $attempt++) {
-    $logs = docker logs $container 2>&1 | Out-String
+    $logProcess = Start-Process -FilePath "docker" `
+      -ArgumentList @("logs", $container) `
+      -NoNewWindow -Wait -PassThru `
+      -RedirectStandardOutput $dockerLogStdout `
+      -RedirectStandardError $dockerLogStderr
+    $logStdout = [IO.File]::ReadAllText($dockerLogStdout)
+    $logStderr = [IO.File]::ReadAllText($dockerLogStderr)
+    if ($logProcess.ExitCode -ne 0) {
+      throw "docker logs failed with exit code $($logProcess.ExitCode): $logStderr"
+    }
+    $logs = $logStdout + [Environment]::NewLine + $logStderr
     if ($logs -match "PostgreSQL init process complete") {
       docker exec $container pg_isready -U postgres -d postgres 2>$null | Out-Null
       if ($LASTEXITCODE -eq 0) {
@@ -27,7 +48,7 @@ try {
   if (-not $initialized) { throw "Temporary PostgreSQL did not complete initialization" }
 
   $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
-  @'
+  $bootstrapSql = @'
 do $$ begin create role anon noinherit; exception when duplicate_object then null; end $$;
 do $$ begin create role authenticated noinherit; exception when duplicate_object then null; end $$;
 do $$ begin create role service_role noinherit; exception when duplicate_object then null; end $$;
@@ -50,7 +71,8 @@ insert into public.billing_customers (
 ) values (
   '00000000-0000-4000-8000-000000000030', 'polar', 'legacy-customer'
 );
-'@ | Set-Content -LiteralPath $bootstrap
+'@
+  Write-Utf8NoBom -Path $bootstrap -Content $bootstrapSql
 
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
   docker cp (Join-Path $root "supabase\migrations\20260802000000_billing_checkout_attempts.sql") "${container}:/tmp/migration.sql"
@@ -75,21 +97,24 @@ create table public.checkout_claim_results (outcome text not null);
 '@
   $concurrency | docker exec -i $container psql -v ON_ERROR_STOP=1 -U postgres -d postgres | Out-Null
   $claimSql = Join-Path $env:TEMP "$container-claim.sql"
-  @'
+  $claimSqlText = @'
 insert into public.checkout_claim_results
 select outcome from public.claim_billing_checkout_attempt(
   '00000000-0000-4000-8000-000000000011',
   '00000000-0000-4000-8000-000000000021',
   'pro_monthly', 'sandbox', 'catalog-v2'
 );
-'@ | Set-Content -LiteralPath $claimSql
+'@
+  Write-Utf8NoBom -Path $claimSql -Content $claimSqlText
   docker cp $claimSql "${container}:/tmp/claim.sql"
   docker exec $container sh -c '(psql -q -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/claim.sql) & (psql -q -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/claim.sql) & wait'
   $result = docker exec $container psql -At -U postgres -d postgres -c "select count(*) || ':' || string_agg(outcome, ',' order by outcome) from public.checkout_claim_results"
   if ($result.Trim() -ne "2:busy,claimed") { throw "Concurrent claim contract failed: $result" }
-  Write-Output "PostgreSQL checkout adapter: pgTAP PASS; concurrency PASS ($result)"
+  Write-Output "PostgreSQL checkout adapter: focal/upgrade pgTAP PASS; concurrency PASS ($result)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if ($bootstrap -and (Test-Path $bootstrap)) { Remove-Item -LiteralPath $bootstrap -Force }
   if ($claimSql -and (Test-Path $claimSql)) { Remove-Item -LiteralPath $claimSql -Force }
+  if (Test-Path $dockerLogStdout) { Remove-Item -LiteralPath $dockerLogStdout -Force }
+  if (Test-Path $dockerLogStderr) { Remove-Item -LiteralPath $dockerLogStderr -Force }
 }

@@ -104,5 +104,6 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 2026-08-02 — ISA-72 / BIL-03, revisión corregida en implementación aislada.
 Backend/frontend verdes; migraciones y pgTAP ejecutados en PostgreSQL 17
-desechable con concurrencia real. Sin deploy, pago, refund, secretos, PII ni
-mutaciones remotas.
+desechable con concurrencia real. Runner verificado en Windows PowerShell 5.1 y
+PowerShell 7; Deno 65/65 pasa con typecheck normal. Sin deploy, pago, refund,
+secretos, PII ni mutaciones remotas.

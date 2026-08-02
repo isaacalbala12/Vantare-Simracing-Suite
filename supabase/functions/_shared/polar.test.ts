@@ -37,8 +37,8 @@ Deno.test("Polar checkout sends explicit no-trial and versioned capability metad
   let body: Record<string, unknown> = {};
   const result = await createPolarCheckoutSession(
     checkout,
-    checkoutDeps(async (_url, init) => {
-      body = JSON.parse(String(init?.body));
+    checkoutDeps(async (input, init) => {
+      body = await new Request(input, init).json();
       return new Response(
         JSON.stringify({
           id: "checkout",
@@ -70,8 +70,8 @@ Deno.test("Polar checkout sends exactly seven days only when configured", async 
         provider_anti_abuse_confirmed: true,
       },
     },
-    checkoutDeps(async (_url, init) => {
-      body = JSON.parse(String(init?.body));
+    checkoutDeps(async (input, init) => {
+      body = await new Request(input, init).json();
       return new Response(
         JSON.stringify({ url: "https://sandbox.polar.sh/checkout/test" }),
         { status: 201 },
@@ -114,15 +114,16 @@ Deno.test("Polar client supports cancellation and a bounded timeout", async () =
     () =>
       createPolarCheckoutSession(checkout, {
         ...checkoutDeps(
-          (async (_url, init) => {
+          async (input, init) => {
+            const signal = new Request(input, init).signal;
             await new Promise((_resolve, reject) =>
-              init?.signal?.addEventListener(
+              signal.addEventListener(
                 "abort",
                 () => reject(new DOMException("aborted", "AbortError")),
               )
             );
             throw new Error("unreachable");
-          }) as typeof fetch,
+          },
         ),
         timeoutMs: 50,
       }),
@@ -136,8 +137,8 @@ Deno.test("Polar timeout remains active while the response body is read", async 
     () =>
       createPolarCheckoutSession(checkout, {
         ...checkoutDeps(
-          (async (_url, init) => {
-            const signal = init?.signal;
+          async (input, init) => {
+            const signal = new Request(input, init).signal;
             const body = new ReadableStream<Uint8Array>({
               start(controller) {
                 const timer = setTimeout(() => {
@@ -148,7 +149,7 @@ Deno.test("Polar timeout remains active while the response body is read", async 
                   );
                   controller.close();
                 }, 250);
-                signal?.addEventListener("abort", () => {
+                signal.addEventListener("abort", () => {
                   clearTimeout(timer);
                   controller.error(new DOMException("aborted", "AbortError"));
                 }, { once: true });
@@ -158,7 +159,7 @@ Deno.test("Polar timeout remains active while the response body is read", async 
               status: 201,
               headers: { "Content-Type": "application/json" },
             });
-          }) as typeof fetch,
+          },
         ),
         timeoutMs: 50,
       }),
@@ -174,12 +175,10 @@ Deno.test("Polar never starts a request after caller cancellation", async () => 
   await assertRejects(
     () =>
       createPolarCheckoutSession(checkout, {
-        ...checkoutDeps(
-          (async () => {
-            calls++;
-            return new Response("{}");
-          }) as typeof fetch,
-        ),
+        ...checkoutDeps(async () => {
+          calls++;
+          return new Response("{}");
+        }),
         signal: controller.signal,
       }),
     PolarClientError,
@@ -210,8 +209,8 @@ Deno.test("Polar portal uses the requested environment and validates hosted URL"
   }, {
     getAccessToken: () => "token",
     getBaseUrl: () => "https://sandbox-api.polar.sh/v1",
-    fetchFn: async (_url, init) => {
-      body = JSON.parse(String(init?.body));
+    fetchFn: async (input, init) => {
+      body = await new Request(input, init).json();
       return new Response(
         JSON.stringify({
           customer_portal_url: "https://sandbox.polar.sh/portal/test",

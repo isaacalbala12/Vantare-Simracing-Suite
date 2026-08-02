@@ -81,7 +81,8 @@ cuarentena y los flujos productivos fallan cerrado hasta reconciliarlas.
 - Deno Billing/Webhook compatible: 65 tests PASS; el subconjunto focal nuevo suma
   40 PASS e incluye body lento, cancelación, adapter RPC y separación de entornos.
 - PostgreSQL 17 desechable: pgTAP PASS para migraciones, expiración y
-  transiciones exactas; concurrencia real PASS (`busy + claimed`).
+  transiciones exactas; concurrencia real PASS (`busy + claimed`). El runner
+  completo pasa tanto en Windows PowerShell 5.1 como en PowerShell 7.
 - Frontend focal billing: 9 tests PASS.
 - Frontend completo: 177 archivos, 1613 tests PASS.
 - Frontend build: PASS.

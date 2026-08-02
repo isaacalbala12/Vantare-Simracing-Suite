@@ -1,4 +1,5 @@
-import type { EngineerLocale, EngineerPresentation, EngineerRole, EngineerSeverity } from "../../../engineer/engineer-presentation-store";
+import type { EngineerPresentation, EngineerRole, EngineerSeverity } from "../../../engineer/engineer-presentation-store";
+import { buildEngineerVisualViewModel } from "../../../engineer/engineer-visual-view-model";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetRuntimeInput, WidgetTypeDefinition, WidgetViewModelBase } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
@@ -14,12 +15,10 @@ export type EngineerRadioViewModel = WidgetViewModelBase & {
   text?: string;
   severity?: EngineerSeverity;
   role?: EngineerRole;
+  locale?: EngineerPresentation["locale"];
+  preview?: boolean;
+  announce?: boolean;
 };
-
-function speakerFor(role: EngineerRole, locale: EngineerLocale): string {
-  if (role === "spotter") return "Spotter";
-  return { es: "Ingeniero", en: "Engineer", it: "Ingegnere", "pt-BR": "Engenheiro" }[locale];
-}
 
 export function buildEngineerRadioViewModel(
   _snapshot: TelemetrySnapshot,
@@ -28,18 +27,36 @@ export function buildEngineerRadioViewModel(
 ): EngineerRadioViewModel {
   const presentation: EngineerPresentation | undefined = runtime.engineerPresentation ?? undefined;
   if (!presentation) return { type: "engineer-radio", status: "missing", visible: false };
+  const visual = buildEngineerVisualViewModel(presentation);
   return {
     type: "engineer-radio",
     status: "ready",
     visible: true,
-    messageId: presentation.id,
-    speaker: speakerFor(presentation.role, presentation.locale),
-    category: presentation.category === presentation.role
-      ? undefined
-      : presentation.category.toLocaleUpperCase(presentation.locale),
-    text: presentation.text,
-    severity: presentation.severity,
-    role: presentation.role,
+    ...visual,
+    announce: runtime.engineerSubtitlesEnabled !== true,
+  };
+}
+
+function buildEngineerRadioPreviewViewModel(
+  snapshot: TelemetrySnapshot,
+  content: EngineerRadioContent,
+  runtime: WidgetRuntimeInput = {},
+): EngineerRadioViewModel {
+  if (runtime.engineerPresentation) {
+    return {
+      ...buildEngineerRadioViewModel(snapshot, content, {
+        engineerPresentation: runtime.engineerPresentation,
+        engineerSubtitlesEnabled: true,
+      }),
+      preview: true,
+    };
+  }
+  return {
+    type: "engineer-radio", status: "ready", visible: true,
+    messageId: "studio-preview", speaker: "Ingeniero", category: "FUEL",
+    text: "Ahorra combustible durante las próximas dos vueltas",
+    severity: "warning", role: "engineer", locale: "es",
+    preview: true, announce: false,
   };
 }
 
@@ -84,4 +101,5 @@ export const engineerRadioDefinition: WidgetTypeDefinition<EngineerRadioContent,
     return buildEngineerRadioViewModel(snapshot, content);
   },
   buildRuntimeViewModel: buildEngineerRadioViewModel,
+  buildPreviewViewModel: buildEngineerRadioPreviewViewModel,
 };

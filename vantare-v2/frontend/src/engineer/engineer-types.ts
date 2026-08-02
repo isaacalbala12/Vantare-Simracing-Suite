@@ -14,5 +14,6 @@ export type EngineerStatus = {
   ttsCacheCount: number;
   recentMessages: EngineerNotification[];
   outputModes: Record<string, EngineerOutputMode>;
+  subtitlesEnabled: boolean;
   lastError?: string;
 };

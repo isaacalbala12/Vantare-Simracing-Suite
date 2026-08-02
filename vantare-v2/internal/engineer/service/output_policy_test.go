@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
@@ -34,14 +36,75 @@ func TestEngineerOutputModesAreBoundedAndReported(t *testing.T) {
 	if got := service.Status().OutputModes["fuel"]; got != OutputVisual {
 		t.Fatalf("status fuel output = %q, want visual", got)
 	}
-	if got := service.Status().PresentationLifecycle; got != initialLifecycle+1 {
-		t.Fatalf("presentation lifecycle = %d, want %d after routing change", got, initialLifecycle+1)
+	if got := service.Status().PresentationLifecycle; got != initialLifecycle {
+		t.Fatalf("presentation lifecycle = %d, want unchanged while visual remains enabled", got)
 	}
 	if err := service.SetOutputMode("fuel", "visual"); err != nil {
 		t.Fatal(err)
 	}
-	if got := service.Status().PresentationLifecycle; got != initialLifecycle+1 {
+	if got := service.Status().PresentationLifecycle; got != initialLifecycle {
 		t.Fatalf("no-op routing change advanced lifecycle to %d", got)
+	}
+}
+
+func TestDisabledSpotterNeverEntersSchedulerOrPreemptsEngineer(t *testing.T) {
+	service := NewEngineerService(nil)
+	activeCtx, cancel := context.WithCancelCause(context.Background())
+	service.activeDelivery = &activeDelivery{
+		id:       "engineer-active",
+		decision: messagepolicy.Decision{Family: messagepolicy.FamilyLaps, Priority: messagepolicy.PriorityInformation},
+		cancel:   cancel,
+	}
+	if err := service.SetOutputMode("spotter", "disabled"); err != nil {
+		t.Fatal(err)
+	}
+
+	before := service.scheduler.State()
+	service.mu.Lock()
+	accepted, outcomes := service.submitCandidateLocked(messagepolicy.Candidate{
+		Family: messagepolicy.FamilySpotter, Priority: messagepolicy.PrioritySpotter,
+	})
+	service.mu.Unlock()
+	after := service.scheduler.State()
+
+	if accepted || len(outcomes) != 0 {
+		t.Fatalf("disabled spotter accepted=%v outcomes=%+v", accepted, outcomes)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("disabled output mutated scheduler: before=%+v after=%+v", before, after)
+	}
+	if cause := context.Cause(activeCtx); cause != nil {
+		t.Fatalf("disabled spotter preempted active Engineer: %v", cause)
+	}
+}
+
+func TestDisablingFamilyCancelsOnlyMatchingActiveOutputs(t *testing.T) {
+	service := NewEngineerService(nil)
+	engineerCtx, cancelEngineer := context.WithCancelCause(context.Background())
+	service.activeDelivery = &activeDelivery{
+		id:       "engineer-active",
+		decision: messagepolicy.Decision{Family: messagepolicy.FamilyLaps},
+		cancel:   cancelEngineer,
+	}
+	service.activePresentation = &EngineerNotification{Category: "laps", ExpiresAt: service.policyClock.NowMS() + 10_000}
+
+	if err := service.SetOutputMode("spotter", "disabled"); err != nil {
+		t.Fatal(err)
+	}
+	if cause := context.Cause(engineerCtx); cause != nil {
+		t.Fatalf("unrelated family cancelled active Engineer: %v", cause)
+	}
+	if service.activePresentation == nil {
+		t.Fatal("unrelated family cleared active visual")
+	}
+	if err := service.SetOutputMode("laps", "disabled"); err != nil {
+		t.Fatal(err)
+	}
+	if cause := context.Cause(engineerCtx); cause == nil {
+		t.Fatal("matching active audio was not cancelled")
+	}
+	if service.activePresentation != nil {
+		t.Fatal("matching active visual was not cleared")
 	}
 }
 
@@ -54,7 +117,7 @@ func TestStatusSubscriberReceivesLatestLifecycleInsteadOfStaleBufferedStatus(t *
 		t.Fatal(err)
 	}
 	status := <-statusCh
-	if status.PresentationLifecycle != 1 || status.OutputModes["fuel"] != OutputVisual {
+	if status.PresentationLifecycle != 0 || status.OutputModes["fuel"] != OutputVisual {
 		t.Fatalf("status = %+v, want latest lifecycle and output mode", status)
 	}
 }
@@ -66,8 +129,9 @@ func TestLifecycleBoundaryDrainsBufferedVisualNotification(t *testing.T) {
 
 	service.mu.Lock()
 	service.subs[0] <- EngineerNotification{Version: 1, ID: "old-generation"}
+	service.activePresentation = &EngineerNotification{Category: "fuel", ExpiresAt: service.policyClock.NowMS() + 10_000}
 	service.mu.Unlock()
-	if err := service.SetOutputMode("fuel", "visual"); err != nil {
+	if err := service.SetOutputMode("fuel", "disabled"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -95,7 +159,6 @@ func TestProductDeliveryHonoursCategoryOutputMode(t *testing.T) {
 		{OutputVisual, true, false},
 		{OutputAudio, false, true},
 		{OutputBoth, true, true},
-		{OutputDisabled, false, false},
 	} {
 		t.Run(string(test.mode), func(t *testing.T) {
 			service := NewEngineerService(nil)
@@ -119,5 +182,25 @@ func TestProductDeliveryHonoursCategoryOutputMode(t *testing.T) {
 				t.Fatalf("audio played = %v, want %v", got, test.wantAudio)
 			}
 		})
+	}
+}
+
+func TestDisabledOutputCannotAcknowledgeAtDeliveryBoundary(t *testing.T) {
+	resolver, err := presentation.NewResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewEngineerService(nil)
+	if err := service.SetOutputMode("laps", "disabled"); err != nil {
+		t.Fatal(err)
+	}
+	reporter := &presentationAckRecorder{}
+	port := productDeliveryPort{service: service, presentationResolver: resolver, locale: presentation.LocaleEnglish}
+	err = port.Deliver(context.Background(), delivery.Request{Decision: messagepolicy.Decision{Family: messagepolicy.FamilyLaps}}, reporter)
+	if !errors.Is(err, ErrDisabledOutputReachedDelivery) {
+		t.Fatalf("Deliver() error=%v", err)
+	}
+	if len(reporter.states) != 0 {
+		t.Fatalf("disabled output acknowledged states=%v", reporter.states)
 	}
 }

@@ -51,4 +51,12 @@ describe("engineer radio widget definition", () => {
       status: "missing",
     });
   });
+
+  it("uses an explicitly labelled fixture only for Studio preview", () => {
+    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
+    const preview = engineerRadioDefinition.buildPreviewViewModel!(snapshot, {}, {});
+    const runtime = engineerRadioDefinition.buildRuntimeViewModel!(snapshot, {}, {});
+    expect(preview).toMatchObject({ visible: true, preview: true, messageId: "studio-preview" });
+    expect(runtime).toMatchObject({ visible: false, status: "missing" });
+  });
 });

@@ -79,9 +79,12 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="invalid-content" message={message} />;
   }
 
-  let model = definition.buildRuntimeViewModel
-    ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
-    : definition.buildViewModel(snapshot, content as never);
+  const previewMode = renderMode === "studio" || renderMode === "harness";
+  let model = previewMode && definition.buildPreviewViewModel
+    ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
+    : definition.buildRuntimeViewModel
+      ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
+      : definition.buildViewModel(snapshot, content as never);
   if (widget.type === "input-telemetry") {
     const inputContent = content as { historySeconds: number };
     recordInputTelemetrySample(widget.id, snapshot);

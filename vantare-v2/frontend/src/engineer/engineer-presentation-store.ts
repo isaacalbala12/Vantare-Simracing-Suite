@@ -1,5 +1,4 @@
-export const ENGINEER_PRESENTATION_EVENT = "engineer:notification";
-export const ENGINEER_STATUS_EVENT = "engineer:status";
+export const ENGINEER_STREAM_EVENT = "engineer:stream";
 
 export type EngineerLocale = "es" | "en" | "it" | "pt-BR";
 export type EngineerRole = "spotter" | "engineer";
@@ -26,10 +25,23 @@ type TimerHandle = ReturnType<typeof setTimeout>;
 
 export type EngineerPresentationStore = {
   publish(input: unknown): boolean;
+  consumeStream(input: unknown): boolean;
   clear(reason?: string): void;
   getSnapshot(): EngineerPresentation | null;
+  getSubtitlesEnabled(): boolean;
   subscribe(listener: () => void): () => void;
+  resetTransport(): void;
   dispose(): void;
+};
+
+type EngineerStreamEnvelope = {
+  version: 1;
+  sequence: number;
+  generation: number;
+  kind: "snapshot" | "status" | "presentation";
+  active: boolean;
+  presentation?: unknown;
+  status?: { subtitlesEnabled?: boolean };
 };
 
 type StoreOptions = {
@@ -95,6 +107,21 @@ export function parseEngineerPresentation(input: unknown): EngineerPresentation 
   };
 }
 
+function parseEngineerStreamEnvelope(input: unknown): EngineerStreamEnvelope {
+  if (!isRecord(input) || input.version !== 1) throw new Error("unsupported engineer stream version");
+  const sequence = readFiniteNumber(input.sequence, "sequence");
+  const generation = readFiniteNumber(input.generation, "generation");
+  if (!Number.isSafeInteger(sequence) || sequence < 1 || !Number.isSafeInteger(generation) || generation < 0) {
+    throw new Error("invalid engineer stream cursor");
+  }
+  const kind = readBoundedString(input.kind, "kind", ["snapshot", "status", "presentation"]) as EngineerStreamEnvelope["kind"];
+  if (typeof input.active !== "boolean") throw new Error("invalid engineer stream active state");
+  const status = isRecord(input.status)
+    ? { ...(typeof input.status.subtitlesEnabled === "boolean" ? { subtitlesEnabled: input.status.subtitlesEnabled } : {}) }
+    : undefined;
+  return { version: 1, sequence, generation, kind, active: input.active, presentation: input.presentation, status };
+}
+
 export function createEngineerPresentationStore(
   options: StoreOptions = {},
 ): EngineerPresentationStore {
@@ -103,6 +130,9 @@ export function createEngineerPresentationStore(
   const cancelSchedule = options.cancelSchedule ?? clearTimeout;
   const listeners = new Set<() => void>();
   let current: EngineerPresentation | null = null;
+  let subtitlesEnabled = true;
+  let generation = -1;
+  let sequence = 0;
   let expiryHandle: TimerHandle | null = null;
 
   const notify = () => {
@@ -137,18 +167,50 @@ export function createEngineerPresentationStore(
     notify();
     return true;
   };
+  const consumeStream = (input: unknown) => {
+    let event: EngineerStreamEnvelope;
+    try {
+      event = parseEngineerStreamEnvelope(input);
+    } catch {
+      return false;
+    }
+    if (event.sequence <= sequence || event.generation < generation) return false;
+    sequence = event.sequence;
+    if (event.generation > generation) {
+      generation = event.generation;
+      clear("canonical-generation");
+    }
+    if (event.status?.subtitlesEnabled !== undefined && subtitlesEnabled !== event.status.subtitlesEnabled) {
+      subtitlesEnabled = event.status.subtitlesEnabled;
+      notify();
+    }
+    if ((event.kind === "snapshot" || event.kind === "presentation") && event.active) {
+      return publish(event.presentation);
+    }
+    if (!event.active) clear("canonical-empty");
+    return true;
+  };
 
   return {
     publish,
+    consumeStream,
     clear,
     getSnapshot: () => current,
+    getSubtitlesEnabled: () => subtitlesEnabled,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    resetTransport() {
+      generation = -1;
+      sequence = 0;
+      clear("transport-reset");
+    },
     dispose() {
       cancelExpiry();
       current = null;
+      generation = -1;
+      sequence = 0;
       listeners.clear();
     },
   };

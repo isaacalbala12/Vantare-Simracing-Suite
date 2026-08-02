@@ -6,6 +6,7 @@ import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
 import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
+import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
 
 export const RUNTIME_SURFACE_VISIBILITY_HZ = 15;
 
@@ -33,6 +34,11 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     engineerPresentations?.subscribe ?? subscribeToNothing,
     engineerPresentations?.getSnapshot ?? noPresentation,
     noPresentation,
+  );
+  const subtitlesEnabled = useSyncExternalStore(
+    engineerPresentations?.subscribe ?? subscribeToNothing,
+    engineerPresentations?.getSubtitlesEnabled ?? (() => false),
+    () => false,
   );
 
   useEffect(() => {
@@ -71,8 +77,12 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
           engineerPresentation={engineerPresentation}
+          engineerSubtitlesEnabled={subtitlesEnabled}
         />
       ))}
+      {subtitlesEnabled && engineerPresentation
+        ? <EngineerSubtitles presentation={engineerPresentation} />
+        : null}
     </div>
   );
 }

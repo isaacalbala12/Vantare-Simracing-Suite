@@ -4,8 +4,9 @@
   "type": "feature",
   "summary": "Engineer muestra sus mensajes como subtítulos y mediante un nuevo widget de radio Vantare Crystal en Desktop y OBS.",
   "technicalNotes": [
-    "Wails y SSE validan y proyectan el mismo contrato multilingüe de ENG-07, con limpieza común al cambiar la fuente o la sesión.",
-    "Las categorías Spotter, combustible, penalizaciones, vueltas, diferencias y boxes permiten salida de audio, visual, ambas o desactivada.",
+    "Wails y SSE consumen un único flujo ordenado y recuperan el mensaje activo exacto tras una reconexión.",
+    "Las categorías Spotter, combustible, penalizaciones, vueltas, diferencias y boxes permiten salida de audio, visual, ambas o desactivada antes de entrar en la cola.",
+    "Los subtítulos son opcionales e independientes del widget de radio, aunque ambas salidas comparten el mismo mensaje y pueden coexistir.",
     "El widget Engineer Radio es un tipo funcional independiente y su renderizador Crystal no accede a telemetría, persistencia ni reglas de prioridad.",
     "La caducidad y la preempción siguen perteneciendo al backend; la interfaz solo representa el lifecycle canónico."
   ],

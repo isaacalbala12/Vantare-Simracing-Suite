@@ -31,6 +31,7 @@ export function CompositeApp() {
       const unsubscribe = Events.On(event, (payload: { data: unknown }) => handler(payload.data));
       return () => unsubscribe?.();
     },
+    requestSnapshot: () => Events.Emit("engineer:stream:get"),
   }), [engineerPresentations]);
   const adapter = useMemo(
     () => {

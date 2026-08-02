@@ -15,10 +15,11 @@ export type RuntimeWidgetFrameProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentation?: EngineerPresentation | null;
+  engineerSubtitlesEnabled?: boolean;
 };
 
 export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation } = props;
+  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled } = props;
   const snapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
@@ -47,7 +48,7 @@ export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactE
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{ engineerPresentation }}
+          runtime={{ engineerPresentation, engineerSubtitlesEnabled }}
         />
       </WidgetVisualViewport>
     </div>

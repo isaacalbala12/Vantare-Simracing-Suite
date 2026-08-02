@@ -28,6 +28,7 @@ const INITIAL_STATUS: EngineerStatus = {
   ttsCacheCount: 0,
   recentMessages: [],
   outputModes: Object.fromEntries(OUTPUT_CATEGORIES.map(([category]) => [category, 'both'])),
+  subtitlesEnabled: true,
 };
 
 export function EngineerPage() {
@@ -71,6 +72,10 @@ export function EngineerPage() {
 
   const handleOutputChange = (category: string, mode: EngineerOutputMode) => {
     Events.Emit('engineer:output:set', { category, mode });
+  };
+
+  const handleToggleSubtitles = () => {
+    Events.Emit('engineer:subtitles:set', !status.subtitlesEnabled);
   };
 
   const formatTime = (timestamp: number) => {
@@ -172,6 +177,24 @@ export function EngineerPage() {
                   className="w-4 h-4 rounded border-white/10 bg-[#0a0a0a] text-vantare-red-500 focus:ring-vantare-red-500"
                 />
               </label>
+
+              <label className="flex items-center justify-between cursor-pointer group">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-white group-hover:text-vantare-red-400 transition-colors">
+                    Subtítulos independientes
+                  </span>
+                  <span className="text-xs text-vantare-textMuted">
+                    Muestra el mensaje aunque el layout no incluya el widget de radio.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  data-testid="toggle-subtitles"
+                  checked={status.subtitlesEnabled}
+                  onChange={handleToggleSubtitles}
+                  className="w-4 h-4 rounded border-white/10 bg-[#0a0a0a] text-vantare-red-500 focus:ring-vantare-red-500"
+                />
+              </label>
             </div>
 
             <div className="h-px bg-white/5" />
@@ -256,7 +279,7 @@ export function EngineerPage() {
                   <div className="flex-1 flex flex-col gap-1">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-xs font-bold uppercase tracking-wider text-vantare-textMuted">
-                        Spotter
+                        {msg.role === 'spotter' ? 'Spotter' : 'Ingeniero'}
                       </span>
                       <span className="font-mono text-[10px] text-vantare-textDim">
                         {formatTime(msg.createdAt)}

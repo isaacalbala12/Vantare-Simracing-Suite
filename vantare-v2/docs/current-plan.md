@@ -11,19 +11,21 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - La skill `vantare-core` no es autoridad.
 
 Nota ISA-178 / ENG-08 (2026-08-02, In Review):
-- `engineer-radio` es un tipo funcional nuevo registrado únicamente en Vantare
-  Crystal. Desktop y OBS comparten definición, ViewModel puro y renderer; el
-  widget no accede a telemetría, transporte, persistencia ni policy.
-- El texto localizado de ENG-07 funciona como subtítulo accesible y visual sin
-  depender de audio. Rol, severidad y categoría se distinguen por texto y no
-  solo por color. Sin presentación activa el root no existe.
+- `engineer-radio` es un único tipo funcional registrado en TypeScript y en el
+  contrato persistente Go. Guardar, cargar, exportar e importar conservan el
+  widget sin duplicarlo. Solo Vantare Crystal aporta su renderer.
+- Radio y subtítulos son dos salidas visuales independientes que comparten el
+  mismo ViewModel puro. Pueden coexistir; los subtítulos se activan de forma
+  global y no requieren añadir el widget al layout. Sin presentación real,
+  Desktop/OBS no inventan contenido; Studio usa una preview marcada.
 - Go es la autoridad de routing `audio|visual|both|disabled` por las seis
-  familias aprobadas y de la generación de lifecycle. Wails y SSE comparten el
-  mismo payload y limpian mensajes ante source/session/reconnect/stop sin
-  reinterpretar TTL desde React.
-- Harness determinista: cuatro locales, info/warning/critical, Desktop/OBS,
-  transparent/solid/grid y tamaños wide/medium/compact sin overflow. Evidencia
-  root-only en `docs/evidence/isa-178/`.
+  familias aprobadas. `disabled` se aplica antes del scheduler, ACK, cooldown y
+  preempción y cancela solo la salida activa de esa familia.
+- Wails y SSE consumen un único stream ordenado por `generation+sequence`; una
+  reconexión rehidrata el snapshot activo exacto o vacío y ningún mensaje de
+  una generación anterior puede reaparecer después de un clear.
+- Harness determinista: 12 comparaciones root-only contra baselines fijos para
+  cuatro locales, tres fondos y tres tamaños, sin máscaras ni overflow.
 - Contrato: `docs/engineer/radio-output-contract.md`. Sin Vantare Original,
   canvas, inspector, shell, TTS/STT/PTT, dependencias nuevas, merge o promoción.
 

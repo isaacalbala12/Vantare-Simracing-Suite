@@ -9,15 +9,18 @@ import { buildEngineerPresentationFixture } from "./engineer-presentation-fixtur
 describe("engineer presentation transport parity", () => {
   it("projects the same canonical object from Wails and SSE", () => {
     const payload = buildEngineerPresentationFixture("it", "warning");
+    const event = { version: 1, sequence: 1, generation: 0, kind: "presentation", active: true, presentation: payload };
     const wailsStore = createEngineerPresentationStore({ now: () => 1_000 });
     const sseStore = createEngineerPresentationStore({ now: () => 1_000 });
     const wailsListeners = new Map<string, (data: unknown) => void>();
+    const requestSnapshot = vi.fn();
     const wails = createWailsEngineerPresentationAdapter({
       store: wailsStore,
       subscribe(event, listener) {
         wailsListeners.set(event, listener);
         return () => wailsListeners.delete(event);
       },
+      requestSnapshot,
     });
     const sseListeners = new Map<string, (event: MessageEvent<string>) => void>();
     const source = {
@@ -33,15 +36,16 @@ describe("engineer presentation transport parity", () => {
     });
 
     wails.start();
+    expect(requestSnapshot).toHaveBeenCalledTimes(1);
     sse.start();
-    wailsListeners.get("engineer:notification")?.(payload);
-    sseListeners.get("engineer-notification")?.({ data: JSON.stringify(payload) } as MessageEvent<string>);
+    wailsListeners.get("engineer:stream")?.(event);
+    sseListeners.get("engineer-stream")?.({ data: JSON.stringify(event) } as MessageEvent<string>);
 
     expect(wailsStore.getSnapshot()).toEqual(payload);
     expect(sseStore.getSnapshot()).toEqual(payload);
   });
 
-  it("clears projection on a transport/source boundary", () => {
+  it("clears projection on a later canonical generation", () => {
     const store = createEngineerPresentationStore({ now: () => 1_000 });
     const listeners = new Map<string, (data: unknown) => void>();
     const adapter = createWailsEngineerPresentationAdapter({
@@ -52,12 +56,15 @@ describe("engineer presentation transport parity", () => {
       },
     });
     adapter.start();
-    listeners.get("engineer:notification")?.(buildEngineerPresentationFixture());
-    listeners.get("engineer:status")?.({ connected: false, presentationLifecycle: 4 });
+    listeners.get("engineer:stream")?.({
+      version: 1, sequence: 1, generation: 3, kind: "presentation", active: true,
+      presentation: buildEngineerPresentationFixture(),
+    });
+    listeners.get("engineer:stream")?.({ version: 1, sequence: 2, generation: 4, kind: "status", active: false });
     expect(store.getSnapshot()).toBeNull();
   });
 
-  it("clears Wails and SSE projections when the canonical lifecycle changes while connected", () => {
+  it("ignores an extracted stale presentation after a newer clear in both transports", () => {
     const payload = buildEngineerPresentationFixture("en", "info");
     const wailsStore = createEngineerPresentationStore({ now: () => 1_000 });
     const sseStore = createEngineerPresentationStore({ now: () => 1_000 });
@@ -82,19 +89,68 @@ describe("engineer presentation transport parity", () => {
     });
     wails.start();
     sse.start();
-    wailsListeners.get("engineer:status")?.({ connected: true, presentationLifecycle: 7 });
-    sseListeners.get("engineer-status")?.({
-      data: JSON.stringify({ connected: true, presentationLifecycle: 7 }),
-    } as MessageEvent<string>);
-    wailsListeners.get("engineer:notification")?.(payload);
-    sseListeners.get("engineer-notification")?.({ data: JSON.stringify(payload) } as MessageEvent<string>);
-
-    wailsListeners.get("engineer:status")?.({ connected: true, presentationLifecycle: 8 });
-    sseListeners.get("engineer-status")?.({
-      data: JSON.stringify({ connected: true, presentationLifecycle: 8 }),
-    } as MessageEvent<string>);
+    const active = { version: 1, sequence: 10, generation: 7, kind: "presentation", active: true, presentation: payload };
+    const clear = { version: 1, sequence: 11, generation: 8, kind: "status", active: false };
+    const extractedBeforeClear = { ...active, sequence: 10 };
+    wailsListeners.get("engineer:stream")?.(active);
+    sseListeners.get("engineer-stream")?.({ data: JSON.stringify(active) } as MessageEvent<string>);
+    wailsListeners.get("engineer:stream")?.(clear);
+    sseListeners.get("engineer-stream")?.({ data: JSON.stringify(clear) } as MessageEvent<string>);
+    wailsListeners.get("engineer:stream")?.(extractedBeforeClear);
+    sseListeners.get("engineer-stream")?.({ data: JSON.stringify(extractedBeforeClear) } as MessageEvent<string>);
 
     expect(wailsStore.getSnapshot()).toBeNull();
     expect(sseStore.getSnapshot()).toBeNull();
+  });
+
+  it("rehydrates the same active snapshot and subtitle routing over Wails and SSE", () => {
+    const payload = buildEngineerPresentationFixture("pt-BR", "critical");
+    const snapshot = {
+      version: 1, sequence: 21, generation: 5, kind: "snapshot", active: true,
+      presentation: payload, status: { subtitlesEnabled: false },
+    };
+    const wailsStore = createEngineerPresentationStore({ now: () => 1_000 });
+    const sseStore = createEngineerPresentationStore({ now: () => 1_000 });
+    const wailsListeners = new Map<string, (data: unknown) => void>();
+    const sseListeners = new Map<string, (event: MessageEvent<string>) => void>();
+    const wails = createWailsEngineerPresentationAdapter({
+      store: wailsStore,
+      subscribe(event, listener) { wailsListeners.set(event, listener); return () => undefined; },
+    });
+    const sse = createSseEngineerPresentationAdapter({
+      store: sseStore,
+      eventSourceFactory: () => ({
+        addEventListener(type, listener) { sseListeners.set(type, listener); }, close() {}, onerror: null,
+      }),
+    });
+    wails.start();
+    sse.start();
+    wailsListeners.get("engineer:stream")?.(snapshot);
+    sseListeners.get("engineer-stream")?.({ data: JSON.stringify(snapshot) } as MessageEvent<string>);
+    expect(wailsStore.getSnapshot()).toEqual(payload);
+    expect(sseStore.getSnapshot()).toEqual(payload);
+    expect(wailsStore.getSubtitlesEnabled()).toBe(false);
+    expect(sseStore.getSubtitlesEnabled()).toBe(false);
+  });
+
+  it("accepts a fresh sequence after an SSE transport restart", () => {
+    const payload = buildEngineerPresentationFixture("en", "info");
+    const store = createEngineerPresentationStore({ now: () => 1_000 });
+    const listeners = new Map<string, (event: MessageEvent<string>) => void>();
+    const source = {
+      addEventListener(type: string, listener: (event: MessageEvent<string>) => void) { listeners.set(type, listener); },
+      close() {},
+      onerror: null as ((event: Event) => void) | null,
+    };
+    const adapter = createSseEngineerPresentationAdapter({ store, eventSourceFactory: () => source });
+    adapter.start();
+    listeners.get("engineer-stream")?.({ data: JSON.stringify({
+      version: 1, sequence: 50, generation: 9, kind: "presentation", active: true, presentation: payload,
+    }) } as MessageEvent<string>);
+    source.onerror?.(new Event("error"));
+    listeners.get("engineer-stream")?.({ data: JSON.stringify({
+      version: 1, sequence: 1, generation: 0, kind: "snapshot", active: true, presentation: payload,
+    }) } as MessageEvent<string>);
+    expect(store.getSnapshot()).toEqual(payload);
   });
 });

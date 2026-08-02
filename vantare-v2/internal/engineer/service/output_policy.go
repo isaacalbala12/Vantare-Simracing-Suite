@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 )
 
@@ -72,17 +73,30 @@ func (s *EngineerService) SetOutputMode(familyValue, modeValue string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.outputModes[family] == mode {
+	previous := s.outputModes[family]
+	if previous == mode {
 		return nil
 	}
 	s.outputModes[family] = mode
-	// The active visual may belong to this family. Invalidate it on every
-	// effective routing change instead of letting a stale card survive after
-	// visual output has been disabled.
-	s.advancePresentationLifecycleLocked()
+	if mode == OutputDisabled {
+		if s.scheduler != nil {
+			s.scheduler.CancelFamily(family, messagepolicy.ReasonDecisionNotApproved)
+		}
+	}
+	if (mode == OutputDisabled || (outputHasAudio(previous) && !outputHasAudio(mode))) &&
+		s.activeDelivery != nil && s.activeDelivery.decision.Family == family {
+		s.activeDelivery.cancel(delivery.ErrLifecycleBoundary)
+	}
+	if outputHasVisual(previous) && !outputHasVisual(mode) &&
+		s.activePresentation != nil && s.activePresentation.Category == string(family) {
+		s.advancePresentationLifecycleLocked()
+	}
 	s.emitStatusLocked()
 	return nil
 }
+
+func outputHasVisual(mode OutputMode) bool { return mode == OutputVisual || mode == OutputBoth }
+func outputHasAudio(mode OutputMode) bool  { return mode == OutputAudio || mode == OutputBoth }
 
 func (s *EngineerService) outputModesSnapshotLocked() map[string]OutputMode {
 	result := make(map[string]OutputMode, len(s.outputModes))

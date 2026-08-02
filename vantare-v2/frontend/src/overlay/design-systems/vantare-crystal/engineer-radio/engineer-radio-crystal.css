@@ -83,6 +83,17 @@
   line-height: 1.25;
 }
 
+.vc-engineer-radio__preview {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  color: rgba(255, 255, 255, 0.34);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .vc-engineer-radio__signal i { animation: vc-radio-level 900ms ease-in-out infinite alternate; }
   .vc-engineer-radio__signal i:nth-child(2) { animation-delay: -300ms; }

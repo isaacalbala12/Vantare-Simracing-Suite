@@ -40,6 +40,7 @@ const mockStatus = {
   sensitivity: 'normal',
   ttsCacheCount: 0,
   outputModes: { spotter: 'both', fuel: 'visual', penalties: 'both', laps: 'both', timings: 'both', pitstops: 'both' },
+  subtitlesEnabled: true,
   recentMessages: [
     {
       id: 'msg-1',
@@ -161,6 +162,17 @@ describe('EngineerPage', () => {
     fireEvent.click(toggle);
 
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:spotter:set', false);
+  });
+
+  it('routes subtitles independently and labels history with its real role', () => {
+    render(<EngineerPage />);
+    dispatch('engineer:status', {
+      ...mockStatus,
+      recentMessages: [{ ...mockStatus.recentMessages[0], id: 'engineer-1', role: 'engineer', channel: 'engineer' }],
+    });
+    expect(screen.getByText('Ingeniero')).toBeDefined();
+    fireEvent.click(screen.getByTestId('toggle-subtitles'));
+    expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:subtitles:set', false);
   });
 
   it('shows the only canonical telemetry source without a product selector', () => {

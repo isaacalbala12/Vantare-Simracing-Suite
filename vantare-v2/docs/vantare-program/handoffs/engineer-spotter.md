@@ -249,11 +249,21 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Completar la review independiente de ISA-177 / ENG-07. Resolver cualquier
-P0/P1/P2/P3 razonable en la misma rama antes de cerrar técnicamente el corte;
-no promover esta cadena.
+Revisar de nuevo ISA-178 / ENG-08 contra los ocho hallazgos corregidos. Resolver
+cualquier P0/P1/P2/P3 razonable en esta misma rama antes de cerrar técnicamente
+el corte; no promover esta cadena.
 
 ## Última actualización
+
+2026-08-02, corrección completa de review ISA-178 / ENG-08: `engineer-radio`
+forma parte del contrato persistente Go y pasa roundtrip. `disabled` se filtra
+antes de policy/delivery y no preempta trabajo de otra familia. Wails y SSE usan
+un envelope único `generation+sequence` con snapshot de reconexión exacto.
+Subtítulos y radio son superficies independientes sobre el mismo ViewModel;
+Studio muestra fixture marcada y Desktop/OBS solo runtime real. El historial
+respeta rol, los renderers aplican `lang` y 12 capturas root-only se comparan
+contra baselines fijos sin máscaras. Gates focales Go/TS y build pasan; pendiente
+de gates globales finales y re-review, sin promoción.
 
 2026-08-02, corrección de review ISA-177 / ENG-07: el locale tipado de la
 presentación gobierna ambos lookups de audio. La voz configurada solo puede

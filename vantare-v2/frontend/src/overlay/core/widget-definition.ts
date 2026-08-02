@@ -55,6 +55,7 @@ export type WidgetViewModelBase = {
 
 export type WidgetRuntimeInput = {
   engineerPresentation?: EngineerPresentation | null;
+  engineerSubtitlesEnabled?: boolean;
 };
 
 export type WidgetCapabilities = {
@@ -82,6 +83,11 @@ export type WidgetTypeDefinition<
   parseContent(input: unknown): TContent;
   buildViewModel(snapshot: TelemetrySnapshot, content: TContent): TModel;
   buildRuntimeViewModel?(
+    snapshot: TelemetrySnapshot,
+    content: TContent,
+    runtime: WidgetRuntimeInput,
+  ): TModel;
+  buildPreviewViewModel?(
     snapshot: TelemetrySnapshot,
     content: TContent,
     runtime: WidgetRuntimeInput,

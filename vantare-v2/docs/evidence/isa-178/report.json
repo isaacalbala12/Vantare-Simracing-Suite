@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-02T05:27:22.758Z",
+  "generatedAt": "2026-08-02T06:26:53.701Z",
   "captures": [
     {
       "locale": "es",
       "severity": "critical",
-      "scene": "transparent",
       "surface": "desktop",
       "size": "wide",
       "width": 440,
       "height": 112,
+      "scene": "transparent",
       "file": "engineer-radio-es-critical-transparent-wide.png",
       "text": "Coche a la izquierda",
       "geometry": {
@@ -17,16 +17,90 @@
         "scrollWidth": 438,
         "scrollHeight": 110
       },
-      "alphaLt255Ratio": 0.9836850649350649
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0.983198051948052
+    },
+    {
+      "locale": "es",
+      "severity": "critical",
+      "surface": "desktop",
+      "size": "wide",
+      "width": 440,
+      "height": 112,
+      "scene": "solid",
+      "file": "engineer-radio-es-critical-solid-wide.png",
+      "text": "Coche a la izquierda",
+      "geometry": {
+        "clientWidth": 438,
+        "clientHeight": 110,
+        "scrollWidth": 438,
+        "scrollHeight": 110
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0
+    },
+    {
+      "locale": "es",
+      "severity": "critical",
+      "surface": "desktop",
+      "size": "wide",
+      "width": 440,
+      "height": 112,
+      "scene": "grid",
+      "file": "engineer-radio-es-critical-grid-wide.png",
+      "text": "Coche a la izquierda",
+      "geometry": {
+        "clientWidth": 438,
+        "clientHeight": 110,
+        "scrollWidth": 438,
+        "scrollHeight": 110
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0
     },
     {
       "locale": "en",
       "severity": "warning",
-      "scene": "solid",
       "surface": "obs",
       "size": "medium",
       "width": 340,
       "height": 92,
+      "scene": "transparent",
+      "file": "engineer-radio-en-warning-transparent-medium.png",
+      "text": "Fuel critical, pit now",
+      "geometry": {
+        "clientWidth": 338,
+        "clientHeight": 90,
+        "scrollWidth": 338,
+        "scrollHeight": 90
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0.9773657289002557
+    },
+    {
+      "locale": "en",
+      "severity": "warning",
+      "surface": "obs",
+      "size": "medium",
+      "width": 340,
+      "height": 92,
+      "scene": "solid",
       "file": "engineer-radio-en-warning-solid-medium.png",
       "text": "Fuel critical, pit now",
       "geometry": {
@@ -35,16 +109,90 @@
         "scrollWidth": 338,
         "scrollHeight": 90
       },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0
+    },
+    {
+      "locale": "en",
+      "severity": "warning",
+      "surface": "obs",
+      "size": "medium",
+      "width": 340,
+      "height": 92,
+      "scene": "grid",
+      "file": "engineer-radio-en-warning-grid-medium.png",
+      "text": "Fuel critical, pit now",
+      "geometry": {
+        "clientWidth": 338,
+        "clientHeight": 90,
+        "scrollWidth": 338,
+        "scrollHeight": 90
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
       "alphaLt255Ratio": 0
     },
     {
       "locale": "it",
       "severity": "info",
-      "scene": "grid",
       "surface": "desktop",
       "size": "compact",
       "width": 260,
       "height": 76,
+      "scene": "transparent",
+      "file": "engineer-radio-it-info-transparent-compact.png",
+      "text": "Distacchi aggiornati",
+      "geometry": {
+        "clientWidth": 258,
+        "clientHeight": 74,
+        "scrollWidth": 258,
+        "scrollHeight": 74
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0.9637145748987854
+    },
+    {
+      "locale": "it",
+      "severity": "info",
+      "surface": "desktop",
+      "size": "compact",
+      "width": 260,
+      "height": 76,
+      "scene": "solid",
+      "file": "engineer-radio-it-info-solid-compact.png",
+      "text": "Distacchi aggiornati",
+      "geometry": {
+        "clientWidth": 258,
+        "clientHeight": 74,
+        "scrollWidth": 258,
+        "scrollHeight": 74
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0
+    },
+    {
+      "locale": "it",
+      "severity": "info",
+      "surface": "desktop",
+      "size": "compact",
+      "width": 260,
+      "height": 76,
+      "scene": "grid",
       "file": "engineer-radio-it-info-grid-compact.png",
       "text": "Distacchi aggiornati",
       "geometry": {
@@ -53,16 +201,44 @@
         "scrollWidth": 258,
         "scrollHeight": 74
       },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
       "alphaLt255Ratio": 0
     },
     {
       "locale": "pt-BR",
       "severity": "critical",
-      "scene": "solid",
       "surface": "obs",
       "size": "wide",
       "width": 440,
       "height": 112,
+      "scene": "transparent",
+      "file": "engineer-radio-pt-BR-critical-transparent-wide.png",
+      "text": "Carro à esquerda",
+      "geometry": {
+        "clientWidth": 438,
+        "clientHeight": 110,
+        "scrollWidth": 438,
+        "scrollHeight": 110
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0.9841314935064935
+    },
+    {
+      "locale": "pt-BR",
+      "severity": "critical",
+      "surface": "obs",
+      "size": "wide",
+      "width": 440,
+      "height": 112,
+      "scene": "solid",
       "file": "engineer-radio-pt-BR-critical-solid-wide.png",
       "text": "Carro à esquerda",
       "geometry": {
@@ -70,6 +246,34 @@
         "clientHeight": 110,
         "scrollWidth": 438,
         "scrollHeight": 110
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
+      },
+      "alphaLt255Ratio": 0
+    },
+    {
+      "locale": "pt-BR",
+      "severity": "critical",
+      "surface": "obs",
+      "size": "wide",
+      "width": 440,
+      "height": 112,
+      "scene": "grid",
+      "file": "engineer-radio-pt-BR-critical-grid-wide.png",
+      "text": "Carro à esquerda",
+      "geometry": {
+        "clientWidth": 438,
+        "clientHeight": 110,
+        "scrollWidth": 438,
+        "scrollHeight": 110
+      },
+      "comparison": {
+        "dimensionsMatch": true,
+        "deltaRatio": 0,
+        "maskedPixels": 0
       },
       "alphaLt255Ratio": 0
     }

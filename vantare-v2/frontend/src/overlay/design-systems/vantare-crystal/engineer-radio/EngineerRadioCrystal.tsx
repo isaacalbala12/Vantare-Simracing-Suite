@@ -16,8 +16,10 @@ export function EngineerRadioCrystal(
       data-message-id={model.messageId}
       data-role={model.role}
       data-severity={model.severity}
-      role={urgent ? "alert" : "status"}
-      aria-live={urgent ? "assertive" : "polite"}
+      data-preview={model.preview ? "true" : undefined}
+      lang={model.locale}
+      role={model.announce ? (urgent ? "alert" : "status") : "group"}
+      aria-live={model.announce ? (urgent ? "assertive" : "polite") : undefined}
       aria-atomic="true"
     >
       <div className="vc-engineer-radio__rail" aria-hidden="true" />
@@ -29,6 +31,7 @@ export function EngineerRadioCrystal(
         {model.category ? <span className="vc-engineer-radio__category">{model.category}</span> : null}
       </header>
       <p className="vc-engineer-radio__message">{model.text}</p>
+      {model.preview ? <span className="vc-engineer-radio__preview">PREVIEW</span> : null}
     </section>
   );
 }

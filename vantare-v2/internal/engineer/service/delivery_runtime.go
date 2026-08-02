@@ -13,6 +13,7 @@ import (
 )
 
 var ErrDeliveryTransportRunning = errors.New("engineer delivery transport cannot change while the service is running")
+var ErrDisabledOutputReachedDelivery = errors.New("disabled engineer output reached delivery boundary")
 
 type wallClock struct{}
 
@@ -54,6 +55,9 @@ func (s *EngineerService) DeliveryMetrics() delivery.MetricsSnapshot {
 }
 
 func (s *EngineerService) submitCandidateLocked(candidate messagepolicy.Candidate) (bool, []messagepolicy.PolicyOutcome) {
+	if s.outputModes[candidate.Family] == OutputDisabled {
+		return false, nil
+	}
 	accepted, outcomes := s.scheduler.Submit(candidate)
 	if !accepted {
 		return false, outcomes
@@ -232,6 +236,9 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 		}
 		return reporter.Acknowledge(delivery.StateCancelled, reason)
 	}
+	if port.service.OutputMode(request.Decision.Family) == OutputDisabled {
+		return ErrDisabledOutputReachedDelivery
+	}
 	presented, err := port.presentationResolver.Resolve(request.Decision, port.locale)
 	if err != nil {
 		return err
@@ -354,6 +361,8 @@ func (s *EngineerService) publishLegacyHarness(message audio.Message) {
 func (s *EngineerService) publishNotification(notification EngineerNotification) {
 	s.store.Add(notification)
 	s.mu.Lock()
+	presentation := notification
+	s.activePresentation = &presentation
 	for _, subscriber := range s.subs {
 		select {
 		case subscriber <- notification:
@@ -361,9 +370,12 @@ func (s *EngineerService) publishNotification(notification EngineerNotification)
 			s.dropCount.Add(1)
 		}
 	}
-	s.mu.Unlock()
+	s.publishStreamLocked(EngineerStreamPresentation, &presentation, nil)
 	if s.emitter != nil {
 		s.emitter.Emit("engineer:notification", notification)
-		s.emitStatus()
+		status := s.getStatusLocked()
+		s.publishStatusLocked(status)
+		s.emitter.Emit("engineer:status", status)
 	}
+	s.mu.Unlock()
 }

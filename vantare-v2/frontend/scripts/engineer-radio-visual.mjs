@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -9,14 +9,16 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptDirectory, "..");
 const repositoryRoot = path.resolve(frontendRoot, "..");
 const outputDirectory = path.join(repositoryRoot, "docs", "evidence", "isa-178");
+const baselineDirectory = path.join(frontendRoot, "testdata", "engineer-radio-baselines");
 const port = 5194;
 const baseUrl = `http://127.0.0.1:${port}/overlay-studio-harness.html`;
-const cases = [
-  { locale: "es", severity: "critical", scene: "transparent", surface: "desktop", size: "wide", width: 440, height: 112 },
-  { locale: "en", severity: "warning", scene: "solid", surface: "obs", size: "medium", width: 340, height: 92 },
-  { locale: "it", severity: "info", scene: "grid", surface: "desktop", size: "compact", width: 260, height: 76 },
-  { locale: "pt-BR", severity: "critical", scene: "solid", surface: "obs", size: "wide", width: 440, height: 112 },
+const localeCases = [
+  { locale: "es", severity: "critical", surface: "desktop", size: "wide", width: 440, height: 112 },
+  { locale: "en", severity: "warning", surface: "obs", size: "medium", width: 340, height: 92 },
+  { locale: "it", severity: "info", surface: "desktop", size: "compact", width: 260, height: 76 },
+  { locale: "pt-BR", severity: "critical", surface: "obs", size: "wide", width: 440, height: 112 },
 ];
+const cases = localeCases.flatMap((localeCase) => CONTROL_SCENES.map((scene) => ({ ...localeCase, scene: scene.id })));
 
 async function waitForServer() {
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -37,6 +39,25 @@ function alphaStats(decoded) {
     if (decoded.data[offset] < 255) transparent += 1;
   }
   return { alphaLt255Ratio: transparent / (decoded.width * decoded.height) };
+}
+
+function compareBaseline(reference, actual, tolerance = 1) {
+  if (reference.width !== actual.width || reference.height !== actual.height) {
+    return { dimensionsMatch: false, deltaRatio: 1 };
+  }
+  let mismatches = 0;
+  const pixels = reference.width * reference.height;
+  for (let offset = 0; offset < reference.data.length; offset += 4) {
+    let differs = false;
+    for (let channel = 0; channel < 4; channel += 1) {
+      if (Math.abs(reference.data[offset + channel] - actual.data[offset + channel]) > tolerance) {
+        differs = true;
+        break;
+      }
+    }
+    if (differs) mismatches += 1;
+  }
+  return { dimensionsMatch: true, deltaRatio: mismatches / Math.max(pixels, 1), maskedPixels: 0 };
 }
 
 async function main() {
@@ -75,10 +96,20 @@ async function main() {
       await page.evaluate(async () => document.fonts?.ready);
       const root = page.locator("[data-engineer-radio-root]");
       await root.waitFor({ state: "visible" });
-      const buffer = await root.screenshot({ omitBackground: item.scene === "transparent" });
+      const buffer = await root.screenshot({
+        omitBackground: item.scene === "transparent",
+        animations: "disabled",
+        caret: "hide",
+      });
       const filename = `engineer-radio-${item.locale}-${item.severity}-${item.scene}-${item.size}.png`;
       await writeFile(path.join(outputDirectory, filename), buffer);
       const decoded = await decodePng(page, buffer);
+      const baselineBuffer = await readFile(path.join(baselineDirectory, filename));
+      const baseline = await decodePng(page, baselineBuffer);
+      const comparison = compareBaseline(baseline, decoded);
+      if (!comparison.dimensionsMatch || comparison.deltaRatio > 0.0001) {
+        throw new Error(`${filename} differs from fixed baseline (${(comparison.deltaRatio * 100).toFixed(4)}%)`);
+      }
       const text = (await root.locator(".vc-engineer-radio__message").textContent())?.trim();
       const geometry = await root.evaluate((element) => ({
         clientWidth: element.clientWidth,
@@ -86,7 +117,7 @@ async function main() {
         scrollWidth: element.scrollWidth,
         scrollHeight: element.scrollHeight,
       }));
-      report.push({ ...item, file: filename, width: decoded.width, height: decoded.height, text, geometry, ...alphaStats(decoded) });
+      report.push({ ...item, file: filename, width: decoded.width, height: decoded.height, text, geometry, comparison, ...alphaStats(decoded) });
     }
     for (const state of ["stale", "disconnected", "error"]) {
       await page.goto(`${baseUrl}?widget=engineer-radio&system=vantare-crystal&surface=obs&state=${state}`, { waitUntil: "networkidle" });
@@ -101,7 +132,7 @@ async function main() {
     if (report.some((item) => item.geometry.scrollWidth > item.geometry.clientWidth || item.geometry.scrollHeight > item.geometry.clientHeight)) {
       throw new Error("engineer-radio overflows one or more responsive captures");
     }
-    process.stdout.write(`engineer-radio-visual: ${report.length} captures OK\n`);
+    process.stdout.write(`engineer-radio-visual: ${report.length} root-only captures match fixed baselines\n`);
   } finally {
     await page.close();
     await browser.close();

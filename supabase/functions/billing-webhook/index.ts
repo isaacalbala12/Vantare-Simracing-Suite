@@ -25,8 +25,72 @@ export {
   WEBHOOK_HEADER_TIMESTAMP,
 };
 
+// Polar webhooks are small JSON documents. This cap bounds unauthenticated
+// allocation while preserving the exact UTF-8 body used for signature checks.
+export const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
+
+export type RawBodyResult =
+  | { ok: true; rawBody: string }
+  | { ok: false; code: "body_too_large" | "invalid_encoding" };
+
+export async function readBoundedRawBody(
+  req: Request,
+  maxBytes = MAX_WEBHOOK_BODY_BYTES,
+): Promise<RawBodyResult> {
+  const declaredHeader = req.headers.get("content-length");
+  const declared = declaredHeader === null ? null : Number(declaredHeader);
+  if (declared !== null && Number.isFinite(declared) && declared > maxBytes) {
+    try {
+      await req.body?.cancel("body_too_large");
+    } catch {
+      // The stable 413 is more important than an already-failed cancellation.
+    }
+    return { ok: false, code: "body_too_large" };
+  }
+
+  const reader = req.body?.getReader();
+  if (!reader) return { ok: true, rawBody: "" };
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        try {
+          await reader.cancel("body_too_large");
+        } catch {
+          // Keep the externally observable response deterministic.
+        }
+        return { ok: false, code: "body_too_large" };
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return {
+      ok: true,
+      rawBody: new TextDecoder("utf-8", { fatal: true }).decode(bytes),
+    };
+  } catch {
+    return { ok: false, code: "invalid_encoding" };
+  }
+}
+
 export type WebhookDeps = {
-  readRawBody?: (req: Request) => Promise<string>;
+  readRawBody?: (req: Request, maxBytes: number) => Promise<RawBodyResult>;
   getSecret?: () => string | null;
   verifyWebhook?: (
     rawBody: string,
@@ -101,8 +165,23 @@ export async function handleWebhookRequest(
   const headerError = validateWebhookHeaders(req);
   if (headerError) return headerError;
 
-  const readRawBody = deps.readRawBody ?? ((r) => r.text());
-  const rawBody = await readRawBody(req);
+  const readRawBody = deps.readRawBody ?? readBoundedRawBody;
+  const bodyResult = await readRawBody(req, MAX_WEBHOOK_BODY_BYTES);
+  if (!bodyResult.ok) {
+    if (bodyResult.code === "body_too_large") {
+      return errorResponse(
+        "webhook_body_too_large",
+        "Webhook body exceeds the 1 MiB limit",
+        413,
+      );
+    }
+    return errorResponse(
+      "invalid_webhook_encoding",
+      "Webhook body must be valid UTF-8",
+      400,
+    );
+  }
+  const rawBody = bodyResult.rawBody;
   if (!rawBody) {
     return errorResponse("empty_body", "Webhook body is required", 400);
   }

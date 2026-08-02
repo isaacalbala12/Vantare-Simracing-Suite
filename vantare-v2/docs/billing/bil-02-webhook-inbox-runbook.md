@@ -1,8 +1,8 @@
 # BIL-02 — Inbox durable y replay seguro de webhooks
 
-Estado: implementado en la rama de ISA-68; pendiente de review independiente y
-de integración. Este documento no autoriza deploy, pagos, replay remoto ni
-activación de Billing.
+Estado: integrado por ISA-179 junto con BIL-03 y BIL-04; el candidato conjunto
+permanece en review independiente. Este documento no autoriza deploy, pagos,
+replay remoto ni activación de Billing.
 
 ## Problema cerrado por el corte
 
@@ -13,7 +13,8 @@ quedar perdido aunque Polar lo reenviara.
 
 El flujo nuevo separa cuatro responsabilidades:
 
-1. La firma se verifica sobre el body original.
+1. La entrada se limita a 1 MiB y la firma se verifica sobre el body UTF-8
+   original, sin trim ni reconstrucción.
 2. La entrega se guarda en `billing_webhook_inbox` antes de mutar estado
    comercial.
 3. Un worker obtiene un lease atómico y ejecuta efectos idempotentes con estado

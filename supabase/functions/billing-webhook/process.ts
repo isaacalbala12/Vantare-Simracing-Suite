@@ -587,7 +587,7 @@ async function revokeLifetimeBundle(
         deps.supabase,
         userId,
         "revoked",
-        new Date().toISOString(),
+        nowIso,
         buildEntitlementMetadata(checkoutKey, config, {
           revoked_reason: "order.refunded",
         }),

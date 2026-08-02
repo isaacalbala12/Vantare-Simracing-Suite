@@ -1,14 +1,19 @@
 # billing-webhook (Fase 2 — Polar)
 
-**Estado BIL-02:** inbox durable implementado en código — pendiente de review y
+**Estado BIL-02:** inbox durable integrado por ISA-179 — pendiente de review y
 deploy. La firma Polar se verifica antes de persistir; el inbox usa leases,
 efectos reanudables, quarantine y replay auditado. `license_events` queda como
 auditoría, no como claim.
+
+El body no autenticado está limitado a 1 MiB mediante `Content-Length` y conteo
+real del stream. El texto UTF-8 aceptado llega sin trim ni reconstrucción a la
+verificación de firma; el exceso responde `413` antes de verificar o persistir.
 
 Respuestas HTTP:
 - `503` — falta `POLAR_WEBHOOK_SECRET` o mapping inválido
 - `403` — firma inválida
 - `400` — headers/body inválidos
+- `413` — body superior al límite de 1 MiB
 - `202` — procesado / duplicado / ignorado / cuarentena conocida
 - `503` — worker activo o reintento programado sin scheduler local; devuelve
   `lease_expires_at` o `next_attempt_at` y `Retry-After` para conservar el retry

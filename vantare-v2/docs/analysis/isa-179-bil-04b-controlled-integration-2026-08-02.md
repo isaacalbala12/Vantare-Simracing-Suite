@@ -2,8 +2,9 @@
 
 Fecha: 2026-08-02
 
-Estado: composición materializada y matriz conjunta completa; pendiente de
-commit de merge, push, PR draft y revisión independiente.
+Estado: composición materializada, publicada en PR draft y matriz conjunta
+completa; corrección P2/P3 de revisión aplicada y pendiente de revalidación
+independiente.
 
 ## Objetivo y límites
 
@@ -75,8 +76,8 @@ checkout/portal, auth/session, hardening de RPC/RLS, recovery, guards y workflow
 
 ## Evidencia conjunta
 
-- Deno focal del webhook: 37/37.
-- Deno global de Supabase Functions: 82/82; `deno check` de checkout, portal y
+- Deno focal del webhook tras la corrección de revisión: 34/34.
+- Deno global de Supabase Functions: 85/85; `deno check` de checkout, portal y
   webhook: PASS.
 - PostgreSQL 17 en PowerShell 7 y Windows PowerShell 5.1: clean, upgrade y
   restore con 48 checks de hardening + 53 del inbox en cada fase; concurrencia
@@ -87,6 +88,23 @@ checkout/portal, auth/session, hardening de RPC/RLS, recovery, guards y workflow
 - Frontend auth focal: 103/103; suite global: 1624/1624; build: PASS; lint focal:
   PASS.
 - Guards de superficie desplegable PowerShell y Deno: PASS.
+
+## Corrección de revisión independiente
+
+La primera revisión detectó que el webhook leía el cuerpo completo mediante
+`req.text()` antes de validar la firma. El handler ahora limita el cuerpo crudo
+a 1 MiB tanto mediante `Content-Length` como durante lectura chunked, cancela el
+stream al superar el límite y responde `413 webhook_body_too_large` antes de
+verificar la firma, crear clientes o persistir el inbox. La decodificación UTF-8
+es estricta y la cadena exacta, incluidos espacios y saltos de línea, se entrega
+sin normalización a `StandardWebhook`.
+
+Las regresiones demuestran tamaño declarado excesivo, stream chunked que excede
+el límite, cancelación y ausencia total de verificación/persistencia en ambos
+casos, además de validación criptográfica correcta del cuerpo exacto sin trim.
+También se eliminó el reloj directo restante en la revocación lifetime: ahora
+usa `nowIso` inyectado y queda cubierto por una expectativa determinista. El
+runbook refleja el estado integrado real y el nuevo límite operativo.
 
 No se observó ninguna incompatibilidad semántica adicional a los cuatro
 conflictos simulados. No hubo deploy, pagos, PII, replay remoto, mutaciones de

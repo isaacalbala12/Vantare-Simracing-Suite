@@ -1,7 +1,7 @@
-Nota ISA-179-BIL-04B-INTEGRACION-CONTROLADA (2026-08-02, candidata a review):
+Nota ISA-179-BIL-04B-INTEGRACION-CONTROLADA (2026-08-02, corrección de review aplicada):
 - Integración controlada de BIL-02 `08bb83a959dee601ca5884fba6ac96b399c5e2bd`, BIL-03 `2a6288a36e368b322e8262534988277d1e16025e` y BIL-04 `eea8b760dc382c82c3f6b9f193782f9e1469b8d7`, sin comportamiento comercial nuevo.
 - La simulación previa identificó exactamente cuatro conflictos de contenido: runtime y tests del webhook, este plan y el handoff comercial. La resolución conserva el inbox durable de BIL-02 y el aislamiento por entorno y hardening de BIL-03/04.
-- La matriz conjunta queda verde: Deno 82/82; PostgreSQL clean/upgrade/restore con 48+53 pgTAP en PowerShell 7 y 5.1; Go auth/server/license y repeticiones OAuth/session; frontend 1624/1624 y build; guards de deploy.
+- La matriz conjunta queda verde: Deno 85/85; PostgreSQL clean/upgrade/restore con 48+53 pgTAP en PowerShell 7 y 5.1; Go auth/server/license y repeticiones OAuth/session; frontend 1624/1624 y build; guards de deploy. La revisión P2 queda corregida con límite crudo de 1 MiB antes de firma/persistencia, cancelación de streams excesivos y conservación exacta del cuerpo firmado; la P3 usa el reloj inyectado también en revocación lifetime y actualiza el runbook.
 - Informe: `docs/analysis/isa-179-bil-04b-controlled-integration-2026-08-02.md`. Venta pública sigue **NO-GO**; no hay deploy, pagos, mutaciones remotas ni promoción a ramas compartidas. Siguiente corte tras review independiente: BIL-05.
 
 Nota ISA-88-BIL-04-SUPABASE-HARDENING (2026-08-02):

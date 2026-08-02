@@ -1,8 +1,8 @@
 # Handoff vivo — plataforma comercial (Billing)
 
 Estado: ISA-179 / BIL-04B integra de forma controlada BIL-02, BIL-03 y BIL-04;
-matriz conjunta completa, pendiente de review independiente y venta pública
-**NO-GO**.
+matriz conjunta completa y corrección P2/P3 aplicada, pendiente de revalidación
+independiente y venta pública **NO-GO**.
 
 Entradas exactas: BIL-02 `08bb83a959dee601ca5884fba6ac96b399c5e2bd`,
 BIL-03 `2a6288a36e368b322e8262534988277d1e16025e` y BIL-04
@@ -74,6 +74,12 @@ seguro, BIL-05..BIL-13.
 Cada issue usa rama/worktree propios, TDD y review. La promoción sigue la política
 vigente de la plataforma; esta rama no promueve, no hace merge y no habilita
 billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
+
+ISA-179 limita ahora el cuerpo crudo del webhook a 1 MiB antes de verificar o
+persistir, cancela streams excesivos y conserva exactamente los bytes UTF-8
+firmados. La revocación lifetime usa el reloj inyectado. La matriz Deno queda en
+85/85; BIL-05 continúa bloqueada hasta que la revisión independiente revalide el
+commit de corrección.
 
 ## BIL-03 / ISA-72
 

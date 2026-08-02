@@ -608,6 +608,10 @@ Deno.test("processPolarWebhookEvent: order.refunded launch_lifetime revokes life
     action: "revoked_lifetime_bundle",
   });
   assertEquals(mock.getTableRows("user_entitlements")[0].status, "revoked");
+  assertEquals(
+    mock.getTableRows("user_entitlements")[0].expires_at,
+    "2026-07-09T12:00:00.000Z",
+  );
 });
 
 Deno.test("processPolarWebhookEvent: duplicate event id is idempotent", async () => {

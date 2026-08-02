@@ -3,6 +3,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0
 import { signStandardWebhookForTest } from "../_shared/webhook-verify.ts";
 import {
   handleWebhookRequest,
+  MAX_WEBHOOK_BODY_BYTES,
   WEBHOOK_HEADER_ID,
   WEBHOOK_HEADER_SIGNATURE,
   WEBHOOK_HEADER_TIMESTAMP,
@@ -106,6 +107,74 @@ Deno.test("billing-webhook: invalid signature is 403", async () => {
   assertEquals(body.error, "invalid_webhook_signature");
 });
 
+Deno.test("billing-webhook: rejects declared oversized bodies before verification", async () => {
+  const request = await signedWebhookRequest("{}");
+  request.headers.set(
+    "Content-Length",
+    String(MAX_WEBHOOK_BODY_BYTES + 1),
+  );
+  let verifyCalls = 0;
+  let persistCalls = 0;
+
+  const res = await handleWebhookRequest(request, {
+    getSecret: () => TEST_WEBHOOK_SECRET,
+    verifyWebhook: async () => {
+      verifyCalls += 1;
+    },
+    getSupabase: () => {
+      persistCalls += 1;
+      return fakeSupabase();
+    },
+  });
+
+  assertEquals(res.status, 413);
+  assertEquals((await res.json()).error, "webhook_body_too_large");
+  assertEquals(verifyCalls, 0);
+  assertEquals(persistCalls, 0);
+});
+
+Deno.test("billing-webhook: cancels an oversized chunked stream before verification", async () => {
+  let canceled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(MAX_WEBHOOK_BODY_BYTES));
+      controller.enqueue(new Uint8Array(1));
+    },
+    cancel() {
+      canceled = true;
+    },
+  });
+  let verifyCalls = 0;
+  let persistCalls = 0;
+  const request = new Request("http://localhost/billing-webhook", {
+    method: "POST",
+    headers: {
+      [WEBHOOK_HEADER_ID]: "evt_oversized_stream",
+      [WEBHOOK_HEADER_TIMESTAMP]: "1785657600",
+      [WEBHOOK_HEADER_SIGNATURE]: "v1,not-used",
+      "Content-Type": "application/json",
+    },
+    body: stream,
+  });
+
+  const res = await handleWebhookRequest(request, {
+    getSecret: () => TEST_WEBHOOK_SECRET,
+    verifyWebhook: async () => {
+      verifyCalls += 1;
+    },
+    getSupabase: () => {
+      persistCalls += 1;
+      return fakeSupabase();
+    },
+  });
+
+  assertEquals(res.status, 413);
+  assertEquals((await res.json()).error, "webhook_body_too_large");
+  assertEquals(canceled, true);
+  assertEquals(verifyCalls, 0);
+  assertEquals(persistCalls, 0);
+});
+
 Deno.test("billing-webhook: invalid JSON payload is 400", async () => {
   const res = await handleWebhookRequest(
     await signedWebhookRequest("{not-json"),
@@ -146,6 +215,27 @@ Deno.test("billing-webhook: valid signed event returns 202", async () => {
   assertEquals(body.ok, true);
   assertEquals(body.status, "processed");
   assertEquals(body.action, "granted_lifetime_bundle");
+  assertEquals(receivedPayloadHash, await computeWebhookPayloadHash(rawBody));
+});
+
+Deno.test("billing-webhook: verifies and hashes the exact untrimmed body", async () => {
+  const rawBody =
+    ` \n{\"type\":\"order.paid\",\"data\":{\"product_id\":\"${LAUNCH_PRODUCT_ID}\",\"external_customer_id\":\"${USER_ID}\"}}\r\n `;
+  let receivedPayloadHash: string | undefined;
+
+  const res = await handleWebhookRequest(
+    await signedWebhookRequest(rawBody),
+    {
+      getSecret: () => TEST_WEBHOOK_SECRET,
+      getSupabase: () => fakeSupabase(),
+      processEvent: async (_event, _eventId, deps) => {
+        receivedPayloadHash = deps.payloadHash;
+        return { status: "processed", action: "granted_lifetime_bundle" };
+      },
+    },
+  );
+
+  assertEquals(res.status, 202);
   assertEquals(receivedPayloadHash, await computeWebhookPayloadHash(rawBody));
 });
 

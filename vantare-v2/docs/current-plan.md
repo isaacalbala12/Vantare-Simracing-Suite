@@ -1,3 +1,51 @@
+Nota ISA-137 / STR-02 (2026-08-01, reanudada 2026-08-02):
+- Nuevo contrato productivo `strategy.v1` en `internal/strategy/contract` para
+  `PlanDraft`, `PlanRevision`, `ActivePlan`, `StrategyExecutionState` y
+  `ReplanProposal`; Product A sigue aislado como oráculo histórico.
+- El draft es mutable, la revisión captura un snapshot independiente con hash
+  `sha256:strategy-c14n-v1` y el plan activo solo cambia tras aceptar
+  explícitamente una propuesta basada en la revisión que continúa activa.
+- Fuel, Virtual Energy, tiempo, vueltas, distancia y neumático son unidades
+  distintas y validadas. Fuel y VE no comparten operaciones ni en Go ni en TS.
+- Procedencia, confianza, capabilities, estados, errores y campos obligatorios
+  se verifican contra un único manifiesto JSON compartido. Una revisión golden,
+  un corpus de canonicalización adversarial y otro de hashes/timestamps
+  demuestran paridad Go/TypeScript sin duplicación silenciosa.
+- Corrección de review: el hash ya no depende del serializador JSON; usa tags
+  binarios, orden UTF-8, float64 big-endian y límites compartidos. Decode de
+  revisiones/replans rechaza duplicados y campos desconocidos; replan valida
+  pre/post transición; execution y aceptación conservan snapshots profundos.
+- Segunda corrección de review: activar dos veces la misma propuesta es
+  idempotente solo con historial exacto; execution dispone de decode estricto
+  Go/TS y corpus compartido de 25 casos con `code+field`; `LapCount`, `epoch` y
+  `sequence` aceptan como máximo `2^53-1`; bytes UTF-8 realmente inválidos se
+  rechazan antes de convertir el documento.
+- Cierre de hallazgos STR-02: los 25 casos del corpus quedan fijados por nombre
+  y orden; escalares y paths anidados se validan con el mismo `code+field` en
+  Go/TS; y los límites de canonicalización están en el manifiesto compartido,
+  sin aplicar el límite de elementos de arrays/objetos a los bytes de strings.
+- Reanudación tras interrupción: una versión explícita desconocida precede a la
+  validación de shape v1 en revisión, replan y execution, con regresiones
+  compartidas Go/TS para revisión y replan. El encoder TypeScript aplica su
+  propio límite de profundidad y rechaza objetos sobredimensionados antes de
+  ordenar claves, incluso cuando verifica un valor ya construido.
+- Corrección final P2: la verificación productiva calcula únicamente el hash;
+  el hexadecimal canónico completo queda limitado al corpus diagnóstico y se
+  construye en un búfer acotado, sin un array temporal por byte. Una regresión
+  canoniza 1.000.000 de números (`9.000.005` bytes canónicos) y el benchmark
+  manual comparable está en
+  `docs/strategy-planner/str-02-canonicalization-memory-benchmark.md`.
+- `strategy.v1` es la primera versión; la migración actual es un no-op explícito
+  y cualquier versión desconocida se rechaza.
+- Sin persistencia, UI, cálculo, LMU, Telemetry Core, DuckDB, Wails ni wiring.
+  Evidencia: `docs/strategy-planner/str-02-contract.md`.
+- Estado: corrección WIP lista para review independiente, sin commit, push, PR,
+  merge ni promoción. Go focal x50, ambos fuzzers, TypeScript, frontend completo
+  299/299 archivos y 2.034/2.034 tests, build, lint focal, vet focal y
+  diff-check pasan. Go/vet global no se repitieron en esta reanudación; la
+  última evidencia conserva el fallo Windows heredado de Settings y tres avisos
+  Win32 `unsafe.Pointer` fuera del diff.
+
 Nota ISA-136 / STR-01 (2026-08-01):
 - Product A queda rescatado únicamente como oráculo histórico aislado en
   `internal/strategy/producta`; no existe wiring ni consumidor productivo.
@@ -14,9 +62,8 @@ Nota ISA-136 / STR-01 (2026-08-01):
   pendientes. STR-02/05/06/08/12 poseen sus reemplazos.
 - TDD rojo antes del port y Go focal verde después. Evidencia:
   `docs/strategy-planner/str-01-product-a-characterization.md`.
-- Estado: implementación lista para review independiente; sin commit, push,
-  PR, merge ni promoción en este punto. Siguiente corte tras `ACCEPT`:
-  ISA-137 / STR-02.
+- Estado: `ACCEPT`, commit `f85fd31`, push y PR draft #60; sin merge ni
+  promoción. ISA-137 / STR-02 continúa apilada sobre esa revisión.
 
 Nota ISA-134 / STR-00 (2026-08-01):
 - Strategy Planner queda replanificado como un solo producto; Product A/B/C

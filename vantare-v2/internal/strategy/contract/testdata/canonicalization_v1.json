@@ -1,0 +1,124 @@
+{
+  "algorithm": "sha256:strategy-c14n-v1",
+  "cases": [
+    {
+      "name": "html punctuation",
+      "inputJson": "{\"text\":\"A&B<C>D\"}",
+      "accepted": true,
+      "expectedCanonicalHex": "060000000104000000047465787404000000074126423c433e44",
+      "expectedSha256": "47e830cc6aa29cd1282739c03406b9144340c4472229946e4a92b2c87fbffa91"
+    },
+    {
+      "name": "unicode separators",
+      "inputJson": "{\"text\":\"line paragraph \"}",
+      "accepted": true,
+      "expectedCanonicalHex": "060000000104000000047465787404000000136c696e65e280a8706172616772617068e280a9",
+      "expectedSha256": "dd1024ae7fa7abe474b63275c84d66ff439d7ef4c1f16f3086aa5b5dc54fa156"
+    },
+    {
+      "name": "unicode and astral keys",
+      "inputJson": "{\"é\":\"你好🙂\",\"a\":\"á\",\"🙂\":\"emoji\"}",
+      "accepted": true,
+      "expectedCanonicalHex": "06000000030400000001610400000002c3a10400000002c3a9040000000ae4bda0e5a5bdf09f99820400000004f09f99820400000005656d6f6a69",
+      "expectedSha256": "235d2084fe60fcde150472796626eb62b1fb6726beeda83b8f0e322b04295f6e"
+    },
+    {
+      "name": "negative zero",
+      "inputJson": "{\"number\":-0}",
+      "accepted": true,
+      "expectedCanonicalHex": "060000000104000000066e756d626572030000000000000000",
+      "expectedSha256": "658acea4c0bc31c30889db0d9fe5c9cfbdb92fe4c9f8f32c747ab108a4e2b39a"
+    },
+    {
+      "name": "number boundaries",
+      "inputJson": "[9007199254740991,-9007199254740991,1.5,0.30000000000000004,5e-324]",
+      "accepted": true,
+      "expectedCanonicalHex": "050000000503433fffffffffffff03c33fffffffffffff033ff8000000000000033fd3333333333334030000000000000001",
+      "expectedSha256": "4a10f932ef6f5d3de123e65696920ccaf28ed90477b2731da1657b91bb69f700"
+    },
+    {
+      "name": "reject_max_float_integer_value",
+      "inputJson": "1.7976931348623157e308",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "numeric keys order a",
+      "inputJson": "{\"10\":\"ten\",\"2\":\"two\",\"01\":\"leading\",\"a\":\"letter\"}",
+      "accepted": true,
+      "expectedCanonicalHex": "06000000040400000002303104000000076c656164696e6704000000023130040000000374656e040000000132040000000374776f04000000016104000000066c6574746572",
+      "expectedSha256": "eac699bebaf1f376f0a2c2c5ed005dd50b3a50d21895cc71eae11435d4aea783"
+    },
+    {
+      "name": "numeric keys order b",
+      "inputJson": "{\"a\":\"letter\",\"01\":\"leading\",\"2\":\"two\",\"10\":\"ten\"}",
+      "accepted": true,
+      "expectedCanonicalHex": "06000000040400000002303104000000076c656164696e6704000000023130040000000374656e040000000132040000000374776f04000000016104000000066c6574746572",
+      "expectedSha256": "eac699bebaf1f376f0a2c2c5ed005dd50b3a50d21895cc71eae11435d4aea783"
+    },
+    {
+      "name": "unsafe positive integer",
+      "inputJson": "9007199254740992",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "unsafe negative integer",
+      "inputJson": "-9007199254740992",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "nan",
+      "inputJson": "NaN",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "positive infinity",
+      "inputJson": "Infinity",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "negative infinity",
+      "inputJson": "-Infinity",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "trailing document",
+      "inputJson": "{} {}",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "duplicate object key",
+      "inputJson": "{\"a\":1,\"\\u0061\":2}",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "unicode replacement value",
+      "inputJson": "{\"text\":\"�\"}",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    },
+    {
+      "name": "unpaired unicode surrogate",
+      "inputJson": "{\"text\":\"\\ud800\"}",
+      "accepted": false,
+      "expectedCanonicalHex": "",
+      "expectedSha256": ""
+    }
+  ]
+}

@@ -15,6 +15,26 @@ Nota ISA-205 / TAU-00 (2026-08-02):
   Supabase, Codex Action, Discord, builds ni promociones. Siguiente corte, solo
   tras review: TAU-01, spike PostHog/Wails con datos sintéticos.
 
+Nota ISA-203 / BIL-N01 (2026-08-02, promoción a `nightly`):
+- Reconstrucción del árbol final BIL-01..BIL-07 sobre
+  `nightly@523840972673c2567cef75240ebe5a768f7742fc`; BIL-08 queda fuera porque
+  continúa sin commit en su worktree aislado.
+- Incluye inbox durable e idempotente, checkout/portal endurecidos, sesión OAuth
+  protegida, reconciliación monotónica, recuperación de pago de 72 horas y ledger
+  atribuible de orders/refunds. No ejecuta deploy, migraciones remotas, pagos,
+  refunds ni cambios productivos en Polar o Supabase.
+- Los conflictos reales se limitan a composition root, servidor OAuth y los dos
+  documentos vivos. La resolución conserva Telemetry Core, Engineer, Strategy,
+  Overlay Projection y sustituye el nonce simple por intentos OAuth ligados a
+  provider/state y consumidos atómicamente.
+- Gates locales acumulativos completos: PostgreSQL desechable (checkout,
+  hardening, upgrades legacy, restore y concurrencia), Deno 164/164, frontend
+  focal 87/87, frontend global 311 archivos/2.128 tests, build y lint focal,
+  Go global, repetición x20 y race detector focal. El deploy surface acepta
+  únicamente `billing-checkout`, `billing-portal` y `billing-webhook`.
+- Estado: preparado para PR y CI de promoción técnica; venta pública continúa
+  **NO-GO**, BIL-08 permanece fuera y `testers`/`master` no se tocan.
+
 Nota ISA-204 / TA-N01 (2026-08-02):
 - Promoción acumulativa TA-01…TA-03C reconstruida sobre
   `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6` desde el stack técnico

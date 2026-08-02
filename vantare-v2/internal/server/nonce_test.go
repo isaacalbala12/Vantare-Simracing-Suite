@@ -26,32 +26,41 @@ func (e *concurrentTestEmitter) callCount() int {
 	return e.calls
 }
 
-func TestAuthTokenRejectsExpiredNonce(t *testing.T) {
+func TestAuthTokenRejectsExpiredAttempt(t *testing.T) {
 	emitter := &concurrentTestEmitter{}
 	srv := New(ServerConfig{Emitter: emitter})
-	nonce := srv.GenerateNonce()
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	srv.nonceStore.mu.Lock()
-	srv.nonceStore.created[nonce] = time.Now().Add(-srv.nonceStore.ttl - time.Second)
-	srv.nonceStore.mu.Unlock()
+	srv.authAttempts.mu.Lock()
+	stored := srv.authAttempts.attempts[attempt.ID]
+	stored.createdAt = time.Now().Add(-srv.authAttempts.ttl - time.Second)
+	srv.authAttempts.attempts[attempt.ID] = stored
+	srv.authAttempts.mu.Unlock()
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(`{"access_token":"tok","nonce":"`+nonce+`"}`))
+	body := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"` + attempt.State + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
-		t.Fatalf("POST /auth/token expired nonce = %d, want 401", rr.Code)
+		t.Fatalf("POST /auth/token expired attempt = %d, want 401", rr.Code)
 	}
 	if emitter.callCount() != 0 {
 		t.Fatal("expected 0 emit calls for expired nonce")
 	}
 }
 
-func TestAuthTokenConsumesNonceAtomically(t *testing.T) {
+func TestAuthTokenConsumesAttemptAtomically(t *testing.T) {
 	emitter := &concurrentTestEmitter{}
 	srv := New(ServerConfig{Emitter: emitter})
-	nonce := srv.GenerateNonce()
-	body := `{"access_token":"tok","nonce":"` + nonce + `"}`
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"` + attempt.State + `"}`
 
 	start := make(chan struct{})
 	statuses := make(chan int, 2)

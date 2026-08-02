@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
+import { Events } from "@wailsio/runtime";
 import { I18nProvider, useI18n } from "../../i18n/I18nProvider";
 import { LanguageSelector } from "../../i18n/LanguageSelector";
 import { LicenseProvider, useLicense } from "../../lib/license";
@@ -111,7 +112,17 @@ function AuthStage() {
     );
   }
   if (!result || result.state === "anonymous") {
-    return <LoginScreen onLoggedIn={() => window.location.reload()} />;
+    return (
+      <LoginScreen
+        onLoggedIn={(tokens) => {
+          if (!tokens?.accessToken) return;
+          Events.Emit("license:validate", {
+            sessionToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken ?? "",
+          });
+        }}
+      />
+    );
   }
   if (
     result.state === "expired" ||

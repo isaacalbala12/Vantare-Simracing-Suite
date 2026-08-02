@@ -24,8 +24,8 @@ vi.mock("../../lib/license", () => ({
 }));
 
 vi.mock("../auth/LoginScreen", () => ({
-  LoginScreen: () => {
-    loginScreenMock();
+  LoginScreen: (props: { onLoggedIn: (tokens?: { accessToken: string; refreshToken?: string }) => void }) => {
+    loginScreenMock(props);
     return <div data-testid="login-screen">login</div>;
   },
 }));
@@ -38,6 +38,7 @@ vi.mock("../auth/PaywallScreen", () => ({
 }));
 
 import { OnboardingFlow } from "./OnboardingFlow";
+import { Events } from "@wailsio/runtime";
 
 function setLicense(result: unknown, loading = false) {
   useLicenseMock.mockReturnValue({
@@ -74,6 +75,17 @@ describe("OnboardingFlow", () => {
     );
     render(<OnboardingFlow initialStep="auth" />);
     expect(loginScreenMock).toHaveBeenCalled();
+  });
+
+  it("revalidates restored credentials without reloading the WebView", () => {
+    setLicense({ state: "anonymous", entitlements: [], userId: "", email: "", deviceOK: true });
+    render(<OnboardingFlow initialStep="auth" />);
+    const props = loginScreenMock.mock.calls.at(-1)?.[0];
+    props.onLoggedIn({ accessToken: "access", refreshToken: "refresh" });
+    expect(Events.Emit).toHaveBeenCalledWith("license:validate", {
+      sessionToken: "access",
+      refreshToken: "refresh",
+    });
   });
 
   it("advances to recommended when authenticated-no-entitlement (Free)", () => {

@@ -347,7 +347,7 @@ describe("AccountSettings", () => {
   });
 
   it("calls signOut and clearLicense on logout click", async () => {
-    signOutMock.mockResolvedValueOnce({});
+    signOutMock.mockResolvedValueOnce({ localCleared: true });
     mockUseLicense({
       state: "active",
       entitlements: ["overlays"],
@@ -360,4 +360,27 @@ describe("AccountSettings", () => {
     await waitFor(() => expect(signOutMock).toHaveBeenCalled());
     expect(clearLicenseMock).toHaveBeenCalled();
   });
+
+	it("clears local UI and reports a remote logout failure separately", async () => {
+		signOutMock.mockResolvedValueOnce({ localCleared: true, remoteError: "network unavailable" });
+		mockUseLicense({
+			state: "active", entitlements: ["bundle"], userId: "u", email: "u@example.com", deviceOK: true,
+		});
+		render(<AccountSettings />);
+		fireEvent.click(screen.getByRole("button", { name: /cerrar sesión/i }));
+		await waitFor(() => expect(screen.getByTestId("account-logout-error").textContent).toMatch(/network unavailable/));
+		expect(clearLicenseMock).toHaveBeenCalled();
+		expect(screen.getByTestId("account-logout-error").textContent).toMatch(/sesión local se cerró/i);
+	});
+
+	it("keeps local state and reports when protected credential deletion fails", async () => {
+		signOutMock.mockResolvedValueOnce({ localCleared: false, localError: "credential delete failed" });
+		mockUseLicense({
+			state: "active", entitlements: ["bundle"], userId: "u", email: "u@example.com", deviceOK: true,
+		});
+		render(<AccountSettings />);
+		fireEvent.click(screen.getByRole("button", { name: /cerrar sesión/i }));
+		await waitFor(() => expect(screen.getByTestId("account-logout-error").textContent).toMatch(/sesión local/i));
+		expect(clearLicenseMock).not.toHaveBeenCalled();
+	});
 });

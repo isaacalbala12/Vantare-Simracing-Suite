@@ -7,6 +7,7 @@ import {
   WEBHOOK_HEADER_SIGNATURE,
   WEBHOOK_HEADER_TIMESTAMP,
 } from "./index.ts";
+import { computeWebhookPayloadHash } from "./inbox.ts";
 import type { ProcessResult } from "./process.ts";
 
 const TEST_WEBHOOK_SECRET = "whsec_dGVzdC13ZWJob29rLXNlY3JldC1rZXkhIQ==";
@@ -117,19 +118,23 @@ Deno.test("billing-webhook: invalid JSON payload is 400", async () => {
 
 Deno.test("billing-webhook: valid signed event returns 202", async () => {
   let processed = false;
+  let receivedPayloadHash: string | undefined;
+  const payload = {
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+    },
+  };
+  const rawBody = JSON.stringify(payload);
   const res = await handleWebhookRequest(
-    await signedWebhookRequest({
-      type: "order.paid",
-      data: {
-        product_id: LAUNCH_PRODUCT_ID,
-        external_customer_id: USER_ID,
-      },
-    }),
+    await signedWebhookRequest(rawBody),
     {
       getSecret: () => TEST_WEBHOOK_SECRET,
       getSupabase: () => fakeSupabase(),
-      processEvent: async () => {
+      processEvent: async (_event, _eventId, deps) => {
         processed = true;
+        receivedPayloadHash = deps.payloadHash;
         return { status: "processed", action: "granted_lifetime_bundle" };
       },
     },
@@ -141,6 +146,7 @@ Deno.test("billing-webhook: valid signed event returns 202", async () => {
   assertEquals(body.ok, true);
   assertEquals(body.status, "processed");
   assertEquals(body.action, "granted_lifetime_bundle");
+  assertEquals(receivedPayloadHash, await computeWebhookPayloadHash(rawBody));
 });
 
 Deno.test("billing-webhook: duplicate event id returns 202 without reprocessing", async () => {
@@ -205,4 +211,92 @@ Deno.test("billing-webhook: ignored unknown product still returns 202", async ()
   const body = await res.json();
   assertEquals(body.status, "ignored");
   assertEquals(body.reason, "unknown_product_id");
+});
+
+Deno.test("billing-webhook: scheduled retry stays provider-retryable without a scheduler", async () => {
+  const nextAttemptAt = "2026-08-02T12:00:30.000Z";
+  const res = await handleWebhookRequest(
+    await signedWebhookRequest({
+      type: "order.paid",
+      data: {
+        product_id: LAUNCH_PRODUCT_ID,
+        external_customer_id: USER_ID,
+      },
+    }),
+    {
+      getSecret: () => TEST_WEBHOOK_SECRET,
+      getSupabase: () => fakeSupabase(),
+      now: () => new Date("2026-08-02T12:00:00.000Z"),
+      processEvent: async () => ({
+        status: "deferred",
+        reason: "retry_scheduled",
+        nextAttemptAt,
+      }),
+    },
+  );
+
+  assertEquals(res.status, 503);
+  const body = await res.json();
+  assertEquals(body.error, "webhook_retry_scheduled");
+  assertEquals(body.next_attempt_at, nextAttemptAt);
+  assertEquals(body.ok, undefined);
+  assertEquals(res.headers.get("Retry-After"), "30");
+});
+
+Deno.test("billing-webhook: concurrent busy claim remains provider-retryable", async () => {
+  const leaseExpiresAt = "2026-08-02T12:01:00.000Z";
+  const res = await handleWebhookRequest(
+    await signedWebhookRequest({
+      type: "order.paid",
+      data: {
+        product_id: LAUNCH_PRODUCT_ID,
+        external_customer_id: USER_ID,
+      },
+    }),
+    {
+      getSecret: () => TEST_WEBHOOK_SECRET,
+      getSupabase: () => fakeSupabase(),
+      now: () => new Date("2026-08-02T12:00:00.000Z"),
+      processEvent: async () => ({
+        status: "deferred",
+        reason: "processing",
+        leaseExpiresAt,
+      }),
+    },
+  );
+
+  assertEquals(res.status, 503);
+  assertEquals(res.headers.get("Retry-After"), "60");
+  const body = await res.json();
+  assertEquals(body.error, "webhook_processing_busy");
+  assertEquals(body.lease_expires_at, leaseExpiresAt);
+  assertEquals(body.ok, undefined);
+});
+
+Deno.test("billing-webhook: processing failure is retryable without leaking the cause", async () => {
+  const res = await handleWebhookRequest(
+    await signedWebhookRequest({
+      type: "order.paid",
+      data: {
+        product_id: LAUNCH_PRODUCT_ID,
+        external_customer_id: USER_ID,
+      },
+    }),
+    {
+      getSecret: () => TEST_WEBHOOK_SECRET,
+      getSupabase: () => fakeSupabase(),
+      processEvent: () =>
+        Promise.reject(new Error("buyer@example.com secret-token")),
+    },
+  );
+
+  assertEquals(res.status, 500);
+  const body = await res.json();
+  assertEquals(body.error, "webhook_processing_failed");
+  assertEquals(
+    body.message,
+    "The verified event is stored and will be retried safely",
+  );
+  assertEquals(JSON.stringify(body).includes("buyer@example.com"), false);
+  assertEquals(JSON.stringify(body).includes("secret-token"), false);
 });

@@ -360,4 +360,15 @@ describe("AccountSettings", () => {
     await waitFor(() => expect(signOutMock).toHaveBeenCalled());
     expect(clearLicenseMock).toHaveBeenCalled();
   });
+
+	it("reports a remote logout failure without pretending the whole logout succeeded", async () => {
+		signOutMock.mockResolvedValueOnce({ error: "network unavailable" });
+		mockUseLicense({
+			state: "active", entitlements: ["bundle"], userId: "u", email: "u@example.com", deviceOK: true,
+		});
+		render(<AccountSettings />);
+		fireEvent.click(screen.getByRole("button", { name: /cerrar sesión/i }));
+		await waitFor(() => expect(screen.getByTestId("account-logout-error").textContent).toMatch(/network unavailable/));
+		expect(clearLicenseMock).not.toHaveBeenCalled();
+	});
 });

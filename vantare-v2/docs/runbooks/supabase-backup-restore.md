@@ -16,8 +16,11 @@ Nunca probar una restauración sobre producción. Toda restauración se realiza 
 1. Desde la raíz del repositorio, ejecutar `supabase/tests/run-supabase-hardening-postgres.ps1`.
 2. El runner crea PostgreSQL 17 desechable, prueba instalación limpia y upgrade.
 3. Genera un dump, crea una segunda base desechable y restaura el dump.
-4. Verifica el contrato de entitlement read y termina eliminando el contenedor.
-5. Registrar fecha, versión, tiempo y resultado; nunca registrar credenciales o contenido personal.
+4. Ejecuta `pg_restore --exit-on-error` y captura su código de salida antes de cualquier otro comando.
+5. Repite pgTAP sobre la base restaurada y verifica RLS, grants y un dato centinela.
+6. Ejecuta además un restore negativo que debe fallar; si un restore parcial devuelve éxito, el drill completo falla.
+7. Termina eliminando el contenedor y los archivos temporales.
+8. Registrar fecha, versión, tiempo y resultado; nunca registrar credenciales o contenido personal.
 
 ## Drill remoto autorizado
 

@@ -81,6 +81,7 @@ export function AccountSettings() {
   const { result, clearLicense } = useLicense();
   const [portalError, setPortalError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+	const [logoutError, setLogoutError] = useState<string | null>(null);
   const [licenseRefreshState, setLicenseRefreshState] =
     useState<LicenseRefreshFeedback>("idle");
   const [licenseRefreshNote, setLicenseRefreshNote] = useState<string | null>(
@@ -96,7 +97,12 @@ export function AccountSettings() {
     useState<DeviceResetReason | null>(null);
 
   const handleLogout = useCallback(async () => {
-    await signOut();
+		setLogoutError(null);
+		const result = await signOut();
+		if (result.error) {
+			setLogoutError(result.error);
+			return;
+		}
     clearLicense();
   }, [clearLicense]);
 
@@ -267,6 +273,11 @@ export function AccountSettings() {
       {portalError && (
         <p className="font-mono text-[10px] text-vantare-red-400">{portalError}</p>
       )}
+		{logoutError ? (
+			<p data-testid="account-logout-error" className="font-mono text-[10px] text-vantare-red-400">
+				La credencial local se eliminó, pero no se pudo cerrar la sesión remota: {logoutError}
+			</p>
+		) : null}
       {licenseRefreshState === "active" && licenseRefreshNote ? (
         <p
           data-testid="account-license-refresh-active"

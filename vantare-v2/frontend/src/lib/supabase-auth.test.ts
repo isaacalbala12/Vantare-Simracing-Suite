@@ -8,6 +8,8 @@ const {
   setSessionFn,
   createClient,
   eventsEmit,
+	eventsOn,
+	authStateChange,
 } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signOutFn: vi.fn(),
@@ -16,10 +18,12 @@ const {
   setSessionFn: vi.fn(),
   createClient: vi.fn(),
   eventsEmit: vi.fn(),
+	eventsOn: vi.fn(),
+	authStateChange: vi.fn(),
 }));
 
 vi.mock("@wailsio/runtime", () => ({
-  Events: { Emit: eventsEmit },
+	Events: { Emit: eventsEmit, On: eventsOn },
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -32,6 +36,7 @@ vi.mock("@supabase/supabase-js", () => ({
         getSession: getSessionFn,
         signInWithOAuth: signInWithOAuthFn,
         setSession: setSessionFn,
+			onAuthStateChange: authStateChange,
       },
     };
   },
@@ -45,6 +50,7 @@ import {
   getSession,
   signInWithOAuth,
   setSupabaseSession,
+	removeLegacySupabaseSessions,
 } from "./supabase-auth";
 
 describe("supabase-auth", () => {
@@ -59,6 +65,25 @@ describe("supabase-auth", () => {
     signInWithOAuthFn.mockReset();
     createClient.mockClear();
     eventsEmit.mockReset();
+		eventsOn.mockReset();
+		authStateChange.mockReset();
+		authStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
+		const listeners = new Map<string, (event: { data?: Record<string, string> }) => void>();
+		eventsOn.mockImplementation((name: string, callback: (event: { data?: Record<string, string> }) => void) => {
+			listeners.set(name, callback);
+			return vi.fn();
+		});
+		eventsEmit.mockImplementation((name: string, data?: { requestId?: string; provider?: string }) => {
+			if (name === "auth:attempt:create") {
+				const provider = data?.provider ?? "google";
+				listeners.get("auth:attempt:created")?.({
+					data: {
+						requestId: data?.requestId ?? "",
+						redirectUrl: `http://127.0.0.1:39261/auth/callback?attempt=a&provider=${provider}&state=s`,
+					},
+				});
+			}
+		});
   });
 
   describe("getSupabaseClient", () => {
@@ -133,7 +158,7 @@ describe("supabase-auth", () => {
       signOutFn.mockResolvedValueOnce({ error: { message: "boom" } });
       const result = await authSignOut();
       expect(result.error).toBe("boom");
-      expect(eventsEmit).not.toHaveBeenCalled();
+			expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
     });
 
     it("returns a clear config error when env vars are missing", async () => {
@@ -142,6 +167,7 @@ describe("supabase-auth", () => {
       resetSupabaseClient();
       const result = await authSignOut();
       expect(result.error).toMatch(/Supabase no configurado/);
+			expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
     });
   });
 
@@ -181,7 +207,7 @@ describe("supabase-auth", () => {
       expect(signInWithOAuthFn).toHaveBeenCalledWith({
         provider: "google",
         options: {
-          redirectTo: "http://127.0.0.1:39261/auth/callback",
+					redirectTo: "http://127.0.0.1:39261/auth/callback?attempt=a&provider=google&state=s",
           skipBrowserRedirect: true,
         },
       });
@@ -197,23 +223,13 @@ describe("supabase-auth", () => {
       expect(result.url).toBeUndefined();
     });
 
-    it("uses VITE_OAUTH_REDIRECT_URL when present", async () => {
-      vi.stubEnv(
-        "VITE_OAUTH_REDIRECT_URL",
-        "https://app.example.com/auth/callback",
-      );
+    it("creates the bound attempt before requesting the provider URL", async () => {
       signInWithOAuthFn.mockResolvedValueOnce({
         data: { url: "https://accounts.google.com/..." },
         error: null,
       });
       await signInWithOAuth("google");
-      expect(signInWithOAuthFn).toHaveBeenCalledWith({
-        provider: "google",
-        options: {
-          redirectTo: "https://app.example.com/auth/callback",
-          skipBrowserRedirect: true,
-        },
-      });
+			expect(eventsEmit.mock.invocationCallOrder[0]).toBeLessThan(signInWithOAuthFn.mock.invocationCallOrder[0]);
     });
 
     it("returns a clear config error when env vars are missing", async () => {
@@ -223,7 +239,30 @@ describe("supabase-auth", () => {
       const result = await signInWithOAuth("google");
       expect(result.error).toMatch(/Supabase no configurado/);
     });
+
+		it("does not contact Supabase when the backend cannot create an attempt", async () => {
+			eventsEmit.mockImplementationOnce((_name: string, data: { requestId: string }) => {
+				const errorListener = eventsOn.mock.calls.find(([event]) => event === "auth:attempt:error")?.[1];
+				errorListener?.({ data: { requestId: data.requestId, message: "attempt denied" } });
+			});
+			const result = await signInWithOAuth("google");
+			expect(result.error).toBe("attempt denied");
+			expect(signInWithOAuthFn).not.toHaveBeenCalled();
+		});
   });
+
+	describe("legacy WebView storage", () => {
+		it("removes old readable auth tokens without touching unrelated preferences", () => {
+			localStorage.setItem("sb-project-auth-token", "readable-secret");
+			localStorage.setItem("supabase.auth.token", "legacy-secret");
+			localStorage.setItem("theme", "vantare");
+			expect(removeLegacySupabaseSessions()).toBe(2);
+			expect(localStorage.getItem("sb-project-auth-token")).toBeNull();
+			expect(localStorage.getItem("supabase.auth.token")).toBeNull();
+			expect(localStorage.getItem("theme")).toBe("vantare");
+			localStorage.clear();
+		});
+	});
 
   describe("setSupabaseSession", () => {
     it("calls supabase.auth.setSession with both tokens on success", async () => {
@@ -260,6 +299,15 @@ describe("supabase-auth", () => {
       expect(result.error).toBe("invalid token");
       expect(result.session).toBeNull();
     });
+
+		it("marks an authentication rejection as an invalid stored credential", async () => {
+			setSessionFn.mockResolvedValueOnce({
+				data: { session: null },
+				error: { message: "Invalid Refresh Token", status: 400 },
+			});
+			const result = await setSupabaseSession("access", "refresh");
+			expect(result.invalidCredential).toBe(true);
+		});
 
     it("returns a clear config error when env vars are missing", async () => {
       vi.stubEnv("VITE_SUPABASE_URL", "");

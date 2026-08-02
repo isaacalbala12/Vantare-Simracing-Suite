@@ -1,6 +1,6 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: ISA-166 reconciliada; BIL-03 aprobada; BIL-04 / ISA-88 implementada en rama aislada y pendiente de review; venta pública **NO-GO**.
+Estado: ISA-166 reconciliada; BIL-03 aprobada; BIL-04 / ISA-88 corregida tras review P1/P2 en rama aislada y pendiente de nueva revisión; venta pública **NO-GO**.
 
 Base de BIL-03: ISA-166 `c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
 
@@ -102,16 +102,16 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## BIL-04 / ISA-88
 
-- Nonce OAuth con expiración, consumo atómico y una sola aceptación incluso bajo concurrencia.
-- Sesión Supabase solo en memoria del WebView; persistencia protegida por Windows Credential Manager y borrado al cerrar sesión.
+- Intento OAuth creado antes del navegador, ligado a provider/state, con expiración, consumo atómico y una sola aceptación incluso bajo concurrencia.
+- Bridge de sesión global, Supabase solo en memoria del WebView, Credential Manager como persistencia exclusiva, rotación protegida contra session fixation y logout local fail-closed.
 - Separación explícita entre claim de dispositivo y lectura pura de entitlements; wrapper legacy ya no muta.
-- RPCs con grants mínimos, `SECURITY DEFINER` endurecido y tests negativos para anon/authenticated.
-- `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook.
-- PostgreSQL 17 desechable valida clean install, upgrade y restore. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
+- RPCs con grants mínimos, `SECURITY DEFINER`/`search_path` endurecido en los cuatro contratos, `device_bound` honesto, reset con fingerprint real y carreras concurrentes.
+- `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook y bloquea release desde CI.
+- PostgreSQL 17 desechable valida clean install, upgrade y restore fail-closed con pgTAP, RLS, grants y centinela. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
 - Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`.
 
 ## Última actualización
 
-2026-08-02 — ISA-88 / BIL-04 implementada sobre la base aprobada de BIL-03.
-Hardening local y restore drill desechable verificados. Sin deploy, pago, refund,
+2026-08-02 — ISA-88 / BIL-04 corregida sobre la base aprobada de BIL-03.
+Findings P1/P2 del review cerrados y restore drill desechable verificado. Sin deploy, pago, refund,
 secretos, PII ni mutaciones remotas.

@@ -103,17 +103,18 @@ export async function signUp(
 }
 
 export async function signOut(): Promise<{ error?: string }> {
+	// Local logout is fail-closed and independent from network availability.
+	// The caller may keep the current screen open to report a remote failure,
+	// but a restart can no longer restore this credential.
+	Events.Emit("auth:session:clear");
   try {
     const { error } = await getSupabaseClient().auth.signOut();
-    if (!error) {
-      Events.Emit("auth:session:clear");
-    }
     return { error: error?.message };
   } catch (err) {
     if (isConfigError(err)) {
       return { error: missingConfigError };
     }
-    throw err;
+		return { error: err instanceof Error ? err.message : "Error al cerrar la sesión remota" };
   }
 }
 
@@ -150,7 +151,7 @@ export async function getSession(): Promise<Session | null> {
 export async function setSupabaseSession(
   accessToken: string,
   refreshToken?: string,
-): Promise<{ session: Session | null; error?: string }> {
+): Promise<{ session: Session | null; error?: string; invalidCredential?: boolean }> {
   if (!accessToken) {
     return { session: null, error: "access_token is required" };
   }
@@ -163,7 +164,12 @@ export async function setSupabaseSession(
       refresh_token: refreshToken,
     });
     if (error) {
-      return { session: null, error: error.message };
+			const status = (error as { status?: number }).status;
+			return {
+				session: null,
+				error: error.message,
+				invalidCredential: status === 400 || status === 401,
+			};
     }
     return { session: data.session };
   } catch (err) {
@@ -182,10 +188,14 @@ export async function signInWithOAuth(
   provider: "google" | "discord",
 ): Promise<{ url?: string; error?: string }> {
   try {
+		const attempt = await createOAuthAttempt(provider);
+		if (attempt.error || !attempt.redirectUrl) {
+			return { error: attempt.error ?? "No se pudo iniciar el acceso seguro" };
+		}
     const { data, error } = await getSupabaseClient().auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: oauthCallbackUrl(),
+				redirectTo: attempt.redirectUrl,
         skipBrowserRedirect: true,
       },
     });
@@ -199,4 +209,66 @@ export async function signInWithOAuth(
     }
     throw err;
   }
+}
+
+type OAuthAttemptResult = { redirectUrl?: string; error?: string };
+
+function requestID(): string {
+	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+export function createOAuthAttempt(
+	provider: "google" | "discord",
+	timeoutMs = 5000,
+): Promise<OAuthAttemptResult> {
+	return new Promise((resolve) => {
+		const id = requestID();
+		let settled = false;
+		const unsubscribers: Array<() => void> = [];
+		const finish = (result: OAuthAttemptResult) => {
+			if (settled) return;
+			settled = true;
+			globalThis.clearTimeout(timer);
+			for (const unsubscribe of unsubscribers) unsubscribe();
+			resolve(result);
+		};
+		const timer = globalThis.setTimeout(
+			() => finish({ error: "La solicitud de acceso seguro ha caducado" }),
+			timeoutMs,
+		);
+		unsubscribers.push(Events.On("auth:attempt:created", (event: { data?: { requestId?: string; redirectUrl?: string } }) => {
+			if (event.data?.requestId !== id) return;
+			finish({ redirectUrl: event.data.redirectUrl });
+		}));
+		unsubscribers.push(Events.On("auth:attempt:error", (event: { data?: { requestId?: string; message?: string } }) => {
+			if (event.data?.requestId !== id) return;
+			finish({ error: event.data.message ?? "No se pudo iniciar el acceso seguro" });
+		}));
+		Events.Emit("auth:attempt:create", { requestId: id, provider });
+	});
+}
+
+export function removeLegacySupabaseSessions(storage: Storage = window.localStorage): number {
+	let removed = 0;
+	for (let index = storage.length - 1; index >= 0; index -= 1) {
+		const key = storage.key(index);
+		if (!key) continue;
+		if (/^sb-.+-auth-token$/i.test(key) || /^supabase\.auth\.token(?:\.|$)/i.test(key)) {
+			storage.removeItem(key);
+			removed += 1;
+		}
+	}
+	return removed;
+}
+
+export function onSupabaseAuthStateChange(
+	callback: (event: string, session: Session | null) => void,
+): () => void {
+	try {
+		const { data } = getSupabaseClient().auth.onAuthStateChange(callback);
+		return () => data.subscription.unsubscribe();
+	} catch (err) {
+		if (isConfigError(err)) return () => undefined;
+		throw err;
+	}
 }

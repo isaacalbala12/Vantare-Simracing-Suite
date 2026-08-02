@@ -1,12 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-const {
-  mockOpenURL,
-  mockSetSupabaseSession,
-} = vi.hoisted(() => ({
+const { mockOpenURL } = vi.hoisted(() => ({
   mockOpenURL: vi.fn().mockResolvedValue(undefined),
-  mockSetSupabaseSession: vi.fn().mockResolvedValue({ session: null }),
 }));
 
 vi.mock("@wailsio/runtime", () => ({
@@ -22,7 +18,6 @@ vi.mock("../../lib/supabase-auth", () => ({
   signInWithOAuth: vi.fn(),
   signUp: vi.fn(),
   resetPasswordForEmail: vi.fn(),
-  setSupabaseSession: mockSetSupabaseSession,
 }));
 
 import { Events } from "@wailsio/runtime";
@@ -38,7 +33,6 @@ describe("LoginScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     cleanup();
-	mockSetSupabaseSession.mockResolvedValue({ session: null });
   });
 
   it("renders email and password inputs", () => {
@@ -206,82 +200,6 @@ describe("LoginScreen", () => {
       expect(screen.queryByTestId("login-waiting-message")).toBeNull(),
     );
     expect(onLoggedIn).not.toHaveBeenCalled();
-  });
-
-  it("calls setSupabaseSession when auth:session event fires with both tokens", async () => {
-    let authSessionCallback: ((event: { data: { access_token?: string; refresh_token?: string } }) => void) | undefined;
-    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
-      if (event === "auth:session") authSessionCallback = cb;
-      return vi.fn();
-    });
-
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-
-    // Simulate the auth:session event from the Go backend
-    authSessionCallback?.({ data: { access_token: "at-123", refresh_token: "rt-456" } });
-
-    await vi.waitFor(() => {
-      expect(mockSetSupabaseSession).toHaveBeenCalledWith("at-123", "rt-456");
-    });
-  });
-
-  it("requests a protected session when mounted", () => {
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    expect(Events.Emit).toHaveBeenCalledWith("auth:session:get");
-  });
-
-  it("validates a restored protected session using refreshed tokens", async () => {
-    let authSessionCallback: ((event: { data: { access_token?: string; refresh_token?: string; source?: string } }) => void) | undefined;
-    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
-      if (event === "auth:session") authSessionCallback = cb;
-      return vi.fn();
-    });
-    mockSetSupabaseSession.mockResolvedValueOnce({
-      session: { access_token: "fresh-at", refresh_token: "fresh-rt" },
-    });
-    const onLoggedIn = vi.fn();
-    render(<LoginScreen onLoggedIn={onLoggedIn} />);
-
-    authSessionCallback?.({ data: { access_token: "old-at", refresh_token: "old-rt", source: "restore" } });
-
-    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalledWith({
-      accessToken: "fresh-at",
-      refreshToken: "fresh-rt",
-    }));
-  });
-
-  it("does not revalidate a session emitted after validation", async () => {
-    let authSessionCallback: ((event: { data: { access_token?: string; refresh_token?: string; source?: string } }) => void) | undefined;
-    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
-      if (event === "auth:session") authSessionCallback = cb;
-      return vi.fn();
-    });
-    mockSetSupabaseSession.mockResolvedValueOnce({
-      session: { access_token: "at", refresh_token: "rt" },
-    });
-    const onLoggedIn = vi.fn();
-    render(<LoginScreen onLoggedIn={onLoggedIn} />);
-
-    authSessionCallback?.({ data: { access_token: "at", refresh_token: "rt", source: "validated" } });
-
-    await vi.waitFor(() => expect(mockSetSupabaseSession).toHaveBeenCalled());
-    expect(onLoggedIn).not.toHaveBeenCalled();
-  });
-
-  it("does not call setSupabaseSession when auth:session has no refresh_token", async () => {
-    let authSessionCallback: ((event: { data: { access_token?: string; refresh_token?: string } }) => void) | undefined;
-    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
-      if (event === "auth:session") authSessionCallback = cb;
-      return vi.fn();
-    });
-
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-
-    authSessionCallback?.({ data: { access_token: "at-123" } });
-
-    await vi.waitFor(() => {
-      expect(mockSetSupabaseSession).not.toHaveBeenCalled();
-    });
   });
 
   // --- AUTH-04: Signup / Reset / Toggle tests ---

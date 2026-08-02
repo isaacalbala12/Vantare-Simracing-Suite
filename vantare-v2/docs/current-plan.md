@@ -5,6 +5,9 @@ Nota ISA-88-BIL-04-SUPABASE-HARDENING (2026-08-02):
 - `validate-license` archivada fuera de la superficie desplegable y guard automático para impedir su reaparición accidental.
 - Clean/upgrade pgTAP y backup/restore desechable PostgreSQL 17 verificados. Estado remoto de migrations/backups/PITR aún requiere gate autorizado; venta pública sigue NO-GO.
 - Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`. Runbook: `docs/runbooks/supabase-backup-restore.md`.
+- Corrección de review: intento OAuth ahora nace antes del navegador y queda ligado a provider/state/TTL/single-use; bridge global restaura y rota Credential Manager sin depender de Login; logout borra local incluso con fallo remoto y lo comunica.
+- Corrección de review: `device_bound` sustituye al `device_ok` engañoso, reset usa el fingerprint explícito, los cuatro RPCs tienen grants/search_path/negativos y se prueban carreras con fingerprints distintos.
+- Corrección de review: el release ejecuta el guard de Functions; restore usa `--exit-on-error`, reejecuta 33 pgTAP y verifica RLS, grants, centinela y el camino de fallo.
 
 Nota ISA-72-BIL-03-CHECKOUT-HARDENING (2026-08-02):
 - Implementación aislada sobre ISA-166 `c6a3ebf`: mapping Polar v2 bidireccional por producto/precio/entorno/capabilities/canales/alcance Launch, sin inventar IDs de Pro Plus ni trial.

@@ -30,14 +30,18 @@ begin
 end;
 $$;
 
-create or replace function public.read_account_entitlements()
+-- PostgreSQL cannot rename a TABLE-return column with CREATE OR REPLACE.
+-- This migration has not been promoted remotely; drop the misleading
+-- device_ok result and recreate it as the factual device_bound signal.
+drop function if exists public.read_account_entitlements();
+create function public.read_account_entitlements()
 returns table(
   user_id uuid,
   email text,
   entitlements text[],
   active_device text,
   expires_at timestamptz,
-  device_ok boolean,
+  device_bound boolean,
   provider_customer_id text,
   billing_provider text
 )
@@ -76,6 +80,38 @@ as $$
     bc.provider_customer_id, bc.provider;
 $$;
 
+create or replace function public.reset_active_device(device_fingerprint text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_fp text := nullif(trim(device_fingerprint), '');
+  v_last_reset timestamptz;
+begin
+  if v_user_id is null then raise exception 'not_authenticated'; end if;
+  if v_fp is null then raise exception 'device_fingerprint_required'; end if;
+
+  select d.last_reset_at into v_last_reset
+  from public.devices d
+  where d.user_id = v_user_id
+  for update;
+
+  if v_last_reset is not null and v_last_reset > now() - interval '24 hours' then
+    raise exception 'rate_limit: solo 1 reset cada 24h';
+  end if;
+
+  insert into public.devices (user_id, fingerprint_hash, first_seen_at, last_seen_at, last_reset_at)
+  values (v_user_id, v_fp, now(), now(), now())
+  on conflict (user_id) do update
+  set fingerprint_hash = excluded.fingerprint_hash,
+      last_seen_at = excluded.last_seen_at,
+      last_reset_at = excluded.last_reset_at;
+end;
+$$;
+
 -- The compatibility RPC remains read-only. New clients call claim then read.
 create or replace function public.get_account_entitlements(device_fingerprint text)
 returns table(
@@ -102,6 +138,7 @@ $$;
 alter function public.claim_active_device(text) owner to postgres;
 alter function public.read_account_entitlements() owner to postgres;
 alter function public.get_account_entitlements(text) owner to postgres;
+alter function public.reset_active_device(text) owner to postgres;
 
 revoke all on function public.claim_active_device(text) from public, anon, authenticated;
 revoke all on function public.read_account_entitlements() from public, anon, authenticated;

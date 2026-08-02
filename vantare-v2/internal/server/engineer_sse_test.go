@@ -20,36 +20,6 @@ type dummyEmitter struct{}
 
 func (d dummyEmitter) Emit(name string, data any) {}
 
-func sseLines(ctx context.Context, url string, count int) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	lines := make(chan string, count)
-	go func() {
-		scanner := bufio.NewScanner(resp.Body)
-		for scanner.Scan() {
-			lines <- scanner.Text()
-		}
-	}()
-	result := make([]string, 0, count)
-	for range count {
-		select {
-		case line := <-lines:
-			result = append(result, line)
-		case <-ctx.Done():
-			return result, ctx.Err()
-		}
-	}
-	return result, nil
-}
-
 func TestEngineerStreamNoService(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
 	req := httptest.NewRequest(http.MethodGet, "/engineer/stream", nil)
@@ -70,8 +40,6 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
 	engSvc.Start(ctx)
 	defer engSvc.Stop()
-	go feedEngineerHarness(ctx, engSvc)
-
 	srv := server.New(server.ServerConfig{EngineerSvc: engSvc})
 	s := httptest.NewServer(srv.Handler())
 	defer s.Close()
@@ -87,23 +55,26 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
+	go feedEngineerHarness(ctx, engSvc)
 
-	// Read lines from the stream while an explicit harness feeds fixtures.
-	lines, err := sseLines(ctx, s.URL+"/engineer/stream", 2)
-	if err != nil {
-		t.Fatalf("sseLines: %v", err)
-	}
-
-	foundEvent := false
-	for _, line := range lines {
-		if strings.HasPrefix(line, "event: engineer-notification") {
-			foundEvent = true
+	// Read this subscribed stream while an explicit harness feeds fixtures.
+	scanner := bufio.NewScanner(resp.Body)
+	foundSnapshot := false
+	foundPresentation := false
+	var lines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		lines = append(lines, line)
+		if strings.HasPrefix(line, "data:") && strings.Contains(line, `"kind":"snapshot"`) {
+			foundSnapshot = true
+		}
+		if strings.HasPrefix(line, "data:") && strings.Contains(line, `"kind":"presentation"`) {
+			foundPresentation = true
 			break
 		}
 	}
-
-	if !foundEvent {
-		t.Errorf("expected event: engineer-notification in stream, got lines: %v", lines)
+	if !foundSnapshot || !foundPresentation {
+		t.Fatalf("expected ordered snapshot and presentation events in stream, got lines: %v, scan error: %v", lines, scanner.Err())
 	}
 }
 

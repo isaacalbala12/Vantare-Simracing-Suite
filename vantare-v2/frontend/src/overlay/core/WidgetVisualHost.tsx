@@ -8,6 +8,7 @@ import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
+import type { WidgetRuntimeInput } from "./widget-definition";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -17,6 +18,7 @@ export type WidgetVisualHostProps = {
   renderMode: "studio" | "desktop" | "obs" | "harness";
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
+  runtime?: WidgetRuntimeInput;
 };
 
 function reportDiagnostic(
@@ -77,7 +79,12 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="invalid-content" message={message} />;
   }
 
-  let model = definition.buildViewModel(snapshot, content as never);
+  const previewMode = renderMode === "studio" || renderMode === "harness";
+  let model = previewMode && definition.buildPreviewViewModel
+    ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
+    : definition.buildRuntimeViewModel
+      ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
+      : definition.buildViewModel(snapshot, content as never);
   if (widget.type === "input-telemetry") {
     const inputContent = content as { historySeconds: number };
     recordInputTelemetrySample(widget.id, snapshot);

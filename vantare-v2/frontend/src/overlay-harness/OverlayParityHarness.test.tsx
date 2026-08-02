@@ -102,7 +102,7 @@ describe("OverlayParityHarness", () => {
   });
 
   it.each(HARNESS_WIDGETS)(
-    "keeps %s renderer markup identical across studio/desktop/obs",
+    "keeps %s runtime markup identical while Studio may label an explicit preview",
     (widget) => {
       const surfaces = ["studio", "desktop", "obs"] as const;
       const markups: string[] = [];
@@ -119,8 +119,14 @@ describe("OverlayParityHarness", () => {
         markups.push(markup!);
       }
 
-      expect(markups[0]).toBe(markups[1]);
       expect(markups[1]).toBe(markups[2]);
+      if (widget === "engineer-radio") {
+        expect(markups[0]).toContain('data-preview="true"');
+        expect(markups[0]).toContain("PREVIEW");
+        expect(markups[1]).not.toContain("data-preview");
+      } else {
+        expect(markups[0]).toBe(markups[1]);
+      }
     },
   );
 
@@ -147,7 +153,12 @@ describe("OverlayParityHarness", () => {
           throw new Error(parsed.error);
         }
         render(<OverlayParityHarness query={parsed} />);
-        expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy();
+        const renderer = document.querySelector(`[data-widget-renderer="${widget}"]`);
+        if (widget === "engineer-radio") {
+          expect(renderer).toBeNull();
+        } else {
+          expect(renderer).toBeTruthy();
+        }
       }
     }
   });

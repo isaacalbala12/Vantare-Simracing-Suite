@@ -1,0 +1,41 @@
+{
+  "schema": "vantare.engineer.voice-artifacts.v1",
+  "manifest_version": 1,
+  "artifacts": [
+    {
+      "id": "whisper-cpp-server-windows-x64",
+      "version": "1.9.1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "kind": "runtime-archive",
+      "filename": "whisper-bin-x64.zip",
+      "bytes": 7982101,
+      "sha256": "7d8be46ecd31828e1eb7a2ecdd0d6b314feafd82163038ab6092594b0a063539",
+      "license": "MIT",
+      "license_url": "https://github.com/ggml-org/whisper.cpp/blob/v1.9.1/LICENSE",
+      "source_url": "https://github.com/ggml-org/whisper.cpp/releases/download/v1.9.1/whisper-bin-x64.zip",
+      "allowed_hosts": [
+        "github.com",
+        "release-assets.githubusercontent.com"
+      ]
+    },
+    {
+      "id": "whisper-base-multilingual",
+      "version": "5359861c",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "kind": "stt-model",
+      "filename": "ggml-base.bin",
+      "bytes": 147951465,
+      "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+      "license": "MIT",
+      "license_url": "https://github.com/openai/whisper/blob/main/LICENSE",
+      "source_url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.bin",
+      "allowed_hosts": [
+        "huggingface.co",
+        "cdn-lfs.huggingface.co",
+        "cas-bridge.xethub.hf.co"
+      ]
+    }
+  ]
+}

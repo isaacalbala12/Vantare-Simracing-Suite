@@ -6,6 +6,7 @@ import { DesignSystemResolutionError } from "./design-system-definition";
 import { designSystemRegistry } from "./design-system-registry";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { WidgetVisualHost } from "./WidgetVisualHost";
+import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 
 afterEach(() => cleanup());
 
@@ -115,5 +116,20 @@ describe("WidgetVisualHost", () => {
       expect(view.container.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
       cleanup();
     }
+  });
+
+  it("shows a labelled Engineer fixture only in Studio and never fabricates runtime data", () => {
+    const widget = engineerRadioDefinition.createDefault("engineer-preview");
+    const studio = render(
+      <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="studio" />,
+    );
+    expect(studio.container.querySelector('[data-engineer-radio-root][data-preview="true"]')).toBeTruthy();
+    expect(studio.getByText("PREVIEW")).toBeTruthy();
+    cleanup();
+
+    const desktop = render(
+      <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="desktop" />,
+    );
+    expect(desktop.container.querySelector("[data-engineer-radio-root]")).toBeNull();
   });
 });

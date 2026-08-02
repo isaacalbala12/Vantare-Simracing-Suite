@@ -3,10 +3,14 @@ import {
   type BillingEnvironment,
   type CheckoutKeyConfig,
   loadPolarProductMap,
-  type RequiredCheckoutKey,
   resolveCheckoutKeyByProductId,
-  V1_ENTITLEMENT_PRODUCT_KEY,
 } from "../_shared/mapping.ts";
+import {
+  type CommercialGrant,
+  type CommercialProjection,
+  hashCommercialSnapshot,
+  SupabaseCommercialProjection,
+} from "./commercial-projection.ts";
 import {
   computeWebhookPayloadHash,
   createSupabaseWebhookInbox,
@@ -50,6 +54,7 @@ export type WebhookProcessorDeps = {
   payloadHash?: string;
   workerToken?: () => string;
   runEffect?: EffectRunner;
+  projection?: CommercialProjection;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -151,21 +156,6 @@ export function parseIsoTimestamp(value: unknown): string | null {
   return null;
 }
 
-export function buildEntitlementMetadata(
-  checkoutKey: RequiredCheckoutKey,
-  config: CheckoutKeyConfig,
-  extra: Record<string, unknown> = {},
-): Record<string, unknown> {
-  return {
-    plan_sku: config.plan_sku,
-    lifetime: config.lifetime,
-    billing_type: config.billing_type,
-    checkout_key: checkoutKey,
-    provider: POLAR_PROVIDER,
-    ...extra,
-  };
-}
-
 async function applyEffect(
   deps: WebhookProcessorDeps,
   effectKey: string,
@@ -209,26 +199,6 @@ export async function resolveUserId(
 
   if (error) throw error;
   return asString(row?.user_id);
-}
-
-export async function hasActiveLifetimeBundle(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("user_entitlements")
-    .select("metadata, expires_at, status")
-    .eq("user_id", userId)
-    .eq("product_key", V1_ENTITLEMENT_PRODUCT_KEY)
-    .eq("status", "active")
-    .is("expires_at", null)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!data) return false;
-
-  const metadata = nestedRecord(data.metadata);
-  return metadata?.lifetime === true;
 }
 
 export async function recordWebhookEvent(
@@ -275,13 +245,13 @@ export async function upsertBillingSubscription(
   supabase: SupabaseClient,
   userId: string,
   subscriptionId: string,
-  productId: string | null,
+  productId: string,
   status: string,
   periodStart: string | null,
   periodEnd: string | null,
   cancelAtPeriodEnd: boolean,
-  metadata: Record<string, unknown>,
-  nowIso: string,
+  checkoutKey: string,
+  modifiedAt: string,
 ): Promise<void> {
   const { error } = await supabase.from("billing_subscriptions").upsert(
     {
@@ -294,35 +264,12 @@ export async function upsertBillingSubscription(
       current_period_start: periodStart,
       current_period_end: periodEnd,
       cancel_at_period_end: cancelAtPeriodEnd,
-      metadata,
-      updated_at: nowIso,
+      metadata: { checkout_key: checkoutKey, derived: true },
+      updated_at: modifiedAt,
     },
     { onConflict: "provider,provider_subscription_id" },
   );
   if (error) throw databaseWriteError("billing_subscriptions", error);
-}
-
-export async function upsertBundleEntitlement(
-  supabase: SupabaseClient,
-  userId: string,
-  status: string,
-  expiresAt: string | null,
-  metadata: Record<string, unknown>,
-  nowIso: string,
-): Promise<void> {
-  const { error } = await supabase.from("user_entitlements").upsert(
-    {
-      user_id: userId,
-      product_key: V1_ENTITLEMENT_PRODUCT_KEY,
-      status,
-      source: POLAR_PROVIDER,
-      expires_at: expiresAt,
-      metadata,
-      updated_at: nowIso,
-    },
-    { onConflict: "user_id,product_key" },
-  );
-  if (error) throw databaseWriteError("user_entitlements", error);
 }
 
 export function deriveSubscriptionEntitlementStatus(
@@ -384,218 +331,58 @@ async function touchCustomerIfPresent(
   );
 }
 
-async function grantLifetimeBundle(
-  deps: WebhookProcessorDeps,
-  userId: string,
-  checkoutKey: RequiredCheckoutKey,
-  config: CheckoutKeyConfig,
-  environment: BillingEnvironment,
-  data: Record<string, unknown>,
-  nowIso: string,
-): Promise<ProcessResult> {
-  await touchCustomerIfPresent(deps, userId, environment, data, nowIso);
-  await applyEffect(
-    deps,
-    "bundle_entitlement",
-    () =>
-      upsertBundleEntitlement(
-        deps.supabase,
-        userId,
-        "active",
-        null,
-        buildEntitlementMetadata(checkoutKey, config, {
-          granted_by: "order.paid",
-        }),
-        nowIso,
-      ),
-  );
-  return { status: "processed", action: "granted_lifetime_bundle" };
+function extractResourceId(event: PolarWebhookEvent): string | null {
+  if (event.type.startsWith("subscription.")) {
+    return extractSubscriptionId(event.data);
+  }
+  return asString(event.data.id) ?? asString(event.data.order_id);
 }
 
-async function grantMonthlyBundle(
-  deps: WebhookProcessorDeps,
-  userId: string,
-  checkoutKey: RequiredCheckoutKey,
-  config: CheckoutKeyConfig,
-  environment: BillingEnvironment,
-  data: Record<string, unknown>,
-  subscriptionStatus: string,
-  now: Date,
-  nowIso: string,
-): Promise<ProcessResult> {
-  const subscriptionId = extractSubscriptionId(data);
-  const productId = extractProductId(data);
-  const periodStart = parseIsoTimestamp(data.current_period_start);
-  const periodEnd = parseIsoTimestamp(data.current_period_end);
-  const cancelAtPeriodEnd = data.cancel_at_period_end === true;
+function resourceTypeForEvent(
+  event: PolarWebhookEvent,
+): "order" | "subscription" | null {
+  if (event.type.startsWith("order.")) return "order";
+  if (event.type.startsWith("subscription.")) return "subscription";
+  return null;
+}
 
-  if (subscriptionId) {
-    await applyEffect(
-      deps,
-      "billing_subscription",
-      () =>
-        upsertBillingSubscription(
-          deps.supabase,
-          userId,
-          subscriptionId,
-          productId,
-          subscriptionStatus,
-          periodStart,
-          periodEnd,
-          cancelAtPeriodEnd,
-          { checkout_key: checkoutKey },
-          nowIso,
-        ),
-    );
+function projectionState(
+  event: PolarWebhookEvent,
+  now: Date,
+): { state: string; active: boolean; validUntil: string | null } {
+  if (event.type === "order.paid") {
+    return { state: "paid", active: true, validUntil: null };
+  }
+  if (event.type === "order.refunded") {
+    return { state: "refunded", active: false, validUntil: now.toISOString() };
   }
 
-  await touchCustomerIfPresent(deps, userId, environment, data, nowIso);
-
+  const state = asString(event.data.status) ??
+    event.type.slice("subscription.".length);
+  const periodEnd = parseIsoTimestamp(event.data.current_period_end);
   const derived = deriveSubscriptionEntitlementStatus(
-    subscriptionStatus,
-    cancelAtPeriodEnd,
+    state,
+    event.data.cancel_at_period_end === true,
     periodEnd,
     now,
   );
-
-  if (await hasActiveLifetimeBundle(deps.supabase, userId)) {
-    return {
-      status: "processed",
-      action: "subscription_ignored_due_to_lifetime",
-    };
-  }
-
-  await applyEffect(
-    deps,
-    "bundle_entitlement",
-    () =>
-      upsertBundleEntitlement(
-        deps.supabase,
-        userId,
-        derived.status,
-        derived.expiresAt,
-        buildEntitlementMetadata(checkoutKey, config, {
-          polar_subscription_id: subscriptionId,
-          cancel_at_period_end: cancelAtPeriodEnd,
-        }),
-        nowIso,
-      ),
-  );
-
-  return { status: "processed", action: "updated_monthly_bundle" };
+  return {
+    state,
+    active: derived.status === "active",
+    validUntil: derived.expiresAt,
+  };
 }
 
-async function revokeMonthlyIfNoLifetime(
-  deps: WebhookProcessorDeps,
-  userId: string,
-  checkoutKey: RequiredCheckoutKey,
+function grantsForConfig(
   config: CheckoutKeyConfig,
-  environment: BillingEnvironment,
-  data: Record<string, unknown>,
-  targetStatus: string,
-  now: Date,
-  nowIso: string,
-): Promise<ProcessResult> {
-  const subscriptionId = extractSubscriptionId(data);
-  const productId = extractProductId(data);
-  const periodEnd = parseIsoTimestamp(data.current_period_end);
-  const cancelAtPeriodEnd = data.cancel_at_period_end === true;
-  const subscriptionStatus = asString(data.status) ?? targetStatus;
-
-  if (subscriptionId) {
-    await applyEffect(
-      deps,
-      "billing_subscription",
-      () =>
-        upsertBillingSubscription(
-          deps.supabase,
-          userId,
-          subscriptionId,
-          productId,
-          subscriptionStatus,
-          parseIsoTimestamp(data.current_period_start),
-          periodEnd,
-          cancelAtPeriodEnd,
-          { checkout_key: checkoutKey },
-          nowIso,
-        ),
-    );
-  }
-
-  await touchCustomerIfPresent(deps, userId, environment, data, nowIso);
-
-  if (await hasActiveLifetimeBundle(deps.supabase, userId)) {
-    return {
-      status: "processed",
-      action: "revocation_skipped_due_to_lifetime",
-    };
-  }
-
-  const expiresAt = periodEnd ?? now.toISOString();
-  await applyEffect(
-    deps,
-    "bundle_entitlement",
-    () =>
-      upsertBundleEntitlement(
-        deps.supabase,
-        userId,
-        targetStatus,
-        expiresAt,
-        buildEntitlementMetadata(checkoutKey, config, {
-          polar_subscription_id: subscriptionId,
-          revoked_reason: targetStatus,
-        }),
-        nowIso,
-      ),
-  );
-
-  return { status: "processed", action: `revoked_monthly_${targetStatus}` };
-}
-
-async function revokeLifetimeBundle(
-  deps: WebhookProcessorDeps,
-  userId: string,
-  checkoutKey: RequiredCheckoutKey,
-  config: CheckoutKeyConfig,
-  nowIso: string,
-): Promise<ProcessResult> {
-  const { data: existing, error } = await deps.supabase
-    .from("user_entitlements")
-    .select("metadata")
-    .eq("user_id", userId)
-    .eq("product_key", V1_ENTITLEMENT_PRODUCT_KEY)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  const metadata = nestedRecord(existing?.metadata);
-  const isLifetimeGrant = metadata?.lifetime === true ||
-    metadata?.checkout_key === "launch_lifetime";
-
-  if (!isLifetimeGrant) {
-    return {
-      status: "ignored",
-      reason: "refund_not_lifetime_entitlement",
-    };
-  }
-
-  await applyEffect(
-    deps,
-    "bundle_entitlement",
-    () =>
-      upsertBundleEntitlement(
-        deps.supabase,
-        userId,
-        "revoked",
-        nowIso,
-        buildEntitlementMetadata(checkoutKey, config, {
-          revoked_reason: "order.refunded",
-        }),
-        nowIso,
-      ),
-  );
-
-  return { status: "processed", action: "revoked_lifetime_bundle" };
+  active: boolean,
+  validUntil: string | null,
+): CommercialGrant[] {
+  return config.capabilities.map((capability) => ({
+    capability,
+    status: active ? "active" : "revoked",
+    validUntil,
+  }));
 }
 
 export async function applyPolarWebhookEvent(
@@ -627,94 +414,111 @@ export async function applyPolarWebhookEvent(
     return { status: "ignored", reason: "unresolved_user_id" };
   }
 
-  switch (event.type) {
-    case "order.paid":
-      if (resolved.key === "launch_lifetime") {
-        return await grantLifetimeBundle(
-          deps,
-          userId,
-          resolved.key,
-          resolved.config,
-          environment,
-          event.data,
-          nowIso,
-        );
-      }
-      return { status: "ignored", reason: "order_paid_not_lifetime" };
-
-    case "subscription.created":
-    case "subscription.active":
-    case "subscription.updated": {
-      if (resolved.key !== "pro_monthly") {
-        return { status: "ignored", reason: "subscription_not_monthly" };
-      }
-      const status = asString(event.data.status) ?? "active";
-      return await grantMonthlyBundle(
-        deps,
-        userId,
-        resolved.key,
-        resolved.config,
-        environment,
-        event.data,
-        status,
-        now,
-        nowIso,
-      );
-    }
-
-    case "subscription.canceled":
-    case "subscription.past_due": {
-      if (resolved.key !== "pro_monthly") {
-        return { status: "ignored", reason: "subscription_not_monthly" };
-      }
-      const status = event.type === "subscription.past_due"
-        ? "past_due"
-        : (asString(event.data.status) ?? "canceled");
-      return await grantMonthlyBundle(
-        deps,
-        userId,
-        resolved.key,
-        resolved.config,
-        environment,
-        event.data,
-        status,
-        now,
-        nowIso,
-      );
-    }
-
-    case "subscription.revoked": {
-      if (resolved.key !== "pro_monthly") {
-        return { status: "ignored", reason: "subscription_not_monthly" };
-      }
-      return await revokeMonthlyIfNoLifetime(
-        deps,
-        userId,
-        resolved.key,
-        resolved.config,
-        environment,
-        event.data,
-        "revoked",
-        now,
-        nowIso,
-      );
-    }
-
-    case "order.refunded":
-      if (resolved.key === "launch_lifetime") {
-        return await revokeLifetimeBundle(
-          deps,
-          userId,
-          resolved.key,
-          resolved.config,
-          nowIso,
-        );
-      }
-      return { status: "ignored", reason: "refund_not_lifetime_product" };
-
-    default:
-      return { status: "ignored", reason: "unsupported_event_type" };
+  const resourceType = resourceTypeForEvent(event);
+  if (!resourceType) {
+    return { status: "ignored", reason: "unsupported_event_type" };
   }
+  if (resourceType === "order" && resolved.key !== "launch_lifetime") {
+    return {
+      status: "ignored",
+      reason: event.type === "order.refunded"
+        ? "refund_not_lifetime_product"
+        : "order_paid_not_lifetime",
+    };
+  }
+  if (resourceType === "subscription" && resolved.key !== "pro_monthly") {
+    return { status: "ignored", reason: "subscription_not_monthly" };
+  }
+  if (
+    ![
+      "order.paid",
+      "order.refunded",
+      "subscription.created",
+      "subscription.active",
+      "subscription.updated",
+      "subscription.canceled",
+      "subscription.past_due",
+      "subscription.revoked",
+    ].includes(event.type)
+  ) {
+    return { status: "ignored", reason: "unsupported_event_type" };
+  }
+
+  const resourceId = extractResourceId(event);
+  if (!resourceId) {
+    return { status: "ignored", reason: "missing_resource_id" };
+  }
+  const modifiedAt = parseIsoTimestamp(
+    event.data.modified_at ?? event.data.updated_at,
+  );
+  if (!modifiedAt || !Number.isFinite(Date.parse(modifiedAt))) {
+    return { status: "ignored", reason: "missing_resource_modified_at" };
+  }
+
+  const projected = projectionState(event, now);
+  const grants = grantsForConfig(
+    resolved.config,
+    projected.active,
+    projected.validUntil,
+  );
+  const snapshotWithoutHash = {
+    provider: "polar" as const,
+    environment,
+    resourceType,
+    resourceId,
+    userId,
+    modifiedAt: new Date(modifiedAt).toISOString(),
+    state: projected.state,
+    grants,
+  };
+  const snapshotHash = await hashCommercialSnapshot(snapshotWithoutHash);
+  const projection = deps.projection ??
+    new SupabaseCommercialProjection(deps.supabase);
+  const result = await projection.apply({
+    ...snapshotWithoutHash,
+    snapshotHash,
+  });
+
+  if (result.outcome === "version_conflict") {
+    return { status: "ignored", reason: "resource_version_conflict" };
+  }
+  if (result.outcome === "stale_noop") {
+    return { status: "processed", action: "stale_noop" };
+  }
+
+  await touchCustomerIfPresent(deps, userId, environment, event.data, nowIso);
+  if (resourceType === "subscription") {
+    await applyEffect(
+      deps,
+      "billing_subscription_read_model",
+      () =>
+        upsertBillingSubscription(
+          deps.supabase,
+          userId,
+          resourceId,
+          productId,
+          projected.state,
+          parseIsoTimestamp(event.data.current_period_start),
+          parseIsoTimestamp(event.data.current_period_end),
+          event.data.cancel_at_period_end === true,
+          resolved.key,
+          snapshotWithoutHash.modifiedAt,
+        ),
+    );
+  }
+  if (result.outcome === "duplicate") {
+    return { status: "processed", action: "resource_duplicate" };
+  }
+  if (event.type === "order.paid") {
+    return { status: "processed", action: "granted_lifetime_bundle" };
+  }
+  if (event.type === "order.refunded") {
+    return { status: "processed", action: "revoked_lifetime_bundle" };
+  }
+  if (event.type === "subscription.revoked") {
+    return { status: "processed", action: "revoked_monthly_revoked" };
+  }
+  return { status: "processed", action: "updated_monthly_bundle" };
 }
 
 const REPLAY_DATA_KEYS = [
@@ -722,7 +526,10 @@ const REPLAY_DATA_KEYS = [
   "product_id",
   "customer_id",
   "id",
+  "order_id",
   "subscription_id",
+  "modified_at",
+  "updated_at",
   "status",
   "current_period_start",
   "current_period_end",
@@ -783,6 +590,9 @@ function quarantineReason(result: ProcessResult): string | null {
       "order_paid_not_lifetime",
       "subscription_not_monthly",
       "refund_not_lifetime_product",
+      "missing_resource_id",
+      "missing_resource_modified_at",
+      "resource_version_conflict",
     ].includes(result.reason)
     ? result.reason
     : null;
@@ -845,6 +655,9 @@ async function processClaimedWebhook(
           provider_event_id: webhookId,
           raw_type: event.type,
           environment,
+          outcome: result.status,
+          action: result.status === "processed" ? result.action : null,
+          reason: result.status === "ignored" ? result.reason : null,
         },
       );
     });

@@ -90,6 +90,9 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   docker cp $dblinkHelper "${container}:/tmp/dblink-helper.sql"
   docker cp (Join-Path $root "supabase\tests\supabase_auth_license_hardening_test.sql") "${container}:/tmp/hardening-test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_webhook_inbox.test.sql") "${container}:/tmp/inbox-test.sql"
+  docker cp (Join-Path $root "supabase\tests\billing_commercial_projection.test.sql") "${container}:/tmp/commercial-projection-test.sql"
+  docker cp (Join-Path $root "supabase\tests\billing_commercial_legacy_upgrade.test.sql") "${container}:/tmp/commercial-legacy-upgrade-test.sql"
+  docker cp (Join-Path $root "supabase\tests\billing_reconciliation.test.sql") "${container}:/tmp/reconciliation-test.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") | Sort-Object Name
   foreach ($migration in $migrations) { docker cp $migration.FullName "${container}:/tmp/$($migration.Name)" }
 
@@ -97,6 +100,8 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   foreach ($migration in $migrations) { Invoke-Psql "clean" "/tmp/$($migration.Name)" }
   Assert-PgTap "clean" "/tmp/hardening-test.sql" "1\.\.48" "Clean install hardening"
   Assert-PgTap "clean" "/tmp/inbox-test.sql" "1\.\.53" "Clean install inbox"
+  Assert-PgTap "clean" "/tmp/commercial-projection-test.sql" "1\.\.43" "Clean install commercial projection"
+  Assert-PgTap "clean" "/tmp/reconciliation-test.sql" "1\.\.17" "Clean install reconciliation"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid')" | Out-Null
@@ -233,16 +238,72 @@ select public.reset_active_device('reset-race-b');
     "select fingerprint_hash from public.devices where user_id = '00000000-0000-4000-8000-000000000090'"
   if ($resetClaim.Trim() -ne "race-reset-fingerprint") { throw "Reset did not bind the explicit fingerprint: $resetClaim" }
 
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000609','reconciliation-race@example.invalid'); create table public.billing_reconciliation_concurrency_results (participant text primary key, status text not null)" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not prepare reconciliation concurrency" }
+  Write-Utf8NoBom $claimAFile @'
+insert into public.isa88_concurrency_barrier values ('reconciliation-plan', 'a');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'reconciliation-plan') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'reconciliation-plan') <> 2 then
+    raise exception 'barrier_timeout';
+  end if;
+end $$;
+insert into public.billing_reconciliation_concurrency_results
+select 'a', status from public.billing_apply_reconciliation_plan(
+  '00000000-0000-4000-8000-000000000609','sandbox','scheduled',
+  repeat('9',64),repeat('0',64),now(),
+  '[{"provider":"polar","environment":"sandbox","resourceType":"subscription","resourceId":"sub-concurrent","userId":"00000000-0000-4000-8000-000000000609","modifiedAt":"2026-08-02T12:00:00Z","snapshotHash":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","state":"active","grants":[{"capability":"vantare.plan.pro","status":"active","validUntil":"2026-09-02T12:00:00Z"}]}]'::jsonb
+);
+'@
+  Write-Utf8NoBom $claimBFile @'
+insert into public.isa88_concurrency_barrier values ('reconciliation-plan', 'b');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'reconciliation-plan') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'reconciliation-plan') <> 2 then
+    raise exception 'barrier_timeout';
+  end if;
+end $$;
+insert into public.billing_reconciliation_concurrency_results
+select 'b', status from public.billing_apply_reconciliation_plan(
+  '00000000-0000-4000-8000-000000000609','sandbox','scheduled',
+  repeat('9',64),repeat('0',64),now(),
+  '[{"provider":"polar","environment":"sandbox","resourceType":"subscription","resourceId":"sub-concurrent","userId":"00000000-0000-4000-8000-000000000609","modifiedAt":"2026-08-02T12:00:00Z","snapshotHash":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","state":"active","grants":[{"capability":"vantare.plan.pro","status":"active","validUntil":"2026-09-02T12:00:00Z"}]}]'::jsonb
+);
+'@
+  docker cp $claimAFile "${container}:/tmp/reconciliation-race-a.sql"
+  docker cp $claimBFile "${container}:/tmp/reconciliation-race-b.sql"
+  docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/reconciliation-race-a.sql & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/reconciliation-race-b.sql & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; test "$s1" -eq 0 -a "$s2" -eq 0'
+  if ($LASTEXITCODE -ne 0) { throw "Concurrent identical reconciliation failed" }
+  $reconciliationRace = docker exec $container psql -At -U postgres -d clean -c `
+    "select count(*) filter (where status='applied') || ':' || count(*) filter (where status='unchanged') || ':' || (select count(*) from public.billing_reconciliation_runs where user_id='00000000-0000-4000-8000-000000000609') || ':' || (select count(*) from public.billing_commercial_resources where resource_id='sub-concurrent') from public.billing_reconciliation_concurrency_results"
+  if ($reconciliationRace.Trim() -ne "1:1:1:1") { throw "Concurrent reconciliation contract failed: $reconciliationRace" }
+
   Initialize-Database "upgrade"
-  foreach ($migration in $migrations | Where-Object Name -ne "20260802020000_supabase_auth_license_hardening.sql") {
+  $authHardeningMigration = "20260802020000_supabase_auth_license_hardening.sql"
+  $commercialProjectionMigration = "20260802100000_billing_commercial_projection.sql"
+  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration)) {
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
-  Invoke-Psql "upgrade" "/tmp/20260802020000_supabase_auth_license_hardening.sql"
+  Invoke-Psql "upgrade" "/tmp/$authHardeningMigration"
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d upgrade -c `
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000701','bounded-past-due@example.invalid'),('00000000-0000-4000-8000-000000000702','unproven-past-due@example.invalid'),('00000000-0000-4000-8000-000000000703','legacy-pro@example.invalid'); insert into public.user_entitlements (id,user_id,product_key,status,source,expires_at,updated_at) values ('00000000-0000-4000-8000-000000000701','00000000-0000-4000-8000-000000000701','bundle','past_due','polar',now() + interval '30 days',now() - interval '1 day'),('00000000-0000-4000-8000-000000000702','00000000-0000-4000-8000-000000000702','bundle','past_due','polar',null,now() - interval '1 hour'),('00000000-0000-4000-8000-000000000703','00000000-0000-4000-8000-000000000703','vantare_pro','active','polar',now() + interval '30 days',now() - interval '1 hour')" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not seed legacy past_due upgrade cases" }
+  Invoke-Psql "upgrade" "/tmp/$commercialProjectionMigration"
   Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
   Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.53" "Upgrade inbox"
+  Assert-PgTap "upgrade" "/tmp/commercial-projection-test.sql" "1\.\.43" "Upgrade commercial projection"
+  Assert-PgTap "upgrade" "/tmp/commercial-legacy-upgrade-test.sql" "1\.\.11" "Upgrade legacy commercial projection"
+  Assert-PgTap "upgrade" "/tmp/reconciliation-test.sql" "1\.\.17" "Upgrade reconciliation"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'active', 'restore-test')" | Out-Null
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not create restore sentinel" }
 
   $started = Get-Date
@@ -258,6 +319,8 @@ select public.reset_active_device('reset-race-b');
   if ($LASTEXITCODE -ne 0) { throw "Could not recreate the disposable dblink test helper after restore" }
   Assert-PgTap "restore_drill" "/tmp/hardening-test.sql" "1\.\.48" "Restored database hardening"
   Assert-PgTap "restore_drill" "/tmp/inbox-test.sql" "1\.\.53" "Restored database inbox"
+  Assert-PgTap "restore_drill" "/tmp/commercial-projection-test.sql" "1\.\.43" "Restored database commercial projection"
+  Assert-PgTap "restore_drill" "/tmp/reconciliation-test.sql" "1\.\.17" "Restored database reconciliation"
   $restored = docker exec $container psql -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -c `
     "select (select count(*) = 1 from public.user_entitlements where user_id = '00000000-0000-4000-8000-000000000091' and product_key = 'restore_sentinel') and (select relrowsecurity from pg_class where oid = 'public.user_entitlements'::regclass) and not has_function_privilege('anon','public.read_account_entitlements()','execute')"
   $restoredExit = $LASTEXITCODE
@@ -277,7 +340,7 @@ select public.reset_active_device('reset-race-b');
     if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
   }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 53 inbox pgTAP PASS; inbox and device concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 53 inbox + 43 commercial projection + 17 reconciliation pgTAP PASS; legacy upgrade 11 pgTAP PASS; inbox, device and reconciliation concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }

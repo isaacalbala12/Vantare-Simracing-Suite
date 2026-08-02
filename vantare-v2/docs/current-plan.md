@@ -1,3 +1,17 @@
+Nota ISA-215 / TAU-03 (2026-08-02, diagnóstico local del Testing Center):
+- Nuevo paquete puro `testing-center.diagnostic.v1`, apilado sobre TAU-02C, sin
+  UI, red, persistencia, PostHog, GitHub, Codex o Discord.
+- Metadata y logs usan allowlists cerradas, límites de 4 KiB crudos/512 B
+  sanitizados, máximo 100 entradas y payload final de 64 KiB.
+- Preview y transporte comparten exactamente los mismos bytes y SHA-256; el
+  draft puede descartarse y deja de ser accesible.
+- La revisión adversarial corrigió rutas con espacios y acotó el texto antes de
+  aplicar regex. Texto libre no garantiza anonimización semántica, por lo que
+  TAU-04 deberá mantener logs opt-in y preview obligatorio.
+- Gates focales: x20, vet, race x10 y fuzzing PASS. Autoridad:
+  `docs/runbooks/testing-center-diagnostics.md`.
+- Estado: implementación local en review; sin merge, promoción o build.
+
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
   originales, payloads, PII ni errores libres.

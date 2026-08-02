@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "name": "windows-path-and-bearer",
+      "message": "Authorization: Bearer synthetic-secret-token at C:\\Users\\SyntheticUser\\AppData\\Local\\Vantare\\logs\\app.log",
+      "forbidden": ["synthetic-secret-token", "SyntheticUser", "C:\\Users"]
+    },
+    {
+      "name": "url-query-and-email",
+      "message": "request https://user:password@example.invalid/private?token=synthetic-query-token failed for synthetic-driver@example.invalid",
+      "forbidden": ["user:password", "synthetic-query-token", "synthetic-driver@example.invalid", "example.invalid/private"]
+    },
+    {
+      "name": "json-secrets-and-posix-path",
+      "message": "{\"api_key\":\"synthetic-api-key\",\"username\":\"SyntheticUser\"} /home/SyntheticUser/.config/vantare/private.json",
+      "forbidden": ["synthetic-api-key", "SyntheticUser", "/home/"]
+    },
+    {
+      "name": "jwt-and-unc",
+      "message": "session eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzeW50aGV0aWMifQ.syntheticSignatureValue on \\\\synthetic.invalid\\private\\share\\log.txt",
+      "forbidden": ["eyJhbGciOiJIUzI1NiJ9", "syntheticSignatureValue", "synthetic.invalid", "private\\share"]
+    },
+    {
+      "name": "spaced-identity-and-path",
+      "message": "username=Isaac Synthetic Tester\nopen C:\\Users\\Isaac Synthetic Tester\\AppData\\Local\\Vantare\\private log",
+      "forbidden": ["Isaac Synthetic Tester", "AppData", "C:\\Users"]
+    }
+  ]
+}

@@ -138,6 +138,21 @@ como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
 No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
 reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
+## Testing Center
+
+- TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus
+  gates locales y remotos sin deploy ni merge.
+- ISA-215 / TAU-03 añade el paquete local
+  `testing-center.diagnostic.v1`: allowlist, redacción, límites, preview exacto,
+  SHA-256 y descarte efímero. No tiene wiring productivo.
+- TAU-04 debe reutilizar el diagnóstico seguro de ISA-104 y este paquete, no
+  serializar ajustes/perfiles ni crear otro collector general.
+- Los logs continúan desactivados por defecto. Texto libre requiere opt-in y
+  preview completo porque ninguna regex puede garantizar eliminar PII
+  semántica arbitraria.
+- Siguiente acción: formulario in-app con draft recuperable, consentimientos
+  separados y transporte del mismo payload verificado; sin activar Codex.
+
 ## Riesgos
 
 - **P0 potencial:** Billing concede/revoca acceso incorrectamente.
@@ -161,7 +176,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
-runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
-gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
-Sin mutaciones remotas y con venta pública NO-GO.
+2026-08-02, ISA-215 prepara el diagnóstico local del Testing Center sobre
+TAU-02C con límites, redacción, preview byte a byte y descarte; no activa UI ni
+red. Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
+global heredada y la venta pública continúa NO-GO.

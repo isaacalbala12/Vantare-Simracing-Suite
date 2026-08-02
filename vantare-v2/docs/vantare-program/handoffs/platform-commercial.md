@@ -1,8 +1,10 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: reconciliación ISA-166 en curso; venta pública **NO-GO**.
+Estado: BIL-02 / ISA-68 implementada como candidato local, pendiente de review;
+venta pública **NO-GO**.
 
-Base de esta rama: ISA-89 `7a570655253ea8c4e51047f6ebd2e97e3a49f8a6`.
+Base de esta rama: ISA-166
+`c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
 
 ## Procedencia y alcance
 
@@ -19,7 +21,8 @@ Leer, por orden:
 4. `docs/analysis/isa-7-supabase-architecture-audit-2026-07-14.md`.
 5. `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`
    únicamente como snapshot histórico.
-6. ISA-166 y la issue BIL activa en Linear.
+6. `docs/billing/bil-02-webhook-inbox-runbook.md`.
+7. ISA-68 y la issue BIL activa en Linear.
 
 ## Fronteras de autoridad
 
@@ -57,9 +60,12 @@ Leer, por orden:
 
 ## Orden y siguiente acción
 
-ISA-166 sustituye a ISA-89 como gate vigente. Tras revisión independiente de
-este corte, la siguiente implementación es **BIL-02 / ISA-68**. Después se sigue
-el orden BIL-03, BIL-04 en paralelo cuando sea seguro, BIL-05..BIL-13.
+ISA-166 sustituye a ISA-89 como gate de catálogo. BIL-02 / ISA-68 está
+implementada en su rama aislada: reemplaza el claim prematuro de
+`license_events` por inbox durable, leases atómicos, efectos reanudables,
+quarantine y replay auditado. Sigue pendiente de review independiente y no está
+desplegada. Después se sigue el orden BIL-03, BIL-04 en paralelo cuando sea
+seguro, BIL-05..BIL-13.
 
 Cada issue usa rama/worktree propios, TDD y review. La promoción sigue la política
 vigente de la plataforma; esta rama no promueve, no hace merge y no habilita
@@ -67,7 +73,7 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## Riesgos que mantienen NO-GO
 
-- Inbox actual no garantiza efectos completos ante fallo parcial.
+- BIL-02 aún no está revisada, integrada ni desplegada.
 - No hay reconciliación monotónica ni grants independientes completos.
 - Subscription, recovery y refund no cumplen aún el contrato vigente.
 - Cache offline y dispositivo necesitan integridad y vinculación correctas.
@@ -76,5 +82,10 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## Última actualización
 
-2026-08-01 — ISA-166 / BIL-01B, worker documental. Sin código, deploy, pago,
-refund, migración, secretos, PII ni mutaciones remotas.
+2026-08-02 — ISA-68 / BIL-02, candidato local corregido tras review. Retry
+programado y worker activo permanecen provider-retryable (`503` + `Retry-After`
+derivado de `next_attempt_at` / `lease_expires_at`) mientras no hay scheduler;
+no se persisten emails del webhook. pgTAP local valida 53 checks, incluidos
+contador, rollback y carrera real entre dos sesiones PostgreSQL. Sin deploy,
+pago, refund, replay remoto, secretos, PII consultada ni mutaciones
+Polar/Supabase. Pendiente de nueva review independiente.

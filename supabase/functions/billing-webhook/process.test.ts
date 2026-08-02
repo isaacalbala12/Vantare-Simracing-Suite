@@ -1,4 +1,7 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertRejects,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   loadPolarProductMap,
@@ -7,9 +10,12 @@ import {
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
 import {
   deriveSubscriptionEntitlementStatus,
+  minimizePolarWebhookEvent,
   parsePolarWebhookEvent,
   processPolarWebhookEvent,
+  replayPolarWebhookInboxItem,
 } from "./process.ts";
+import { MemoryWebhookInbox } from "./test-inbox.ts";
 
 const LAUNCH_PRODUCT_ID = "00000000-0000-0000-0000-000000000001";
 const PRO_MONTHLY_PRODUCT_ID = "00000000-0000-0000-0000-000000000003";
@@ -56,9 +62,10 @@ function upsertRow(
 function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
   const state: Record<string, MockRow[]> = JSON.parse(JSON.stringify(tables));
   const ops: MockOperation[] = [];
+  const upsertFailures = new Map<string, number>();
 
   function query(table: string) {
-    let filters: MockFilter[] = [];
+    const filters: MockFilter[] = [];
 
     const chain = {
       select: (_columns?: string) => chain,
@@ -102,6 +109,13 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
         },
         upsert: (payload: MockRow, options?: { onConflict?: string }) => {
           ops.push({ type: "upsert", table, payload });
+          const failures = upsertFailures.get(table) ?? 0;
+          if (failures > 0) {
+            upsertFailures.set(table, failures - 1);
+            return Promise.resolve({
+              error: { code: "TEST_FAIL", message: "private test failure" },
+            });
+          }
           const conflict = options?.onConflict ?? "";
           const conflictKeys = conflict.split(",").map((key) => key.trim());
 
@@ -126,6 +140,9 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
     } as unknown as SupabaseClient,
     operations: ops,
     getTableRows: (table: string) => state[table] ?? [],
+    failNextUpsert: (table: string, count = 1) => {
+      upsertFailures.set(table, count);
+    },
   };
 }
 
@@ -134,10 +151,13 @@ function loadTestMap() {
 }
 
 function processDeps(mock: ReturnType<typeof createMockSupabase>) {
+  const now = () => new Date("2026-07-09T12:00:00.000Z");
   return {
     supabase: mock.client,
+    inbox: new MemoryWebhookInbox(now),
     loadMap: loadTestMap,
-    now: () => new Date("2026-07-09T12:00:00.000Z"),
+    now,
+    workerToken: () => crypto.randomUUID(),
   };
 }
 
@@ -154,7 +174,10 @@ Deno.test("mapping: launch_lifetime and pro_monthly map to bundle", () => {
   if (!map.ok) throw new Error("fixture map invalid");
 
   const lifetime = resolveCheckoutKeyByProductId(map.map, LAUNCH_PRODUCT_ID);
-  const monthly = resolveCheckoutKeyByProductId(map.map, PRO_MONTHLY_PRODUCT_ID);
+  const monthly = resolveCheckoutKeyByProductId(
+    map.map,
+    PRO_MONTHLY_PRODUCT_ID,
+  );
 
   assertEquals(lifetime.ok, true);
   assertEquals(monthly.ok, true);
@@ -166,8 +189,9 @@ Deno.test("mapping: launch_lifetime and pro_monthly map to bundle", () => {
   assertEquals(monthly.config.entitlement_product_key, "bundle");
 });
 
-Deno.test("processPolarWebhookEvent: unknown product_id is ignored with 202 semantics", async () => {
+Deno.test("processPolarWebhookEvent: unknown product_id is quarantined without granting", async () => {
   const mock = createMockSupabase();
+  const deps = processDeps(mock);
   const result = await processPolarWebhookEvent(
     {
       type: "order.paid",
@@ -177,12 +201,16 @@ Deno.test("processPolarWebhookEvent: unknown product_id is ignored with 202 sema
       },
     },
     "evt_unknown_product",
-    processDeps(mock),
+    deps,
   );
 
-  assertEquals(result, { status: "ignored", reason: "unknown_product_id" });
-  assertEquals(mock.getTableRows("license_events").length, 1);
+  assertEquals(result, { status: "quarantined", reason: "unknown_product_id" });
+  assertEquals(mock.getTableRows("license_events").length, 0);
   assertEquals(mock.getTableRows("user_entitlements").length, 0);
+  assertEquals(
+    deps.inbox.snapshot("evt_unknown_product").status,
+    "quarantined",
+  );
 });
 
 Deno.test("processPolarWebhookEvent: order.paid updates existing billing_customers row for user", async () => {
@@ -202,7 +230,10 @@ Deno.test("processPolarWebhookEvent: order.paid updates existing billing_custome
         product_id: LAUNCH_PRODUCT_ID,
         external_customer_id: USER_ID,
         customer_id: "real-polar-customer-uuid",
-        customer: { email: "fase16.smoke.test@gmail.com", external_id: USER_ID },
+        customer: {
+          email: "fase16.smoke.test@gmail.com",
+          external_id: USER_ID,
+        },
       },
     },
     "evt_real_customer_swap",
@@ -212,6 +243,58 @@ Deno.test("processPolarWebhookEvent: order.paid updates existing billing_custome
   const customers = mock.getTableRows("billing_customers");
   assertEquals(customers.length, 1);
   assertEquals(customers[0].provider_customer_id, "real-polar-customer-uuid");
+  assertEquals(customers[0].email, "old@example.com");
+});
+
+Deno.test("minimizePolarWebhookEvent: durable payload excludes redundant email PII", () => {
+  const minimized = minimizePolarWebhookEvent({
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      customer_email: "top-level@example.com",
+      customer: {
+        id: "polar_customer_minimized",
+        email: "nested@example.com",
+        external_id: USER_ID,
+        name: "Sensitive Name",
+      },
+    },
+  });
+
+  assertEquals(minimized, {
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      customer: {
+        id: "polar_customer_minimized",
+        external_id: USER_ID,
+      },
+    },
+  });
+});
+
+Deno.test("processPolarWebhookEvent: does not persist customer email from the webhook", async () => {
+  const mock = createMockSupabase();
+  await processPolarWebhookEvent(
+    {
+      type: "order.paid",
+      data: {
+        product_id: LAUNCH_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        customer_id: "polar_customer_without_email",
+        customer_email: "top-level@example.com",
+        customer: { email: "nested@example.com" },
+      },
+    },
+    "evt_customer_without_email",
+    processDeps(mock),
+  );
+
+  const customer = mock.getTableRows("billing_customers")[0];
+  assertEquals(customer.provider_customer_id, "polar_customer_without_email");
+  assertEquals("email" in customer, false);
 });
 
 Deno.test("processPolarWebhookEvent: order.paid launch_lifetime grants lifetime bundle", async () => {
@@ -230,7 +313,10 @@ Deno.test("processPolarWebhookEvent: order.paid launch_lifetime grants lifetime 
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "granted_lifetime_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "granted_lifetime_bundle",
+  });
 
   const entitlements = mock.getTableRows("user_entitlements");
   assertEquals(entitlements.length, 1);
@@ -238,7 +324,10 @@ Deno.test("processPolarWebhookEvent: order.paid launch_lifetime grants lifetime 
   assertEquals(entitlements[0].product_key, "bundle");
   assertEquals(entitlements[0].status, "active");
   assertEquals(entitlements[0].expires_at, null);
-  assertEquals((entitlements[0].metadata as Record<string, unknown>).lifetime, true);
+  assertEquals(
+    (entitlements[0].metadata as Record<string, unknown>).lifetime,
+    true,
+  );
   assertEquals(
     (entitlements[0].metadata as Record<string, unknown>).plan_sku,
     "launch_lifetime",
@@ -264,13 +353,19 @@ Deno.test("processPolarWebhookEvent: subscription.active pro_monthly grants mont
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "updated_monthly_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "updated_monthly_bundle",
+  });
 
   const entitlements = mock.getTableRows("user_entitlements");
   assertEquals(entitlements.length, 1);
   assertEquals(entitlements[0].status, "active");
   assertEquals(entitlements[0].expires_at, periodEnd);
-  assertEquals((entitlements[0].metadata as Record<string, unknown>).lifetime, false);
+  assertEquals(
+    (entitlements[0].metadata as Record<string, unknown>).lifetime,
+    false,
+  );
   assertEquals(
     (entitlements[0].metadata as Record<string, unknown>).plan_sku,
     "pro_monthly",
@@ -346,7 +441,10 @@ Deno.test("processPolarWebhookEvent: subscription.canceled revokes monthly witho
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "updated_monthly_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "updated_monthly_bundle",
+  });
 
   const entitlements = mock.getTableRows("user_entitlements");
   assertEquals(entitlements[0].status, "expired");
@@ -378,7 +476,10 @@ Deno.test("processPolarWebhookEvent: subscription.revoked revokes monthly withou
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "revoked_monthly_revoked" });
+  assertEquals(result, {
+    status: "processed",
+    action: "revoked_monthly_revoked",
+  });
   assertEquals(mock.getTableRows("user_entitlements")[0].status, "revoked");
 });
 
@@ -405,12 +506,16 @@ Deno.test("processPolarWebhookEvent: order.refunded launch_lifetime revokes life
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "revoked_lifetime_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "revoked_lifetime_bundle",
+  });
   assertEquals(mock.getTableRows("user_entitlements")[0].status, "revoked");
 });
 
 Deno.test("processPolarWebhookEvent: duplicate event id is idempotent", async () => {
   const mock = createMockSupabase();
+  const deps = processDeps(mock);
   const event = {
     type: "order.paid",
     data: {
@@ -422,17 +527,206 @@ Deno.test("processPolarWebhookEvent: duplicate event id is idempotent", async ()
   const first = await processPolarWebhookEvent(
     event,
     "evt_duplicate",
-    processDeps(mock),
+    deps,
   );
   const second = await processPolarWebhookEvent(
     event,
     "evt_duplicate",
-    processDeps(mock),
+    deps,
   );
 
-  assertEquals(first, { status: "processed", action: "granted_lifetime_bundle" });
+  assertEquals(first, {
+    status: "processed",
+    action: "granted_lifetime_bundle",
+  });
   assertEquals(second, { status: "duplicate" });
   assertEquals(mock.getTableRows("license_events").length, 1);
+  assertEquals(mock.getTableRows("user_entitlements").length, 1);
+});
+
+Deno.test("processPolarWebhookEvent: failure between effects retries only the pending effect", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  const event = {
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      customer_id: "polar_customer_retry",
+      customer: { email: "buyer@example.com" },
+    },
+  };
+  mock.failNextUpsert("user_entitlements");
+
+  await assertRejects(
+    () => processPolarWebhookEvent(event, "evt_effect_retry", deps),
+    Error,
+    "user_entitlements",
+  );
+  assertEquals(deps.inbox.snapshot("evt_effect_retry").status, "failed");
+  assertEquals(
+    deps.inbox.snapshot("evt_effect_retry").lastErrorCode,
+    "test_fail",
+  );
+
+  const scheduled = await processPolarWebhookEvent(
+    event,
+    "evt_effect_retry",
+    deps,
+  );
+  assertEquals(scheduled, {
+    status: "deferred",
+    reason: "retry_scheduled",
+    nextAttemptAt: "2026-07-09T12:00:30.000Z",
+  });
+  assertEquals(deps.inbox.snapshot("evt_effect_retry").attempts, 1);
+
+  deps.inbox.makeRetryDue("evt_effect_retry");
+  const retried = await processPolarWebhookEvent(
+    event,
+    "evt_effect_retry",
+    deps,
+  );
+  assertEquals(retried, {
+    status: "processed",
+    action: "granted_lifetime_bundle",
+  });
+  assertEquals(
+    deps.inbox.effectAttempts("evt_effect_retry", "billing_customer"),
+    1,
+  );
+  assertEquals(
+    deps.inbox.effectAttempts("evt_effect_retry", "bundle_entitlement"),
+    2,
+  );
+  assertEquals(mock.getTableRows("billing_customers").length, 1);
+  assertEquals(mock.getTableRows("user_entitlements").length, 1);
+  assertEquals(mock.getTableRows("license_events").length, 1);
+});
+
+Deno.test("processPolarWebhookEvent: active claim defers a concurrent worker and an orphan can resume", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  const event = {
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+    },
+  };
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(event)),
+  );
+  const payloadHash = Array.from(
+    new Uint8Array(hash),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const receipt = await deps.inbox.receive({
+    provider: "polar",
+    eventId: "evt_concurrent",
+    eventType: event.type,
+    payloadHash,
+    payload: event,
+  });
+  const firstClaim = await deps.inbox.claim(
+    receipt.id,
+    "00000000-0000-4000-8000-000000000001",
+  );
+  assertEquals(firstClaim.status, "claimed");
+
+  const concurrent = await processPolarWebhookEvent(
+    event,
+    "evt_concurrent",
+    deps,
+  );
+  assertEquals(concurrent, {
+    status: "deferred",
+    reason: "processing",
+    leaseExpiresAt: "2026-07-09T12:01:00.000Z",
+  });
+  assertEquals(mock.getTableRows("user_entitlements").length, 0);
+
+  deps.inbox.expireEventLease("evt_concurrent");
+  const recovered = await processPolarWebhookEvent(
+    event,
+    "evt_concurrent",
+    deps,
+  );
+  assertEquals(recovered.status, "processed");
+  assertEquals(deps.inbox.snapshot("evt_concurrent").attempts, 2);
+  assertEquals(mock.getTableRows("user_entitlements").length, 1);
+});
+
+Deno.test("replayPolarWebhookInboxItem: audited replay preserves completed effects", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  const event = {
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      customer_id: "polar_customer_replay",
+    },
+  };
+  mock.failNextUpsert("user_entitlements");
+  await assertRejects(() =>
+    processPolarWebhookEvent(event, "evt_manual_replay", deps)
+  );
+  deps.inbox.setMaxAttempts("evt_manual_replay", 1);
+  deps.inbox.makeRetryDue("evt_manual_replay");
+  const quarantined = await processPolarWebhookEvent(
+    event,
+    "evt_manual_replay",
+    deps,
+  );
+  assertEquals(quarantined.status, "quarantined");
+
+  const inboxId = deps.inbox.snapshot("evt_manual_replay").id;
+  const replayed = await replayPolarWebhookInboxItem(
+    inboxId,
+    "operator_isa68",
+    "mapping_verified",
+    deps,
+  );
+  assertEquals(replayed.status, "processed");
+  assertEquals(deps.inbox.replayAudit, [{
+    inboxId,
+    actorId: "operator_isa68",
+    reasonCode: "mapping_verified",
+  }]);
+  assertEquals(
+    deps.inbox.effectAttempts("evt_manual_replay", "billing_customer"),
+    1,
+  );
+  assertEquals(
+    deps.inbox.effectAttempts("evt_manual_replay", "bundle_entitlement"),
+    2,
+  );
+});
+
+Deno.test("processPolarWebhookEvent: same provider id with a different body is quarantined", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  const first = {
+    type: "order.paid",
+    data: { product_id: LAUNCH_PRODUCT_ID, external_customer_id: USER_ID },
+  };
+  await processPolarWebhookEvent(first, "evt_hash_conflict", deps);
+
+  const conflict = await processPolarWebhookEvent(
+    {
+      ...first,
+      data: { ...first.data, customer_id: "changed" },
+    },
+    "evt_hash_conflict",
+    deps,
+  );
+  assertEquals(conflict, {
+    status: "quarantined",
+    reason: "payload_hash_mismatch",
+  });
+  assertEquals(deps.inbox.snapshot("evt_hash_conflict").status, "quarantined");
   assertEquals(mock.getTableRows("user_entitlements").length, 1);
 });
 

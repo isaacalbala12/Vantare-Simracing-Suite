@@ -7,15 +7,16 @@ import {
   type StandardWebhookHeaders,
   validateWebhookHeaderPresence,
   verifyStandardWebhook,
-  WebhookVerificationError,
   WEBHOOK_HEADER_ID,
   WEBHOOK_HEADER_SIGNATURE,
   WEBHOOK_HEADER_TIMESTAMP,
+  WebhookVerificationError,
 } from "../_shared/webhook-verify.ts";
+import { parsePolarWebhookEvent, processPolarWebhookEvent } from "./process.ts";
 import {
-  parsePolarWebhookEvent,
-  processPolarWebhookEvent,
-} from "./process.ts";
+  computeWebhookPayloadHash,
+  sanitizeWebhookErrorCode,
+} from "./inbox.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 export {
@@ -34,7 +35,21 @@ export type WebhookDeps = {
   ) => Promise<void>;
   getSupabase?: () => SupabaseClient;
   processEvent?: typeof processPolarWebhookEvent;
+  now?: () => Date;
 };
+
+function setRetryAfterFromTimestamp(
+  response: Response,
+  timestamp: string,
+  now: Date,
+): Response {
+  const retryAt = Date.parse(timestamp);
+  if (Number.isFinite(retryAt)) {
+    const seconds = Math.max(1, Math.ceil((retryAt - now.getTime()) / 1000));
+    response.headers.set("Retry-After", String(seconds));
+  }
+  return response;
+}
 
 export function getWebhookHeaders(req: Request): {
   id: string | null;
@@ -120,12 +135,47 @@ export async function handleWebhookRequest(
   try {
     supabase = getSupabase();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Supabase unavailable";
+    const message = error instanceof Error
+      ? error.message
+      : "Supabase unavailable";
     return errorResponse("supabase_not_configured", message, 503);
   }
 
   try {
-    const result = await processEvent(event, headers.id, { supabase });
+    const result = await processEvent(event, headers.id, {
+      supabase,
+      payloadHash: await computeWebhookPayloadHash(rawBody),
+    });
+    if (result.status === "deferred" && result.reason === "retry_scheduled") {
+      return setRetryAfterFromTimestamp(
+        errorResponse(
+          "webhook_retry_scheduled",
+          "The verified event is stored but no local scheduler is configured",
+          503,
+          {
+            event_type: event.type,
+            next_attempt_at: result.nextAttemptAt,
+          },
+        ),
+        result.nextAttemptAt,
+        deps.now?.() ?? new Date(),
+      );
+    }
+    if (result.status === "deferred" && result.reason === "processing") {
+      return setRetryAfterFromTimestamp(
+        errorResponse(
+          "webhook_processing_busy",
+          "The verified event is being processed and must remain retryable",
+          503,
+          {
+            event_type: event.type,
+            lease_expires_at: result.leaseExpiresAt,
+          },
+        ),
+        result.leaseExpiresAt,
+        deps.now?.() ?? new Date(),
+      );
+    }
     return jsonResponse(
       {
         ok: true,
@@ -136,18 +186,25 @@ export async function handleWebhookRequest(
       202,
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Webhook processing failed";
+    const message = error instanceof Error
+      ? error.message
+      : "Webhook processing failed";
     if (message.includes("POLAR_PRODUCT_MAP")) {
       return errorResponse("mapping_not_configured", message, 503);
     }
     console.error("billing-webhook processing error", {
       event_id: headers.id,
       event_type: event.type,
-      message,
+      error_code: sanitizeWebhookErrorCode(error),
     });
-    return errorResponse("webhook_processing_failed", message, 500, {
-      event_type: event.type,
-    });
+    return errorResponse(
+      "webhook_processing_failed",
+      "The verified event is stored and will be retried safely",
+      500,
+      {
+        event_type: event.type,
+      },
+    );
   }
 }
 

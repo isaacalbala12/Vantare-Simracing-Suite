@@ -1,12 +1,17 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  type CheckoutKeyConfig,
   loadPolarProductMap,
+  type RequiredCheckoutKey,
   resolveCheckoutKeyByProductId,
   V1_ENTITLEMENT_PRODUCT_KEY,
-  type CheckoutKeyConfig,
-  type PolarProductMap,
-  type RequiredCheckoutKey,
 } from "../_shared/mapping.ts";
+import {
+  computeWebhookPayloadHash,
+  createSupabaseWebhookInbox,
+  sanitizeWebhookErrorCode,
+  type WebhookInbox,
+} from "./inbox.ts";
 
 export const POLAR_PROVIDER = "polar";
 
@@ -18,19 +23,41 @@ export type PolarWebhookEvent = {
 export type ProcessResult =
   | { status: "processed"; action: string }
   | { status: "ignored"; reason: string }
-  | { status: "duplicate" };
+  | { status: "duplicate" }
+  | {
+    status: "deferred";
+    reason: "processing";
+    leaseExpiresAt: string;
+  }
+  | {
+    status: "deferred";
+    reason: "retry_scheduled";
+    nextAttemptAt: string;
+  }
+  | { status: "quarantined"; reason: string };
+
+type EffectRunner = (
+  effectKey: string,
+  action: () => Promise<void>,
+) => Promise<void>;
 
 export type WebhookProcessorDeps = {
   supabase: SupabaseClient;
   loadMap?: typeof loadPolarProductMap;
   now?: () => Date;
+  inbox?: WebhookInbox;
+  payloadHash?: string;
+  workerToken?: () => string;
+  runEffect?: EffectRunner;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function parsePolarWebhookEvent(rawBody: string): PolarWebhookEvent | null {
+export function parsePolarWebhookEvent(
+  rawBody: string,
+): PolarWebhookEvent | null {
   try {
     const parsed: unknown = JSON.parse(rawBody);
     if (!isRecord(parsed) || typeof parsed.type !== "string") {
@@ -109,17 +136,6 @@ export function extractPolarCustomerId(
   return null;
 }
 
-export function extractCustomerEmail(
-  data: Record<string, unknown>,
-): string | null {
-  const customer = nestedRecord(data.customer);
-  if (customer) {
-    const email = asString(customer.email);
-    if (email) return email;
-  }
-  return asString(data.customer_email);
-}
-
 export function extractSubscriptionId(
   data: Record<string, unknown>,
 ): string | null {
@@ -147,6 +163,28 @@ export function buildEntitlementMetadata(
     provider: POLAR_PROVIDER,
     ...extra,
   };
+}
+
+async function applyEffect(
+  deps: WebhookProcessorDeps,
+  effectKey: string,
+  action: () => Promise<void>,
+): Promise<void> {
+  if (deps.runEffect) {
+    await deps.runEffect(effectKey, action);
+    return;
+  }
+  await action();
+}
+
+function databaseWriteError(table: string, error: unknown): Error {
+  const code = isRecord(error) && typeof error.code === "string" &&
+      /^[A-Za-z0-9_]{1,32}$/.test(error.code)
+    ? error.code
+    : "unknown";
+  return Object.assign(new Error(`${table} write failed (${code})`), {
+    code: code.toLowerCase(),
+  });
 }
 
 export async function resolveUserId(
@@ -190,13 +228,13 @@ export async function hasActiveLifetimeBundle(
   return metadata?.lifetime === true;
 }
 
-export async function claimWebhookEvent(
+export async function recordWebhookEvent(
   supabase: SupabaseClient,
   eventType: string,
   idempotencyKey: string,
   userId: string | null,
   payload: Record<string, unknown>,
-): Promise<"claimed" | "duplicate"> {
+): Promise<void> {
   const { error } = await supabase.from("license_events").insert({
     user_id: userId,
     event_type: eventType,
@@ -204,16 +242,14 @@ export async function claimWebhookEvent(
     payload,
   });
 
-  if (error?.code === "23505") return "duplicate";
+  if (error?.code === "23505") return;
   if (error) throw error;
-  return "claimed";
 }
 
 export async function upsertBillingCustomer(
   supabase: SupabaseClient,
   userId: string,
   providerCustomerId: string,
-  email: string | null,
   metadata: Record<string, unknown>,
   nowIso: string,
 ): Promise<void> {
@@ -222,17 +258,12 @@ export async function upsertBillingCustomer(
       user_id: userId,
       provider: POLAR_PROVIDER,
       provider_customer_id: providerCustomerId,
-      email,
       metadata,
       updated_at: nowIso,
     },
     { onConflict: "user_id,provider" },
   );
-  if (error) {
-    throw new Error(
-      `billing_customers upsert failed: ${error.code ?? "unknown"} ${error.message}`,
-    );
-  }
+  if (error) throw databaseWriteError("billing_customers", error);
 }
 
 export async function upsertBillingSubscription(
@@ -263,7 +294,7 @@ export async function upsertBillingSubscription(
     },
     { onConflict: "provider,provider_subscription_id" },
   );
-  if (error) throw error;
+  if (error) throw databaseWriteError("billing_subscriptions", error);
 }
 
 export async function upsertBundleEntitlement(
@@ -286,7 +317,7 @@ export async function upsertBundleEntitlement(
     },
     { onConflict: "user_id,product_key" },
   );
-  if (error) throw error;
+  if (error) throw databaseWriteError("user_entitlements", error);
 }
 
 export function deriveSubscriptionEntitlementStatus(
@@ -332,13 +363,17 @@ async function touchCustomerIfPresent(
   const providerCustomerId = extractPolarCustomerId(data);
   if (!providerCustomerId) return;
 
-  await upsertBillingCustomer(
-    deps.supabase,
-    userId,
-    providerCustomerId,
-    extractCustomerEmail(data),
-    {},
-    nowIso,
+  await applyEffect(
+    deps,
+    "billing_customer",
+    () =>
+      upsertBillingCustomer(
+        deps.supabase,
+        userId,
+        providerCustomerId,
+        {},
+        nowIso,
+      ),
   );
 }
 
@@ -351,15 +386,20 @@ async function grantLifetimeBundle(
   nowIso: string,
 ): Promise<ProcessResult> {
   await touchCustomerIfPresent(deps, userId, data, nowIso);
-  await upsertBundleEntitlement(
-    deps.supabase,
-    userId,
-    "active",
-    null,
-    buildEntitlementMetadata(checkoutKey, config, {
-      granted_by: "order.paid",
-    }),
-    nowIso,
+  await applyEffect(
+    deps,
+    "bundle_entitlement",
+    () =>
+      upsertBundleEntitlement(
+        deps.supabase,
+        userId,
+        "active",
+        null,
+        buildEntitlementMetadata(checkoutKey, config, {
+          granted_by: "order.paid",
+        }),
+        nowIso,
+      ),
   );
   return { status: "processed", action: "granted_lifetime_bundle" };
 }
@@ -381,17 +421,22 @@ async function grantMonthlyBundle(
   const cancelAtPeriodEnd = data.cancel_at_period_end === true;
 
   if (subscriptionId) {
-    await upsertBillingSubscription(
-      deps.supabase,
-      userId,
-      subscriptionId,
-      productId,
-      subscriptionStatus,
-      periodStart,
-      periodEnd,
-      cancelAtPeriodEnd,
-      { checkout_key: checkoutKey },
-      nowIso,
+    await applyEffect(
+      deps,
+      "billing_subscription",
+      () =>
+        upsertBillingSubscription(
+          deps.supabase,
+          userId,
+          subscriptionId,
+          productId,
+          subscriptionStatus,
+          periodStart,
+          periodEnd,
+          cancelAtPeriodEnd,
+          { checkout_key: checkoutKey },
+          nowIso,
+        ),
     );
   }
 
@@ -411,16 +456,21 @@ async function grantMonthlyBundle(
     };
   }
 
-  await upsertBundleEntitlement(
-    deps.supabase,
-    userId,
-    derived.status,
-    derived.expiresAt,
-    buildEntitlementMetadata(checkoutKey, config, {
-      polar_subscription_id: subscriptionId,
-      cancel_at_period_end: cancelAtPeriodEnd,
-    }),
-    nowIso,
+  await applyEffect(
+    deps,
+    "bundle_entitlement",
+    () =>
+      upsertBundleEntitlement(
+        deps.supabase,
+        userId,
+        derived.status,
+        derived.expiresAt,
+        buildEntitlementMetadata(checkoutKey, config, {
+          polar_subscription_id: subscriptionId,
+          cancel_at_period_end: cancelAtPeriodEnd,
+        }),
+        nowIso,
+      ),
   );
 
   return { status: "processed", action: "updated_monthly_bundle" };
@@ -443,17 +493,22 @@ async function revokeMonthlyIfNoLifetime(
   const subscriptionStatus = asString(data.status) ?? targetStatus;
 
   if (subscriptionId) {
-    await upsertBillingSubscription(
-      deps.supabase,
-      userId,
-      subscriptionId,
-      productId,
-      subscriptionStatus,
-      parseIsoTimestamp(data.current_period_start),
-      periodEnd,
-      cancelAtPeriodEnd,
-      { checkout_key: checkoutKey },
-      nowIso,
+    await applyEffect(
+      deps,
+      "billing_subscription",
+      () =>
+        upsertBillingSubscription(
+          deps.supabase,
+          userId,
+          subscriptionId,
+          productId,
+          subscriptionStatus,
+          parseIsoTimestamp(data.current_period_start),
+          periodEnd,
+          cancelAtPeriodEnd,
+          { checkout_key: checkoutKey },
+          nowIso,
+        ),
     );
   }
 
@@ -467,16 +522,21 @@ async function revokeMonthlyIfNoLifetime(
   }
 
   const expiresAt = periodEnd ?? now.toISOString();
-  await upsertBundleEntitlement(
-    deps.supabase,
-    userId,
-    targetStatus,
-    expiresAt,
-    buildEntitlementMetadata(checkoutKey, config, {
-      polar_subscription_id: subscriptionId,
-      revoked_reason: targetStatus,
-    }),
-    nowIso,
+  await applyEffect(
+    deps,
+    "bundle_entitlement",
+    () =>
+      upsertBundleEntitlement(
+        deps.supabase,
+        userId,
+        targetStatus,
+        expiresAt,
+        buildEntitlementMetadata(checkoutKey, config, {
+          polar_subscription_id: subscriptionId,
+          revoked_reason: targetStatus,
+        }),
+        nowIso,
+      ),
   );
 
   return { status: "processed", action: `revoked_monthly_${targetStatus}` };
@@ -509,23 +569,27 @@ async function revokeLifetimeBundle(
     };
   }
 
-  await upsertBundleEntitlement(
-    deps.supabase,
-    userId,
-    "revoked",
-    new Date().toISOString(),
-    buildEntitlementMetadata(checkoutKey, config, {
-      revoked_reason: "order.refunded",
-    }),
-    nowIso,
+  await applyEffect(
+    deps,
+    "bundle_entitlement",
+    () =>
+      upsertBundleEntitlement(
+        deps.supabase,
+        userId,
+        "revoked",
+        new Date().toISOString(),
+        buildEntitlementMetadata(checkoutKey, config, {
+          revoked_reason: "order.refunded",
+        }),
+        nowIso,
+      ),
   );
 
   return { status: "processed", action: "revoked_lifetime_bundle" };
 }
 
-export async function processPolarWebhookEvent(
+export async function applyPolarWebhookEvent(
   event: PolarWebhookEvent,
-  webhookId: string,
   deps: WebhookProcessorDeps,
 ): Promise<ProcessResult> {
   const loadMap = deps.loadMap ?? loadPolarProductMap;
@@ -537,24 +601,6 @@ export async function processPolarWebhookEvent(
   const now = deps.now?.() ?? new Date();
   const nowIso = now.toISOString();
   const userId = await resolveUserId(deps.supabase, event.data);
-
-  const basePayload = {
-    provider: POLAR_PROVIDER,
-    provider_event_id: webhookId,
-    raw_type: event.type,
-    user_id: userId,
-  };
-
-  const claim = await claimWebhookEvent(
-    deps.supabase,
-    event.type,
-    webhookId,
-    userId,
-    basePayload,
-  );
-  if (claim === "duplicate") {
-    return { status: "duplicate" };
-  }
 
   const productId = extractProductId(event.data);
   if (!productId) {
@@ -654,4 +700,217 @@ export async function processPolarWebhookEvent(
     default:
       return { status: "ignored", reason: "unsupported_event_type" };
   }
+}
+
+const REPLAY_DATA_KEYS = [
+  "external_customer_id",
+  "product_id",
+  "customer_id",
+  "id",
+  "subscription_id",
+  "status",
+  "current_period_start",
+  "current_period_end",
+  "cancel_at_period_end",
+] as const;
+
+function pickReplayFields(
+  source: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    const value = source[key];
+    if (
+      typeof value === "string" || typeof value === "number" ||
+      typeof value === "boolean"
+    ) result[key] = value;
+  }
+  return result;
+}
+
+export function minimizePolarWebhookEvent(
+  event: PolarWebhookEvent,
+): PolarWebhookEvent {
+  const data = pickReplayFields(event.data, REPLAY_DATA_KEYS);
+  const customer = nestedRecord(event.data.customer);
+  if (customer) {
+    data.customer = pickReplayFields(customer, [
+      "id",
+      "external_id",
+      "external_customer_id",
+    ]);
+  }
+  const product = nestedRecord(event.data.product);
+  if (product) data.product = pickReplayFields(product, ["id"]);
+  const metadata = nestedRecord(event.data.metadata);
+  if (metadata) {
+    data.metadata = pickReplayFields(metadata, ["user_id", "product_id"]);
+  }
+  return { type: event.type, data };
+}
+
+function storedPolarWebhookEvent(
+  payload: Record<string, unknown>,
+): PolarWebhookEvent {
+  const type = asString(payload.type);
+  const data = nestedRecord(payload.data);
+  if (!type || !data) throw new Error("invalid_stored_webhook_payload");
+  return { type, data };
+}
+
+function quarantineReason(result: ProcessResult): string | null {
+  if (result.status !== "ignored") return null;
+  return [
+      "missing_product_id",
+      "unknown_product_id",
+      "unresolved_user_id",
+      "order_paid_not_lifetime",
+      "subscription_not_monthly",
+      "refund_not_lifetime_product",
+    ].includes(result.reason)
+    ? result.reason
+    : null;
+}
+
+function createEffectRunner(
+  inbox: WebhookInbox,
+  inboxId: string,
+  leaseToken: string,
+): EffectRunner {
+  return async (effectKey, action) => {
+    const claim = await inbox.claimEffect(inboxId, effectKey, leaseToken);
+    if (claim === "completed") return;
+    if (claim === "busy") throw { code: "effect_busy" };
+    try {
+      await action();
+      await inbox.completeEffect(inboxId, effectKey, leaseToken);
+    } catch (error) {
+      await inbox.failEffect(
+        inboxId,
+        effectKey,
+        leaseToken,
+        sanitizeWebhookErrorCode(error),
+      );
+      throw error;
+    }
+  };
+}
+
+async function processClaimedWebhook(
+  inbox: WebhookInbox,
+  inboxId: string,
+  leaseToken: string,
+  event: PolarWebhookEvent,
+  webhookId: string,
+  deps: WebhookProcessorDeps,
+): Promise<ProcessResult> {
+  const runEffect = createEffectRunner(inbox, inboxId, leaseToken);
+  const processingDeps = { ...deps, runEffect };
+  try {
+    const result = await applyPolarWebhookEvent(event, processingDeps);
+    const unsafeReason = quarantineReason(result);
+    if (unsafeReason) {
+      await inbox.quarantine(inboxId, leaseToken, unsafeReason);
+      return { status: "quarantined", reason: unsafeReason };
+    }
+
+    await runEffect("license_event_audit", async () => {
+      await recordWebhookEvent(
+        deps.supabase,
+        event.type,
+        webhookId,
+        await resolveUserId(deps.supabase, event.data),
+        {
+          provider: POLAR_PROVIDER,
+          provider_event_id: webhookId,
+          raw_type: event.type,
+        },
+      );
+    });
+    await inbox.complete(inboxId, leaseToken);
+    return result;
+  } catch (error) {
+    await inbox.fail(
+      inboxId,
+      leaseToken,
+      sanitizeWebhookErrorCode(error),
+    );
+    throw error;
+  }
+}
+
+async function claimAndProcessWebhook(
+  inbox: WebhookInbox,
+  inboxId: string,
+  deps: WebhookProcessorDeps,
+): Promise<ProcessResult> {
+  const leaseToken = deps.workerToken?.() ?? crypto.randomUUID();
+  const claim = await inbox.claim(inboxId, leaseToken);
+  if (claim.status === "processed") return { status: "duplicate" };
+  if (claim.status === "quarantined") {
+    return { status: "quarantined", reason: "existing_quarantine" };
+  }
+  if (claim.status === "busy") {
+    return {
+      status: "deferred",
+      reason: "processing",
+      leaseExpiresAt: claim.leaseExpiresAt,
+    };
+  }
+  if (claim.status === "retry_scheduled") {
+    return {
+      status: "deferred",
+      reason: "retry_scheduled",
+      nextAttemptAt: claim.nextAttemptAt,
+    };
+  }
+  if (claim.status !== "claimed") throw new Error("invalid_webhook_claim");
+  const event = storedPolarWebhookEvent(claim.item.payload);
+  return await processClaimedWebhook(
+    inbox,
+    claim.item.id,
+    leaseToken,
+    event,
+    claim.item.eventId,
+    deps,
+  );
+}
+
+export async function processPolarWebhookEvent(
+  event: PolarWebhookEvent,
+  webhookId: string,
+  deps: WebhookProcessorDeps,
+): Promise<ProcessResult> {
+  const inbox = deps.inbox ?? createSupabaseWebhookInbox(deps.supabase);
+  const payload = minimizePolarWebhookEvent(event);
+  const payloadHash = deps.payloadHash ?? await computeWebhookPayloadHash(
+    JSON.stringify(event),
+  );
+  const receipt = await inbox.receive({
+    provider: POLAR_PROVIDER,
+    eventId: webhookId,
+    eventType: event.type,
+    payloadHash,
+    payload,
+  });
+  if (!receipt.payloadMatches) {
+    return { status: "quarantined", reason: "payload_hash_mismatch" };
+  }
+  if (receipt.status === "processed") return { status: "duplicate" };
+  if (receipt.status === "quarantined") {
+    return { status: "quarantined", reason: "existing_quarantine" };
+  }
+  return await claimAndProcessWebhook(inbox, receipt.id, deps);
+}
+
+export async function replayPolarWebhookInboxItem(
+  inboxId: string,
+  actorId: string,
+  reasonCode: string,
+  deps: WebhookProcessorDeps,
+): Promise<ProcessResult> {
+  const inbox = deps.inbox ?? createSupabaseWebhookInbox(deps.supabase);
+  await inbox.replay(inboxId, actorId, reasonCode);
+  return await claimAndProcessWebhook(inbox, inboxId, deps);
 }

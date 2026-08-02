@@ -1,3 +1,10 @@
+Nota ISA-68 / BIL-02-WEBHOOK-INBOX (2026-08-02, pendiente de review):
+- Candidato implementado sobre `ISA-166@c6a3ebf`: recepción durable antes de efectos, identidad `(provider,event_id)` + SHA-256, claim/lease atómico, estados `received|processing|processed|failed|quarantined`, retry acotado y recuperación de leases huérfanos.
+- Los efectos comerciales se registran por separado: una reanudación omite efectos completados y repite solo los pendientes; `license_events` vuelve a ser auditoría y deja de actuar como claim prematuro.
+- Replay administrativo auditado, tablas/RPC restringidas a `service_role`, payload minimizado y purga prevista a 30 días procesado / 180 días cuarentena. Runbook: `docs/billing/bil-02-webhook-inbox-runbook.md`.
+- Review corregida: `retry_scheduled` y `processing/busy` devuelven `503` con `Retry-After` derivado de `next_attempt_at` o `lease_expires_at` mientras no exista scheduler; el inbox y `billing_customers` ya no persisten emails del webhook. pgTAP local PASS (53 checks), incluida carrera real entre dos sesiones, `attempt_count` exacto y rollback transaccional.
+- Sin deploy, pagos, refunds, replay remoto ni mutaciones Polar/Supabase. Venta pública sigue **NO-GO**. Antes de cerrar: nueva review independiente; la validación manual de Isaac sigue pendiente.
+
 Nota ISA-166-BILLING-RECONCILIATION (2026-08-01):
 - Reconciliación vigente: `docs/analysis/isa-166-polar-catalog-policy-reconciliation-2026-08-01.md`; handoff: `docs/vantare-program/handoffs/platform-commercial.md`.
 - Contrato aprobado: Pro 4,99 EUR/mes; Launch Edition 30 EUR one-time; Pro Plus 9,99 EUR/mes; trial Pro de 7 días; recuperación de pago máxima de 72 h separada de `paidThrough`; un dispositivo activo reemplazable por login; offline firmado hasta expiración y Launch perpetuo para su alcance adquirido.

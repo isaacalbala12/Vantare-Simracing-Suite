@@ -12,6 +12,7 @@ import {
   InMemoryCodexDryRunRegistry,
   parseCodexDryRunOutput,
 } from "./testing-center-codex-dry-run.ts";
+import { buildVerifiedCodexEvidence } from "./testing-center-codex-evidence.ts";
 import {
   classifyCodexRisk,
   type CodexRiskInput,
@@ -53,6 +54,48 @@ function riskInput(
   };
 }
 
+async function sha256(value: string): Promise<string> {
+  const bytes = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
+async function evidence(input: CodexRiskInput) {
+  const diagnosticPayload = JSON.stringify({
+    contractVersion: "testing-center.diagnostic.v1",
+    generatedAtUtc: "2026-08-02T00:00:00Z",
+    application: {
+      version: "0.1.0",
+      channel: "nightly",
+      os: "windows",
+      arch: "amd64",
+    },
+    module: "testing_center",
+    errorCode: "ui.button.disabled",
+    logs: [],
+    sanitization: {
+      inputLogs: 0,
+      includedLogs: 0,
+      omittedLogs: 0,
+      redactedValues: 0,
+      truncatedMessages: 0,
+    },
+  });
+  return await buildVerifiedCodexEvidence({
+    contractVersion: "testing-center.codex-evidence.v1",
+    technicalIssueId: input.technicalIssueId,
+    reportId: input.reportId,
+    diagnosticPayload,
+    diagnosticDigest: await sha256(diagnosticPayload),
+    diagnosticByteSize: new TextEncoder().encode(diagnosticPayload).length,
+    diagnosticConsent: true,
+    logsConsent: false,
+  });
+}
+
 async function request(
   overrides: Partial<CodexRiskInput> = {},
   moduleId = "testing_center.presentation" as const,
@@ -61,7 +104,7 @@ async function request(
   return await buildCodexDryRunPackage({
     contractVersion: "testing-center.codex-dry-run.v1",
     moduleId,
-    evidenceSanitization: "testing-center.server-redacted.v1",
+    verifiedEvidence: await evidence(input),
     riskInput: input,
     riskDecision: await classifyCodexRisk(input),
   });
@@ -99,7 +142,7 @@ Deno.test("package keeps fixed instructions and untrusted evidence separate", as
   assertEquals(package_.trustedInstructions, FIXED_CODEX_DRY_RUN_INSTRUCTIONS);
   assertEquals(
     package_.untrustedEvidence.classification,
-    "untrusted_server_redacted_data",
+    "untrusted_verified_projection",
   );
   assertEquals(package_.repository.repositoryAccess, "forbidden");
   assertEquals(package_.budgets.maxToolCalls, 0);
@@ -114,7 +157,7 @@ Deno.test("prompt injection cannot alter objectives paths commands or budgets", 
   assertEquals(second.objectiveCodes, first.objectiveCodes);
   assertEquals(second.trustedScope, first.trustedScope);
   assertEquals(second.budgets, first.budgets);
-  assertNotEquals(second.requestDigest, first.requestDigest);
+  assertEquals(second.requestDigest, first.requestDigest);
 });
 
 Deno.test("risk is recomputed and tampering or non-eligible input fails closed", async () => {
@@ -129,6 +172,19 @@ Deno.test("risk is recomputed and tampering or non-eligible input fails closed",
   const decision = await classifyCodexRisk(safe);
   decision.policyDigest = "0".repeat(64);
   await assertRejectsBuild({ riskInput: safe, riskDecision: decision });
+
+  const otherIdentity = riskInput({ reportId: `report_${"c".repeat(64)}` });
+  const otherEvidence = await evidence(otherIdentity);
+  const safeDecision = await classifyCodexRisk(safe);
+  await assertRejects(() =>
+    buildCodexDryRunPackage({
+      contractVersion: "testing-center.codex-dry-run.v1",
+      moduleId: "testing_center.presentation",
+      verifiedEvidence: otherEvidence,
+      riskInput: safe,
+      riskDecision: safeDecision,
+    })
+  );
 });
 
 async function assertRejectsBuild(
@@ -142,7 +198,7 @@ async function assertRejectsBuild(
     await buildCodexDryRunPackage({
       contractVersion: "testing-center.codex-dry-run.v1",
       moduleId: "testing_center.presentation",
-      evidenceSanitization: "testing-center.server-redacted.v1",
+      verifiedEvidence: await evidence(partial.riskInput),
       ...partial,
     });
   } catch {
@@ -154,11 +210,12 @@ async function assertRejectsBuild(
 Deno.test("trusted module must match the classified surface", async () => {
   const presentation = riskInput();
   const presentationDecision = await classifyCodexRisk(presentation);
+  const presentationEvidence = await evidence(presentation);
   await assertRejects(() =>
     buildCodexDryRunPackage({
       contractVersion: "testing-center.codex-dry-run.v1",
       moduleId: "testing_center.local_state",
-      evidenceSanitization: "testing-center.server-redacted.v1",
+      verifiedEvidence: presentationEvidence,
       riskInput: presentation,
       riskDecision: presentationDecision,
     })
@@ -167,7 +224,7 @@ Deno.test("trusted module must match the classified surface", async () => {
   const package_ = await buildCodexDryRunPackage({
     contractVersion: "testing-center.codex-dry-run.v1",
     moduleId: "testing_center.local_state",
-    evidenceSanitization: "testing-center.server-redacted.v1",
+    verifiedEvidence: await evidence(local),
     riskInput: local,
     riskDecision: await classifyCodexRisk(local),
   });
@@ -263,7 +320,7 @@ Deno.test("output rejects request tampering duplicates and approved scope growth
 Deno.test("global registry is idempotent and permits only one active digest", async () => {
   const registry = new InMemoryCodexDryRunRegistry();
   const first = await request({ untrustedEvidence: "one" });
-  const second = await request({ untrustedEvidence: "two" });
+  const second = await request({ estimatedFileCount: 3 });
   const receipt = registry.reserve(first);
   assertEquals(registry.reserve(first), receipt);
   assertThrows(() => registry.reserve(second));

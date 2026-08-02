@@ -7,10 +7,11 @@ red, credenciales, workflows o deploy.
 
 ## Fronteras del sobre
 
-Las instrucciones y cinco objetivos son constantes compiladas. La evidencia
-redactada del reporte viaja en `untrustedEvidence`, marcada como dato no
-confiable, y no se interpola en instrucciones, rutas, comandos o budgets. El
-digest sí la cubre para detectar cambios entre reserva y consumo.
+Las instrucciones y cinco objetivos son constantes compiladas. Desde TAU-06D,
+`untrustedEvidence` contiene únicamente una proyección estructurada verificada:
+no recibe texto libre, mensajes o códigos del reporte. No se interpola en
+instrucciones, rutas, comandos o budgets. El digest la cubre para detectar
+cambios entre reserva y consumo.
 
 La policy TAU-06A se recalcula antes de construir el sobre. Debe resultar
 `eligible` y coincidir exactamente con decisión, reasons y digest recibidos. El

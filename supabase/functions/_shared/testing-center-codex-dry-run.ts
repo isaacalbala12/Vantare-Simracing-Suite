@@ -3,6 +3,10 @@ import {
   type CodexRiskDecision,
   type CodexRiskInput,
 } from "./testing-center-codex-risk.ts";
+import {
+  type VerifiedCodexEvidence,
+  verifyCodexEvidence,
+} from "./testing-center-codex-evidence.ts";
 
 export const CODEX_DRY_RUN_VERSION = "testing-center.codex-dry-run.v1" as const;
 
@@ -64,7 +68,7 @@ type TestCommandId = (typeof TEST_COMMAND_IDS)[number];
 export type CodexDryRunInput = {
   contractVersion: typeof CODEX_DRY_RUN_VERSION;
   moduleId: ModuleId;
-  evidenceSanitization: "testing-center.server-redacted.v1";
+  verifiedEvidence: VerifiedCodexEvidence;
   riskInput: CodexRiskInput;
   riskDecision: CodexRiskDecision;
 };
@@ -94,7 +98,7 @@ export type CodexDryRunPackage = {
     riskPolicyDigest: string;
   };
   untrustedEvidence: {
-    classification: "untrusted_server_redacted_data";
+    classification: "untrusted_verified_projection";
     text: string;
   };
   requestDigest: string;
@@ -139,12 +143,11 @@ function parseCodexDryRunInput(value: unknown): CodexDryRunInput {
     !exact(value, [
       "contractVersion",
       "moduleId",
-      "evidenceSanitization",
+      "verifiedEvidence",
       "riskInput",
       "riskDecision",
     ]) ||
     value.contractVersion !== CODEX_DRY_RUN_VERSION ||
-    value.evidenceSanitization !== "testing-center.server-redacted.v1" ||
     typeof value.moduleId !== "string" || !(value.moduleId in MODULES) ||
     !record(value.riskDecision) ||
     !exact(value.riskDecision, [
@@ -199,6 +202,7 @@ export async function buildCodexDryRunPackage(
   raw: CodexDryRunInput,
 ): Promise<CodexDryRunPackage> {
   const input = parseCodexDryRunInput(raw);
+  const evidence = await verifyCodexEvidence(input.verifiedEvidence);
 
   const recomputedRisk = await classifyCodexRisk(input.riskInput);
   if (
@@ -210,6 +214,10 @@ export async function buildCodexDryRunPackage(
   if (module.surface !== input.riskInput.trustedSurface) {
     invalid("codex_dry_run_scope_mismatch");
   }
+  if (
+    evidence.technicalIssueId !== input.riskInput.technicalIssueId ||
+    evidence.reportId !== input.riskInput.reportId
+  ) invalid("codex_dry_run_evidence_identity_mismatch");
 
   const unsigned = {
     contractVersion: CODEX_DRY_RUN_VERSION,
@@ -236,8 +244,8 @@ export async function buildCodexDryRunPackage(
       riskPolicyDigest: recomputedRisk.policyDigest,
     },
     untrustedEvidence: {
-      classification: "untrusted_server_redacted_data" as const,
-      text: input.riskInput.untrustedEvidence,
+      classification: "untrusted_verified_projection" as const,
+      text: evidence.evidenceText,
     },
   };
   return {
@@ -295,7 +303,7 @@ async function validateRequestIntegrity(
       CODEX_DRY_RUN_BUDGETS.maxFiles ||
     JSON.stringify(request.budgets) !== JSON.stringify(CODEX_DRY_RUN_BUDGETS) ||
     request.untrustedEvidence.classification !==
-      "untrusted_server_redacted_data" ||
+      "untrusted_verified_projection" ||
     requestDigest !== await sha256(JSON.stringify(unsigned))
   ) invalid("codex_dry_run_request_integrity_invalid");
 }

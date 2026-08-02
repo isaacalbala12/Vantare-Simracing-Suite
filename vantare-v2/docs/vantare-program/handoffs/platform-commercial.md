@@ -179,9 +179,11 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - ISA-228 / TAU-06C concluye NO-GO: policy/corpus estructurado pasan, pero
   faltan procedencia/redacción verificable, scope leaf-level, exclusión durable
   y SHA exacto. P0=0, P1=3, P2=1.
-- Siguiente acción: hardening en cortes separados y nueva auditoría. TAU-07,
-  red, API Codex, repo access, App real, Discord y asignación automática siguen
-  apagados.
+- ISA-229 / TAU-06D elimina texto/mensajes/códigos del sobre y liga una
+  proyección mínima a IDs, bytes, SHA y consentimientos. El loader DB
+  service-role permanece pendiente de TAU-06F.
+- Siguiente acción: TAU-06E cierra scope/base SHA. TAU-07, red, API Codex, repo
+  access, App real, Discord y asignación automática siguen apagados.
 
 ## Riesgos
 
@@ -206,7 +208,8 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-228 bloquea TAU-07 con NO-GO reproducible hasta cerrar tres P1
-y un P2. No ejecuta Codex, Discord, repo access o Supabase remoto.
+2026-08-02, ISA-229 cierra la retención de texto libre del primer P1; el NO-GO
+sigue vigente hasta scope/SHA, loader durable y reauditoría. No ejecuta Codex,
+Discord, repo access o Supabase remoto.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

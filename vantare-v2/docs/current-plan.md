@@ -1,3 +1,15 @@
+Nota ISA-229 / TAU-06D (2026-08-02, evidencia Codex mínima):
+- El dry-run deja de consumir texto libre/etiqueta autoafirmada y exige una
+  proyección ligada a IDs, bytes, tamaño, SHA-256 y consentimientos.
+- Shape diagnóstico cerrado; mensajes, códigos, versión y timestamp nunca
+  salen. Solo enums, offsets y booleanos allowlisted pueden llegar al sobre.
+- Corpus sintético de PII/secrets/rutas/URL/prompt injection: cero retenciones;
+  tampering de digest/tamaño/schema/evidencia/identidad falla cerrado.
+- Pendiente TAU-06F: loader service-role desde la fila persistida. Autoridad:
+  `docs/runbooks/testing-center-codex-evidence.md`.
+- Estado: local para review; sin API Codex, DB loader, red, repo access, deploy,
+  Discord, merge o promoción.
+
 Nota ISA-228 / TAU-06C (2026-08-02, auditoría Codex NO-GO):
 - Review independiente sobre `a4239a4`, sin editar policy ni contrato dry-run.
 - Métricas: 0/96 falsos `eligible` sensibles, 0/35 falsos `needs_owner`

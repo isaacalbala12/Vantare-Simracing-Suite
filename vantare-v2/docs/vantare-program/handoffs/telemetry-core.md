@@ -17,10 +17,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
 - Stack técnico final aprobado: `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
-- Promoción activa: ISA-171 / TC-09G sobre
-  `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c`.
-- Rama de integración:
-  `vantareapp/isa-171-tc-09g-promocion-aprobada-de-telemetry-core-a-nightly`.
+- Promoción ISA-171 / TC-09G completada en
+  `nightly@c5eb3c906bc0f93a747adac13f3efcc9f731f8b9`.
+- La protección de `nightly` prohíbe merge commits. El commit lineal promovido
+  conserva exactamente el árbol aprobado `e63c54fb4db2a848e296ca06d92d90fdbc2b3c96`
+  y registra como procedencia el stack `170eaeb`; rollback mediante revert del
+  commit `c5eb3c9`.
 - La simulación encontró solo tres conflictos documentales de gobernanza; cero
   conflictos de código. `testers` y `master` están fuera del alcance.
 - Gates de integración frescos: Go bloqueante completo, ISA-118 focal,
@@ -34,8 +36,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   errores ignorados del test en fallos explícitos. El segundo CI confirma ese
   paquete verde y expone la misma comparación textual en la frontera del
   catálogo Wails; se aplica el mismo contrato de identidad y una regresión 8.3.
-  El timeout del spy permanece en 2 s para no ocultar el fallo. Pendiente
-  review y rerun.
+  El timeout del spy permanece en 2 s para no ocultar el fallo. Review
+  independiente, CI del PR y gate post-promoción `30729804412`: PASS.
 - El inventario detallado siguiente conserva la historia técnica de cada corte.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
@@ -148,8 +150,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 Existe wiring productivo canónico para Overlay y Engineer. Gaps, delta, pit y
 reconexión tienen inputs, algoritmo, fixtures reales y proyección demostrados.
-No queda otro corte de implementación de Telemetry Core: la siguiente acción
-es completar el review, PR y gate posterior de ISA-171 para `nightly`.
+No queda otro corte de implementación de Telemetry Core. La siguiente acción
+es la validación integrada Nightly/Pro Plus y la recogida de feedback antes de
+considerar cualquier paso a `testers`; `master` permanece fuera de alcance.
 `go vet` conserva tres avisos heredados de `unsafe.Pointer` Win32; ISA-118 e
 ISA-131/ISA-94 poseen la deuda externa.
 

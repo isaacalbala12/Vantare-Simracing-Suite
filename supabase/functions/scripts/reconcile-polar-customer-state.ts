@@ -9,6 +9,7 @@ import {
   runReconciliationBatch,
   SupabaseReconciliationStore,
 } from "../billing-webhook/reconciliation.ts";
+import { SupabaseSubscriptionLifecycleStore } from "../billing-webhook/subscription-lifecycle-store.ts";
 
 const apply = Deno.args.includes("--apply");
 const trigger = argument("--trigger") ?? "manual";
@@ -32,6 +33,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const store = new SupabaseReconciliationStore(supabase);
+const lifecycle = new SupabaseSubscriptionLifecycleStore(supabase);
 const controller = new AbortController();
 addEventListener("unload", () => controller.abort());
 const summary = {
@@ -89,6 +91,7 @@ await runReconciliationBatch({
       dryRun: !apply,
       trigger,
       store,
+      lifecycle,
     });
     summary.processed++;
     if (result.status === "dry_run") summary.dryRun++;
@@ -109,6 +112,9 @@ async function readLocalResources(
   const [{ data: resources, error: resourceError }, {
     data: grants,
     error: grantsError,
+  }, {
+    data: subscriptions,
+    error: subscriptionsError,
   }] = await Promise.all([
     supabase.from("billing_commercial_resources")
       .select("resource_type,resource_id,remote_modified_at,remote_state")
@@ -120,8 +126,15 @@ async function readLocalResources(
       .eq("user_id", userId)
       .eq("provider", "polar")
       .eq("environment", environment),
+    supabase.from("billing_subscriptions")
+      .select(
+        "provider_subscription_id,provider_product_id,status,current_period_start,paid_through,cancel_at_period_end",
+      )
+      .eq("user_id", userId)
+      .eq("provider", "polar")
+      .eq("environment", environment),
   ]);
-  if (resourceError || grantsError) {
+  if (resourceError || grantsError || subscriptionsError) {
     throw new Error("could_not_read_local_projection");
   }
   return (resources ?? []).map((resource) => {
@@ -129,10 +142,15 @@ async function readLocalResources(
       grant.source_type === resource.resource_type &&
       grant.source_id === resource.resource_id
     );
+    const subscription = resource.resource_type === "subscription"
+      ? (subscriptions ?? []).find((candidate) =>
+        candidate.provider_subscription_id === resource.resource_id
+      )
+      : null;
     return {
       resourceType: resource.resource_type,
       resourceId: resource.resource_id,
-      productId: inferProductId(
+      productId: subscription?.provider_product_id ?? inferProductId(
         matchingGrants.map((grant) => grant.capability),
       ),
       capabilities: matchingGrants.map((grant) => String(grant.capability))
@@ -141,6 +159,10 @@ async function readLocalResources(
       status: matchingGrants.some((grant) => grant.status === "active")
         ? "active"
         : "revoked",
+      subscriptionStatus: subscription?.status,
+      periodStart: subscription?.current_period_start ?? null,
+      paidThrough: subscription?.paid_through ?? null,
+      cancelAtPeriodEnd: subscription?.cancel_at_period_end === true,
     } as LocalCommercialResource;
   });
 }

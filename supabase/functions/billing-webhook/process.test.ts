@@ -9,7 +9,6 @@ import {
 } from "../_shared/mapping.ts";
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
 import {
-  deriveSubscriptionEntitlementStatus,
   minimizePolarWebhookEvent,
   parsePolarWebhookEvent,
   processPolarWebhookEvent,
@@ -18,9 +17,11 @@ import {
 } from "./process.ts";
 import { MemoryWebhookInbox } from "./test-inbox.ts";
 import { MemoryCommercialProjection } from "./commercial-projection.ts";
+import { MemorySubscriptionLifecycleStore } from "./subscription-lifecycle-store.ts";
 
 const LAUNCH_PRODUCT_ID = "00000000-0000-0000-0000-000000000001";
 const PRO_MONTHLY_PRODUCT_ID = "00000000-0000-0000-0000-000000000003";
+const PRO_PLUS_MONTHLY_PRODUCT_ID = "00000000-0000-0000-0000-000000000005";
 const USER_ID = "4b6d8919-1c89-492d-a0e2-364124c17878";
 const PRODUCTION_USER_ID = "5c7e902a-2d90-403e-b1f3-475235d28989";
 const RESOURCE_MODIFIED_AT = "2026-07-09T12:00:00.000Z";
@@ -164,12 +165,67 @@ function loadProductionTestMap() {
   });
 }
 
+function loadTrialTestMap() {
+  const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  raw.checkout_keys.pro_monthly.trial = {
+    enabled: true,
+    interval: "day",
+    interval_count: 7,
+    provider_anti_abuse_confirmed: true,
+  };
+  return loadPolarProductMap(JSON.stringify(raw), {
+    environment: "sandbox",
+    trialAntiAbuseConfirmed: true,
+  });
+}
+
+function loadProPlusTestMap() {
+  const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  raw.checkout_keys.pro_plus_monthly = {
+    polar_product_id: PRO_PLUS_MONTHLY_PRODUCT_ID,
+    polar_price_ids: ["00000000-0000-0000-0000-000000000006"],
+    plan_sku: "pro_plus_monthly",
+    billing_type: "subscription",
+    lifetime: false,
+    active: true,
+    capabilities: [
+      "vantare.plan.pro",
+      "vantare.channel.testers",
+      "vantare.channel.nightly",
+    ],
+    channels: ["stable", "testers", "nightly"],
+    launch_scope_version: null,
+    trial: { enabled: false },
+    entitlement_product_key: "bundle",
+  };
+  raw.product_id_to_checkout_key[PRO_PLUS_MONTHLY_PRODUCT_ID] =
+    "pro_plus_monthly";
+  raw.price_id_to_checkout_key["00000000-0000-0000-0000-000000000006"] =
+    "pro_plus_monthly";
+  return loadPolarProductMap(JSON.stringify(raw), { environment: "sandbox" });
+}
+
+function loadProPlusWithoutNightlyTestMap() {
+  const result = loadProPlusTestMap();
+  if (!result.ok) return result;
+  const raw = structuredClone(result.map);
+  const config = raw.checkout_keys.pro_plus_monthly;
+  if (!config) throw new Error("missing Pro Plus test config");
+  config.capabilities = [
+    "vantare.plan.pro",
+    "vantare.channel.testers",
+  ];
+  config.channels = ["stable", "testers"];
+  return { ok: true as const, map: raw };
+}
+
 function processDeps(
   mock: ReturnType<typeof createMockSupabase>,
   loadMap = loadTestMap,
 ) {
   const now = () => new Date("2026-07-09T12:00:00.000Z");
   const projection = new MemoryCommercialProjection();
+  const lifecycle = new MemorySubscriptionLifecycleStore();
   return {
     supabase: mock.client,
     inbox: new MemoryWebhookInbox(now),
@@ -177,6 +233,7 @@ function processDeps(
     now,
     workerToken: () => crypto.randomUUID(),
     projection,
+    lifecycle,
   };
 }
 
@@ -466,14 +523,10 @@ Deno.test("processPolarWebhookEvent: subscription.active pro_monthly grants mont
     status: "active",
     validUntil: periodEnd,
   }]);
-  const subscriptions = mock.getTableRows("billing_subscriptions");
+  const subscriptions = [...deps.lifecycle.subscriptions.values()];
   assertEquals(subscriptions.length, 1);
-  assertEquals(subscriptions[0].provider_subscription_id, "sub_pro_1");
   assertEquals(subscriptions[0].status, "active");
-  assertEquals(subscriptions[0].metadata, {
-    checkout_key: "pro_monthly",
-    derived: true,
-  });
+  assertEquals(subscriptions[0].paidThrough, periodEnd);
   assertEquals(mock.getTableRows("user_entitlements").length, 0);
 });
 
@@ -941,9 +994,9 @@ Deno.test("processPolarWebhookEvent: stale subscription events cannot revert the
     deps,
   );
   assertEquals(stale, { status: "processed", action: "stale_noop" });
-  const subscription = mock.getTableRows("billing_subscriptions")[0];
+  const subscription = [...deps.lifecycle.subscriptions.values()][0];
   assertEquals(subscription.status, "revoked");
-  assertEquals(subscription.updated_at, "2026-08-02T13:00:00.000Z");
+  assertEquals(subscription.modifiedAt, "2026-08-02T13:00:00.000Z");
 });
 
 Deno.test("processPolarWebhookEvent: missing resource version is quarantined", async () => {
@@ -968,14 +1021,936 @@ Deno.test("processPolarWebhookEvent: missing resource version is quarantined", a
   assertEquals(deps.projection.resources.size, 0);
 });
 
-Deno.test("deriveSubscriptionEntitlementStatus: canceled with cancel_at_period_end stays active", () => {
-  const now = new Date("2026-07-09T12:00:00.000Z");
-  const result = deriveSubscriptionEntitlementStatus(
-    "canceled",
-    true,
-    "2026-08-09T12:00:00.000Z",
-    now,
+Deno.test("processPolarWebhookEvent: subscription.created with incomplete payload never grants", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  const result = await processPolarWebhookEvent(
+    {
+      type: "subscription.created",
+      data: {
+        id: "sub-created-no-access",
+        modified_at: "2026-08-02T11:00:00.000Z",
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        status: "incomplete",
+        current_period_end: "2026-09-02T11:00:00.000Z",
+      },
+    },
+    "evt_sub_created_no_access",
+    deps,
   );
-  assertEquals(result.status, "active");
-  assertEquals(result.expiresAt, "2026-08-09T12:00:00.000Z");
+  assertEquals(result.status, "processed");
+  assertEquals([...deps.projection.grants.values()][0].status, "revoked");
+  assertEquals(deps.lifecycle.recoveryGrants.size, 0);
+});
+
+Deno.test("processPolarWebhookEvent: subscription.created honors a demonstrated trialing payload", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadTrialTestMap);
+  const result = await processPolarWebhookEvent(
+    {
+      type: "subscription.created",
+      data: {
+        id: "sub-created-trialing",
+        modified_at: RESOURCE_MODIFIED_AT,
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        status: "trialing",
+        current_period_end: "2026-07-16T12:00:00.000Z",
+      },
+    },
+    "evt_sub_created_trialing",
+    deps,
+  );
+  assertEquals(result.status, "processed");
+  assertEquals([...deps.projection.grants.values()][0], {
+    capability: "vantare.plan.pro",
+    status: "active",
+    validUntil: "2026-07-16T12:00:00.000Z",
+  });
+  assertEquals(
+    [...deps.lifecycle.subscriptions.values()][0].status,
+    "trialing",
+  );
+});
+
+Deno.test("processPolarWebhookEvent: created and updated quarantine missing or unknown payload status", async () => {
+  for (
+    const [index, testCase] of [
+      { type: "subscription.created", status: undefined },
+      { type: "subscription.created", status: "created" },
+      { type: "subscription.updated", status: undefined },
+      { type: "subscription.updated", status: "mystery" },
+    ].entries()
+  ) {
+    const mock = createMockSupabase();
+    const deps = processDeps(mock);
+    const result = await processPolarWebhookEvent(
+      {
+        type: testCase.type,
+        data: {
+          id: `sub-status-required-${index}`,
+          modified_at: RESOURCE_MODIFIED_AT,
+          product_id: PRO_MONTHLY_PRODUCT_ID,
+          external_customer_id: USER_ID,
+          ...(testCase.status ? { status: testCase.status } : {}),
+        },
+      },
+      `evt_status_required_${index}`,
+      deps,
+    );
+    assertEquals(result, {
+      status: "quarantined",
+      reason: "unsupported_subscription_status",
+    });
+    assertEquals(deps.projection.resources.size, 0);
+    assertEquals(deps.lifecycle.subscriptions.size, 0);
+  }
+});
+
+Deno.test("processPolarWebhookEvent: bounded subscription states require a proven period end", async () => {
+  for (
+    const [index, malformed] of [
+      { type: "subscription.active", data: {} },
+      {
+        type: "subscription.updated",
+        data: { status: "trialing" },
+        loadMap: loadTrialTestMap,
+      },
+      { type: "subscription.past_due", data: {} },
+      {
+        type: "subscription.canceled",
+        data: { cancel_at_period_end: true },
+      },
+    ].entries()
+  ) {
+    const mock = createMockSupabase();
+    const deps = processDeps(mock, malformed.loadMap ?? loadTestMap);
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.active",
+        data: {
+          id: `sub-period-required-${index}`,
+          modified_at: "2026-08-01T12:00:00.000Z",
+          product_id: PRO_MONTHLY_PRODUCT_ID,
+          external_customer_id: USER_ID,
+          current_period_end: "2026-09-01T12:00:00.000Z",
+        },
+      },
+      `evt_period_seed_${index}`,
+      deps,
+    );
+    const before = structuredClone([...deps.projection.grants.values()]);
+
+    const result = await processPolarWebhookEvent(
+      {
+        type: malformed.type,
+        data: {
+          id: `sub-period-required-${index}`,
+          modified_at: "2026-08-02T12:00:00.000Z",
+          product_id: PRO_MONTHLY_PRODUCT_ID,
+          external_customer_id: USER_ID,
+          ...malformed.data,
+        },
+      },
+      `evt_period_missing_${index}`,
+      deps,
+    );
+
+    assertEquals(result, {
+      status: "quarantined",
+      reason: "missing_subscription_period_end",
+    });
+    assertEquals([...deps.projection.grants.values()], before);
+    assertEquals(deps.lifecycle.cycles.size, 0);
+  }
+});
+
+Deno.test("processPolarWebhookEvent: immediate cancellation revokes without a period end", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        id: "sub-immediate-cancel",
+        modified_at: "2026-08-01T12:00:00.000Z",
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        current_period_end: "2026-09-01T12:00:00.000Z",
+      },
+    },
+    "evt_immediate_cancel_seed",
+    deps,
+  );
+
+  const result = await processPolarWebhookEvent(
+    {
+      type: "subscription.canceled",
+      data: {
+        id: "sub-immediate-cancel",
+        modified_at: "2026-08-02T12:00:00.000Z",
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        cancel_at_period_end: false,
+      },
+    },
+    "evt_immediate_cancel",
+    deps,
+  );
+
+  assertEquals(result.status, "processed");
+  assertEquals([...deps.projection.grants.values()][0].status, "revoked");
+});
+
+Deno.test("processPolarWebhookEvent: Pro Plus recovery preserves all configured capabilities", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadProPlusTestMap);
+  const subscription = {
+    id: "sub-pro-plus",
+    product_id: PRO_PLUS_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00.000Z",
+  };
+  deps.now = () => new Date("2026-08-01T14:00:00.000Z");
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: { ...subscription, modified_at: "2026-08-01T13:00:00.000Z" },
+    },
+    "evt_pro_plus_active",
+    deps,
+  );
+  assertEquals(
+    [...deps.projection.grants.values()].map((grant) => grant.capability)
+      .sort(),
+    [
+      "vantare.channel.nightly",
+      "vantare.channel.testers",
+      "vantare.plan.pro",
+    ],
+  );
+
+  deps.now = () => new Date("2026-08-02T14:00:00.000Z");
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: { ...subscription, modified_at: "2026-08-02T13:05:00.000Z" },
+    },
+    "evt_pro_plus_past_due",
+    deps,
+  );
+  assertEquals(deps.lifecycle.recoveryGrants.size, 3);
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()].map((grant) => grant.capability)
+      .sort(),
+    [
+      "vantare.channel.nightly",
+      "vantare.channel.testers",
+      "vantare.plan.pro",
+    ],
+  );
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()].every((grant) =>
+      grant.status === "active" &&
+      grant.validUntil === "2026-08-05T13:05:00.000Z"
+    ),
+    true,
+  );
+
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...subscription,
+        status: "unpaid",
+        modified_at: "2026-08-02T13:10:00.000Z",
+      },
+    },
+    "evt_pro_plus_unpaid",
+    deps,
+  );
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()].every((grant) =>
+      grant.status === "revoked"
+    ),
+    true,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.revoked",
+      data: { ...subscription, modified_at: "2026-08-02T13:20:00.000Z" },
+    },
+    "evt_pro_plus_revoked",
+    deps,
+  );
+  assertEquals(
+    [...deps.projection.grants.values()].every((grant) =>
+      grant.status === "revoked"
+    ),
+    true,
+  );
+});
+
+Deno.test("processPolarWebhookEvent: recovery never restores a capability removed from the current mapping", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadProPlusTestMap);
+  const subscription = {
+    id: "sub-pro-plus-capability-removal",
+    product_id: PRO_PLUS_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00.000Z",
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: { ...subscription, modified_at: "2026-08-01T13:00:00.000Z" },
+    },
+    "evt_pro_plus_capability_seed",
+    deps,
+  );
+
+  deps.now = () => new Date("2026-08-02T14:00:00.000Z");
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: { ...subscription, modified_at: "2026-08-02T13:45:00.000Z" },
+    },
+    "evt_pro_plus_capability_initial_recovery",
+    deps,
+  );
+  assertEquals(deps.lifecycle.recoveryGrants.size, 3);
+
+  deps.loadMap = loadProPlusWithoutNightlyTestMap;
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: { ...subscription, modified_at: "2026-08-02T13:05:00.000Z" },
+    },
+    "evt_pro_plus_capability_late_correction",
+    deps,
+  );
+
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()].filter((grant) =>
+      grant.status === "active"
+    ).map((grant) => grant.capability)
+      .sort(),
+    ["vantare.channel.testers", "vantare.plan.pro"],
+  );
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()].find((grant) =>
+      grant.capability === "vantare.channel.nightly"
+    )?.status,
+    "revoked",
+  );
+});
+
+Deno.test("processPolarWebhookEvent: Pro Plus trial fails closed when mapping disables trials", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadProPlusTestMap);
+  const result = await processPolarWebhookEvent(
+    {
+      type: "subscription.created",
+      data: {
+        id: "sub-pro-plus-unconfigured-trial",
+        product_id: PRO_PLUS_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        status: "trialing",
+        current_period_end: "2026-07-16T12:00:00.000Z",
+        modified_at: RESOURCE_MODIFIED_AT,
+      },
+    },
+    "evt_pro_plus_unconfigured_trial",
+    deps,
+  );
+  assertEquals(result, {
+    status: "quarantined",
+    reason: "subscription_trial_not_configured",
+  });
+  assertEquals(deps.projection.resources.size, 0);
+});
+
+Deno.test("processPolarWebhookEvent: past_due recovery is a separate bounded source and retry cannot reset it", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-08-02T13:00:00.000Z");
+  const common = {
+    id: "sub-recovery-cycle",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00.000Z",
+  };
+
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...common,
+        status: "active",
+        modified_at: "2026-08-01T13:00:00.000Z",
+      },
+    },
+    "evt_recovery_active",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...common,
+        status: "past_due",
+        modified_at: "2026-08-02T13:05:00.000Z",
+      },
+    },
+    "evt_recovery_first_failure",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...common,
+        status: "past_due",
+        modified_at: "2026-08-02T13:45:00.000Z",
+      },
+    },
+    "evt_recovery_retry",
+    deps,
+  );
+
+  const recovery = [...deps.lifecycle.recoveryGrants.values()][0];
+  assertEquals(recovery.status, "active");
+  assertEquals(recovery.validUntil, "2026-08-05T13:05:00.000Z");
+  assertEquals(
+    [...deps.lifecycle.cycles.values()][0].firstFailureAt,
+    "2026-08-02T13:05:00.000Z",
+  );
+  assertEquals(
+    [...deps.projection.grants.values()][0].validUntil,
+    "2026-08-02T13:00:00.000Z",
+  );
+});
+
+Deno.test("processPolarWebhookEvent: recovered renewal closes old recovery and a later period opens one new cycle", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-08-02T13:00:00.000Z");
+  const base = {
+    id: "sub-two-recovery-cycles",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...base,
+        status: "active",
+        modified_at: "2026-08-01T13:00:00Z",
+        current_period_end: "2026-08-02T13:00:00Z",
+      },
+    },
+    "evt_cycle_one_active",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...base,
+        status: "past_due",
+        modified_at: "2026-08-02T13:01:00Z",
+        current_period_end: "2026-08-02T13:00:00Z",
+      },
+    },
+    "evt_cycle_one_failure",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...base,
+        status: "active",
+        modified_at: "2026-08-02T13:10:00Z",
+        current_period_end: "2026-09-02T13:00:00Z",
+      },
+    },
+    "evt_cycle_recovered",
+    deps,
+  );
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()][0].status,
+    "revoked",
+  );
+
+  deps.now = () => new Date("2026-09-02T13:00:00.000Z");
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...base,
+        status: "past_due",
+        modified_at: "2026-09-02T13:02:00Z",
+        current_period_end: "2026-09-02T13:00:00Z",
+      },
+    },
+    "evt_cycle_two_failure",
+    deps,
+  );
+  assertEquals(deps.lifecycle.cycles.size, 2);
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()].filter((grant) =>
+      grant.status === "active"
+    ).length,
+    1,
+  );
+});
+
+Deno.test("processPolarWebhookEvent: duplicate projection replay completes only the failed lifecycle effect", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-08-02T14:00:00.000Z");
+  const subscription = {
+    id: "sub-lifecycle-effect-retry",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00.000Z",
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...subscription,
+        status: "active",
+        modified_at: "2026-08-01T13:00:00.000Z",
+      },
+    },
+    "evt_lifecycle_effect_active",
+    deps,
+  );
+
+  const failedEvent = {
+    type: "subscription.past_due",
+    data: {
+      ...subscription,
+      status: "past_due",
+      modified_at: "2026-08-02T13:05:00.000Z",
+    },
+  };
+  deps.lifecycle.failNextApply();
+  await assertRejects(
+    () =>
+      processPolarWebhookEvent(failedEvent, "evt_lifecycle_effect_retry", deps),
+    Error,
+    "test lifecycle failure",
+  );
+  assertEquals(deps.lifecycle.cycles.size, 0);
+  assertEquals(
+    deps.inbox.effectAttempts(
+      "evt_lifecycle_effect_retry",
+      "billing_subscription_lifecycle",
+    ),
+    1,
+  );
+
+  deps.inbox.makeRetryDue("evt_lifecycle_effect_retry");
+  const retried = await processPolarWebhookEvent(
+    failedEvent,
+    "evt_lifecycle_effect_retry",
+    deps,
+  );
+  assertEquals(retried, { status: "processed", action: "resource_duplicate" });
+  assertEquals(deps.lifecycle.cycles.size, 1);
+  assertEquals(
+    [...deps.lifecycle.cycles.values()][0].firstFailureAt,
+    "2026-08-02T13:05:00.000Z",
+  );
+  assertEquals(
+    deps.inbox.effectAttempts(
+      "evt_lifecycle_effect_retry",
+      "billing_subscription_lifecycle",
+    ),
+    2,
+  );
+});
+
+Deno.test("processPolarWebhookEvent: older proven failure shortens only the existing identical recovery cycle", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-08-02T14:00:00.000Z");
+  const subscription = {
+    id: "sub-late-first-failure",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00.000Z",
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...subscription,
+        status: "active",
+        modified_at: "2026-08-01T13:00:00.000Z",
+      },
+    },
+    "evt_late_failure_active",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...subscription,
+        status: "past_due",
+        modified_at: "2026-08-02T13:45:00.000Z",
+      },
+    },
+    "evt_late_failure_retry_first",
+    deps,
+  );
+
+  const corrected = await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...subscription,
+        status: "past_due",
+        modified_at: "2026-08-02T13:05:00.000Z",
+      },
+    },
+    "evt_late_failure_original_later",
+    deps,
+  );
+  assertEquals(corrected, { status: "processed", action: "stale_noop" });
+  assertEquals(deps.lifecycle.cycles.size, 1);
+  assertEquals(
+    [...deps.lifecycle.cycles.values()][0].firstFailureAt,
+    "2026-08-02T13:05:00.000Z",
+  );
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()][0].validUntil,
+    "2026-08-05T13:05:00.000Z",
+  );
+});
+
+Deno.test("processPolarWebhookEvent: stale recovery evidence from an older paid cycle cannot alter the current cycle", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-09-02T14:00:00.000Z");
+  const base = {
+    id: "sub-old-cycle-evidence",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...base,
+        status: "active",
+        current_period_end: "2026-09-02T13:00:00.000Z",
+        modified_at: "2026-08-02T14:00:00.000Z",
+      },
+    },
+    "evt_old_cycle_active",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...base,
+        status: "past_due",
+        current_period_end: "2026-09-02T13:00:00.000Z",
+        modified_at: "2026-09-02T13:45:00.000Z",
+      },
+    },
+    "evt_old_cycle_current_failure",
+    deps,
+  );
+  const before = structuredClone([...deps.lifecycle.cycles.values()]);
+
+  const stale = await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...base,
+        status: "past_due",
+        current_period_end: "2026-08-02T13:00:00.000Z",
+        modified_at: "2026-08-02T13:05:00.000Z",
+      },
+    },
+    "evt_old_cycle_stale_failure",
+    deps,
+  );
+  assertEquals(stale, { status: "processed", action: "stale_noop" });
+  assertEquals([...deps.lifecycle.cycles.values()], before);
+});
+
+Deno.test("processPolarWebhookEvent: same-version conflict never mutates lifecycle state", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-08-02T14:00:00.000Z");
+  const subscription = {
+    id: "sub-lifecycle-conflict",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00.000Z",
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...subscription,
+        status: "active",
+        modified_at: "2026-08-01T13:00:00.000Z",
+      },
+    },
+    "evt_lifecycle_conflict_active",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...subscription,
+        status: "past_due",
+        modified_at: "2026-08-02T13:30:00.000Z",
+      },
+    },
+    "evt_lifecycle_conflict_current",
+    deps,
+  );
+  const before = structuredClone([...deps.lifecycle.cycles.values()]);
+
+  const conflict = await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...subscription,
+        status: "active",
+        current_period_end: "2026-09-02T13:00:00.000Z",
+        modified_at: "2026-08-02T13:30:00.000Z",
+      },
+    },
+    "evt_lifecycle_conflict_other_payload",
+    deps,
+  );
+  assertEquals(conflict, {
+    status: "quarantined",
+    reason: "resource_version_conflict",
+  });
+  assertEquals([...deps.lifecycle.cycles.values()], before);
+});
+
+Deno.test("processPolarWebhookEvent: trialing grants only until the trial end and replay completes lifecycle", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadTrialTestMap);
+  const event = {
+    type: "subscription.updated",
+    data: {
+      id: "sub-trial-replay",
+      product_id: PRO_MONTHLY_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      status: "trialing",
+      current_period_end: "2026-07-16T12:00:00.000Z",
+      modified_at: "2026-07-09T12:00:00.000Z",
+    },
+  };
+  deps.lifecycle.failNextApply();
+  await assertRejects(
+    () => processPolarWebhookEvent(event, "evt_trial_replay", deps),
+    Error,
+    "test lifecycle failure",
+  );
+  deps.inbox.makeRetryDue("evt_trial_replay");
+  assertEquals(
+    await processPolarWebhookEvent(event, "evt_trial_replay", deps),
+    { status: "processed", action: "resource_duplicate" },
+  );
+  assertEquals([...deps.projection.grants.values()][0], {
+    capability: "vantare.plan.pro",
+    status: "active",
+    validUntil: "2026-07-16T12:00:00.000Z",
+  });
+  assertEquals(
+    [...deps.lifecycle.subscriptions.values()][0].status,
+    "trialing",
+  );
+  assertEquals(deps.lifecycle.cycles.size, 0);
+});
+
+Deno.test("processPolarWebhookEvent: trial extension wins and an older trial update cannot shorten it", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadTrialTestMap);
+  const base = {
+    id: "sub-trial-extension",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    status: "trialing",
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...base,
+        current_period_end: "2026-07-16T12:00:00.000Z",
+        modified_at: "2026-07-09T11:00:00.000Z",
+      },
+    },
+    "evt_trial_initial",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...base,
+        current_period_end: "2026-07-19T12:00:00.000Z",
+        modified_at: "2026-07-09T12:00:00.000Z",
+      },
+    },
+    "evt_trial_extended",
+    deps,
+  );
+  const stale = await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...base,
+        current_period_end: "2026-07-14T12:00:00.000Z",
+        modified_at: "2026-07-09T11:30:00.000Z",
+      },
+    },
+    "evt_trial_stale",
+    deps,
+  );
+  assertEquals(stale, { status: "processed", action: "stale_noop" });
+  assertEquals(
+    [...deps.lifecycle.subscriptions.values()][0].paidThrough,
+    "2026-07-19T12:00:00.000Z",
+  );
+  assertEquals(
+    [...deps.projection.grants.values()][0].validUntil,
+    "2026-07-19T12:00:00.000Z",
+  );
+});
+
+Deno.test("processPolarWebhookEvent: trial at equality and incomplete_expired are revoked without recovery", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadTrialTestMap);
+  const base = {
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...base,
+        id: "sub-trial-expired",
+        status: "trialing",
+        current_period_end: "2026-07-09T12:00:00.000Z",
+        modified_at: "2026-07-09T11:00:00.000Z",
+      },
+    },
+    "evt_trial_at_boundary",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...base,
+        id: "sub-incomplete-expired",
+        status: "incomplete_expired",
+        current_period_end: "2026-07-16T12:00:00.000Z",
+        modified_at: "2026-07-09T12:00:00.000Z",
+      },
+    },
+    "evt_incomplete_expired",
+    deps,
+  );
+
+  assertEquals(
+    [...deps.projection.grants.values()].every((grant) =>
+      grant.status === "revoked"
+    ),
+    true,
+  );
+  assertEquals(deps.lifecycle.cycles.size, 0);
+});
+
+Deno.test("processPolarWebhookEvent: terminal subscription revokes recovery but leaves lifetime source active", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  deps.now = () => new Date("2026-08-02T13:00:00.000Z");
+  await processPolarWebhookEvent(
+    {
+      type: "order.paid",
+      data: {
+        id: "order-survives-terminal",
+        product_id: LAUNCH_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        modified_at: "2026-08-01T10:00:00Z",
+      },
+    },
+    "evt_terminal_lifetime",
+    deps,
+  );
+  const subscription = {
+    id: "sub-terminal",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    external_customer_id: USER_ID,
+    current_period_end: "2026-08-02T13:00:00Z",
+  };
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.active",
+      data: {
+        ...subscription,
+        status: "active",
+        modified_at: "2026-08-01T13:00:00Z",
+      },
+    },
+    "evt_terminal_active",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.past_due",
+      data: {
+        ...subscription,
+        status: "past_due",
+        modified_at: "2026-08-02T13:01:00Z",
+      },
+    },
+    "evt_terminal_failure",
+    deps,
+  );
+  await processPolarWebhookEvent(
+    {
+      type: "subscription.updated",
+      data: {
+        ...subscription,
+        status: "unpaid",
+        modified_at: "2026-08-02T13:02:00Z",
+      },
+    },
+    "evt_terminal_unpaid",
+    deps,
+  );
+
+  assertEquals(
+    [...deps.lifecycle.recoveryGrants.values()][0].status,
+    "revoked",
+  );
+  assertEquals(
+    [...deps.projection.grants.entries()].some(([key, grant]) =>
+      key.includes("order-survives-terminal") && grant.status === "active"
+    ),
+    true,
+  );
 });

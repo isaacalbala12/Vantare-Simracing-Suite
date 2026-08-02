@@ -1,3 +1,9 @@
+Nota ISA-70-BIL-06-SUBSCRIPTION-LIFECYCLE (2026-08-02):
+- Candidato aislado sobre BIL-05 `c5109edad1a6261d6cadd9cbe3d7fc728be4a5e6`: lifecycle canónico, acceso con límite exclusivo y recuperación técnica máxima de 72 horas ligada a un ciclo pagado.
+- Reintentos, replay, reconciliación y eventos fuera de orden convergen sin reiniciar la recuperación. Los estados acotados sin `current_period_end` se ponen en quarantine y una capability retirada no reaparece desde históricos.
+- Evidencia: suite Deno activa 144/144, focal 84/84, checks TypeScript y PostgreSQL clean/upgrade/restore/legacy/concurrencia PASS. Informe: `docs/analysis/isa-70-bil-06-subscription-lifecycle-2026-08-02.md`; runbook: `docs/billing/bil-06-subscription-recovery-runbook.md`.
+- Sin deploy, pago, refund, mutación remota, promoción ni BIL-07. Venta pública sigue **NO-GO**.
+
 Nota ISA-69-BIL-05-MONOTONIC-GRANTS-RECONCILIATION (2026-08-02):
 - Candidato aislado sobre ISA-179 `edcaffa098b7e705456406f11b6bb74e37256a68`: cada order/subscription/benefit tiene versión y grants propios; `user_entitlements` queda como read-model estrictamente derivado.
 - Webhook BIL-02 preservado: stale se completa como no-op auditado, conflictos se ponen en quarantine y retries/replay continúan por efecto. `billing_subscriptions` se conserva como read-model compatible y no admite eventos antiguos.

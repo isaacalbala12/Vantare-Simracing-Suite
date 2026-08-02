@@ -7,6 +7,11 @@ import {
   type CommercialResourceSnapshot,
   hashCommercialSnapshot,
 } from "./commercial-projection.ts";
+import { deriveSubscriptionTransition } from "./subscription-lifecycle.ts";
+import type {
+  SubscriptionLifecycleApply,
+  SubscriptionLifecycleStore,
+} from "./subscription-lifecycle-store.ts";
 
 export type LocalCommercialResource = {
   resourceType: "order" | "subscription" | "benefit_grant" | "legacy";
@@ -15,10 +20,20 @@ export type LocalCommercialResource = {
   capabilities: string[];
   modifiedAt: string;
   status: "active" | "revoked";
+  subscriptionStatus?: string;
+  periodStart?: string | null;
+  paidThrough?: string | null;
+  cancelAtPeriodEnd?: boolean;
 };
 
 export type ReconciliationIssue = {
-  code: "unknown_product" | "unknown_benefit" | "invalid_local_resource";
+  code:
+    | "unknown_product"
+    | "unknown_benefit"
+    | "invalid_local_resource"
+    | "invalid_subscription_product"
+    | "subscription_trial_not_configured"
+    | "missing_subscription_period_end";
   resourceId: string;
 };
 
@@ -29,6 +44,7 @@ export type ReconciliationPlan = {
   snapshotHash: string;
   planHash: string;
   operations: CommercialResourceSnapshot[];
+  subscriptionLifecycles: SubscriptionLifecycleApply[];
   preservedResourceIds: string[];
   issues: ReconciliationIssue[];
   safeToApply: boolean;
@@ -44,6 +60,16 @@ export interface ReconciliationStore {
   }>;
 }
 
+function subscriptionStatusRequiresPeriodEnd(
+  status: string,
+  cancelAtPeriodEnd: boolean,
+): boolean {
+  const normalized = status.toLowerCase();
+  return normalized === "active" || normalized === "trialing" ||
+    normalized === "uncanceled" || normalized === "past_due" ||
+    (normalized === "canceled" && cancelAtPeriodEnd);
+}
+
 export async function buildReconciliationPlan(args: {
   userId: string;
   customerState: PolarCustomerState;
@@ -52,6 +78,7 @@ export async function buildReconciliationPlan(args: {
   benefitCapabilities?: Record<string, string[]>;
 }): Promise<ReconciliationPlan> {
   const operations: CommercialResourceSnapshot[] = [];
+  const subscriptionLifecycles: SubscriptionLifecycleApply[] = [];
   const issues: ReconciliationIssue[] = [];
   const preservedResourceIds: string[] = [];
   const remoteSubscriptions = new Set<string>();
@@ -67,21 +94,80 @@ export async function buildReconciliationPlan(args: {
       issues.push({ code: "unknown_product", resourceId: subscription.id });
       continue;
     }
-    operations.push(
-      await snapshot({
-        userId: args.userId,
-        environment: args.productMap.environment,
-        resourceType: "subscription",
+    if (resolved.config.billing_type !== "subscription") {
+      issues.push({
+        code: "invalid_subscription_product",
         resourceId: subscription.id,
-        modifiedAt: subscription.modifiedAt,
-        state: subscription.status,
-        grants: grants(
-          resolved.config.capabilities,
-          "active",
-          subscription.currentPeriodEnd,
-        ),
-      }),
+      });
+      continue;
+    }
+    if (
+      subscription.status.toLowerCase() === "trialing" &&
+      resolved.config.trial.enabled !== true
+    ) {
+      issues.push({
+        code: "subscription_trial_not_configured",
+        resourceId: subscription.id,
+      });
+      continue;
+    }
+    if (
+      subscriptionStatusRequiresPeriodEnd(
+        subscription.status,
+        subscription.cancelAtPeriodEnd === true,
+      ) && !subscription.currentPeriodEnd
+    ) {
+      issues.push({
+        code: "missing_subscription_period_end",
+        resourceId: subscription.id,
+      });
+      continue;
+    }
+    const previous = args.localResources.find((local) =>
+      local.resourceType === "subscription" &&
+      local.resourceId === subscription.id
     );
+    const transition = deriveSubscriptionTransition({
+      status: subscription.status,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      remoteModifiedAt: subscription.modifiedAt,
+      previous: previous
+        ? {
+          status: previous.subscriptionStatus ?? previous.status,
+          paidThrough: previous.paidThrough ?? null,
+        }
+        : null,
+      now: new Date(args.customerState.observedAt),
+    });
+    const operation = await snapshot({
+      userId: args.userId,
+      environment: args.productMap.environment,
+      resourceType: "subscription",
+      resourceId: subscription.id,
+      modifiedAt: subscription.modifiedAt,
+      state: transition.status,
+      grants: grants(
+        resolved.config.capabilities,
+        transition.commercialGrant.status,
+        transition.commercialGrant.validUntil,
+      ),
+    });
+    operations.push(operation);
+    subscriptionLifecycles.push({
+      userId: args.userId,
+      environment: args.productMap.environment,
+      subscriptionId: subscription.id,
+      productId: subscription.productId,
+      capabilities: resolved.config.capabilities,
+      periodStart: subscription.currentPeriodStart ?? null,
+      remotePeriodEnd: subscription.currentPeriodEnd,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
+      modifiedAt: subscription.modifiedAt,
+      snapshotHash: operation.snapshotHash,
+      transition,
+      evaluatedAt: args.customerState.observedAt,
+    });
   }
 
   for (const benefit of args.customerState.grantedBenefits) {
@@ -109,7 +195,9 @@ export async function buildReconciliationPlan(args: {
       preservedResourceIds.push(local.resourceId);
       continue;
     }
-    if (local.status !== "active") continue;
+    if (local.resourceType === "benefit_grant" && local.status !== "active") {
+      continue;
+    }
     const remotelyPresent = local.resourceType === "subscription"
       ? remoteSubscriptions.has(local.resourceId)
       : remoteBenefits.has(local.resourceId);
@@ -154,27 +242,61 @@ export async function buildReconciliationPlan(args: {
       issues.push({ code: "unknown_product", resourceId: local.resourceId });
       continue;
     }
-    operations.push(
-      await snapshot({
-        userId: args.userId,
-        environment: args.productMap.environment,
-        resourceType: local.resourceType,
+    if (resolved.config.billing_type !== "subscription") {
+      issues.push({
+        code: "invalid_subscription_product",
         resourceId: local.resourceId,
-        modifiedAt: args.customerState.observedAt,
-        state: "absent_from_customer_state",
-        grants: grants(
-          resolved.config.capabilities,
-          "revoked",
-          args.customerState.observedAt,
-        ),
-      }),
-    );
+      });
+      continue;
+    }
+    const transition = deriveSubscriptionTransition({
+      status: "revoked",
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: local.paidThrough ?? null,
+      remoteModifiedAt: args.customerState.observedAt,
+      previous: {
+        status: local.subscriptionStatus ?? local.status,
+        paidThrough: local.paidThrough ?? null,
+      },
+      now: new Date(args.customerState.observedAt),
+    });
+    const operation = await snapshot({
+      userId: args.userId,
+      environment: args.productMap.environment,
+      resourceType: local.resourceType,
+      resourceId: local.resourceId,
+      modifiedAt: args.customerState.observedAt,
+      state: "absent_from_customer_state",
+      grants: grants(
+        resolved.config.capabilities,
+        "revoked",
+        args.customerState.observedAt,
+      ),
+    });
+    operations.push(operation);
+    subscriptionLifecycles.push({
+      userId: args.userId,
+      environment: args.productMap.environment,
+      subscriptionId: local.resourceId,
+      productId: local.productId,
+      capabilities: resolved.config.capabilities,
+      periodStart: local.periodStart ?? null,
+      remotePeriodEnd: local.paidThrough ?? null,
+      cancelAtPeriodEnd: false,
+      modifiedAt: args.customerState.observedAt,
+      snapshotHash: operation.snapshotHash,
+      transition,
+      evaluatedAt: args.customerState.observedAt,
+    });
   }
 
   operations.sort((left, right) =>
     `${left.resourceType}:${left.resourceId}`.localeCompare(
       `${right.resourceType}:${right.resourceId}`,
     )
+  );
+  subscriptionLifecycles.sort((left, right) =>
+    left.subscriptionId.localeCompare(right.subscriptionId)
   );
   preservedResourceIds.sort();
   issues.sort((left, right) => left.resourceId.localeCompare(right.resourceId));
@@ -183,6 +305,7 @@ export async function buildReconciliationPlan(args: {
   );
   const planHash = await hashValue({
     operations,
+    subscriptionLifecycles,
     preservedResourceIds,
     issues,
   });
@@ -193,6 +316,7 @@ export async function buildReconciliationPlan(args: {
     snapshotHash,
     planHash,
     operations,
+    subscriptionLifecycles,
     preservedResourceIds,
     issues,
     safeToApply: issues.length === 0,
@@ -204,13 +328,20 @@ export async function executeReconciliation(args: {
   dryRun: boolean;
   trigger: "manual" | "scheduled";
   store: ReconciliationStore;
+  lifecycle?: SubscriptionLifecycleStore;
 }): Promise<{
   status: "dry_run" | "applied" | "unchanged" | "quarantined";
   changed: number;
 }> {
   if (!args.plan.safeToApply) return { status: "quarantined", changed: 0 };
   if (args.dryRun) return { status: "dry_run", changed: 0 };
-  return await args.store.apply(args.plan, args.trigger);
+  const result = await args.store.apply(args.plan, args.trigger);
+  if (result.status !== "quarantined" && args.lifecycle) {
+    for (const lifecycle of args.plan.subscriptionLifecycles) {
+      await args.lifecycle.apply(lifecycle);
+    }
+  }
+  return result;
 }
 
 export class MemoryReconciliationStore implements ReconciliationStore {

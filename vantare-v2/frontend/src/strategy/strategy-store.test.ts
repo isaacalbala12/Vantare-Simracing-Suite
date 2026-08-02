@@ -83,6 +83,23 @@ function createClient(initial = draft()) {
 }
 
 describe("createStrategyStore", () => {
+  it("keeps snapshot identity stable until an observable mutation", async () => {
+    const { client } = createClient();
+    const store = createStrategyStore(client, { id: () => "identity-1" });
+    const initial = store.getSnapshot();
+    expect(store.getSnapshot()).toBe(initial);
+
+    await store.open("draft-1");
+    const opened = store.getSnapshot();
+    expect(opened).not.toBe(initial);
+    expect(store.getSnapshot()).toBe(opened);
+
+    store.edit((current) => ({ ...current, payload: { laps: 11 } }));
+    const edited = store.getSnapshot();
+    expect(edited).not.toBe(opened);
+    expect(store.getSnapshot()).toBe(edited);
+  });
+
   it("derives dirty from snapshots and supports bounded undo/redo", async () => {
     const { client } = createClient();
     const store = createStrategyStore(client, {

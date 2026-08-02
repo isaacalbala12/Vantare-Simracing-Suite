@@ -933,6 +933,12 @@ function requireTimestamp(value: unknown, field: string): asserts value is strin
   }
 }
 
+export function canonicalStrategyTimestamp(date = new Date()): string {
+  const iso = date.toISOString();
+  const milliseconds = iso.slice(20, 23).replace(/0+$/, "");
+  return `${iso.slice(0, 19)}${milliseconds === "" ? "" : `.${milliseconds}`}Z`;
+}
+
 function deepFreeze<T>(value: T): T {
   if (typeof value !== "object" || value === null || Object.isFrozen(value)) {
     return value;

@@ -1,3 +1,21 @@
+Nota ISA-143 / STR-08 (2026-08-02):
+
+- El workspace de Strategy ya edita stints y neumáticos físicos: crear,
+  insertar, duplicar, borrar, reordenar, DnD, teclado, cancelación, undo/redo,
+  guardado y recarga.
+- `strategy.editor.v1` viaja por STR-04 y se persiste únicamente en STR-03;
+  `cmd/vantare` conecta el bridge productivo. El mock persistente queda limitado
+  al harness.
+- La primera asignación fija FL/FR/RL/RR; quitar un neumático conserva su
+  identidad. Documentos corruptos y cambios de esquina se rechazan.
+- Apertura lazy, reintento real, mensajes sanitizados, timestamps canónicos,
+  snapshot estable y StrictMode están cubiertos por regresión.
+- Focal `48/48`, frontend global `2072/2072`, Go global, build, lint focal y Playwright real pasan. Chrome
+  valida edición, guardado/recarga, responsive y cero errores/overflow.
+  Evidencia: `docs/strategy-planner/str-08-stint-editor.md`.
+- Rama apilada sobre ISA-142 aceptada; sin merge ni promoción. Siguiente corte
+  tras `ACCEPT`: ISA-144 / STR-09.
+
 Nota ISA-142 / STR-07 (2026-08-02):
 
 - Strategy Planner ya está registrado en el topbar, la política de acceso y el

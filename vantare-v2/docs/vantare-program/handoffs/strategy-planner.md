@@ -23,7 +23,8 @@ canónico de drafts y revisiones. STR-04 añade la fachada de comandos y el stor
 frontend transitorio. STR-05 añade el motor manual puro de carrera, Fuel,
 Virtual Energy y pit. STR-06 añade el inventario físico individual y sus reglas
 de condición, estado y esquina persistente. STR-07 añade el shell visual y la
-navegación real de la suite, todavía sin wiring productivo. La UI canónica usa
+navegación real de la suite. STR-08 conecta el documento editable al repositorio
+canónico, añade operaciones de stint y asignación física por DnD/teclado. La UI canónica usa
 estrategias a la izquierda, stints al centro e inventario/entrada a la derecha.
 
 Actualización ISA-134 / STR-00:
@@ -128,6 +129,14 @@ Actualización ISA-134 / STR-00:
   y lint focal PASS. Evidencia:
   `docs/strategy-planner/str-07-shell-visual.md`. Sin solver, live,
   persistencia, drag/drop, merge o promoción.
+- STR-08: implementación sobre ISA-142 aceptada. Añade `strategy.editor.v1`,
+  editor inmutable de stints, neumáticos individuales con esquina persistente,
+  DnD y alternativa de teclado, undo/redo, guardado y recarga mediante STR-03/04.
+  El bridge Wails sanitiza errores y conserva correlación; apertura lazy,
+  reintento y StrictMode tienen regresión. Playwright recorre todas las acciones
+  y recupera el documento tras reload con cero errores de navegador. Evidencia:
+  `docs/strategy-planner/str-08-stint-editor.md`. Sin solver, telemetría, live,
+  merge o promoción.
 
 ## Decisiones
 
@@ -204,15 +213,16 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-142 / STR-07, implementación lista para review independiente
-  sobre el commit aceptado de STR-06.
+- Issue activa: ISA-143 / STR-08, implementación lista para review independiente
+  sobre el commit aceptado de STR-07.
 
 ## Siguiente acción exacta
 
-Revisar ISA-142 / STR-07. Si queda `ACCEPT`, continuar ISA-143 / STR-08 apilada
-sobre este shell. No añadir telemetría, persistencia, solver o wiring transversal
-dentro de la revisión visual; STR-08 posee editor de stints y drag/drop.
+Revisar ISA-143 / STR-08. Si queda `ACCEPT`, continuar ISA-144 / STR-09 apilada
+sobre el editor persistente. No añadir telemetría, solver, replanning live ni
+otra persistencia dentro de la revisión; STR-09 posee la tabla avanzada y la
+edición manual correspondiente.
 
 ## Última actualización
 
-2026-08-02, ISA-142 / STR-07, Codex.
+2026-08-02, ISA-143 / STR-08, Codex.

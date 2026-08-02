@@ -1,4 +1,30 @@
-import { Fragment, useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type DragEvent, type KeyboardEvent } from "react";
+import {
+  appendStint,
+  assignTyre,
+  clearTyreAssignment,
+  cornerLabel,
+  deleteStint,
+  duplicateStint,
+  insertStint,
+  moveStint,
+  parseStrategyEditorDocument,
+  stintLapRange,
+  StrategyEditorError,
+  STRATEGY_CORNERS,
+  tyreUseCount,
+  type StrategyCorner,
+  type StrategyEditorDocument,
+  type StrategyStint,
+  type StrategyTyre,
+} from "../../strategy/strategy-editor";
+import {
+  createWailsStrategyEditorRuntime,
+  openOrCreateStrategyEditor,
+  type StrategyEditorRuntime,
+} from "../../strategy/strategy-editor-store";
+import type { StrategyStore } from "../../strategy/strategy-store";
+import { canonicalStrategyTimestamp } from "../../strategy/strategy-contract-v1";
 import "./strategy-planner.css";
 
 type PlannerScreen = "gallery" | "entry" | "review" | "workspace";
@@ -9,19 +35,14 @@ type StrategyPlannerPageProps = {
   demo?: boolean;
   initialScreen?: PlannerScreen;
   galleryState?: GalleryState;
+  strategyStore?: StrategyStore<StrategyEditorDocument>;
+  runtimeFactory?: () => StrategyEditorRuntime;
 };
 
 const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
   { id: "plans", label: "Estrategias" },
   { id: "stints", label: "Stints" },
   { id: "inventory", label: "Inventario" },
-];
-
-const STINTS = [
-  { id: 1, laps: "v.1–17 · 17v", lapCount: 17, compound: "MEDIUM", fuel: "82 L", pace: "2:18.4", wear: [78, 78, 77, 77] },
-  { id: 2, laps: "v.18–39 · 22v", lapCount: 22, compound: "HARD", fuel: "96 L", pace: "2:19.1", wear: [92, 92, 91, 91] },
-  { id: 3, laps: "v.40–58 · 19v", lapCount: 19, compound: "HARD", fuel: "85 L", pace: "2:19.4", wear: [88, 88, 87, 87] },
-  { id: 4, laps: "v.59–78 · 20v", lapCount: 20, compound: "SOFT", fuel: "90 L", pace: "2:18.8", wear: [84, 84, 83, 83] },
 ];
 
 const STRATEGIES = [
@@ -63,31 +84,102 @@ const STRATEGIES = [
   },
 ] as const;
 
-const TYRES = [
-  { id: "M-01", compound: "MEDIUM", status: "Montado", life: 78 },
-  { id: "H-02", compound: "HARD", status: "Libre", life: 100 },
-  { id: "H-03", compound: "HARD", status: "Libre", life: 100 },
-  { id: "S-04", compound: "SOFT", status: "Libre", life: 100 },
-  { id: "S-05", compound: "SOFT", status: "Sesión anterior", life: 72, prior: true },
-  { id: "M-06", compound: "MEDIUM", status: "Sesión anterior", life: 84, prior: true },
-  { id: "H-07", compound: "HARD", status: "Sesión anterior", life: 90, prior: true },
-  { id: "M-08", compound: "MEDIUM", status: "Sesión anterior", life: 81, prior: true },
-];
-
 export function StrategyPlannerPage({
   demo = false,
   initialScreen = "gallery",
   galleryState = demo ? "ready" : "empty",
+  strategyStore,
+  runtimeFactory = createWailsStrategyEditorRuntime,
 }: StrategyPlannerPageProps) {
+  const [ownedRuntime] = useState<StrategyEditorRuntime | null>(() => (
+    strategyStore ? null : runtimeFactory()
+  ));
+  const ownedRuntimeMountedRef = useRef(false);
+  const loadRef = useRef<{ store: StrategyStore<StrategyEditorDocument>; promise: Promise<void> } | null>(null);
+  const store = strategyStore ?? ownedRuntime?.store;
+  if (!store) throw new Error("Strategy editor store is required");
+  const storeSnapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const [screen, setScreen] = useState<PlannerScreen>(initialScreen);
   const [activePanel, setActivePanel] = useState<WorkspacePanel>("stints");
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [entryMode, setEntryMode] = useState<"manual" | "telemetry">("manual");
   const [planName, setPlanName] = useState("6h Spa · Hypercar");
+  const [editorLoading, setEditorLoading] = useState(
+    initialScreen === "workspace" && !storeSnapshot.draft,
+  );
+  const [editorError, setEditorError] = useState("");
+  const [editorLoadAttempt, setEditorLoadAttempt] = useState(0);
   const backgroundRef = useRef<HTMLDivElement>(null);
   const comparisonOpenerRef = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
+
+  useEffect(() => {
+    ownedRuntimeMountedRef.current = true;
+    return () => {
+      ownedRuntimeMountedRef.current = false;
+      if (!ownedRuntime) return;
+      queueMicrotask(() => {
+        if (!ownedRuntimeMountedRef.current) {
+          ownedRuntime.dispose();
+        }
+      });
+    };
+  }, [ownedRuntime]);
+
+  useEffect(() => {
+    if (screen !== "workspace") return;
+    if (store.getSnapshot().draft) return;
+    let active = true;
+    if (loadRef.current?.store !== store) {
+      loadRef.current = { store, promise: openOrCreateStrategyEditor(store) };
+    }
+    void loadRef.current.promise.then(
+      () => {
+        if (active) setEditorLoading(false);
+      },
+      () => {
+        if (!active) return;
+        if (loadRef.current?.store === store) loadRef.current = null;
+        setEditorError("No se pudo abrir el plan local. Reintenta o revisa Diagnóstico si el problema continúa.");
+        setEditorLoading(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [editorLoadAttempt, screen, store]);
+
+  const editorDocument = storeSnapshot.draft
+    ? tryParseStrategyEditorDocument(storeSnapshot.draft.payload)
+    : null;
+
+  const editDocument = useCallback((change: (document: StrategyEditorDocument) => StrategyEditorDocument) => {
+    setEditorError("");
+    try {
+      store.edit((draft) => ({
+        ...draft,
+        updatedAt: canonicalStrategyTimestamp(),
+        payload: change(parseStrategyEditorDocument(draft.payload)),
+      }));
+      return true;
+    } catch (error) {
+      setEditorError(error instanceof StrategyEditorError ? error.message : "No se pudo aplicar el cambio.");
+      return false;
+    }
+  }, [store]);
+
+  const enterWorkspace = useCallback(() => {
+    setEditorError("");
+    if (!store.getSnapshot().draft) setEditorLoading(true);
+    setScreen("workspace");
+  }, [store]);
+
+  const retryEditorLoad = useCallback(() => {
+    setEditorError("");
+    setEditorLoading(true);
+    setEditorLoadAttempt((attempt) => attempt + 1);
+  }, []);
 
   useEffect(() => {
     const background = backgroundRef.current;
@@ -152,7 +244,7 @@ export function StrategyPlannerPage({
           state={galleryState}
           demo={demo}
           onCreate={() => setScreen("entry")}
-          onOpen={() => setScreen("workspace")}
+          onOpen={enterWorkspace}
           onReview={() => setScreen("review")}
         />
       )}
@@ -175,25 +267,49 @@ export function StrategyPlannerPage({
           planName={planName}
           mode={entryMode}
           onBack={() => setScreen("entry")}
-          onContinue={() => setScreen("workspace")}
+          onContinue={enterWorkspace}
         />
       )}
 
       {screen === "workspace" && (
-        <Workspace
+        editorLoading ? (
+          <div className="strategy-state" role="status">Cargando editor de stints…</div>
+        ) : !editorDocument ? (
+          <div className="strategy-state strategy-state--error" role="alert">
+            <p>{editorError || "El plan guardado no es compatible o está dañado. Reintenta o revisa Diagnóstico."}</p>
+            <button type="button" onClick={retryEditorLoad}>Reintentar</button>
+          </div>
+        ) : <Workspace
           titleId={titleId}
           planName={planName}
+          document={editorDocument}
+          dirty={storeSnapshot.dirty}
+          canUndo={storeSnapshot.canUndo}
+          canRedo={storeSnapshot.canRedo}
+          busy={storeSnapshot.busy}
+          error={editorError}
           activePanel={activePanel}
           onSelectPanel={selectPanel}
           onPanelKey={handlePanelKey}
           onBack={() => setScreen("gallery")}
           onCompare={openComparison}
           onEdit={() => setScreen("entry")}
-          onSave={() => {
-            setSaveMessage(demo
-              ? "Plan guardado en esta sesión de demostración. No se ha escrito ningún dato persistente."
-              : "Borrador preparado en esta sesión. La persistencia productiva se conectará en su corte propietario.");
-          }}
+          onAppend={() => editDocument(appendStint)}
+          onInsert={(id, after) => editDocument((current) => {
+            const index = current.stints.findIndex((item) => item.id === id);
+            return insertStint(current, index + (after ? 1 : 0));
+          })}
+          onDuplicate={(id) => editDocument((current) => duplicateStint(current, id))}
+          onDelete={(id) => editDocument((current) => deleteStint(current, id))}
+          onMove={(id, target) => editDocument((current) => moveStint(current, id, target))}
+          onAssign={(stintId, corner, tyreId) => editDocument((current) => assignTyre(current, stintId, corner, tyreId))}
+          onClear={(stintId, corner) => editDocument((current) => clearTyreAssignment(current, stintId, corner))}
+          onUndo={() => store.undo()}
+          onRedo={() => store.redo()}
+          onSave={() => void store.save().then(
+            () => setSaveMessage("Plan guardado localmente. Las asignaciones se conservarán al volver a abrir Vantare."),
+            () => setEditorError("No se pudo guardar el plan. Reintenta o revisa Diagnóstico."),
+          )}
         />
       )}
 
@@ -211,6 +327,14 @@ export function StrategyPlannerPage({
       )}
     </section>
   );
+}
+
+function tryParseStrategyEditorDocument(value: unknown): StrategyEditorDocument | null {
+  try {
+    return parseStrategyEditorDocument(value);
+  } catch {
+    return null;
+  }
 }
 
 function Gallery({
@@ -349,12 +473,55 @@ function ReviewScreen({ titleId, planName, mode, onBack, onContinue }: { titleId
   );
 }
 
-function Workspace({ titleId, planName, activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit, onSave }: {
-  titleId: string; planName: string; activePanel: WorkspacePanel;
+function Workspace({
+  titleId, planName, document, dirty, canUndo, canRedo, busy, error,
+  activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit,
+  onAppend, onInsert, onDuplicate, onDelete, onMove, onAssign, onClear,
+  onUndo, onRedo, onSave,
+}: {
+  titleId: string; planName: string; document: StrategyEditorDocument;
+  dirty: boolean; canUndo: boolean; canRedo: boolean; busy: boolean; error: string;
+  activePanel: WorkspacePanel;
   onSelectPanel: (panel: WorkspacePanel) => void;
   onPanelKey: (event: KeyboardEvent<HTMLButtonElement>, panel: WorkspacePanel) => void;
-  onBack: () => void; onCompare: (opener: HTMLButtonElement) => void; onEdit: () => void; onSave: () => void;
+  onBack: () => void; onCompare: (opener: HTMLButtonElement) => void; onEdit: () => void;
+  onAppend: () => void; onInsert: (id: string, after: boolean) => void;
+  onDuplicate: (id: string) => void; onDelete: (id: string) => void;
+  onMove: (id: string, target: number) => void;
+  onAssign: (stintId: string, corner: StrategyCorner, tyreId: string) => boolean;
+  onClear: (stintId: string, corner: StrategyCorner) => void;
+  onUndo: () => void; onRedo: () => void; onSave: () => void;
 }) {
+  const [draggedTyre, setDraggedTyre] = useState<string | null>(null);
+  const [pickedTyre, setPickedTyre] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const totalLaps = document.stints.reduce((total, stint) => total + stint.lapCount, 0);
+
+  useEffect(() => {
+    function cancelTransfer(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape" || (!draggedTyre && !pickedTyre)) return;
+      event.preventDefault();
+      setDraggedTyre(null);
+      setPickedTyre(null);
+      setAnnouncement("Asignación cancelada. El plan no ha cambiado.");
+    }
+    globalThis.document.addEventListener("keydown", cancelTransfer);
+    return () => globalThis.document.removeEventListener("keydown", cancelTransfer);
+  }, [draggedTyre, pickedTyre]);
+
+  function assign(stintId: string, corner: StrategyCorner, tyreId: string) {
+    if (!onAssign(stintId, corner, tyreId)) return;
+    setDraggedTyre(null);
+    setPickedTyre(null);
+    setAnnouncement(`${tyreId} asignado a ${cornerLabel(corner)}.`);
+  }
+
+  function dropTyre(event: DragEvent<HTMLButtonElement>, stintId: string, corner: StrategyCorner) {
+    event.preventDefault();
+    const tyreId = event.dataTransfer.getData("application/x-vantare-tyre") || draggedTyre;
+    if (tyreId) assign(stintId, corner, tyreId);
+  }
+
   return (
     <div className="strategy-screen strategy-workspace">
       <header className="strategy-workspace__header">
@@ -398,19 +565,68 @@ function Workspace({ titleId, planName, activePanel, onSelectPanel, onPanelKey, 
         </aside>
 
         <main aria-label="Stints" data-compact-active={activePanel === "stints"} data-testid="strategy-column-stints" className="strategy-column strategy-column--stints strategy-panel">
-          <div className="strategy-plan-heading"><PanelHeading title="Plan de carrera" meta="4 stints · 78 vueltas · 3 paradas · 6h 04m" /><div><button type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar</button><button type="button" disabled title="La edición de stints se habilitará en el siguiente corte">＋ Stint</button></div></div>
+          <div className="strategy-plan-heading"><PanelHeading title="Plan de carrera" meta={`${document.stints.length} stints · ${totalLaps} vueltas · ${Math.max(0, document.stints.length - 1)} paradas · 6h 04m`} /><div><button type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar</button><button type="button" onClick={onAppend}>＋ Stint</button></div></div>
           <div className="strategy-legend"><span><i className="is-green" /> Desgaste cae</span><span><i /> Ritmo previsto</span></div>
           <div className="strategy-stint-columns" aria-hidden="true"><span>STINT</span><span>FRONT LEFT</span><span>FRONT RIGHT</span><span>REAR LEFT</span><span>REAR RIGHT</span></div>
-          {STINTS.map((stint, index) => <StintCard key={stint.id} stint={stint} last={index === STINTS.length - 1} />)}
+          {error && <div className="strategy-editor-error" role="alert">{error}</div>}
+          {document.stints.map((stint, index) => (
+            <StintCard
+              key={stint.id}
+              document={document}
+              stint={stint}
+              index={index}
+              last={index === document.stints.length - 1}
+              pickedTyre={pickedTyre}
+              onDrop={dropTyre}
+              onAssign={(corner) => pickedTyre && assign(stint.id, corner, pickedTyre)}
+              onClear={(corner) => onClear(stint.id, corner)}
+              onInsert={(after) => onInsert(stint.id, after)}
+              onDuplicate={() => onDuplicate(stint.id)}
+              onDelete={() => onDelete(stint.id)}
+              onMove={(target) => onMove(stint.id, target)}
+            />
+          ))}
         </main>
 
         <aside aria-label="Inventario" data-compact-active={activePanel === "inventory"} data-testid="strategy-column-inventory" className="strategy-column strategy-column--inventory">
-          <section className="strategy-panel"><PanelHeading title="Inventario" meta="4 / 8 neumáticos" />{TYRES.map((tyre, index) => <div key={tyre.id}>{index === 4 && <div className="strategy-inventory-divider"><span>SESIÓN ANTERIOR</span><small>4 usados</small></div>}<TyreRow {...tyre} /></div>)}<p className="strategy-inventory-total">Disponibles: <b>1 S · 1 M · 2 H</b></p></section>
+          <section className="strategy-panel">
+            <PanelHeading title="Inventario" meta={`${document.tyres.filter((tyre) => tyreUseCount(document, tyre.id) > 0).length} / ${document.tyres.length} neumáticos`} />
+            <p className="strategy-inventory-help">Arrastra un neumático a FL/FR/RL/RR o selecciónalo y activa la esquina con teclado. Escape cancela.</p>
+            {document.tyres.map((tyre) => (
+              <TyreRow
+                key={tyre.id}
+                tyre={tyre}
+                uses={tyreUseCount(document, tyre.id)}
+                selected={pickedTyre === tyre.id}
+                onPick={() => {
+                  setPickedTyre((current) => current === tyre.id ? null : tyre.id);
+                  setAnnouncement(pickedTyre === tyre.id ? "Selección cancelada." : `${tyre.id} seleccionado. Elige una esquina.`);
+                }}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "copy";
+                  event.dataTransfer.setData("application/x-vantare-tyre", tyre.id);
+                  setDraggedTyre(tyre.id);
+                  setAnnouncement(`${tyre.id} listo para asignar.`);
+                }}
+                onDragEnd={() => setDraggedTyre(null)}
+              />
+            ))}
+            <p className="strategy-inventory-total">Identidades físicas: <b>{document.tyres.length}</b></p>
+          </section>
           <section className="strategy-panel strategy-manual-summary"><PanelHeading title="Entrada manual" meta="Resumen" /><dl><div><dt>Duración</dt><dd>6 h</dd></div><div><dt>Vueltas</dt><dd>78</dd></div><div><dt>Fuel</dt><dd>4,8 L/v</dd></div><div><dt>Neumáticos</dt><dd>8</dd></div></dl><button type="button" onClick={onEdit}>Editar datos</button></section>
         </aside>
       </div>
 
-      <footer className="strategy-action-bar"><p><span aria-hidden="true">●</span> Cambios de esta sesión</p><div><button className="strategy-button strategy-button--secondary" type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar planes</button><button className="strategy-button strategy-button--primary" type="button" onClick={onSave}>Guardar plan</button></div></footer>
+      <p className="strategy-sr-only" aria-live="polite">{announcement}</p>
+      <footer className="strategy-action-bar">
+        <p><span aria-hidden="true">●</span> {dirty ? "Cambios sin guardar" : "Plan guardado"}</p>
+        <div>
+          <button type="button" disabled={!canUndo || busy} onClick={onUndo}>Deshacer</button>
+          <button type="button" disabled={!canRedo || busy} onClick={onRedo}>Rehacer</button>
+          <button className="strategy-button strategy-button--secondary" type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar planes</button>
+          <button className="strategy-button strategy-button--primary" type="button" onClick={onSave} disabled={!dirty || busy}>Guardar plan</button>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -518,29 +734,62 @@ function FuelSavePanel() {
   );
 }
 
-function StintCard({ stint, last }: { stint: (typeof STINTS)[number]; last: boolean }) {
+function StintCard({
+  document, stint, index, last, pickedTyre, onDrop, onAssign, onClear,
+  onInsert, onDuplicate, onDelete, onMove,
+}: {
+  document: StrategyEditorDocument; stint: StrategyStint; index: number; last: boolean;
+  pickedTyre: string | null;
+  onDrop: (event: DragEvent<HTMLButtonElement>, stintId: string, corner: StrategyCorner) => void;
+  onAssign: (corner: StrategyCorner) => void; onClear: (corner: StrategyCorner) => void;
+  onInsert: (after: boolean) => void; onDuplicate: () => void; onDelete: () => void;
+  onMove: (target: number) => void;
+}) {
+  const range = stintLapRange(document, index);
   return (
     <div className="strategy-stint-wrap">
       <article className="strategy-stint" data-laps={stint.lapCount} data-testid={`strategy-stint-${stint.id}`}>
         <header>
-          <div><h3>Stint {stint.id}</h3><span>{stint.laps}</span></div>
-          <span className={`strategy-compound is-${stint.compound.toLowerCase()}`}>● {stint.compound}</span>
+          <div><h3>Stint {index + 1}</h3><span>v.{range.start}–{range.end} · {stint.lapCount}v</span></div>
+          <div className="strategy-stint-actions" aria-label={`Acciones del stint ${index + 1}`}>
+            <button type="button" onClick={() => onMove(index - 1)} disabled={index === 0} aria-label={`Mover stint ${index + 1} arriba`}>↑</button>
+            <button type="button" onClick={() => onMove(index + 1)} disabled={last} aria-label={`Mover stint ${index + 1} abajo`}>↓</button>
+            <button type="button" onClick={() => onInsert(false)} aria-label={`Insertar antes del stint ${index + 1}`}>＋↑</button>
+            <button type="button" onClick={() => onInsert(true)} aria-label={`Insertar después del stint ${index + 1}`}>＋↓</button>
+            <button type="button" onClick={onDuplicate} aria-label={`Duplicar stint ${index + 1}`}>⧉</button>
+            <button type="button" onClick={onDelete} aria-label={`Eliminar stint ${index + 1}`}>×</button>
+          </div>
         </header>
         <div className="strategy-tyre-grid">
-          {["FL", "FR", "RL", "RR"].map((corner, index) => (
-            <div key={corner}>
-              <span>{corner}</span>
-              <b>{stint.wear[index]}%</b>
-              <i><em style={{ width: `${stint.wear[index]}%` }} /></i>
-            </div>
-          ))}
+          {STRATEGY_CORNERS.map((corner) => {
+            const tyreId = stint.assignments[corner];
+            const tyre = document.tyres.find((item) => item.id === tyreId);
+            return (
+              <div key={corner} className={`strategy-tyre-slot ${pickedTyre ? "is-ready" : ""}`}>
+                <button
+                  type="button"
+                  data-testid={`strategy-slot-${stint.id}-${corner}`}
+                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
+                  onDrop={(event) => onDrop(event, stint.id, corner)}
+                  onClick={() => onAssign(corner)}
+                  aria-label={`${cornerLabel(corner)} del stint ${index + 1}: ${tyreId ?? "sin neumático"}${pickedTyre ? `. Asignar ${pickedTyre}` : ""}`}
+                >
+                  <span>{cornerLabel(corner)}</span>
+                  <b>{tyreId ?? "—"}</b>
+                  <small>{tyre ? `${tyre.remainingPercent}% · ${tyre.compound}` : "Vacío"}</small>
+                  <i><em style={{ width: `${tyre?.remainingPercent ?? 0}%` }} /></i>
+                </button>
+                {tyreId && <button type="button" className="strategy-slot-clear" onClick={() => onClear(corner)} aria-label={`Quitar ${tyreId} de ${cornerLabel(corner)} del stint ${index + 1}`}>×</button>}
+              </div>
+            );
+          })}
         </div>
         <footer>
-          <span>Fuel <b>{stint.fuel}</b></span>
+          <span>Fuel <b>{stint.fuelLitres} L</b></span>
           <span>Stint <b>{stint.lapCount}v</b></span>
           <span>Ritmo <b>{stint.pace}</b></span>
           <span>Deg. pico <b>demo</b></span>
-          <span className="strategy-fuel-save-tag">FUEL-SAVE {stint.id === 1 ? "OFF" : "ON"}</span>
+          <span className="strategy-fuel-save-tag">FUEL-SAVE {index === 0 ? "OFF" : "ON"}</span>
           <div className="strategy-spark" aria-label="Tendencia visual de ejemplo"><i /><i /></div>
         </footer>
       </article>
@@ -549,13 +798,25 @@ function StintCard({ stint, last }: { stint: (typeof STINTS)[number]; last: bool
   );
 }
 
-function TyreRow({ id, compound, status, life, prior = false }: { id: string; compound: string; status: string; life: number; prior?: boolean }) {
+function TyreRow({ tyre, uses, selected, onPick, onDragStart, onDragEnd }: {
+  tyre: StrategyTyre; uses: number; selected: boolean; onPick: () => void;
+  onDragStart: (event: DragEvent<HTMLButtonElement>) => void; onDragEnd: () => void;
+}) {
   return (
-    <article className={`strategy-tyre-row ${status === "Montado" ? "is-mounted" : ""} ${prior ? "is-prior" : ""}`}>
-      <span className={`strategy-compound is-${compound.toLowerCase()}`}>● {compound}</span>
-      <div><b>{id}</b><small>{status}</small></div>
-      <strong>{life}%</strong>
-    </article>
+    <button
+      className={`strategy-tyre-row ${uses > 0 ? "is-mounted" : ""} ${selected ? "is-selected" : ""}`}
+      type="button"
+      draggable
+      data-testid={`strategy-tyre-${tyre.id}`}
+      aria-pressed={selected}
+      onClick={onPick}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+    >
+      <span className={`strategy-compound is-${tyre.compound}`}>● {tyre.compound.toUpperCase()}</span>
+      <div><b>{tyre.id}</b><small>{uses} stint{uses === 1 ? "" : "s"}{tyre.lockedCorner ? ` · ${cornerLabel(tyre.lockedCorner)}` : " · libre"}</small></div>
+      <strong>{tyre.remainingPercent}%</strong>
+    </button>
   );
 }
 

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const evidenceDir = path.resolve(frontendDir, "../docs/strategy-planner/evidence/str-07");
+const evidenceDir = path.resolve(frontendDir, "../docs/strategy-planner/evidence/str-08");
 const port = Number(process.env.STRATEGY_VISUAL_PORT ?? 5187);
 const origin = `http://127.0.0.1:${port}`;
 const serverLog = [];
@@ -44,6 +44,8 @@ try {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto(`${origin}/strategy-planner-harness.html?access=tester`, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("vantare.strategy.harness.repository.v1"));
+  await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Mis planes" }).waitFor();
   await page.screenshot({ path: path.join(evidenceDir, "actual-gallery-wide.png"), fullPage: true });
 
@@ -53,6 +55,19 @@ try {
   await page.screenshot({ path: path.join(evidenceDir, "actual-review-wide.png") });
   await page.getByRole("button", { name: /Crear workspace/ }).click();
   await page.getByRole("heading", { name: "Plan de carrera" }).waitFor();
+
+  await verifyEditorInteractions(page);
+  await page.getByRole("button", { name: "Guardar plan" }).click();
+  await page.getByRole("status").filter({ hasText: "guardado localmente" }).waitFor();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Mis planes" }).waitFor();
+  await page.getByRole("button", { name: "Abrir workspace" }).click();
+  await page.getByRole("heading", { name: "Plan de carrera" }).waitFor();
+  await page.getByTestId("strategy-slot-stint-1-front_left").getByText("S-05").waitFor();
+  await page.getByTestId("strategy-slot-stint-1-front_right").getByText("S-06").waitFor();
+  if (await page.getByRole("button", { name: "Guardar plan" }).isEnabled()) {
+    throw new Error("Reloaded Strategy document is unexpectedly dirty");
+  }
 
   const layouts = [
     { name: "wide", width: 1920, height: 1080 },
@@ -79,7 +94,7 @@ try {
     metrics[layout.name] = await assertLayout(page, layout.name);
     await page.screenshot({ path: path.join(evidenceDir, `actual-workspace-${layout.name}.png`) });
     if (layout.name === "wide") {
-      await page.getByTestId("strategy-stint-4").scrollIntoViewIfNeeded();
+      await page.getByTestId("strategy-stint-stint-4").scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDir, "actual-workspace-wide-final-stint.png") });
     }
     if (layout.name === "medium") {
@@ -116,9 +131,6 @@ try {
   if (!(await comparisonOpener.evaluate((element) => element === document.activeElement))) {
     throw new Error("Comparison dialog did not restore focus to its opener");
   }
-  await page.getByRole("button", { name: "Guardar plan" }).click();
-  await page.getByRole("status").waitFor();
-
   if (consoleErrors.length || pageErrors.length) {
     throw new Error(`Browser errors: ${JSON.stringify({ consoleErrors, pageErrors })}`);
   }
@@ -131,6 +143,40 @@ try {
 } finally {
   await browser?.close();
   stopProcessTree(server);
+}
+
+async function verifyEditorInteractions(page) {
+  const stints = () => page.locator('[data-testid^="strategy-stint-"]');
+  await page.getByRole("button", { name: "＋ Stint" }).click();
+  if (await stints().count() !== 5) throw new Error("Appending a stint did not create exactly one item");
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  if (await stints().count() !== 4) throw new Error("Undo did not restore the stint list");
+  await page.getByRole("button", { name: "Rehacer" }).click();
+  if (await stints().count() !== 5) throw new Error("Redo did not restore the appended stint");
+  await page.getByRole("button", { name: "Insertar antes del stint 2" }).click();
+  await page.getByRole("button", { name: "Duplicar stint 3" }).click();
+  await page.getByRole("button", { name: "Mover stint 4 arriba" }).click();
+  await page.getByRole("button", { name: "Eliminar stint 4" }).click();
+  if (await stints().count() !== 6) throw new Error("Stint insert/duplicate/reorder/delete flow is incoherent");
+
+  const untouched = await page.getByTestId("strategy-slot-stint-1-rear_left").textContent();
+  await page.getByTestId("strategy-tyre-H-07").click();
+  await page.keyboard.press("Escape");
+  if (await page.getByTestId("strategy-tyre-H-07").getAttribute("aria-pressed") !== "false") {
+    throw new Error("Escape did not cancel keyboard tyre assignment");
+  }
+  if (await page.getByTestId("strategy-slot-stint-1-rear_left").textContent() !== untouched) {
+    throw new Error("Cancelling tyre assignment changed the document");
+  }
+
+  await page.getByTestId("strategy-tyre-S-05").dragTo(page.getByTestId("strategy-slot-stint-1-front_left"));
+  await page.getByTestId("strategy-slot-stint-1-front_left").getByText("S-05").waitFor();
+  await page.getByTestId("strategy-tyre-S-06").click();
+  await page.getByTestId("strategy-slot-stint-1-front_right").click();
+  await page.getByTestId("strategy-slot-stint-1-front_right").getByText("S-06").waitFor();
+  await page.getByTestId("strategy-tyre-S-06").click();
+  await page.locator('[data-testid^="strategy-slot-"][data-testid$="-rear_right"]').nth(1).click();
+  await page.getByRole("alert").filter({ hasText: "S-06 está ligado a FR" }).waitFor();
 }
 
 async function waitForServer(url, timeoutMs) {

@@ -1,3 +1,33 @@
+Nota ISA-218 / TAU-04A (2026-08-02, envío idempotente de reportes):
+- Nueva RPC autenticada `testing_center_submit_report(...)`, apilada sobre
+  TAU-03R, sin UI, bridge Wails, GitHub, Codex, Discord o deploy.
+- Identidad, rol y canal permitido se derivan en servidor; el cliente no puede
+  escribir tablas directamente ni elegir una asignación automática.
+- Acción, resultado esperado y observado son obligatorios. Diagnóstico y logs
+  conservan consentimientos separados; el JSON se valida con shape y tipos
+  cerrados, límites, SHA-256 exacto y contadores reconciliados.
+- La clave idempotente se serializa como JSON tipado canónico, se bloquea por
+  usuario y produce un único reporte/evento incluso con peticiones concurrentes.
+- Gates locales x3: core 72, access 56, report 55, rollback/reaplicación y
+  carrera exactly-once PASS. Autoridad:
+  `docs/runbooks/testing-center-report-submission.md`.
+- Estado: PR draft #108 en review; sin migración remota, merge, promoción o
+  build.
+
+Nota ISA-215 / TAU-03 (2026-08-02, diagnóstico local del Testing Center):
+- Nuevo paquete puro `testing-center.diagnostic.v1`, apilado sobre TAU-02C, sin
+  UI, red, persistencia, PostHog, GitHub, Codex o Discord.
+- Metadata y logs usan allowlists cerradas, límites de 4 KiB crudos/512 B
+  sanitizados, máximo 100 entradas y payload final de 64 KiB.
+- Preview y transporte comparten exactamente los mismos bytes y SHA-256; el
+  draft puede descartarse y deja de ser accesible.
+- La revisión adversarial corrigió rutas con espacios y acotó el texto antes de
+  aplicar regex. Texto libre no garantiza anonimización semántica, por lo que
+  TAU-04 deberá mantener logs opt-in y preview obligatorio.
+- Gates focales: x20, vet, race x10 y fuzzing PASS. Autoridad:
+  `docs/runbooks/testing-center-diagnostics.md`.
+- Estado: implementación local en review; sin merge, promoción o build.
+
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
   originales, payloads, PII ni errores libres.

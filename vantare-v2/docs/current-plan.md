@@ -26,6 +26,27 @@ Nota roadmap Engineer Beta ENG-12..29 (2026-08-02, planificado):
   versionados; ningún LLM decide hechos, intent, números o acciones críticas.
 - Esta rama es solo documental. Sin producto, merge, promoción o gate cerrado.
 
+Nota ISA-183 / ENG-12 (2026-08-02, In Review):
+- Catálogo cerrado `engineer.commands.v1` con 20 intents propios: 14 consultas
+  y 6 acciones. Cada intent declara slots tipados, precondición, respuesta,
+  mutabilidad y confirmación; las acciones siempre exigen confirmación.
+- Paridad estructural completa en `es`, `en`, `it` y `pt-BR`, incluidos wake
+  words y vocabulario de confirmar/cancelar. El parser estricto rechaza IDs,
+  locales, campos, placeholders, frases o slots fuera del contrato.
+- El harness es exclusivamente textual y fail-closed: no ejecuta acciones ni
+  conecta STT, PTT, micrófono, audio o runtime productivo. Conserva números de
+  coche con ceros iniciales y valida números, unidades, enums y rangos.
+- Sanitización demostrada: la salida de evaluación no contiene transcripciones,
+  nombres ni valores de slots. El protocolo de corpus humano exige consentimiento,
+  almacenamiento externo a Git, separación por hablante y métricas por locale,
+  micrófono, ruido, intent, slot y wake word.
+- Evidencia sintética y tests no autorizan voz real: command readiness,
+  intent accuracy humana, FAR/FRR y wake word siguen **NO-GO** hasta ENG-13.
+- Checks: paquete focal x20, fuzz 5 s, Engineer completo, vet Engineer,
+  `go test ./...` y build frontend pasan. `-race` no está disponible porque el
+  entorno usa `CGO_ENABLED=0`.
+- Re-review independiente final: `APPROVED`, P0/P1/P2/P3 = 0.
+
 Nota ISA-182 / ENG-11 (2026-08-02, In Review):
 - Package manager test-only con manifest v1 cerrado y versionado, descargas
   acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y

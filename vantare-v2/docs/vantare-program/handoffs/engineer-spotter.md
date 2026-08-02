@@ -45,6 +45,11 @@ ISA-182 / ENG-11 añade un package manager y un voice-host estrictamente
 test-only. El manifest, descarga, almacenamiento, ownership del hijo y teardown
 quedan demostrados; no existe inferencia, micrófono, wiring o nueva autoridad
 de voz. Commands, FAR/FRR, wake word y TTS dinámico siguen NO-GO.
+ISA-183 / ENG-12 define `engineer.commands.v1`: un catálogo propio, cerrado y
+simétrico de 20 intents en cuatro locales, con slots tipados, precondiciones,
+respuestas y confirmación obligatoria para cada acción. Su harness es solo texto,
+no ejecuta acciones ni conecta voz. El protocolo humano conserva command
+readiness, FAR/FRR y wake word en NO-GO hasta evidencia consentida real.
 El roadmap restante queda fijado en
 `docs/engineer/engineer-beta-roadmap.md`: ENG-12 a ENG-29 forman un DAG de 18
 microcortes. Los contratos y runtimes objetivos pueden avanzar en paralelo;
@@ -66,10 +71,11 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa: `vantareapp/engineer-beta-roadmap-eng12-plus` (documental).
-- Base: `5b4e0d315d54f99e8d404e617ad8873cedbd3277` (ISA-182 / ENG-11).
-- Composición: ENG-02 a ENG-11 están en la base exacta. La rama activa añade
-  exclusivamente roadmap, handoff y orden Linear; no modifica producto.
+- Rama activa:
+  `vantareapp/isa-183-eng-12-catalogo-de-comandos-intents-y-protocolo-de-corpus`.
+- Base: `ddfb80248bc1a430ad6530e030617f0b8bf59967` (roadmap ENG-12+ aceptado).
+- Composición: ENG-02 a ENG-11 y el roadmap aceptado están en la base exacta.
+  La rama activa añade únicamente ENG-12; no conecta STT, PTT, audio ni runtime.
 - Promoción: ninguna.
 - Evidencia ENG-11: manifest cerrado bajo Git; descargas con hash/tamaño,
   límites, cancelación y promoción segura; rutas y delete reparse-safe;
@@ -293,7 +299,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO, Whisper condicionado y review `ACCEPT` |
 | En revisión | ISA-181 / ENG-10, corpus humano genérico; `base` condicionado, commands/FAR/FRR/wake word NO-GO; review independiente sin findings abiertos |
 | En revisión | ISA-182 / ENG-11, package manager y voice-host test-only; lifecycle demostrado, command readiness NO-GO |
-| Backlog | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; primer corte ejecutable |
+| En revisión | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; voz real continúa NO-GO |
 | Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
 | Backlog | ISA-185..190 / ENG-14..19, PTT, diálogo, audio, personalidades, Spotter y monitores |
 | Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |
@@ -304,14 +310,24 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Iniciar ISA-183 / ENG-12 sobre el HEAD documental aceptado del roadmap en
-worktree aislado. Debe cerrar catálogo, intents y protocolo de corpus, pero
-conservar command readiness NO-GO. Después, la orquestación puede avanzar los
-cortes objetivos no bloqueados que enumera
-`docs/engineer/engineer-beta-roadmap.md`; ENG-20/21 no
-empiezan productivamente hasta evidencia humana ENG-13.
+Revisar y aceptar técnicamente ISA-183 / ENG-12 sin promoverla. Después, la
+orquestación puede iniciar los cortes objetivos no bloqueados enumerados en
+`docs/engineer/engineer-beta-roadmap.md`. ISA-184 / ENG-13 sigue siendo un gate
+humano: ENG-20/21 no empiezan productivamente hasta disponer de corpus consentido
+y métricas reales de intent, slots, FAR/FRR y wake word.
 
 ## Última actualización
+
+2026-08-02, ISA-183 / ENG-12 implementa `engineer.commands.v1` con 14 consultas,
+6 acciones y paridad `es/en/it/pt-BR`. Cada acción requiere confirmación y el
+harness textual falla cerrado ante frases ambiguas, números, unidades, slots o
+locales inválidos; nunca ejecuta acciones. La salida sanitizada elimina texto,
+nombres y valores. El protocolo humano exige consentimiento, corpus fuera de Git,
+separación por hablante y medición por locale/micrófono/ruido. Focal x20, fuzz,
+Engineer, vet, build frontend y suite Go global pasan. `-race` no es ejecutable
+con `CGO_ENABLED=0`. Sin voz productiva, audio, micrófono o promoción; command
+readiness, FAR/FRR y wake word permanecen NO-GO.
+Re-review independiente final `APPROVED`: P0/P1/P2/P3 = 0.
 
 2026-08-02, se planifica el resto completo de Engineer Beta. Linear contiene
 ISA-183..200, cuatro milestones y dependencias DAG. ENG-12 es el primer corte;

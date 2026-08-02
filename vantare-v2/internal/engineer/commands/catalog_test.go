@@ -1,130 +1,143 @@
 package commands
 
 import (
+	"encoding/json"
+	"errors"
+	"reflect"
 	"testing"
 )
 
-func TestCatalog_ContainsExpectedCommands(t *testing.T) {
-	expected := []struct {
-		phrase string
-		action string
+func TestCatalogV1ValidatesAndRoundTrips(t *testing.T) {
+	catalog := DefaultCatalogV1()
+	if err := catalog.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	encoded, err := json.Marshal(catalog)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	decoded, err := ParseCatalog(encoded)
+	if err != nil {
+		t.Fatalf("ParseCatalog() error = %v", err)
+	}
+	if !reflect.DeepEqual(decoded, catalog) {
+		t.Fatal("catalog changed during JSON roundtrip")
+	}
+}
+
+func TestCatalogV1IsSymmetricAcrossLocales(t *testing.T) {
+	catalog := DefaultCatalogV1()
+	if len(catalog.Intents) != 20 {
+		t.Fatalf("intent count = %d, want 20", len(catalog.Intents))
+	}
+
+	for _, intent := range catalog.Intents {
+		for _, locale := range SupportedLocales() {
+			if len(intent.Phrases[locale]) == 0 {
+				t.Errorf("intent %q has no phrases for %q", intent.ID, locale)
+			}
+		}
+	}
+	for _, locale := range SupportedLocales() {
+		if catalog.WakeWords[locale] == "" {
+			t.Errorf("missing wake word for %q", locale)
+		}
+		if len(catalog.Dialogue.Confirm[locale]) == 0 || len(catalog.Dialogue.Cancel[locale]) == 0 {
+			t.Errorf("missing dialogue terms for %q", locale)
+		}
+	}
+}
+
+func TestCatalogV1SeparatesQueriesAndConfirmableActions(t *testing.T) {
+	catalog := DefaultCatalogV1()
+	queries := 0
+	actions := 0
+	for _, intent := range catalog.Intents {
+		switch intent.Kind {
+		case KindQuery:
+			queries++
+			if intent.Mutable || intent.RequiresConfirmation {
+				t.Errorf("query %q is mutable or confirmable", intent.ID)
+			}
+		case KindAction:
+			actions++
+			if !intent.Mutable || !intent.RequiresConfirmation {
+				t.Errorf("action %q does not require confirmation", intent.ID)
+			}
+		default:
+			t.Errorf("intent %q has unknown kind %q", intent.ID, intent.Kind)
+		}
+		if intent.ResponseKey == "" || len(intent.Preconditions) == 0 {
+			t.Errorf("intent %q lacks response or preconditions", intent.ID)
+		}
+	}
+	if queries != 14 || actions != 6 {
+		t.Fatalf("query/action count = %d/%d, want 14/6", queries, actions)
+	}
+}
+
+func TestCatalogV1RejectsUnsafeOrAmbiguousDefinitions(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*Catalog)
+		want   error
 	}{
-		{"request pit stop", "request"},
-		{"confirm pit stop", "confirm"},
-		{"abort pit stop", "abort"},
-		{"box this lap", "request"},
-		{"fuel", "fuel"},
-		{"tyres", "tyres"},
-		{"front wing", "front_wing"},
-		{"rear wing", "rear_wing"},
-		{"engine mode", "engine_mode"},
-		{"brake bias", "brake_bias"},
-		{"headlights", "headlights"},
-		{"wiper", "wiper"},
-		{"rain light", "rain_light"},
-		{"driver swap", "driver_swap"},
+		{
+			name: "duplicate phrase across intents",
+			mutate: func(catalog *Catalog) {
+				catalog.Intents[1].Phrases[LocaleEnglish][0] = catalog.Intents[0].Phrases[LocaleEnglish][0]
+			},
+			want: ErrAmbiguousCatalog,
+		},
+		{
+			name: "action without confirmation",
+			mutate: func(catalog *Catalog) {
+				catalog.Intents[14].RequiresConfirmation = false
+			},
+			want: ErrInvalidCatalog,
+		},
+		{
+			name: "unknown slot placeholder",
+			mutate: func(catalog *Catalog) {
+				catalog.Intents[4].Phrases[LocaleEnglish][0] = "what is the gap to {missing}"
+			},
+			want: ErrInvalidCatalog,
+		},
+		{
+			name: "control character",
+			mutate: func(catalog *Catalog) {
+				catalog.Intents[0].Phrases[LocaleEnglish][0] += "\x00"
+			},
+			want: ErrInvalidCatalog,
+		},
+		{
+			name: "intent outside v1",
+			mutate: func(catalog *Catalog) {
+				catalog.Intents[0].ID = "query.future"
+			},
+			want: ErrInvalidCatalog,
+		},
 	}
 
-	if len(Catalog) != len(expected) {
-		t.Fatalf("Catalog length: got %d want %d", len(Catalog), len(expected))
-	}
-
-	for i, exp := range expected {
-		cmd := Catalog[i]
-		if cmd.Phrase != exp.phrase {
-			t.Errorf("Catalog[%d].Phrase: got %q want %q", i, cmd.Phrase, exp.phrase)
-		}
-		if cmd.Action != exp.action {
-			t.Errorf("Catalog[%d].Action: got %q want %q", i, cmd.Action, exp.action)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			catalog := DefaultCatalogV1()
+			tt.mutate(&catalog)
+			if err := catalog.Validate(); !errors.Is(err, tt.want) {
+				t.Fatalf("Validate() error = %v, want %v", err, tt.want)
+			}
+		})
 	}
 }
 
-func TestFindCommand_ExactMatch(t *testing.T) {
-	cmd := FindCommand("request pit stop")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "request" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "request")
-	}
-}
+func TestDefaultCatalogV1ReturnsIndependentValues(t *testing.T) {
+	first := DefaultCatalogV1()
+	first.Intents[0].Phrases[LocaleSpanish][0] = "mutated"
+	first.WakeWords[LocaleSpanish] = "mutated"
 
-func TestFindCommand_CaseInsensitive(t *testing.T) {
-	cmd := FindCommand("BOX THIS LAP")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "request" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "request")
-	}
-}
-
-func TestFindCommand_PrefixMatch(t *testing.T) {
-	// "fuel" should match "fuel" even with extra text
-	cmd := FindCommand("fuel to end")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "fuel" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "fuel")
-	}
-}
-
-func TestFindCommand_NoMatch(t *testing.T) {
-	cmd := FindCommand("nonexistent command")
-	if cmd != nil {
-		t.Fatalf("expected nil for unmatched phrase, got %+v", cmd)
-	}
-}
-
-func TestFindCommand_EmptyPhrase(t *testing.T) {
-	cmd := FindCommand("")
-	if cmd != nil {
-		t.Fatalf("expected nil for empty phrase, got %+v", cmd)
-	}
-}
-
-func TestFindCommand_WhitespaceTrimmed(t *testing.T) {
-	cmd := FindCommand("  tyres  ")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "tyres" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "tyres")
-	}
-}
-
-func TestFindCommand_PrefixPriority(t *testing.T) {
-	// "fuel" comes before other F-prefixed entries in catalog order.
-	// FindCommand returns the first match.
-	cmd := FindCommand("fuel")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "fuel" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "fuel")
-	}
-}
-
-func TestFindCommand_PrefixFindsCorrectEntry(t *testing.T) {
-	// "front wing" should match exactly
-	cmd := FindCommand("front wing")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "front_wing" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "front_wing")
-	}
-}
-
-func TestFindCommand_TrailingTextAfterMatch(t *testing.T) {
-	// "driver swap please" should match "driver swap"
-	cmd := FindCommand("driver swap please")
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-	if cmd.Action != "driver_swap" {
-		t.Fatalf("Action: got %q want %q", cmd.Action, "driver_swap")
+	second := DefaultCatalogV1()
+	if second.Intents[0].Phrases[LocaleSpanish][0] == "mutated" || second.WakeWords[LocaleSpanish] == "mutated" {
+		t.Fatal("DefaultCatalogV1 returned shared mutable state")
 	}
 }

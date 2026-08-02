@@ -1,0 +1,657 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "vantare-ta03b-duckdb-1.5.5-windows-amd64",
+  "documentNamespace": "https://vantare.app/sbom/ta03b/duckdb-1.5.5-windows-amd64/2f3204187a8feb75ef84f7d115a78f986beff6e58cf800f369233b95b87d4e2d",
+  "creationInfo": {
+    "created": "2026-08-01T00:00:00Z",
+    "creators": [
+      "Tool: Vantare TA-03B generate-sbom.ps1"
+    ],
+    "comment": "Generated from pinned official release assets, DuckDB commit, runtime static-extension inventory and the helper's Go build information."
+  },
+  "documentDescribes": [
+    "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+    "SPDXRef-Package-duckdb-runtime"
+  ],
+  "packages": [
+    {
+      "name": "vantare-ta03b-duckdb-helper",
+      "SPDXID": "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+      "versionInfo": "research-spike",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2f3204187a8feb75ef84f7d115a78f986beff6e58cf800f369233b95b87d4e2d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "name": "duckdb.dll",
+      "SPDXID": "SPDXRef-Package-duckdb-runtime",
+      "versionInfo": "1.5.5",
+      "supplier": "Organization: DuckDB Foundation",
+      "downloadLocation": "https://github.com/duckdb/duckdb/releases/download/v1.5.5/libduckdb-windows-amd64.zip",
+      "filesAnalyzed": false,
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2b7468a4ad844429e6af2fde0b5f91893e8130a5686a88f11442ab547c7ede46"
+        }
+      ],
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2018-2025 Stichting DuckDB Foundation",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:github/duckdb/duckdb@v1.5.5"
+        }
+      ],
+      "comment": "Official Windows amd64 DLL; Authenticode=Valid; signer=CN=Stichting DuckDB Foundation, O=Stichting DuckDB Foundation, L=Amsterdam, C=NL; source commit=d8cdaa33fda8df955cc76ef58a280f68f4cd43fa; source archive SHA256=102813201cf8072b8a56b6013978963f3c89202a148fd152d06909477e36fbf8."
+    },
+    {
+      "name": "github.com/duckdb/duckdb-go/v2",
+      "SPDXID": "SPDXRef-Package-go-duckdb-go",
+      "versionInfo": "v2.10505.0",
+      "downloadLocation": "https://github.com/duckdb/duckdb-go/v2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/github.com/duckdb/duckdb-go/v2@v2.10505.0"
+        }
+      ],
+      "comment": "License file SHA256=1c80811fb9a8e4f9ec842a2573d118f56605b757f8fa40940f26ae4c495ffaae; present in go version -m output of helper SHA256 2f3204187a8feb75ef84f7d115a78f986beff6e58cf800f369233b95b87d4e2d."
+    },
+    {
+      "name": "github.com/duckdb/duckdb-go-bindings",
+      "SPDXID": "SPDXRef-Package-go-duckdb-go-bindings",
+      "versionInfo": "v0.10505.0",
+      "downloadLocation": "https://github.com/duckdb/duckdb-go-bindings",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/github.com/duckdb/duckdb-go-bindings@v0.10505.0"
+        }
+      ],
+      "comment": "License file SHA256=075c33400ffcb0c586dd106a029d3e733e9da3693f8fcb9cebfc651c8a2f14e3; present in go version -m output of helper SHA256 2f3204187a8feb75ef84f7d115a78f986beff6e58cf800f369233b95b87d4e2d."
+    },
+    {
+      "name": "github.com/go-viper/mapstructure/v2",
+      "SPDXID": "SPDXRef-Package-go-mapstructure",
+      "versionInfo": "v2.5.0",
+      "downloadLocation": "https://github.com/go-viper/mapstructure/v2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/github.com/go-viper/mapstructure/v2@v2.5.0"
+        }
+      ],
+      "comment": "License file SHA256=22adc4abdece712a737573672f082fd61ac2b21df878efb87ffcff4354a07f26; present in go version -m output of helper SHA256 2f3204187a8feb75ef84f7d115a78f986beff6e58cf800f369233b95b87d4e2d."
+    },
+    {
+      "name": "github.com/google/uuid",
+      "SPDXID": "SPDXRef-Package-go-google-uuid",
+      "versionInfo": "v1.6.0",
+      "downloadLocation": "https://github.com/google/uuid",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/github.com/google/uuid@v1.6.0"
+        }
+      ],
+      "comment": "License file SHA256=0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d; present in go version -m output of helper SHA256 2f3204187a8feb75ef84f7d115a78f986beff6e58cf800f369233b95b87d4e2d."
+    },
+    {
+      "name": "duckdb-extension-autocomplete",
+      "SPDXID": "SPDXRef-Package-duckdb-extension-autocomplete",
+      "versionInfo": "1.5.5",
+      "downloadLocation": "https://github.com/duckdb/duckdb/tree/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/extension/autocomplete",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2018-2025 Stichting DuckDB Foundation",
+      "comment": "Reported as STATICALLY_LINKED by duckdb_extensions() in the exact DLL."
+    },
+    {
+      "name": "duckdb-extension-core_functions",
+      "SPDXID": "SPDXRef-Package-duckdb-extension-core-functions",
+      "versionInfo": "1.5.5",
+      "downloadLocation": "https://github.com/duckdb/duckdb/tree/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/extension/core_functions",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2018-2025 Stichting DuckDB Foundation",
+      "comment": "Reported as STATICALLY_LINKED by duckdb_extensions() in the exact DLL."
+    },
+    {
+      "name": "duckdb-extension-icu",
+      "SPDXID": "SPDXRef-Package-duckdb-extension-icu",
+      "versionInfo": "1.5.5",
+      "downloadLocation": "https://github.com/duckdb/duckdb/tree/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/extension/icu",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2018-2025 Stichting DuckDB Foundation",
+      "comment": "Reported as STATICALLY_LINKED by duckdb_extensions() in the exact DLL."
+    },
+    {
+      "name": "duckdb-extension-json",
+      "SPDXID": "SPDXRef-Package-duckdb-extension-json",
+      "versionInfo": "1.5.5",
+      "downloadLocation": "https://github.com/duckdb/duckdb/tree/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/extension/json",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2018-2025 Stichting DuckDB Foundation",
+      "comment": "Reported as STATICALLY_LINKED by duckdb_extensions() in the exact DLL."
+    },
+    {
+      "name": "duckdb-extension-parquet",
+      "SPDXID": "SPDXRef-Package-duckdb-extension-parquet",
+      "versionInfo": "1.5.5",
+      "downloadLocation": "https://github.com/duckdb/duckdb/tree/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/extension/parquet",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2018-2025 Stichting DuckDB Foundation",
+      "comment": "Reported as STATICALLY_LINKED by duckdb_extensions() in the exact DLL."
+    },
+    {
+      "name": "fmt",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-fmt",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/fmt/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=825c9324e70f8c839c8ba910543dd4a7daee243b86ef960594c11381a19980b8."
+    },
+    {
+      "name": "yyjson",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-yyjson",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/yyjson/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=734d7fb3eb56f0a04e6b7ab0c5d3634624a8bfaa2acc87a2c03a029b20868cf8."
+    },
+    {
+      "name": "utf8proc",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-utf8proc",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/utf8proc/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT AND Unicode-3.0",
+      "licenseDeclared": "MIT AND Unicode-3.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=fbc720fcc90fb44396985646f67e4d19be03e0c0539f7138ed9dc6efba49dc49."
+    },
+    {
+      "name": "mbedtls",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-mbedtls",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/mbedtls/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0 OR GPL-2.0-or-later",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b."
+    },
+    {
+      "name": "fsst",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-fsst",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/fsst/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=20e9c14ff437a73a6e2b105f1b5aaf9ef24a84d962741c0ab01d04b4910294ab."
+    },
+    {
+      "name": "miniz",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-miniz",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/miniz/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=0115478d567121238cf6cc1c0c361926cf07a49d9e4c9e66da97fac6a01646b3."
+    },
+    {
+      "name": "fast-float",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-fast-float",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/fast_float/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3."
+    },
+    {
+      "name": "pcg",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-pcg",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/pcg/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=3febf788fd814bf1f350db169bdc51b28ff7e7596ff1f09cc0181e4fde42b480."
+    },
+    {
+      "name": "re2",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-re2",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/re2/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=6040cda75d90b1738292a631d89934c411ef7ffd543c4d6a1b7edfc8edf29449."
+    },
+    {
+      "name": "vergesort",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-vergesort",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/vergesort/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=12dd392860ea2a3633bce5f33d7eebd4308a7e3386b4372260e5e72be7a64033."
+    },
+    {
+      "name": "ska-sort",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-ska-sort",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/ska_sort/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSL-1.0",
+      "licenseDeclared": "BSL-1.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=3c3a838f6ac2201bb8255b374fad34e3e1de07940c3acdc09e661e118fb75078."
+    },
+    {
+      "name": "pdqsort",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-pdqsort",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/pdqsort/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Zlib",
+      "licenseDeclared": "Zlib",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=323fc18e35fcf058d69d684022ef844f206cb8fefb2bac1298fa1767e0b9ae38."
+    },
+    {
+      "name": "jaro-winkler",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-jaro-winkler",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/jaro_winkler/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=077815ffd10f0677d060e9d5c0059592d28c41d1e9985c848435e0ea17ea06c3."
+    },
+    {
+      "name": "hyperloglog",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-hyperloglog",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/hyperloglog/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=3a3fcdbaecbeb1e7dea97843961100c637766e59de4674fed809760283b716e1."
+    },
+    {
+      "name": "cpp-httplib",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-cpp-httplib",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/httplib/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=4b45cbe16d7b71b89ae6127e26e0d90a029198ca5e958ad8e3d0b8bbed364d8b."
+    },
+    {
+      "name": "concurrentqueue",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-concurrentqueue",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/concurrentqueue/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-2-Clause AND Zlib",
+      "licenseDeclared": "(BSD-2-Clause OR BSL-1.0) AND Zlib",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=eaf0df40f77e929cd83cd4485de2bdf806c7908db84a52007a700588f6566331."
+    },
+    {
+      "name": "libpg-query",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-libpg-query",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/libpg_query/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=2780b6375a5ab1901472b7694958dd0c8c1381a21f0765cbb64e1923d94c6717."
+    },
+    {
+      "name": "fastpforlib",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-fastpforlib",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/fastpforlib/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=9ff562631a04b8cb1030c53fdf461bd749c9af0655d86e4f17eb270e935a7fe2."
+    },
+    {
+      "name": "zstd",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-zstd",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/zstd/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause OR GPL-2.0-only",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=8b7bc50ec3ecee27224e17d4d316a939fa2ddda9c88e0ddc2f059ce432edbfb9."
+    },
+    {
+      "name": "skiplist",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-skiplist",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/skiplist/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=3b9cac57dbb2d7ec76298cb0d33afe12f891e1d0dbb38ff17993a14f3480ee7c."
+    },
+    {
+      "name": "brotli",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-brotli",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/brotli/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94."
+    },
+    {
+      "name": "lz4",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-lz4",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/lz4/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-2-Clause",
+      "licenseDeclared": "BSD-2-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=99b8d2d8011d1ce548c5aaf3270c6bee014507fa821c4f9a7e300a9e11015db7."
+    },
+    {
+      "name": "parquet-format",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-parquet-format",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/parquet/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=70b6a7d630fae9f49643f9b16bee42a2feda68301f9c14470e7fb5ad0599bb9f."
+    },
+    {
+      "name": "snappy",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-snappy",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/snappy/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=55172044f7e241207117448a4d9d6ba1d0925c8ad66b5d4c08c70adfa9cc3de6."
+    },
+    {
+      "name": "apache-thrift",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-apache-thrift",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/third_party/thrift/thrift/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=23df881cec3192d1f4474633c14eb2ec30a45b84f8daeb82b9de5d2bd3ac8218."
+    },
+    {
+      "name": "icu",
+      "SPDXID": "SPDXRef-Package-duckdb-vendored-icu",
+      "versionInfo": "vendored-in-duckdb-1.5.5@d8cdaa33fda8",
+      "downloadLocation": "https://raw.githubusercontent.com/duckdb/duckdb/d8cdaa33fda8df955cc76ef58a280f68f4cd43fa/extension/icu/third_party/icu/LICENSE",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ICU",
+      "licenseDeclared": "ICU",
+      "copyrightText": "NOASSERTION",
+      "comment": "Exact vendored source is identified by DuckDB tag commit and path; license file SHA256=f0e4446e54a2cee165d69e007f4787183d497c709664e79d6955691bfeb3f837."
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-runtime"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-go-duckdb-go"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-go-duckdb-go-bindings"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-go-mapstructure"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vantare-ta03b-duckdb-helper",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-go-google-uuid"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-extension-autocomplete"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-extension-core-functions"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-extension-icu"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-extension-json"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-extension-parquet"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-fmt"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-yyjson"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-utf8proc"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-mbedtls"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-fsst"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-miniz"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-fast-float"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-pcg"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-re2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-vergesort"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-ska-sort"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-pdqsort"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-jaro-winkler"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-hyperloglog"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-cpp-httplib"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-concurrentqueue"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-libpg-query"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-fastpforlib"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-zstd"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-skiplist"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-brotli"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-lz4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-parquet-format"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-snappy"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-apache-thrift"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-duckdb-runtime",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-duckdb-vendored-icu"
+    }
+  ],
+  "comment": "Windows system dependencies observed with objdump: KERNEL32.dll, WS2_32.dll and RstrtMgr.DLL; they are operating-system components and are not redistributed by this runtime."
+}

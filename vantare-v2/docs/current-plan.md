@@ -7,8 +7,9 @@ Nota ISA-140 / STR-05 (2026-08-02):
   regla explícita del evento. El pit loss es un input manual con procedencia;
   no existe ciclo fixed-point o solver oculto.
 - Fuel y VE conservan APIs/resultados incompatibles. Necesidad = carrera +
-  formación + reserva; repostajes/recargas se enumeran contra capacidad
-  utilizable y fuel-save cuenta la cantidad inicial real.
+  formación + reserva; repostajes/recargas se enumeran conservadoramente y
+  nunca subasignan ni superan la capacidad por servicio. Fuel-save cuenta la
+  cantidad inicial real.
 - Pit separa viaje/penalización fija de servicio variable; solo Fuel/neumáticos
   solapan, reparación es secuencial y `overlapSaved` demuestra que no hay doble
   conteo. Reparaciones y penalizaciones son manuales y opcionales.
@@ -20,8 +21,12 @@ Nota ISA-140 / STR-05 (2026-08-02):
   frontend 301/301 y build pasan. Go global conserva solo el P3 Windows
   heredado de Settings; vet global conserva tres avisos Win32 heredados y lint
   frontend 30 errores/2 warnings fuera del diff.
-- Estado: implementación lista para review independiente; sin merge ni
-  promoción. El siguiente corte solo tras `ACCEPT` es ISA-141 / STR-06.
+- Corrección de review: la vuelta temporizada usa frontera decimal racional sin
+  epsilon y conserva medias vueltas representables; la asignación de recursos
+  ya no reutiliza ese redondeo ni descarta restos pequeños. Regresiones Fuel/VE
+  cubren múltiplos por debajo, exactos y por encima sin tolerancia contractual.
+- Estado: correcciones P1/P2 listas para nueva review independiente; sin merge
+  ni promoción. El siguiente corte solo tras `ACCEPT` es ISA-141 / STR-06.
 
 Nota ISA-139 / STR-04 (2026-08-02):
 - Nueva fachada `strategy.application.v1` en

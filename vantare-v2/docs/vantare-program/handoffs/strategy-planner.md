@@ -102,6 +102,11 @@ Actualización ISA-134 / STR-00:
   `docs/strategy-planner/str-05-manual-calculation.md`. Lista para review
   independiente, sin UI, solver, presets LMU, telemetría, persistencia, wiring,
   merge o promoción.
+- Corrección STR-05 posterior a review: servicios Fuel/VE se asignan hasta
+  cubrir la necesidad sin epsilon ni subasignación; un ruido positivo sobre un
+  múltiplo crea conservadoramente otro servicio. Las fronteras de carrera se
+  resuelven con aritmética decimal racional: `0.3/0.1` sigue exacto y una media
+  vuelta cerca de `2^52` no se borra. Correcciones P1/P2 listas para re-review.
 
 ## Decisiones
 

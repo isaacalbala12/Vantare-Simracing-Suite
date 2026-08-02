@@ -306,27 +306,39 @@ func calculateResource(prefix string, input resourceValues, raceLaps contract.La
 	if input.usableCapacity <= 0 {
 		return resourceResult{}, calculationError(ErrorInsufficientCapacity, prefix+".usableCapacity", "additional resource is required but service capacity is zero")
 	}
-	_, stops, err := stableWholeAndCeil(prefix+".stopsRequired", additional, input.usableCapacity)
-	if err != nil {
-		return resourceResult{}, err
-	}
-	if stops > int64(contract.ManifestV1().CanonicalLimits.MaxContainerItems) {
-		return resourceResult{}, calculationError(ErrorOverflow, prefix+".stopsRequired", "service list exceeds the shared container limit")
-	}
-	result.stops = stops
-	result.serviceAmounts = make([]float64, 0, int(stops))
-	remaining := additional
-	for index := int64(0); index < stops; index++ {
-		amount := math.Min(remaining, input.usableCapacity)
-		result.serviceAmounts = append(result.serviceAmounts, amount)
-		remaining -= amount
-		if remaining < quotientTolerance {
-			remaining = 0
+	maxServices := contract.ManifestV1().CanonicalLimits.MaxContainerItems
+	result.serviceAmounts = make([]float64, 0, min(maxServices, 4))
+	available := input.start
+	for available < total {
+		if len(result.serviceAmounts) >= maxServices {
+			return resourceResult{}, calculationError(ErrorOverflow, prefix+".stopsRequired", "service list exceeds the shared container limit")
 		}
+		remaining := total - available
+		amount := math.Min(remaining, input.usableCapacity)
+		next, err := checkedAdd(prefix+".serviceAmounts", available, amount)
+		if err != nil {
+			return resourceResult{}, err
+		}
+		if next <= available {
+			return resourceResult{}, calculationError(ErrorOverflow, prefix+".serviceAmounts", "service allocation cannot make representable progress")
+		}
+		if next < total && amount < input.usableCapacity {
+			// The subtraction can round down by one representable value. Bump only
+			// the final partial service, never beyond per-service capacity, so the
+			// public allocation cannot be smaller than the stated need.
+			conservative := math.Nextafter(amount, math.Inf(1))
+			if conservative <= input.usableCapacity {
+				amount = conservative
+				next, err = checkedAdd(prefix+".serviceAmounts", available, amount)
+				if err != nil {
+					return resourceResult{}, err
+				}
+			}
+		}
+		result.serviceAmounts = append(result.serviceAmounts, amount)
+		available = next
 	}
-	if remaining != 0 {
-		return resourceResult{}, calculationError(ErrorOverflow, prefix+".serviceAmounts", "service allocation did not close exactly")
-	}
+	result.stops = int64(len(result.serviceAmounts))
 	return result, nil
 }
 

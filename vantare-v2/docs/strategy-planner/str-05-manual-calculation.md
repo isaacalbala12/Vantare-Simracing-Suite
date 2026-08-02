@@ -57,11 +57,12 @@ La regla del evento también es explícita:
 - `complete_current_plus_one`: aplica lo anterior y añade una vuelta completa
   adicional. No se activa por defecto ni se etiqueta como regla LMU.
 
-Los cocientes a una distancia absoluta máxima de `1e-12` de un entero —o una
-ULP cuando la magnitud ya no permite distinguir menos— se tratan como esa
-frontera exacta. Esto evita que decimales como `0.3 / 0.1` creen una vuelta
-artificial sin redondear fracciones legítimas en carreras grandes. `P == D`
-produce cero vueltas; `P > D` se rechaza.
+La frontera se calcula con aritmética racional sobre la representación decimal
+más corta y reversible de `D`, `P` y `L`. No existe epsilon ni redondeo por ULP:
+`0.3 / 0.1` es exactamente tres, mientras que una media vuelta representable
+se conserva incluso cerca del máximo entero seguro. Después se aplican
+`floor` y `ceil` al cociente racional. `P == D` produce cero vueltas; `P > D`
+se rechaza.
 
 ## Fuel y Virtual Energy
 
@@ -92,9 +93,13 @@ utilizable y la inicial no pueden superar la física. Si falta recurso y `U` es
 cero, el cálculo falla como capacidad insuficiente; nunca devuelve una
 estrategia aparentemente válida.
 
-Los repostajes/recargas se enumeran en orden, llenando hasta `U` y dejando el
-resto exacto en la última parada. La lista está limitada por el máximo de
-contenedor del contrato compartido.
+Los repostajes/recargas se enumeran en orden sin tolerancia oculta. Cada
+servicio aporta como máximo `U` y la asignación continúa mientras
+`inicio + servicios < necesidad`. Si la suma binaria de la última cantidad
+parcial quedara un valor representable por debajo, esa cantidad se redondea de
+forma conservadora hacia arriba sin superar `U`; si no cabe, se crea otro
+servicio. El resultado puede sobreasignar el mínimo representable, pero nunca
+subasigna. La lista sigue limitada por el máximo de contenedor compartido.
 
 ### Fuel-save para eliminar una parada
 
@@ -163,6 +168,11 @@ El paquete productivo `manual` no importa `producta`.
 - Oráculos table-driven para vueltas, tiempo, frontera exacta, `+1`, formación,
   reservas, repostajes, fuel-save, servicios solapados/secuenciales,
   reparación y penalización.
+- Regresiones alrededor de múltiplos de capacidad demuestran para Fuel y VE
+  que `inicio + servicios >= necesidad` sin epsilon, y que cada servicio
+  permanece dentro de su capacidad.
+- Regresión de media vuelta en `2^52 - 0.5` demuestra que la detección decimal
+  no elimina fracciones representables.
 - 10.000 presupuestos deterministas comprueban conservación de recurso.
 - Fuzz de Fuel y pit comprueba conservación y límites.
 - Comparación histórica limitada a Product A allowlisted.
@@ -173,7 +183,7 @@ El paquete productivo `manual` no importa `producta`.
 | Check | Resultado |
 |---|---|
 | `go test ./internal/strategy/manual -count=100` | PASS |
-| Fuzz Fuel y pit | PASS; más de 318.000 ejecuciones combinadas en la corrida final |
+| Fuzz Fuel y pit | PASS; 171.823 ejecuciones combinadas tras las correcciones de review |
 | `go test -race ./internal/strategy/manual ./internal/strategy/contract -count=10` | PASS |
 | `go test ./internal/strategy/... -count=1` | PASS |
 | `go vet ./internal/strategy/...` | PASS |

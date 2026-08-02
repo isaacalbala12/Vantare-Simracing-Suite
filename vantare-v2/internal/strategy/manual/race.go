@@ -131,7 +131,12 @@ func CalculateRace(input RaceInput) (RaceResult, error) {
 		if err != nil {
 			return RaceResult{}, err
 		}
-		whole, ceiling, err := stableWholeAndCeil("race.competitiveLaps", onTrack, input.AverageLap.Value.Value())
+		whole, ceiling, err := stableWholeAndCeil(
+			"race.competitiveLaps",
+			input.Duration.Value.Value(),
+			input.PitLoss.Value.Value(),
+			input.AverageLap.Value.Value(),
+		)
 		if err != nil {
 			return RaceResult{}, err
 		}

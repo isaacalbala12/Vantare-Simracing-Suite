@@ -94,6 +94,86 @@ func TestCalculateVirtualEnergyKeepsSeparateUnitAndRechargeAmounts(t *testing.T)
 	}
 }
 
+func TestCalculateFuelAllocatesConservativelyAroundServiceMultiples(t *testing.T) {
+	t.Parallel()
+	manual := evidence(contract.ProvenanceManual, "boundary", contract.ConfidenceHigh, "service multiple boundary")
+	tests := []struct {
+		name        string
+		consumption float64
+		wantStops   int64
+	}{
+		{name: "below multiple", consumption: math.Nextafter(1, 0), wantStops: 1},
+		{name: "exact multiple", consumption: 1, wantStops: 1},
+		{name: "above multiple", consumption: math.Nextafter(1, math.Inf(1)), wantStops: 2},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := CalculateFuel(FuelInput{
+				Capacity: sourcedFuel(t, 100, manual), UsableCapacity: sourcedFuel(t, 100, manual),
+				StartAmount: sourcedFuel(t, 0, manual), ConsumptionPerLap: sourcedFuel(t, test.consumption, manual),
+				FormationConsumption: sourcedFuel(t, 0, manual), Reserve: FuelReserveInput{Kind: ReserveNone, Selection: manual},
+			}, mustLaps(t, 100))
+			if err != nil {
+				t.Fatalf("CalculateFuel: %v", err)
+			}
+			if got.StopsRequired != test.wantStops {
+				t.Fatalf("stops=%d want=%d total=%0.17g", got.StopsRequired, test.wantStops, got.TotalNeed.Value())
+			}
+			available := got.StartAmount.Value()
+			for _, amount := range got.RefillAmounts {
+				if amount.Value() > got.UsableCapacity.Value() {
+					t.Fatalf("service amount %0.17g exceeds capacity %0.17g", amount.Value(), got.UsableCapacity.Value())
+				}
+				available += amount.Value()
+			}
+			if available < got.TotalNeed.Value() {
+				t.Fatalf("allocated %0.17g is below need %0.17g", available, got.TotalNeed.Value())
+			}
+		})
+	}
+}
+
+func TestCalculateVirtualEnergyAllocatesConservativelyAroundServiceMultiples(t *testing.T) {
+	t.Parallel()
+	manual := evidence(contract.ProvenanceManual, "boundary", contract.ConfidenceHigh, "service multiple boundary")
+	tests := []struct {
+		name        string
+		consumption float64
+		wantStops   int64
+	}{
+		{name: "below multiple", consumption: math.Nextafter(1, 0), wantStops: 1},
+		{name: "exact multiple", consumption: 1, wantStops: 1},
+		{name: "above multiple", consumption: math.Nextafter(1, math.Inf(1)), wantStops: 2},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := CalculateVirtualEnergy(VirtualEnergyInput{
+				Capacity: sourcedEnergy(t, 100, manual), UsableCapacity: sourcedEnergy(t, 100, manual),
+				StartAmount: sourcedEnergy(t, 0, manual), ConsumptionPerLap: sourcedEnergy(t, test.consumption, manual),
+				FormationConsumption: sourcedEnergy(t, 0, manual), Reserve: VirtualEnergyReserveInput{Kind: ReserveNone, Selection: manual},
+			}, mustLaps(t, 100))
+			if err != nil {
+				t.Fatalf("CalculateVirtualEnergy: %v", err)
+			}
+			if got.StopsRequired != test.wantStops {
+				t.Fatalf("stops=%d want=%d total=%0.17g", got.StopsRequired, test.wantStops, got.TotalNeed.Value())
+			}
+			available := got.StartAmount.Value()
+			for _, amount := range got.RechargeAmounts {
+				if amount.Value() > got.UsableCapacity.Value() {
+					t.Fatalf("service amount %0.17g exceeds capacity %0.17g", amount.Value(), got.UsableCapacity.Value())
+				}
+				available += amount.Value()
+			}
+			if available < got.TotalNeed.Value() {
+				t.Fatalf("allocated %0.17g is below need %0.17g", available, got.TotalNeed.Value())
+			}
+		})
+	}
+}
+
 func TestResourceReserveKindsAndLimits(t *testing.T) {
 	t.Parallel()
 	manual := evidence(contract.ProvenanceManual, "user", contract.ConfidenceHigh, "confirmed inputs")

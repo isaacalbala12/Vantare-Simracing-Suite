@@ -32,12 +32,12 @@ func TestResourceBudgetProperties(t *testing.T) {
 		}
 		available := got.StartAmount.Value()
 		for _, refill := range got.RefillAmounts {
-			if refill.Value() > got.UsableCapacity.Value()+1e-12 {
+			if refill.Value() > got.UsableCapacity.Value() {
 				t.Fatalf("sample %d: refill exceeds usable capacity", sample)
 			}
 			available += refill.Value()
 		}
-		if available+1e-9 < got.TotalNeed.Value() {
+		if available < got.TotalNeed.Value() {
 			t.Fatalf("sample %d: allocated resource does not cover need: %#v", sample, got)
 		}
 	}
@@ -59,7 +59,7 @@ func TestTimedRaceFloatingBoundaryDoesNotCreatePhantomLap(t *testing.T) {
 	}
 }
 
-func TestTimedRaceRoundingToleranceDoesNotConsumeRealFractionAtLargeMagnitude(t *testing.T) {
+func TestTimedRaceDoesNotConsumeRealFractionAtLargeMagnitude(t *testing.T) {
 	t.Parallel()
 	manual := evidence(contract.ProvenanceManual, "rounding", contract.ConfidenceHigh, "large fractional boundary")
 	got, err := CalculateRace(RaceInput{
@@ -72,6 +72,22 @@ func TestTimedRaceRoundingToleranceDoesNotConsumeRealFractionAtLargeMagnitude(t 
 	}
 	if got.CompetitiveLaps.Value() != 1_000_000_000_001 || got.FinalLapsAfterExpiry.Value() != 1 {
 		t.Fatalf("real fractional lap was rounded away: %#v", got)
+	}
+}
+
+func TestTimedRaceDoesNotRoundRepresentableHalfLapNearSafeIntegerLimit(t *testing.T) {
+	t.Parallel()
+	manual := evidence(contract.ProvenanceManual, "rounding", contract.ConfidenceHigh, "representable half-lap boundary")
+	got, err := CalculateRace(RaceInput{
+		Kind: RaceByTime, Duration: sourcedDuration(t, 4_503_599_627_370_495.5, manual), AverageLap: sourcedDuration(t, 1, manual),
+		FormationLaps: sourcedLaps(t, 0, manual), PitLoss: sourcedDuration(t, 0, manual),
+		TimedFinish: TimedFinishCurrentLap, Selection: manual,
+	})
+	if err != nil {
+		t.Fatalf("CalculateRace: %v", err)
+	}
+	if got.CompetitiveLaps.Value() != 4_503_599_627_370_496 || got.FinalLapsAfterExpiry.Value() != 1 {
+		t.Fatalf("representable half lap was rounded away: %#v", got)
 	}
 }
 
@@ -97,7 +113,7 @@ func FuzzFuelBudgetConservation(f *testing.F) {
 		for _, refill := range got.RefillAmounts {
 			allocated += refill.Value()
 		}
-		if allocated+1e-9 < got.TotalNeed.Value() {
+		if allocated < got.TotalNeed.Value() {
 			t.Fatalf("allocated=%v need=%v", allocated, got.TotalNeed.Value())
 		}
 	})

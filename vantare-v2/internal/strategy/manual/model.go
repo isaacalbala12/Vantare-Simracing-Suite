@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
+	"strconv"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 )
@@ -173,32 +175,33 @@ func laps(field string, value float64) (contract.LapCount, error) {
 	return result, nil
 }
 
-const quotientTolerance = 1e-12
-
-func quotientIsEffectivelyInteger(quotient, nearest float64) bool {
-	// Keep decimal boundaries such as 0.3/0.1 stable without allowing the
-	// tolerance to grow with the lap count. One ULP is the smallest meaningful
-	// distinction available at large magnitudes.
-	ulp := math.Abs(math.Nextafter(nearest, math.Inf(1)) - nearest)
-	return math.Abs(quotient-nearest) <= math.Max(quotientTolerance, ulp)
-}
-
-func stableWholeAndCeil(field string, numerator, denominator float64) (int64, int64, error) {
+func stableWholeAndCeil(field string, total, excluded, denominator float64) (int64, int64, error) {
 	if denominator <= 0 {
 		return 0, 0, calculationError(ErrorInvalidInput, field, "divisor must be positive")
 	}
-	quotient := numerator / denominator
-	if math.IsNaN(quotient) || math.IsInf(quotient, 0) || quotient > float64(contract.ManifestV1().MaxSafeInteger) {
-		return 0, 0, calculationError(ErrorOverflow, field, "quotient is outside the shared safe integer range")
+	values := []float64{total, excluded, denominator}
+	rationals := make([]*big.Rat, len(values))
+	for index, value := range values {
+		text := strconv.FormatFloat(value, 'g', -1, 64)
+		rational, ok := new(big.Rat).SetString(text)
+		if !ok {
+			return 0, 0, calculationError(ErrorInvalidInput, field, "cannot represent decimal input")
+		}
+		rationals[index] = rational
 	}
-	nearest := math.Round(quotient)
-	if quotientIsEffectivelyInteger(quotient, nearest) {
-		quotient = nearest
+	numerator := new(big.Rat).Sub(rationals[0], rationals[1])
+	if numerator.Sign() < 0 {
+		return 0, 0, calculationError(ErrorInvalidInput, field, "excluded duration exceeds total duration")
 	}
-	whole := math.Floor(quotient)
-	ceiling := math.Ceil(quotient)
-	if whole > float64(contract.ManifestV1().MaxSafeInteger) || ceiling > float64(contract.ManifestV1().MaxSafeInteger) {
+	quotient := new(big.Rat).Quo(numerator, rationals[2])
+	whole := new(big.Int).Quo(quotient.Num(), quotient.Denom())
+	ceiling := new(big.Int).Set(whole)
+	if new(big.Int).Rem(quotient.Num(), quotient.Denom()).Sign() != 0 {
+		ceiling.Add(ceiling, big.NewInt(1))
+	}
+	maxSafe := new(big.Int).SetUint64(contract.ManifestV1().MaxSafeInteger)
+	if whole.Cmp(maxSafe) > 0 || ceiling.Cmp(maxSafe) > 0 {
 		return 0, 0, calculationError(ErrorOverflow, field, "rounded count is outside the shared safe integer range")
 	}
-	return int64(whole), int64(ceiling), nil
+	return whole.Int64(), ceiling.Int64(), nil
 }

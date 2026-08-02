@@ -1,5 +1,6 @@
 import { studioV3It } from "./studio-v3/it";
 import { diagnosticsIt } from "../../hub/settings/diagnostics/translations";
+import { testingCenterIt } from "../../hub/testing-center/translations";
 
 export const it: Record<string, string> = {
   // Onboarding
@@ -457,6 +458,7 @@ export const it: Record<string, string> = {
   "license.unconfiguredDesc2": "Scarica l'ultima versione dal canale beta o contatta l'assistenza se il problema persiste.",
   // Diagnostics
   ...diagnosticsIt,
+  ...testingCenterIt,
   // Overlay Studio V3
   ...studioV3It,
 };

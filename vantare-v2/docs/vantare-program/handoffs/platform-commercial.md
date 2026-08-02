@@ -138,6 +138,33 @@ como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
 No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
 reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
+## Testing Center
+
+- TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus
+  gates locales y remotos sin deploy ni merge.
+- ISA-215 / TAU-03 añade el paquete local
+  `testing-center.diagnostic.v1`: allowlist, redacción, límites, preview exacto,
+  SHA-256 y descarte efímero. No tiene wiring productivo.
+- TAU-04A/04B/04C conectan RPC idempotente, draft local privado y una pestaña
+  in-app que exige coincidencia entre canal embebido de build y capability
+  firmada. `master` y metadata desconocida fallan cerrados; el servidor vuelve
+  a derivar membresía y rol.
+- TAU-04C reutiliza el paquete de TAU-03, muestra sus bytes exactos, verifica
+  SHA-256 en frontend y transporta el mismo payload. No serializa
+  ajustes/perfiles ni crea otro collector general.
+- Los logs continúan desactivados por defecto. Texto libre requiere opt-in y
+  preview completo porque ninguna regex puede garantizar eliminar PII
+  semántica arbitraria.
+- No existe aún un buffer productivo de logs para este flujo. La UI declara
+  cero disponibles y mantiene el control deshabilitado; no simula evidencia.
+- ISA-222 / TAU-05A añade triage server-only, fingerprints exactos,
+  ocurrencias y una reserva durable de creación. Cien repeticiones y dos
+  transacciones concurrentes convergen en una issue técnica y un efecto
+  reservado. No existe todavía llamada externa.
+- Siguiente acción: TAU-05B proyecta el GitHub Issue en dry-run y TAU-05C añade
+  GitHub App mínimo, webhook firmado y reconciliación. Codex/Discord continúan
+  fuera de TAU-05 y conservan sus gates posteriores.
+
 ## Riesgos
 
 - **P0 potencial:** Billing concede/revoca acceso incorrectamente.
@@ -161,7 +188,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
-runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
-gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
-Sin mutaciones remotas y con venta pública NO-GO.
+2026-08-02, ISA-222 prepara el triage exact-compatible y una reserva outbox
+exactly-once sobre la UI/RPC de TAU-04. No llama GitHub ni activa Codex,
+Discord o Supabase remoto. Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118
+permanece como deuda global heredada y la venta pública continúa NO-GO.

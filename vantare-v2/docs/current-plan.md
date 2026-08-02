@@ -1,3 +1,32 @@
+Nota ISA-139 / STR-04 (2026-08-02):
+- Nueva fachada `strategy.application.v1` en
+  `internal/strategy/application`, apilada sobre el repositorio exacto de
+  STR-03 `8e151b8`.
+- Comandos versionados para crear, abrir, editar, guardar revisión, duplicar,
+  activar, desactivar, restaurar y cerrar. Undo/redo quedan en el único store
+  frontend transitorio y no escriben revisiones.
+- Dirty se deriva de snapshots; comandos mutadores respetan generación
+  optimista, reconcilian commits inciertos e impiden sobrescrituras stale.
+- El bridge JSON falla cerrado ante versiones futuras, duplicados, unknown
+  fields, campos obligatorios ausentes o trailing data; el cliente correlaciona
+  respuestas y limpia listeners.
+- Las observaciones de ejecución/telemetría se mantienen separadas y no mutan
+  draft, snapshot o historial. Cerrar el editor tampoco desactiva el plan.
+- Sin UI final, cálculos, LMU, Shared Memory, REST, DuckDB, persistencia nueva,
+  wiring productivo ni dependencias. Evidencia:
+  `docs/strategy-planner/str-04-application-service.md`.
+- Evidencia fresca: Go application x100, árbol Strategy, Go global, vet focal,
+  race x10 con UCRT64, 36 tests frontend focales, frontend completo 301/301
+  archivos y 2.052/2.052 tests, TypeScript, build, lint focal y diff-check
+  pasan. Una corrida frontend inicial bajo carga paralela reprodujo timings
+  inestables preexistentes del canvas; la repetición final aislada pasó entera.
+- Corrección tras review: save/close bloquean edit/undo/redo hasta aplicar su
+  resultado; create/open no descartan dirty; un save incierto conserva y
+  reintenta exactamente su identidad; bridge y atajos idempotentes fallan
+  cerrados; el cliente soporta cancel/dispose y limpia todos los listeners.
+- Estado: correcciones listas para segunda review independiente; sin merge ni
+  promoción. El siguiente corte, solo tras `ACCEPT`, es ISA-140 / STR-05.
+
 Nota ISA-138 / STR-03 (2026-08-02):
 - Nuevo repositorio local `strategy.repository.v1` en
   `internal/strategy/repository`, apilado sobre STR-02 exacto `91c16c2`.

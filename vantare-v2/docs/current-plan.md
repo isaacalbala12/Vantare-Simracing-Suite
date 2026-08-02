@@ -1,3 +1,19 @@
+Nota ISA-224 / TAU-05C (2026-08-02, entrega GitHub preparada):
+- Outbox con claim/lease, cinco intentos, backoff, pausa global/por flujo
+  comprobada justo antes del efecto y reconciliación por marker app-authored.
+- Servicio Deno por puertos, sin `fetch`, endpoint, variables de entorno o
+  superficie desplegable. Respuestas ambiguas buscan antes de repetir.
+- Webhook HMAC-SHA256 sobre bytes exactos y delivery ID durable. GitHub no
+  envía timestamp firmado; `received_at` server-side + ledger sustituye ese
+  supuesto sin inventar headers. El webhook no autoriza reconciliaciones.
+- GitHub App propuesta: privada, repo único, Metadata read + Issues read/write,
+  evento issues; cero Contents/PR/Actions/Workflows.
+- Gates: PostgreSQL 28/28 + rollback/reapply; Deno focal 7/7 y 208/208 activo;
+  deploy-surface sin cambios. Autoridad:
+  `docs/runbooks/testing-center-github-delivery.md`.
+- Estado: implementación local lista para review; sin App/secretos reales,
+  red, deploy, Supabase remoto, Codex, Discord, merge o promoción.
+
 Nota ISA-223 / TAU-05B (2026-08-02, proyección GitHub dry-run):
 - Contrato Deno cerrado para proyectar un GitHub Issue y comentarios de
   ocurrencia sin efectuar llamadas de red ni confirmar el outbox.
@@ -11,7 +27,7 @@ Nota ISA-223 / TAU-05B (2026-08-02, proyección GitHub dry-run):
 - Gates: 20/20 focales, 201/201 Deno activos, type-check, formato y superficie
   de deploy PASS. Autoridad:
   `docs/runbooks/testing-center-github-projection.md`.
-- Estado: implementación local lista para review; sin GitHub App, Edge
+- Estado: PR draft #112 con CI protegida verde; sin GitHub App, Edge
   Function desplegable, credencial, webhook, deploy o mutación remota.
 
 Nota ISA-222 / TAU-05A (2026-08-02, triage y outbox exactly-once):

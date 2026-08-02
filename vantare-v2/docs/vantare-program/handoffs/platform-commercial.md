@@ -165,9 +165,12 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   redacción, markers no confiables y adaptador dry-run que recalcula su digest.
   Replay se expresa solo como disponibilidad autenticada; logs, URL, assignee
   y Codex no entran en GitHub.
-- Siguiente acción: TAU-05C añade GitHub App mínimo, lease/claim durable,
-  webhook firmado y reconciliación. Codex/Discord continúan fuera de TAU-05 y
-  conservan sus gates posteriores.
+- ISA-224 / TAU-05C añade lease/claim, backoff, recheck de pausa, reconciliación
+  ante respuesta ambigua y ledger de deliveries HMAC. GitHub no aporta un
+  timestamp firmado: se usa delivery ID único y hora server-side, sin header
+  inventado. La App mínima queda documentada pero no registrada ni activada.
+- Siguiente acción: TAU-06 define evaluación de riesgo y dry-run Codex. La red,
+  App real, Discord y asignación automática siguen apagados.
 
 ## Riesgos
 
@@ -192,7 +195,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-223 añade la proyección GitHub sanitizada y su dry-run sobre el
-outbox de ISA-222. No llama GitHub ni activa Codex, Discord o Supabase remoto.
+2026-08-02, ISA-224 prepara entrega/reconciliación GitHub durable sin endpoint,
+credenciales, red o deploy. No activa Codex, Discord o Supabase remoto.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

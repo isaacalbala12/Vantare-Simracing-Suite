@@ -45,6 +45,11 @@ ISA-182 / ENG-11 añade un package manager y un voice-host estrictamente
 test-only. El manifest, descarga, almacenamiento, ownership del hijo y teardown
 quedan demostrados; no existe inferencia, micrófono, wiring o nueva autoridad
 de voz. Commands, FAR/FRR, wake word y TTS dinámico siguen NO-GO.
+El roadmap restante queda fijado en
+`docs/engineer/engineer-beta-roadmap.md`: ENG-12 a ENG-29 forman un DAG de 18
+microcortes. Los contratos y runtimes objetivos pueden avanzar en paralelo;
+STT productivo y wake word permanecen bloqueados por corpus humano real, y la
+percepción TTS se agrupa en el gate Beta final.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
@@ -61,11 +66,10 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa:
-  `vantareapp/isa-182-eng-11-package-manager-y-voice-host-test-only`.
-- Base: `46a7320d33c7ebb47bbcae44eac0f4fa01ed3ca9` (ISA-181 / ENG-10).
-- Composición: ENG-02 a ENG-10 ya están en la base exacta. ENG-11 añade solo
-  tooling, tests, contrato y evidencia test-only; no modifica producto.
+- Rama activa: `vantareapp/engineer-beta-roadmap-eng12-plus` (documental).
+- Base: `5b4e0d315d54f99e8d404e617ad8873cedbd3277` (ISA-182 / ENG-11).
+- Composición: ENG-02 a ENG-11 están en la base exacta. La rama activa añade
+  exclusivamente roadmap, handoff y orden Linear; no modifica producto.
 - Promoción: ninguna.
 - Evidencia ENG-11: manifest cerrado bajo Git; descargas con hash/tamaño,
   límites, cancelación y promoción segura; rutas y delete reparse-safe;
@@ -289,17 +293,34 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO, Whisper condicionado y review `ACCEPT` |
 | En revisión | ISA-181 / ENG-10, corpus humano genérico; `base` condicionado, commands/FAR/FRR/wake word NO-GO; review independiente sin findings abiertos |
 | En revisión | ISA-182 / ENG-11, package manager y voice-host test-only; lifecycle demostrado, command readiness NO-GO |
+| Backlog | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; primer corte ejecutable |
+| Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
+| Backlog | ISA-185..190 / ENG-14..19, PTT, diálogo, audio, personalidades, Spotter y monitores |
+| Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |
+| Backlog | ISA-195..198 / ENG-24..27, UI, Pit, Strategy/Overlays y diagnóstico |
+| Gate final | ISA-199..200 / ENG-28..29, soak LMU y Engineer Beta |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-ISA-182 / ENG-11 queda en revisión, sin wiring ni promoción. No iniciar ENG-12
-hasta review independiente. El siguiente corte debe conservar command
-readiness NO-GO y no puede cablear PTT, comandos, wake word o TTS sin corpus
-humano consentido y gates lingüísticos por idioma.
+Iniciar ISA-183 / ENG-12 sobre el HEAD documental aceptado del roadmap en
+worktree aislado. Debe cerrar catálogo, intents y protocolo de corpus, pero
+conservar command readiness NO-GO. Después, la orquestación puede avanzar los
+cortes objetivos no bloqueados que enumera
+`docs/engineer/engineer-beta-roadmap.md`; ENG-20/21 no
+empiezan productivamente hasta evidencia humana ENG-13.
 
 ## Última actualización
+
+2026-08-02, se planifica el resto completo de Engineer Beta. Linear contiene
+ISA-183..200, cuatro milestones y dependencias DAG. ENG-12 es el primer corte;
+PTT, diálogo, audio, personalidades, Spotter, monitores y gate técnico TTS
+pueden continuar sin esperar el corpus humano. STT productivo y wake word
+permanecen bloqueados por command intent/FAR/FRR real. Pit Manager exige
+confirmación/readback; Strategy/Overlays comparten contratos versionados; el
+gate ENG-29 agrupa percepción humana, packaging e idiomas. Sin código de
+producto, promoción o GO nuevo.
 
 2026-08-02, ISA-182 / ENG-11 crea un manifest v1 cerrado, package manager
 test-only y un único voice-host hijo cancelable. Descarga, SHA-256/tamaño,

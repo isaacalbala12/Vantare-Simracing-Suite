@@ -10,6 +10,22 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota roadmap Engineer Beta ENG-12..29 (2026-08-02, planificado):
+- ISA-182 / ENG-11 queda aceptada en `5b4e0d3`. Se crea el roadmap canónico
+  `docs/engineer/engineer-beta-roadmap.md` y 18 microcortes Linear ISA-183 a
+  ISA-200, organizados en cuatro milestones y dependencias DAG.
+- Primer corte ejecutable: ISA-183 / ENG-12, catálogo/intents y protocolo de
+  corpus humano. Después pueden avanzar sin esperar personas ENG-14/15/16/17,
+  Spotter ENG-18, monitores ENG-19 y gate técnico TTS ENG-22.
+- ENG-13 conserva command intent/FAR/FRR/wake word **NO-GO** hasta corpus humano
+  consentido real. ENG-20/21 quedan bloqueadas por esa evidencia. Fixtures no
+  sustituyen humanos.
+- Kokoro dinámico continúa NO-GO. TTS puede investigarse/integrarse disabled,
+  pero escucha perceptual se agrupa en ENG-29.
+- Pit Manager exige confirmación + readback; Strategy/Overlays usan contratos
+  versionados; ningún LLM decide hechos, intent, números o acciones críticas.
+- Esta rama es solo documental. Sin producto, merge, promoción o gate cerrado.
+
 Nota ISA-182 / ENG-11 (2026-08-02, In Review):
 - Package manager test-only con manifest v1 cerrado y versionado, descargas
   acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y

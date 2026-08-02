@@ -2,327 +2,374 @@ package license
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"os"
+	"sort"
+	"sync"
 	"testing"
 	"time"
 )
 
-// mockSupabaseClient is a deterministic in-memory supabaseClient for tests.
-type mockSupabaseClient struct {
-	info *AccountInfo
-	err  error
+const testSubject = "8ad4bc02-e460-4e36-89d5-7e63f11f4921"
 
-	resetCalls int
+type memoryClock struct {
+	mu      sync.Mutex
+	state   ClockState
+	found   bool
+	loadErr error
+	saveErr error
 }
 
-func (m *mockSupabaseClient) FetchAccount(_ context.Context, _, _ string) (*AccountInfo, error) {
-	return m.info, m.err
+func (c *memoryClock) Load() (ClockState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.loadErr != nil {
+		return ClockState{}, c.loadErr
+	}
+	if !c.found {
+		return ClockState{}, ErrClockStateNotFound
+	}
+	return c.state, nil
 }
 
-func (m *mockSupabaseClient) ResetDevice(_ context.Context, _, _ string) error {
-	m.resetCalls++
+func (c *memoryClock) Save(state ClockState) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.saveErr != nil {
+		return c.saveErr
+	}
+	c.state = state
+	c.found = true
 	return nil
 }
 
-func TestValidateStates(t *testing.T) {
-	future := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
-	past := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second)
+type mockSupabaseClient struct {
+	credential         *OfflineCredential
+	onlineCapabilities []Capability
+	fetchErr           error
+	resetErr           error
+	fetchCalls         int
+	resetCalls         int
+	lastFingerprint    string
+}
 
-	cases := []struct {
-		name        string
-		setupCache  func(*LicenseCache) error
-		sbInfo      *AccountInfo
-		sbErr       error
-		expectState State
+func (m *mockSupabaseClient) FetchCredential(_ context.Context, _, fingerprint string) (*CredentialResponse, error) {
+	m.fetchCalls++
+	m.lastFingerprint = fingerprint
+	if m.fetchErr != nil {
+		return nil, m.fetchErr
+	}
+	if m.credential == nil {
+		return nil, nil
+	}
+	return &CredentialResponse{
+		Credential:         *m.credential,
+		OnlineCapabilities: append([]Capability(nil), m.onlineCapabilities...),
+	}, nil
+}
+
+func (m *mockSupabaseClient) ResetDevice(_ context.Context, _, fingerprint string) error {
+	m.resetCalls++
+	m.lastFingerprint = fingerprint
+	return m.resetErr
+}
+
+func testJWT(subject string) string {
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none"}`))
+	payload, _ := json.Marshal(map[string]string{"sub": subject})
+	return header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
+}
+
+func signTestCredential(
+	t *testing.T,
+	private ed25519.PrivateKey,
+	issuedAt time.Time,
+	capabilities []OfflineCapability,
+	subject string,
+	device string,
+) *OfflineCredential {
+	t.Helper()
+	capabilities = append([]OfflineCapability(nil), capabilities...)
+	sort.Slice(capabilities, func(i, j int) bool { return capabilities[i].Key < capabilities[j].Key })
+	credential := &OfflineCredential{
+		Version: CredentialVersion, Algorithm: CredentialAlgorithm, KeyID: "test-key",
+		Claims: CredentialClaims{
+			Issuer: CredentialIssuer, Subject: subject, DeviceFingerprint: device,
+			IssuedAt: issuedAt.UTC().Format(time.RFC3339Nano), Capabilities: capabilities,
+		},
+	}
+	payload, err := credential.signingBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	credential.Signature = base64.RawURLEncoding.EncodeToString(ed25519.Sign(private, payload))
+	return credential
+}
+
+func newTestService(t *testing.T, now time.Time, client *mockSupabaseClient) (*Service, ed25519.PrivateKey) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier := NewCredentialVerifier(map[string]ed25519.PublicKey{"test-key": public}, &memoryClock{})
+	verifier.now = func() time.Time { return now }
+	service := NewService(Config{}, nil, func() (string, error) { return "device-1", nil }).WithVerifier(verifier)
+	if client != nil {
+		service.WithClient(client)
+	}
+	return service, private
+}
+
+func TestValidateOnlineStates(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name      string
+		configure func(*mockSupabaseClient, ed25519.PrivateKey)
+		wantState State
+		wantErr   error
 	}{
 		{
-			name: "active from supabase",
-			sbInfo: &AccountInfo{
-				UserID:       "u1",
-				Email:        "u1@example.com",
-				Entitlements: []Entitlement{EntitlementOverlays},
-				ActiveDevice: "fp",
-				ExpiresAt:    &future,
+			name: "active",
+			configure: func(client *mockSupabaseClient, private ed25519.PrivateKey) {
+				client.credential = signTestCredential(t, private, now, []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
 			},
-			expectState: StateActive,
+			wantState: StateActive,
 		},
 		{
-			name: "authenticated no entitlement",
-			sbInfo: &AccountInfo{
-				UserID:       "u1",
-				Email:        "u1@example.com",
-				Entitlements: nil,
-				ActiveDevice: "fp",
+			name: "authenticated without entitlement",
+			configure: func(client *mockSupabaseClient, private ed25519.PrivateKey) {
+				client.credential = signTestCredential(t, private, now, nil, testSubject, "device-1")
 			},
-			expectState: StateAuthenticatedNoEntitlement,
+			wantState: StateAuthenticatedNoEntitlement,
 		},
 		{
 			name: "device limit",
-			sbInfo: &AccountInfo{
-				UserID:       "u1",
-				Email:        "u1@example.com",
-				Entitlements: []Entitlement{EntitlementOverlays},
-				ActiveDevice: "other-fp",
-				ExpiresAt:    &future,
+			configure: func(client *mockSupabaseClient, _ ed25519.PrivateKey) {
+				client.fetchErr = ErrDeviceLimit
 			},
-			expectState: StateDeviceLimit,
+			wantState: StateDeviceLimit,
+			wantErr:   ErrDeviceLimit,
 		},
 		{
-			name: "grace from cache when supabase down",
-			setupCache: func(c *LicenseCache) error {
-				return c.Write(StateActive, []Entitlement{EntitlementOverlays}, &future)
+			name: "authoritative rejection",
+			configure: func(client *mockSupabaseClient, _ ed25519.PrivateKey) {
+				client.fetchErr = ErrCredentialRejected
 			},
-			sbErr:       errors.New("supabase down"),
-			expectState: StateGrace,
+			wantState: StateAuthenticatedNoEntitlement,
+			wantErr:   ErrCredentialRejected,
 		},
 		{
-			name: "expired when cache past and supabase down",
-			setupCache: func(c *LicenseCache) error {
-				return c.Write(StateActive, []Entitlement{EntitlementOverlays}, &past)
-			},
-			sbErr:       errors.New("supabase down"),
-			expectState: StateExpired,
-		},
-		{
-			name:        "rpc fails without cache falls to free (not expired)",
-			sbErr:       errors.New("supabase rpc 404"),
-			expectState: StateAuthenticatedNoEntitlement,
+			name:      "empty response",
+			configure: func(_ *mockSupabaseClient, _ ed25519.PrivateKey) {},
+			wantState: StateAuthenticatedNoEntitlement,
+			wantErr:   ErrValidationFailed,
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			cache := NewLicenseCache(dir + "/cache.json")
-			if tc.setupCache != nil {
-				if err := tc.setupCache(cache); err != nil {
-					t.Fatalf("setup cache: %v", err)
-				}
-			}
-			svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
-			svc.WithCache(cache)
-			svc.WithClient(&mockSupabaseClient{info: tc.sbInfo, err: tc.sbErr})
-
-			res, err := svc.Validate(context.Background(), "token")
+			client := &mockSupabaseClient{}
+			service, private := newTestService(t, now, client)
+			tc.configure(client, private)
+			result, err := service.Validate(context.Background(), testJWT(testSubject))
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("Validate() error = %v", err)
 			}
-			if res.State != tc.expectState {
-				t.Fatalf("expected state %s, got %s", tc.expectState, res.State)
+			if result.State != tc.wantState {
+				t.Fatalf("state = %s, want %s", result.State, tc.wantState)
+			}
+			if tc.wantErr != nil && !errors.Is(result.Error, tc.wantErr) {
+				t.Fatalf("result error = %v, want %v", result.Error, tc.wantErr)
+			}
+			if client.lastFingerprint != "device-1" {
+				t.Fatalf("fingerprint = %q", client.lastFingerprint)
 			}
 		})
 	}
 }
 
-func TestValidateMissingSession(t *testing.T) {
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	res, err := svc.Validate(context.Background(), "")
+func TestValidateOfflineFallbackRequiresExactTrustedSession(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{fetchErr: errors.New("network unavailable")}
+	service, private := newTestService(t, now, client)
+	cache := NewLicenseCache(t.TempDir() + "/license.json")
+	credential := signTestCredential(t, private, now.Add(-time.Minute), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
+	if _, err := service.verifier.verifyOnline(credential, testSubject, "device-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cache.Write(credential); err != nil {
+		t.Fatal(err)
+	}
+	service.WithCache(cache)
+	token := testJWT(testSubject)
+
+	for _, tc := range []struct {
+		name    string
+		trusted string
+		want    State
+	}{
+		{name: "no protected session", want: StateAuthenticatedNoEntitlement},
+		{name: "different protected session", trusted: testJWT("00000000-0000-4000-8000-000000000002"), want: StateAuthenticatedNoEntitlement},
+		{name: "exact protected session", trusted: token, want: StateGrace},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := service.ValidateWithTrustedSession(context.Background(), token, tc.trusted)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.State != tc.want {
+				t.Fatalf("state = %s, want %s", result.State, tc.want)
+			}
+		})
+	}
+}
+
+func TestValidateOfflineExpiredCredentialStaysExpired(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	service, private := newTestService(t, now, &mockSupabaseClient{fetchErr: errors.New("offline")})
+	cache := NewLicenseCache(t.TempDir() + "/license.json")
+	credential := signTestCredential(t, private, now.Add(-2*time.Hour), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(-time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
+	if _, err := service.verifier.verifyOnline(credential, testSubject, "device-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cache.Write(credential); err != nil {
+		t.Fatal(err)
+	}
+	service.WithCache(cache)
+	token := testJWT(testSubject)
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, token)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if res.State != StateAnonymous {
-		t.Fatalf("expected anonymous, got %s", res.State)
-	}
-	if !errors.Is(res.Error, ErrMissingSession) {
-		t.Fatalf("expected ErrMissingSession, got %v", res.Error)
+	if result.State != StateExpired || len(result.Capabilities) != 0 {
+		t.Fatalf("result = %#v", result)
 	}
 }
 
-func TestValidateFingerprintError(t *testing.T) {
-	svc := NewService(Config{}, nil, func() (string, error) { return "", errors.New("nope") })
-	_, err := svc.Validate(context.Background(), "token")
-	if err == nil {
-		t.Fatal("expected error from fingerprint failure")
+func TestValidateOnlineRevocationReplacesCachedPremiumCredential(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{}
+	service, private := newTestService(t, now, client)
+	cache := NewLicenseCache(t.TempDir() + "/license.json")
+	oldCredential := signTestCredential(t, private, now.Add(-time.Hour), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
+	if err := cache.Write(oldCredential); err != nil {
+		t.Fatal(err)
 	}
-}
+	client.credential = signTestCredential(t, private, now, nil, testSubject, "device-1")
+	service.WithCache(cache)
 
-func TestValidateGraceFromExpiredCache(t *testing.T) {
-	dir := t.TempDir()
-	cache := NewLicenseCache(dir + "/cache.json")
-	// Cache was updated recently but the subscription expired 1h ago.
-	// Within the 24h grace window we expect StateGrace.
-	if err := cache.Write(StateActive, []Entitlement{EntitlementOverlays}, nil); err != nil {
-		t.Fatalf("write cache: %v", err)
-	}
-	svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
-	svc.WithCache(cache)
-	svc.WithClient(&mockSupabaseClient{err: errors.New("network down")})
-
-	res, err := svc.Validate(context.Background(), "token")
+	result, err := service.Validate(context.Background(), testJWT(testSubject))
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if res.State != StateGrace {
-		t.Fatalf("expected grace from recent cache, got %s", res.State)
+	if result.State != StateAuthenticatedNoEntitlement || !result.OnlineValidated {
+		t.Fatalf("result = %#v", result)
 	}
-	if res.GraceEndsAt == nil {
-		t.Fatal("expected GraceEndsAt to be set during grace")
-	}
-}
-
-func TestValidateExpiredAfterGrace(t *testing.T) {
-	dir := t.TempDir()
-	cache := NewLicenseCache(dir + "/cache.json")
-	// Backdate the UpdatedAt to be > GracePeriod in the past.
-	cl := cachedLicense{
-		State:        StateActive,
-		Entitlements: []Entitlement{EntitlementOverlays},
-		ExpiresAt:    nil,
-		UpdatedAt:    time.Now().UTC().Add(-48 * time.Hour),
-	}
-	if err := writeRawCache(cache.Path(), cl); err != nil {
-		t.Fatalf("seed cache: %v", err)
-	}
-
-	svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
-	svc.WithCache(cache)
-	svc.WithClient(&mockSupabaseClient{err: errors.New("network down")})
-
-	res, err := svc.Validate(context.Background(), "token")
+	cached, err := cache.Read()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if res.State != StateExpired {
-		t.Fatalf("expected expired after grace, got %s", res.State)
-	}
-}
-
-func TestHasEntitlementActive(t *testing.T) {
-	future := time.Now().Add(time.Hour).UTC()
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	svc.WithClient(&mockSupabaseClient{info: &AccountInfo{
-		UserID:       "u1",
-		Entitlements: []Entitlement{EntitlementBundle},
-		ActiveDevice: "fp",
-		ExpiresAt:    &future,
-	}})
-
-	got, err := svc.HasEntitlement(context.Background(), "token", EntitlementBundle)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !got {
-		t.Fatal("expected bundle entitlement to be present")
+	if len(cached.Claims.Capabilities) != 0 || cached.Claims.IssuedAt != client.credential.Claims.IssuedAt {
+		t.Fatalf("cached credential was not replaced: %#v", cached)
 	}
 }
 
-func TestHasEntitlementMissing(t *testing.T) {
-	future := time.Now().Add(time.Hour).UTC()
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	svc.WithClient(&mockSupabaseClient{info: &AccountInfo{
-		UserID:       "u1",
-		Entitlements: []Entitlement{EntitlementOverlays},
-		ActiveDevice: "fp",
-		ExpiresAt:    &future,
-	}})
-
-	got, err := svc.HasEntitlement(context.Background(), "token", EntitlementEngineer)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestValidateRejectsInvalidSessionAndFingerprintFailure(t *testing.T) {
+	service := NewService(Config{}, nil, func() (string, error) { return "device-1", nil })
+	result, err := service.Validate(context.Background(), "not-a-jwt")
+	if err != nil || result.State != StateAnonymous || !errors.Is(result.Error, ErrValidationFailed) {
+		t.Fatalf("invalid JWT result = %#v, %v", result, err)
 	}
-	if got {
-		t.Fatal("expected missing entitlement to be reported as false")
+
+	service = NewService(Config{}, nil, func() (string, error) { return "", errors.New("fingerprint failed") })
+	if _, err := service.Validate(context.Background(), testJWT(testSubject)); err == nil {
+		t.Fatal("expected fingerprint error")
 	}
 }
 
-func TestResetDeviceRequiresSession(t *testing.T) {
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	if err := svc.ResetDevice(context.Background(), ""); !errors.Is(err, ErrMissingSession) {
-		t.Fatalf("expected ErrMissingSession, got %v", err)
+func TestValidateUnconfiguredFailsClosedWithoutTrustedCache(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	service, _ := newTestService(t, now, nil)
+	result, err := service.Validate(context.Background(), testJWT(testSubject))
+	if err != nil || result.State != StateUnconfigured || !errors.Is(result.Error, ErrUnconfigured) {
+		t.Fatalf("result = %#v, %v", result, err)
+	}
+
+	service.WithCache(NewLicenseCache(t.TempDir() + "/missing.json"))
+	result, err = service.ValidateWithTrustedSession(context.Background(), testJWT(testSubject), testJWT(testSubject))
+	if err != nil || result.State != StateUnconfigured || !errors.Is(result.Error, ErrUnconfigured) {
+		t.Fatalf("missing cache result = %#v, %v", result, err)
 	}
 }
 
-func TestResetDeviceCallsClient(t *testing.T) {
-	mock := &mockSupabaseClient{}
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	svc.WithClient(mock)
-	if err := svc.ResetDevice(context.Background(), "token"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestValidateRejectsLegacyCacheForPremiumFallback(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	service, _ := newTestService(t, now, &mockSupabaseClient{fetchErr: errors.New("offline")})
+	path := t.TempDir() + "/license.json"
+	if err := os.WriteFile(path, []byte(`{"state":"active","entitlements":["bundle"]}`), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	if mock.resetCalls != 1 {
-		t.Fatalf("expected 1 reset call, got %d", mock.resetCalls)
-	}
-}
-
-func TestResetDeviceRequiresClient(t *testing.T) {
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	if err := svc.ResetDevice(context.Background(), "token"); !errors.Is(err, ErrValidationFailed) {
-		t.Fatalf("expected ErrValidationFailed, got %v", err)
+	service.WithCache(NewLicenseCache(path))
+	token := testJWT(testSubject)
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, token)
+	if err != nil || result.State != StateAuthenticatedNoEntitlement || !errors.Is(result.Error, ErrLegacyCache) {
+		t.Fatalf("result = %#v, %v", result, err)
 	}
 }
 
-func TestSaveCacheWithoutCache(t *testing.T) {
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	err := svc.SaveCache(StateActive, nil, nil)
-	if !errors.Is(err, ErrNoCache) {
-		t.Fatalf("expected ErrNoCache, got %v", err)
+func TestMergeOnlineCapabilitiesValidatesAndSorts(t *testing.T) {
+	result := &Result{State: StateActive, Capabilities: []Capability{CapabilityPro}}
+	if err := mergeOnlineCapabilities(result, []Capability{CapabilityNightly, CapabilityTesters}); err != nil {
+		t.Fatal(err)
+	}
+	want := []Capability{CapabilityNightly, CapabilityTesters, CapabilityPro}
+	for i := range want {
+		if result.Capabilities[i] != want[i] {
+			t.Fatalf("capabilities = %v", result.Capabilities)
+		}
+	}
+	if err := mergeOnlineCapabilities(result, []Capability{CapabilityTesters, CapabilityNightly}); !errors.Is(err, ErrInvalidCredential) {
+		t.Fatalf("unsorted capabilities error = %v", err)
+	}
+	if err := mergeOnlineCapabilities(result, []Capability{"unknown"}); !errors.Is(err, ErrInvalidCredential) {
+		t.Fatalf("unknown capability error = %v", err)
 	}
 }
 
-// TestValidateUnconfiguredWithoutCache verifies that when the backend has no
-// Supabase client and no cache, validation returns StateUnconfigured (not
-// StateExpired). This prevents a false paywall block for authenticated users
-// when the release build is missing Supabase env vars.
-func TestValidateUnconfiguredWithoutCache(t *testing.T) {
-	svc := NewService(Config{}, nil, func() (string, error) { return "fp", nil })
-	res, err := svc.Validate(context.Background(), "token")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestHasEntitlementAndResetDevice(t *testing.T) {
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{}
+	service, private := newTestService(t, now, client)
+	client.credential = signTestCredential(t, private, now, []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
+	token := testJWT(testSubject)
+
+	got, err := service.HasEntitlement(context.Background(), token, EntitlementBundle)
+	if err != nil || !got {
+		t.Fatalf("HasEntitlement() = %v, %v", got, err)
 	}
-	if res.State != StateUnconfigured {
-		t.Fatalf("expected StateUnconfigured, got %s", res.State)
+	if err := service.ResetDevice(context.Background(), token); err != nil {
+		t.Fatal(err)
 	}
-	if !errors.Is(res.Error, ErrUnconfigured) {
-		t.Fatalf("expected ErrUnconfigured, got %v", res.Error)
+	if client.resetCalls != 1 || client.lastFingerprint != "device-1" {
+		t.Fatalf("reset calls = %d, fingerprint = %q", client.resetCalls, client.lastFingerprint)
 	}
 }
 
-// TestValidateUnconfiguredWithEmptyCache verifies that when the backend has no
-// Supabase client but has an empty cache, validation still returns
-// StateUnconfigured (not StateExpired).
-func TestValidateUnconfiguredWithEmptyCache(t *testing.T) {
-	dir := t.TempDir()
-	cache := NewLicenseCache(dir + "/cache.json")
-	svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
-	svc.WithCache(cache)
-	// No client wired, cache file does not exist yet.
-	res, err := svc.Validate(context.Background(), "token")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestResetDeviceValidatesInputsAndPropagatesFailure(t *testing.T) {
+	service := NewService(Config{}, nil, func() (string, error) { return "device-1", nil })
+	if err := service.ResetDevice(context.Background(), ""); !errors.Is(err, ErrMissingSession) {
+		t.Fatalf("missing session error = %v", err)
 	}
-	if res.State != StateUnconfigured {
-		t.Fatalf("expected StateUnconfigured, got %s", res.State)
+	if err := service.ResetDevice(context.Background(), testJWT(testSubject)); !errors.Is(err, ErrValidationFailed) {
+		t.Fatalf("missing client error = %v", err)
 	}
-}
-
-// TestValidateUnconfiguredDoesNotBlockExpiredUser verifies that a previously
-// cached active entitlement still enters grace when the backend is
-// unconfigured (the cache is authoritative for valid subscriptions).
-func TestValidateUnconfiguredWithActiveCacheEntersGrace(t *testing.T) {
-	dir := t.TempDir()
-	cache := NewLicenseCache(dir + "/cache.json")
-	if err := cache.Write(StateActive, []Entitlement{EntitlementOverlays}, nil); err != nil {
-		t.Fatalf("write cache: %v", err)
+	client := &mockSupabaseClient{resetErr: errors.New("reset failed")}
+	service.WithClient(client)
+	if err := service.ResetDevice(context.Background(), testJWT(testSubject)); err == nil || err.Error() != "reset failed" {
+		t.Fatalf("reset error = %v", err)
 	}
-	svc := NewService(Config{GracePeriod: 24 * time.Hour}, nil, func() (string, error) { return "fp", nil })
-	svc.WithCache(cache)
-	// No client wired: unconfigured path, but cache has active entitlement.
-	res, err := svc.Validate(context.Background(), "token")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if res.State != StateGrace {
-		t.Fatalf("expected StateGrace from cache, got %s", res.State)
-	}
-}
-
-// writeRawCache is a test helper that bypasses Write to backdate UpdatedAt.
-func writeRawCache(path string, cl cachedLicense) error {
-	data, err := json.MarshalIndent(cl, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0600)
 }

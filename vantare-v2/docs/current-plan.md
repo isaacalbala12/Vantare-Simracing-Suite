@@ -1,3 +1,21 @@
+Nota ISA-74 / BIL-09 (2026-08-02, matriz lifecycle sandbox):
+- Fixture sintética completa y explícitamente sandbox para Launch, Pro y Pro Plus; Pro incluye trial de siete días con antiabuso confirmado.
+- Matriz versionada para trial, active, renewal, cancel-at-period, uncancel, past_due, unpaid, revoked y estado desconocido fail-closed.
+- Customer State, beneficios, compras múltiples y refunds se ejecutan contra las funciones reales; una segunda pasada converge sin efectos nuevos.
+- Solo fixtures, tests y documentación: ningún endpoint, pago, refund, deploy, secreto o dato productivo. Autoridad: `docs/billing/bil-09-lifecycle-matrix.md`.
+- Gates locales: BIL-09 4/4, Deno activo 177/177, formato, type-check,
+  deploy-surface y `git diff --check` PASS.
+- Estado: implementación aislada pendiente de review independiente; venta
+  pública continúa **NO-GO**.
+
+Nota ISA-212 / BIL-N02 (2026-08-02, promoción a `nightly`):
+- BIL-08 reconstruida sobre `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`, que ya contiene BIL-01..BIL-07, Telemetry Core, Engineer, Strategy y Telemetry Analysis.
+- El corte añade envelope Ed25519 versionado ligado a UUID/fingerprint, expiración offline por capability, Launch v1 perpetuo por scope, high-watermark protegido, migración legacy fail-closed y el emisor `license-credential`.
+- `authsession` y licencia comparten una única implementación de Windows Credential Manager mediante `internal/protectedstore`; el cliente solo recibe claves públicas versionadas.
+- La auditoría de recuperación reconstruyó `service_test.go`, que había quedado vacío tras el reinicio, y sustituyó un fixture Deno→Go inválido por uno generado y verificado realmente con WebCrypto.
+- Gates de la composición final: frontend 311/311 archivos y 2.128/2.128 tests, build y lint focal PASS; Deno 173/173, formato, check y deploy-surface PASS; Go focal x20, `vet`, Credential Manager real y `-race` focal PASS. La suite Go global confirma todos los paquetes BIL-08 y conserva un único fallo intermitente heredado en `internal/app.TestConcurrentSavesDontCorruptFile`, reproducido también sobre la base y trazado en ISA-118. La intermitencia heredada del canvas apareció en una primera pasada frontend, no existe diff de canvas y la repetición global final quedó completamente verde.
+- Estado: candidato técnico listo para PR/CI y promoción exclusiva a `nightly`. Sin deploy, secretos, credenciales productivas, pagos, refunds ni mutaciones remotas. Venta pública continúa **NO-GO** y `testers`/`master` no se tocan.
+
 Nota ISA-203 / BIL-N01 (2026-08-02, promoción a `nightly`):
 - Reconstrucción del árbol final BIL-01..BIL-07 sobre
   `nightly@523840972673c2567cef75240ebe5a768f7742fc`; BIL-08 queda fuera porque

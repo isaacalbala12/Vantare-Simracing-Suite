@@ -1,131 +1,86 @@
 package license
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 )
 
-// cachedLicense is the JSON shape persisted to {cfgDir}/license-cache.json.
-type cachedLicense struct {
-	State        State         `json:"state"`
-	Entitlements []Entitlement `json:"entitlements"`
-	ExpiresAt    *time.Time    `json:"expires_at,omitempty"`
-	UpdatedAt    time.Time     `json:"updated_at"`
-}
-
-// LicenseCache is the public local cache for the last known license state.
-// It is intentionally minimal and stores nothing user-identifying beyond what
-// is needed to gate the runtime during the offline grace window.
+// LicenseCache persists only the server-signed envelope. Runtime state and
+// entitlements are always re-derived after signature and policy validation.
 type LicenseCache struct {
 	mu   sync.RWMutex
 	path string
 }
 
-// NewLicenseCache creates a cache bound to the given JSON file path. The path
-// is not created here; the caller is expected to point at the same file the
-// LicenseService will use.
-func NewLicenseCache(path string) *LicenseCache {
-	return &LicenseCache{path: path}
-}
+func NewLicenseCache(path string) *LicenseCache { return &LicenseCache{path: path} }
+func (c *LicenseCache) Path() string            { return c.path }
 
-// Path returns the absolute or relative path used to persist the cache.
-func (c *LicenseCache) Path() string {
-	return c.path
-}
-
-// Read returns the cached license data. Returns os.ErrNotExist wrapped if the
-// cache file is missing. Returns the parsed state, entitlements and expiration.
-func (c *LicenseCache) Read() (State, []Entitlement, *time.Time, error) {
+func (c *LicenseCache) Read() (*OfflineCredential, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
 	data, err := os.ReadFile(c.path)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
-	var cl cachedLicense
-	if err := json.Unmarshal(data, &cl); err != nil {
-		return "", nil, nil, fmt.Errorf("parsing cache: %w", err)
+	var shape map[string]json.RawMessage
+	if err := json.Unmarshal(data, &shape); err != nil {
+		return nil, fmt.Errorf("parsing license cache: %w", err)
 	}
-	return cl.State, cl.Entitlements, cl.ExpiresAt, nil
+	for _, legacy := range []string{"state", "entitlements", "expires_at", "updated_at"} {
+		if _, exists := shape[legacy]; exists {
+			return nil, ErrLegacyCache
+		}
+	}
+	var credential OfflineCredential
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&credential); err != nil {
+		return nil, fmt.Errorf("parsing signed license cache: %w", err)
+	}
+	return &credential, nil
 }
 
-// Write persists the license data to disk atomically with 0600 permissions.
-// The updated timestamp is set internally to the current UTC time.
-func (c *LicenseCache) Write(state State, entitlements []Entitlement, expiresAt *time.Time) error {
+func (c *LicenseCache) Write(credential *OfflineCredential) error {
+	if credential == nil {
+		return ErrInvalidCredential
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	cl := cachedLicense{
-		State:        state,
-		Entitlements: entitlements,
-		ExpiresAt:    expiresAt,
-		UpdatedAt:    time.Now().UTC(),
-	}
-	data, err := json.MarshalIndent(cl, "", "  ")
+	data, err := json.MarshalIndent(credential, "", "  ")
 	if err != nil {
-		return fmt.Errorf("encoding cache: %w", err)
+		return fmt.Errorf("encoding license cache: %w", err)
 	}
-
 	dir := filepath.Dir(c.path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("creating cache directory: %w", err)
 	}
-
 	tmpFile, err := os.CreateTemp(dir, "license-cache-*.tmp")
 	if err != nil {
 		return fmt.Errorf("creating temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-
 	defer func() {
-		if tmpPath != "" {
-			tmpFile.Close()
-			_ = os.Remove(tmpPath)
-		}
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
 	}()
-
 	if err := tmpFile.Chmod(0600); err != nil {
 		return fmt.Errorf("chmod temp file: %w", err)
 	}
-
 	if _, err := tmpFile.Write(data); err != nil {
 		return fmt.Errorf("writing temp file: %w", err)
 	}
-
 	if err := tmpFile.Sync(); err != nil {
 		return fmt.Errorf("syncing temp file: %w", err)
 	}
-
 	if err := tmpFile.Close(); err != nil {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
-
 	if err := os.Rename(tmpPath, c.path); err != nil {
 		return fmt.Errorf("renaming temp file: %w", err)
 	}
-
-	tmpPath = ""
 	return nil
-}
-
-// UpdatedAt returns the time the cache was last written. Returns the zero time
-// if the cache file is missing or unreadable.
-func (c *LicenseCache) UpdatedAt() time.Time {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	data, err := os.ReadFile(c.path)
-	if err != nil {
-		return time.Time{}
-	}
-	var cl cachedLicense
-	if err := json.Unmarshal(data, &cl); err != nil {
-		return time.Time{}
-	}
-	return cl.UpdatedAt
 }

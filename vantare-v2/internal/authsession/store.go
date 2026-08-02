@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/vantare/overlays/v2/internal/protectedstore"
 )
 
 var (
@@ -17,6 +19,43 @@ var (
 type Session struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+}
+
+// Store adapts the shared OS-protected byte store to the typed Supabase
+// session contract. Credential Manager mechanics live in one package only.
+type Store struct{ protected *protectedstore.Store }
+
+func NewStore(target string) *Store {
+	return &Store{protected: protectedstore.New(target)}
+}
+
+func (s *Store) Save(session Session) error {
+	data, err := marshal(session)
+	if err != nil {
+		return err
+	}
+	if err := s.protected.Save(data); err != nil {
+		return fmt.Errorf("writing protected auth session: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) Load() (Session, error) {
+	data, err := s.protected.Load()
+	if errors.Is(err, protectedstore.ErrNotFound) {
+		return Session{}, ErrNotFound
+	}
+	if err != nil {
+		return Session{}, fmt.Errorf("reading protected auth session: %w", err)
+	}
+	return unmarshal(data)
+}
+
+func (s *Store) Delete() error {
+	if err := s.protected.Delete(); err != nil {
+		return fmt.Errorf("deleting protected auth session: %w", err)
+	}
+	return nil
 }
 
 func (s Session) validate() error {

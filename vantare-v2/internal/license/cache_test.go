@@ -1,170 +1,88 @@
 package license
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 )
 
-func TestCacheRoundTrip(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "license-cache.json")
-	c := NewLicenseCache(path)
+func TestCacheRoundTripAndAtomicReplace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "license-cache.json")
+	cache := NewLicenseCache(path)
+	first := &OfflineCredential{Version: 1, Algorithm: "Ed25519", KeyID: "key-1", Signature: "one"}
+	if err := cache.Write(first); err != nil {
+		t.Fatal(err)
+	}
+	got, err := cache.Read()
+	if err != nil || got.Signature != "one" {
+		t.Fatalf("read = %#v, %v", got, err)
+	}
+	second := *first
+	second.Signature = "two"
+	if err := cache.Write(&second); err != nil {
+		t.Fatal(err)
+	}
+	got, err = cache.Read()
+	if err != nil || got.Signature != "two" {
+		t.Fatalf("replace = %#v, %v", got, err)
+	}
+	entries, _ := os.ReadDir(filepath.Dir(path))
+	if len(entries) != 1 || entries[0].Name() != filepath.Base(path) {
+		t.Fatalf("unexpected cache files: %v", entries)
+	}
+}
 
-	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
-	if err := c.Write(StateActive, []Entitlement{EntitlementBundle}, &expires); err != nil {
-		t.Fatalf("write failed: %v", err)
+func TestCacheRejectsLegacyPremiumFormat(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "license-cache.json")
+	if err := os.WriteFile(path, []byte(`{"state":"active","entitlements":["bundle"]}`), 0600); err != nil {
+		t.Fatal(err)
 	}
+	_, err := NewLicenseCache(path).Read()
+	if !errors.Is(err, ErrLegacyCache) {
+		t.Fatalf("expected ErrLegacyCache, got %v", err)
+	}
+}
 
-	state, ents, exp, err := c.Read()
-	if err != nil {
-		t.Fatalf("read failed: %v", err)
+func TestCacheRejectsUnknownFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "license-cache.json")
+	if err := os.WriteFile(path, []byte(`{"version":1,"algorithm":"Ed25519","key_id":"k","claims":{},"signature":"x","premium":true}`), 0600); err != nil {
+		t.Fatal(err)
 	}
-	if state != StateActive {
-		t.Fatalf("expected active, got %s", state)
-	}
-	if len(ents) != 1 || ents[0] != EntitlementBundle {
-		t.Fatalf("unexpected entitlements: %v", ents)
-	}
-	if exp == nil || !exp.Equal(expires) {
-		t.Fatalf("unexpected expires: %v", exp)
-	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("stat failed: %v", err)
-	}
-	// On Windows the mode bits may be different; on unix we expect 0600.
-	if runtime := info.Mode().Perm(); runtime != 0600 {
-		t.Logf("note: cache file perm is %o (expected 0600)", runtime)
+	if _, err := NewLicenseCache(path).Read(); err == nil {
+		t.Fatal("expected unknown field rejection")
 	}
 }
 
 func TestCacheMissingReturnsError(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "missing.json")
-	c := NewLicenseCache(path)
-	_, _, _, err := c.Read()
+	_, err := NewLicenseCache(filepath.Join(t.TempDir(), "missing.json")).Read()
 	if !os.IsNotExist(err) {
 		t.Fatalf("expected not exist, got %v", err)
 	}
 }
 
-func TestCacheUpdatedAt(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "license-cache.json")
-	c := NewLicenseCache(path)
-
-	expires := time.Now().Add(time.Hour).UTC()
-	before := time.Now().UTC()
-	if err := c.Write(StateActive, []Entitlement{EntitlementOverlays}, &expires); err != nil {
-		t.Fatalf("write failed: %v", err)
-	}
-	after := time.Now().UTC()
-
-	updated := c.UpdatedAt()
-	if updated.Before(before) || updated.After(after) {
-		t.Fatalf("UpdatedAt %v not in [%v, %v]", updated, before, after)
-	}
-}
-
 func TestCacheConcurrent(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "license-cache-concurrent.json")
-	c := NewLicenseCache(path)
-
-	const goroutines = 10
-	const iterations = 50
+	cache := NewLicenseCache(filepath.Join(t.TempDir(), "cache.json"))
+	credential := &OfflineCredential{Version: 1, Algorithm: "Ed25519", KeyID: "key-1", Signature: "x"}
+	if err := cache.Write(credential); err != nil {
+		t.Fatal(err)
+	}
 	var wg sync.WaitGroup
-
-	// Write initially to prevent Read/UpdatedAt from failing on file not found
-	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
-	if err := c.Write(StateActive, []Entitlement{EntitlementOverlays}, &expires); err != nil {
-		t.Fatalf("initial write failed: %v", err)
-	}
-
-	for i := 0; i < goroutines; i++ {
-		wg.Add(3)
-
-		// Writer goroutine
-		go func(id int) {
-			defer wg.Done()
-			for j := 0; j < iterations; j++ {
-				exp := time.Now().Add(time.Duration(id+j) * time.Hour).UTC()
-				_ = c.Write(StateActive, []Entitlement{EntitlementOverlays}, &exp)
-			}
-		}(i)
-
-		// Reader goroutine
+	for i := 0; i < 10; i++ {
+		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
-				_, _, _, _ = c.Read()
+			for j := 0; j < 50; j++ {
+				_ = cache.Write(credential)
 			}
 		}()
-
-		// UpdatedAt reader goroutine
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
-				_ = c.UpdatedAt()
+			for j := 0; j < 50; j++ {
+				_, _ = cache.Read()
 			}
 		}()
 	}
-
 	wg.Wait()
-}
-
-func TestCacheAtomicWrite(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "atomic-cache.json")
-	c := NewLicenseCache(path)
-
-	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
-	if err := c.Write(StateActive, []Entitlement{EntitlementBundle}, &expires); err != nil {
-		t.Fatalf("write failed: %v", err)
-	}
-
-	// 1. Verify JSON is valid
-	state, ents, exp, err := c.Read()
-	if err != nil {
-		t.Fatalf("read failed: %v", err)
-	}
-	if state != StateActive {
-		t.Fatalf("expected Active state, got %s", state)
-	}
-	if len(ents) != 1 || ents[0] != EntitlementBundle {
-		t.Fatalf("unexpected entitlements: %v", ents)
-	}
-	if exp == nil || !exp.Equal(expires) {
-		t.Fatalf("unexpected expires: %v", exp)
-	}
-
-	// 2. Verify writing overrides existing cache file
-	expires2 := time.Now().Add(2 * time.Hour).UTC().Truncate(time.Second)
-	if err := c.Write(StateGrace, []Entitlement{EntitlementOverlays}, &expires2); err != nil {
-		t.Fatalf("second write failed: %v", err)
-	}
-
-	state2, ents2, exp2, err := c.Read()
-	if err != nil {
-		t.Fatalf("read 2 failed: %v", err)
-	}
-	if state2 != StateGrace || len(ents2) != 1 || ents2[0] != EntitlementOverlays || !exp2.Equal(expires2) {
-		t.Fatalf("unexpected overrides state: %s, entitlements: %v, expires: %v", state2, ents2, exp2)
-	}
-
-	// 3. Verify that no temporary files are left over in the directory
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("failed to read dir: %v", err)
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if filepath.Ext(name) == ".tmp" || (len(name) >= 4 && name[len(name)-4:] == ".tmp") {
-			t.Fatalf("found leftover temporary file: %s", name)
-		}
-	}
 }

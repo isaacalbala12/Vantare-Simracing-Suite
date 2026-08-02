@@ -2,7 +2,8 @@
 
 Fecha: 2026-08-02
 
-Estado inicial: simulación read-only completada; merge aún no materializado.
+Estado: composición materializada y matriz conjunta completa; pendiente de
+commit de merge, push, PR draft y revisión independiente.
 
 ## Objetivo y límites
 
@@ -54,6 +55,42 @@ checkout/portal, auth/session, hardening de RPC/RLS, recovery, guards y workflow
 - Clean, upgrade y restore deben aplicar las migraciones en orden de nombre y
   ejecutar conjuntamente pgTAP de checkout/auth y pgTAP del inbox.
 - El resultado seguirá siendo NO-GO comercial y no se desplegará.
+
+## Resolución materializada
+
+- `process.ts` conserva el inbox durable como única autoridad de recepción y
+  efectos, sin restaurar el claim prematuro mediante `license_events`.
+- La resolución de usuario y el upsert de `billing_customers` quedan acotados al
+  entorno del mapping Polar. No se persiste el email del webhook y los errores
+  de base de datos permanecen sanitizados.
+- Las suites conservan todos los casos de BIL-02/03/04 y añaden dos regresiones
+  de interacción: resolución dentro del entorno configurado e independencia de
+  un mismo customer entre sandbox y production.
+- El pgTAP concurrente de BIL-02 deja de depender de un puerto y contraseña
+  locales fijos. El runner crea un helper `dblink` privilegiado exclusivamente
+  dentro de cada PostgreSQL desechable y lo recrea tras el restore; no existe en
+  migraciones ni runtime.
+- Las cuatro rutas documentales se compusieron sin perder contratos ni presentar
+  la integración como autorización comercial.
+
+## Evidencia conjunta
+
+- Deno focal del webhook: 37/37.
+- Deno global de Supabase Functions: 82/82; `deno check` de checkout, portal y
+  webhook: PASS.
+- PostgreSQL 17 en PowerShell 7 y Windows PowerShell 5.1: clean, upgrade y
+  restore con 48 checks de hardening + 53 del inbox en cada fase; concurrencia
+  de inbox y dispositivo: PASS; restore con centinela/RLS/grants: PASS; dumps
+  truncado y corrupto: fail-closed.
+- Go `authsession`, `server` y `license`: PASS; authsession y nonce OAuth durante
+  50 repeticiones: PASS; `go vet` focal: PASS.
+- Frontend auth focal: 103/103; suite global: 1624/1624; build: PASS; lint focal:
+  PASS.
+- Guards de superficie desplegable PowerShell y Deno: PASS.
+
+No se observó ninguna incompatibilidad semántica adicional a los cuatro
+conflictos simulados. No hubo deploy, pagos, PII, replay remoto, mutaciones de
+Polar/Supabase ni promoción a una rama compartida.
 
 ## Rollback
 

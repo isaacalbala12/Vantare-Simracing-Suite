@@ -1,5 +1,26 @@
 # Handoff vivo — plataforma comercial (Billing)
 
+## Actualización 2026-08-02 — BIL-06 / ISA-70
+
+BIL-06 está implementada sobre la base exacta aceptada de BIL-05
+`c5109edad1a6261d6cadd9cbe3d7fc728be4a5e6`, en rama aislada y sin deploy.
+Añade el ciclo de suscripción canónico, el límite de acceso exclusivo y la
+recuperación técnica máxima de 72 horas por ciclo pagado. Reintentos, replay,
+eventos fuera de orden y reconciliación convergen sin reiniciar el reloj. Los
+estados acotados sin fin demostrado se ponen en quarantine; las fuentes
+independientes no se revocan y una capability retirada no reaparece desde
+histórico.
+
+Leer a continuación:
+
+- `docs/analysis/isa-70-bil-06-subscription-lifecycle-2026-08-02.md`.
+- `docs/billing/bil-06-subscription-recovery-runbook.md`.
+
+Evidencia: Deno activo 144/144, focal 84/84, checks TypeScript y PostgreSQL 17
+clean/upgrade/restore, legacy y concurrencia en verde. No se creó `deno.lock`.
+BIL-07 (refunds, chargebacks y ledger) no se inició. Venta pública continúa
+**NO-GO**.
+
 Estado: ISA-69 / BIL-05 implementa sobre ISA-179 la proyección comercial
 monótona, grants por fuente y reconciliación Customer State; candidato aislado
 pendiente de review, sin deploy y con venta pública **NO-GO**.

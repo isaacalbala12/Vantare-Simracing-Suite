@@ -17,6 +17,11 @@ import {
   sanitizeWebhookErrorCode,
   type WebhookInbox,
 } from "./inbox.ts";
+import { deriveSubscriptionTransition } from "./subscription-lifecycle.ts";
+import {
+  type SubscriptionLifecycleStore,
+  SupabaseSubscriptionLifecycleStore,
+} from "./subscription-lifecycle-store.ts";
 
 export const POLAR_PROVIDER = "polar";
 
@@ -55,6 +60,7 @@ export type WebhookProcessorDeps = {
   workerToken?: () => string;
   runEffect?: EffectRunner;
   projection?: CommercialProjection;
+  lifecycle?: SubscriptionLifecycleStore;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -241,71 +247,6 @@ export async function upsertBillingCustomer(
   if (error) throw databaseWriteError("billing_customers", error);
 }
 
-export async function upsertBillingSubscription(
-  supabase: SupabaseClient,
-  userId: string,
-  subscriptionId: string,
-  productId: string,
-  status: string,
-  periodStart: string | null,
-  periodEnd: string | null,
-  cancelAtPeriodEnd: boolean,
-  checkoutKey: string,
-  modifiedAt: string,
-): Promise<void> {
-  const { error } = await supabase.from("billing_subscriptions").upsert(
-    {
-      user_id: userId,
-      provider: POLAR_PROVIDER,
-      provider_subscription_id: subscriptionId,
-      provider_product_id: productId,
-      provider_price_id: null,
-      status,
-      current_period_start: periodStart,
-      current_period_end: periodEnd,
-      cancel_at_period_end: cancelAtPeriodEnd,
-      metadata: { checkout_key: checkoutKey, derived: true },
-      updated_at: modifiedAt,
-    },
-    { onConflict: "provider,provider_subscription_id" },
-  );
-  if (error) throw databaseWriteError("billing_subscriptions", error);
-}
-
-export function deriveSubscriptionEntitlementStatus(
-  status: string,
-  cancelAtPeriodEnd: boolean,
-  periodEnd: string | null,
-  now: Date,
-): { status: string; expiresAt: string | null } {
-  const normalized = status.toLowerCase();
-
-  if (normalized === "past_due") {
-    return { status: "past_due", expiresAt: periodEnd };
-  }
-
-  if (normalized === "canceled" || normalized === "cancelled") {
-    if (cancelAtPeriodEnd && periodEnd && new Date(periodEnd) > now) {
-      return { status: "active", expiresAt: periodEnd };
-    }
-    return { status: "expired", expiresAt: periodEnd ?? now.toISOString() };
-  }
-
-  if (normalized === "revoked") {
-    return { status: "revoked", expiresAt: periodEnd ?? now.toISOString() };
-  }
-
-  if (
-    normalized === "active" ||
-    normalized === "trialing" ||
-    normalized === "uncanceled"
-  ) {
-    return { status: "active", expiresAt: periodEnd };
-  }
-
-  return { status: "expired", expiresAt: periodEnd ?? now.toISOString() };
-}
-
 async function touchCustomerIfPresent(
   deps: WebhookProcessorDeps,
   userId: string,
@@ -346,7 +287,7 @@ function resourceTypeForEvent(
   return null;
 }
 
-function projectionState(
+function orderProjectionState(
   event: PolarWebhookEvent,
   now: Date,
 ): { state: string; active: boolean; validUntil: string | null } {
@@ -357,20 +298,45 @@ function projectionState(
     return { state: "refunded", active: false, validUntil: now.toISOString() };
   }
 
-  const state = asString(event.data.status) ??
-    event.type.slice("subscription.".length);
-  const periodEnd = parseIsoTimestamp(event.data.current_period_end);
-  const derived = deriveSubscriptionEntitlementStatus(
-    state,
-    event.data.cancel_at_period_end === true,
-    periodEnd,
-    now,
-  );
-  return {
-    state,
-    active: derived.status === "active",
-    validUntil: derived.expiresAt,
-  };
+  throw new Error("unsupported_order_projection_state");
+}
+
+function subscriptionStatus(event: PolarWebhookEvent): string | null {
+  const fromType = event.type.slice("subscription.".length);
+  const knownStates = [
+    "incomplete",
+    "incomplete_expired",
+    "trialing",
+    "active",
+    "canceled",
+    "past_due",
+    "unpaid",
+  ];
+  if (fromType === "created" || fromType === "updated") {
+    const payloadStatus = asString(event.data.status)?.toLowerCase() ?? null;
+    if (payloadStatus && knownStates.includes(payloadStatus)) {
+      return payloadStatus;
+    }
+    return null;
+  }
+  return [
+      "active",
+      "canceled",
+      "uncanceled",
+      "past_due",
+      "revoked",
+    ].includes(fromType)
+    ? fromType
+    : null;
+}
+
+function subscriptionStatusRequiresPeriodEnd(
+  status: string,
+  cancelAtPeriodEnd: boolean,
+): boolean {
+  return status === "active" || status === "trialing" ||
+    status === "uncanceled" || status === "past_due" ||
+    (status === "canceled" && cancelAtPeriodEnd);
 }
 
 function grantsForConfig(
@@ -426,7 +392,10 @@ export async function applyPolarWebhookEvent(
         : "order_paid_not_lifetime",
     };
   }
-  if (resourceType === "subscription" && resolved.key !== "pro_monthly") {
+  if (
+    resourceType === "subscription" &&
+    resolved.config.billing_type !== "subscription"
+  ) {
     return { status: "ignored", reason: "subscription_not_monthly" };
   }
   if (
@@ -437,6 +406,7 @@ export async function applyPolarWebhookEvent(
       "subscription.active",
       "subscription.updated",
       "subscription.canceled",
+      "subscription.uncanceled",
       "subscription.past_due",
       "subscription.revoked",
     ].includes(event.type)
@@ -455,7 +425,55 @@ export async function applyPolarWebhookEvent(
     return { status: "ignored", reason: "missing_resource_modified_at" };
   }
 
-  const projected = projectionState(event, now);
+  const lifecycle = deps.lifecycle ??
+    new SupabaseSubscriptionLifecycleStore(deps.supabase);
+  const parsedPeriodEnd = parseIsoTimestamp(event.data.current_period_end);
+  const remotePeriodEnd = parsedPeriodEnd &&
+      Number.isFinite(Date.parse(parsedPeriodEnd))
+    ? new Date(parsedPeriodEnd).toISOString()
+    : null;
+  const status = resourceType === "subscription"
+    ? subscriptionStatus(event)
+    : null;
+  if (resourceType === "subscription" && !status) {
+    return { status: "ignored", reason: "unsupported_subscription_status" };
+  }
+  const cancelAtPeriodEnd = event.data.cancel_at_period_end === true;
+  if (
+    resourceType === "subscription" && status &&
+    subscriptionStatusRequiresPeriodEnd(status, cancelAtPeriodEnd) &&
+    !remotePeriodEnd
+  ) {
+    return { status: "ignored", reason: "missing_subscription_period_end" };
+  }
+  const subscriptionTransition = resourceType === "subscription"
+    ? status === "trialing" && resolved.config.trial.enabled !== true
+      ? null
+      : deriveSubscriptionTransition({
+        status: status!,
+        cancelAtPeriodEnd,
+        currentPeriodEnd: remotePeriodEnd,
+        remoteModifiedAt: new Date(modifiedAt).toISOString(),
+        previous: await lifecycle.read({
+          environment,
+          subscriptionId: resourceId,
+        }),
+        now,
+      })
+    : null;
+  if (
+    resourceType === "subscription" && status === "trialing" &&
+    resolved.config.trial.enabled !== true
+  ) {
+    return { status: "ignored", reason: "subscription_trial_not_configured" };
+  }
+  const projected = subscriptionTransition
+    ? {
+      state: subscriptionTransition.status,
+      active: subscriptionTransition.commercialGrant.status === "active",
+      validUntil: subscriptionTransition.commercialGrant.validUntil,
+    }
+    : orderProjectionState(event, now);
   const grants = grantsForConfig(
     resolved.config,
     projected.active,
@@ -482,28 +500,44 @@ export async function applyPolarWebhookEvent(
   if (result.outcome === "version_conflict") {
     return { status: "ignored", reason: "resource_version_conflict" };
   }
+  const lifecycleApply = resourceType === "subscription" &&
+      subscriptionTransition
+    ? {
+      userId,
+      environment,
+      subscriptionId: resourceId,
+      productId,
+      capabilities: resolved.config.capabilities,
+      periodStart: parseIsoTimestamp(event.data.current_period_start),
+      remotePeriodEnd,
+      cancelAtPeriodEnd,
+      modifiedAt: snapshotWithoutHash.modifiedAt,
+      snapshotHash,
+      transition: subscriptionTransition,
+      evaluatedAt: nowIso,
+    }
+    : null;
   if (result.outcome === "stale_noop") {
+    if (
+      lifecycleApply && status === "past_due" &&
+      subscriptionTransition?.recovery.action === "open" &&
+      remotePeriodEnd === subscriptionTransition.recovery.cyclePaidThrough
+    ) {
+      await applyEffect(
+        deps,
+        "billing_subscription_lifecycle",
+        () => lifecycle.apply(lifecycleApply),
+      );
+    }
     return { status: "processed", action: "stale_noop" };
   }
 
   await touchCustomerIfPresent(deps, userId, environment, event.data, nowIso);
-  if (resourceType === "subscription") {
+  if (lifecycleApply) {
     await applyEffect(
       deps,
-      "billing_subscription_read_model",
-      () =>
-        upsertBillingSubscription(
-          deps.supabase,
-          userId,
-          resourceId,
-          productId,
-          projected.state,
-          parseIsoTimestamp(event.data.current_period_start),
-          parseIsoTimestamp(event.data.current_period_end),
-          event.data.cancel_at_period_end === true,
-          resolved.key,
-          snapshotWithoutHash.modifiedAt,
-        ),
+      "billing_subscription_lifecycle",
+      () => lifecycle.apply(lifecycleApply),
     );
   }
   if (result.outcome === "duplicate") {
@@ -593,6 +627,9 @@ function quarantineReason(result: ProcessResult): string | null {
       "missing_resource_id",
       "missing_resource_modified_at",
       "resource_version_conflict",
+      "unsupported_subscription_status",
+      "subscription_trial_not_configured",
+      "missing_subscription_period_end",
     ].includes(result.reason)
     ? result.reason
     : null;

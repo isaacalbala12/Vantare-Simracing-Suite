@@ -42,7 +42,9 @@ export type PolarCustomerStateSubscription = {
   productId: string;
   status: string;
   modifiedAt: string;
+  currentPeriodStart?: string | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd?: boolean;
 };
 
 export type PolarCustomerStateBenefit = {
@@ -562,6 +564,12 @@ function parseCustomerSubscription(
     status,
     modifiedAt: new Date(modifiedAt).toISOString(),
     currentPeriodEnd: stringValue(value.current_period_end),
+    ...(stringValue(value.current_period_start)
+      ? { currentPeriodStart: stringValue(value.current_period_start) }
+      : {}),
+    ...(typeof value.cancel_at_period_end === "boolean"
+      ? { cancelAtPeriodEnd: value.cancel_at_period_end }
+      : {}),
   };
 }
 

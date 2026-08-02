@@ -159,10 +159,9 @@ se eliminó. El incidente de `digest` sin esquema quedó corregido como
 `extensions.digest` y protegido por test. Las claves de firma son independientes
 y staging mantiene Polar fail-closed.
 
-El preflight productivo enumera ocho migraciones pendientes, pero el inventario
-oficial confirma cero backups y PITR deshabilitado. El wrapper bloqueó el apply
-y producción no cambió. BIL-11 queda bloqueada hasta resolver el backup,
-completar deploy y smoke productivos y obtener después su gate monetario propio.
+El inventario oficial confirma cero backups y PITR deshabilitado. La alternativa
+aprobada en Supabase Free es una copia lógica diaria local, cifrada y restaurada
+antes de cualquier despliegue productivo.
 
 Isaac aprobó mantener Supabase Free y crear un backup lógico diario. Ya existe
 la implementación: tarea a las 03:00, EFS, DPAPI, manifiesto SHA-256, 30 días de
@@ -170,12 +169,16 @@ retención y restore local desechable. El wrapper no acepta una declaración
 manual: exige un ZIP cifrado de menos de 26 horas y repite su restore antes de
 producción. La tarea real quedó instalada y terminó la primera copia con
 resultado 0. El ZIP conserva datos completos y el gate restauró esquema/datos
-`public`, la superficie afectada por Billing. No se inspeccionó contenido ni se
-tocó todavía producción.
+`public`, la superficie afectada por Billing. No se inspeccionó contenido. Esta
+copia fue el rollback verificado utilizado antes de tocar producción.
 
-Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214, primero
-en staging y después en producción si todo queda verde. No existe autorización
-para BIL-11, pagos, refunds, cambios de catálogo o habilitar venta.
+Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214. Staging
+y producción tienen 12/12 migraciones, las cuatro Functions `ACTIVE` y smoke
+no monetario PASS. La cuenta sintética productiva fue eliminada; checkout no se
+autenticó y no hubo llamadas a Polar u operaciones monetarias. Una segunda
+copia EFS post-despliegue terminó con resultado 0 y restore automático PASS.
+No existe autorización para BIL-11, pagos, refunds, cambios de catálogo o
+habilitar venta.
 
 ## Riesgos
 
@@ -188,17 +191,16 @@ para BIL-11, pagos, refunds, cambios de catálogo o habilitar venta.
 
 ## Issues y siguiente acción
 
-1. Ejecutar apply y smoke no monetario en producción usando la copia verificada.
-2. Confirmar 12/12 migraciones, cuatro Functions y observabilidad sanitizada.
-3. Solo después preparar BIL-11 y su autorización monetaria independiente.
-4. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-5. Reauditar ISA-14 cuando se cierren worktrees grandes.
+1. Cerrar ISA-214 con evidencia del apply, smoke y backup post-despliegue.
+2. Preparar BIL-11 sin ejecutarlo hasta su autorización monetaria independiente.
+3. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+4. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-214 mantiene BIL-01…10 verdes en staging y ya dispone de tarea
-diaria y backup productivo restaurable. Producción continúa intacta hasta el
-apply controlado. Venta pública y BIL-11 siguen NO-GO.
+2026-08-03, ISA-214 mantiene BIL-01…10 verdes en staging y producción. La tarea
+diaria y los backups restaurables están activos; el apply y smoke no monetario
+productivos pasaron. Venta pública y BIL-11 siguen NO-GO.

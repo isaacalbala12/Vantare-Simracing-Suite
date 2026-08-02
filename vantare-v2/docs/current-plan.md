@@ -1,11 +1,11 @@
-Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
+Nota ISA-214 / BIL-10B (2026-08-03, despliegue controlado Supabase):
 - BIL-01…10 están compuestas en `nightly`. El acceso administrativo al proyecto
   oficial `ombjshwzqgeisazijduq` ya está confirmado mediante un token nuevo
   guardado solo en el entorno local.
 - `supabase-staging` y `supabase-production` existen con reviewer, política de
   ramas, access token y project ref exacto. Los valores no se documentan.
-- Producción `ombjshwzqgeisazijduq` conserva el runtime anterior. El preflight
-  actual enumera ocho migraciones pendientes y no ha aplicado ninguna.
+- Producción `ombjshwzqgeisazijduq` tiene ya las 12 migraciones alineadas y las
+  cuatro Functions allowlisted `ACTIVE`.
 - El proyecto histórico `olhwhfaczmrmooeaoqqf` está `INACTIVE`, solo enumera
   `validate-license` y no contiene configuración Billing por nombre.
 - El CLI enlazó el proyecto mediante su rol temporal oficial y `db push
@@ -36,10 +36,14 @@ Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
   03:00 y su primera ejecución terminó con resultado 0. El ZIP EFS conserva el
   dump completo y el gate restauró esquema y datos `public` en Supabase
   Postgres desechable. Los intentos fallidos se eliminaron.
-- El backup ya no bloquea el apply de producción. Falta ejecutar el despliegue
-  controlado y su smoke no monetario antes de cerrar ISA-214.
-- BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue
-  y después su autorización monetaria independiente. Billing continúa NO-GO.
+- El apply productivo repitió dry-run y restore antes de aplicar. El smoke no
+  monetario validó auth, checkout no autenticado, portal sin customer,
+  credencial sin grants, guards del webhook y observabilidad; la cuenta
+  sintética se eliminó. No se llamó a Polar ni hubo operaciones monetarias.
+- La tarea volvió a ejecutarse tras el despliegue y creó una segunda copia EFS
+  restaurable con resultado 0. ISA-214 completa su gate técnico.
+- BIL-11 queda bloqueada por su autorización monetaria independiente. Billing
+  continúa NO-GO.
 
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs

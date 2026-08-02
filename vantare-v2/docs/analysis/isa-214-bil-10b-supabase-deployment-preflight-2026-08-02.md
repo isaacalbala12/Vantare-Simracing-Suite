@@ -2,8 +2,8 @@
 
 Fecha: 2026-08-02
 
-Estado: staging desplegado y validado; tarea diaria instalada y primera copia
-restaurada; producción pendiente de apply y smoke controlados.
+Estado: staging y producción desplegados y validados; tarea diaria instalada;
+copias anterior y posterior al despliegue restauradas correctamente.
 
 ## Objetivo
 
@@ -184,6 +184,28 @@ oficial, mientras `public-data.sql` permite verificar automáticamente la
 superficie exacta que Billing modifica. Un drill completo de Auth/Storage exige
 un proyecto Supabase desechable con GoTrue y Storage activos.
 
+### Resultado del apply y smoke de producción
+
+- El 2026-08-03 el wrapper repitió superficie, nombres de secrets, enlace,
+  dry-run y restore del backup cifrado antes de mutar producción.
+- Las ocho migraciones pendientes se aplicaron sin error. Producción quedó con
+  las 12 migraciones locales y remotas alineadas.
+- `billing-checkout`, `billing-portal`, `billing-webhook` y
+  `license-credential` se desplegaron y quedaron `ACTIVE`.
+- El smoke no monetario creó una cuenta sintética, comprobó autenticación,
+  checkout 401 sin sesión válida, portal 404 sin customer, credencial Ed25519
+  sin grants, guards 400/403 del webhook y snapshot de observabilidad 200. La
+  cuenta se eliminó con HTTP 200.
+- No se autenticó un checkout productivo, no se llamó a Polar y no hubo pago,
+  refund, grant comercial, replay, reconciliación apply o cambio de catálogo.
+- Tras el despliegue se ejecutó de nuevo la tarea diaria. Terminó con resultado
+  0 y dejó un segundo ZIP EFS de 88.137 bytes, cuyo restore automático pasó.
+
+El guard de superficie falló inicialmente antes de cualquier mutación porque
+PowerShell estricto trataba una colección vacía como `$null`. Se normalizó a
+array y el test completo del wrapper se ejecuta ahora bajo `StrictMode` para
+evitar la regresión.
+
 ### Polar
 
 La última auditoría GET vigente sigue siendo ISA-166:
@@ -208,6 +230,8 @@ no consulta customers, orders, subscriptions ni PII.
    ligada al project ref.
 4. Las herramientas de smoke conservaban IDs fijos, una URL de proyecto
    hardcodeada y podían imprimir eventos o entitlements completos.
+5. El guard de superficie no normalizaba la colección vacía y fallaba bajo
+   PowerShell estricto antes de iniciar el preflight.
 
 La solución mantiene un único wrapper pequeño:
 
@@ -270,9 +294,12 @@ cubre BIL-11, pagos, refunds, cambios de catálogo ni habilitar ventas.
 - Guard de superficie, formato del workflow y `git diff --check`: PASS.
 - El token de `.env.local` solo se cargó temporalmente en memoria; nunca se
   imprimió, copió a Git ni expuso junto a hashes de secrets o PII.
-- Hubo creación del staging gratuito, configuración de secrets por API, 12
-  migraciones aplicadas y cuatro Functions desplegadas únicamente en staging.
-  Producción solo recibió preflight read-only y permanece sin cambios. No hubo
-  reactivación del staging histórico, pago, refund, replay, reconciliación
-  apply ni cambio de catálogo.
-- BIL-11 permanece bloqueada por ISA-214 y por su gate monetario propio.
+- Hubo creación del staging gratuito y configuración de secrets por API.
+  Staging y producción tienen 12/12 migraciones, cuatro Functions `ACTIVE` y
+  smoke no monetario PASS.
+- La copia posterior al despliegue terminó con resultado 0, cifrado EFS y
+  restore automático PASS. No se inspeccionó su contenido.
+- No hubo reactivación del staging histórico, pago, refund, replay,
+  reconciliación apply ni cambio de catálogo.
+- ISA-214 completa el gate técnico de despliegue. BIL-11 permanece bloqueada
+  por su autorización monetaria independiente y Billing sigue NO-GO.

@@ -21,9 +21,10 @@ histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
 primer contrato productivo versionado. STR-03 implementa el repositorio local
 canónico de drafts y revisiones. STR-04 añade la fachada de comandos y el store
 frontend transitorio. STR-05 añade el motor manual puro de carrera, Fuel,
-Virtual Energy y pit, todavía sin UI final ni wiring productivo. La UI canónica
-usa estrategias a la izquierda, stints al centro e inventario/entrada a la
-derecha.
+Virtual Energy y pit. STR-06 añade el inventario físico individual y sus reglas
+de condición, estado y esquina persistente. Todo continúa sin UI final ni
+wiring productivo. La UI canónica usa estrategias a la izquierda, stints al
+centro e inventario/entrada a la derecha.
 
 Actualización ISA-134 / STR-00:
 
@@ -107,6 +108,16 @@ Actualización ISA-134 / STR-00:
   múltiplo crea conservadoramente otro servicio. Las fronteras de carrera se
   resuelven con aritmética decimal racional: `0.3/0.1` sigue exacto y una media
   vuelta cerca de `2^52` no se borra. Correcciones P1/P2 listas para re-review.
+- STR-06: implementación sobre `ISA-140@2d0af85`. El paquete puro
+  `internal/strategy/tyres` modela cada neumático físico con identidad,
+  Soft/Medium/Hard/Wet, origen, condición con procedencia/confianza, estado,
+  stints y esquina. Clasificación sin dato conserva 80–90 % y ausencia general
+  40–70 %; ningún estimado se vuelve exacto. El primer uso liga la unidad a una
+  esquina, mientras que un montaje aún no usado puede corregirse. La selección
+  admite compuestos mixtos, excluye descartados y explica inventario
+  insuficiente mediante error tipado. Evidencia:
+  `docs/strategy-planner/str-06-tyre-inventory.md`. Lista para review
+  independiente, sin UI, persistencia, telemetría, wiring, merge o promoción.
 
 ## Decisiones
 
@@ -183,15 +194,15 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-140 / STR-05, implementación lista para review independiente
-  sobre el commit aceptado de STR-04.
+- Issue activa: ISA-141 / STR-06, implementación lista para review independiente
+  sobre el commit aceptado de STR-05.
 
 ## Siguiente acción exacta
 
-Revisar ISA-140 / STR-05. Si queda `ACCEPT`, continuar ISA-141 / STR-06 apilada
-sobre este motor. No añadir inventario de neumáticos, UI final, telemetría,
-solver o wiring transversal dentro de la revisión de STR-05.
+Revisar ISA-141 / STR-06. Si queda `ACCEPT`, continuar ISA-142 / STR-07 apilada
+sobre este dominio. No añadir drag/drop, UI final, telemetría, persistencia,
+solver o wiring transversal dentro de la revisión de STR-06.
 
 ## Última actualización
 
-2026-08-02, ISA-140 / STR-05, Codex.
+2026-08-02, ISA-141 / STR-06, Codex.

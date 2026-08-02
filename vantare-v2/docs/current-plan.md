@@ -1,3 +1,20 @@
+Nota ISA-141 / STR-06 (2026-08-02):
+- Nuevo dominio puro `internal/strategy/tyres`, apilado sobre STR-05 exacto
+  `2d0af85`, para neumáticos físicos individuales con ID, Soft/Medium/Hard/Wet,
+  condición/procedencia, estado, stints y esquina persistente.
+- La condición nunca colapsa incertidumbre: clasificación sin dato conserva
+  80–90 %, ausencia general conserva 40–70 %, y un estimado no puede declararse
+  exacto. Un valor manual exacto sigue permitido y queda trazado.
+- Antes del primer uso se puede corregir la posición; el primer uso liga el
+  neumático permanentemente a FL/FR/RL/RR. Descartar conserva el historial.
+- Selección determinista de cuatro unidades, mezclas de compuestos permitidas y
+  errores tipados que explican stock total o incompatibilidad por esquina.
+- Operaciones inmutables; sin UI, drag/drop, persistencia, telemetría, editor de
+  stints, solver, wiring ni dependencias. Evidencia:
+  `docs/strategy-planner/str-06-tyre-inventory.md`.
+- Estado: implementación lista para review independiente; sin merge ni
+  promoción. El siguiente corte solo tras `ACCEPT` es ISA-142 / STR-07.
+
 Nota ISA-140 / STR-05 (2026-08-02):
 - Nuevo motor puro `internal/strategy/manual`, apilado sobre STR-04 exacto
   `f60f480`, para carrera por vueltas/tiempo, Fuel, Virtual Energy, fuel-save y

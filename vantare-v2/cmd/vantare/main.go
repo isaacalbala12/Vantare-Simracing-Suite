@@ -784,8 +784,12 @@ func main() {
 	wailsApp.Event.On("auth:session:get", func(_ *application.CustomEvent) {
 		session, err := authManager.Restore()
 		if err != nil {
-			if !errors.Is(err, authsession.ErrNotFound) {
+			if errors.Is(err, authsession.ErrInvalidStoredSessionRemoved) {
+				log.Printf("invalid protected auth session removed")
+				emitter.Emit("auth:session:invalidated", map[string]any{"reason": "invalid_credential"})
+			} else if !errors.Is(err, authsession.ErrNotFound) {
 				log.Printf("auth session restore failed: %v", err)
+				emitter.Emit("auth:session:error", map[string]any{"code": "restore_failed"})
 			}
 			return
 		}
@@ -794,16 +798,29 @@ func main() {
 		})
 	})
 
-	wailsApp.Event.On("auth:session:clear", func(_ *application.CustomEvent) {
+	wailsApp.Event.On("auth:session:clear:request", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		if payload.RequestID == "" {
+			log.Printf("auth session clear ignored: missing request id")
+			return
+		}
 		if err := authManager.Clear(); err != nil {
 			log.Printf("auth session clear failed: %v", err)
+			emitter.Emit("auth:session:clear:result", map[string]any{
+				"requestId": payload.RequestID, "ok": false, "code": "credential_delete_failed",
+			})
+			return
 		}
-	})
-
-	wailsApp.Event.On("auth:session:invalid", func(_ *application.CustomEvent) {
-		if err := authManager.Clear(); err != nil {
-			log.Printf("invalid auth session cleanup failed: %v", err)
-		}
+		emitter.Emit("auth:session:clear:result", map[string]any{
+			"requestId": payload.RequestID, "ok": true,
+		})
 	})
 
 	// Token rotation may only replace a session that the backend has already

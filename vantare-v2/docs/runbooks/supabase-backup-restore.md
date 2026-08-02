@@ -18,7 +18,7 @@ Nunca probar una restauración sobre producción. Toda restauración se realiza 
 3. Genera un dump, crea una segunda base desechable y restaura el dump.
 4. Ejecuta `pg_restore --exit-on-error` y captura su código de salida antes de cualquier otro comando.
 5. Repite pgTAP sobre la base restaurada y verifica RLS, grants y un dato centinela.
-6. Ejecuta además un restore negativo que debe fallar; si un restore parcial devuelve éxito, el drill completo falla.
+6. Ejecuta dos restores negativos: un dump truncado y otro con la cabecera corrupta. Ambos deben fallar con `--exit-on-error`; si cualquiera devuelve éxito, el drill completo falla.
 7. Termina eliminando el contenedor y los archivos temporales.
 8. Registrar fecha, versión, tiempo y resultado; nunca registrar credenciales o contenido personal.
 

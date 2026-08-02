@@ -10,6 +10,7 @@ const {
   eventsEmit,
 	eventsOn,
 	authStateChange,
+	runtimeState,
 } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signOutFn: vi.fn(),
@@ -20,6 +21,7 @@ const {
   eventsEmit: vi.fn(),
 	eventsOn: vi.fn(),
 	authStateChange: vi.fn(),
+	runtimeState: { clearOK: true, autoClearAck: true },
 }));
 
 vi.mock("@wailsio/runtime", () => ({
@@ -51,6 +53,7 @@ import {
   signInWithOAuth,
   setSupabaseSession,
 	removeLegacySupabaseSessions,
+	clearProtectedAuthSession,
 } from "./supabase-auth";
 
 describe("supabase-auth", () => {
@@ -67,9 +70,11 @@ describe("supabase-auth", () => {
     eventsEmit.mockReset();
 		eventsOn.mockReset();
 		authStateChange.mockReset();
+		runtimeState.clearOK = true;
+		runtimeState.autoClearAck = true;
 		authStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
-		const listeners = new Map<string, (event: { data?: Record<string, string> }) => void>();
-		eventsOn.mockImplementation((name: string, callback: (event: { data?: Record<string, string> }) => void) => {
+		const listeners = new Map<string, (event: { data?: Record<string, unknown> }) => void>();
+		eventsOn.mockImplementation((name: string, callback: (event: { data?: Record<string, unknown> }) => void) => {
 			listeners.set(name, callback);
 			return vi.fn();
 		});
@@ -81,6 +86,11 @@ describe("supabase-auth", () => {
 						requestId: data?.requestId ?? "",
 						redirectUrl: `http://127.0.0.1:39261/auth/callback?attempt=a&provider=${provider}&state=s`,
 					},
+				});
+			}
+			if (name === "auth:session:clear:request" && runtimeState.autoClearAck) {
+				listeners.get("auth:session:clear:result")?.({
+					data: { requestId: data?.requestId ?? "", ok: runtimeState.clearOK },
 				});
 			}
 		});
@@ -147,29 +157,69 @@ describe("supabase-auth", () => {
   });
 
   describe("signOut", () => {
-    it("returns undefined error on success", async () => {
+    it("confirms protected deletion before reporting success", async () => {
       signOutFn.mockResolvedValueOnce({ error: null });
       const result = await authSignOut();
-      expect(result.error).toBeUndefined();
-      expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
+		expect(result).toEqual({ localCleared: true, localError: undefined, remoteError: undefined });
+		expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear:request", expect.objectContaining({ requestId: expect.any(String) }));
     });
 
-    it("returns error message when supabase fails", async () => {
+    it("separates a remote failure after confirmed local deletion", async () => {
       signOutFn.mockResolvedValueOnce({ error: { message: "boom" } });
       const result = await authSignOut();
-      expect(result.error).toBe("boom");
-			expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
+		expect(result.localCleared).toBe(true);
+		expect(result.remoteError).toBe("boom");
     });
 
-    it("returns a clear config error when env vars are missing", async () => {
+	it("reports a protected-delete failure and still attempts remote signout", async () => {
+		runtimeState.clearOK = false;
+		signOutFn.mockResolvedValueOnce({ error: null });
+		const result = await authSignOut();
+		expect(result.localCleared).toBe(false);
+		expect(result.localError).toMatch(/credencial protegida/);
+		expect(signOutFn).toHaveBeenCalledTimes(1);
+	});
+
+    it("separates a config error from confirmed local deletion", async () => {
       vi.stubEnv("VITE_SUPABASE_URL", "");
       vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
       resetSupabaseClient();
       const result = await authSignOut();
-      expect(result.error).toMatch(/Supabase no configurado/);
-			expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
+		expect(result.localCleared).toBe(true);
+		expect(result.remoteError).toMatch(/Supabase no configurado/);
     });
   });
+
+	describe("clearProtectedAuthSession", () => {
+		it("ignores an unrelated acknowledgement", async () => {
+			runtimeState.autoClearAck = false;
+			let settled = false;
+			const promise = clearProtectedAuthSession(100);
+			const callback = eventsOn.mock.calls.find(([name]) => name === "auth:session:clear:result")?.[1];
+			const request = eventsEmit.mock.calls.find(([name]) => name === "auth:session:clear:request")?.[1];
+			callback?.({ data: { requestId: "attacker", ok: true } });
+			void promise.then(() => { settled = true; });
+			await Promise.resolve();
+			expect(settled).toBe(false);
+			callback?.({ data: { requestId: request?.requestId, ok: true } });
+			await expect(promise).resolves.toEqual({ ok: true });
+		});
+
+		it("fails closed when the backend does not acknowledge deletion", async () => {
+			vi.useFakeTimers();
+			runtimeState.autoClearAck = false;
+			try {
+				const promise = clearProtectedAuthSession(100);
+				await vi.advanceTimersByTimeAsync(100);
+				await expect(promise).resolves.toEqual({
+					ok: false,
+					error: expect.stringMatching(/no respondió/i),
+				});
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
 
   describe("getSession", () => {
     it("returns current session", async () => {

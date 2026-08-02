@@ -27,7 +27,12 @@ try {
   docker run --rm -d --name $container -e "POSTGRES_PASSWORD=$password" $Image | Out-Null
   $initialized = $false
   for ($attempt = 0; $attempt -lt 120; $attempt++) {
+    $savedErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     $logs = docker logs $container 2>&1 | Out-String
+    $logsExit = $LASTEXITCODE
+    $ErrorActionPreference = $savedErrorAction
+    if ($logsExit -ne 0) { throw "Could not read temporary PostgreSQL logs" }
     if ($logs -match "PostgreSQL init process complete") {
       docker exec $container pg_isready -U postgres -d postgres 2>$null | Out-Null
       if ($LASTEXITCODE -eq 0) {
@@ -64,7 +69,7 @@ grant usage on schema public, auth to anon, authenticated, service_role;
   Initialize-Database "clean"
   foreach ($migration in $migrations) { Invoke-Psql "clean" "/tmp/$($migration.Name)" }
   $cleanTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/hardening-test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $cleanTap -match "(?m)^not ok" -or $cleanTap -notmatch "1\.\.33") {
+  if ($LASTEXITCODE -ne 0 -or $cleanTap -match "(?m)^not ok" -or $cleanTap -notmatch "1\.\.48") {
     throw "Clean install pgTAP failed:`n$cleanTap"
   }
 
@@ -84,12 +89,34 @@ select public.claim_active_device('concurrent-fingerprint');
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000090', 'race@example.invalid')" | Out-Null
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "create table public.isa88_concurrency_barrier (race text not null, participant text not null, primary key (race, participant))" | Out-Null
   Write-Utf8NoBom $claimAFile @'
+insert into public.isa88_concurrency_barrier values ('different-claim', 'a');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'different-claim') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'different-claim') <> 2 then
+    raise exception 'barrier_timeout';
+  end if;
+end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000090', false);
 select public.claim_active_device('race-fingerprint-a');
 '@
   Write-Utf8NoBom $claimBFile @'
+insert into public.isa88_concurrency_barrier values ('different-claim', 'b');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'different-claim') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'different-claim') <> 2 then
+    raise exception 'barrier_timeout';
+  end if;
+end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000090', false);
 select public.claim_active_device('race-fingerprint-b');
@@ -101,6 +128,79 @@ select public.claim_active_device('race-fingerprint-b');
   $raceClaim = docker exec $container psql -At -U postgres -d clean -c `
     "select count(*) || ':' || (min(fingerprint_hash) in ('race-fingerprint-a','race-fingerprint-b'))::text from public.devices where user_id = '00000000-0000-4000-8000-000000000090'"
   if ($raceClaim.Trim() -ne "1:true") { throw "Different-fingerprint race did not preserve one stable binding: $raceClaim" }
+
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000092', 'claim-reset@example.invalid'); insert into public.devices (user_id, fingerprint_hash) values ('00000000-0000-4000-8000-000000000092', 'claim-reset-original')" | Out-Null
+  Write-Utf8NoBom $claimAFile @'
+insert into public.isa88_concurrency_barrier values ('claim-reset', 'claim');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'claim-reset') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'claim-reset') <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000092', false);
+select public.claim_active_device('claim-reset-original');
+'@
+  Write-Utf8NoBom $claimBFile @'
+insert into public.isa88_concurrency_barrier values ('claim-reset', 'reset');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'claim-reset') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'claim-reset') <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000092', false);
+select public.reset_active_device('claim-reset-final');
+'@
+  docker cp $claimAFile "${container}:/tmp/claim-vs-reset-a.sql"
+  docker cp $claimBFile "${container}:/tmp/claim-vs-reset-b.sql"
+  docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/claim-vs-reset-a.sql & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/claim-vs-reset-b.sql & p2=$!; wait $p1; wait $p2'
+  if ($LASTEXITCODE -ne 0) { throw "Concurrent claim-vs-reset failed" }
+  $claimReset = docker exec $container psql -At -U postgres -d clean -c `
+    "select fingerprint_hash from public.devices where user_id = '00000000-0000-4000-8000-000000000092'"
+  if ($claimReset.Trim() -ne "claim-reset-final") { throw "Claim-vs-reset final binding is inconsistent: $claimReset" }
+
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000093', 'reset-race@example.invalid'); insert into public.devices (user_id, fingerprint_hash) values ('00000000-0000-4000-8000-000000000093', 'reset-race-original')" | Out-Null
+  Write-Utf8NoBom $claimAFile @'
+insert into public.isa88_concurrency_barrier values ('reset-reset', 'a');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'reset-reset') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'reset-reset') <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000093', false);
+select public.reset_active_device('reset-race-a');
+'@
+  Write-Utf8NoBom $claimBFile @'
+insert into public.isa88_concurrency_barrier values ('reset-reset', 'b');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'reset-reset') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'reset-reset') <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000093', false);
+select public.reset_active_device('reset-race-b');
+'@
+  docker cp $claimAFile "${container}:/tmp/reset-race-a.sql"
+  docker cp $claimBFile "${container}:/tmp/reset-race-b.sql"
+  docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/reset-race-a.sql >/tmp/reset-a.log 2>&1 & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/reset-race-b.sql >/tmp/reset-b.log 2>&1 & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; if { [ "$s1" -eq 0 ] && [ "$s2" -ne 0 ]; } || { [ "$s1" -ne 0 ] && [ "$s2" -eq 0 ]; }; then exit 0; fi; cat /tmp/reset-a.log /tmp/reset-b.log; exit 1'
+  if ($LASTEXITCODE -ne 0) { throw "Reset-vs-reset did not allow exactly one winner" }
+  $resetRace = docker exec $container psql -At -U postgres -d clean -c `
+    "select (fingerprint_hash in ('reset-race-a','reset-race-b'))::text || ':' || (last_reset_at is not null)::text from public.devices where user_id = '00000000-0000-4000-8000-000000000093'"
+  if ($resetRace.Trim() -ne "true:true") { throw "Reset-vs-reset final binding is inconsistent: $resetRace" }
+
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000090',false); select public.reset_active_device('race-reset-fingerprint')" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Device reset after concurrent claim failed" }
@@ -114,7 +214,7 @@ select public.claim_active_device('race-fingerprint-b');
   }
   Invoke-Psql "upgrade" "/tmp/20260802020000_supabase_auth_license_hardening.sql"
   $upgradeTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d upgrade -f /tmp/hardening-test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $upgradeTap -match "(?m)^not ok" -or $upgradeTap -notmatch "1\.\.33") {
+  if ($LASTEXITCODE -ne 0 -or $upgradeTap -match "(?m)^not ok" -or $upgradeTap -notmatch "1\.\.48") {
     throw "Upgrade pgTAP failed:`n$upgradeTap"
   }
 
@@ -133,7 +233,7 @@ select public.claim_active_device('race-fingerprint-b');
   if ($restoreExit -ne 0) { throw "pg_restore failed with exit code $restoreExit" }
   $restoreTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -f /tmp/hardening-test.sql | Out-String
   $restoreTapExit = $LASTEXITCODE
-  if ($restoreTapExit -ne 0 -or $restoreTap -match "(?m)^not ok" -or $restoreTap -notmatch "1\.\.33") {
+  if ($restoreTapExit -ne 0 -or $restoreTap -match "(?m)^not ok" -or $restoreTap -notmatch "1\.\.48") {
     throw "Restored database pgTAP failed:`n$restoreTap"
   }
   $restored = docker exec $container psql -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -c `
@@ -141,13 +241,21 @@ select public.claim_active_device('race-fingerprint-b');
   $restoredExit = $LASTEXITCODE
   if ($restoredExit -ne 0 -or $restored.Trim() -ne "t") { throw "Restored database sentinel/RLS/grant validation failed: $restored" }
 
-  docker exec $container createdb -U postgres restore_failure
-  if ($LASTEXITCODE -ne 0) { throw "Could not create negative restore database" }
-  docker exec $container pg_restore --exit-on-error -U postgres -d restore_failure /tmp/does-not-exist.dump 2>$null
-  $failedRestoreExit = $LASTEXITCODE
-  if ($failedRestoreExit -eq 0) { throw "Negative restore unexpectedly passed" }
+  docker exec $container sh -c "head -c 128 /tmp/clean.dump > /tmp/truncated.dump; cp /tmp/clean.dump /tmp/corrupt.dump; printf BROKE | dd of=/tmp/corrupt.dump bs=1 count=5 conv=notrunc 2>/dev/null"
+  if ($LASTEXITCODE -ne 0) { throw "Could not prepare corrupt restore fixtures" }
+  foreach ($fixture in @("truncated", "corrupt")) {
+    $database = "restore_failure_$fixture"
+    docker exec $container createdb -U postgres $database
+    if ($LASTEXITCODE -ne 0) { throw "Could not create negative restore database $database" }
+    $savedErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    docker exec $container pg_restore --exit-on-error -U postgres -d $database "/tmp/$fixture.dump" 2>$null
+    $failedRestoreExit = $LASTEXITCODE
+    $ErrorActionPreference = $savedErrorAction
+    if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
+  }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean pgTAP PASS; same/different fingerprint races + reset PASS; upgrade pgTAP PASS; restore pgTAP/sentinel/RLS/grants/fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 pgTAP PASS; barrier races claim/claim, claim/reset and reset/reset PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }

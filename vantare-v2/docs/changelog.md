@@ -2,6 +2,21 @@
 
 Changelog publico para testers y Discord. Solo se publican versiones funcionales confirmadas. Planes, reviews, analisis y cambios puramente documentales no requieren entrada propia salvo que se agrupen en una version funcional.
 
+## Pendiente de publicación
+
+Cambios funcionales verificados en rama aislada; esta sección no representa una release ni autoriza despliegue.
+
+**Cuenta y seguridad**
+
+- El cierre de sesión confirma primero que la credencial local protegida se ha eliminado y diferencia ese resultado del cierre remoto.
+- Las credenciales de sesión dañadas se descartan de forma segura para evitar fallos repetidos al arrancar.
+- Las operaciones concurrentes de restauración, renovación y cierre ya no pueden recuperar una sesión cerrada.
+
+**Supabase y recuperación**
+
+- El despliegue de Functions queda limitado a la lista aprobada y siempre ejecuta su control de superficie antes de publicar.
+- El drill local valida permisos y 48 contratos, carreras concurrentes y rechazo de backups truncados o corruptos en PowerShell 5.1 y 7.
+
 ## v0.1.0.5
 
 Lote acumulado de launcher de Windows, UI del hub, servicios internos y documentación de marca/disseño.

@@ -103,15 +103,16 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 ## BIL-04 / ISA-88
 
 - Intento OAuth creado antes del navegador, ligado a provider/state, con expiración, consumo atómico y una sola aceptación incluso bajo concurrencia.
-- Bridge de sesión global, Supabase solo en memoria del WebView, Credential Manager como persistencia exclusiva, rotación protegida contra session fixation y logout local fail-closed.
+- Bridge de sesión global, Supabase solo en memoria del WebView, Credential Manager como persistencia exclusiva, rotación protegida contra session fixation y logout request/ack fail-closed.
+- Restore, rotación y borrado quedan serializados; credenciales protegidas inválidas/corruptas se eliminan y una rotación concurrente no puede resucitar la sesión tras logout.
 - Separación explícita entre claim de dispositivo y lectura pura de entitlements; wrapper legacy ya no muta.
-- RPCs con grants mínimos, `SECURITY DEFINER`/`search_path` endurecido en los cuatro contratos, `device_bound` honesto, reset con fingerprint real y carreras concurrentes.
-- `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook y bloquea release desde CI.
-- PostgreSQL 17 desechable valida clean install, upgrade y restore fail-closed con pgTAP, RLS, grants y centinela. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
+- RPCs con grants mínimos, `SECURITY DEFINER`/`search_path` endurecido también para checkout, `device_bound` honesto, reset con fingerprint real y carreras concurrentes.
+- `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook, y un workflow de despliegue dedicado obliga a pasar por el wrapper protegido.
+- PostgreSQL 17 desechable valida clean install, upgrade, 48 pgTAP y restore fail-closed con RLS, grants y centinela; añade carreras claim/reset y reset/reset y rechaza dumps truncados/corruptos en PowerShell 5.1/7. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
 - Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`.
 
 ## Última actualización
 
 2026-08-02 — ISA-88 / BIL-04 corregida sobre la base aprobada de BIL-03.
-Findings P1/P2 del review cerrados y restore drill desechable verificado. Sin deploy, pago, refund,
-secretos, PII ni mutaciones remotas.
+Findings P1/P2 del review cerrados: logout observable, serialización de sesión, limpieza de credenciales corruptas,
+carreras SQL adversarias, guard obligatorio y restore drill desechable. Sin deploy, pago, refund, secretos, PII ni mutaciones remotas.

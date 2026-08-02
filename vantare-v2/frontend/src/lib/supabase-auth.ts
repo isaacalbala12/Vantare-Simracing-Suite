@@ -102,20 +102,30 @@ export async function signUp(
   }
 }
 
-export async function signOut(): Promise<{ error?: string }> {
-	// Local logout is fail-closed and independent from network availability.
-	// The caller may keep the current screen open to report a remote failure,
-	// but a restart can no longer restore this credential.
-	Events.Emit("auth:session:clear");
+export type SignOutResult = {
+	localCleared: boolean;
+	localError?: string;
+	remoteError?: string;
+};
+
+export async function signOut(): Promise<SignOutResult> {
+	const local = await clearProtectedAuthSession();
+	let remoteError: string | undefined;
   try {
     const { error } = await getSupabaseClient().auth.signOut();
-    return { error: error?.message };
+		remoteError = error?.message;
   } catch (err) {
     if (isConfigError(err)) {
-      return { error: missingConfigError };
+			remoteError = missingConfigError;
+		} else {
+			remoteError = err instanceof Error ? err.message : "Error al cerrar la sesión remota";
     }
-		return { error: err instanceof Error ? err.message : "Error al cerrar la sesión remota" };
   }
+	return {
+		localCleared: local.ok,
+		localError: local.ok ? undefined : local.error,
+		remoteError,
+	};
 }
 
 export async function resetPasswordForEmail(
@@ -213,6 +223,8 @@ export async function signInWithOAuth(
 
 type OAuthAttemptResult = { redirectUrl?: string; error?: string };
 
+type ProtectedSessionClearResult = { ok: boolean; error?: string };
+
 function requestID(): string {
 	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
@@ -245,6 +257,34 @@ export function createOAuthAttempt(
 			finish({ error: event.data.message ?? "No se pudo iniciar el acceso seguro" });
 		}));
 		Events.Emit("auth:attempt:create", { requestId: id, provider });
+	});
+}
+
+export function clearProtectedAuthSession(timeoutMs = 5000): Promise<ProtectedSessionClearResult> {
+	return new Promise((resolve) => {
+		const id = requestID();
+		let settled = false;
+		const unsubscribers: Array<() => void> = [];
+		const finish = (result: ProtectedSessionClearResult) => {
+			if (settled) return;
+			settled = true;
+			globalThis.clearTimeout(timer);
+			for (const unsubscribe of unsubscribers) unsubscribe();
+			resolve(result);
+		};
+		const timer = globalThis.setTimeout(
+			() => finish({ ok: false, error: "La eliminación de la credencial local no respondió" }),
+			timeoutMs,
+		);
+		unsubscribers.push(Events.On("auth:session:clear:result", (event: {
+			data?: { requestId?: string; ok?: boolean; code?: string };
+		}) => {
+			if (event.data?.requestId !== id) return;
+			finish(event.data.ok
+				? { ok: true }
+				: { ok: false, error: "No se pudo eliminar la credencial protegida local" });
+		}));
+		Events.Emit("auth:session:clear:request", { requestId: id });
 	});
 }
 

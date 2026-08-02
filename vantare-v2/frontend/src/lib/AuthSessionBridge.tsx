@@ -1,6 +1,7 @@
 import { useEffect, type PropsWithChildren } from "react";
 import { Events } from "@wailsio/runtime";
 import {
+	clearProtectedAuthSession,
 	onSupabaseAuthStateChange,
 	removeLegacySupabaseSessions,
 	setSupabaseSession,
@@ -29,7 +30,7 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 			const restored = await setSupabaseSession(accessToken, refreshToken);
 			if (!active) return;
 			if (restored.invalidCredential) {
-				Events.Emit("auth:session:invalid");
+				void clearProtectedAuthSession();
 				return;
 			}
 			if (!restored.session?.access_token || !restored.session.refresh_token) return;
@@ -42,7 +43,7 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 		});
 		const offSupabase = onSupabaseAuthStateChange((event, session) => {
 			if (event === "SIGNED_OUT") {
-				Events.Emit("auth:session:clear");
+				void clearProtectedAuthSession();
 				return;
 			}
 			if (event === "TOKEN_REFRESHED" && session?.access_token && session.refresh_token) {

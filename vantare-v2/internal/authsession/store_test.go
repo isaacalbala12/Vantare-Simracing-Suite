@@ -1,6 +1,9 @@
 package authsession
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestSessionRejectsMissingTokens(t *testing.T) {
 	for _, session := range []Session{
@@ -26,5 +29,16 @@ func TestSessionRoundTrip(t *testing.T) {
 	}
 	if got != want {
 		t.Fatalf("session = %+v, want %+v", got, want)
+	}
+}
+
+func TestUnmarshalClassifiesCorruptAndIncompleteCredentials(t *testing.T) {
+	for _, data := range [][]byte{
+		[]byte("not-json"),
+		[]byte(`{"access_token":"only-access"}`),
+	} {
+		if _, err := unmarshal(data); !errors.Is(err, ErrInvalidSession) {
+			t.Fatalf("unmarshal(%q) error = %v, want ErrInvalidSession", data, err)
+		}
 	}
 }

@@ -1,11 +1,12 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { eventsEmit, eventsOn, restoreSession, subscribe } = vi.hoisted(() => ({
+const { eventsEmit, eventsOn, restoreSession, subscribe, clearProtectedSession } = vi.hoisted(() => ({
 	eventsEmit: vi.fn(),
 	eventsOn: vi.fn(),
 	restoreSession: vi.fn(),
 	subscribe: vi.fn(),
+	clearProtectedSession: vi.fn(),
 }));
 
 vi.mock("@wailsio/runtime", () => ({ Events: { Emit: eventsEmit, On: eventsOn } }));
@@ -13,6 +14,7 @@ vi.mock("./supabase-auth", () => ({
 	removeLegacySupabaseSessions: vi.fn(),
 	setSupabaseSession: restoreSession,
 	onSupabaseAuthStateChange: subscribe,
+	clearProtectedAuthSession: clearProtectedSession,
 }));
 
 import { AuthSessionBridge } from "./AuthSessionBridge";
@@ -34,6 +36,7 @@ describe("AuthSessionBridge", () => {
 			authChanged = callback;
 			return vi.fn();
 		});
+		clearProtectedSession.mockResolvedValue({ ok: true });
 	});
 
 	it("restores and revalidates a protected session independently of LoginScreen", async () => {
@@ -52,7 +55,7 @@ describe("AuthSessionBridge", () => {
 		restoreSession.mockResolvedValueOnce({ session: null, error: "expired", invalidCredential: true });
 		render(<AuthSessionBridge><div>app</div></AuthSessionBridge>);
 		backendSession?.({ data: { access_token: "old-at", refresh_token: "old-rt", source: "restore" } });
-		await waitFor(() => expect(eventsEmit).toHaveBeenCalledWith("auth:session:invalid"));
+		await waitFor(() => expect(clearProtectedSession).toHaveBeenCalled());
 	});
 
 	it("keeps the protected credential on a transient offline restore failure", async () => {
@@ -60,7 +63,7 @@ describe("AuthSessionBridge", () => {
 		render(<AuthSessionBridge><div>app</div></AuthSessionBridge>);
 		backendSession?.({ data: { access_token: "old-at", refresh_token: "old-rt", source: "restore" } });
 		await waitFor(() => expect(restoreSession).toHaveBeenCalled());
-		expect(eventsEmit).not.toHaveBeenCalledWith("auth:session:invalid");
+		expect(clearProtectedSession).not.toHaveBeenCalled();
 	});
 
 	it("persists refresh rotation and clears on signed out", () => {
@@ -70,6 +73,6 @@ describe("AuthSessionBridge", () => {
 			accessToken: "new-at", refreshToken: "new-rt",
 		});
 		authChanged?.("SIGNED_OUT", null);
-		expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
+		expect(clearProtectedSession).toHaveBeenCalled();
 	});
 });

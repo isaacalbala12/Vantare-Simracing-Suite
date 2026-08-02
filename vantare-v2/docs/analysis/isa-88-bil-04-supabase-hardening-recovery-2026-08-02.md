@@ -33,8 +33,10 @@ Conclusión: el estado remoto de backups, PITR, migraciones y grants no está pr
 - Al iniciar, el backend entrega la sesión protegida a la memoria de Supabase, que puede refrescarla y revalidarla.
 - El bridge vive en la raíz de React: no depende de `LoginScreen` ni de que exista caché de licencia.
 - Las rotaciones solo persisten después de que el backend haya validado o restaurado una sesión confiable; una sesión WebView arbitraria no puede fijarse.
+- Restore elimina una credencial protegida inválida o corrupta y emite un estado sanitizado; no deja un secreto irrecuperable provocando el mismo fallo en cada arranque.
+- Restore, rotación y borrado están serializados. Un refresh concurrente no puede escribir una sesión después de que el logout haya terminado.
 - Las claves legacy legibles de Supabase se eliminan de `localStorage` sin copiar su contenido.
-- Cerrar sesión intenta borrar siempre la credencial protegida aunque falle Supabase remoto; la UI informa el fallo parcial sin fingir éxito total.
+- Cerrar sesión usa un request/ack tipado y correlacionado. La UI solo abandona el estado local después de confirmar el borrado protegido; después intenta el cierre remoto y presenta ambos resultados por separado.
 
 ### Licencia y dispositivo
 
@@ -44,21 +46,22 @@ Conclusión: el estado remoto de backups, PITR, migraciones y grants no está pr
 - El cliente Go ejecuta claim y lectura como llamadas separadas y deja de enviar fingerprint al RPC de lectura.
 - `device_ok` deja de afirmar una comparación que el RPC puro no podía conocer; la lectura expone el hecho `device_bound` y el wrapper con fingerprint conserva su comparación real.
 - Reset usa el fingerprint explícito, cambia el binding bajo lock/rate limit y ya no ignora su argumento.
-- Las cuatro funciones usan `SECURITY DEFINER` con `search_path` vacío y nombres cualificados.
-- Tests negativos cubren claim, lectura, wrapper y reset; `anon` no puede ejecutar RPCs ni authenticated escribir tablas sensibles directamente.
+- Las siete funciones cubiertas por el esquema vigente, incluidas las tres RPC de checkout, declaran y verifican sus contratos de `SECURITY DEFINER`, `search_path` y ejecución mínima.
+- Tests negativos cubren claim, lectura, wrapper, reset y las tres RPC de checkout; `anon` no puede ejecutar RPCs ni authenticated escribir tablas sensibles directamente.
 
 ### Superficie desplegable
 
 - `validate-license` se mueve a `_deprecated/validate-license` como archivo histórico no desplegable.
-- Un verificador falla si aparece una Function superior distinta de las tres aprobadas y el workflow de release lo ejecuta como gate obligatorio.
+- Un verificador falla si aparece una Function superior distinta de las tres aprobadas. El único workflow de despliegue llama a un wrapper que ejecuta ese guard antes de invocar Supabase y usa una lista aprobada fija.
 - No se borró su historia ni se desplegó ninguna Function.
 
 ### Backup y restauración
 
 - El runner crea instalaciones clean y upgrade sobre PostgreSQL 17 desechable.
-- Ejecuta 33 pruebas pgTAP con roles negativos, confirma que las lecturas no mutan timestamps y prueba carreras con fingerprints iguales y diferentes más reset.
+- Ejecuta 48 pruebas pgTAP con roles negativos, confirma que las lecturas no mutan timestamps y prueba carreras reales claim/claim, claim/reset y reset/reset mediante barreras.
 - `pg_restore --exit-on-error` se comprueba inmediatamente; un restore fallido no puede continuar como PASS.
 - Tras restaurar se repite pgTAP y se verifican RLS, grants y datos centinela.
+- Dos fixtures negativas, una truncada y otra con cabecera corrupta, deben fallar con `pg_restore --exit-on-error`; cualquier éxito inesperado invalida el drill.
 - Resultado local observado: restauración completa por debajo de 6 s en los drills ejecutados. No representa un RTO productivo.
 
 ## Política de recuperación propuesta
@@ -71,12 +74,12 @@ Conclusión: el estado remoto de backups, PITR, migraciones y grants no está pr
 
 ## Evidencia
 
-- Go: los tests de login-CSRF/session fixation/replay/concurrencia pasan y el conjunto de seguridad OAuth se repitió 50 veces; paquetes focales, compilación de `cmd/vantare` y vet focal pasan. El rerun global agregado excedió el timeout local y no se presenta como PASS de esta corrección; el global del commit previo sí estaba verde.
+- Go: los tests de login-CSRF/session fixation/replay/concurrencia pasan y `authsession` más el conjunto de seguridad OAuth se repitieron 50 veces; paquetes focales, compilación de `cmd/vantare` y vet focal pasan. El rerun global agregado excedió el límite de 220 s sin identificar un paquete fallido y no se presenta como PASS de esta corrección; el global del commit previo sí estaba verde.
 - Race focal no pudo ejecutarse porque el toolchain local de Windows no tiene CGO; no se presenta como PASS.
-- Frontend: suite global 1.618/1.618 previa al último test de fallo transitorio; suite focal final 60/60, build y lint focal pasan.
+- Frontend: 1.624/1.624 tests globales y 64/64 focales pasan; logout local/remoto, request/ack correlacionado, timeout y estados de cuenta están cubiertos. Build y lint focal pasan.
 - Lint global conserva cuatro errores preexistentes fuera del alcance en Calendar y un mock de runtime; no se ocultaron ni modificaron.
-- Deno: 66/66 tests pasan; typecheck y superficie desplegable pasan.
-- PostgreSQL: clean, upgrade, 33 pruebas pgTAP, carreras de dispositivo, reset y restore fail-closed desechable pasan.
+- Deno: 67/67 tests, typecheck y los verificadores PowerShell/Deno de superficie desplegable pasan.
+- PostgreSQL: clean, upgrade, 48 pruebas pgTAP, carreras claim/claim, claim/reset y reset/reset, restore válido y restores truncado/corrupto fail-closed pasan en PowerShell 5.1 y 7.
 - Checks globales y de carrera se registran en la entrega final de la rama.
 
 ## Riesgos y gates

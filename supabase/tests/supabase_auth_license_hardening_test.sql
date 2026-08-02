@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(48);
 
 select ok(has_function_privilege('authenticated', 'public.claim_active_device(text)', 'execute'),
   'authenticated may claim its device explicitly');
@@ -44,6 +44,37 @@ select ok((select prosecdef from pg_proc where oid = 'public.reset_active_device
   'device reset is security definer');
 select is((select proconfig[1] from pg_proc where oid = 'public.reset_active_device(text)'::regprocedure),
   'search_path=""', 'device reset pins an empty search path');
+
+select ok(has_function_privilege('service_role', 'public.claim_billing_checkout_attempt(uuid,uuid,text,text,text)', 'execute'),
+  'service role may claim checkout attempts');
+select ok(has_function_privilege('service_role', 'public.complete_billing_checkout_attempt(uuid,uuid,text,text)', 'execute'),
+  'service role may complete checkout attempts');
+select ok(has_function_privilege('service_role', 'public.mark_billing_checkout_attempt_uncertain(uuid,uuid)', 'execute'),
+  'service role may quarantine uncertain checkout attempts');
+select ok(not has_function_privilege('anon', 'public.claim_billing_checkout_attempt(uuid,uuid,text,text,text)', 'execute'),
+  'anon cannot claim checkout attempts');
+select ok(not has_function_privilege('authenticated', 'public.claim_billing_checkout_attempt(uuid,uuid,text,text,text)', 'execute'),
+  'authenticated cannot claim checkout attempts directly');
+select ok(not has_function_privilege('anon', 'public.complete_billing_checkout_attempt(uuid,uuid,text,text)', 'execute'),
+  'anon cannot complete checkout attempts');
+select ok(not has_function_privilege('authenticated', 'public.complete_billing_checkout_attempt(uuid,uuid,text,text)', 'execute'),
+  'authenticated cannot complete checkout attempts directly');
+select ok(not has_function_privilege('anon', 'public.mark_billing_checkout_attempt_uncertain(uuid,uuid)', 'execute'),
+  'anon cannot quarantine checkout attempts');
+select ok(not has_function_privilege('authenticated', 'public.mark_billing_checkout_attempt_uncertain(uuid,uuid)', 'execute'),
+  'authenticated cannot quarantine checkout attempts directly');
+select ok((select prosecdef from pg_proc where oid = 'public.claim_billing_checkout_attempt(uuid,uuid,text,text,text)'::regprocedure),
+  'checkout claim is security definer');
+select is((select proconfig[1] from pg_proc where oid = 'public.claim_billing_checkout_attempt(uuid,uuid,text,text,text)'::regprocedure),
+  'search_path=""', 'checkout claim pins an empty search path');
+select ok((select prosecdef from pg_proc where oid = 'public.complete_billing_checkout_attempt(uuid,uuid,text,text)'::regprocedure),
+  'checkout completion is security definer');
+select is((select proconfig[1] from pg_proc where oid = 'public.complete_billing_checkout_attempt(uuid,uuid,text,text)'::regprocedure),
+  'search_path=""', 'checkout completion pins an empty search path');
+select ok((select prosecdef from pg_proc where oid = 'public.mark_billing_checkout_attempt_uncertain(uuid,uuid)'::regprocedure),
+  'checkout quarantine is security definer');
+select is((select proconfig[1] from pg_proc where oid = 'public.mark_billing_checkout_attempt_uncertain(uuid,uuid)'::regprocedure),
+  'search_path=""', 'checkout quarantine pins an empty search path');
 
 insert into auth.users (id, email, raw_user_meta_data)
 values ('00000000-0000-4000-8000-000000000088', 'hardening@example.invalid', '{}'::jsonb);

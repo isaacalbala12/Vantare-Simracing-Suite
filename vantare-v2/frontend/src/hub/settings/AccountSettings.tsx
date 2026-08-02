@@ -99,11 +99,14 @@ export function AccountSettings() {
   const handleLogout = useCallback(async () => {
 		setLogoutError(null);
 		const result = await signOut();
-		if (result.error) {
-			setLogoutError(result.error);
+		if (!result.localCleared) {
+			setLogoutError(`No se pudo cerrar la sesión local: ${result.localError ?? "error desconocido"}`);
 			return;
 		}
-    clearLicense();
+		clearLicense();
+		if (result.remoteError) {
+			setLogoutError(`La sesión local se cerró, pero falló el cierre remoto: ${result.remoteError}`);
+		}
   }, [clearLicense]);
 
   const handleResetDevice = useCallback(async () => {

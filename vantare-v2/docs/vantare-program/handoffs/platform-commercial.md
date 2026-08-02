@@ -104,7 +104,7 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 - Intento OAuth creado antes del navegador, ligado a provider/state, con expiración, consumo atómico y una sola aceptación incluso bajo concurrencia.
 - Bridge de sesión global, Supabase solo en memoria del WebView, Credential Manager como persistencia exclusiva, rotación protegida contra session fixation y logout request/ack fail-closed.
-- Restore, rotación y borrado quedan serializados; credenciales protegidas inválidas/corruptas se eliminan y una rotación concurrente no puede resucitar la sesión tras logout.
+- Restore, rotación y borrado quedan serializados; credenciales protegidas inválidas/corruptas —incluido un blob nulo o vacío de Credential Manager— se eliminan y una rotación concurrente no puede resucitar la sesión tras logout.
 - Separación explícita entre claim de dispositivo y lectura pura de entitlements; wrapper legacy ya no muta.
 - RPCs con grants mínimos, `SECURITY DEFINER`/`search_path` endurecido también para checkout, `device_bound` honesto, reset con fingerprint real y carreras concurrentes.
 - `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook, y un workflow de despliegue dedicado obliga a pasar por el wrapper protegido.

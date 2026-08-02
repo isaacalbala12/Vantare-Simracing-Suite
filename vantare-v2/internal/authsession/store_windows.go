@@ -96,13 +96,23 @@ func (s *Store) Load() (Session, error) {
 		}
 		return Session{}, fmt.Errorf("reading protected auth session: %w", callErr)
 	}
+	if cred == nil {
+		return Session{}, fmt.Errorf("%w: Windows credential blob is empty", ErrInvalidSession)
+	}
 	defer procCredFree.Call(uintptr(unsafe.Pointer(cred)))
+	copyData, err := copyCredentialBlob(cred)
+	if err != nil {
+		return Session{}, err
+	}
+	return unmarshal(copyData)
+}
+
+func copyCredentialBlob(cred *credential) ([]byte, error) {
 	if cred == nil || cred.CredentialBlobSize == 0 || cred.CredentialBlob == nil {
-		return Session{}, errors.New("protected auth session is empty")
+		return nil, fmt.Errorf("%w: Windows credential blob is empty", ErrInvalidSession)
 	}
 	data := unsafe.Slice(cred.CredentialBlob, int(cred.CredentialBlobSize))
-	copyData := append([]byte(nil), data...)
-	return unmarshal(copyData)
+	return append([]byte(nil), data...), nil
 }
 
 func (s *Store) Delete() error {

@@ -33,7 +33,7 @@ Conclusión: el estado remoto de backups, PITR, migraciones y grants no está pr
 - Al iniciar, el backend entrega la sesión protegida a la memoria de Supabase, que puede refrescarla y revalidarla.
 - El bridge vive en la raíz de React: no depende de `LoginScreen` ni de que exista caché de licencia.
 - Las rotaciones solo persisten después de que el backend haya validado o restaurado una sesión confiable; una sesión WebView arbitraria no puede fijarse.
-- Restore elimina una credencial protegida inválida o corrupta y emite un estado sanitizado; no deja un secreto irrecuperable provocando el mismo fallo en cada arranque.
+- Restore elimina una credencial protegida inválida o corrupta, incluidos blobs de Windows Credential Manager nulos o vacíos, y emite un estado sanitizado; no deja un secreto irrecuperable provocando el mismo fallo en cada arranque.
 - Restore, rotación y borrado están serializados. Un refresh concurrente no puede escribir una sesión después de que el logout haya terminado.
 - Las claves legacy legibles de Supabase se eliminan de `localStorage` sin copiar su contenido.
 - Cerrar sesión usa un request/ack tipado y correlacionado. La UI solo abandona el estado local después de confirmar el borrado protegido; después intenta el cierre remoto y presenta ambos resultados por separado.

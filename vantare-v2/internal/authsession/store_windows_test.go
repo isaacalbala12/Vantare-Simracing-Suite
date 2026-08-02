@@ -35,3 +35,20 @@ func TestWindowsCredentialStoreRoundTripAndDelete(t *testing.T) {
 		t.Fatalf("Load after Delete error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestCopyCredentialBlobClassifiesEmptyCredentialsAsInvalidSession(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		cred *credential
+	}{
+		{name: "nil credential"},
+		{name: "zero size", cred: &credential{}},
+		{name: "nil blob", cred: &credential{CredentialBlobSize: 1}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := copyCredentialBlob(test.cred); !errors.Is(err, ErrInvalidSession) {
+				t.Fatalf("copyCredentialBlob error = %v, want ErrInvalidSession", err)
+			}
+		})
+	}
+}

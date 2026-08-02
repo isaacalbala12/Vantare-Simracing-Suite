@@ -5,7 +5,6 @@ package replayoracle
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"time"
 
@@ -23,6 +22,7 @@ import (
 const (
 	ScenarioVersionV1 uint16 = 1
 	OracleVersionV1   uint16 = 1
+	OracleVersionV2   uint16 = 2
 
 	MaxScenarioSteps    = 4_096
 	MaxFamiliesPerStep  = 21
@@ -52,6 +52,8 @@ const (
 	OutcomeExpired     OutcomeState = "expired"
 	OutcomeCancelled   OutcomeState = "cancelled"
 	OutcomeUnavailable OutcomeState = "unavailable"
+	OutcomeDispatched  OutcomeState = "dispatched"
+	OutcomeStarted     OutcomeState = "playback_started"
 )
 
 type Reason string
@@ -85,7 +87,10 @@ const (
 	ReasonPreemptedBySpotter       Reason = "preempted_by_spotter"
 	ReasonQueuePressure            Reason = "queue_pressure"
 	ReasonLifecycleBoundary        Reason = "lifecycle_boundary"
+	ReasonSourceUnavailable        Reason = "source_unavailable"
 	ReasonSemanticInvalidated      Reason = "semantic_invalidated"
+	ReasonTransportQueued          Reason = "transport_queued"
+	ReasonPlaybackStarted          Reason = "playback_started"
 )
 
 type VirtualClock struct {
@@ -148,10 +153,16 @@ type Report struct {
 	Outcomes        []Outcome `json:"outcomes"`
 }
 
-type Runner struct{}
+type Runner struct {
+	policyLimits messagepolicy.Limits
+}
 
 func NewRunner() *Runner {
-	return &Runner{}
+	return &Runner{policyLimits: messagepolicy.Limits{
+		MaxPending:      MaxPendingMessages,
+		MaxDiagnostics:  MaxPendingMessages,
+		MaxCooldownKeys: MaxPendingMessages,
+	}}
 }
 
 func (runner *Runner) Run(scenario Scenario) (Report, error) {
@@ -165,7 +176,7 @@ func (runner *Runner) Run(scenario Scenario) (Report, error) {
 		return Report{}, ErrScenarioLimit
 	}
 
-	state, err := newRunState(scenario)
+	state, err := newRunState(scenario, runner.policyLimits)
 	if err != nil {
 		return Report{}, err
 	}
@@ -198,36 +209,60 @@ func (runner *Runner) Run(scenario Scenario) (Report, error) {
 }
 
 type runState struct {
-	clock        *VirtualClock
-	queue        *audio.Queue
-	scheduler    *messagepolicy.Scheduler
-	runtime      *engineercore.Runtime
-	adapter      *projectioninput.Adapter
-	lastContext  *engineerprojection.Context
-	factEpoch    uint64
-	factSequence uint64
-	report       Report
+	clock             *VirtualClock
+	queue             *audio.Queue
+	scheduler         *messagepolicy.Scheduler
+	runtime           *engineercore.Runtime
+	adapter           *projectioninput.Adapter
+	lastContext       *engineerprojection.Context
+	lastObservation   *observationCursor
+	reconnectBoundary *observationCursor
+	factEpoch         uint64
+	factSequence      uint64
+	report            Report
+	connection        replayConnection
 }
 
-func newRunState(scenario Scenario) (*runState, error) {
+type replayConnection uint8
+
+type observationCursor struct {
+	context  engineerprojection.Context
+	sequence uint64
+}
+
+func cursorFromSnapshot(snapshot engineerprojection.ObservationSnapshotV1) observationCursor {
+	return observationCursor{context: snapshot.Context, sequence: uint64(snapshot.Sequence)}
+}
+
+func (cursor observationCursor) strictlyAfter(boundary observationCursor) bool {
+	if cursor.context.Epoch != boundary.context.Epoch {
+		return cursor.context.Epoch > boundary.context.Epoch
+	}
+	return cursor.sequence > boundary.sequence
+}
+
+const (
+	replayConnected replayConnection = iota
+	replayDisconnected
+	replayAwaitingFreshSnapshot
+)
+
+func newRunState(scenario Scenario, limits messagepolicy.Limits) (*runState, error) {
 	queue := audio.NewQueue()
 	clock := NewVirtualClock(scenario.StartMS)
-	scheduler, err := messagepolicy.NewScheduler(clock, messagepolicy.Limits{
-		MaxPending:      MaxPendingMessages,
-		MaxDiagnostics:  MaxPendingMessages,
-		MaxCooldownKeys: MaxPendingMessages,
-	})
+	scheduler, err := messagepolicy.NewScheduler(clock, limits)
 	if err != nil {
 		return nil, err
 	}
 	return &runState{
-		clock:     clock,
-		queue:     queue,
-		scheduler: scheduler,
-		runtime:   engineercore.NewRuntime(queue, spotter.SensitivityNormal, true),
-		adapter:   projectioninput.NewAdapter(),
+		clock:      clock,
+		queue:      queue,
+		scheduler:  scheduler,
+		runtime:    engineercore.NewRuntime(queue, spotter.SensitivityNormal, true),
+		adapter:    projectioninput.NewAdapter(),
+		connection: replayConnected,
 		report: Report{
-			OracleVersion:   OracleVersionV1,
+			OracleVersion:   OracleVersionV2,
 			ScenarioVersion: scenario.Version,
 			ScenarioID:      scenario.ID,
 			Seed:            scenario.Seed,
@@ -238,13 +273,21 @@ func newRunState(scenario Scenario) (*runState, error) {
 
 func (state *runState) consume(stepIndex int, step Step) {
 	snapshot := *step.Snapshot
+	if state.connection == replayDisconnected {
+		state.unavailable(stepIndex, step.Families, ReasonSourceUnavailable)
+		return
+	}
 	if reason := validateSnapshot(snapshot); reason != "" {
 		state.cancelPending(stepIndex, reason)
 		state.resetRuntime()
 		state.unavailable(stepIndex, step.Families, reason)
 		return
 	}
-
+	if state.connection == replayAwaitingFreshSnapshot && state.reconnectBoundary != nil &&
+		!cursorFromSnapshot(snapshot).strictlyAfter(*state.reconnectBoundary) {
+		state.unavailable(stepIndex, step.Families, ReasonStaleContext)
+		return
+	}
 	if state.lastContext != nil {
 		boundary, err := engineerprojection.ClassifyBoundary(*state.lastContext, snapshot.Context)
 		if err != nil {
@@ -265,17 +308,17 @@ func (state *runState) consume(stepIndex int, step Step) {
 	}
 	contextCopy := snapshot.Context
 	state.lastContext = &contextCopy
-	semantic := semanticEvidence(snapshot, state.adapter)
-	state.appendPolicyOutcomes(stepIndex, state.scheduler.Observe(messagepolicy.Evidence{
-		CanonicalVersion:  snapshot.CanonicalVersion,
-		ProjectionVersion: snapshot.ProjectionVersion,
-		Context:           snapshot.Context,
-		Manifest:          snapshot.Manifest,
-		Source:            engineerprojection.SourceLive,
-		FreshUntilMS:      state.clock.NowMS() + 1_000,
-		ReadyFamilies:     readyFamilies(snapshot),
-		Semantic:          semantic,
-	}))
+	cursor := cursorFromSnapshot(snapshot)
+	state.lastObservation = &cursor
+	state.reconnectBoundary = nil
+	state.connection = replayConnected
+	evidence := projectioninput.PolicyEvidence(
+		snapshot,
+		state.adapter,
+		engineerprojection.SourceLive,
+		state.clock.NowMS()+1_000,
+	)
+	state.appendPolicyOutcomes(stepIndex, state.scheduler.Observe(evidence))
 
 	for _, family := range step.Families {
 		frame, err := state.adapter.FrameFor(family, snapshot)
@@ -300,20 +343,6 @@ func (state *runState) consume(stepIndex int, step Step) {
 	}
 }
 
-func readyFamilies(snapshot engineerprojection.ObservationSnapshotV1) []messagepolicy.Family {
-	result := make([]messagepolicy.Family, 0, 6)
-	for _, contract := range projectioninput.MonitorContracts() {
-		if contract.State != projectioninput.ParityApproved {
-			continue
-		}
-		gate, err := projectioninput.Evaluate(snapshot, contract.Family)
-		if err == nil && gate.Ready {
-			result = append(result, messagepolicy.Family(contract.Family))
-		}
-	}
-	return result
-}
-
 func (state *runState) consumeFacts(step int, facts []engineerprojection.FactEnvelopeV1) {
 	for _, fact := range facts {
 		reason := validateFact(fact, state.factEpoch, state.factSequence)
@@ -330,10 +359,22 @@ func (state *runState) consumeFacts(step int, facts []engineerprojection.FactEnv
 		state.factEpoch = epoch
 		state.factSequence = uint64(fact.Fact.Sequence)
 		switch fact.Fact.Kind {
-		case engineerprojection.FactSessionStarted, engineerprojection.FactConnectionLost,
-			engineerprojection.FactSessionEnded, engineerprojection.FactDriverChanged:
+		case engineerprojection.FactSessionStarted, engineerprojection.FactSessionEnded,
+			engineerprojection.FactDriverChanged:
 			state.cancelPending(step, ReasonFactBoundary)
 			state.runtime.Reset()
+		case engineerprojection.FactConnectionLost:
+			state.cancelPending(step, ReasonFactBoundary)
+			state.runtime.Reset()
+			if state.lastObservation != nil {
+				boundary := *state.lastObservation
+				state.reconnectBoundary = &boundary
+			}
+			state.connection = replayDisconnected
+		case engineerprojection.FactConnectionRecovered:
+			// Recovery only permits the next fresh canonical snapshot. It does
+			// not restore or dispatch work from before the disconnect.
+			state.connection = replayAwaitingFreshSnapshot
 		}
 	}
 }
@@ -452,6 +493,8 @@ func policyCancelReason(reason Reason) messagepolicy.Reason {
 		return messagepolicy.ReasonIdentityChanged
 	case ReasonStaleContext:
 		return messagepolicy.ReasonEvidenceStale
+	case ReasonSourceUnavailable:
+		return messagepolicy.ReasonSourceUnavailable
 	default:
 		return messagepolicy.ReasonLifecycleBoundary
 	}
@@ -475,11 +518,17 @@ func (state *runState) drain(step int, intended OutcomeState, reason Reason) {
 		}
 	}
 	for {
-		_, outcomes, ok := state.scheduler.Next()
+		decision, outcomes, ok := state.scheduler.Next()
 		state.appendPolicyOutcomes(step, outcomes)
 		if !ok {
 			return
 		}
+		state.appendDecision(step, decision, OutcomeDispatched, ReasonTransportQueued)
+		if ackReason := state.scheduler.AcknowledgeStarted(decision); ackReason != "" {
+			state.appendDecision(step, decision, OutcomeUnavailable, Reason(ackReason))
+			continue
+		}
+		state.appendDecision(step, decision, OutcomeStarted, ReasonPlaybackStarted)
 	}
 }
 
@@ -504,188 +553,15 @@ func candidateFromLegacy(message audio.Message, snapshot engineerprojection.Obse
 		message.ExpiresAt <= message.CreatedAt || message.ExpiresAt > MaxVirtualTimeMS+maxDecisionDeadlineOffsetMS {
 		return messagepolicy.Candidate{}, ReasonInvalidObservation
 	}
-	family := familyForMessage(message)
-	intent := message.TextKey
-	if family == projectioninput.FamilyPenalties && intent == "penalties.new_drivethrough" {
-		intent = "penalties.count_increased"
-	}
-	payload, ok := boundedLegacyPayload(message.ValidationData)
-	if !ok {
+	candidate, err := projectioninput.CandidateFromMessage(message, snapshot, evidence)
+	if err != nil {
 		return messagepolicy.Candidate{}, ReasonInvalidObservation
 	}
-	semantic, ok := semanticClaimForLegacy(message.ValidityRule, intent, evidence)
-	if !ok {
-		return messagepolicy.Candidate{}, ReasonInvalidObservation
-	}
-	return messagepolicy.Candidate{
-		Version:           messagepolicy.ContractVersionV1,
-		ID:                message.ID,
-		Family:            messagepolicy.Family(family),
-		Intent:            intent,
-		Subject:           string(snapshot.Context.Identity.Vehicle),
-		Priority:          priorityForLegacy(family),
-		CreatedAtMS:       message.CreatedAt,
-		ExpiresAtMS:       message.ExpiresAt,
-		CanonicalVersion:  snapshot.CanonicalVersion,
-		ProjectionVersion: snapshot.ProjectionVersion,
-		Context:           snapshot.Context,
-		Semantic:          semantic,
-		Payload:           payload,
-	}, ""
+	return candidate, ""
 }
 
 func semanticEvidence(snapshot engineerprojection.ObservationSnapshotV1, adapter *projectioninput.Adapter) messagepolicy.SemanticEvidence {
-	var result messagepolicy.SemanticEvidence
-	if frame, err := adapter.FrameFor(projectioninput.FamilySpotter, snapshot); err == nil {
-		result.SpotterKnown = true
-		for _, zone := range spotter.Classify(frame, spotter.SensitivityNormal) {
-			switch zone.Side {
-			case spotter.SideLeft:
-				result.SpotterLeft = true
-			case spotter.SideRight:
-				result.SpotterRight = true
-			}
-		}
-	}
-	if value, present := snapshot.Player.FuelLiters.Value(); present && snapshot.Player.FuelLiters.Usable() {
-		result.FuelKnown, result.FuelLitres = true, value
-	}
-	if value, present := snapshot.Player.FuelCapacity.Value(); present && snapshot.Player.FuelCapacity.Usable() {
-		result.FuelCapacityKnown, result.FuelCapacity = true, value
-	}
-	if value, present := snapshot.Player.InPit.Value(); present && snapshot.Player.InPit.Usable() {
-		result.PitKnown, result.InPit = true, value
-	}
-	if value, present := snapshot.Player.PenaltyCount.Value(); present && snapshot.Player.PenaltyCount.Usable() {
-		result.PenaltyKnown, result.PenaltyCount = true, int64(value)
-	}
-	if value, present := snapshot.Player.LapNumber.Value(); present && snapshot.Player.LapNumber.Usable() {
-		result.LapKnown, result.LapNumber = true, int64(value)
-	}
-	if value, present := snapshot.Player.TimeBehindLeader.Value(); present && snapshot.Player.TimeBehindLeader.Usable() {
-		result.GapLeaderKnown, result.GapLeader = true, value
-	}
-	if value, present := snapshot.Player.TimeBehindNext.Value(); present && snapshot.Player.TimeBehindNext.Usable() {
-		result.GapNextKnown, result.GapNext = true, value
-	}
-	return result
-}
-
-func semanticClaimForLegacy(validityRule, intent string, evidence messagepolicy.SemanticEvidence) (messagepolicy.SemanticClaim, bool) {
-	claim := messagepolicy.SemanticClaim{}
-	switch validityRule {
-	case "spotter.active_left":
-		claim.Rule = messagepolicy.SemanticSpotterLeftActive
-	case "spotter.active_right":
-		claim.Rule = messagepolicy.SemanticSpotterRightActive
-	case "spotter.active_both":
-		claim.Rule = messagepolicy.SemanticSpotterBothActive
-	case "spotter.clear_left":
-		claim.Rule = messagepolicy.SemanticSpotterLeftClear
-	case "spotter.clear_right":
-		claim.Rule = messagepolicy.SemanticSpotterRightClear
-	case "spotter.all_clear":
-		claim.Rule = messagepolicy.SemanticSpotterAllClear
-	case "":
-		// Non-Spotter legacy monitors did not carry ValidityRule. Preserve their
-		// observable claim explicitly instead of treating an empty rule as valid.
-	default:
-		return messagepolicy.SemanticClaim{}, false
-	}
-	if claim.Rule != messagepolicy.SemanticUnknown {
-		return claim, true
-	}
-	switch intent {
-	case messagepolicy.IntentSpotterCarLeft:
-		claim.Rule = messagepolicy.SemanticSpotterLeftActive
-	case messagepolicy.IntentSpotterCarRight:
-		claim.Rule = messagepolicy.SemanticSpotterRightActive
-	case messagepolicy.IntentSpotterStillThere:
-		claim.Rule = messagepolicy.SemanticSpotterAnyActive
-	case messagepolicy.IntentSpotterClearLeft:
-		claim.Rule = messagepolicy.SemanticSpotterLeftClear
-	case messagepolicy.IntentSpotterClearRight:
-		claim.Rule = messagepolicy.SemanticSpotterRightClear
-	case messagepolicy.IntentSpotterAllClear:
-		claim.Rule = messagepolicy.SemanticSpotterAllClear
-	case messagepolicy.IntentSpotterThreeWide:
-		claim.Rule = messagepolicy.SemanticSpotterBothActive
-	case messagepolicy.IntentFuelHalfTank:
-		claim.Rule = messagepolicy.SemanticFuelHalfTank
-	case messagepolicy.IntentFuelOneLitre:
-		claim.Rule = messagepolicy.SemanticFuelAtMostOneLitre
-	case messagepolicy.IntentFuelTwoLitres:
-		claim.Rule = messagepolicy.SemanticFuelAtMostTwoLitres
-	case messagepolicy.IntentFuelLapsFour, messagepolicy.IntentFuelLapsThree, messagepolicy.IntentFuelLapsTwo,
-		messagepolicy.IntentFuelLapsOne, messagepolicy.IntentFuelPitNow:
-		if !evidence.FuelKnown {
-			return messagepolicy.SemanticClaim{}, false
-		}
-		claim.Rule, claim.Primary, claim.HasPrimary = messagepolicy.SemanticFuelNotRefuelled, evidence.FuelLitres, true
-	case messagepolicy.IntentPenaltyCountIncreased:
-		if !evidence.PenaltyKnown {
-			return messagepolicy.SemanticClaim{}, false
-		}
-		claim.Rule, claim.Integer = messagepolicy.SemanticPenaltyOutstanding, evidence.PenaltyCount
-	case messagepolicy.IntentLapCompleted:
-		if !evidence.LapKnown {
-			return messagepolicy.SemanticClaim{}, false
-		}
-		claim.Rule, claim.Integer = messagepolicy.SemanticLapCurrent, evidence.LapNumber
-	case messagepolicy.IntentTimingGapReport:
-		claim.Rule = messagepolicy.SemanticTimingUnchanged
-		if evidence.GapLeaderKnown {
-			claim.Primary, claim.HasPrimary = evidence.GapLeader, true
-		}
-		if evidence.GapNextKnown {
-			claim.Secondary, claim.HasSecondary = evidence.GapNext, true
-		}
-		if !claim.HasPrimary && !claim.HasSecondary {
-			return messagepolicy.SemanticClaim{}, false
-		}
-	case messagepolicy.IntentPitEntry:
-		claim.Rule = messagepolicy.SemanticInPit
-	case messagepolicy.IntentPitExit:
-		claim.Rule = messagepolicy.SemanticOutOfPit
-	default:
-		// Keep unapproved intents transportable to policy so it can produce the
-		// stable decision_not_approved outcome instead of reclassifying them as
-		// malformed observations.
-		return messagepolicy.SemanticClaim{}, true
-	}
-	return claim, true
-}
-
-func priorityForLegacy(family projectioninput.MonitorFamily) messagepolicy.Priority {
-	switch family {
-	case projectioninput.FamilySpotter:
-		return messagepolicy.PrioritySpotter
-	case projectioninput.FamilyFuel:
-		return messagepolicy.PriorityFailureResource
-	case projectioninput.FamilyPenalties:
-		return messagepolicy.PriorityPenalty
-	default:
-		return messagepolicy.PriorityInformation
-	}
-}
-
-func boundedLegacyPayload(input map[string]any) (map[string]string, bool) {
-	if len(input) == 0 {
-		return nil, true
-	}
-	result := make(map[string]string, len(input))
-	for key, value := range input {
-		switch value.(type) {
-		case string, bool,
-			int, int8, int16, int32, int64,
-			uint, uint8, uint16, uint32, uint64,
-			float32, float64:
-			result[key] = fmt.Sprint(value)
-		default:
-			return nil, false
-		}
-	}
-	return result, true
+	return projectioninput.SemanticEvidence(snapshot, adapter)
 }
 
 func (state *runState) appendPolicyOutcomes(step int, outcomes []messagepolicy.PolicyOutcome) {
@@ -718,14 +594,20 @@ func (state *runState) append(step int, family projectioninput.MonitorFamily, re
 	})
 }
 
+func (state *runState) appendDecision(step int, decision messagepolicy.Decision, result OutcomeState, reason Reason) {
+	state.report.Outcomes = append(state.report.Outcomes, Outcome{
+		Sequence: len(state.report.Outcomes) + 1,
+		Step:     step, AtMS: state.clock.NowMS(), Family: projectioninput.MonitorFamily(decision.Family),
+		State: result, Reason: reason, MessageID: decision.CandidateID,
+		TextKey: decision.Intent, ExpiresAt: decision.ExpiresAtMS,
+	})
+}
+
 func (state *runState) resetRuntime() {
 	state.runtime.Reset()
 	state.adapter = projectioninput.NewAdapter()
 }
 
 func familyForMessage(message audio.Message) projectioninput.MonitorFamily {
-	if message.Category == audio.CategorySpotter {
-		return projectioninput.FamilySpotter
-	}
-	return projectioninput.MonitorFamily(message.Category)
+	return projectioninput.FamilyForMessage(message)
 }

@@ -7,6 +7,51 @@ import (
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
+func TestSpotterContextRequiresStartedAcknowledgement(t *testing.T) {
+	t.Parallel()
+
+	newSchedulerWithLeftDecision := func(t *testing.T) (*Scheduler, *testClock, Decision) {
+		t.Helper()
+		clock := &testClock{now: 1_000}
+		scheduler := newTestScheduler(t, clock, 4)
+		observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true, SpotterLeft: true})
+		candidate := candidateForCurrentEvidence(scheduler, "left", IntentSpotterCarLeft, clock.now)
+		if accepted, outcomes := scheduler.Submit(candidate); !accepted || len(outcomes) != 0 {
+			t.Fatalf("left submit = %t, %+v", accepted, outcomes)
+		}
+		decision, outcomes, ok := scheduler.Next()
+		if !ok || len(outcomes) != 1 || decision.Intent != IntentSpotterCarLeft {
+			t.Fatalf("left next = %+v, %+v, %t", decision, outcomes, ok)
+		}
+		return scheduler, clock, decision
+	}
+
+	t.Run("decision without started ack does not authorize clear", func(t *testing.T) {
+		scheduler, clock, _ := newSchedulerWithLeftDecision(t)
+		observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true})
+		clear := candidateForCurrentEvidence(scheduler, "clear", IntentSpotterClearLeft, clock.now)
+		accepted, outcomes := scheduler.Submit(clear)
+		if !accepted || !containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+			t.Fatalf("unstarted decision authorized clear = %t, %+v", accepted, outcomes)
+		}
+		assertNextIntent(t, scheduler, IntentSpotterAllClear)
+	})
+
+	t.Run("started ack authorizes compatible clear", func(t *testing.T) {
+		scheduler, clock, decision := newSchedulerWithLeftDecision(t)
+		if reason := scheduler.AcknowledgeStarted(decision); reason != "" {
+			t.Fatalf("AcknowledgeStarted() reason = %q", reason)
+		}
+		observeSpotterSituation(t, scheduler, SemanticEvidence{SpotterKnown: true})
+		clear := candidateForCurrentEvidence(scheduler, "clear", IntentSpotterClearLeft, clock.now)
+		accepted, outcomes := scheduler.Submit(clear)
+		if !accepted || containsOutcome(outcomes, OutcomeSuppressed, ReasonSpotterContextReplaced) {
+			t.Fatalf("started decision did not authorize clear = %t, %+v", accepted, outcomes)
+		}
+		assertNextIntent(t, scheduler, IntentSpotterClearLeft)
+	})
+}
+
 func TestSpotterBoundaryResetsDeliveryBeforeObservingNewState(t *testing.T) {
 	t.Parallel()
 
@@ -65,7 +110,7 @@ func TestSpotterBoundaryResetsDeliveryBeforeObservingNewState(t *testing.T) {
 				evidence.Semantic = tt.after
 				scheduler.Observe(evidence)
 				if !scheduler.spotter.observed || scheduler.spotter.generation != 1 ||
-					scheduler.spotter.dispatchedGeneration != 0 {
+					scheduler.spotter.startedGeneration != 0 {
 					t.Fatalf("new lifecycle was not observed from a reset state: %+v", scheduler.spotter)
 				}
 
@@ -253,7 +298,13 @@ func dispatchSpotterUntil(t *testing.T, scheduler *Scheduler, intent string, now
 	if accepted, outcomes := scheduler.Submit(candidate); !accepted || len(outcomes) != 0 {
 		t.Fatalf("dispatch submit = %t, %+v", accepted, outcomes)
 	}
-	assertNextIntent(t, scheduler, intent)
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.Intent != intent {
+		t.Fatalf("Next() = %+v, %t, want %s", decision, ok, intent)
+	}
+	if reason := scheduler.AcknowledgeStarted(decision); reason != "" {
+		t.Fatalf("AcknowledgeStarted() reason = %q", reason)
+	}
 }
 
 func candidateForCurrentEvidence(scheduler *Scheduler, id, intent string, now int64) Candidate {

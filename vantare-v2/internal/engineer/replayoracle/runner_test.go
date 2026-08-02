@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -109,12 +110,102 @@ func TestRunnerApprovedFamiliesAreDeterministicAndMatchGolden(t *testing.T) {
 		}
 	}
 
-	want, err := os.ReadFile(filepath.Join("testdata", "v1", "approved-families.golden.json"))
+	want, err := os.ReadFile(filepath.Join("testdata", "v2", "approved-families.golden.json"))
 	if err != nil {
 		t.Fatalf("%v\ngenerated golden:\n%s", err, baseline)
 	}
-	if !bytes.Equal(baseline, want) {
+	var gotReport, wantReport Report
+	if err := json.Unmarshal(baseline, &gotReport); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(want, &wantReport); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gotReport, wantReport) {
 		t.Fatalf("golden drift (-want +got):\nwant:\n%s\ngot:\n%s", want, baseline)
+	}
+}
+
+func TestRunnerDistinguishesPolicyDecisionFromPlaybackStart(t *testing.T) {
+	t.Parallel()
+
+	report, err := NewRunner().Run(approvedFamiliesScenario(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, outcome := range report.Outcomes {
+		if outcome.State != OutcomeEmitted {
+			continue
+		}
+		if index+2 >= len(report.Outcomes) {
+			t.Fatalf("decision %q has no delivery lifecycle", outcome.MessageID)
+		}
+		dispatched := report.Outcomes[index+1]
+		started := report.Outcomes[index+2]
+		if dispatched.State != OutcomeDispatched || started.State != OutcomeStarted ||
+			dispatched.MessageID != outcome.MessageID || started.MessageID != outcome.MessageID {
+			t.Fatalf("decision %q lifecycle = %+v, %+v", outcome.MessageID, dispatched, started)
+		}
+	}
+}
+
+func TestRunnerSpotterPlaybackCoversRightThreeWideAndContextualClear(t *testing.T) {
+	t.Parallel()
+
+	right := fixtureObservation(t, fixtureValues{rivalX: -2.8})
+	threeWide := fixtureObservation(t, fixtureValues{rivalXs: []float64{2.8, -2.8}})
+	far := fixtureObservation(t, fixtureValues{rivalX: -25})
+	tests := []struct {
+		name    string
+		steps   []Step
+		intents []string
+	}{
+		{name: "right", steps: []Step{{Snapshot: &right, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}}}, intents: []string{messagepolicy.IntentSpotterCarRight}},
+		{name: "three wide", steps: []Step{{Snapshot: &threeWide, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}}}, intents: []string{messagepolicy.IntentSpotterThreeWide}},
+		{name: "right then clear", steps: []Step{
+			{Snapshot: &right, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{AdvanceMS: 351, Snapshot: &far, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{AdvanceMS: 150, Snapshot: &far, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+		}, intents: []string{messagepolicy.IntentSpotterCarRight, messagepolicy.IntentSpotterClearRight}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			report, err := NewRunner().Run(Scenario{Version: ScenarioVersionV1, ID: tt.name, StartMS: 1_000, Steps: tt.steps})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, intent := range tt.intents {
+				if !hasTextOutcome(report, OutcomeStarted, ReasonPlaybackStarted, projectioninput.FamilySpotter, intent) {
+					t.Fatalf("missing started ACK for %q in %+v", intent, report.Outcomes)
+				}
+			}
+		})
+	}
+}
+
+func TestRunnerReportsQueuePressureWithBoundedPolicy(t *testing.T) {
+	t.Parallel()
+
+	fuelBaseline := fixtureObservation(t, fixtureValues{fuelSet: true, fuel: 55, lap: 3})
+	fuelLow := fixtureObservation(t, fixtureValues{fuelSet: true, fuel: 49, lap: 3})
+	lapFour := fixtureObservation(t, fixtureValues{fuelSet: true, fuel: 49, lap: 4})
+	runner := &Runner{policyLimits: messagepolicy.Limits{
+		MaxPending: 1, MaxDiagnostics: 8, MaxCooldownKeys: 8,
+	}}
+	report, err := runner.Run(Scenario{
+		Version: ScenarioVersionV1, ID: "queue-pressure", StartMS: 1_000,
+		Steps: []Step{
+			{Snapshot: &fuelBaseline, Families: []projectioninput.MonitorFamily{projectioninput.FamilyFuel}},
+			{AdvanceMS: 1, Snapshot: &fuelLow, Families: []projectioninput.MonitorFamily{projectioninput.FamilyFuel}, Hold: true},
+			{AdvanceMS: 1, Snapshot: &lapFour, Families: []projectioninput.MonitorFamily{projectioninput.FamilyLaps}, Hold: true},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasOutcome(report, OutcomeSuppressed, ReasonQueuePressure, projectioninput.FamilyLaps) {
+		t.Fatalf("bounded replay did not expose queue pressure: %+v", report.Outcomes)
 	}
 }
 
@@ -304,6 +395,76 @@ func TestRunnerOrdersFactsAndCancelsAtLifecycleBoundaries(t *testing.T) {
 	}
 	if !hasOutcome(report, OutcomeUnavailable, ReasonUnknownFact, "") {
 		t.Fatalf("unknown fact kind was not rejected: %+v", report.Outcomes)
+	}
+}
+
+func TestRunnerDisconnectReconnectRequiresFreshSnapshotBeforePlaybackResumes(t *testing.T) {
+	t.Parallel()
+
+	left := fixtureObservation(t, fixtureValues{rivalX: 2.8, sequence: 2})
+	stale := fixtureObservation(t, fixtureValues{rivalX: -2.8, sourceSeconds: 119, sequence: 1})
+	right := fixtureObservation(t, fixtureValues{rivalX: -2.8, sourceSeconds: 121, sequence: 3})
+	invalidLater := fixtureObservation(t, fixtureValues{sessionID: "other-session", rivalX: -2.8, sourceSeconds: 121, sequence: 3})
+	newEpoch := fixtureObservation(t, fixtureValues{epoch: 2, rivalX: 2.8, sourceSeconds: 122, sequence: 1})
+	lost := fixtureFact(engineerprojection.FactConnectionLost, 1, 1)
+	recovered := fixtureFact(engineerprojection.FactConnectionRecovered, 1, 2)
+	lostAgain := fixtureFact(engineerprojection.FactConnectionLost, 1, 3)
+	recoveredAgain := fixtureFact(engineerprojection.FactConnectionRecovered, 1, 4)
+	report, err := NewRunner().Run(Scenario{
+		Version: ScenarioVersionV1,
+		ID:      "disconnect-reconnect-fresh-snapshot",
+		Steps: []Step{
+			{Snapshot: &left, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}, Hold: true},
+			{Facts: []engineerprojection.FactEnvelopeV1{lost}},
+			{Snapshot: &right, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{Facts: []engineerprojection.FactEnvelopeV1{recovered}, Drain: true},
+			{Snapshot: &invalidLater, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{Snapshot: &left, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{Snapshot: &stale, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{AdvanceMS: 100, Snapshot: &right, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+			{Facts: []engineerprojection.FactEnvelopeV1{lostAgain, recoveredAgain}},
+			{AdvanceMS: 100, Snapshot: &newEpoch, Families: []projectioninput.MonitorFamily{projectioninput.FamilySpotter}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasTextOutcome(report, OutcomeCancelled, ReasonLifecycleBoundary, projectioninput.FamilySpotter, messagepolicy.IntentSpotterCarLeft) {
+		t.Fatalf("disconnect did not cancel the pre-existing left decision: %+v", report.Outcomes)
+	}
+	invalidLaterRejected := false
+	boundaryStillHeld := false
+	for _, outcome := range report.Outcomes {
+		if outcome.Step < 9 && outcome.TextKey == messagepolicy.IntentSpotterCarLeft && outcome.State == OutcomeStarted {
+			t.Fatalf("pre-disconnect decision restarted after recovery: %+v", outcome)
+		}
+		if outcome.Step < 7 && outcome.State == OutcomeStarted {
+			t.Fatalf("playback resumed before a fresh snapshot: %+v", outcome)
+		}
+		if outcome.Step == 4 && outcome.State == OutcomeUnavailable && outcome.Reason == ReasonInvalidIdentityChange {
+			invalidLaterRejected = true
+		}
+		if outcome.Step == 5 && outcome.State == OutcomeUnavailable && outcome.Reason == ReasonStaleContext {
+			boundaryStillHeld = true
+		}
+	}
+	if !invalidLaterRejected {
+		t.Fatalf("newer cursor with invalid lifecycle was not rejected: %+v", report.Outcomes)
+	}
+	if !boundaryStillHeld {
+		t.Fatalf("invalid newer snapshot cleared reconnect boundary: %+v", report.Outcomes)
+	}
+	if !hasOutcome(report, OutcomeUnavailable, ReasonSourceUnavailable, projectioninput.FamilySpotter) {
+		t.Fatalf("snapshot received while disconnected was not rejected: %+v", report.Outcomes)
+	}
+	if !hasOutcome(report, OutcomeUnavailable, ReasonStaleContext, projectioninput.FamilySpotter) {
+		t.Fatalf("same or stale reconnect snapshots were accepted: %+v", report.Outcomes)
+	}
+	if !hasTextOutcome(report, OutcomeStarted, ReasonPlaybackStarted, projectioninput.FamilySpotter, messagepolicy.IntentSpotterCarRight) {
+		t.Fatalf("fresh post-reconnect snapshot did not resume playback: %+v", report.Outcomes)
+	}
+	if !hasTextOutcome(report, OutcomeStarted, ReasonPlaybackStarted, projectioninput.FamilySpotter, messagepolicy.IntentSpotterCarLeft) {
+		t.Fatalf("new epoch after recovery did not resume playback: %+v", report.Outcomes)
 	}
 }
 
@@ -589,8 +750,13 @@ func TestLegacyCandidateTranslationMatchesTheCharacterizedBoundary(t *testing.T)
 				CanonicalVersion: snapshot.CanonicalVersion, ProjectionVersion: snapshot.ProjectionVersion,
 				Context: snapshot.Context, Manifest: snapshot.Manifest,
 				Source: engineerprojection.SourceLive, FreshUntilMS: 2_000,
-				ReadyFamilies: readyFamilies(snapshot),
-				Semantic:      semantic,
+				ReadyFamilies: projectioninput.PolicyEvidence(
+					snapshot,
+					projectioninput.NewAdapter(),
+					engineerprojection.SourceLive,
+					1,
+				).ReadyFamilies,
+				Semantic: semantic,
 			})
 			accepted, _ := scheduler.Submit(candidate)
 			if accepted != (tt.wantIntent != "") {
@@ -665,10 +831,12 @@ func approvedFamiliesScenario(t *testing.T) Scenario {
 
 type fixtureValues struct {
 	epoch         uint64
+	sequence      uint64
 	sessionID     string
 	vehicleID     string
 	driverID      string
 	rivalX        float64
+	rivalXs       []float64
 	fuel          float64
 	fuelSet       bool
 	staleFuel     bool
@@ -686,6 +854,9 @@ func fixtureObservation(t *testing.T, values fixtureValues) engineerprojection.O
 	if values.epoch == 0 {
 		values.epoch = 1
 	}
+	if values.sequence == 0 {
+		values.sequence = 1
+	}
 	if values.sessionID == "" {
 		values.sessionID = "session"
 	}
@@ -695,8 +866,11 @@ func fixtureObservation(t *testing.T, values fixtureValues) engineerprojection.O
 	if values.driverID == "" {
 		values.driverID = "driver"
 	}
-	if values.rivalX == 0 {
+	if values.rivalX == 0 && len(values.rivalXs) == 0 {
 		values.rivalX = 2.8
+	}
+	if len(values.rivalXs) == 0 {
+		values.rivalXs = []float64{values.rivalX}
 	}
 	if !values.fuelSet && !values.missingFuel && !values.staleFuel {
 		values.fuel = 55
@@ -717,7 +891,7 @@ func fixtureObservation(t *testing.T, values fixtureValues) engineerprojection.O
 	run := identity.RunIdentity{Event: "event", Session: identity.SessionID(values.sessionID), Vehicle: identity.VehicleID(values.vehicleID), Team: "team", Driver: identity.DriverID(values.driverID)}
 	header := envelope.Header{
 		Source:   "eng-04-sanitized-fixture",
-		Cursor:   schema.Cursor{Epoch: schema.Epoch(values.epoch), Sequence: 1},
+		Cursor:   schema.Cursor{Epoch: schema.Epoch(values.epoch), Sequence: schema.Sequence(values.sequence)},
 		Clock:    schema.NewClock(observedField(t, time.Duration(values.sourceSeconds*float64(time.Second))), observedField(t, time.Duration(values.sourceSeconds*float64(time.Second))), time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)),
 		Identity: run,
 	}
@@ -740,26 +914,36 @@ func fixtureObservation(t *testing.T, values fixtureValues) engineerprojection.O
 	default:
 		player.Fuel = observedField(t, energy.Fuel{Amount: energy.FuelAmount(values.fuel), Capacity: 100})
 	}
-	rival := player
-	rival.Identity.Vehicle = "rival"
-	rival.DriverName = observedField(t, identity.DriverName("Rival"))
-	rival.Player = observedField(t, false)
-	rival.Position = observedField(t, standings.Position(2))
-	rival.WorldPosition = observedField(t, spatial.Position{X: 100 + values.rivalX, Z: 100})
-	rival.TimeBehindLeader = observedField(t, standings.TimeGap(1.5))
-	rival.TimeBehindNext = observedField(t, standings.TimeGap(1.5))
+	vehicles := []core.VehicleState{player}
+	gaps := []derive.VehicleGap{
+		{Vehicle: "player", Time: fieldWithQuality(t, standings.RelativeTime(0), schema.ProvenanceDerived, schema.FreshnessFresh), Laps: fieldWithQuality(t, standings.RelativeLaps(0), schema.ProvenanceDerived, schema.FreshnessFresh)},
+	}
+	for index, rivalX := range values.rivalXs {
+		rivalID := identity.VehicleID(fmt.Sprintf("rival-%d", index+1))
+		rival := player
+		rival.Identity.Vehicle = rivalID
+		rival.DriverName = observedField(t, identity.DriverName(fmt.Sprintf("Rival %d", index+1)))
+		rival.Player = observedField(t, false)
+		rival.Position = observedField(t, standings.Position(index+2))
+		rival.WorldPosition = observedField(t, spatial.Position{X: 100 + rivalX, Z: 100})
+		rival.TimeBehindLeader = observedField(t, standings.TimeGap(1.5))
+		rival.TimeBehindNext = observedField(t, standings.TimeGap(1.5))
+		vehicles = append(vehicles, rival)
+		gaps = append(gaps, derive.VehicleGap{
+			Vehicle: rivalID,
+			Time:    fieldWithQuality(t, standings.RelativeTime(1.5), schema.ProvenanceDerived, schema.FreshnessFresh),
+			Laps:    fieldWithQuality(t, standings.RelativeLaps(0), schema.ProvenanceDerived, schema.FreshnessFresh),
+		})
+	}
 
 	state := core.ObservedState{
 		SourceTime: observedField(t, time.Duration(values.sourceSeconds*float64(time.Second))), EndTime: observedField(t, session.EndTime(3600)), MaximumLaps: observedField(t, session.MaximumLaps(20)),
-		TrackName: observedField(t, "Le Mans"), SessionType: observedField(t, session.TypeEndurance), VehicleCount: observedField(t, schema.Count(2)), PlayerPresent: observedField(t, true),
-		Vehicles: []core.VehicleState{player, rival},
+		TrackName: observedField(t, "Le Mans"), SessionType: observedField(t, session.TypeEndurance), VehicleCount: observedField(t, schema.Count(len(vehicles))), PlayerPresent: observedField(t, true),
+		Vehicles: vehicles,
 	}
 	final := derive.FinalState{Observed: state, Derived: derive.DerivedState{
 		SessionRemaining: fieldWithQuality(t, session.RemainingTime(3480), schema.ProvenanceDerived, schema.FreshnessFresh),
-		Gaps: derive.GapSet{Freshness: schema.FreshnessFresh, Vehicles: []derive.VehicleGap{
-			{Vehicle: "player", Time: fieldWithQuality(t, standings.RelativeTime(0), schema.ProvenanceDerived, schema.FreshnessFresh), Laps: fieldWithQuality(t, standings.RelativeLaps(0), schema.ProvenanceDerived, schema.FreshnessFresh)},
-			{Vehicle: "rival", Time: fieldWithQuality(t, standings.RelativeTime(1.5), schema.ProvenanceDerived, schema.FreshnessFresh), Laps: fieldWithQuality(t, standings.RelativeLaps(0), schema.ProvenanceDerived, schema.FreshnessFresh)},
-		}},
+		Gaps:             derive.GapSet{Freshness: schema.FreshnessFresh, Vehicles: gaps},
 	}}
 	snapshot, err := envelope.NewSnapshot(header, final, func(value derive.FinalState) derive.FinalState {
 		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)

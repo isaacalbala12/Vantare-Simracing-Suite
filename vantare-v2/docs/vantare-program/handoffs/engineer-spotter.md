@@ -27,14 +27,18 @@ runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
 re-review independiente `ACCEPT` sin P0/P1/P2/P3. ISA-133 / ENG-04 añade el
 runner y oráculo determinista test-only sobre la base final de Telemetry Core.
-ISA-158 / ENG-05 introduce la policy y el scheduler determinista, todavía sin
-wiring productivo y pendiente de review independiente.
+ISA-158 / ENG-05 introduce la policy y el scheduler determinista y es la base
+aceptada de este corte. ISA-167 /
+ENG-06 ha cableado esa única policy al runtime productivo y un transporte
+cancelable con ACK. La primera review detectó cuatro carencias válidas; ya se
+han corregido y queda pendiente una re-review independiente.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
-la ruta productiva al único Telemetry Core. La preempción audible y Pit
-transaccional todavía no están demostrados, por lo que Engineer sigue sin ser
-confiable como beta completa. TC-08 migra la entrada; el producto vive aparte.
+la ruta productiva al único Telemetry Core. ENG-06 demuestra la preempción del
+transporte existente; Pit transaccional todavía no está demostrado, por lo que
+Engineer sigue sin ser confiable como beta completa. TC-08 migra la entrada;
+el producto vive aparte.
 
 ISA-109 / TC-08B compone esos contratos aprobados sobre la base canónica más
 reciente y amplía la observación a sesión, parrilla, fuel, gaps y geometría.
@@ -45,8 +49,8 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-158-eng-05-policy-y-scheduler-determinista-de-mensajes`.
-- Base: `6861bd1a1b3ae9f221e701c1db7396c8d8a07650` (ISA-133 / ENG-04 aceptada).
+  `vantareapp/isa-167-eng-06-wiring-productivo-y-transporte-preemptivo`.
+- Base: `6a7bea697c9c84d02d834c164af27803d1f6b470` (ISA-158 / ENG-05 aceptada).
 - Composición: ENG-03 ya está en la base; su única regresión test-only
   posterior se reaplica sin importar documentación o producto ajenos.
 - Promoción: ninguna.
@@ -81,7 +85,7 @@ productivo sin crear un segundo reader.
   protección contra starvation, soak y benchmark saturado. El golden ENG-04
   atraviesa la policy; sanciones son neutrales y pits sigue limitado a
   entry/exit. Focal, Engineer completo, race focal, vet focal y gate Go global
-  PASS. Review independiente aún pendiente. El test heredado
+  PASS. Review independiente aceptada en la base de ENG-06. El test heredado
   `cmd/vantare.TestHandleDiscoverAppsEmitsDetected` usa discovery real de
   Windows y es lento, pero pasa sin cambios; es deuda ajena, no bloqueo de
   ENG-05. Esta rama no toca Launcher ni `cmd/vantare`. El vet global conserva
@@ -96,15 +100,15 @@ productivo sin crear un segundo reader.
   vigente con capacidades uno y mayores y rechaza degradaciones posteriores sin
   cambio de evidencia. No afecta fairness ni otras familias.
 - Tercera corrección de re-review: los clears parciales son delivery-aware.
-  Solo pueden depender de un estado autosuficiente compatible que ya haya sido
-  devuelto por `Next` en la misma generación; un pendiente nunca cuenta como
-  comunicado. Sin contexto se sustituyen por `car_left`, `car_right`,
+  ENG-05 los ligaba provisionalmente a `Next`; ENG-06 sustituye ese límite por
+  `AcknowledgeStarted`. Un pendiente o una decisión solo seleccionada nunca
+  cuentan como comunicación. Sin contexto se sustituyen por `car_left`, `car_right`,
   `three_wide` o `all_clear` según la Evidence actual. La matriz 1/4/64 cubre
-  `both -> left/right`, cambios laterales, antecedente pending/dispatched,
+  `both -> left/right`, cambios laterales, antecedente pending/selected,
   expiración, cancelación, transiciones intermedias y cambio de evidencia con
   el clear ya pendiente. Admisión y `Next` revalidan el mismo permiso. El
-  estado registrado es `dispatched` al transporte, no confirmación de audio;
-  esa frontera sigue en el corte posterior. Focal x50, fuzz 10 s, benchmarks
+  estado histórico `dispatched` no era confirmación de audio; ENG-06 cierra esa
+  frontera con un ACK contractual previo a la salida. Focal x50, fuzz 10 s, benchmarks
   x5, Engineer, Telemetry Core, Go global y vet focal pasan. El race no pudo
   repetirse tras esta corrección porque el entorno no dispone de toolchain C
   con headers Win32; el vet global conserva solo tres avisos heredados fuera
@@ -116,6 +120,40 @@ productivo sin crear un segundo reader.
   antes del límite, inválido en y después del límite. `still_there` no renueva
   estado completo y las decisiones expiradas/canceladas no crean contexto. La
   matriz vuelve a cubrir capacidades 1/4/64.
+- WIP ENG-06: `EngineerService` posee una única instancia de policy y convierte
+  la salida aprobada del runtime desde la misma observación canónica. El puerto
+  versionado confirma queued/started/terminal, revalida antes de start, cancela
+  por source/lifecycle y une toda goroutine. Spotter P0 interrumpe audio
+  Engineer ya iniciado; Engineer nunca interrumpe Spotter. Notificación visual
+  y audio opcional comparten el transporte productivo. Métricas sanitizadas y
+  replay v2 separan decisión, dispatch y start. Health añade contadores de
+  policy y delivery sin IDs ni payloads. Engineer, Telemetry, Go global serial,
+  race focal, vet focal, frontend build y benchmarks pasan; pendiente de review.
+- Corrección de review ENG-06: el transporte productivo ya no llama al
+  `AudioRouter.Resolve` capaz de sintetizar. Usa únicamente `ResolveCached`
+  context-aware con timeout de 100 ms. El composition root instala el player
+  cancelable existente y un router sin engine TTS, por lo que la preempción
+  existe en el grafo real y un miss conserva la notificación visual. Tests
+  adversariales cubren resolver bloqueado ante preempción, source loss y Stop.
+  Replay v2 cubre disconnect/reconnect y exige snapshot fresco. Un benchmark
+  end-to-end atraviesa Scheduler, queueLoop, transporte y ACK started con ocho
+  submissions concurrentes y preempción Spotter. Pendiente de re-review.
+- Corrección final WIP ENG-06: el borde de desconexión conserva
+  `epoch`/identidad/`sequence` de la última observación aceptada. Producto y
+  replay rechazan el snapshot igual y cualquier cursor anterior tras recovery;
+  un cursor posterior del mismo epoch o un epoch nuevo legítimo es el único que
+  puede reconectar. El incremento de `ReconnectAttempt` también crea el borde
+  aunque el estado siga en `live`. Replay no marca connected ni limpia el borde
+  hasta aceptar cursor e identidad/lifecycle; un `>S` inválido deja `S`
+  rechazado. Las regresiones focales service/replay x10 y las rutas exactas x20
+  pasan. El benchmark
+  ya no usa un transporte auxiliar: atraviesa
+  `productDeliveryPort -> ResolveCached -> AudioPlayer.PlayContext`, con ocho
+  submissions concurrentes y preempción; 20x pasa a 65.310 ns/op y detiene el
+  reloj al entrar en `PlayContext`. Race no disponible con `CGO_ENABLED=0`;
+  vet focal pasa. Go global no concluyó en 124 s; vet global solo repite tres
+  avisos Win32 heredados fuera del diff. Sin commit, push, PR, Linear ni
+  promoción; listo para re-review independiente.
 
 ## Decisiones
 
@@ -169,9 +207,8 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 - **Cerrado en ISA-111/112:** servicio/UI ya no arrancan conectados ni ofrecen
   simulator/replay como fuente productiva.
-- **P0 reducido:** la policy garantiza preempción de decisiones pendientes y
-  ausencia de mensajes caducados; la preempción audible se probará al cablear
-  el transporte.
+- **Cerrado en ENG-06, pendiente de review:** la policy impide mensajes
+  caducados y Spotter P0 cancela el audio Engineer no crítico ya iniciado.
 - **P0:** Pit Manager carece de transacción y readback demostrados.
 - **P1 reducido:** la proyección pura está cableada a seis familias aprobadas;
   las familias parciales siguen correctamente deshabilitadas.
@@ -189,17 +226,27 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-133 / ENG-04, runner/oráculo determinista; review `ACCEPT` |
-| En implementación | ISA-158 / ENG-05, policy/scheduler; review independiente pendiente |
+| Cerrada técnicamente | ISA-158 / ENG-05, policy/scheduler; base aceptada de ENG-06 |
+| En implementación | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Revisar ISA-158 / ENG-05. Si queda aceptada, el siguiente corte puede cablear
-decisiones al runtime/transporte sin añadir una fuente alternativa y deberá
-probar la preempción audible. No hay promoción en esta cadena.
+Completar la re-review independiente de ISA-167 / ENG-06. Resolver cualquier
+P0/P1/P2/P3 razonable antes de commit/push; no promover esta cadena.
 
 ## Última actualización
+
+2026-08-02, ISA-167 / ENG-06 conecta una sola policy al `EngineerService`
+productivo y añade un puerto cancelable con lifecycle ACK. La revalidación
+ocurre justo antes de `started`; contexto Spotter y cooldown no avanzan antes.
+La notificación existente y el audio opcional usan el mismo transporte.
+Spotter P0 preempta audio Engineer no crítico, lifecycle/source cancelan y el
+servicio une sus goroutines. La ruta real usa player cancelable y resolución
+cache-only acotada, nunca síntesis. Replay v2 añade reconnect con snapshot
+fresco; el benchmark end-to-end cubre presión/preempción. Gates técnicos PASS;
+WIP pendiente de re-review y sin promoción.
 
 2026-08-01, ISA-158 / ENG-05 añade una policy/scheduler síncrona, versionada y
 acotada. Revalida evidencia y claims semánticos antes de encolar y emitir,

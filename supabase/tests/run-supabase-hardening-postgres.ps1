@@ -95,6 +95,7 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   docker cp (Join-Path $root "supabase\tests\billing_reconciliation.test.sql") "${container}:/tmp/reconciliation-test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_subscription_lifecycle.test.sql") "${container}:/tmp/subscription-lifecycle-test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_subscription_lifecycle_legacy_upgrade.test.sql") "${container}:/tmp/subscription-lifecycle-upgrade-test.sql"
+  docker cp (Join-Path $root "supabase\tests\billing_order_refund_ledger.test.sql") "${container}:/tmp/order-refund-ledger-test.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") | Sort-Object Name
   foreach ($migration in $migrations) { docker cp $migration.FullName "${container}:/tmp/$($migration.Name)" }
 
@@ -105,6 +106,7 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   Assert-PgTap "clean" "/tmp/commercial-projection-test.sql" "1\.\.43" "Clean install commercial projection"
   Assert-PgTap "clean" "/tmp/reconciliation-test.sql" "1\.\.17" "Clean install reconciliation"
   Assert-PgTap "clean" "/tmp/subscription-lifecycle-test.sql" "1\.\.51" "Clean install subscription lifecycle"
+  Assert-PgTap "clean" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Clean install order refund ledger"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid')" | Out-Null
@@ -289,6 +291,47 @@ select 'b', status from public.billing_apply_reconciliation_plan(
   if ($reconciliationRace.Trim() -ne "1:1:1:1") { throw "Concurrent reconciliation contract failed: $reconciliationRace" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000811','order-race@example.invalid'); insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000811','order-race@example.invalid') on conflict (id) do nothing; create table public.billing_order_concurrency_results (participant text primary key, outcome text not null)" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not prepare order ledger concurrency" }
+  Write-Utf8NoBom $claimAFile @'
+insert into public.isa88_concurrency_barrier values ('order-first-seen', 'a');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'order-first-seen') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'order-first-seen') <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+insert into public.billing_order_concurrency_results
+select 'a', outcome from public.billing_record_order_snapshot(
+  'sandbox','order-first-seen-race','00000000-0000-4000-8000-000000000811','product-lifetime','checkout-race',
+  'paid',true,3000,'eur',0,'2026-08-02T12:00:00Z',repeat('d',64)
+);
+'@
+  Write-Utf8NoBom $claimBFile @'
+insert into public.isa88_concurrency_barrier values ('order-first-seen', 'b');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa88_concurrency_barrier where race = 'order-first-seen') = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa88_concurrency_barrier where race = 'order-first-seen') <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+insert into public.billing_order_concurrency_results
+select 'b', outcome from public.billing_record_order_snapshot(
+  'sandbox','order-first-seen-race','00000000-0000-4000-8000-000000000811','product-lifetime','checkout-race',
+  'paid',true,3000,'eur',0,'2026-08-02T12:00:00Z',repeat('d',64)
+);
+'@
+  docker cp $claimAFile "${container}:/tmp/order-race-a.sql"
+  docker cp $claimBFile "${container}:/tmp/order-race-b.sql"
+  docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/order-race-a.sql & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/order-race-b.sql & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; test "$s1" -eq 0 -a "$s2" -eq 0'
+  if ($LASTEXITCODE -ne 0) { throw "Concurrent first-seen order snapshots failed" }
+  $orderRace = docker exec $container psql -At -U postgres -d clean -c `
+    "select count(*) filter (where outcome='apply') || ':' || count(*) filter (where outcome='duplicate') || ':' || (select count(*) from public.billing_orders where environment='sandbox' and provider_order_id='order-first-seen-race') from public.billing_order_concurrency_results"
+  if ($orderRace.Trim() -ne "1:1:1") { throw "Concurrent first-seen order contract failed: $orderRace" }
+
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000810','lifecycle-race@example.invalid'); insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000810','lifecycle-race@example.invalid') on conflict (id) do nothing; select * from public.billing_apply_resource_snapshot('polar','sandbox','subscription','sub-lifecycle-race','00000000-0000-4000-8000-000000000810','2026-08-01T13:00:00Z',repeat('a',64),'active','[{`"capability`":`"vantare.plan.pro`",`"status`":`"active`",`"validUntil`":`"2026-08-02T13:00:00Z`"}]'::jsonb); select * from public.billing_apply_subscription_lifecycle('00000000-0000-4000-8000-000000000810','sandbox','sub-lifecycle-race','product-pro','active','2026-07-02T13:00:00Z','2026-08-02T13:00:00Z','2026-08-02T13:00:00Z',false,'2026-08-01T13:00:00Z',repeat('a',64),'close',null,null,'2026-08-01T14:00:00Z',array['vantare.plan.pro']); select * from public.billing_apply_resource_snapshot('polar','sandbox','subscription','sub-lifecycle-race','00000000-0000-4000-8000-000000000810','2026-08-02T13:05:00Z',repeat('b',64),'past_due','[{`"capability`":`"vantare.plan.pro`",`"status`":`"revoked`",`"validUntil`":`"2026-08-02T13:00:00Z`"}]'::jsonb); create table public.billing_lifecycle_concurrency_results (participant text primary key, outcome text not null)" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not prepare subscription lifecycle concurrency" }
   Write-Utf8NoBom $claimAFile @'
@@ -335,7 +378,8 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   $authHardeningMigration = "20260802020000_supabase_auth_license_hardening.sql"
   $commercialProjectionMigration = "20260802100000_billing_commercial_projection.sql"
   $subscriptionLifecycleMigration = "20260802110000_billing_subscription_lifecycle.sql"
-  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration)) {
+  $orderRefundLedgerMigration = "20260802120000_billing_order_refund_ledger.sql"
+  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration)) {
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
   Invoke-Psql "upgrade" "/tmp/$authHardeningMigration"
@@ -347,6 +391,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
     "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000711','legacy-active-sub@example.invalid'),('00000000-0000-4000-8000-000000000712','legacy-past-due-sub@example.invalid'); insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000711','legacy-active-sub@example.invalid'),('00000000-0000-4000-8000-000000000712','legacy-past-due-sub@example.invalid') on conflict (id) do nothing; insert into public.billing_commercial_resources (user_id,provider,environment,resource_type,resource_id,remote_state,remote_modified_at,snapshot_hash) values ('00000000-0000-4000-8000-000000000711','polar','sandbox','subscription','legacy-active-sub','active',now()-interval '1 hour',repeat('a',64)),('00000000-0000-4000-8000-000000000712','polar','sandbox','subscription','legacy-past-due-sub','past_due',now()-interval '1 hour',repeat('b',64)); insert into public.billing_subscriptions (user_id,provider,provider_subscription_id,provider_product_id,status,current_period_end,updated_at) values ('00000000-0000-4000-8000-000000000711','polar','legacy-active-sub','product-pro','active',now()+interval '30 days',now()-interval '1 hour'),('00000000-0000-4000-8000-000000000712','polar','legacy-past-due-sub','product-pro','past_due',now()+interval '30 days',now()-interval '1 hour'); insert into public.billing_access_grants (user_id,provider,environment,source_type,source_id,capability,status,valid_until,resource_modified_at,snapshot_hash) values ('00000000-0000-4000-8000-000000000711','polar','sandbox','subscription','legacy-active-sub','vantare.plan.pro','active',now()+interval '30 days',now()-interval '1 hour',repeat('a',64)),('00000000-0000-4000-8000-000000000712','polar','sandbox','subscription','legacy-past-due-sub','vantare.plan.pro','active',now()+interval '30 days',now()-interval '1 hour',repeat('b',64))" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not seed legacy subscription lifecycle cases" }
   Invoke-Psql "upgrade" "/tmp/$subscriptionLifecycleMigration"
+  Invoke-Psql "upgrade" "/tmp/$orderRefundLedgerMigration"
   Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
   Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.53" "Upgrade inbox"
   Assert-PgTap "upgrade" "/tmp/commercial-projection-test.sql" "1\.\.43" "Upgrade commercial projection"
@@ -354,6 +399,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Assert-PgTap "upgrade" "/tmp/reconciliation-test.sql" "1\.\.17" "Upgrade reconciliation"
   Assert-PgTap "upgrade" "/tmp/subscription-lifecycle-test.sql" "1\.\.51" "Upgrade subscription lifecycle"
   Assert-PgTap "upgrade" "/tmp/subscription-lifecycle-upgrade-test.sql" "1\.\.8" "Upgrade subscription lifecycle migration"
+  Assert-PgTap "upgrade" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Upgrade order refund ledger"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
@@ -375,6 +421,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Assert-PgTap "restore_drill" "/tmp/commercial-projection-test.sql" "1\.\.43" "Restored database commercial projection"
   Assert-PgTap "restore_drill" "/tmp/reconciliation-test.sql" "1\.\.17" "Restored database reconciliation"
   Assert-PgTap "restore_drill" "/tmp/subscription-lifecycle-test.sql" "1\.\.51" "Restored database subscription lifecycle"
+  Assert-PgTap "restore_drill" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Restored database order refund ledger"
   $restored = docker exec $container psql -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -c `
     "select (select count(*) = 1 from public.user_entitlements where user_id = '00000000-0000-4000-8000-000000000091' and product_key = 'restore_sentinel') and (select relrowsecurity from pg_class where oid = 'public.user_entitlements'::regclass) and not has_function_privilege('anon','public.read_account_entitlements()','execute')"
   $restoredExit = $LASTEXITCODE
@@ -394,7 +441,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
     if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
   }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 53 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; inbox, device, reconciliation and subscription lifecycle concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 53 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }

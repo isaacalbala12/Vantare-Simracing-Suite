@@ -1,5 +1,24 @@
 # Handoff vivo — plataforma comercial (Billing)
 
+## Actualización 2026-08-02 — BIL-07 / ISA-71
+
+BIL-07 está implementada sobre la base exacta aceptada de BIL-06
+`f8803988c945b6eda63e871e333bd7205b93ccb1`, en rama aislada y sin deploy.
+Añade ledger server-only por order/refund y grants independientes por compra.
+Solo la suma total de refunds `succeeded`, identificados y atribuibles, revoca
+esa order. Refund parcial, estados no succeeded y agregados de order no revocan.
+Customer balance distinto de cero, mapping o ownership ambiguo fallan cerrados.
+El alta concurrente del primer snapshot de una order converge en una sola fila,
+y los updates que omiten `checkout_id` conservan la identidad ya demostrada.
+
+Leer a continuación:
+
+- `docs/analysis/isa-71-bil-07-order-refund-ledger-2026-08-02.md`.
+- `docs/billing/bil-07-order-refund-ledger-runbook.md`.
+
+No hubo deploy, pago, refund, replay remoto, PII ni mutación Polar/Supabase.
+Venta pública continúa **NO-GO**.
+
 ## Actualización 2026-08-02 — BIL-06 / ISA-70
 
 BIL-06 está implementada sobre la base exacta aceptada de BIL-05
@@ -18,8 +37,8 @@ Leer a continuación:
 
 Evidencia: Deno activo 144/144, focal 84/84, checks TypeScript y PostgreSQL 17
 clean/upgrade/restore, legacy y concurrencia en verde. No se creó `deno.lock`.
-BIL-07 (refunds, chargebacks y ledger) no se inició. Venta pública continúa
-**NO-GO**.
+BIL-07 se implementa en el corte posterior descrito arriba. Venta pública
+continúa **NO-GO**.
 
 Estado: ISA-69 / BIL-05 implementa sobre ISA-179 la proyección comercial
 monótona, grants por fuente y reconciliación Customer State; candidato aislado
@@ -49,7 +68,11 @@ Leer, por orden:
 7. `docs/analysis/isa-179-bil-04b-controlled-integration-2026-08-02.md`.
 8. `docs/analysis/isa-69-bil-05-monotonic-grants-reconciliation-2026-08-02.md`.
 9. `docs/billing/bil-05-reconciliation-runbook.md`.
-10. ISA-179, ISA-69 y las issues BIL relacionadas en Linear.
+10. `docs/analysis/isa-70-bil-06-subscription-lifecycle-2026-08-02.md`.
+11. `docs/billing/bil-06-subscription-recovery-runbook.md`.
+12. `docs/analysis/isa-71-bil-07-order-refund-ledger-2026-08-02.md`.
+13. `docs/billing/bil-07-order-refund-ledger-runbook.md`.
+14. ISA-179, ISA-69, ISA-70, ISA-71 y las issues BIL relacionadas en Linear.
 
 ## Fronteras de autoridad
 
@@ -160,7 +183,8 @@ commit de corrección.
 - `price_id_to_checkout_key` aún no gobierna el webhook ni los grants; por ahora
   el lifecycle resuelve producto y conserva esa deuda explícita, sin falsa GO.
 - BIL-05 está implementada localmente, pero no revisada ni desplegada.
-- Subscription, recovery y refund no cumplen aún el contrato vigente.
+- Subscription, recovery y refund tienen candidatos locales, pero no están
+  desplegados ni validados con fixtures/smoke sandbox autorizados.
 - Cache offline y dispositivo necesitan integridad y vinculación correctas.
 - Supabase necesita hardening y recuperación verificable.
 - Catálogo/organización/webhook Polar no están listos para producción.
@@ -190,10 +214,23 @@ commit de corrección.
 - PostgreSQL 17 desechable valida clean install, upgrade, 48 pgTAP y restore fail-closed con RLS, grants y centinela; añade carreras claim/reset y reset/reset y rechaza dumps truncados/corruptos en PowerShell 5.1/7. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
 - Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`.
 
+## BIL-07 / ISA-71
+
+- Ledger mínimo server-only de orders y refunds sin duplicar PII.
+- Cada order conserva grants propios; solo refunds `succeeded` atribuibles se
+  suman para decidir revocación.
+- Agregados de order, refunds parciales, pending, failed y canceled nunca
+  revocan por sí solos.
+- Customer balance no cero queda explícitamente sin soporte automático y va a
+  quarantine/reconciliación; el runtime no adivina el máximo refundable.
+- Replay y orden inverso convergen; conflictos de versión, mapping, checkout,
+  payment u ownership fallan cerrados.
+- Migración, operación y rollback no destructivo: ver runbook BIL-07.
+
 ## Última actualización
 
-2026-08-02 — ISA-69 / BIL-05 parte del SHA canónico de ISA-179 e implementa
-orden monótono, grants por fuente y reconciliación Customer State. Conserva el
-inbox durable y los read-models compatibles, con matrices Deno/PostgreSQL verdes.
-Sin deploy, pago, refund, replay remoto, secretos, PII ni mutaciones
-Polar/Supabase. Siguiente corte: BIL-06 tras review independiente.
+2026-08-02 — ISA-71 / BIL-07 parte del SHA aceptado de BIL-06 e implementa
+orders/refunds atribuibles y revocación aislada por compra. Conserva inbox,
+proyección monótona, lifecycle y read-models previos. Sin deploy, pago, refund,
+replay remoto, secretos, PII ni mutaciones Polar/Supabase. Siguiente paso:
+review aislada y fixtures/smoke únicamente bajo sus gates posteriores.

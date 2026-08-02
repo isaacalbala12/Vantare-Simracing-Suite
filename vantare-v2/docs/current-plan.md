@@ -1,3 +1,9 @@
+Nota ISA-71-BIL-07-ORDER-REFUND-LEDGER (2026-08-02):
+- Candidato aislado sobre BIL-06 `f8803988c945b6eda63e871e333bd7205b93ccb1`: ledger server-only por order/refund, grants por compra y revocación únicamente por suma total de refunds `succeeded` atribuibles.
+- Refund parcial, pending/failed/canceled y agregado `order.refunded` conservan acceso; dos compras del mismo producto son independientes y un refund antiguo no afecta la posterior. Missing, conflictos, ownership dudoso o customer balance distinto de cero fallan cerrados.
+- Replay reanuda efectos pendientes sin aceptar conflictos; reconciliación ordena orders antes de refunds y no borra historia. Informe: `docs/analysis/isa-71-bil-07-order-refund-ledger-2026-08-02.md`; runbook: `docs/billing/bil-07-order-refund-ledger-runbook.md`.
+- Sin deploy, pago, refund, mutación remota ni promoción. Venta pública sigue **NO-GO**; siguientes gates: review BIL-07 y matriz sandbox/operativa posterior.
+
 Nota ISA-70-BIL-06-SUBSCRIPTION-LIFECYCLE (2026-08-02):
 - Candidato aislado sobre BIL-05 `c5109edad1a6261d6cadd9cbe3d7fc728be4a5e6`: lifecycle canónico, acceso con límite exclusivo y recuperación técnica máxima de 72 horas ligada a un ciclo pagado.
 - Reintentos, replay, reconciliación y eventos fuera de orden convergen sin reiniciar la recuperación. Los estados acotados sin `current_period_end` se ponen en quarantine y una capability retirada no reaparece desde históricos.

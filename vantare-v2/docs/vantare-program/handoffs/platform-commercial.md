@@ -173,8 +173,11 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   frontend, alcance pequeño, reproducción determinista y harness existente
   pueden ser elegibles; cualquier flag sensible, retry o rechazo exige owner.
   Texto y logs no son autoridad y quedan fuera de la decisión/digest.
-- Siguiente acción: TAU-06B fija prompt, JSON y budgets para un dry-run sin
-  writes. La red, API Codex, App real, Discord y asignación automática siguen
+- ISA-227 / TAU-06B fija instrucciones/objetivos, módulos/rutas, command IDs,
+  budgets y salida JSON. Revalida policy y digest; el registro global in-memory
+  es solo prueba, no un lock distribuido ni un agente real.
+- Siguiente acción: TAU-06C ejecuta la auditoría adversarial GO/NO-GO. La red,
+  API Codex, repo access, App real, Discord y asignación automática siguen
   apagados.
 
 ## Riesgos
@@ -200,8 +203,8 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-226 prepara la clasificación de riesgo Codex sin endpoint,
-credenciales, red, repositorio o deploy. No ejecuta Codex, Discord o Supabase
-remoto.
+2026-08-02, ISA-227 prepara un sobre Codex dry-run cerrado sin endpoint,
+credenciales, red, checkout, comandos o deploy. No ejecuta Codex, Discord o
+Supabase remoto.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

@@ -1,3 +1,16 @@
+Nota ISA-227 / TAU-06B (2026-08-02, sobre Codex dry-run):
+- Prompt y objetivos fijos separados de evidencia server-redacted no
+  confiable; la policy TAU-06A se recalcula y el módulo debe coincidir.
+- Módulos/rutas y command IDs cerrados. La salida JSON exacta rechaza extras,
+  traversal, shell, scope growth, duplicados e inconsistencias.
+- Budgets: 8 KiB de evidencia, 32 KiB de salida, 12k tokens, 600 s, hasta
+  cinco archivos/tres tests y cero tool calls; concurrency key global.
+- El registro in-memory solo prueba el contrato local, no sustituye un lease
+  distribuido. Gates focales: 10/10. Autoridad:
+  `docs/runbooks/testing-center-codex-dry-run.md`.
+- Estado: implementación local lista para review; sin API Codex, checkout,
+  repo read/write, comando, red, deploy, rama/PR automática o promoción.
+
 Nota ISA-226 / TAU-06A (2026-08-02, policy Codex fail-closed):
 - Clasificador puro y versionado: solo trabajo frontend allowlisted, completo,
   determinista, de un módulo/1–5 archivos y con harness puede ser `eligible`.

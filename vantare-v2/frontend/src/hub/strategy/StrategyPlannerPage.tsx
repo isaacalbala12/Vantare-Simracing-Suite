@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import "./strategy-planner.css";
 
 type PlannerScreen = "gallery" | "entry" | "review" | "workspace";
@@ -18,10 +18,50 @@ const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
 ];
 
 const STINTS = [
-  { id: 1, laps: "v.1–17 · 17v", compound: "MEDIUM", fuel: "82 L", pace: "2:18.4", wear: [78, 78, 77, 77] },
-  { id: 2, laps: "v.18–39 · 22v", compound: "HARD", fuel: "96 L", pace: "2:19.1", wear: [92, 92, 91, 91] },
-  { id: 3, laps: "v.40–58 · 19v", compound: "HARD", fuel: "85 L", pace: "2:19.4", wear: [88, 88, 87, 87] },
+  { id: 1, laps: "v.1–17 · 17v", lapCount: 17, compound: "MEDIUM", fuel: "82 L", pace: "2:18.4", wear: [78, 78, 77, 77] },
+  { id: 2, laps: "v.18–39 · 22v", lapCount: 22, compound: "HARD", fuel: "96 L", pace: "2:19.1", wear: [92, 92, 91, 91] },
+  { id: 3, laps: "v.40–58 · 19v", lapCount: 19, compound: "HARD", fuel: "85 L", pace: "2:19.4", wear: [88, 88, 87, 87] },
+  { id: 4, laps: "v.59–78 · 20v", lapCount: 20, compound: "SOFT", fuel: "90 L", pace: "2:18.8", wear: [84, 84, 83, 83] },
 ];
+
+const STRATEGIES = [
+  {
+    label: "A",
+    title: "Conservadora",
+    delta: "−0.8s",
+    time: "6h 04m 12.0s",
+    risk: "Bajo",
+    pits: 3,
+    compounds: ["M", "H", "H", "S"],
+    fuelSave: "+1.0 v/stint",
+    summary: "Fuel-save ligero. Un stint Medium, dos Hard y uno Soft con carga controlada.",
+    active: true,
+  },
+  {
+    label: "B",
+    title: "Agresiva",
+    delta: "+2.4s",
+    time: "6h 04m 15.2s",
+    risk: "Medio",
+    pits: 3,
+    compounds: ["S", "M", "S", "S"],
+    fuelSave: "+3.0 v/stint",
+    summary: "Tres stints Soft, uno Medium y ahorro intensivo en los stints centrales.",
+    active: false,
+  },
+  {
+    label: "C",
+    title: "Segura",
+    delta: "+5.1s",
+    time: "6h 04m 17.9s",
+    risk: "Bajo",
+    pits: 3,
+    compounds: ["H", "H", "H", "M"],
+    fuelSave: "0 v/stint",
+    summary: "Tres stints Hard y uno Medium, sin fuel-save y con margen de combustible.",
+    active: false,
+  },
+] as const;
 
 const TYRES = [
   { id: "M-01", compound: "MEDIUM", status: "Montado", life: 78 },
@@ -350,9 +390,9 @@ function Workspace({ titleId, planName, activePanel, onSelectPanel, onPanelKey, 
         <aside aria-label="Estrategias" data-compact-active={activePanel === "plans"} data-testid="strategy-column-plans" className="strategy-column strategy-column--plans">
           <section className="strategy-panel">
             <PanelHeading title="Estrategias" meta="3 planes · 1 activo" />
-            <StrategyOption label="A" title="Conservadora" delta="−0.8s" active compounds={["M", "H", "H", "S"]} summary="Fuel-save ligero. Margen amplio en cada stint y carga controlada." />
-            <StrategyOption label="B" title="Agresiva" delta="+2.4s" compounds={["S", "M", "S", "S"]} summary="Tres sets de Soft y ahorro intensivo en los stints centrales." />
-            <StrategyOption label="C" title="Segura" delta="+5.1s" compounds={["H", "H", "H", "M"]} summary="Sin fuel-save. Máxima consistencia con margen de combustible." />
+            {STRATEGIES.map((strategy) => (
+              <StrategyOption key={strategy.label} strategy={strategy} />
+            ))}
           </section>
           <FuelSavePanel />
         </aside>
@@ -376,31 +416,147 @@ function Workspace({ titleId, planName, activePanel, onSelectPanel, onPanelKey, 
 }
 
 function FlowHeader({ step, titleId, title, description }: { step: number; titleId: string; title: string; description: string }) {
-  return <header className="strategy-flow-header"><span>0{step}</span><div><p className="strategy-eyebrow">Strategy Planner</p><h1 id={titleId}>{title}</h1><p>{description}</p></div></header>;
+  return (
+    <header className="strategy-flow-header">
+      <span>0{step}</span>
+      <div>
+        <p className="strategy-eyebrow">Strategy Planner</p>
+        <h1 id={titleId}>{title}</h1>
+        <p>{description}</p>
+      </div>
+    </header>
+  );
 }
 
 function FlowActions({ onBack, nextLabel, onNext }: { onBack: () => void; nextLabel: string; onNext: () => void }) {
-  return <div className="strategy-flow-actions"><button className="strategy-button strategy-button--secondary" type="button" onClick={onBack}>Atrás</button><button className="strategy-button strategy-button--primary" type="button" onClick={onNext}>{nextLabel} →</button></div>;
+  return (
+    <div className="strategy-flow-actions">
+      <button className="strategy-button strategy-button--secondary" type="button" onClick={onBack}>
+        Atrás
+      </button>
+      <button className="strategy-button strategy-button--primary" type="button" onClick={onNext}>
+        {nextLabel} →
+      </button>
+    </div>
+  );
 }
 
 function PanelHeading({ title, meta }: { title: string; meta: string }) {
-  return <header className="strategy-panel-heading"><h2>{title}</h2><span>{meta}</span></header>;
+  return (
+    <header className="strategy-panel-heading">
+      <h2>{title}</h2>
+      <span>{meta}</span>
+    </header>
+  );
 }
 
-function StrategyOption({ label, title, delta, active = false, compounds, summary }: { label: string; title: string; delta: string; active?: boolean; compounds: string[]; summary: string }) {
-  return <article className={`strategy-option ${active ? "is-active" : ""}`}><header><div><span>{label}</span><h3>{title}</h3>{active && <b>ACTIVA</b>}</div><strong>{delta}</strong></header><div className="strategy-compounds">{compounds.map((compound, index) => <span key={`${compound}-${index}`} className={`is-${compound.toLowerCase()}`}>● {compound}</span>)}</div><dl><div><dt>Tiempo</dt><dd>6h 04m</dd></div><div><dt>Pits</dt><dd>3</dd></div><div><dt>Sets</dt><dd>2M · 2H</dd></div><div><dt>Ahorro</dt><dd>+1.0 v</dd></div></dl><p>{summary}</p></article>;
+function StrategyOption({ strategy }: { strategy: (typeof STRATEGIES)[number] }) {
+  const compoundUsage = summarizeCompoundUsage(strategy.compounds);
+
+  return (
+    <article
+      className={`strategy-option ${strategy.active ? "is-active" : ""}`}
+      data-testid={`strategy-option-${strategy.label}`}
+    >
+      <header>
+        <div>
+          <span>{strategy.label}</span>
+          <h3>{strategy.title}</h3>
+          {strategy.active && <b>ACTIVA</b>}
+        </div>
+        <strong>{strategy.delta}</strong>
+      </header>
+      <div className="strategy-compounds">
+        {strategy.compounds.map((compound, index) => (
+          <span
+            key={`${compound}-${index}`}
+            className={`is-${compound.toLowerCase()}`}
+            data-compound={compound}
+          >
+            ● {compound}
+          </span>
+        ))}
+      </div>
+      <dl>
+        <div><dt>Tiempo</dt><dd>{strategy.time}</dd></div>
+        <div><dt>Pits</dt><dd>{strategy.pits}</dd></div>
+        <div><dt>Stints</dt><dd data-testid="strategy-option-usage">{compoundUsage}</dd></div>
+        <div><dt>Ahorro</dt><dd>{strategy.fuelSave}</dd></div>
+      </dl>
+      <p>{strategy.summary}</p>
+    </article>
+  );
+}
+
+function summarizeCompoundUsage(compounds: readonly string[]) {
+  const counts = new Map<string, number>();
+  for (const compound of compounds) counts.set(compound, (counts.get(compound) ?? 0) + 1);
+  return Array.from(counts, ([compound, count]) => `${count}${compound}`).join(" · ");
 }
 
 function FuelSavePanel() {
-  return <section className="strategy-panel strategy-fuel"><PanelHeading title="Ahorro de combustible" meta="Objetivo" /><p>Vueltas a ahorrar por stint para evitar un repostaje final.</p><div><article><span>ESTADO</span><b>4 / 3</b><small>stints / pits</small></article><article className="is-red"><span>AHORRO / STINT</span><b>+2.0 v</b><small>ejemplo</small></article><article className="is-green"><span>IMPACTO</span><b>−18.4s</b><small>estimado</small></article></div><div className="strategy-fuel-comparison"><span>COMPARATIVA DE PLAN</span><div><i>17v</i><i>22v</i><i>19v</i><i>20v</i></div></div></section>;
+  const activeFuelSave = STRATEGIES.find((strategy) => strategy.active)?.fuelSave.replace("/stint", "") ?? "0 v";
+
+  return (
+    <section className="strategy-panel strategy-fuel">
+      <PanelHeading title="Ahorro de combustible" meta="Objetivo" />
+      <p>Vueltas a ahorrar por stint para evitar un repostaje final.</p>
+      <div>
+        <article><span>ESTADO</span><b>4 / 3</b><small>stints / pits</small></article>
+        <article className="is-red">
+          <span>AHORRO / STINT</span>
+          <b data-testid="strategy-active-fuel-save">{activeFuelSave}</b>
+          <small>3 stints activos</small>
+        </article>
+        <article className="is-green"><span>IMPACTO</span><b>−18.4s</b><small>estimado</small></article>
+      </div>
+      <div className="strategy-fuel-comparison">
+        <span>COMPARATIVA DE PLAN</span>
+        <div><i>17v</i><i>22v</i><i>19v</i><i>20v</i></div>
+      </div>
+    </section>
+  );
 }
 
 function StintCard({ stint, last }: { stint: (typeof STINTS)[number]; last: boolean }) {
-  return <div className="strategy-stint-wrap"><article className="strategy-stint"><header><div><h3>Stint {stint.id}</h3><span>{stint.laps}</span></div><span className={`strategy-compound is-${stint.compound.toLowerCase()}`}>● {stint.compound}</span></header><div className="strategy-tyre-grid">{["FL", "FR", "RL", "RR"].map((corner, index) => <div key={corner}><span>{corner}</span><b>{stint.wear[index]}%</b><i><em style={{ width: `${stint.wear[index]}%` }} /></i></div>)}</div><footer><span>Fuel <b>{stint.fuel}</b></span><span>Stint <b>{stint.laps.split(" · ")[1]}</b></span><span>Ritmo <b>{stint.pace}</b></span><span>Deg. pico <b>demo</b></span><span className="strategy-fuel-save-tag">FUEL-SAVE {stint.id === 1 ? "OFF" : "ON"}</span><div className="strategy-spark" aria-label="Tendencia visual de ejemplo"><i /><i /></div></footer></article>{!last && <div className="strategy-pit-separator"><span>● PIT STOP · 22.4s · FUEL + TYRES</span></div>}</div>;
+  return (
+    <div className="strategy-stint-wrap">
+      <article className="strategy-stint" data-laps={stint.lapCount} data-testid={`strategy-stint-${stint.id}`}>
+        <header>
+          <div><h3>Stint {stint.id}</h3><span>{stint.laps}</span></div>
+          <span className={`strategy-compound is-${stint.compound.toLowerCase()}`}>● {stint.compound}</span>
+        </header>
+        <div className="strategy-tyre-grid">
+          {["FL", "FR", "RL", "RR"].map((corner, index) => (
+            <div key={corner}>
+              <span>{corner}</span>
+              <b>{stint.wear[index]}%</b>
+              <i><em style={{ width: `${stint.wear[index]}%` }} /></i>
+            </div>
+          ))}
+        </div>
+        <footer>
+          <span>Fuel <b>{stint.fuel}</b></span>
+          <span>Stint <b>{stint.lapCount}v</b></span>
+          <span>Ritmo <b>{stint.pace}</b></span>
+          <span>Deg. pico <b>demo</b></span>
+          <span className="strategy-fuel-save-tag">FUEL-SAVE {stint.id === 1 ? "OFF" : "ON"}</span>
+          <div className="strategy-spark" aria-label="Tendencia visual de ejemplo"><i /><i /></div>
+        </footer>
+      </article>
+      {!last && <div className="strategy-pit-separator"><span>● PIT STOP · 22.4s · FUEL + TYRES</span></div>}
+    </div>
+  );
 }
 
 function TyreRow({ id, compound, status, life, prior = false }: { id: string; compound: string; status: string; life: number; prior?: boolean }) {
-  return <article className={`strategy-tyre-row ${status === "Montado" ? "is-mounted" : ""} ${prior ? "is-prior" : ""}`}><span className={`strategy-compound is-${compound.toLowerCase()}`}>● {compound}</span><div><b>{id}</b><small>{status}</small></div><strong>{life}%</strong></article>;
+  return (
+    <article className={`strategy-tyre-row ${status === "Montado" ? "is-mounted" : ""} ${prior ? "is-prior" : ""}`}>
+      <span className={`strategy-compound is-${compound.toLowerCase()}`}>● {compound}</span>
+      <div><b>{id}</b><small>{status}</small></div>
+      <strong>{life}%</strong>
+    </article>
+  );
 }
 
 function ComparisonDialog({ onClose }: { onClose: () => void }) {
@@ -441,5 +597,34 @@ function ComparisonDialog({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  return <div className="strategy-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><section ref={dialogRef} className="strategy-dialog" role="dialog" aria-modal="true" aria-label="Comparar estrategias"><header><div><p className="strategy-eyebrow">Comparación</p><h2>Comparar estrategias</h2></div><button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Cerrar comparación">×</button></header><div className="strategy-comparison-grid"><span>Plan</span><span>Tiempo</span><span>Riesgo</span><span>Paradas</span><b>Conservadora</b><strong>6h 04m 12s</strong><em>Bajo</em><span>3</span><b>Agresiva</b><strong>+2.4s</strong><em>Medio</em><span>3</span><b>Segura</b><strong>+5.1s</strong><em>Bajo</em><span>3</span></div><p className="strategy-dialog__note">Comparación visual con datos de ejemplo; el optimizador avanzado no forma parte de STR-07.</p></section></div>;
+  return (
+    <div
+      className="strategy-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose();
+      }}
+    >
+      <section ref={dialogRef} className="strategy-dialog" role="dialog" aria-modal="true" aria-label="Comparar estrategias">
+        <header>
+          <div><p className="strategy-eyebrow">Comparación</p><h2>Comparar estrategias</h2></div>
+          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Cerrar comparación">×</button>
+        </header>
+        <div className="strategy-comparison-grid">
+          <span>Plan</span><span>Tiempo</span><span>Riesgo</span><span>Paradas</span>
+          {STRATEGIES.map((strategy) => (
+            <Fragment key={strategy.label}>
+              <b>{strategy.title}</b>
+              <strong>{strategy.time}</strong>
+              <em>{strategy.risk}</em>
+              <span>{strategy.pits}</span>
+            </Fragment>
+          ))}
+        </div>
+        <p className="strategy-dialog__note">
+          Comparación visual con datos de ejemplo; el optimizador avanzado no forma parte de STR-07.
+        </p>
+      </section>
+    </div>
+  );
 }

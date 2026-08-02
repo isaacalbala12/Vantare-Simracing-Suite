@@ -17,6 +17,11 @@ El flujo visible cubre:
 5. comparación de variantes;
 6. guardado limitado y descrito honestamente como estado de la sesión.
 
+Los datos de demostración forman un contrato coherente: cuatro stints de
+`17 + 22 + 19 + 20 = 78` vueltas y tres paradas. Cada estrategia define su
+propio tiempo, pits, ahorro y uso por compuesto; este último se deriva de sus
+cuatro chips y se expresa como stints, nunca como juegos o neumáticos físicos.
+
 ## Contrato visual
 
 En layout ancho el workspace conserva la composición `3 / 6 / 3` del HTML:
@@ -92,6 +97,7 @@ Capturas versionadas en `docs/strategy-planner/evidence/str-07/`:
 - `actual-entry-wide.png`;
 - `actual-review-wide.png`;
 - `actual-workspace-wide.png`;
+- `actual-workspace-wide-final-stint.png`;
 - `actual-workspace-medium.png`;
 - `actual-workspace-medium-inventory.png`;
 - `actual-workspace-compact.png`;
@@ -100,8 +106,10 @@ Capturas versionadas en `docs/strategy-planner/evidence/str-07/`:
 
 ## Verificación final
 
-- `pnpm exec vitest run --maxWorkers=1`: `302/302` archivos y `2059/2059`
-  tests PASS.
+- Baseline anterior a la corrección final: `pnpm exec vitest run
+  --maxWorkers=1`, `302/302` archivos y `2059/2059` tests PASS.
+- Corrección final: test focal `7/7` PASS, incluido el contrato no complaciente
+  de 78 vueltas y coherencia por estrategia.
 - La ejecución paralela evidenció dos flakes ajenos al diff, uno por intento:
   primer movimiento de canvas y montaje de la sección activa del inspector.
   Ambos pasan `5/5` aislados; no se modificó ningún archivo de Overlay Studio.

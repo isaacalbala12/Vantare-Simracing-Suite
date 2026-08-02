@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StrategyPlannerPage } from "./StrategyPlannerPage";
 
@@ -58,6 +58,32 @@ describe("Strategy Planner shell", () => {
     expect(document.querySelector("[aria-labelledby^=strategy-tab]")).toBeNull();
   });
 
+  it("renders a complete 78-lap plan and coherent metrics for every strategy", () => {
+    render(<StrategyPlannerPage demo initialScreen="workspace" />);
+
+    const stints = screen.getAllByTestId(/^strategy-stint-/);
+    expect(stints).toHaveLength(4);
+    expect(stints.reduce((total, stint) => total + Number(stint.getAttribute("data-laps")), 0)).toBe(78);
+    expect(within(stints[3]).getByText("v.59–78 · 20v")).toBeTruthy();
+
+    const expectations = [
+      { label: "A", compounds: ["M", "H", "H", "S"], usage: "1M · 2H · 1S", time: "6h 04m 12.0s", fuelSave: "+1.0 v/stint" },
+      { label: "B", compounds: ["S", "M", "S", "S"], usage: "3S · 1M", time: "6h 04m 15.2s", fuelSave: "+3.0 v/stint" },
+      { label: "C", compounds: ["H", "H", "H", "M"], usage: "3H · 1M", time: "6h 04m 17.9s", fuelSave: "0 v/stint" },
+    ];
+
+    for (const expected of expectations) {
+      const option = screen.getByTestId(`strategy-option-${expected.label}`);
+      const compounds = Array.from(option.querySelectorAll<HTMLElement>("[data-compound]"), (chip) => chip.dataset.compound);
+      expect(compounds).toEqual(expected.compounds);
+      expect(within(option).getByTestId("strategy-option-usage").textContent).toBe(expected.usage);
+      expect(definitionValue(option, "Tiempo")).toBe(expected.time);
+      expect(definitionValue(option, "Pits")).toBe("3");
+      expect(definitionValue(option, "Ahorro")).toBe(expected.fuelSave);
+    }
+    expect(screen.getByTestId("strategy-active-fuel-save").textContent).toBe("+1.0 v");
+  });
+
   it("supports keyboard navigation between compact workspace panels", () => {
     render(<StrategyPlannerPage demo initialScreen="workspace" />);
 
@@ -86,3 +112,8 @@ describe("Strategy Planner shell", () => {
     expect(screen.getByRole("alert").textContent).toContain("No se pudo abrir la galería");
   });
 });
+
+function definitionValue(container: HTMLElement, term: string) {
+  const dt = within(container).getByText(term, { selector: "dt" });
+  return dt.parentElement?.querySelector("dd")?.textContent ?? "";
+}

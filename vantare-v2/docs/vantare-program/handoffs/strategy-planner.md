@@ -123,7 +123,9 @@ Actualización ISA-134 / STR-00:
   comparación y guardado honesto de sesión. El harness autocontenido recorre el
   flujo y captura wide/medium/compact con proporción `3/6/3`, overflow global
   cero, consola limpia y modal accesible con foco atrapado/restaurado. La suite
-  serial pasa `2059/2059`; build y lint focal pasan. Evidencia:
+  serial base pasa `2059/2059`; la corrección final añade el cuarto stint para
+  sumar 78 vueltas y métricas coherentes por estrategia, con focal `7/7`, build
+  y lint focal PASS. Evidencia:
   `docs/strategy-planner/str-07-shell-visual.md`. Sin solver, live,
   persistencia, drag/drop, merge o promoción.
 

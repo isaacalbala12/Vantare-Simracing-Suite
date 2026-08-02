@@ -78,6 +78,10 @@ try {
     await page.waitForTimeout(50);
     metrics[layout.name] = await assertLayout(page, layout.name);
     await page.screenshot({ path: path.join(evidenceDir, `actual-workspace-${layout.name}.png`) });
+    if (layout.name === "wide") {
+      await page.getByTestId("strategy-stint-4").scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(evidenceDir, "actual-workspace-wide-final-stint.png") });
+    }
     if (layout.name === "medium") {
       await page.locator('[data-testid="strategy-column-inventory"]').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDir, "actual-workspace-medium-inventory.png") });

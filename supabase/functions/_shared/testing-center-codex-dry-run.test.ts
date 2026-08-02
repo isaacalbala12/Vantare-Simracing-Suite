@@ -98,12 +98,17 @@ async function evidence(input: CodexRiskInput) {
 
 async function request(
   overrides: Partial<CodexRiskInput> = {},
-  moduleId = "testing_center.presentation" as const,
+  moduleId:
+    | "testing_center.presentation"
+    | "testing_center.local_state"
+    | "overlay_studio.presentation"
+    | "calendar.presentation" = "testing_center.presentation",
 ) {
   const input = riskInput(overrides);
   return await buildCodexDryRunPackage({
     contractVersion: "testing-center.codex-dry-run.v1",
     moduleId,
+    analysisBaseSha: "1".repeat(40),
     verifiedEvidence: await evidence(input),
     riskInput: input,
     riskDecision: await classifyCodexRisk(input),
@@ -180,6 +185,7 @@ Deno.test("risk is recomputed and tampering or non-eligible input fails closed",
     buildCodexDryRunPackage({
       contractVersion: "testing-center.codex-dry-run.v1",
       moduleId: "testing_center.presentation",
+      analysisBaseSha: "1".repeat(40),
       verifiedEvidence: otherEvidence,
       riskInput: safe,
       riskDecision: safeDecision,
@@ -198,6 +204,7 @@ async function assertRejectsBuild(
     await buildCodexDryRunPackage({
       contractVersion: "testing-center.codex-dry-run.v1",
       moduleId: "testing_center.presentation",
+      analysisBaseSha: "1".repeat(40),
       verifiedEvidence: await evidence(partial.riskInput),
       ...partial,
     });
@@ -215,6 +222,7 @@ Deno.test("trusted module must match the classified surface", async () => {
     buildCodexDryRunPackage({
       contractVersion: "testing-center.codex-dry-run.v1",
       moduleId: "testing_center.local_state",
+      analysisBaseSha: "1".repeat(40),
       verifiedEvidence: presentationEvidence,
       riskInput: presentation,
       riskDecision: presentationDecision,
@@ -224,6 +232,7 @@ Deno.test("trusted module must match the classified surface", async () => {
   const package_ = await buildCodexDryRunPackage({
     contractVersion: "testing-center.codex-dry-run.v1",
     moduleId: "testing_center.local_state",
+    analysisBaseSha: "1".repeat(40),
     verifiedEvidence: await evidence(local),
     riskInput: local,
     riskDecision: await classifyCodexRisk(local),
@@ -315,6 +324,47 @@ Deno.test("output rejects request tampering duplicates and approved scope growth
   const tampered = structuredClone(package_);
   tampered.trustedScope.allowedPathPrefixes = [".github/"];
   await assertRejects(() => parseCodexDryRunOutput(oneFile, tampered));
+
+  const drifted = structuredClone(package_);
+  drifted.repository.analysisBaseSha = "2".repeat(40);
+  await assertRejects(() => parseCodexDryRunOutput(oneFile, drifted));
+});
+
+Deno.test("leaf rules reject access clients state canvas and case aliases", async () => {
+  const cases = [
+    [
+      "overlay_studio.presentation",
+      "vantare-v2/frontend/src/hub/overlay-studio/access/studio-access.ts",
+    ],
+    [
+      "overlay_studio.presentation",
+      "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.tsx",
+    ],
+    [
+      "overlay_studio.presentation",
+      "vantare-v2/frontend/src/hub/overlay-studio/canvas/StudioCanvas.tsx",
+    ],
+    [
+      "testing_center.local_state",
+      "vantare-v2/frontend/src/hub/testing-center/wails-testing-center-client.ts",
+    ],
+    [
+      "testing_center.local_state",
+      "vantare-v2/frontend/src/hub/testing-center/report-submission-client.ts",
+    ],
+    [
+      "testing_center.local_state",
+      "vantare-v2/frontend/src/hub/testing-center/testingcenterpage.tsx",
+    ],
+  ] as const;
+  for (const [moduleId, path] of cases) {
+    const package_ = moduleId === "testing_center.local_state"
+      ? await request({ trustedSurface: "frontend.local_state" }, moduleId)
+      : await request({}, moduleId);
+    const output = validOutput();
+    output.files = [{ path, changeKind: "modify", reason: "attempt" }];
+    await assertRejects(() => parseCodexDryRunOutput(output, package_));
+  }
 });
 
 Deno.test("global registry is idempotent and permits only one active digest", async () => {

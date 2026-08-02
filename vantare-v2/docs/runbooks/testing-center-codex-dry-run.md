@@ -23,9 +23,16 @@ Allowlist inicial de módulos:
 - Overlay Studio: solo presentación;
 - Calendar: solo presentación.
 
-Cada módulo produce prefijos de ruta fijos. El modelo no recibe rutas aportadas
-por el tester. La base descriptiva es `nightly`, pero
-`repositoryAccess=forbidden`: en este corte no se comprueba ni abre ese ref.
+Cada módulo produce prefijos y reglas leaf-level fijas. Testing Center acepta
+solo Page/preview/translations/validation; Overlay Studio solo components,
+inspector y cuatro roots visuales; Calendar solo archivos flat catalogados.
+Access, clients, state, canvas, bridge, workflows y cualquier ruta no
+catalogada fallan cerrados. El modelo no recibe rutas del tester.
+
+La base descriptiva `nightly` incluye ahora un SHA exacto de 40 hex ligado al
+request digest. `repositoryAccess=forbidden`: este corte no abre el ref. El
+resolver server-side de TAU-06F deberá demostrar que el SHA es ancestro del
+`nightly` vigente; el contrato no presenta esa prueba local como ya realizada.
 
 ## Budgets
 

@@ -1,3 +1,12 @@
+Nota ISA-230 / TAU-06E (2026-08-02, scope leaf-level y SHA):
+- Prefijos amplios sustituidos por reglas de paths por módulo. Access, clients,
+  state, canvas, bridge, workflows, case aliases y rutas desconocidas fallan.
+- El request exige SHA exacto de 40 hex, lo incluye en repository y digest; una
+  mutación posterior invalida la respuesta.
+- El resolver server-side que prueba ancestry con `nightly` queda para TAU-06F;
+  aquí continúa prohibido abrir repo/red. Focal 11/11.
+- Estado: local para review; sin Codex/API/checkout/write/deploy/merge/promoción.
+
 Nota ISA-229 / TAU-06D (2026-08-02, evidencia Codex mínima):
 - El dry-run deja de consumir texto libre/etiqueta autoafirmada y exige una
   proyección ligada a IDs, bytes, tamaño, SHA-256 y consentimientos.

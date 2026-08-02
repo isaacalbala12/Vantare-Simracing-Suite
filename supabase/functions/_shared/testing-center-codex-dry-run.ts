@@ -68,6 +68,7 @@ type TestCommandId = (typeof TEST_COMMAND_IDS)[number];
 export type CodexDryRunInput = {
   contractVersion: typeof CODEX_DRY_RUN_VERSION;
   moduleId: ModuleId;
+  analysisBaseSha: string;
   verifiedEvidence: VerifiedCodexEvidence;
   riskInput: CodexRiskInput;
   riskDecision: CodexRiskDecision;
@@ -83,11 +84,13 @@ export type CodexDryRunPackage = {
     owner: "isaacalbala12";
     name: "Vantare-Simracing-Suite";
     analysisBaseRef: "nightly";
+    analysisBaseSha: string;
     repositoryAccess: "forbidden";
   };
   trustedScope: {
     moduleId: ModuleId;
     allowedPathPrefixes: readonly string[];
+    allowedPathRuleId: ModuleId;
     allowedTestCommandIds: typeof TEST_COMMAND_IDS;
     approvedFileCountCeiling: number;
   };
@@ -143,12 +146,15 @@ function parseCodexDryRunInput(value: unknown): CodexDryRunInput {
     !exact(value, [
       "contractVersion",
       "moduleId",
+      "analysisBaseSha",
       "verifiedEvidence",
       "riskInput",
       "riskDecision",
     ]) ||
     value.contractVersion !== CODEX_DRY_RUN_VERSION ||
     typeof value.moduleId !== "string" || !(value.moduleId in MODULES) ||
+    typeof value.analysisBaseSha !== "string" ||
+    !/^[0-9a-f]{40}$/.test(value.analysisBaseSha) ||
     !record(value.riskDecision) ||
     !exact(value.riskDecision, [
       "contractVersion",
@@ -229,11 +235,13 @@ export async function buildCodexDryRunPackage(
       owner: "isaacalbala12" as const,
       name: "Vantare-Simracing-Suite" as const,
       analysisBaseRef: "nightly" as const,
+      analysisBaseSha: input.analysisBaseSha,
       repositoryAccess: "forbidden" as const,
     },
     trustedScope: {
       moduleId: input.moduleId,
       allowedPathPrefixes: module.prefixes,
+      allowedPathRuleId: input.moduleId,
       allowedTestCommandIds: TEST_COMMAND_IDS,
       approvedFileCountCeiling: input.riskInput.estimatedFileCount,
     },
@@ -256,14 +264,37 @@ export async function buildCodexDryRunPackage(
 
 function validRepositoryPath(
   path: string,
-  prefixes: readonly string[],
+  moduleId: ModuleId,
 ): boolean {
   if (
     path.includes("\\") || path.startsWith("/") || /^[A-Za-z]:/.test(path) ||
     path.split("/").includes("..") || !/^[A-Za-z0-9._/-]+$/.test(path)
   ) return false;
   if (!/\.(css|ts|tsx)$/.test(path)) return false;
-  return prefixes.some((prefix) => path.startsWith(prefix));
+  const prefix = MODULES[moduleId].prefixes[0];
+  if (!path.startsWith(prefix)) return false;
+  const relative = path.slice(prefix.length);
+  if (moduleId.startsWith("testing_center.")) {
+    return new Set([
+      "TestingCenterPage.tsx",
+      "TestingCenterPage.test.tsx",
+      "DiagnosticPreviewPanel.tsx",
+      "translations.ts",
+      "validation.ts",
+      "validation.test.ts",
+    ]).has(relative);
+  }
+  if (moduleId === "overlay_studio.presentation") {
+    return /^(components|inspector)\/[A-Za-z0-9._-]+\.(css|ts|tsx)$/.test(
+      relative,
+    ) ||
+      /^(NoActiveProfileState|OverlayStudioV3)(\.test)?\.tsx$/.test(relative) ||
+      relative === "overlay-studio-v3.css" ||
+      /^(studio-v3-i18n|studio-v3-format)\.ts$/.test(relative);
+  }
+  return !relative.includes("/") &&
+    /^(Calendar[A-Za-z0-9._-]+|calendar-(filter|shared|upcoming))\.(css|ts|tsx)$/
+      .test(relative);
 }
 
 function parseStringArray(value: unknown, maxItems: number): string[] {
@@ -291,10 +322,12 @@ async function validateRequestIntegrity(
     request.repository.owner !== "isaacalbala12" ||
     request.repository.name !== "Vantare-Simracing-Suite" ||
     request.repository.analysisBaseRef !== "nightly" ||
+    !/^[0-9a-f]{40}$/.test(request.repository.analysisBaseSha) ||
     request.repository.repositoryAccess !== "forbidden" ||
     !module ||
     JSON.stringify(request.trustedScope.allowedPathPrefixes) !==
       JSON.stringify(module.prefixes) ||
+    request.trustedScope.allowedPathRuleId !== request.trustedScope.moduleId ||
     JSON.stringify(request.trustedScope.allowedTestCommandIds) !==
       JSON.stringify(TEST_COMMAND_IDS) ||
     !Number.isSafeInteger(request.trustedScope.approvedFileCountCeiling) ||
@@ -345,7 +378,7 @@ export async function parseCodexDryRunOutput(
       !boundedText(file.path, 500) ||
       !validRepositoryPath(
         file.path,
-        request.trustedScope.allowedPathPrefixes,
+        request.trustedScope.moduleId,
       ) ||
       !["modify", "add_test"].includes(file.changeKind as string) ||
       !boundedText(file.reason, 1000) ||

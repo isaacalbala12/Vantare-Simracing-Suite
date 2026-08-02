@@ -263,15 +263,16 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
 | En revisión | ISA-177 / ENG-07, presentación canónica multilingüe |
 | En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal; reconexión autoritativa y carrera disabled corregidas en re-review |
-| WIP | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO y Whisper condicionado, pendiente de checks/review |
+| En revisión | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO, Whisper condicionado y review `ACCEPT` |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Cerrar checks y review independiente de ISA-180 / ENG-09. Después ejecutar
-ENG-10 con corpus humano de comandos en cuatro idiomas y selección final del
-voice-host; no cablear STT/TTS ni promover la cadena antes de esos gates.
+ISA-180 / ENG-09 permanece en revisión y sin promoción. El siguiente corte es
+ENG-10, con corpus humano de comandos en cuatro idiomas y selección final del
+voice-host, pero no debe iniciarse hasta que la orquestación lo autorice. No
+cablear STT/TTS antes de esos gates.
 
 ## Última actualización
 
@@ -282,6 +283,9 @@ y fp16. Whisper.cpp residente queda condicionado tras ~0,60 s por frase y
 cancelación aislada, pero solo inglés supera el smoke literal. `es/it/pt-BR`
 requieren corpus humano. No hay micrófono, modelos en Git, dependencia ni
 wiring productivo; radio/subtítulos siguen siendo fallback.
+El review independiente final cierra el guard de contaminación de puerto y el
+lifecycle del worker con `ACCEPT`, sin P0/P1/P2/P3 razonables abiertos. La PR
+permanece draft y ENG-10 no se ha iniciado.
 
 2026-08-02, corrección completa de review ISA-178 / ENG-08: `engineer-radio`
 forma parte del contrato persistente Go y pasa roundtrip. `disabled` se filtra

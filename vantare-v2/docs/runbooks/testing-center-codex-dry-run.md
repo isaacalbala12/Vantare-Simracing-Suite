@@ -29,10 +29,11 @@ inspector y cuatro roots visuales; Calendar solo archivos flat catalogados.
 Access, clients, state, canvas, bridge, workflows y cualquier ruta no
 catalogada fallan cerrados. El modelo no recibe rutas del tester.
 
-La base descriptiva `nightly` incluye ahora un SHA exacto de 40 hex ligado al
-request digest. `repositoryAccess=forbidden`: este corte no abre el ref. El
-resolver server-side de TAU-06F deberá demostrar que el SHA es ancestro del
-`nightly` vigente; el contrato no presenta esa prueba local como ya realizada.
+La base descriptiva `nightly` incluye un SHA exacto de 40 hex ligado al request
+digest. `repositoryAccess=forbidden`: este corte no abre el ref. TAU-06F valida
+un snapshot cerrado de head y ancestros aportado por un puerto server-owned y
+liga el proof digest a la reserva durable. La implementación futura que obtiene
+ese snapshot real de Git/GitHub continúa desconectada.
 
 ## Budgets
 
@@ -44,10 +45,10 @@ resolver server-side de TAU-06F deberá demostrar que el SHA es ancestro del
 - tool calls: cero;
 - concurrency key global: `testing-center.codex.global`.
 
-`InMemoryCodexDryRunRegistry` solo demuestra idempotencia y exclusión en tests
-locales. No es un lock distribuido ni autoriza ejecución. Antes de conectar un
-agente real se necesita un claim durable server-side con lease, pausa y
-reconciliación equivalente al outbox GitHub.
+`InMemoryCodexDryRunRegistry` queda solo como caracterización local. TAU-06F
+añade la autoridad real en PostgreSQL: una reserva por issue, claim global,
+lease, fencing monotónico, recheck de pausa y un único permiso de dispatch. Una
+respuesta ambigua o caída posterior al permiso no se reintenta: exige owner.
 
 ## Salida cerrada
 

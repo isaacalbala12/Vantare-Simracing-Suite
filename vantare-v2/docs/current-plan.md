@@ -1,3 +1,15 @@
+Nota ISA-231 / TAU-06F (2026-08-02, control Codex durable):
+- Loader exclusivo de `service_role` deriva una proyección canónica sin texto
+  libre y liga digest/tamaño de transporte; filas legacy sin tamaño fallan.
+- La base exacta se comprueba contra un snapshot cerrado head+ancestros del
+  puerto server-owned; no acepta un booleano de ancestry autoafirmado.
+- Una fila automática por issue, claim global, lease 10–300 s, fencing
+  monotónico y pausa revalidada justo antes del permiso de dispatch.
+- Tras el permiso no existe retry automático: ambigüedad va a `needs_owner` y
+  una caída queda `dispatching` para reconciliación humana, evitando duplicado.
+- Gates: PostgreSQL 61/61 + rollback/reapply + carrera dos workers; Deno focal
+  20/20. Sin Codex/API/repo/red/write/deploy/merge/promoción.
+
 Nota ISA-230 / TAU-06E (2026-08-02, scope leaf-level y SHA):
 - Prefijos amplios sustituidos por reglas de paths por módulo. Access, clients,
   state, canvas, bridge, workflows, case aliases y rutas desconocidas fallan.

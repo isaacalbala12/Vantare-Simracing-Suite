@@ -205,5 +205,64 @@ export async function verifyCodexEvidence(
     typeof value.evidenceDigest !== "string" ||
     value.evidenceDigest !== await sha256(value.evidenceText)
   ) invalid();
+
+  let projection: unknown;
+  try {
+    projection = JSON.parse(value.evidenceText);
+  } catch {
+    invalid();
+  }
+  if (
+    !record(projection) ||
+    !exact(projection, [
+      "contractVersion",
+      "application",
+      "module",
+      "errorCodePresent",
+      "logs",
+      "source",
+    ]) ||
+    projection.contractVersion !== CODEX_EVIDENCE_VERSION ||
+    !record(projection.application) ||
+    !exact(projection.application, ["channel", "os", "arch"]) ||
+    !["nightly", "testers"].includes(
+      projection.application.channel as string,
+    ) ||
+    !["windows", "linux", "darwin", "unknown"].includes(
+      projection.application.os as string,
+    ) ||
+    !["amd64", "arm64", "unknown"].includes(
+      projection.application.arch as string,
+    ) ||
+    typeof projection.module !== "string" ||
+    !modules.includes(projection.module) ||
+    typeof projection.errorCodePresent !== "boolean" ||
+    !Array.isArray(projection.logs) ||
+    projection.logs.length > 100 ||
+    !record(projection.source) ||
+    !exact(projection.source, [
+      "diagnosticDigest",
+      "diagnosticByteSize",
+      "logsIncludedByConsent",
+    ]) ||
+    projection.source.diagnosticDigest !== value.sourceDiagnosticDigest ||
+    !Number.isSafeInteger(projection.source.diagnosticByteSize) ||
+    (projection.source.diagnosticByteSize as number) < 1 ||
+    (projection.source.diagnosticByteSize as number) > 65536 ||
+    typeof projection.source.logsIncludedByConsent !== "boolean" ||
+    (!projection.source.logsIncludedByConsent && projection.logs.length > 0)
+  ) invalid();
+  for (const log of projection.logs) {
+    if (
+      !record(log) || !exact(log, ["offsetMillis", "source", "level"]) ||
+      !Number.isSafeInteger(log.offsetMillis) ||
+      (log.offsetMillis as number) < 0 ||
+      (log.offsetMillis as number) > 86400000 ||
+      !["frontend", "backend", "wails", "runtime"].includes(
+        log.source as string,
+      ) ||
+      !["info", "warn", "error"].includes(log.level as string)
+    ) invalid();
+  }
   return value as VerifiedCodexEvidence;
 }

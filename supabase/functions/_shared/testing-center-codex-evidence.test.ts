@@ -117,3 +117,34 @@ Deno.test("digest size identity consent and schema tampering fail closed", async
     })
   );
 });
+
+Deno.test("a rehashed but structurally forged evidence projection fails closed", async () => {
+  const evidence = await buildVerifiedCodexEvidence(await input());
+  const projection = JSON.parse(evidence.evidenceText);
+  const forgedTexts = [
+    JSON.stringify({ ...projection, privateMessage: "tester@example.com" }),
+    JSON.stringify({
+      ...projection,
+      source: { ...projection.source, diagnosticDigest: "0".repeat(64) },
+    }),
+    JSON.stringify({
+      ...projection,
+      logs: [{ offsetMillis: 1, source: "frontend", level: "debug" }],
+    }),
+    JSON.stringify({
+      ...projection,
+      logs: [{ offsetMillis: 1, source: "frontend", level: "error" }],
+      source: { ...projection.source, logsIncludedByConsent: false },
+    }),
+  ];
+  for (const evidenceText of forgedTexts) {
+    const evidenceDigest = await sha256(evidenceText);
+    await assertRejects(() =>
+      verifyCodexEvidence({
+        ...evidence,
+        evidenceText,
+        evidenceDigest,
+      })
+    );
+  }
+});

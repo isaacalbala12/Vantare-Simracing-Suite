@@ -184,8 +184,11 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   service-role permanece pendiente de TAU-06F.
 - ISA-230 / TAU-06E aplica reglas leaf-level y liga el request a un SHA exacto;
   el resolver de ancestry server-side permanece pendiente de TAU-06F.
-- Siguiente acción: TAU-06F añade loader/lease durable. TAU-07, red, API Codex,
-  repo access, App real, Discord y asignación automática siguen apagados.
+- ISA-231 / TAU-06F añade loader `service_role`, tamaño de transporte,
+  snapshot head+ancestros, reserva única, claim global, lease, fencing y pausa
+  pre-dispatch. Ambigüedad y caída post-permiso no reintentan automáticamente.
+- Siguiente acción: TAU-06G reaudita y decide GO/NO-GO. TAU-07, red, API
+  Codex, repo access, App real, Discord y asignación automática siguen apagados.
 
 ## Riesgos
 
@@ -210,8 +213,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-230 cierra scope amplio y ref móvil en el contrato; el NO-GO
-sigue vigente hasta loader/lease durable y reauditoría. No ejecuta Codex,
-Discord, repo access o Supabase remoto.
+2026-08-02, ISA-231 cierra loader/lease/fencing en dry-run; el NO-GO sigue
+vigente hasta TAU-06G. No ejecuta Codex, Discord, repo access o Supabase remoto.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

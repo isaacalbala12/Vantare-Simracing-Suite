@@ -24,12 +24,15 @@ El digest de la proyección se revalida al construir el dry-run y las identidade
 deben coincidir con la policy. El texto libre original puede seguir existiendo
 en `riskInput` para clasificación/auditoría, pero queda fuera del request Codex.
 
-## Frontera pendiente
+## Loader durable
 
-Este corte valida un record server-side; todavía no implementa el loader que lo
-obtendrá de PostgreSQL. TAU-06F debe cargar payload, digest y consentimientos de
-la fila persistida bajo service role. La app, GitHub Issue o tester nunca pueden
-proporcionar directamente `VerifiedCodexEvidence` a un endpoint.
+TAU-06F añade `testing_center_load_codex_evidence(...)`, exclusivo de
+`service_role`. La función deriva la proyección de las filas persistidas y
+conserva digest y tamaño exactos del transporte. `jsonb` no permite reconstruir
+el tamaño original: las filas anteriores sin ese dato fallan cerradas. La app,
+GitHub Issue o tester nunca pueden proporcionar directamente
+`VerifiedCodexEvidence` a un endpoint. Autoridad operativa:
+`testing-center-codex-control.md`.
 
 ## Gates
 

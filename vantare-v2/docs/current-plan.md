@@ -1,3 +1,30 @@
+Nota ISA-204 / TA-N01 (2026-08-02):
+- Promoción acumulativa TA-01…TA-03C reconstruida sobre
+  `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6` desde el stack técnico
+  aprobado `9c92836b90dacc5d82cc86569954cb11f0cf9460`.
+- El corte incorpora discovery e importación local LMU, contrato histórico,
+  adaptador DuckDB mediante helper fuera de proceso, staging privado,
+  manifest/SBOM/notices y lifecycle Windows. El proceso principal conserva
+  `CGO_ENABLED=0` y no incorpora DuckDB a su grafo.
+- La v1 solo acepta archivos LMU locales descubiertos e indexados. Las
+  importaciones externas o comunitarias siguen bloqueadas por TA-03D; no se
+  presenta Job Object como sandbox ni se modifican archivos originales.
+- Los únicos conflictos de reconstrucción fueron los documentos de estado. Se
+  conservaron las promociones previas de Telemetry Core y Strategy y se actualizó
+  el siguiente paso a TA-04/TA-05.
+- El gate de packaging falló cerrado porque el hash confiado de TA-03C no
+  correspondía a su árbol final. TA-N01 reconstruyó dos veces el helper final,
+  verificó el grafo y las 37 licencias, actualizó la confianza explícitamente y
+  confirmó con una tercera construcción limpia y smoke Windows x64 que el
+  bundle vuelve a ser reproducible y cargable.
+- El primer CI del PR detectó que la regresión DACL comparaba texto SDDL y no
+  identidad de SID: Windows representa cuentas well-known como `LA` en vez del
+  SID numérico. El test enumera ahora las ACE y compara el SID binario exacto;
+  conserva el rechazo de grupos amplios y la exigencia de DACL protegida.
+- Estado: preparado para repetir gates combinados y, si permanecen verdes,
+  validar el lector local con el grupo Nightly/Pro Plus. `testers` y `master`
+  permanecen fuera del alcance.
+
 Nota ISA-202 / STR-N01 (2026-08-02):
 - Promoción acumulativa de Strategy Planner STR-00…STR-09 reconstruida sobre
   `nightly@1f3bcc825d45b5900eb798cbeedf7dd3ac2d06fa` desde el stack técnico
@@ -311,6 +338,22 @@ Nota ISA-134 / STR-00 (2026-08-01):
   TC-10A/B para live. Bloquean ISA-145 y ISA-152 respectivamente.
 - Estado: `ACCEPT` tras review; ISA-136 / STR-01 está en ejecución apilada. Sin
   merge ni promoción.
+Nota ISA-168 / TA-03C (2026-08-02):
+- Implementado el adapter DuckDB histórico productivo fuera de proceso sobre
+  ISA-135. Wails conserva `CGO_ENABLED=0`; DuckDB 1.5.5 vive en un módulo y
+  runtime separados.
+- Staging privado, manifest confiado, locks anti-TOCTOU, read-only, IPC tipado
+  sin SQL, Job Object, cancel/retry/close, rollback confiado, notices y SBOM
+  reproducibles quedan cubiertos.
+- Parser sintético real y benchmark 50×16.384 PASS. En cierre intercalado y
+  con CPU al 93–100 %, TA-03C obtuvo mediana 27,154 ms/página frente a 45,290
+  de TA-03B (ratio 0,5995×; gate <=2×). Smoke host Windows x64, fuzz, race y
+  build principal PASS. Evidencia:
+  `docs/vantare-program/research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`.
+- Review independiente `APPROVE`, cero P0/P1/P2/P3 razonables. Estado: cierre
+  técnico listo para `In Review`; sin promoción.
+  TA-04 continúa después de aceptar este corte. Imports externos/comunitarios
+  siguen bloqueados por ISA-164 / TA-03D.
 
 Nota VANTARE-PROGRAM (2026-07-27):
 - ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.
@@ -950,6 +993,161 @@ Nota ISA-38 / TC-04D (2026-07-28):
   para entrega aislada; sin wiring, merge o promoción.
   Sin wiring, cambios frontend tracked, dependencias, recording, Wails/SSE,
   commit, merge o promoción.
+Nota ISA-122 / TA-01 (2026-07-27):
+- Investigación canónica de Telemetry Analysis entregada en
+  `docs/vantare-program/research/telemetry-analysis/`: fuentes primarias,
+  matriz competitiva, auditoría LMU/repo, contrato propuesto, arquitectura,
+  UI/UX, referencia HTML propia y microcortes TDD.
+- Decisiones propuestas: post-sesión, resumen + workspace, galería local,
+  comparación por distancia condicionada a evidencia, máximo cuatro trazas,
+  derivados oficiales, notas no destructivas y consejos deterministas con
+  evidencia/confianza; LLM no es autoridad.
+- Gate: no hay implementación aún. TA-02 puede continuar de forma autónoma en
+  su propia rama: la revisión independiente final del 2026-07-28 dio `ACCEPT`
+  sin P0/P1/P2/P3. Playwright verificó selección A/B, trazas, canal,
+  sincronización de zona, tabs por teclado, responsive 1440/390 y cero errores.
+  La promoción a
+  `nightly` sí requiere la aprobación inicial de Isaac y permanece además
+  bloqueada hasta que ISA-121 cree la topología física de ramas/CI. El catálogo
+  actual no demuestra distancia/longitud/geometría LMU suficientes para delta o
+  mapa espacial productivo; no se permitirá fallback sintético.
+
+Nota ISA-124 / TA-02 (2026-07-28):
+- Implementado en rama aislada el contrato neutral
+  `internal/telemetryanalysis`: discovery metadata-only, estados explícitos,
+  gate de estabilidad sin sleeps, manifest v1 sanitizado, dedupe por hash,
+  autorización de acceso, políticas reference/managed-copy, cancelación y
+  presupuestos.
+- Para LMU, un `.duckdb.wal` hermano siempre significa `active`. Solo ausencia
+  de WAL más tamaño/mtime sin cambios durante una ventana positiva inyectada
+  emite el gate interno que permite calcular el manifest. Nunca se lee el WAL,
+  se fuerza checkpoint ni se modifica el original.
+- La apertura de contenido exige siempre permiso `user_approved`; una
+  procedencia `vantare_owned` no es autoridad y queda aplazada hasta una
+  capability no falsificable de recording. El WAL se revalida antes y después
+  de leer, y el handle abierto debe conservar la misma identidad de archivo
+  regular mediante `os.SameFile` o el token equivalente del seam.
+- Corpus mínimo versionado exclusivamente sintético: no contiene bytes de LMU,
+  datos personales ni una base DuckDB válida. Hash, tamaño, dedupe y procedencia
+  se verifican de forma reproducible con el mismo validador de manifest que usa
+  producción. Parser ID y versión son obligatorios; `none@0` declara ausencia.
+- Alcance cerrado: no hay parser DuckDB, índice/base de datos, UI, galería,
+  copia gestionada real, comparación, delta, mapa ni imports de Telemetry Core.
+  Contrato: `docs/vantare-program/research/telemetry-analysis/import-contract.md`.
+- Evidencia fresca tras el endurecimiento: focal x20, vet focal, race x10 con
+  GCC UCRT64, fuzz de redacción 10 s (2.186.642 ejecuciones), suite global Go y
+  `git diff --check` PASS. Para el embed global se conserva `frontend/dist`
+  ignorado desde un worktree con el mismo árbol frontend; no hay delta frontend.
+- Review independiente final: `ACCEPT` sin P0/P1/P2/P3. El cierre añadió una
+  única función canónica de deduplicación y una regresión que rechaza claves
+  hexadecimales bien formadas pero incompatibles con hash+tamaño.
+- Estado: técnicamente cerrado y preparado para commit/push, PR draft apilada
+  sobre TA-01 y Linear `In Review`; sin promoción a `nightly`.
+
+Nota ISA-126 / TA-03 (actualizada 2026-08-01):
+- Caracterizado read-only un DuckDB LMU completado mediante copia temporal:
+  original y copia con SHA-256 coincidente, metadata original intacta, cero
+  WAL y conexión `read_only`. No se leyeron valores de metadata ni se ejecutó
+  checkpoint/escritura/reparación sobre la biblioteca.
+- El schema observado contiene 12 claves de metadata, 56 canales continuos sin
+  `ts`, 42 eventos con `ts` y 101 tablas. Frecuencias: 1/2/5/7/10/20/50/100 Hz.
+  El diccionario completo sanitizado no contiene DB, muestras, valores, rutas,
+  nombres ni IDs.
+- Implementado en `internal/telemetryanalysis` el modelo histórico v1 y el
+  parser/normalizador paginado LMU: sesión, canales,
+  columnas, unidades, calidad, provenance, fingerprint y tipos desconocidos.
+  Cero/false permanecen presentes; NULL, stale, invalid y unknown no se
+  colapsan.
+- Corrección tras review independiente: `Inspect` congela un catálogo interno
+  y `ReadPage` resuelve solo IDs descubiertos, sin confiar en descriptores
+  mutables del llamador. Hay máximo duro de 16.384 filas, contexto de una sola
+  fila para eventos, EOF/predecesor-only coherentes y duplicados de
+  identificador rechazados también por diferencias de mayúsculas.
+- Metadata nueva queda sensible por defecto mediante allowlist pública y sus
+  valores se redacted antes de entrar al modelo. Metadata pública fuera de
+  presupuesto queda invalid sin invalidar la sesión. `DECIMAL` permanece
+  `unknown` hasta demostrar su representación.
+- El continuo conserva eje relativo `index/frequency` con origen `unknown`; los
+  eventos conservan `ts`. No se inventa alineación entre ambos. El nombre
+  `Lap` no forma límites: esa semántica queda pendiente de evidencia en TA-04.
+- `LMUDuckDBReader` es un puerto mínimo fuera de Telemetry Core. El parser ya
+  exige una `AuthorizedHistoricalArtifact` emitida por el gate TA-02 y
+  revalida hash/tamaño/mtime/identidad antes y después de catálogo y páginas.
+  TA-03 no añade `database/sql`, CGO, binarios, CLI ni dependencia DuckDB de
+  producto. El driver Go oficial es MIT, pero requiere decisión propia de
+  build/empaquetado Windows antes de integrarlo.
+- Alcance actual: sin reader concreto, índice, galería, UI, delta, mapa,
+  coaching, live o wiring. Docs:
+  `lmu-duckdb-characterization.md` y `historical-model.md`.
+- Evidencia fresca tras la corrección: focal x20, vet, race x10 y dos fuzz de
+  10 s PASS (1.091.635 normalización; 1.436.728 redacción). Benchmark de
+  720.000 muestras paginadas: 58,04–75,16 ms/op,
+  103.686.400–103.696.592 B/op acumulados y 355–368 allocs/op. Suite Go global
+  paralela PASS. No se repitieron frontend/build porque este delta no toca
+  frontend ni contratos embebidos.
+- La copia temporal de inspección fue eliminada tras derivar/verificar el schema
+  sanitizado. Un review adversarial posterior dio `REQUEST CHANGES`: P2/P3 y
+  la frontera arquitectónica del P1 están corregidos con regresiones de
+  mismatch/TOCTOU, determinismo, redacción y límite. Sigue faltando el reader
+  DuckDB productivo y un test de integración sobre DuckDB sintético real; por
+  ello TA-03 permanece abierta en su PR draft/Linear actuales y TA-04 queda
+  bloqueada. Sin promoción.
+
+Nota ISA-135 / TA-03B (2026-08-01):
+- Comparadas cinco rutas de integración DuckDB en Windows: driver oficial
+  estático/dinámico dentro de Wails, CLI gestionado y helper propio con enlace
+  estático/dinámico. La recomendación es un helper local de corta vida,
+  propiedad de Vantare, con `duckdb-go/v2` y `duckdb.dll` oficial fijados. La
+  app principal permanece en `CGO_ENABLED=0`; no se crea daemon ni SQL remoto.
+- Se descarta el CLI porque la guía oficial de DuckDB no lo recomienda para
+  embedding y expone capacidades innecesarias. Se descarta el enlace estático
+  actual porque el spike reprodujo una incompatibilidad entre los archivos
+  precompilados 1.5.5 y MSYS2 UCRT64 GCC 16 tras el cambio a TLS nativo.
+- Spike aislado, solo sintético y sin dependencias de producto: enlace dinámico
+  1.5.5 PASS, helper reproducible en dos rutas, 44.317.091 bytes totales,
+  read-only/NULL/cero/bool/identificadores/hash estable y cancelación coordinada
+  con `context.Canceled` PASS. En
+  720.000 filas, apertura 17–27 ms y páginas de 16.384 filas 20,72–23,84 ms de
+  media en la pasada de 50 páginas.
+- La v1 acepta exclusivamente archivos LMU locales descubiertos e indexados por
+  Vantare. El helper fuera de proceso, Job Object y límites son defensa en
+  profundidad, no un sandbox. Imports externos/comunitarios quedan bloqueados
+  por ISA-164 / TA-03D hasta demostrar una frontera real.
+- La arquitectura exige staging privado desde el handle autorizado TA-02,
+  revalidación antes/después, límites de memoria/threads/tiempo/disco,
+  extensiones/red desactivadas, protocolo tipado sin SQL, manifest/checksums y
+  rollback atómico de helper + DLL.
+- Inventario exacto cerrado con fuentes primarias: cuatro módulos Go, cinco
+  extensiones estáticas y 26 componentes C/C++ vendorizados. El SBOM SPDX de 37
+  componentes se regeneró dos veces con SHA
+  `959ab3ae08e2a6ff36c28c0773552a81048700c123dc899d2af89d48f1d4bfa5`;
+  todas las opciones elegidas son permisivas y compatibles con uso comercial.
+- No se añadió DuckDB/CGO al `go.mod` principal, no se abrió LMU ni archivos
+  personales, no se tocó Telemetry Core, UI, packaging de release o producto.
+- Documentos: `duckdb-adapter-decision.md`, ADR 0005 propuesta,
+  `ta03c-duckdb-adapter-plan.md` y spike reproducible `spikes/ta03b/`.
+- El primer review independiente dio `REQUEST CHANGES`; las cuatro objeciones
+  están corregidas en rama, pero ISA-135 permanece `In Progress` hasta una nueva
+  review. Después, Isaac deberá aprobar dependencia fijada, redistribución del
+  DLL, incremento aproximado de 44,32 MB, VC++ runtime y packaging/notices
+  atómicos antes de TA-03C. TA-04 continúa bloqueada hasta implementar TA-03C.
+  Sin promoción.
+- Evidencia fresca de corrección: spike 50 páginas, test y vet focales PASS;
+  cancelación coordinada 5/5; una extracción temporal manipulada fue rechazada
+  por SHA; dos SBOM limpios fueron idénticos; suite Go global PASS en 231,4 s y
+  `git diff --check` PASS. Un primer intento global agotó el timeout externo de
+  cuatro minutos sin reportar fallo y no se contabilizó.
+- Una re-review focal dejó únicamente un P2 en la allowlist Go del SBOM. Ya se
+  compara bidireccionalmente el conjunto exacto `módulo@versión` de
+  `go version -m` y se rechazan replacements, módulos añadidos, esperados
+  ausentes y cambios de versión. Una segunda revisión encontró que PowerShell
+  comparaba sin distinguir mayúsculas; ahora rutas y versiones usan igualdad
+  ordinal y cinco regresiones fail-closed cubren también ambos cambios de
+  `casing`. Las cinco regresiones pasan también en Windows PowerShell 5.1 y una
+  regeneración real conserva el mismo SBOM de 37 componentes y SHA. Dos
+  generaciones limpias anteriores conservaron igualmente ese SHA; spike 50
+  páginas, test/vet focales y tamper de extracción PASS. Pendiente una nueva
+  review independiente de la corrección ordinal; ISA-135 sigue `In Progress`.
 
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.

@@ -2,8 +2,8 @@
 
 Fecha: 2026-08-02
 
-Estado: staging desplegado y validado; producción bloqueada por ausencia de
-backup remoto.
+Estado: staging desplegado y validado; backup lógico diario implementado;
+producción bloqueada hasta instalar y restaurar la primera copia.
 
 ## Objetivo
 
@@ -138,6 +138,39 @@ project ref aprobado sigue siendo la única diana posible.
   backup productivo era incorrecta.
 - Producción no se modificó durante este intento.
 
+### Decisión de backup en Supabase Free
+
+Isaac decidió no contratar Supabase Pro por ahora y aprobó una tarea diaria de
+backup. La alternativa se implementó sin reducir el gate:
+
+- `install-supabase-backup-task.ps1` crea una tarea diaria a las 03:00,
+  ejecutable después si el equipo estaba apagado;
+- el access token y la contraseña PostgreSQL se convierten a DPAPI y no quedan
+  en los argumentos de la tarea;
+- scripts, secretos y backups viven fuera del repositorio, bajo
+  `%LOCALAPPDATA%\Vantare`, con ACL privada y EFS;
+- cada ejecución obtiene roles, esquema, datos e historial de migraciones con
+  el CLI oficial;
+- un manifiesto registra únicamente versión, alcance, tamaños y SHA-256;
+- el ZIP se abre, valida y restaura en un contenedor Supabase Postgres
+  desechable antes de marcar PASS;
+- se conservan 30 días y se eliminan solo archivos que estén dentro de la raíz
+  aprobada;
+- el wrapper de producción exige `LOCAL-BACKUP-VERIFIED-<project-ref>`, ruta
+  explícita, ref exacta, EFS, integridad, edad máxima de 26 horas y un nuevo
+  restore satisfactorio antes de aplicar.
+
+El mecanismo no se describe como equivalente a PITR. No incluye objetos
+binarios de Storage, depende del perfil/certificado EFS del equipo y todavía
+necesita una segunda copia cifrada fuera del PC antes del lanzamiento público.
+Su objetivo inmediato es aportar un rollback verificable antes del deploy de
+ISA-214.
+
+La instalación está pendiente porque el entorno local solo contiene
+`SUPABASE_ACCESS_TOKEN`; el CLI devuelve 403 al intentar obtener el rol temporal
+de backup e indica que necesita `SUPABASE_DB_PASSWORD`. No se reseteó la
+contraseña remota ni se modificó producción para sortear este gate.
+
 ### Polar
 
 La última auditoría GET vigente sigue siendo ISA-166:
@@ -210,9 +243,15 @@ cubre BIL-11, pagos, refunds, cambios de catálogo ni habilitar ventas.
 - Suite Supabase activa: 184 tests pasados, 0 fallidos.
 - `deno check` y `deno fmt --check` focales: PASS.
 - Test de comportamiento PowerShell del wrapper: PASS en Windows PowerShell;
-  cubre enlace al project ref exacto, ausencia de contraseña persistente,
-  preflight no mutante, confirmaciones, backup obligatorio y orden migraciones
-  -> cuatro Functions.
+  cubre enlace al project ref exacto, preflight no mutante, confirmaciones,
+  backup remoto, staging vacío y backup lógico local verificado antes del orden
+  migraciones -> cuatro Functions.
+- Tests de backup: DPAPI roundtrip, límites de rutas, manifiesto válido,
+  detección de manipulación y ausencia de secretos en argumentos: PASS. Los
+  scripts PowerShell parsean sin errores.
+- Integración local: el instalador creó una tarea sintética válida y se eliminó
+  al terminar; una copia EFS con datos sintéticos se restauró realmente en
+  Supabase Postgres 17 desechable. No se utilizó información de producción.
 - Guard de superficie, formato del workflow y `git diff --check`: PASS.
 - El token de `.env.local` solo se cargó temporalmente en memoria; nunca se
   imprimió, copió a Git ni expuso junto a hashes de secrets o PII.

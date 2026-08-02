@@ -13,7 +13,13 @@ param(
 
   [string]$Confirmation = "",
 
-  [string]$BackupConfirmation = ""
+  [string]$BackupConfirmation = "",
+
+  [string]$VerifiedLocalBackup = "",
+
+  [string]$LocalBackupVerifierPath = (
+    Join-Path $PSScriptRoot "verify-supabase-backup-restore.ps1"
+  )
 )
 
 $ErrorActionPreference = "Stop"
@@ -83,8 +89,10 @@ if ($LASTEXITCODE -ne 0) {
   throw "Unable to list Supabase backups"
 }
 $backupInventory = $backupsJson | ConvertFrom-Json
-$backups = @($backupInventory.backups | Where-Object { $null -ne $_ })
-Write-Output "Supabase backup inventory count: $($backups.Count)"
+$backups = @($backupInventory.backups | Where-Object {
+  $null -ne $_ -and $_.status -eq "COMPLETED"
+})
+Write-Output "Supabase completed backup inventory count: $($backups.Count)"
 
 Push-Location $repositoryRoot
 try {
@@ -113,14 +121,42 @@ try {
     throw "Apply blocked: confirmation must exactly match DEPLOY-BILLING-<project-ref>"
   }
   $expectedBackupConfirmation = "BACKUP-VERIFIED-$ProjectRef"
+  $expectedLocalBackupConfirmation = "LOCAL-BACKUP-VERIFIED-$ProjectRef"
   $expectedFreshStagingConfirmation = "FRESH-STAGING-VERIFIED-$ProjectRef"
   $hasVerifiedBackup = $backups.Count -gt 0 -and
     $BackupConfirmation -ceq $expectedBackupConfirmation
+  $hasLocalBackupCandidate = $Target -eq "production" -and
+    $backups.Count -eq 0 -and
+    $BackupConfirmation -ceq $expectedLocalBackupConfirmation -and
+    -not [string]::IsNullOrWhiteSpace($VerifiedLocalBackup)
   $isVerifiedFreshStaging = $Target -eq "staging" -and
     $backups.Count -eq 0 -and
     $BackupConfirmation -ceq $expectedFreshStagingConfirmation
-  if (-not ($hasVerifiedBackup -or $isVerifiedFreshStaging)) {
+  if (-not ($hasVerifiedBackup -or $hasLocalBackupCandidate -or $isVerifiedFreshStaging)) {
     throw "Apply blocked: verify a backup, or explicitly verify a fresh empty staging project"
+  }
+  if ($hasLocalBackupCandidate) {
+    $defaultVerifierPath = Join-Path $PSScriptRoot "verify-supabase-backup-restore.ps1"
+    $usesTestVerifier = [IO.Path]::GetFullPath($LocalBackupVerifierPath) -ne
+      [IO.Path]::GetFullPath($defaultVerifierPath)
+    if (
+      $usesTestVerifier -and
+      ($env:VANTARE_DEPLOY_WRAPPER_TEST_MODE -ne "true" -or
+        $ProjectRef -ne "abcdefghijklmnopqrst")
+    ) {
+      throw "Apply blocked: alternate local backup verifier is test-only"
+    }
+    if (-not (Test-Path -LiteralPath $LocalBackupVerifierPath -PathType Leaf)) {
+      throw "Apply blocked: local backup verifier is missing"
+    }
+    $resolvedLocalBackup = Resolve-Path -LiteralPath $VerifiedLocalBackup
+    $localBackupRoot = Split-Path -Parent $resolvedLocalBackup
+    & $LocalBackupVerifierPath `
+      -ArchivePath $resolvedLocalBackup `
+      -BackupRoot $localBackupRoot `
+      -ExpectedProjectRef $ProjectRef `
+      -MaxAgeHours 26
+    Write-Output "Recent encrypted local backup restored successfully."
   }
 
   Invoke-CheckedCommand "supabase" @(

@@ -12,6 +12,7 @@ $projectRef = "abcdefghijklmnopqrst"
 $testRoot = Join-Path $env:TEMP "vantare-billing-deploy-$([Guid]::NewGuid())"
 $fakeBin = Join-Path $testRoot "bin"
 $logPath = Join-Path $testRoot "supabase.log"
+$verifyLogPath = Join-Path $testRoot "verify.log"
 $target = Join-Path $PSScriptRoot "deploy-approved-billing-stack.ps1"
 $originalPath = $env:PATH
 $originalAccessToken = $env:SUPABASE_ACCESS_TOKEN
@@ -65,10 +66,25 @@ if ($line -like "functions list*") {
 exit 0
 '@
 Set-Content -LiteralPath (Join-Path $fakeBin "supabase.ps1") -Value $fakeSupabase
+$fakeVerifier = Join-Path $testRoot "verify-local-backup.ps1"
+Set-Content -LiteralPath $fakeVerifier -Value @'
+param(
+  [string]$ArchivePath,
+  [string]$BackupRoot,
+  [string]$ExpectedProjectRef,
+  [int]$MaxAgeHours
+)
+"archive=$ArchivePath root=$BackupRoot ref=$ExpectedProjectRef age=$MaxAgeHours" |
+  Set-Content -LiteralPath $env:FAKE_VERIFY_LOG
+'@
+$fakeLocalBackup = Join-Path $testRoot "supabase-$projectRef-test.zip"
+Set-Content -LiteralPath $fakeLocalBackup -Value "fake archive"
 
 try {
   $env:PATH = "$fakeBin;$originalPath"
   $env:FAKE_SUPABASE_LOG = $logPath
+  $env:FAKE_VERIFY_LOG = $verifyLogPath
+  $env:VANTARE_DEPLOY_WRAPPER_TEST_MODE = "true"
   $env:SUPABASE_ACCESS_TOKEN = "test-token-not-a-secret"
 
   & $target -ProjectRef $projectRef -Target staging -Mode preflight
@@ -131,6 +147,46 @@ try {
     "production accepted the fresh-staging backup exception"
 
   Clear-Content -LiteralPath $logPath
+  $missingLocalPathBlocked = $false
+  try {
+    & $target -ProjectRef $projectRef -Target production -Mode apply `
+      -Confirmation "DEPLOY-BILLING-$projectRef" `
+      -BackupConfirmation "LOCAL-BACKUP-VERIFIED-$projectRef"
+  } catch {
+    $missingLocalPathBlocked = $_.Exception.Message -match "Apply blocked:"
+  }
+  Assert-True $missingLocalPathBlocked `
+    "production accepted a local backup confirmation without an archive"
+
+  Clear-Content -LiteralPath $logPath
+  $alternateVerifierBlocked = $false
+  $nonTestProjectRef = "bbbbbbbbbbbbbbbbbbbb"
+  try {
+    & $target -ProjectRef $nonTestProjectRef -Target production -Mode apply `
+      -Confirmation "DEPLOY-BILLING-$nonTestProjectRef" `
+      -BackupConfirmation "LOCAL-BACKUP-VERIFIED-$nonTestProjectRef" `
+      -VerifiedLocalBackup $fakeLocalBackup `
+      -LocalBackupVerifierPath $fakeVerifier
+  } catch {
+    $alternateVerifierBlocked = $_.Exception.Message -match "test-only"
+  }
+  Assert-True $alternateVerifierBlocked `
+    "a non-test target accepted an alternate backup verifier"
+
+  Clear-Content -LiteralPath $logPath
+  & $target -ProjectRef $projectRef -Target production -Mode apply `
+    -Confirmation "DEPLOY-BILLING-$projectRef" `
+    -BackupConfirmation "LOCAL-BACKUP-VERIFIED-$projectRef" `
+    -VerifiedLocalBackup $fakeLocalBackup `
+    -LocalBackupVerifierPath $fakeVerifier
+  $localBackupApply = @(Get-Content -LiteralPath $logPath)
+  $verifyInvocation = Get-Content -LiteralPath $verifyLogPath -Raw
+  Assert-True ($verifyInvocation -match "ref=$projectRef age=26") `
+    "production did not verify the exact local backup target and age"
+  Assert-True ((@($localBackupApply -match "db push .*--yes")).Count -eq 1) `
+    "verified local backup did not unlock production apply"
+
+  Clear-Content -LiteralPath $logPath
   & $target -ProjectRef $projectRef -Target staging -Mode apply `
     -Confirmation "DEPLOY-BILLING-$projectRef" `
     -BackupConfirmation "FRESH-STAGING-VERIFIED-$projectRef"
@@ -170,6 +226,8 @@ try {
   $env:PATH = $originalPath
   $env:SUPABASE_ACCESS_TOKEN = $originalAccessToken
   Remove-Item Env:FAKE_SUPABASE_LOG -ErrorAction SilentlyContinue
+  Remove-Item Env:FAKE_VERIFY_LOG -ErrorAction SilentlyContinue
   Remove-Item Env:FAKE_BACKUP_EMPTY -ErrorAction SilentlyContinue
+  Remove-Item Env:VANTARE_DEPLOY_WRAPPER_TEST_MODE -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

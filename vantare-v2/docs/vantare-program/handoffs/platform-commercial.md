@@ -146,9 +146,11 @@ del segundo proyecto gratuito. Los Environments protegidos
 `supabase-staging` y `supabase-production` tienen acceso y project ref exactos,
 reviewer y ramas limitadas.
 
-El pipeline preparado separa preflight de apply, enlaza mediante el rol temporal
-oficial sin almacenar contraseña de Postgres, exige confirmación ligada al
-project ref y aplica migraciones antes que las cuatro Functions allowlisted.
+El pipeline preparado separa preflight de apply, enlaza migraciones mediante el
+rol temporal oficial, exige confirmación ligada al project ref y aplica
+migraciones antes que las cuatro Functions allowlisted. El backup lógico
+necesita además la contraseña PostgreSQL; se conserva únicamente protegida por
+DPAPI fuera de Git y de los argumentos de la tarea.
 Las herramientas de smoke ya no hardcodean cuenta/proyecto ni imprimen payloads
 o registros completos. La suite Supabase queda en 184/184 y el wrapper pasó su
 test de comportamiento en Windows PowerShell. Staging tiene 12/12 migraciones,
@@ -161,6 +163,15 @@ El preflight productivo enumera ocho migraciones pendientes, pero el inventario
 oficial confirma cero backups y PITR deshabilitado. El wrapper bloqueó el apply
 y producción no cambió. BIL-11 queda bloqueada hasta resolver el backup,
 completar deploy y smoke productivos y obtener después su gate monetario propio.
+
+Isaac aprobó mantener Supabase Free y crear un backup lógico diario. Ya existe
+la implementación: tarea a las 03:00, EFS, DPAPI, manifiesto SHA-256, 30 días de
+retención y restore local desechable. El wrapper no acepta una declaración
+manual: exige un ZIP cifrado de menos de 26 horas y repite su restore antes de
+producción. La tarea aún no está instalada porque falta obtener y proporcionar
+localmente `SUPABASE_DB_PASSWORD`; el token actual no tiene privilegio para
+obtener el rol de login de backup. No se reseteó la contraseña ni se tocó
+producción.
 
 Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214, primero
 en staging y después en producción si todo queda verde. No existe autorización
@@ -177,7 +188,8 @@ para BIL-11, pagos, refunds, cambios de catálogo o habilitar venta.
 
 ## Issues y siguiente acción
 
-1. Resolver el backup productivo sin exportar PII ni debilitar el wrapper.
+1. Instalar la tarea con la contraseña PostgreSQL local, crear la primera copia
+   y demostrar el restore sin inspeccionar PII.
 2. Repetir apply y smoke no monetario en producción solo tras ese gate.
 3. Solo después preparar BIL-11 y su autorización monetaria independiente.
 4. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
@@ -189,6 +201,6 @@ cambios monetarios reales y Master requieren Isaac.
 ## Última actualización
 
 2026-08-02, ISA-214 desplegó y validó BIL-01…10 en staging. Producción continúa
-intacta porque no tiene backup remoto ni PITR; el wrapper detuvo el apply tras
-el preflight. El siguiente paso requiere resolver ese gate de rollback. Venta
-pública y BIL-11 siguen NO-GO.
+intacta porque no tiene backup remoto ni PITR. La alternativa local diaria está
+implementada, pero falta instalarla con la contraseña de base, generar una
+copia y restaurarla. Venta pública y BIL-11 siguen NO-GO.

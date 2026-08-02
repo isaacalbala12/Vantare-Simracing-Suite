@@ -10,9 +10,10 @@ Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
   `validate-license` y no contiene configuración Billing por nombre.
 - El CLI enlazó el proyecto mediante su rol temporal oficial y `db push
   --dry-run` enumeró ocho migraciones pendientes sin aplicar ninguna. El
-  pipeline ya no exige `SUPABASE_DB_URL` ni conserva una contraseña PostgreSQL:
-  usa acceso enlazado temporal, confirmación exacta, migraciones antes que
-  Functions y smoke sanitizado.
+  pipeline de migración no exige `SUPABASE_DB_URL`: usa acceso enlazado
+  temporal, confirmación exacta, migraciones antes que Functions y smoke
+  sanitizado. El backup lógico sí requiere la contraseña de base; se protege
+  con DPAPI y nunca entra en Git, logs o argumentos de la tarea.
 - Producción contiene los once nombres de secret requeridos, pero su inventario
   oficial confirma cero backups, PITR deshabilitado. El wrapper bloquea por ello
   el apply aunque el dry-run sea verde.
@@ -27,8 +28,13 @@ Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
   checkout fail-closed por mapping vacío, portal sin customer, credencial
   Ed25519 sin grants, guards del webhook y snapshot agregado. La reconciliación
   dry-run procesó cero customers y escribió cero cambios.
-- El apply de producción queda bloqueado hasta disponer de un backup remoto real
-  o una autorización explícita para otro procedimiento de backup seguro.
+- Isaac eligió continuar en Supabase Free con backup lógico diario local. La
+  automatización está implementada con EFS, DPAPI, hashes, retención de 30 días
+  y restore real en contenedor. El wrapper solo acepta una copia local de menos
+  de 26 horas que vuelva a restaurarse correctamente.
+- El apply de producción sigue bloqueado hasta instalar la tarea, generar la
+  primera copia y demostrar su restore. Falta proporcionar localmente
+  `SUPABASE_DB_PASSWORD`; el token administrativo no puede sustituirlo.
 - BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue
   y después su autorización monetaria independiente. Billing continúa NO-GO.
 

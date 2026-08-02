@@ -66,6 +66,35 @@ func TestPresentationStreamReconnectRehydratesExactActiveOrEmptySnapshot(t *test
 	}
 }
 
+func TestPresentationStreamServerRestartStartsWithAuthoritativeSnapshot(t *testing.T) {
+	beforeRestart := NewEngineerService(nil)
+	notification := EngineerNotification{
+		Version: 1, ID: "fuel-before-restart", Category: "fuel", Severity: "warning",
+		TextKey: "fuel.half_tank", Text: "Half tank", VoiceText: "Half tank", Locale: "en",
+		Role: "engineer", Channel: "engineer", Priority: 50,
+		CreatedAt: beforeRestart.policyClock.NowMS(), ExpiresAt: beforeRestart.policyClock.NowMS() + 10_000,
+		Source: "telemetry-core",
+	}
+	beforeRestart.publishNotification(notification)
+	activeStream, unsubscribeActive := beforeRestart.SubscribeStream()
+	active := <-activeStream
+	unsubscribeActive()
+	if active.Kind != EngineerStreamSnapshot || !active.Active || active.Presentation == nil || active.Presentation.ID != notification.ID {
+		t.Fatalf("snapshot before restart=%+v", active)
+	}
+
+	afterRestart := NewEngineerService(nil)
+	emptyStream, unsubscribeEmpty := afterRestart.SubscribeStream()
+	defer unsubscribeEmpty()
+	empty := <-emptyStream
+	if empty.Kind != EngineerStreamSnapshot || empty.Active || empty.Presentation != nil {
+		t.Fatalf("snapshot after restart=%+v want authoritative empty snapshot", empty)
+	}
+	if empty.Sequence != 1 || empty.Generation != 0 {
+		t.Fatalf("restart cursor=%d/%d want fresh 1/0", empty.Sequence, empty.Generation)
+	}
+}
+
 func TestSubtitleRoutingIsIndependentAndIncludedInOrderedStatus(t *testing.T) {
 	service := NewEngineerService(nil)
 	stream, unsubscribe := service.SubscribeStream()

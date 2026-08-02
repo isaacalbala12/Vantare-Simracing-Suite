@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
@@ -13,6 +14,30 @@ import (
 )
 
 type cachedAudioResolver struct{}
+
+type blockingStartedReporter struct {
+	started chan struct{}
+	release chan struct{}
+	mu      sync.Mutex
+	acks    []delivery.Acknowledgement
+}
+
+func (reporter *blockingStartedReporter) Acknowledge(state delivery.State, reason delivery.Reason) error {
+	reporter.mu.Lock()
+	reporter.acks = append(reporter.acks, delivery.Acknowledgement{State: state, Reason: reason})
+	reporter.mu.Unlock()
+	if state == delivery.StateStarted {
+		close(reporter.started)
+		<-reporter.release
+	}
+	return nil
+}
+
+func (reporter *blockingStartedReporter) snapshot() []delivery.Acknowledgement {
+	reporter.mu.Lock()
+	defer reporter.mu.Unlock()
+	return append([]delivery.Acknowledgement(nil), reporter.acks...)
+}
 
 func (cachedAudioResolver) ResolvePresentationCached(context.Context, audio.PresentationRequest) (string, error) {
 	return "cached.wav", nil
@@ -202,5 +227,59 @@ func TestDisabledOutputCannotAcknowledgeAtDeliveryBoundary(t *testing.T) {
 	}
 	if len(reporter.states) != 0 {
 		t.Fatalf("disabled output acknowledged states=%v", reporter.states)
+	}
+}
+
+func TestDisablingOutputDuringStartedAckCannotPublishOrPlay(t *testing.T) {
+	resolver, err := presentation.NewResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewEngineerService(nil)
+	player := &recordingPresentationPlayer{}
+	reporter := &blockingStartedReporter{started: make(chan struct{}), release: make(chan struct{})}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	decision := messagepolicy.Decision{
+		Version: messagepolicy.ContractVersionV1, CandidateID: "lap-race", Family: messagepolicy.FamilyLaps,
+		Intent: messagepolicy.IntentLapCompleted, Priority: messagepolicy.PriorityInformation,
+		CreatedAtMS: 100, ExpiresAtMS: 200,
+	}
+	service.activeDelivery = &activeDelivery{id: "delivery-race", decision: decision, cancel: cancel}
+	beforeScheduler := service.scheduler.State()
+	port := productDeliveryPort{
+		service: service, player: player, resolver: cachedAudioResolver{},
+		presentationResolver: resolver, locale: presentation.LocaleEnglish,
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- port.Deliver(ctx, delivery.Request{
+			Version: delivery.ContractVersionV1, DeliveryID: "delivery-race", Decision: decision,
+		}, reporter)
+	}()
+
+	<-reporter.started
+	if err := service.SetOutputMode("laps", "disabled"); err != nil {
+		t.Fatal(err)
+	}
+	close(reporter.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+
+	if got := service.RecentNotifications(); len(got) != 0 {
+		t.Fatalf("visual notification escaped disabled race: %+v", got)
+	}
+	if len(player.paths) != 0 {
+		t.Fatalf("audio escaped disabled race: %v", player.paths)
+	}
+	wantAcks := []delivery.Acknowledgement{
+		{State: delivery.StateStarted, Reason: delivery.ReasonNone},
+		{State: delivery.StateCancelled, Reason: delivery.ReasonLifecycleBoundary},
+	}
+	if got := reporter.snapshot(); !reflect.DeepEqual(got, wantAcks) {
+		t.Fatalf("acknowledgements = %+v, want %+v", got, wantAcks)
+	}
+	if afterScheduler := service.scheduler.State(); !reflect.DeepEqual(afterScheduler, beforeScheduler) {
+		t.Fatalf("disabled delivery mutated scheduler: before=%+v after=%+v", beforeScheduler, afterScheduler)
 	}
 }

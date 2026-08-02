@@ -17,13 +17,16 @@ Nota ISA-178 / ENG-08 (2026-08-02, In Review):
 - Radio y subtítulos son dos salidas visuales independientes que comparten el
   mismo ViewModel puro. Pueden coexistir; los subtítulos se activan de forma
   global y no requieren añadir el widget al layout. Sin presentación real,
-  Desktop/OBS no inventan contenido; Studio usa una preview marcada.
+  Desktop/OBS no inventan contenido; Studio usa una preview marcada. ENG-08
+  conserva esta preferencia solo durante el runtime y la reinicia habilitada;
+  la persistencia queda para el contrato central de Ajustes.
 - Go es la autoridad de routing `audio|visual|both|disabled` por las seis
   familias aprobadas. `disabled` se aplica antes del scheduler, ACK, cooldown y
   preempción y cancela solo la salida activa de esa familia.
-- Wails y SSE consumen un único stream ordenado por `generation+sequence`; una
-  reconexión rehidrata el snapshot activo exacto o vacío y ningún mensaje de
-  una generación anterior puede reaparecer después de un clear.
+- Wails y SSE consumen un único stream ordenado por `generation+sequence`; tras
+  una reconexión rechazan status/presentation hasta que el snapshot autoritativo
+  establece el nuevo cursor. Así rehidratan el activo exacto o vacío y ningún
+  mensaje tardío de una generación anterior puede reaparecer.
 - Harness determinista: 12 comparaciones root-only contra baselines fijos para
   cuatro locales, tres fondos y tres tamaños, sin máscaras ni overflow.
 - Contrato: `docs/engineer/radio-output-contract.md`. Sin Vantare Original,

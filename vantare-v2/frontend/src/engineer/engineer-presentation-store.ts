@@ -133,6 +133,7 @@ export function createEngineerPresentationStore(
   let subtitlesEnabled = true;
   let generation = -1;
   let sequence = 0;
+  let awaitingSnapshot = true;
   let expiryHandle: TimerHandle | null = null;
 
   const notify = () => {
@@ -174,8 +175,22 @@ export function createEngineerPresentationStore(
     } catch {
       return false;
     }
-    if (event.sequence <= sequence || event.generation < generation) return false;
-    sequence = event.sequence;
+    if (awaitingSnapshot && event.kind !== "snapshot") return false;
+    if (event.kind === "snapshot" && event.active) {
+      try {
+        parseEngineerPresentation(event.presentation);
+      } catch {
+        return false;
+      }
+    }
+    if (!awaitingSnapshot && (event.sequence <= sequence || event.generation < generation)) return false;
+    if (awaitingSnapshot) {
+      awaitingSnapshot = false;
+      generation = event.generation;
+      sequence = event.sequence;
+    } else {
+      sequence = event.sequence;
+    }
     if (event.generation > generation) {
       generation = event.generation;
       clear("canonical-generation");
@@ -185,7 +200,8 @@ export function createEngineerPresentationStore(
       notify();
     }
     if ((event.kind === "snapshot" || event.kind === "presentation") && event.active) {
-      return publish(event.presentation);
+      const published = publish(event.presentation);
+      return event.kind === "snapshot" ? true : published;
     }
     if (!event.active) clear("canonical-empty");
     return true;
@@ -202,6 +218,7 @@ export function createEngineerPresentationStore(
       return () => listeners.delete(listener);
     },
     resetTransport() {
+      awaitingSnapshot = true;
       generation = -1;
       sequence = 0;
       clear("transport-reset");
@@ -209,6 +226,7 @@ export function createEngineerPresentationStore(
     dispose() {
       cancelExpiry();
       current = null;
+      awaitingSnapshot = true;
       generation = -1;
       sequence = 0;
       listeners.clear();

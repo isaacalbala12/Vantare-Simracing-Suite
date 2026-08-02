@@ -243,7 +243,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-158 / ENG-05, policy/scheduler; base aceptada de ENG-06 |
 | Cerrada técnicamente | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
 | En revisión | ISA-177 / ENG-07, presentación canónica multilingüe |
-| En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal |
+| En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal; reconexión autoritativa y carrera disabled corregidas en re-review |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 

@@ -39,9 +39,12 @@ Cada envelope incluye `generation` y `sequence`. La generación aumenta ante:
 
 Wails y SSE eliminan la presentación activa cuando cambia esa generación,
 incluso si la nueva sesión vuelve a estar conectada. Ambos transportes usan un
-solo canal ordenado. Al conectar o reconectar reciben el snapshot activo exacto
-si aún es válido, o un snapshot vacío; un evento extraído antes de un clear no
-puede resucitar después porque su secuencia/generación ya no es admisible.
+solo canal ordenado. Al conectar o reconectar entran primero en estado
+`awaitingSnapshot`: descartan `presentation` y `status` hasta recibir el snapshot
+autoritativo del nuevo runtime. Ese snapshot establece generación y secuencia de
+forma atómica, con la presentación activa exacta si aún es válida o vacío. Un
+evento tardío del transporte anterior no puede resucitar después de un clear ni
+durante la reconexión.
 
 ## Salidas por categoría
 
@@ -65,6 +68,9 @@ un segundo tipo de catálogo. Pueden mostrarse aunque el layout no contenga
 `engineer-radio`, y pueden coexistir con él. Comparten la misma presentación,
 locale, rol, severidad y texto. Solo una superficie realiza el anuncio live
 accesible cuando ambas están visibles, evitando duplicados de lector de pantalla.
+La preferencia de subtítulos es runtime en ENG-08 y vuelve al valor seguro
+`enabled` al reiniciar. Su persistencia pertenecerá al contrato central de
+Ajustes; este corte no crea un segundo fichero de configuración privado.
 
 ## Widget funcional
 

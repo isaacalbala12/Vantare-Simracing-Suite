@@ -276,10 +276,29 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 	if err := reporter.Acknowledge(delivery.StateStarted, delivery.ReasonNone); err != nil {
 		return err
 	}
+	if cause := context.Cause(ctx); cause != nil {
+		return acknowledgeCancellation(reporter, cause)
+	}
+	mode = port.service.OutputMode(presented.Family)
+	if mode == OutputDisabled {
+		return reporter.Acknowledge(delivery.StateCancelled, delivery.ReasonLifecycleBoundary)
+	}
+	visualEnabled = outputHasVisual(mode)
+	audioEnabled = outputHasAudio(mode)
 	if visualEnabled {
-		port.service.publishDecision(request.Decision, presented)
+		port.service.publishDecisionIfEnabled(ctx, request.Decision, presented)
+	}
+	if cause := context.Cause(ctx); cause != nil {
+		return acknowledgeCancellation(reporter, cause)
 	}
 	if !audioEnabled || port.player == nil {
+		return reporter.Acknowledge(delivery.StateCompleted, delivery.ReasonNone)
+	}
+	mode = port.service.OutputMode(presented.Family)
+	if mode == OutputDisabled {
+		return reporter.Acknowledge(delivery.StateCancelled, delivery.ReasonLifecycleBoundary)
+	}
+	if !outputHasAudio(mode) {
 		return reporter.Acknowledge(delivery.StateCompleted, delivery.ReasonNone)
 	}
 	if path == "" {
@@ -312,14 +331,21 @@ func acknowledgeCancellation(reporter delivery.Reporter, cause error) error {
 	return reporter.Acknowledge(delivery.StateCancelled, reason)
 }
 
-func (s *EngineerService) publishDecision(decision messagepolicy.Decision, presented presentation.Presentation) {
-	s.publishNotification(EngineerNotification{
+func (s *EngineerService) publishDecisionIfEnabled(ctx context.Context, decision messagepolicy.Decision, presented presentation.Presentation) bool {
+	notification := EngineerNotification{
 		Version: presented.Version, ID: decision.CandidateID, Category: string(presented.Family),
 		Severity: string(presented.Severity), TextKey: presented.Intent, Text: presented.VisualText,
 		VoiceText: presented.VoiceText, Locale: string(presented.Locale), Role: string(presented.Role),
 		Channel: string(presented.Channel), Priority: int(presented.Priority), CreatedAt: presented.CreatedAtMS,
 		ExpiresAt: presented.ExpiresAtMS, Source: "telemetry-core",
-	})
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if context.Cause(ctx) != nil || !outputHasVisual(s.outputModes[presented.Family]) {
+		return false
+	}
+	s.publishNotificationLocked(notification)
+	return true
 }
 
 func (s *EngineerService) publishLegacyHarness(message audio.Message) {
@@ -359,8 +385,13 @@ func (s *EngineerService) publishLegacyHarness(message audio.Message) {
 }
 
 func (s *EngineerService) publishNotification(notification EngineerNotification) {
-	s.store.Add(notification)
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.publishNotificationLocked(notification)
+}
+
+func (s *EngineerService) publishNotificationLocked(notification EngineerNotification) {
+	s.store.Add(notification)
 	presentation := notification
 	s.activePresentation = &presentation
 	for _, subscriber := range s.subs {
@@ -377,5 +408,4 @@ func (s *EngineerService) publishNotification(notification EngineerNotification)
 		s.publishStatusLocked(status)
 		s.emitter.Emit("engineer:status", status)
 	}
-	s.mu.Unlock()
 }

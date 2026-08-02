@@ -67,12 +67,33 @@ describe("engineer presentation projection", () => {
   it("rejects stale stream events after a newer generation", () => {
     const store = createEngineerPresentationStore({ now: () => 1_000 });
     expect(store.consumeStream({
-      version: 1, sequence: 4, generation: 2, kind: "presentation", active: true, presentation,
+      version: 1, sequence: 4, generation: 2, kind: "snapshot", active: true, presentation,
     })).toBe(true);
     expect(store.consumeStream({ version: 1, sequence: 5, generation: 3, kind: "status", active: false })).toBe(true);
     expect(store.consumeStream({
       version: 1, sequence: 4, generation: 2, kind: "presentation", active: true, presentation,
     })).toBe(false);
+    expect(store.getSnapshot()).toBeNull();
+  });
+
+  it("accepts only an authoritative snapshot after a transport reset", () => {
+    const store = createEngineerPresentationStore({ now: () => 1_000 });
+    expect(store.consumeStream({
+      version: 1, sequence: 50, generation: 9, kind: "snapshot", active: true, presentation,
+    })).toBe(true);
+    store.resetTransport();
+
+    expect(store.consumeStream({
+      version: 1, sequence: 1, generation: 0, kind: "snapshot", active: true,
+      presentation: { ...presentation, text: "" },
+    })).toBe(false);
+    expect(store.consumeStream({
+      version: 1, sequence: 51, generation: 9, kind: "presentation", active: true, presentation,
+    })).toBe(false);
+    expect(store.getSnapshot()).toBeNull();
+    expect(store.consumeStream({
+      version: 1, sequence: 1, generation: 0, kind: "snapshot", active: false,
+    })).toBe(true);
     expect(store.getSnapshot()).toBeNull();
   });
 });

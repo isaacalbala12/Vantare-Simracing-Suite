@@ -14,6 +14,7 @@ export function createWailsEngineerPresentationAdapter(input: {
   return {
     start() {
       if (unsubscribers.length > 0) return;
+      input.store.resetTransport();
       unsubscribers = [input.subscribe(ENGINEER_STREAM_EVENT, (data) => input.store.consumeStream(data))];
       input.requestSnapshot?.();
     },
@@ -41,6 +42,7 @@ export function createSseEngineerPresentationAdapter(input: {
   return {
     start() {
       if (source) return;
+      input.store.resetTransport();
       source = factory(input.url ?? "/engineer/stream");
       source.addEventListener("engineer-stream", (event) => {
         try {

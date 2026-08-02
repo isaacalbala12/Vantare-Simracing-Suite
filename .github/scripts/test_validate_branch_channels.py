@@ -91,6 +91,19 @@ class ValidateBranchChannelsTest(unittest.TestCase):
                 self.assertEqual(release_gate.count(f"--exclude {test_file}"), 1)
                 self.assertIn(f"vitest run {test_file}", release_gate)
 
+    def test_release_build_embeds_the_real_testing_channel(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        release_gate = (
+            repo_root / ".github" / "workflows" / "release.yml"
+        ).read_text(encoding="utf-8")
+        taskfile = (
+            repo_root / "vantare-v2" / "build" / "windows" / "Taskfile.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("VANTARE_BUILD_CHANNEL:", release_gate)
+        self.assertIn("github.ref_type == 'branch'", release_gate)
+        self.assertIn("-X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}", taskfile)
+
     def test_runbook_never_reuses_tags_or_commits_to_master(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]
         runbook = (

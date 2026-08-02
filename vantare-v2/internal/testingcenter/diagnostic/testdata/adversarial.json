@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "name": "windows-path-and-bearer",
+      "message": "Authorization: Bearer {{BEARER}} at C:\\Users\\{{IDENTITY}}\\AppData\\Local\\Vantare\\logs\\app.log",
+      "forbidden": ["{{BEARER}}", "{{IDENTITY}}", "C:\\Users"]
+    },
+    {
+      "name": "url-query-and-email",
+      "message": "request https://{{URL_USER}}:{{URL_PASSWORD}}@example.invalid/private?token={{QUERY_TOKEN}} failed for {{EMAIL}}",
+      "forbidden": ["{{URL_USER}}:{{URL_PASSWORD}}", "{{QUERY_TOKEN}}", "{{EMAIL}}", "example.invalid/private"]
+    },
+    {
+      "name": "json-secrets-and-posix-path",
+      "message": "{\"api_key\":\"{{API_KEY}}\",\"username\":\"{{IDENTITY}}\"} /home/{{IDENTITY}}/.config/vantare/private.json",
+      "forbidden": ["{{API_KEY}}", "{{IDENTITY}}", "/home/"]
+    },
+    {
+      "name": "jwt-and-unc",
+      "message": "session {{JWT_HEADER}}.{{JWT_PAYLOAD}}.{{JWT_SIGNATURE}} on \\\\synthetic.invalid\\private\\share\\log.txt",
+      "forbidden": ["{{JWT_HEADER}}", "{{JWT_SIGNATURE}}", "synthetic.invalid", "private\\share"]
+    },
+    {
+      "name": "spaced-identity-and-path",
+      "message": "username={{IDENTITY}}\nopen C:\\Users\\{{IDENTITY}}\\AppData\\Local\\Vantare\\private log",
+      "forbidden": ["{{IDENTITY}}", "AppData", "C:\\Users"]
+    }
+  ]
+}

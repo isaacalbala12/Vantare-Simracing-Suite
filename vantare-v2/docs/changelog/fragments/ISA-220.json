@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-220",
+  "type": "feature",
+  "summary": "Los testers de Nightly y Testers pueden describir un problema y enviar un reporte controlado desde la nueva pestaña Testing Center.",
+  "technicalNotes": [
+    "La pestaña solo aparece cuando el canal embebido en la build coincide con su capability firmada; el servidor vuelve a comprobar membresía y rol.",
+    "El borrador conserva únicamente el texto y el área afectada; diagnóstico y logs arrancan apagados y nunca se guardan.",
+    "El diagnóstico muestra el JSON exacto, su tamaño y SHA-256 antes de enviar esos mismos bytes.",
+    "Los reintentos conservan una clave generada por el backend para no crear un segundo reporte por un fallo de red."
+  ],
+  "testing": [
+    "Abrir Testing Center en una build Nightly o Testers y completar acción, resultado esperado y resultado observado.",
+    "Reiniciar la app y comprobar que el texto reaparece, pero los dos consentimientos siguen apagados.",
+    "Activar diagnóstico, revisar el JSON completo y confirmar que los logs indican que no hay datos disponibles en esta versión.",
+    "Probar sin conexión, volver a conectar, enviar y guardar el identificador visible del reporte."
+  ],
+  "knownLimitations": [
+    "Esta fase no recopila logs productivos ni crea todavía GitHub Issues, ejecuciones de Codex, avisos de Discord o promociones de rama.",
+    "El envío real requiere que TAU-04A esté desplegado en el entorno controlado de Supabase; esta rama no realiza ese despliegue."
+  ]
+}

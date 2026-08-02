@@ -13,6 +13,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
@@ -20,6 +21,15 @@ import (
 type fakeStrategyCommandExecutor struct {
 	result []byte
 	err    error
+}
+
+type fakeStrategyManualExecutor struct {
+	result []byte
+	err    error
+}
+
+func (fake fakeStrategyManualExecutor) Execute(context.Context, []byte) ([]byte, error) {
+	return fake.result, fake.err
 }
 
 func (fake fakeStrategyCommandExecutor) Execute(context.Context, []byte) ([]byte, error) {
@@ -79,6 +89,34 @@ func TestExecuteStrategyApplicationCommandSanitizesInternalErrors(t *testing.T) 
 	}
 	if failure["code"] != string(strategyapplication.ErrorInvalidCommand) || message != "The Strategy request could not be completed." {
 		t.Fatalf("unexpected sanitized failure: %#v", failure)
+	}
+}
+
+func TestExecuteStrategyManualCommandPreservesCorrelationAndSanitizesErrors(t *testing.T) {
+	executor := fakeStrategyManualExecutor{err: &strategymanual.CalculationError{
+		Code:  strategymanual.ErrorInsufficientCapacity,
+		Field: "fuel.usableCapacity",
+		Cause: errors.New(`C:\Users\private\fuel.json token=secret-value`),
+	}}
+	_, failure := executeStrategyManualCommand(context.Background(), executor, map[string]any{"commandId": "manual-42"})
+	message, _ := failure["message"].(string)
+	if failure["commandId"] != "manual-42" || failure["code"] != string(strategymanual.ErrorInsufficientCapacity) || failure["field"] != "fuel.usableCapacity" {
+		t.Fatalf("failure did not preserve safe typed fields: %#v", failure)
+	}
+	if strings.Contains(message, "Users") || strings.Contains(message, "secret-value") {
+		t.Fatalf("public failure leaked internal details: %#v", failure)
+	}
+}
+
+func TestExecuteStrategyManualCommandReturnsDecodedResult(t *testing.T) {
+	executor := fakeStrategyManualExecutor{result: []byte(`{"protocolVersion":"strategy.manual.v1","commandId":"manual-7","result":{"stints":[]}}`)}
+	result, failure := executeStrategyManualCommand(context.Background(), executor, map[string]any{"commandId": "manual-7"})
+	if failure != nil {
+		t.Fatalf("failure = %#v", failure)
+	}
+	decoded, ok := result.(map[string]any)
+	if !ok || decoded["commandId"] != "manual-7" {
+		t.Fatalf("result = %#v", result)
 	}
 }
 

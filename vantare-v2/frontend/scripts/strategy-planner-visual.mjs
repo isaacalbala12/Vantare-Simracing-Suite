@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const evidenceDir = path.resolve(frontendDir, "../docs/strategy-planner/evidence/str-08");
+const evidenceDir = path.resolve(frontendDir, "../docs/strategy-planner/evidence/str-09");
 const port = Number(process.env.STRATEGY_VISUAL_PORT ?? 5187);
 const origin = `http://127.0.0.1:${port}`;
 const serverLog = [];
@@ -56,7 +56,9 @@ try {
   await page.getByRole("button", { name: /Crear workspace/ }).click();
   await page.getByRole("heading", { name: "Plan de carrera" }).waitFor();
 
+  await verifyManualInputs(page, evidenceDir);
   await verifyEditorInteractions(page);
+  await page.getByTestId("strategy-total-pit-time").filter({ hasText: "122.0" }).waitFor();
   await page.getByRole("button", { name: "Guardar plan" }).click();
   await page.getByRole("status").filter({ hasText: "guardado localmente" }).waitFor();
   await page.reload({ waitUntil: "networkidle" });
@@ -65,6 +67,8 @@ try {
   await page.getByRole("heading", { name: "Plan de carrera" }).waitFor();
   await page.getByTestId("strategy-slot-stint-1-front_left").getByText("S-05").waitFor();
   await page.getByTestId("strategy-slot-stint-1-front_right").getByText("S-06").waitFor();
+  await page.getByTestId("strategy-manual-original-penaltySeconds").waitFor();
+  await page.getByTestId("strategy-total-pit-time").filter({ hasText: "122.0" }).waitFor();
   if (await page.getByRole("button", { name: "Guardar plan" }).isEnabled()) {
     throw new Error("Reloaded Strategy document is unexpectedly dirty");
   }
@@ -143,6 +147,40 @@ try {
 } finally {
   await browser?.close();
   stopProcessTree(server);
+}
+
+async function verifyManualInputs(page, evidenceDir) {
+  const fuel = page.getByRole("spinbutton", { name: "Fuel por vuelta" });
+  await fuel.fill("4.6");
+  await fuel.press("Enter");
+  await page.getByTestId("strategy-manual-original-fuelPerLapLitres").filter({ hasText: "4.8" }).waitFor();
+  await page.getByTestId("strategy-stint-stint-1").getByText("78.2 L").waitFor();
+  await page.getByTestId("strategy-fuel-save-per-lap").filter({ hasText: "0.75 L/v" }).waitFor();
+  await page.screenshot({ path: path.join(evidenceDir, "actual-manual-quick-corrected.png"), fullPage: true });
+
+  await page.getByRole("button", { name: "Restaurar Fuel por vuelta" }).click();
+  if (await fuel.inputValue() !== "4.8") throw new Error("Quick correction did not restore its original value");
+
+  await page.getByRole("button", { name: "Tabla por vuelta" }).click();
+  const lapFuel = page.getByRole("spinbutton", { name: "Fuel vuelta 2", exact: true });
+  await lapFuel.fill("5.1");
+  await lapFuel.press("Enter");
+  await page.getByTestId("strategy-lap-source-2-fuelPerLapLitres").filter({ hasText: "Corregido · original 4.8" }).waitFor();
+  await page.screenshot({ path: path.join(evidenceDir, "actual-manual-lap-corrected.png") });
+  await page.getByRole("button", { name: "Restaurar Fuel de la vuelta 2" }).click();
+  await page.getByTestId("strategy-lap-source-2-fuelPerLapLitres").filter({ hasText: "Original" }).waitFor();
+
+  await page.getByRole("button", { name: "Entrada rápida" }).click();
+  const penalty = page.getByRole("spinbutton", { name: "Penalización" });
+  await penalty.fill("10");
+  await penalty.press("Enter");
+  await page.getByTestId("strategy-total-pit-time").filter({ hasText: "77.2" }).waitFor();
+
+  const fuelStart = page.getByRole("spinbutton", { name: "Fuel inicial" });
+  await fuelStart.fill("110");
+  await fuelStart.press("Enter");
+  await page.getByRole("alert").filter({ hasText: "starting Fuel" }).waitFor();
+  if (await fuelStart.inputValue() !== "100") throw new Error("Rejected Fuel input stayed visible after validation");
 }
 
 async function verifyEditorInteractions(page) {

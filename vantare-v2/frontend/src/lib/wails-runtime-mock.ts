@@ -151,6 +151,98 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   fail("invalid_command", "operation", "Unsupported harness Strategy operation");
 }
 
+function handleHarnessStrategyManual(command: Record<string, unknown>) {
+  const commandId = typeof command.commandId === "string" ? command.commandId : "invalid-command";
+  const input = readHarnessPayload(command.input);
+  const stints = Array.isArray(input.stints) ? input.stints.map(Number) : [];
+  const laps = Array.isArray(input.laps) ? input.laps.map(readHarnessPayload) : [];
+  const sourced = (field: string) => Number(readHarnessPayload(input[field]).value);
+  const lapValue = (lap: Record<string, unknown>, field: string) => Number(readHarnessPayload(lap[field]).value);
+  const finite = stints.every((value) => Number.isSafeInteger(value) && value > 0)
+    && laps.length === stints.reduce((sum, value) => sum + value, 0)
+    && laps.every((lap) => ["fuelPerLap", "virtualEnergyPerLap", "averageLap", "tyreWearPercent"]
+      .every((field) => Number.isFinite(lapValue(lap, field))));
+  if (!finite) {
+    broadcast("strategy:manual:error", {
+      commandId,
+      code: "invalid_input",
+      field: "manualPlan.laps",
+      message: "Review the highlighted manual Strategy input.",
+    });
+    return;
+  }
+
+  const total = (field: string) => laps.reduce((sum, lap) => sum + lapValue(lap, field), 0);
+  const resource = (raceNeed: number, formationNeed: number, reserveAmount: number, startAmount: number, usableCapacity: number) => {
+    const totalNeed = raceNeed + formationNeed + reserveAmount;
+    const additionalRequired = Math.max(totalNeed - startAmount, 0);
+    const stopsRequired = additionalRequired > 0 ? Math.ceil(additionalRequired / usableCapacity) : 0;
+    const amount = stopsRequired > 0
+      ? Math.max(totalNeed - (startAmount + usableCapacity * (stopsRequired - 1)), 0)
+      : 0;
+    const average = raceNeed / laps.length;
+    return {
+      used: raceNeed > 0,
+      raceNeed,
+      formationNeed,
+      reserveAmount,
+      totalNeed,
+      startAmount,
+      additionalRequired,
+      usableCapacity,
+      availableCompetitiveLaps: average > 0 ? Math.floor(Math.max(startAmount - formationNeed - reserveAmount, 0) / average) : 0,
+      stopsRequired,
+      saving: {
+        available: stopsRequired > 0,
+        feasible: amount > 0 && amount < raceNeed,
+        targetStops: Math.max(0, stopsRequired - 1),
+        amount,
+        perLap: amount / laps.length,
+        percentOfConsumption: average > 0 ? amount / laps.length / average * 100 : 0,
+      },
+    };
+  };
+  const fuel = resource(total("fuelPerLap"), sourced("fuelFormation"), sourced("fuelReserve"), sourced("fuelStartAmount"), sourced("fuelUsableCapacity"));
+  const virtualEnergy = resource(total("virtualEnergyPerLap"), sourced("virtualEnergyFormation"), sourced("virtualEnergyReserve"), sourced("virtualEnergyStartAmount"), sourced("virtualEnergyUsableCapacity"));
+  let offset = 0;
+  const stintResults = stints.map((lapCount) => {
+    const slice = laps.slice(offset, offset + lapCount);
+    offset += lapCount;
+    const sum = (field: string) => slice.reduce((value, lap) => value + lapValue(lap, field), 0);
+    return {
+      lapCount,
+      fuelNeed: sum("fuelPerLap"),
+      virtualEnergyNeed: sum("virtualEnergyPerLap"),
+      averageLapSeconds: sum("averageLap") / lapCount,
+      tyreWearPercent: sum("tyreWearPercent"),
+      fuelSavingAmount: fuel.saving.perLap * lapCount,
+      virtualEnergySavingAmount: virtualEnergy.saving.perLap * lapCount,
+    };
+  });
+  const pitStopCount = Math.max(0, stints.length - 1);
+  const pitLossPerStopSeconds = sourced("pitLossPerStop");
+  const totalPitLossSeconds = pitStopCount * pitLossPerStopSeconds;
+  const repairSeconds = sourced("repair");
+  const penaltySeconds = sourced("penalty");
+  broadcast("strategy:manual:result", {
+    protocolVersion: "strategy.manual.v1",
+    commandId,
+    result: {
+      fuel,
+      virtualEnergy,
+      pitStopCount,
+      pitLossPerStopSeconds,
+      totalPitLossSeconds,
+      repairSeconds,
+      penaltySeconds,
+      totalPitSeconds: totalPitLossSeconds + repairSeconds + penaltySeconds,
+      averageLapSeconds: total("averageLap") / laps.length,
+      averageTyreWearPercent: total("tyreWearPercent") / laps.length,
+      stints: stintResults,
+    },
+  });
+}
+
 function broadcast(name: string, data: unknown) {
 
   setTimeout(() => {
@@ -174,6 +266,11 @@ export const Events = {
 
     if (name === "strategy:application:command") {
       setTimeout(() => handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
+      return;
+    }
+
+    if (name === "strategy:manual:calculate") {
+      setTimeout(() => handleHarnessStrategyManual(readHarnessPayload(data)), 0);
       return;
     }
 

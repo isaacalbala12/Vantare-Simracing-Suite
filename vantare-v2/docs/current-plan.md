@@ -1,3 +1,21 @@
+Nota ISA-144 / STR-09 (2026-08-02):
+
+- Entrada rápida y tabla de 78 vueltas usan correcciones no destructivas con
+  valor original, valor efectivo, motivo, fecha y restauración individual.
+- `strategy.manual.v1` conecta frontend, Wails y el dominio Go. Fuel y VE se
+  calculan por separado; tarjetas, fuel-save y boxes consumen una misma
+  respuesta correlacionada.
+- La pérdida configurada es por parada: cuatro stints producen tres paradas.
+  Reparaciones y penalizaciones permanecen extras explícitos. No se publica
+  una cifra de impacto en ritmo sin modelo demostrable.
+- El cálculo anterior desaparece durante una revisión y los inputs rechazados
+  vuelven al valor válido sin ensuciar el documento.
+- Playwright real valida correcciones, rechazo, guardado/recarga,
+  wide/medium/compact, overflow cero y navegador sin errores. Evidencia:
+  `docs/strategy-planner/str-09-manual-inputs.md`.
+- Estado: listo para review independiente; sin merge o promoción.
+  Tras la review continúa ISA-168 / TA-03C; STR-10 sigue bloqueado por ISA-159.
+
 Nota ISA-143 / STR-08 (2026-08-02):
 
 - El workspace de Strategy ya edita stints y neumáticos físicos: crear,

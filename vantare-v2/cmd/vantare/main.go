@@ -29,6 +29,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/updater"
@@ -250,6 +251,54 @@ func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) (strin
 		return "The Strategy draft has unsaved changes.", true
 	default:
 		return "The Strategy request could not be completed.", false
+	}
+}
+
+func executeStrategyManualCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy request could not be completed."}
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	if err := json.Unmarshal(document, &header); err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy request could not be completed."}
+	}
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategymanual.ErrorInvalidInput
+		field := ""
+		var calculationErr *strategymanual.CalculationError
+		if errors.As(err, &calculationErr) {
+			if _, known := publicStrategyManualMessage(calculationErr.Code); known {
+				code = calculationErr.Code
+				field = calculationErr.Field
+			}
+		}
+		message, _ := publicStrategyManualMessage(code)
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(code), "field": field, "message": message}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy result was invalid."}
+	}
+	return result, nil
+}
+
+func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
+	switch code {
+	case strategymanual.ErrorInvalidInput:
+		return "Review the highlighted manual Strategy input.", true
+	case strategymanual.ErrorOverflow:
+		return "The manual Strategy calculation exceeds supported limits.", true
+	case strategymanual.ErrorInsufficientCapacity:
+		return "The configured resource capacity is insufficient.", true
+	default:
+		return "The manual Strategy request could not be completed.", false
 	}
 }
 
@@ -850,6 +899,15 @@ func main() {
 			return
 		}
 		emitter.Emit("strategy:application:result", result)
+	})
+	strategyManualBridge := strategymanual.JSONBridge{}
+	wailsApp.Event.On("strategy:manual:calculate", func(event *application.CustomEvent) {
+		result, failure := executeStrategyManualCommand(ctx, strategyManualBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:manual:error", failure)
+			return
+		}
+		emitter.Emit("strategy:manual:result", result)
 	})
 
 	// Resolve the profile path relative to the config directory if it's relative

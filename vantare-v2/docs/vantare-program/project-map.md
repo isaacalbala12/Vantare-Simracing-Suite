@@ -31,7 +31,7 @@ almacenamiento privado de otro.
 | Telemetry Core | Runtime live modular | ISA-117 / TC-09F técnicamente cerrado, `In Review`; no promovido | ISA-160/161 para Strategy live |
 | Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | ISA-122/124 en review; ISA-126/135 activos; ISA-132 pendiente | ISA-159 productor Strategy histórico |
 | Engineer/Spotter | Acompañamiento live, seguridad, voz y Pit Manager | ISA-123/125/127/133 en review; siguiente ISA-158 | ISA-158 scheduler determinista |
-| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | ISA-143 / STR-08 listo para review: editor persistente, stints y DnD | ISA-144 / STR-09 tras ACCEPT |
+| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | ISA-144 / STR-09 implementado: entrada rápida/por vuelta y cálculo manual | Review STR-09; después ISA-168 / TA-03C; STR-10 bloqueado por ISA-159 |
 | Overlay Studio | Editor único, Desktop y OBS | proyecto activo | TC-07 y gates visuales |
 | Launcher | Apps, perfiles y módulos fiables | implementación previa | auditoría de integración |
 | Hub | Accesos y resumen real | conservar estructura | consistencia |

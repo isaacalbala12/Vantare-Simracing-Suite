@@ -1,3 +1,9 @@
+import {
+  createDefaultStrategyManualInputs,
+  parseStrategyManualInputs,
+  type StrategyManualInputs,
+} from "./strategy-manual-input";
+
 export const STRATEGY_EDITOR_VERSION = "strategy.editor.v1" as const;
 
 export const STRATEGY_CORNERS = [
@@ -30,6 +36,7 @@ export type StrategyEditorDocument = {
   readonly nextStintNumber: number;
   readonly stints: readonly StrategyStint[];
   readonly tyres: readonly StrategyTyre[];
+  readonly manualInputs: StrategyManualInputs;
 };
 
 export type StrategyEditorErrorCode =
@@ -66,6 +73,7 @@ export function createDefaultStrategyEditorDocument(): StrategyEditorDocument {
     editorVersion: STRATEGY_EDITOR_VERSION,
     nextStintNumber: 5,
     tyres,
+    manualInputs: createDefaultStrategyManualInputs(),
     stints: [
       stint("stint-1", 17, 82, "2:18.4", baseAssignments),
       stint("stint-2", 22, 96, "2:19.1", baseAssignments),
@@ -100,6 +108,12 @@ export function parseStrategyEditorDocument(value: unknown): StrategyEditorDocum
     stintIds.add(item.id);
   }
 
+  const totalLaps = stints.reduce((sum, item) => sum + item.lapCount, 0);
+  const manualInputs = parseStrategyManualInputs(
+    value.manualInputs ?? createDefaultStrategyManualInputs(),
+    totalLaps,
+  );
+
   for (const item of tyres) {
     if (!item.lockedCorner) continue;
     for (const current of stints) {
@@ -116,6 +130,7 @@ export function parseStrategyEditorDocument(value: unknown): StrategyEditorDocum
     nextStintNumber: Number(value.nextStintNumber),
     stints,
     tyres,
+    manualInputs,
   });
 }
 

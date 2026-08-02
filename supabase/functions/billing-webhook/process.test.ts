@@ -1092,6 +1092,7 @@ Deno.test("processPolarWebhookEvent: active claim defers a concurrent worker and
   ).join("");
   const receipt = await deps.inbox.receive({
     provider: "polar",
+    environment: "sandbox",
     eventId: "evt_concurrent",
     eventType: event.type,
     payloadHash,

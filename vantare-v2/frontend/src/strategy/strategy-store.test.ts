@@ -79,7 +79,7 @@ function createClient(initial = draft()) {
         return result(command, persisted, repositoryVersion);
     }
   });
-  return { client: { execute } satisfies StrategyApplicationClient<Payload>, execute };
+  return { client: mockClient(execute), execute };
 }
 
 describe("createStrategyStore", () => {
@@ -246,9 +246,7 @@ describe("createStrategyStore", () => {
           });
       },
     );
-    const client: StrategyApplicationClient<Payload> = {
-      execute: vi.fn(() => pendingOpen),
-    };
+    const client = mockClient(vi.fn(() => pendingOpen));
     const store = createStrategyStore(client, { id: () => "command-1" });
     const opening = store.open("draft-1");
     const execution = executionState({
@@ -272,7 +270,152 @@ describe("createStrategyStore", () => {
     await opening;
     expect(store.getSnapshot()).toMatchObject({ busy: false, dirty: false });
   });
+
+  it("blocks local history mutations while save and close are in flight", async () => {
+    let releaseSave: ((value: StrategyApplicationResultV1<Payload>) => void) | undefined;
+    let releaseClose: ((value: StrategyApplicationResultV1<Payload>) => void) | undefined;
+    const saveResponse = new Promise<StrategyApplicationResultV1<Payload>>(
+      (resolve) => { releaseSave = resolve; },
+    );
+    const closeResponse = new Promise<StrategyApplicationResultV1<Payload>>(
+      (resolve) => { releaseClose = resolve; },
+    );
+    const execute = vi.fn(
+      async (command: StrategyApplicationCommandV1<Payload>) => {
+        if (command.operation === "save_revision") return saveResponse;
+        if (command.operation === "close") return closeResponse;
+        return result(command, draft(), 1);
+      },
+    );
+    const store = createStrategyStore(mockClient(execute), { id: () => "command-1", now: () => "2026-08-02T00:00:02Z" });
+    await store.open("draft-1");
+    store.edit((current) => ({ ...current, payload: { laps: 11 } }));
+
+    const saving = store.save();
+    let exposedUnlockedDirtyState = false;
+    const unsubscribe = store.subscribe(() => {
+      const snapshot = store.getSnapshot();
+      if (!snapshot.busy && snapshot.dirty) exposedUnlockedDirtyState = true;
+    });
+    expect(() => store.edit((current) => ({ ...current, payload: { laps: 12 } }))).toThrow(/in progress/i);
+    expect(() => store.undo()).toThrow(/in progress/i);
+    expect(() => store.redo()).toThrow(/in progress/i);
+    const saveCommand = execute.mock.calls.at(-1)?.[0];
+    if (!saveCommand || saveCommand.operation !== "save_revision") throw new Error("missing save command");
+    const saved = { ...saveCommand.draft, baseRevision: revisionRef(saveCommand.revisionId) };
+    releaseSave?.(result(saveCommand, saved, 2));
+    await saving;
+    unsubscribe();
+    expect(exposedUnlockedDirtyState).toBe(false);
+    expect(store.getSnapshot()).toMatchObject({ dirty: false, busy: false });
+    expect(store.getSnapshot().draft?.payload.laps).toBe(11);
+
+    const closing = store.close(false);
+    expect(() => store.edit((current) => ({ ...current, payload: { laps: 13 } }))).toThrow(/in progress/i);
+    releaseClose?.({
+      protocolVersion: "strategy.application.v1",
+      commandId: "command-1",
+      repositoryVersion: 2,
+      recoveredFromBackup: false,
+      closed: true,
+    });
+    await expect(closing).resolves.toBe(true);
+  });
+
+  it("does not create an unresolved save identity while another command is busy", async () => {
+    let releaseActivation: ((value: StrategyApplicationResultV1<Payload>) => void) | undefined;
+    const activationResponse = new Promise<StrategyApplicationResultV1<Payload>>(
+      (resolve) => { releaseActivation = resolve; },
+    );
+    const execute = vi.fn(
+      async (command: StrategyApplicationCommandV1<Payload>) => {
+        if (command.operation === "activate") return activationResponse;
+        return result(command, draft(), 1);
+      },
+    );
+    const store = createStrategyStore(mockClient(execute), { id: () => "command-1", now: () => "2026-08-02T00:00:02Z" });
+    await store.open("draft-1");
+    store.edit((current) => ({ ...current, payload: { laps: 11 } }));
+
+    const activating = store.activate(revisionRef("revision-1"));
+    await expect(store.save()).rejects.toThrow(/in progress/i);
+    releaseActivation?.({
+      protocolVersion: "strategy.application.v1",
+      commandId: "command-1",
+      repositoryVersion: 1,
+      activePlan: {
+        contractVersion: "strategy.v1",
+        activationId: "command-1:activation",
+        revision: revisionRef("revision-1"),
+        activatedAt: "2026-08-02T00:00:02Z",
+      },
+      recoveredFromBackup: false,
+      closed: false,
+    });
+    await activating;
+
+    expect(() => store.edit((current) => ({ ...current, payload: { laps: 12 } }))).not.toThrow();
+  });
+
+  it("requires explicit discard before create or open can replace a dirty draft", async () => {
+    const { client, execute } = createClient();
+    const store = createStrategyStore(client, { id: () => "command-1" });
+    await store.open("draft-1");
+    store.edit((current) => ({ ...current, payload: { laps: 12 } }));
+    const before = store.getSnapshot();
+
+    await expect(store.open("draft-2")).rejects.toThrow(/unsaved/i);
+    await expect(store.create({ ...draft(), draftId: "draft-2" })).rejects.toThrow(/unsaved/i);
+
+    expect(store.getSnapshot()).toEqual(before);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries the exact save identity after a committed response is lost", async () => {
+    const saveCommands: Array<Extract<StrategyApplicationCommandV1<Payload>, { operation: "save_revision" }>> = [];
+    let persisted = draft();
+    const execute = vi.fn(
+      async (command: StrategyApplicationCommandV1<Payload>) => {
+        if (command.operation === "open") return result(command, persisted, 1);
+        if (command.operation !== "save_revision") return result(command, persisted, 1);
+        saveCommands.push(structuredClone(command));
+        persisted = { ...command.draft, baseRevision: revisionRef(command.revisionId) };
+        if (saveCommands.length === 1) throw new Error("response lost after commit");
+        return result(command, persisted, 2);
+      },
+    );
+    let nextID = 0;
+    const store = createStrategyStore(mockClient(execute), {
+      id: () => `command-${++nextID}`,
+      now: () => "2026-08-02T00:00:02Z",
+    });
+    await store.open("draft-1");
+    store.edit((current) => ({ ...current, payload: { laps: 12 } }));
+
+    await expect(store.save()).rejects.toThrow(/response lost/i);
+    expect(() => store.edit((current) => ({ ...current, payload: { laps: 13 } }))).toThrow(/unresolved/i);
+    await store.save();
+
+    expect(saveCommands).toHaveLength(2);
+    expect(saveCommands[1]).toEqual(saveCommands[0]);
+    expect(store.getSnapshot()).toMatchObject({ dirty: false, repositoryVersion: 2 });
+  });
 });
+
+function revisionRef(revisionId: string) {
+  return {
+    planId: "plan-1",
+    variantId: "variant-1",
+    revisionId,
+    contentHash: "a".repeat(64),
+  };
+}
+
+function mockClient(
+  execute: StrategyApplicationClient<Payload>["execute"],
+): StrategyApplicationClient<Payload> {
+  return { execute, cancel: () => false, dispose: () => undefined };
+}
 
 function executionState(
   activePlan: StrategyExecutionStateV1["activePlan"],

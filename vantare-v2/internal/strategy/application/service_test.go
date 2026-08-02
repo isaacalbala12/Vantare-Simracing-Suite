@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -408,6 +409,66 @@ func TestJSONBridgeDispatchesFlatVersionedCommand(t *testing.T) {
 	}
 	if result.ProtocolVersion != ProtocolVersionV1 || result.CommandID != "create-1" || result.RepositoryVersion != 1 {
 		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestJSONBridgeRequiresEveryOperationFieldBeforeDispatch(t *testing.T) {
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(NewService[testPayload](repo))
+	documents := []string{
+		`{"protocolVersion":"strategy.application.v1","commandId":"create","operation":"create","expectedRepositoryVersion":0}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"open","operation":"open","expectedRepositoryVersion":0}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"edit","operation":"edit","expectedRepositoryVersion":0}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"save","operation":"save_revision","expectedRepositoryVersion":0,"draft":{}}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"duplicate","operation":"duplicate","expectedRepositoryVersion":0,"sourceDraft":{}}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"activate","operation":"activate","expectedRepositoryVersion":0,"revision":{}}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"deactivate","operation":"deactivate","expectedRepositoryVersion":0}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"restore","operation":"restore","expectedRepositoryVersion":0}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"close","operation":"close","expectedRepositoryVersion":0,"draft":{},"savedDraft":{}}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"close-null","operation":"close","expectedRepositoryVersion":0,"draft":{},"savedDraft":{},"discard":null}`,
+	}
+	for _, document := range documents {
+		if _, err := bridge.Execute(context.Background(), []byte(document)); !errors.Is(err, ErrInvalidCommand) {
+			t.Fatalf("Execute(%s) = %v, want ErrInvalidCommand", document, err)
+		}
+	}
+}
+
+func TestJSONBridgeValidatesSemanticsBeforeIdempotentShortcuts(t *testing.T) {
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(NewService[testPayload](repo))
+	documents := []string{
+		`{"protocolVersion":"strategy.application.v1","commandId":"activate","operation":"activate","expectedRepositoryVersion":0,"revision":{"planId":"plan-1","variantId":"variant-1","revisionId":"revision-1","contentHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"activationId":"activation-1","activatedAt":"2026-08-02T00:00:01Z","current":{"contractVersion":"strategy.future","activationId":"activation-1","revision":{"planId":"plan-1","variantId":"variant-1","revisionId":"revision-1","contentHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"activatedAt":"2026-08-02T00:00:01Z"}}`,
+		`{"protocolVersion":"strategy.application.v1","commandId":"deactivate","operation":"deactivate","expectedRepositoryVersion":0,"expectedActivationId":"invalid id"}`,
+	}
+	for _, document := range documents {
+		if _, err := bridge.Execute(context.Background(), []byte(document)); err == nil {
+			t.Fatalf("Execute(%s) accepted invalid semantics", document)
+		}
+	}
+}
+
+func TestJSONBridgeBoundsDocumentDepthAndContainerItems(t *testing.T) {
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(NewService[testPayload](repo))
+	documents := [][]byte{
+		make([]byte, contract.MaxCanonicalJSONBytes+1),
+		[]byte(strings.Repeat("[", contract.MaxCanonicalDepth+1) + "0" + strings.Repeat("]", contract.MaxCanonicalDepth+1)),
+		[]byte("[" + strings.Repeat("0,", contract.MaxCanonicalContainerItems) + "0]"),
+	}
+	for index, document := range documents {
+		if _, err := bridge.Execute(context.Background(), document); !errors.Is(err, ErrInvalidCommand) {
+			t.Fatalf("document %d = %v, want ErrInvalidCommand", index, err)
+		}
 	}
 }
 

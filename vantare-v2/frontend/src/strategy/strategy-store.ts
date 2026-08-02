@@ -20,6 +20,11 @@ type History<TPayload> = {
   future: Array<PlanDraftV1<TPayload>>;
 };
 
+type SaveCommand<TPayload> = Extract<
+  StrategyApplicationCommandV1<TPayload>,
+  { operation: "save_revision" }
+>;
+
 export type StrategyStoreSnapshot<TPayload> = {
   readonly repositoryVersion: number;
   readonly draft?: PlanDraftV1<TPayload>;
@@ -82,20 +87,22 @@ export function createStrategyStore<TPayload>(
   let execution: StrategyExecutionStateV1 | undefined;
   let recoveredFromBackup = false;
   let busy = false;
+  let pendingSave: SaveCommand<TPayload> | undefined;
   const listeners = new Set<() => void>();
 
   const notify = () => {
     for (const listener of listeners) listener();
   };
 
-  const execute = async (
+  const execute = async <TResult>(
     command: StrategyApplicationCommandV1<TPayload>,
-  ): Promise<StrategyApplicationResultV1<TPayload>> => {
+    apply: (result: StrategyApplicationResultV1<TPayload>) => TResult,
+  ): Promise<TResult> => {
     if (busy) throw new Error("Strategy application operation already in progress");
     busy = true;
     notify();
     try {
-      return await client.execute(command);
+      return apply(await client.execute(command));
     } finally {
       busy = false;
       notify();
@@ -111,6 +118,7 @@ export function createStrategyStore<TPayload>(
     history = { saved, present, past: [], future: [] };
     repositoryVersion = result.repositoryVersion;
     recoveredFromBackup = result.recoveredFromBackup;
+    pendingSave = undefined;
     if (result.activePlan) activePlan = structuredClone(result.activePlan);
     notify();
   };
@@ -124,6 +132,22 @@ export function createStrategyStore<TPayload>(
     expectedRepositoryVersion: repositoryVersion,
   });
 
+  const isDirty = (): boolean =>
+    history ? !structuralEqual(history.present, history.saved) : false;
+
+  const assertCanReplaceDraft = (): void => {
+    if (isDirty()) {
+      throw new Error("Strategy draft has unsaved changes; discard it explicitly before replacing it");
+    }
+  };
+
+  const assertCanMutateHistory = (): void => {
+    if (busy) throw new Error("Strategy application operation already in progress");
+    if (pendingSave) {
+      throw new Error("Strategy save outcome is unresolved; retry save or restore before editing");
+    }
+  };
+
   const store: StrategyStore<TPayload> = {
     getSnapshot() {
       const snapshot: StrategyStoreSnapshot<TPayload> = {
@@ -136,7 +160,7 @@ export function createStrategyStore<TPayload>(
           : {}),
         ...(activePlan ? { activePlan: structuredClone(activePlan) } : {}),
         ...(execution ? { execution: structuredClone(execution) } : {}),
-        dirty: history ? !structuralEqual(history.present, history.saved) : false,
+        dirty: isDirty(),
         canUndo: (history?.past.length ?? 0) > 0,
         canRedo: (history?.future.length ?? 0) > 0,
         busy,
@@ -151,20 +175,21 @@ export function createStrategyStore<TPayload>(
     },
 
     async create(draft) {
-      const result = await execute({
+      assertCanReplaceDraft();
+      await execute({
         ...header("create"),
         draft: cloneDraft(draft),
-      });
-      loadResult(result);
+      }, loadResult);
     },
 
     async open(draftId) {
-      const result = await execute({ ...header("open"), draftId });
-      loadResult(result);
+      assertCanReplaceDraft();
+      await execute({ ...header("open"), draftId }, loadResult);
     },
 
     edit(change) {
       if (!history) throw new Error("No Strategy draft is open");
+      assertCanMutateHistory();
       const candidate = cloneDraft(
         parsePlanDraftV1<TPayload>(change(cloneDraft(history.present))),
       );
@@ -178,75 +203,72 @@ export function createStrategyStore<TPayload>(
 
     async save() {
       if (!history) throw new Error("No Strategy draft is open");
-      if (structuralEqual(history.present, history.saved)) return;
-      const commandId = id();
-      const result = await execute({
-        protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
-        commandId,
-        operation: "save_revision",
-        expectedRepositoryVersion: repositoryVersion,
-        draft: cloneDraft(history.present),
-        revisionId: `${commandId}:revision`,
-        createdAt: now(),
+      if (busy) throw new Error("Strategy application operation already in progress");
+      if (!pendingSave && !isDirty()) return;
+      const savingHistory = history;
+      const command = pendingSave ?? createSaveCommand(savingHistory.present, repositoryVersion, id, now);
+      pendingSave = command;
+      await execute(command, (result) => {
+        if (!result.draft || !result.savedDraft) {
+          throw new Error("Strategy save result did not include a draft");
+        }
+        savingHistory.present = cloneDraft(result.draft);
+        savingHistory.saved = cloneDraft(result.savedDraft);
+        repositoryVersion = result.repositoryVersion;
+        recoveredFromBackup = result.recoveredFromBackup;
+        pendingSave = undefined;
+        notify();
       });
-      if (!result.draft || !result.savedDraft) {
-        throw new Error("Strategy save result did not include a draft");
-      }
-      history.present = cloneDraft(result.draft);
-      history.saved = cloneDraft(result.savedDraft);
-      repositoryVersion = result.repositoryVersion;
-      recoveredFromBackup = result.recoveredFromBackup;
-      notify();
     },
 
     async duplicate(input) {
       if (!history) throw new Error("No Strategy draft is open");
-      const result = await execute({
+      await execute({
         ...header("duplicate"),
         sourceDraft: cloneDraft(history.present),
         ...input,
         updatedAt: now(),
-      });
-      loadResult(result);
+      }, loadResult);
     },
 
     async activate(revision) {
-      const result = await execute({
+      await execute({
         ...header("activate"),
         revision: structuredClone(revision),
         activationId: `${id()}:activation`,
         activatedAt: now(),
         ...(activePlan ? { current: structuredClone(activePlan) } : {}),
+      }, (result) => {
+        if (!result.activePlan) {
+          throw new Error("Strategy activation result did not include an active plan");
+        }
+        activePlan = structuredClone(result.activePlan);
+        repositoryVersion = result.repositoryVersion;
+        notify();
       });
-      if (!result.activePlan) {
-        throw new Error("Strategy activation result did not include an active plan");
-      }
-      activePlan = structuredClone(result.activePlan);
-      repositoryVersion = result.repositoryVersion;
-      notify();
     },
 
     async deactivate() {
       const current = activePlan ? structuredClone(activePlan) : undefined;
-      const result = await execute({
+      await execute({
         ...header("deactivate"),
         ...(current ? { current } : {}),
         expectedActivationId: current?.activationId ?? "none",
+      }, (result) => {
+        activePlan = result.activePlan
+          ? structuredClone(result.activePlan)
+          : undefined;
+        repositoryVersion = result.repositoryVersion;
+        notify();
       });
-      activePlan = result.activePlan
-        ? structuredClone(result.activePlan)
-        : undefined;
-      repositoryVersion = result.repositoryVersion;
-      notify();
     },
 
     async restore() {
       if (!history) throw new Error("No Strategy draft is open");
-      const result = await execute({
+      await execute({
         ...header("restore"),
         draftId: history.present.draftId,
-      });
-      loadResult(result);
+      }, loadResult);
     },
 
     async close(discard) {
@@ -255,28 +277,34 @@ export function createStrategyStore<TPayload>(
       if (dirty && !discard) {
         throw new Error("Strategy draft has unsaved changes");
       }
-      const result = await execute({
+      return execute({
         ...header("close"),
         draft: cloneDraft(history.present),
         savedDraft: cloneDraft(history.saved),
         discard,
+      }, (result) => {
+        if (!result.closed) return false;
+        history = undefined;
+        pendingSave = undefined;
+        recoveredFromBackup = false;
+        notify();
+        return true;
       });
-      if (!result.closed) return false;
-      history = undefined;
-      recoveredFromBackup = false;
-      notify();
-      return true;
     },
 
     undo() {
-      if (!history || history.past.length === 0) return;
+      if (!history) return;
+      assertCanMutateHistory();
+      if (history.past.length === 0) return;
       history.future.unshift(cloneDraft(history.present));
       history.present = history.past.pop() as PlanDraftV1<TPayload>;
       notify();
     },
 
     redo() {
-      if (!history || history.future.length === 0) return;
+      if (!history) return;
+      assertCanMutateHistory();
+      if (history.future.length === 0) return;
       history.past.push(cloneDraft(history.present));
       if (history.past.length > historyLimit) history.past.shift();
       history.present = history.future.shift() as PlanDraftV1<TPayload>;
@@ -298,6 +326,24 @@ function cloneDraft<TPayload>(
   draft: PlanDraftV1<TPayload>,
 ): PlanDraftV1<TPayload> {
   return structuredClone(parsePlanDraftV1<TPayload>(draft));
+}
+
+function createSaveCommand<TPayload>(
+  draft: PlanDraftV1<TPayload>,
+  repositoryVersion: number,
+  id: () => string,
+  now: () => string,
+): SaveCommand<TPayload> {
+  const commandId = id();
+  return {
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId,
+    operation: "save_revision",
+    expectedRepositoryVersion: repositoryVersion,
+    draft: cloneDraft(draft),
+    revisionId: `${commandId}:revision`,
+    createdAt: now(),
+  };
 }
 
 function structuralEqual(left: unknown, right: unknown): boolean {

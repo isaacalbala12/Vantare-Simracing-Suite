@@ -79,10 +79,14 @@ Actualización ISA-134 / STR-00:
   rechazo optimista de versiones stale y store con dirty derivado, undo/redo
   acotado y observación live aislada. Cerrar el editor conserva plan activo y
   ejecución; duplicar puede capturar cambios locales sin modificar el origen.
+  La corrección de review bloquea edit/undo/redo durante save/close, evita
+  reemplazar dirty sin descarte, reintenta un save incierto con identidad
+  exacta, endurece requeridos/semántica/límites JSON y añade cancel/dispose con
+  limpieza ante respuestas tardías o fallos síncronos del transporte.
   Evidencia: `docs/strategy-planner/str-04-application-service.md`. Lista para
-  review independiente, sin wiring, merge ni promoción. Go focal x100,
+  segunda review independiente, sin wiring, merge ni promoción. Go focal x100,
   Strategy, Go global, vet focal, race x10, frontend 301/301 archivos y
-  2.045/2.045 tests, TypeScript, build y lint focal pasan. Una primera corrida
+  2.052/2.052 tests, 36/36 focales, TypeScript, build y lint focal pasan. Una primera corrida
   frontend bajo carga paralela mostró flakiness heredada del canvas; la corrida
   final aislada quedó completamente verde.
 
@@ -161,14 +165,14 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-139 / STR-04, implementación lista para review
+- Issue activa: ISA-139 / STR-04, correcciones P1/P2 listas para segunda review
   independiente sobre el commit aceptado de STR-03.
 
 ## Siguiente acción exacta
 
-Revisar ISA-139 / STR-04. Si queda `ACCEPT`, continuar ISA-140 / STR-05 apilada
-sobre esta fachada. No añadir UI final, telemetría, solver o wiring transversal
-dentro de la revisión de STR-04.
+Revisar de nuevo ISA-139 / STR-04. Si queda `ACCEPT`, continuar ISA-140 / STR-05
+apilada sobre esta fachada. No añadir UI final, telemetría, solver o wiring
+transversal dentro de la revisión de STR-04.
 
 ## Última actualización
 

@@ -33,8 +33,11 @@ operaciones locales del store: no generan revisiones ni escrituras.
 
 El bridge JSON rechaza protocolo futuro, campos desconocidos, campos
 duplicados, campos obligatorios ausentes y contenido posterior al documento.
-El cliente de eventos correlaciona por `commandId`, valida el resultado antes
-de publicarlo y limpia listeners tanto en éxito como en error o timeout.
+También aplica los mismos límites de bytes, profundidad y elementos del
+contrato canónico antes de ejecutar efectos. El cliente de eventos correlaciona
+por `commandId`, valida el resultado antes de publicarlo y limpia listeners
+tanto en éxito como en error, timeout, cancelación, descarte o fallo síncrono
+del transporte.
 
 ## Invariantes
 
@@ -53,8 +56,17 @@ de publicarlo y limpia listeners tanto en éxito como en error o timeout.
   redo; el historial tiene límite explícito.
 - Cerrar el editor no desactiva el plan ni borra la observación de ejecución.
 - Un close con cambios no guardados falla salvo descarte explícito.
-- El store serializa comandos de aplicación. Telemetría puede actualizar su
-  observación mientras hay un comando en curso, pero no toca el documento.
+- Crear o abrir otro borrador nunca descarta cambios locales: exige primero un
+  close con descarte explícito.
+- El store serializa comandos de aplicación y conserva el bloqueo hasta aplicar
+  su resultado. Edit, undo y redo fallan de forma explícita durante save/close,
+  por lo que una respuesta tardía nunca puede sobrescribir una edición local.
+  Telemetría puede actualizar su observación mientras hay un comando en curso,
+  pero no toca el documento.
+- Si el efecto de save pudo persistirse pero se perdió la respuesta, el store
+  conserva y reintenta exactamente el mismo `commandId`, `revisionId`, draft y
+  timestamp. No crea una segunda identidad hasta reconciliar, restaurar o
+  descartar explícitamente.
 
 ## Recuperación y errores
 
@@ -66,6 +78,22 @@ Errores estables del corte: `invalid_command`, `stale_command`,
 `draft_not_found`, `draft_conflict`, `revision_not_found`,
 `active_plan_conflict` y `unsaved_changes`. Errores de I/O no se convierten en
 éxitos ni se silencian.
+
+## Corrección tras review independiente
+
+La revisión de ISA-139 detectó dos riesgos P1 de pérdida silenciosa y cuatro
+P2 de endurecimiento. El corte los cierra sin ampliar producto:
+
+- bloquea mutaciones locales durante save/close y mantiene `busy` hasta aplicar
+  la respuesta;
+- prohíbe reemplazar un draft dirty sin descarte explícito;
+- reintenta un save incierto con identidad inmutable;
+- valida requeridos y semántica antes de atajos idempotentes;
+- hace cancelable y descartable el cliente, incluyendo respuestas tardías;
+- alinea límites JSON del bridge con el contrato compartido.
+
+Las regresiones usan respuestas diferidas, un commit exitoso cuya respuesta se
+pierde, eventos tardíos y documentos en cada frontera de recursos.
 
 ## Exclusiones deliberadas
 

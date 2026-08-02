@@ -6,7 +6,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/vantare/overlays/v2/internal/strategy/contract"
 )
+
+var requiredOperationFields = map[Operation][]string{
+	OperationCreate:       {"draft"},
+	OperationOpen:         {"draftId"},
+	OperationEdit:         {"draft"},
+	OperationSaveRevision: {"draft", "revisionId", "createdAt"},
+	OperationDuplicate:    {"sourceDraft", "targetDraftId", "targetPlanId", "targetVariantId", "name", "updatedAt"},
+	OperationActivate:     {"revision", "activationId", "activatedAt"},
+	OperationDeactivate:   {"expectedActivationId"},
+	OperationRestore:      {"draftId"},
+	OperationClose:        {"draft", "savedDraft", "discard"},
+}
 
 // JSONBridge is transport-neutral. Wails or a future transport only forwards
 // bytes; command validation and dispatch remain in this package.
@@ -37,6 +51,16 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 	var header CommandHeader
 	if err := json.Unmarshal(document, &header); err != nil {
 		return nil, applicationError(ErrorInvalidCommand, "", fmt.Errorf("decode command header: %w", err))
+	}
+	required, knownOperation := requiredOperationFields[header.Operation]
+	if !knownOperation {
+		return nil, applicationError(ErrorInvalidCommand, "operation", ErrInvalidCommand)
+	}
+	for _, field := range required {
+		value, exists := fields[field]
+		if !exists || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return nil, applicationError(ErrorInvalidCommand, field, ErrInvalidCommand)
+		}
 	}
 	var result Result[T]
 	var err error
@@ -100,9 +124,6 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 }
 
 func decodeStrict(document []byte, target any) error {
-	if err := validateJSONDocument(document); err != nil {
-		return err
-	}
 	decoder := json.NewDecoder(bytes.NewReader(document))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
@@ -115,8 +136,11 @@ func decodeStrict(document []byte, target any) error {
 }
 
 func validateJSONDocument(document []byte) error {
+	if len(document) == 0 || len(document) > contract.MaxCanonicalJSONBytes {
+		return applicationError(ErrorInvalidCommand, "", ErrInvalidCommand)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(document))
-	if err := validateJSONValue(decoder); err != nil {
+	if err := validateJSONValue(decoder, 0); err != nil {
 		return applicationError(ErrorInvalidCommand, "", err)
 	}
 	if _, err := decoder.Token(); err != io.EOF {
@@ -125,7 +149,10 @@ func validateJSONDocument(document []byte) error {
 	return nil
 }
 
-func validateJSONValue(decoder *json.Decoder) error {
+func validateJSONValue(decoder *json.Decoder, depth int) error {
+	if depth > contract.MaxCanonicalDepth {
+		return fmt.Errorf("%w: JSON nesting exceeds %d", ErrInvalidCommand, contract.MaxCanonicalDepth)
+	}
 	token, err := decoder.Token()
 	if err != nil {
 		return fmt.Errorf("decode command JSON: %w", err)
@@ -137,7 +164,12 @@ func validateJSONValue(decoder *json.Decoder) error {
 	switch delimiter {
 	case '{':
 		seen := make(map[string]struct{})
+		items := 0
 		for decoder.More() {
+			items++
+			if items > contract.MaxCanonicalContainerItems {
+				return fmt.Errorf("%w: object exceeds %d fields", ErrInvalidCommand, contract.MaxCanonicalContainerItems)
+			}
 			keyToken, err := decoder.Token()
 			if err != nil {
 				return fmt.Errorf("decode command key: %w", err)
@@ -150,7 +182,7 @@ func validateJSONValue(decoder *json.Decoder) error {
 				return fmt.Errorf("%w: duplicate field %q", ErrInvalidCommand, key)
 			}
 			seen[key] = struct{}{}
-			if err := validateJSONValue(decoder); err != nil {
+			if err := validateJSONValue(decoder, depth+1); err != nil {
 				return err
 			}
 		}
@@ -159,8 +191,13 @@ func validateJSONValue(decoder *json.Decoder) error {
 			return ErrInvalidCommand
 		}
 	case '[':
+		items := 0
 		for decoder.More() {
-			if err := validateJSONValue(decoder); err != nil {
+			items++
+			if items > contract.MaxCanonicalContainerItems {
+				return fmt.Errorf("%w: array exceeds %d items", ErrInvalidCommand, contract.MaxCanonicalContainerItems)
+			}
+			if err := validateJSONValue(decoder, depth+1); err != nil {
 				return err
 			}
 		}

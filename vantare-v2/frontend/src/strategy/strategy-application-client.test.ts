@@ -143,4 +143,44 @@ describe("createStrategyApplicationClient", () => {
     expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
     expect(transport.listeners.get("strategy:application:error")?.size ?? 0).toBe(0);
   });
+
+  it("cleans up immediately when transport emit throws", async () => {
+    transport.emit = () => { throw new Error("transport unavailable"); };
+    const client = createStrategyApplicationClient<Payload>(transport);
+
+    await expect(client.execute(openCommand())).rejects.toThrow(/transport unavailable/i);
+
+    expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
+    expect(transport.listeners.get("strategy:application:error")?.size ?? 0).toBe(0);
+  });
+
+  it("cancels one command and ignores its late result", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const pending = client.execute(openCommand());
+
+    expect(client.cancel("open-1")).toBe(true);
+    await expect(pending).rejects.toThrow(/cancel/i);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-1",
+      repositoryVersion: 3,
+      draft: draft(),
+      savedDraft: draft(),
+      recoveredFromBackup: false,
+      closed: false,
+    });
+    expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
+  });
+
+  it("disposes every pending command and rejects future execution", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const pending = client.execute(openCommand());
+
+    client.dispose();
+
+    await expect(pending).rejects.toThrow(/disposed/i);
+    await expect(client.execute({ ...openCommand(), commandId: "open-2" })).rejects.toThrow(/disposed/i);
+    expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
+    expect(transport.listeners.get("strategy:application:error")?.size ?? 0).toBe(0);
+  });
 });

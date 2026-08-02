@@ -106,6 +106,8 @@ export interface StrategyApplicationClient<TPayload> {
   execute(
     command: StrategyApplicationCommandV1<TPayload>,
   ): Promise<StrategyApplicationResultV1<TPayload>>;
+  cancel(commandId: string): boolean;
+  dispose(): void;
 }
 
 export type StrategyApplicationEventTransport = {
@@ -131,49 +133,81 @@ export function createStrategyApplicationClient<TPayload>(
   transport: StrategyApplicationEventTransport,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): StrategyApplicationClient<TPayload> {
-  return {
+  const pending = new Map<string, (error: Error) => void>();
+  let disposed = false;
+
+  const client: StrategyApplicationClient<TPayload> = {
     execute(command) {
+      if (disposed) {
+        return Promise.reject(new Error("Strategy application client is disposed"));
+      }
       validateCommandHeader(command);
-      const pending = new Promise<StrategyApplicationResultV1<TPayload>>(
+      if (pending.has(command.commandId)) {
+        return Promise.reject(new Error("Strategy application command is already pending"));
+      }
+      return new Promise<StrategyApplicationResultV1<TPayload>>(
         (resolve, reject) => {
           const unsubs: Array<() => void> = [];
+          let settled = false;
           const cleanup = () => {
             globalThis.clearTimeout(timeout);
             for (const unsubscribe of unsubs) unsubscribe();
+            pending.delete(command.commandId);
+          };
+          const fail = (error: Error) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(error);
           };
           const timeout = globalThis.setTimeout(() => {
-            cleanup();
-            reject(new Error("Timeout waiting for Strategy application response"));
+            fail(new Error("Timeout waiting for Strategy application response"));
           }, timeoutMs);
 
-          unsubs.push(
-            transport.on(RESULT_EVENT, (event) => {
+          try {
+            unsubs.push(transport.on(RESULT_EVENT, (event) => {
               const payload = readEventPayload(event);
               if (payload.commandId !== command.commandId) return;
               void parseResult<TPayload>(payload).then(
                 (result) => {
+                  if (settled) return;
+                  settled = true;
                   cleanup();
                   resolve(result);
                 },
                 (error) => {
-                  cleanup();
-                  reject(error);
+                  fail(toError(error));
                 },
               );
-            }),
-            transport.on(ERROR_EVENT, (event) => {
+            }));
+            unsubs.push(transport.on(ERROR_EVENT, (event) => {
               const payload = readEventPayload(event);
               if (payload.commandId !== command.commandId) return;
-              cleanup();
-              reject(parseApplicationError(payload));
-            }),
-          );
+              fail(parseApplicationError(payload));
+            }));
+            pending.set(command.commandId, fail);
+            transport.emit(COMMAND_EVENT, command);
+          } catch (error) {
+            fail(toError(error));
+          }
         },
       );
-      transport.emit(COMMAND_EVENT, command);
-      return pending;
+    },
+    cancel(commandId) {
+      const fail = pending.get(commandId);
+      if (!fail) return false;
+      fail(new Error(`Strategy application command ${commandId} was cancelled`));
+      return true;
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      for (const fail of [...pending.values()]) {
+        fail(new Error("Strategy application client was disposed"));
+      }
     },
   };
+  return client;
 }
 
 export function createWailsStrategyApplicationTransport(): StrategyApplicationEventTransport {
@@ -291,4 +325,8 @@ function deepFreeze<T>(value: T): T {
   Object.freeze(value);
   for (const child of Object.values(value)) deepFreeze(child);
   return value;
+}
+
+function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
 }

@@ -61,6 +61,9 @@ func (service *Service[T]) Open(ctx context.Context, command OpenCommand) (Resul
 	if err := validateHeader(command.CommandHeader, OperationOpen); err != nil {
 		return Result[T]{}, err
 	}
+	if err := validateApplicationIdentifier("draftId", command.DraftID); err != nil {
+		return Result[T]{}, err
+	}
 	snapshot, err := service.repository.Snapshot(ctx)
 	if err != nil {
 		return Result[T]{}, err
@@ -161,6 +164,15 @@ func (service *Service[T]) Activate(ctx context.Context, command ActivateCommand
 	if err := validateHeader(command.CommandHeader, OperationActivate); err != nil {
 		return Result[T]{}, err
 	}
+	active, err := contract.NewActivePlan(command.ActivationID, command.Revision, command.ActivatedAt)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	if command.Current != nil {
+		if err := command.Current.Validate(); err != nil {
+			return Result[T]{}, err
+		}
+	}
 	if command.Current != nil && command.Current.ActivationID == command.ActivationID && command.Current.Revision == command.Revision && command.Current.ActivatedAt.Equal(command.ActivatedAt) {
 		active := *command.Current
 		return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: command.ExpectedRepositoryVersion, ActivePlan: &active}, nil
@@ -175,14 +187,7 @@ func (service *Service[T]) Activate(ctx context.Context, command ActivateCommand
 	if !hasRevision(snapshot, command.Revision) {
 		return Result[T]{}, applicationError(ErrorRevisionNotFound, "revision", ErrRevisionNotFound)
 	}
-	active, err := contract.NewActivePlan(command.ActivationID, command.Revision, command.ActivatedAt)
-	if err != nil {
-		return Result[T]{}, err
-	}
 	if command.Current != nil {
-		if err := command.Current.Validate(); err != nil {
-			return Result[T]{}, err
-		}
 		if command.Current.Revision.PlanID != command.Revision.PlanID || command.Current.Revision.VariantID != command.Revision.VariantID {
 			return Result[T]{}, applicationError(ErrorActiveConflict, "current", ErrActiveConflict)
 		}
@@ -199,6 +204,9 @@ func (service *Service[T]) Deactivate(_ context.Context, command DeactivateComma
 	if err := validateHeader(command.CommandHeader, OperationDeactivate); err != nil {
 		return Result[T]{}, err
 	}
+	if err := validateApplicationIdentifier("expectedActivationId", command.ExpectedActivationID); err != nil {
+		return Result[T]{}, err
+	}
 	if command.Current == nil {
 		return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: command.ExpectedRepositoryVersion}, nil
 	}
@@ -213,6 +221,9 @@ func (service *Service[T]) Deactivate(_ context.Context, command DeactivateComma
 
 func (service *Service[T]) Restore(ctx context.Context, command RestoreCommand) (Result[T], error) {
 	if err := validateHeader(command.CommandHeader, OperationRestore); err != nil {
+		return Result[T]{}, err
+	}
+	if err := validateApplicationIdentifier("draftId", command.DraftID); err != nil {
 		return Result[T]{}, err
 	}
 	snapshot, err := service.repository.Snapshot(ctx)
@@ -284,6 +295,13 @@ func validateHeader(header CommandHeader, operation Operation) error {
 	}
 	if header.ExpectedRepositoryVersion > maxSafeRepositoryVersion {
 		return applicationError(ErrorInvalidCommand, "expectedRepositoryVersion", ErrInvalidCommand)
+	}
+	return nil
+}
+
+func validateApplicationIdentifier[T ~string](field string, value T) error {
+	if !commandIDPattern.MatchString(string(value)) {
+		return applicationError(ErrorInvalidCommand, field, ErrInvalidCommand)
 	}
 	return nil
 }

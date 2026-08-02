@@ -16,12 +16,16 @@ Nota ISA-139 / STR-04 (2026-08-02):
   wiring productivo ni dependencias. Evidencia:
   `docs/strategy-planner/str-04-application-service.md`.
 - Evidencia fresca: Go application x100, árbol Strategy, Go global, vet focal,
-  race x10 con UCRT64, 29 tests frontend focales, frontend completo 301/301
-  archivos y 2.045/2.045 tests, TypeScript, build, lint focal y diff-check
+  race x10 con UCRT64, 36 tests frontend focales, frontend completo 301/301
+  archivos y 2.052/2.052 tests, TypeScript, build, lint focal y diff-check
   pasan. Una corrida frontend inicial bajo carga paralela reprodujo timings
   inestables preexistentes del canvas; la repetición final aislada pasó entera.
-- Estado: implementación lista para review independiente y entrega; sin merge
-  ni promoción. El siguiente corte, tras `ACCEPT`, es ISA-140 / STR-05.
+- Corrección tras review: save/close bloquean edit/undo/redo hasta aplicar su
+  resultado; create/open no descartan dirty; un save incierto conserva y
+  reintenta exactamente su identidad; bridge y atajos idempotentes fallan
+  cerrados; el cliente soporta cancel/dispose y limpia todos los listeners.
+- Estado: correcciones listas para segunda review independiente; sin merge ni
+  promoción. El siguiente corte, solo tras `ACCEPT`, es ISA-140 / STR-05.
 
 Nota ISA-138 / STR-03 (2026-08-02):
 - Nuevo repositorio local `strategy.repository.v1` en

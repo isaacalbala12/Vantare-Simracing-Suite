@@ -43,5 +43,8 @@ func (err *ApplicationError) Error() string {
 func (err *ApplicationError) Unwrap() error { return err.Cause }
 
 func applicationError(code ErrorCode, field string, cause error) error {
+	if code == ErrorInvalidCommand && !errors.Is(cause, ErrInvalidCommand) {
+		cause = errors.Join(ErrInvalidCommand, cause)
+	}
 	return &ApplicationError{Code: code, Field: field, Cause: cause}
 }

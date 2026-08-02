@@ -11,6 +11,7 @@ export type FeatureId =
   | "calendar.visual"
   | "calendar.followReminders"
   | "engineer.ai"
+  | "strategy.planner"
   | "telemetry.live"
   | "launcher.basic"
   | "roadmap.public"
@@ -23,6 +24,7 @@ export type SectionId =
   | "launcher"
   | "calendar"
   | "engineer"
+  | "strategy"
   | "telemetry"
   | "roadmap"
   | "settings";
@@ -107,6 +109,13 @@ const FEATURE_POLICY: Record<FeatureId, PlanPolicy> = {
     suite: true,
     unknown: false,
   },
+  "strategy.planner": {
+    free: false,
+    paid_overlays: true,
+    paid_engineer: true,
+    suite: true,
+    unknown: false,
+  },
   "telemetry.live": {
     free: false,
     paid_overlays: true,
@@ -144,6 +153,7 @@ const SECTION_FEATURE: Record<SectionId, FeatureId> = {
   launcher: "launcher.basic",
   calendar: "calendar.visual",
   engineer: "engineer.ai",
+  strategy: "strategy.planner",
   telemetry: "telemetry.live",
   roadmap: "roadmap.public",
   settings: "settings.account",

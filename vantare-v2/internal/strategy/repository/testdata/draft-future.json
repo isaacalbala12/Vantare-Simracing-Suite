@@ -1,0 +1,1 @@
+{"contractVersion":"strategy.v999","draftId":"draft-1","planId":"plan-1","variantId":"variant-1","name":"Future fixture","mode":"manual","capabilities":["manual_inputs"],"provenance":{"kind":"manual","sourceId":"fixture"},"confidence":{"level":"high","basis":"fixture"},"updatedAt":"2026-08-02T03:00:00Z","payload":{"laps":10}}

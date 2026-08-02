@@ -17,14 +17,14 @@ visible es `Telemetría`.
 
 ## Estado
 
-La investigación preliminar no basta para implementar. El proyecto Linear
-`Telemetry Analysis — Driver Development & Session Intelligence` ya existe;
-falta auditoría profunda. Depende de contratos y recording/replay TC-05/06.
+La investigación y el corpus inicial ya existen. ISA-122/124 están `In Review`;
+ISA-126 y su corte de packaging ISA-135 están activos; ISA-132 espera el
+contrato de progreso/distancia. El productor histórico de Strategy es
+ISA-159 / TA-05 y no puede sustituirse desde el propio Strategy Planner.
 
-- Rama/base/SHA: aún no existen; la research issue debe fijarlos.
+- Base de cadena: ramas apiladas TA-01..TA-04 según Linear.
 - Promoción: ninguna.
-- Evidencia: informes preliminares todavía no incorporados como investigación
-  canónica ni validados hands-on.
+- Dependencia Strategy: ISA-132 -> ISA-159 -> ISA-145.
 
 ## Experiencia cerrada
 
@@ -69,17 +69,17 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 
 | Estado | Issue |
 |---|---|
-| Activa | Ninguna |
-| Siguiente | TA-01, investigación competitiva y auditoría de fuentes/código |
-| Implementación | Después de aprobar matriz, HTML y arquitectura |
+| En review | ISA-122 / TA-01 e ISA-124 / TA-02 |
+| Activas | ISA-126 / TA-03 e ISA-135 / TA-03B |
+| Siguiente | ISA-132 / TA-04, progreso/distancia/mapa |
+| Productor Strategy | ISA-159 / TA-05, `StrategyInputProjection v1` |
 
 ## Siguiente acción exacta
 
-Crear la issue de investigación en el proyecto; auditar fuentes/código sin
-implementar producto hasta cerrar matriz y HTML. Base: GOV-01 publicado o la
-base limpia indicada en Linear. Entrega: informe, matriz, licencias, auditoría,
-HTML, plan, checks de enlaces y handoff actualizado.
+Cerrar ISA-126/135, ejecutar ISA-132 y después ISA-159. TA-05 publica
+capabilities/procedencia/unidades desde el modelo público de Analysis; nunca
+expone DuckDB/storage al consumidor ni inventa Fuel/VE/tyres/weather ausentes.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-08-01, ISA-134 / STR-00 fija ISA-159 como productor histórico Strategy.

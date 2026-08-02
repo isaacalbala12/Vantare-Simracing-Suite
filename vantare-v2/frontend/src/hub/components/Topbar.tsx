@@ -23,6 +23,7 @@ const SECTION_TO_FEATURE: Record<string, SectionId> = {
   launcher: "launcher",
   calendar: "calendar",
   engineer: "engineer",
+  strategy: "strategy",
   telemetry: "telemetry",
   roadmap: "roadmap",
   setup: "settings",
@@ -73,8 +74,8 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
 
   return (
     <nav className="sticky top-0 z-50 glass-panel border-b border-white/5">
-      <div className="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-8 min-w-0">
+      <div className="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-between gap-4 overflow-hidden">
+        <div className="flex flex-1 items-center gap-4 lg:gap-8 min-w-0 overflow-hidden">
           <div className="flex items-center gap-3 shrink-0">
             <svg
               className="w-8 h-8"
@@ -119,7 +120,7 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus }: Top
             </span>
           </div>
 
-          <div className="max-md:flex-1 max-md:min-w-0 flex items-center gap-2 md:gap-3 lg:gap-5 text-[11px] md:text-xs lg:text-sm font-medium text-vantare-textMuted max-md:overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+          <div className="flex flex-1 min-w-0 items-center gap-2 md:gap-3 lg:gap-5 text-[11px] md:text-xs lg:text-sm font-medium text-vantare-textMuted overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
             {navItems.map((item) =>
               item.allowed ? (
                 <a

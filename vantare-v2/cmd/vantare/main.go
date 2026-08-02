@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -27,6 +28,9 @@ import (
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
+	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
+	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
@@ -178,6 +182,124 @@ func samePath(left, right string) bool {
 		return strings.EqualFold(left, right)
 	}
 	return left == right
+}
+
+func strategyRepositoryRoot(cfgDir string) (string, error) {
+	if cfgDir == "" || !filepath.IsAbs(cfgDir) {
+		return "", fmt.Errorf("configs directory must be absolute")
+	}
+	return filepath.Join(filepath.Dir(filepath.Clean(cfgDir)), "data", "strategy"), nil
+}
+
+type strategyCommandExecutor interface {
+	Execute(context.Context, []byte) ([]byte, error)
+}
+
+func executeStrategyApplicationCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy command"}
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	_ = json.Unmarshal(document, &header)
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategyapplication.ErrorInvalidCommand
+		field := ""
+		var applicationErr *strategyapplication.ApplicationError
+		if errors.As(err, &applicationErr) {
+			if _, known := publicStrategyApplicationMessage(applicationErr.Code); known {
+				code = applicationErr.Code
+				field = applicationErr.Field
+			}
+		}
+		message, _ := publicStrategyApplicationMessage(code)
+		return nil, map[string]any{
+			"commandId": header.CommandID,
+			"code":      string(code),
+			"field":     field,
+			"message":   message,
+		}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy result"}
+	}
+	return result, nil
+}
+
+func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) (string, bool) {
+	switch code {
+	case strategyapplication.ErrorInvalidCommand:
+		return "The Strategy request could not be completed.", true
+	case strategyapplication.ErrorStaleCommand:
+		return "The Strategy document changed. Reopen it and try again.", true
+	case strategyapplication.ErrorDraftNotFound:
+		return "The Strategy draft was not found.", true
+	case strategyapplication.ErrorDraftConflict:
+		return "The Strategy draft conflicts with another saved document.", true
+	case strategyapplication.ErrorRevisionNotFound:
+		return "The Strategy revision was not found.", true
+	case strategyapplication.ErrorActiveConflict:
+		return "The active Strategy plan changed. Reopen it and try again.", true
+	case strategyapplication.ErrorUnsavedChanges:
+		return "The Strategy draft has unsaved changes.", true
+	default:
+		return "The Strategy request could not be completed.", false
+	}
+}
+
+func executeStrategyManualCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy request could not be completed."}
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	if err := json.Unmarshal(document, &header); err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy request could not be completed."}
+	}
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategymanual.ErrorInvalidInput
+		field := ""
+		var calculationErr *strategymanual.CalculationError
+		if errors.As(err, &calculationErr) {
+			if _, known := publicStrategyManualMessage(calculationErr.Code); known {
+				code = calculationErr.Code
+				field = calculationErr.Field
+			}
+		}
+		message, _ := publicStrategyManualMessage(code)
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(code), "field": field, "message": message}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy result was invalid."}
+	}
+	return result, nil
+}
+
+func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
+	switch code {
+	case strategymanual.ErrorInvalidInput:
+		return "Review the highlighted manual Strategy input.", true
+	case strategymanual.ErrorOverflow:
+		return "The manual Strategy calculation exceeds supported limits.", true
+	case strategymanual.ErrorInsufficientCapacity:
+		return "The configured resource capacity is insufficient.", true
+	default:
+		return "The manual Strategy request could not be completed.", false
+	}
 }
 
 type wailsEmitter struct {
@@ -746,6 +868,47 @@ func main() {
 	if cfgDir == "" {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
+	var strategyBridge strategyCommandExecutor
+	if root, rootErr := strategyRepositoryRoot(cfgDir); rootErr != nil {
+		log.Printf("warning: Strategy repository is unavailable")
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
+		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
+	} else {
+		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
+	}
+	wailsApp.Event.On("strategy:application:command", func(event *application.CustomEvent) {
+		if strategyBridge == nil {
+			commandID := "unavailable"
+			if document, marshalErr := json.Marshal(event.Data); marshalErr == nil {
+				var header struct {
+					CommandID string `json:"commandId"`
+				}
+				if json.Unmarshal(document, &header) == nil && header.CommandID != "" {
+					commandID = header.CommandID
+				}
+			}
+			emitter.Emit("strategy:application:error", map[string]any{
+				"commandId": commandID, "code": string(strategyapplication.ErrorInvalidCommand),
+				"field": "", "message": "Strategy repository is unavailable",
+			})
+			return
+		}
+		result, failure := executeStrategyApplicationCommand(ctx, strategyBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:application:error", failure)
+			return
+		}
+		emitter.Emit("strategy:application:result", result)
+	})
+	strategyManualBridge := strategymanual.JSONBridge{}
+	wailsApp.Event.On("strategy:manual:calculate", func(event *application.CustomEvent) {
+		result, failure := executeStrategyManualCommand(ctx, strategyManualBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:manual:error", failure)
+			return
+		}
+		emitter.Emit("strategy:manual:result", result)
+	})
 
 	// Resolve the profile path relative to the config directory if it's relative
 	resolvedProfilePath := *profilePath

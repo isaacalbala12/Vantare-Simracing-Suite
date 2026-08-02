@@ -1,3 +1,23 @@
+Nota ISA-202 / STR-N01 (2026-08-02):
+- Promoción acumulativa de Strategy Planner STR-00…STR-09 reconstruida sobre
+  `nightly@1f3bcc825d45b5900eb798cbeedf7dd3ac2d06fa` desde el stack técnico
+  aprobado que culmina en `1dda42ae33f1471847562415316a274a70fb1f74`.
+- El corte ofrece el dominio y contrato `strategy.v1`, persistencia local,
+  servicio de aplicación, cálculo manual Fuel/Virtual Energy, inventario de
+  neumáticos individuales, shell 3/6/3, edición de stints y entradas manuales
+  no destructivas. No incluye todavía solver avanzado, telemetría live ni
+  publicación comunitaria.
+- Los únicos conflictos de reconstrucción fueron documentales. Se conservaron
+  la gobernanza vigente, la promoción previa de Telemetry Core y los follow-ups
+  TC-10A/B; no se modificaron `testers` ni `master`.
+- Gates frescos: Strategy Go PASS; Go global PASS; frontend Strategy 65/65 PASS
+  con concurrencia controlada; frontend global 305 archivos/2.083 tests PASS;
+  build PASS; Playwright visual wide/medium/compact PASS, overflow de documento
+  y errores de navegador en cero; diff-check PASS.
+- Estado: listo para validación funcional y visual del grupo Nightly/Pro Plus.
+  El feedback se corregirá en ramas de issue antes de cualquier promoción a
+  `testers`.
+
 Nota ISA-171 / TC-09G (2026-08-02):
 - Promoción controlada completada desde `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c` hasta `nightly@c5eb3c906bc0f93a747adac13f3efcc9f731f8b9`, con procedencia en el stack aprobado de Telemetry Core `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
 - El primer gate del PR #65 detectó en Windows CI que una ruta 8.3 (`RUNNER~1`) y su ruta larga equivalente eran rechazadas como distintas por comparación textual en raw capture. El segundo gate confirmó ese paquete verde y reveló la misma comparación en la frontera del catálogo Wails. Ambas rutas comparan ahora identidad real con `os.SameFile`, conservan el rechazo de junctions/symlinks y tienen regresiones Windows 8.3. El timeout del spy permanece en 2 s: no se oculta el fallo funcional. Review independiente y reruns posteriores: PASS, P0/P1/P2/P3 = 0.
@@ -24,6 +44,273 @@ Nota OS-07 / ISA-176 (2026-08-02):
 - La selección activa queda asociada al `widgetId` y se normaliza durante el render cuando cambia el widget o desaparece una capability. Ya no depende de un efecto tardío capaz de pisar la interacción del usuario.
 - Se añadió una regresión que selecciona Apariencia en cuanto el rail queda disponible. El inspector pasa 5 ejecuciones focales consecutivas, lint focal y build. El gate del PR y el gate posterior al merge pasan completos sobre `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c`; ISA-176 e ISA-121 están cerradas.
 - Alcance limitado a estado/navegación del inspector y su test. No se modificaron canvas, renderizadores, diseño visual, allowlists, `testers` ni `master`.
+Nota ISA-144 / STR-09 (2026-08-02):
+
+- Entrada rápida y tabla de 78 vueltas usan correcciones no destructivas con
+  valor original, valor efectivo, motivo, fecha y restauración individual.
+- `strategy.manual.v1` conecta frontend, Wails y el dominio Go. Fuel y VE se
+  calculan por separado; tarjetas, fuel-save y boxes consumen una misma
+  respuesta correlacionada.
+- La pérdida configurada es por parada: cuatro stints producen tres paradas.
+  Reparaciones y penalizaciones permanecen extras explícitos. No se publica
+  una cifra de impacto en ritmo sin modelo demostrable.
+- El cálculo anterior desaparece durante una revisión y los inputs rechazados
+  vuelven al valor válido sin ensuciar el documento.
+- Playwright real valida correcciones, rechazo, guardado/recarga,
+  wide/medium/compact, overflow cero y navegador sin errores. Evidencia:
+  `docs/strategy-planner/str-09-manual-inputs.md`.
+- Estado: listo para review independiente; sin merge o promoción.
+  Tras la review continúa ISA-168 / TA-03C; STR-10 sigue bloqueado por ISA-159.
+
+Nota ISA-143 / STR-08 (2026-08-02):
+
+- El workspace de Strategy ya edita stints y neumáticos físicos: crear,
+  insertar, duplicar, borrar, reordenar, DnD, teclado, cancelación, undo/redo,
+  guardado y recarga.
+- `strategy.editor.v1` viaja por STR-04 y se persiste únicamente en STR-03;
+  `cmd/vantare` conecta el bridge productivo. El mock persistente queda limitado
+  al harness.
+- La primera asignación fija FL/FR/RL/RR; quitar un neumático conserva su
+  identidad. Documentos corruptos y cambios de esquina se rechazan.
+- Apertura lazy, reintento real, mensajes sanitizados, timestamps canónicos,
+  snapshot estable y StrictMode están cubiertos por regresión.
+- Focal `48/48`, frontend global `2072/2072`, Go global, build, lint focal y Playwright real pasan. Chrome
+  valida edición, guardado/recarga, responsive y cero errores/overflow.
+  Evidencia: `docs/strategy-planner/str-08-stint-editor.md`.
+- Rama apilada sobre ISA-142 aceptada; sin merge ni promoción. Siguiente corte
+  tras `ACCEPT`: ISA-144 / STR-09.
+
+Nota ISA-142 / STR-07 (2026-08-02):
+
+- Strategy Planner ya está registrado en el topbar, la política de acceso y el
+  `HubApp` reales.
+- Galería, entrada, revisión, workspace 3/6/3, comparación y guardado honesto de
+  sesión están implementados sin solver, telemetría, persistencia ni drag/drop.
+- El demo renderiza cuatro stints que suman 78 vueltas. Tiempo, pits, uso por
+  compuesto y ahorro pertenecen a cada estrategia y no se presentan como sets
+  físicos.
+- El harness autocontenido arranca y termina Vite, recorre el flujo, valida
+  teclado, aislamiento/foco del modal y captura wide/medium/compact con overflow
+  y errores de navegador en cero. Baseline serial `2059/2059`; corrección final
+  focal `7/7`, build y lint focal pasan. Evidencia:
+  `docs/strategy-planner/str-07-shell-visual.md`.
+- Rama apilada sobre `ISA-141@52d2466`; sin merge ni promoción. El siguiente
+  corte solo tras `ACCEPT` es ISA-143 / STR-08.
+
+Nota ISA-141 / STR-06 (2026-08-02):
+- Nuevo dominio puro `internal/strategy/tyres`, apilado sobre STR-05 exacto
+  `2d0af85`, para neumáticos físicos individuales con ID, Soft/Medium/Hard/Wet,
+  condición/procedencia, estado, stints y esquina persistente.
+- La condición nunca colapsa incertidumbre: clasificación sin dato conserva
+  80–90 %, ausencia general conserva 40–70 %, y un estimado no puede declararse
+  exacto. Un valor manual exacto sigue permitido y queda trazado.
+- Antes del primer uso se puede corregir la posición; el primer uso liga el
+  neumático permanentemente a FL/FR/RL/RR. Descartar conserva el historial.
+- Selección determinista de cuatro unidades, mezclas de compuestos permitidas y
+  errores tipados que explican stock total o incompatibilidad por esquina.
+- Operaciones inmutables; sin UI, drag/drop, persistencia, telemetría, editor de
+  stints, solver, wiring ni dependencias. Evidencia:
+  `docs/strategy-planner/str-06-tyre-inventory.md`.
+- Estado: implementación lista para review independiente; sin merge ni
+  promoción. El siguiente corte solo tras `ACCEPT` es ISA-142 / STR-07.
+
+Nota ISA-140 / STR-05 (2026-08-02):
+- Nuevo motor puro `internal/strategy/manual`, apilado sobre STR-04 exacto
+  `f60f480`, para carrera por vueltas/tiempo, Fuel, Virtual Energy, fuel-save y
+  pit manual.
+- Las carreras por tiempo completan vueltas enteras: `ceil` de la vuelta en
+  curso, sin vuelta fantasma en una frontera exacta, y `+1` únicamente mediante
+  regla explícita del evento. El pit loss es un input manual con procedencia;
+  no existe ciclo fixed-point o solver oculto.
+- Fuel y VE conservan APIs/resultados incompatibles. Necesidad = carrera +
+  formación + reserva; repostajes/recargas se enumeran conservadoramente y
+  nunca subasignan ni superan la capacidad por servicio. Fuel-save cuenta la
+  cantidad inicial real.
+- Pit separa viaje/penalización fija de servicio variable; solo Fuel/neumáticos
+  solapan, reparación es secuencial y `overlapSaved` demuestra que no hay doble
+  conteo. Reparaciones y penalizaciones son manuales y opcionales.
+- Cada input usado y cada regla de selección aparecen en `Assumptions` con
+  valor, unidad, procedencia y confianza. Sin UI, solver, Monte Carlo, presets
+  LMU, telemetría, DuckDB, persistencia nueva, wiring ni dependencias.
+- Evidencia: `docs/strategy-planner/str-05-manual-calculation.md`. Manual x100,
+  property 10.000 casos, dos fuzzers, race x10, árbol Strategy, vet focal,
+  frontend 301/301 y build pasan. Go global conserva solo el P3 Windows
+  heredado de Settings; vet global conserva tres avisos Win32 heredados y lint
+  frontend 30 errores/2 warnings fuera del diff.
+- Corrección de review: la vuelta temporizada usa frontera decimal racional sin
+  epsilon y conserva medias vueltas representables; la asignación de recursos
+  ya no reutiliza ese redondeo ni descarta restos pequeños. Regresiones Fuel/VE
+  cubren múltiplos por debajo, exactos y por encima sin tolerancia contractual.
+- Estado: correcciones P1/P2 listas para nueva review independiente; sin merge
+  ni promoción. El siguiente corte solo tras `ACCEPT` es ISA-141 / STR-06.
+
+Nota ISA-139 / STR-04 (2026-08-02):
+- Nueva fachada `strategy.application.v1` en
+  `internal/strategy/application`, apilada sobre el repositorio exacto de
+  STR-03 `8e151b8`.
+- Comandos versionados para crear, abrir, editar, guardar revisión, duplicar,
+  activar, desactivar, restaurar y cerrar. Undo/redo quedan en el único store
+  frontend transitorio y no escriben revisiones.
+- Dirty se deriva de snapshots; comandos mutadores respetan generación
+  optimista, reconcilian commits inciertos e impiden sobrescrituras stale.
+- El bridge JSON falla cerrado ante versiones futuras, duplicados, unknown
+  fields, campos obligatorios ausentes o trailing data; el cliente correlaciona
+  respuestas y limpia listeners.
+- Las observaciones de ejecución/telemetría se mantienen separadas y no mutan
+  draft, snapshot o historial. Cerrar el editor tampoco desactiva el plan.
+- Sin UI final, cálculos, LMU, Shared Memory, REST, DuckDB, persistencia nueva,
+  wiring productivo ni dependencias. Evidencia:
+  `docs/strategy-planner/str-04-application-service.md`.
+- Evidencia fresca: Go application x100, árbol Strategy, Go global, vet focal,
+  race x10 con UCRT64, 36 tests frontend focales, frontend completo 301/301
+  archivos y 2.052/2.052 tests, TypeScript, build, lint focal y diff-check
+  pasan. Una corrida frontend inicial bajo carga paralela reprodujo timings
+  inestables preexistentes del canvas; la repetición final aislada pasó entera.
+- Corrección tras review: save/close bloquean edit/undo/redo hasta aplicar su
+  resultado; create/open no descartan dirty; un save incierto conserva y
+  reintenta exactamente su identidad; bridge y atajos idempotentes fallan
+  cerrados; el cliente soporta cancel/dispose y limpia todos los listeners.
+- Estado: correcciones listas para segunda review independiente; sin merge ni
+  promoción. El siguiente corte, solo tras `ACCEPT`, es ISA-140 / STR-05.
+
+Nota ISA-138 / STR-03 (2026-08-02):
+- Nuevo repositorio local `strategy.repository.v1` en
+  `internal/strategy/repository`, apilado sobre STR-02 exacto `91c16c2`.
+- Una API mínima `Snapshot` + `Commit(ChangeSet)` posee drafts, revisiones,
+  borrado y futuros lotes transaccionales de STR-15A sin exponer filesystem.
+- Escritura durable con temporal+sync+replace, backup único, lease del sistema
+  operativo y generación optimista. Dos escritores se serializan o reciben
+  `ErrWriteInProgress`/`ErrStaleWrite`; nunca se pisan silenciosamente.
+- Drafts son mutables y recuperables; revisiones STR-02 se vuelven a verificar,
+  son inmutables por identidad+hash e idempotentes si son exactas.
+- Recovery restaura el último backup válido ante corrupción, ignora temporales
+  interrumpidos y falla cerrado si principal/backup no son válidos. Versiones
+  futuras no se degradan mediante rollback.
+- Corrección de review: recovery solo se activa ante ausencia o corrupción
+  demostrada. Límites, permisos/I/O y versiones incompatibles se propagan sin
+  tocar el principal; la regresión generación 1/2 demuestra que un límite más
+  estricto no revierte silenciosamente al backup antiguo.
+- El lease queda probado entre procesos y se libera tras una muerte abrupta.
+  Bajo ese lease se limpian solo temporales regulares privados; symlinks,
+  reparse points, directorios, rutas externas y nombres ajenos permanecen
+  intactos.
+- Drafts y revisiones atraviesan la puerta canónica `strategy.v1`, con fixtures
+  actual/futuro. Un fallo después del replace se informa como
+  `ErrCommitUncertain` con generación para reconciliar mediante `Snapshot`.
+- Segunda corrección de review: el primer commit crea primero un backup de su
+  misma generación. Un root nuevo con ambos archivos ausentes sigue siendo gen0,
+  pero retirar el principal tras inicializar recupera inequívocamente gen1; un
+  commit posterior con versión 0 falla stale y no consolida el vacío. Fallar el
+  backup antes del replace deja un repo genuinamente nuevo; fallar después o
+  interrumpir el principal devuelve resultado incierto recuperable. No se añade
+  marker ni otra fuente de verdad.
+- Migración v1 es un no-op explícito con fixture/golden; no se inventa un
+  formato Product A. Límites, JSON estricto y borrado dentro del documento
+  impiden crecimiento sin cota o tocar archivos externos.
+- Sin UI, queries de galería, paquetes, telemetría, cloud, wiring ni
+  dependencias nuevas. Evidencia:
+  `docs/strategy-planner/str-03-repository.md`.
+- Evidencia fresca: focal x100, lease cross-process x50, árbol Strategy, vet
+  focal, race x10 con
+  CGO/UCRT64, compilación Linux, frontend build y suite Go global excluyendo el
+  único P3 Windows heredado de `TestConcurrentSavesDontCorruptFile` pasan. La
+  suite global completa posterior a la corrección agotó cinco minutos sin
+  salida; la entrega inicial ya había aislado ese test como único fallo. Vet
+  global conserva tres avisos Win32 `unsafe.Pointer` fuera del diff.
+- Estado: implementación local lista para review independiente y entrega; sin
+  promoción ni merge.
+
+Nota ISA-137 / STR-02 (2026-08-01, reanudada 2026-08-02):
+- Nuevo contrato productivo `strategy.v1` en `internal/strategy/contract` para
+  `PlanDraft`, `PlanRevision`, `ActivePlan`, `StrategyExecutionState` y
+  `ReplanProposal`; Product A sigue aislado como oráculo histórico.
+- El draft es mutable, la revisión captura un snapshot independiente con hash
+  `sha256:strategy-c14n-v1` y el plan activo solo cambia tras aceptar
+  explícitamente una propuesta basada en la revisión que continúa activa.
+- Fuel, Virtual Energy, tiempo, vueltas, distancia y neumático son unidades
+  distintas y validadas. Fuel y VE no comparten operaciones ni en Go ni en TS.
+- Procedencia, confianza, capabilities, estados, errores y campos obligatorios
+  se verifican contra un único manifiesto JSON compartido. Una revisión golden,
+  un corpus de canonicalización adversarial y otro de hashes/timestamps
+  demuestran paridad Go/TypeScript sin duplicación silenciosa.
+- Corrección de review: el hash ya no depende del serializador JSON; usa tags
+  binarios, orden UTF-8, float64 big-endian y límites compartidos. Decode de
+  revisiones/replans rechaza duplicados y campos desconocidos; replan valida
+  pre/post transición; execution y aceptación conservan snapshots profundos.
+- Segunda corrección de review: activar dos veces la misma propuesta es
+  idempotente solo con historial exacto; execution dispone de decode estricto
+  Go/TS y corpus compartido de 25 casos con `code+field`; `LapCount`, `epoch` y
+  `sequence` aceptan como máximo `2^53-1`; bytes UTF-8 realmente inválidos se
+  rechazan antes de convertir el documento.
+- Cierre de hallazgos STR-02: los 25 casos del corpus quedan fijados por nombre
+  y orden; escalares y paths anidados se validan con el mismo `code+field` en
+  Go/TS; y los límites de canonicalización están en el manifiesto compartido,
+  sin aplicar el límite de elementos de arrays/objetos a los bytes de strings.
+- Reanudación tras interrupción: una versión explícita desconocida precede a la
+  validación de shape v1 en revisión, replan y execution, con regresiones
+  compartidas Go/TS para revisión y replan. El encoder TypeScript aplica su
+  propio límite de profundidad y rechaza objetos sobredimensionados antes de
+  ordenar claves, incluso cuando verifica un valor ya construido.
+- Corrección final P2: la verificación productiva calcula únicamente el hash;
+  el hexadecimal canónico completo queda limitado al corpus diagnóstico y se
+  construye en un búfer acotado, sin un array temporal por byte. Una regresión
+  canoniza 1.000.000 de números (`9.000.005` bytes canónicos) y el benchmark
+  manual comparable está en
+  `docs/strategy-planner/str-02-canonicalization-memory-benchmark.md`.
+- `strategy.v1` es la primera versión; la migración actual es un no-op explícito
+  y cualquier versión desconocida se rechaza.
+- Sin persistencia, UI, cálculo, LMU, Telemetry Core, DuckDB, Wails ni wiring.
+  Evidencia: `docs/strategy-planner/str-02-contract.md`.
+- Estado: `ACCEPT`, commit `91c16c2`, push y PR draft #66; sin merge ni
+  promoción. Go focal x50, ambos fuzzers, TypeScript, frontend completo
+  299/299 archivos y 2.034/2.034 tests, build, lint focal, vet focal y
+  diff-check pasan. Go/vet global no se repitieron en esta reanudación; la
+  última evidencia conserva el fallo Windows heredado de Settings y tres avisos
+  Win32 `unsafe.Pointer` fuera del diff.
+
+Nota ISA-136 / STR-01 (2026-08-01):
+- Product A queda rescatado únicamente como oráculo histórico aislado en
+  `internal/strategy/producta`; no existe wiring ni consumidor productivo.
+- La allowlist está completa: fixture JSON exacto y 24 archivos Go idénticos a
+  `b9f1937` salvo `package producta`; un guard verifica blobs y manifiesto.
+- La denylist 69/69 se valida contra la matriz y contra un manifiesto versionado
+  del delta; tests de regresión rechazan app service, Hub, locales y CSS. El
+  discovery de raíz pasa también con `-trimpath`.
+- Se reproducen casos canónicos, 10.000 seeds, carrera, recursos, pit,
+  neumáticos, stints, unidades, ranking y sensibilidad sin elevar el solver
+  histórico a autoridad.
+- Se conservan explícitos los defectos históricos: degradación fuera del tiempo
+  total, margen Fuel+VE inválido, optimalidad no demostrada y semánticas LMU
+  pendientes. STR-02/05/06/08/12 poseen sus reemplazos.
+- TDD rojo antes del port y Go focal verde después. Evidencia:
+  `docs/strategy-planner/str-01-product-a-characterization.md`.
+- Estado: `ACCEPT`, commit `f85fd31`, push y PR draft #60; sin merge ni
+  promoción. ISA-137 / STR-02 continúa apilada sobre esa revisión.
+
+Nota ISA-134 / STR-00 (2026-08-01):
+- Strategy Planner queda replanificado como un solo producto; Product A/B/C
+  pasan a ser fases históricas.
+- Product A exacto `b9f1937` fue auditado contra `ISA-117@170eaeb`: Go focal,
+  vet, 25 tests frontend y build pasan; el smoke Playwright histórico se queda
+  bloqueado y debe sustituirse en STR-07.
+- La simulación contiene 94 paths: 87 auto-merged + 7 conflictos. La matriz
+  enumera 94/94 y limita STR-01 a un fixture exacto y 24 ports manuales; los
+  otros 69 paths quedan en denylist.
+- ADR 0006 fija ownership: Analysis publica histórico, Core publica live,
+  Strategy posee planes/cálculo, Engineer envía comandos y Overlays solo leen.
+- Evidencia y ejecución: `docs/strategy-planner/str-00-audit.md`,
+  `rescue-matrix.md`, `pb-to-str-map.md`, `projection-ownership.md` y
+  `docs/superpowers/plans/2026-08-01-strategy-planner-unified-master.md`.
+- Linear conserva ISA-42..67 como `Canceled`/superseded y define 24 cortes:
+  ISA-136..157 más ISA-162/163 (galería privada, oficial y comunidad).
+- Ownership de planes locales: ISA-138/STR-03 posee repositorio, atomicidad,
+  migraciones, drafts, revisiones y recovery; ISA-150/STR-15A consume ese
+  repositorio para la UI de `Mis planes` y paquetes import/export, sin duplicar
+  persistencia.
+- Productores explícitos: ISA-159 / TA-05 para histórico e ISA-160/161 /
+  TC-10A/B para live. Bloquean ISA-145 y ISA-152 respectivamente.
+- Estado: `ACCEPT` tras review; ISA-136 / STR-01 está en ejecución apilada. Sin
+  merge ni promoción.
 
 Nota VANTARE-PROGRAM (2026-07-27):
 - ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.

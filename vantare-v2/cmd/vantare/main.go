@@ -46,6 +46,10 @@ import (
 // version is the current application version.
 var version = "v0.1.0.5"
 
+// buildChannel is injected by release builds. Local and public builds fail
+// closed as master so the internal Testing Center cannot appear accidentally.
+var buildChannel = "master"
+
 const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
@@ -785,6 +789,7 @@ func main() {
 	var profileHkMgr *launcher.HotkeyManager
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
+	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -1389,6 +1394,8 @@ func main() {
 	}
 	testingCenterReportDraftBridge = app.NewTestingCenterReportDraftBridge(ctx, reportDraftStore, emitter)
 	testingCenterReportDraftBridge.RegisterHandlers(wailsApp)
+	testingCenterDiagnosticBridge = app.NewTestingCenterDiagnosticBridge(version, buildChannel, emitter)
+	testingCenterDiagnosticBridge.RegisterHandlers(wailsApp)
 
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
@@ -1429,10 +1436,10 @@ func main() {
 	}
 
 	// Version info broadcast for UI.
-	emitter.Emit("app:version", map[string]any{"version": version})
+	emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 
 	wailsApp.Event.On("app:version:get", func(event *application.CustomEvent) {
-		emitter.Emit("app:version", map[string]any{"version": version})
+		emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 	})
 
 	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {

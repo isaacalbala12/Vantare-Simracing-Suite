@@ -1,3 +1,20 @@
+Nota ISA-220 / TAU-04C (2026-08-02, UI del Testing Center):
+- Nueva pestaña visible únicamente cuando el canal real embebido en la build
+  coincide con su capability firmada; `master`, metadata desconocida o
+  permisos cruzados fallan cerrados. Supabase conserva la autoridad final.
+- Formulario responsive y accesible con acción, esperado y observado
+  obligatorios, contexto opcional, módulo cerrado, modo offline y draft local
+  recuperable. Los consentimientos nunca se persisten y arrancan apagados.
+- El backend prepara `testing-center.diagnostic.v1` en memoria. La UI muestra
+  los bytes exactos, recalcula SHA-256 antes de aceptarlos y envía esos mismos
+  bytes mediante la RPC idempotente de TAU-04A.
+- No existe todavía un collector productivo de logs: la UI muestra cero
+  disponibles y bloquea ese opt-in en vez de inventar datos.
+- Gates focales Go, frontend, build, lint y harness visual 390/768/1024/1440
+  PASS. Autoridad: `docs/runbooks/testing-center-ui.md`.
+- Estado: implementación local lista para review; sin Supabase remoto, GitHub
+  Issue, Codex, Discord, merge, promoción o build distribuida.
+
 Nota ISA-219 / TAU-04B (2026-08-02, draft local y bridge Wails):
 - Nuevo store local para reanudar exclusivamente acción, esperado, observado,
   contexto y módulo; no persiste consentimiento, diagnóstico, logs, replay,

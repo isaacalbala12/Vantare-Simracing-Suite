@@ -161,9 +161,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   ocurrencias y una reserva durable de creación. Cien repeticiones y dos
   transacciones concurrentes convergen en una issue técnica y un efecto
   reservado. No existe todavía llamada externa.
-- Siguiente acción: TAU-05B proyecta el GitHub Issue en dry-run y TAU-05C añade
-  GitHub App mínimo, webhook firmado y reconciliación. Codex/Discord continúan
-  fuera de TAU-05 y conservan sus gates posteriores.
+- ISA-223 / TAU-05B proyecta el issue y los comentarios con decoder cerrado,
+  redacción, markers no confiables y adaptador dry-run que recalcula su digest.
+  Replay se expresa solo como disponibilidad autenticada; logs, URL, assignee
+  y Codex no entran en GitHub.
+- Siguiente acción: TAU-05C añade GitHub App mínimo, lease/claim durable,
+  webhook firmado y reconciliación. Codex/Discord continúan fuera de TAU-05 y
+  conservan sus gates posteriores.
 
 ## Riesgos
 
@@ -188,7 +192,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-222 prepara el triage exact-compatible y una reserva outbox
-exactly-once sobre la UI/RPC de TAU-04. No llama GitHub ni activa Codex,
-Discord o Supabase remoto. Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118
-permanece como deuda global heredada y la venta pública continúa NO-GO.
+2026-08-02, ISA-223 añade la proyección GitHub sanitizada y su dry-run sobre el
+outbox de ISA-222. No llama GitHub ni activa Codex, Discord o Supabase remoto.
+Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
+global heredada y la venta pública continúa NO-GO.

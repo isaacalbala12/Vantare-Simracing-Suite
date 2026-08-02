@@ -1,3 +1,19 @@
+Nota ISA-223 / TAU-05B (2026-08-02, proyección GitHub dry-run):
+- Contrato Deno cerrado para proyectar un GitHub Issue y comentarios de
+  ocurrencia sin efectuar llamadas de red ni confirmar el outbox.
+- Título, labels y markers proceden solo de IDs/enums allowlisted. No existe
+  assignee, label Codex, token, configuración GitHub, logs o URL de replay.
+- El texto del tester se trata como dato no confiable: neutraliza Markdown,
+  menciones, controles y patrones conocidos de secretos/PII, con límites por
+  bytes. La PII semántica arbitraria sigue requiriendo revisión humana.
+- El adaptador dry-run recalcula SHA-256, converge en retries idénticos y
+  distingue corrupción de conflicto idempotente.
+- Gates: 20/20 focales, 201/201 Deno activos, type-check, formato y superficie
+  de deploy PASS. Autoridad:
+  `docs/runbooks/testing-center-github-projection.md`.
+- Estado: implementación local lista para review; sin GitHub App, Edge
+  Function desplegable, credencial, webhook, deploy o mutación remota.
+
 Nota ISA-222 / TAU-05A (2026-08-02, triage y outbox exactly-once):
 - Nueva frontera server-only que comprueba payload/evento completos, calcula
   fingerprints técnicos y funcionales deterministas y conserva cada reporte
@@ -13,7 +29,7 @@ Nota ISA-222 / TAU-05A (2026-08-02, triage y outbox exactly-once):
 - Gate PostgreSQL desechable: core 72 + access 56 + report 55 + triage 40,
   rollback/reapply, 100 repeticiones y concurrencia PASS. Autoridad:
   `docs/runbooks/testing-center-triage-outbox.md`.
-- Estado: implementación local lista para review; sin GitHub App, red, webhook,
+- Estado: PR draft #111 con CI protegida verde; sin GitHub App, red, webhook,
   Codex, Discord, deploy, merge, promoción o build distribuida.
 
 Nota ISA-220 / TAU-04C (2026-08-02, UI del Testing Center):

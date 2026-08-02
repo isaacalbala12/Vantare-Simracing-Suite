@@ -10,6 +10,26 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-182 / ENG-11 (2026-08-02, In Review):
+- Package manager test-only con manifest v1 cerrado y versionado, descargas
+  acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y
+  eliminación fallan cerrados ante symlink, junction o reparse point.
+- Voice-host local hijo con PID/protocolo/nonce/loopback demostrados,
+  timeouts finitos, request acotada, shutdown/terminate/kill y limpieza de
+  token, nonce, lease, proceso y puerto. `last_pid`/`last_exit_code` quedan como
+  única auditoría de lifecycle.
+- Un reinstall válido descarga/verifica pero no reemplaza un target idéntico ya
+  verificado; missing/corrupt solo se promociona tras validación completa.
+- Harness 200 probes: startup 349,598 ms, p50 13,774 ms, p95 20,445 ms, máximo
+  26,926 ms, shutdown limpio y cero leases. Usa fixture sintética externa: no
+  ejecuta inferencia ni demuestra precisión o rendimiento Whisper.
+- Suite ENG-11 31/31 PASS; suite histórica del tooling 48/48 PASS tres veces
+  consecutivas. Sin micrófono, raw, modelo, binario, dependencia, wiring o
+  promoción. Command readiness, PTT, wake word y TTS permanecen **NO-GO**.
+- Contrato: `docs/engineer/voice-package-host-isa-182.md`; evidencia:
+  `docs/evidence/isa-182/lifecycle-summary.json`. No iniciar ENG-12 hasta cerrar
+  review independiente.
+
 Nota ISA-181 / ENG-10 (2026-08-02, In Review):
 - Corpus FLEURS original CC BY 4.0 fijado por revisión: 5 grabaciones humanas
   por `en_us/es_419/it_it/pt_br`, clean y ruido blanco determinista 10 dB. El

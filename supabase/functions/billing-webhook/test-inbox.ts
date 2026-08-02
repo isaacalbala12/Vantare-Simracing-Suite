@@ -38,7 +38,8 @@ export class MemoryWebhookInbox implements WebhookInbox {
   constructor(private readonly now: () => Date = () => new Date()) {}
 
   async receive(delivery: WebhookDelivery): Promise<WebhookReceipt> {
-    const current = this.#items.get(delivery.eventId);
+    const key = `${delivery.environment}:${delivery.eventId}`;
+    const current = this.#items.get(key);
     if (current) {
       const matches = current.hash === delivery.payloadHash;
       if (!matches) {
@@ -70,7 +71,7 @@ export class MemoryWebhookInbox implements WebhookInbox {
       replayCount: 0,
       nextAttemptAt: this.now().toISOString(),
     };
-    this.#items.set(delivery.eventId, item);
+    this.#items.set(key, item);
     return { id: item.id, status: item.status, payloadMatches: true };
   }
 
@@ -244,7 +245,9 @@ export class MemoryWebhookInbox implements WebhookInbox {
   }
 
   #event(eventId: string): Item {
-    const item = this.#items.get(eventId);
+    const item = [...this.#items.values()].find((candidate) =>
+      candidate.eventId === eventId
+    );
     if (!item) throw new Error("missing test event");
     return item;
   }

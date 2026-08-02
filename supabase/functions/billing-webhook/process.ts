@@ -1022,12 +1022,15 @@ export async function processPolarWebhookEvent(
   deps: WebhookProcessorDeps,
 ): Promise<ProcessResult> {
   const inbox = deps.inbox ?? createSupabaseWebhookInbox(deps.supabase);
+  const mapping = (deps.loadMap ?? loadPolarProductMap)();
+  const environment = mapping.ok ? mapping.map.environment : "unclassified";
   const payload = minimizePolarWebhookEvent(event);
   const payloadHash = deps.payloadHash ?? await computeWebhookPayloadHash(
     JSON.stringify(event),
   );
   const receipt = await inbox.receive({
     provider: POLAR_PROVIDER,
+    environment,
     eventId: webhookId,
     eventType: event.type,
     payloadHash,

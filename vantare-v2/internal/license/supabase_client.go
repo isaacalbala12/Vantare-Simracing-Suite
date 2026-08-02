@@ -38,14 +38,28 @@ func NewStdlibSupabaseClient(baseURL, anonKey string) *stdlibSupabaseClient {
 }
 
 func (c *stdlibSupabaseClient) FetchAccount(ctx context.Context, sessionToken string, fingerprint string) (*AccountInfo, error) {
-	payload := map[string]string{"device_fingerprint": fingerprint}
+	if err := c.callRPC(ctx, sessionToken, "claim_active_device", map[string]string{"device_fingerprint": fingerprint}, nil); err != nil {
+		return nil, fmt.Errorf("claiming active device: %w", err)
+	}
+	var raw json.RawMessage
+	if err := c.callRPC(ctx, sessionToken, "read_account_entitlements", map[string]string{}, &raw); err != nil {
+		return nil, fmt.Errorf("reading account entitlements: %w", err)
+	}
+	info, err := decodeAccountInfo(bytes.NewReader(raw))
+	if err != nil {
+		return nil, fmt.Errorf("decoding account: %w", err)
+	}
+	return info, nil
+}
+
+func (c *stdlibSupabaseClient) callRPC(ctx context.Context, sessionToken, name string, payload any, destination *json.RawMessage) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("encoding fetch payload: %w", err)
+		return fmt.Errorf("encoding %s payload: %w", name, err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/rest/v1/rpc/get_account_entitlements", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/rest/v1/rpc/"+name, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("creating fetch request: %w", err)
+		return fmt.Errorf("creating %s request: %w", name, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+sessionToken)
 	req.Header.Set("apikey", c.anonKey)
@@ -53,20 +67,22 @@ func (c *stdlibSupabaseClient) FetchAccount(ctx context.Context, sessionToken st
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetching account: %w", err)
+		return fmt.Errorf("calling %s: %w", name, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("fetch account failed: %d %s", resp.StatusCode, string(msg))
+		return fmt.Errorf("%s failed: %d %s", name, resp.StatusCode, string(msg))
 	}
-
-	info, err := decodeAccountInfo(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("decoding account: %w", err)
+	if destination != nil {
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("reading %s response: %w", name, err)
+		}
+		*destination = data
 	}
-	return info, nil
+	return nil
 }
 
 // decodeAccountInfo accepts PostgREST RPC payloads as either a single object

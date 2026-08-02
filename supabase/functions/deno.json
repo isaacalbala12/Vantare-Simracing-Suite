@@ -2,5 +2,8 @@
   "compilerOptions": {
     "lib": ["deno.ns", "deno.unstable", "dom"]
   },
+  "tasks": {
+    "verify:deploy-surface": "deno run --allow-read scripts/verify-deploy-surface.ts"
+  },
   "exclude": ["**/_deprecated/**"]
 }

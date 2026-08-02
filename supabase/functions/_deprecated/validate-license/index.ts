@@ -1,6 +1,6 @@
 /**
- * @deprecated Fase 1.6 — Usa Go LicenseService + RPC get_account_entitlements.
- * Esta EF opera sobre el esquema viejo (licenses/hwid). No borrar hasta Fase 3.
+ * @deprecated Read-only archive. Never deploy; the active client uses hardened RPCs.
+ * verify-deploy-surface.ts keeps this outside the deployable Functions surface.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 

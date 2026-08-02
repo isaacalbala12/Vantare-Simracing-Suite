@@ -274,12 +274,15 @@ func TestProfileRejectsAbsolutePathUnix(t *testing.T) {
 	}
 }
 
-// nonceReq creates a POST /auth/token request with a valid nonce injected into
-// the given JSON body. The body should omit the "nonce" field; it is appended.
-func nonceReq(srv *server.Server, body string) *http.Request {
-	nonce := srv.GenerateNonce()
-	// Insert nonce into the JSON body by trimming the closing brace.
-	body = strings.TrimRight(body, " \t\r\n}") + `, "nonce":"` + nonce + `"}`
+// authAttemptReq creates a POST /auth/token request bound to a valid OAuth
+// attempt created before the browser would be opened.
+func authAttemptReq(srv *server.Server, body string) *http.Request {
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		panic(err)
+	}
+	body = strings.TrimRight(body, " \t\r\n}") + `, "attempt_id":"` + attempt.ID +
+		`", "provider":"` + attempt.Provider + `", "state":"` + attempt.State + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	return req
@@ -301,7 +304,11 @@ func (e *testEmitter) Emit(name string, data any) {
 
 func TestAuthCallbackServesHTML(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback", nil)
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, attempt.RedirectURL, nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -326,21 +333,47 @@ func TestAuthCallbackServesHTML(t *testing.T) {
 	if !strings.Contains(body, "access_token") {
 		t.Fatal("callback HTML should extract access_token from URL fragment")
 	}
-	if !strings.Contains(body, "AUTH_NONCE") {
-		t.Fatal("callback HTML should contain nonce placeholder")
+	if !strings.Contains(body, "AUTH_ATTEMPT") || !strings.Contains(body, "AUTH_STATE") {
+		t.Fatal("callback HTML should contain the bound attempt tuple")
 	}
-	if !strings.Contains(body, "nonce: AUTH_NONCE") {
-		t.Fatal("callback HTML should send nonce in POST body")
+	if !strings.Contains(body, "attempt_id: AUTH_ATTEMPT") || !strings.Contains(body, "state: AUTH_STATE") {
+		t.Fatal("callback HTML should send the attempt tuple in POST body")
 	}
 	if rr.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal("callback should have Cache-Control: no-store")
 	}
 }
 
+func TestAuthCallbackRejectsUnsolicitedLogin(t *testing.T) {
+	srv := server.New(server.ServerConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/auth/callback", nil)
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("unsolicited callback = %d, want 401", rr.Code)
+	}
+}
+
+func TestAuthCallbackRejectsProviderSubstitution(t *testing.T) {
+	srv := server.New(server.ServerConfig{})
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	callback := strings.Replace(attempt.RedirectURL, "provider=google", "provider=discord", 1)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, callback, nil))
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("provider substitution callback = %d, want 401", rr.Code)
+	}
+}
+
 func TestAuthTokenForwardsToEmitter(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	req := nonceReq(srv, `{"access_token":"test-tok-123"}`)
+	req := authAttemptReq(srv, `{"access_token":"test-tok-123"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -366,7 +399,7 @@ func TestAuthTokenForwardsToEmitter(t *testing.T) {
 func TestAuthTokenForwardsRefreshToken(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	req := nonceReq(srv, `{"access_token":"tok","refresh_token":"ref-456"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok","refresh_token":"ref-456"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -392,7 +425,7 @@ func TestAuthTokenForwardsRefreshToken(t *testing.T) {
 func TestAuthTokenAcceptsMissingRefreshToken(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	req := nonceReq(srv, `{"access_token":"tok-only"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok-only"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -419,7 +452,7 @@ func TestAuthTokenAcceptsMissingRefreshToken(t *testing.T) {
 func TestAuthTokenRejectsEmptyToken(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	req := nonceReq(srv, `{"access_token":""}`)
+	req := authAttemptReq(srv, `{"access_token":""}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -434,7 +467,7 @@ func TestAuthTokenRejectsEmptyToken(t *testing.T) {
 
 func TestAuthTokenRejectsNoEmitter(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -444,10 +477,10 @@ func TestAuthTokenRejectsNoEmitter(t *testing.T) {
 	}
 }
 
-func TestAuthTokenRejectsMissingNonce(t *testing.T) {
+func TestAuthTokenRejectsMissingAttempt(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	payload := `{"access_token":"tok","nonce":""}`
+	payload := `{"access_token":"tok"}`
 	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -455,17 +488,21 @@ func TestAuthTokenRejectsMissingNonce(t *testing.T) {
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
-		t.Fatalf("POST /auth/token missing nonce = %d, want 401", rr.Code)
+		t.Fatalf("POST /auth/token missing attempt = %d, want 401", rr.Code)
 	}
 	if len(em.calls) != 0 {
 		t.Fatal("expected 0 emit calls for missing nonce")
 	}
 }
 
-func TestAuthTokenRejectsInvalidNonce(t *testing.T) {
+func TestAuthTokenRejectsInvalidAttemptState(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
-	payload := `{"access_token":"tok","nonce":"bogus-nonce"}`
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"attacker-state"}`
 	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -473,26 +510,43 @@ func TestAuthTokenRejectsInvalidNonce(t *testing.T) {
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
-		t.Fatalf("POST /auth/token invalid nonce = %d, want 401", rr.Code)
+		t.Fatalf("POST /auth/token invalid state = %d, want 401", rr.Code)
 	}
 	if len(em.calls) != 0 {
 		t.Fatal("expected 0 emit calls for invalid nonce")
 	}
 }
 
-func TestAuthTokenRejectsReusedNonce(t *testing.T) {
+func TestAuthTokenRejectsProviderSubstitution(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em})
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"discord","state":"` + attempt.State + `"}`
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload)))
+	if rr.Code != http.StatusUnauthorized || len(em.calls) != 0 {
+		t.Fatalf("provider substitution = %d emits=%d, want 401/0", rr.Code, len(em.calls))
+	}
+}
+
+func TestAuthTokenRejectsReplayedAttempt(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
 
-	// Generate a nonce manually and use it in the first request.
-	nonce := srv.GenerateNonce()
-	body1 := `{"access_token":"tok","nonce":"` + nonce + `"}`
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body1 := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"` + attempt.State + `"}`
 	req1 := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
 	req1.Header.Set("Content-Type", "application/json")
 	rr1 := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr1, req1)
 	if rr1.Code != http.StatusOK {
-		t.Fatalf("first request with valid nonce = %d, want 200", rr1.Code)
+		t.Fatalf("first request with valid attempt = %d, want 200", rr1.Code)
 	}
 
 	// Second request reusing the same nonce should fail.
@@ -502,7 +556,7 @@ func TestAuthTokenRejectsReusedNonce(t *testing.T) {
 	srv.Handler().ServeHTTP(rr2, req2)
 
 	if rr2.Code != http.StatusUnauthorized {
-		t.Fatalf("reused nonce = %d, want 401", rr2.Code)
+		t.Fatalf("replayed attempt = %d, want 401", rr2.Code)
 	}
 	if len(em.calls) != 1 {
 		t.Fatalf("expected 1 emit call, got %d", len(em.calls))
@@ -516,7 +570,7 @@ func TestAuthTokenRateLimited(t *testing.T) {
 	// Generate nonces and send concurrent requests to exhaust the limit.
 	// The default rate limiter allows 10 per minute per IP.
 	for i := 0; i < 10; i++ {
-		req := nonceReq(srv, `{"access_token":"tok"}`)
+		req := authAttemptReq(srv, `{"access_token":"tok"}`)
 		rr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rr, req)
 		if rr.Code != http.StatusOK && rr.Code != http.StatusTooManyRequests {
@@ -525,7 +579,7 @@ func TestAuthTokenRateLimited(t *testing.T) {
 	}
 
 	// The next request should be rate-limited.
-	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok"}`)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusTooManyRequests {
@@ -539,7 +593,7 @@ func TestAuthTokenRateLimitSharesCounterByIP(t *testing.T) {
 
 	// 10 requests from same IP with different ports should share the counter.
 	for i := 0; i < 10; i++ {
-		req := nonceReq(srv, `{"access_token":"tok"}`)
+		req := authAttemptReq(srv, `{"access_token":"tok"}`)
 		port := 50000 + i
 		req.RemoteAddr = fmt.Sprintf("127.0.0.1:%d", port)
 		rr := httptest.NewRecorder()
@@ -550,7 +604,7 @@ func TestAuthTokenRateLimitSharesCounterByIP(t *testing.T) {
 	}
 
 	// 11th request from same IP should be rate-limited.
-	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok"}`)
 	req.RemoteAddr = "127.0.0.1:51000"
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
@@ -565,7 +619,7 @@ func TestAuthTokenRateLimitDifferentIPsDontShare(t *testing.T) {
 
 	// 10 requests from IP A exhaust the limit for A.
 	for i := 0; i < 10; i++ {
-		req := nonceReq(srv, `{"access_token":"tok"}`)
+		req := authAttemptReq(srv, `{"access_token":"tok"}`)
 		req.RemoteAddr = fmt.Sprintf("10.0.0.1:%d", 50000+i)
 		rr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rr, req)
@@ -575,7 +629,7 @@ func TestAuthTokenRateLimitDifferentIPsDontShare(t *testing.T) {
 	}
 
 	// Request from IP B should still be allowed (different counter).
-	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok"}`)
 	req.RemoteAddr = "10.0.0.2:39261"
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
@@ -689,7 +743,11 @@ func TestSecurityHeadersCSP(t *testing.T) {
 
 func TestAuthCallbackSecurityHeaders(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback", nil)
+	attempt, err := srv.CreateAuthAttempt("google")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, attempt.RedirectURL, nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -704,7 +762,7 @@ func TestAuthCallbackSecurityHeaders(t *testing.T) {
 
 func TestAuthTokenSecurityHeaders(t *testing.T) {
 	srv := server.New(server.ServerConfig{Emitter: &testEmitter{}})
-	req := nonceReq(srv, `{"access_token":"tok"}`)
+	req := authAttemptReq(srv, `{"access_token":"tok"}`)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)

@@ -1,5 +1,33 @@
 # Handoff vivo — plataforma comercial (Billing)
 
+## Actualización 2026-08-02 — BIL-08 / ISA-73
+
+BIL-08 está implementada sobre la base exacta aceptada de BIL-07
+`5141aa6523a6850ef2f73233268056fd171bbb8e`, en rama aislada y sin deploy.
+Reemplaza la caché editable por un envelope v1 Ed25519 emitido server-side,
+ligado al UUID autenticado y al fingerprint activo. El cliente contiene solo un
+registro versionado de claves públicas; verifica firma, cuenta, dispositivo,
+fechas, capabilities y un high-watermark protegido antes de derivar acceso.
+
+La migración legacy, edición, copia, rollback, grants ambiguos y rechazos online
+fallan cerrados. Pro y canales temporales expiran por `paidThrough`; Launch v1
+conserva perpetuamente su alcance adquirido y Testers, nunca Nightly por sí
+sola. La revocación online sustituye la caché anterior. El cambio de dispositivo
+se mantiene explícito y server-side.
+
+Leer a continuación:
+
+- `docs/analysis/isa-73-bil-08-offline-credential-2026-08-02.md`.
+- `docs/billing/bil-08-offline-credential-runbook.md`.
+
+Evidencia fresca tras recuperar el worktree: tests de servicio online/offline e
+interoperabilidad reconstruidos, authsession/license/protectedstore/cmd x20,
+Credential Manager real, `go vet` y race focal PASS; Deno 11/11. La carrera
+global ajena del spy Launcher está en ISA-211. Frontend y gates globales se
+repetirán después de reconstruir el corte sobre `nightly`. Sin secretos,
+deploy, pagos, refunds, mutaciones remotas ni promoción. Venta pública continúa
+**NO-GO**.
+
 ## Actualización 2026-08-02 — BIL-07 / ISA-71
 
 BIL-07 está implementada sobre la base exacta aceptada de BIL-06

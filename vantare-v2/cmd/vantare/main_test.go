@@ -10,9 +10,28 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestShouldPersistValidatedSessionRequiresCurrentOnlineValidation(t *testing.T) {
+	if shouldPersistValidatedSession(&license.Result{UserID: "user", OnlineValidated: false}, "access", "refresh") {
+		t.Fatal("offline cache result was accepted as a backend-validated session")
+	}
+	if !shouldPersistValidatedSession(&license.Result{UserID: "user", OnlineValidated: true}, "access", "refresh") {
+		t.Fatal("online-validated session was rejected")
+	}
+}
+
+func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
+	if got := resolveLicensePublicKeys("release-key", "attacker-key"); got != "release-key" {
+		t.Fatalf("resolved key = %q, want embedded release trust root", got)
+	}
+	if got := resolveLicensePublicKeys("", "development-key"); got != "development-key" {
+		t.Fatalf("development key = %q, want local opt-in", got)
+	}
+}
 
 // fakeOverlayFactory creates fake overlay windows for testing.
 type fakeOverlayFactory struct {

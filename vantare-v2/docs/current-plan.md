@@ -1,3 +1,10 @@
+Nota ISA-73-BIL-08-OFFLINE-CREDENTIAL (2026-08-02):
+- Candidato aislado sobre BIL-07 `5141aa6523a6850ef2f73233268056fd171bbb8e`: envelope v1 Ed25519 emitido server-side, ligado al UUID autenticado y fingerprint activo; el cliente incluye exclusivamente claves públicas versionadas.
+- Cache local contiene solo el envelope y vuelve a derivar estado/capabilities tras firma, cuenta, dispositivo, fechas y high-watermark protegido. Legacy, edición, copia, rollback, grants ambiguos y rechazo online fallan cerrados.
+- Pro/canales expiran por `paidThrough`; Launch v1 es perpetuo para su alcance y Testers, nunca Nightly. Revocación online sustituye la caché anterior y una sesión solo persiste tras validación online actual.
+- Evidencia focal recuperada tras el reinicio: servicio online/offline y fixture Deno→Go reconstruidos; authsession/license/protectedstore/cmd x20 PASS, Credential Manager real, vet y race focal PASS; Deno 11/11. La carrera global ajena del spy Launcher queda registrada en ISA-211. Frontend global/build se repetirá sobre la base `nightly` antes de promover.
+- Informe: `docs/analysis/isa-73-bil-08-offline-credential-2026-08-02.md`; operación: `docs/billing/bil-08-offline-credential-runbook.md`. Sin deploy, secretos, pagos, refunds, mutación remota o promoción. Venta pública sigue **NO-GO**.
+
 Nota ISA-71-BIL-07-ORDER-REFUND-LEDGER (2026-08-02):
 - Candidato aislado sobre BIL-06 `f8803988c945b6eda63e871e333bd7205b93ccb1`: ledger server-only por order/refund, grants por compra y revocación únicamente por suma total de refunds `succeeded` atribuibles.
 - Refund parcial, pending/failed/canceled y agregado `order.refunded` conservan acceso; dos compras del mismo producto son independientes y un refund antiguo no afecta la posterior. Missing, conflictos, ownership dudoso o customer balance distinto de cero fallan cerrados.

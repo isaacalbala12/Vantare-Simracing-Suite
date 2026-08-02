@@ -9,6 +9,7 @@ import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
+import { AuthSessionBridge } from "./lib/AuthSessionBridge";
 registerBuiltinDesignSystems();
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
@@ -35,6 +36,8 @@ export function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+		<AuthSessionBridge>
+			<App />
+		</AuthSessionBridge>
   </StrictMode>,
 );

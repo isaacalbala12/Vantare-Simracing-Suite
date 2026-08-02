@@ -1,30 +1,42 @@
 {
-  "_comment": "Plantilla Fase 2C — NO commitear IDs reales ni tokens. Copiar a Supabase secret POLAR_PRODUCT_MAP (minificado).",
-  "_docs": "https://polar.sh/docs/api-reference/introduction",
+  "_comment": "Plantilla BIL-03. Solo UUIDs ficticios: no versionar IDs reales ni tokens.",
+  "_docs": "https://polar.sh/docs/api-reference/checkouts/create-session",
+  "schema_version": 2,
   "environment": "sandbox",
+  "catalog_version": "replace-with-approved-catalog-version",
+  "organization_id": "00000000-0000-0000-0000-000000000100",
   "checkout_keys": {
     "launch_lifetime": {
       "polar_product_id": "00000000-0000-0000-0000-000000000001",
-      "entitlement_product_key": "bundle",
+      "polar_price_ids": ["00000000-0000-0000-0000-000000000002"],
       "plan_sku": "launch_lifetime",
       "billing_type": "one_time",
-      "lifetime": true
+      "lifetime": true,
+      "active": true,
+      "capabilities": ["vantare.edition.launch_v1", "vantare.channel.testers"],
+      "channels": ["stable", "testers"],
+      "launch_scope_version": "launch_v1",
+      "trial": { "enabled": false }
     },
     "pro_monthly": {
       "polar_product_id": "00000000-0000-0000-0000-000000000003",
-      "entitlement_product_key": "bundle",
+      "polar_price_ids": ["00000000-0000-0000-0000-000000000004"],
       "plan_sku": "pro_monthly",
       "billing_type": "subscription",
-      "lifetime": false
+      "lifetime": false,
+      "active": true,
+      "capabilities": ["vantare.plan.pro"],
+      "channels": ["stable"],
+      "launch_scope_version": null,
+      "trial": { "enabled": false }
     }
   },
   "product_id_to_checkout_key": {
     "00000000-0000-0000-0000-000000000001": "launch_lifetime",
     "00000000-0000-0000-0000-000000000003": "pro_monthly"
   },
-  "decisions": {
-    "pro_monthly_entitlement": "bundle",
-    "overlays_only_v1": false,
-    "free_in_polar": false
+  "price_id_to_checkout_key": {
+    "00000000-0000-0000-0000-000000000002": "launch_lifetime",
+    "00000000-0000-0000-0000-000000000004": "pro_monthly"
   }
 }

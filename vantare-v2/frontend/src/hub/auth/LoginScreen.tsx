@@ -5,7 +5,6 @@ import {
   signInWithOAuth,
   signUp,
   resetPasswordForEmail,
-  setSupabaseSession,
 } from "../../lib/supabase-auth";
 import { Browser, Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -53,22 +52,6 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
       unsub?.();
     };
   }, [waitingExternal, onLoggedIn]);
-
-  useEffect(() => {
-    const unsub = Events.On(
-      "auth:session",
-      (event: { data: { access_token?: string; refresh_token?: string } }) => {
-        const at = event.data?.access_token;
-        const rt = event.data?.refresh_token;
-        if (at && rt) {
-          setSupabaseSession(at, rt);
-        }
-      },
-    );
-    return () => {
-      unsub?.();
-    };
-  }, []);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {

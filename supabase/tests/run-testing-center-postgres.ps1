@@ -69,7 +69,9 @@ grant usage on schema public, auth to anon, authenticated, service_role;
   docker cp (Join-Path $root "supabase\tests\testing_center_core.test.sql") "${container}:/tmp/testing-center.test.sql"
   docker cp (Join-Path $root "supabase\rollbacks\20260802130000_testing_center_core.down.sql") "${container}:/tmp/testing-center.down.sql"
 
-  $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") | Sort-Object Name
+  $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") |
+    Where-Object { $_.Name -le $targetMigration } |
+    Sort-Object Name
   foreach ($migration in $migrations) {
     docker cp $migration.FullName "${container}:/tmp/$($migration.Name)"
     if ($LASTEXITCODE -ne 0) { throw "Could not copy migration $($migration.Name)" }

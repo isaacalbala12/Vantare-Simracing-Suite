@@ -139,6 +139,7 @@ Deno.test("client build receives public verification keys only", () => {
 
 Deno.test("remote smoke tooling has no hardcoded project, account, or payload logging", () => {
   const scripts = [
+    "smoke-billing-nonmonetary.ps1",
     "smoke-webhook-deployed.ts",
     "verify-smoke-db.ts",
     "poll-polar-event.ts",
@@ -147,6 +148,8 @@ Deno.test("remote smoke tooling has no hardcoded project, account, or payload lo
     .join("\n");
 
   const forbidden = [
+    "ombjshwzqgeisazijduq",
+    "rilwmlbnucbbayaulnxw",
     "supabase.co/functions/v1/billing-webhook",
     'const USER_ID = "',
     '.select("id,event_type,idempotency_key,user_id,payload,created_at")',
@@ -158,6 +161,49 @@ Deno.test("remote smoke tooling has no hardcoded project, account, or payload lo
   for (const value of forbidden) {
     if (scripts.includes(value)) {
       throw new Error(`unsafe remote smoke tooling marker: ${value}`);
+    }
+  }
+});
+
+Deno.test("non-monetary smoke cannot authenticate production checkout", () => {
+  const script = Deno.readTextFileSync(
+    new URL("./smoke-billing-nonmonetary.ps1", import.meta.url),
+  );
+  const productionBranch = script.slice(
+    script.indexOf(
+      "} else {\n    # Never exercise an authenticated production checkout",
+    ),
+    script.indexOf(
+      "\n  }\n\n  $portal =",
+      script.indexOf(
+        "} else {\n    # Never exercise an authenticated production checkout",
+      ),
+    ),
+  );
+  if (!productionBranch.includes('Authorization = "Bearer $anonKey"')) {
+    throw new Error("production smoke does not use the unauthenticated guard");
+  }
+  if (productionBranch.includes("$userHeaders")) {
+    throw new Error("production smoke could authenticate a real checkout");
+  }
+});
+
+Deno.test("billing migrations qualify pgcrypto functions through the extensions schema", () => {
+  const migrationsRoot = new URL("../../migrations/", import.meta.url);
+  const migrationNames = [...Deno.readDirSync(migrationsRoot)]
+    .filter((entry) =>
+      entry.isFile && entry.name.startsWith("20260802") &&
+      entry.name.endsWith(".sql")
+    )
+    .map((entry) => entry.name)
+    .sort();
+
+  for (const name of migrationNames) {
+    const sql = Deno.readTextFileSync(new URL(name, migrationsRoot));
+    if (/(^|[^.\w])digest\s*\(/m.test(sql)) {
+      throw new Error(
+        `${name} contains an unqualified pgcrypto digest call`,
+      );
     }
   }
 });

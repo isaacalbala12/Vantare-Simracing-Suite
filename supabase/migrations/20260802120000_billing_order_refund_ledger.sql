@@ -351,7 +351,7 @@ begin
     when v_refunded > 0 then 'partially_refunded'
     else 'paid'
   end;
-  select encode(digest(
+  select encode(extensions.digest(
     v_order.snapshot_hash || ':' || v_refunded::text || ':' ||
     coalesce(string_agg(refund.provider_refund_id || ':' || refund.snapshot_hash, ',' order by refund.provider_refund_id), '') || ':' ||
     p_capabilities::text,

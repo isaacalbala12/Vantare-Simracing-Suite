@@ -1,11 +1,11 @@
-Nota ISA-214 / BIL-10B (2026-08-02, preflight remoto Supabase):
+Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
 - BIL-01…10 están compuestas en `nightly`. El acceso administrativo al proyecto
   oficial `ombjshwzqgeisazijduq` ya está confirmado mediante un token nuevo
   guardado solo en el entorno local.
-- `supabase-staging` y `supabase-production` ya existen con reviewer y política
-  de ramas; permanecen deliberadamente sin secrets y no pueden desplegar.
-- Producción `ombjshwzqgeisazijduq` responde con checkout, portal y webhook;
-  esto no demuestra versión ni migraciones. `license-credential` no aparece.
+- `supabase-staging` y `supabase-production` existen con reviewer, política de
+  ramas, access token y project ref exacto. Los valores no se documentan.
+- Producción `ombjshwzqgeisazijduq` conserva el runtime anterior. El preflight
+  actual enumera ocho migraciones pendientes y no ha aplicado ninguna.
 - El proyecto histórico `olhwhfaczmrmooeaoqqf` está `INACTIVE`, solo enumera
   `validate-license` y no contiene configuración Billing por nombre.
 - El CLI enlazó el proyecto mediante su rol temporal oficial y `db push
@@ -13,15 +13,21 @@ Nota ISA-214 / BIL-10B (2026-08-02, preflight remoto Supabase):
   pipeline ya no exige `SUPABASE_DB_URL` ni conserva una contraseña PostgreSQL:
   usa acceso enlazado temporal, confirmación exacta, migraciones antes que
   Functions y smoke sanitizado.
-- Producción tiene un backup remoto y ya están presentes por nombre los cuatro
-  contratos nuevos de firma offline, anti-abuso de trial y allowlist del portal.
+- Producción contiene los once nombres de secret requeridos, pero su inventario
+  oficial confirma cero backups, PITR deshabilitado. El wrapper bloquea por ello
+  el apply aunque el dry-run sea verde.
 - Staging limpio `rilwmlbnucbbayaulnxw` fue creado en la organización Free y en
   `eu-west-2`, sin coste adicional. Tiene secrets independientes y Polar
   deliberadamente deshabilitado/fail-closed para el smoke no monetario.
-- El preflight de staging pasó y enumeró las doce migraciones iniciales sin
-  aplicar ninguna. Al no existir backups en un proyecto Free recién creado, el
-  apply admite solo `FRESH-STAGING-VERIFIED-<project-ref>` cuando el target
-  protegido es staging; producción continúa exigiendo un backup remoto real.
+- Staging tiene 12/12 migraciones y las cuatro Functions allowlisted activas.
+  El primer apply se detuvo tras ocho migraciones al encontrar llamadas
+  `digest` sin el esquema `extensions`; se calificaron las cuatro referencias,
+  se añadió un guard de regresión y la reanudación forward-only terminó verde.
+- El smoke no monetario pasó con una cuenta sintética eliminada al final:
+  checkout fail-closed por mapping vacío, portal sin customer, credencial
+  Ed25519 sin grants, guards del webhook y snapshot agregado.
+- El apply de producción queda bloqueado hasta disponer de un backup remoto real
+  o una autorización explícita para otro procedimiento de backup seguro.
 - BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue
   y después su autorización monetaria independiente. Billing continúa NO-GO.
 

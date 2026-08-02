@@ -2,8 +2,8 @@
 
 Fecha: 2026-08-02
 
-Estado: fase read-only completada; despliegue bloqueado por gate humano y acceso
-al proyecto oficial.
+Estado: staging desplegado y validado; producción bloqueada por ausencia de
+backup remoto.
 
 ## Objetivo
 
@@ -98,11 +98,42 @@ project ref aprobado sigue siendo la única diana posible.
   inválido deliberado para que cualquier intento comercial falle cerrado.
   Nunca reutiliza el token o catálogo de producción.
 - El preflight completo de staging pasó: superficie allowlisted, nombres de
-  secrets, link temporal y dry-run. Enumeró doce migraciones y aplicó cero.
+  secrets, link temporal y dry-run.
 - El proyecto Free recién creado no ofrece inventario de backups. La excepción
   de apply exige target `staging`, cero backups y la confirmación exacta
   `FRESH-STAGING-VERIFIED-<ref>`. La misma confirmación está probada como
   inválida para producción.
+
+### Resultado del apply y smoke de staging
+
+- El primer apply aplicó ocho migraciones y se detuvo antes de Functions porque
+  `pgcrypto.digest` no era visible sin su esquema en el proyecto limpio.
+- Las cuatro llamadas SQL se corrigieron a `extensions.digest`. Un test focal
+  inspecciona todas las migraciones `20260802*` e impide nuevas llamadas sin
+  calificar.
+- La reanudación forward-only dejó 12/12 migraciones remotas y desplegó
+  `billing-checkout`, `billing-portal`, `billing-webhook` y
+  `license-credential`, todas `ACTIVE`.
+- El smoke no monetario creó una cuenta `example.invalid`, inició sesión y
+  comprobó: checkout 503 fail-closed por mapping deliberadamente inválido;
+  portal 404 sin customer; credencial Ed25519 200 sin grants; webhook 400 sin
+  headers y 403 con firma inválida; snapshot agregado 200. La cuenta sintética
+  se eliminó con HTTP 200.
+- El procedimiento quedó automatizado en
+  `supabase/functions/scripts/smoke-billing-nonmonetary.ps1`. Su modo
+  `production` nunca autentica checkout y, por tanto, no puede crear una sesión
+  real en Polar.
+- No se llamó a Polar, no se creó checkout, pago, refund, grant comercial,
+  replay ni reconciliación apply.
+
+### Preflight posterior de producción
+
+- Superficie, once nombres de secrets, enlace temporal y dry-run: PASS.
+- El dry-run enumera las ocho migraciones `20260802*` y aplica cero.
+- El inventario oficial devuelve `backups=[]`, `pitr_enabled=false` y
+  `walg_enabled=false`. El wrapper bloquea el apply; la afirmación previa de un
+  backup productivo era incorrecta.
+- Producción no se modificó durante este intento.
 
 ### Polar
 
@@ -172,8 +203,8 @@ cubre BIL-11, pagos, refunds, cambios de catálogo ni habilitar ventas.
 
 ## Evidencia y límites
 
-- Inventario Supabase realizado mediante Management API/HTTP read-only.
-- Suite Supabase activa: 182 tests pasados, 0 fallidos.
+- Inventario Supabase realizado mediante Management API/CLI sanitizado.
+- Suite Supabase activa: 184 tests pasados, 0 fallidos.
 - `deno check` y `deno fmt --check` focales: PASS.
 - Test de comportamiento PowerShell del wrapper: PASS en Windows PowerShell;
   cubre enlace al project ref exacto, ausencia de contraseña persistente,
@@ -182,8 +213,9 @@ cubre BIL-11, pagos, refunds, cambios de catálogo ni habilitar ventas.
 - Guard de superficie, formato del workflow y `git diff --check`: PASS.
 - El token de `.env.local` solo se cargó temporalmente en memoria; nunca se
   imprimió, copió a Git ni expuso junto a hashes de secrets o PII.
-- Hubo creación del staging gratuito, configuración de secrets por API, enlace
-  CLI local y dry-run remoto. No hubo deploy de código, migración aplicada,
+- Hubo creación del staging gratuito, configuración de secrets por API, 12
+  migraciones aplicadas y cuatro Functions desplegadas únicamente en staging.
+  Producción solo recibió preflight read-only y permanece sin cambios. No hubo
   reactivación del staging histórico, pago, refund, replay, reconciliación
-  apply o cambio de catálogo.
+  apply ni cambio de catálogo.
 - BIL-11 permanece bloqueada por ISA-214 y por su gate monetario propio.

@@ -135,10 +135,10 @@ El despliegue futuro debe aplicar migración antes que Edge. Un overload
 server-only mantiene la versión anterior sin perder eventos y los clasifica
 como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
 
-ISA-214 / BIL-10B cerró el inventario remoto read-only previo: producción
+ISA-214 / BIL-10B cerró el inventario remoto previo: producción
 `ombjshwzqgeisazijduq` responde con checkout, portal y webhook. El acceso CLI
 administrativo ya está confirmado mediante un token local nuevo;
-`license-credential` continúa sin estar desplegada. El proyecto de
+`license-credential` continúa sin estar desplegada en producción. El proyecto de
 pruebas `olhwhfaczmrmooeaoqqf` está `INACTIVE`, conserva solo
 `validate-license` y no es backend de la app. El staging limpio
 `rilwmlbnucbbayaulnxw` está `ACTIVE_HEALTHY` en la misma región y cabe dentro
@@ -150,14 +150,17 @@ El pipeline preparado separa preflight de apply, enlaza mediante el rol temporal
 oficial sin almacenar contraseña de Postgres, exige confirmación ligada al
 project ref y aplica migraciones antes que las cuatro Functions allowlisted.
 Las herramientas de smoke ya no hardcodean cuenta/proyecto ni imprimen payloads
-o registros completos. La suite Supabase queda en 182/182 y el wrapper pasó su
-test de comportamiento en Windows PowerShell. El dry-run de producción detectó
-ocho migraciones nuevas; el de staging enumeró las doce iniciales. Ninguna fue
-aplicada. Producción tiene un backup y ambos proyectos contienen los once
-nombres requeridos. Las claves de firma son independientes y staging mantiene
-Polar fail-closed. El apply de staging nuevo usa una confirmación específica
-que producción no puede aceptar; producción conserva su backup obligatorio.
-BIL-11 queda bloqueada hasta completar ambos deploys y el smoke no monetario.
+o registros completos. La suite Supabase queda en 184/184 y el wrapper pasó su
+test de comportamiento en Windows PowerShell. Staging tiene 12/12 migraciones,
+las cuatro Functions `ACTIVE` y smoke no monetario verde; la cuenta sintética
+se eliminó. El incidente de `digest` sin esquema quedó corregido como
+`extensions.digest` y protegido por test. Las claves de firma son independientes
+y staging mantiene Polar fail-closed.
+
+El preflight productivo enumera ocho migraciones pendientes, pero el inventario
+oficial confirma cero backups y PITR deshabilitado. El wrapper bloqueó el apply
+y producción no cambió. BIL-11 queda bloqueada hasta resolver el backup,
+completar deploy y smoke productivos y obtener después su gate monetario propio.
 
 Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214, primero
 en staging y después en producción si todo queda verde. No existe autorización
@@ -174,21 +177,18 @@ para BIL-11, pagos, refunds, cambios de catálogo o habilitar venta.
 
 ## Issues y siguiente acción
 
-1. Integrar el endurecimiento final de ISA-214 en su rama y ejecutar el workflow
-   protegido contra staging.
-2. Aplicar migraciones antes que Edge, ejecutar smoke técnico no monetario y
-   mantener venta deshabilitada.
-3. Repetir preflight/apply/smoke en producción únicamente si staging queda verde.
-4. Solo después preparar BIL-11 y su autorización monetaria independiente.
-5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-6. Reauditar ISA-14 cuando se cierren worktrees grandes.
+1. Resolver el backup productivo sin exportar PII ni debilitar el wrapper.
+2. Repetir apply y smoke no monetario en producción solo tras ese gate.
+3. Solo después preparar BIL-11 y su autorización monetaria independiente.
+4. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+5. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
-runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
-gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
-Sin mutaciones remotas y con venta pública NO-GO.
+2026-08-02, ISA-214 desplegó y validó BIL-01…10 en staging. Producción continúa
+intacta porque no tiene backup remoto ni PITR; el wrapper detuvo el apply tras
+el preflight. El siguiente paso requiere resolver ese gate de rollback. Venta
+pública y BIL-11 siguen NO-GO.

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -11,16 +10,17 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/core"
-	"github.com/vantare/overlays/v2/internal/engineer/replay"
-	"github.com/vantare/overlays/v2/internal/engineer/simulator"
+	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
-	telemetryservice "github.com/vantare/overlays/v2/internal/engineer/telemetry/service"
+	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
 type EventEmitter interface {
 	Emit(name string, data any)
 }
+
+var ErrCanonicalSourceUnavailable = errors.New("canonical Engineer source is unavailable")
 
 // EngineerService coordinates the telemetry input, runtime spotter engine, and notification store.
 type EngineerService struct {
@@ -28,7 +28,9 @@ type EngineerService struct {
 	store          *NotificationStore
 	queue          *audio.Queue
 	runtime        *core.Runtime
+	input          *projectioninput.Adapter
 	emitter        EventEmitter
+	running        bool
 	enabled        bool
 	connected      bool
 	source         string
@@ -36,10 +38,10 @@ type EngineerService struct {
 	sensitivity    string
 	lastError      string
 
-	// Live LMU buffer provider (opcional). Si no es nil y source=="lmu",
-	// se construye un OverlaysLiveAdapter en telemetryLoop sin abrir segundo reader.
-	bufferProvider BufferProvider
-	bufferAvail    bool
+	lastContext  engineerprojection.Context
+	factEpoch    uint64
+	factSequence uint64
+	sourceState  engineerprojection.SourceState
 
 	// Loop management
 	ctx      context.Context
@@ -93,17 +95,6 @@ type NoopAudioResolver struct{}
 // Resolve devuelve "" (sin audio). Implementa AudioResolver.
 func (NoopAudioResolver) Resolve(textKey string) string { return "" }
 
-// SetBufferProvider inyecta el proveedor de buffer mmap de LMU (EnrichedLMUSource)
-// para que source=="lmu" pueda construir un OverlaysLiveAdapter sin abrir un
-// segundo reader. Es seguro llamarlo antes o después de Start; el cambio aplica
-// en el siguiente startLoopsLocked.
-func (s *EngineerService) SetBufferProvider(bp BufferProvider, available bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.bufferProvider = bp
-	s.bufferAvail = available
-}
-
 // SetAudioPlayer inyecta el reproductor de audio. Si es nil, queueLoop no
 // intenta reproducir (modo silencioso).
 func (s *EngineerService) SetAudioPlayer(p AudioPlayer) {
@@ -149,10 +140,11 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		store:          NewNotificationStore(50),
 		queue:          queue,
 		runtime:        core.NewRuntime(queue, spotter.SensitivityNormal, true),
+		input:          projectioninput.NewAdapter(),
 		emitter:        emitter,
 		enabled:        true,
-		connected:      true,
-		source:         "simulator",
+		connected:      false,
+		source:         "telemetry-core",
 		spotterEnabled: true,
 		sensitivity:    "normal",
 		audioResolver:  NoopAudioResolver{},
@@ -166,6 +158,7 @@ func (s *EngineerService) Start(ctx context.Context) {
 	defer s.mu.Unlock()
 
 	s.ctx = ctx
+	s.running = true
 	s.startLoopsLocked()
 }
 
@@ -176,6 +169,7 @@ func (s *EngineerService) Stop() {
 		s.cancelFn()
 		s.cancelFn = nil
 	}
+	s.running = false
 	s.connected = false
 
 	for _, ch := range s.subs {
@@ -188,9 +182,8 @@ func (s *EngineerService) Stop() {
 }
 
 func (s *EngineerService) startLoopsLocked() {
-	// Cancel previous loop and wait for goroutines to finish before starting new ones.
-	// We must release s.mu before s.wg.Wait() to prevent deadlock: the goroutines
-	// we are waiting on may need to acquire s.mu (e.g. emitStatus, telemetryLoop reads).
+	// Cancel the previous queue lifecycle and wait before starting a replacement.
+	// Release s.mu while waiting because queueLoop reads service configuration.
 	if s.cancelFn != nil {
 		s.cancelFn()
 		s.cancelFn = nil
@@ -213,14 +206,6 @@ func (s *EngineerService) startLoopsLocked() {
 		s.queueLoop(loopCtx)
 	}()
 
-	// Start telemetry loop if enabled
-	if s.enabled {
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			s.telemetryLoop(loopCtx)
-		}()
-	}
 }
 
 // Status returns a snapshot of the current service status.
@@ -249,27 +234,10 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.enabled = enabled
-	s.startLoopsLocked()
-	s.emitStatusLocked()
-	return nil
-}
-
-// SetSource updates the active telemetry source ("simulator", "replay" or "lmu").
-// "lmu" requiere que se haya inyectado un BufferProvider vía SetBufferProvider;
-// si no lo hay, cae a simulator con lastError informativo.
-func (s *EngineerService) SetSource(source string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if source != "simulator" && source != "replay" && source != "lmu" {
-		return errors.New("invalid source: must be one of 'simulator', 'replay' or 'lmu'")
+	s.runtime.SetEnabled(enabled && s.spotterEnabled)
+	if !enabled {
+		s.connected = false
 	}
-	if source == "lmu" && s.bufferProvider == nil {
-		return errors.New("source 'lmu' requires a BufferProvider: call SetBufferProvider first")
-	}
-
-	s.source = source
-	s.startLoopsLocked()
 	s.emitStatusLocked()
 	return nil
 }
@@ -280,6 +248,7 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.spotterEnabled = enabled
+	s.runtime.SetEnabled(s.enabled && enabled)
 	s.emitStatusLocked()
 	return nil
 }
@@ -294,6 +263,16 @@ func (s *EngineerService) SetSensitivity(value string) error {
 	}
 
 	s.sensitivity = value
+	var sensitivity spotter.Sensitivity
+	switch value {
+	case "conservative":
+		sensitivity = spotter.SensitivityConservative
+	case "aggressive":
+		sensitivity = spotter.SensitivityAggressive
+	default:
+		sensitivity = spotter.SensitivityNormal
+	}
+	s.runtime.SetSensitivity(sensitivity)
 	s.emitStatusLocked()
 	return nil
 }
@@ -336,146 +315,153 @@ func (s *EngineerService) emitStatusLocked() {
 	}
 }
 
-func (s *EngineerService) telemetryLoop(ctx context.Context) {
+var approvedProjectionFamilies = []projectioninput.MonitorFamily{
+	projectioninput.FamilySpotter,
+	projectioninput.FamilyFuel,
+	projectioninput.FamilyPenalties,
+	projectioninput.FamilyLaps,
+	projectioninput.FamilyTimings,
+	projectioninput.FamilyPitStops,
+}
+
+// ConsumeSourceStatus keeps source availability separate from telemetry
+// values. A live source is not enough to declare Engineer connected; only a
+// subsequent usable observation can do that.
+func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceStatusV1) error {
+	if !status.State.Known() || status.ReconnectAttempt < 0 {
+		return engineerprojection.ErrInvalidSourceStatus
+	}
 	s.mu.Lock()
-	sourceType := s.source
-	s.mu.Unlock()
+	defer s.mu.Unlock()
+	if !s.running || !s.enabled {
+		return nil
+	}
+	if s.sourceState == status.State {
+		return nil
+	}
+	wasAvailable := s.sourceState.Available()
+	s.sourceState = status.State
+	if !status.State.Available() {
+		s.connected = false
+		if wasAvailable {
+			s.runtime.Reset()
+			s.queue.Clear()
+		}
+	}
+	s.emitStatusLocked()
+	return nil
+}
 
-	var source telemetry.Source
-	var err error
+// ConsumeObservation is the sole production telemetry entry for Engineer.
+// It accepts an already projected, owned snapshot and never opens a simulator,
+// file, mapping or network source.
+func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.ObservationSnapshotV1) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	switch sourceType {
-	case "simulator":
-		frames := simulator.Build(simulator.ScenarioLeftBasic)
-		source = simulator.NewSource(frames)
-	case "replay":
-		replayPath := "testdata/engineer-replay/spotter-left-basic.jsonl"
-		source, err = replay.NewSource(replayPath)
+	if !s.running || !s.enabled {
+		return nil
+	}
+	if s.sourceState.Known() && !s.sourceState.Available() {
+		return ErrCanonicalSourceUnavailable
+	}
+	if s.lastContext.Epoch != 0 {
+		boundary, err := engineerprojection.ClassifyBoundary(s.lastContext, snapshot.Context)
 		if err != nil {
-			// Fallback in case path is resolved differently
-			replayPath = "testdata/replay/spotter-left-basic.jsonl"
-			source, err = replay.NewSource(replayPath)
-			if err != nil {
-				s.mu.Lock()
-				s.connected = false
-				s.lastError = fmt.Sprintf("failed to open replay source: %v", err)
-				s.mu.Unlock()
-				s.emitStatus()
-				return
-			}
-		}
-	case "lmu":
-		s.mu.Lock()
-		bp := s.bufferProvider
-		avail := s.bufferAvail
-		s.mu.Unlock()
-		if bp == nil {
-			s.mu.Lock()
 			s.connected = false
-			s.lastError = "lmu source selected but no BufferProvider injected"
-			s.mu.Unlock()
-			s.emitStatus()
-			return
+			s.lastError = err.Error()
+			s.emitStatusLocked()
+			return err
 		}
-		source = NewOverlaysLiveAdapter(bp, avail)
-	default:
-		s.mu.Lock()
-		s.lastError = fmt.Sprintf("unknown source type: %s", sourceType)
-		s.mu.Unlock()
-		s.emitStatus()
-		return
+		if boundary.CancelsPending() {
+			s.runtime.Reset()
+			s.queue.Clear()
+		}
 	}
 
-	defer func() {
-		if source != nil {
-			if err := source.Close(); err != nil {
-				log.Printf("EngineerService: error closing telemetry source: %v", err)
-			}
+	processed := false
+	for _, family := range approvedProjectionFamilies {
+		if family == projectioninput.FamilySpotter && !s.spotterEnabled {
+			continue
 		}
-	}()
-
-	cfg := telemetryservice.Config{
-		ReadHz: 60,
-		Source: source,
+		frame, err := s.input.FrameFor(family, snapshot)
+		if errors.Is(err, projectioninput.ErrObservationNotReady) {
+			continue
+		}
+		if err != nil {
+			s.connected = false
+			s.lastError = err.Error()
+			s.emitStatusLocked()
+			return err
+		}
+		if family == projectioninput.FamilySpotter {
+			s.runtime.ProcessSpotterFrame(frame.TimestampUnixMS, frame)
+			processed = true
+			continue
+		}
+		if !s.runtime.ProcessMonitorFrame(string(family), frame.TimestampUnixMS, frame) {
+			err := errors.New("approved engineer monitor family is not registered")
+			s.connected = false
+			s.lastError = err.Error()
+			s.emitStatusLocked()
+			return err
+		}
+		processed = true
 	}
-	telemetrySvc := telemetryservice.New(cfg)
+	if !processed {
+		s.connected = false
+		s.lastError = projectioninput.ErrObservationNotReady.Error()
+		s.emitStatusLocked()
+		return projectioninput.ErrObservationNotReady
+	}
 
-	ch, unsubscribe := telemetrySvc.Subscribe()
-	defer unsubscribe()
-
-	svcCtx, svcCancel := context.WithCancel(ctx)
-	defer svcCancel()
-
-	svcErrChan := make(chan error, 1)
-	go func() {
-		svcErrChan <- telemetrySvc.Run(svcCtx)
-	}()
-
-	s.mu.Lock()
-	s.connected = source.Info().Available
+	s.lastContext = snapshot.Context
+	s.connected = true
 	s.lastError = ""
-	s.mu.Unlock()
-	s.emitStatus()
+	s.emitStatusLocked()
+	return nil
+}
 
-	// Heartbeat loop — tracked by wg so Stop() can wait for its exit
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		hb := time.NewTicker(500 * time.Millisecond)
-		defer hb.Stop()
-		for {
-			select {
-			case <-svcCtx.Done():
-				return
-			case <-hb.C:
-				s.mu.Lock()
-				s.connected = source.Info().Available
-				s.mu.Unlock()
-				s.emitStatus()
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case err := <-svcErrChan:
-			if err != nil && err != context.Canceled {
-				log.Printf("EngineerService telemetry loop error: %v", err)
-			}
-			return
-		case upd, ok := <-ch:
-			if !ok {
-				return
-			}
-			s.mu.Lock()
-			enabled := s.enabled
-			spotterEnabled := s.spotterEnabled
-			sensStr := s.sensitivity
-			s.mu.Unlock()
-
-			if enabled && spotterEnabled {
-				var sens spotter.Sensitivity
-				switch sensStr {
-				case "conservative":
-					sens = spotter.SensitivityConservative
-				case "aggressive":
-					sens = spotter.SensitivityAggressive
-				default:
-					sens = spotter.SensitivityNormal
-				}
-
-				s.mu.Lock()
-				s.runtime.SetSensitivity(sens)
-				s.runtime.SetEnabled(enabled && spotterEnabled)
-				// Process the telemetry frame using current timestamp
-				s.runtime.ProcessFrame(time.Now().UnixMilli(), upd.Frame)
-				s.connected = upd.Frame.Connected
-				s.mu.Unlock()
-			}
-		}
+// ConsumeFact applies ordered lifecycle facts without turning facts into
+// telemetry values. Connection recovery remains pending until a fresh snapshot
+// arrives.
+func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.running || !s.enabled {
+		return nil
 	}
+
+	epoch := uint64(fact.Epoch)
+	sequence := uint64(fact.Fact.Sequence)
+	if epoch == 0 || sequence == 0 || epoch < s.factEpoch || (epoch == s.factEpoch && sequence <= s.factSequence) {
+		return errors.New("engineer fact cursor is stale or invalid")
+	}
+	if epoch > s.factEpoch {
+		s.factSequence = 0
+	}
+	s.factEpoch = epoch
+	s.factSequence = sequence
+
+	switch fact.Fact.Kind {
+	case engineerprojection.FactConnectionLost, engineerprojection.FactSessionEnded:
+		s.connected = false
+		s.runtime.Reset()
+		s.queue.Clear()
+	case engineerprojection.FactConnectionRecovered:
+		// A recovery fact is not proof that a usable observation exists.
+		s.connected = false
+	}
+	s.emitStatusLocked()
+	return nil
+}
+
+// ProcessHarnessFrame keeps legacy simulator/replay fixtures usable in tests
+// and explicit tools. The application composition root never calls it.
+func (s *EngineerService) ProcessHarnessFrame(nowMS int64, frame *telemetry.Frame) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.runtime.ProcessFrame(nowMS, frame)
 }
 
 func (s *EngineerService) queueLoop(ctx context.Context) {
@@ -607,15 +593,8 @@ func (s *EngineerService) Health() EngineerHealth {
 	}
 }
 
-// engineerSvcOKLocked considera OK el servicio si está habilitado y conectado,
-// o si está habilitado pero aún no ha intentado conectar (lastError vacío).
-// No exportado; se llama con s.mu sostenido.
+// engineerSvcOKLocked reports healthy only after a canonical observation has
+// demonstrated a live connection. A configured source is not connectivity.
 func (s *EngineerService) engineerSvcOKLocked() bool {
-	if !s.enabled {
-		return false
-	}
-	if s.source == "" {
-		return false
-	}
-	return true
+	return s.running && s.enabled && s.connected && s.source == "telemetry-core"
 }

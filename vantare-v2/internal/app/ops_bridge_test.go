@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/ops"
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
 
 type fixedOpsSampler struct{}
@@ -19,10 +19,12 @@ func (fixedOpsSampler) Sample() ops.MetricsSnapshot {
 			CPUPercent: nil,
 			Goroutines: 7,
 		},
-		Source: service.SourceInfo{
-			Kind:      service.SimulatorMock,
-			Name:      "Mock telemetry",
+		Source: driver.SourceStatus{
+			Kind:      "lmu",
+			Name:      "Le Mans Ultimate",
+			Live:      true,
 			Available: true,
+			State:     "live",
 		},
 	}
 }

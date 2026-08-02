@@ -1,22 +1,39 @@
 # Workflow de agentes
 
-## Fuente operativa y ramas
+> Flujo vigente desde ISA-120/121. Antes de actuar, lee
+> `docs/vantare-program/README.md`, `execution-policy.md`,
+> `docs/branch-channels.md` y el handoff vivo del proyecto.
 
-- Linear es la fuente operativa para proyectos, issues y dependencias.
-- Una issue ejecutable con cambios en el repo utiliza una rama Linear, un
-  worktree y una tarea Codex propios.
-- El flujo canónico está documentado en `docs/branch-channels.md`:
+## Fuente operativa y aislamiento
+
+- Linear contiene proyectos, milestones, issues, dependencias, estado y rama.
+- Una issue ejecutable con cambios equivale a una rama Linear, un worktree y un
+  contexto propios.
+- Una investigación que solo modifica Linear no necesita rama; si genera docs
+  en el repo, sí.
+- Los hallazgos fuera de alcance crean issues; no se incorporan silenciosamente.
+- Se confirma base, worktree y estado limpio antes de editar.
+- Se usa exactamente el nombre de rama generado por Linear.
+- Commits pequeños y staging limitado a rutas; no `git add .`.
+- El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
+  autorización.
+
+## Promoción
 
 ```text
-rama de issue -> nightly -> testers -> master
+rama de issue
+  -> aprobación inicial de Isaac
+nightly
+  -> feedback Pro Plus y correcciones
+testers
+  -> validación amplia
+master, solo con aprobación final de Isaac
 ```
 
-- Isaac aprueba una implementación antes de que entre en `nightly`.
-- El feedback de Nightly se corrige antes de promover el conjunto a `testers`.
-- Solo Isaac puede autorizar `testers -> master`.
-- `develop` queda congelada como referencia histórica y no es un destino.
-- Una promoción es una issue de integración propia; terminar una feature no la
-  promociona automáticamente.
+`nightly` y `testers` existen desde ISA-121. `develop` queda congelada como
+referencia histórica y no recibe trabajo nuevo. La promoción usa una issue de
+integración propia; terminar una feature no la promociona automáticamente.
+Tests y review no sustituyen las aprobaciones.
 
 ## Roles
 
@@ -76,28 +93,33 @@ Debe buscar:
 
 ## Flujo normal
 
-1. Usuario debate con orquestador.
-2. Orquestador consulta `docs/roadmap-execution-board.md`.
-3. Orquestador crea miniplan pequeno.
-4. Orquestador crea prompt worker.
-5. Worker implementa.
-6. Worker reporta evidencia.
-7. Reviewer audita sin editar.
-8. Orquestador recomienda aceptar, corregir, dividir o revertir.
-9. Si se acepta, se hace commit pequeno cuando el usuario lo pida.
-10. El worker deja la issue en `In Review`; no promociona por su cuenta.
-11. Tras la aprobación inicial de Isaac, una issue de integración promueve la
+1. Usuario debate con orquestador cuando hacen falta decisiones.
+2. Orquestador consulta Linear, `docs/vantare-program/` y el handoff vivo.
+3. El tablero histórico solo se consulta como contexto; no elige trabajo.
+4. Orquestador crea o identifica el miniplan vigente.
+5. Orquestador crea prompt worker.
+6. Worker implementa.
+7. Worker reporta evidencia.
+8. Reviewer audita sin editar.
+9. Orquestador recomienda aceptar, corregir, dividir o revertir.
+10. Se hace commit pequeño cuando el contrato de la issue lo permite.
+11. El worker deja la issue en `In Review`; no promociona por su cuenta.
+12. Tras la aprobación inicial de Isaac, una issue de integración promueve la
     entrega a `nightly`.
-12. Después del feedback y sus correcciones, otra promoción lleva `nightly` a
-    `testers`.
-13. Solo una aprobación final de Isaac permite `testers` a `master`.
-14. Se actualiza `docs/current-plan.md` y `docs/roadmap-execution-board.md`.
+13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
+    de `nightly` a `testers`.
+14. Solo una aprobación final de Isaac permite `testers` a `master`.
+15. Se actualizan el handoff, Linear, `docs/current-plan.md` y, cuando siga
+    siendo relevante, `docs/roadmap-execution-board.md`.
 
 ## Comunicación de cambios visibles
 
 Si una issue cambia comportamiento que deben conocer o probar los testers, el worker añade un fragmento válido en `docs/changelog/fragments/ISA-N.json` siguiendo `docs/changelog/fragments/schema.json`. No edita mensajes acumulativos ni publica directamente en Discord.
 
-El fragmento debe explicar en español claro el resultado, los detalles técnicos útiles, la validación manual y las limitaciones conocidas. El anuncio amplio para testers se producirá únicamente cuando el fragmento alcance `testers`. Consulta `docs/discord-communications.md` para la distribución de canales.
+El fragmento debe explicar en español claro el resultado, los detalles técnicos
+útiles, la validación manual y las limitaciones conocidas. Los mensajes de
+Nightly, Testers y Master se generan únicamente al alcanzar ese nivel
+autorizado. Consulta `docs/discord-communications.md`.
 
 ## Documentos ejecutables y orquestables
 

@@ -4,6 +4,7 @@ package app_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
@@ -114,9 +115,22 @@ func TestHotkeyManagerStartStop(t *testing.T) {
 	if err := m.Start(); err != nil {
 		t.Fatalf("second Start: %v", err)
 	}
+	started := time.Now()
 	m.Stop()
+	if elapsed := time.Since(started); elapsed >= time.Second {
+		t.Fatalf("Stop took %s; WM_QUIT did not reach the owner thread", elapsed)
+	}
 	// Should be idempotent
 	m.Stop()
+}
+
+func TestHotkeyManagerStopBeforeStartReturnsImmediately(t *testing.T) {
+	m := app.NewHotkeyManager()
+	started := time.Now()
+	m.Stop()
+	if elapsed := time.Since(started); elapsed >= 100*time.Millisecond {
+		t.Fatalf("Stop before Start took %s", elapsed)
+	}
 }
 
 func TestHotkeyManagerUpdateFromSettingsKeepsToggleEditMode(t *testing.T) {

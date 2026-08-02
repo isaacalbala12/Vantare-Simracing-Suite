@@ -1,3 +1,13 @@
+Nota ISA-171 / TC-09G (2026-08-02):
+- Promoción controlada en curso desde `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c` hasta el stack aprobado de Telemetry Core `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
+- El primer gate del PR #65 detectó en Windows CI que una ruta 8.3 (`RUNNER~1`) y su ruta larga equivalente eran rechazadas como distintas por comparación textual en raw capture. El segundo gate confirmó ese paquete verde y reveló la misma comparación en la frontera del catálogo Wails. Ambas rutas comparan ahora identidad real con `os.SameFile`, conservan el rechazo de junctions/symlinks y tienen regresiones Windows 8.3. El timeout del spy permanece en 2 s: no se oculta el fallo funcional. Pendiente review y nuevo CI.
+- La simulación previa encontró únicamente conflictos documentales en `AGENTS.md`, `docs/agent-workflow.md` y este archivo; no existen conflictos de código.
+- La resolución conserva la gobernanza vigente de ISA-120/121 y todo el handoff/evidencia de Telemetry Core. `testers` y `master` permanecen fuera del alcance.
+- Árbol integrado: todos los archivos fuera de REL-00, OS-07 y los documentos reconciliados coinciden byte a byte con `170eaeb`; la auditoría confirma un único owner productivo de LMU y cero referencias legacy productivas.
+- Gates frescos: Go bloqueante completo PASS; ISA-118 focal PASS; frontend bloqueante 295 archivos/1.978 tests PASS; build PASS; cutover y shadow Playwright PASS; 7/7 fuzzers PASS; soak/lifecycle x3, replays x3, benchmark combinado, branch policy y design-system 2/2 PASS.
+- Deuda externa visible: `useCanvasInteraction.test.tsx` reproduce ISA-172 tanto bajo suite completa como focalmente. No se modifica ni se amplía la allowlist en ISA-171.
+- Estado: preparado para review independiente antes de commit, PR y promoción exclusiva a `nightly`.
+
 Nota REL-00 / ISA-121 (2026-08-02):
 - El flujo canónico de entrega pasa a ser `rama de issue -> nightly -> testers -> master`.
 - `nightly` recibe únicamente implementaciones aprobadas inicialmente por Isaac; allí prueba el grupo Pro Plus. Tras corregir el feedback, el conjunto pasa a `testers`; solo Isaac puede autorizar la promoción final a `master`.
@@ -12,8 +22,775 @@ Nota REL-00 / ISA-121 (2026-08-02):
 Nota OS-07 / ISA-176 (2026-08-02):
 - El primer run posterior a integrar REL-00 en `nightly` detectó una carrera real en `StudioInspector`: una selección del rail podía quedar sobrescrita por el ajuste asíncrono de la sección inicial del widget.
 - La selección activa queda asociada al `widgetId` y se normaliza durante el render cuando cambia el widget o desaparece una capability. Ya no depende de un efecto tardío capaz de pisar la interacción del usuario.
-- Se añadió una regresión que selecciona Apariencia en cuanto el rail queda disponible. El inspector pasa 5 ejecuciones focales consecutivas, lint focal y build. La suite bloqueante cubrió 277 archivos y 1813 tests en dos particiones por saturación local de workers; el comando remoto completo sigue siendo el gate definitivo antes de cerrar ISA-121.
+- Se añadió una regresión que selecciona Apariencia en cuanto el rail queda disponible. El inspector pasa 5 ejecuciones focales consecutivas, lint focal y build. El gate del PR y el gate posterior al merge pasan completos sobre `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c`; ISA-176 e ISA-121 están cerradas.
 - Alcance limitado a estado/navegación del inspector y su test. No se modificaron canvas, renderizadores, diseño visual, allowlists, `testers` ni `master`.
+
+Nota VANTARE-PROGRAM (2026-07-27):
+- ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.
+- Lectura obligatoria: `docs/vantare-program/README.md` y el handoff vivo.
+- Flujo objetivo: rama de issue -> aprobación inicial -> `nightly` ->
+  feedback/correcciones -> `testers` -> aprobación final -> `master`.
+- ISA-121 materializó `nightly` y `testers`; `develop` queda congelada como
+  referencia histórica y las promociones siguen el contrato de ramas vigente.
+- Telemetry Core continúa desde ISA-37. Telemetry Analysis y Engineer/Spotter
+  requieren proyecto, investigación profunda y plan propios.
+- Strategy Planner es un único producto; Product A/B/C son fases históricas.
+- La skill `vantare-core` no es autoridad.
+
+Nota ISA-117 / TC-09F (2026-08-01):
+- Telemetry Core queda técnicamente cerrado sobre ISA-87 `4233c9f`: una sola
+  adquisición LMU, un runtime canónico y proyecciones separadas por producto.
+- Go global, 7/7 fuzzers, replay, soak de dos horas, lifecycle x5, frontend
+  2.016/2.016, build, Playwright cutover/shadow, Crystal 21/21, fixtures LMU
+  reales x5 y lectura live LMU 1.4 pasan.
+- Cero P0/P1/P2 atribuibles a Telemetry Core. Deuda externa registrada:
+  ISA-118 (Settings P3), ISA-131/ISA-94 (smoke, visual y canvas Overlay),
+  toolchain race sin GCC y tres avisos Win32 vet heredados.
+- Evidencia, rollback y checklist manual:
+  `docs/telemetry-core/final-gate-isa-117.md`.
+- Estado: `In Review`; sin merge ni promoción. Siguiente acción solo después
+  de la aprobación explícita de Isaac: issue separada de promoción a
+  `nightly`.
+
+Nota ISA-87 / TC-09E (2026-08-01):
+- Wails y SSE publican el mismo status y Overlay Projection v1 byte a byte;
+  cursor verificado `v1 / epoch 2 / sequence 8 / statusRevision 1`.
+- El composition root posee un shutdown ordenado de Overlay, Telemetry Core,
+  HTTP/SSE, Ops, ambos managers de hotkeys, Engineer, Launcher, diagnósticos y
+  contexto general. Los errores no omiten recursos posteriores.
+- El timeout Win32 histórico queda corregido enviando `WM_QUIT` al hilo dueño
+  de la message queue y desregistrando allí los hotkeys. Los cambios de ajustes
+  sustituyen el manager completo en vez de registrar desde Wails.
+- El harness no productivo prueba SQLite real, puerto, suscriptores, bridges,
+  goroutines y owners de handles. Evidencia:
+  `docs/telemetry-core/wails-lifecycle-teardown-isa-87.md`.
+- Siguiente y último corte: ISA-117 / TC-09F, gate final y handoff. Sin merge
+  ni promoción.
+
+Nota ISA-116 / TC-09D (2026-08-01):
+- Las siete fronteras de entrada críticas pasan fuzzing: Shared Memory,
+  saneado, REST, fusión, recording payload/fact y transport envelope.
+- El soak lógico de dos horas combina 64 vehículos, seis consumidores,
+  Overlay Projection v1, Engineer y SQLite: 121/121 lotes committed, cola
+  vacía, cero rechazos/fallos y teardown completo de suscriptores.
+- Las métricas nuevas contienen solo contadores/límites y ninguna identidad o
+  payload. La validación JSON conserva claves prohibidas anidadas/escapadas.
+- El Hub de 64 vehículos baja de 258–303 µs y ~128,7 KiB históricos a
+  47,2–50,5 µs y 12.631 B por operación. La cadena combinada queda en
+  3,83–4,79 ms por lote de 64 vehículos.
+- Go global, frontend 2.016/2.016, build y Playwright cutover pasan. Race no es
+  ejecutable sin GCC; vet conserva tres avisos Win32 heredados.
+- Evidencia: `docs/telemetry-core/hardening-isa-116.md`.
+- Siguiente corte: ISA-87 / TC-09E, harness Wails/lifecycle/teardown. Sin merge
+  ni promoción.
+
+Nota ISA-114 / TC-09B (2026-08-01):
+- El backend duplicado de telemetría queda retirado después de migrar status,
+  diagnostics y ops al `TelemetryCoreRuntime` canónico.
+- Solo `internal/telemetry/drivers/lmu` puede abrir memoria compartida LMU;
+  Engineer conserva su funcionalidad mediante la proyección canónica y sus
+  decoders de fixture no poseen I/O.
+- Se retiraron source manager, reader/REST legacy, App/bridge, servicios,
+  modelos, SSE backend y tooling sin consumidores. `deltaMode` permanece como
+  preferencia sin side effect ficticio.
+- Evidencia: `docs/telemetry-core/backend-retirement-isa-114.md` y
+  `scripts/telemetry-core/audit-consumers.ps1`.
+- Siguiente corte: ISA-115 / TC-09C, retirada frontend/transporte legacy. Sin
+  merge ni promoción.
+
+Nota ISA-115 / TC-09C (2026-08-01):
+- Studio, Desktop y OBS usan exclusivamente Overlay Projection v1 mediante un
+  lifecycle común y transports Wails/SSE equivalentes.
+- Se retiraron `telemetry:update`, `/telemetry/stream` frontend,
+  `normalizeLegacyTelemetry`, adapters antiguos, el selector fail-open y el
+  harness shadow runtime ya sustituido.
+- Decoder/mapper autoritativos viven en `overlay/projection`; el comparador
+  histórico shadow queda aislado hasta ISA-117.
+- El estado cerrado usa `telemetry-core:source-status` y un contrato frontend
+  único. Evidencia: `docs/telemetry-core/frontend-retirement-isa-115.md`.
+- Siguiente corte: ISA-116 / TC-09D. Sin merge ni promoción.
+
+Nota ISA-113 / TC-09A (2026-08-01):
+- Auditoría reproducible completada sin borrados ni cambios de comportamiento.
+- Hallazgo P0 de migración: `app.New(-live)` todavía abre el mapping y poller
+  REST legacy antes de arrancar el driver canónico. El grafo ya no publica
+  widgets, pero status, diagnostics y ops mantienen dos adquisiciones vivas.
+- ISA-114 debe migrar primero esos consumidores al estado canónico y después
+  retirar App/source/service/readers/parsers/REST legacy y tooling obsoleto.
+- ISA-115 retirará `telemetry:update`, `/telemetry/stream` y adapters frontend
+  legacy tras mover el tipo/status compartido. La UI y renderers no cambian.
+- Matriz: `docs/telemetry-core/consumer-retirement-matrix-isa-113.md`.
+- Script: `scripts/telemetry-core/audit-consumers.ps1`.
+- Siguiente corte: ISA-114 / TC-09B. Sin merge ni promoción.
+
+Nota ISA-112 / TC-08E (2026-08-01):
+- La raíz productiva inyecta `EngineerService` en el único
+  `TelemetryCoreRuntime`; LMU se abre una vez y Overlay/Engineer reciben
+  proyecciones independientes del mismo lote canónico.
+- Estado de fuente, observación y hechos permanecen separados. Un status live
+  no declara conexión sin snapshot usable; stale/error/stop cancelan estado y
+  mensajes pendientes.
+- Fallos Engineer se aíslan y no derriban Overlay ni el driver. El selector
+  Wails de simulator/replay queda retirado de producto.
+- La captura LMU 1.4 real de 38 coches atraviesa toda la cadena y conserva
+  silencio Spotter ante tráfico lejano. El solape real audible queda agrupado
+  en el gate manual final, sin sustituirse por evidencia sintética.
+- Documento: `docs/telemetry-core/engineer-cutover-isa-112.md`.
+- Siguiente corte: ISA-113 / TC-09A, auditoría final de consumidores y matriz
+  de retirada. Sin merge ni promoción.
+
+Nota ISA-111 / TC-08D (2026-08-01):
+- `EngineerService` deja de poseer simulator, replay, parser LMU y
+  `telemetry/service`; arranca desconectado y solo acepta `telemetry-core`.
+- La entrada canónica procesa por separado únicamente Spotter, fuel,
+  penalties, laps, timings y pitstops, las seis familias aprobadas en ISA-110.
+  No existe un frame general capaz de reactivar monitores parciales.
+- Epoch/identidad y hechos ordenados resetean estado y cola; recovery no marca
+  conectado hasta observar un snapshot usable. Health deja de presentar una
+  configuración como conexión real.
+- Simulator/replay permanecen solo como inyección explícita de harness.
+  Audio/TTS, commands, store, SSE y Pit Manager se conservan.
+- Suite Engineer, Telemetry Core, servidor, build frontend y suite Go global
+  serial pasan. `-race` no es ejecutable con CGO desactivado.
+- Documento: `docs/telemetry-core/engineer-runtime-separation-isa-111.md`.
+- Siguiente corte: ISA-112 / TC-08E, wiring canónico y validación LMU real.
+  Sin merge ni promoción.
+
+Nota ISA-110 / TC-08C (2026-08-01):
+- Replay parity caracteriza Spotter + 20/20 monitores antes del cutover.
+- Se aprueban únicamente seis escenarios acotados: Spotter normal, fuel,
+  contador genérico de sanciones, vueltas, timings y entrada/salida de pit.
+- Engine, tyre, flags, driver swaps, damage y conditions fallan cerrados; las
+  demás familias siguen parciales y no se activan todavía.
+- El bridge temporal exige familia explícita, solo copia campos fresh con
+  capability supported y usa IDs locales reiniciados por epoch. No existe un
+  conversor general ni wiring productivo.
+- Documento: `docs/telemetry-core/engineer-replay-parity-isa-110.md`.
+- Siguiente corte: ISA-111 / TC-08D. Sin merge ni promoción.
+
+Nota ISA-109 / TC-08B (2026-08-01):
+- La proyección Engineer v1 expone sesión admitida, parrilla completa,
+  scoring, controles, pit, fuel, gaps y geometría con calidad explícita.
+- `ObservationSnapshotV1` es la entrada pura de producto. No abre LMU/REST,
+  no contiene decisiones y no se conecta todavía al runtime Engineer.
+- Se rechaza el bridge directo a `telemetry.Frame`: perdería missing y las
+  identidades opacas. ISA-110 caracteriza los monitores mediante replay antes
+  de adaptar su consumo; el frame legacy permanece intacto.
+- La geometría conserva `float64`, orientación completa y ejes documentados
+  por ISA-130. Flags, tyre, damage, weather y demás señales no demostradas
+  siguen deshabilitadas.
+- Documento: `docs/engineer/projection-adapter.md`.
+- Siguiente corte: ISA-110 / TC-08C. Sin merge ni promoción.
+
+Nota ISA-130 / TC-08A.1 (2026-08-01):
+- Geometría canónica añadida de forma aditiva: posición mundo en metros,
+  velocidad local en m/s y orientación right-handed por vehículo.
+- El parser une scoring y telemetry por `mID` activo; la muestra rápida solo
+  sustituye al jugador correlacionado. Cero sigue presente y NaN/Inf o matriz
+  inválida fallan cerrados por campo.
+- La fixture LMU 1.3 real hash-pinned prueba 44/44 geometrías y un oráculo
+  independiente de transformación mundo -> local. Las fixtures LMU 1.4
+  anteriores tenían esos bytes a cero por su allowlist, no por el simulador.
+- El sanitizador conserva ahora únicamente estos campos espaciales para una
+  futura captura 1.4 real sin PII. El gate perceptual de tráfico se agrupa con
+  ISA-112; no se inventa evidencia.
+- Fusion pasa a matriz v4 y la cadena Driver -> Batch -> Reducer conserva
+  freshness y generaciones. No se activa Spotter ni se añade otro reader.
+- Documento: `docs/telemetry-core/lmu-spotter-spatial-provenance.md`.
+- Siguiente corte: ISA-109 / TC-08B.
+
+Nota ISA-108 / TC-08A (2026-08-01):
+- Auditoría documental completa de 30/30 directorios y 20/20 monitores
+  Engineer contra el estado canónico posterior a ISA-107.
+- Sesión, parrilla, vueltas, fuel, pit y gaps permiten adaptar una parte amplia
+  del Engineer. Flags, engine, tyre, damage, conditions y driver swaps quedan
+  deshabilitados cuando falta una capability real; no se inventan datos.
+- `projection/engineer` v1 es insuficiente y debe ampliarse en ISA-109 desde
+  `derive.FinalState`, sin importar la proyección Overlay ni abrir LMU/REST.
+- Spotter está bloqueado por geometría no demostrada: world position,
+  orientation y local velocity existen solo como offsets legacy con tests
+  sintéticos; las fixtures reales versionadas no los preservan.
+- Se requiere ISA-130 / TC-08A.1 aditivo antes de ISA-109 para admitir geometría con
+  captura real, schema, parser y tests. REPLACE/DELETE funcional = 0.
+- Documento: `docs/telemetry-core/engineer-capability-audit-isa-108.md`.
+- Sin cambio de comportamiento, merge ni promoción.
+
+Nota ISA-106 / TC-07B (2026-08-01):
+- Shadow productivo implementado sobre ISA-129 `7f679e6`, sin cutover: el
+  servicio legacy sigue siendo la única autoridad de render y persistencia.
+- El runtime canónico LMU recorre Driver -> BatchMapper -> Reducer ->
+  SessionCoordinator -> Derive -> Overlay Projection v1 y publica el mismo
+  contrato versionado por eventos Wails y SSE
+  (`/telemetry/overlay/projection`). Menú/sesión ausente no genera payload
+  inventado; `-live=false` publica estado detenido sin abrir LMU.
+- Studio, Desktop y OBS consumen la proyección en un observer separado que
+  conserva únicamente diagnóstico sanitizado y nunca escribe en el
+  coordinator legacy, el documento Studio, el canvas ni los renderizadores.
+- Gates frescos: Go focal/runtime/server PASS; Telemetry Core PASS; resto Go
+  segmentado PASS; frontend 298 archivos/2.023 tests PASS; build PASS;
+  Playwright Studio/Desktop/OBS PASS. La invocación Go global concurrente
+  excedió 180 s sin producir un fallo; las mismas familias pasaron segmentadas.
+- Los gates visual/canvas reproducen las deudas heredadas ya documentadas en
+  ISA-105: tres casos Original a 0 %, Crystal Studio a 100 % y umbrales del
+  benchmark de drag incumplidos. TC-07B no cambia CSS, canvas ni renderizadores
+  y no actualiza baselines ni relaja umbrales.
+- Siguiente corte: ISA-107 / TC-07C, cutover Overlay. Sin merge ni promoción.
+
+Nota ISA-107 / TC-07C (2026-08-01):
+- Cutover implementado sobre ISA-106 `e3bacdb`: Studio, Desktop y OBS publican
+  exclusivamente snapshots adaptados desde Overlay Projection v1 al
+  coordinator existente. Ningún renderer, ViewModel, widget, CSS, documento o
+  canvas cambia.
+- El composition root ya no inicia `TelemetryBridge`, el servicio legacy ni
+  `/telemetry/stream`; el único runtime activo es `TelemetryCoreRuntime` y la
+  única ruta OBS consumida es `/telemetry/overlay/projection`.
+- Los adapters y rutas legacy permanecen como código muerto hasta la
+  eliminación auditada TC-09; no existe consumer alcanzable desde producción.
+- El cutover es reversible volviendo al commit ISA-106. Sigue sin merge ni
+  promoción. El gate manual LMU de Isaac se agrupa con la revisión final del
+  módulo, conforme a su instrucción de no detener la cadena por gates humanos.
+- Gates frescos: frontend 299 archivos/2.025 tests PASS tras repetir dos flakes
+  de temporización heredados que pasan aislados; build y Playwright
+  Studio/Desktop/OBS wide+compact PASS; Go app/server/cmd y Telemetry Core
+  PASS; vet/lint focal y diff-check PASS. Visual conserva Original 0 % y
+  Crystal Studio 100 %; canvas reproduce sus umbrales heredados.
+- Siguiente corte: ISA-108 / TC-08A.
+
+Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
+- Microcorte documental iniciado sobre ISA-105
+  `c9acee24cf4c4d80922b380b12f7367c2a60c937`, en la rama
+  `vantareapp/isa-129-tc-07a1-senales-canonicas-overlay-y-retirada-del-mock`
+  y worktree `C:\tmp\vantare-isa129\vantare-v2`.
+- Plan ejecutable:
+  `docs/superpowers/plans/2026-07-31-isa-129-tc-07a1-canonical-overlay-signals.md`.
+  Procedencia cerrada:
+  `docs/telemetry-core/lmu-overlay-signal-provenance.md`.
+- Fixtures reales LMU 1.3 conservan los hashes
+  `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`
+  (pista, 44 vehículos) y
+  `8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a`
+  (menú). D4B añade evidencia real LMU 1.4 de menú y pista sin habilitar nada
+  por mera similitud estructural.
+- P0 confirmados: mock productivo publicable como conectado, ausencia del
+  bridge `lmu.Observation -> core.Batch` y observación modular player-only sin
+  grid/identidad multivehículo.
+- La matriz D0 fija fuente, offset, unidad, rango, referencia, signo, freshness
+  y autoridad SHM/REST. Equipo, número, compuesto, Virtual Energy, daños,
+  weather no admitido, fases/banderas, pit-state labels, remaining raw,
+  `FuelFraction` y native `mDeltaBest` continúan missing, nunca cero inventado.
+- Corrección de review D0: scoring y telemetry solo se correlacionan dentro de
+  `[0,mNumVehicles)`, con IDs activos no negativos, únicos y biyectivos. El
+  jugador procede del único `mIsPlayer` scoring y su telemetry de igual ID;
+  nunca del índice header, posición, orden ni cola inactiva. La fixture prueba
+  44/44 IDs activos, jugador row 43/ID 0 y 60 filas inactivas también con ID 0.
+  Una no-biyección activa rechaza el frame; `lapDistMax` exacto es
+  `3982.366455078125`.
+- D0 no cambia comportamiento ni conecta runtime. Baselines previo y posterior
+  Go, app/server, hashes y `git diff --check` PASS. Review independiente
+  `ACCEPT`, P0/P1/P2/P3 = 0; commit publicado `6acb352`. D1 queda desbloqueado
+  y es el siguiente corte, todavía sin promoción ni cutover.
+- D1 implementado y aceptado en `470d6a6`: se retiró el mock conectado de
+  producción, se conserva el objeto LMU real para attach tardío, REST no puede
+  conectar por sí solo y Wails/SSE/frontend parten desconectados. Review
+  independiente `ACCEPT`, P0/P1/P2/P3 = 0. Go completo, frontend 2001/2001,
+  build y focales PASS; `-race` omitido por CGO desactivado y lint global
+  continúa con deuda heredada. D2 queda desbloqueado sin promoción ni cutover.
+- D2 implementado y aceptado en `e2c92fd`: layout LMU 1.3 nombrado y auditado,
+  35 campos admitidos, bounds/no-solape, tipos Windows, exclusiones y hashes
+  reales cubiertos. Review independiente `ACCEPT`, P0/P1/P2/P3 = 0; driver x20
+  y suite `internal/telemetry/...` PASS. LMU 1.4 permanece bloqueado para D4B;
+  D3 queda desbloqueado sin promoción ni cutover.
+- D3 implementado y aceptado en `462f0ee`: schema/catalog append-only con IDs
+  1–24 estables y 25–43 añadidos, aliases semánticos rechazados, unidades,
+  rangos, ceros legítimos, enums y Markdown golden sincronizados. Review
+  independiente `ACCEPT`, P0/P1/P2/P3 = 0; focales x20 y suite telemetry PASS.
+  D4A queda desbloqueado sin promoción ni cutover.
+- D4A implementado y aceptado en `94c2994`: parser/sanitizer LMU 1.3 con grid
+  real 44/44, identidad por `mIsPlayer` + ID activo, zero-rebuild, aliases,
+  canaries, autoridad SHM-first y REST limitado al jugador. Focal x20,
+  Telemetry/global, fuzzers y benchmarks PASS. Review final `ACCEPT`,
+  P0/P1/P2/P3 = 0; el código LMU `0=test` queda invalid/missing, no Practice.
+  D4B quedó desbloqueado solo para prueba diagnóstica LMU 1.4.
+- D4B implementado: menú SHM/REST hash-pinned, pista real de práctica con 38
+  vehículos y jugador hash-pinned, correlación exacta de los ocho solapes
+  SHM/REST (incluido circuito antes del alias), allowlist cerrada `1.4.0.0` con
+  file/product version coincidentes y lector productivo opt-in `live` PASS.
+  Los sentinels negativos finitos de lap distance y gaps quedan `missing`, no
+  cero. Driver y CLI x20, Telemetry Core y auditoría de privacidad PASS. La
+  suite Go global concurrente solo reprodujo el P3 heredado de contención
+  temporal de `app-settings.json.tmp`; su test aislado y la suite global serial
+  pasaron al repetir. Siguiente corte: D5 Observation → Batch, todavía sin
+  cutover ni promoción.
+- D5 implementado: la observación LMU canónica atraviesa un `BatchMapper`
+  síncrono y duradero hasta `core.Batch`/Reducer con 44 identidades estables,
+  jugador coherente, generaciones por slot, sesiones/epochs según §2.4 y
+  rollback completo ante rechazo o backpressure. Los campos canónicos nuevos
+  conservan calidad explícita y ceros legítimos. Focal x20, Telemetry Core y
+  suite Go global serial pasan. Review independiente final `APPROVE`,
+  P0/P1/P2/P3 = 0.
+- D6 implementado y aceptado: remaining, gaps relativos y self-delta forman
+  una cadena determinista, transaccional y acotada. La evidencia LMU 1.4 real
+  preserva 1.846 muestras sanitizadas, tres wraps y dos vueltas comparables
+  bajo SHA-256
+  `d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`.
+  El oráculo independiente fija 100 ms de incertidumbre y prueba signo real;
+  regresiones, fallos del driver y escritura incompleta fallan de forma segura.
+  Focales x20, dos fuzzers de 10 s, Telemetry Core, vet focal, benchmarks y
+  `diff --check` pasan. Review independiente final `APPROVE`, P0/P1/P2/P3 = 0.
+- D7 implementado y aceptado: Overlay Projection
+  v1 se amplía de forma aditiva con timing, identidad/scoring, fuel,
+  gaps relativos y self-delta/history ya demostrados. El golden exacto pre-D7
+  prueba las cuatro combinaciones old/new; los campos conocidos inválidos
+  fallan cerrados. El adapter no toca ViewModels/renderers y la matriz pasa a
+  2 exactos, 10 parciales, 5 no comparables y 1 externo, sin inventar flags,
+  equipo, número, compuesto, weather o daños. Go focal x20, Telemetry Core,
+  frontend 297/297 archivos y 2.019/2.019 tests, lint focal, build y
+  `diff --check` pasan. Review final `APPROVE`, P0/P1/P2/P3 = 0. Siguiente
+  microcorte: D8.
+- D8 implementado hasta el límite de evidencia real disponible: el harness
+  recorre LMU 1.4 Shared Memory -> Fusion -> BatchMapper -> Reducer ->
+  SessionCoordinator -> Derive -> Overlay Projection v1 con una sola apertura,
+  38 vehículos y salida byte-idéntica en 20 ejecuciones. Menú falla cerrado y
+  no genera payload live. Se corrigió la caducidad incompleta de todos los
+  campos cuando se congela el reloj de origen. Sobre la observación real, tests
+  canónicos separados cubren reorder, vacancy/generation, reset de sesión y
+  cambio de jugador sin presentarlos como capturas. El trace real D6 atraviesa
+  BatchMapper -> Reducer -> SessionCoordinator -> Derive -> Overlay v1 y su
+  primera proyección delta atraviesa decoder/adapter TypeScript; Delta es
+  missing antes de una referencia completa y fresh después. Este cruce corrigió
+  además arrays vacíos serializados como `null`. Los dos gates reales quedaron
+  pendientes de D9 y nunca se sustituyeron por datos sintéticos.
+- D9 cerró la evidencia real LMU 1.4. Una única sesión sanitizada y hash-pinned
+  prueba `InPit=false -> true -> false` con la misma identidad canónica en
+  pista previa, estado in-pit observado y outlap. La señal no distingue garaje,
+  box ni fase de pit. El cierre completo de LMU produce ausencia
+  real de proceso y fallo cerrado de Shared Memory sin payload; la reapertura
+  aporta un mapping nuevo, reloj reiniciado y una nueva sesión/epoch, mientras
+  conserva el VehicleID porque ningún grid vacío fue aceptado. Los hashes son
+  `eb79ec2a…f6fcc`, `262700e5…ede1`, `c495da06…e4a6` y `a31a1495…a707`.
+  El replay x20 valida sidecars zero-rebuild, hashes, metadatos, estados y
+  ausencia de sustitución sintética.
+- Rendimiento D9: parser de 44 vehículos 23,6–29,7 µs/op; sanitizer diagnóstico
+  116,9–152,8 µs/op; gaps 4,19–4,46 µs/op; self-delta 3,21–6,00 µs/op. El parser
+  completo es ~1,5–2,2 veces el baseline histórico de 13,5–15,6 µs/op, con
+  margen amplio para la cadencia live y sin logging por frame, goroutines
+  productivas nuevas ni buffers sin límite. Telemetry Core, mi ejecución de la
+  suite Go global, frontend completo (297 archivos/2.020 tests), build, lint
+  focal y `diff --check` pasan. La review independiente reprodujo el P3 Windows
+  heredado ISA-118 de `app-settings.json.tmp`, incluso en serial y en su test
+  focal; está fuera del diff y no se corrige en ISA-129. `-race` no está
+  disponible con `CGO_ENABLED=0`. El lint
+  global conserva 32 errores y 2 warnings heredados fuera del área focal; un
+  error heredado del archivo tocado se eliminó. Los seis warnings Win32 de vet
+  se reproducen también en la base exacta ISA-105 y permanecen fuera del diff.
+  Review independiente final `APPROVE`, P0/P1/P2/P3 abiertos = 0.
+
+Nota ISA-105 / TC-07A (2026-07-31):
+- Corte iniciado en rama aislada sobre la entrega final ISA-104 `3b44d367`.
+  Plan ejecutable:
+  `docs/superpowers/plans/2026-07-31-isa-105-tc-07a-overlay-shadow-comparator.md`.
+- El inventario cubre los 18 tipos registrados. Overlay Projection v1 solo
+  permite paridad exacta del valor instantáneo de Pedals; Standings,
+  Broadcast Tower, los dos Pedals Telemetry e Input Telemetry son parciales;
+  Race Schedule es externo y los once restantes no son comparables todavía.
+- `Delta` y `Gaps` continúan missing por contrato. El comparator debe mostrar
+  carencias, freshness/provenance y el error de unidad legacy m/s/kph; nunca
+  inventar datos, aceptar un factor 3,6 como tolerancia o usar fixtures visuales
+  como verdad productiva.
+- Hallazgos previos al cutover: no existe wiring productivo del core nuevo, la
+  parrilla canónica LMU es incompleta y el fallback mock puede publicarse como
+  conectado. ISA-129 / TC-07A.1 queda creado como microcorte canónico aditivo
+  obligatorio antes de ISA-106.
+- Alcance actual: decoder, adapter, ViewModels old/new, comparator sanitizado y
+  harness diagnóstico. Sin CSS/renderizadores/canvas, baselines, Wails/SSE,
+  merge ni promoción.
+- Implementación D1–D5 completada y publicada hasta `210513f`: decoder estricto,
+  adapter de señales demostradas, comparator acotado/sanitizado, harness
+  explícitamente `NO LIVE` y evidencia reproducible bajo
+  `docs/telemetry-core/evidence/isa-105-overlay-shadow/`.
+- Cobertura derivada del registro real: 18/18 tipos; un `exact`, cinco
+  `partial`, once `not-comparable` y uno `external`. El escenario de evidencia
+  conserva 2 widgets, 31 campos, 19 iguales y 12 diferencias explicadas.
+- Gates D5: Go telemetry/app PASS; frontend 297 archivos/1.993 tests PASS;
+  frontend build PASS; Playwright shadow PASS; privacidad, hashes, alcance y
+  `diff --check` PASS. Review independiente D5: `APPROVE`, P0/P1/P2/P3 = 0.
+- `visual:overlay-studio` conserva el fallo Crystal histórico del 100 % tanto
+  en ISA-105 como en la base exacta `3b44d367`; los tres casos Original quedan
+  en 0 %. No se regeneró ningún baseline. El benchmark del canvas también
+  incumple sus umbrales en ambas ramas y queda clasificado como deuda
+  heredada/de entorno, no como regresión de este corte sin cambios de canvas.
+- Correcciones D6 publicadas en `f6b43b7`: las 64 diferencias se priorizan
+  frente a una muestra no-mismatch separada; `pitStopCount` sin consumidor fue
+  retirado; Delta, Standings y Relative declaran dependencias reales; la
+  identidad de fila y `isPlayer` conservan procedencia estructural explícita.
+- Re-review D6 final: `ACCEPT`, P0/P1/P2/P3 = 0. Suite frontend final: 297
+  archivos / 2.000 tests PASS; Playwright shadow final PASS.
+- Entrega materializada en PR draft `#41` contra ISA-104 y Linear `ISA-105`
+  `In Review`. Siguiente corte obligatorio: ISA-129 antes de ISA-106. Sin
+  merge, promoción ni cutover productivo.
+
+Nota ISA-104 / TC-06D (2026-07-31):
+- Implementados informe allowlisted, catálogo metadata-only, inspector local y
+  export JSON exacto. Frontend nunca recibe rutas, SessionRef, nombres SQLite,
+  IDs internos, telemetría, identidad, voz, estrategias, tokens o logs.
+- Raíz histórica canónica: LocalAppData en instalación y data explícita en
+  portable/desarrollo. Toda la cadena rechaza symlinks, junctions y reparse.
+- Prepare/List/Inspect heredan lifecycle, máximo dos operaciones y cancelación
+  correlacionada. Cancel-before-request usa TTL 30 s y cap 64 sin goroutines.
+  El snapshot de perfil queda sincronizado y defensivo.
+- UI aislada en Ajustes con preview/copy/download byte-exacto, SHA-256
+  recalculado, current/future/corrupt/current-unavailable, es/en/it/pt-BR,
+  contraste AA y responsive wide/medium/compact.
+- Captura raw desactivada y sin wiring: límites 60/120 s, 64/128 MiB, 5 Hz,
+  retención siete días, metadata/hashes/procedencia y tap LMU no bloqueante
+  tras una única apertura de Shared Memory.
+- Reviews integradas backend y UI: `ACCEPT`, P0/P1/P2/P3 = 0 después de
+  corregir cadena symlink/junction, snapshots profundos, top-K global,
+  zero-values metadata-only y contraste AA. Evidencia visual:
+  `docs/telemetry-core/evidence/isa-104-inspector/`.
+- D7 queda cerrado con suites Go/frontend, build Wails, Playwright, privacidad
+  y documentación verificadas. Entrega apilada sobre ISA-103, sin merge ni
+  promoción. Siguiente corte: ISA-105 / TC-07A.
+
+Nota ISA-103 / TC-06C (2026-07-30):
+- Implementado replay separado raw, canónico e histórico sobre ISA-102.
+- Player síncrono con step, velocidad racional, clock determinista, ownership
+  en retry y fixtures versionadas con procedencia/SHA-256.
+- Raw atraviesa parsers Shared Memory y REST reales de LMU mediante fixtures
+  separadas por procedencia: captura sanitizada para Shared Memory y datos
+  sintéticos para REST. La metadata separa build de simulador y build de
+  Vantare. Canónico atraviesa reducer, coordinador, derive y las cuatro
+  proyecciones con golden común.
+- Reader histórico SQLite usa snapshot read-only limitado al último checkpoint,
+  páginas acotadas, orden causal, cursores separados, validación completa de
+  chunks y detección de hechos huérfanos.
+- Manifest actual con schema futuro es metadata-only y nunca abre DB/WAL/SHM.
+- Motor COW unidireccional con activación CAS; catálogo productivo vacío hasta
+  que exista un schema v2 real. Sin driver live, wiring, UI, dependencia o
+  promoción.
+- El test heredado de cancelación REST usaba el ticker real y era
+  load-sensitive. Ahora inyecta el `manualTicker` existente y pasa x100; no se
+  modificó runtime productivo del driver.
+- Dos reviews finales independientes cerraron `ACCEPT` con
+  P0/P1/P2/P3 = 0. Telemetry Core completa, suite Go global serial, vet focal,
+  regresiones repetidas y build Wails Windows pasan. La suite global paralela
+  conserva únicamente la contención Windows heredada de settings, fuera del
+  diff.
+- Guía y evidencia:
+  `docs/telemetry-core/replay-migrations-isa-103.md` y
+  `docs/telemetry-core/evidence/isa-103-replay/`.
+
+Nota ISA-102 / TC-06B (2026-07-30):
+- Implementado RecordingSink neutral, mapper cerrado y adaptador privado
+  SQLite modernc sobre `6aa46f17a613bd85b6eafbf22db5a7a70b527a00`.
+- Cola acotada/no bloqueante, checkpoints <=1,5 s, commit <=500 ms y deuda
+  volátil <=2 s; cola/disco/timeout/cancelación detienen solo la grabación.
+- Manifest v1 atómico con invariantes terminales, cursores coherentes y
+  privacidad allowlisted. Abort no convierte accepted volátil en watermark.
+- Recovery copy-on-write valida el bundle DB/WAL/SHM sin mutar el original;
+  manifests futuros son metadata read-only y nunca abren DB desconocida.
+- CGO=0, Wails Windows, matriz crash/fault, benchmark 64 vehículos, growth 4×,
+  fuzz y suites aplicables documentadas en
+  `docs/telemetry-core/recording-sink-sqlite-isa-102.md`.
+- Sin wiring productivo, UI, consentimiento, raw, MCAP/replay o promoción.
+  Siguiente paso: entrega de ISA-102 y apertura secuencial de TC-06C.
+- Primera review corregida: deadlines reales Append/Checkpoint/Complete, fallo
+  terminal sobre Stop, snapshot obligatorio por batch, fact namespace
+  independiente, lease Windows entre procesos, catálogos/cursor cerrados y
+  máscaras/controles finitos. Pendiente re-review.
+- Segunda review corregida: ledger de deuda accepted por cursor/tiempo con
+  checkpoint parcial y epochs; manifest context-aware sin temporales tardíos;
+  DSN URI seguro para `#`, `%`, espacios y Unicode.
+- Tercera review final (orquestador, read-only): `ACCEPT`, sin P0/P1/P2/P3
+  conocidos. Focal completo x10, RPO/off-by-one x100, filesystem/DSN x100,
+  Telemetry Core y suite Go global pasaron antes del cierre del worker. La
+  verificación fresca del orquestador repitió recording y Telemetry Core en
+  verde. La suite Go global quedó roja únicamente por la contención Windows
+  heredada `TestConcurrentSavesDontCorruptFile` (ISA-118) bajo carga; el caso
+  aislado x20 pasó y la suite global serial posterior pasó completa. Build
+  Wails Windows con CGO desactivado y vet focal también pasan. No se atribuye
+  una regresión a TC-06B. `-race` continúa bloqueado por ausencia de `gcc`.
+
+Nota ISA-101 / TC-06A (2026-07-30):
+- Auditoría y benchmark aislado completados sobre
+  `4801dced7f93ab13ef639f01c3c4e6e9790b5d8c`, sin backend productivo,
+  wiring, frontend, dependencia en el `go.mod` raíz, commit o promoción.
+- Veredicto propuesto: SQLite modernc `GO` condicionado como histórico
+  autoritativo; MCAP candidato condicionado para export/import/replay (recovery
+  upstream no verificado localmente); DuckDB `NO-GO` en el
+  camino de grabación actual por CGO/packaging Windows; framing propio
+  descartado salvo baseline desechable.
+- Los tres candidatos CGO-free conservaron counts, cursor y SHA-256 idénticos
+  en nominal, 4×, 64 vehículos, ráfagas y 24 h lógicas. Las cifras de
+  throughput usan cierre final y no se presentan como RPO.
+- Los dos reviews se corrigieron con kills antes de append/commit, después de
+  commit/antes de manifest y después del replace. SQLite/framing muestran
+  `DB=240` con watermark `200` en el límite intermedio; opening, recording y
+  recovering reinician incomplete. Accepted es volátil y no se promete ACK
+  durable por lote ni pérdida exacta tras crash.
+- `RecordingPayloadV1` y `RecordingFactV1` son DTOs separados de core,
+  versionados, allowlisted y pseudonimizados por slots locales; golden y tests
+  con JSON válido rechazan mediante error unknown tipado nombres, IDs remotos,
+  rutas, metadata abierta y campos desconocidos.
+- Integridad (`opening/recording/recovering/complete/incomplete`) y modo de
+  acceso (`read_write/read_only`) son ejes separados. El probe before-append
+  registra correctamente `volatile_accepted=200`; los límites posteriores 240.
+- DuckDB falla exactamente con bindings Windows excluidos bajo CGO=0 y sin
+  `gcc` bajo CGO=1. El build base Wails CGO=0 pasa; la integración real de
+  SQLite debe volver a medir binario, licencias y packaging en TC-06B.
+- ADR: `docs/adr/0005-historical-storage-sqlite-mcap.md`. Metodología y CSV:
+  `docs/telemetry-core/storage-benchmark-isa-101.md` y
+  `docs/telemetry-core/evidence/isa-101-storage/`. Esquema/contrato TC-06B:
+  `docs/telemetry-core/historical-storage-schema.md`.
+- Estado: ISA-101 cerrada y materializada por ISA-102. SQLite continúa privado
+  y sin wiring productivo; no promover ni activarlo hasta los cortes
+  posteriores de composición, consentimiento e inspector.
+
+Nota ISA-40 / TC-05B (2026-07-29):
+- Implementado `internal/app/telemetrytransport` como adapter/harness local sin
+  wiring productivo global. Cada hub está ligado a un `ProductID` cerrado
+  (Overlay, Engineer, Strategy o Analysis); Wails y SSE emiten exactamente los
+  mismos nombres namespaced y JSON. SSE acepta únicamente loopback y ambos
+  adapters heredan lifecycle del contexto.
+- Cada publicación conserva full completo. Delta RFC 7396 es opcional y solo se
+  acepta si reconstruye exactamente el full nuevo. Late join, reconnect, gap,
+  cambio de epoch y consumer lento reciben full determinista; publicación nunca
+  espera al consumidor y cada suscriptor usa un único slot latest-wins.
+- Envelope incluye projectionVersion, epoch, sequence, full/delta, capturedAt
+  UTC y statusRevision. Status se publica aparte a bajo ritmo; si su revisión
+  avanza, ningún consumidor recibe después un snapshot antiguo.
+- Facts conservan `factSequence` independiente y adapters pull-based sin
+  coalescing. Los adapters exigen continuidad exacta desde `after` y exponen
+  gaps, duplicados o regresiones. No se infiere orden de hechos desde el cursor
+  snapshot.
+- Constructors públicos reciben únicamente `PayloadV1` tipado de Overlay,
+  Engineer, Strategy o Analysis. Un sello privado detecta sustitución posterior
+  de payload/metadata. Se rechazan versión desconocida, JSON inválido, keys
+  raw/canonical/internal y payloads sobre el límite duro de 256 KiB.
+- Sin `derive.FinalState`, schema/core/raw serializado; sin dependencias,
+  persistencia, UI, goroutines propias, colas no acotadas o reglas de dominio.
+  Guía: `docs/telemetry-core/projection-transport.md`.
+- Evidencia fresca: focal x20, vet focal, race x5 con GCC UCRT64, Telemetry
+  completo, guard ADR, frontend 280/280 archivos y 1851/1851 tests, frontend
+  build y suite global Go PASS. Benchmark full con 64 vehículos:
+  258–303 µs/op, ~128,7 KiB/op y 1.964–1.965 allocs/op.
+- Review independiente en tres pasadas: los 2 P1 y 3 P2 iniciales cerraron
+  aislamiento/routing por producto, epoch regresivo, continuidad facts, sello
+  delta y regresiones de perímetro. La segunda pasada cerró nombre SSE/Wails y
+  retiró un polling con `time.Sleep`. Re-review final `ACCEPT` sin P0/P1/P2/P3.
+- Estado: preparado para commit/push, PR draft apilada sobre TC-05A y Linear
+  `In Review`; sin promoción. ISA-41 / TC-05C sigue siendo el siguiente corte.
+
+Nota ISA-41 / TC-05C (2026-07-30):
+- Añadido un único decoder/store TypeScript puro para los envelopes de
+  Overlay, Engineer, Strategy y Analysis. Valida nombres/rutas namespaced,
+  versión v1, full/delta, epoch/sequence, revisión de status, facts separados,
+  límite de 256 KiB y ausencia de raw/PII.
+- Status y snapshot nunca se exponen con revisiones distintas. Full resuelve
+  late join/gap/reconnect; delta exige continuidad; facts conservan cursor
+  independiente y un gap exige resync explícito. Teardown de listeners es
+  compartido e idempotente.
+- Correcciones del primer review: un full semánticamente idéntico puede
+  reexponer el snapshot tras avanzar `statusRevision`, pero no puede cambiar
+  silenciosamente `capturedAt`; las extensiones JSON seguras son compatibles
+  sin relajar campos requeridos, versión o claves prohibidas; el límite
+  configurable solo puede reducir el máximo duro de 256 KiB; y el montaje y
+  desmontaje de listeners son transaccionales incluso si una suscripción o
+  cleanup falla.
+- El harness no productivo reproduce status, full, delta, gap, facts y
+  reconnect con diagnósticos sanitizados. Los tests consumen directamente los
+  cuatro golden Go v1; no se duplican payloads ni se migran pantallas.
+- Guía: `docs/telemetry-core/typescript-projection-contract.md`. Evidencia:
+  focal 36/36, frontend completo 285 archivos/1.887 tests, build, lint focal,
+  TC-05B Go x20, cuatro proyecciones Go y suite Go global PASS. Pendiente
+  re-review independiente antes de entregar ISA-41; sin wiring, persistencia,
+  dependencia nueva o promoción.
+
+Nota ISA-39 / TC-05A (2026-07-28):
+- Definidas proyecciones Go v1 puras e independientes para Overlay, Engineer,
+  Strategy y Analysis. Consumen `derive.FinalState`: el guard y ADR fijan
+  `core -> derive -> projection` sin imports inversos. Cada JSON conserva
+  cursor/UTC y calidad explícita sin exponer raw, Source, clock monotónico o
+  identidad interna completa.
+- Canonical, projection y recording evolucionan con versiones separadas.
+  `VersionPolicy` rechaza cero, futuras y retiradas, y marca como deprecated una
+  versión anterior aún soportada.
+- Overlay expone únicamente sesión, standings, controles, pit y el
+  `controls.history` derivado ya demostrado. Engineer añade hechos ordenados
+  sin mensajes ni decisiones. Strategy y Analysis son compile-only y no
+  inventan fuel, Virtual Energy, ruedas, meteorología o histórico aún ausentes.
+- Cuatro golden JSON y un guard transversal cubren cero/false, missing, stale,
+  capabilities y ausencia de leakage. Focal x20, Telemetry completo, guard ADR,
+  vet focal, race x5 y build frontend PASS. La suite global final conserva solo
+  la contención Windows conocida de `TestConcurrentSavesDontCorruptFile`. Una
+  pasada intermedia bajo carga hizo fallar una vez
+  `TestDriverDoesNotPublishOrMutateRESTAfterCancellation`, pero la suite
+  Telemetry final y el test aislado x20 pasan. Guía:
+  `docs/telemetry-core/runtime-projections.md`.
+- Sin transporte, Wails/SSE, recording funcional, UI, wiring productivo,
+  dependencias, persistencia o lógica de producto.
+- Correcciones de review: Engineer, Strategy y Analysis inicializan todos los
+  campos del vehículo activo como `unknown/missing` aunque el vehículo todavía
+  no aparezca en el snapshot, con regresiones sobre el JSON completo. El guard
+  permite a cada producto importar la raíz común `projection` y su propio
+  subárbol, pero rechaza imports cruzados entre productos. Re-review
+  independiente final `ACCEPT` sin P0/P1/P2/P3; preparado para entrega.
+
+Nota ISA-38 / TC-04D (2026-07-28):
+- Implementado `internal/telemetry/core.Fanout` como frontera neutral y acotada:
+  snapshots completos latest-wins con frame atómico, hechos con secuencia propia
+  sobre ring compartido y resync explícito, sin goroutines, I/O, transporte o
+  producto.
+- Un consumidor lento nunca bloquea al publisher. Snapshots sustituidos son
+  observables; un gap de hechos nunca se oculta y exige adoptar `Latest` antes
+  de reanudar. Budgets: 1.024/4.096 hechos y 32/64 lectores por clase.
+- Métricas de cardinalidad fija cubren publicaciones, superseded, lag, queue,
+  resync, stale, reconnect y coste de derivación sin incluir telemetría ni PII.
+- Se corrigió un posible deadlock de teardown eliminando ownership duplicado con
+  `sync.Once`; un único mutex/mapa gobierna cierres y un test repite 1.000
+  cierres owner/suscripciones concurrentes.
+- Correcciones de review: cada snapshot declara su cobertura causal de hechos
+  sin capturar el cursor global; cierres in-memory liberan ownership incluso
+  con contexto cancelado; el cursor máximo queda agotado sin wrap a cero; y las
+  métricas distinguen entregas sustituidas por suscriptor y lag actual.
+- Evidencia fresca: `go test ./internal/telemetry/... -count=1` PASS; soak
+  determinista 20.000 publicaciones y lectores concurrentes 500 PASS.
+  Baseline fechado: escalar 231,1–251,6 ns/op y hecho 129,1–136,2 ns/op, ambos
+  sin allocations; copia completa 64 vehículos 3,753–5,432 µs/op, 16.384 B/op.
+  Guía: `docs/telemetry-core/runtime-fanout.md`. Race focal x5 con GCC UCRT64,
+  vet focal, build frontend y suite global Go PASS tras las correcciones;
+  re-review independiente **ACCEPT**, sin P0/P1/P2/P3 conocidos. Preparado
+  para entrega aislada; sin wiring, merge o promoción.
+  Sin wiring, cambios frontend tracked, dependencias, recording, Wails/SSE,
+  commit, merge o promoción.
+
+Nota ISA-37 / TC-04C (2026-07-27):
+- Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.
+- La cadena es lineal, síncrona y fija en código; no acepta DAG, plugins, callbacks o definiciones runtime. El registro declara ID, versión, orden, inputs, outputs, reset e historia, devuelve copias defensivas y rechaza duplicados, órdenes no contiguos, autoconsumo, productores múltiples y dependencias hacia etapas posteriores. Cada snapshot final registra la lista ordenada `ID + versión` que produjo sus derivados.
+- Única derivación aprobada: `controls.history@1`, con throttle/brake/clutch fresh del vehículo activo y límite canónico de 120 muestras demostrado por el inventario. Cero es válido. Missing/invalid/stale conservan calidad, no se añaden a historia ni borran muestras confirmadas. Un harness puede reducir el límite, nunca ampliarlo.
+- Epoch, sesión, run y vehículo resetean historia; piloto/equipo dentro del mismo run no. Cursor inválido, cancelación o error conservan atómicamente cursor, historia y snapshot anteriores; el reintento es determinista. Entrada/salida/`Current` no comparten slices mutables.
+- Gaps y delta permanecen explícitamente `missing` y no se registran como algoritmos: el estado observado actual no contiene distancia de vuelta, longitud de pista, tiempo dentro de vuelta, clase ni referencias con presencia/unidad/signo demostrados. No se migran los cálculos legacy ni su fallback sintético sin characterization/golden real.
+- TDD cubre golden/replay, determinismo, orden, missing/invalid/stale, ceros válidos, resets epoch/session/run/vehicle, driver/team, límite, registro/versiones/ciclos, ownership, rollback/retry, cancelación, lectura concurrente, fuzz con oráculo y benchmark con 64 vehículos.
+- Guía de contrato y verificación: `docs/telemetry-core/runtime-derivations.md`. Evidencia fresca: focal derive x20, Telemetry Core completo, guard ADR 0004, vet focal, suite global Go, race derive x10 con GCC UCRT64, fuzz con oráculo 10 s (37.673 ejecuciones) y `git diff --check` PASS. Benchmark aislado con 64 vehículos: 21,7–27,2 µs/op, 109.008–109.024 B/op y 9 allocs/op. Para habilitar el `go:embed` global se instalaron dependencias desde el lockfile y se generó `frontend/dist` ignorado; frontend build PASS con el warning conocido de chunk grande. El vet amplio conserva tres warnings `unsafe.Pointer` Win32 heredados fuera del diff. Review adversarial local sin P0/P1/P2 conocidos. Sin cambios frontend tracked, dependencias, productos, transporte, recording o composition root. Preparado para commit/push, PR draft apilada sobre ISA-36 y Linear `In Review`; sin merge a `develop`.
+
+Nota ISA-36 / TC-04B (2026-07-27):
+- Implementado de forma aislada `internal/telemetry/core.SessionCoordinator`: consume snapshots inmutables aceptados por el reducer y emite lotes atómicos de hechos ordenados con secuencia propia. Snapshots `latest-wins` y hechos discretos siguen contratos separados; no hay I/O, cola, goroutine, transporte, recording/replay ni imports de producto.
+- Mantiene IDs canónicos separados de evento, sesión, vehículo, equipo y piloto sin inventarlos desde nombres/raw. Cambio de fuente, participantes, reconexión breve o equipo/piloto no reinician sesión. Un cambio de coche inicializa solo el nuevo run activo: conserva high-water y baseline de pit de todos los `VehicleID` estables/rivales de la sesión. Un cambio real de evento/sesión emite `session ended -> session started` y reinicia todo el historial.
+- Hechos cubiertos: sesión iniciada/finalizada, vuelta completada, pit entrado/salido, piloto/equipo cambiado y conexión perdida/recuperada. `EndSession` permite cierre explícito e idempotente sin confundirlo con desconexión. Las vueltas usan high-water mark persistente por `VehicleID`: si un rival desaparece y reaparece con un salto, se emiten en orden todas las vueltas omitidas. La ausencia nunca permite inferir una transición de pit; el valor observado al reaparecer pasa a ser el nuevo baseline.
+- Corrección de evidencia P2: `VehicleState.InPit` es ahora `schema.Field[pit.InPit]` y el catálogo append-only añade `pit.in_pit` (ID 24, boolean). LMU lo mapea únicamente desde `VehicleScoring.InPits` del jugador correlacionado; `false` sigue presente, bytes distintos de 0/1 son inválidos y no se mezcla con `PitState` ni se afirma semántica lane/box/garage. La matriz de autoridad `v2` añade esta señal Shared Memory sin alternativa REST. La fixture sanitizada existente demuestra `true`/`false`; las capturas reales de transición, boxes y garaje siguen pendientes.
+- Cada hecho conserva un header coherente con su identidad y evidencia: rivales usan su propio `VehicleID` y el cursor/reloj entrante; `session ended` conserva header/cursor/reloj de la sesión anterior; `session started` usa el snapshot sucesor. La secuencia global de hechos permanece monotónica e independiente del cursor.
+- Backpressure/cierre/overflow son errores observables. `FactBatchSink` acepta el lote completo o ninguno; un fallo no avanza cursor, identidad, historial ni secuencia y el reintento es determinista. Límites: 256 hechos por snapshot y 104 `VehicleID` históricos por sesión, alineados con los slots scoring LMU demostrados. `MaxVehicleHistory` solo permite reducir el presupuesto para harnesses; nunca ampliarlo. Superar el presupuesto devuelve `ErrVehicleHistoryOverflow` antes de emitir o confirmar estado, sin eviction silenciosa. El sink se invoca fuera del mutex, por lo que `Current` conserva acceso al último estado confirmado.
+- Clock UTC inyectable y tests sin `time.Sleep`. TDD cubre epoch/identity, source/participantes múltiples, ausencia/reaparición, reconexión, cambio de coche preservando rivales, baseline del nuevo run activo, headers por hecho, driver/team, lap/pit, duplicados/gaps, orden/secuencia/ownership, presupuestos y rollback/retry, matriz `Apply`/`SetConnected`/`EndSession` contra cierre/backpressure, lectura concurrente durante commit bloqueado, determinismo, fuzz multi-participante con cambio activo y oráculo independiente, y benchmark con 64 vehículos.
+- Guía de contrato y verificación: `docs/telemetry-core/session-coordinator.md`. Evidencia fresca tras la corrección multi-vehículo/presupuesto: focal coordinator + matriz v2 x20, Telemetry Core completo, guard ADR 0004, vet focal, suite global Go, race coordinator x10 con GCC UCRT64 y `git diff --check` PASS. Fuzz multi-participante con oráculo 10 s PASS (372.262 ejecuciones). Benchmark aislado con 64 vehículos: 18,1–23,7 µs/op, 38.144 B/op y 9 allocs/op. Frontend focal `useCanvasInteraction` 24/24 PASS; no hay archivos frontend en el cambio. La suite frontend completa y build permanecen evidenciados en la pasada inmediatamente anterior (1851/1851 y PASS); no se repitieron porque este delta solo toca Go/tests/docs. El vet amplio conserva tres warnings `unsafe.Pointer` Win32 heredados fuera del diff.
+- Review adversarial de corrección, arquitectura, seguridad, lifecycle y rendimiento: sin P0/P1/P2 conocidos. El corte permanece sin composition/production wiring; la prueba manual es un harness controlado. Preparado para PR draft apilada sobre ISA-35 e `In Review`; sin merge a `develop`.
+
+Nota ISA-35 / TC-04A (2026-07-27):
+- Implementado de forma aislada `internal/telemetry/core.Reducer`: un único owner síncrono aplica lotes completos de estado observado, valida epoch/sequence estrictos y publica `envelope.Snapshot` con ownership por copia. No existe estado parcial: cualquier cursor inválido, gap, duplicado o identidad de vehículo fuera de contrato rechaza el lote sin avanzar cursor ni estado.
+- El payload neutral `ObservedState`/`VehicleState` reutiliza los tipos canónicos de `schema`. `core` no importa `catalog` porque el guard aprobado de ADR 0004 prohíbe catálogo en contratos runtime; los IDs canónicos permanecen en el driver LMU y no se crea un ledger paralelo.
+- El loop no crea goroutines y no contiene I/O, JSON, reflection, logging, callbacks inyectables ni decisiones de producto. No hay wiring LMU/productos, transporte, recording, replay, fan-out, derivaciones ni structural sharing.
+- El contrato exige `Event` y `Session` completos desde el primer lote. Dentro del epoch `Event`, `Session` y `Vehicle` permanecen estables según `SameRun`; un header parcial no desactiva el control. Un reset exacto de epoch en sequence 1 puede cambiar los tres. `Team` y `Driver` pueden cambiar dentro del run.
+- TDD cubre orden, duplicados, gaps de secuencia/epoch, reset, lote todo-o-nada, identidad completa/estable, copia defensiva de entrada/salida, mutación concurrente, determinismo, lifecycle/cancelación y owner único. `Run` revalida cancelación tras recibir y antes de aplicar; el test coordinado sin sleeps prueba que no muta/publica en ese límite y que el lote se puede reenviar tras reiniciar. El fuzz usa un oracle/modelo que verifica transición, error, cursor, atomicidad y snapshot; el benchmark mide copia completa con 64 vehículos.
+- Decisiones y guía de verificación: `docs/telemetry-core/runtime-reducer.md`. Evidencia fresca tras corrección final: core x20, Telemetry Core completo, guard ADR 0004, vet focal, suite global Go y race focal x10 PASS. Race usó el GCC UCRT64 ya instalado con configuración solo de proceso; no se instaló ni cambió el sistema. Fuzz con oracle 10 s PASS con 2.324.968 ejecuciones. Benchmark Windows/amd64 con 64 vehículos, cinco repeticiones: 8,66–9,83 µs/op, 36.264 B/op y 5 allocs/op. El vet amplio conserva seis warnings `unsafe.Pointer` heredados fuera del diff.
+- Review adversarial de corrección, arquitectura, seguridad, lifecycle y rendimiento: sin P0/P1/P2 conocidos. Riesgo residual medido: copia completa de 64 vehículos; no se introduce structural sharing sin un presupuesto y comparación aprobados. Preparado para commit/push, PR draft apilada sobre ISA-34 e `In Review`; sin merge a `develop`.
+
+Nota ISA-34 / TC-03E (2026-07-26):
+- Implementada la matriz versionada `v1` de autoridad LMU para las 16 señales actualmente demostradas: cinco solapadas con Shared Memory preferida y REST alternativa semánticamente equivalente, ocho exclusivas Shared Memory y tres exclusivas REST. Cada regla referencia directamente un `catalog.SignalID`; no existe un ledger paralelo. El catálogo incorpora las cinco definiciones neutrales que faltaban.
+- La fusión single-writer vive dentro de `internal/telemetry/drivers/lmu` y publica lotes canónicos por señal. Decide por presencia, validez, freshness y TTL (Shared Memory 500 ms; REST 2 s); cero/false siguen siendo valores válidos. Orden y edad usan secuencia/tiempo monotónico internos: UTC queda solo como metadata y sus saltos no cambian latest ni TTL. Nunca promedia conflictos, sustituye bloques ni inventa fallback.
+- Cada lote incluye una decisión determinista por señal y como máximo cinco diagnósticos de conflicto con solo ID/fuentes, sin valores, raw, JSON, PII ni rutas. Se diagnostican discrepancias entre valores válidos usables tanto fresh como stale. Los controles throttle/brake/clutch tienen presencia, validez y decisión independientes. La salida canónica deja vacío el snapshot de adquisición REST para impedir que un consumidor salte la autoridad por campo. No hay proyecciones, Engineer, Overlay, Strategy, Wails/SSE, composition root, dependencias o wiring productivo.
+- Tests TDD cubren tabla 1:1 con catálogo, preferred stale/invalid/missing, REST parcial, recuperación, cero válido, las cuatro combinaciones fresh/stale de conflicto, clamp >5, borde TTL determinista, rollback/forward UTC, orden de llegada, equivalencia de las cinco señales solapadas, fuzz y benchmark; lifecycle/cancelación continúan cubiertos por el driver.
+- Corrección final de review: el detector de reloj de sesión inmóvil del lifecycle Shared Memory usa la misma marca `elapsed` monotónica inyectada que la fusión; `unchangedSince` ya no es UTC ni usa `now.Sub`. Regresiones end-to-end del driver demuestran rollback/forward UTC, stale decidido solo por elapsed y recovery al avanzar el contador. `track_name` aplica una sola política en SHM/REST: vacío y solo espacios normalizado a vacío conservan presencia, igual que texto normal.
+- Guía operativa: `docs/telemetry-core/lmu-authority-matrix.md`. La prueba real read-only de conexión/desconexión no se ejecuta ni se manipula LMU en este corte; permanece como gate manual TC-03 para Isaac antes de TC-04.
+- Evidencia fresca tras el cierre final de review: focal LMU repetido 20 veces e integración/lifecycle x50 PASS; `go test ./internal/telemetry/... -count=1`, guard ADR 0004 y suite global `go test ./... -count=1` PASS. Fuzz de fusión 10 s PASS (605.180 ejecuciones) y fuzz REST PASS (154.033 ejecuciones tras corpus inicial). Benchmark fusión 600,7–631,7 ns/op, 120 B/op y 2 allocs/op; decoder REST 5,48–6,11 µs/op, 2.112 B/op y 24 allocs/op. Vet focal conserva solo los dos warnings `unsafe.Pointer` Win32 heredados; `-race` sigue no disponible porque no hay `gcc` en el entorno.
+- Estado: corrección de review preparada para commit/push sobre la PR draft apilada en ISA-33; `In Review`, sin merge a `develop`.
+
+Nota ISA-33 / TC-03D (2026-07-21):
+- Corrección de review (2026-07-22): la aceptación de `sessionInfo` es transaccional; `CurrentEventTime` negativo, NaN, Inf o fuera de rango no modifica campos ni `LastSuccessUTC`. `SourceTime` REST queda observado y timestamped solo tras validar toda la respuesta. Tests cubren válido seguido de temporal inválido preservando el cache anterior.
+- Corrección P3: `CurrentEventTime` ya no se convierte mediante multiplicación directa de `float64` en el borde de `time.Duration`. La conversión separa segundos enteros/nanosegundos, comprueba explícitamente el resto superior y rechaza conservadoramente el límite redondeado ambiguo; tests cubren el último segundo entero exacto y los `float64` inmediatamente inferiores/superiores al máximo.
+- Timestamps corregidos: cada request registra su intento real, cada respuesta/campo aceptado usa su recepción real y freshness/TTL se evalúa contra una hora final del snapshot. Una respuesta temprana puede quedar stale durante una segunda request lenta sin falsificar su edad.
+- Cancelación endurecida: tanto el worker como el driver comprueban `ctx.Err()` antes de enviar, antes de mutar runtime y antes de escribir al sink. Una regresión coordinada por canales cancela exactamente antes de publicar REST y demuestra cero mutaciones/publicaciones tardías, sin sleeps.
+- Seguridad de red: REST exige HTTP loopback y el cliente rechaza redirects antes de seguirlos; `localhost`, `127.0.0.0/8` y `::1` siguen permitidos. Tests demuestran rechazo pre-transporte de base externa y redirect externo sin red real.
+- El único `internal/telemetry/drivers/lmu.Driver` posee ahora Shared Memory y REST local. REST usa un worker interno cancelable, dos endpoints observacionales (`standings` y `sessionInfo`), poll normal 250 ms, deadline 750 ms, TTL 2 s, backoff exponencial máximo 2 s y transporte HTTP propio con cierre de conexiones idle. `Run` espera request y poller antes de retornar; no quedan goroutines propias tras teardown.
+- Shared Memory y REST emiten observaciones separadas mediante `SourceSharedMemory`/`SourceREST`. Este corte no fusiona, no decide autoridad, no sustituye listas/sesiones y no contiene lógica de producto. ISA-34 conserva íntegra la matriz de autoridad y fusión.
+- Cache y calidad son explícitas: cada endpoint conserva intento/último éxito/estado y cada campo conserva `UpdatedUTC` más `fresh/stale/missing/invalid`. Se distinguen `live`, `partial`, `unsupported`, `offline`, `timeout` y `stale`; cuerpo vacío y JSON malformado no se confunden. Fallar un endpoint no borra el otro ni convierte ausencia en cero.
+- Capabilities runtime son honestas: Shared Memory puede continuar mientras REST degrada el driver; REST solo se anuncia disponible con evidencia de canal live/partial/stale. No existe fallback mock.
+- Privacidad/alcance: el decoder solo materializa campos neutrales; nombres y raw no salen del paquete ni se registran/persisten. Sin cambios en Engineer, Overlay, Strategy, Wails/SSE, composition root, dependencias o wiring productivo. Guía y gate manual read-only: `docs/telemetry-core/lmu-rest-driver.md`.
+- Evidencia fresca tras review: focal LMU repetido 20 veces PASS; `go test ./internal/telemetry/... -count=1`, guard ADR y suite global `go test ./... -count=1` PASS; fuzz REST 10 s PASS (~221.277 ejecuciones); benchmark 4,83–5,54 µs/op, 2.096 B/op y 23 allocs/op. Vet REST/core/driver PASS en target sin seams Win32; Windows conserva únicamente los dos warnings `unsafe.Pointer` heredados de ISA-32. `-race` continúa no disponible con `CGO_ENABLED=0` y `gcc` ausente.
+- Estado: implementación y documentación preparadas para review, PR draft apilada sobre ISA-32 y validación manual de Isaac. Sin merge a `develop`; ISA-34 no debe iniciarse antes del gate humano.
+
+Nota ISA-32 / TC-03C (2026-07-21):
+- Implementado `internal/telemetry/drivers/lmu` como adquisición canónica y aislada de `LMU_Data`: cada `Run` abre exactamente un mapping, copia muestras a buffer privado y cierra view/handle una sola vez. No crea goroutines propias; ticker, clock y apertura solo se inyectan dentro del paquete para tests deterministas.
+- El payload `Observation` es product-neutral, sin raw ni `pkg/models`: usa campos `schema.Field` con presencia/provenance/freshness explícitos para la muestra demostrada por fixtures reales de menú y pista. Menú sigue `live` sin vehículo; NaN/Inf/rangos imposibles son `invalid`, nunca cero inventado.
+- Compatibilidad/lifecycle fail-closed: `known` exige proceso exacto, build FileVersion/ProductVersion allowlisted `1.3.0.0`, mapping abierto, vista exacta e invariantes estructurales. Si FileVersion y ProductVersion existen, deben normalizar al mismo valor allowlisted; cualquier contradicción queda `unknown/degraded` sin fields. Si solo existe una versión, puede validarse contra la allowlist. Ausencia/no-Windows/no allowlist queda `unknown/degraded` sin campos fresh. Con `PlayerPresent=false`, las invariantes neutrales de menú permiten `live` sin vehículo y sin exigir nombre personal; el mismo all-zero sin build sigue `unknown`, y una variante malformada también. Con jugador se conserva la correlación estricta scoring/telemetry por isPlayer, ID, vehículo y track. Telemetry movida/corrupta queda `unknown` aunque scoring sea plausible.
+- `RuntimeSnapshot` es concurrency-safe, no hace I/O y copia capabilities. Sin contador de frame demostrado, cada muestra requiere dos copias consecutivas iguales con scratch reusable y máximo tres comparaciones; incoherencia no publica y retorna `ErrIncoherentSnapshot` retryable/degraded. `Run` no abre con contexto cancelado, no publica tras cancelación y cierra exactamente una vez.
+- Fixtures reales cubiertas: menú y pista. Garaje y boxes siguen pendientes de captura real; no se inventan. Verificación manual opt-in documentada en `docs/telemetry-core/lmu-shared-memory-driver.md`.
+- Teardown: `driver.ErrTeardown` tiene prioridad terminal aunque el error también contenga disconnected/incoherent; no se reabre mapping. El resultado por ciclo permite que varios `Stop` reciban el mismo close error incluso tras cleanup/restart. Seams Win32 cubren mappings y provider build, cierre de handles, errores y privacidad de ruta.
+- Evidencia re-review fresca tras el ajuste de menú: focal core/driver/LMU repetido 20 veces, `go test ./internal/telemetry/... -count=1`, suite global, build frontend, guard ADR y `git diff --check` PASS. Benchmark estabilidad+parse+evidencia por muestra aislado 22,12–25,31 µs/op, 600 B/op y 14 allocs/op (margen >650x a 60 Hz). Vet core/driver PASS; LMU conserva dos warnings localizados `unsafe.Pointer` al materializar mmap y VS_FIXEDFILEINFO Win32. Fuzz explícito previo 10 s PASS (~571.962 ejecuciones); `-race` sigue no disponible con `CGO_ENABLED=0`.
+- Live opt-in read-only con LMU abierto: PASS; provider/version `1.3.0.0` allowlisted, runtime `live`, `PlayerPresent=false`, fingerprint seguro `evidence=menu-invariants` y fast telemetry ausente. No se capturó/escribió raw ni PII.
+- Estado: preparado para review y validación manual LMU; sin push, PR, Linear, wiring, merge ni integración en `develop`. ISA-33 no debe iniciarse hasta aprobación humana de este corte.
+
+Nota ISA-31 / TC-03B (2026-07-21):
+- Implementado `core.DriverManager[T]` genérico sobre el puerto `core.Driver[T]`, sin importar drivers concretos ni cambiar composición/producto. El catálogo compilado mantiene descriptor, prioridad y capabilities estáticas; el puerto entrega aparte un snapshot runtime con estado y capabilities actuales, siempre copiados defensivamente.
+- La selección es determinista: preferencia explícita válida primero, después prioridad descendente y finalmente ID estable. Un cambio de preferencia exige `Stop -> SetPreferred -> Start`; no existe hot-swap implícito ni fallback mock.
+- El lifecycle posee exactamente una llamada `Run` activa, rechaza doble `Start` con error inspeccionable, mantiene constructor/errores terminales observables hasta `Stop`, trata ausencia como `detecting` y hace `Stop` idempotente, cancelable y bloqueante hasta teardown. Cada ejecución tiene una generación propia: una finalización `Stop` antigua nunca puede limpiar un restart posterior.
+- `Status` consulta el snapshot del driver fuera del mutex, valida cada cambio contra `driver.State.CanTransitionTo` y persiste solo transiciones legales. Generación y revisión monotónica de instancia impiden que un snapshot lento de un ciclo anterior contamine un reconnect, incluso si el constructor reutiliza el mismo valor; nunca se comparan interfaces de drivers. Un salto o retroceso ilegal publica `degraded` con `ErrInvalidDriverTransition`; una recuperación legal limpia el diagnóstico.
+- Reconnect solo ocurre si el candidato clasifica expresamente el error como transitorio. Usa instancias nuevas secuencialmente, máximo configurable, backoff exponencial acotado y jitter acotado/injectable; agotamiento devuelve error tipado. Detector, backoff y driver comparten cancelación.
+- TDD y concurrencia: tests table-driven y coordinados por canales cubren catálogo inválido, desempate, preferencia, doble start, ausencia, constructor, terminal sin retry, retry agotado, una sola ejecución activa, dos Stops concurrentes con restart, timeout/completion de Stop, transiciones runtime válidas/ilegales, degradación de capabilities, cancelación durante backoff, contexto padre y teardown. No usan `time.Sleep`; los deadlines solo protegen contra bloqueos.
+- Evidencia: focal core/driver repetido 20 veces PASS; `go test ./internal/telemetry/... -count=1` PASS; guard ADR 0004 PASS; `go vet` focal PASS y `git diff --check` PASS. `-race` queda pendiente porque el entorno mantiene `CGO_ENABLED=0`; no se ejecutó suite global ni frontend porque este corte es un paquete Go aislado sin composición ni UI.
+- Estado: preparado para review; sin driver LMU concreto, parsers, fusión, wiring, push, PR, Linear ni merge. ISA-32 no debe iniciarse hasta aprobación humana de este corte.
+
+Nota ISA-30 / TC-03A (2026-07-21):
+- Iniciada desde ISA-29 aprobada en `8d12cf0399f1848d873a8268d12e5d3005945830`, con rama/worktree aislados y sin cambiar producción. Inventario canónico: `docs/telemetry-core/lmu-raw-acquisition-audit.md`.
+- Confirmado: un único mapping `LMU_Data` alimenta los parsers público y Engineer; la duplicación está en offsets/decodificación, no en tres conexiones principales. Extended, PitInfo y REST deben quedar bajo el único LMU Driver.
+- La fixture histórica contenía identidad real. Se sustituye por buffer sanitizado con lista blanca numérica, aliases deterministas, procedencia, versión/fingerprint y SHA-256; se añade captura real `menu` de LMU 1.3.0.0. Garaje y boxes quedan explícitamente pendientes, sin inventar datos.
+- Se caracteriza paridad de campos solapados y se añaden fuzz targets no-panic para ambos parsers. No se eliminan parsers, no se cablea el driver y no se cambia comportamiento productivo.
+- Riesgos reservados a ISA-31/32/33: detector de compatibilidad, NaN/Inf, `TotalLaps` divergente, offsets de ruedas/aceite no verificados, REST pit menu separado y recapturas reales garaje/boxes. ISA-31 no debe iniciarse hasta revisión y aprobación manual de este corte.
+- Evidencia: focales LMU/Engineer y `go test ./internal/telemetry/... -count=1` PASS; fuzz explícito 5 s por parser PASS (28.271 + 158.473 ejecuciones); benchmark 13,5–15,6 µs/op; build frontend PASS; suite global serial `go test -p 1 ./... -count=1` PASS. La suite paralela reproduce únicamente ISA-118 (`TestConcurrentSavesDontCorruptFile`) y el focal vuelve a pasar; `-race` no está disponible con `CGO_ENABLED=0`. Vet focal conserva tres warnings legacy `unsafe.Pointer` en readers mmap fuera del diff.
+- Review final correctness/readability/architecture/security/performance: sin P0/P1/P2. Estado: preparado para `In Review`, PR draft apilada sobre ISA-29 y sin merge; ISA-31 no iniciada.
+
+Nota ISA-29 / TC-02D (2026-07-21):
+- Iniciada desde ISA-28 aprobada en `e182f92cc085c3c51f119a02146e20c6236cdd38`, con rama y worktree aislados. El corte solo fija contratos compilables y guardarraíles; no conecta LMU, crea runtime, cambia productos ni añade transporte/almacenamiento.
+- `driver.State` fija los ocho estados aprobados (`stopped`, `detecting`, `connecting`, `live`, `degraded`, `stale`, `error`, `stopping`) y transiciones explícitas. Reinicios desde error requieren decisión del manager; no existe retry automático oculto.
+- Los puertos viven en sus consumidores: el driver consume `ObservationSink`; core consume `Driver`, `Derivation` y `RecordingSink`; projection consume `SnapshotReader`, `FactSubscriber`/`FactSubscription` y `Projector`. Son genéricos y no fijan todavía un payload LMU o snapshot universal.
+- Backpressure, cierre y resync son errores observables. Los hechos se consumen mediante suscripción pull-based sin exigir colas ilimitadas; un salto no recuperable exige snapshot completo antes de reanudar. Recording nunca puede perder silenciosamente datos aceptados.
+- El guard arquitectónico permite a core solo schema y contratos neutrales de driver; a derive/projection/recording solo sus capas inferiores aprobadas; y a cada driver concreto solo schema, core ports, contratos neutrales y su propio árbol. Un driver de simulador no puede importar otro driver ni productos/proyecciones.
+- TDD: se observaron rojos para contratos ausentes, fronteras de derive y dependencias inversas. Focales, `go test ./internal/telemetry/... -count=1`, build frontend para generar `dist` ignorado y dos ejecuciones frescas de `go test ./... -count=1` PASS; `go vet` de los tres paquetes nuevos PASS y `git diff --check` PASS. El vet amplio conserva únicamente el warning legacy de `unsafe.Pointer` en `internal/telemetry/lmu/reader_windows.go`, fuera del diff; race no se ejecuta porque `CGO_ENABLED=0`.
+- Review final correctness/readability/architecture/security/performance: sin P0/P1/P2. Antes del cierre se hicieron context-aware los cierres de suscripción, se explicitó ownership síncrono de payloads mutables, se exigió preservar headers en derivación/proyección y se convirtió el lifecycle en una matriz exhaustiva. Estado: preparado para `In Review`, PR draft apilada sobre ISA-28 y sin merge; TC-03 no iniciado.
+
+Nota ISA-28 / TC-02C (2026-07-21):
+- Iniciada desde ISA-27 aprobada en `72da58552495d8a9623ad42fc1e82510d048d7a0`, con rama y worktree aislados. El corte solo añade contratos; no conecta drivers LMU, runtime, productos ni transporte.
+- Presencia y valor quedan separados mediante `schema.Field[T comparable]`: cero, `false` y texto vacío pueden estar presentes; `MissingField` es ausencia explícita. Provenance distingue observed/derived/estimated y freshness distingue fresh/stale/missing/invalid sin usar sentinels.
+- `Clock` separa source time, session time, UTC de recepción y edad monotónica interna no serializada. `Cursor` empieza en epoch/sequence 1, mantiene epoch tras desconexión breve y lo rota ante reset, cambio real de evento/sesión/vehículo o wrap; overflow e incoherencia producen error explícito.
+- `RunIdentity` mantiene IDs distintos de evento, sesión, vehículo, equipo y piloto. `SameSession` no depende del coche; `SameRun` sí. Cambios de piloto, equipo o fuente no crean por sí solos una sesión/run nuevos.
+- `schema/envelope` define headers y wrappers transport-neutral: observaciones y hechos aceptan payload value-semantic; snapshots con colecciones exigen una función de copia y clonan al entrar/salir. El valor cero de Snapshot es seguro y no expone payload.
+- TDD incremental: rojos comprobados antes de cada contrato; focales schema y `go test ./internal/telemetry/... -count=1` PASS después de cada incremento. Build frontend PASS para generar el `dist` ignorado; `go test ./... -count=1` PASS completo; `git diff --check` PASS. Race no se ejecuta porque el toolchain mantiene `CGO_ENABLED=0`.
+- Review final correctness/readability/architecture/security/performance: sin P0/P1/P2. Se corrigieron antes del cierre la separación `SameSession`/`SameRun` y el valor cero seguro de Snapshot. Estado: preparado para `In Review`, PR draft apilado sobre ISA-27 y sin merge; ISA-29 no iniciada.
+
+Nota ISA-27 / TC-02B (2026-07-19):
+- Implementación iniciada sobre `vantareapp/isa-26-tc-02a-arquitectura-final-e-inventario-de-dominios@9bd922fe245b27440d239c3578f1a4aaf6ea2817` en rama/worktree propios. Alcance: schema runtime tipado, catálogo/ledger único de IDs, invariantes, golden determinista y benchmark focal; sin migrar consumidores ni adelantar ISA-28/TC-03.
+- Frontera aprobada: `schema` y sus dominios no importan `catalog`; `catalog` importa únicamente schema/standard library y no participa dinámicamente en el hot path. ISA-26 e ISA-27 están `Done`; ISA-28 está preparada para `In Review`.
+- Implementados contratos pequeños para identity/session/vehicle/controls/wheels/energy/pit/standings/weather/spatial, vocabulario explícito Unknown/Unsupported, ledger estable con política append-only de tombstones, lookup precalculado, golden Markdown LF/CRLF-safe y guard de imports/reflection. No se añadieron interfaces, generador, dependencias ni consumidores.
+- TDD: rojos comprobados para vocabulario, rangos, enums, duplicados, colisión active/retired, determinismo y frontera catalog/schema; focales schema/catalog y guard arquitectónico PASS. `go test ./internal/telemetry/... -count=1` PASS; build frontend PASS; `git diff --check` PASS.
+- Benchmark Windows amd64, 3 repeticiones: `ByID` 14.97–15.25 ns/op y acceso a struct tipado 0.4977–0.5051 ns/op; ambos 0 B/op y 0 allocs/op, sin umbral temporal contractual.
+- Suite global: tras instalar desde lockfile y generar `frontend/dist` ignorado, reapareció solo ISA-118 (`TestConcurrentSavesDontCorruptFile`, colisión conocida de `.tmp` en Windows); pasó focalmente con `-count=1`. ISA-119 pasó focalmente con `-count=20`. Ningún archivo de esas áreas cambió y no se corrigieron aquí.
+- Corrección adversarial posterior: `TeamName` y `VehicleName` pertenecen a `schema/vehicle`; `session.TypeEndurance` forma parte del enum canónico; `spatial.Position` distingue el contrato público del auxiliar `Vector3`; y el catálogo cubre exactamente los 18 contratos explícitos, incluidos lap number, gear, completed laps y orientation. El test complaciente de conteo de valores fue sustituido por una especificación exacta con witnesses tipados y golden determinista.
+- Evidencia fresca de la corrección: focales schema/catalog PASS, guard y `go test ./internal/telemetry/... -count=1` PASS, benchmark 3 repeticiones con 0 B/op y 0 allocs/op, `git diff --check` PASS y `go test ./... -count=1` PASS completo. El PASS puntual no cierra ISA-118/119, que siguen fuera de este diff.
+- Estado de entrega: ISA-27 fue aprobada manualmente por Isaac el 2026-07-21 en `72da58552495d8a9623ad42fc1e82510d048d7a0`; su PR continúa sin merge. ISA-28 partió de ese SHA.
+
+Nota ISA-26 / TC-02A (2026-07-19):
+- Cerrado tras segunda review el inventario previo al runtime en `docs/telemetry-core/domain-inventory.md`: contrato público Overlay/Desktop/OBS, proyección V3, modelo y 30/30 dominios Engineer, Launcher/consumidores live y requirements futuros de Strategy/Analysis sin crear schema. La cobertura normativa RF/SC asigna a cada fila/grupo rango, frecuencia útil, source y consumer; cuando no hay evidencia los marca explícitamente `desconocido / TC-03`, sin confundir frecuencia útil con adquisición.
+- Cerradas las reglas de dirección del ADR 0004 en `docs/telemetry-core/dependency-rules.md` y un guard determinista en `internal/telemetry/architecture_test.go`; el guard caracteriza el árbol legacy y se activa para `schema`, `core`, drivers y proyecciones cuando aparezcan, sin exigir migraciones inexistentes.
+- Deudas reservadas a TC-03: presencia por campo sin sentinel cero/false/vacío, unidades/provenance LMU, identidad de sesión sin `NumVehicles`, offsets placeholder y divergencia `Speed` m/s frente a `speedKph` V3. No se resolvieron inventando schema ni cambiando producción.
+- Evidencia: test focal rojo antes de implementar el validador; `go test ./internal/telemetry/... -count=1` PASS; `go test ./... -count=1` PASS después de generar `frontend/dist` ignorado; build frontend PASS; `git diff --check` PASS. `-race` no disponible porque el toolchain tiene CGO deshabilitado.
+- Evidencia fresca de segunda review: comprobación RF/SC PASS sobre 143 filas de campos/grupos; test focal y `go test ./internal/telemetry/... -count=1` PASS; `git diff --check` PASS. Dos repeticiones literales de `go test ./... -count=1` quedaron rojas por flakies fuera de este diff: `TestConcurrentSavesDontCorruptFile` reproduce colisiones de `app-settings.json.tmp` también focalmente con `-count=20` (ISA-118), mientras `TestServiceEmitRateCapped` dio PASS focal `-count=20` y solo falló bajo carga global (ISA-119). Ambos pasaron focalmente con `-count=1`, no se modificaron y no se declara la suite global verde. Una ejecución serial superó `internal/app` y fue terminada externamente antes de acabar el resto.
+- Estado de cierre: ISA-26 quedó `Done` tras validación manual de Isaac en `9bd922fe245b27440d239c3578f1a4aaf6ea2817`; su PR permaneció apilado y sin merge a `develop`. ISA-27 comenzó después sobre ese SHA.
+
+Nota TELEMETRY-CORE-FINAL-ARCHITECTURE (2026-07-19):
+- Isaac aprobó reconstruir Telemetry Core con arquitectura modular orientada a observaciones: drivers compilados, LMU Driver propietario de Shared Memory + REST, reducer single-writer, derivaciones ordenadas, snapshots inmutables, hechos separados y proyecciones versionadas por producto.
+- ADR vigente: `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
+- Plan maestro e índice: `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md` y `2026-07-19-telemetry-core-sol-medium-execution-index.md`.
+- Fases: TC-02 contratos, TC-03 driver LMU, TC-04 runtime, TC-05 proyecciones/transporte, TC-06 recording/replay, TC-07 Overlay, TC-08 Engineer y TC-09 retirement/hardening.
+- La ejecución inicia en ISA-26. Los planes pendientes del 2026-07-13 quedan `SUPERSEDED`; TC-01 se conserva como baseline completado.
+- Nada entra en `develop` sin validación manual completa y aprobación explícita de Isaac.
 
 Nota INTEGRACION-ISA-93 (2026-07-19):
 - Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.
@@ -2731,3 +3508,9 @@ Nota ISA-9-RESCAN-PROGRESS (2026-07-13):
 - Commits: `e2915ee` backend, `ac8c2fe` bridge/store/UI. `.superpowers/` se conserva sin incluir.
 - Checks focalizados: Go launcher/cmd PASS; frontend Launcher/store/bridge/panel/progress PASS (14 tests); frontend build PASS; `git diff --check` PASS.
 - Pendiente antes de In Review: suite frontend completa, lint, Playwright 100/125/150/200, smoke Wails Windows con `.env.local` del escritorio, revisión inicial sin editar y validación manual 100% de Isaac. No merge a `develop`.
+Nota TELEMETRY-CORE-ISA-100 (2026-07-19) — ESTADO HISTÓRICO SUPERSEDED POR LA NOTA ISA-26 AL INICIO:
+- Telemetry Core se separa documentalmente de Strategy Product B. La rama histórica ISA-21 no debe mergearse en bloque.
+- TC-01 está completado e integrado en `develop@f492007` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
+- Autoridad y fronteras: `docs/telemetry-core/README.md`. Se rescatan exclusivamente el plan maestro, cinco microplanes y el índice Telemetry Core.
+- Estado al publicar ISA-100: TC-02–TC-05 seguían sin iniciar e ISA-26 estaba en Backlog. Esta línea ya no es operativa: ISA-26 está `In Review` sobre ISA-100 y ISA-27 permanece no iniciado/bloqueado por review humana, según la nota vigente al inicio del documento.
+- No se ha tocado código de producto, Strategy Planner ni la arquitectura runtime en ISA-100.

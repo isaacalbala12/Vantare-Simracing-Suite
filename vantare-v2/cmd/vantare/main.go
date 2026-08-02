@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,13 +21,13 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
-	"github.com/vantare/overlays/v2/internal/telemetry/delta"
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -36,6 +37,11 @@ import (
 
 // version is the current application version.
 var version = "v0.1.0.5"
+
+const (
+	telemetrySourceStatusEvent        = "telemetry-core:source-status"
+	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
+)
 
 // supabaseURL and supabaseAnonKey are injected at build time via ldflags
 // (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
@@ -119,6 +125,59 @@ func configsDir() string {
 	}
 
 	return ""
+}
+
+// telemetrySessionsRoot is the single composition authority for the current
+// and future telemetry session writer. Installed builds keep session data in
+// LocalAppData; portable and development builds keep it beside their root.
+func telemetrySessionsRoot(cfgDir string) (string, error) {
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve user config directory: %w", err)
+	}
+	localDataDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve local data directory: %w", err)
+	}
+	return resolveTelemetrySessionsRoot(cfgDir, userConfigDir, localDataDir)
+}
+
+func resolveTelemetrySessionsRoot(
+	cfgDir string,
+	userConfigDir string,
+	localDataDir string,
+) (string, error) {
+	if cfgDir == "" || !filepath.IsAbs(cfgDir) {
+		return "", fmt.Errorf("configs directory must be absolute")
+	}
+	cfgDir = filepath.Clean(cfgDir)
+	installedConfigDir := filepath.Join(userConfigDir, "Vantare", "configs")
+	if samePath(cfgDir, installedConfigDir) {
+		if localDataDir == "" || !filepath.IsAbs(localDataDir) {
+			return "", fmt.Errorf("local data directory must be absolute")
+		}
+		return filepath.Join(
+			filepath.Clean(localDataDir),
+			"Vantare",
+			"telemetry",
+			"sessions",
+		), nil
+	}
+	return filepath.Join(
+		filepath.Dir(cfgDir),
+		"data",
+		"telemetry",
+		"sessions",
+	), nil
+}
+
+func samePath(left, right string) bool {
+	left = filepath.Clean(left)
+	right = filepath.Clean(right)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(left, right)
+	}
+	return left == right
 }
 
 type wailsEmitter struct {
@@ -553,12 +612,15 @@ func main() {
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
-	live := flag.Bool("live", true, "use LMU shared memory (use -live=false for mock telemetry)")
+	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
 	reorderArgs()
 	flag.Parse()
+	if !*live {
+		log.Printf("live telemetry disabled explicitly; disconnected state will be published")
+	}
 
 	if err := server.ValidateAddr(*httpAddr); err != nil {
 		log.Fatalf("http: %v", err)
@@ -570,7 +632,6 @@ func main() {
 
 	distFS := frontend.DistFS()
 
-	vapp := app.New(*live)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -583,7 +644,7 @@ func main() {
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
 	var cleanup sync.Once
-	var bridge *app.TelemetryBridge
+	var hotkeyMu sync.Mutex
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
@@ -592,35 +653,90 @@ func main() {
 	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
+	var engSvc *engineerservice.EngineerService
 	var launcherSvc *launcher.Service
+	var profileHkMgr *launcher.HotkeyManager
+	var diagnosticsBridge *app.DiagnosticsBridge
+	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
-			if overlayController != nil {
-				overlayController.Stop()
-			}
-			if httpSrv != nil {
-				if err := httpSrv.Stop(); err != nil {
-					log.Printf("HTTP server shutdown error: %v", err)
+			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
+			defer cancelShutdown()
+			results := runShutdown(shutdownCtx, []shutdownStep{
+				{name: "overlay", stop: func(context.Context) error {
+					if overlayController != nil {
+						overlayController.Stop()
+					}
+					return nil
+				}},
+				{name: "telemetry-core", stop: func(ctx context.Context) error {
+					if telemetryCoreRuntime == nil {
+						return nil
+					}
+					return telemetryCoreRuntime.Stop(ctx)
+				}},
+				{name: "http", stop: func(context.Context) error {
+					if httpSrv == nil {
+						return nil
+					}
+					return httpSrv.Stop()
+				}},
+				{name: "ops", stop: func(context.Context) error {
+					if opsBridge != nil {
+						opsBridge.Stop()
+					}
+					return nil
+				}},
+				{name: "global-hotkeys", stop: func(context.Context) error {
+					hotkeyMu.Lock()
+					manager := hkMgr
+					hkMgr = nil
+					hotkeyMu.Unlock()
+					if manager != nil {
+						manager.Stop()
+					}
+					return nil
+				}},
+				{name: "profile-hotkeys", stop: func(context.Context) error {
+					if profileHkMgr != nil {
+						profileHkMgr.Stop()
+					}
+					return nil
+				}},
+				{name: "engineer-bridge", stop: func(context.Context) error {
+					if engBridge != nil {
+						engBridge.Stop()
+					}
+					return nil
+				}},
+				{name: "launcher", stop: func(context.Context) error {
+					if launcherSvc != nil {
+						launcherSvc.CancelAll()
+					}
+					return nil
+				}},
+				{name: "diagnostics", stop: func(context.Context) error {
+					if diagnosticsBridge != nil {
+						diagnosticsBridge.Close()
+					}
+					return nil
+				}},
+				{name: "engineer", stop: func(context.Context) error {
+					if engSvc != nil {
+						engSvc.Stop()
+					}
+					return nil
+				}},
+				{name: "application-context", stop: func(context.Context) error {
+					stop()
+					return nil
+				}},
+			})
+			for _, result := range results {
+				if result.err != nil {
+					log.Printf("shutdown %s error after %s: %v", result.name, result.duration, result.err)
 				}
 			}
-			if opsBridge != nil {
-				opsBridge.Stop()
-			}
-			if bridge != nil {
-				bridge.Stop()
-			}
-			if hkMgr != nil {
-				hkMgr.Stop()
-			}
-			if engBridge != nil {
-				engBridge.Stop()
-			}
-			// Cancel any active launch chains (launcherSvc is nil during
-			// the defer path but valid in the Wails OnShutdown path).
-			if launcherSvc != nil {
-				launcherSvc.CancelAll()
-			}
-			vapp.StopTelemetry()
 		})
 	}
 	wailsApp.OnShutdown(cleanupApp)
@@ -825,23 +941,44 @@ func main() {
 		wailsApp.RegisterService(application.NewService(updaterSvc))
 	}
 
-	// Create and start EngineerService (core & simulator/replay)
-	engSvc := engineerservice.NewEngineerService(emitter)
+	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
+	// sole production telemetry source.
+	engSvc = engineerservice.NewEngineerService(emitter)
 	engSvc.Start(ctx)
-	defer engSvc.Stop()
 
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
+
+	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+		Enabled:  *live,
+		Emitter:  emitter,
+		Engineer: engSvc,
+	})
+	if err != nil {
+		log.Printf("telemetry core init error: %v", err)
+		telemetryCoreRuntime = nil
+	}
+	telemetrySourceStatus := func() driver.SourceStatus {
+		if telemetryCoreRuntime == nil {
+			return driver.UnknownSourceStatus()
+		}
+		return telemetryCoreRuntime.SourceStatus()
+	}
 
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
 	httpSrv = server.New(server.ServerConfig{
 		Addr:        *httpAddr,
 		DistFS:      distFS,
 		CfgDir:      cfgDir,
-		Svc:         vapp.Telemetry,
 		EngineerSvc: engSvc,
 		Emitter:     emitter,
+		OverlayProjection: func() *telemetrytransport.Hub {
+			if telemetryCoreRuntime == nil {
+				return nil
+			}
+			return telemetryCoreRuntime.Hub()
+		}(),
 	})
 	httpSrv.Start()
 	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
@@ -921,87 +1058,27 @@ func main() {
 		}
 	}
 
-	mode := delta.ReferenceMode(settingsSvc.Settings().DeltaMode)
-	if mode == "" {
-		mode = delta.ModeSelf
-	}
-	vapp.SetDeltaMode(mode)
-
 	// Diagnostics service
-	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, vapp)
-	wailsApp.RegisterService(application.NewService(diagSvc))
+	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, telemetrySourceStatus)
+	sessionsRoot, err := telemetrySessionsRoot(cfgDir)
+	if err != nil {
+		// Keep the client on a closed unavailable state without logging paths.
+		log.Printf("warning: diagnostics session storage is unavailable")
+		sessionsRoot = ""
+	}
+	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
+	diagnosticsBridge.RegisterHandlers(wailsApp)
 
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
 
-	// Hotkey manager
-	hkMgr = app.NewHotkeyManager()
-	profileHkMgr := launcher.NewHotkeyManager()
-
-	// Register default hotkey actions
-	hkMgr.Register("toggleOverlay", settingsSvc.Settings().Hotkeys["toggleOverlay"], func() {
-		if hubSvc == nil {
-			return
-		}
-		if overlayRunning.Load() {
-			hubSvc.StopOverlay()
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
-			overlayRunning.Store(false)
-			return
-		}
-		status, err := hubSvc.StartActiveOverlay()
-		if err != nil {
-			log.Printf("hotkey toggle overlay error: %v", err)
-			if !status.Running {
-				overlayRunning.Store(false)
-			}
-			return
-		}
-		overlayRunning.Store(status.Running)
-		resetOverlayDisplayMode(overlayController, studioProfileSvc)
-	})
-
-	hkMgr.Register("nextProfile", settingsSvc.Settings().Hotkeys["nextProfile"], func() {
-		if !overlayRunning.Load() || studioProfileSvc == nil {
-			return
-		}
-		if err := studioProfileSvc.NextProfile(); err != nil {
-			log.Printf("hotkey next profile error: %v", err)
-			return
-		}
-		if status, err := hubSvc.StartActiveOverlay(); err != nil {
-			log.Printf("hotkey next profile restart overlay error: %v", err)
-			if !status.Running {
-				overlayRunning.Store(false)
-			}
-		} else {
-			overlayRunning.Store(status.Running)
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
-		}
-	})
-
-	hkMgr.Register("prevProfile", settingsSvc.Settings().Hotkeys["prevProfile"], func() {
-		if !overlayRunning.Load() || studioProfileSvc == nil {
-			return
-		}
-		if err := studioProfileSvc.PreviousProfile(); err != nil {
-			log.Printf("hotkey prev profile error: %v", err)
-			return
-		}
-		if status, err := hubSvc.StartActiveOverlay(); err != nil {
-			log.Printf("hotkey prev profile restart overlay error: %v", err)
-			if !status.Running {
-				overlayRunning.Store(false)
-			}
-		} else {
-			overlayRunning.Store(status.Running)
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
-		}
-	})
-
-	hkMgr.Register("toggleEditMode", settingsSvc.Settings().Hotkeys["toggleEditMode"], func() {
-		handleOpenOverlayStudio(studioProfileSvc, emitter)
-	})
+	// Hotkey managers. Global registrations are always built before Start so
+	// RegisterHotKey and UnregisterHotKey run on the message-loop owner thread.
+	hkMgr = configuredHotkeyManager(
+		settingsSvc.Settings(),
+		buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter),
+	)
+	profileHkMgr = launcher.NewHotkeyManager()
 
 	// Silent update check on startup (after a short delay so the UI is ready).
 	if updaterSvc != nil {
@@ -1037,8 +1114,8 @@ func main() {
 		emitter.Emit("app:version", map[string]any{"version": version})
 	})
 
-	wailsApp.Event.On("telemetry:source-status:get", func(event *application.CustomEvent) {
-		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {
+		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 	})
 
 	if updaterSvc != nil {
@@ -1136,21 +1213,23 @@ func main() {
 
 	// Keep a helper to rebuild hotkey registrations when settings change.
 	rebuildHotkeys := func() {
-		hkMgr.UpdateFromSettings(settingsSvc.Settings(), buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter))
+		hotkeyMu.Lock()
+		defer hotkeyMu.Unlock()
+		if hkMgr != nil {
+			hkMgr.Stop()
+		}
+		replacement := configuredHotkeyManager(
+			settingsSvc.Settings(),
+			buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter),
+		)
+		if err := replacement.Start(); err != nil {
+			log.Printf("warning: hotkey manager rebuild error: %v", err)
+		}
+		hkMgr = replacement
 	}
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
 		emitter.Emit("settings", settingsSvc.Settings())
-	})
-
-	wailsApp.Event.On("diagnostics:get", func(event *application.CustomEvent) {
-		diag, err := diagSvc.GetDiagnostics()
-		if err != nil {
-			log.Printf("diagnostics:get error: %v", err)
-			emitter.Emit("diagnostics:error", map[string]any{"message": err.Error()})
-			return
-		}
-		emitter.Emit("diagnostics", diag)
 	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {
@@ -1169,11 +1248,6 @@ func main() {
 		if rtSampler != nil {
 			rtSampler.SetCPUEnabled(s.CpuSampling)
 		}
-		mode := delta.ReferenceMode(s.DeltaMode)
-		if mode == "" {
-			mode = delta.ModeSelf
-		}
-		vapp.SetDeltaMode(mode)
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
@@ -1295,10 +1369,7 @@ func main() {
 
 	wailsApp.Event.On("overlay:start", func(event *application.CustomEvent) {
 		target := readProfileTarget(event)
-		if err := vapp.EnsureLiveTelemetry(); err != nil {
-			log.Printf("overlay:start live telemetry unavailable, using fallback: %v", err)
-		}
-		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 
 		status, err := hubSvc.StartOverlay(target)
 		if err != nil {
@@ -1324,10 +1395,7 @@ func main() {
 	})
 
 	wailsApp.Event.On("overlay:start-active", func(event *application.CustomEvent) {
-		if err := vapp.EnsureLiveTelemetry(); err != nil {
-			log.Printf("overlay:start-active live telemetry unavailable, using fallback: %v", err)
-		}
-		emitter.Emit("telemetry:source-status", vapp.SourceInfo())
+		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 
 		status, err := hubSvc.StartActiveOverlay()
 		if err != nil {
@@ -1371,14 +1439,15 @@ func main() {
 		profileSvc.EmitLoaded()
 	})
 
-	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v", vapp.SourceInfo().Kind, vapp.SourceInfo().Name, vapp.SourceInfo().Live, vapp.SourceInfo().Available)
-
 	// Start telemetry
-	bridge = app.NewTelemetryBridge(vapp.Telemetry, emitter)
-	vapp.StartTelemetry(ctx)
-	bridge.Start()
-	sourceInfo := service.InfoForSource(vapp.TelemetrySource())
-	rtSampler = ops.NewRuntimeSampler(sourceInfo)
+	if telemetryCoreRuntime != nil {
+		if err := telemetryCoreRuntime.Start(ctx); err != nil {
+			log.Printf("telemetry core start error: %v", err)
+		}
+	}
+	status := telemetrySourceStatus()
+	log.Printf("telemetry source: kind=%s name=%s live=%v available=%v state=%s", status.Kind, status.Name, status.Live, status.Available, status.State)
+	rtSampler = ops.NewRuntimeSampler(telemetrySourceStatus)
 	opsBridge = app.NewOpsBridge(rtSampler, emitter, ops.DefaultInterval)
 	opsBridge.Start()
 
@@ -2092,4 +2161,21 @@ func buildHotkeyActionMap(
 			handleOpenOverlayStudio(studioProfileSvc, emitter)
 		},
 	}
+}
+
+func configuredHotkeyManager(settings *app.AppSettings, actions map[string]func()) *app.HotkeyManager {
+	manager := app.NewHotkeyManager()
+	if settings == nil {
+		return manager
+	}
+	for name, action := range actions {
+		combo := settings.Hotkeys[name]
+		if combo == "" {
+			continue
+		}
+		if err := manager.Register(name, combo, action); err != nil {
+			log.Printf("hotkey: skip %q: %v", name, err)
+		}
+	}
+	return manager
 }

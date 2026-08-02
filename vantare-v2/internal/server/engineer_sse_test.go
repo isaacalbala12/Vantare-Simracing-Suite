@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"io"
@@ -11,14 +12,43 @@ import (
 	"time"
 
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 	"github.com/vantare/overlays/v2/internal/server"
-	"github.com/vantare/overlays/v2/internal/telemetry/lmu"
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
 )
 
 type dummyEmitter struct{}
 
 func (d dummyEmitter) Emit(name string, data any) {}
+
+func sseLines(ctx context.Context, url string, count int) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	lines := make(chan string, count)
+	go func() {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+	}()
+	result := make([]string, 0, count)
+	for range count {
+		select {
+		case line := <-lines:
+			result = append(result, line)
+		case <-ctx.Done():
+			return result, ctx.Err()
+		}
+	}
+	return result, nil
+}
 
 func TestEngineerStreamNoService(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
@@ -40,6 +70,7 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
 	engSvc.Start(ctx)
 	defer engSvc.Stop()
+	go feedEngineerHarness(ctx, engSvc)
 
 	srv := server.New(server.ServerConfig{EngineerSvc: engSvc})
 	s := httptest.NewServer(srv.Handler())
@@ -57,7 +88,7 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 
-	// Read lines from the stream. The simulator runs at 60Hz and generates spotter notifications.
+	// Read lines from the stream while an explicit harness feeds fixtures.
 	lines, err := sseLines(ctx, s.URL+"/engineer/stream", 2)
 	if err != nil {
 		t.Fatalf("sseLines: %v", err)
@@ -76,71 +107,6 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 	}
 }
 
-// TestEngineerAndTelemetryStreamCoexistence verifies that /engineer/stream and
-// /telemetry/stream can both be served by the same Server without interference.
-func TestEngineerAndTelemetryStreamCoexistence(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Start telemetry service (fast synthetic source)
-	teleSvc := service.New(service.Config{
-		ReadHz: 1000,
-		EmitHz: 100,
-		Source: service.FuncSource{ReadFunc: func() []byte {
-			return lmu.BuildSyntheticBuffer()
-		}},
-	})
-	go teleSvc.Run(ctx)
-	time.Sleep(50 * time.Millisecond)
-
-	// Start engineer service (simulator)
-	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
-	engSvc.Start(ctx)
-	defer engSvc.Stop()
-
-	// Create a single server with both services
-	srv := server.New(server.ServerConfig{
-		Svc:         teleSvc,
-		EngineerSvc: engSvc,
-	})
-	s := httptest.NewServer(srv.Handler())
-	defer s.Close()
-
-	// 1. Telemetry stream responds and emits events
-	telLines, err := sseLines(ctx, s.URL+"/telemetry/stream", 2)
-	if err != nil {
-		t.Fatalf("telemetry sseLines: %v", err)
-	}
-	if len(telLines) == 0 || !strings.HasPrefix(telLines[0], "event: telemetry") {
-		t.Errorf("expected telemetry events, got lines: %v", telLines)
-	}
-
-	// 2. Engineer stream responds and emits events
-	engLines, err := sseLines(ctx, s.URL+"/engineer/stream", 2)
-	if err != nil {
-		t.Fatalf("engineer sseLines: %v", err)
-	}
-	foundEngEvent := false
-	for _, line := range engLines {
-		if strings.HasPrefix(line, "event: engineer-notification") {
-			foundEngEvent = true
-			break
-		}
-	}
-	if !foundEngEvent {
-		t.Errorf("expected engineer-notification events, got lines: %v", engLines)
-	}
-
-	// 3. Confirm telemetry still works after engineer stream consumed
-	telLines2, err := sseLines(ctx, s.URL+"/telemetry/stream", 1)
-	if err != nil {
-		t.Fatalf("telemetry second sseLines: %v", err)
-	}
-	if len(telLines2) == 0 {
-		t.Errorf("expected telemetry events after engineer stream consumed, got none")
-	}
-}
-
 // TestEngineerHealth_NoService: /api/engineer/health devuelve 503 si no hay servicio.
 func TestEngineerHealth_NoService(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
@@ -152,8 +118,8 @@ func TestEngineerHealth_NoService(t *testing.T) {
 	}
 }
 
-// TestEngineerHealth_OK: /api/engineer/health devuelve 200 con snapshot del servicio.
-func TestEngineerHealth_OK(t *testing.T) {
+// A configured canonical input is not healthy until the first observation.
+func TestEngineerHealth_WaitsForCanonicalObservation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	engSvc := engineerservice.NewEngineerService(dummyEmitter{})
@@ -164,8 +130,8 @@ func TestEngineerHealth_OK(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/engineer/health", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rr.Code)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", rr.Code)
 	}
 
 	var h engineerservice.EngineerHealth
@@ -173,14 +139,30 @@ func TestEngineerHealth_OK(t *testing.T) {
 	if err := json.Unmarshal(body, &h); err != nil {
 		t.Fatalf("invalid JSON: %v\nbody: %s", err, body)
 	}
-	if !h.OK {
-		t.Errorf("expected OK=true, got %+v", h)
+	if h.OK || h.Connected {
+		t.Errorf("expected disconnected health before canonical input, got %+v", h)
 	}
-	if h.Source != "simulator" {
-		t.Errorf("Source = %q, want simulator", h.Source)
+	if h.Source != "telemetry-core" {
+		t.Errorf("Source = %q, want telemetry-core", h.Source)
 	}
 	if h.Subs != 0 {
 		t.Errorf("Subs = %d, want 0 (no SSE clients)", h.Subs)
+	}
+}
+
+func feedEngineerHarness(ctx context.Context, svc *engineerservice.EngineerService) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		for index, frame := range simulator.Build(simulator.ScenarioLeftBasic) {
+			frame := frame
+			svc.ProcessHarnessFrame(time.Now().UnixMilli()+int64(index), &frame)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }
 

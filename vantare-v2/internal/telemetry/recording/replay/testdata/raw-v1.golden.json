@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "fixtureVersion": 1,
+    "simulatorID": "lmu",
+    "simulatorBuild": "2026.07-test",
+    "appBuild": "vantare-test",
+    "schemaID": "lmu-raw",
+    "schemaVersion": 1,
+    "startedAtUTC": "2026-07-30T12:00:00Z",
+    "origin": "synthetic",
+    "sanitized": true
+  },
+  "records": [
+    {
+      "offsetNS": 0,
+      "streamID": "shared-scoring",
+      "payload": "AQIDBA==",
+      "sha256": "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a"
+    },
+    {
+      "offsetNS": 50000000,
+      "streamID": "rest-session",
+      "payload": "eyJzZXNzaW9uIjoic2FuaXRpemVkIn0=",
+      "sha256": "de866e369a58cee023724141fdd0771b1a0cf0bdc26dee4dedab9d856fe13253"
+    }
+  ]
+}

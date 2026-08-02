@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/vantare/overlays/v2/internal/telemetry/service"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
 
 const DefaultInterval = time.Second
@@ -18,15 +18,15 @@ type Sampler interface {
 }
 
 type RuntimeSampler struct {
-	source     service.SourceInfo
-	cpuEnabled atomic.Bool
-	cpuPercent atomic.Value // stores float64; valid only when cpuValid is true
-	cpuValid   atomic.Bool
-	cancel     context.CancelFunc
+	sourceStatus func() driver.SourceStatus
+	cpuEnabled   atomic.Bool
+	cpuPercent   atomic.Value // stores float64; valid only when cpuValid is true
+	cpuValid     atomic.Bool
+	cancel       context.CancelFunc
 }
 
-func NewRuntimeSampler(source service.SourceInfo) *RuntimeSampler {
-	return &RuntimeSampler{source: source}
+func NewRuntimeSampler(sourceStatus func() driver.SourceStatus) *RuntimeSampler {
+	return &RuntimeSampler{sourceStatus: sourceStatus}
 }
 
 func (s *RuntimeSampler) SetCPUEnabled(enabled bool) {
@@ -88,6 +88,10 @@ func (s *RuntimeSampler) Sample() MetricsSnapshot {
 		cpuPercent = &v
 	}
 
+	source := driver.UnknownSourceStatus()
+	if s.sourceStatus != nil {
+		source = s.sourceStatus()
+	}
 	return MetricsSnapshot{
 		Timestamp: time.Now(),
 		App: ProcessMetrics{
@@ -95,6 +99,6 @@ func (s *RuntimeSampler) Sample() MetricsSnapshot {
 			CPUPercent: cpuPercent,
 			Goroutines: runtime.NumGoroutine(),
 		},
-		Source: s.source,
+		Source: source,
 	}
 }

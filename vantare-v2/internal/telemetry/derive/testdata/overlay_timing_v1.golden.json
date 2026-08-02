@@ -1,0 +1,27 @@
+{
+  "sessionRemainingSeconds": 941,
+  "gap": {
+    "vehicle": "other",
+    "seconds": -5,
+    "laps": 0
+  },
+  "delta": {
+    "seconds": -1,
+    "reference": 1,
+    "history": [
+      {
+        "epoch": 1,
+        "sequence": 6,
+        "sourceTimeNs": 59000000000,
+        "lapDistanceMeters": 100,
+        "seconds": -1
+      }
+    ]
+  },
+  "algorithms": [
+    "controls.history@1",
+    "session.remaining@1",
+    "standings.relative-gaps@1",
+    "session.self-delta@1"
+  ]
+}

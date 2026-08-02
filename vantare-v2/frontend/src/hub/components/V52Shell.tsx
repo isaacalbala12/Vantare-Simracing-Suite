@@ -4,19 +4,13 @@ import { Topbar } from "./Topbar";
 import { ScrollableMain } from "./ScrollableMain";
 import { LauncherDock } from "./LauncherDock";
 import { type Section } from "../navigation";
-
-type SourceStatus = {
-  kind: string;
-  name: string;
-  live: boolean;
-  available: boolean;
-};
+import type { TelemetrySourceStatus } from "../../telemetry-transport/source-status";
 
 type V52ShellProps = {
   activeSection: Section;
   onNavigate: (section: string) => void;
   version?: string | null;
-  sourceStatus?: SourceStatus | null;
+  sourceStatus?: TelemetrySourceStatus | null;
   children: ReactNode;
 };
 

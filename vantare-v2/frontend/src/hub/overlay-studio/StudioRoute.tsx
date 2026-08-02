@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import { createTelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
-import { createWailsTelemetryAdapter, type TelemetryAdapter } from "../../overlay/transports/wails-telemetry-adapter";
+import type { TelemetryAdapter } from "../../overlay/transports/telemetry-adapter";
+import { createWailsProjectionTelemetryAdapter } from "../../overlay/transports/projection-telemetry-adapter";
+import {
+  telemetrySourceStatusEvent,
+  telemetrySourceStatusRequestEvent,
+  type TelemetrySourceStatus,
+} from "../../telemetry-transport/source-status";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
 import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
@@ -364,12 +370,14 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     if (telemetryAdapterProp !== null) {
       return telemetryAdapterProp;
     }
-    return createWailsTelemetryAdapter({
+    const subscribe = (event: string, handler: (data: unknown) => void) => {
+      const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
+      return () => unsub?.();
+    };
+    return createWailsProjectionTelemetryAdapter({
       coordinator,
-      subscribe: (event, handler) => {
-        const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
-        return () => unsub?.();
-      },
+      runtime: "studio",
+      subscribe,
     });
   }, [coordinator, telemetryAdapterProp]);
 
@@ -408,10 +416,10 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       setLiveAvailable(liveAvailableProp);
       return;
     }
-    const unsub = Events.On("telemetry:source-status", (event: { data: { live?: boolean; available?: boolean } }) => {
+    const unsub = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
       setLiveAvailable(Boolean(event.data?.live && event.data?.available));
     });
-    Events.Emit("telemetry:source-status:get");
+    Events.Emit(telemetrySourceStatusRequestEvent);
     return () => unsub?.();
   }, [liveAvailableProp]);
 

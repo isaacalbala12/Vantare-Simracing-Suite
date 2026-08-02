@@ -15,15 +15,13 @@ import { PaywallScreen } from "../auth/PaywallScreen";
 import { LicenseBanner } from "../auth/LicenseBanner";
 import { UnconfiguredScreen } from "../auth/UnconfiguredScreen";
 import { BetaWelcome, type BetaUserRole } from "../onboarding/BetaWelcome";
+import {
+  telemetrySourceStatusEvent,
+  telemetrySourceStatusRequestEvent,
+  type TelemetrySourceStatus,
+} from "../../telemetry-transport/source-status";
 
 type Section = "dashboard" | "profiles" | "telemetry" | "setup" | "engineer";
-
-type SourceStatus = {
-  kind: string;
-  name: string;
-  live: boolean;
-  available: boolean;
-};
 
 function LicenseGate({ children }: { children: ReactNode }) {
   const { result, loading } = useLicense();
@@ -72,7 +70,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
 function HubShell() {
   const [section, setSection] = useState<Section>("dashboard");
   const [version, setVersion] = useState<string | null>(null);
-  const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
+  const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [hasActiveProfile, setHasActiveProfile] = useState(false);
@@ -84,7 +82,7 @@ function HubShell() {
     const unsub = Events.On("app:version", (event: { data: { version?: string } }) => {
       setVersion(event.data.version ?? null);
     });
-    const unsubSource = Events.On("telemetry:source-status", (event: { data: SourceStatus }) => {
+    const unsubSource = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
       setSourceStatus(event.data);
     });
     const unsubSettings = Events.On("settings", (event: { data: Record<string, unknown> }) => {
@@ -96,7 +94,7 @@ function HubShell() {
       setSettingsLoaded(true);
     });
     Events.Emit("app:version:get");
-    Events.Emit("telemetry:source-status:get");
+    Events.Emit(telemetrySourceStatusRequestEvent);
     Events.Emit("settings:get");
     return () => {
       document.body.classList.remove("hub");

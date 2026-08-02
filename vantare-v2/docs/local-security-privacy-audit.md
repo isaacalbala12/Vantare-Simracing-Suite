@@ -1,5 +1,13 @@
 # Auditoría de Seguridad Local y Privacidad (SEC1)
 
+> **Documento histórico sustituido para diagnósticos (ISA-104 / TC-06D).**
+> Las afirmaciones de esta auditoría sobre copiar objetos y redactar rutas no
+> constituyen el contrato actual y, en particular, «100% seguro» no era una
+> conclusión demostrable. El contrato vigente construye un informe nuevo
+> mediante allowlist, excluye texto libre, identidad, rutas, logs, telemetría y
+> secretos, y obliga a previsualizar exactamente los bytes exportados. Este
+> documento se conserva únicamente como contexto de decisiones anteriores.
+
 Este documento presenta una auditoría técnica sobre los riesgos de seguridad local, privacidad y protección de datos en **Vantare Suite** para la fase de Alpha y preparación de la Beta Privada. Se evalúan los webhooks de Discord, los datos recopilados en los diagnósticos, el servidor local de telemetría, el comportamiento en red local (LAN) y las advertencias del sistema operativo.
 
 ---

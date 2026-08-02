@@ -34,7 +34,7 @@ function dispatch(name: string, data: unknown) {
 const mockStatus = {
   enabled: true,
   connected: true,
-  source: 'simulator',
+  source: 'telemetry-core',
   spotterEnabled: true,
   sensitivity: 'normal',
   ttsCacheCount: 0,
@@ -47,7 +47,7 @@ const mockStatus = {
       text: 'Coche a la izquierda',
       priority: 100,
       createdAt: 1623800000000,
-      source: 'simulator',
+      source: 'telemetry-core',
     },
   ],
 };
@@ -155,14 +155,14 @@ describe('EngineerPage', () => {
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:spotter:set', false);
   });
 
-  it('emits correct event when changing telemetry source', () => {
+  it('shows the only canonical telemetry source without a product selector', () => {
     render(<EngineerPage />);
     dispatch('engineer:status', mockStatus);
 
-    const select = screen.getByTestId('select-source');
-    fireEvent.change(select, { target: { value: 'replay' } });
-
-    expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:source:set', 'replay');
+    expect(screen.getByTestId('select-source').textContent).toContain('Telemetry Core');
+    expect(screen.queryByText(/Simulador \(Detrás\/Delante\/Paralelo\)/i)).toBeNull();
+    expect(screen.queryByText(/Replay \(Fixture JSONL\)/i)).toBeNull();
+    expect(runtimeMock.emit).not.toHaveBeenCalledWith('engineer:source:set', expect.anything());
   });
 
   it('emits correct event when changing spotter sensitivity', () => {

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "simulatorBuild": "1.4.0.0",
+  "menuFixtureSha256": "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0",
+  "trackFixtureSha256": "c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5",
+  "trackOverlayProjectionSha256": "2ef6f2cbe10973b12bdc8a695dfc5578501c05e48c06079e8cd20e03a47f605c",
+  "deterministicRuns": 20,
+  "trackVehicleCount": 38,
+  "trackPlayerPresent": true,
+  "deltaTraceSha256": "d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938",
+  "inPitTransition": {
+    "status": "real-lmu-1.4-sanitized-sequence",
+    "syntheticSubstitutionAllowed": false,
+    "frames": [
+      {
+        "role": "pre-pit-track",
+        "file": "lmu-1.4-pre-pit-track-fixture.bin",
+        "sha256": "eb79ec2a7806e217d4ef16dd2a93f3795b98234adbcb0dddba984651a5fd6fcc",
+        "sourceTimeSeconds": 216.8,
+        "vehicleCount": 1,
+        "playerPresent": true,
+        "playerInPit": false
+      },
+      {
+        "role": "in-pit-observed",
+        "file": "lmu-1.4-pit-fixture.bin",
+        "sha256": "262700e53e722b46e1b03940e13be83cf4aa73bf9f5ebdd8b9814b7161c9ede1",
+        "sourceTimeSeconds": 337.4,
+        "vehicleCount": 1,
+        "playerPresent": true,
+        "playerInPit": true
+      },
+      {
+        "role": "outlap-track",
+        "file": "lmu-1.4-outlap-fixture.bin",
+        "sha256": "c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6",
+        "sourceTimeSeconds": 418.2,
+        "vehicleCount": 1,
+        "playerPresent": true,
+        "playerInPit": false
+      }
+    ]
+  },
+  "disconnectReconnect": {
+    "status": "real-recorded-status-sequence",
+    "syntheticSubstitutionAllowed": false,
+    "frames": [
+      {
+        "role": "outlap-track",
+        "file": "lmu-1.4-outlap-fixture.bin",
+        "sha256": "c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6",
+        "sourceTimeSeconds": 418.2,
+        "vehicleCount": 1,
+        "playerPresent": true,
+        "playerInPit": false
+      },
+      {
+        "role": "reconnected-in-pit",
+        "file": "lmu-1.4-garage-fixture.bin",
+        "sha256": "a31a149597b14b291ffea4ef1a7e7e86e736e3ac553b53c90f1fcd7c9c1aa707",
+        "sourceTimeSeconds": 35.8,
+        "vehicleCount": 1,
+        "playerPresent": true,
+        "playerInPit": true
+      }
+    ],
+    "events": [
+      {
+        "state": "connected",
+        "frameSha256": "c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6"
+      },
+      {
+        "state": "disconnected",
+        "failureCode": "build-evidence-unavailable"
+      },
+      {
+        "state": "reconnected",
+        "frameSha256": "a31a149597b14b291ffea4ef1a7e7e86e736e3ac553b53c90f1fcd7c9c1aa707"
+      }
+    ]
+  }
+}

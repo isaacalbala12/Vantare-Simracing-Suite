@@ -125,57 +125,79 @@ func (a *watchedOpponentsAdapter) Trigger(nowMS int64, prev, curr *telemetry.Fra
 
 // Runtime connects telemetry frames to the spotter and audio queue.
 type Runtime struct {
-	mu          sync.Mutex
-	queue       *audio.Queue
-	machine     *spotter.Machine
-	sensitivity spotter.Sensitivity
-	enabled     bool
-	monitors    []Monitor
-	prevFrame   *telemetry.Frame
+	mu           sync.Mutex
+	queue        *audio.Queue
+	machine      *spotter.Machine
+	sensitivity  spotter.Sensitivity
+	enabled      bool
+	monitors     []monitorBinding
+	prevFrame    *telemetry.Frame
+	prevByFamily map[string]*telemetry.Frame
 }
 
-// NewRuntime creates a new Runtime instance with all 14 monitors wired.
+type monitorBinding struct {
+	family  string
+	monitor Monitor
+}
+
+// NewRuntime creates a Runtime with all 20 legacy monitors available. The
+// canonical input invokes only an explicitly approved family.
 func NewRuntime(queue *audio.Queue, sensitivity spotter.Sensitivity, enabled bool) *Runtime {
 	r := &Runtime{
 		queue:       queue,
-		machine:     spotter.NewMachine(),
 		sensitivity: sensitivity,
 		enabled:     enabled,
 	}
+	r.resetStateLocked()
+	return r
+}
+
+func (r *Runtime) resetStateLocked() {
+	r.machine = spotter.NewMachine()
+	r.prevFrame = nil
+	r.prevByFamily = make(map[string]*telemetry.Frame)
+
 	// Create fuel monitor first so strategy can reference it.
 	fuelMon := fuel.NewMonitor()
 
-	r.monitors = []Monitor{
+	r.monitors = []monitorBinding{
 		// Four monitors with bespoke adapters (richer Event types).
-		&engineMonitor{m: engine.NewMonitor()},
-		&tyreMonitorWrap{m: tyre.NewMonitor()},
-		&opponentsMonitorWrap{m: opponents.NewMonitor()},
-		&multiclassMonitorWrap{m: multiclass.NewMonitor()},
-		&watchedOpponentsAdapter{m: watchedopponents.NewMonitor()},
+		{"engine", &engineMonitor{m: engine.NewMonitor()}},
+		{"tyre", &tyreMonitorWrap{m: tyre.NewMonitor()}},
+		{"opponents", &opponentsMonitorWrap{m: opponents.NewMonitor()}},
+		{"multiclass", &multiclassMonitorWrap{m: multiclass.NewMonitor()}},
+		{"watchedopponents", &watchedOpponentsAdapter{m: watchedopponents.NewMonitor()}},
 		// Ten monitors via simple adapters (standard Event struct).
-		newFlagsAdapter(flags.NewMonitor()),
-		newFuelAdapter(fuelMon),
-		newPenaltiesAdapter(penalties.NewMonitor()),
-		newLapsAdapter(laps.NewMonitor()),
-		newPositionAdapter(position.NewMonitor()),
-		newPushAdapter(push.NewMonitor()),
-		newRaceTimeAdapter(racetime.NewMonitor()),
-		newSessionEndAdapter(sessionend.NewMonitor()),
-		newTimingsAdapter(timings.NewMonitor()),
-		newPearlsAdapter(pearls.NewMonitor()),
-		newPitStopsAdapter(pitstops.NewMonitor()),
+		{"flags", newFlagsAdapter(flags.NewMonitor())},
+		{"fuel", newFuelAdapter(fuelMon)},
+		{"penalties", newPenaltiesAdapter(penalties.NewMonitor())},
+		{"laps", newLapsAdapter(laps.NewMonitor())},
+		{"position", newPositionAdapter(position.NewMonitor())},
+		{"push", newPushAdapter(push.NewMonitor())},
+		{"racetime", newRaceTimeAdapter(racetime.NewMonitor())},
+		{"sessionend", newSessionEndAdapter(sessionend.NewMonitor())},
+		{"timings", newTimingsAdapter(timings.NewMonitor())},
+		{"pearls", newPearlsAdapter(pearls.NewMonitor())},
+		{"pitstops", newPitStopsAdapter(pitstops.NewMonitor())},
 		// Strategy monitor — receives fuel consumption from fuel monitor.
-		newStrategyAdapter(strategy.NewMonitor(func() float64 {
+		{"strategy", newStrategyAdapter(strategy.NewMonitor(func() float64 {
 			return fuelMon.AverageConsumptionPerLap()
-		})),
+		}))},
 		// DriverSwaps monitor.
-		newDriverSwapsAdapter(driverswaps.NewMonitor()),
+		{"driverswaps", newDriverSwapsAdapter(driverswaps.NewMonitor())},
 		// Damage monitor (G1.3).
-		newDamageAdapter(damage.NewMonitor()),
+		{"damage", newDamageAdapter(damage.NewMonitor())},
 		// Conditions monitor (G1.4).
-		newConditionsAdapter(conditions.NewMonitor()),
+		{"conditions", newConditionsAdapter(conditions.NewMonitor())},
 	}
-	return r
+}
+
+// Reset discards all monitor and spotter state at an epoch or identity
+// boundary. The queue and user configuration remain owned by the service.
+func (r *Runtime) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.resetStateLocked()
 }
 
 // === Simple adapters for the 10 monitors with standard Event struct ===
@@ -392,8 +414,51 @@ func (r *Runtime) ProcessFrame(nowMS int64, frame *telemetry.Frame) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if !r.enabled || frame == nil {
+	if !r.frameUsableLocked(frame) {
 		return
+	}
+	r.processSpotterLocked(nowMS, frame)
+	for _, binding := range r.monitors {
+		r.processMonitorLocked(binding, nowMS, r.prevFrame, frame)
+	}
+	r.prevFrame = frame
+}
+
+// ProcessSpotterFrame evaluates only the Spotter state machine. It is used by
+// the canonical projection input so no unrelated legacy monitor can observe a
+// frame built for a different capability contract.
+func (r *Runtime) ProcessSpotterFrame(nowMS int64, frame *telemetry.Frame) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.frameUsableLocked(frame) {
+		return
+	}
+	r.processSpotterLocked(nowMS, frame)
+}
+
+// ProcessMonitorFrame evaluates exactly one named monitor family. Unknown
+// families fail closed and return false.
+func (r *Runtime) ProcessMonitorFrame(family string, nowMS int64, frame *telemetry.Frame) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.frameUsableLocked(frame) {
+		return false
+	}
+	for _, binding := range r.monitors {
+		if binding.family != family {
+			continue
+		}
+		previous := r.prevByFamily[family]
+		r.processMonitorLocked(binding, nowMS, previous, frame)
+		r.prevByFamily[family] = frame
+		return true
+	}
+	return false
+}
+
+func (r *Runtime) frameUsableLocked(frame *telemetry.Frame) bool {
+	if !r.enabled || frame == nil {
+		return false
 	}
 
 	playerExists := false
@@ -409,10 +474,10 @@ func (r *Runtime) ProcessFrame(nowMS int64, frame *telemetry.Frame) {
 	if !playerExists && frame.Player != nil {
 		playerExists = true
 	}
-	if !playerExists {
-		return
-	}
+	return playerExists
+}
 
+func (r *Runtime) processSpotterLocked(nowMS int64, frame *telemetry.Frame) {
 	// Spotter events.
 	active := r.machine.ActiveSides()
 	zones := spotter.ClassifyWithActiveSides(frame, r.sensitivity, active)
@@ -439,49 +504,46 @@ func (r *Runtime) ProcessFrame(nowMS int64, frame *telemetry.Frame) {
 		}
 		r.queue.Enqueue(msg)
 	}
+}
 
-	// Non-spotter monitors (14 of them).
-	for _, mon := range r.monitors {
-		for _, ev := range mon.Trigger(nowMS, r.prevFrame, frame) {
-			textKey := monitorEventToTextKey(ev.Type)
-			if textKey == "" {
-				continue
-			}
-			cat := deriveCategory(ev.Type)
-			msg := audio.Message{
-				ID:        fmt.Sprintf("mon-%s-%d", ev.Type, nowMS),
-				TextKey:   textKey,
-				Category:  cat,
-				Channel:   channelForCategory(cat),
-				Severity:  deriveSeverity(ev.Type),
-				Priority:  audio.PriorityNormal,
-				CreatedAt: nowMS,
-				ExpiresAt: ev.ExpiresAt,
-			}
-			if len(ev.Payload) > 0 {
-				msg.ValidationData = ev.Payload
-				if className, ok := ev.Payload["class"].(string); ok {
-					classKey := "car_class." + strings.ToLower(className)
-					if _, exists := eventTextKeyMap[classKey]; exists {
-						classMsg := audio.Message{
-							ID:        fmt.Sprintf("mon-%s-class-%d", ev.Type, nowMS),
-							TextKey:   classKey,
-							Category:  cat,
-							Channel:   msg.Channel,
-							Severity:  msg.Severity,
-							Priority:  audio.PriorityNormal,
-							CreatedAt: nowMS,
-							ExpiresAt: ev.ExpiresAt,
-						}
-						r.queue.Enqueue(classMsg)
+func (r *Runtime) processMonitorLocked(binding monitorBinding, nowMS int64, previous, frame *telemetry.Frame) {
+	for _, ev := range binding.monitor.Trigger(nowMS, previous, frame) {
+		textKey := monitorEventToTextKey(ev.Type)
+		if textKey == "" {
+			continue
+		}
+		cat := deriveCategory(ev.Type)
+		msg := audio.Message{
+			ID:        fmt.Sprintf("mon-%s-%d", ev.Type, nowMS),
+			TextKey:   textKey,
+			Category:  cat,
+			Channel:   channelForCategory(cat),
+			Severity:  deriveSeverity(ev.Type),
+			Priority:  audio.PriorityNormal,
+			CreatedAt: nowMS,
+			ExpiresAt: ev.ExpiresAt,
+		}
+		if len(ev.Payload) > 0 {
+			msg.ValidationData = ev.Payload
+			if className, ok := ev.Payload["class"].(string); ok {
+				classKey := "car_class." + strings.ToLower(className)
+				if _, exists := eventTextKeyMap[classKey]; exists {
+					classMsg := audio.Message{
+						ID:        fmt.Sprintf("mon-%s-class-%d", ev.Type, nowMS),
+						TextKey:   classKey,
+						Category:  cat,
+						Channel:   msg.Channel,
+						Severity:  msg.Severity,
+						Priority:  audio.PriorityNormal,
+						CreatedAt: nowMS,
+						ExpiresAt: ev.ExpiresAt,
 					}
+					r.queue.Enqueue(classMsg)
 				}
 			}
-			r.queue.Enqueue(msg)
 		}
+		r.queue.Enqueue(msg)
 	}
-
-	r.prevFrame = frame
 }
 
 // IsMessageStillValid checks whether a message is still valid given the current frame.
@@ -616,7 +678,7 @@ var eventTextKeyMap = map[string]string{
 	multiclass.EventSlowerAheadClassLdr:  "multiclass.slower_ahead_class_leader",
 	multiclass.EventSlowerCarsAhead:      "multiclass.slower_cars_ahead",
 	multiclass.EventCaughtByFasterCars:   "multiclass.caught_by_faster_cars",
-	multiclass.EventCatchingSlowerCars:    "multiclass.catching_slower_cars",
+	multiclass.EventCatchingSlowerCars:   "multiclass.catching_slower_cars",
 	// Car class audio keys (resolved to car_class.{class}.mp3 in audio cache).
 	"car_class.hypercar": "car_class.hypercar",
 	"car_class.lmp1":     "car_class.lmp1",

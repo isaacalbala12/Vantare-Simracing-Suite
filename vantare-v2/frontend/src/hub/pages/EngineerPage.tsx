@@ -4,8 +4,8 @@ import type { EngineerStatus, EngineerNotification } from '../../engineer/engine
 
 const INITIAL_STATUS: EngineerStatus = {
   enabled: true,
-  connected: true,
-  source: 'simulator',
+  connected: false,
+  source: 'telemetry-core',
   spotterEnabled: true,
   sensitivity: 'normal',
   ttsCacheCount: 0,
@@ -45,10 +45,6 @@ export function EngineerPage() {
 
   const handleToggleSpotter = () => {
     Events.Emit('engineer:spotter:set', !status.spotterEnabled);
-  };
-
-  const handleSourceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    Events.Emit('engineer:source:set', e.target.value);
   };
 
   const handleSensitivityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -162,15 +158,12 @@ export function EngineerPage() {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <span className="v52-eyebrow">Fuente de Telemetría</span>
-                <select
+                <div
                   data-testid="select-source"
-                  value={status.source}
-                  onChange={handleSourceChange}
-                  className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-vantare-red-500 transition-colors"
+                  className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
                 >
-                  <option value="simulator">Simulador (Detrás/Delante/Paralelo)</option>
-                  <option value="replay">Replay (Fixture JSONL)</option>
-                </select>
+                  Telemetry Core · LMU
+                </div>
               </div>
 
               <div className="flex flex-col gap-2">

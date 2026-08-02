@@ -4,6 +4,7 @@ import {
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
+import { Events } from "@wailsio/runtime";
 
 function supabaseUrl(): string {
   return (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
@@ -41,7 +42,7 @@ function buildClient(): SupabaseClient {
   return createClient(url, key, {
     auth: {
       autoRefreshToken: true,
-      persistSession: true,
+      persistSession: false,
     },
   });
 }
@@ -101,16 +102,30 @@ export async function signUp(
   }
 }
 
-export async function signOut(): Promise<{ error?: string }> {
+export type SignOutResult = {
+	localCleared: boolean;
+	localError?: string;
+	remoteError?: string;
+};
+
+export async function signOut(): Promise<SignOutResult> {
+	const local = await clearProtectedAuthSession();
+	let remoteError: string | undefined;
   try {
     const { error } = await getSupabaseClient().auth.signOut();
-    return { error: error?.message };
+		remoteError = error?.message;
   } catch (err) {
     if (isConfigError(err)) {
-      return { error: missingConfigError };
+			remoteError = missingConfigError;
+		} else {
+			remoteError = err instanceof Error ? err.message : "Error al cerrar la sesión remota";
     }
-    throw err;
   }
+	return {
+		localCleared: local.ok,
+		localError: local.ok ? undefined : local.error,
+		remoteError,
+	};
 }
 
 export async function resetPasswordForEmail(
@@ -140,32 +155,36 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
-// setSupabaseSession persists an OAuth session in the WebView's Supabase
-// client (localStorage). This is called after the external OAuth callback
-// delivers access_token + refresh_token so the session survives app restarts.
-// Returns an error string if the tokens are invalid or the call fails.
+// setSupabaseSession restores a protected backend session into the in-memory
+// Supabase client. Persistence belongs to Windows Credential Manager, never
+// WebView localStorage.
 export async function setSupabaseSession(
   accessToken: string,
   refreshToken?: string,
-): Promise<{ error?: string }> {
+): Promise<{ session: Session | null; error?: string; invalidCredential?: boolean }> {
   if (!accessToken) {
-    return { error: "access_token is required" };
+    return { session: null, error: "access_token is required" };
   }
   if (!refreshToken) {
-    return { error: "refresh_token is required to persist session" };
+    return { session: null, error: "refresh_token is required to restore session" };
   }
   try {
-    const { error } = await getSupabaseClient().auth.setSession({
+    const { data, error } = await getSupabaseClient().auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (error) {
-      return { error: error.message };
+			const status = (error as { status?: number }).status;
+			return {
+				session: null,
+				error: error.message,
+				invalidCredential: status === 400 || status === 401,
+			};
     }
-    return {};
+    return { session: data.session };
   } catch (err) {
     if (isConfigError(err)) {
-      return { error: missingConfigError };
+      return { session: null, error: missingConfigError };
     }
     throw err;
   }
@@ -179,10 +198,14 @@ export async function signInWithOAuth(
   provider: "google" | "discord",
 ): Promise<{ url?: string; error?: string }> {
   try {
+		const attempt = await createOAuthAttempt(provider);
+		if (attempt.error || !attempt.redirectUrl) {
+			return { error: attempt.error ?? "No se pudo iniciar el acceso seguro" };
+		}
     const { data, error } = await getSupabaseClient().auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: oauthCallbackUrl(),
+				redirectTo: attempt.redirectUrl,
         skipBrowserRedirect: true,
       },
     });
@@ -196,4 +219,96 @@ export async function signInWithOAuth(
     }
     throw err;
   }
+}
+
+type OAuthAttemptResult = { redirectUrl?: string; error?: string };
+
+type ProtectedSessionClearResult = { ok: boolean; error?: string };
+
+function requestID(): string {
+	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+export function createOAuthAttempt(
+	provider: "google" | "discord",
+	timeoutMs = 5000,
+): Promise<OAuthAttemptResult> {
+	return new Promise((resolve) => {
+		const id = requestID();
+		let settled = false;
+		const unsubscribers: Array<() => void> = [];
+		const finish = (result: OAuthAttemptResult) => {
+			if (settled) return;
+			settled = true;
+			globalThis.clearTimeout(timer);
+			for (const unsubscribe of unsubscribers) unsubscribe();
+			resolve(result);
+		};
+		const timer = globalThis.setTimeout(
+			() => finish({ error: "La solicitud de acceso seguro ha caducado" }),
+			timeoutMs,
+		);
+		unsubscribers.push(Events.On("auth:attempt:created", (event: { data?: { requestId?: string; redirectUrl?: string } }) => {
+			if (event.data?.requestId !== id) return;
+			finish({ redirectUrl: event.data.redirectUrl });
+		}));
+		unsubscribers.push(Events.On("auth:attempt:error", (event: { data?: { requestId?: string; message?: string } }) => {
+			if (event.data?.requestId !== id) return;
+			finish({ error: event.data.message ?? "No se pudo iniciar el acceso seguro" });
+		}));
+		Events.Emit("auth:attempt:create", { requestId: id, provider });
+	});
+}
+
+export function clearProtectedAuthSession(timeoutMs = 5000): Promise<ProtectedSessionClearResult> {
+	return new Promise((resolve) => {
+		const id = requestID();
+		let settled = false;
+		const unsubscribers: Array<() => void> = [];
+		const finish = (result: ProtectedSessionClearResult) => {
+			if (settled) return;
+			settled = true;
+			globalThis.clearTimeout(timer);
+			for (const unsubscribe of unsubscribers) unsubscribe();
+			resolve(result);
+		};
+		const timer = globalThis.setTimeout(
+			() => finish({ ok: false, error: "La eliminación de la credencial local no respondió" }),
+			timeoutMs,
+		);
+		unsubscribers.push(Events.On("auth:session:clear:result", (event: {
+			data?: { requestId?: string; ok?: boolean; code?: string };
+		}) => {
+			if (event.data?.requestId !== id) return;
+			finish(event.data.ok
+				? { ok: true }
+				: { ok: false, error: "No se pudo eliminar la credencial protegida local" });
+		}));
+		Events.Emit("auth:session:clear:request", { requestId: id });
+	});
+}
+
+export function removeLegacySupabaseSessions(storage: Storage = window.localStorage): number {
+	let removed = 0;
+	for (let index = storage.length - 1; index >= 0; index -= 1) {
+		const key = storage.key(index);
+		if (!key) continue;
+		if (/^sb-.+-auth-token$/i.test(key) || /^supabase\.auth\.token(?:\.|$)/i.test(key)) {
+			storage.removeItem(key);
+			removed += 1;
+		}
+	}
+	return removed;
+}
+
+export function onSupabaseAuthStateChange(
+	callback: (event: string, session: Session | null) => void,
+): () => void {
+	try {
+		const { data } = getSupabaseClient().auth.onAuthStateChange(callback);
+		return () => data.subscription.unsubscribe();
+	} catch (err) {
+		if (isConfigError(err)) return () => undefined;
+		throw err;
+	}
 }

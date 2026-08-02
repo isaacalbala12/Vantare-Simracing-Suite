@@ -1,6 +1,6 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: ISA-166 reconciliada; BIL-03 / ISA-72 implementada en rama aislada y pendiente de review; venta pública **NO-GO**.
+Estado: ISA-166 reconciliada; BIL-03 aprobada; BIL-04 / ISA-88 corregida tras review P1/P2 en rama aislada y pendiente de nueva revisión; venta pública **NO-GO**.
 
 Base de BIL-03: ISA-166 `c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
 
@@ -100,10 +100,19 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 - Supabase necesita hardening y recuperación verificable.
 - Catálogo/organización/webhook Polar no están listos para producción.
 
+## BIL-04 / ISA-88
+
+- Intento OAuth creado antes del navegador, ligado a provider/state, con expiración, consumo atómico y una sola aceptación incluso bajo concurrencia.
+- Bridge de sesión global, Supabase solo en memoria del WebView, Credential Manager como persistencia exclusiva, rotación protegida contra session fixation y logout request/ack fail-closed.
+- Restore, rotación y borrado quedan serializados; credenciales protegidas inválidas/corruptas —incluido un blob nulo o vacío de Credential Manager— se eliminan y una rotación concurrente no puede resucitar la sesión tras logout.
+- Separación explícita entre claim de dispositivo y lectura pura de entitlements; wrapper legacy ya no muta.
+- RPCs con grants mínimos, `SECURITY DEFINER`/`search_path` endurecido también para checkout, `device_bound` honesto, reset con fingerprint real y carreras concurrentes.
+- `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook, y un workflow de despliegue dedicado obliga a pasar por el wrapper protegido.
+- PostgreSQL 17 desechable valida clean install, upgrade, 48 pgTAP y restore fail-closed con RLS, grants y centinela; añade carreras claim/reset y reset/reset y rechaza dumps truncados/corruptos en PowerShell 5.1/7. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
+- Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`.
+
 ## Última actualización
 
-2026-08-02 — ISA-72 / BIL-03, revisión corregida en implementación aislada.
-Backend/frontend verdes; migraciones y pgTAP ejecutados en PostgreSQL 17
-desechable con concurrencia real. Runner verificado en Windows PowerShell 5.1 y
-PowerShell 7; Deno 65/65 pasa con typecheck normal. Sin deploy, pago, refund,
-secretos, PII ni mutaciones remotas.
+2026-08-02 — ISA-88 / BIL-04 corregida sobre la base aprobada de BIL-03.
+Findings P1/P2 del review cerrados: logout observable, serialización de sesión, limpieza de credenciales corruptas,
+carreras SQL adversarias, guard obligatorio y restore drill desechable. Sin deploy, pago, refund, secretos, PII ni mutaciones remotas.

@@ -53,6 +53,9 @@ jobs:
           if (-not $env:VITE_SUPABASE_URL) { throw "Missing VITE_SUPABASE_URL" }
           if (-not $env:VITE_SUPABASE_ANON_KEY) { throw "Missing VITE_SUPABASE_ANON_KEY" }
 
+      - name: Gate - Supabase deploy surface
+        run: '& "$env:GITHUB_WORKSPACE\supabase\functions\scripts\verify-deploy-surface.ps1"'
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:

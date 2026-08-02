@@ -10,10 +10,9 @@ import (
 )
 
 func TestSupabaseClientFetchAccount(t *testing.T) {
+	var calls []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/rest/v1/rpc/get_account_entitlements" {
-			t.Fatalf("unexpected path %s", r.URL.Path)
-		}
+		calls = append(calls, r.URL.Path)
 		if auth := r.Header.Get("Authorization"); auth == "" {
 			t.Fatal("missing Authorization header")
 		}
@@ -22,6 +21,18 @@ func TestSupabaseClientFetchAccount(t *testing.T) {
 		}
 		if r.Header.Get("Content-Type") != "application/json" {
 			t.Fatalf("unexpected content type %s", r.Header.Get("Content-Type"))
+		}
+		if r.URL.Path == "/rest/v1/rpc/claim_active_device" {
+			var payload map[string]string
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			if payload["device_fingerprint"] != "fp1" {
+				t.Fatalf("unexpected claim payload: %#v", payload)
+			}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.URL.Path != "/rest/v1/rpc/read_account_entitlements" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		expires := time.Now().Add(time.Hour).UTC()
@@ -49,10 +60,17 @@ func TestSupabaseClientFetchAccount(t *testing.T) {
 	if info.ActiveDevice != "fp1" {
 		t.Fatalf("unexpected active device: %s", info.ActiveDevice)
 	}
+	if len(calls) != 2 || calls[0] != "/rest/v1/rpc/claim_active_device" || calls[1] != "/rest/v1/rpc/read_account_entitlements" {
+		t.Fatalf("unexpected rpc order: %v", calls)
+	}
 }
 
 func TestSupabaseClientFetchAccountPostgRESTArray(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/rest/v1/rpc/claim_active_device" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		expires := time.Now().Add(time.Hour).UTC()
 		_ = json.NewEncoder(w).Encode([]AccountInfo{{
@@ -89,6 +107,23 @@ func TestSupabaseClientFetchAccountError(t *testing.T) {
 	_, err := client.FetchAccount(context.Background(), "token", "fp")
 	if err == nil {
 		t.Fatal("expected error on 500 status")
+	}
+}
+
+func TestSupabaseClientFetchAccountStopsWhenDeviceClaimFails(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusConflict)
+	}))
+	defer server.Close()
+
+	client := NewStdlibSupabaseClient(server.URL, "anon")
+	if _, err := client.FetchAccount(context.Background(), "token", "fp"); err == nil {
+		t.Fatal("expected device claim error")
+	}
+	if calls != 1 {
+		t.Fatalf("calls = %d, want 1", calls)
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
@@ -733,6 +735,7 @@ func main() {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	authManager := authsession.NewManager(authsession.NewStore("Vantare/SupabaseAuth"))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
@@ -759,16 +762,88 @@ func main() {
 			return
 		}
 		if res != nil {
-			log.Printf("license:validate result state=%s email=%s deviceOK=%v entitlements=%v err=%v",
-				res.State, res.Email, res.DeviceOK, res.Entitlements, res.Error)
+			log.Printf("license:validate result state=%s deviceOK=%v entitlementCount=%d err=%v",
+				res.State, res.DeviceOK, len(res.Entitlements), res.Error)
 		}
-		// Emit auth:session so the frontend can persist the Supabase session
-		// in the WebView's localStorage. This survives app restarts.
-		if payload.SessionToken != "" {
+		// Persist only sessions that have been accepted by the backend. Windows
+		// Credential Manager owns persistence; the WebView only keeps memory.
+		if res != nil && res.UserID != "" && payload.SessionToken != "" && payload.RefreshToken != "" {
+			if err := authManager.AcceptValidated(authsession.Session{
+				AccessToken: payload.SessionToken, RefreshToken: payload.RefreshToken,
+			}); err != nil {
+				log.Printf("auth session save failed: %v", err)
+			}
 			emitter.Emit("auth:session", map[string]any{
 				"access_token":  payload.SessionToken,
 				"refresh_token": payload.RefreshToken,
+				"source":        "validated",
 			})
+		}
+	})
+
+	wailsApp.Event.On("auth:session:get", func(_ *application.CustomEvent) {
+		session, err := authManager.Restore()
+		if err != nil {
+			if errors.Is(err, authsession.ErrInvalidStoredSessionRemoved) {
+				log.Printf("invalid protected auth session removed")
+				emitter.Emit("auth:session:invalidated", map[string]any{"reason": "invalid_credential"})
+			} else if !errors.Is(err, authsession.ErrNotFound) {
+				log.Printf("auth session restore failed: %v", err)
+				emitter.Emit("auth:session:error", map[string]any{"code": "restore_failed"})
+			}
+			return
+		}
+		emitter.Emit("auth:session", map[string]any{
+			"access_token": session.AccessToken, "refresh_token": session.RefreshToken, "source": "restore",
+		})
+	})
+
+	wailsApp.Event.On("auth:session:clear:request", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		if payload.RequestID == "" {
+			log.Printf("auth session clear ignored: missing request id")
+			return
+		}
+		if err := authManager.Clear(); err != nil {
+			log.Printf("auth session clear failed: %v", err)
+			emitter.Emit("auth:session:clear:result", map[string]any{
+				"requestId": payload.RequestID, "ok": false, "code": "credential_delete_failed",
+			})
+			return
+		}
+		emitter.Emit("auth:session:clear:result", map[string]any{
+			"requestId": payload.RequestID, "ok": true,
+		})
+	})
+
+	// Token rotation may only replace a session that the backend has already
+	// validated or restored from Credential Manager. An arbitrary WebView event
+	// can never establish the first trusted session.
+	wailsApp.Event.On("auth:session:save", func(event *application.CustomEvent) {
+		var payload struct {
+			AccessToken  string `json:"accessToken"`
+			RefreshToken string `json:"refreshToken"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		if payload.AccessToken == "" || payload.RefreshToken == "" {
+			log.Printf("auth session rotation ignored: incomplete token pair")
+			return
+		}
+		if err := authManager.Rotate(authsession.Session{
+			AccessToken: payload.AccessToken, RefreshToken: payload.RefreshToken,
+		}); err != nil {
+			log.Printf("auth session rotation save failed: %v", err)
 		}
 	})
 
@@ -832,6 +907,27 @@ func main() {
 		Emitter:     emitter,
 	})
 	httpSrv.Start()
+	wailsApp.Event.On("auth:attempt:create", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+			Provider  string `json:"provider"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		attempt, err := httpSrv.CreateAuthAttempt(payload.Provider)
+		if err != nil {
+			emitter.Emit("auth:attempt:error", map[string]any{
+				"requestId": payload.RequestID, "message": err.Error(),
+			})
+			return
+		}
+		emitter.Emit("auth:attempt:created", map[string]any{
+			"requestId": payload.RequestID, "redirectUrl": attempt.RedirectURL,
+		})
+	})
 	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
 
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)

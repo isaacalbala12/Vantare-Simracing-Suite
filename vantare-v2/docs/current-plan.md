@@ -1,3 +1,50 @@
+Nota ISA-138 / STR-03 (2026-08-02):
+- Nuevo repositorio local `strategy.repository.v1` en
+  `internal/strategy/repository`, apilado sobre STR-02 exacto `91c16c2`.
+- Una API mínima `Snapshot` + `Commit(ChangeSet)` posee drafts, revisiones,
+  borrado y futuros lotes transaccionales de STR-15A sin exponer filesystem.
+- Escritura durable con temporal+sync+replace, backup único, lease del sistema
+  operativo y generación optimista. Dos escritores se serializan o reciben
+  `ErrWriteInProgress`/`ErrStaleWrite`; nunca se pisan silenciosamente.
+- Drafts son mutables y recuperables; revisiones STR-02 se vuelven a verificar,
+  son inmutables por identidad+hash e idempotentes si son exactas.
+- Recovery restaura el último backup válido ante corrupción, ignora temporales
+  interrumpidos y falla cerrado si principal/backup no son válidos. Versiones
+  futuras no se degradan mediante rollback.
+- Corrección de review: recovery solo se activa ante ausencia o corrupción
+  demostrada. Límites, permisos/I/O y versiones incompatibles se propagan sin
+  tocar el principal; la regresión generación 1/2 demuestra que un límite más
+  estricto no revierte silenciosamente al backup antiguo.
+- El lease queda probado entre procesos y se libera tras una muerte abrupta.
+  Bajo ese lease se limpian solo temporales regulares privados; symlinks,
+  reparse points, directorios, rutas externas y nombres ajenos permanecen
+  intactos.
+- Drafts y revisiones atraviesan la puerta canónica `strategy.v1`, con fixtures
+  actual/futuro. Un fallo después del replace se informa como
+  `ErrCommitUncertain` con generación para reconciliar mediante `Snapshot`.
+- Segunda corrección de review: el primer commit crea primero un backup de su
+  misma generación. Un root nuevo con ambos archivos ausentes sigue siendo gen0,
+  pero retirar el principal tras inicializar recupera inequívocamente gen1; un
+  commit posterior con versión 0 falla stale y no consolida el vacío. Fallar el
+  backup antes del replace deja un repo genuinamente nuevo; fallar después o
+  interrumpir el principal devuelve resultado incierto recuperable. No se añade
+  marker ni otra fuente de verdad.
+- Migración v1 es un no-op explícito con fixture/golden; no se inventa un
+  formato Product A. Límites, JSON estricto y borrado dentro del documento
+  impiden crecimiento sin cota o tocar archivos externos.
+- Sin UI, queries de galería, paquetes, telemetría, cloud, wiring ni
+  dependencias nuevas. Evidencia:
+  `docs/strategy-planner/str-03-repository.md`.
+- Evidencia fresca: focal x100, lease cross-process x50, árbol Strategy, vet
+  focal, race x10 con
+  CGO/UCRT64, compilación Linux, frontend build y suite Go global excluyendo el
+  único P3 Windows heredado de `TestConcurrentSavesDontCorruptFile` pasan. La
+  suite global completa posterior a la corrección agotó cinco minutos sin
+  salida; la entrega inicial ya había aislado ese test como único fallo. Vet
+  global conserva tres avisos Win32 `unsafe.Pointer` fuera del diff.
+- Estado: implementación local lista para review independiente y entrega; sin
+  promoción ni merge.
+
 Nota ISA-137 / STR-02 (2026-08-01, reanudada 2026-08-02):
 - Nuevo contrato productivo `strategy.v1` en `internal/strategy/contract` para
   `PlanDraft`, `PlanRevision`, `ActivePlan`, `StrategyExecutionState` y
@@ -39,8 +86,8 @@ Nota ISA-137 / STR-02 (2026-08-01, reanudada 2026-08-02):
   y cualquier versión desconocida se rechaza.
 - Sin persistencia, UI, cálculo, LMU, Telemetry Core, DuckDB, Wails ni wiring.
   Evidencia: `docs/strategy-planner/str-02-contract.md`.
-- Estado: corrección WIP lista para review independiente, sin commit, push, PR,
-  merge ni promoción. Go focal x50, ambos fuzzers, TypeScript, frontend completo
+- Estado: `ACCEPT`, commit `91c16c2`, push y PR draft #66; sin merge ni
+  promoción. Go focal x50, ambos fuzzers, TypeScript, frontend completo
   299/299 archivos y 2.034/2.034 tests, build, lint focal, vet focal y
   diff-check pasan. Go/vet global no se repitieron en esta reanudación; la
   última evidencia conserva el fallo Windows heredado de Settings y tres avisos

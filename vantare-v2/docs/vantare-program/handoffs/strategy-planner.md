@@ -18,9 +18,10 @@ son fases históricas.
 
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
-primer contrato productivo versionado, todavía sin persistencia, cálculo ni
-wiring. La UI canónica usa estrategias a la izquierda, stints al centro e
-inventario/entrada a la derecha.
+primer contrato productivo versionado. STR-03 implementa el repositorio local
+canónico de drafts y revisiones, todavía sin cálculo, UI ni wiring. La UI
+canónica usa estrategias a la izquierda, stints al centro e inventario/entrada
+a la derecha.
 
 Actualización ISA-134 / STR-00:
 
@@ -39,7 +40,8 @@ Actualización ISA-134 / STR-00:
   ISA-162/163.
 - Productores: ISA-159 (Analysis histórico) e ISA-160/161 (Core live).
 - STR-01: commit `f85fd31`, push y PR draft #60; sin promoción.
-- STR-02: corrección WIP sobre `f85fd31`. Añade activación idempotente
+- STR-02: `ACCEPT`, commit `91c16c2`, push y PR draft #66 sobre `f85fd31`.
+  Añade activación idempotente
   con historial exacto, decode execution estricto y corpus Go/TS de errores,
   máximo entero compartido `2^53-1`, regresión UTF-8 real y precedencia de
   versiones desconocidas equivalente en Go/TS. El encoder TS limita profundidad
@@ -48,11 +50,29 @@ Actualización ISA-134 / STR-00:
   diagnóstico usa un búfer acotado. La regresión de 1.000.000 de elementos
   canoniza `9.000.005` bytes y el benchmark reproducible está en
   `docs/strategy-planner/str-02-canonicalization-memory-benchmark.md`.
-  Permanece sin commit, push, PR ni promoción hasta nueva review. Go focal x50,
-  dos fuzzers, frontend completo 299/299 archivos y 2.034/2.034 tests,
+  Permanece sin merge ni promoción. Go focal x50, dos fuzzers, frontend
+  completo 299/299 archivos y 2.034/2.034 tests,
   TypeScript, build, lint focal, vet focal y diff-check pasan. Go/vet global no
   se repitieron en la reanudación del 2 de agosto; su última evidencia conserva
   deuda Windows heredada fuera del diff.
+- STR-03: implementación local sobre `ISA-137@91c16c2`. API
+  `Snapshot`/`Commit(ChangeSet)`, generación optimista, lease cross-process,
+  escritura atómica durable, backup/rollback, drafts recuperables, revisiones
+  inmutables, límites y borrado sin tocar externos. La review queda corregida:
+  solo corrupción/ausencia activa recovery; límites, I/O y versiones futuras
+  no mutan el principal; drafts y revisiones atraviesan el gate `strategy.v1`;
+  temporales huérfanos se limpian bajo lease sin seguir links/reparse points;
+  y un fallo posterior al replace devuelve `ErrCommitUncertain` para reconciliar
+  por generación. La segunda re-review queda corregida sin marker: el primer
+  commit persiste su misma generación en el backup antes del principal, de modo
+  que principal ausente nunca se confunde con gen0 después de inicializar. Los
+  fallos antes/después del replace fijan la frontera ordinaria/incierta y un
+  writer con versión 0 no puede consolidar pérdida. Migración v1 es no-op
+  explícito porque no existe predecesor productivo. Evidencia:
+  `docs/strategy-planner/str-03-repository.md`. Lista para review independiente,
+  sin promoción. Focal x100, lease cross-process x50, Strategy, vet focal,
+  race x10, compilación Linux,
+  frontend build y suite Go global sin el único P3 Windows heredado pasan.
 
 ## Decisiones
 
@@ -129,15 +149,16 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-137 / STR-02, segunda corrección WIP lista para nueva review
-  independiente.
+- Issue activa: ISA-138 / STR-03, implementación lista para review
+  independiente sobre el commit aceptado de STR-02.
 
 ## Siguiente acción exacta
 
-Ejecutar nueva review independiente de ISA-137. Si queda `ACCEPT`, entregar
-commit/push/PR draft y continuar ISA-138 / STR-03 apilada sobre el contrato. No
-añadir persistencia, cálculo o integraciones transversales a STR-02.
+Revisar de nuevo ISA-138 después de cerrar el P1 de inicialización/pérdida del
+principal, además de las cinco correcciones previas. Si queda `ACCEPT`,
+continuar ISA-139 / STR-04 apilada sobre el repositorio. No añadir UI, cálculo,
+paquetes o integraciones transversales a STR-03.
 
 ## Última actualización
 
-2026-08-02, ISA-137 / STR-02, Codex.
+2026-08-02, ISA-138 / STR-03, Codex.

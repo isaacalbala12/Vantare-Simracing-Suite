@@ -32,9 +32,12 @@ Nota ISA-214 / BIL-10B (2026-08-02, despliegue controlado Supabase):
   automatización está implementada con EFS, DPAPI, hashes, retención de 30 días
   y restore real en contenedor. El wrapper solo acepta una copia local de menos
   de 26 horas que vuelva a restaurarse correctamente.
-- El apply de producción sigue bloqueado hasta instalar la tarea, generar la
-  primera copia y demostrar su restore. Falta proporcionar localmente
-  `SUPABASE_DB_PASSWORD`; el token administrativo no puede sustituirlo.
+- La tarea real `Vantare Supabase Production Backup` quedó instalada a las
+  03:00 y su primera ejecución terminó con resultado 0. El ZIP EFS conserva el
+  dump completo y el gate restauró esquema y datos `public` en Supabase
+  Postgres desechable. Los intentos fallidos se eliminaron.
+- El backup ya no bloquea el apply de producción. Falta ejecutar el despliegue
+  controlado y su smoke no monetario antes de cerrar ISA-214.
 - BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue
   y después su autorización monetaria independiente. Billing continúa NO-GO.
 

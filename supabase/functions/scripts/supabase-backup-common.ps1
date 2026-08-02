@@ -89,6 +89,7 @@ function New-VantareBackupManifest {
     "roles.sql",
     "schema.sql",
     "data.sql",
+    "public-data.sql",
     "migration-history-schema.sql",
     "migration-history-data.sql"
   )
@@ -106,7 +107,7 @@ function New-VantareBackupManifest {
   }
 
   $manifest = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     kind = "vantare-supabase-logical-backup"
     projectRef = $ProjectRef
     createdAtUtc = $CreatedAtUtc
@@ -116,6 +117,7 @@ function New-VantareBackupManifest {
       roles = $true
       applicationSchema = $true
       databaseData = $true
+      automatedRestoreScope = "public"
       migrationHistory = $true
       storageObjects = $false
       edgeFunctionSource = $false
@@ -137,12 +139,12 @@ function Test-VantareBackupManifest {
   }
   $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
   if (
-    $manifest.schemaVersion -ne 1 -or
+    $manifest.schemaVersion -ne 2 -or
     $manifest.kind -ne "vantare-supabase-logical-backup"
   ) {
     throw "Backup manifest contract is invalid"
   }
-  if (@($manifest.files).Count -ne 5) {
+  if (@($manifest.files).Count -ne 6) {
     throw "Backup manifest file inventory is incomplete"
   }
   foreach ($entry in @($manifest.files)) {

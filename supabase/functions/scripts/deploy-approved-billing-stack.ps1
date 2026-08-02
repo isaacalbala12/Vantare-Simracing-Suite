@@ -17,12 +17,14 @@ param(
 
   [string]$VerifiedLocalBackup = "",
 
-  [string]$LocalBackupVerifierPath = (
-    Join-Path $PSScriptRoot "verify-supabase-backup-restore.ps1"
-  )
+  [string]$LocalBackupVerifierPath = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($LocalBackupVerifierPath)) {
+  $LocalBackupVerifierPath = Join-Path $PSScriptRoot "verify-supabase-backup-restore.ps1"
+}
 
 function Assert-EnvironmentVariable {
   param([Parameter(Mandatory = $true)][string]$Name)

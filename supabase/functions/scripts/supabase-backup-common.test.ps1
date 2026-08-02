@@ -28,6 +28,7 @@ try {
     "roles.sql",
     "schema.sql",
     "data.sql",
+    "public-data.sql",
     "migration-history-schema.sql",
     "migration-history-data.sql"
   )) {
@@ -66,6 +67,21 @@ try {
     $combined = (Get-Content -LiteralPath (Join-Path $PSScriptRoot "supabase-backup-common.ps1") -Raw) + $installer
     if (-not $combined.Contains($required)) {
       throw "Required backup safety control is missing: $required"
+    }
+  }
+
+  $runner = Get-Content -LiteralPath (Join-Path $PSScriptRoot "backup-supabase-production.ps1") -Raw
+  if ($runner -match '\$VerifyScriptPath\s*=\s*\(Join-Path\s+\$PSScriptRoot') {
+    throw "Runner uses PSScriptRoot before script parameter binding completes"
+  }
+  foreach ($requiredRunnerControl in @(
+    '$ErrorActionPreference = "Continue"',
+    '$stage = "roles_dump"',
+    '"$($stage)_failed"',
+    '[IO.Directory]::Delete($runDirectory, $true)'
+  )) {
+    if (-not $runner.Contains($requiredRunnerControl)) {
+      throw "Runner safety control is missing: $requiredRunnerControl"
     }
   }
 

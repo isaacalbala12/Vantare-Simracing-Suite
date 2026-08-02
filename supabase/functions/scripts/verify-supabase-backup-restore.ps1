@@ -80,40 +80,64 @@ try {
     throw "Could not prepare the disposable restore directory"
   }
 
-  foreach ($name in @("schema.sql", "data.sql")) {
+  foreach ($name in @("schema.sql", "public-data.sql")) {
     & docker cp (Join-Path $verifyDirectory $name) "${containerName}:/backup/$name"
     if ($LASTEXITCODE -ne 0) {
       throw "Could not copy a dump file into the restore database"
     }
   }
 
+  function Invoke-PrivateDockerPsql {
+    param(
+      [Parameter(Mandatory = $true)][string[]]$Arguments,
+      [Parameter(Mandatory = $true)][string]$LogPath,
+      [Parameter(Mandatory = $true)][string]$FailureMessage
+    )
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+      # psql can include row contents in COPY errors. Keep both streams inside
+      # the EFS directory and let only the native exit code escape.
+      $ErrorActionPreference = "Continue"
+      & docker exec $containerName psql @Arguments 1> $LogPath 2>&1
+      $psqlExitCode = $LASTEXITCODE
+      if ($psqlExitCode -ne 0) {
+        throw $FailureMessage
+      }
+    } finally {
+      $ErrorActionPreference = $previousErrorActionPreference
+      Remove-Item -LiteralPath $LogPath -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   $schemaLog = Join-Path $verifyDirectory ".schema-restore.log"
   try {
-    & docker exec $containerName psql `
-      --username postgres `
-      --dbname postgres `
-      --single-transaction `
-      --set ON_ERROR_STOP=1 `
-      --file /backup/schema.sql *> $schemaLog
-    if ($LASTEXITCODE -ne 0) {
-      throw "Schema restore verification failed"
-    }
+    Invoke-PrivateDockerPsql `
+      -Arguments @(
+        "--username", "postgres",
+        "--dbname", "postgres",
+        "--single-transaction",
+        "--set", "ON_ERROR_STOP=1",
+        "--file", "/backup/schema.sql"
+      ) `
+      -LogPath $schemaLog `
+      -FailureMessage "Schema restore verification failed"
   } finally {
     Remove-Item -LiteralPath $schemaLog -Force -ErrorAction SilentlyContinue
   }
 
   $dataLog = Join-Path $verifyDirectory ".data-restore.log"
   try {
-    & docker exec $containerName psql `
-      --username postgres `
-      --dbname postgres `
-      --single-transaction `
-      --set ON_ERROR_STOP=1 `
-      --command "SET session_replication_role = replica" `
-      --file /backup/data.sql *> $dataLog
-    if ($LASTEXITCODE -ne 0) {
-      throw "Data restore verification failed"
-    }
+    Invoke-PrivateDockerPsql `
+      -Arguments @(
+        "--username", "postgres",
+        "--dbname", "postgres",
+        "--single-transaction",
+        "--set", "ON_ERROR_STOP=1",
+        "--command", "SET session_replication_role = replica",
+        "--file", "/backup/public-data.sql"
+      ) `
+      -LogPath $dataLog `
+      -FailureMessage "Public data restore verification failed"
   } finally {
     Remove-Item -LiteralPath $dataLog -Force -ErrorAction SilentlyContinue
   }

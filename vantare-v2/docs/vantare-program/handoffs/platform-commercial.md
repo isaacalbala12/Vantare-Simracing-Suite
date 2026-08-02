@@ -168,10 +168,10 @@ Isaac aprobó mantener Supabase Free y crear un backup lógico diario. Ya existe
 la implementación: tarea a las 03:00, EFS, DPAPI, manifiesto SHA-256, 30 días de
 retención y restore local desechable. El wrapper no acepta una declaración
 manual: exige un ZIP cifrado de menos de 26 horas y repite su restore antes de
-producción. La tarea aún no está instalada porque falta obtener y proporcionar
-localmente `SUPABASE_DB_PASSWORD`; el token actual no tiene privilegio para
-obtener el rol de login de backup. No se reseteó la contraseña ni se tocó
-producción.
+producción. La tarea real quedó instalada y terminó la primera copia con
+resultado 0. El ZIP conserva datos completos y el gate restauró esquema/datos
+`public`, la superficie afectada por Billing. No se inspeccionó contenido ni se
+tocó todavía producción.
 
 Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214, primero
 en staging y después en producción si todo queda verde. No existe autorización
@@ -188,9 +188,8 @@ para BIL-11, pagos, refunds, cambios de catálogo o habilitar venta.
 
 ## Issues y siguiente acción
 
-1. Instalar la tarea con la contraseña PostgreSQL local, crear la primera copia
-   y demostrar el restore sin inspeccionar PII.
-2. Repetir apply y smoke no monetario en producción solo tras ese gate.
+1. Ejecutar apply y smoke no monetario en producción usando la copia verificada.
+2. Confirmar 12/12 migraciones, cuatro Functions y observabilidad sanitizada.
 3. Solo después preparar BIL-11 y su autorización monetaria independiente.
 4. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 5. Reauditar ISA-14 cuando se cierren worktrees grandes.
@@ -200,7 +199,6 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-214 desplegó y validó BIL-01…10 en staging. Producción continúa
-intacta porque no tiene backup remoto ni PITR. La alternativa local diaria está
-implementada, pero falta instalarla con la contraseña de base, generar una
-copia y restaurarla. Venta pública y BIL-11 siguen NO-GO.
+2026-08-03, ISA-214 mantiene BIL-01…10 verdes en staging y ya dispone de tarea
+diaria y backup productivo restaurable. Producción continúa intacta hasta el
+apply controlado. Venta pública y BIL-11 siguen NO-GO.

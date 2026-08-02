@@ -2,8 +2,8 @@
 
 Fecha: 2026-08-02
 
-Estado: staging desplegado y validado; backup lógico diario implementado;
-producción bloqueada hasta instalar y restaurar la primera copia.
+Estado: staging desplegado y validado; tarea diaria instalada y primera copia
+restaurada; producción pendiente de apply y smoke controlados.
 
 ## Objetivo
 
@@ -166,10 +166,23 @@ necesita una segunda copia cifrada fuera del PC antes del lanzamiento público.
 Su objetivo inmediato es aportar un rollback verificable antes del deploy de
 ISA-214.
 
-La instalación está pendiente porque el entorno local solo contiene
-`SUPABASE_ACCESS_TOKEN`; el CLI devuelve 403 al intentar obtener el rol temporal
-de backup e indica que necesita `SUPABASE_DB_PASSWORD`. No se reseteó la
-contraseña remota ni se modificó producción para sortear este gate.
+Isaac proporcionó localmente `SUPABASE_DB_PASSWORD`. El instalador leyó ambas
+credenciales sin imprimirlas, generó los ficheros DPAPI y registró la tarea
+`Vantare Supabase Production Backup` a las 03:00. La primera ejecución válida:
+
+- obtuvo roles, esquema, datos completos, datos `public` e historial;
+- creó un ZIP EFS de 56.525 bytes con manifiesto v2 y SHA-256;
+- restauró esquema y datos `public` en Supabase Postgres `17.6.1.155`;
+- terminó con `LastTaskResult=0` y dejó la siguiente ejecución programada;
+- eliminó los archivos de intentos fallidos y conservó únicamente la copia
+  marcada PASS.
+
+El primer diseño intentó restaurar todo `data.sql` en PostgreSQL aislado y
+detectó una diferencia de esquema administrado en Auth. Se corrigió sin omitir
+el backup completo: `data.sql` conserva Auth/Storage para el procedimiento
+oficial, mientras `public-data.sql` permite verificar automáticamente la
+superficie exacta que Billing modifica. Un drill completo de Auth/Storage exige
+un proyecto Supabase desechable con GoTrue y Storage activos.
 
 ### Polar
 
@@ -252,6 +265,8 @@ cubre BIL-11, pagos, refunds, cambios de catálogo ni habilitar ventas.
 - Integración local: el instalador creó una tarea sintética válida y se eliminó
   al terminar; una copia EFS con datos sintéticos se restauró realmente en
   Supabase Postgres 17 desechable. No se utilizó información de producción.
+- Integración real: tarea diaria instalada, backup productivo cifrado e
+  integridad/restore de `public` PASS. No se inspeccionaron filas ni contenido.
 - Guard de superficie, formato del workflow y `git diff --check`: PASS.
 - El token de `.env.local` solo se cargó temporalmente en memoria; nunca se
   imprimió, copió a Git ni expuso junto a hashes de secrets o PII.

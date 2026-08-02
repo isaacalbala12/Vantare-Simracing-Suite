@@ -8,6 +8,7 @@ param(
   [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "Vantare\ops\supabase-backup"),
   [string]$BackupRoot = (Join-Path $env:LOCALAPPDATA "Vantare\backups\supabase\production"),
   [string]$SecretRoot = (Join-Path $env:LOCALAPPDATA "Vantare\secrets\supabase-backup"),
+  [string]$CredentialEnvFile = "",
   [switch]$RunNow
 )
 
@@ -19,10 +20,50 @@ Assert-VantareWindowsHost
 if (-not (Get-Command Register-ScheduledTask -ErrorAction SilentlyContinue)) {
   throw "Windows Scheduled Tasks cmdlets are required"
 }
-if ([string]::IsNullOrWhiteSpace($env:SUPABASE_ACCESS_TOKEN)) {
+
+function Get-CredentialEnvFileValue {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string]$Name
+  )
+
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    throw "Credential env file is missing"
+  }
+  $prefix = "$Name="
+  $line = Get-Content -LiteralPath $Path |
+    Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) } |
+    Select-Object -First 1
+  if ($null -eq $line) {
+    return ""
+  }
+  $value = $line.Substring($prefix.Length).Trim()
+  if (
+    $value.Length -ge 2 -and
+    (($value.StartsWith('"') -and $value.EndsWith('"')) -or
+      ($value.StartsWith("'") -and $value.EndsWith("'")))
+  ) {
+    return $value.Substring(1, $value.Length - 2)
+  }
+  return $value
+}
+
+$accessToken = [string]$env:SUPABASE_ACCESS_TOKEN
+$databasePassword = [string]$env:SUPABASE_DB_PASSWORD
+if (-not [string]::IsNullOrWhiteSpace($CredentialEnvFile)) {
+  if ([string]::IsNullOrWhiteSpace($accessToken)) {
+    $accessToken = Get-CredentialEnvFileValue `
+      -Path $CredentialEnvFile -Name "SUPABASE_ACCESS_TOKEN"
+  }
+  if ([string]::IsNullOrWhiteSpace($databasePassword)) {
+    $databasePassword = Get-CredentialEnvFileValue `
+      -Path $CredentialEnvFile -Name "SUPABASE_DB_PASSWORD"
+  }
+}
+if ([string]::IsNullOrWhiteSpace($accessToken)) {
   throw "SUPABASE_ACCESS_TOKEN must be present only for installation"
 }
-if ([string]::IsNullOrWhiteSpace($env:SUPABASE_DB_PASSWORD)) {
+if ([string]::IsNullOrWhiteSpace($databasePassword)) {
   throw "SUPABASE_DB_PASSWORD must be present only for installation"
 }
 
@@ -70,11 +111,13 @@ foreach ($name in @("project-ref", "pooler-url", "linked-project.json", "postgre
 }
 
 Protect-VantareSecretToFile `
-  -Secret $env:SUPABASE_ACCESS_TOKEN `
+  -Secret $accessToken `
   -Path (Join-Path $SecretRoot "supabase-access-token.dpapi")
 Protect-VantareSecretToFile `
-  -Secret $env:SUPABASE_DB_PASSWORD `
+  -Secret $databasePassword `
   -Path (Join-Path $SecretRoot "supabase-db-password.dpapi")
+$accessToken = $null
+$databasePassword = $null
 
 $runnerPath = Join-Path $installedScriptRoot "backup-supabase-production.ps1"
 $arguments = @(

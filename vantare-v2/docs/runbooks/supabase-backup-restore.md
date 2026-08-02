@@ -25,10 +25,12 @@ lógico diario local como gate mínimo de despliegue:
   cambiar de alimentación;
 - credenciales protegidas con DPAPI para el usuario de Windows actual;
 - directorios privados con ACL de usuario/SYSTEM y cifrado EFS;
-- dump separado de roles, esquema, datos e historial de migraciones;
+- dump separado de roles, esquema, datos completos, datos `public` e historial
+  de migraciones;
 - manifiesto sin PII con tamaño y SHA-256 de cada archivo;
 - archivo ZIP cifrado por herencia EFS;
-- restauración real en un contenedor local desechable antes de declarar PASS;
+- restauración real de esquema y datos `public` en un contenedor local
+  desechable antes de declarar PASS;
 - retención de 30 días y registro JSONL sin secretos ni contenido de tablas.
 
 El backup no se considera válido si únicamente se genera el ZIP. Deben pasar
@@ -46,7 +48,8 @@ en los argumentos ni en la definición de la tarea:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
-  supabase\functions\scripts\install-supabase-backup-task.ps1 -RunNow
+  supabase\functions\scripts\install-supabase-backup-task.ps1 `
+  -CredentialEnvFile frontend\.env.local -RunNow
 ```
 
 Después de comprobar la primera ejecución, retirar esas variables del proceso
@@ -78,6 +81,10 @@ No abrir ni copiar datos del backup para documentar el resultado. Se registran
   un backup externo frente a pérdida física o ransomware.
 - El dump de base de datos conserva metadatos de Supabase Storage, pero no los
   objetos binarios almacenados por la API de Storage.
+- El dump completo conserva los datos administrados de Auth/Storage, pero el
+  restore automático local cubre `public`, que es la superficie modificada por
+  Billing. Probar Auth/Storage exige restaurar en un proyecto Supabase
+  desechable con sus servicios y migraciones administradas.
 - Edge Functions, configuración Auth, API keys y secretos se reconstruyen
   desde el repositorio y los runbooks; no viven dentro del dump lógico.
 - Antes del lanzamiento público debe añadirse una segunda copia cifrada fuera

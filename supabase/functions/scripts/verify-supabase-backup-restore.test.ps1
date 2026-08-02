@@ -22,6 +22,11 @@ try {
     $copyFixture,
     (New-Object Text.UTF8Encoding($false))
   )
+  [IO.File]::WriteAllText(
+    (Join-Path $payload "public-data.sql"),
+    $copyFixture,
+    (New-Object Text.UTF8Encoding($false))
+  )
   Set-Content -LiteralPath (Join-Path $payload "migration-history-schema.sql") `
     -Value "-- migration history schema" -Encoding ASCII
   Set-Content -LiteralPath (Join-Path $payload "migration-history-data.sql") `

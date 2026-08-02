@@ -7,12 +7,16 @@ param(
   [Parameter(Mandatory = $true)][string]$SecretRoot,
   [Parameter(Mandatory = $true)][string]$SupabaseWorkDir,
   [ValidateRange(2, 365)][int]$RetentionDays = 30,
-  [string]$VerifyScriptPath = (Join-Path $PSScriptRoot "verify-supabase-backup-restore.ps1")
+  [string]$VerifyScriptPath = ""
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot "supabase-backup-common.ps1")
+
+if ([string]::IsNullOrWhiteSpace($VerifyScriptPath)) {
+  $VerifyScriptPath = Join-Path $PSScriptRoot "verify-supabase-backup-restore.ps1"
+}
 
 function Write-BackupEvent {
   param(
@@ -67,6 +71,7 @@ $hasMutex = $false
 $runDirectory = $null
 $accessToken = $null
 $databasePassword = $null
+$stage = "initialization"
 
 try {
   $hasMutex = $mutex.WaitOne(0)
@@ -79,6 +84,7 @@ try {
   Assert-VantarePathInsideRoot -Path $runDirectory -Root $BackupRoot
   New-Item -ItemType Directory -Path $runDirectory | Out-Null
 
+  $stage = "credential_unprotect"
   $accessToken = Unprotect-VantareSecretFromFile `
     (Join-Path $SecretRoot "supabase-access-token.dpapi")
   $databasePassword = Unprotect-VantareSecretFromFile `
@@ -89,40 +95,59 @@ try {
   function Invoke-SupabaseDump {
     param([Parameter(Mandatory = $true)][string[]]$Arguments)
     $commandLog = Join-Path $runDirectory ".supabase-command-$([guid]::NewGuid().ToString('N')).log"
+    $previousErrorActionPreference = $ErrorActionPreference
     try {
-      & supabase @Arguments --workdir $SupabaseWorkDir --yes *> $commandLog
-      if ($LASTEXITCODE -ne 0) {
+      # Supabase writes normal progress to stderr. Windows PowerShell converts
+      # that stream into ErrorRecord objects when the global preference is
+      # Stop, so native exit code remains the authority inside this block.
+      $ErrorActionPreference = "Continue"
+      & supabase @Arguments --workdir $SupabaseWorkDir --yes 1> $commandLog 2>&1
+      $commandExitCode = $LASTEXITCODE
+      if ($commandExitCode -ne 0) {
         throw "Supabase logical dump failed"
       }
     } finally {
+      $ErrorActionPreference = $previousErrorActionPreference
       Remove-Item -LiteralPath $commandLog -Force -ErrorAction SilentlyContinue
     }
   }
 
+  $stage = "roles_dump"
   Invoke-SupabaseDump @(
     "db", "dump", "--linked", "--role-only",
     "--file", (Join-Path $runDirectory "roles.sql")
   )
+  $stage = "schema_dump"
   Invoke-SupabaseDump @(
     "db", "dump", "--linked",
     "--file", (Join-Path $runDirectory "schema.sql")
   )
+  $stage = "data_dump"
   Invoke-SupabaseDump @(
     "db", "dump", "--linked", "--data-only", "--use-copy",
     "--exclude", "storage.buckets_vectors",
     "--exclude", "storage.vector_indexes",
     "--file", (Join-Path $runDirectory "data.sql")
   )
+  $stage = "public_data_dump"
+  Invoke-SupabaseDump @(
+    "db", "dump", "--linked", "--schema", "public",
+    "--data-only", "--use-copy",
+    "--file", (Join-Path $runDirectory "public-data.sql")
+  )
+  $stage = "migration_history_schema_dump"
   Invoke-SupabaseDump @(
     "db", "dump", "--linked", "--schema", "supabase_migrations",
     "--file", (Join-Path $runDirectory "migration-history-schema.sql")
   )
+  $stage = "migration_history_data_dump"
   Invoke-SupabaseDump @(
     "db", "dump", "--linked", "--schema", "supabase_migrations",
     "--data-only", "--use-copy",
     "--file", (Join-Path $runDirectory "migration-history-data.sql")
   )
 
+  $stage = "manifest"
   $cliVersion = (& supabase --version | Select-Object -First 1).Trim()
   $postgresVersionPath = Join-Path $SupabaseWorkDir "supabase\.temp\postgres-version"
   $postgresVersion = if (Test-Path -LiteralPath $postgresVersionPath) {
@@ -138,6 +163,7 @@ try {
     -PostgresVersion $postgresVersion | Out-Null
   Test-VantareBackupManifest -Directory $runDirectory | Out-Null
 
+  $stage = "archive"
   $archiveName = "supabase-$ProjectRef-$timestamp.zip"
   $archivePath = Join-Path $BackupRoot $archiveName
   Compress-Archive -Path (Join-Path $runDirectory "*") `
@@ -152,11 +178,13 @@ try {
     throw "Backup archive did not inherit EFS encryption"
   }
 
+  $stage = "restore_verification"
   & $VerifyScriptPath `
     -ArchivePath $archivePath `
     -BackupRoot $BackupRoot `
     -ExpectedProjectRef $ProjectRef
 
+  $stage = "retention"
   $cutoff = [DateTime]::UtcNow.AddDays(-$RetentionDays)
   Get-ChildItem -LiteralPath $BackupRoot -File `
     -Filter "supabase-$ProjectRef-*.zip" |
@@ -172,8 +200,18 @@ try {
   Write-BackupEvent -Status "PASS" -Archive $archiveName
   Write-Output "backup=PASS archive=$archiveName"
 } catch {
-  Write-BackupEvent -Status "FAIL" -Message $_.Exception.Message
-  throw
+  if ($runDirectory -and (Test-Path -LiteralPath $runDirectory)) {
+    Assert-VantarePathInsideRoot -Path $runDirectory -Root $BackupRoot
+    [IO.Directory]::Delete($runDirectory, $true)
+    $runDirectory = $null
+  }
+  $reasonCode = if ($_.Exception.Message -match "already running") {
+    "concurrent_run_rejected"
+  } else {
+    "$($stage)_failed"
+  }
+  Write-BackupEvent -Status "FAIL" -Message $reasonCode
+  throw "Vantare Supabase backup failed: $reasonCode"
 } finally {
   Remove-Item Env:SUPABASE_ACCESS_TOKEN -ErrorAction SilentlyContinue
   Remove-Item Env:SUPABASE_DB_PASSWORD -ErrorAction SilentlyContinue

@@ -169,8 +169,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   ante respuesta ambigua y ledger de deliveries HMAC. GitHub no aporta un
   timestamp firmado: se usa delivery ID único y hora server-side, sin header
   inventado. La App mínima queda documentada pero no registrada ni activada.
-- Siguiente acción: TAU-06 define evaluación de riesgo y dry-run Codex. La red,
-  App real, Discord y asignación automática siguen apagados.
+- ISA-226 / TAU-06A añade una policy pura fail-closed. Solo dos superficies
+  frontend, alcance pequeño, reproducción determinista y harness existente
+  pueden ser elegibles; cualquier flag sensible, retry o rechazo exige owner.
+  Texto y logs no son autoridad y quedan fuera de la decisión/digest.
+- Siguiente acción: TAU-06B fija prompt, JSON y budgets para un dry-run sin
+  writes. La red, API Codex, App real, Discord y asignación automática siguen
+  apagados.
 
 ## Riesgos
 
@@ -195,7 +200,8 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-224 prepara entrega/reconciliación GitHub durable sin endpoint,
-credenciales, red o deploy. No activa Codex, Discord o Supabase remoto.
+2026-08-02, ISA-226 prepara la clasificación de riesgo Codex sin endpoint,
+credenciales, red, repositorio o deploy. No ejecuta Codex, Discord o Supabase
+remoto.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

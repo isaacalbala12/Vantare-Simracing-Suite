@@ -1,3 +1,17 @@
+Nota ISA-226 / TAU-06A (2026-08-02, policy Codex fail-closed):
+- Clasificador puro y versionado: solo trabajo frontend allowlisted, completo,
+  determinista, de un módulo/1–5 archivos y con harness puede ser `eligible`.
+- Seguridad, privacidad, auth, permisos, secretos, billing/licencias, datos,
+  migraciones, release/workflows, dependencias, arquitectura y cambios masivos
+  siempre exigen owner; también retries y rechazos de testers.
+- Texto, logs y prompt injection del reporte no pueden cambiar decisión ni
+  digest. Los hechos confiables deben proceder del servidor, no de app/issue.
+- Decoder cerrado y hash canónico; input inválido/ausente nunca autoriza.
+  Corpus focal: 8/8, con cero falsos `eligible` sensibles. Autoridad:
+  `docs/runbooks/testing-center-codex-risk.md`.
+- Estado: implementación local lista para review; sin API Codex, repo write,
+  red, deploy, rama, PR automática, Discord, merge o promoción.
+
 Nota ISA-224 / TAU-05C (2026-08-02, entrega GitHub preparada):
 - Outbox con claim/lease, cinco intentos, backoff, pausa global/por flujo
   comprobada justo antes del efecto y reconciliación por marker app-authored.

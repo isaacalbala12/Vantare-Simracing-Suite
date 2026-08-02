@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vantare PostHog Wails spike</title>
+  </head>
+  <body>
+    <main>
+      <h1>PostHog Wails spike</h1>
+      <p data-testid="sensitive-copy">
+        SYNTHETIC_VISIBLE_TEXT_SECRET
+      </p>
+      <label>
+        Dato sintético sensible
+        <input
+          data-testid="sensitive-input"
+          value="SYNTHETIC_INPUT_SECRET"
+        />
+      </label>
+      <div class="actions">
+        <button data-testid="consent" type="button">Dar consentimiento</button>
+        <button data-testid="start-recording" type="button">Iniciar replay</button>
+        <button data-testid="capture-error" type="button">Capturar error sintético</button>
+        <button data-testid="stop-recording" type="button">Detener replay</button>
+        <button data-testid="opt-out" type="button">Revocar consentimiento</button>
+        <button data-testid="offline-capture" type="button">Probar sin conexión</button>
+        <button data-testid="responsiveness" type="button">Comprobar interfaz</button>
+      </div>
+      <output data-testid="status">booting</output>
+      <output data-testid="event-count">0</output>
+      <output data-testid="responsiveness-count">0</output>
+    </main>
+    <script type="module" src="/src/testing-automation/posthog-spike/harness-main.ts"></script>
+  </body>
+</html>

@@ -141,7 +141,9 @@ CLI actual no tiene acceso administrativo para demostrar versiones,
 migraciones o secrets. `license-credential` devuelve 404. El proyecto de
 pruebas `olhwhfaczmrmooeaoqqf` está `INACTIVE`, conserva solo
 `validate-license` y no es backend de la app. GitHub no tiene todavía los
-Environments protegidos `supabase-staging`/`supabase-production`.
+secrets de despliegue. Los Environments protegidos `supabase-staging` y
+`supabase-production` ya fueron creados con reviewer y ramas limitadas tras la
+aprobación de Isaac; permanecen vacíos y no pueden desplegar.
 
 El pipeline preparado separa preflight de apply, exige confirmación ligada al
 project ref y aplica migraciones antes que las cuatro Functions allowlisted.

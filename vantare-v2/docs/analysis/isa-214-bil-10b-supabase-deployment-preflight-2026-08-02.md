@@ -50,13 +50,17 @@ No se reactivó, vinculó, modificó ni eliminó el proyecto.
 
 ### GitHub
 
-- No existe el Environment `supabase-production` esperado por el workflow.
-- Tampoco existe todavía `supabase-staging`.
+- Se crearon los Environments `supabase-staging` y `supabase-production` tras
+  la aprobación explícita de Isaac.
+- Ambos exigen un reviewer. Staging permite `nightly` y la rama ISA-214;
+  producción solo permite `nightly`.
+- Los dos Environments permanecen sin secrets, por lo que todavía no pueden
+  ejecutar ningún preflight o despliegue.
 - Los secrets generales de Actions no incluyen las credenciales privadas de
   despliegue de Supabase.
 - El workflow anterior solo desplegaba Functions. No aplicaba migraciones.
 
-No se crearon Environments ni secrets y no se leyó ningún valor.
+No se creó, modificó o leyó ningún secret.
 
 ### Polar
 
@@ -105,7 +109,7 @@ Antes de cualquier mutación remota, Isaac debe aprobar en ISA-214:
 2. si se reactiva y conserva `olhwhfaczmrmooeaoqqf` como staging o se crea un
    staging limpio;
 3. acceso del CLI/GitHub al proyecto oficial;
-4. creación de los Environments y secrets por nombre;
+4. configuración de los secrets requeridos por nombre en los Environments;
 5. ventana, observador, backup y rollback;
 6. autorización exacta para aplicar migraciones y Functions.
 

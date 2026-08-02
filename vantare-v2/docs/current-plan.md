@@ -1,7 +1,8 @@
 Nota ISA-214 / BIL-10B (2026-08-02, preflight remoto Supabase):
 - BIL-01…10 están compuestas en `nightly`, pero el proyecto oficial no está
-  accesible para el perfil CLI actual y no existe el GitHub Environment de
-  despliegue.
+  accesible para el perfil CLI actual.
+- `supabase-staging` y `supabase-production` ya existen con reviewer y política
+  de ramas; permanecen deliberadamente sin secrets y no pueden desplegar.
 - Producción `ombjshwzqgeisazijduq` responde con checkout, portal y webhook;
   esto no demuestra versión ni migraciones. `license-credential` no aparece.
 - El proyecto histórico `olhwhfaczmrmooeaoqqf` está `INACTIVE`, solo enumera

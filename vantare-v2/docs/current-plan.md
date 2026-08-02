@@ -10,6 +10,23 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-180 / ENG-09 (2026-08-02, In Review):
+- Gate offline de TTS/STT ejecutado sin cableado productivo. La pila medida
+  `kokoro-onnx 0.5.0` funciona en `en/es/it/pt-BR`, pero tarda 4,0–5,3 s por
+  frase corta en Ryzen 7 3700X y su G2P instala componentes GPL. DirectML falla
+  en int8 y fp16 sobre RX 7800 XT. Resultado: NO-GO para voz dinámica y bundle
+  propietario; ENG-08 conserva visual/subtítulos/radio como fallback.
+- `whisper.cpp v1.9.1` + Whisper tiny multilingual supera licencia y rendimiento
+  preliminar: ~0,60 s, ~173–176 MB, cancelable como worker aislado. Inglés da
+  0 WER sintético; `es/it/pt-BR` no superan gate lingüístico. Resultado: GO
+  técnico condicionado, no release.
+- Los probes son tooling no productivo, no leen micrófono y no versionan
+  modelos, voces, WAV, venv ni ejecutables. Contrato, licencias, threat model,
+  hashes y microcorte siguiente: `docs/engineer/tts-stt-selection-isa-180.md` y
+  `docs/engineer/tts-stt-benchmark-isa-180.md`.
+- Review independiente final `ACCEPT`, sin P0/P1/P2/P3 razonables abiertos. La
+  PR permanece draft y la cadena no se promociona. ENG-10 no se inicia todavía.
+
 Nota ISA-178 / ENG-08 (2026-08-02, In Review):
 - `engineer-radio` es un único tipo funcional registrado en TypeScript y en el
   contrato persistente Go. Guardar, cargar, exportar e importar conservan el

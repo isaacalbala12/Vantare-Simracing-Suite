@@ -34,6 +34,7 @@ import (
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
@@ -44,6 +45,10 @@ import (
 
 // version is the current application version.
 var version = "v0.1.0.5"
+
+// buildChannel is injected by release builds. Local and public builds fail
+// closed as master so the internal Testing Center cannot appear accidentally.
+var buildChannel = "master"
 
 const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
@@ -783,6 +788,8 @@ func main() {
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var diagnosticsBridge *app.DiagnosticsBridge
+	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
+	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -844,6 +851,12 @@ func main() {
 				{name: "diagnostics", stop: func(context.Context) error {
 					if diagnosticsBridge != nil {
 						diagnosticsBridge.Close()
+					}
+					return nil
+				}},
+				{name: "testing-center-report-draft", stop: func(context.Context) error {
+					if testingCenterReportDraftBridge != nil {
+						testingCenterReportDraftBridge.Close()
 					}
 					return nil
 				}},
@@ -1368,6 +1381,22 @@ func main() {
 	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
 	diagnosticsBridge.RegisterHandlers(wailsApp)
 
+	// Testing Center report drafts persist only resumable form text. The path is
+	// selected here; frontend events can never provide filesystem locations.
+	var reportDraftStore *reportdraft.Store
+	if cfgDir != "" {
+		reportDraftPath := filepath.Clean(filepath.Join(cfgDir, reportdraft.DirectoryName, reportdraft.FileName))
+		if store, storeErr := reportdraft.NewStore(reportDraftPath); storeErr == nil {
+			reportDraftStore = store
+		} else {
+			log.Printf("warning: Testing Center report draft storage is unavailable")
+		}
+	}
+	testingCenterReportDraftBridge = app.NewTestingCenterReportDraftBridge(ctx, reportDraftStore, emitter)
+	testingCenterReportDraftBridge.RegisterHandlers(wailsApp)
+	testingCenterDiagnosticBridge = app.NewTestingCenterDiagnosticBridge(version, buildChannel, emitter)
+	testingCenterDiagnosticBridge.RegisterHandlers(wailsApp)
+
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
 
@@ -1407,10 +1436,10 @@ func main() {
 	}
 
 	// Version info broadcast for UI.
-	emitter.Emit("app:version", map[string]any{"version": version})
+	emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 
 	wailsApp.Event.On("app:version:get", func(event *application.CustomEvent) {
-		emitter.Emit("app:version", map[string]any{"version": version})
+		emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 	})
 
 	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {

@@ -1,20 +1,18 @@
-import { requireUserAuth, type AuthResult } from "../_shared/auth.ts";
+import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import { handleCorsPreflight } from "../_shared/cors.ts";
 import {
+  type CreateCustomerSessionResult,
   createPolarCustomerSession,
   PolarClientError,
   publicPolarErrorExtras,
-  type CreateCustomerSessionResult,
+  requirePolarEnvironment,
 } from "../_shared/polar.ts";
+import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 
 export const POLAR_BILLING_PROVIDER = "polar";
-
-export type BillingCustomerLookup = {
-  providerCustomerId: string;
-};
-
+export type BillingCustomerLookup = { providerCustomerId: string };
 export type PortalDeps = {
   requireAuth?: (req: Request) => Promise<AuthResult>;
   lookupBillingCustomer?: (
@@ -24,8 +22,11 @@ export type PortalDeps = {
     params: Parameters<typeof createPolarCustomerSession>[0],
   ) => Promise<CreateCustomerSessionResult>;
   getPortalReturnUrl?: () => string | null | undefined;
+  getPortalReturnAllowlist?: () => string | null | undefined;
+  getEnvironment?: () => string | null | undefined;
 };
 
+const MAX_BODY_BYTES = 4096;
 const FORBIDDEN_CLIENT_FIELDS = [
   "providerCustomerId",
   "provider_customer_id",
@@ -40,67 +41,90 @@ const FORBIDDEN_CLIENT_FIELDS = [
   "email",
 ] as const;
 
-export function isValidHttpsUrl(value: string): boolean {
+function canonicalHttpsUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
   try {
     const url = new URL(value.trim());
-    return url.protocol === "https:";
+    if (url.protocol !== "https:" || url.username || url.password || url.hash) {
+      return null;
+    }
+    return url.toString();
   } catch {
-    return false;
+    return null;
   }
 }
 
 export function resolvePortalReturnUrl(
   body: Record<string, unknown>,
-  getDefault?: () => string | null | undefined,
+  defaultRaw: string | null | undefined,
+  allowlistRaw: string | null | undefined,
 ): { ok: true; url: string } | { ok: false; code: string; message: string } {
-  const fromBody = typeof body.returnUrl === "string"
-    ? body.returnUrl.trim()
-    : "";
-  if (fromBody) {
-    if (!isValidHttpsUrl(fromBody)) {
-      return {
-        ok: false,
-        code: "invalid_return_url",
-        message: "returnUrl must be a valid HTTPS URL",
-      };
-    }
-    return { ok: true, url: fromBody };
-  }
-
-  const fromEnv = (getDefault?.() ?? Deno.env.get("PORTAL_RETURN_URL") ?? "")
-    .trim();
-  if (!fromEnv || !isValidHttpsUrl(fromEnv)) {
+  const defaultUrl = canonicalHttpsUrl(defaultRaw);
+  if (!defaultUrl) {
     return {
       ok: false,
       code: "portal_return_url_not_configured",
       message: "PORTAL_RETURN_URL is required",
     };
   }
-
-  return { ok: true, url: fromEnv };
+  let configured: unknown = [];
+  if (allowlistRaw?.trim()) {
+    try {
+      configured = JSON.parse(allowlistRaw);
+    } catch {
+      return {
+        ok: false,
+        code: "portal_return_allowlist_invalid",
+        message: "Portal return allowlist is invalid",
+      };
+    }
+  }
+  if (!Array.isArray(configured)) {
+    return {
+      ok: false,
+      code: "portal_return_allowlist_invalid",
+      message: "Portal return allowlist is invalid",
+    };
+  }
+  const allowed = new Set([defaultUrl]);
+  for (const entry of configured) {
+    const url = canonicalHttpsUrl(entry);
+    if (!url) {
+      return {
+        ok: false,
+        code: "portal_return_allowlist_invalid",
+        message: "Portal return allowlist is invalid",
+      };
+    }
+    allowed.add(url);
+  }
+  if (!("returnUrl" in body)) return { ok: true, url: defaultUrl };
+  const requested = canonicalHttpsUrl(body.returnUrl);
+  if (!requested || !allowed.has(requested)) {
+    return {
+      ok: false,
+      code: "invalid_return_url",
+      message: "returnUrl is not allowed",
+    };
+  }
+  return { ok: true, url: requested };
 }
 
 async function defaultLookupBillingCustomer(
   userId: string,
 ): Promise<BillingCustomerLookup | null> {
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from("billing_customers")
-    .select("provider_customer_id")
-    .eq("user_id", userId)
-    .eq("provider", POLAR_BILLING_PROVIDER)
-    .maybeSingle();
-
+  const { data, error } = await getSupabaseAdmin().from("billing_customers")
+    .select("provider_customer_id").eq("user_id", userId)
+    .eq("provider", POLAR_BILLING_PROVIDER).maybeSingle();
   if (error) {
-    console.error("billing-portal billing_customers lookup failed", {
+    console.error("billing-portal billing customer lookup failed", {
       code: error.code,
-      message: error.message,
     });
     throw new Error("billing_customer_lookup_failed");
   }
-
-  if (!data?.provider_customer_id) return null;
-  return { providerCustomerId: data.provider_customer_id };
+  return data?.provider_customer_id
+    ? { providerCustomerId: data.provider_customer_id }
+    : null;
 }
 
 export async function handlePortalRequest(
@@ -109,31 +133,29 @@ export async function handlePortalRequest(
 ): Promise<Response> {
   const cors = handleCorsPreflight(req);
   if (cors) return cors;
-
   if (req.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported", 405);
   }
-
-  const requireAuth = deps.requireAuth ?? requireUserAuth;
-  const auth = await requireAuth(req);
+  const auth = await (deps.requireAuth ?? requireUserAuth)(req);
   if (!auth.ok) return auth.response;
-
-  let body: Record<string, unknown> = {};
-  const rawBody = await req.text();
-  if (rawBody.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(rawBody);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return errorResponse("invalid_json", "Request body must be a JSON object", 400);
-      }
-      body = parsed as Record<string, unknown>;
-    } catch {
-      return errorResponse("invalid_json", "Request body must be JSON", 400);
-    }
+  if (!isUuid(auth.userId)) {
+    return errorResponse(
+      "invalid_account",
+      "Authenticated account is invalid",
+      401,
+    );
   }
 
+  const parsed = await readJsonObject(req, MAX_BODY_BYTES, true);
+  if (!parsed.ok) {
+    return errorResponse(
+      parsed.code,
+      parsed.message,
+      parsed.code === "body_too_large" ? 413 : 400,
+    );
+  }
   for (const field of FORBIDDEN_CLIENT_FIELDS) {
-    if (field in body) {
+    if (field in parsed.value) {
       return errorResponse(
         "forbidden_field",
         `Field "${field}" is not accepted from client`,
@@ -141,19 +163,50 @@ export async function handlePortalRequest(
       );
     }
   }
-
-  const returnUrl = resolvePortalReturnUrl(body, deps.getPortalReturnUrl);
-  if (!returnUrl.ok) {
-    const status = returnUrl.code === "invalid_return_url" ? 400 : 503;
-    return errorResponse(returnUrl.code, returnUrl.message, status);
+  if (Object.keys(parsed.value).some((key) => key !== "returnUrl")) {
+    return errorResponse(
+      "unexpected_field",
+      "Request contains an unsupported field",
+      400,
+    );
   }
 
-  const lookupBillingCustomer = deps.lookupBillingCustomer ??
-    defaultLookupBillingCustomer;
+  const returnUrl = resolvePortalReturnUrl(
+    parsed.value,
+    deps.getPortalReturnUrl?.() ?? Deno.env.get("PORTAL_RETURN_URL"),
+    deps.getPortalReturnAllowlist?.() ??
+      Deno.env.get("PORTAL_RETURN_URL_ALLOWLIST"),
+  );
+  if (!returnUrl.ok) {
+    return errorResponse(
+      returnUrl.code,
+      returnUrl.message,
+      returnUrl.code === "invalid_return_url" ? 400 : 503,
+    );
+  }
 
-  let billingCustomer: BillingCustomerLookup | null;
+  let environment;
   try {
-    billingCustomer = await lookupBillingCustomer(auth.userId);
+    environment = requirePolarEnvironment(
+      deps.getEnvironment?.() ?? Deno.env.get("POLAR_ENVIRONMENT"),
+    );
+  } catch (error) {
+    if (error instanceof PolarClientError) {
+      return errorResponse(error.code, error.message, error.status);
+    }
+    return errorResponse(
+      "polar_environment_invalid",
+      "Polar environment is invalid",
+      503,
+    );
+  }
+
+  let customer;
+  try {
+    customer =
+      await (deps.lookupBillingCustomer ?? defaultLookupBillingCustomer)(
+        auth.userId,
+      );
   } catch {
     return errorResponse(
       "internal_error",
@@ -161,8 +214,7 @@ export async function handlePortalRequest(
       500,
     );
   }
-
-  if (!billingCustomer) {
+  if (!customer) {
     return errorResponse(
       "billing_customer_not_found",
       "No Polar billing customer found for this user",
@@ -170,15 +222,13 @@ export async function handlePortalRequest(
     );
   }
 
-  const createCustomerSession = deps.createCustomerSession ??
-    createPolarCustomerSession;
-
   try {
-    const session = await createCustomerSession({
-      customerId: billingCustomer.providerCustomerId,
-      returnUrl: returnUrl.url,
-    });
-
+    const session =
+      await (deps.createCustomerSession ?? createPolarCustomerSession)({
+        customerId: customer.providerCustomerId,
+        returnUrl: returnUrl.url,
+        environment,
+      });
     return jsonResponse({ url: session.url }, 200);
   } catch (error) {
     if (error instanceof PolarClientError) {
@@ -198,6 +248,4 @@ export async function handlePortalRequest(
   }
 }
 
-if (import.meta.main) {
-  Deno.serve((req) => handlePortalRequest(req));
-}
+if (import.meta.main) Deno.serve((req) => handlePortalRequest(req));

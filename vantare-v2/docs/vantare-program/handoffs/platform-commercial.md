@@ -1,8 +1,8 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: reconciliación ISA-166 en curso; venta pública **NO-GO**.
+Estado: ISA-166 reconciliada; BIL-03 / ISA-72 implementada en rama aislada y pendiente de review; venta pública **NO-GO**.
 
-Base de esta rama: ISA-89 `7a570655253ea8c4e51047f6ebd2e97e3a49f8a6`.
+Base de BIL-03: ISA-166 `c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
 
 ## Procedencia y alcance
 
@@ -65,6 +65,24 @@ Cada issue usa rama/worktree propios, TDD y review. La promoción sigue la polí
 vigente de la plataforma; esta rama no promueve, no hace merge y no habilita
 billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
+## BIL-03 / ISA-72
+
+- Mapping v2 exige entorno explícito, versión de catálogo, organización, IDs de
+  producto y precio simétricos, capabilities, canales y alcance Launch v1.
+- Launch y Pro son obligatorios. Pro Plus es una key reconocida, pero permanece
+  indisponible hasta que exista un producto/precio aprobado; no hay IDs ficticios
+  en runtime.
+- El trial permanece desactivado. Solo puede habilitarse para Pro, exactamente
+  siete días y con `POLAR_TRIAL_ANTI_ABUSE_CONFIRMED=true` además del contrato.
+- Checkout usa `auth.uid()` UUID y `attemptId` UUID. La tabla server-only
+  `billing_checkout_attempts` evita una segunda llamada remota para el mismo
+  intento; un resultado incierto se bloquea en vez de arriesgar duplicados.
+- Portal usa `PORTAL_RETURN_URL` y `PORTAL_RETURN_URL_ALLOWLIST` como lista JSON
+  de URLs HTTPS exactas. El cliente normal envía un body vacío.
+- Sandbox y production no pueden cruzarse ni por mapping, API host o URL alojada.
+- No hubo deploy, migración remota, datos de customers, pagos ni cambios en Polar.
+- Informe: `docs/analysis/isa-72-bil-03-checkout-mapping-portal-hardening-2026-08-02.md`.
+
 ## Riesgos que mantienen NO-GO
 
 - Inbox actual no garantiza efectos completos ante fallo parcial.
@@ -76,5 +94,6 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## Última actualización
 
-2026-08-01 — ISA-166 / BIL-01B, worker documental. Sin código, deploy, pago,
-refund, migración, secretos, PII ni mutaciones remotas.
+2026-08-02 — ISA-72 / BIL-03, worker de implementación aislada. Tests backend y
+frontend verdes; pgTAP pendiente de un entorno local con historial de migraciones
+coherente. Sin deploy, pago, refund, secretos, PII ni mutaciones remotas.

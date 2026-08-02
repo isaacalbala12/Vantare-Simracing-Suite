@@ -1,3 +1,10 @@
+Nota ISA-72-BIL-03-CHECKOUT-HARDENING (2026-08-02):
+- Implementación aislada sobre ISA-166 `c6a3ebf`: mapping Polar v2 bidireccional por producto/precio/entorno/capabilities/canales/alcance Launch, sin inventar IDs de Pro Plus ni trial.
+- Checkout exige UUID de cuenta e intento, deduplica localmente antes de llamar a Polar, falla cerrado ante configuración/entorno/estado incierto y envía `allow_trial=false` salvo prueba exacta de trial Pro de siete días.
+- Portal limitado a return URLs HTTPS exactas configuradas en servidor. Cliente Polar con entorno sandbox/production estricto, timeout/cancelación y errores públicos sanitizados.
+- Migración server-only `billing_checkout_attempts` con RLS y sin acceso `anon`/`authenticated`; frontend conserva un UUID de intento por producto durante 30 minutos.
+- Evidencia y riesgos: `docs/analysis/isa-72-bil-03-checkout-mapping-portal-hardening-2026-08-02.md`. Venta pública sigue **NO-GO**; no hubo deploy, pago, customer, refund, secreto ni mutación Polar.
+
 Nota ISA-166-BILLING-RECONCILIATION (2026-08-01):
 - Reconciliación vigente: `docs/analysis/isa-166-polar-catalog-policy-reconciliation-2026-08-01.md`; handoff: `docs/vantare-program/handoffs/platform-commercial.md`.
 - Contrato aprobado: Pro 4,99 EUR/mes; Launch Edition 30 EUR one-time; Pro Plus 9,99 EUR/mes; trial Pro de 7 días; recuperación de pago máxima de 72 h separada de `paidThrough`; un dispositivo activo reemplazable por login; offline firmado hasta expiración y Launch perpetuo para su alcance adquirido.

@@ -119,6 +119,12 @@ func (a AuthorizedHistoricalArtifact) Manifest() Manifest {
 	return a.manifest
 }
 
+// Evidence returns pathless, immutable evidence for a concrete reader adapter.
+// The source locator remains private to the import boundary.
+func (a AuthorizedHistoricalArtifact) Evidence() HistoricalArtifactEvidence {
+	return a.evidence
+}
+
 type ManifestSource struct {
 	Kind    SourceKind  `json:"kind"`
 	Format  string      `json:"format"`

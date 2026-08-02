@@ -1,7 +1,7 @@
 # ISA-135 / TA-03B — decisión y packaging del adapter DuckDB en Windows
 
-- Fecha de decisión propuesta: 2026-08-01
-- Estado: investigación y spike cerrados; decisión pendiente de aprobación
+- Fecha de decisión: 2026-08-02
+- Estado: aceptada e implementada por ISA-168 / TA-03C; review de entrega `APPROVE`
 - Ámbito: Telemetry Analysis histórico, Windows 10/11 x64
 - Fuera de ámbito: UI, Telemetry Core live, archivos reales de LMU y cambios
   en dependencias del producto
@@ -46,10 +46,9 @@ Se descartan:
   16 tras el cambio de TLS nativo. Fijar una toolchain antigua ocultaría deuda
   y haría más frágil la release.
 
-## Decisión humana requerida después de la re-review
+## Decisión humana aprobada
 
-No se solicita aún el gate humano: ISA-135 debe superar primero la re-review.
-Después, TA-03C no debe comenzar hasta que Isaac apruebe explícitamente:
+ISA-135 superó su re-review e Isaac aprobó explícitamente:
 
 - añadir `github.com/duckdb/duckdb-go/v2@v2.10505.0` **solo al módulo del
   helper**, no al `go.mod` de la app principal;
@@ -581,8 +580,7 @@ Consultadas el 2026-08-01:
 **GO técnico condicionado para TA-03C** con helper dinámico fuera de proceso y
 procedencia limitada a LMU local. No hay GO para añadir DuckDB al proceso
 principal, usar el CLI como runtime ni aceptar archivos externos/comunitarios.
-La licencia comercial del artefacto exacto está cerrada; ISA-135 permanece en
-`In Progress` hasta que la re-review independiente confirme estas correcciones.
-Solo entonces se presenta a Isaac el gate de dependencia, tamaño,
-redistribución y packaging. ISA-164 es obligatoria antes de ampliar el límite de
-confianza, no antes de la v1 local.
+La licencia comercial del artefacto exacto está cerrada; la re-review de
+ISA-135 y la implementación/review de ISA-168 ya confirmaron estas condiciones.
+ISA-164 es obligatoria antes de ampliar el límite de confianza, no antes de la
+v1 local.

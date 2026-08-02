@@ -1,3 +1,9 @@
+Nota ISA-179-BIL-04B-INTEGRACION-CONTROLADA (2026-08-02, corrección de review aplicada):
+- Integración controlada de BIL-02 `08bb83a959dee601ca5884fba6ac96b399c5e2bd`, BIL-03 `2a6288a36e368b322e8262534988277d1e16025e` y BIL-04 `eea8b760dc382c82c3f6b9f193782f9e1469b8d7`, sin comportamiento comercial nuevo.
+- La simulación previa identificó exactamente cuatro conflictos de contenido: runtime y tests del webhook, este plan y el handoff comercial. La resolución conserva el inbox durable de BIL-02 y el aislamiento por entorno y hardening de BIL-03/04.
+- La matriz conjunta queda verde: Deno 85/85; PostgreSQL clean/upgrade/restore con 48+53 pgTAP en PowerShell 7 y 5.1; Go auth/server/license y repeticiones OAuth/session; frontend 1624/1624 y build; guards de deploy. La revisión P2 queda corregida con límite crudo de 1 MiB antes de firma/persistencia, cancelación de streams excesivos y conservación exacta del cuerpo firmado; la P3 usa el reloj inyectado también en revocación lifetime y actualiza el runbook.
+- Informe: `docs/analysis/isa-179-bil-04b-controlled-integration-2026-08-02.md`. Venta pública sigue **NO-GO**; no hay deploy, pagos, mutaciones remotas ni promoción a ramas compartidas. Siguiente corte tras review independiente: BIL-05.
+
 Nota ISA-88-BIL-04-SUPABASE-HARDENING (2026-08-02):
 - Implementación aislada sobre BIL-03 exacta `2a6288a36e368b322e8262534988277d1e16025e`; sin deploy, merge, pagos ni mutación remota.
 - Nonce OAuth con TTL, consumo único y concurrencia; sesión Supabase fuera de WebView localStorage y protegida en Windows Credential Manager.
@@ -17,6 +23,13 @@ Nota ISA-72-BIL-03-CHECKOUT-HARDENING (2026-08-02):
 - Migración server-only `billing_checkout_attempts` con claim RPC atómico, RLS y sin acceso `anon`/`authenticated`; los intentos/URLs caducan a los 30 minutos y se limpian de forma acotada. `billing_customers` separa sandbox/production y conserva legacy NULL en cuarentena.
 - PostgreSQL 17 desechable valida pgTAP y carrera concurrente real. `price_id_to_checkout_key` aún no gobierna webhook/grants: el inbox durable y grants por fuente siguen en BIL-02 / ISA-68.
 - Evidencia y riesgos: `docs/analysis/isa-72-bil-03-checkout-mapping-portal-hardening-2026-08-02.md`. Venta pública sigue **NO-GO**; no hubo deploy, pago, customer, refund, secreto ni mutación Polar.
+
+Nota ISA-68 / BIL-02-WEBHOOK-INBOX (2026-08-02):
+- Candidato implementado sobre `ISA-166@c6a3ebf`: recepción durable antes de efectos, identidad `(provider,event_id)` + SHA-256, claim/lease atómico, estados `received|processing|processed|failed|quarantined`, retry acotado y recuperación de leases huérfanos.
+- Los efectos comerciales se registran por separado: una reanudación omite efectos completados y repite solo los pendientes; `license_events` vuelve a ser auditoría y deja de actuar como claim prematuro.
+- Replay administrativo auditado, tablas/RPC restringidas a `service_role`, payload minimizado y purga prevista a 30 días procesado / 180 días cuarentena. Runbook: `docs/billing/bil-02-webhook-inbox-runbook.md`.
+- Review corregida: `retry_scheduled` y `processing/busy` devuelven `503` con `Retry-After` derivado de `next_attempt_at` o `lease_expires_at` mientras no exista scheduler; el inbox y `billing_customers` ya no persisten emails del webhook. pgTAP local PASS (53 checks), incluida carrera real entre dos sesiones, `attempt_count` exacto y rollback transaccional.
+- Sin deploy, pagos, refunds, replay remoto ni mutaciones Polar/Supabase. Venta pública sigue **NO-GO**. BIL-02 entra en la integración controlada ISA-179 junto con BIL-03 y BIL-04.
 
 Nota ISA-166-BILLING-RECONCILIATION (2026-08-01):
 - Reconciliación vigente: `docs/analysis/isa-166-polar-catalog-policy-reconciliation-2026-08-01.md`; handoff: `docs/vantare-program/handoffs/platform-commercial.md`.

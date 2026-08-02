@@ -1,8 +1,13 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: ISA-166 reconciliada; BIL-03 aprobada; BIL-04 / ISA-88 corregida tras review P1/P2 en rama aislada y pendiente de nueva revisión; venta pública **NO-GO**.
+Estado: ISA-179 / BIL-04B integra de forma controlada BIL-02, BIL-03 y BIL-04;
+matriz conjunta completa y corrección P2/P3 aplicada, pendiente de revalidación
+independiente y venta pública **NO-GO**.
 
-Base de BIL-03: ISA-166 `c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
+Entradas exactas: BIL-02 `08bb83a959dee601ca5884fba6ac96b399c5e2bd`,
+BIL-03 `2a6288a36e368b322e8262534988277d1e16025e` y BIL-04
+`eea8b760dc382c82c3f6b9f193782f9e1469b8d7`. Base común:
+ISA-166 `c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
 
 ## Procedencia y alcance
 
@@ -19,7 +24,9 @@ Leer, por orden:
 4. `docs/analysis/isa-7-supabase-architecture-audit-2026-07-14.md`.
 5. `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`
    únicamente como snapshot histórico.
-6. ISA-166 y la issue BIL activa en Linear.
+6. `docs/billing/bil-02-webhook-inbox-runbook.md`.
+7. `docs/analysis/isa-179-bil-04b-controlled-integration-2026-08-02.md`.
+8. ISA-179 y las issues BIL relacionadas en Linear.
 
 ## Fronteras de autoridad
 
@@ -57,13 +64,22 @@ Leer, por orden:
 
 ## Orden y siguiente acción
 
-ISA-166 sustituye a ISA-89 como gate vigente. Tras revisión independiente de
-este corte, la siguiente implementación es **BIL-02 / ISA-68**. Después se sigue
-el orden BIL-03, BIL-04 en paralelo cuando sea seguro, BIL-05..BIL-13.
+ISA-166 sustituye a ISA-89 como gate de catálogo. BIL-02 / ISA-68 está
+implementada en su rama aislada: reemplaza el claim prematuro de
+`license_events` por inbox durable, leases atómicos, efectos reanudables,
+quarantine y replay auditado. Sigue pendiente de review independiente y no está
+desplegada. Después se sigue el orden BIL-03, BIL-04 en paralelo cuando sea
+seguro, BIL-05..BIL-13.
 
 Cada issue usa rama/worktree propios, TDD y review. La promoción sigue la política
 vigente de la plataforma; esta rama no promueve, no hace merge y no habilita
 billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
+
+ISA-179 limita ahora el cuerpo crudo del webhook a 1 MiB antes de verificar o
+persistir, cancela streams excesivos y conserva exactamente los bytes UTF-8
+firmados. La revocación lifetime usa el reloj inyectado. La matriz Deno queda en
+85/85; BIL-05 continúa bloqueada hasta que la revisión independiente revalide el
+commit de corrección.
 
 ## BIL-03 / ISA-72
 
@@ -90,8 +106,8 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## Riesgos que mantienen NO-GO
 
-- Inbox actual no garantiza efectos completos ante fallo parcial.
-- El inbox durable y los grants por fuente corresponden a **BIL-02 / ISA-68**.
+- El inbox durable de BIL-02 queda integrado localmente, pero ISA-179 aún no
+  está revisada ni desplegada.
 - `price_id_to_checkout_key` aún no gobierna el webhook ni los grants; por ahora
   el lifecycle resuelve producto y conserva esa deuda explícita, sin falsa GO.
 - No hay reconciliación monotónica ni grants independientes completos.
@@ -99,6 +115,20 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 - Cache offline y dispositivo necesitan integridad y vinculación correctas.
 - Supabase necesita hardening y recuperación verificable.
 - Catálogo/organización/webhook Polar no están listos para producción.
+
+## BIL-02 / ISA-68
+
+- Recepción durable antes de efectos con identidad `(provider,event_id)` y
+  SHA-256; claim/lease atómico, estados explícitos, retry acotado y recuperación
+  de leases huérfanos.
+- Efectos idempotentes separados del inbox: una reanudación omite los ya
+  completados y repite únicamente los pendientes; `license_events` queda como
+  auditoría y no como claim prematuro.
+- Replay administrativo auditado, tablas y RPC restringidas a `service_role`,
+  payload minimizado y sin persistir emails del webhook.
+- Retry programado y worker ocupado responden `503` con `Retry-After` derivado
+  del estado durable mientras no exista scheduler. El runbook documenta la
+  operación y el pgTAP original cubre 53 aserciones, concurrencia y rollback.
 
 ## BIL-04 / ISA-88
 
@@ -113,6 +143,9 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## Última actualización
 
-2026-08-02 — ISA-88 / BIL-04 corregida sobre la base aprobada de BIL-03.
-Findings P1/P2 del review cerrados: logout observable, serialización de sesión, limpieza de credenciales corruptas,
-carreras SQL adversarias, guard obligatorio y restore drill desechable. Sin deploy, pago, refund, secretos, PII ni mutaciones remotas.
+2026-08-02 — ISA-179 / BIL-04B compone el inbox durable de BIL-02 con el
+aislamiento por entorno y el hardening de BIL-03/04. La simulación previa, la
+resolución de ownership y la matriz Deno/PostgreSQL/Go/frontend/guards quedan
+documentadas y verdes. BIL-05 solo puede partir del SHA canónico de ISA-179 tras
+review independiente. Sin deploy, pago, refund, replay remoto, secretos, PII ni
+mutaciones Polar/Supabase.

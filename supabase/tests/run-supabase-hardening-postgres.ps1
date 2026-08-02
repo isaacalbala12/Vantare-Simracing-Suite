@@ -5,6 +5,7 @@ $container = "vantare-supabase-hardening-$([Guid]::NewGuid().ToString('N').Subst
 $password = [Guid]::NewGuid().ToString("N")
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
+$dblinkHelper = Join-Path $env:TEMP "$container-dblink-helper.sql"
 $claimFile = Join-Path $env:TEMP "$container-claim.sql"
 $claimAFile = Join-Path $env:TEMP "$container-claim-a.sql"
 $claimBFile = Join-Path $env:TEMP "$container-claim-b.sql"
@@ -21,6 +22,15 @@ function Invoke-Psql([string]$Database, [string]$File) {
 function Initialize-Database([string]$Database) {
   docker exec $container createdb -U postgres $Database
   Invoke-Psql $Database "/tmp/bootstrap.sql"
+  docker exec $container psql -v ON_ERROR_STOP=1 -U supabase_admin -d $Database -f "/tmp/dblink-helper.sql" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not create the disposable dblink test helper in $Database" }
+}
+
+function Assert-PgTap([string]$Database, [string]$File, [string]$Plan, [string]$Label) {
+  $tap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -v "dblink_password=$password" -v "dblink_unrestricted=1" -U postgres -d $Database -f $File | Out-String
+  if ($LASTEXITCODE -ne 0 -or $tap -match "(?m)^not ok" -or $tap -notmatch $Plan) {
+    throw "$Label pgTAP failed:`n$tap"
+  }
 }
 
 try {
@@ -48,9 +58,11 @@ try {
 do $$ begin create role anon noinherit; exception when duplicate_object then null; end $$;
 do $$ begin create role authenticated noinherit; exception when duplicate_object then null; end $$;
 do $$ begin create role service_role noinherit bypassrls; exception when duplicate_object then null; end $$;
+create schema if not exists auth;
+create schema if not exists extensions;
 create extension if not exists pgtap;
 create extension if not exists pgcrypto;
-create schema if not exists auth;
+create extension if not exists dblink with schema extensions;
 create table if not exists auth.users (
   id uuid primary key,
   email text,
@@ -61,17 +73,30 @@ create or replace function auth.uid() returns uuid language sql stable as $$
 $$;
 grant usage on schema public, auth to anon, authenticated, service_role;
 '@
+  Write-Utf8NoBom $dblinkHelper @'
+drop function if exists extensions.vantare_test_dblink_connect(text, text);
+create or replace function extensions.vantare_test_dblink_connect(connection_name text, connection_string text)
+returns text
+language sql
+security definer
+set search_path = extensions, pg_temp
+as $$
+  select extensions.dblink_connect_u(connection_name, connection_string)
+$$;
+revoke all on function extensions.vantare_test_dblink_connect(text, text) from public;
+grant execute on function extensions.vantare_test_dblink_connect(text, text) to postgres;
+'@
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
+  docker cp $dblinkHelper "${container}:/tmp/dblink-helper.sql"
   docker cp (Join-Path $root "supabase\tests\supabase_auth_license_hardening_test.sql") "${container}:/tmp/hardening-test.sql"
+  docker cp (Join-Path $root "supabase\tests\billing_webhook_inbox.test.sql") "${container}:/tmp/inbox-test.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") | Sort-Object Name
   foreach ($migration in $migrations) { docker cp $migration.FullName "${container}:/tmp/$($migration.Name)" }
 
   Initialize-Database "clean"
   foreach ($migration in $migrations) { Invoke-Psql "clean" "/tmp/$($migration.Name)" }
-  $cleanTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/hardening-test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $cleanTap -match "(?m)^not ok" -or $cleanTap -notmatch "1\.\.48") {
-    throw "Clean install pgTAP failed:`n$cleanTap"
-  }
+  Assert-PgTap "clean" "/tmp/hardening-test.sql" "1\.\.48" "Clean install hardening"
+  Assert-PgTap "clean" "/tmp/inbox-test.sql" "1\.\.53" "Clean install inbox"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid')" | Out-Null
@@ -213,10 +238,8 @@ select public.reset_active_device('reset-race-b');
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
   Invoke-Psql "upgrade" "/tmp/20260802020000_supabase_auth_license_hardening.sql"
-  $upgradeTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d upgrade -f /tmp/hardening-test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $upgradeTap -match "(?m)^not ok" -or $upgradeTap -notmatch "1\.\.48") {
-    throw "Upgrade pgTAP failed:`n$upgradeTap"
-  }
+  Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
+  Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.53" "Upgrade inbox"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'active', 'restore-test')" | Out-Null
@@ -231,11 +254,10 @@ select public.reset_active_device('reset-race-b');
   docker exec $container pg_restore --exit-on-error -U postgres -d restore_drill --no-owner /tmp/clean.dump
   $restoreExit = $LASTEXITCODE
   if ($restoreExit -ne 0) { throw "pg_restore failed with exit code $restoreExit" }
-  $restoreTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -f /tmp/hardening-test.sql | Out-String
-  $restoreTapExit = $LASTEXITCODE
-  if ($restoreTapExit -ne 0 -or $restoreTap -match "(?m)^not ok" -or $restoreTap -notmatch "1\.\.48") {
-    throw "Restored database pgTAP failed:`n$restoreTap"
-  }
+  docker exec $container psql -v ON_ERROR_STOP=1 -U supabase_admin -d restore_drill -f "/tmp/dblink-helper.sql" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not recreate the disposable dblink test helper after restore" }
+  Assert-PgTap "restore_drill" "/tmp/hardening-test.sql" "1\.\.48" "Restored database hardening"
+  Assert-PgTap "restore_drill" "/tmp/inbox-test.sql" "1\.\.53" "Restored database inbox"
   $restored = docker exec $container psql -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -c `
     "select (select count(*) = 1 from public.user_entitlements where user_id = '00000000-0000-4000-8000-000000000091' and product_key = 'restore_sentinel') and (select relrowsecurity from pg_class where oid = 'public.user_entitlements'::regclass) and not has_function_privilege('anon','public.read_account_entitlements()','execute')"
   $restoredExit = $LASTEXITCODE
@@ -255,10 +277,11 @@ select public.reset_active_device('reset-race-b');
     if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
   }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean/upgrade/restore 48 pgTAP PASS; barrier races claim/claim, claim/reset and reset/reset PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 53 inbox pgTAP PASS; inbox and device concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }
+  if (Test-Path $dblinkHelper) { Remove-Item -LiteralPath $dblinkHelper -Force }
   if (Test-Path $claimFile) { Remove-Item -LiteralPath $claimFile -Force }
   if (Test-Path $claimAFile) { Remove-Item -LiteralPath $claimAFile -Force }
   if (Test-Path $claimBFile) { Remove-Item -LiteralPath $claimBFile -Force }

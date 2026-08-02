@@ -9,11 +9,13 @@ import {
   deriveSubscriptionEntitlementStatus,
   parsePolarWebhookEvent,
   processPolarWebhookEvent,
+  resolveUserId,
 } from "./process.ts";
 
 const LAUNCH_PRODUCT_ID = "00000000-0000-0000-0000-000000000001";
 const PRO_MONTHLY_PRODUCT_ID = "00000000-0000-0000-0000-000000000003";
 const USER_ID = "4b6d8919-1c89-492d-a0e2-364124c17878";
+const PRODUCTION_USER_ID = "5c7e902a-2d90-403e-b1f3-475235d28989";
 
 type MockRow = Record<string, unknown>;
 type MockFilter =
@@ -108,7 +110,7 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
           if (table === "user_entitlements") {
             upsertRow(state, table, payload, ["user_id", "product_key"]);
           } else if (table === "billing_customers") {
-            upsertRow(state, table, payload, ["user_id", "provider"]);
+            upsertRow(state, table, payload, conflictKeys);
           } else if (table === "billing_subscriptions") {
             upsertRow(state, table, payload, [
               "provider",
@@ -130,13 +132,26 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
 }
 
 function loadTestMap() {
-  return loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON);
+  return loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
 }
 
-function processDeps(mock: ReturnType<typeof createMockSupabase>) {
+function loadProductionTestMap() {
+  const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  raw.environment = "production";
+  return loadPolarProductMap(JSON.stringify(raw), {
+    environment: "production",
+  });
+}
+
+function processDeps(
+  mock: ReturnType<typeof createMockSupabase>,
+  loadMap = loadTestMap,
+) {
   return {
     supabase: mock.client,
-    loadMap: loadTestMap,
+    loadMap,
     now: () => new Date("2026-07-09T12:00:00.000Z"),
   };
 }
@@ -154,7 +169,10 @@ Deno.test("mapping: launch_lifetime and pro_monthly map to bundle", () => {
   if (!map.ok) throw new Error("fixture map invalid");
 
   const lifetime = resolveCheckoutKeyByProductId(map.map, LAUNCH_PRODUCT_ID);
-  const monthly = resolveCheckoutKeyByProductId(map.map, PRO_MONTHLY_PRODUCT_ID);
+  const monthly = resolveCheckoutKeyByProductId(
+    map.map,
+    PRO_MONTHLY_PRODUCT_ID,
+  );
 
   assertEquals(lifetime.ok, true);
   assertEquals(monthly.ok, true);
@@ -190,6 +208,7 @@ Deno.test("processPolarWebhookEvent: order.paid updates existing billing_custome
     billing_customers: [{
       user_id: USER_ID,
       provider: "polar",
+      environment: "sandbox",
       provider_customer_id: "polar_smoke_cus",
       email: "old@example.com",
     }],
@@ -202,7 +221,10 @@ Deno.test("processPolarWebhookEvent: order.paid updates existing billing_custome
         product_id: LAUNCH_PRODUCT_ID,
         external_customer_id: USER_ID,
         customer_id: "real-polar-customer-uuid",
-        customer: { email: "fase16.smoke.test@gmail.com", external_id: USER_ID },
+        customer: {
+          email: "fase16.smoke.test@gmail.com",
+          external_id: USER_ID,
+        },
       },
     },
     "evt_real_customer_swap",
@@ -212,6 +234,81 @@ Deno.test("processPolarWebhookEvent: order.paid updates existing billing_custome
   const customers = mock.getTableRows("billing_customers");
   assertEquals(customers.length, 1);
   assertEquals(customers[0].provider_customer_id, "real-polar-customer-uuid");
+  assertEquals(customers[0].environment, "sandbox");
+});
+
+Deno.test("webhook customer resolution is isolated by Polar environment", async () => {
+  const mock = createMockSupabase({
+    billing_customers: [
+      {
+        user_id: USER_ID,
+        provider: "polar",
+        environment: "sandbox",
+        provider_customer_id: "shared-customer-id",
+      },
+      {
+        user_id: PRODUCTION_USER_ID,
+        provider: "polar",
+        environment: "production",
+        provider_customer_id: "shared-customer-id",
+      },
+      {
+        user_id: "6d8fa13b-3ea1-414f-a2f4-586346e39090",
+        provider: "polar",
+        environment: null,
+        provider_customer_id: "legacy-customer-id",
+      },
+    ],
+  });
+
+  assertEquals(
+    await resolveUserId(mock.client, {
+      customer_id: "shared-customer-id",
+    }, "sandbox"),
+    USER_ID,
+  );
+  assertEquals(
+    await resolveUserId(mock.client, {
+      customer_id: "shared-customer-id",
+    }, "production"),
+    PRODUCTION_USER_ID,
+  );
+  assertEquals(
+    await resolveUserId(mock.client, {
+      customer_id: "legacy-customer-id",
+    }, "sandbox"),
+    null,
+  );
+});
+
+Deno.test("webhook stores independent sandbox and production customers", async () => {
+  const mock = createMockSupabase();
+  const baseEvent = {
+    type: "order.paid",
+    data: {
+      product_id: LAUNCH_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      customer_id: "same-provider-customer-id",
+    },
+  };
+
+  await processPolarWebhookEvent(
+    baseEvent,
+    "evt_sandbox_customer",
+    processDeps(mock),
+  );
+  await processPolarWebhookEvent(
+    baseEvent,
+    "evt_production_customer",
+    processDeps(mock, loadProductionTestMap),
+  );
+
+  const customers = mock.getTableRows("billing_customers");
+  assertEquals(customers.length, 2);
+  assertEquals(
+    customers.map((row) => row.environment).sort(),
+    ["production", "sandbox"],
+  );
 });
 
 Deno.test("processPolarWebhookEvent: order.paid launch_lifetime grants lifetime bundle", async () => {
@@ -230,7 +327,10 @@ Deno.test("processPolarWebhookEvent: order.paid launch_lifetime grants lifetime 
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "granted_lifetime_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "granted_lifetime_bundle",
+  });
 
   const entitlements = mock.getTableRows("user_entitlements");
   assertEquals(entitlements.length, 1);
@@ -238,7 +338,10 @@ Deno.test("processPolarWebhookEvent: order.paid launch_lifetime grants lifetime 
   assertEquals(entitlements[0].product_key, "bundle");
   assertEquals(entitlements[0].status, "active");
   assertEquals(entitlements[0].expires_at, null);
-  assertEquals((entitlements[0].metadata as Record<string, unknown>).lifetime, true);
+  assertEquals(
+    (entitlements[0].metadata as Record<string, unknown>).lifetime,
+    true,
+  );
   assertEquals(
     (entitlements[0].metadata as Record<string, unknown>).plan_sku,
     "launch_lifetime",
@@ -264,13 +367,19 @@ Deno.test("processPolarWebhookEvent: subscription.active pro_monthly grants mont
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "updated_monthly_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "updated_monthly_bundle",
+  });
 
   const entitlements = mock.getTableRows("user_entitlements");
   assertEquals(entitlements.length, 1);
   assertEquals(entitlements[0].status, "active");
   assertEquals(entitlements[0].expires_at, periodEnd);
-  assertEquals((entitlements[0].metadata as Record<string, unknown>).lifetime, false);
+  assertEquals(
+    (entitlements[0].metadata as Record<string, unknown>).lifetime,
+    false,
+  );
   assertEquals(
     (entitlements[0].metadata as Record<string, unknown>).plan_sku,
     "pro_monthly",
@@ -346,7 +455,10 @@ Deno.test("processPolarWebhookEvent: subscription.canceled revokes monthly witho
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "updated_monthly_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "updated_monthly_bundle",
+  });
 
   const entitlements = mock.getTableRows("user_entitlements");
   assertEquals(entitlements[0].status, "expired");
@@ -378,7 +490,10 @@ Deno.test("processPolarWebhookEvent: subscription.revoked revokes monthly withou
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "revoked_monthly_revoked" });
+  assertEquals(result, {
+    status: "processed",
+    action: "revoked_monthly_revoked",
+  });
   assertEquals(mock.getTableRows("user_entitlements")[0].status, "revoked");
 });
 
@@ -405,7 +520,10 @@ Deno.test("processPolarWebhookEvent: order.refunded launch_lifetime revokes life
     processDeps(mock),
   );
 
-  assertEquals(result, { status: "processed", action: "revoked_lifetime_bundle" });
+  assertEquals(result, {
+    status: "processed",
+    action: "revoked_lifetime_bundle",
+  });
   assertEquals(mock.getTableRows("user_entitlements")[0].status, "revoked");
 });
 
@@ -430,7 +548,10 @@ Deno.test("processPolarWebhookEvent: duplicate event id is idempotent", async ()
     processDeps(mock),
   );
 
-  assertEquals(first, { status: "processed", action: "granted_lifetime_bundle" });
+  assertEquals(first, {
+    status: "processed",
+    action: "granted_lifetime_bundle",
+  });
   assertEquals(second, { status: "duplicate" });
   assertEquals(mock.getTableRows("license_events").length, 1);
   assertEquals(mock.getTableRows("user_entitlements").length, 1);

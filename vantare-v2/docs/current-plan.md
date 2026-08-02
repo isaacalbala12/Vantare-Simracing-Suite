@@ -10,10 +10,12 @@ Nota ISA-205 / TAU-00 (2026-08-02):
 - Isaac revisa el PR antes de nightly y conserva la aprobación exclusiva de
   master. Seguridad, privacidad, Billing, migraciones, dependencias,
   arquitectura, workflows y secretos nunca se asignan automáticamente a Codex.
-- Corte documental únicamente sobre
-  `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6`: no activa PostHog,
-  Supabase, Codex Action, Discord, builds ni promociones. Siguiente corte, solo
-  tras review: TAU-01, spike PostHog/Wails con datos sintéticos.
+- TAU-00 continúa siendo documental y no activa integraciones. TAU-01 está
+  implementado con datos sintéticos en ISA-206/PR #97 y CI verde; no inicializa
+  PostHog sin consentimiento ni usa proyecto cloud.
+- TAU-02 se dividió por riesgo en ISA-208 (contratos puros), ISA-209 (esquema
+  fail-closed) e ISA-210 (RLS/RPC). ISA-208 parte de
+  `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`; no hay deploy ni promoción.
 
 Nota ISA-203 / BIL-N01 (2026-08-02, promoción a `nightly`):
 - Reconstrucción del árbol final BIL-01..BIL-07 sobre

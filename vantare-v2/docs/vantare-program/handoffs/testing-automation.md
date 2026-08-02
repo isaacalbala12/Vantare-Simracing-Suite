@@ -11,11 +11,19 @@
 
 ## Estado
 
-- ISA-205 / TAU-00: plan maestro y ADR en propuesta.
-- Base de planificación: `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6`.
-- Implementación: ninguna.
+- ISA-205 / TAU-00: plan maestro y ADR en propuesta; PR #95 draft.
+- Base histórica de planificación:
+  `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6`.
+- ISA-206 / TAU-01: spike PostHog/Wails sintético implementado; PR #97 draft y
+  CI verde. Frontend error tracking y replay quedan `GO` condicionado; errores
+  Go requieren puente sanitizado propio.
+- ISA-207 / TAU-02: dividido en ISA-208/209/210 por riesgo. ISA-208 implementa
+  primero contratos puros sobre
+  `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`.
+- Implementación productiva, esquema, RLS y UI: ninguna integrada.
 - Supabase/PostHog/Codex/Discord: no activados por este corte.
-- Siguiente corte propuesto: TAU-01, spike PostHog en Wails con datos sintéticos.
+- La promoción de Billing ISA-203 aporta un arnés PostgreSQL/pgTAP desechable
+  que TAU-02B/02C deben reutilizar sin tocar la instancia Supabase local activa.
 
 ## Resultado
 
@@ -69,11 +77,10 @@ promoción `nightly -> testers -> master`.
 
 ## Siguiente acción
 
-Tras aceptar TAU-00, crear en Linear TAU-01 como issue independiente. Debe
-usar solo datos sintéticos, no añadir todavía dependencia productiva y cerrar
-con una decisión GO/NO-GO para replay en Wails. No abrir TAU-02 desde este
-worktree.
+Cerrar ISA-208 con contratos y transiciones puras, review independiente y PR
+draft. Después apilar ISA-209 para esquema fail-closed y rollback en contenedor
+desechable; no iniciar RLS/RPC de ISA-210 hasta aprobar ese gate.
 
 ## Última actualización
 
-2026-08-02, ISA-205 / TAU-00, Codex orquestador.
+2026-08-02, ISA-205/206/207/208, Codex orquestador. Sin merge ni promoción.

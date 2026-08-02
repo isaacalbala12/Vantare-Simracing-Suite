@@ -17,6 +17,19 @@ import (
 
 var fixedTime = time.Date(2026, 8, 2, 18, 0, 0, 123, time.UTC)
 
+var fixtureReplacements = map[string]string{
+	"{{BEARER}}":        strings.Join([]string{"synthetic", "secret", "token"}, "-"),
+	"{{URL_USER}}":      "synthetic-user",
+	"{{URL_PASSWORD}}":  strings.Join([]string{"synthetic", "password"}, "-"),
+	"{{QUERY_TOKEN}}":   strings.Join([]string{"synthetic", "query", "token"}, "-"),
+	"{{EMAIL}}":         strings.Join([]string{"synthetic-driver", "example.invalid"}, "@"),
+	"{{API_KEY}}":       strings.Join([]string{"synthetic", "api", "key"}, "-"),
+	"{{IDENTITY}}":      "Synthetic User With Spaces",
+	"{{JWT_HEADER}}":    "eyJhbGciOiJIUzI1NiJ9",
+	"{{JWT_PAYLOAD}}":   "eyJzdWIiOiJzeW50aGV0aWMifQ",
+	"{{JWT_SIGNATURE}}": strings.Join([]string{"synthetic", "signature", "value"}, ""),
+}
+
 func validInput() Input {
 	return Input{
 		GeneratedAtUTC: fixedTime,
@@ -91,13 +104,14 @@ func TestAdversarialFixtureSecretsAndPathsNeverCross(t *testing.T) {
 	for _, test := range fixture.Cases {
 		t.Run(test.Name, func(t *testing.T) {
 			input := validInput()
-			input.Logs[0].Message = test.Message
+			input.Logs[0].Message = expandFixture(test.Message)
 			draft, err := Prepare(input)
 			if err != nil {
 				t.Fatal(err)
 			}
 			preview, _ := draft.Preview()
 			for _, forbidden := range test.Forbidden {
+				forbidden = expandFixture(forbidden)
 				if strings.Contains(strings.ToLower(preview.Payload), strings.ToLower(forbidden)) {
 					t.Fatalf("payload leaked %q:\n%s", forbidden, preview.Payload)
 				}
@@ -111,6 +125,13 @@ func TestAdversarialFixtureSecretsAndPathsNeverCross(t *testing.T) {
 			}
 		})
 	}
+}
+
+func expandFixture(value string) string {
+	for marker, replacement := range fixtureReplacements {
+		value = strings.ReplaceAll(value, marker, replacement)
+	}
+	return value
 }
 
 func TestPreviewMatchesTransportByteForByteAndDiscard(t *testing.T) {

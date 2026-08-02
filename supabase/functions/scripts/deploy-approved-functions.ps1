@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $supabaseRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $guard = Join-Path $PSScriptRoot "verify-deploy-surface.ps1"
-$approved = @("billing-checkout", "billing-portal", "billing-webhook")
+$approved = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
 
 & $guard
 if ($LASTEXITCODE -ne 0) {

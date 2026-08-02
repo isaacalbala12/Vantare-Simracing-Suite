@@ -10,6 +10,24 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-177 / ENG-07 (2026-08-02, In Review):
+- `internal/engineer/presentation` es la autoridad pura y versionada para los
+  20 intents aprobados por ENG-05 en `es`, `en`, `it` y `pt-BR`.
+- Rol, canal y severidad se derivan de la decisión admitida. Texto visual y
+  futuro audio comparten una sola presentación; ningún raw key es fallback.
+- Resolver o locale inválidos fallan antes del ACK `started`, sin notificación
+  ni audio. La penalización permanece neutral y no inventa su tipo.
+- Español es el locale productivo predeterminado y la configuración queda
+  validada e inmutable mientras el servicio está activo.
+- Wails y SSE reciben exactamente el mismo objeto observable. El lookup de
+  audio cache-only usa texto de voz y conserva únicamente lectura legacy por
+  intent durante la migración; no sintetiza en hot path.
+- Contrato: `docs/engineer/presentation-contract.md`. Focal x20, fuzz,
+  benchmarks, Engineer, Server, Telemetry y Go global serial pasan. Vet focal
+  pasa; vet global conserva tres warnings Win32 heredados. Race no está
+  disponible con `CGO_ENABLED=0`. Sin frontend, TTS/STT, nuevos intents,
+  Telemetry Core, merge o promoción.
+
 Nota ISA-167 / ENG-06 (2026-08-02, WIP):
 - `EngineerService` conserva un solo runtime productivo y una sola policy sobre
   la observación canónica. No se añade fuente, reader, parser o runtime.

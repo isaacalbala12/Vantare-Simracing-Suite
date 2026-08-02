@@ -225,8 +225,8 @@ func TestEngineerDeliverySpotterCancelsExistingAudioPlayback(t *testing.T) {
 	service := NewEngineerService(nil)
 	service.SetAudioPlayer(player)
 	service.SetAudioResolver(deliveryResolver{
-		messagepolicy.IntentFuelHalfTank:   "fuel.mp3",
-		messagepolicy.IntentSpotterCarLeft: "spotter.mp3",
+		"Queda medio depósito": "fuel.mp3",
+		"Coche a la izquierda": "spotter.mp3",
 	})
 	service.Start(context.Background())
 	defer service.Stop()
@@ -571,8 +571,8 @@ func BenchmarkEngineerDeliverySchedulerToStartedUnderConcurrentPreemption(b *tes
 	service := NewEngineerService(nil)
 	service.SetAudioPlayer(player)
 	service.SetAudioResolver(deliveryResolver{
-		messagepolicy.IntentFuelHalfTank:   "fuel.wav",
-		messagepolicy.IntentSpotterCarLeft: "spotter.wav",
+		"Queda medio depósito": "fuel.wav",
+		"Coche a la izquierda": "spotter.wav",
 	})
 	service.Start(context.Background())
 	b.Cleanup(service.Stop)

@@ -10,6 +10,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/core"
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
+	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
@@ -24,6 +25,8 @@ var (
 	ErrCanonicalSourceUnavailable   = errors.New("canonical Engineer source is unavailable")
 	ErrCanonicalObservationNotFresh = errors.New("canonical Engineer observation is not newer than the disconnect boundary")
 )
+
+var ErrPresentationLocaleRunning = errors.New("engineer presentation locale cannot change while the service is running")
 
 // observationCursor is the ordering boundary captured when the canonical
 // source becomes unavailable. Sequence is monotonic inside an epoch; a newer
@@ -97,6 +100,9 @@ type EngineerService struct {
 	deliveryDone    chan deliveryResult
 	activeDelivery  *activeDelivery
 	deliveryNext    uint64
+
+	presentationResolver *presentation.Resolver
+	presentationLocale   presentation.Locale
 }
 
 // AudioPlayer es la interfaz mínima que el puerto productivo necesita.
@@ -169,39 +175,77 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 	queue := audio.NewQueue()
 	clock := wallClock{}
 	scheduler, schedulerErr := messagepolicy.NewScheduler(clock, messagepolicy.Limits{})
+	presentationResolver, presentationErr := presentation.NewResolver()
 	s := &EngineerService{
-		store:           NewNotificationStore(50),
-		queue:           queue,
-		runtime:         core.NewRuntime(queue, spotter.SensitivityNormal, true),
-		input:           projectioninput.NewAdapter(),
-		emitter:         emitter,
-		enabled:         true,
-		connected:       false,
-		source:          "telemetry-core",
-		spotterEnabled:  true,
-		sensitivity:     "normal",
-		audioResolver:   NoopAudioResolver{},
-		scheduler:       scheduler,
-		policyClock:     clock,
-		deliveryMetrics: delivery.NewMetrics(128),
-		deliveryWake:    make(chan struct{}, 1),
-		deliveryDone:    make(chan deliveryResult, 1),
+		store:                NewNotificationStore(50),
+		queue:                queue,
+		runtime:              core.NewRuntime(queue, spotter.SensitivityNormal, true),
+		input:                projectioninput.NewAdapter(),
+		emitter:              emitter,
+		enabled:              true,
+		connected:            false,
+		source:               "telemetry-core",
+		spotterEnabled:       true,
+		sensitivity:          "normal",
+		audioResolver:        NoopAudioResolver{},
+		scheduler:            scheduler,
+		policyClock:          clock,
+		deliveryMetrics:      delivery.NewMetrics(128),
+		deliveryWake:         make(chan struct{}, 1),
+		deliveryDone:         make(chan deliveryResult, 1),
+		presentationResolver: presentationResolver,
+		presentationLocale:   presentation.LocaleSpanish,
 	}
 	if schedulerErr != nil {
 		s.enabled = false
 		s.lastError = schedulerErr.Error()
 	}
+	if presentationErr != nil {
+		s.enabled = false
+		s.lastError = presentationErr.Error()
+	}
 	return s
 }
 
 // Start launches the background loops for the service.
-func (s *EngineerService) Start(ctx context.Context) {
+func (s *EngineerService) Start(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.presentationResolver == nil || !s.presentationLocale.Supported() {
+		err := presentation.ErrUnsupportedLocale
+		if s.presentationResolver == nil {
+			err = presentation.ErrInvalidInput
+		}
+		s.lastError = err.Error()
+		return err
+	}
 
 	s.ctx = ctx
 	s.running = true
 	s.startLoopsLocked()
+	return nil
+}
+
+// SetLocale configures the canonical presentation locale. Locale is immutable
+// while the runtime is active so one delivery cannot change language midway.
+func (s *EngineerService) SetLocale(value string) error {
+	locale, err := presentation.ParseLocale(value)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running {
+		return ErrPresentationLocaleRunning
+	}
+	s.presentationLocale = locale
+	return nil
+}
+
+func (s *EngineerService) Locale() presentation.Locale {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.presentationLocale
 }
 
 // Stop cancels the running loops and waits for them to terminate.

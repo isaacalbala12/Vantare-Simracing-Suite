@@ -957,7 +957,9 @@ func main() {
 	} else {
 		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
 	}
-	engSvc.Start(ctx)
+	if err := engSvc.Start(ctx); err != nil {
+		log.Printf("engineer service start error: %v", err)
+	}
 
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)

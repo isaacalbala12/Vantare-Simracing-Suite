@@ -142,6 +142,47 @@ func (r *AudioRouter) ResolveCached(ctx context.Context, textKey string, ch Chan
 	return expectedPath, nil
 }
 
+// ResolvePresentationCached resolves the canonical voice text from ENG-07's
+// hashed cache while preserving read-only compatibility with the historical
+// unpacked intent-key layout. It never synthesizes or downloads audio.
+func (r *AudioRouter) ResolvePresentationCached(ctx context.Context, voiceText, legacyKey string, ch Channel) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if r == nil || voiceText == "" {
+		return "", nil
+	}
+	cfg := r.config.Load()
+	if cfg == nil {
+		return "", nil
+	}
+	ac := cfg.(*AudioConfig)
+	lang, voice := ac.Lang(ch), ac.Voice(ch)
+	if r.cache != nil {
+		key := r.cache.Key(lang, voice, voiceText)
+		if path := r.cache.Get(key); path != "" {
+			if err := ctx.Err(); err != nil {
+				return "", err
+			}
+			return path, nil
+		}
+	}
+	if r.cacheDir == "" || legacyKey == "" {
+		return "", nil
+	}
+	info, err := os.Stat(filepath.Join(r.cacheDir, lang, voice, legacyKey+".mp3"))
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return "", ctxErr
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil || info.IsDir() {
+		return "", err
+	}
+	return filepath.Join(r.cacheDir, lang, voice, legacyKey+".mp3"), nil
+}
+
 // SetConfig atomically swaps the config. Nil-safe: nil receiver or nil config
 // are no-ops.
 func (r *AudioRouter) SetConfig(config *AudioConfig) {

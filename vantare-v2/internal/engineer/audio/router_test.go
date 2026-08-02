@@ -101,6 +101,47 @@ func TestAudioRouterResolveCachedReturnsOnlyPreparedAudio(t *testing.T) {
 	}
 }
 
+func TestAudioRouterResolvePresentationCachedUsesVoiceTextAndLegacyFallback(t *testing.T) {
+	root := t.TempDir()
+	cache, err := tts.NewCache(root, "kokoro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := DefaultAudioConfig()
+	config.SetSpotter("es", "voice")
+	router := NewCacheOnlyAudioRouter(config, cache)
+	voiceText := "Coche a la izquierda"
+	source := filepath.Join(t.TempDir(), "voice.mp3")
+	if err := os.WriteFile(source, []byte("canonical"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wantCanonical, err := cache.Put(cache.Key("es", "voice", voiceText), source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := router.ResolvePresentationCached(context.Background(), voiceText, "spotter.car_left", ChannelSpotter)
+	if err != nil || got != wantCanonical {
+		t.Fatalf("canonical ResolvePresentationCached() = %q, %v, want %q", got, err, wantCanonical)
+	}
+
+	legacyRoot := t.TempDir()
+	legacyCache, err := tts.NewCache(legacyRoot, "kokoro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyPath := filepath.Join(legacyRoot, "es", "voice", "spotter.car_left.mp3")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("legacy"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = NewCacheOnlyAudioRouter(config, legacyCache).ResolvePresentationCached(context.Background(), voiceText, "spotter.car_left", ChannelSpotter)
+	if err != nil || got != legacyPath {
+		t.Fatalf("legacy ResolvePresentationCached() = %q, %v, want %q", got, err, legacyPath)
+	}
+}
+
 func TestCacheOnlyAudioRouterReadsCanonicalTTSCacheWithoutEngine(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

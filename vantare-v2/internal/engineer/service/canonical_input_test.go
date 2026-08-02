@@ -2,11 +2,14 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 	"github.com/vantare/overlays/v2/internal/engineer/service"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
@@ -20,6 +23,70 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
+
+func TestCanonicalPresentationIsIdenticalForWailsAndSSEFanout(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	if err := svc.SetLocale("it"); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	sse, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+
+	var streamed service.EngineerNotification
+	select {
+	case streamed = <-sse:
+	case <-time.After(time.Second):
+		t.Fatal("SSE subscription did not receive canonical presentation")
+	}
+	if streamed.Version != presentation.ContractVersionV1 || streamed.Locale != "it" ||
+		streamed.Role != "spotter" || streamed.Channel != "spotter" || streamed.VoiceText == "" ||
+		streamed.Text == streamed.TextKey || streamed.VoiceText == streamed.TextKey {
+		t.Fatalf("streamed presentation = %+v", streamed)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	var emitted service.EngineerNotification
+	for time.Now().Before(deadline) {
+		for _, event := range emitter.Events() {
+			if event["name"] != "engineer:notification" {
+				continue
+			}
+			candidate, ok := event["data"].(service.EngineerNotification)
+			if ok && candidate.ID == streamed.ID {
+				emitted = candidate
+				break
+			}
+		}
+		if emitted.ID != "" {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if !reflect.DeepEqual(emitted, streamed) {
+		t.Fatalf("Wails = %+v, SSE = %+v", emitted, streamed)
+	}
+	wailsJSON, err := json.Marshal(emitted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sseJSON, err := json.Marshal(streamed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(wailsJSON) != string(sseJSON) {
+		t.Fatalf("Wails JSON %s != SSE JSON %s", wailsJSON, sseJSON)
+	}
+}
 
 func TestEngineerServiceConsumesCanonicalObservationWithoutOwningSource(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})

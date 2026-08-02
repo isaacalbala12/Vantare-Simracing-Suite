@@ -25,6 +25,21 @@ import {
 } from "../../strategy/strategy-editor-store";
 import type { StrategyStore } from "../../strategy/strategy-store";
 import { canonicalStrategyTimestamp } from "../../strategy/strategy-contract-v1";
+import {
+  clearLapCorrection,
+  clearQuickCorrection,
+  correctLapValue,
+  correctQuickValue,
+  StrategyManualInputError,
+  type StrategyLapField,
+  type StrategyQuickField,
+} from "../../strategy/strategy-manual-input";
+import {
+  createWailsStrategyManualClient,
+  type StrategyManualClient,
+  type StrategyManualResult,
+} from "../../strategy/strategy-manual-client";
+import { StrategyManualInputPanel } from "./StrategyManualInputPanel";
 import "./strategy-planner.css";
 
 type PlannerScreen = "gallery" | "entry" | "review" | "workspace";
@@ -37,6 +52,7 @@ type StrategyPlannerPageProps = {
   galleryState?: GalleryState;
   strategyStore?: StrategyStore<StrategyEditorDocument>;
   runtimeFactory?: () => StrategyEditorRuntime;
+  manualClient?: StrategyManualClient;
 };
 
 const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
@@ -90,11 +106,18 @@ export function StrategyPlannerPage({
   galleryState = demo ? "ready" : "empty",
   strategyStore,
   runtimeFactory = createWailsStrategyEditorRuntime,
+  manualClient,
 }: StrategyPlannerPageProps) {
   const [ownedRuntime] = useState<StrategyEditorRuntime | null>(() => (
     strategyStore ? null : runtimeFactory()
   ));
   const ownedRuntimeMountedRef = useRef(false);
+  const [ownedManualClient] = useState<StrategyManualClient | null>(() => (
+    manualClient ? null : createWailsStrategyManualClient()
+  ));
+  const calculationClient = manualClient ?? ownedManualClient;
+  if (!calculationClient) throw new Error("Strategy manual calculation client is required");
+  const ownedManualClientMountedRef = useRef(false);
   const loadRef = useRef<{ store: StrategyStore<StrategyEditorDocument>; promise: Promise<void> } | null>(null);
   const store = strategyStore ?? ownedRuntime?.store;
   if (!store) throw new Error("Strategy editor store is required");
@@ -109,6 +132,12 @@ export function StrategyPlannerPage({
     initialScreen === "workspace" && !storeSnapshot.draft,
   );
   const [editorError, setEditorError] = useState("");
+  const [manualCalculation, setManualCalculation] = useState<{
+    draft: NonNullable<typeof storeSnapshot.draft>;
+    result?: StrategyManualResult;
+    error?: string;
+  } | null>(null);
+  const [manualMode, setManualMode] = useState<"quick" | "laps">("quick");
   const [editorLoadAttempt, setEditorLoadAttempt] = useState(0);
   const backgroundRef = useRef<HTMLDivElement>(null);
   const comparisonOpenerRef = useRef<HTMLButtonElement | null>(null);
@@ -126,6 +155,17 @@ export function StrategyPlannerPage({
       });
     };
   }, [ownedRuntime]);
+
+  useEffect(() => {
+    ownedManualClientMountedRef.current = true;
+    return () => {
+      ownedManualClientMountedRef.current = false;
+      if (!ownedManualClient) return;
+      queueMicrotask(() => {
+        if (!ownedManualClientMountedRef.current) ownedManualClient.dispose();
+      });
+    };
+  }, [ownedManualClient]);
 
   useEffect(() => {
     if (screen !== "workspace") return;
@@ -153,6 +193,29 @@ export function StrategyPlannerPage({
   const editorDocument = storeSnapshot.draft
     ? tryParseStrategyEditorDocument(storeSnapshot.draft.payload)
     : null;
+  const manualCalculationCurrent = manualCalculation?.draft === storeSnapshot.draft;
+  const manualResult = manualCalculationCurrent ? manualCalculation?.result ?? null : null;
+  const manualError = manualCalculationCurrent ? manualCalculation?.error ?? "" : "";
+  const manualLoading = screen === "workspace" && Boolean(editorDocument) && !manualCalculationCurrent;
+
+  useEffect(() => {
+    const draft = storeSnapshot.draft;
+    if (screen !== "workspace" || !draft) return;
+    const document = tryParseStrategyEditorDocument(draft.payload);
+    if (!document) return;
+    let active = true;
+    void calculationClient.calculate(document).then(
+      (result) => {
+        if (!active) return;
+        setManualCalculation({ draft, result });
+      },
+      () => {
+        if (!active) return;
+        setManualCalculation({ draft, error: "No se pudo recalcular el plan. Revisa los datos manuales o Diagnóstico." });
+      },
+    );
+    return () => { active = false; };
+  }, [calculationClient, screen, storeSnapshot.draft]);
 
   const editDocument = useCallback((change: (document: StrategyEditorDocument) => StrategyEditorDocument) => {
     setEditorError("");
@@ -164,7 +227,7 @@ export function StrategyPlannerPage({
       }));
       return true;
     } catch (error) {
-      setEditorError(error instanceof StrategyEditorError ? error.message : "No se pudo aplicar el cambio.");
+      setEditorError(error instanceof StrategyEditorError || error instanceof StrategyManualInputError ? error.message : "No se pudo aplicar el cambio.");
       return false;
     }
   }, [store]);
@@ -288,12 +351,21 @@ export function StrategyPlannerPage({
           canRedo={storeSnapshot.canRedo}
           busy={storeSnapshot.busy}
           error={editorError}
+          manualResult={manualResult}
+          manualLoading={manualLoading}
+          manualError={manualError}
+          manualMode={manualMode}
           activePanel={activePanel}
           onSelectPanel={selectPanel}
           onPanelKey={handlePanelKey}
           onBack={() => setScreen("gallery")}
           onCompare={openComparison}
           onEdit={() => setScreen("entry")}
+          onManualModeChange={setManualMode}
+          onCorrectQuick={(field, value) => editDocument((current) => correctQuickValue(current, field, value, "Entrada rápida", canonicalStrategyTimestamp()))}
+          onClearQuick={(field) => editDocument((current) => clearQuickCorrection(current, field))}
+          onCorrectLap={(lap, field, value) => editDocument((current) => correctLapValue(current, lap, field, value, `Corrección manual vuelta ${lap}`, canonicalStrategyTimestamp()))}
+          onClearLap={(lap, field) => editDocument((current) => clearLapCorrection(current, lap, field))}
           onAppend={() => editDocument(appendStint)}
           onInsert={(id, after) => editDocument((current) => {
             const index = current.stints.findIndex((item) => item.id === id);
@@ -475,16 +547,25 @@ function ReviewScreen({ titleId, planName, mode, onBack, onContinue }: { titleId
 
 function Workspace({
   titleId, planName, document, dirty, canUndo, canRedo, busy, error,
+  manualResult, manualLoading, manualError, manualMode,
   activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit,
+  onManualModeChange, onCorrectQuick, onClearQuick, onCorrectLap, onClearLap,
   onAppend, onInsert, onDuplicate, onDelete, onMove, onAssign, onClear,
   onUndo, onRedo, onSave,
 }: {
   titleId: string; planName: string; document: StrategyEditorDocument;
   dirty: boolean; canUndo: boolean; canRedo: boolean; busy: boolean; error: string;
+  manualResult: StrategyManualResult | null; manualLoading: boolean; manualError: string;
+  manualMode: "quick" | "laps";
   activePanel: WorkspacePanel;
   onSelectPanel: (panel: WorkspacePanel) => void;
   onPanelKey: (event: KeyboardEvent<HTMLButtonElement>, panel: WorkspacePanel) => void;
   onBack: () => void; onCompare: (opener: HTMLButtonElement) => void; onEdit: () => void;
+  onManualModeChange: (mode: "quick" | "laps") => void;
+  onCorrectQuick: (field: StrategyQuickField, value: number) => boolean;
+  onClearQuick: (field: StrategyQuickField) => boolean;
+  onCorrectLap: (lap: number, field: StrategyLapField, value: number) => boolean;
+  onClearLap: (lap: number, field: StrategyLapField) => boolean;
   onAppend: () => void; onInsert: (id: string, after: boolean) => void;
   onDuplicate: (id: string) => void; onDelete: (id: string) => void;
   onMove: (id: string, target: number) => void;
@@ -561,7 +642,7 @@ function Workspace({
               <StrategyOption key={strategy.label} strategy={strategy} />
             ))}
           </section>
-          <FuelSavePanel />
+          <FuelSavePanel result={manualResult} loading={manualLoading} error={manualError} document={document} />
         </aside>
 
         <main aria-label="Stints" data-compact-active={activePanel === "stints"} data-testid="strategy-column-stints" className="strategy-column strategy-column--stints strategy-panel">
@@ -573,6 +654,8 @@ function Workspace({
             <StintCard
               key={stint.id}
               document={document}
+              result={manualResult?.stints[index]}
+              pitLossPerStopSeconds={manualResult?.pitLossPerStopSeconds}
               stint={stint}
               index={index}
               last={index === document.stints.length - 1}
@@ -613,7 +696,16 @@ function Workspace({
             ))}
             <p className="strategy-inventory-total">Identidades físicas: <b>{document.tyres.length}</b></p>
           </section>
-          <section className="strategy-panel strategy-manual-summary"><PanelHeading title="Entrada manual" meta="Resumen" /><dl><div><dt>Duración</dt><dd>6 h</dd></div><div><dt>Vueltas</dt><dd>78</dd></div><div><dt>Fuel</dt><dd>4,8 L/v</dd></div><div><dt>Neumáticos</dt><dd>8</dd></div></dl><button type="button" onClick={onEdit}>Editar datos</button></section>
+          <StrategyManualInputPanel
+            document={document}
+            mode={manualMode}
+            onModeChange={onManualModeChange}
+            onCorrectQuick={onCorrectQuick}
+            onClearQuick={onClearQuick}
+            onCorrectLap={onCorrectLap}
+            onClearLap={onClearLap}
+          />
+          <button className="strategy-manual-inputs__flow-link" type="button" onClick={onEdit}>Editar datos</button>
         </aside>
       </div>
 
@@ -710,35 +802,53 @@ function summarizeCompoundUsage(compounds: readonly string[]) {
   return Array.from(counts, ([compound, count]) => `${count}${compound}`).join(" · ");
 }
 
-function FuelSavePanel() {
-  const activeFuelSave = STRATEGIES.find((strategy) => strategy.active)?.fuelSave.replace("/stint", "") ?? "0 v";
-
+function FuelSavePanel({ result, loading, error, document }: {
+  result: StrategyManualResult | null;
+  loading: boolean;
+  error: string;
+  document: StrategyEditorDocument;
+}) {
+  const fuel = result?.fuel.saving;
+  const energy = result?.virtualEnergy.saving;
   return (
     <section className="strategy-panel strategy-fuel">
-      <PanelHeading title="Ahorro de combustible" meta="Objetivo" />
-      <p>Vueltas a ahorrar por stint para evitar un repostaje final.</p>
+      <PanelHeading title="Ahorro de recursos" meta={loading ? "Calculando" : "Objetivo"} />
+      <p>Reducción necesaria por vuelta y stint para eliminar una parada. Fuel y Virtual Energy se calculan por separado.</p>
+      {error && <p className="strategy-fuel__error" role="status">{error}</p>}
       <div>
-        <article><span>ESTADO</span><b>4 / 3</b><small>stints / pits</small></article>
+        <article><span>PARADAS</span><b>{result?.pitStopCount ?? "—"}</b><small>{document.stints.length} stints</small></article>
         <article className="is-red">
-          <span>AHORRO / STINT</span>
-          <b data-testid="strategy-active-fuel-save">{activeFuelSave}</b>
-          <small>3 stints activos</small>
+          <span>FUEL / VUELTA</span>
+          <b data-testid="strategy-fuel-save-per-lap">{fuel ? `${formatNumber(fuel.perLap, 2)} L/v` : "—"}</b>
+          <small>{fuel?.feasible ? `${formatNumber(fuel.amount, 1)} L totales` : "sin ahorro disponible"}</small>
         </article>
-        <article className="is-green"><span>IMPACTO</span><b>−18.4s</b><small>estimado</small></article>
+        <article><span>IMPACTO EN RITMO</span><b>Pendiente</b><small>requiere el modelo de ritmo</small></article>
       </div>
+      <div className="strategy-fuel__energy">
+        <span>VIRTUAL ENERGY / VUELTA</span>
+        <b data-testid="strategy-ve-save-per-lap">{energy ? `${formatNumber(energy.perLap, 2)} %/v` : "—"}</b>
+        <small>{energy?.feasible ? `${formatNumber(energy.amount, 1)} % total` : "sin ahorro disponible"}</small>
+      </div>
+      {result && <dl className="strategy-fuel__pit-summary">
+        <div><dt>Pérdida por parada</dt><dd>{formatNumber(result.pitLossPerStopSeconds, 1)} s</dd></div>
+        <div><dt>Pérdida total en boxes</dt><dd data-testid="strategy-total-pit-loss">{formatNumber(result.totalPitLossSeconds, 1)} s</dd></div>
+        <div><dt>Extras</dt><dd>{formatNumber(result.repairSeconds + result.penaltySeconds, 1)} s</dd></div>
+        <div><dt>Total plan</dt><dd data-testid="strategy-total-pit-time">{formatNumber(result.totalPitSeconds, 1)} s</dd></div>
+      </dl>}
       <div className="strategy-fuel-comparison">
         <span>COMPARATIVA DE PLAN</span>
-        <div><i>17v</i><i>22v</i><i>19v</i><i>20v</i></div>
+        <div>{document.stints.map((stint) => <i key={stint.id}>{stint.lapCount}v</i>)}</div>
       </div>
     </section>
   );
 }
 
 function StintCard({
-  document, stint, index, last, pickedTyre, onDrop, onAssign, onClear,
+  document, stint, result, pitLossPerStopSeconds, index, last, pickedTyre, onDrop, onAssign, onClear,
   onInsert, onDuplicate, onDelete, onMove,
 }: {
-  document: StrategyEditorDocument; stint: StrategyStint; index: number; last: boolean;
+  document: StrategyEditorDocument; stint: StrategyStint; result?: StrategyManualResult["stints"][number];
+  pitLossPerStopSeconds?: number; index: number; last: boolean;
   pickedTyre: string | null;
   onDrop: (event: DragEvent<HTMLButtonElement>, stintId: string, corner: StrategyCorner) => void;
   onAssign: (corner: StrategyCorner) => void; onClear: (corner: StrategyCorner) => void;
@@ -785,17 +895,27 @@ function StintCard({
           })}
         </div>
         <footer>
-          <span>Fuel <b>{stint.fuelLitres} L</b></span>
+          <span>Fuel <b>{result ? `${formatNumber(result.fuelNeed, 1)} L` : `${stint.fuelLitres} L`}</b></span>
+          <span>VE <b>{result ? `${formatNumber(result.virtualEnergyNeed, 1)} %` : "—"}</b></span>
           <span>Stint <b>{stint.lapCount}v</b></span>
-          <span>Ritmo <b>{stint.pace}</b></span>
-          <span>Deg. pico <b>demo</b></span>
-          <span className="strategy-fuel-save-tag">FUEL-SAVE {index === 0 ? "OFF" : "ON"}</span>
+          <span>Ritmo <b>{result ? formatLapTime(result.averageLapSeconds) : stint.pace}</b></span>
+          <span>Desgaste <b>{result ? `${formatNumber(result.tyreWearPercent, 1)} %` : "—"}</b></span>
+          <span className="strategy-fuel-save-tag">FUEL-SAVE {result && result.fuelSavingAmount > 0 ? `${formatNumber(result.fuelSavingAmount, 1)} L` : "OFF"}</span>
           <div className="strategy-spark" aria-label="Tendencia visual de ejemplo"><i /><i /></div>
         </footer>
       </article>
-      {!last && <div className="strategy-pit-separator"><span>● PIT STOP · 22.4s · FUEL + TYRES</span></div>}
+      {!last && <div className="strategy-pit-separator"><span>● PIT STOP · {formatNumber(pitLossPerStopSeconds ?? 22.4, 1)}s · FUEL + TYRES</span></div>}
     </div>
   );
+}
+
+function formatNumber(value: number, digits: number) {
+  return value.toFixed(digits);
+}
+
+function formatLapTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${(seconds - minutes * 60).toFixed(1).padStart(4, "0")}`;
 }
 
 function TyreRow({ tyre, uses, selected, onPick, onDragStart, onDragEnd }: {

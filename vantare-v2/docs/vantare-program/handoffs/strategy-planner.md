@@ -26,6 +26,9 @@ de condición, estado y esquina persistente. STR-07 añade el shell visual y la
 navegación real de la suite. STR-08 conecta el documento editable al repositorio
 canónico, añade operaciones de stint y asignación física por DnD/teclado. La UI canónica usa
 estrategias a la izquierda, stints al centro e inventario/entrada a la derecha.
+STR-09 añade entrada rápida y tabla por vuelta con correcciones no destructivas,
+Fuel/Virtual Energy separados, fuel-save determinista y pérdida de boxes por
+cada parada real; las tarjetas consumen el resultado Go correlacionado.
 
 Actualización ISA-134 / STR-00:
 
@@ -137,6 +140,15 @@ Actualización ISA-134 / STR-00:
   y recupera el documento tras reload con cero errores de navegador. Evidencia:
   `docs/strategy-planner/str-08-stint-editor.md`. Sin solver, telemetría, live,
   merge o promoción.
+- STR-09: implementación sobre `ISA-144@53e8158`. Extiende el documento de
+  STR-08 con `strategy.manual.v1`, promedios, correcciones dispersas por vuelta,
+  unidades y rangos. El bridge Go calcula Fuel/VE, ahorro por vuelta/stint,
+  ritmo, desgaste y boxes; cuatro stints equivalen a tres pérdidas por parada.
+  La UI neutraliza resultados stale, restaura correcciones individualmente y
+  no muestra impactos de ritmo inventados. Playwright valida edición,
+  rechazo, guardado/recarga, responsive y navegador limpio. Evidencia:
+  `docs/strategy-planner/str-09-manual-inputs.md`. Sin Analysis, solver, live,
+  nueva persistencia, merge o promoción.
 
 ## Decisiones
 
@@ -213,16 +225,16 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-143 / STR-08, implementación lista para review independiente
-  sobre el commit aceptado de STR-07.
+- Issue activa: ISA-144 / STR-09, implementación lista para review independiente
+  sobre el commit aceptado de STR-08.
 
 ## Siguiente acción exacta
 
-Revisar ISA-143 / STR-08. Si queda `ACCEPT`, continuar ISA-144 / STR-09 apilada
-sobre el editor persistente. No añadir telemetría, solver, replanning live ni
-otra persistencia dentro de la revisión; STR-09 posee la tabla avanzada y la
-edición manual correspondiente.
+Revisar ISA-144 / STR-09. Si queda `ACCEPT`, continuar por ISA-168 / TA-03C.
+No iniciar STR-10 hasta que ISA-159 publique `StrategyInputProjection v1`; no
+añadir parser histórico, solver, replanning live ni otra persistencia durante
+la revisión.
 
 ## Última actualización
 
-2026-08-02, ISA-143 / STR-08, Codex.
+2026-08-02, ISA-144 / STR-09, Codex.

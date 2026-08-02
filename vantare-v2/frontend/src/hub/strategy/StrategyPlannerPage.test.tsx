@@ -11,6 +11,8 @@ import {
 import type { PlanDraftV1 } from "../../strategy/strategy-contract-v1";
 import type { StrategyEditorDocument } from "../../strategy/strategy-editor";
 import { createStrategyEditorDraft, createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
+import { effectiveLapRows } from "../../strategy/strategy-manual-input";
+import type { StrategyManualClient, StrategyManualResult } from "../../strategy/strategy-manual-client";
 import { createStrategyStore } from "../../strategy/strategy-store";
 import { StrategyPlannerPage } from "./StrategyPlannerPage";
 
@@ -96,7 +98,7 @@ describe("Strategy Planner shell", () => {
       expect(definitionValue(option, "Pits")).toBe("3");
       expect(definitionValue(option, "Ahorro")).toBe(expected.fuelSave);
     }
-    expect(screen.getByTestId("strategy-active-fuel-save").textContent).toBe("+1.0 v");
+    expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("0.95 L/v");
   });
 
   it("supports keyboard navigation between compact workspace panels", async () => {
@@ -232,6 +234,87 @@ describe("Strategy Planner shell", () => {
     await screen.findByTestId("strategy-stint-stint-1");
     expect(operations).toEqual(["open", "create"]);
   });
+
+  it("applies quick corrections non-destructively and updates stint cards and fuel-save", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+
+    const input = await screen.findByRole("spinbutton", { name: "Fuel por vuelta" });
+    fireEvent.change(input, { target: { value: "4.6" } });
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(screen.getByTestId("strategy-manual-original-fuelPerLapLitres").textContent).toContain("4.8"));
+    expect(screen.getByText("Cambios sin guardar")).toBeTruthy();
+    await waitFor(() => expect(within(screen.getByTestId("strategy-stint-stint-1")).getByText("78.2 L")).toBeTruthy());
+    expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toContain("0.75 L/v");
+
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar Fuel por vuelta" }));
+    await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Fuel por vuelta" }) as HTMLInputElement).value).toBe("4.8"));
+    expect(screen.queryByTestId("strategy-manual-original-fuelPerLapLitres")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+    await waitFor(() => expect(within(screen.getByTestId("strategy-stint-stint-1")).getByText("78.2 L")).toBeTruthy());
+    expect(screen.getByTestId("strategy-manual-original-fuelPerLapLitres")).toBeTruthy();
+  });
+
+  it("neutralizes the previous calculation while a revised draft is recalculating", async () => {
+    const store = createTestStrategyStore();
+    await store.create(createStrategyEditorDraft("2026-08-02T00:00:00Z"));
+    let calls = 0;
+    let resolveRevision: ((result: StrategyManualResult) => void) | undefined;
+    const client: StrategyManualClient = {
+      calculate(document) {
+        calls += 1;
+        if (calls === 1) return Promise.resolve(calculateTestManualResult(document));
+        return new Promise((resolve) => { resolveRevision = resolve; });
+      },
+      dispose() {},
+    };
+    render(<StrategyPlannerPage demo initialScreen="workspace" strategyStore={store} manualClient={client} />);
+    await waitFor(() => expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("0.95 L/v"));
+    expect(screen.queryByText("−18.4s")).toBeNull();
+
+    const input = screen.getByRole("spinbutton", { name: "Fuel por vuelta" });
+    fireEvent.change(input, { target: { value: "4.6" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("—"));
+    expect(screen.getByText("Calculando")).toBeTruthy();
+
+    const revised = store.getSnapshot().draft;
+    if (!revised || !resolveRevision) throw new Error("manual recalculation did not start");
+    resolveRevision(calculateTestManualResult(revised.payload as StrategyEditorDocument));
+    await waitFor(() => expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("0.75 L/v"));
+  });
+
+  it("edits a per-lap correction, clears it and includes manual pit extras", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Tabla por vuelta" }));
+    const lapFuel = screen.getByRole("spinbutton", { name: "Fuel vuelta 2" });
+    fireEvent.change(lapFuel, { target: { value: "5.1" } });
+    fireEvent.blur(lapFuel);
+    await waitFor(() => expect(screen.getByTestId("strategy-lap-source-2-fuelPerLapLitres").textContent).toContain("Corregido"));
+    expect(screen.getByTestId("strategy-lap-source-2-fuelPerLapLitres").textContent).toContain("4.8");
+
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar Fuel de la vuelta 2" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Restaurar Fuel de la vuelta 2" })).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrada rápida" }));
+    const penalty = screen.getByRole("spinbutton", { name: "Penalización" });
+    fireEvent.change(penalty, { target: { value: "10" } });
+    fireEvent.blur(penalty);
+    await waitFor(() => expect(screen.getByTestId("strategy-total-pit-time").textContent).toContain("77.2"));
+    expect(screen.getAllByText(/PIT STOP · 22.4s/).length).toBeGreaterThan(0);
+  }, 15_000);
+
+  it("rejects impossible manual ranges without dirtying the document", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    const start = await screen.findByRole("spinbutton", { name: "Fuel inicial" });
+    fireEvent.change(start, { target: { value: "110" } });
+    fireEvent.blur(start);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("starting Fuel"));
+    expect((start as HTMLInputElement).value).toBe("100");
+    expect((screen.getByRole("button", { name: "Guardar plan" }) as HTMLButtonElement).disabled).toBe(true);
+  });
 });
 
 type PlannerTestProps = Omit<React.ComponentProps<typeof StrategyPlannerPage>, "strategyStore">;
@@ -239,7 +322,68 @@ type PlannerTestProps = Omit<React.ComponentProps<typeof StrategyPlannerPage>, "
 async function renderPlanner(props: PlannerTestProps) {
   const store = createTestStrategyStore();
   await store.create(createStrategyEditorDraft("2026-08-02T00:00:00Z"));
-  return render(<StrategyPlannerPage {...props} strategyStore={store} />);
+  return render(<StrategyPlannerPage {...props} strategyStore={store} manualClient={createTestManualClient()} />);
+}
+
+function createTestManualClient(): StrategyManualClient {
+  return {
+    async calculate(document) { return calculateTestManualResult(document); },
+    dispose() {},
+  };
+}
+
+function calculateTestManualResult(document: StrategyEditorDocument): StrategyManualResult {
+  const rows = effectiveLapRows(document);
+  const totals = rows.reduce((result, row) => ({
+    fuel: result.fuel + row.fuelPerLapLitres.value,
+    energy: result.energy + row.virtualEnergyPerLapPercent.value,
+    pace: result.pace + row.averageLapSeconds.value,
+    wear: result.wear + row.tyreWearPerLapPercent.value,
+  }), { fuel: 0, energy: 0, pace: 0, wear: 0 });
+  const quick = document.manualInputs.quick;
+  const fuelStart = quick.fuelStartLitres.correction?.value ?? quick.fuelStartLitres.original;
+  const fuelUsable = quick.fuelUsableLitres.correction?.value ?? quick.fuelUsableLitres.original;
+  const fuelStops = Math.max(0, Math.ceil(Math.max(totals.fuel - fuelStart, 0) / fuelUsable));
+  const fuelAmount = fuelStops > 0 ? Math.max(totals.fuel - (fuelStart + fuelUsable * (fuelStops - 1)), 0) : 0;
+  const energyStart = quick.virtualEnergyStartPercent.correction?.value ?? quick.virtualEnergyStartPercent.original;
+  const energyUsable = quick.virtualEnergyUsablePercent.correction?.value ?? quick.virtualEnergyUsablePercent.original;
+  const energyStops = Math.max(0, Math.ceil(Math.max(totals.energy - energyStart, 0) / energyUsable));
+  const energyAmount = energyStops > 0 ? Math.max(totals.energy - (energyStart + energyUsable * (energyStops - 1)), 0) : 0;
+  const pitLossPerStop = quick.pitLossPerStopSeconds.correction?.value ?? quick.pitLossPerStopSeconds.original;
+  const pitStopCount = Math.max(0, document.stints.length - 1);
+  const totalPitLoss = pitLossPerStop * pitStopCount;
+  const repair = quick.repairSeconds.correction?.value ?? quick.repairSeconds.original;
+  const penalty = quick.penaltySeconds.correction?.value ?? quick.penaltySeconds.original;
+  const pit = totalPitLoss + repair + penalty;
+  let offset = 0;
+  const stints = document.stints.map((stint) => {
+    const slice = rows.slice(offset, offset + stint.lapCount);
+    offset += stint.lapCount;
+    return {
+      lapCount: stint.lapCount,
+      fuelNeed: slice.reduce((sum, row) => sum + row.fuelPerLapLitres.value, 0),
+      virtualEnergyNeed: slice.reduce((sum, row) => sum + row.virtualEnergyPerLapPercent.value, 0),
+      averageLapSeconds: slice.reduce((sum, row) => sum + row.averageLapSeconds.value, 0) / stint.lapCount,
+      tyreWearPercent: slice.reduce((sum, row) => sum + row.tyreWearPerLapPercent.value, 0),
+      fuelSavingAmount: fuelAmount / rows.length * stint.lapCount,
+      virtualEnergySavingAmount: energyAmount / rows.length * stint.lapCount,
+    };
+  });
+  const resource = (total: number, stops: number, amount: number) => ({
+    used: total > 0, raceNeed: total, formationNeed: 0, reserveAmount: 0, totalNeed: total,
+    startAmount: 100, additionalRequired: Math.max(total - 100, 0), usableCapacity: 100,
+    availableCompetitiveLaps: 0, stopsRequired: stops,
+    saving: { available: stops > 0, feasible: amount > 0, targetStops: Math.max(0, stops - 1), amount, perLap: amount / rows.length, percentOfConsumption: 0 },
+  });
+  return {
+    fuel: resource(totals.fuel, fuelStops, fuelAmount),
+    virtualEnergy: resource(totals.energy, energyStops, energyAmount),
+    pitStopCount, pitLossPerStopSeconds: pitLossPerStop, totalPitLossSeconds: totalPitLoss,
+    repairSeconds: repair, penaltySeconds: penalty, totalPitSeconds: pit,
+    averageLapSeconds: totals.pace / rows.length,
+    averageTyreWearPercent: totals.wear / rows.length,
+    stints,
+  };
 }
 
 function createTestStrategyStore() {

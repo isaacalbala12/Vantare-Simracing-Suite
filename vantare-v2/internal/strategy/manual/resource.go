@@ -97,18 +97,28 @@ func (value EnergyPoints) MarshalJSON() ([]byte, error) {
 }
 
 type VirtualEnergyResult struct {
-	Used                     bool           `json:"used"`
-	RaceNeed                 EnergyPoints   `json:"raceNeed"`
-	FormationNeed            EnergyPoints   `json:"formationNeed"`
-	ReserveAmount            EnergyPoints   `json:"reserveAmount"`
-	TotalNeed                EnergyPoints   `json:"totalNeed"`
-	StartAmount              EnergyPoints   `json:"startAmount"`
-	AdditionalRequired       EnergyPoints   `json:"additionalRequired"`
-	UsableCapacity           EnergyPoints   `json:"usableCapacity"`
-	AvailableCompetitiveLaps float64        `json:"availableCompetitiveLaps"`
-	StopsRequired            int64          `json:"stopsRequired"`
-	RechargeAmounts          []EnergyPoints `json:"rechargeAmounts"`
-	Assumptions              []Assumption   `json:"assumptions"`
+	Used                     bool                `json:"used"`
+	RaceNeed                 EnergyPoints        `json:"raceNeed"`
+	FormationNeed            EnergyPoints        `json:"formationNeed"`
+	ReserveAmount            EnergyPoints        `json:"reserveAmount"`
+	TotalNeed                EnergyPoints        `json:"totalNeed"`
+	StartAmount              EnergyPoints        `json:"startAmount"`
+	AdditionalRequired       EnergyPoints        `json:"additionalRequired"`
+	UsableCapacity           EnergyPoints        `json:"usableCapacity"`
+	AvailableCompetitiveLaps float64             `json:"availableCompetitiveLaps"`
+	StopsRequired            int64               `json:"stopsRequired"`
+	RechargeAmounts          []EnergyPoints      `json:"rechargeAmounts"`
+	Saving                   VirtualEnergySaving `json:"saving"`
+	Assumptions              []Assumption        `json:"assumptions"`
+}
+
+type VirtualEnergySaving struct {
+	Available            bool         `json:"available"`
+	Feasible             bool         `json:"feasible"`
+	TargetStops          int64        `json:"targetStops"`
+	Amount               EnergyPoints `json:"amount"`
+	PerLap               EnergyPoints `json:"perLap"`
+	PercentOfConsumption float64      `json:"percentOfConsumption"`
 }
 
 type resourceValues struct {
@@ -276,6 +286,10 @@ func CalculateVirtualEnergy(input VirtualEnergyInput, raceLaps contract.LapCount
 		result.Assumptions = append(result.Assumptions, assumption(field.name, "virtual_energy_percent", field.value.Value.Value(), field.value.Evidence))
 	}
 	result.Assumptions = append(result.Assumptions, reserveAssumptions...)
+	result.Saving, err = calculateVirtualEnergySaving(calculated, input.StartAmount.Value.Value(), input.UsableCapacity.Value.Value(), input.ConsumptionPerLap.Value.Value(), raceLaps.Value())
+	if err != nil {
+		return VirtualEnergyResult{}, err
+	}
 	return result, nil
 }
 
@@ -342,36 +356,69 @@ func calculateResource(prefix string, input resourceValues, raceLaps contract.La
 	return result, nil
 }
 
-func calculateFuelSaving(resource resourceResult, start, capacity, consumption float64, raceLaps int64) (FuelSaving, error) {
-	result := FuelSaving{}
+type resourceSaving struct {
+	available, feasible  bool
+	targetStops          int64
+	amount, perLap       float64
+	percentOfConsumption float64
+}
+
+func calculateResourceSaving(prefix string, resource resourceResult, start, capacity, consumption float64, raceLaps int64) (resourceSaving, error) {
+	result := resourceSaving{}
 	if resource.stops <= 0 || raceLaps <= 0 || consumption <= 0 {
 		return result, nil
 	}
-	result.Available = true
-	result.TargetStops = resource.stops - 1
-	serviceAvailable, err := checkedMultiply("fuel.saving.targetAvailable", capacity, float64(result.TargetStops))
+	result.available = true
+	result.targetStops = resource.stops - 1
+	serviceAvailable, err := checkedMultiply(prefix+".saving.targetAvailable", capacity, float64(result.targetStops))
+	if err != nil {
+		return resourceSaving{}, err
+	}
+	targetAvailable, err := checkedAdd(prefix+".saving.targetAvailable", start, serviceAvailable)
+	if err != nil {
+		return resourceSaving{}, err
+	}
+	result.amount = math.Max(resource.totalNeed-targetAvailable, 0)
+	result.perLap = result.amount / float64(raceLaps)
+	result.percentOfConsumption = result.perLap / consumption * 100
+	if math.IsNaN(result.percentOfConsumption) || math.IsInf(result.percentOfConsumption, 0) {
+		return resourceSaving{}, calculationError(ErrorOverflow, prefix+".saving.percentOfConsumption", "saving percentage overflowed")
+	}
+	result.feasible = result.amount > 0 && result.perLap < consumption
+	return result, nil
+}
+
+func calculateFuelSaving(resource resourceResult, start, capacity, consumption float64, raceLaps int64) (FuelSaving, error) {
+	calculated, err := calculateResourceSaving("fuel", resource, start, capacity, consumption, raceLaps)
 	if err != nil {
 		return FuelSaving{}, err
 	}
-	targetAvailable, err := checkedAdd("fuel.saving.targetAvailable", start, serviceAvailable)
+	result := FuelSaving{Available: calculated.available, Feasible: calculated.feasible, TargetStops: calculated.targetStops, PercentOfConsumption: calculated.percentOfConsumption}
+	result.Amount, err = fuel("fuel.saving.amount", calculated.amount)
 	if err != nil {
 		return FuelSaving{}, err
 	}
-	amount := math.Max(resource.totalNeed-targetAvailable, 0)
-	perLap := amount / float64(raceLaps)
-	result.Amount, err = fuel("fuel.saving.amount", amount)
+	result.PerLap, err = fuel("fuel.saving.perLap", calculated.perLap)
 	if err != nil {
 		return FuelSaving{}, err
 	}
-	result.PerLap, err = fuel("fuel.saving.perLap", perLap)
+	return result, nil
+}
+
+func calculateVirtualEnergySaving(resource resourceResult, start, capacity, consumption float64, raceLaps int64) (VirtualEnergySaving, error) {
+	calculated, err := calculateResourceSaving("virtualEnergy", resource, start, capacity, consumption, raceLaps)
 	if err != nil {
-		return FuelSaving{}, err
+		return VirtualEnergySaving{}, err
 	}
-	result.PercentOfConsumption = perLap / consumption * 100
-	if math.IsNaN(result.PercentOfConsumption) || math.IsInf(result.PercentOfConsumption, 0) {
-		return FuelSaving{}, calculationError(ErrorOverflow, "fuel.saving.percentOfConsumption", "saving percentage overflowed")
+	result := VirtualEnergySaving{Available: calculated.available, Feasible: calculated.feasible, TargetStops: calculated.targetStops, PercentOfConsumption: calculated.percentOfConsumption}
+	result.Amount, err = NewEnergyPoints(calculated.amount)
+	if err != nil {
+		return VirtualEnergySaving{}, err
 	}
-	result.Feasible = amount > 0 && perLap < consumption
+	result.PerLap, err = NewEnergyPoints(calculated.perLap)
+	if err != nil {
+		return VirtualEnergySaving{}, err
+	}
 	return result, nil
 }
 

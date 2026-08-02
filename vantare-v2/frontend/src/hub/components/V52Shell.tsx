@@ -5,12 +5,14 @@ import { ScrollableMain } from "./ScrollableMain";
 import { LauncherDock } from "./LauncherDock";
 import { type Section } from "../navigation";
 import type { TelemetrySourceStatus } from "../../telemetry-transport/source-status";
+import type { TestingCenterChannel } from "../testing-center/contracts";
 
 type V52ShellProps = {
   activeSection: Section;
   onNavigate: (section: string) => void;
   version?: string | null;
   sourceStatus?: TelemetrySourceStatus | null;
+  testingCenterChannel?: TestingCenterChannel | null;
   children: ReactNode;
 };
 
@@ -19,6 +21,7 @@ export function V52Shell({
   onNavigate,
   version,
   sourceStatus,
+  testingCenterChannel,
   children,
 }: V52ShellProps) {
   return (
@@ -30,6 +33,7 @@ export function V52Shell({
         onNavigate={onNavigate}
         version={version}
         sourceStatus={sourceStatus}
+        testingCenterChannel={testingCenterChannel}
       />
       <UpdateBanner />
       <LauncherDock onNavigate={onNavigate} />

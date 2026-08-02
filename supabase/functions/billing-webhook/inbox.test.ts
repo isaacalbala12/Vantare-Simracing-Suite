@@ -57,6 +57,7 @@ Deno.test("SupabaseWebhookInbox: receive delegates identity and hash to the atom
 
   const result = await inbox.receive({
     provider: "polar",
+    environment: "sandbox",
     eventId: "evt-1",
     eventType: "order.paid",
     payloadHash: "a".repeat(64),
@@ -72,6 +73,7 @@ Deno.test("SupabaseWebhookInbox: receive delegates identity and hash to the atom
     name: "billing_receive_webhook",
     args: {
       p_provider: "polar",
+      p_environment: "sandbox",
       p_provider_event_id: "evt-1",
       p_event_type: "order.paid",
       p_payload_hash: "a".repeat(64),

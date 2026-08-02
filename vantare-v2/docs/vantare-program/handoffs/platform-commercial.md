@@ -118,6 +118,23 @@ fallan cerrados y la segunda ejecución converge. La evidencia y la tabla
 evento/precondición/resultado viven en
 `docs/billing/bil-09-lifecycle-matrix.md`.
 
+BIL-10 / ISA-75 hace operable el runtime sin incorporar un proveedor nuevo:
+señales sanitizadas del webhook, snapshot SQL agregado exclusivo de
+`service_role`, alertas deduplicadas y runbook completo. IDs originales,
+payloads, PII y errores libres quedan fuera. Replay, reparación, deploy y
+producción siguen necesitando autorización. Autoridad:
+`docs/billing/bil-10-observability-runbook.md`.
+
+El inbox durable queda particionado por entorno. Las filas anteriores al corte
+se conservan como `unclassified`, visibles para operación pero excluidas de las
+métricas de sandbox y producción. Los gates frescos pasan con 181/181 tests
+Deno y PostgreSQL clean/upgrade/restore, incluidas 20 pruebas de observabilidad
+por ruta.
+
+El despliegue futuro debe aplicar migración antes que Edge. Un overload
+server-only mantiene la versión anterior sin perder eventos y los clasifica
+como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
+
 No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
 reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
@@ -132,9 +149,9 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Revisar BIL-09 / ISA-74 y promoverlo exclusivamente a `nightly` cuando sus
+1. Revisar BIL-10 / ISA-75 y promoverlo exclusivamente a `nightly` cuando sus
    gates estén verdes.
-2. Recoger feedback Nightly de BIL-01..09 sin habilitar venta.
+2. Recoger feedback Nightly de BIL-01..10 sin habilitar venta.
 4. Continuar gates monetarios y despliegue controlado sin venta pública.
 5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 6. Reauditar ISA-14 cuando se cierren worktrees grandes.

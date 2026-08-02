@@ -1,3 +1,19 @@
+Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
+- Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
+  originales, payloads, PII ni errores libres.
+- Inbox durable particionado por `sandbox`/`production`; el histórico queda
+  `unclassified` y se excluye de métricas atribuidas en vez de adivinarlo.
+- Snapshot agregado server-only para lag, retry, quarantine, orphan, replay,
+  reconciliación, drift e incoherencia de grants.
+- Alertas deterministas con cooldown de 15 minutos y runbooks con owner,
+  recuperación, rollback y autorización.
+- Sin plataforma/dependencia nueva y sin deploy o mutación remota. Autoridad:
+  `docs/billing/bil-10-observability-runbook.md`.
+- Gates frescos: Deno activo 181/181, type-check y PostgreSQL desechable
+  clean/upgrade/restore PASS, con 20/20 pruebas de observabilidad por ruta.
+- La transición de deploy conserva temporalmente un overload RPC server-only:
+  migración primero, Edge después y retirada posterior solo tras tráfico cero.
+
 Nota ISA-74 / BIL-09 (2026-08-02, matriz lifecycle sandbox):
 - Fixture sintética completa y explícitamente sandbox para Launch, Pro y Pro Plus; Pro incluye trial de siete días con antiabuso confirmado.
 - Matriz versionada para trial, active, renewal, cancel-at-period, uncancel, past_due, unpaid, revoked y estado desconocido fail-closed.
@@ -5,8 +21,9 @@ Nota ISA-74 / BIL-09 (2026-08-02, matriz lifecycle sandbox):
 - Solo fixtures, tests y documentación: ningún endpoint, pago, refund, deploy, secreto o dato productivo. Autoridad: `docs/billing/bil-09-lifecycle-matrix.md`.
 - Gates locales: BIL-09 4/4, Deno activo 177/177, formato, type-check,
   deploy-surface y `git diff --check` PASS.
-- Estado: implementación aislada pendiente de review independiente; venta
-  pública continúa **NO-GO**.
+- Estado: review y gates protegidos PASS; promovido mediante PR #101 a
+  `nightly@59d7202444fc278f74cc1964e8993f62a3b7171b`. Venta pública continúa
+  **NO-GO**.
 
 Nota ISA-212 / BIL-N02 (2026-08-02, promoción a `nightly`):
 - BIL-08 reconstruida sobre `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`, que ya contiene BIL-01..BIL-07, Telemetry Core, Engineer, Strategy y Telemetry Analysis.

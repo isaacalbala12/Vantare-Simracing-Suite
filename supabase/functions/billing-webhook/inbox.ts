@@ -9,6 +9,7 @@ export type WebhookInboxState =
 
 export type WebhookDelivery = {
   provider: string;
+  environment: "sandbox" | "production" | "unclassified";
   eventId: string;
   eventType: string;
   payloadHash: string;
@@ -156,6 +157,7 @@ export function createSupabaseWebhookInbox(
       const row = rpcRow(
         await callRpc(supabase, operation, {
           p_provider: delivery.provider,
+          p_environment: delivery.environment,
           p_provider_event_id: delivery.eventId,
           p_event_type: delivery.eventType,
           p_payload_hash: delivery.payloadHash,

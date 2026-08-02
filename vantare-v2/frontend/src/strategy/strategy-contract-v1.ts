@@ -326,6 +326,44 @@ export interface ReplanProposalV1 {
   readonly decidedAt?: string;
 }
 
+export function parsePlanDraftV1<TPayload = unknown>(
+  value: unknown,
+): PlanDraftV1<TPayload> {
+  const draft = requireRecord(value, "");
+  requireDeclaredVersion(draft);
+  const required =
+    STRATEGY_CONTRACT_MANIFEST_V1.documentRequiredFields.planDraft;
+  requireFields(draft, required);
+  requireOnlyFields(draft, required, ["baseRevision"]);
+  requireVersion(draft.contractVersion);
+  requireIdentifier(draft.draftId, "draftId");
+  requireIdentifier(draft.planId, "planId");
+  requireIdentifier(draft.variantId, "variantId");
+  requireNonEmptyString(draft.name, "name");
+  requirePlanMode(draft.mode);
+  requireCapabilities(draft.capabilities);
+  requireProvenance(draft.provenance);
+  requireConfidence(draft.confidence);
+  requireTimestamp(draft.updatedAt, "updatedAt");
+  if (draft.baseRevision !== undefined) {
+    requireRevisionRef(draft.baseRevision, "baseRevision");
+    const base = draft.baseRevision as RevisionRefV1;
+    if (base.planId !== draft.planId || base.variantId !== draft.variantId) {
+      throw new StrategyContractError(
+        "revision_conflict",
+        "baseRevision",
+        "base revision belongs to another plan variant",
+      );
+    }
+  }
+  if (draft.payload === null || draft.payload === undefined) {
+    throw invalidDocument("payload", "is required");
+  }
+  return deepFreeze(
+    structuredClone(draft),
+  ) as unknown as PlanDraftV1<TPayload>;
+}
+
 export function parsePlanRevisionV1(
   value: unknown,
 ): UnverifiedPlanRevisionV1<unknown> {
@@ -425,7 +463,7 @@ export function parseStrategyExecutionStateV1(
   ) as unknown as StrategyExecutionStateV1;
 }
 
-function parseActivePlanV1(value: unknown): ActivePlanV1 {
+export function parseActivePlanV1(value: unknown): ActivePlanV1 {
   const active = requireRecord(value, "activePlan");
   const required = STRATEGY_CONTRACT_MANIFEST_V1.documentRequiredFields.activePlan;
   requireFields(active, required, "activePlan");

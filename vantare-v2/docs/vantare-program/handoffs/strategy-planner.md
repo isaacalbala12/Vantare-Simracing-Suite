@@ -19,7 +19,8 @@ son fases históricas.
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
 primer contrato productivo versionado. STR-03 implementa el repositorio local
-canónico de drafts y revisiones, todavía sin cálculo, UI ni wiring. La UI
+canónico de drafts y revisiones. STR-04 añade la fachada de comandos y el store
+frontend transitorio, todavía sin cálculo, UI final ni wiring productivo. La UI
 canónica usa estrategias a la izquierda, stints al centro e inventario/entrada
 a la derecha.
 
@@ -73,6 +74,17 @@ Actualización ISA-134 / STR-00:
   sin promoción. Focal x100, lease cross-process x50, Strategy, vet focal,
   race x10, compilación Linux,
   frontend build y suite Go global sin el único P3 Windows heredado pasan.
+- STR-04: implementación sobre `ISA-138@8e151b8`. Protocolo
+  `strategy.application.v1`, servicio/bridge estricto, commits idempotentes,
+  rechazo optimista de versiones stale y store con dirty derivado, undo/redo
+  acotado y observación live aislada. Cerrar el editor conserva plan activo y
+  ejecución; duplicar puede capturar cambios locales sin modificar el origen.
+  Evidencia: `docs/strategy-planner/str-04-application-service.md`. Lista para
+  review independiente, sin wiring, merge ni promoción. Go focal x100,
+  Strategy, Go global, vet focal, race x10, frontend 301/301 archivos y
+  2.045/2.045 tests, TypeScript, build y lint focal pasan. Una primera corrida
+  frontend bajo carga paralela mostró flakiness heredada del canvas; la corrida
+  final aislada quedó completamente verde.
 
 ## Decisiones
 
@@ -149,16 +161,15 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-138 / STR-03, implementación lista para review
-  independiente sobre el commit aceptado de STR-02.
+- Issue activa: ISA-139 / STR-04, implementación lista para review
+  independiente sobre el commit aceptado de STR-03.
 
 ## Siguiente acción exacta
 
-Revisar de nuevo ISA-138 después de cerrar el P1 de inicialización/pérdida del
-principal, además de las cinco correcciones previas. Si queda `ACCEPT`,
-continuar ISA-139 / STR-04 apilada sobre el repositorio. No añadir UI, cálculo,
-paquetes o integraciones transversales a STR-03.
+Revisar ISA-139 / STR-04. Si queda `ACCEPT`, continuar ISA-140 / STR-05 apilada
+sobre esta fachada. No añadir UI final, telemetría, solver o wiring transversal
+dentro de la revisión de STR-04.
 
 ## Última actualización
 
-2026-08-02, ISA-138 / STR-03, Codex.
+2026-08-02, ISA-139 / STR-04, Codex.

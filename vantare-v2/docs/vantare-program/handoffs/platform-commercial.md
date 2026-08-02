@@ -138,6 +138,40 @@ como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
 No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
 reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
+## Testing Center
+
+- TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus
+  gates locales y remotos sin deploy ni merge.
+- ISA-215 / TAU-03 añade el paquete local
+  `testing-center.diagnostic.v1`: allowlist, redacción, límites, preview exacto,
+  SHA-256 y descarte efímero. No tiene wiring productivo.
+- TAU-04A/04B/04C conectan RPC idempotente, draft local privado y una pestaña
+  in-app que exige coincidencia entre canal embebido de build y capability
+  firmada. `master` y metadata desconocida fallan cerrados; el servidor vuelve
+  a derivar membresía y rol.
+- TAU-04C reutiliza el paquete de TAU-03, muestra sus bytes exactos, verifica
+  SHA-256 en frontend y transporta el mismo payload. No serializa
+  ajustes/perfiles ni crea otro collector general.
+- Los logs continúan desactivados por defecto. Texto libre requiere opt-in y
+  preview completo porque ninguna regex puede garantizar eliminar PII
+  semántica arbitraria.
+- No existe aún un buffer productivo de logs para este flujo. La UI declara
+  cero disponibles y mantiene el control deshabilitado; no simula evidencia.
+- ISA-222 / TAU-05A añade triage server-only, fingerprints exactos,
+  ocurrencias y una reserva durable de creación. Cien repeticiones y dos
+  transacciones concurrentes convergen en una issue técnica y un efecto
+  reservado. No existe todavía llamada externa.
+- ISA-223 / TAU-05B proyecta el issue y los comentarios con decoder cerrado,
+  redacción, markers no confiables y adaptador dry-run que recalcula su digest.
+  Replay se expresa solo como disponibilidad autenticada; logs, URL, assignee
+  y Codex no entran en GitHub.
+- ISA-224 / TAU-05C añade lease/claim, backoff, recheck de pausa, reconciliación
+  ante respuesta ambigua y ledger de deliveries HMAC. GitHub no aporta un
+  timestamp firmado: se usa delivery ID único y hora server-side, sin header
+  inventado. La App mínima queda documentada pero no registrada ni activada.
+- Siguiente acción: TAU-06 define evaluación de riesgo y dry-run Codex. La red,
+  App real, Discord y asignación automática siguen apagados.
+
 ## Riesgos
 
 - **P0 potencial:** Billing concede/revoca acceso incorrectamente.
@@ -161,7 +195,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
-runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
-gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
-Sin mutaciones remotas y con venta pública NO-GO.
+2026-08-02, ISA-224 prepara entrega/reconciliación GitHub durable sin endpoint,
+credenciales, red o deploy. No activa Codex, Discord o Supabase remoto.
+Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
+global heredada y la venta pública continúa NO-GO.

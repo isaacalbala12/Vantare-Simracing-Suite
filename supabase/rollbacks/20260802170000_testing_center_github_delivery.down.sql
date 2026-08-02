@@ -1,0 +1,19 @@
+drop function if exists public.testing_center_record_github_delivery(text,text,text,text,bigint);
+drop function if exists public.testing_center_reconcile_github_effect(text,bigint,text);
+drop function if exists public.testing_center_fail_github_effect(text,uuid,text);
+drop function if exists public.testing_center_complete_github_effect(text,uuid,bigint,text);
+drop function if exists public.testing_center_assert_github_effect_unpaused(text,uuid);
+drop function if exists public.testing_center_claim_github_effect(text,uuid,integer);
+drop table if exists public.testing_center_github_deliveries;
+drop index if exists public.testing_center_effect_outbox_retry_idx;
+alter table public.testing_center_effect_outbox
+  drop constraint if exists testing_center_effect_outbox_node_check,
+  drop constraint if exists testing_center_effect_outbox_error_check,
+  drop constraint if exists testing_center_effect_outbox_external_shape_check,
+  drop constraint if exists testing_center_effect_outbox_lease_shape_check,
+  drop column if exists external_issue_node_id,
+  drop column if exists external_issue_number,
+  drop column if exists last_error_code,
+  drop column if exists next_attempt_at,
+  drop column if exists lease_expires_at,
+  drop column if exists lease_token;

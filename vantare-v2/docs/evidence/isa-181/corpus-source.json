@@ -1,0 +1,51 @@
+{
+  "schema": "vantare.engineer.corpus-source.v1",
+  "captured_at_utc": "2026-08-02T08:44:08.0053589Z",
+  "dataset": "google/fleurs",
+  "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "license": "CC-BY-4.0",
+  "license_source": "https://huggingface.co/datasets/google/fleurs",
+  "paper": "https://arxiv.org/abs/2205.12446",
+  "split": "dev",
+  "selection": "first 5 safe WAV members in archive order that have matching dev.tsv metadata",
+  "failed_initial_selection": "first recording of first 5 distinct sentence IDs in dev.tsv exceeded the 64 MiB transfer cap and was not expanded",
+  "limits": {
+    "samples_per_locale": 5,
+    "archive_transfer_bytes": 67108864,
+    "wav_bytes": 5242880,
+    "total_extracted_bytes": 83886080
+  },
+  "archives": [
+    {
+      "locale": "en_us",
+      "bytes": 171250900,
+      "lfs_sha256": "2658fda72f199e12676ecac9415094667a4e14e149b146e568ea00b2a2f0954c",
+      "selected_recordings": 5,
+      "gender_categories": ["FEMALE", "MALE"]
+    },
+    {
+      "locale": "es_419",
+      "bytes": 255285841,
+      "lfs_sha256": "94f0f3d9fd89c0496385bf0991f2565410cc489a73dd18cafa0ee0177dc5c815",
+      "selected_recordings": 5,
+      "gender_categories": ["FEMALE", "MALE"]
+    },
+    {
+      "locale": "it_it",
+      "bytes": 288887332,
+      "lfs_sha256": "9ebd7a079958e9980b3f2d91766a968fbc4d60c615a775b064acfe5bd2bc4472",
+      "selected_recordings": 5,
+      "gender_categories": ["FEMALE", "MALE"]
+    },
+    {
+      "locale": "pt_br",
+      "bytes": 247399617,
+      "lfs_sha256": "15f2a075859c3b6448e81c867f9c2a77694b3deab6b24ebc632de09bbf401838",
+      "selected_recordings": 5,
+      "gender_categories": ["MALE"]
+    }
+  ],
+  "speaker_identity": "The original dev.tsv exposes recording ID and gender, not a stable speaker ID. Recording counts are not speaker counts.",
+  "purpose": "Generic human-language WER/CER only; not command, FAR/FRR or wake-word readiness.",
+  "git_artifacts": "No audio, model, executable, raw transcript, path or personal identity is versioned."
+}

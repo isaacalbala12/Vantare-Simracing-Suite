@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import type { CheckoutKey } from "./mapping.ts";
 import { getSupabaseAdmin } from "./supabase-admin.ts";
 
@@ -14,6 +15,7 @@ export type CheckoutClaim =
   | { kind: "reused"; url: string }
   | { kind: "busy" }
   | { kind: "uncertain" }
+  | { kind: "expired" }
   | { kind: "conflict" };
 
 export interface CheckoutAttemptStore {
@@ -26,73 +28,70 @@ export interface CheckoutAttemptStore {
   markUncertain(input: CheckoutAttempt): Promise<void>;
 }
 
-export function createCheckoutAttemptStore(): CheckoutAttemptStore {
-  const client = getSupabaseAdmin();
+type RpcClient = Pick<SupabaseClient, "rpc">;
+
+function singleRpcRow(data: unknown): Record<string, unknown> | null {
+  const value = Array.isArray(data) ? data[0] : data;
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+export function createCheckoutAttemptStore(
+  client: RpcClient = getSupabaseAdmin(),
+): CheckoutAttemptStore {
   return {
     async claim(input) {
-      const { error } = await client.from("billing_checkout_attempts").insert({
-        user_id: input.userId,
-        attempt_id: input.attemptId,
-        checkout_key: input.checkoutKey,
-        environment: input.environment,
-        catalog_version: input.catalogVersion,
-        status: "creating",
-      });
-      if (!error) return { kind: "claimed" };
-      if (error.code !== "23505") {
-        throw new Error("checkout_attempt_claim_failed");
+      const { data, error } = await client.rpc(
+        "claim_billing_checkout_attempt",
+        {
+          p_user_id: input.userId,
+          p_attempt_id: input.attemptId,
+          p_checkout_key: input.checkoutKey,
+          p_environment: input.environment,
+          p_catalog_version: input.catalogVersion,
+        },
+      );
+      if (error) throw new Error("checkout_attempt_claim_failed");
+      const row = singleRpcRow(data);
+      switch (row?.outcome) {
+        case "claimed":
+        case "busy":
+        case "uncertain":
+        case "expired":
+        case "conflict":
+          return { kind: row.outcome };
+        case "reused":
+          if (typeof row.checkout_url === "string" && row.checkout_url) {
+            return { kind: "reused", url: row.checkout_url };
+          }
       }
-
-      const { data, error: lookupError } = await client
-        .from("billing_checkout_attempts")
-        .select(
-          "checkout_key, environment, catalog_version, status, checkout_url",
-        )
-        .eq("user_id", input.userId)
-        .eq("attempt_id", input.attemptId)
-        .maybeSingle();
-      if (lookupError || !data) {
-        throw new Error("checkout_attempt_lookup_failed");
-      }
-      if (
-        data.checkout_key !== input.checkoutKey ||
-        data.environment !== input.environment ||
-        data.catalog_version !== input.catalogVersion
-      ) {
-        return { kind: "conflict" };
-      }
-      if (
-        data.status === "open" && typeof data.checkout_url === "string" &&
-        data.checkout_url
-      ) {
-        return { kind: "reused", url: data.checkout_url };
-      }
-      if (data.status === "uncertain") return { kind: "uncertain" };
-      return { kind: "busy" };
+      throw new Error("checkout_attempt_claim_invalid_result");
     },
 
     async complete(input, checkoutId, url) {
-      const { error } = await client.from("billing_checkout_attempts").update({
-        status: "open",
-        provider_checkout_id: checkoutId,
-        checkout_url: url,
-        updated_at: new Date().toISOString(),
-      }).eq("user_id", input.userId).eq("attempt_id", input.attemptId).eq(
-        "status",
-        "creating",
+      const { data, error } = await client.rpc(
+        "complete_billing_checkout_attempt",
+        {
+          p_user_id: input.userId,
+          p_attempt_id: input.attemptId,
+          p_provider_checkout_id: checkoutId,
+          p_checkout_url: url,
+        },
       );
-      if (error) throw new Error("checkout_attempt_complete_failed");
+      if (error || data !== true) {
+        throw new Error("checkout_attempt_complete_failed");
+      }
     },
 
     async markUncertain(input) {
-      const { error } = await client.from("billing_checkout_attempts").update({
-        status: "uncertain",
-        updated_at: new Date().toISOString(),
-      }).eq("user_id", input.userId).eq("attempt_id", input.attemptId).eq(
-        "status",
-        "creating",
+      const { data, error } = await client.rpc(
+        "mark_billing_checkout_attempt_uncertain",
+        { p_user_id: input.userId, p_attempt_id: input.attemptId },
       );
-      if (error) throw new Error("checkout_attempt_uncertain_failed");
+      if (error || data !== true) {
+        throw new Error("checkout_attempt_uncertain_failed");
+      }
     },
   };
 }

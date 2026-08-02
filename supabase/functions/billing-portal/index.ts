@@ -1,5 +1,6 @@
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import { handleCorsPreflight } from "../_shared/cors.ts";
+import type { BillingEnvironment } from "../_shared/mapping.ts";
 import {
   type CreateCustomerSessionResult,
   createPolarCustomerSession,
@@ -17,9 +18,11 @@ export type PortalDeps = {
   requireAuth?: (req: Request) => Promise<AuthResult>;
   lookupBillingCustomer?: (
     userId: string,
+    environment: BillingEnvironment,
   ) => Promise<BillingCustomerLookup | null>;
   createCustomerSession?: (
     params: Parameters<typeof createPolarCustomerSession>[0],
+    options?: { signal?: AbortSignal },
   ) => Promise<CreateCustomerSessionResult>;
   getPortalReturnUrl?: () => string | null | undefined;
   getPortalReturnAllowlist?: () => string | null | undefined;
@@ -112,10 +115,12 @@ export function resolvePortalReturnUrl(
 
 async function defaultLookupBillingCustomer(
   userId: string,
+  environment: BillingEnvironment,
 ): Promise<BillingCustomerLookup | null> {
   const { data, error } = await getSupabaseAdmin().from("billing_customers")
     .select("provider_customer_id").eq("user_id", userId)
-    .eq("provider", POLAR_BILLING_PROVIDER).maybeSingle();
+    .eq("provider", POLAR_BILLING_PROVIDER)
+    .eq("environment", environment).maybeSingle();
   if (error) {
     console.error("billing-portal billing customer lookup failed", {
       code: error.code,
@@ -206,6 +211,7 @@ export async function handlePortalRequest(
     customer =
       await (deps.lookupBillingCustomer ?? defaultLookupBillingCustomer)(
         auth.userId,
+        environment,
       );
   } catch {
     return errorResponse(
@@ -224,11 +230,14 @@ export async function handlePortalRequest(
 
   try {
     const session =
-      await (deps.createCustomerSession ?? createPolarCustomerSession)({
-        customerId: customer.providerCustomerId,
-        returnUrl: returnUrl.url,
-        environment,
-      });
+      await (deps.createCustomerSession ?? createPolarCustomerSession)(
+        {
+          customerId: customer.providerCustomerId,
+          returnUrl: returnUrl.url,
+          environment,
+        },
+        { signal: req.signal },
+      );
     return jsonResponse({ url: session.url }, 200);
   } catch (error) {
     if (error instanceof PolarClientError) {

@@ -1,4 +1,7 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertStrictEquals,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { AuthResult } from "../_shared/auth.ts";
 import type { CheckoutAttemptStore } from "../_shared/checkout-attempts.ts";
 import { loadPolarProductMap } from "../_shared/mapping.ts";
@@ -6,6 +9,7 @@ import {
   SANDBOX_ENVIRONMENT,
   VALID_POLAR_PRODUCT_MAP_JSON,
 } from "../_shared/test-fixtures.ts";
+import { PolarClientError } from "../_shared/polar.ts";
 import { handleCheckoutRequest } from "./index.ts";
 
 const USER_ID = "00000000-0000-4000-8000-000000000010";
@@ -71,7 +75,7 @@ function deps(
   };
 }
 
-function post(body: Record<string, unknown>) {
+function post(body: Record<string, unknown>, signal?: AbortSignal) {
   return new Request("http://localhost/billing-checkout", {
     method: "POST",
     headers: {
@@ -79,6 +83,7 @@ function post(body: Record<string, unknown>) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal,
   });
 }
 
@@ -187,4 +192,48 @@ Deno.test("checkout rejects a non-UUID account before side effects", async () =>
     },
   );
   assertEquals(response.status, 401);
+});
+
+Deno.test("checkout propagates request cancellation to Polar", async () => {
+  const controller = new AbortController();
+  let started!: () => void;
+  const called = new Promise<void>((resolve) => started = resolve);
+  let receivedSignal: AbortSignal | undefined;
+  const request = post(
+    { productKey: "pro_monthly", attemptId: ATTEMPT_ID },
+    controller.signal,
+  );
+  const responsePromise = handleCheckoutRequest(
+    request,
+    {
+      ...deps(),
+      createCheckout: (_params, options) => {
+        receivedSignal = options?.signal;
+        started();
+        return new Promise((_resolve, reject) => {
+          const rejectCancelled = () =>
+            reject(
+              new PolarClientError(
+                "request_cancelled",
+                "Request was cancelled",
+                503,
+              ),
+            );
+          if (options?.signal?.aborted) rejectCancelled();
+          else {
+            options?.signal?.addEventListener("abort", rejectCancelled, {
+              once: true,
+            });
+          }
+        });
+      },
+    },
+  );
+
+  await called;
+  controller.abort();
+  const response = await responsePromise;
+  assertStrictEquals(receivedSignal, request.signal);
+  assertEquals(response.status, 503);
+  assertEquals((await response.json()).error, "request_cancelled");
 });

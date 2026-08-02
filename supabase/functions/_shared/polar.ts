@@ -139,30 +139,37 @@ function checkoutUrls(
   };
 }
 
-async function polarFetch(
+async function polarRequest<T>(
   url: string,
   init: RequestInit,
   deps: PolarClientDeps,
-): Promise<Response> {
-  const timeoutMs = Math.max(1000, Math.min(deps.timeoutMs ?? 8000, 30000));
+  consume: (response: Response) => Promise<T>,
+): Promise<T> {
+  const timeoutMs = Math.max(50, Math.min(deps.timeoutMs ?? 8000, 30000));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("timeout"), timeoutMs);
   const onAbort = () => controller.abort("cancelled");
   deps.signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    return await (deps.fetchFn ?? fetch)(url, {
+    if (deps.signal?.aborted) {
+      controller.abort("cancelled");
+      throw new DOMException("aborted", "AbortError");
+    }
+    const response = await (deps.fetchFn ?? fetch)(url, {
       ...init,
       signal: controller.signal,
     });
-  } catch {
+    return await consume(response);
+  } catch (error) {
     if (controller.signal.aborted) {
-      const cancelled = deps.signal?.aborted;
+      const cancelled = controller.signal.reason === "cancelled";
       throw new PolarClientError(
         cancelled ? "request_cancelled" : "polar_timeout",
         cancelled ? "Request was cancelled" : "Polar did not respond in time",
         503,
       );
     }
+    if (error instanceof PolarClientError) throw error;
     throw new PolarClientError(
       "polar_unavailable",
       "Polar could not be reached",
@@ -255,45 +262,51 @@ export async function createPolarCheckoutSession(
   }
   if (params.email) payload.customer_email = params.email;
 
-  const response = await polarFetch(`${baseUrl}/checkouts/`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
+  return await polarRequest(
+    `${baseUrl}/checkouts/`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  }, deps);
-  if (!response.ok) {
-    console.error("polar checkout failed", { status: response.status });
-    throw new PolarClientError(
-      "polar_checkout_failed",
-      "Polar checkout session could not be created",
-      502,
-      { polar_status: response.status },
-    );
-  }
-  let data: unknown;
-  try {
-    data = await response.json();
-  } catch {
-    throw new PolarClientError(
-      "polar_invalid_response",
-      "Polar checkout response was not valid JSON",
-      502,
-    );
-  }
-  if (!isRecord(data) || typeof data.url !== "string") {
-    throw new PolarClientError(
-      "polar_missing_checkout_url",
-      "Polar checkout response did not include a URL",
-      502,
-    );
-  }
-  return {
-    url: validateHostedUrl(data.url, runtimeEnvironment, "checkout"),
-    checkoutId: typeof data.id === "string" ? data.id : null,
-  };
+    deps,
+    async (response) => {
+      if (!response.ok) {
+        console.error("polar checkout failed", { status: response.status });
+        throw new PolarClientError(
+          "polar_checkout_failed",
+          "Polar checkout session could not be created",
+          502,
+          { polar_status: response.status },
+        );
+      }
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Polar checkout response was not valid JSON",
+          502,
+        );
+      }
+      if (!isRecord(data) || typeof data.url !== "string") {
+        throw new PolarClientError(
+          "polar_missing_checkout_url",
+          "Polar checkout response did not include a URL",
+          502,
+        );
+      }
+      return {
+        url: validateHostedUrl(data.url, runtimeEnvironment, "checkout"),
+        checkoutId: typeof data.id === "string" ? data.id : null,
+      };
+    },
+  );
 }
 
 export async function createPolarCustomerSession(
@@ -321,7 +334,7 @@ export async function createPolarCustomerSession(
   if (customerId) payload.customer_id = customerId;
   else payload.external_customer_id = externalCustomerId;
 
-  const response = await polarFetch(
+  return await polarRequest(
     `${apiBase(environment, deps)}/customer-sessions/`,
     {
       method: "POST",
@@ -333,38 +346,44 @@ export async function createPolarCustomerSession(
       body: JSON.stringify(payload),
     },
     deps,
+    async (response) => {
+      if (!response.ok) {
+        console.error("polar customer session failed", {
+          status: response.status,
+        });
+        throw new PolarClientError(
+          "polar_portal_failed",
+          "Polar customer portal session could not be created",
+          502,
+          { polar_status: response.status },
+        );
+      }
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Polar customer session response was not valid JSON",
+          502,
+        );
+      }
+      if (!isRecord(data) || typeof data.customer_portal_url !== "string") {
+        throw new PolarClientError(
+          "polar_missing_portal_url",
+          "Polar customer session response did not include a portal URL",
+          502,
+        );
+      }
+      return {
+        url: validateHostedUrl(data.customer_portal_url, environment, "portal"),
+        customerId: typeof data.customer_id === "string"
+          ? data.customer_id
+          : null,
+        expiresAt: typeof data.expires_at === "string" ? data.expires_at : null,
+      };
+    },
   );
-  if (!response.ok) {
-    console.error("polar customer session failed", { status: response.status });
-    throw new PolarClientError(
-      "polar_portal_failed",
-      "Polar customer portal session could not be created",
-      502,
-      { polar_status: response.status },
-    );
-  }
-  let data: unknown;
-  try {
-    data = await response.json();
-  } catch {
-    throw new PolarClientError(
-      "polar_invalid_response",
-      "Polar customer session response was not valid JSON",
-      502,
-    );
-  }
-  if (!isRecord(data) || typeof data.customer_portal_url !== "string") {
-    throw new PolarClientError(
-      "polar_missing_portal_url",
-      "Polar customer session response did not include a portal URL",
-      502,
-    );
-  }
-  return {
-    url: validateHostedUrl(data.customer_portal_url, environment, "portal"),
-    customerId: typeof data.customer_id === "string" ? data.customer_id : null,
-    expiresAt: typeof data.expires_at === "string" ? data.expires_at : null,
-  };
 }
 
 export async function createPolarPortalSession(

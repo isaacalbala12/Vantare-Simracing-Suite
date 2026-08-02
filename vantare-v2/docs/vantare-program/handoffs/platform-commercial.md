@@ -76,16 +76,24 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
   siete días y con `POLAR_TRIAL_ANTI_ABUSE_CONFIRMED=true` además del contrato.
 - Checkout usa `auth.uid()` UUID y `attemptId` UUID. La tabla server-only
   `billing_checkout_attempts` evita una segunda llamada remota para el mismo
-  intento; un resultado incierto se bloquea en vez de arriesgar duplicados.
+  intento; un resultado incierto se bloquea en vez de arriesgar duplicados. Los
+  intentos caducan en 30 minutos, una URL vencida no se reutiliza y la limpieza
+  posterior queda acotada.
 - Portal usa `PORTAL_RETURN_URL` y `PORTAL_RETURN_URL_ALLOWLIST` como lista JSON
   de URLs HTTPS exactas. El cliente normal envía un body vacío.
-- Sandbox y production no pueden cruzarse ni por mapping, API host o URL alojada.
+- Sandbox y production no pueden cruzarse ni por mapping, API host, URL alojada
+  o identidad en `billing_customers`. Filas legacy sin entorno quedan en
+  cuarentena hasta reconciliación explícita.
+- Timeout y cancelación cubren también la lectura/validación del body de Polar.
 - No hubo deploy, migración remota, datos de customers, pagos ni cambios en Polar.
 - Informe: `docs/analysis/isa-72-bil-03-checkout-mapping-portal-hardening-2026-08-02.md`.
 
 ## Riesgos que mantienen NO-GO
 
 - Inbox actual no garantiza efectos completos ante fallo parcial.
+- El inbox durable y los grants por fuente corresponden a **BIL-02 / ISA-68**.
+- `price_id_to_checkout_key` aún no gobierna el webhook ni los grants; por ahora
+  el lifecycle resuelve producto y conserva esa deuda explícita, sin falsa GO.
 - No hay reconciliación monotónica ni grants independientes completos.
 - Subscription, recovery y refund no cumplen aún el contrato vigente.
 - Cache offline y dispositivo necesitan integridad y vinculación correctas.
@@ -94,6 +102,7 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 
 ## Última actualización
 
-2026-08-02 — ISA-72 / BIL-03, worker de implementación aislada. Tests backend y
-frontend verdes; pgTAP pendiente de un entorno local con historial de migraciones
-coherente. Sin deploy, pago, refund, secretos, PII ni mutaciones remotas.
+2026-08-02 — ISA-72 / BIL-03, revisión corregida en implementación aislada.
+Backend/frontend verdes; migraciones y pgTAP ejecutados en PostgreSQL 17
+desechable con concurrencia real. Sin deploy, pago, refund, secretos, PII ni
+mutaciones remotas.

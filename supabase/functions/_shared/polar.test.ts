@@ -124,11 +124,68 @@ Deno.test("Polar client supports cancellation and a bounded timeout", async () =
             throw new Error("unreachable");
           }) as typeof fetch,
         ),
-        timeoutMs: 1000,
+        timeoutMs: 50,
       }),
     PolarClientError,
     "did not respond in time",
   );
+});
+
+Deno.test("Polar timeout remains active while the response body is read", async () => {
+  await assertRejects(
+    () =>
+      createPolarCheckoutSession(checkout, {
+        ...checkoutDeps(
+          (async (_url, init) => {
+            const signal = init?.signal;
+            const body = new ReadableStream<Uint8Array>({
+              start(controller) {
+                const timer = setTimeout(() => {
+                  controller.enqueue(
+                    new TextEncoder().encode(JSON.stringify({
+                      url: "https://sandbox.polar.sh/checkout/late",
+                    })),
+                  );
+                  controller.close();
+                }, 250);
+                signal?.addEventListener("abort", () => {
+                  clearTimeout(timer);
+                  controller.error(new DOMException("aborted", "AbortError"));
+                }, { once: true });
+              },
+            });
+            return new Response(body, {
+              status: 201,
+              headers: { "Content-Type": "application/json" },
+            });
+          }) as typeof fetch,
+        ),
+        timeoutMs: 50,
+      }),
+    PolarClientError,
+    "did not respond in time",
+  );
+});
+
+Deno.test("Polar never starts a request after caller cancellation", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  let calls = 0;
+  await assertRejects(
+    () =>
+      createPolarCheckoutSession(checkout, {
+        ...checkoutDeps(
+          (async () => {
+            calls++;
+            return new Response("{}");
+          }) as typeof fetch,
+        ),
+        signal: controller.signal,
+      }),
+    PolarClientError,
+    "Request was cancelled",
+  );
+  assertEquals(calls, 0);
 });
 
 Deno.test("public Polar errors never expose provider bodies or account metadata", async () => {

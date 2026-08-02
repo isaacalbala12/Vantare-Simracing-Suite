@@ -1,5 +1,9 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertStrictEquals,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { AuthResult } from "../_shared/auth.ts";
+import { PolarClientError } from "../_shared/polar.ts";
 import { handlePortalRequest, resolvePortalReturnUrl } from "./index.ts";
 
 const USER_ID = "00000000-0000-4000-8000-000000000010";
@@ -23,7 +27,7 @@ const deps = {
   getEnvironment: () => "sandbox",
 };
 
-function post(body?: Record<string, unknown>) {
+function post(body?: Record<string, unknown>, signal?: AbortSignal) {
   return new Request("http://localhost/billing-portal", {
     method: "POST",
     headers: {
@@ -31,6 +35,7 @@ function post(body?: Record<string, unknown>) {
       "Content-Type": "application/json",
     },
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal,
   });
 }
 
@@ -103,15 +108,89 @@ Deno.test("portal rejects customer spoofing and oversized bodies", async () => {
 
 Deno.test("portal sends the authenticated account to the lookup", async () => {
   let lookedUp = "";
+  let lookedUpEnvironment = "";
   const response = await handlePortalRequest(post(), {
     ...deps,
-    lookupBillingCustomer: async (userId) => {
+    lookupBillingCustomer: async (userId, environment) => {
       lookedUp = userId;
+      lookedUpEnvironment = environment;
       return { providerCustomerId: "polar-customer" };
     },
   });
   assertEquals(response.status, 200);
   assertEquals(lookedUp, USER_ID);
+  assertEquals(lookedUpEnvironment, "sandbox");
+});
+
+Deno.test("portal keeps sandbox and production customer identities separate", async () => {
+  for (const environment of ["sandbox", "production"] as const) {
+    let lookupEnvironment = "";
+    let sessionEnvironment = "";
+    const response = await handlePortalRequest(post(), {
+      ...deps,
+      getEnvironment: () => environment,
+      lookupBillingCustomer: async (_userId, selectedEnvironment) => {
+        lookupEnvironment = selectedEnvironment;
+        return {
+          providerCustomerId: `${selectedEnvironment}-polar-customer`,
+        };
+      },
+      createCustomerSession: async (params) => {
+        sessionEnvironment = params.environment ?? "";
+        return {
+          url: environment === "sandbox"
+            ? "https://sandbox.polar.sh/portal/test"
+            : "https://polar.sh/portal/test",
+          customerId: null,
+          expiresAt: null,
+        };
+      },
+    });
+    assertEquals(response.status, 200);
+    assertEquals(lookupEnvironment, environment);
+    assertEquals(sessionEnvironment, environment);
+  }
+});
+
+Deno.test("portal propagates request cancellation to Polar", async () => {
+  const controller = new AbortController();
+  let started!: () => void;
+  const called = new Promise<void>((resolve) => started = resolve);
+  let receivedSignal: AbortSignal | undefined;
+  const request = post(undefined, controller.signal);
+  const responsePromise = handlePortalRequest(
+    request,
+    {
+      ...deps,
+      createCustomerSession: (_params, options) => {
+        receivedSignal = options?.signal;
+        started();
+        return new Promise((_resolve, reject) => {
+          const rejectCancelled = () =>
+            reject(
+              new PolarClientError(
+                "request_cancelled",
+                "Request was cancelled",
+                503,
+              ),
+            );
+          if (options?.signal?.aborted) rejectCancelled();
+          else {
+            options?.signal?.addEventListener("abort", rejectCancelled, {
+              once: true,
+            });
+          }
+        });
+      },
+    },
+  );
+
+  await called;
+  controller.abort();
+  const response = await responsePromise;
+  assertStrictEquals(receivedSignal, request.signal);
+  assertEquals(response.status, 503);
+  assertEquals((await response.json()).error, "request_cancelled");
 });
 
 Deno.test("portal rejects a non-UUID account", async () => {

@@ -23,6 +23,7 @@ export type CheckoutDeps = {
   loadMap?: typeof loadPolarProductMap;
   createCheckout?: (
     params: Parameters<typeof createPolarCheckoutSession>[0],
+    options?: { signal?: AbortSignal },
   ) => Promise<CreateCheckoutResult>;
   attempts?: CheckoutAttemptStore;
 };
@@ -155,6 +156,13 @@ export async function handleCheckoutRequest(
       409,
     );
   }
+  if (claim.kind === "expired") {
+    return errorResponse(
+      "checkout_attempt_expired",
+      "Checkout attempt expired; start a new attempt",
+      409,
+    );
+  }
   if (claim.kind === "busy") {
     return errorResponse(
       "checkout_in_progress",
@@ -164,19 +172,22 @@ export async function handleCheckoutRequest(
   }
 
   try {
-    const session = await (deps.createCheckout ?? createPolarCheckoutSession)({
-      productId: resolved.config.polar_product_id,
-      userId: auth.userId,
-      email: auth.email,
-      productKey: resolved.key,
-      planSku: resolved.config.plan_sku,
-      environment: mapping.map.environment,
-      catalogVersion: mapping.map.catalog_version,
-      capabilities: resolved.config.capabilities,
-      channels: resolved.config.channels,
-      launchScopeVersion: resolved.config.launch_scope_version,
-      trial: resolved.config.trial,
-    });
+    const session = await (deps.createCheckout ?? createPolarCheckoutSession)(
+      {
+        productId: resolved.config.polar_product_id,
+        userId: auth.userId,
+        email: auth.email,
+        productKey: resolved.key,
+        planSku: resolved.config.plan_sku,
+        environment: mapping.map.environment,
+        catalogVersion: mapping.map.catalog_version,
+        capabilities: resolved.config.capabilities,
+        channels: resolved.config.channels,
+        launchScopeVersion: resolved.config.launch_scope_version,
+        trial: resolved.config.trial,
+      },
+      { signal: req.signal },
+    );
     try {
       await attempts.complete(attempt, session.checkoutId, session.url);
     } catch {

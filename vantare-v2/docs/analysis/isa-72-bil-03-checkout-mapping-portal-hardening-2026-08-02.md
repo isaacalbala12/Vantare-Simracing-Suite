@@ -39,6 +39,8 @@ del portal.
   Carreras concurrentes producen como máximo una llamada remota.
 - Un intento completado reutiliza la URL; un estado incierto se bloquea para no
   crear otra sesión posiblemente duplicada.
+- Cada intento caduca a los 30 minutos. Una URL caducada nunca se devuelve y las
+  filas vencidas se eliminan de forma acotada después de 24 horas adicionales.
 - Metadata de checkout conserva catálogo, capabilities, canales y alcance.
 - `allow_trial=false` se envía expresamente cuando el trial no está aprobado.
 
@@ -46,7 +48,8 @@ del portal.
 
 - Hosts API canónicos y separados por entorno.
 - URLs de checkout/portal devueltas por Polar deben pertenecer al entorno.
-- Timeout acotado a 8 s por defecto, cancelación y errores de red sanitizados.
+- Timeout acotado a 8 s por defecto durante fetch, lectura y validación del body;
+  la cancelación del request se propaga hasta Polar y los errores se sanitizan.
 - Las respuestas al cliente nunca incluyen body de Polar, metadata, UUID, email
   ni token. En debug solo puede exponerse el status HTTP del proveedor.
 
@@ -57,17 +60,28 @@ del portal.
 - No se admiten credenciales, fragmentos, subdominios parecidos ni query strings
   no configurados exactamente.
 - El frontend normal ya no selecciona la return URL.
+- La búsqueda utiliza exactamente el entorno del catálogo. Una identidad sandbox,
+  production o legacy sin entorno nunca puede resolverse como otra.
 
 ## Persistencia y seguridad
 
 La migración `20260802000000_billing_checkout_attempts.sql` crea una tabla
 server-only con RLS habilitado y privilegios revocados a `anon` y
 `authenticated`. No almacena email. La URL de checkout se conserva únicamente
-para reutilizar el intento sin repetir la llamada comercial.
+para reutilizar el intento sin repetir la llamada comercial y queda invalidada
+por expiración.
+
+La migración aditiva `20260802010000_billing_customer_environment.sql` separa la
+identidad Polar por `sandbox`/`production`. Las filas históricas conservan
+`environment = NULL`: no se borran ni se adivina su procedencia, pero quedan en
+cuarentena y los flujos productivos fallan cerrado hasta reconciliarlas.
 
 ## Pruebas ejecutadas
 
-- Deno focal y compatibilidad Billing/Webhook: 55 tests PASS.
+- Deno Billing/Webhook compatible: 65 tests PASS; el subconjunto focal nuevo suma
+  40 PASS e incluye body lento, cancelación, adapter RPC y separación de entornos.
+- PostgreSQL 17 desechable: pgTAP PASS para migraciones, expiración y
+  transiciones exactas; concurrencia real PASS (`busy + claimed`).
 - Frontend focal billing: 9 tests PASS.
 - Frontend completo: 177 archivos, 1613 tests PASS.
 - Frontend build: PASS.
@@ -77,9 +91,10 @@ para reutilizar el intento sin repetir la llamada comercial.
 
 Checks parciales o no completados:
 
-- `supabase test db`: el Docker local tiene una versión de migración ajena
-  (`20260802090000`) que no existe en esta base, por lo que no se reparó ni
-  reseteó destructivamente. El test pgTAP queda versionado para un entorno limpio.
+- `supabase test db` no se ejecutó contra la base local compartida porque su
+  historial contiene una migración ajena (`20260802090000`). En su lugar se
+  ejecutaron las migraciones y pgTAP en PostgreSQL 17 desechable, sin reset ni
+  reparación destructiva de la base local.
 - `go test ./...`: no produjo fallo funcional, pero superó el timeout de 120 s.
 - ESLint global: cuatro errores preexistentes fuera de billing en Calendar y
   `wails-runtime-topbar-mock.ts`; lint focal del cambio pasa.
@@ -87,9 +102,13 @@ Checks parciales o no completados:
 ## Riesgos y siguientes gates
 
 - Pro Plus y trial continúan indisponibles hasta reconciliación real en Polar.
-- La migración debe validarse en una base local limpia antes de cualquier deploy.
-- BIL-04 debe convertir webhooks en inbox durable y grants por fuente; este corte
-  mantiene compatibilidad con el runtime de entitlements existente.
+- Las migraciones están verificadas en PostgreSQL limpio desechable, pero ningún
+  deploy remoto está autorizado por este corte.
+- **BIL-02 / ISA-68**, no BIL-04, debe convertir webhooks en inbox durable y
+  grants por fuente; este corte mantiene compatibilidad con el runtime actual.
+- El mapping inverso `price_id_to_checkout_key` se valida y versiona, pero todavía
+  no gobierna el procesamiento de webhooks ni la concesión/revocación de grants.
+  Ese cierre pertenece al lifecycle durable de BIL-02 / ISA-68; venta sigue NO-GO.
 - Hace falta prueba sandbox autorizada posterior, pero esta rama no crea customer,
   checkout real, order, pago, refund ni webhook replay.
 - `VITE_BILLING_ENABLED` continúa siendo un gate separado; no se habilitó venta.

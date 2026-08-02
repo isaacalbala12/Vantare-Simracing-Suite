@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  type BillingEnvironment,
+  type CheckoutKeyConfig,
   loadPolarProductMap,
+  type RequiredCheckoutKey,
   resolveCheckoutKeyByProductId,
   V1_ENTITLEMENT_PRODUCT_KEY,
-  type CheckoutKeyConfig,
-  type PolarProductMap,
-  type RequiredCheckoutKey,
 } from "../_shared/mapping.ts";
 
 export const POLAR_PROVIDER = "polar";
@@ -30,7 +30,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function parsePolarWebhookEvent(rawBody: string): PolarWebhookEvent | null {
+export function parsePolarWebhookEvent(
+  rawBody: string,
+): PolarWebhookEvent | null {
   try {
     const parsed: unknown = JSON.parse(rawBody);
     if (!isRecord(parsed) || typeof parsed.type !== "string") {
@@ -152,6 +154,7 @@ export function buildEntitlementMetadata(
 export async function resolveUserId(
   supabase: SupabaseClient,
   data: Record<string, unknown>,
+  environment: BillingEnvironment,
 ): Promise<string | null> {
   const externalId = extractExternalCustomerId(data);
   if (externalId) return externalId;
@@ -163,6 +166,7 @@ export async function resolveUserId(
     .from("billing_customers")
     .select("user_id")
     .eq("provider", POLAR_PROVIDER)
+    .eq("environment", environment)
     .eq("provider_customer_id", polarCustomerId)
     .maybeSingle();
 
@@ -213,6 +217,7 @@ export async function upsertBillingCustomer(
   supabase: SupabaseClient,
   userId: string,
   providerCustomerId: string,
+  environment: BillingEnvironment,
   email: string | null,
   metadata: Record<string, unknown>,
   nowIso: string,
@@ -222,15 +227,18 @@ export async function upsertBillingCustomer(
       user_id: userId,
       provider: POLAR_PROVIDER,
       provider_customer_id: providerCustomerId,
+      environment,
       email,
       metadata,
       updated_at: nowIso,
     },
-    { onConflict: "user_id,provider" },
+    { onConflict: "user_id,provider,environment" },
   );
   if (error) {
     throw new Error(
-      `billing_customers upsert failed: ${error.code ?? "unknown"} ${error.message}`,
+      `billing_customers upsert failed: ${
+        error.code ?? "unknown"
+      } ${error.message}`,
     );
   }
 }
@@ -326,6 +334,7 @@ export function deriveSubscriptionEntitlementStatus(
 async function touchCustomerIfPresent(
   deps: WebhookProcessorDeps,
   userId: string,
+  environment: BillingEnvironment,
   data: Record<string, unknown>,
   nowIso: string,
 ): Promise<void> {
@@ -336,6 +345,7 @@ async function touchCustomerIfPresent(
     deps.supabase,
     userId,
     providerCustomerId,
+    environment,
     extractCustomerEmail(data),
     {},
     nowIso,
@@ -347,10 +357,11 @@ async function grantLifetimeBundle(
   userId: string,
   checkoutKey: RequiredCheckoutKey,
   config: CheckoutKeyConfig,
+  environment: BillingEnvironment,
   data: Record<string, unknown>,
   nowIso: string,
 ): Promise<ProcessResult> {
-  await touchCustomerIfPresent(deps, userId, data, nowIso);
+  await touchCustomerIfPresent(deps, userId, environment, data, nowIso);
   await upsertBundleEntitlement(
     deps.supabase,
     userId,
@@ -369,6 +380,7 @@ async function grantMonthlyBundle(
   userId: string,
   checkoutKey: RequiredCheckoutKey,
   config: CheckoutKeyConfig,
+  environment: BillingEnvironment,
   data: Record<string, unknown>,
   subscriptionStatus: string,
   now: Date,
@@ -395,7 +407,7 @@ async function grantMonthlyBundle(
     );
   }
 
-  await touchCustomerIfPresent(deps, userId, data, nowIso);
+  await touchCustomerIfPresent(deps, userId, environment, data, nowIso);
 
   const derived = deriveSubscriptionEntitlementStatus(
     subscriptionStatus,
@@ -431,6 +443,7 @@ async function revokeMonthlyIfNoLifetime(
   userId: string,
   checkoutKey: RequiredCheckoutKey,
   config: CheckoutKeyConfig,
+  environment: BillingEnvironment,
   data: Record<string, unknown>,
   targetStatus: string,
   now: Date,
@@ -457,7 +470,7 @@ async function revokeMonthlyIfNoLifetime(
     );
   }
 
-  await touchCustomerIfPresent(deps, userId, data, nowIso);
+  await touchCustomerIfPresent(deps, userId, environment, data, nowIso);
 
   if (await hasActiveLifetimeBundle(deps.supabase, userId)) {
     return {
@@ -536,13 +549,15 @@ export async function processPolarWebhookEvent(
 
   const now = deps.now?.() ?? new Date();
   const nowIso = now.toISOString();
-  const userId = await resolveUserId(deps.supabase, event.data);
+  const environment = mapping.map.environment;
+  const userId = await resolveUserId(deps.supabase, event.data, environment);
 
   const basePayload = {
     provider: POLAR_PROVIDER,
     provider_event_id: webhookId,
     raw_type: event.type,
     user_id: userId,
+    environment,
   };
 
   const claim = await claimWebhookEvent(
@@ -578,6 +593,7 @@ export async function processPolarWebhookEvent(
           userId,
           resolved.key,
           resolved.config,
+          environment,
           event.data,
           nowIso,
         );
@@ -596,6 +612,7 @@ export async function processPolarWebhookEvent(
         userId,
         resolved.key,
         resolved.config,
+        environment,
         event.data,
         status,
         now,
@@ -616,6 +633,7 @@ export async function processPolarWebhookEvent(
         userId,
         resolved.key,
         resolved.config,
+        environment,
         event.data,
         status,
         now,
@@ -632,6 +650,7 @@ export async function processPolarWebhookEvent(
         userId,
         resolved.key,
         resolved.config,
+        environment,
         event.data,
         "revoked",
         now,

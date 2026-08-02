@@ -17,6 +17,10 @@ Nota ISA-204 / TA-N01 (2026-08-02):
   verificó el grafo y las 37 licencias, actualizó la confianza explícitamente y
   confirmó con una tercera construcción limpia y smoke Windows x64 que el
   bundle vuelve a ser reproducible y cargable.
+- El primer CI del PR detectó que la regresión DACL comparaba texto SDDL y no
+  identidad de SID: Windows representa cuentas well-known como `LA` en vez del
+  SID numérico. El test enumera ahora las ACE y compara el SID binario exacto;
+  conserva el rechazo de grupos amplios y la exigencia de DACL protegida.
 - Estado: preparado para repetir gates combinados y, si permanecen verdes,
   validar el lector local con el grupo Nightly/Pro Plus. `testers` y `master`
   permanecen fuera del alcance.

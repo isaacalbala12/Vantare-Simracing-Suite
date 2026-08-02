@@ -5,6 +5,7 @@ package telemetryanalysis
 import (
 	"strings"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -36,7 +37,29 @@ func TestSecurePrivateDirectoryUsesProtectedCurrentUserDACL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(sddl, user.User.Sid.String()) {
+	dacl, defaulted, err := descriptor.DACL()
+	if err != nil {
+		t.Fatalf("DACL() error = %v", err)
+	}
+	if dacl == nil {
+		t.Fatal("security descriptor has no DACL")
+	}
+	if defaulted {
+		t.Fatal("security descriptor uses a defaulted DACL")
+	}
+	foundCurrentUser := false
+	for i := uint16(0); i < dacl.AceCount; i++ {
+		var ace *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(dacl, uint32(i), &ace); err != nil {
+			t.Fatalf("GetAce(%d) error = %v", i, err)
+		}
+		aceSID := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+		if aceSID.Equals(user.User.Sid) {
+			foundCurrentUser = true
+			break
+		}
+	}
+	if !foundCurrentUser {
 		t.Fatalf("current user missing from DACL: %s", sddl)
 	}
 }

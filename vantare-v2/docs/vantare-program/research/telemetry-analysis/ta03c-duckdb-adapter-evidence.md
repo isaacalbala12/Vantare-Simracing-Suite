@@ -129,6 +129,11 @@ Resultados de cierre:
   en `internal/app/TestConcurrentSavesDontCorruptFile`; el mismo flake se
   reprodujo en la base exacta ISA-135 (1/5) bajo la carga del host. No se tocó
   Ajustes desde este corte y la repetición global posterior cerró verde;
+- el primer CI de TA-N01 reveló una aserción textual no portable en la prueba
+  DACL: el runner canonizó el SID well-known del usuario como `LA`. La
+  regresión enumera ahora las ACE y compara el SID binario con `SID.Equals`,
+  sin relajar la DACL protegida ni permitir `Everyone`, `Users` o
+  `Authenticated Users`; focal x20 local PASS;
 - `git diff --check`: PASS;
 - review independiente de staging/TOCTOU, DACL, manifest, locks, Job Object,
   lifecycle, protocolo, SQL allowlisted, tipos y packaging: `APPROVE`, cero

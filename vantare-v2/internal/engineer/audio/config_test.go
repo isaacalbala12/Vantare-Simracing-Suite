@@ -67,6 +67,17 @@ func TestAudioConfig_Validate_ValidPasses(t *testing.T) {
 	}
 }
 
+func TestAudioConfig_Validate_AllPresentationLocales(t *testing.T) {
+	for _, locale := range []string{"es", "en", "it", "pt-BR"} {
+		c := DefaultAudioConfig()
+		c.SetSpotter(locale, "voice")
+		c.SetEngineer(locale, "voice")
+		if err := c.Validate(); err != nil {
+			t.Fatalf("locale %q rejected: %v", locale, err)
+		}
+	}
+}
+
 func TestAudioConfig_NilReceiver(t *testing.T) {
 	var c *AudioConfig
 	if got := c.Lang(ChannelSpotter); got != "" {

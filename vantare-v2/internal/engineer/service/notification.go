@@ -1,11 +1,16 @@
 package service
 
 type EngineerNotification struct {
+	Version   uint16 `json:"version"`
 	ID        string `json:"id"`
 	Category  string `json:"category"`
 	Severity  string `json:"severity"`
 	TextKey   string `json:"textKey"`
 	Text      string `json:"text"`
+	VoiceText string `json:"voiceText,omitempty"`
+	Locale    string `json:"locale,omitempty"`
+	Role      string `json:"role,omitempty"`
+	Channel   string `json:"channel,omitempty"`
 	Priority  int    `json:"priority"`
 	CreatedAt int64  `json:"createdAt"`
 	ExpiresAt int64  `json:"expiresAt,omitempty"`
@@ -239,8 +244,9 @@ var Translations = map[string]string{
 	"conditions.track_freezing":  "Pista helada, cuidado",
 }
 
-// Translate translates a text key to Spanish. If the key is not found, it returns the key itself.
-func Translate(key string) string {
+// translateLegacyHarness preserves old fixtures without making their
+// fail-open map an authority for product delivery.
+func translateLegacyHarness(key string) string {
 	if val, ok := Translations[key]; ok {
 		return val
 	}

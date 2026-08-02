@@ -9,6 +9,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
+	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 )
 
 var ErrDeliveryTransportRunning = errors.New("engineer delivery transport cannot change while the service is running")
@@ -158,7 +159,10 @@ func (s *EngineerService) dispatchNext(parent context.Context) bool {
 
 	port := s.deliveryPort
 	if port == nil {
-		port = productDeliveryPort{service: s, player: s.audioPlayer, resolver: s.audioResolver, router: s.audioRouter}
+		port = productDeliveryPort{
+			service: s, player: s.audioPlayer, resolver: s.audioResolver, router: s.audioRouter,
+			presentationResolver: s.presentationResolver, locale: s.presentationLocale,
+		}
 	}
 
 	s.activeDelivery = &activeDelivery{id: deliveryID, decision: decision, cancel: cancel}
@@ -208,10 +212,12 @@ func (s *EngineerService) runDelivery(ctx context.Context, request delivery.Requ
 }
 
 type productDeliveryPort struct {
-	service  *EngineerService
-	player   AudioPlayer
-	resolver AudioResolver
-	router   *audio.AudioRouter
+	service              *EngineerService
+	player               AudioPlayer
+	resolver             AudioResolver
+	router               *audio.AudioRouter
+	presentationResolver *presentation.Resolver
+	locale               presentation.Locale
 }
 
 const audioCacheResolveTimeout = 100 * time.Millisecond
@@ -226,18 +232,23 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 		}
 		return reporter.Acknowledge(delivery.StateCancelled, reason)
 	}
+	presented, err := port.presentationResolver.Resolve(request.Decision, port.locale)
+	if err != nil {
+		return err
+	}
 	path := ""
 	if port.player != nil {
-		channel := audio.ChannelEngineer
-		if request.Decision.Priority == messagepolicy.PrioritySpotter {
-			channel = audio.ChannelSpotter
-		}
+		channel := audio.Channel(presented.Channel)
 		resolveCtx, cancelResolve := context.WithTimeout(ctx, audioCacheResolveTimeout)
 		var resolveErr error
+		audioRequest := audio.PresentationRequest{
+			Locale: presented.Locale, VoiceText: presented.VoiceText,
+			Channel: channel, LegacyIntent: presented.Intent,
+		}
 		if port.router != nil {
-			path, resolveErr = port.router.ResolveCached(resolveCtx, request.Decision.Intent, channel)
+			path, resolveErr = port.router.ResolvePresentationCached(resolveCtx, audioRequest)
 		} else if port.resolver != nil {
-			path, resolveErr = port.resolver.ResolveCached(resolveCtx, request.Decision.Intent, channel)
+			path, resolveErr = port.resolver.ResolvePresentationCached(resolveCtx, audioRequest)
 		}
 		cancelResolve()
 		if cause := context.Cause(ctx); cause != nil {
@@ -255,7 +266,7 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 	if err := reporter.Acknowledge(delivery.StateStarted, delivery.ReasonNone); err != nil {
 		return err
 	}
-	port.service.publishDecision(request.Decision)
+	port.service.publishDecision(request.Decision, presented)
 	if port.player == nil {
 		return reporter.Acknowledge(delivery.StateCompleted, delivery.ReasonNone)
 	}
@@ -289,18 +300,20 @@ func acknowledgeCancellation(reporter delivery.Reporter, cause error) error {
 	return reporter.Acknowledge(delivery.StateCancelled, reason)
 }
 
-func (s *EngineerService) publishDecision(decision messagepolicy.Decision) {
+func (s *EngineerService) publishDecision(decision messagepolicy.Decision, presented presentation.Presentation) {
 	s.publishNotification(EngineerNotification{
-		ID: decision.CandidateID, Category: string(decision.Family), Severity: severityFor(decision.Priority),
-		TextKey: decision.Intent, Text: Translate(decision.Intent), Priority: int(decision.Priority),
-		CreatedAt: decision.CreatedAtMS, ExpiresAt: decision.ExpiresAtMS, Source: "telemetry-core",
+		Version: presented.Version, ID: decision.CandidateID, Category: string(presented.Family),
+		Severity: string(presented.Severity), TextKey: presented.Intent, Text: presented.VisualText,
+		VoiceText: presented.VoiceText, Locale: string(presented.Locale), Role: string(presented.Role),
+		Channel: string(presented.Channel), Priority: int(presented.Priority), CreatedAt: presented.CreatedAtMS,
+		ExpiresAt: presented.ExpiresAtMS, Source: "telemetry-core",
 	})
 }
 
 func (s *EngineerService) publishLegacyHarness(message audio.Message) {
 	notification := EngineerNotification{
 		ID: message.ID, Category: string(message.Category), Severity: string(message.Severity),
-		TextKey: message.TextKey, Text: Translate(message.TextKey), Priority: int(message.Priority),
+		TextKey: message.TextKey, Text: translateLegacyHarness(message.TextKey), Priority: int(message.Priority),
 		CreatedAt: message.CreatedAt, ExpiresAt: message.ExpiresAt, Source: "harness",
 	}
 	s.publishNotification(notification)
@@ -312,17 +325,21 @@ func (s *EngineerService) publishLegacyHarness(message audio.Message) {
 		return
 	}
 	path := ""
-	if router != nil {
-		channel := message.Channel
-		if channel == "" {
-			channel = audio.ChannelEngineer
-			if message.Priority == audio.PrioritySpotter {
-				channel = audio.ChannelSpotter
-			}
+	legacyChannel := message.Channel
+	if legacyChannel == "" {
+		legacyChannel = audio.ChannelEngineer
+		if message.Priority == audio.PrioritySpotter {
+			legacyChannel = audio.ChannelSpotter
 		}
-		path = router.Resolve(message.TextKey, channel)
+	}
+	legacyRequest := audio.PresentationRequest{
+		Locale: presentation.LocaleSpanish, VoiceText: translateLegacyHarness(message.TextKey),
+		Channel: legacyChannel, LegacyIntent: message.TextKey,
+	}
+	if router != nil {
+		path, _ = router.ResolvePresentationCached(context.Background(), legacyRequest)
 	} else if resolver != nil {
-		path, _ = resolver.ResolveCached(context.Background(), message.TextKey, message.Channel)
+		path, _ = resolver.ResolvePresentationCached(context.Background(), legacyRequest)
 	}
 	if path != "" {
 		_ = player.PlayContext(context.Background(), path)
@@ -343,16 +360,5 @@ func (s *EngineerService) publishNotification(notification EngineerNotification)
 	if s.emitter != nil {
 		s.emitter.Emit("engineer:notification", notification)
 		s.emitStatus()
-	}
-}
-
-func severityFor(priority messagepolicy.Priority) string {
-	switch {
-	case priority == messagepolicy.PrioritySpotter:
-		return string(audio.SeverityCritical)
-	case priority >= messagepolicy.PriorityPenalty:
-		return string(audio.SeverityWarning)
-	default:
-		return string(audio.SeverityInfo)
 	}
 }

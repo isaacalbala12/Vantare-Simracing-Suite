@@ -136,8 +136,8 @@ func (player *blockingAudioPlayer) PlayContext(ctx context.Context, path string)
 
 type deliveryResolver map[string]string
 
-func (resolver deliveryResolver) ResolveCached(_ context.Context, textKey string, _ audio.Channel) (string, error) {
-	return resolver[textKey], nil
+func (resolver deliveryResolver) ResolvePresentationCached(_ context.Context, request audio.PresentationRequest) (string, error) {
+	return resolver[request.VoiceText], nil
 }
 
 type firstCallBlockingResolver struct {
@@ -163,7 +163,7 @@ func (player *benchmarkAudioPlayer) PlayContext(ctx context.Context, path string
 	return context.Cause(ctx)
 }
 
-func (resolver *firstCallBlockingResolver) ResolveCached(ctx context.Context, _ string, _ audio.Channel) (string, error) {
+func (resolver *firstCallBlockingResolver) ResolvePresentationCached(ctx context.Context, _ audio.PresentationRequest) (string, error) {
 	if resolver.calls.Add(1) != 1 {
 		return resolver.fallback, nil
 	}
@@ -225,8 +225,8 @@ func TestEngineerDeliverySpotterCancelsExistingAudioPlayback(t *testing.T) {
 	service := NewEngineerService(nil)
 	service.SetAudioPlayer(player)
 	service.SetAudioResolver(deliveryResolver{
-		messagepolicy.IntentFuelHalfTank:   "fuel.mp3",
-		messagepolicy.IntentSpotterCarLeft: "spotter.mp3",
+		"Queda medio depósito": "fuel.mp3",
+		"Coche a la izquierda": "spotter.mp3",
 	})
 	service.Start(context.Background())
 	defer service.Stop()
@@ -571,8 +571,8 @@ func BenchmarkEngineerDeliverySchedulerToStartedUnderConcurrentPreemption(b *tes
 	service := NewEngineerService(nil)
 	service.SetAudioPlayer(player)
 	service.SetAudioResolver(deliveryResolver{
-		messagepolicy.IntentFuelHalfTank:   "fuel.wav",
-		messagepolicy.IntentSpotterCarLeft: "spotter.wav",
+		"Queda medio depósito": "fuel.wav",
+		"Coche a la izquierda": "spotter.wav",
 	})
 	service.Start(context.Background())
 	b.Cleanup(service.Stop)

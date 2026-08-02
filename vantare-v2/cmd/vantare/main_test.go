@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,9 +12,113 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+type fakeStrategyCommandExecutor struct {
+	result []byte
+	err    error
+}
+
+type fakeStrategyManualExecutor struct {
+	result []byte
+	err    error
+}
+
+func (fake fakeStrategyManualExecutor) Execute(context.Context, []byte) ([]byte, error) {
+	return fake.result, fake.err
+}
+
+func (fake fakeStrategyCommandExecutor) Execute(context.Context, []byte) ([]byte, error) {
+	return fake.result, fake.err
+}
+
+func TestStrategyRepositoryRoot(t *testing.T) {
+	base := t.TempDir()
+	got, err := strategyRepositoryRoot(filepath.Join(base, "configs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(base, "data", "strategy")
+	if got != want {
+		t.Fatalf("root = %q, want %q", got, want)
+	}
+	for _, invalid := range []string{"", filepath.Join("relative", "configs")} {
+		if _, err := strategyRepositoryRoot(invalid); err == nil {
+			t.Fatalf("strategyRepositoryRoot(%q) did not reject invalid path", invalid)
+		}
+	}
+}
+
+func TestExecuteStrategyApplicationCommandPreservesCommandIDAndTypedErrors(t *testing.T) {
+	executor := fakeStrategyCommandExecutor{err: &strategyapplication.ApplicationError{
+		Code: strategyapplication.ErrorDraftNotFound, Field: "draftId", Cause: errors.New("missing"),
+	}}
+	result, failure := executeStrategyApplicationCommand(context.Background(), executor, map[string]any{
+		"commandId": "command-42",
+	})
+	if result != nil {
+		t.Fatalf("result = %#v, want nil", result)
+	}
+	if failure["commandId"] != "command-42" || failure["code"] != string(strategyapplication.ErrorDraftNotFound) || failure["field"] != "draftId" {
+		t.Fatalf("failure did not preserve typed error: %#v", failure)
+	}
+}
+
+func TestExecuteStrategyApplicationCommandReturnsDecodedResult(t *testing.T) {
+	executor := fakeStrategyCommandExecutor{result: []byte(`{"commandId":"command-7","repositoryVersion":2}`)}
+	result, failure := executeStrategyApplicationCommand(context.Background(), executor, map[string]any{"commandId": "command-7"})
+	if failure != nil {
+		t.Fatalf("failure = %#v", failure)
+	}
+	decoded, ok := result.(map[string]any)
+	if !ok || decoded["commandId"] != "command-7" || decoded["repositoryVersion"] != float64(2) {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestExecuteStrategyApplicationCommandSanitizesInternalErrors(t *testing.T) {
+	executor := fakeStrategyCommandExecutor{err: errors.New(`C:\Users\private\strategy.json: token=secret-value`)}
+	_, failure := executeStrategyApplicationCommand(context.Background(), executor, map[string]any{"commandId": "command-private"})
+	message, _ := failure["message"].(string)
+	if strings.Contains(message, "Users") || strings.Contains(message, "secret-value") {
+		t.Fatalf("public failure leaked internal details: %#v", failure)
+	}
+	if failure["code"] != string(strategyapplication.ErrorInvalidCommand) || message != "The Strategy request could not be completed." {
+		t.Fatalf("unexpected sanitized failure: %#v", failure)
+	}
+}
+
+func TestExecuteStrategyManualCommandPreservesCorrelationAndSanitizesErrors(t *testing.T) {
+	executor := fakeStrategyManualExecutor{err: &strategymanual.CalculationError{
+		Code:  strategymanual.ErrorInsufficientCapacity,
+		Field: "fuel.usableCapacity",
+		Cause: errors.New(`C:\Users\private\fuel.json token=secret-value`),
+	}}
+	_, failure := executeStrategyManualCommand(context.Background(), executor, map[string]any{"commandId": "manual-42"})
+	message, _ := failure["message"].(string)
+	if failure["commandId"] != "manual-42" || failure["code"] != string(strategymanual.ErrorInsufficientCapacity) || failure["field"] != "fuel.usableCapacity" {
+		t.Fatalf("failure did not preserve safe typed fields: %#v", failure)
+	}
+	if strings.Contains(message, "Users") || strings.Contains(message, "secret-value") {
+		t.Fatalf("public failure leaked internal details: %#v", failure)
+	}
+}
+
+func TestExecuteStrategyManualCommandReturnsDecodedResult(t *testing.T) {
+	executor := fakeStrategyManualExecutor{result: []byte(`{"protocolVersion":"strategy.manual.v1","commandId":"manual-7","result":{"stints":[]}}`)}
+	result, failure := executeStrategyManualCommand(context.Background(), executor, map[string]any{"commandId": "manual-7"})
+	if failure != nil {
+		t.Fatalf("failure = %#v", failure)
+	}
+	decoded, ok := result.(map[string]any)
+	if !ok || decoded["commandId"] != "manual-7" {
+		t.Fatalf("result = %#v", result)
+	}
+}
 
 func TestResolveTelemetrySessionsRoot(t *testing.T) {
 	base := t.TempDir()

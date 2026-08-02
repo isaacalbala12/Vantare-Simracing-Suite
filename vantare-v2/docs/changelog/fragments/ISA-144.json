@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-144",
+  "type": "feature",
+  "summary": "Strategy Planner permite editar promedios y vueltas concretas sin perder los valores originales.",
+  "technicalNotes": [
+    "El cálculo manual versionado separa Fuel y Virtual Energy y se ejecuta en el dominio Go.",
+    "La pérdida de boxes se calcula por cada parada real y muestra por separado reparaciones y penalizaciones.",
+    "Las correcciones forman parte del mismo borrador persistente, historial undo/redo y flujo de guardado de STR-08."
+  ],
+  "testing": [
+    "Probar corrección y restauración individual en Entrada rápida y Tabla por vuelta.",
+    "Comprobar que un valor fuera de rango vuelve al valor válido y no ensucia el plan.",
+    "Guardar, recargar y confirmar que las correcciones y resultados se conservan."
+  ],
+  "knownLimitations": [
+    "El impacto sobre el ritmo permanece pendiente hasta disponer del modelo correspondiente.",
+    "La importación desde Telemetry Analysis y el solver avanzado pertenecen a cortes posteriores."
+  ]
+}

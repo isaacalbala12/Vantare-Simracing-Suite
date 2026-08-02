@@ -39,6 +39,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   El timeout del spy permanece en 2 s para no ocultar el fallo. Review
   independiente, CI del PR y gate post-promoción `30729804412`: PASS.
 - El inventario detallado siguiente conserva la historia técnica de cada corte.
+- Follow-up Strategy live: ISA-160 / TC-10A audita las señales y ISA-161 /
+  TC-10B produce/cablea `StrategyLiveProjection v1`; ambas están bloqueadas
+  detrás del gate final de Telemetry Core y no reabren la adquisición LMU.
 - TC-01–TC-03: cerrados.
 - TC-04A ISA-35: cerrado.
 - TC-04B ISA-36: cerrado.
@@ -315,13 +318,15 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Cerrada técnicamente | ISA-116 / TC-09D, hardening y soak `APPROVE` |
 | Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
 | Aprobada | ISA-117 / TC-09F, gate final completo en `170eaeb` |
-| En progreso | ISA-171 / TC-09G, promoción controlada a `nightly` |
+| Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
+| Backlog follow-up | ISA-160 / TC-10A e ISA-161 / TC-10B, readiness live Strategy |
 
 ## Siguiente acción exacta
 
-Completar ISA-171: resolver únicamente los conflictos documentales, ejecutar
-los gates combinados y una review independiente, crear PR a `nightly` y
-verificar el run posterior al merge. No promover a `testers` ni `master`.
+ISA-160 / TC-10A puede auditar Fuel/VE/tyres/weather sobre el runtime ya
+promovido. TC-10B solo implementa señales demostradas y bloquea ISA-152 /
+STR-17. El contrato Strategy presente en Telemetry Core sigue siendo
+compile-only para el producto live.
 
 ## Gate final
 

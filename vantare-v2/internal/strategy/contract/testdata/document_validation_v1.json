@@ -1,0 +1,69 @@
+{
+  "validReplan": {
+    "contractVersion": "strategy.v1",
+    "proposalId": "proposal-1",
+    "base": {
+      "planId": "plan",
+      "variantId": "variant",
+      "revisionId": "rev-1",
+      "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "candidate": {
+      "planId": "plan",
+      "variantId": "variant",
+      "revisionId": "rev-2",
+      "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "status": "proposed",
+    "reasonCode": "fuel_changed",
+    "provenance": {
+      "kind": "derived",
+      "sourceId": "strategy-engine"
+    },
+    "confidence": {
+      "level": "high",
+      "basis": "five valid laps"
+    },
+    "createdAt": "2026-08-01T18:00:00Z"
+  },
+  "planRevisionCases": [
+    { "name": "valid plan revision", "operations": [], "accepted": true },
+    { "name": "revision root null", "operations": [{ "kind": "set", "path": [], "value": null }], "accepted": false, "errorCode": "invalid_document", "errorField": "" },
+    { "name": "revision root scalar", "operations": [{ "kind": "set", "path": [], "value": 7 }], "accepted": false, "errorCode": "invalid_document", "errorField": "" },
+    { "name": "revision missing contract version", "operations": [{ "kind": "delete", "path": ["contractVersion"] }], "accepted": false, "errorCode": "invalid_document", "errorField": "contractVersion" },
+    { "name": "revision scalar contract version", "operations": [{ "kind": "set", "path": ["contractVersion"], "value": 7 }], "accepted": false, "errorCode": "unsupported_contract_version", "errorField": "contractVersion" },
+    { "name": "revision unsupported contract version", "operations": [{ "kind": "set", "path": ["contractVersion"], "value": "strategy.v99" }], "accepted": false, "errorCode": "unsupported_contract_version", "errorField": "contractVersion" },
+    { "name": "revision missing identifier", "operations": [{ "kind": "delete", "path": ["revisionId"] }], "accepted": false, "errorCode": "invalid_document", "errorField": "revisionId" },
+    { "name": "revision scalar identifier", "operations": [{ "kind": "set", "path": ["revisionId"], "value": 7 }], "accepted": false, "errorCode": "invalid_identifier", "errorField": "revisionId" },
+    { "name": "revision unknown top level field", "operations": [{ "kind": "set", "path": ["unexpected"], "value": true }], "accepted": false, "errorCode": "invalid_document", "errorField": "unexpected" },
+    { "name": "revision duplicate top level key", "operations": [{ "kind": "duplicate", "path": ["revisionId"], "value": "duplicate" }], "accepted": false, "errorCode": "invalid_document", "errorField": "revisionId" },
+    { "name": "revision null provenance", "operations": [{ "kind": "set", "path": ["provenance"], "value": null }], "accepted": false, "errorCode": "invalid_document", "errorField": "provenance" },
+    { "name": "revision unknown provenance field", "operations": [{ "kind": "set", "path": ["provenance", "unexpected"], "value": true }], "accepted": false, "errorCode": "invalid_document", "errorField": "provenance.unexpected" },
+    { "name": "revision scalar mode", "operations": [{ "kind": "set", "path": ["mode"], "value": 7 }], "accepted": false, "errorCode": "invalid_state", "errorField": "mode" },
+    { "name": "revision base from another plan", "operations": [{ "kind": "set", "path": ["baseRevision"], "value": { "planId": "other-plan", "variantId": "balanced", "revisionId": "revision-base", "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } }], "accepted": false, "errorCode": "revision_conflict", "errorField": "baseRevision" },
+    { "name": "revision unknown base field", "operations": [{ "kind": "set", "path": ["baseRevision"], "value": { "planId": "plan-golden", "variantId": "balanced", "revisionId": "revision-base", "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "unexpected": true } }], "accepted": false, "errorCode": "invalid_document", "errorField": "baseRevision.unexpected" },
+    { "name": "revision tampered payload", "operations": [{ "kind": "set", "path": ["payload", "fuelLiters"], "value": 99 }], "accepted": false, "errorCode": "revision_hash_mismatch", "errorField": "contentHash" }
+  ],
+  "replanProposalCases": [
+    { "name": "valid proposed replan", "operations": [], "accepted": true },
+    { "name": "replan root null", "operations": [{ "kind": "set", "path": [], "value": null }], "accepted": false, "errorCode": "invalid_document", "errorField": "" },
+    { "name": "replan root scalar", "operations": [{ "kind": "set", "path": [], "value": 7 }], "accepted": false, "errorCode": "invalid_document", "errorField": "" },
+    { "name": "replan missing contract version", "operations": [{ "kind": "delete", "path": ["contractVersion"] }], "accepted": false, "errorCode": "invalid_document", "errorField": "contractVersion" },
+    { "name": "replan unsupported contract version", "operations": [{ "kind": "set", "path": ["contractVersion"], "value": "strategy.v99" }], "accepted": false, "errorCode": "unsupported_contract_version", "errorField": "contractVersion" },
+    { "name": "replan scalar proposal identifier", "operations": [{ "kind": "set", "path": ["proposalId"], "value": 7 }], "accepted": false, "errorCode": "invalid_identifier", "errorField": "proposalId" },
+    { "name": "replan unknown top level field", "operations": [{ "kind": "set", "path": ["unexpected"], "value": true }], "accepted": false, "errorCode": "invalid_document", "errorField": "unexpected" },
+    { "name": "replan duplicate top level key", "operations": [{ "kind": "duplicate", "path": ["proposalId"], "value": "duplicate" }], "accepted": false, "errorCode": "invalid_document", "errorField": "proposalId" },
+    { "name": "replan scalar base", "operations": [{ "kind": "set", "path": ["base"], "value": 7 }], "accepted": false, "errorCode": "invalid_document", "errorField": "base" },
+    { "name": "replan unknown base field", "operations": [{ "kind": "set", "path": ["base", "unexpected"], "value": true }], "accepted": false, "errorCode": "invalid_document", "errorField": "base.unexpected" },
+    { "name": "replan candidate from another plan", "operations": [{ "kind": "set", "path": ["candidate", "planId"], "value": "other-plan" }], "accepted": false, "errorCode": "revision_conflict", "errorField": "candidate" },
+    { "name": "replan candidate equals base", "operations": [{ "kind": "set", "path": ["candidate", "revisionId"], "value": "rev-1" }, { "kind": "set", "path": ["candidate", "contentHash"], "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }], "accepted": false, "errorCode": "revision_conflict", "errorField": "candidate" },
+    { "name": "replan scalar status", "operations": [{ "kind": "set", "path": ["status"], "value": 7 }], "accepted": false, "errorCode": "invalid_state", "errorField": "status" },
+    { "name": "accepted replan missing decision", "operations": [{ "kind": "set", "path": ["status"], "value": "accepted" }], "accepted": false, "errorCode": "invalid_state", "errorField": "decidedAt" },
+    { "name": "proposed replan with decision", "operations": [{ "kind": "set", "path": ["decidedAt"], "value": "2026-08-01T18:00:01Z" }], "accepted": false, "errorCode": "invalid_state", "errorField": "decidedAt" },
+    { "name": "replan expiry not after creation", "operations": [{ "kind": "set", "path": ["expiresAt"], "value": "2026-08-01T18:00:00Z" }], "accepted": false, "errorCode": "invalid_state", "errorField": "expiresAt" },
+    { "name": "replan decision predates creation", "operations": [{ "kind": "set", "path": ["status"], "value": "rejected" }, { "kind": "set", "path": ["decidedAt"], "value": "2026-08-01T17:59:59Z" }], "accepted": false, "errorCode": "invalid_state", "errorField": "decidedAt" },
+    { "name": "accepted replan expired before decision", "operations": [{ "kind": "set", "path": ["status"], "value": "accepted" }, { "kind": "set", "path": ["expiresAt"], "value": "2026-08-01T18:00:01Z" }, { "kind": "set", "path": ["decidedAt"], "value": "2026-08-01T18:00:01Z" }], "accepted": false, "errorCode": "proposal_expired", "errorField": "expiresAt" },
+    { "name": "replan non canonical creation timestamp", "operations": [{ "kind": "set", "path": ["createdAt"], "value": "2026-08-01T18:00:00.000Z" }], "accepted": false, "errorCode": "invalid_document", "errorField": "createdAt" },
+    { "name": "replan unknown confidence field", "operations": [{ "kind": "set", "path": ["confidence", "unexpected"], "value": true }], "accepted": false, "errorCode": "invalid_document", "errorField": "confidence.unexpected" }
+  ]
+}

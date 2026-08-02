@@ -9,6 +9,7 @@ describe("hub navigation contract", () => {
       "launcher",
       "calendar",
       "engineer",
+      "strategy",
       "telemetry",
       "roadmap",
       "setup",
@@ -20,6 +21,7 @@ describe("hub navigation contract", () => {
     expect(isSection("dashboard")).toBe(true);
     expect(isSection("roadmap")).toBe(true);
     expect(isSection("calendar")).toBe(true);
+    expect(isSection("strategy")).toBe(true);
     expect(isSection("plans")).toBe(false);
     expect(isSection("")).toBe(false);
   });
@@ -31,6 +33,7 @@ describe("hub navigation contract", () => {
       "Launcher",
       "Carreras",
       "Ingeniero",
+      "Strategy",
       "Telemetría",
       "Roadmap",
       "Ajustes",

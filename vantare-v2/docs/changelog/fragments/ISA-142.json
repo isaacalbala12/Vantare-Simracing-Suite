@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-142",
+  "type": "feature",
+  "summary": "Strategy Planner incorpora su galería, flujo de preparación y workspace visual de tres columnas dentro del shell real de Vantare.",
+  "technicalNotes": [
+    "La composición conserva estrategias a la izquierda, stints en el centro e inventario y entrada manual a la derecha.",
+    "El layout se adapta a ventanas anchas, medias y compactas sin desbordamiento horizontal.",
+    "El harness visual etiqueta todos los valores de ejemplo y no simula telemetría live ni persistencia productiva."
+  ],
+  "testing": [
+    "Recorrer Mis planes, Entrada, Revisión y Workspace desde la pestaña Strategy.",
+    "Abrir la comparación, cerrarla con Escape y comprobar el mensaje honesto de guardado.",
+    "Verificar las capturas wide, medium y compact y el cambio de panel mediante teclado."
+  ],
+  "knownLimitations": [
+    "La importación real, el guardado persistente, el drag and drop de neumáticos y los cálculos avanzados pertenecen a cortes posteriores."
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "cases": [
+    {
+      "name": "sprint",
+      "input": {
+        "RaceLaps": 12,
+        "LapTimeSeconds": 92.5,
+        "Fuel": {"Used": false},
+        "VE": {"Used": false},
+        "PitLossPerStop": 24,
+        "TyreDegradationPerLap": 0
+      },
+      "candidateCount": 3,
+      "topName": "minimum-stops"
+    },
+    {
+      "name": "super-60",
+      "input": {
+        "RaceLaps": 40,
+        "LapTimeSeconds": 96,
+        "Fuel": {"Used": true, "UsableCapacity": 30, "StopsRequired": 1, "AvailableAmount": 28, "AvailableLaps": 14},
+        "VE": {"Used": false},
+        "PitLossPerStop": 28,
+        "TyreDegradationPerLap": 0.02
+      },
+      "candidateCount": 6,
+      "topName": "minimum-stops"
+    },
+    {
+      "name": "six-hour",
+      "input": {
+        "RaceLaps": 210,
+        "LapTimeSeconds": 103,
+        "Fuel": {"Used": true, "UsableCapacity": 55, "StopsRequired": 3, "AvailableAmount": 52, "AvailableLaps": 52},
+        "VE": {"Used": false},
+        "PitLossPerStop": 31,
+        "TyreDegradationPerLap": 0.01
+      },
+      "candidateCount": 6,
+      "topName": "minimum-stops"
+    },
+    {
+      "name": "twenty-four-hour",
+      "input": {
+        "RaceLaps": 840,
+        "LapTimeSeconds": 101,
+        "Fuel": {"Used": true, "UsableCapacity": 60, "StopsRequired": 8, "AvailableAmount": 60, "AvailableLaps": 60},
+        "VE": {"Used": false},
+        "PitLossPerStop": 34,
+        "TyreDegradationPerLap": 0.015
+      },
+      "candidateCount": 6,
+      "topName": "minimum-stops"
+    },
+    {
+      "name": "virtual-energy-limited",
+      "input": {
+        "RaceLaps": 90,
+        "LapTimeSeconds": 88,
+        "Fuel": {"Used": false},
+        "VE": {"Used": true, "UsableCapacity": 18, "StopsRequired": 2, "AvailableAmount": 17, "AvailableLaps": 17},
+        "PitLossPerStop": 22,
+        "TyreDegradationPerLap": 0
+      },
+      "candidateCount": 4,
+      "topName": "minimum-stops"
+    }
+  ],
+  "mixedTyrePlan": {
+    "inventory": {
+      "limitedStock": true,
+      "units": [
+        {"id": "s1-fl", "setId": "s1", "compound": "soft", "corner": "fl", "initialTread": 100, "wearPerLap": 1.5, "usedCount": 0},
+        {"id": "s1-fr", "setId": "s1", "compound": "soft", "corner": "fr", "initialTread": 100, "wearPerLap": 1.5, "usedCount": 0},
+        {"id": "s2-rl", "setId": "s2", "compound": "medium", "corner": "rl", "initialTread": 100, "wearPerLap": 1.1, "usedCount": 1},
+        {"id": "s2-rr", "setId": "s2", "compound": "medium", "corner": "rr", "initialTread": 100, "wearPerLap": 1.1, "usedCount": 1}
+      ],
+      "sets": [
+        {"id": "s1", "compound": "soft", "unitIds": ["s1-fl", "s1-fr"]},
+        {"id": "s2", "compound": "medium", "unitIds": ["s2-rl", "s2-rr"]}
+      ]
+    },
+    "allocations": [
+      {"stint": 1, "wheels": {"fl": "s1-fl", "fr": "s1-fr", "rl": "s2-rl", "rr": "s2-rr"}},
+      {"stint": 2, "wheels": {"rl": "s2-rl", "rr": "s2-rr"}}
+    ]
+  },
+  "repairStints": [
+    {"laps": 18},
+    {"laps": 18, "pit": {"required": true, "repairSeconds": 7.5}}
+  ]
+}

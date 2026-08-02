@@ -37,6 +37,10 @@ voz; ENG-08 no duplica ninguna de estas autoridades.
 ISA-180 / ENG-09 cierra el primer gate técnico de voz: no autoriza TTS
 productivo, deja `whisper.cpp` como STT condicionado y conserva la salida
 visual como fallback. No cambia runtime ni dependencias de producto.
+ISA-181 / ENG-10 añade corpus humano genérico y compara Whisper `tiny/base`.
+`base` queda candidato condicionado, pero commands/FAR/FRR/wake word continúan
+NO-GO hasta capturar un corpus humano consentido del catálogo real. No cambia
+runtime, dependencias ni producto.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
@@ -54,11 +58,17 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-180-eng-09-gate-ttsstt-offline-licencias-y-benchmarks`.
-- Base: `5ff860b5320100a70b53cfb1f218e0094aa484cb` (ISA-178 / ENG-08).
-- Composición: ENG-02 a ENG-08 ya están en la base exacta. ENG-09 añade solo
+  `vantareapp/isa-181-eng-10-corpus-humano-multilingue-y-seleccion-condicionada-de-voice-host`.
+- Base: `78a77237e3b2ecafb8dd4768ed8477e9de947bda` (ISA-180 / ENG-09).
+- Composición: ENG-02 a ENG-09 ya están en la base exacta. ENG-10 añade solo
   investigación, evidencia y harness test-only; no modifica producto.
 - Promoción: ninguna.
+- Evidencia ENG-10: FLEURS original CC BY 4.0 fijado, cinco grabaciones por
+  idioma en clean/ruido determinista, comparación `tiny/base`, WER/CER,
+  latencia/CPU/RAM/cancelación y capture/import consentido. `base` es candidato
+  lingüístico condicionado; commands, FAR/FRR y wake word permanecen NO-GO.
+  No hay speaker IDs estables ni diversidad demostrable; `pt_br` solo tiene
+  categoría `MALE`. Contrato: `docs/engineer/human-corpus-voice-host-isa-181.md`.
 - Evidencia ENG-09: matriz por capa de runtime/modelo/voz/G2P, hashes,
   benchmark Windows CPU/DirectML, STT residente, WER sintético transparente y
   cancelación aislada. Kokoro medido es NO-GO; Whisper queda condicionado.
@@ -191,6 +201,8 @@ productivo sin crear un segundo reader.
   licencia, rendimiento y escucha humana.
 - `whisper.cpp`/Whisper multilingual es el candidato STT primario condicionado;
   debe superar corpus humano de cuatro idiomas antes de release.
+- ENG-10 selecciona `base` solo para el siguiente corpus de comandos por su
+  mejor WER/CER humano genérico. No autoriza release, PTT ni wake word.
 - La inferencia futura vive en un único host local hijo y cancelable. Spotter,
   ingesta, scheduler y visual nunca esperan al host.
 - Micrófono y transcripciones son memoria-only por defecto; cero recording.
@@ -264,17 +276,28 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-177 / ENG-07, presentación canónica multilingüe |
 | En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal; reconexión autoritativa y carrera disabled corregidas en re-review |
 | En revisión | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO, Whisper condicionado y review `ACCEPT` |
+| En revisión | ISA-181 / ENG-10, corpus humano genérico; `base` condicionado, commands/FAR/FRR/wake word NO-GO; review independiente sin findings abiertos |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-ISA-180 / ENG-09 permanece en revisión y sin promoción. El siguiente corte es
-ENG-10, con corpus humano de comandos en cuatro idiomas y selección final del
-voice-host, pero no debe iniciarse hasta que la orquestación lo autorice. No
-cablear STT/TTS antes de esos gates.
+ISA-181 / ENG-10 queda en revisión, sin findings P0-P3 razonables abiertos. No
+iniciar ENG-11 ni cablear STT/TTS hasta que lo autorice la orquestación. El
+siguiente corte podrá crear un package manager y voice-host estrictamente
+test-only, conservando command readiness NO-GO hasta el corpus humano consentido
+de comandos.
 
 ## Última actualización
+
+2026-08-02, ISA-181 / ENG-10 mide FLEURS humano en cuatro locales con clean y
+ruido blanco determinista. Whisper `base` mejora la precisión general frente a
+`tiny`, pero tarda aproximadamente el doble y usa más memoria. Se selecciona
+solo como candidato del siguiente gate. El corpus no contiene comandos ni
+speaker IDs estables: intent accuracy, FAR/FRR y wake word siguen NO-GO. El
+tooling exige consentimiento explícito, preview/delete/cleanup y mantiene
+audio/modelos/raw fuera de Git. Sin wiring, dependencia o promoción. Review
+independiente cerrada sin findings P0-P3 razonables abiertos.
 
 2026-08-02, ISA-180 / ENG-09 ejecuta un gate reproducible de licencias,
 rendimiento y aislamiento. Kokoro ONNX CPU queda NO-GO para voz dinámica y su

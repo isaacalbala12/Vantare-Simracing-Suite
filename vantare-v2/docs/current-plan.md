@@ -10,6 +10,26 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-181 / ENG-10 (2026-08-02, In Review):
+- Corpus FLEURS original CC BY 4.0 fijado por revisión: 5 grabaciones humanas
+  por `en_us/es_419/it_it/pt_br`, clean y ruido blanco determinista 10 dB. El
+  TSV no aporta speaker ID estable; no se afirma diversidad de locutor y la
+  muestra portuguesa solo contiene categoría `MALE`.
+- Whisper `tiny` y `base` procesaron 40 casos cada uno. `base` mejora WER/CER
+  en casi todas las celdas, a cambio de ~1,84 s medios y ~274 MB observados;
+  queda candidato condicionado para el siguiente gate, no selección de release.
+- Validez lingüística humana genérica y command readiness son conclusiones
+  distintas. Intent accuracy, FAR/FRR y wake word siguen **NO-GO** porque no
+  existe corpus humano consentido de comandos. TTS dinámico también sigue
+  NO-GO. Radio, subtítulos y UI son el fallback completo.
+- Tooling test-only añade extracción acotada, ruido reproducible, captura/import
+  con consentimiento explícito, preview/delete/cleanup y benchmark residente.
+  Audio, modelos, ejecutables, paths y raw permanecen fuera de Git. Sin wiring,
+  dependencia, package manager, voice-host productivo o promoción.
+- Decisión y protocolo: `docs/engineer/human-corpus-voice-host-isa-181.md`;
+  evidencia agregada: `docs/evidence/isa-181/`. Review independiente sin
+  hallazgos P0/P1/P2 ni P3 razonables abiertos; no iniciar ENG-11 todavía.
+
 Nota ISA-180 / ENG-09 (2026-08-02, In Review):
 - Gate offline de TTS/STT ejecutado sin cableado productivo. La pila medida
   `kokoro-onnx 0.5.0` funciona en `en/es/it/pt-BR`, pero tarda 4,0–5,3 s por

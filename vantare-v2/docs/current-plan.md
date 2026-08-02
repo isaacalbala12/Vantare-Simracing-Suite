@@ -1,3 +1,11 @@
+Nota ISA-88-BIL-04-SUPABASE-HARDENING (2026-08-02):
+- Implementación aislada sobre BIL-03 exacta `2a6288a36e368b322e8262534988277d1e16025e`; sin deploy, merge, pagos ni mutación remota.
+- Nonce OAuth con TTL, consumo único y concurrencia; sesión Supabase fuera de WebView localStorage y protegida en Windows Credential Manager.
+- Dispositivo y licencia separados en `claim_active_device` (mutación explícita) y `read_account_entitlements` (lectura pura); grants y `SECURITY DEFINER` endurecidos con pruebas negativas.
+- `validate-license` archivada fuera de la superficie desplegable y guard automático para impedir su reaparición accidental.
+- Clean/upgrade pgTAP y backup/restore desechable PostgreSQL 17 verificados. Estado remoto de migrations/backups/PITR aún requiere gate autorizado; venta pública sigue NO-GO.
+- Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`. Runbook: `docs/runbooks/supabase-backup-restore.md`.
+
 Nota ISA-72-BIL-03-CHECKOUT-HARDENING (2026-08-02):
 - Implementación aislada sobre ISA-166 `c6a3ebf`: mapping Polar v2 bidireccional por producto/precio/entorno/capabilities/canales/alcance Launch, sin inventar IDs de Pro Plus ni trial.
 - Checkout exige UUID de cuenta e intento, deduplica localmente antes de llamar a Polar, falla cerrado ante configuración/entorno/estado incierto y envía `allow_trial=false` salvo prueba exacta de trial Pro de siete días.

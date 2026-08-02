@@ -7,6 +7,7 @@ const {
   signInWithOAuthFn,
   setSessionFn,
   createClient,
+  eventsEmit,
 } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signOutFn: vi.fn(),
@@ -14,6 +15,11 @@ const {
   signInWithOAuthFn: vi.fn(),
   setSessionFn: vi.fn(),
   createClient: vi.fn(),
+  eventsEmit: vi.fn(),
+}));
+
+vi.mock("@wailsio/runtime", () => ({
+  Events: { Emit: eventsEmit },
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -52,6 +58,7 @@ describe("supabase-auth", () => {
     setSessionFn.mockReset();
     signInWithOAuthFn.mockReset();
     createClient.mockClear();
+    eventsEmit.mockReset();
   });
 
   describe("getSupabaseClient", () => {
@@ -63,7 +70,7 @@ describe("supabase-auth", () => {
       expect(createClient).toHaveBeenCalledWith(
         "https://test.supabase.co",
         "test-anon-key",
-        expect.any(Object),
+        { auth: { autoRefreshToken: true, persistSession: false } },
       );
     });
 
@@ -119,12 +126,14 @@ describe("supabase-auth", () => {
       signOutFn.mockResolvedValueOnce({ error: null });
       const result = await authSignOut();
       expect(result.error).toBeUndefined();
+      expect(eventsEmit).toHaveBeenCalledWith("auth:session:clear");
     });
 
     it("returns error message when supabase fails", async () => {
       signOutFn.mockResolvedValueOnce({ error: { message: "boom" } });
       const result = await authSignOut();
       expect(result.error).toBe("boom");
+      expect(eventsEmit).not.toHaveBeenCalled();
     });
 
     it("returns a clear config error when env vars are missing", async () => {
@@ -218,9 +227,13 @@ describe("supabase-auth", () => {
 
   describe("setSupabaseSession", () => {
     it("calls supabase.auth.setSession with both tokens on success", async () => {
-      setSessionFn.mockResolvedValueOnce({ error: null });
+      setSessionFn.mockResolvedValueOnce({
+        data: { session: { access_token: "access-new", refresh_token: "refresh-new" } },
+        error: null,
+      });
       const result = await setSupabaseSession("access-123", "refresh-456");
       expect(result.error).toBeUndefined();
+      expect(result.session?.access_token).toBe("access-new");
       expect(setSessionFn).toHaveBeenCalledWith({
         access_token: "access-123",
         refresh_token: "refresh-456",
@@ -230,19 +243,22 @@ describe("supabase-auth", () => {
     it("returns error when access_token is empty", async () => {
       const result = await setSupabaseSession("");
       expect(result.error).toBe("access_token is required");
+      expect(result.session).toBeNull();
       expect(setSessionFn).not.toHaveBeenCalled();
     });
 
     it("returns error when refresh_token is missing", async () => {
       const result = await setSupabaseSession("access-123");
       expect(result.error).toMatch(/refresh_token is required/);
+      expect(result.session).toBeNull();
       expect(setSessionFn).not.toHaveBeenCalled();
     });
 
     it("surfaces error from supabase.auth.setSession", async () => {
-      setSessionFn.mockResolvedValueOnce({ error: { message: "invalid token" } });
+      setSessionFn.mockResolvedValueOnce({ data: { session: null }, error: { message: "invalid token" } });
       const result = await setSupabaseSession("access-123", "refresh-456");
       expect(result.error).toBe("invalid token");
+      expect(result.session).toBeNull();
     });
 
     it("returns a clear config error when env vars are missing", async () => {

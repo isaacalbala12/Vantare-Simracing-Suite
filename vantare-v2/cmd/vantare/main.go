@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
@@ -733,6 +735,7 @@ func main() {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	authStore := authsession.NewStore("Vantare/SupabaseAuth")
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
@@ -759,16 +762,41 @@ func main() {
 			return
 		}
 		if res != nil {
-			log.Printf("license:validate result state=%s email=%s deviceOK=%v entitlements=%v err=%v",
-				res.State, res.Email, res.DeviceOK, res.Entitlements, res.Error)
+			log.Printf("license:validate result state=%s deviceOK=%v entitlementCount=%d err=%v",
+				res.State, res.DeviceOK, len(res.Entitlements), res.Error)
 		}
-		// Emit auth:session so the frontend can persist the Supabase session
-		// in the WebView's localStorage. This survives app restarts.
-		if payload.SessionToken != "" {
+		// Persist only sessions that have been accepted by the backend. Windows
+		// Credential Manager owns persistence; the WebView only keeps memory.
+		if res != nil && res.UserID != "" && payload.SessionToken != "" && payload.RefreshToken != "" {
+			if err := authStore.Save(authsession.Session{
+				AccessToken: payload.SessionToken, RefreshToken: payload.RefreshToken,
+			}); err != nil {
+				log.Printf("auth session save failed: %v", err)
+			}
 			emitter.Emit("auth:session", map[string]any{
 				"access_token":  payload.SessionToken,
 				"refresh_token": payload.RefreshToken,
+				"source":        "validated",
 			})
+		}
+	})
+
+	wailsApp.Event.On("auth:session:get", func(_ *application.CustomEvent) {
+		session, err := authStore.Load()
+		if err != nil {
+			if !errors.Is(err, authsession.ErrNotFound) {
+				log.Printf("auth session restore failed: %v", err)
+			}
+			return
+		}
+		emitter.Emit("auth:session", map[string]any{
+			"access_token": session.AccessToken, "refresh_token": session.RefreshToken, "source": "restore",
+		})
+	})
+
+	wailsApp.Event.On("auth:session:clear", func(_ *application.CustomEvent) {
+		if err := authStore.Delete(); err != nil {
+			log.Printf("auth session clear failed: %v", err)
 		}
 	})
 

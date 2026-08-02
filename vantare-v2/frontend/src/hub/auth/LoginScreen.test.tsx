@@ -6,7 +6,7 @@ const {
   mockSetSupabaseSession,
 } = vi.hoisted(() => ({
   mockOpenURL: vi.fn().mockResolvedValue(undefined),
-  mockSetSupabaseSession: vi.fn().mockResolvedValue({}),
+  mockSetSupabaseSession: vi.fn().mockResolvedValue({ session: null }),
 }));
 
 vi.mock("@wailsio/runtime", () => ({
@@ -38,6 +38,7 @@ describe("LoginScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     cleanup();
+	mockSetSupabaseSession.mockResolvedValue({ session: null });
   });
 
   it("renders email and password inputs", () => {
@@ -222,6 +223,49 @@ describe("LoginScreen", () => {
     await vi.waitFor(() => {
       expect(mockSetSupabaseSession).toHaveBeenCalledWith("at-123", "rt-456");
     });
+  });
+
+  it("requests a protected session when mounted", () => {
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+    expect(Events.Emit).toHaveBeenCalledWith("auth:session:get");
+  });
+
+  it("validates a restored protected session using refreshed tokens", async () => {
+    let authSessionCallback: ((event: { data: { access_token?: string; refresh_token?: string; source?: string } }) => void) | undefined;
+    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
+      if (event === "auth:session") authSessionCallback = cb;
+      return vi.fn();
+    });
+    mockSetSupabaseSession.mockResolvedValueOnce({
+      session: { access_token: "fresh-at", refresh_token: "fresh-rt" },
+    });
+    const onLoggedIn = vi.fn();
+    render(<LoginScreen onLoggedIn={onLoggedIn} />);
+
+    authSessionCallback?.({ data: { access_token: "old-at", refresh_token: "old-rt", source: "restore" } });
+
+    await vi.waitFor(() => expect(onLoggedIn).toHaveBeenCalledWith({
+      accessToken: "fresh-at",
+      refreshToken: "fresh-rt",
+    }));
+  });
+
+  it("does not revalidate a session emitted after validation", async () => {
+    let authSessionCallback: ((event: { data: { access_token?: string; refresh_token?: string; source?: string } }) => void) | undefined;
+    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
+      if (event === "auth:session") authSessionCallback = cb;
+      return vi.fn();
+    });
+    mockSetSupabaseSession.mockResolvedValueOnce({
+      session: { access_token: "at", refresh_token: "rt" },
+    });
+    const onLoggedIn = vi.fn();
+    render(<LoginScreen onLoggedIn={onLoggedIn} />);
+
+    authSessionCallback?.({ data: { access_token: "at", refresh_token: "rt", source: "validated" } });
+
+    await vi.waitFor(() => expect(mockSetSupabaseSession).toHaveBeenCalled());
+    expect(onLoggedIn).not.toHaveBeenCalled();
   });
 
   it("does not call setSupabaseSession when auth:session has no refresh_token", async () => {

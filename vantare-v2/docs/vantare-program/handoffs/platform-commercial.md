@@ -1,6 +1,6 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: ISA-166 reconciliada; BIL-03 / ISA-72 implementada en rama aislada y pendiente de review; venta pública **NO-GO**.
+Estado: ISA-166 reconciliada; BIL-03 aprobada; BIL-04 / ISA-88 implementada en rama aislada y pendiente de review; venta pública **NO-GO**.
 
 Base de BIL-03: ISA-166 `c6a3ebf2181e6764a1b204e231cab4a348e3ab95`.
 
@@ -100,10 +100,18 @@ billing. Pagos, refunds, cambios productivos y publicación requieren su gate.
 - Supabase necesita hardening y recuperación verificable.
 - Catálogo/organización/webhook Polar no están listos para producción.
 
+## BIL-04 / ISA-88
+
+- Nonce OAuth con expiración, consumo atómico y una sola aceptación incluso bajo concurrencia.
+- Sesión Supabase solo en memoria del WebView; persistencia protegida por Windows Credential Manager y borrado al cerrar sesión.
+- Separación explícita entre claim de dispositivo y lectura pura de entitlements; wrapper legacy ya no muta.
+- RPCs con grants mínimos, `SECURITY DEFINER` endurecido y tests negativos para anon/authenticated.
+- `validate-license` archivada fuera de la superficie desplegable; verificador automático permite solo checkout, portal y webhook.
+- PostgreSQL 17 desechable valida clean install, upgrade y restore. Estado remoto de RLS/migraciones/backups/PITR no pudo confirmarse sin ampliar acceso y sigue como gate.
+- Informe: `docs/analysis/isa-88-bil-04-supabase-hardening-recovery-2026-08-02.md`.
+
 ## Última actualización
 
-2026-08-02 — ISA-72 / BIL-03, revisión corregida en implementación aislada.
-Backend/frontend verdes; migraciones y pgTAP ejecutados en PostgreSQL 17
-desechable con concurrencia real. Runner verificado en Windows PowerShell 5.1 y
-PowerShell 7; Deno 65/65 pasa con typecheck normal. Sin deploy, pago, refund,
+2026-08-02 — ISA-88 / BIL-04 implementada sobre la base aprobada de BIL-03.
+Hardening local y restore drill desechable verificados. Sin deploy, pago, refund,
 secretos, PII ni mutaciones remotas.

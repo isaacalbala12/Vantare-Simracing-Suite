@@ -4,6 +4,7 @@ import {
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
+import { Events } from "@wailsio/runtime";
 
 function supabaseUrl(): string {
   return (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
@@ -41,7 +42,7 @@ function buildClient(): SupabaseClient {
   return createClient(url, key, {
     auth: {
       autoRefreshToken: true,
-      persistSession: true,
+      persistSession: false,
     },
   });
 }
@@ -104,6 +105,9 @@ export async function signUp(
 export async function signOut(): Promise<{ error?: string }> {
   try {
     const { error } = await getSupabaseClient().auth.signOut();
+    if (!error) {
+      Events.Emit("auth:session:clear");
+    }
     return { error: error?.message };
   } catch (err) {
     if (isConfigError(err)) {
@@ -140,32 +144,31 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
-// setSupabaseSession persists an OAuth session in the WebView's Supabase
-// client (localStorage). This is called after the external OAuth callback
-// delivers access_token + refresh_token so the session survives app restarts.
-// Returns an error string if the tokens are invalid or the call fails.
+// setSupabaseSession restores a protected backend session into the in-memory
+// Supabase client. Persistence belongs to Windows Credential Manager, never
+// WebView localStorage.
 export async function setSupabaseSession(
   accessToken: string,
   refreshToken?: string,
-): Promise<{ error?: string }> {
+): Promise<{ session: Session | null; error?: string }> {
   if (!accessToken) {
-    return { error: "access_token is required" };
+    return { session: null, error: "access_token is required" };
   }
   if (!refreshToken) {
-    return { error: "refresh_token is required to persist session" };
+    return { session: null, error: "refresh_token is required to restore session" };
   }
   try {
-    const { error } = await getSupabaseClient().auth.setSession({
+    const { data, error } = await getSupabaseClient().auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (error) {
-      return { error: error.message };
+      return { session: null, error: error.message };
     }
-    return {};
+    return { session: data.session };
   } catch (err) {
     if (isConfigError(err)) {
-      return { error: missingConfigError };
+      return { session: null, error: missingConfigError };
     }
     throw err;
   }

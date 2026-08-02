@@ -30,15 +30,15 @@ reader al artefacto autorizado y que no existe aún el adapter DuckDB productivo
 ni su integración reproducible. El contrato ya corrige los P2/P3 y la frontera
 arquitectónica del P1 sin añadir dependencias; el P1 operativo solo se cierra
 con un corte explícito de decisión/adapter.
-TA-03B / ISA-135 corrige ahora el corte de decisión tras un primer review
+TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
 documenta seguridad/packaging/rollback y entrega un spike sintético y un SBOM
-reproducibles. La v1 queda limitada a archivos locales LMU descubiertos e
-indexados por Vantare. No se llama sandbox al proceso/Job Object y los imports
-externos o comunitarios quedan bloqueados por ISA-164 / TA-03D. TA-03C está
-microplaneada, pero no puede comenzar hasta una re-review limpia y la aprobación
-humana posterior de dependencia y distribución.
+reproducibles. TA-03C / ISA-168 implementa el adapter productivo fuera de
+proceso, staging privado, manifest confiado, Job Object, IPC tipado, rollback y
+packaging reproducible. La v1 queda limitada a archivos locales LMU
+descubiertos/indexados. No se llama sandbox al proceso/Job Object y los imports
+externos o comunitarios quedan bloqueados por ISA-164 / TA-03D.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: ninguna.
@@ -175,22 +175,29 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-01 / ISA-122, investigación competitiva, LMU/repo, contrato y HTML; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
 | Abierta / corregida parcialmente | TA-03 / ISA-126, modelo y capability endurecidos; falta adapter DuckDB productivo |
-| En corrección / nueva review pendiente | TA-03B / ISA-135, límite LMU local, cancelación, hashes y SBOM corregidos tras `REQUEST CHANGES` |
-| Bloqueada por re-review + aprobación | TA-03C, helper/adaptador fuera de proceso según microplan TDD |
+| Cerrada técnicamente | TA-03B / ISA-135, decisión, límite LMU local y SBOM reproducible |
+| Cerrada técnicamente / In Review | TA-03C / ISA-168, helper/adaptador productivo fuera de proceso; review `APPROVE` |
 | Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
 | Bloqueada por adapter | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Ejecutar una nueva review independiente de ISA-135. Si queda limpia, presentar
-a Isaac ADR 0005: dependencia `duckdb-go/v2@v2.10505.0` separada,
-`duckdb.dll` 1.5.5, unos 44,32 MB, VC++ runtime y packaging/notices atómicos.
-Solo tras esa aprobación puede abrirse TA-03C. ISA-164 / TA-03D no bloquea la
-lectura LMU local, pero sí cualquier import externo o comunitario. TA-04 sigue
-bloqueada hasta implementar TA-03C. No hay promoción a `nightly`.
+Entregar ISA-168 como PR draft apilada, sin promoción. TA-04 puede caracterizar
+progreso/distancia y mapa con evidencia real. ISA-164 / TA-03D no bloquea la
+lectura LMU local, pero sí cualquier import externo o comunitario.
 
 ## Última actualización
+
+2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
+fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest
+confiado, Job Object, protocolo tipado sin SQL y bundle reproducible. Parser
+end-to-end real, cancel/retry/close por PID y benchmark de 50 páginas PASS
+(mediana 27,154 ms/página bajo CPU 93–100 %, 0,5995× frente a TA-03B). Root
+Wails conserva `CGO_ENABLED=0` y cero dependencia DuckDB. Review independiente
+`APPROVE`, cero P0/P1/P2/P3 razonables. Evidencia completa:
+`research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`. Entrega en
+review, sin promoción. Historial TA-03B:
 
 2026-08-01, ISA-135 / TA-03B corregida tras `REQUEST CHANGES`. Recomendación:
 helper local corto fuera de proceso, `duckdb-go/v2` + DLL oficial dinámica, app

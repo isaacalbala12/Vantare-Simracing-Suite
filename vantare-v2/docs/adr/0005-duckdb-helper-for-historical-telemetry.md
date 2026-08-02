@@ -2,13 +2,12 @@
 
 ## Estado
 
-Propuesto. ISA-135 permanece en `In Progress` hasta superar review
-independiente; solo después procede la aprobación explícita de Isaac antes de
-TA-03C.
+Aceptado por Isaac e implementado en ISA-168 / TA-03C. Review independiente
+`APPROVE`; la entrega permanece en rama aislada y no existe promoción.
 
 ## Fecha
 
-2026-08-01
+2026-08-02
 
 ## Contexto
 
@@ -24,7 +23,7 @@ productivo. El spike TA-03B demostró que el enlace estático precompilado 1.5.5
 no enlaza con el MSYS2 GCC 16 actual por el cambio de TLS, mientras que el
 enlace dinámico contra el `duckdb.dll` oficial 1.5.5 sí es reproducible.
 
-## Decisión propuesta
+## Decisión
 
 Crear un helper local de corta vida, propiedad de Vantare, para implementar el
 reader histórico:
@@ -78,16 +77,15 @@ externos antes de habilitar cualquier procedencia no confiable.
 - enlace estático actual: incompatibilidad reproducida con GCC 16.
 - servicio persistente: complejidad y estado sin beneficio demostrado.
 
-## Condiciones de aceptación
+## Evidencia de aceptación
 
-Esta ADR pasa a `Aceptado` únicamente después de review independiente limpia y
-si Isaac aprueba dependencia, redistribución, tamaño y packaging. La licencia
-comercial y los avisos del artefacto exacto ya están inventariados en un SBOM
-SPDX reproducible. TA-03C debe demostrar el contrato mediante DuckDB sintético,
-mismatch de versiones, TOCTOU, allowlist de procedencia LMU local, read-only,
-tipos/NULL, identificadores, límites, cancelación y shutdown sin procesos
-huérfanos. TA-03C no puede habilitar archivos externos ni afirmar que su Job
-Object constituye un sandbox.
+Isaac aprobó dependencia, redistribución, tamaño, VC++ runtime y packaging tras
+la review limpia de ISA-135. TA-03C demuestra el contrato mediante DuckDB
+sintético, mismatch de versiones, TOCTOU, allowlist de procedencia LMU local,
+read-only, tipos/NULL, identificadores, límites, cancelación y shutdown sin
+procesos huérfanos. El resultado reproducible está en
+[`ta03c-duckdb-adapter-evidence.md`](../vantare-program/research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md).
+TA-03C no habilita archivos externos ni afirma que Job Object sea un sandbox.
 
 ## Referencia
 

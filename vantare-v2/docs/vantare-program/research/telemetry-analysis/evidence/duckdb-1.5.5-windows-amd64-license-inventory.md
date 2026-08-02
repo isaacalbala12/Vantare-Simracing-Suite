@@ -37,8 +37,9 @@ toolchain o grafo Go invalida el inventario y obliga a regenerar el SBOM.
 5. Los `CMakeLists.txt` del mismo commit muestran las dependencias adicionales
    de ICU, JSON y Parquet.
 6. Cada licencia se descargó desde el commit fijado y se validó por SHA-256.
-7. El SBOM se generó dos veces en directorios limpios y produjo el mismo SHA:
-   `959ab3ae08e2a6ff36c28c0773552a81048700c123dc899d2af89d48f1d4bfa5`.
+7. El SBOM corregido se generó dos veces en directorios limpios y produjo el
+   mismo SHA:
+   `0eb21309fc8ea57e33ea2bce7a437ddcd5ee16185f419f4cfb4d9ff8a35d1427`.
 
 El `duckdb.dll` depende dinámicamente solo de componentes del sistema Windows:
 `KERNEL32.dll`, `WS2_32.dll` y `RstrtMgr.DLL`. No se redistribuyen con Vantare.

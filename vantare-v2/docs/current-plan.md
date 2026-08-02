@@ -1,3 +1,20 @@
+Nota ISA-168 / TA-03C (2026-08-02):
+- Implementado el adapter DuckDB histórico productivo fuera de proceso sobre
+  ISA-135. Wails conserva `CGO_ENABLED=0`; DuckDB 1.5.5 vive en un módulo y
+  runtime separados.
+- Staging privado, manifest confiado, locks anti-TOCTOU, read-only, IPC tipado
+  sin SQL, Job Object, cancel/retry/close, rollback confiado, notices y SBOM
+  reproducibles quedan cubiertos.
+- Parser sintético real y benchmark 50×16.384 PASS. En cierre intercalado y
+  con CPU al 93–100 %, TA-03C obtuvo mediana 27,154 ms/página frente a 45,290
+  de TA-03B (ratio 0,5995×; gate <=2×). Smoke host Windows x64, fuzz, race y
+  build principal PASS. Evidencia:
+  `docs/vantare-program/research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`.
+- Review independiente `APPROVE`, cero P0/P1/P2/P3 razonables. Estado: cierre
+  técnico listo para `In Review`; sin promoción.
+  TA-04 continúa después de aceptar este corte. Imports externos/comunitarios
+  siguen bloqueados por ISA-164 / TA-03D.
+
 Nota VANTARE-PROGRAM (2026-07-27):
 - ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.
 - Lectura obligatoria: `docs/vantare-program/README.md` y el handoff vivo.

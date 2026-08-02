@@ -1,7 +1,6 @@
 # TA-03C — microplan del adapter DuckDB fuera de proceso
 
-- Estado: preparado, no ejecutable hasta re-review limpia de ISA-135 y
-  aceptación posterior de ADR 0005
+- Estado: ejecutado y aprobado técnicamente en ISA-168; entrega en review
 - Base requerida: ISA-135 / TA-03B corregida y TA-03 / ISA-126
 - Método: TDD, microcortes acumulativos y review independiente
 
@@ -15,15 +14,15 @@ no un sandbox.
 
 ## Decisiones previas obligatorias
 
-- [ ] ISA-135 supera una nueva review independiente sin P0/P1/P2 ni P3
+- [x] ISA-135 supera una nueva review independiente sin P0/P1/P2 ni P3
   razonables pendientes.
-- [ ] Isaac acepta ADR 0005 después de esa review.
-- [ ] Se autoriza `duckdb-go/v2@v2.10505.0` en un módulo Go separado.
-- [ ] Se autoriza redistribuir `duckdb.dll` 1.5.5 y los notices exactos del
+- [x] Isaac acepta ADR 0005 después de esa review.
+- [x] Se autoriza `duckdb-go/v2@v2.10505.0` en un módulo Go separado.
+- [x] Se autoriza redistribuir `duckdb.dll` 1.5.5 y los notices exactos del
   inventario/SBOM de 37 componentes.
-- [ ] Se acepta el coste aproximado de 44,32 MB sin comprimir observado en el
+- [x] Se acepta el coste aproximado de 44,32 MB sin comprimir observado en el
   helper de investigación.
-- [ ] Se acepta VC++ Redistributable como prerrequisito del runtime.
+- [x] Se acepta VC++ Redistributable como prerrequisito del runtime.
 
 ## Alcance
 
@@ -246,16 +245,18 @@ corte se detiene: no se debe añadir la dependencia al root solo por comodidad.
 
 ## Pruebas requeridas
 
-- [ ] Unitarias del protocolo, quoting, tipos, manifest y evidencia.
-- [ ] Integración con DuckDB sintético real.
-- [ ] Fuzz de frames, límites, identificadores y valores.
-- [ ] Race del cliente/lifecycle donde CGO lo permita.
-- [ ] Benchmark reproducible 720k y páginas de 16.384.
-- [ ] Smoke Windows 10 y 11 x64.
-- [ ] Teardown/proceso/handles sin leaks.
-- [ ] Hash del original y copia antes/después.
-- [ ] Suite Go global.
-- [ ] Root dependencies unchanged.
+- [x] Unitarias del protocolo, quoting, tipos, manifest y evidencia.
+- [x] Integración con DuckDB sintético real.
+- [x] Fuzz de frames, límites, identificadores y valores.
+- [x] Race del cliente/lifecycle donde CGO lo permita.
+- [x] Benchmark reproducible 720k y páginas de 16.384.
+- [ ] Smoke Windows 10 y 11 x64: Windows 11 PASS; Windows 10 queda como gate
+  físico obligatorio del instalador/release.
+- [x] Teardown/proceso/handles sin leaks.
+- [x] Hash del original y copia antes/después.
+- [x] Suite Go global: PASS. Un flake intermedio de `internal/app`, reproducido
+  también sobre ISA-135, quedó verde en la repetición global final.
+- [x] Root dependencies unchanged.
 
 ## Condición de cierre
 

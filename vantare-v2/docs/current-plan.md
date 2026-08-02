@@ -1,3 +1,186 @@
+Nota ISA-231 / TAU-06F (2026-08-02, control Codex durable):
+- Loader exclusivo de `service_role` deriva una proyección canónica sin texto
+  libre y liga digest/tamaño de transporte; filas legacy sin tamaño fallan.
+- La base exacta se comprueba contra un snapshot cerrado head+ancestros del
+  puerto server-owned; no acepta un booleano de ancestry autoafirmado.
+- Una fila automática por issue, claim global, lease 10–300 s, fencing
+  monotónico y pausa revalidada justo antes del permiso de dispatch.
+- Tras el permiso no existe retry automático: ambigüedad va a `needs_owner` y
+  una caída queda `dispatching` para reconciliación humana, evitando duplicado.
+- Gates: PostgreSQL 61/61 + rollback/reapply + carrera dos workers; Deno focal
+  20/20. Sin Codex/API/repo/red/write/deploy/merge/promoción.
+
+Nota ISA-230 / TAU-06E (2026-08-02, scope leaf-level y SHA):
+- Prefijos amplios sustituidos por reglas de paths por módulo. Access, clients,
+  state, canvas, bridge, workflows, case aliases y rutas desconocidas fallan.
+- El request exige SHA exacto de 40 hex, lo incluye en repository y digest; una
+  mutación posterior invalida la respuesta.
+- El resolver server-side que prueba ancestry con `nightly` queda para TAU-06F;
+  aquí continúa prohibido abrir repo/red. Focal 11/11.
+- Estado: local para review; sin Codex/API/checkout/write/deploy/merge/promoción.
+
+Nota ISA-229 / TAU-06D (2026-08-02, evidencia Codex mínima):
+- El dry-run deja de consumir texto libre/etiqueta autoafirmada y exige una
+  proyección ligada a IDs, bytes, tamaño, SHA-256 y consentimientos.
+- Shape diagnóstico cerrado; mensajes, códigos, versión y timestamp nunca
+  salen. Solo enums, offsets y booleanos allowlisted pueden llegar al sobre.
+- Corpus sintético de PII/secrets/rutas/URL/prompt injection: cero retenciones;
+  tampering de digest/tamaño/schema/evidencia/identidad falla cerrado.
+- Pendiente TAU-06F: loader service-role desde la fila persistida. Autoridad:
+  `docs/runbooks/testing-center-codex-evidence.md`.
+- Estado: local para review; sin API Codex, DB loader, red, repo access, deploy,
+  Discord, merge o promoción.
+
+Nota ISA-228 / TAU-06C (2026-08-02, auditoría Codex NO-GO):
+- Review independiente sobre `a4239a4`, sin editar policy ni contrato dry-run.
+- Métricas: 0/96 falsos `eligible` sensibles, 0/35 falsos `needs_owner`
+  benignos y rechazo de workflow path/campos extra.
+- Bloqueantes: P1 procedencia/redacción no demostrada, P1 prefijos que incluyen
+  access/clients, P1 exclusión solo in-memory y P2 base `nightly` sin SHA.
+- Veredicto TAU-07: NO-GO (P0=0, P1=3, P2=1). Autoridad:
+  `docs/analysis/isa-228-tau-06c-codex-adversarial-audit-2026-08-02.md`.
+- Siguiente: hardening en cortes nuevos y reauditoría; Codex/API/repo access,
+  Discord, deploy, merge y promoción continúan apagados.
+
+Nota ISA-227 / TAU-06B (2026-08-02, sobre Codex dry-run):
+- Prompt y objetivos fijos separados de evidencia server-redacted no
+  confiable; la policy TAU-06A se recalcula y el módulo debe coincidir.
+- Módulos/rutas y command IDs cerrados. La salida JSON exacta rechaza extras,
+  traversal, shell, scope growth, duplicados e inconsistencias.
+- Budgets: 8 KiB de evidencia, 32 KiB de salida, 12k tokens, 600 s, hasta
+  cinco archivos/tres tests y cero tool calls; concurrency key global.
+- El registro in-memory solo prueba el contrato local, no sustituye un lease
+  distribuido. Gates focales: 10/10. Autoridad:
+  `docs/runbooks/testing-center-codex-dry-run.md`.
+- Estado: implementación local lista para review; sin API Codex, checkout,
+  repo read/write, comando, red, deploy, rama/PR automática o promoción.
+
+Nota ISA-226 / TAU-06A (2026-08-02, policy Codex fail-closed):
+- Clasificador puro y versionado: solo trabajo frontend allowlisted, completo,
+  determinista, de un módulo/1–5 archivos y con harness puede ser `eligible`.
+- Seguridad, privacidad, auth, permisos, secretos, billing/licencias, datos,
+  migraciones, release/workflows, dependencias, arquitectura y cambios masivos
+  siempre exigen owner; también retries y rechazos de testers.
+- Texto, logs y prompt injection del reporte no pueden cambiar decisión ni
+  digest. Los hechos confiables deben proceder del servidor, no de app/issue.
+- Decoder cerrado y hash canónico; input inválido/ausente nunca autoriza.
+  Corpus focal: 8/8, con cero falsos `eligible` sensibles. Autoridad:
+  `docs/runbooks/testing-center-codex-risk.md`.
+- Estado: implementación local lista para review; sin API Codex, repo write,
+  red, deploy, rama, PR automática, Discord, merge o promoción.
+
+Nota ISA-224 / TAU-05C (2026-08-02, entrega GitHub preparada):
+- Outbox con claim/lease, cinco intentos, backoff, pausa global/por flujo
+  comprobada justo antes del efecto y reconciliación por marker app-authored.
+- Servicio Deno por puertos, sin `fetch`, endpoint, variables de entorno o
+  superficie desplegable. Respuestas ambiguas buscan antes de repetir.
+- Webhook HMAC-SHA256 sobre bytes exactos y delivery ID durable. GitHub no
+  envía timestamp firmado; `received_at` server-side + ledger sustituye ese
+  supuesto sin inventar headers. El webhook no autoriza reconciliaciones.
+- GitHub App propuesta: privada, repo único, Metadata read + Issues read/write,
+  evento issues; cero Contents/PR/Actions/Workflows.
+- Gates: PostgreSQL 28/28 + rollback/reapply; Deno focal 7/7 y 208/208 activo;
+  deploy-surface sin cambios. Autoridad:
+  `docs/runbooks/testing-center-github-delivery.md`.
+- Estado: implementación local lista para review; sin App/secretos reales,
+  red, deploy, Supabase remoto, Codex, Discord, merge o promoción.
+
+Nota ISA-223 / TAU-05B (2026-08-02, proyección GitHub dry-run):
+- Contrato Deno cerrado para proyectar un GitHub Issue y comentarios de
+  ocurrencia sin efectuar llamadas de red ni confirmar el outbox.
+- Título, labels y markers proceden solo de IDs/enums allowlisted. No existe
+  assignee, label Codex, token, configuración GitHub, logs o URL de replay.
+- El texto del tester se trata como dato no confiable: neutraliza Markdown,
+  menciones, controles y patrones conocidos de secretos/PII, con límites por
+  bytes. La PII semántica arbitraria sigue requiriendo revisión humana.
+- El adaptador dry-run recalcula SHA-256, converge en retries idénticos y
+  distingue corrupción de conflicto idempotente.
+- Gates: 20/20 focales, 201/201 Deno activos, type-check, formato y superficie
+  de deploy PASS. Autoridad:
+  `docs/runbooks/testing-center-github-projection.md`.
+- Estado: PR draft #112 con CI protegida verde; sin GitHub App, Edge
+  Function desplegable, credencial, webhook, deploy o mutación remota.
+
+Nota ISA-222 / TAU-05A (2026-08-02, triage y outbox exactly-once):
+- Nueva frontera server-only que comprueba payload/evento completos, calcula
+  fingerprints técnicos y funcionales deterministas y conserva cada reporte
+  como ocurrencia visible.
+- La unión automática exige firma técnica exacta o fingerprint funcional más
+  digest exacto de esperado/observado. La similitud textual nunca fusiona y el
+  código genérico actual `tester.report` no se acepta como firma técnica.
+- Cien repeticiones convergen en una issue técnica interna, cien ocurrencias y
+  una única reserva durable `github_issue_create`; la carrera entre dos
+  transacciones también converge.
+- RLS forzada, cero policies de cliente, pausa global/por flujo antes del
+  efecto y ningún assignee, body de GitHub o dispatch de Codex.
+- Gate PostgreSQL desechable: core 72 + access 56 + report 55 + triage 40,
+  rollback/reapply, 100 repeticiones y concurrencia PASS. Autoridad:
+  `docs/runbooks/testing-center-triage-outbox.md`.
+- Estado: PR draft #111 con CI protegida verde; sin GitHub App, red, webhook,
+  Codex, Discord, deploy, merge, promoción o build distribuida.
+
+Nota ISA-220 / TAU-04C (2026-08-02, UI del Testing Center):
+- Nueva pestaña visible únicamente cuando el canal real embebido en la build
+  coincide con su capability firmada; `master`, metadata desconocida o
+  permisos cruzados fallan cerrados. Supabase conserva la autoridad final.
+- Formulario responsive y accesible con acción, esperado y observado
+  obligatorios, contexto opcional, módulo cerrado, modo offline y draft local
+  recuperable. Los consentimientos nunca se persisten y arrancan apagados.
+- El backend prepara `testing-center.diagnostic.v1` en memoria. La UI muestra
+  los bytes exactos, recalcula SHA-256 antes de aceptarlos y envía esos mismos
+  bytes mediante la RPC idempotente de TAU-04A.
+- No existe todavía un collector productivo de logs: la UI muestra cero
+  disponibles y bloquea ese opt-in en vez de inventar datos.
+- Gates focales Go, frontend, build, lint y harness visual 390/768/1024/1440
+  PASS. Autoridad: `docs/runbooks/testing-center-ui.md`.
+- Estado: PR draft #110 con CI protegida verde; sin Supabase remoto, GitHub
+  Issue, Codex, Discord, merge, promoción o build distribuida.
+
+Nota ISA-219 / TAU-04B (2026-08-02, draft local y bridge Wails):
+- Nuevo store local para reanudar exclusivamente acción, esperado, observado,
+  contexto y módulo; no persiste consentimiento, diagnóstico, logs, replay,
+  tokens, identidad remota ni rutas aportadas por frontend.
+- El backend genera y conserva una clave idempotente estable hasta descartar el
+  draft. Escritura temporal + sync + reemplazo atómico; corrupción, campos
+  desconocidos y tamaños fuera de contrato se eliminan cerradamente.
+- Bridge Wails con DTOs cerrados, request IDs, límites, timeout, cancelación y
+  códigos de error sin detalles locales. La ruta nace en composition root bajo
+  el directorio privado de configuración.
+- Gates focales x20 y race detector x5 PASS. Autoridad:
+  `docs/runbooks/testing-center-report-draft.md`.
+- Estado: PR draft #109 en review; sin UI, red, Supabase remoto, merge,
+  promoción o build distribuida.
+
+Nota ISA-218 / TAU-04A (2026-08-02, envío idempotente de reportes):
+- Nueva RPC autenticada `testing_center_submit_report(...)`, apilada sobre
+  TAU-03R, sin UI, bridge Wails, GitHub, Codex, Discord o deploy.
+- Identidad, rol y canal permitido se derivan en servidor; el cliente no puede
+  escribir tablas directamente ni elegir una asignación automática.
+- Acción, resultado esperado y observado son obligatorios. Diagnóstico y logs
+  conservan consentimientos separados; el JSON se valida con shape y tipos
+  cerrados, límites, SHA-256 exacto y contadores reconciliados.
+- La clave idempotente se serializa como JSON tipado canónico, se bloquea por
+  usuario y produce un único reporte/evento incluso con peticiones concurrentes.
+- Gates locales x3: core 72, access 56, report 55, rollback/reaplicación y
+  carrera exactly-once PASS. Autoridad:
+  `docs/runbooks/testing-center-report-submission.md`.
+- Estado: PR draft #108 en review; sin migración remota, merge, promoción o
+  build.
+
+Nota ISA-215 / TAU-03 (2026-08-02, diagnóstico local del Testing Center):
+- Nuevo paquete puro `testing-center.diagnostic.v1`, apilado sobre TAU-02C, sin
+  UI, red, persistencia, PostHog, GitHub, Codex o Discord.
+- Metadata y logs usan allowlists cerradas, límites de 4 KiB crudos/512 B
+  sanitizados, máximo 100 entradas y payload final de 64 KiB.
+- Preview y transporte comparten exactamente los mismos bytes y SHA-256; el
+  draft puede descartarse y deja de ser accesible.
+- La revisión adversarial corrigió rutas con espacios y acotó el texto antes de
+  aplicar regex. Texto libre no garantiza anonimización semántica, por lo que
+  TAU-04 deberá mantener logs opt-in y preview obligatorio.
+- Gates focales: x20, vet, race x10 y fuzzing PASS. Autoridad:
+  `docs/runbooks/testing-center-diagnostics.md`.
+- Estado: implementación local en review; sin merge, promoción o build.
+
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
   originales, payloads, PII ni errores libres.

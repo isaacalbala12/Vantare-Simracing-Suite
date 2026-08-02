@@ -11,8 +11,8 @@ Nota ISA-218 / TAU-04A (2026-08-02, envío idempotente de reportes):
 - Gates locales x3: core 72, access 56, report 55, rollback/reaplicación y
   carrera exactly-once PASS. Autoridad:
   `docs/runbooks/testing-center-report-submission.md`.
-- Estado: implementación local en review; sin migración remota, merge,
-  promoción o build.
+- Estado: PR draft #108 en review; sin migración remota, merge, promoción o
+  build.
 
 Nota ISA-215 / TAU-03 (2026-08-02, diagnóstico local del Testing Center):
 - Nuevo paquete puro `testing-center.diagnostic.v1`, apilado sobre TAU-02C, sin

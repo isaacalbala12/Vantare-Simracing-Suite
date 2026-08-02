@@ -1,0 +1,9 @@
+exit_code=1
+# github.com/foxglove/mcap/go/cli/mcap/cmd
+<GOMODCACHE>\github.com\foxglove\mcap\go\cli\mcap@v0.0.0-20260611073228-6ae4052f09fd\cmd\convert.go:135:36: too many arguments in call to ros.Bag2MCAP
+	have (*bufio.Writer, *os.File, *mcap.WriterOptions, func([]byte) error)
+	want ("io".Writer, "io".Reader, *mcap.WriterOptions)
+<GOMODCACHE>\github.com\foxglove\mcap\go\cli\mcap@v0.0.0-20260611073228-6ae4052f09fd\cmd\convert.go:165:44: too many arguments in call to ros.DB3ToMCAP
+	have (*bufio.Writer, *sql.DB, *mcap.WriterOptions, []string, func([]byte) error)
+	want ("io".Writer, *sql.DB, *mcap.WriterOptions, []string)
+<GOMODCACHE>\github.com\foxglove\mcap\go\cli\mcap@v0.0.0-20260611073228-6ae4052f09fd\cmd\filter.go:272:12: info.CanReadMessagesUsingIndex undefined (type *mcap.Info has no field or method CanReadMessagesUsingIndex)

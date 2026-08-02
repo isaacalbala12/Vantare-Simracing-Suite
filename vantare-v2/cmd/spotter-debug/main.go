@@ -5,7 +5,6 @@
 //	go run ./cmd/spotter-debug                          # simulator, 10 Hz, Ctrl+C
 //	go run ./cmd/spotter-debug -once -out out.jsonl     # single frame to file
 //	go run ./cmd/spotter-debug -source=replay -once     # replay fixture
-//	go run ./cmd/spotter-debug -source=lmu -once        # live LMU (Windows only)
 //	go run ./cmd/spotter-debug -mock -once              # shorthand for simulator
 package main
 
@@ -18,12 +17,10 @@ import (
 	"syscall"
 	"time"
 
-	engineerlmu "github.com/vantare/overlays/v2/internal/engineer/lmu"
 	"github.com/vantare/overlays/v2/internal/engineer/replay"
 	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
-	lmureader "github.com/vantare/overlays/v2/internal/telemetry/lmu"
 )
 
 func main() {
@@ -31,7 +28,7 @@ func main() {
 	hz := flag.Float64("hz", 10, "poll rate in Hz")
 	outPath := flag.String("out", "", "output JSONL path (empty = stdout)")
 	mock := flag.Bool("mock", false, "use simulator source with ScenarioLeftBasic")
-	source := flag.String("source", "simulator", "frame source: simulator, replay, lmu")
+	source := flag.String("source", "simulator", "frame source: simulator or replay")
 	replayPath := flag.String("replay-path", "internal/engineer/replay/testdata/left-basic.jsonl", "path to replay JSONL fixture")
 	sensitivityStr := flag.String("sensitivity", "normal", "spotter sensitivity: conservative, normal, aggressive")
 	flag.Parse()
@@ -58,20 +55,8 @@ func main() {
 		readFrame = src.ReadFrame
 		closeSource = src.Close
 
-	case *source == "lmu":
-		reader, err := lmureader.Open()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
-		readFrame = func() *telemetry.Frame {
-			buf := reader.Bytes()
-			return engineerlmu.ParseEngineerFrame(buf)
-		}
-		closeSource = reader.Close
-
 	default:
-		fmt.Fprintf(os.Stderr, "unknown source %q: use simulator, replay, or lmu\n", *source)
+		fmt.Fprintf(os.Stderr, "unknown source %q: use simulator or replay\n", *source)
 		os.Exit(1)
 	}
 

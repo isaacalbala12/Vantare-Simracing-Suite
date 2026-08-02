@@ -1,0 +1,379 @@
+{
+  "contractVersion": 1,
+  "summary": {
+    "widgets": 2,
+    "fields": 31,
+    "equal": 19,
+    "withinTolerance": 0,
+    "mismatches": 12,
+    "external": 0
+  },
+  "widgets": [
+    {
+      "widgetType": "pedals",
+      "instance": 0,
+      "coverage": "exact",
+      "outcome": "equal",
+      "summary": {
+        "fields": 8,
+        "equal": 8,
+        "withinTolerance": 0,
+        "mismatches": 0,
+        "external": 0
+      },
+      "entries": [
+        {
+          "path": "brake",
+          "classification": "equal",
+          "rule": "absolute-tolerance",
+          "sourcePaths": [
+            "player.brake"
+          ],
+          "tolerance": 1e-9,
+          "observation": {
+            "kind": "number",
+            "legacy": 0,
+            "projection": 0
+          }
+        },
+        {
+          "path": "brakeText",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "player.brake"
+          ],
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "clutch",
+          "classification": "equal",
+          "rule": "absolute-tolerance",
+          "sourcePaths": [
+            "player.clutch"
+          ],
+          "tolerance": 1e-9,
+          "observation": {
+            "kind": "number",
+            "legacy": 0,
+            "projection": 0
+          }
+        },
+        {
+          "path": "clutchText",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "player.clutch"
+          ],
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "status",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [],
+          "observation": {
+            "kind": "enum",
+            "legacy": "ready",
+            "projection": "ready"
+          }
+        },
+        {
+          "path": "statusMessage",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [],
+          "observation": {
+            "kind": "presence",
+            "legacy": false,
+            "projection": false
+          }
+        },
+        {
+          "path": "throttle",
+          "classification": "equal",
+          "rule": "absolute-tolerance",
+          "sourcePaths": [
+            "player.throttle"
+          ],
+          "tolerance": 1e-9,
+          "observation": {
+            "kind": "number",
+            "legacy": 0,
+            "projection": 0
+          }
+        },
+        {
+          "path": "throttleText",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "player.throttle"
+          ],
+          "observation": {
+            "kind": "redacted"
+          }
+        }
+      ]
+    },
+    {
+      "widgetType": "standings",
+      "instance": 0,
+      "coverage": "partial",
+      "outcome": "mismatch",
+      "summary": {
+        "fields": 23,
+        "equal": 11,
+        "withinTolerance": 0,
+        "mismatches": 12,
+        "external": 0
+      },
+      "entries": [
+        {
+          "path": "activeClass",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].isPlayer",
+            "scoring[].vehicleClass",
+            "scoring[].place"
+          ]
+        },
+        {
+          "path": "remainingText",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "session.remainingSeconds"
+          ]
+        },
+        {
+          "path": "rows.length",
+          "classification": "equal",
+          "rule": "list-shape",
+          "sourcePaths": [],
+          "observation": {
+            "kind": "number",
+            "legacy": 1,
+            "projection": 1
+          }
+        },
+        {
+          "path": "rows.order",
+          "classification": "equal",
+          "rule": "list-shape",
+          "sourcePaths": [],
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "rows[].bestLapText",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].bestLapTime"
+          ]
+        },
+        {
+          "path": "rows[].currentLapText",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "vehicles[].completedLaps"
+          ],
+          "item": 0,
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "rows[].driverName",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].driverName"
+          ]
+        },
+        {
+          "path": "rows[].driverNumber",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].driverNumber"
+          ]
+        },
+        {
+          "path": "rows[].gapText",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "session.type",
+            "scoring[].id",
+            "scoring[].place",
+            "scoring[].vehicleClass",
+            "scoring[].isPlayer",
+            "scoring[].bestLapTime",
+            "scoring[].fastestLap",
+            "scoring[].lapsBehindLeader",
+            "scoring[].timeBehindLeader"
+          ]
+        },
+        {
+          "path": "rows[].id",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "vehicles[].id"
+          ],
+          "item": 0,
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "rows[].intervalText",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].timeBehindNext"
+          ]
+        },
+        {
+          "path": "rows[].isLeader",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "vehicles[].position"
+          ],
+          "item": 0,
+          "observation": {
+            "kind": "boolean",
+            "legacy": true,
+            "projection": true
+          }
+        },
+        {
+          "path": "rows[].isPlayer",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "vehicles[].id",
+            "playerVehicleId"
+          ],
+          "item": 0,
+          "observation": {
+            "kind": "boolean",
+            "legacy": true,
+            "projection": true
+          }
+        },
+        {
+          "path": "rows[].lastLapText",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].lastLapTime"
+          ]
+        },
+        {
+          "path": "rows[].pitText",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "vehicles[].inPit"
+          ],
+          "item": 0,
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "rows[].position",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "vehicles[].position"
+          ],
+          "item": 0,
+          "observation": {
+            "kind": "number",
+            "legacy": 1,
+            "projection": 1
+          }
+        },
+        {
+          "path": "rows[].teamBrandColor",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].teamBrandColor"
+          ]
+        },
+        {
+          "path": "rows[].teamCode",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].teamCode"
+          ]
+        },
+        {
+          "path": "rows[].tireCompound",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].tireCompound"
+          ]
+        },
+        {
+          "path": "rows[].vehicleClass",
+          "classification": "unsupported-by-projection",
+          "rule": "unsupported",
+          "sourcePaths": [
+            "scoring[].vehicleClass"
+          ]
+        },
+        {
+          "path": "sessionLabel",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [
+            "session.type"
+          ],
+          "observation": {
+            "kind": "redacted"
+          }
+        },
+        {
+          "path": "status",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [],
+          "observation": {
+            "kind": "enum",
+            "legacy": "ready",
+            "projection": "ready"
+          }
+        },
+        {
+          "path": "statusMessage",
+          "classification": "equal",
+          "rule": "exact",
+          "sourcePaths": [],
+          "observation": {
+            "kind": "presence",
+            "legacy": false,
+            "projection": false
+          }
+        }
+      ]
+    }
+  ],
+  "truncated": false
+}

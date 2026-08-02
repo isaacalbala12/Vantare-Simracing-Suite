@@ -1,0 +1,11 @@
+{
+  "schema": "vantare.lmu-shared-memory-evidence.v1",
+  "build": "1.4.0.0",
+  "role": "in-pit-observed",
+  "sha256": "262700e53e722b46e1b03940e13be83cf4aa73bf9f5ebdd8b9814b7161c9ede1",
+  "sanitization": "zero-rebuilt-allowlist",
+  "sourceTimeSeconds": 337.4,
+  "vehicleCount": 1,
+  "playerPresent": true,
+  "playerInPit": true
+}

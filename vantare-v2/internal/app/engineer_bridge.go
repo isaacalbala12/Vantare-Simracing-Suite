@@ -36,17 +36,6 @@ func (b *EngineerBridge) Start() {
 		b.emitter.Emit("engineer:status", b.service.Status())
 	}))
 
-	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:source:set", func(event *application.CustomEvent) {
-		source, err := parseStringData(event.Data, "source")
-		if err != nil {
-			log.Printf("EngineerBridge: error parsing source data: %v", err)
-			return
-		}
-		if err := b.service.SetSource(source); err != nil {
-			log.Printf("EngineerBridge: error setting source: %v", err)
-		}
-	}))
-
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:enabled:set", func(event *application.CustomEvent) {
 		enabled, err := parseBoolData(event.Data, "enabled")
 		if err != nil {

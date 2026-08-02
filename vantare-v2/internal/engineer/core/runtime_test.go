@@ -220,6 +220,37 @@ func TestRuntime_Disabled(t *testing.T) {
 	}
 }
 
+func TestProcessMonitorFrameRunsOnlyRequestedFamily(t *testing.T) {
+	queue := audio.NewQueue()
+	runtime := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+	frame := telemetry.Frame{
+		Connected: true,
+		Session:   &telemetry.SessionInfo{GamePhase: 5},
+		Player: &telemetry.PlayerTelemetry{
+			ID:              1,
+			EngineWaterTemp: 106,
+			Fuel:            60,
+			FuelCap:         100,
+		},
+	}
+
+	if !runtime.ProcessMonitorFrame("fuel", 1_000, &frame) {
+		t.Fatal("fuel family was not registered")
+	}
+	for {
+		message, ok := queue.Next(0)
+		if !ok {
+			break
+		}
+		if message.TextKey == "engine.water_temp_high" {
+			t.Fatal("selective fuel input activated the engine monitor")
+		}
+	}
+	if runtime.ProcessMonitorFrame("unknown", 2_000, &frame) {
+		t.Fatal("unknown monitor family must fail closed")
+	}
+}
+
 // TestProcessFrame_NoPlayerDoesNotCorruptPrevFrame verifies that a frame
 // without a player does NOT overwrite prevFrame. If prevFrame were updated
 // on no-player frames, the opponents monitor would lose the transition

@@ -795,3 +795,56 @@ func TestConcurrentSavesDontCorruptFile(t *testing.T) {
 		t.Errorf("expected 1 app, got %d", len(s.LauncherApps))
 	}
 }
+
+func TestSettingsReadAPIsReturnDeepCopies(t *testing.T) {
+	launchedAt := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+	initial := app.DefaultAppSettings()
+	initial.SchemaVersion = 1
+	initial.Hotkeys = map[string]string{"toggleOverlay": "ctrl+shift+v"}
+	initial.LauncherApps = map[string]app.LauncherAppEntry{
+		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate"},
+	}
+	initial.LauncherProfiles = []app.LaunchProfile{{
+		ID: "race", Policy: &app.LaunchPolicy{MaxRetries: 1},
+		Steps: []app.LaunchStep{{AppID: "lmu", Delay: 1}}, LastLaunchedAt: &launchedAt,
+	}}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	service := app.NewSettingsService(path, nil, nil)
+	if err := service.Save(initial); err != nil {
+		t.Fatal(err)
+	}
+	launchedAt = launchedAt.Add(24 * time.Hour)
+	if got := service.Settings().LauncherProfiles[0].LastLaunchedAt; got == nil ||
+		!got.Equal(time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("saved settings retained input timestamp alias: %v", got)
+	}
+
+	snapshot := service.Settings()
+	snapshot.Hotkeys["toggleOverlay"] = "mutated"
+	snapshot.LauncherApps["lmu"] = app.LauncherAppEntry{ID: "changed"}
+	snapshot.LauncherProfiles[0].Steps[0].Delay = 99
+	snapshot.LauncherProfiles[0].Policy.MaxRetries = 3
+	*snapshot.LauncherProfiles[0].LastLaunchedAt = snapshot.LauncherProfiles[0].LastLaunchedAt.Add(48 * time.Hour)
+
+	apps := service.GetLauncherApps()
+	delete(apps, "lmu")
+	profiles := service.GetLauncherProfiles()
+	profiles[0].Steps[0].Delay = 77
+	*profiles[0].LastLaunchedAt = profiles[0].LastLaunchedAt.Add(72 * time.Hour)
+
+	current := service.Settings()
+	if current.Hotkeys["toggleOverlay"] != "ctrl+shift+v" {
+		t.Fatalf("hotkeys leaked mutation: %#v", current.Hotkeys)
+	}
+	if current.LauncherApps["lmu"].ID != "lmu" || len(service.GetLauncherApps()) != 1 {
+		t.Fatalf("launcher apps leaked mutation: %#v", current.LauncherApps)
+	}
+	if current.LauncherProfiles[0].Steps[0].Delay != 1 ||
+		current.LauncherProfiles[0].Policy.MaxRetries != 1 {
+		t.Fatalf("launcher profiles leaked mutation: %#v", current.LauncherProfiles)
+	}
+	if current.LauncherProfiles[0].LastLaunchedAt == nil ||
+		!current.LauncherProfiles[0].LastLaunchedAt.Equal(time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("launcher timestamp leaked mutation: %v", current.LauncherProfiles[0].LastLaunchedAt)
+	}
+}

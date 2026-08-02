@@ -27,10 +27,11 @@ vi.mock("@wailsio/runtime", () => ({
 
 class MockEventSource {
   static instances: MockEventSource[] = [];
+  readonly url: string;
   addEventListener = vi.fn();
   close = vi.fn();
-  constructor(_url: string) {
-    void _url;
+  constructor(url: string) {
+    this.url = url;
     MockEventSource.instances.push(this);
   }
 }
@@ -72,7 +73,7 @@ describe("ObsOverlayApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("loads profile-v3 and starts one SSE adapter", async () => {
+  it("loads profile-v3 and starts the canonical SSE adapter", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
@@ -93,7 +94,9 @@ describe("ObsOverlayApp", () => {
     await flush();
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
-    expect(MockEventSource.instances).toHaveLength(1);
+    expect(MockEventSource.instances.map((source) => source.url)).toEqual([
+      "/telemetry/overlay/projection",
+    ]);
     expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
   });
 

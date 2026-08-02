@@ -95,7 +95,7 @@ export function overlayStudioHarnessBrowserViewPlugin(): Plugin {
           return;
         }
 
-        if (req.method === "GET" && pathname === "/telemetry/stream") {
+        if (req.method === "GET" && pathname === "/telemetry/overlay/projection") {
           res.statusCode = 200;
           res.setHeader("Content-Type", "text/event-stream");
           res.setHeader("Cache-Control", "no-cache");

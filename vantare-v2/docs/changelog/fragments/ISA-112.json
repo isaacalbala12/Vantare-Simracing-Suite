@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-112",
+  "type": "change",
+  "summary": "Engineer y Spotter reciben ahora la telemetría real desde el mismo núcleo que alimenta los overlays.",
+  "technicalNotes": [
+    "Vantare abre una sola fuente LMU y reparte proyecciones independientes a Overlay y Engineer.",
+    "Engineer deja de ofrecer fuentes de simulación en la interfaz productiva y se desconecta cuando los datos quedan obsoletos.",
+    "Solo se activan los avisos que tienen señales reales y pruebas de paridad; los demás permanecen silenciosos."
+  ],
+  "testing": [
+    "Abrir LMU en pista y confirmar que Engineer muestra Telemetry Core como fuente y cambia a conectado tras recibir datos.",
+    "Cerrar o desconectar LMU y comprobar que Engineer deja de mostrarse conectado sin emitir mensajes tardíos.",
+    "Con tráfico cercano, comprobar left, right, still there y clear; con tráfico lejano no debe aparecer un aviso de Spotter."
+  ],
+  "knownLimitations": [
+    "Engine, neumáticos, banderas, daños, condiciones y cambios de piloto siguen desactivados hasta disponer de telemetría real suficiente.",
+    "La validación perceptual de Spotter con un rival real solapado se agrupa en el gate manual final del módulo."
+  ]
+}

@@ -10,9 +10,7 @@ func TestExtendedReader_Read(t *testing.T) {
 	buf := NewSyntheticExtendedBuffer()
 
 	// Creamos un reader con el buffer prefabricado (sin abrir shared memory real).
-	r := &ExtendedReader{
-		data: buf,
-	}
+	r := NewExtendedReaderFromBuffer(buf)
 
 	data, err := r.Read()
 	if err != nil {
@@ -46,7 +44,7 @@ func TestExtendedReader_Read_FuelMultOff(t *testing.T) {
 	buf := NewSyntheticExtendedBuffer()
 	buf[mFuelMultOffset] = 0 // sin combustible
 
-	r := &ExtendedReader{data: buf}
+	r := NewExtendedReaderFromBuffer(buf)
 	data, err := r.Read()
 	if err != nil {
 		t.Fatalf("Read() returned error: %v", err)
@@ -63,7 +61,7 @@ func TestExtendedReader_Read_EmptyHistoryMessage(t *testing.T) {
 		buf[mLastHistoryMessageOffset+i] = 0
 	}
 
-	r := &ExtendedReader{data: buf}
+	r := NewExtendedReaderFromBuffer(buf)
 	data, err := r.Read()
 	if err != nil {
 		t.Fatalf("Read() returned error: %v", err)
@@ -77,7 +75,7 @@ func TestExtendedReader_Read_OilPressureWarning(t *testing.T) {
 	buf := NewSyntheticExtendedBuffer()
 
 	// Sin advertencia.
-	r := &ExtendedReader{data: buf}
+	r := NewExtendedReaderFromBuffer(buf)
 	data, err := r.Read()
 	if err != nil {
 		t.Fatalf("Read() returned error: %v", err)
@@ -101,7 +99,7 @@ func TestExtendedReader_Read_PitSpeedLimitZero(t *testing.T) {
 	buf := NewSyntheticExtendedBuffer()
 	binary.LittleEndian.PutUint32(buf[mCurrentPitSpeedLimitOffset:], 0)
 
-	r := &ExtendedReader{data: buf}
+	r := NewExtendedReaderFromBuffer(buf)
 	data, err := r.Read()
 	if err != nil {
 		t.Fatalf("Read() returned error: %v", err)
@@ -112,7 +110,7 @@ func TestExtendedReader_Read_PitSpeedLimitZero(t *testing.T) {
 }
 
 func TestExtendedReader_Read_NilBuffer(t *testing.T) {
-	r := &ExtendedReader{data: nil}
+	r := NewExtendedReaderFromBuffer(nil)
 	_, err := r.Read()
 	if err == nil {
 		t.Error("expected error for nil buffer, got nil")
@@ -120,7 +118,7 @@ func TestExtendedReader_Read_NilBuffer(t *testing.T) {
 }
 
 func TestExtendedReader_Read_BufferTooSmall(t *testing.T) {
-	r := &ExtendedReader{data: make([]byte, 100)}
+	r := NewExtendedReaderFromBuffer(make([]byte, 100))
 	data, err := r.Read()
 	if err != nil {
 		t.Fatalf("Read() returned error on small buffer: %v", err)
@@ -140,7 +138,7 @@ func TestExtendedReader_HistoryMessageLong(t *testing.T) {
 	}
 	copy(buf[mLastHistoryMessageOffset:], longMsg)
 
-	r := &ExtendedReader{data: buf}
+	r := NewExtendedReaderFromBuffer(buf)
 	data, err := r.Read()
 	if err != nil {
 		t.Fatalf("Read() returned error: %v", err)
@@ -178,7 +176,7 @@ func TestExtendedReader_Read_HistoryMessageStopGoVariants(t *testing.T) {
 			}
 			copy(buf[mLastHistoryMessageOffset:], tc.message)
 
-			r := &ExtendedReader{data: buf}
+			r := NewExtendedReaderFromBuffer(buf)
 			data, err := r.Read()
 			if err != nil {
 				t.Fatalf("Read() returned error: %v", err)
@@ -197,7 +195,7 @@ func TestExtendedReader_Read_DoesNotMutateBuffer(t *testing.T) {
 	before := make([]byte, len(buf))
 	copy(before, buf)
 
-	r := &ExtendedReader{data: buf}
+	r := NewExtendedReaderFromBuffer(buf)
 	_, _ = r.Read()
 
 	for i, b := range buf {

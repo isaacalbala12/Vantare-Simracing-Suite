@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-104",
+  "type": "security",
+  "summary": "Ajustes incorpora un inspector local para revisar el estado de telemetría y preparar diagnósticos privados antes de compartirlos.",
+  "technicalNotes": [
+    "El paquete muestra exactamente el contenido que se copiará o descargará y verifica su hash y tamaño en el equipo.",
+    "Las sesiones incompatibles o dañadas se describen únicamente mediante metadata segura y nunca se abren como sesiones actuales.",
+    "El diagnóstico permanece local: no contiene telemetría, identidad, rutas privadas ni subida automática."
+  ],
+  "testing": [
+    "Abrir Ajustes y comprobar los estados de sesión actual, futura, dañada y no disponible.",
+    "Confirmar que la vista previa, la copia y la descarga contienen exactamente el mismo JSON.",
+    "Verificar el panel en tamaños de ventana ancho, medio y compacto."
+  ],
+  "knownLimitations": [
+    "La captura raw limitada está preparada internamente, pero permanece desactivada y sin conexión productiva hasta un corte posterior."
+  ]
+}

@@ -966,8 +966,9 @@ func TestHubServiceStartActiveOverlayUsesActiveProfile(t *testing.T) {
 	attachStudioProfileSvc(t, hubSvc, profileSvc)
 
 	// Set active profile and then start overlay.
-	settingsSvc.Settings().ActiveOverlayProfileID = "default-racing"
-	_ = settingsSvc.Save(settingsSvc.Settings())
+	settings := settingsSvc.Settings()
+	settings.ActiveOverlayProfileID = "default-racing"
+	_ = settingsSvc.Save(settings)
 
 	status, err := hubSvc.StartActiveOverlay()
 	require.NoError(t, err)

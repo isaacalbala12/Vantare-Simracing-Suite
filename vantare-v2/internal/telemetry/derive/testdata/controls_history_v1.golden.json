@@ -1,0 +1,69 @@
+[
+  {
+    "epoch": 1,
+    "sequence": 1,
+    "freshness": "fresh",
+    "history": [
+      {
+        "Cursor": {
+          "Epoch": 1,
+          "Sequence": 1
+        },
+        "Vehicle": "vehicle",
+        "Throttle": 0.1,
+        "Brake": 0.2,
+        "Clutch": 0.3
+      }
+    ],
+    "gapsStatus": "missing",
+    "deltaStatus": "missing"
+  },
+  {
+    "epoch": 1,
+    "sequence": 2,
+    "freshness": "stale",
+    "history": [
+      {
+        "Cursor": {
+          "Epoch": 1,
+          "Sequence": 1
+        },
+        "Vehicle": "vehicle",
+        "Throttle": 0.1,
+        "Brake": 0.2,
+        "Clutch": 0.3
+      }
+    ],
+    "gapsStatus": "missing",
+    "deltaStatus": "missing"
+  },
+  {
+    "epoch": 1,
+    "sequence": 3,
+    "freshness": "fresh",
+    "history": [
+      {
+        "Cursor": {
+          "Epoch": 1,
+          "Sequence": 1
+        },
+        "Vehicle": "vehicle",
+        "Throttle": 0.1,
+        "Brake": 0.2,
+        "Clutch": 0.3
+      },
+      {
+        "Cursor": {
+          "Epoch": 1,
+          "Sequence": 3
+        },
+        "Vehicle": "vehicle",
+        "Throttle": 0.3,
+        "Brake": 0.4,
+        "Clutch": 0.5
+      }
+    ],
+    "gapsStatus": "missing",
+    "deltaStatus": "missing"
+  }
+]

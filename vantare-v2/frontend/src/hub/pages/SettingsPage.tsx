@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime';
 import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { AccountSettings } from '../settings/AccountSettings';
+import { WailsDiagnosticsPanel } from '../settings/diagnostics/WailsDiagnosticsPanel';
 import { parseKeyEvent } from '../settings/hotkey-capture';
 import { isDowngrade } from '../../lib/version-compare';
 import type {
@@ -114,9 +115,6 @@ function SettingsPageInner() {
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
-  const [diagLoading, setDiagLoading] = useState(false);
-  const [diagCopied, setDiagCopied] = useState(false);
-  const [diagError, setDiagError] = useState<string | null>(null);
   const { t } = useI18n();
 
   const TABS = [
@@ -207,39 +205,6 @@ function SettingsPageInner() {
 
     Events.Emit('updater:settings:get');
     Events.Emit('updater:check');
-
-    const unsubDiagnostics = Events.On(
-      'diagnostics',
-      (event: { data: unknown }) => {
-        setDiagLoading(false);
-        try {
-          const payload = JSON.stringify(event.data, null, 2);
-          navigator.clipboard.writeText(payload)
-            .then(() => {
-              setDiagCopied(true);
-              setDiagError(null);
-              setTimeout(() => setDiagCopied(false), 3000);
-            })
-            .catch((err) => {
-              console.error('Error al copiar al portapapeles:', err);
-              setDiagError('Error al copiar al portapapeles. Por favor copia manualmente.');
-            });
-        } catch {
-          setDiagError('Error al procesar el paquete de diagnóstico.');
-        }
-      },
-    );
-    handlers.push(unsubDiagnostics);
-
-    const unsubDiagError = Events.On(
-      'diagnostics:error',
-      (event: { data?: { message?: string } }) => {
-        setDiagLoading(false);
-        setDiagError(event.data?.message ?? 'Error al generar los diagnósticos');
-      },
-    );
-    handlers.push(unsubDiagError);
-
 
     return () => {
       handlers.forEach((h) => h?.());
@@ -342,12 +307,6 @@ function SettingsPageInner() {
   function handleSaveHotkeys() {
     setSettingsStatus('Guardando...');
     Events.Emit('settings:save', appSettings);
-  }
-
-  function handleCopyDiagnostics() {
-    setDiagLoading(true);
-    setDiagError(null);
-    Events.Emit('diagnostics:get');
   }
 
   return (
@@ -623,28 +582,7 @@ function SettingsPageInner() {
 
         {activeTab === 'diagnostics' && (
           <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label="Diagnóstico">
-            <div className="card-sleek rounded-xl p-5 border border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
-              <h2 className="font-display font-semibold text-lg text-white mb-2">
-                Soporte Técnico y Diagnósticos
-              </h2>
-              <p className="text-sm text-vantare-textMuted mb-4">
-                Si experimentas un error, puedes copiar un paquete de diagnóstico seguro con la configuración actual
-                de la aplicación para compartirlo en el canal de soporte. Las rutas personales de tu equipo se sanitizan automáticamente.
-              </p>
-              <button
-                type="button"
-                onClick={handleCopyDiagnostics}
-                disabled={diagLoading}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {diagLoading ? 'Generando...' : diagCopied ? '✓ ¡Copiado al Portapapeles!' : 'Copiar paquete de diagnóstico'}
-              </button>
-              {diagError && (
-                <div className="mt-3 text-xs text-red-400 font-mono">
-                  {diagError}
-                </div>
-              )}
-            </div>
+            <WailsDiagnosticsPanel />
           </div>
         )}
 

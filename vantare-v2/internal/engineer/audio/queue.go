@@ -56,3 +56,12 @@ func (q *Queue) Len() int {
 	defer q.mu.Unlock()
 	return len(q.messages)
 }
+
+// Clear removes pending messages at a session, vehicle or connection
+// boundary. Already-playing audio is owned by the player and is unaffected.
+func (q *Queue) Clear() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	clear(q.messages)
+	q.messages = q.messages[:0]
+}

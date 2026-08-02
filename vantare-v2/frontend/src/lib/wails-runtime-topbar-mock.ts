@@ -5,6 +5,10 @@
  * locked — the layout case we want to verify (narrow screens cutting "Ajustes").
  */
 import { mockCalendar } from "../hub/calendar-visual-mock-data";
+import {
+  telemetrySourceStatusEvent,
+  telemetrySourceStatusRequestEvent,
+} from "../telemetry-transport/source-status";
 
 const listeners = new Map<string, Set<(event: unknown) => void>>();
 
@@ -50,10 +54,10 @@ export const Events = {
       return;
     }
 
-    if (name === "telemetry:source-status:get") {
+    if (name === telemetrySourceStatusRequestEvent) {
       setTimeout(
         () =>
-          broadcast("telemetry:source-status", {
+          broadcast(telemetrySourceStatusEvent, {
             kind: "lmu",
             name: "LMU",
             live: true,

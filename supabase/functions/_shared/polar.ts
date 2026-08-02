@@ -37,6 +37,28 @@ export type CreatePortalSessionParams = {
 };
 export type CreatePortalSessionResult = { url: string };
 
+export type PolarCustomerStateSubscription = {
+  id: string;
+  productId: string;
+  status: string;
+  modifiedAt: string;
+  currentPeriodEnd: string | null;
+};
+
+export type PolarCustomerStateBenefit = {
+  id: string;
+  benefitId: string;
+  modifiedAt: string;
+};
+
+export type PolarCustomerState = {
+  customerId: string;
+  externalId: string;
+  observedAt: string;
+  activeSubscriptions: PolarCustomerStateSubscription[];
+  grantedBenefits: PolarCustomerStateBenefit[];
+};
+
 export type PolarClientErrorDetails = { polar_status?: number };
 
 export function isPolarDebugErrorsEnabled(): boolean {
@@ -71,6 +93,9 @@ export type PolarClientDeps = {
   getCancelUrl?: () => string | null | undefined;
   timeoutMs?: number;
   signal?: AbortSignal;
+  sleep?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
+  maxRateLimitRetries?: number;
+  now?: () => Date;
 };
 
 const BASE_URLS: Record<BillingEnvironment, string> = {
@@ -155,11 +180,22 @@ async function polarRequest<T>(
       controller.abort("cancelled");
       throw new DOMException("aborted", "AbortError");
     }
-    const response = await (deps.fetchFn ?? fetch)(url, {
-      ...init,
-      signal: controller.signal,
-    });
-    return await consume(response);
+    const maxRetries = Math.max(0, Math.min(deps.maxRateLimitRetries ?? 2, 5));
+    for (let attempt = 0;; attempt++) {
+      const response = await (deps.fetchFn ?? fetch)(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      if (response.status !== 429 || attempt >= maxRetries) {
+        return await consume(response);
+      }
+      const delay = parseRetryAfter(
+        response.headers.get("Retry-After"),
+        deps.now?.() ?? new Date(),
+      );
+      await response.body?.cancel();
+      await (deps.sleep ?? abortableSleep)(delay, controller.signal);
+    }
   } catch (error) {
     if (controller.signal.aborted) {
       const cancelled = controller.signal.reason === "cancelled";
@@ -179,6 +215,39 @@ async function polarRequest<T>(
     clearTimeout(timeout);
     deps.signal?.removeEventListener("abort", onAbort);
   }
+}
+
+export function parseRetryAfter(raw: string | null, now = new Date()): number {
+  if (!raw?.trim()) return 1000;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(Math.round(seconds * 1000), 30_000);
+  }
+  const timestamp = Date.parse(raw);
+  if (!Number.isFinite(timestamp)) return 1000;
+  return Math.min(Math.max(timestamp - now.getTime(), 0), 30_000);
+}
+
+function abortableSleep(
+  milliseconds: number,
+  signal: AbortSignal,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("aborted", "AbortError"));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      reject(new DOMException("aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 function requireToken(deps: PolarClientDeps): string {
@@ -383,6 +452,139 @@ export async function createPolarCustomerSession(
         expiresAt: typeof data.expires_at === "string" ? data.expires_at : null,
       };
     },
+  );
+}
+
+export async function getPolarCustomerStateByExternalId(
+  externalId: string,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<PolarCustomerState> {
+  const normalizedExternalId = externalId.trim();
+  if (!normalizedExternalId) {
+    throw new PolarClientError(
+      "polar_customer_ref_required",
+      "Polar customer reference is required",
+      400,
+    );
+  }
+  const token = requireToken(deps);
+  return await polarRequest(
+    `${apiBase(environment, deps)}/customers/external/${
+      encodeURIComponent(normalizedExternalId)
+    }/state`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    },
+    deps,
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          response.status === 404
+            ? "polar_customer_not_found"
+            : "polar_customer_state_failed",
+          response.status === 404
+            ? "Polar customer was not found"
+            : "Polar customer state could not be read",
+          response.status === 404 ? 404 : 502,
+          { polar_status: response.status },
+        );
+      }
+      let value: unknown;
+      try {
+        value = await response.json();
+      } catch {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Polar customer state response was not valid JSON",
+          502,
+        );
+      }
+      if (!isRecord(value)) {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Polar customer state response was invalid",
+          502,
+        );
+      }
+      const customer = isRecord(value.customer) ? value.customer : value;
+      const customerId = stringValue(customer.id);
+      const returnedExternalId = stringValue(customer.external_id) ??
+        stringValue(value.external_id) ?? normalizedExternalId;
+      const subscriptions = value.active_subscriptions;
+      const benefits = value.granted_benefits;
+      if (
+        !customerId || !Array.isArray(subscriptions) || !Array.isArray(benefits)
+      ) {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Polar customer state response was incomplete",
+          502,
+        );
+      }
+      return {
+        customerId,
+        externalId: returnedExternalId,
+        observedAt: (deps.now?.() ?? new Date()).toISOString(),
+        activeSubscriptions: subscriptions.map(parseCustomerSubscription),
+        grantedBenefits: benefits.map(parseCustomerBenefit),
+      };
+    },
+  );
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function parseCustomerSubscription(
+  value: unknown,
+): PolarCustomerStateSubscription {
+  if (!isRecord(value)) throw invalidCustomerState();
+  const product = isRecord(value.product) ? value.product : null;
+  const id = stringValue(value.id);
+  const productId = stringValue(value.product_id) ?? stringValue(product?.id);
+  const status = stringValue(value.status) ?? "active";
+  const modifiedAt = stringValue(value.modified_at) ??
+    stringValue(value.updated_at);
+  if (
+    !id || !productId || !modifiedAt || !Number.isFinite(Date.parse(modifiedAt))
+  ) {
+    throw invalidCustomerState();
+  }
+  return {
+    id,
+    productId,
+    status,
+    modifiedAt: new Date(modifiedAt).toISOString(),
+    currentPeriodEnd: stringValue(value.current_period_end),
+  };
+}
+
+function parseCustomerBenefit(value: unknown): PolarCustomerStateBenefit {
+  if (!isRecord(value)) throw invalidCustomerState();
+  const benefit = isRecord(value.benefit) ? value.benefit : null;
+  const id = stringValue(value.id);
+  const benefitId = stringValue(value.benefit_id) ?? stringValue(benefit?.id);
+  const modifiedAt = stringValue(value.modified_at) ??
+    stringValue(value.granted_at);
+  if (
+    !id || !benefitId || !modifiedAt || !Number.isFinite(Date.parse(modifiedAt))
+  ) {
+    throw invalidCustomerState();
+  }
+  return { id, benefitId, modifiedAt: new Date(modifiedAt).toISOString() };
+}
+
+function invalidCustomerState(): PolarClientError {
+  return new PolarClientError(
+    "polar_invalid_response",
+    "Polar customer state response was invalid",
+    502,
   );
 }
 

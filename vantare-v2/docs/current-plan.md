@@ -1,3 +1,11 @@
+Nota ISA-69-BIL-05-MONOTONIC-GRANTS-RECONCILIATION (2026-08-02):
+- Candidato aislado sobre ISA-179 `edcaffa098b7e705456406f11b6bb74e37256a68`: cada order/subscription/benefit tiene versión y grants propios; `user_entitlements` queda como read-model estrictamente derivado.
+- Webhook BIL-02 preservado: stale se completa como no-op auditado, conflictos se ponen en quarantine y retries/replay continúan por efecto. `billing_subscriptions` se conserva como read-model compatible y no admite eventos antiguos.
+- Customer State por external ID alimenta reconciliación manual/programable, dry-run por defecto, apply transaccional e idempotente, paginación/cancelación/timeout/Retry-After. La ausencia de orders lifetime nunca revoca acceso; benefits desconocidos bloquean el plan. Snapshot y capabilities se normalizan antes del hash y el plan tiene un único límite de 256 KiB.
+- El bundle derivado exige una capability raíz Pro o Launch; canales/benefits aislados no amplían acceso. La migración retira rows legacy activos paralelos, limita `past_due` con evidencia a tres días desde la última observación y revoca si falta `expires_at`; nunca crea acceso indefinido.
+- Evidencia: Deno focal 45/45 y suite activa 101/101; PostgreSQL clean/upgrade/restore 48+53+43+17 pgTAP, upgrade legacy 11/11, concurrencia y restore fail-closed PASS. Informe: `docs/analysis/isa-69-bil-05-monotonic-grants-reconciliation-2026-08-02.md`; runbook: `docs/billing/bil-05-reconciliation-runbook.md`.
+- Sin deploy, migración remota, Customer State real, pago, refund, PII o promoción. Venta pública sigue **NO-GO**. Siguiente corte tras review: BIL-06; BIL-07 conserva refund parcial/ledger.
+
 Nota ISA-179-BIL-04B-INTEGRACION-CONTROLADA (2026-08-02, corrección de review aplicada):
 - Integración controlada de BIL-02 `08bb83a959dee601ca5884fba6ac96b399c5e2bd`, BIL-03 `2a6288a36e368b322e8262534988277d1e16025e` y BIL-04 `eea8b760dc382c82c3f6b9f193782f9e1469b8d7`, sin comportamiento comercial nuevo.
 - La simulación previa identificó exactamente cuatro conflictos de contenido: runtime y tests del webhook, este plan y el handoff comercial. La resolución conserva el inbox durable de BIL-02 y el aislamiento por entorno y hardening de BIL-03/04.

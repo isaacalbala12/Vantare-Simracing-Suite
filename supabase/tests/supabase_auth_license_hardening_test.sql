@@ -79,7 +79,7 @@ select is((select proconfig[1] from pg_proc where oid = 'public.mark_billing_che
 insert into auth.users (id, email, raw_user_meta_data)
 values ('00000000-0000-4000-8000-000000000088', 'hardening@example.invalid', '{}'::jsonb);
 insert into public.user_entitlements (user_id, product_key, status, source)
-values ('00000000-0000-4000-8000-000000000088', 'vantare_pro', 'active', 'test');
+values ('00000000-0000-4000-8000-000000000088', 'bundle', 'active', 'billing_projection');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000088', true);

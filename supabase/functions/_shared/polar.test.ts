@@ -5,6 +5,7 @@ import {
 import {
   createPolarCheckoutSession,
   createPolarCustomerSession,
+  getPolarCustomerStateByExternalId,
   PolarClientError,
   publicPolarErrorExtras,
 } from "./polar.ts";
@@ -221,4 +222,69 @@ Deno.test("Polar portal uses the requested environment and validates hosted URL"
   });
   assertEquals(result.url, "https://sandbox.polar.sh/portal/test");
   assertEquals(body.return_url, "https://app.vantare.test/account");
+});
+
+Deno.test("Polar Customer State is normalized without lifetime-order assumptions", async () => {
+  const result = await getPolarCustomerStateByExternalId(
+    checkout.userId,
+    "sandbox",
+    {
+      ...checkoutDeps(async (input) => {
+        assertEquals(
+          String(input),
+          `https://sandbox-api.polar.sh/v1/customers/external/${checkout.userId}/state`,
+        );
+        return new Response(JSON.stringify({
+          customer: { id: "customer-1", external_id: checkout.userId },
+          active_subscriptions: [{
+            id: "subscription-1",
+            product_id: checkout.productId,
+            status: "active",
+            modified_at: "2026-08-02T10:00:00Z",
+            current_period_end: "2026-09-02T10:00:00Z",
+          }],
+          granted_benefits: [],
+        }));
+      }),
+      now: () => new Date("2026-08-02T12:00:00Z"),
+    },
+  );
+  assertEquals(result.activeSubscriptions[0], {
+    id: "subscription-1",
+    productId: checkout.productId,
+    status: "active",
+    modifiedAt: "2026-08-02T10:00:00.000Z",
+    currentPeriodEnd: "2026-09-02T10:00:00Z",
+  });
+  assertEquals(result.grantedBenefits, []);
+});
+
+Deno.test("Polar Customer State honors Retry-After seconds and HTTP dates", async () => {
+  for (const retryAfter of ["2", "Sun, 02 Aug 2026 12:00:03 GMT"]) {
+    let requests = 0;
+    const delays: number[] = [];
+    await getPolarCustomerStateByExternalId(checkout.userId, "sandbox", {
+      ...checkoutDeps(async () => {
+        requests++;
+        if (requests === 1) {
+          return new Response("", {
+            status: 429,
+            headers: { "Retry-After": retryAfter },
+          });
+        }
+        return new Response(JSON.stringify({
+          customer: { id: "customer-1", external_id: checkout.userId },
+          active_subscriptions: [],
+          granted_benefits: [],
+        }));
+      }),
+      now: () => new Date("2026-08-02T12:00:00Z"),
+      sleep: (milliseconds) => {
+        delays.push(milliseconds);
+        return Promise.resolve();
+      },
+    });
+    assertEquals(requests, 2);
+    assertEquals(delays, [retryAfter === "2" ? 2000 : 3000]);
+  }
 });

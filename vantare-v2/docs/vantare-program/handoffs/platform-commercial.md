@@ -1,8 +1,8 @@
 # Handoff vivo — plataforma comercial (Billing)
 
-Estado: ISA-179 / BIL-04B integra de forma controlada BIL-02, BIL-03 y BIL-04;
-matriz conjunta completa y corrección P2/P3 aplicada, pendiente de revalidación
-independiente y venta pública **NO-GO**.
+Estado: ISA-69 / BIL-05 implementa sobre ISA-179 la proyección comercial
+monótona, grants por fuente y reconciliación Customer State; candidato aislado
+pendiente de review, sin deploy y con venta pública **NO-GO**.
 
 Entradas exactas: BIL-02 `08bb83a959dee601ca5884fba6ac96b399c5e2bd`,
 BIL-03 `2a6288a36e368b322e8262534988277d1e16025e` y BIL-04
@@ -26,7 +26,9 @@ Leer, por orden:
    únicamente como snapshot histórico.
 6. `docs/billing/bil-02-webhook-inbox-runbook.md`.
 7. `docs/analysis/isa-179-bil-04b-controlled-integration-2026-08-02.md`.
-8. ISA-179 y las issues BIL relacionadas en Linear.
+8. `docs/analysis/isa-69-bil-05-monotonic-grants-reconciliation-2026-08-02.md`.
+9. `docs/billing/bil-05-reconciliation-runbook.md`.
+10. ISA-179, ISA-69 y las issues BIL relacionadas en Linear.
 
 ## Fronteras de autoridad
 
@@ -104,13 +106,39 @@ commit de corrección.
 - No hubo deploy, migración remota, datos de customers, pagos ni cambios en Polar.
 - Informe: `docs/analysis/isa-72-bil-03-checkout-mapping-portal-hardening-2026-08-02.md`.
 
+## BIL-05 / ISA-69
+
+- Proyección por recurso y entorno con orden `(modified_at, snapshot_hash)`:
+  apply, duplicate sin escrituras, stale no-op auditado y conflicto en
+  quarantine.
+- Grants independientes por order/subscription/benefit. Un refund o cancel no
+  pisa otra fuente. El bundle solo deriva de roots Pro/Launch; canales o
+  benefits aislados no amplían acceso.
+- `user_entitlements` es read-model derivado; `billing_subscriptions` se
+  conserva como read-model compatible después de aceptar la versión monótona.
+- Customer State reconcilia subscriptions y benefits conocidos; nunca infiere
+  revocación de una order lifetime ausente. Mappings desconocidos bloquean el
+  plan completo. La ausencia de un benefit revoca solo sus capabilities
+  conocidas.
+- Un solo motor manual/programable: dry-run cero escrituras y apply
+  transaccional/repetible. Paginación, cancelación, timeout y Retry-After quedan
+  cubiertos. El snapshot se normaliza y el plan usa 256 KiB en RPC y tabla.
+- Legacy se conserva como grants con semántica equivalente y se retiran sus
+  rows activos paralelos. `past_due` queda activo solo con `expires_at`
+  demostrable y máximo tres días desde `updated_at`; sin evidencia se revoca.
+- Deno focal 45/45, suite activa 101/101 y PostgreSQL clean/upgrade/restore
+  48+53+43+17 pgTAP + upgrade legacy 11/11 PASS. No se ejecutó contra Supabase o
+  Polar remotos.
+- Reconciliaciones idénticas concurrentes se serializan por cuenta y convergen
+  en un `applied`, un `unchanged`, una auditoría y cero errores.
+
 ## Riesgos que mantienen NO-GO
 
 - El inbox durable de BIL-02 queda integrado localmente, pero ISA-179 aún no
   está revisada ni desplegada.
 - `price_id_to_checkout_key` aún no gobierna el webhook ni los grants; por ahora
   el lifecycle resuelve producto y conserva esa deuda explícita, sin falsa GO.
-- No hay reconciliación monotónica ni grants independientes completos.
+- BIL-05 está implementada localmente, pero no revisada ni desplegada.
 - Subscription, recovery y refund no cumplen aún el contrato vigente.
 - Cache offline y dispositivo necesitan integridad y vinculación correctas.
 - Supabase necesita hardening y recuperación verificable.
@@ -143,9 +171,8 @@ commit de corrección.
 
 ## Última actualización
 
-2026-08-02 — ISA-179 / BIL-04B compone el inbox durable de BIL-02 con el
-aislamiento por entorno y el hardening de BIL-03/04. La simulación previa, la
-resolución de ownership y la matriz Deno/PostgreSQL/Go/frontend/guards quedan
-documentadas y verdes. BIL-05 solo puede partir del SHA canónico de ISA-179 tras
-review independiente. Sin deploy, pago, refund, replay remoto, secretos, PII ni
-mutaciones Polar/Supabase.
+2026-08-02 — ISA-69 / BIL-05 parte del SHA canónico de ISA-179 e implementa
+orden monótono, grants por fuente y reconciliación Customer State. Conserva el
+inbox durable y los read-models compatibles, con matrices Deno/PostgreSQL verdes.
+Sin deploy, pago, refund, replay remoto, secretos, PII ni mutaciones
+Polar/Supabase. Siguiente corte: BIL-06 tras review independiente.

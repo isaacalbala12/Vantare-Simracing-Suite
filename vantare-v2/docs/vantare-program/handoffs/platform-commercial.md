@@ -176,8 +176,11 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - ISA-227 / TAU-06B fija instrucciones/objetivos, módulos/rutas, command IDs,
   budgets y salida JSON. Revalida policy y digest; el registro global in-memory
   es solo prueba, no un lock distribuido ni un agente real.
-- Siguiente acción: TAU-06C ejecuta la auditoría adversarial GO/NO-GO. La red,
-  API Codex, repo access, App real, Discord y asignación automática siguen
+- ISA-228 / TAU-06C concluye NO-GO: policy/corpus estructurado pasan, pero
+  faltan procedencia/redacción verificable, scope leaf-level, exclusión durable
+  y SHA exacto. P0=0, P1=3, P2=1.
+- Siguiente acción: hardening en cortes separados y nueva auditoría. TAU-07,
+  red, API Codex, repo access, App real, Discord y asignación automática siguen
   apagados.
 
 ## Riesgos
@@ -203,8 +206,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-227 prepara un sobre Codex dry-run cerrado sin endpoint,
-credenciales, red, checkout, comandos o deploy. No ejecuta Codex, Discord o
-Supabase remoto.
+2026-08-02, ISA-228 bloquea TAU-07 con NO-GO reproducible hasta cerrar tres P1
+y un P2. No ejecuta Codex, Discord, repo access o Supabase remoto.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

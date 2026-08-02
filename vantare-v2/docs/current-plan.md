@@ -1,3 +1,14 @@
+Nota ISA-228 / TAU-06C (2026-08-02, auditoría Codex NO-GO):
+- Review independiente sobre `a4239a4`, sin editar policy ni contrato dry-run.
+- Métricas: 0/96 falsos `eligible` sensibles, 0/35 falsos `needs_owner`
+  benignos y rechazo de workflow path/campos extra.
+- Bloqueantes: P1 procedencia/redacción no demostrada, P1 prefijos que incluyen
+  access/clients, P1 exclusión solo in-memory y P2 base `nightly` sin SHA.
+- Veredicto TAU-07: NO-GO (P0=0, P1=3, P2=1). Autoridad:
+  `docs/analysis/isa-228-tau-06c-codex-adversarial-audit-2026-08-02.md`.
+- Siguiente: hardening en cortes nuevos y reauditoría; Codex/API/repo access,
+  Discord, deploy, merge y promoción continúan apagados.
+
 Nota ISA-227 / TAU-06B (2026-08-02, sobre Codex dry-run):
 - Prompt y objetivos fijos separados de evidencia server-redacted no
   confiable; la policy TAU-06A se recalcula y el módulo debe coincidir.

@@ -15,7 +15,6 @@ $logPath = Join-Path $testRoot "supabase.log"
 $target = Join-Path $PSScriptRoot "deploy-approved-billing-stack.ps1"
 $originalPath = $env:PATH
 $originalAccessToken = $env:SUPABASE_ACCESS_TOKEN
-$originalDatabaseUrl = $env:SUPABASE_DB_URL
 
 New-Item -ItemType Directory -Path $fakeBin -Force | Out-Null
 
@@ -71,40 +70,18 @@ try {
   $env:PATH = "$fakeBin;$originalPath"
   $env:FAKE_SUPABASE_LOG = $logPath
   $env:SUPABASE_ACCESS_TOKEN = "test-token-not-a-secret"
-  $env:SUPABASE_DB_URL =
-    "postgresql://postgres@db.$projectRef.supabase.co/postgres"
 
-  $matchingDatabaseUrl = $env:SUPABASE_DB_URL
-  $env:SUPABASE_DB_URL =
-    "postgresql://postgres@db.zyxwvutsrqponmlkjihg.supabase.co/postgres"
-  $targetBlocked = $false
-  $targetError = ""
-  try {
-    & $target -ProjectRef $projectRef -Mode preflight
-  } catch {
-    $targetError = $_.Exception.Message
-    $targetBlocked = $targetError -match
-      "SUPABASE_DB_URL does not match SUPABASE_PROJECT_REF"
-  }
-  Assert-True $targetBlocked `
-    "preflight accepted a database from another project; observed: $targetError"
-  Assert-True (-not (Test-Path -LiteralPath $logPath)) `
-    "project mismatch reached the Supabase CLI"
-
-  $env:SUPABASE_DB_URL =
-    "postgresql://postgres.${projectRef}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
-  & $target -ProjectRef $projectRef -Mode preflight
-  $poolerPreflight = @(Get-Content -LiteralPath $logPath)
-  Assert-True ((@($poolerPreflight -match "db push .*--dry-run")).Count -gt 0) `
-    "preflight rejected the matching Supabase pooler URL"
-  Clear-Content -LiteralPath $logPath
-
-  $env:SUPABASE_DB_URL = $matchingDatabaseUrl
-
-  & $target -ProjectRef $projectRef -Mode preflight
+  & $target -ProjectRef $projectRef -Target staging -Mode preflight
   $preflight = @(Get-Content -LiteralPath $logPath)
+  Assert-True (
+    (@($preflight -match "^link --project-ref $projectRef ")).Count -eq 1
+  ) "preflight did not link to the exact requested project"
+  Assert-True ((@($preflight -match "db push --linked .*--dry-run")).Count -gt 0) `
+    "preflight did not use passwordless linked migration access"
   Assert-True ((@($preflight -match "db push .*--dry-run")).Count -gt 0) `
     "preflight did not execute migration dry-run"
+  Assert-True ((@($preflight -match "--db-url")).Count -eq 0) `
+    "preflight accepted a persistent database credential"
   Assert-True ((@($preflight -match "db push .*--yes")).Count -eq 0) `
     "preflight applied migrations"
   Assert-True ((@($preflight -match "functions deploy")).Count -eq 0) `
@@ -113,7 +90,7 @@ try {
   Clear-Content -LiteralPath $logPath
   $blocked = $false
   try {
-    & $target -ProjectRef $projectRef -Mode apply `
+    & $target -ProjectRef $projectRef -Target staging -Mode apply `
       -Confirmation "wrong" `
       -BackupConfirmation "BACKUP-VERIFIED-$projectRef"
   } catch {
@@ -130,7 +107,7 @@ try {
   $env:FAKE_BACKUP_EMPTY = "true"
   $backupBlocked = $false
   try {
-    & $target -ProjectRef $projectRef -Mode apply `
+    & $target -ProjectRef $projectRef -Target production -Mode apply `
       -Confirmation "DEPLOY-BILLING-$projectRef" `
       -BackupConfirmation "BACKUP-VERIFIED-$projectRef"
   } catch {
@@ -140,10 +117,32 @@ try {
   $withoutBackup = @(Get-Content -LiteralPath $logPath)
   Assert-True ((@($withoutBackup -match "db push .*--yes")).Count -eq 0) `
     "apply without backup changed the database"
+
+  Clear-Content -LiteralPath $logPath
+  $productionFreshBlocked = $false
+  try {
+    & $target -ProjectRef $projectRef -Target production -Mode apply `
+      -Confirmation "DEPLOY-BILLING-$projectRef" `
+      -BackupConfirmation "FRESH-STAGING-VERIFIED-$projectRef"
+  } catch {
+    $productionFreshBlocked = $_.Exception.Message -match "Apply blocked:"
+  }
+  Assert-True $productionFreshBlocked `
+    "production accepted the fresh-staging backup exception"
+
+  Clear-Content -LiteralPath $logPath
+  & $target -ProjectRef $projectRef -Target staging -Mode apply `
+    -Confirmation "DEPLOY-BILLING-$projectRef" `
+    -BackupConfirmation "FRESH-STAGING-VERIFIED-$projectRef"
+  $freshStaging = @(Get-Content -LiteralPath $logPath)
+  Assert-True ((@($freshStaging -match "db push .*--yes")).Count -eq 1) `
+    "verified fresh staging did not apply migrations"
+  Assert-True ((@($freshStaging -match "^functions deploy ")).Count -eq 4) `
+    "verified fresh staging did not deploy the four approved Functions"
   Remove-Item Env:FAKE_BACKUP_EMPTY -ErrorAction SilentlyContinue
 
   Clear-Content -LiteralPath $logPath
-  & $target -ProjectRef $projectRef -Mode apply `
+  & $target -ProjectRef $projectRef -Target production -Mode apply `
     -Confirmation "DEPLOY-BILLING-$projectRef" `
     -BackupConfirmation "BACKUP-VERIFIED-$projectRef"
   $apply = @(Get-Content -LiteralPath $logPath)
@@ -170,7 +169,6 @@ try {
 } finally {
   $env:PATH = $originalPath
   $env:SUPABASE_ACCESS_TOKEN = $originalAccessToken
-  $env:SUPABASE_DB_URL = $originalDatabaseUrl
   Remove-Item Env:FAKE_SUPABASE_LOG -ErrorAction SilentlyContinue
   Remove-Item Env:FAKE_BACKUP_EMPTY -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue

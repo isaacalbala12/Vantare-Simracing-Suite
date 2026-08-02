@@ -4,6 +4,10 @@ param(
   [string]$ProjectRef,
 
   [Parameter(Mandatory = $true)]
+  [ValidateSet("staging", "production")]
+  [string]$Target,
+
+  [Parameter(Mandatory = $true)]
   [ValidateSet("preflight", "apply")]
   [string]$Mode,
 
@@ -36,30 +40,6 @@ function Invoke-CheckedCommand {
 }
 
 Assert-EnvironmentVariable "SUPABASE_ACCESS_TOKEN"
-Assert-EnvironmentVariable "SUPABASE_DB_URL"
-
-try {
-  $databaseUri = [Uri]$env:SUPABASE_DB_URL
-} catch {
-  throw "SUPABASE_DB_URL is not a valid URI"
-}
-if ($databaseUri.Scheme -notin @("postgres", "postgresql")) {
-  throw "SUPABASE_DB_URL must use postgres or postgresql"
-}
-$databaseUser = ($databaseUri.UserInfo -split ':', 2)[0]
-$directHost = "db.$ProjectRef.supabase.co"
-$poolerUser = "postgres.$ProjectRef"
-$matchesDirect = $databaseUri.Host.Equals(
-  $directHost,
-  [StringComparison]::OrdinalIgnoreCase
-)
-$matchesPooler = $databaseUser.Equals(
-  $poolerUser,
-  [StringComparison]::Ordinal
-)
-if (-not ($matchesDirect -or $matchesPooler)) {
-  throw "SUPABASE_DB_URL does not match SUPABASE_PROJECT_REF"
-}
 
 if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
   throw "Supabase CLI is required"
@@ -67,6 +47,7 @@ if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
 
 $scriptsRoot = $PSScriptRoot
 $supabaseRoot = Resolve-Path (Join-Path $scriptsRoot "..\..")
+$repositoryRoot = Resolve-Path (Join-Path $supabaseRoot "..")
 $surfaceGuard = Join-Path $scriptsRoot "verify-deploy-surface.ps1"
 $functionsDeploy = Join-Path $scriptsRoot "deploy-approved-functions.ps1"
 
@@ -105,13 +86,21 @@ $backupInventory = $backupsJson | ConvertFrom-Json
 $backups = @($backupInventory.backups | Where-Object { $null -ne $_ })
 Write-Output "Supabase backup inventory count: $($backups.Count)"
 
-Push-Location $supabaseRoot
+Push-Location $repositoryRoot
 try {
   Invoke-CheckedCommand "supabase" @(
+    "link",
+    "--project-ref", $ProjectRef,
+    "--workdir", ".",
+    "--yes"
+  )
+
+  Invoke-CheckedCommand "supabase" @(
     "db", "push",
-    "--db-url", $env:SUPABASE_DB_URL,
+    "--linked",
     "--include-all",
-    "--dry-run"
+    "--dry-run",
+    "--workdir", "."
   )
 
   if ($Mode -eq "preflight") {
@@ -124,15 +113,22 @@ try {
     throw "Apply blocked: confirmation must exactly match DEPLOY-BILLING-<project-ref>"
   }
   $expectedBackupConfirmation = "BACKUP-VERIFIED-$ProjectRef"
-  if ($backups.Count -eq 0 -or $BackupConfirmation -cne $expectedBackupConfirmation) {
-    throw "Apply blocked: a verified remote backup is required"
+  $expectedFreshStagingConfirmation = "FRESH-STAGING-VERIFIED-$ProjectRef"
+  $hasVerifiedBackup = $backups.Count -gt 0 -and
+    $BackupConfirmation -ceq $expectedBackupConfirmation
+  $isVerifiedFreshStaging = $Target -eq "staging" -and
+    $backups.Count -eq 0 -and
+    $BackupConfirmation -ceq $expectedFreshStagingConfirmation
+  if (-not ($hasVerifiedBackup -or $isVerifiedFreshStaging)) {
+    throw "Apply blocked: verify a backup, or explicitly verify a fresh empty staging project"
   }
 
   Invoke-CheckedCommand "supabase" @(
     "db", "push",
-    "--db-url", $env:SUPABASE_DB_URL,
+    "--linked",
     "--include-all",
-    "--yes"
+    "--yes",
+    "--workdir", "."
   )
 
   & $functionsDeploy -ProjectRef $ProjectRef

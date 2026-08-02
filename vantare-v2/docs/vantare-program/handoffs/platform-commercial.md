@@ -136,25 +136,32 @@ server-only mantiene la versión anterior sin perder eventos y los clasifica
 como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
 
 ISA-214 / BIL-10B cerró el inventario remoto read-only previo: producción
-`ombjshwzqgeisazijduq` responde con checkout, portal y webhook, pero el perfil
-CLI actual no tiene acceso administrativo para demostrar versiones,
-migraciones o secrets. `license-credential` devuelve 404. El proyecto de
+`ombjshwzqgeisazijduq` responde con checkout, portal y webhook. El acceso CLI
+administrativo ya está confirmado mediante un token local nuevo;
+`license-credential` continúa sin estar desplegada. El proyecto de
 pruebas `olhwhfaczmrmooeaoqqf` está `INACTIVE`, conserva solo
-`validate-license` y no es backend de la app. GitHub no tiene todavía los
-secrets de despliegue. Los Environments protegidos `supabase-staging` y
-`supabase-production` ya fueron creados con reviewer y ramas limitadas tras la
-aprobación de Isaac; permanecen vacíos y no pueden desplegar.
+`validate-license` y no es backend de la app. El staging limpio
+`rilwmlbnucbbayaulnxw` está `ACTIVE_HEALTHY` en la misma región y cabe dentro
+del segundo proyecto gratuito. Los Environments protegidos
+`supabase-staging` y `supabase-production` tienen acceso y project ref exactos,
+reviewer y ramas limitadas.
 
-El pipeline preparado separa preflight de apply, exige confirmación ligada al
+El pipeline preparado separa preflight de apply, enlaza mediante el rol temporal
+oficial sin almacenar contraseña de Postgres, exige confirmación ligada al
 project ref y aplica migraciones antes que las cuatro Functions allowlisted.
 Las herramientas de smoke ya no hardcodean cuenta/proyecto ni imprimen payloads
 o registros completos. La suite Supabase queda en 182/182 y el wrapper pasó su
-test de comportamiento en Windows PowerShell. No se ejecutó el pipeline:
-requiere el gate humano de ISA-214 y acceso al proyecto oficial. BIL-11 queda
-bloqueada hasta entonces.
+test de comportamiento en Windows PowerShell. El dry-run de producción detectó
+ocho migraciones nuevas; el de staging enumeró las doce iniciales. Ninguna fue
+aplicada. Producción tiene un backup y ambos proyectos contienen los once
+nombres requeridos. Las claves de firma son independientes y staging mantiene
+Polar fail-closed. El apply de staging nuevo usa una confirmación específica
+que producción no puede aceptar; producción conserva su backup obligatorio.
+BIL-11 queda bloqueada hasta completar ambos deploys y el smoke no monetario.
 
-No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
-reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
+Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214, primero
+en staging y después en producción si todo queda verde. No existe autorización
+para BIL-11, pagos, refunds, cambios de catálogo o habilitar venta.
 
 ## Riesgos
 
@@ -167,11 +174,11 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Completar el gate humano y el acceso remoto de ISA-214 / BIL-10B.
-2. Ejecutar primero el preflight sobre staging/producción y revisar el plan de
-   migraciones sin imprimir secrets.
-3. Aplicar migraciones antes que Edge, ejecutar smoke técnico no monetario y
+1. Integrar el endurecimiento final de ISA-214 en su rama y ejecutar el workflow
+   protegido contra staging.
+2. Aplicar migraciones antes que Edge, ejecutar smoke técnico no monetario y
    mantener venta deshabilitada.
+3. Repetir preflight/apply/smoke en producción únicamente si staging queda verde.
 4. Solo después preparar BIL-11 y su autorización monetaria independiente.
 5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 6. Reauditar ISA-14 cuando se cierren worktrees grandes.

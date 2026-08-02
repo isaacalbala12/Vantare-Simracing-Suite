@@ -49,7 +49,7 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
     throw new Error("PowerShell surface guard blocks the license issuer");
   }
   const migrationDryRun = stackWrapper.indexOf('"--dry-run"');
-  const migrationApply = stackWrapper.indexOf('"--yes"');
+  const migrationApply = stackWrapper.indexOf('"--yes",', migrationDryRun + 1);
   const functionsApply = stackWrapper.indexOf("& $functionsDeploy");
   if (
     migrationDryRun < 0 || migrationApply < 0 || functionsApply < 0 ||
@@ -65,9 +65,19 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
   if (!stackWrapper.includes('"BACKUP-VERIFIED-$ProjectRef"')) {
     throw new Error("stack wrapper lacks exact backup confirmation");
   }
-  if (!stackWrapper.includes("SUPABASE_DB_URL does not match")) {
+  if (
+    !stackWrapper.includes('"FRESH-STAGING-VERIFIED-$ProjectRef"') ||
+    !stackWrapper.includes('$Target -eq "staging"')
+  ) {
+    throw new Error("stack wrapper lacks the narrow fresh-staging exception");
+  }
+  if (
+    !stackWrapper.includes('"link"') ||
+    !stackWrapper.includes('"--project-ref", $ProjectRef') ||
+    !stackWrapper.includes('"--linked"')
+  ) {
     throw new Error(
-      "stack wrapper can target a different database and project",
+      "stack wrapper does not bind migrations to the approved project",
     );
   }
   if (!stackWrapper.includes("supabase backups list")) {
@@ -76,8 +86,8 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
   if (!workflow.includes("supabase-${{ inputs.target }}")) {
     throw new Error("workflow does not use a protected target environment");
   }
-  if (!workflow.includes("SUPABASE_DB_URL")) {
-    throw new Error("workflow cannot preflight or apply migrations");
+  if (workflow.includes("SUPABASE_DB_URL")) {
+    throw new Error("workflow requires an unnecessary persistent DB password");
   }
   if (
     workflow.includes('-Confirmation "${{ inputs.confirmation }}"') ||

@@ -54,13 +54,55 @@ No se reactivó, vinculó, modificó ni eliminó el proyecto.
   la aprobación explícita de Isaac.
 - Ambos exigen un reviewer. Staging permite `nightly` y la rama ISA-214;
   producción solo permite `nightly`.
-- Los dos Environments permanecen sin secrets, por lo que todavía no pueden
-  ejecutar ningún preflight o despliegue.
-- Los secrets generales de Actions no incluyen las credenciales privadas de
-  despliegue de Supabase.
+- Los dos Environments recibieron después el access token y su project ref
+  exacto. Los valores no aparecen en logs ni documentación.
 - El workflow anterior solo desplegaba Functions. No aplicaba migraciones.
 
-No se creó, modificó o leyó ningún secret.
+Durante el inventario inicial no se creó o modificó ningún secret remoto ni se
+leyó ninguno de sus valores.
+
+### Acceso oficial confirmado tras el gate humano
+
+- Isaac autorizó el proyecto productivo `ombjshwzqgeisazijduq` y creó un token
+  personal nuevo, conservado únicamente en `frontend/.env.local`.
+- El Management API identifica la organización `Vantare` y producción como
+  `ACTIVE_HEALTHY` en `eu-west-2`.
+- Producción tiene un backup remoto inventariado. No se leyó su contenido.
+- El inventario inicial confirmó los secrets históricos de Polar, checkout y
+  portal. Después se añadieron por nombre los cuatro contratos nuevos de firma
+  offline, anti-abuso de trial y allowlist del portal.
+- Supavisor está activo en modo transacción. No se necesita cambiarlo ni
+  conservar una contraseña de Postgres: el CLI enlazó el project ref exacto
+  mediante su rol temporal oficial.
+- `supabase db push --linked --include-all --dry-run` terminó correctamente y
+  enumeró ocho migraciones `20260802*`. No aplicó ninguna.
+
+El workflow se endureció de nuevo para usar ese acceso enlazado temporal. Ya no
+acepta ni exige `SUPABASE_DB_URL`; así se elimina un secreto permanente y el
+project ref aprobado sigue siendo la única diana posible.
+
+### Staging limpio creado y preflight final
+
+- La organización está en Free y solo tenía un proyecto activo. El segundo
+  proyecto entra en el límite oficial de dos proyectos activos sin coste.
+- Staging: `vantare-staging`, ref `rilwmlbnucbbayaulnxw`, región `eu-west-2`,
+  estado `ACTIVE_HEALTHY`.
+- GitHub contiene `SUPABASE_ACCESS_TOKEN` y el project ref exacto por
+  Environment. El registro público Ed25519 de producción también está cargado
+  como secret de build; los valores privados solo viven en Supabase.
+- Key IDs: `vantare-prod-2026-08-02-v1` y
+  `vantare-staging-2026-08-02-v1`. Prefijos de fingerprint público:
+  `f6f73f9b2b5f` y `ba4f85cedcfe`.
+- Producción y staging contienen los once nombres requeridos. Staging utiliza
+  credenciales propias, URLs bajo el dominio reservado `.invalid` y mapping
+  inválido deliberado para que cualquier intento comercial falle cerrado.
+  Nunca reutiliza el token o catálogo de producción.
+- El preflight completo de staging pasó: superficie allowlisted, nombres de
+  secrets, link temporal y dry-run. Enumeró doce migraciones y aplicó cero.
+- El proyecto Free recién creado no ofrece inventario de backups. La excepción
+  de apply exige target `staging`, cero backups y la confirmación exacta
+  `FRESH-STAGING-VERIFIED-<ref>`. La misma confirmación está probada como
+  inválida para producción.
 
 ### Polar
 
@@ -101,9 +143,9 @@ El workflow selecciona `supabase-staging` o `supabase-production` y utiliza el
 Environment protegido correspondiente. Preflight y apply son manuales; ningún
 push o merge los ejecuta automáticamente.
 
-## Gate humano pendiente
+## Gate humano aprobado y límite vigente
 
-Antes de cualquier mutación remota, Isaac debe aprobar en ISA-214:
+Isaac aprobó en la conversación y quedó registrado en ISA-214:
 
 1. producción: `ombjshwzqgeisazijduq`;
 2. si se reactiva y conserva `olhwhfaczmrmooeaoqqf` como staging o se crea un
@@ -113,10 +155,10 @@ Antes de cualquier mutación remota, Isaac debe aprobar en ISA-214:
 5. ventana, observador, backup y rollback;
 6. autorización exacta para aplicar migraciones y Functions.
 
-La recomendación es no reutilizar automáticamente el staging histórico:
-primero debe demostrarse su historial remoto. Si no puede recuperarse con
-claridad, un staging nuevo y vacío es más seguro que reparar a ciegas el que
-recibió migraciones erróneas.
+La decisión aplicada es no reutilizar el staging histórico: se creó uno nuevo,
+vacío y separado. La autorización cubre el despliegue y smoke no monetario de
+ISA-214, primero en staging y después en producción si todo queda verde. No
+cubre BIL-11, pagos, refunds, cambios de catálogo ni habilitar ventas.
 
 ## Rollback
 
@@ -134,10 +176,14 @@ recibió migraciones erróneas.
 - Suite Supabase activa: 182 tests pasados, 0 fallidos.
 - `deno check` y `deno fmt --check` focales: PASS.
 - Test de comportamiento PowerShell del wrapper: PASS en Windows PowerShell;
-  cubre mismatch proyecto/DB, pooler, preflight no mutante, confirmaciones,
-  backup obligatorio y orden migraciones -> cuatro Functions.
+  cubre enlace al project ref exacto, ausencia de contraseña persistente,
+  preflight no mutante, confirmaciones, backup obligatorio y orden migraciones
+  -> cuatro Functions.
 - Guard de superficie, formato del workflow y `git diff --check`: PASS.
-- No se abrió `.env.local` ni se imprimieron tokens, hashes de secrets o PII.
-- No hubo link, deploy, migración remota, reactivación, creación de proyecto,
-  pago, refund, replay, reconciliación apply o cambio de catálogo.
+- El token de `.env.local` solo se cargó temporalmente en memoria; nunca se
+  imprimió, copió a Git ni expuso junto a hashes de secrets o PII.
+- Hubo creación del staging gratuito, configuración de secrets por API, enlace
+  CLI local y dry-run remoto. No hubo deploy de código, migración aplicada,
+  reactivación del staging histórico, pago, refund, replay, reconciliación
+  apply o cambio de catálogo.
 - BIL-11 permanece bloqueada por ISA-214 y por su gate monetario propio.

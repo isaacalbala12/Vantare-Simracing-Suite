@@ -1,15 +1,27 @@
 Nota ISA-214 / BIL-10B (2026-08-02, preflight remoto Supabase):
-- BIL-01…10 están compuestas en `nightly`, pero el proyecto oficial no está
-  accesible para el perfil CLI actual.
+- BIL-01…10 están compuestas en `nightly`. El acceso administrativo al proyecto
+  oficial `ombjshwzqgeisazijduq` ya está confirmado mediante un token nuevo
+  guardado solo en el entorno local.
 - `supabase-staging` y `supabase-production` ya existen con reviewer y política
   de ramas; permanecen deliberadamente sin secrets y no pueden desplegar.
 - Producción `ombjshwzqgeisazijduq` responde con checkout, portal y webhook;
   esto no demuestra versión ni migraciones. `license-credential` no aparece.
 - El proyecto histórico `olhwhfaczmrmooeaoqqf` está `INACTIVE`, solo enumera
   `validate-license` y no contiene configuración Billing por nombre.
-- El pipeline local queda preparado con preflight/apply manual, confirmación
-  exacta, migraciones antes que Functions y smoke sanitizado. No hubo mutación
-  remota.
+- El CLI enlazó el proyecto mediante su rol temporal oficial y `db push
+  --dry-run` enumeró ocho migraciones pendientes sin aplicar ninguna. El
+  pipeline ya no exige `SUPABASE_DB_URL` ni conserva una contraseña PostgreSQL:
+  usa acceso enlazado temporal, confirmación exacta, migraciones antes que
+  Functions y smoke sanitizado.
+- Producción tiene un backup remoto y ya están presentes por nombre los cuatro
+  contratos nuevos de firma offline, anti-abuso de trial y allowlist del portal.
+- Staging limpio `rilwmlbnucbbayaulnxw` fue creado en la organización Free y en
+  `eu-west-2`, sin coste adicional. Tiene secrets independientes y Polar
+  deliberadamente deshabilitado/fail-closed para el smoke no monetario.
+- El preflight de staging pasó y enumeró las doce migraciones iniciales sin
+  aplicar ninguna. Al no existir backups en un proyecto Free recién creado, el
+  apply admite solo `FRESH-STAGING-VERIFIED-<project-ref>` cuando el target
+  protegido es staging; producción continúa exigiendo un backup remoto real.
 - BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue
   y después su autorización monetaria independiente. Billing continúa NO-GO.
 

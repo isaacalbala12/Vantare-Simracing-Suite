@@ -109,7 +109,7 @@ select
     else ue.expires_at
   end,
   ue.updated_at,
-  encode(digest(ue.id::text || ':' || ue.updated_at::text || ':' || ue.status, 'sha256'), 'hex'),
+  encode(extensions.digest(ue.id::text || ':' || ue.updated_at::text || ':' || ue.status, 'sha256'), 'hex'),
   jsonb_build_object('preservation', 'unknown_source', 'legacy_status', ue.status)
 from public.user_entitlements ue
 on conflict (provider, environment, source_type, source_id, capability) do nothing;

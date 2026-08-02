@@ -1,13 +1,18 @@
 $ErrorActionPreference = "Stop"
 
 $functionsRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$allowed = @("billing-checkout", "billing-portal", "billing-webhook")
+$allowed = @(
+  "billing-checkout",
+  "billing-portal",
+  "billing-webhook",
+  "license-credential"
+)
 $infrastructure = @("_deprecated", "_shared", "scripts")
 $known = $allowed + $infrastructure
-$unexpected = Get-ChildItem -LiteralPath $functionsRoot -Directory |
+$unexpected = @(Get-ChildItem -LiteralPath $functionsRoot -Directory |
   Where-Object { $_.Name -notin $known } |
   Select-Object -ExpandProperty Name |
-  Sort-Object
+  Sort-Object)
 
 if ($unexpected.Count -gt 0) {
   throw "Blocked unexpected deployable Supabase Functions: $($unexpected -join ', ')"

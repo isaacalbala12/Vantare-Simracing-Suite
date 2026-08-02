@@ -20,6 +20,12 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
   const wrapper = Deno.readTextFileSync(
     new URL("./deploy-approved-functions.ps1", import.meta.url),
   );
+  const stackWrapper = Deno.readTextFileSync(
+    new URL("./deploy-approved-billing-stack.ps1", import.meta.url),
+  );
+  const powershellGuard = Deno.readTextFileSync(
+    new URL("./verify-deploy-surface.ps1", import.meta.url),
+  );
   const workflow = Deno.readTextFileSync(
     new URL(
       "../../../.github/workflows/deploy-supabase-functions.yml",
@@ -33,11 +39,63 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
       "deploy wrapper does not enforce the surface guard before deployment",
     );
   }
-  if (!workflow.includes("deploy-approved-functions.ps1")) {
-    throw new Error("official workflow bypasses the guarded deploy wrapper");
+  if (!workflow.includes("deploy-approved-billing-stack.ps1")) {
+    throw new Error("official workflow bypasses the guarded stack wrapper");
   }
   if (!wrapper.includes('"license-credential"')) {
     throw new Error("official wrapper does not deploy the license issuer");
+  }
+  if (!powershellGuard.includes('"license-credential"')) {
+    throw new Error("PowerShell surface guard blocks the license issuer");
+  }
+  const migrationDryRun = stackWrapper.indexOf('"--dry-run"');
+  const migrationApply = stackWrapper.indexOf('"--yes",', migrationDryRun + 1);
+  const functionsApply = stackWrapper.indexOf("& $functionsDeploy");
+  if (
+    migrationDryRun < 0 || migrationApply < 0 || functionsApply < 0 ||
+    migrationDryRun >= migrationApply || migrationApply >= functionsApply
+  ) {
+    throw new Error(
+      "stack wrapper must dry-run, apply migrations, then deploy Functions",
+    );
+  }
+  if (!stackWrapper.includes('"DEPLOY-BILLING-$ProjectRef"')) {
+    throw new Error("stack wrapper lacks exact apply confirmation");
+  }
+  if (!stackWrapper.includes('"BACKUP-VERIFIED-$ProjectRef"')) {
+    throw new Error("stack wrapper lacks exact backup confirmation");
+  }
+  if (
+    !stackWrapper.includes('"FRESH-STAGING-VERIFIED-$ProjectRef"') ||
+    !stackWrapper.includes('$Target -eq "staging"')
+  ) {
+    throw new Error("stack wrapper lacks the narrow fresh-staging exception");
+  }
+  if (
+    !stackWrapper.includes('"link"') ||
+    !stackWrapper.includes('"--project-ref", $ProjectRef') ||
+    !stackWrapper.includes('"--linked"')
+  ) {
+    throw new Error(
+      "stack wrapper does not bind migrations to the approved project",
+    );
+  }
+  if (!stackWrapper.includes("supabase backups list")) {
+    throw new Error("stack wrapper does not verify a remote backup inventory");
+  }
+  if (!workflow.includes("supabase-${{ inputs.target }}")) {
+    throw new Error("workflow does not use a protected target environment");
+  }
+  if (workflow.includes("SUPABASE_DB_URL")) {
+    throw new Error("workflow requires an unnecessary persistent DB password");
+  }
+  if (
+    workflow.includes('-Confirmation "${{ inputs.confirmation }}"') ||
+    workflow.includes(
+      '-BackupConfirmation "${{ inputs.backup_confirmation }}"',
+    )
+  ) {
+    throw new Error("workflow interpolates free-form inputs into PowerShell");
   }
   if (workflow.includes("supabase functions deploy")) {
     throw new Error(
@@ -76,5 +134,76 @@ Deno.test("client build receives public verification keys only", () => {
     clientBuildSurface.includes("OFFLINE_LICENSE_KEY_ID")
   ) {
     throw new Error("server-side signing material leaked into client build");
+  }
+});
+
+Deno.test("remote smoke tooling has no hardcoded project, account, or payload logging", () => {
+  const scripts = [
+    "smoke-billing-nonmonetary.ps1",
+    "smoke-webhook-deployed.ts",
+    "verify-smoke-db.ts",
+    "poll-polar-event.ts",
+    "list-recent-events.ts",
+  ].map((name) => Deno.readTextFileSync(new URL(`./${name}`, import.meta.url)))
+    .join("\n");
+
+  const forbidden = [
+    "ombjshwzqgeisazijduq",
+    "rilwmlbnucbbayaulnxw",
+    "supabase.co/functions/v1/billing-webhook",
+    'const USER_ID = "',
+    '.select("id,event_type,idempotency_key,user_id,payload,created_at")',
+    '.select("id,event_type,idempotency_key,payload,created_at")',
+    '.select("id,event_type,idempotency_key,user_id,created_at,payload")',
+    "provider_customer_id,email",
+    "console.log(JSON.stringify(polarReal",
+  ];
+  for (const value of forbidden) {
+    if (scripts.includes(value)) {
+      throw new Error(`unsafe remote smoke tooling marker: ${value}`);
+    }
+  }
+});
+
+Deno.test("non-monetary smoke cannot authenticate production checkout", () => {
+  const script = Deno.readTextFileSync(
+    new URL("./smoke-billing-nonmonetary.ps1", import.meta.url),
+  );
+  const productionBranch = script.slice(
+    script.indexOf(
+      "} else {\n    # Never exercise an authenticated production checkout",
+    ),
+    script.indexOf(
+      "\n  }\n\n  $portal =",
+      script.indexOf(
+        "} else {\n    # Never exercise an authenticated production checkout",
+      ),
+    ),
+  );
+  if (!productionBranch.includes('Authorization = "Bearer $anonKey"')) {
+    throw new Error("production smoke does not use the unauthenticated guard");
+  }
+  if (productionBranch.includes("$userHeaders")) {
+    throw new Error("production smoke could authenticate a real checkout");
+  }
+});
+
+Deno.test("billing migrations qualify pgcrypto functions through the extensions schema", () => {
+  const migrationsRoot = new URL("../../migrations/", import.meta.url);
+  const migrationNames = [...Deno.readDirSync(migrationsRoot)]
+    .filter((entry) =>
+      entry.isFile && entry.name.startsWith("20260802") &&
+      entry.name.endsWith(".sql")
+    )
+    .map((entry) => entry.name)
+    .sort();
+
+  for (const name of migrationNames) {
+    const sql = Deno.readTextFileSync(new URL(name, migrationsRoot));
+    if (/(^|[^.\w])digest\s*\(/m.test(sql)) {
+      throw new Error(
+        `${name} contains an unqualified pgcrypto digest call`,
+      );
+    }
   }
 });

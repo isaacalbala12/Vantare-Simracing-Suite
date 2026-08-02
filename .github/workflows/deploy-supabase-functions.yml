@@ -1,20 +1,44 @@
-name: Deploy approved Supabase Functions
+name: Deploy approved Supabase Billing stack
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Protected Supabase environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      mode:
+        description: Read-only preflight or approved apply
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - apply
+      confirmation:
+        description: For apply, type DEPLOY-BILLING-<project-ref>
+        required: false
+        type: string
+      backup_confirmation:
+        description: Type BACKUP-VERIFIED-<ref>, or FRESH-STAGING-VERIFIED-<ref> for new staging
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: supabase-functions-production
+  group: supabase-billing-stack
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Guard and deploy approved Functions
+    name: Preflight or deploy Billing stack
     runs-on: windows-latest
-    environment: supabase-production
+    environment: supabase-${{ inputs.target }}
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -35,8 +59,17 @@ jobs:
         with:
           version: 2.105.0
 
-      - name: Guard and deploy approved Functions
+      - name: Preflight or deploy approved Billing stack
         shell: powershell
+        env:
+          DEPLOY_MODE: ${{ inputs.mode }}
+          DEPLOY_TARGET: ${{ inputs.target }}
+          DEPLOY_CONFIRMATION: ${{ inputs.confirmation }}
+          BACKUP_CONFIRMATION: ${{ inputs.backup_confirmation }}
         run: |
-          & "$env:GITHUB_WORKSPACE\supabase\functions\scripts\deploy-approved-functions.ps1" `
-            -ProjectRef $env:SUPABASE_PROJECT_REF
+          & "$env:GITHUB_WORKSPACE\supabase\functions\scripts\deploy-approved-billing-stack.ps1" `
+            -ProjectRef $env:SUPABASE_PROJECT_REF `
+            -Target $env:DEPLOY_TARGET `
+            -Mode $env:DEPLOY_MODE `
+            -Confirmation $env:DEPLOY_CONFIRMATION `
+            -BackupConfirmation $env:BACKUP_CONFIRMATION

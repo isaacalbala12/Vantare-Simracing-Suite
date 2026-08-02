@@ -363,7 +363,7 @@ begin
       and cycle.cycle_paid_through <> p_cycle_paid_through
       and cycle.closed_at is null;
 
-    v_source_id := 'recovery:' || encode(digest(
+    v_source_id := 'recovery:' || encode(extensions.digest(
       trim(p_subscription_id) || ':' || p_cycle_paid_through::text,
       'sha256'
     ), 'hex');
@@ -395,7 +395,7 @@ begin
         p_user_id, 'vantare', p_environment, 'subscription_recovery',
         v_source_id, v_grant.capability, v_recovery_status,
         v_cycle.recovery_until, v_cycle.first_failure_at,
-        encode(digest(
+        encode(extensions.digest(
           trim(p_subscription_id) || ':' || p_cycle_paid_through::text || ':' ||
           v_cycle.first_failure_at::text,
           'sha256'

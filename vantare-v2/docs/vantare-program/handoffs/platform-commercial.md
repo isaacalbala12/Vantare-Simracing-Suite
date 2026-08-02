@@ -135,8 +135,50 @@ El despliegue futuro debe aplicar migración antes que Edge. Un overload
 server-only mantiene la versión anterior sin perder eventos y los clasifica
 como `unclassified`; se retirará solo cuando el runtime nuevo esté confirmado.
 
-No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
-reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
+ISA-214 / BIL-10B cerró el inventario remoto previo: producción
+`ombjshwzqgeisazijduq` responde con checkout, portal y webhook. El acceso CLI
+administrativo ya está confirmado mediante un token local nuevo;
+`license-credential` continúa sin estar desplegada en producción. El proyecto de
+pruebas `olhwhfaczmrmooeaoqqf` está `INACTIVE`, conserva solo
+`validate-license` y no es backend de la app. El staging limpio
+`rilwmlbnucbbayaulnxw` está `ACTIVE_HEALTHY` en la misma región y cabe dentro
+del segundo proyecto gratuito. Los Environments protegidos
+`supabase-staging` y `supabase-production` tienen acceso y project ref exactos,
+reviewer y ramas limitadas.
+
+El pipeline preparado separa preflight de apply, enlaza migraciones mediante el
+rol temporal oficial, exige confirmación ligada al project ref y aplica
+migraciones antes que las cuatro Functions allowlisted. El backup lógico
+necesita además la contraseña PostgreSQL; se conserva únicamente protegida por
+DPAPI fuera de Git y de los argumentos de la tarea.
+Las herramientas de smoke ya no hardcodean cuenta/proyecto ni imprimen payloads
+o registros completos. La suite Supabase queda en 184/184 y el wrapper pasó su
+test de comportamiento en Windows PowerShell. Staging tiene 12/12 migraciones,
+las cuatro Functions `ACTIVE` y smoke no monetario verde; la cuenta sintética
+se eliminó. El incidente de `digest` sin esquema quedó corregido como
+`extensions.digest` y protegido por test. Las claves de firma son independientes
+y staging mantiene Polar fail-closed.
+
+El inventario oficial confirma cero backups y PITR deshabilitado. La alternativa
+aprobada en Supabase Free es una copia lógica diaria local, cifrada y restaurada
+antes de cualquier despliegue productivo.
+
+Isaac aprobó mantener Supabase Free y crear un backup lógico diario. Ya existe
+la implementación: tarea a las 03:00, EFS, DPAPI, manifiesto SHA-256, 30 días de
+retención y restore local desechable. El wrapper no acepta una declaración
+manual: exige un ZIP cifrado de menos de 26 horas y repite su restore antes de
+producción. La tarea real quedó instalada y terminó la primera copia con
+resultado 0. El ZIP conserva datos completos y el gate restauró esquema/datos
+`public`, la superficie afectada por Billing. No se inspeccionó contenido. Esta
+copia fue el rollback verificado utilizado antes de tocar producción.
+
+Isaac autorizó el deploy controlado y el smoke no monetario de ISA-214. Staging
+y producción tienen 12/12 migraciones, las cuatro Functions `ACTIVE` y smoke
+no monetario PASS. La cuenta sintética productiva fue eliminada; checkout no se
+autenticó y no hubo llamadas a Polar u operaciones monetarias. Una segunda
+copia EFS post-despliegue terminó con resultado 0 y restore automático PASS.
+No existe autorización para BIL-11, pagos, refunds, cambios de catálogo o
+habilitar venta.
 
 ## Riesgos
 
@@ -149,19 +191,16 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Revisar BIL-10 / ISA-75 y promoverlo exclusivamente a `nightly` cuando sus
-   gates estén verdes.
-2. Recoger feedback Nightly de BIL-01..10 sin habilitar venta.
-4. Continuar gates monetarios y despliegue controlado sin venta pública.
-5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-6. Reauditar ISA-14 cuando se cierren worktrees grandes.
+1. Cerrar ISA-214 con evidencia del apply, smoke y backup post-despliegue.
+2. Preparar BIL-11 sin ejecutarlo hasta su autorización monetaria independiente.
+3. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+4. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
-runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
-gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
-Sin mutaciones remotas y con venta pública NO-GO.
+2026-08-03, ISA-214 mantiene BIL-01…10 verdes en staging y producción. La tarea
+diaria y los backups restaurables están activos; el apply y smoke no monetario
+productivos pasaron. Venta pública y BIL-11 siguen NO-GO.

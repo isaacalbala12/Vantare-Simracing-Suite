@@ -1,3 +1,50 @@
+Nota ISA-214 / BIL-10B (2026-08-03, despliegue controlado Supabase):
+- BIL-01…10 están compuestas en `nightly`. El acceso administrativo al proyecto
+  oficial `ombjshwzqgeisazijduq` ya está confirmado mediante un token nuevo
+  guardado solo en el entorno local.
+- `supabase-staging` y `supabase-production` existen con reviewer, política de
+  ramas, access token y project ref exacto. Los valores no se documentan.
+- Producción `ombjshwzqgeisazijduq` tiene ya las 12 migraciones alineadas y las
+  cuatro Functions allowlisted `ACTIVE`.
+- El proyecto histórico `olhwhfaczmrmooeaoqqf` está `INACTIVE`, solo enumera
+  `validate-license` y no contiene configuración Billing por nombre.
+- El CLI enlazó el proyecto mediante su rol temporal oficial y `db push
+  --dry-run` enumeró ocho migraciones pendientes sin aplicar ninguna. El
+  pipeline de migración no exige `SUPABASE_DB_URL`: usa acceso enlazado
+  temporal, confirmación exacta, migraciones antes que Functions y smoke
+  sanitizado. El backup lógico sí requiere la contraseña de base; se protege
+  con DPAPI y nunca entra en Git, logs o argumentos de la tarea.
+- Producción contiene los once nombres de secret requeridos, pero su inventario
+  oficial confirma cero backups, PITR deshabilitado. El wrapper bloquea por ello
+  el apply aunque el dry-run sea verde.
+- Staging limpio `rilwmlbnucbbayaulnxw` fue creado en la organización Free y en
+  `eu-west-2`, sin coste adicional. Tiene secrets independientes y Polar
+  deliberadamente deshabilitado/fail-closed para el smoke no monetario.
+- Staging tiene 12/12 migraciones y las cuatro Functions allowlisted activas.
+  El primer apply se detuvo tras ocho migraciones al encontrar llamadas
+  `digest` sin el esquema `extensions`; se calificaron las cuatro referencias,
+  se añadió un guard de regresión y la reanudación forward-only terminó verde.
+- El smoke no monetario pasó con una cuenta sintética eliminada al final:
+  checkout fail-closed por mapping vacío, portal sin customer, credencial
+  Ed25519 sin grants, guards del webhook y snapshot agregado. La reconciliación
+  dry-run procesó cero customers y escribió cero cambios.
+- Isaac eligió continuar en Supabase Free con backup lógico diario local. La
+  automatización está implementada con EFS, DPAPI, hashes, retención de 30 días
+  y restore real en contenedor. El wrapper solo acepta una copia local de menos
+  de 26 horas que vuelva a restaurarse correctamente.
+- La tarea real `Vantare Supabase Production Backup` quedó instalada a las
+  03:00 y su primera ejecución terminó con resultado 0. El ZIP EFS conserva el
+  dump completo y el gate restauró esquema y datos `public` en Supabase
+  Postgres desechable. Los intentos fallidos se eliminaron.
+- El apply productivo repitió dry-run y restore antes de aplicar. El smoke no
+  monetario validó auth, checkout no autenticado, portal sin customer,
+  credencial sin grants, guards del webhook y observabilidad; la cuenta
+  sintética se eliminó. No se llamó a Polar ni hubo operaciones monetarias.
+- La tarea volvió a ejecutarse tras el despliegue y creó una segunda copia EFS
+  restaurable con resultado 0. ISA-214 completa su gate técnico.
+- BIL-11 queda bloqueada por su autorización monetaria independiente. Billing
+  continúa NO-GO.
+
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
   originales, payloads, PII ni errores libres.

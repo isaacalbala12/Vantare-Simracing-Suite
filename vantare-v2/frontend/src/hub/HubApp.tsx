@@ -9,6 +9,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { EngineerPage } from './pages/EngineerPage';
 import { LauncherPage } from './pages/LauncherPage';
 import { TelemetryPage } from './pages/TelemetryPage';
+import { StrategyPlannerPage } from './strategy/StrategyPlannerPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { type Section, isSection } from './navigation';
@@ -176,6 +177,7 @@ function HubShell() {
       {section === "calendar" && <CalendarPage />}
       {section === "setup" && <SettingsPage />}
       {section === "engineer" && <EngineerPage />}
+      {section === "strategy" && <StrategyPlannerPage />}
       {section === "telemetry" && <TelemetryPage />}
       {section === "roadmap" && <RoadmapPage />}
     </V52Shell>

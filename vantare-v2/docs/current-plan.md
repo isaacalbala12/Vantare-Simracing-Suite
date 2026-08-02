@@ -1,3 +1,20 @@
+Nota ISA-142 / STR-07 (2026-08-02):
+
+- Strategy Planner ya está registrado en el topbar, la política de acceso y el
+  `HubApp` reales.
+- Galería, entrada, revisión, workspace 3/6/3, comparación y guardado honesto de
+  sesión están implementados sin solver, telemetría, persistencia ni drag/drop.
+- El demo renderiza cuatro stints que suman 78 vueltas. Tiempo, pits, uso por
+  compuesto y ahorro pertenecen a cada estrategia y no se presentan como sets
+  físicos.
+- El harness autocontenido arranca y termina Vite, recorre el flujo, valida
+  teclado, aislamiento/foco del modal y captura wide/medium/compact con overflow
+  y errores de navegador en cero. Baseline serial `2059/2059`; corrección final
+  focal `7/7`, build y lint focal pasan. Evidencia:
+  `docs/strategy-planner/str-07-shell-visual.md`.
+- Rama apilada sobre `ISA-141@52d2466`; sin merge ni promoción. El siguiente
+  corte solo tras `ACCEPT` es ISA-143 / STR-08.
+
 Nota ISA-141 / STR-06 (2026-08-02):
 - Nuevo dominio puro `internal/strategy/tyres`, apilado sobre STR-05 exacto
   `2d0af85`, para neumáticos físicos individuales con ID, Soft/Medium/Hard/Wet,

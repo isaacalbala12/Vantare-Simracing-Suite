@@ -22,9 +22,9 @@ primer contrato productivo versionado. STR-03 implementa el repositorio local
 canónico de drafts y revisiones. STR-04 añade la fachada de comandos y el store
 frontend transitorio. STR-05 añade el motor manual puro de carrera, Fuel,
 Virtual Energy y pit. STR-06 añade el inventario físico individual y sus reglas
-de condición, estado y esquina persistente. Todo continúa sin UI final ni
-wiring productivo. La UI canónica usa estrategias a la izquierda, stints al
-centro e inventario/entrada a la derecha.
+de condición, estado y esquina persistente. STR-07 añade el shell visual y la
+navegación real de la suite, todavía sin wiring productivo. La UI canónica usa
+estrategias a la izquierda, stints al centro e inventario/entrada a la derecha.
 
 Actualización ISA-134 / STR-00:
 
@@ -118,6 +118,16 @@ Actualización ISA-134 / STR-00:
   insuficiente mediante error tipado. Evidencia:
   `docs/strategy-planner/str-06-tyre-inventory.md`. Lista para review
   independiente, sin UI, persistencia, telemetría, wiring, merge o promoción.
+- STR-07: implementación sobre `ISA-141@52d2466`. Registra Strategy en el
+  topbar y la access policy, añade galería, entrada, revisión, workspace,
+  comparación y guardado honesto de sesión. El harness autocontenido recorre el
+  flujo y captura wide/medium/compact con proporción `3/6/3`, overflow global
+  cero, consola limpia y modal accesible con foco atrapado/restaurado. La suite
+  serial base pasa `2059/2059`; la corrección final añade el cuarto stint para
+  sumar 78 vueltas y métricas coherentes por estrategia, con focal `7/7`, build
+  y lint focal PASS. Evidencia:
+  `docs/strategy-planner/str-07-shell-visual.md`. Sin solver, live,
+  persistencia, drag/drop, merge o promoción.
 
 ## Decisiones
 
@@ -194,15 +204,15 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-141 / STR-06, implementación lista para review independiente
-  sobre el commit aceptado de STR-05.
+- Issue activa: ISA-142 / STR-07, implementación lista para review independiente
+  sobre el commit aceptado de STR-06.
 
 ## Siguiente acción exacta
 
-Revisar ISA-141 / STR-06. Si queda `ACCEPT`, continuar ISA-142 / STR-07 apilada
-sobre este dominio. No añadir drag/drop, UI final, telemetría, persistencia,
-solver o wiring transversal dentro de la revisión de STR-06.
+Revisar ISA-142 / STR-07. Si queda `ACCEPT`, continuar ISA-143 / STR-08 apilada
+sobre este shell. No añadir telemetría, persistencia, solver o wiring transversal
+dentro de la revisión visual; STR-08 posee editor de stints y drag/drop.
 
 ## Última actualización
 
-2026-08-02, ISA-141 / STR-06, Codex.
+2026-08-02, ISA-142 / STR-07, Codex.

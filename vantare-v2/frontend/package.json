@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "e2e:overlay-studio": "node scripts/overlay-studio-e2e-smoke.mjs",
+    "visual:strategy-planner": "node scripts/strategy-planner-visual.mjs",
     "visual:overlay-studio": "node scripts/overlay-studio-visual.mjs",
     "visual:overlay-studio:update": "node scripts/overlay-studio-visual.mjs --update",
     "visual:crystal-parity": "node scripts/crystal-renderer-parity.mjs",

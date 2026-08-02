@@ -1,0 +1,87 @@
+{
+  "schema": "vantare.engineer.voice-license-inventory.v1",
+  "capturedAt": "2026-08-02",
+  "engineeringGateOnly": true,
+  "entries": [
+    {
+      "component": "kokoro-onnx 0.5.0 code",
+      "layer": "runtime wrapper",
+      "license": "MIT",
+      "source": "https://github.com/thewh1teagle/kokoro-onnx/blob/main/LICENSE",
+      "commercialRedistribution": "permissive with notice",
+      "gate": "PASS_LAYER_ONLY"
+    },
+    {
+      "component": "Kokoro-82M v1.0 weights and voice bundle",
+      "layer": "model and voices",
+      "license": "Apache-2.0 as declared by the official model repository",
+      "source": "https://huggingface.co/hexgrad/Kokoro-82M",
+      "commercialRedistribution": "permissive with license and notice obligations",
+      "gate": "PASS_LAYER_ONLY"
+    },
+    {
+      "component": "ONNX Runtime 1.28.0",
+      "layer": "inference runtime",
+      "license": "MIT",
+      "source": "https://github.com/microsoft/onnxruntime/blob/main/LICENSE",
+      "commercialRedistribution": "permissive with notice",
+      "gate": "PASS_LAYER_ONLY"
+    },
+    {
+      "component": "phonemizer-fork 3.3.2",
+      "layer": "Kokoro Python G2P dependency",
+      "license": "GPL-3.0",
+      "source": "https://github.com/bootphon/phonemizer/blob/master/LICENSE",
+      "commercialRedistribution": "copyleft obligations incompatible with the intended proprietary bundle unless separately resolved",
+      "gate": "BLOCK"
+    },
+    {
+      "component": "eSpeak NG",
+      "layer": "phonemizer engine bundled by espeakng-loader",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/blob/master/COPYING",
+      "commercialRedistribution": "copyleft obligations require a separate legal and packaging decision",
+      "gate": "BLOCK"
+    },
+    {
+      "component": "whisper.cpp v1.9.1",
+      "layer": "STT runtime",
+      "license": "MIT",
+      "source": "https://github.com/ggml-org/whisper.cpp/blob/master/LICENSE",
+      "commercialRedistribution": "permissive with notice",
+      "gate": "PASS"
+    },
+    {
+      "component": "OpenAI Whisper multilingual weights",
+      "layer": "STT model",
+      "license": "MIT",
+      "source": "https://github.com/openai/whisper/blob/main/LICENSE",
+      "commercialRedistribution": "permissive with notice",
+      "gate": "PASS"
+    },
+    {
+      "component": "Vosk API",
+      "layer": "alternative STT runtime",
+      "license": "Apache-2.0",
+      "source": "https://github.com/alphacep/vosk-api/blob/master/COPYING",
+      "commercialRedistribution": "permissive; every selected model still requires its own row",
+      "gate": "CONDITIONAL"
+    },
+    {
+      "component": "sherpa-onnx",
+      "layer": "alternative TTS/STT runtime",
+      "license": "Apache-2.0",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE",
+      "commercialRedistribution": "runtime permissive; every model, tokenizer and voice requires separate verification",
+      "gate": "CONDITIONAL"
+    },
+    {
+      "component": "Piper current OHF runtime",
+      "layer": "alternative TTS runtime",
+      "license": "GPL-3.0",
+      "source": "https://github.com/OHF-Voice/piper1-gpl/blob/main/LICENSE.md",
+      "commercialRedistribution": "not accepted for Vantare's intended proprietary bundle",
+      "gate": "BLOCK"
+    }
+  ]
+}

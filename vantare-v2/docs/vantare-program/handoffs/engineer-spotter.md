@@ -34,6 +34,9 @@ routing por categoría y el widget funcional Vantare Crystal, actualmente en
 revisión sin promoción. ENG-06 mantiene una única policy y un transporte
 cancelable con ACK; ENG-07 aporta una única presentación para visual y futura
 voz; ENG-08 no duplica ninguna de estas autoridades.
+ISA-180 / ENG-09 cierra el primer gate técnico de voz: no autoriza TTS
+productivo, deja `whisper.cpp` como STT condicionado y conserva la salida
+visual como fallback. No cambia runtime ni dependencias de producto.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
@@ -51,11 +54,16 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-177-eng-07-contrato-canonico-de-presentacion-multilingue`.
-- Base: `ebd4af15dda4d7cad33aeb092adcd80680ebeed4` (ISA-167 / ENG-06).
-- Composición: ENG-03 ya está en la base; su única regresión test-only
-  posterior se reaplica sin importar documentación o producto ajenos.
+  `vantareapp/isa-180-eng-09-gate-ttsstt-offline-licencias-y-benchmarks`.
+- Base: `5ff860b5320100a70b53cfb1f218e0094aa484cb` (ISA-178 / ENG-08).
+- Composición: ENG-02 a ENG-08 ya están en la base exacta. ENG-09 añade solo
+  investigación, evidencia y harness test-only; no modifica producto.
 - Promoción: ninguna.
+- Evidencia ENG-09: matriz por capa de runtime/modelo/voz/G2P, hashes,
+  benchmark Windows CPU/DirectML, STT residente, WER sintético transparente y
+  cancelación aislada. Kokoro medido es NO-GO; Whisper queda condicionado.
+  `docs/engineer/tts-stt-selection-isa-180.md` conserva la decisión y
+  `docs/evidence/isa-180/` los resultados sanitizados.
 - Evidencia ENG-07: catálogo cerrado 20 × 4, presentación v1, roles/canales,
   penalty neutral, límites y fail-closed antes de `started`. Wails/SSE comparten
   bytes observables; el audio cache-only busca por texto de voz con fallback
@@ -178,6 +186,14 @@ productivo sin crear un segundo reader.
   críticos; ningún LLM decide el camino crítico.
 - Personalidades Profesional, Cercano y Exigente son perfiles declarativos.
 - TTS/STT offline, multi-motor si Kokoro no cubre cuatro idiomas.
+- ENG-09 demuestra que Kokoro CPU no cubre la latencia dinámica y que su pila
+  Python medida incluye G2P GPL. No se distribuye ni se cablea hasta resolver
+  licencia, rendimiento y escucha humana.
+- `whisper.cpp`/Whisper multilingual es el candidato STT primario condicionado;
+  debe superar corpus humano de cuatro idiomas antes de release.
+- La inferencia futura vive en un único host local hijo y cancelable. Spotter,
+  ingesta, scheduler y visual nunca esperan al host.
+- Micrófono y transcripciones son memoria-only por defecto; cero recording.
 - PTT por teclado, volante, gamepad, button box e HID.
 - Wake words traducidos: Ingeniero, Engineer, Ingegnere, Engenheiro.
 - Confirmación de voz para acciones; dos fallos pasan a PTT/UI.
@@ -228,6 +244,9 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
   sanción se expresa como `penalties.count_increased`, nunca drive-through.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
 - **P1:** TTS/STT bloquea el hot path.
+- **Reducido en ENG-09:** existe inventario por capa y el aislamiento de proceso
+  conserva heartbeat/cancelación. Sigue abierto el G2P GPL de Kokoro y falta
+  corpus humano; por ello no hay wiring de voz.
 - **Reducido en ENG-07:** los 20 intents admitidos tienen cobertura simétrica
   en cuatro idiomas. La validación lingüística perceptual y el catálogo futuro
   de TTS permanecen en cortes posteriores.
@@ -244,16 +263,25 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
 | En revisión | ISA-177 / ENG-07, presentación canónica multilingüe |
 | En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal; reconexión autoritativa y carrera disabled corregidas en re-review |
+| WIP | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO y Whisper condicionado, pendiente de checks/review |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Revisar de nuevo ISA-178 / ENG-08 contra los ocho hallazgos corregidos. Resolver
-cualquier P0/P1/P2/P3 razonable en esta misma rama antes de cerrar técnicamente
-el corte; no promover esta cadena.
+Cerrar checks y review independiente de ISA-180 / ENG-09. Después ejecutar
+ENG-10 con corpus humano de comandos en cuatro idiomas y selección final del
+voice-host; no cablear STT/TTS ni promover la cadena antes de esos gates.
 
 ## Última actualización
+
+2026-08-02, ISA-180 / ENG-09 ejecuta un gate reproducible de licencias,
+rendimiento y aislamiento. Kokoro ONNX CPU queda NO-GO para voz dinámica y su
+stack Python NO-GO para bundle propietario por G2P GPL; DirectML falla en int8
+y fp16. Whisper.cpp residente queda condicionado tras ~0,60 s por frase y
+cancelación aislada, pero solo inglés supera el smoke literal. `es/it/pt-BR`
+requieren corpus humano. No hay micrófono, modelos en Git, dependencia ni
+wiring productivo; radio/subtítulos siguen siendo fallback.
 
 2026-08-02, corrección completa de review ISA-178 / ENG-08: `engineer-radio`
 forma parte del contrato persistente Go y pasa roundtrip. `disabled` se filtra

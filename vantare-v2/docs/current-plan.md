@@ -1,3 +1,18 @@
+Nota ISA-206 / TAU-01 (2026-08-02):
+- Spike aislado con el SDK oficial `posthog-js@1.409.5` como devDependency; no
+  existe import, token, endpoint ni captura en el entrypoint productivo.
+- El harness no inicializa el SDK antes del consentimiento, porque `init()` ya
+  realiza una petición de configuración. Tras consentir valida evento explícito,
+  excepción, replay enmascarado, stop, revocación y degradación offline.
+- Seis secretos sintéticos quedan ausentes de eventos y payloads HTTP
+  decodificados. Los mensajes de error se sustituyen y del stack solo sobreviven
+  nombres de archivo y posiciones; query/hash se eliminan antes de iniciar.
+- Decisión: GO condicionado para errores/replay frontend; NO-GO directo para
+  errores Go, que necesitarán un bridge diagnóstico propio y sanitizado.
+- Evidencia y limitaciones: `docs/testing-automation/tau-01-posthog-wails-spike.md`.
+  Chromium con user-agent WebView2 no sustituye la prueba manual del binario
+  Wails. Estado: listo para review; sin merge, promoción ni activación.
+
 Nota ISA-204 / TA-N01 (2026-08-02):
 - Promoción acumulativa TA-01…TA-03C reconstruida sobre
   `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6` desde el stack técnico
@@ -24,7 +39,6 @@ Nota ISA-204 / TA-N01 (2026-08-02):
 - Estado: preparado para repetir gates combinados y, si permanecen verdes,
   validar el lector local con el grupo Nightly/Pro Plus. `testers` y `master`
   permanecen fuera del alcance.
-
 Nota ISA-202 / STR-N01 (2026-08-02):
 - Promoción acumulativa de Strategy Planner STR-00…STR-09 reconstruida sobre
   `nightly@1f3bcc825d45b5900eb798cbeedf7dd3ac2d06fa` desde el stack técnico

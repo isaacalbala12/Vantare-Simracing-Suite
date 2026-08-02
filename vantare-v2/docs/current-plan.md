@@ -10,7 +10,7 @@ Nota ISA-219 / TAU-04B (2026-08-02, draft local y bridge Wails):
   el directorio privado de configuración.
 - Gates focales x20 y race detector x5 PASS. Autoridad:
   `docs/runbooks/testing-center-report-draft.md`.
-- Estado: implementación local en review; sin UI, red, Supabase remoto, merge,
+- Estado: PR draft #109 en review; sin UI, red, Supabase remoto, merge,
   promoción o build distribuida.
 
 Nota ISA-218 / TAU-04A (2026-08-02, envío idempotente de reportes):

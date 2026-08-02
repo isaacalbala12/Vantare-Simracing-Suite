@@ -17,6 +17,13 @@ import {
   computeWebhookPayloadHash,
   sanitizeWebhookErrorCode,
 } from "./inbox.ts";
+import {
+  type BillingSeverity,
+  type BillingSignalCode,
+  type BillingSignalSink,
+  consoleBillingSignalSink,
+  emitBillingSignal,
+} from "./observability.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 export {
@@ -100,6 +107,7 @@ export type WebhookDeps = {
   getSupabase?: () => SupabaseClient;
   processEvent?: typeof processPolarWebhookEvent;
   now?: () => Date;
+  signalSink?: BillingSignalSink;
 };
 
 function setRetryAfterFromTimestamp(
@@ -145,6 +153,22 @@ export async function handleWebhookRequest(
   req: Request,
   deps: WebhookDeps = {},
 ): Promise<Response> {
+  const signalSink = deps.signalSink ?? consoleBillingSignalSink;
+  const observe = (
+    code: BillingSignalCode,
+    severity: BillingSeverity,
+    fields: {
+      providerEventId?: string | null;
+      eventType?: string | null;
+      reasonCode?: string | null;
+    } = {},
+  ) =>
+    emitBillingSignal(signalSink, {
+      code,
+      severity,
+      environment: Deno.env.get("POLAR_ENVIRONMENT"),
+      ...fields,
+    });
   const cors = handleCorsPreflight(req);
   if (cors) return cors;
 
@@ -155,6 +179,7 @@ export async function handleWebhookRequest(
   const getSecret = deps.getSecret ?? getWebhookSecret;
   const secret = getSecret();
   if (!secret) {
+    await observe("endpoint_disabled", "critical");
     return errorResponse(
       "webhook_not_configured",
       "POLAR_WEBHOOK_SECRET is not configured",
@@ -193,6 +218,9 @@ export async function handleWebhookRequest(
     await verifyWebhook(rawBody, headers, secret);
   } catch (error) {
     if (error instanceof WebhookVerificationError) {
+      await observe("signature_invalid", "warning", {
+        providerEventId: headers.id,
+      });
       return errorResponse("invalid_webhook_signature", error.message, 403);
     }
     throw error;
@@ -225,7 +253,24 @@ export async function handleWebhookRequest(
       supabase,
       payloadHash: await computeWebhookPayloadHash(rawBody),
     });
+    if (result.status === "duplicate") {
+      await observe("webhook_duplicate", "info", {
+        providerEventId: headers.id,
+        eventType: event.type,
+      });
+    }
+    if (result.status === "quarantined") {
+      await observe("webhook_quarantined", "critical", {
+        providerEventId: headers.id,
+        eventType: event.type,
+        reasonCode: result.reason,
+      });
+    }
     if (result.status === "deferred" && result.reason === "retry_scheduled") {
+      await observe("webhook_retry_scheduled", "warning", {
+        providerEventId: headers.id,
+        eventType: event.type,
+      });
       return setRetryAfterFromTimestamp(
         errorResponse(
           "webhook_retry_scheduled",
@@ -241,6 +286,10 @@ export async function handleWebhookRequest(
       );
     }
     if (result.status === "deferred" && result.reason === "processing") {
+      await observe("webhook_processing_busy", "warning", {
+        providerEventId: headers.id,
+        eventType: event.type,
+      });
       return setRetryAfterFromTimestamp(
         errorResponse(
           "webhook_processing_busy",
@@ -269,12 +318,17 @@ export async function handleWebhookRequest(
       ? error.message
       : "Webhook processing failed";
     if (message.includes("POLAR_PRODUCT_MAP")) {
+      await observe("mapping_invalid", "critical", {
+        providerEventId: headers.id,
+        eventType: event.type,
+        reasonCode: "mapping_not_configured",
+      });
       return errorResponse("mapping_not_configured", message, 503);
     }
-    console.error("billing-webhook processing error", {
-      event_id: headers.id,
-      event_type: event.type,
-      error_code: sanitizeWebhookErrorCode(error),
+    await observe("webhook_processing_failed", "critical", {
+      providerEventId: headers.id,
+      eventType: event.type,
+      reasonCode: sanitizeWebhookErrorCode(error),
     });
     return errorResponse(
       "webhook_processing_failed",

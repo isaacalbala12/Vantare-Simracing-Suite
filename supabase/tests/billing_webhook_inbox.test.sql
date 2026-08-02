@@ -31,6 +31,7 @@ insert into webhook_test_ids
 select 'primary', inbox_id
 from public.billing_receive_webhook(
   'polar',
+  'sandbox',
   'evt_sql_primary',
   'order.paid',
   repeat('a', 64),
@@ -51,7 +52,7 @@ select is(
 
 select is(
   (select delivery_status from public.billing_receive_webhook(
-    'polar', 'evt_sql_primary', 'order.paid', repeat('a', 64),
+    'polar', 'sandbox', 'evt_sql_primary', 'order.paid', repeat('a', 64),
     '{"type":"order.paid","data":{"product_id":"product-1"}}'::jsonb
   )),
   'received',
@@ -60,10 +61,17 @@ select is(
 
 select ok(
   (select payload_matches from public.billing_receive_webhook(
-    'polar', 'evt_sql_primary', 'order.paid', repeat('a', 64),
+    'polar', 'sandbox', 'evt_sql_primary', 'order.paid', repeat('a', 64),
     '{"type":"order.paid","data":{"product_id":"product-1"}}'::jsonb
   )),
   'same-body redelivery confirms its hash'
+);
+
+select is(
+  (select duplicate_count from public.billing_webhook_inbox
+   where environment = 'sandbox' and provider_event_id = 'evt_sql_primary'),
+  2,
+  'same-body redeliveries increment the durable duplicate metric'
 );
 
 select is(
@@ -220,7 +228,7 @@ select ok(
 
 select is(
   (select delivery_status from public.billing_receive_webhook(
-    'polar', 'evt_sql_primary', 'order.paid', repeat('a', 64),
+    'polar', 'sandbox', 'evt_sql_primary', 'order.paid', repeat('a', 64),
     '{"type":"order.paid","data":{"product_id":"product-1"}}'::jsonb
   )),
   'processed',
@@ -230,7 +238,7 @@ select is(
 insert into webhook_test_ids
 select 'orphan', inbox_id
 from public.billing_receive_webhook(
-  'polar', 'evt_sql_orphan', 'subscription.active', repeat('b', 64),
+  'polar', 'sandbox', 'evt_sql_orphan', 'subscription.active', repeat('b', 64),
   '{"type":"subscription.active","data":{"product_id":"product-2"}}'::jsonb
 );
 
@@ -306,7 +314,7 @@ from extensions.dblink(
   $remote$
     select inbox_id::text
     from public.billing_receive_webhook(
-      'polar', 'evt_sql_real_race', 'order.paid', repeat('e', 64),
+      'polar', 'sandbox', 'evt_sql_real_race', 'order.paid', repeat('e', 64),
       '{"type":"order.paid","data":{"product_id":"product-race"}}'::jsonb
     )
   $remote$
@@ -399,7 +407,7 @@ from extensions.dblink(
   $remote$
     select inbox_id::text
     from public.billing_receive_webhook(
-      'polar', 'evt_sql_rollback', 'order.paid', repeat('f', 64),
+      'polar', 'sandbox', 'evt_sql_rollback', 'order.paid', repeat('f', 64),
       '{"type":"order.paid","data":{"product_id":"product-rollback"}}'::jsonb
     )
   $remote$
@@ -469,13 +477,13 @@ select is(extensions.dblink_disconnect('billing_worker_two'), 'OK', 'worker sess
 insert into webhook_test_ids
 select 'conflict', inbox_id
 from public.billing_receive_webhook(
-  'polar', 'evt_sql_conflict', 'order.paid', repeat('c', 64),
+  'polar', 'sandbox', 'evt_sql_conflict', 'order.paid', repeat('c', 64),
   '{"type":"order.paid","data":{}}'::jsonb
 );
 
 select isnt(
   (select payload_matches from public.billing_receive_webhook(
-    'polar', 'evt_sql_conflict', 'order.paid', repeat('d', 64),
+    'polar', 'sandbox', 'evt_sql_conflict', 'order.paid', repeat('d', 64),
     '{"type":"order.paid","data":{"changed":true}}'::jsonb
   )),
   true,

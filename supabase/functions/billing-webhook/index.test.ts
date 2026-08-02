@@ -9,6 +9,7 @@ import {
   WEBHOOK_HEADER_TIMESTAMP,
 } from "./index.ts";
 import { computeWebhookPayloadHash } from "./inbox.ts";
+import type { BillingSignal } from "./observability.ts";
 import type { ProcessResult } from "./process.ts";
 
 const TEST_WEBHOOK_SECRET = "whsec_dGVzdC13ZWJob29rLXNlY3JldC1rZXkhIQ==";
@@ -72,13 +73,22 @@ function fakeSupabase(): SupabaseClient {
 }
 
 Deno.test("billing-webhook: missing POLAR_WEBHOOK_SECRET is 503", async () => {
+  const signals: BillingSignal[] = [];
   const res = await handleWebhookRequest(
     await signedWebhookRequest({ type: "order.paid", data: {} }),
-    { getSecret: () => null },
+    {
+      getSecret: () => null,
+      signalSink: {
+        emit(signal) {
+          signals.push(signal);
+        },
+      },
+    },
   );
   assertEquals(res.status, 503);
   const body = await res.json();
   assertEquals(body.error, "webhook_not_configured");
+  assertEquals(signals.map((signal) => signal.code), ["endpoint_disabled"]);
 });
 
 Deno.test("billing-webhook: missing signature headers is 400", async () => {
@@ -364,6 +374,7 @@ Deno.test("billing-webhook: concurrent busy claim remains provider-retryable", a
 });
 
 Deno.test("billing-webhook: processing failure is retryable without leaking the cause", async () => {
+  const signals: BillingSignal[] = [];
   const res = await handleWebhookRequest(
     await signedWebhookRequest({
       type: "order.paid",
@@ -377,6 +388,11 @@ Deno.test("billing-webhook: processing failure is retryable without leaking the 
       getSupabase: () => fakeSupabase(),
       processEvent: () =>
         Promise.reject(new Error("buyer@example.com secret-token")),
+      signalSink: {
+        emit(signal) {
+          signals.push(signal);
+        },
+      },
     },
   );
 
@@ -389,4 +405,8 @@ Deno.test("billing-webhook: processing failure is retryable without leaking the 
   );
   assertEquals(JSON.stringify(body).includes("buyer@example.com"), false);
   assertEquals(JSON.stringify(body).includes("secret-token"), false);
+  assertEquals(signals.length, 1);
+  assertEquals(signals[0].code, "webhook_processing_failed");
+  assertEquals(signals[0].reasonCode, "processing_failed");
+  assertEquals(JSON.stringify(signals).includes("buyer@example.com"), false);
 });

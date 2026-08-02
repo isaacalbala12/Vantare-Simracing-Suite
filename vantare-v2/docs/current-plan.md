@@ -47,6 +47,22 @@ Nota ISA-183 / ENG-12 (2026-08-02, In Review):
   entorno usa `CGO_ENABLED=0`.
 - Re-review independiente final: `APPROVED`, P0/P1/P2/P3 = 0.
 
+Nota ISA-186 / ENG-15 (2026-08-02, In Review):
+- Router determinista `engineer.dialogue.v1` sobre el catálogo ENG-12: las 14
+  consultas y 6 acciones conservan paridad `es/en/it/pt-BR`.
+- Consultas missing/stale/invalid no publican valores. Las acciones siguen
+  `propuesta -> readback -> confirmación -> resultado`, revalidan evidencia en
+  el puerto y consumen una propuesta una sola vez incluso con double-submit.
+- Session/driver/source/epoch, locale, timeout, rollback de reloj o contexto
+  cancelado invalidan el diálogo. Dos fallos usan fallback PTT/UI sin adivinar.
+- Solo existen puertos falsos en tests: sin STT/TTS/wake word, LMU, Pit,
+  Strategy, efectos reales, dependencia o wiring productivo. Contrato:
+  `docs/engineer/dialogue-router-isa-186.md`.
+- Checks: commands x20, fuzz 5 s, Engineer completo, vet Engineer, build
+  frontend, `go test ./...` y diff-check pasan. `-race` no está disponible con
+  `CGO_ENABLED=0`.
+- Revisión independiente final: `APPROVE`, P0/P1/P2/P3 = 0.
+
 Nota ISA-182 / ENG-11 (2026-08-02, In Review):
 - Package manager test-only con manifest v1 cerrado y versionado, descargas
   acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y

@@ -50,6 +50,11 @@ simétrico de 20 intents en cuatro locales, con slots tipados, precondiciones,
 respuestas y confirmación obligatoria para cada acción. Su harness es solo texto,
 no ejecuta acciones ni conecta voz. El protocolo humano conserva command
 readiness, FAR/FRR y wake word en NO-GO hasta evidencia consentida real.
+ISA-186 / ENG-15 añade el router textual `engineer.dialogue.v1`: consultas
+fail-closed y acciones con propuesta, readback, confirmación, evidencia fresca y
+resultado. Lifecycle, locale, reloj, timeout y contexto cancelan estado inseguro;
+el double-submit aplica como máximo una vez. Solo usa puertos falsos en tests y
+no conecta voz, LMU, Pit Manager, Strategy ni efectos productivos.
 El roadmap restante queda fijado en
 `docs/engineer/engineer-beta-roadmap.md`: ENG-12 a ENG-29 forman un DAG de 18
 microcortes. Los contratos y runtimes objetivos pueden avanzar en paralelo;
@@ -72,10 +77,11 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-183-eng-12-catalogo-de-comandos-intents-y-protocolo-de-corpus`.
-- Base: `ddfb80248bc1a430ad6530e030617f0b8bf59967` (roadmap ENG-12+ aceptado).
-- Composición: ENG-02 a ENG-11 y el roadmap aceptado están en la base exacta.
-  La rama activa añade únicamente ENG-12; no conecta STT, PTT, audio ni runtime.
+  `vantareapp/isa-186-eng-15-router-determinista-de-intents-dialogo-y-confirmaciones`.
+- Base: `ba04846f8ac38fc4fa0110a51dd1bffd63ca8943` (ISA-183 / ENG-12).
+- Composición: ENG-02 a ENG-12 y el roadmap aceptado están en la base exacta.
+  La rama activa añade únicamente ENG-15; no conecta STT, TTS, wake word, LMU,
+  Pit Manager, Strategy, audio ni runtime productivo.
 - Promoción: ninguna.
 - Evidencia ENG-11: manifest cerrado bajo Git; descargas con hash/tamaño,
   límites, cancelación y promoción segura; rutas y delete reparse-safe;
@@ -301,7 +307,8 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-182 / ENG-11, package manager y voice-host test-only; lifecycle demostrado, command readiness NO-GO |
 | En revisión | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; voz real continúa NO-GO |
 | Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
-| Backlog | ISA-185..190 / ENG-14..19, PTT, diálogo, audio, personalidades, Spotter y monitores |
+| En revisión | ISA-186 / ENG-15, router determinista y diálogo confirmable; review `APPROVE`, cero efectos reales |
+| Backlog | ISA-185, 187..190 / ENG-14, 16..19, PTT, audio, personalidades, Spotter y monitores |
 | Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |
 | Backlog | ISA-195..198 / ENG-24..27, UI, Pit, Strategy/Overlays y diagnóstico |
 | Gate final | ISA-199..200 / ENG-28..29, soak LMU y Engineer Beta |
@@ -310,13 +317,22 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar y aceptar técnicamente ISA-183 / ENG-12 sin promoverla. Después, la
-orquestación puede iniciar los cortes objetivos no bloqueados enumerados en
-`docs/engineer/engineer-beta-roadmap.md`. ISA-184 / ENG-13 sigue siendo un gate
-humano: ENG-20/21 no empiezan productivamente hasta disponer de corpus consentido
-y métricas reales de intent, slots, FAR/FRR y wake word.
+Continuar el DAG objetivo no bloqueado de
+`docs/engineer/engineer-beta-roadmap.md` sin promover ENG-15. ISA-184 / ENG-13
+sigue siendo un gate humano: ENG-20/21 no empiezan productivamente hasta disponer
+de corpus consentido y métricas reales de intent, slots, FAR/FRR y wake word.
 
 ## Última actualización
+
+2026-08-02, ISA-186 / ENG-15 implementa un router determinista sobre el catálogo
+ENG-12. Las consultas solo responden con evidencia fresca y contrato exacto; las
+acciones pasan por propuesta/readback/confirmación y revalidación dentro del
+puerto. Dos fallos derivan a PTT/UI; lifecycle, locale, timeout, rollback y
+cancelación eliminan propuestas. Replays golden y double-submit concurrente son
+deterministas. Sin puertos reales, voz, LMU, Pit/Strategy, dependencia o
+promoción. Commands x20, fuzz, Engineer, vet, build frontend y suite Go global
+pasan; revisión independiente `APPROVE`, P0/P1/P2/P3 = 0. Contrato:
+`docs/engineer/dialogue-router-isa-186.md`.
 
 2026-08-02, ISA-183 / ENG-12 implementa `engineer.commands.v1` con 14 consultas,
 6 acciones y paridad `es/en/it/pt-BR`. Cada acción requiere confirmación y el

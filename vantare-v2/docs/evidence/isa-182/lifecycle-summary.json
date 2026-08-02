@@ -1,0 +1,20 @@
+{
+  "captured_at_utc": "2026-08-02T09:40:13.097099Z",
+  "clean_shutdown": true,
+  "command_readiness": "NO-GO",
+  "inference_executed": false,
+  "iterations": 200,
+  "latency_ms": {
+    "max": 26.926,
+    "p50": 13.774,
+    "p95": 20.445
+  },
+  "probe_only": true,
+  "protocol": "vantare.engineer.voice-host.v1",
+  "remaining_leases": 0,
+  "required_artifacts": [
+    "whisper-base-multilingual"
+  ],
+  "schema": "vantare.engineer.voice-host-lifecycle.v1",
+  "start_ms": 349.598
+}

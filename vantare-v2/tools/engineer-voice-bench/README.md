@@ -60,3 +60,21 @@ tools/engineer-voice-bench/whisper_probe.ps1 -CheckPortOnly -Port 18180
 
 The command succeeds only while that loopback port is free. Holding a local
 `TcpListener` on the same port must make it fail before any benchmark starts.
+
+## ISA-182 package manager and test-only voice host
+
+`voice-artifacts.v1.json` is the single trusted operator manifest. The
+dependency-free `voice_artifact_cli.py` can inspect, explicitly download and
+explicitly remove its pinned artifacts under an operator-selected root outside
+Git. Downloads are bounded, cancellable, SHA-256/size checked and promoted only
+after complete verification. Models, archives and binaries remain outside Git.
+
+`voice_host.py` and `voice_host_controller.py` implement lifecycle ownership
+only. The child binds loopback, proves PID/protocol/nonce ownership, accepts a
+bounded synthetic probe and is always reaped by the parent. It does not load a
+model, access a microphone or perform inference. `voice_host_harness.py`
+measures only startup and probe overhead; its result must also stay outside Git.
+
+See `docs/engineer/voice-package-host-isa-182.md` for the threat model,
+operator flow, fixed manifest and exact limitations. ENG-11 does not authorize
+STT, TTS, PTT, commands or wake word.

@@ -241,10 +241,14 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 		channel := audio.Channel(presented.Channel)
 		resolveCtx, cancelResolve := context.WithTimeout(ctx, audioCacheResolveTimeout)
 		var resolveErr error
+		audioRequest := audio.PresentationRequest{
+			Locale: presented.Locale, VoiceText: presented.VoiceText,
+			Channel: channel, LegacyIntent: presented.Intent,
+		}
 		if port.router != nil {
-			path, resolveErr = port.router.ResolvePresentationCached(resolveCtx, presented.VoiceText, presented.Intent, channel)
+			path, resolveErr = port.router.ResolvePresentationCached(resolveCtx, audioRequest)
 		} else if port.resolver != nil {
-			path, resolveErr = port.resolver.ResolveCached(resolveCtx, presented.VoiceText, channel)
+			path, resolveErr = port.resolver.ResolvePresentationCached(resolveCtx, audioRequest)
 		}
 		cancelResolve()
 		if cause := context.Cause(ctx); cause != nil {
@@ -321,17 +325,21 @@ func (s *EngineerService) publishLegacyHarness(message audio.Message) {
 		return
 	}
 	path := ""
-	if router != nil {
-		channel := message.Channel
-		if channel == "" {
-			channel = audio.ChannelEngineer
-			if message.Priority == audio.PrioritySpotter {
-				channel = audio.ChannelSpotter
-			}
+	legacyChannel := message.Channel
+	if legacyChannel == "" {
+		legacyChannel = audio.ChannelEngineer
+		if message.Priority == audio.PrioritySpotter {
+			legacyChannel = audio.ChannelSpotter
 		}
-		path = router.Resolve(message.TextKey, channel)
+	}
+	legacyRequest := audio.PresentationRequest{
+		Locale: presentation.LocaleSpanish, VoiceText: translateLegacyHarness(message.TextKey),
+		Channel: legacyChannel, LegacyIntent: message.TextKey,
+	}
+	if router != nil {
+		path, _ = router.ResolvePresentationCached(context.Background(), legacyRequest)
 	} else if resolver != nil {
-		path, _ = resolver.ResolveCached(context.Background(), message.TextKey, message.Channel)
+		path, _ = resolver.ResolvePresentationCached(context.Background(), legacyRequest)
 	}
 	if path != "" {
 		_ = player.PlayContext(context.Background(), path)

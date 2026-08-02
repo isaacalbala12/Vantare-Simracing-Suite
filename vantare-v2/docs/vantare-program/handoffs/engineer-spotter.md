@@ -57,7 +57,10 @@ productivo sin crear un segundo reader.
 - Evidencia ENG-07: catálogo cerrado 20 × 4, presentación v1, roles/canales,
   penalty neutral, límites y fail-closed antes de `started`. Wails/SSE comparten
   bytes observables; el audio cache-only busca por texto de voz con fallback
-  legacy solo de lectura. Focal x20, fuzz 10 s, benchmarks x5, Engineer,
+  legacy solo de lectura. Tras review, el request de audio transporta el locale
+  tipado de Presentation: caché y fallback se limitan a él, y cualquier
+  mismatch queda visual-only. `all_clear` español no afirma pista global.
+  Focal x20, fuzz 10 s / 2,24 M ejecuciones, benchmarks x5, Engineer,
   Server, Telemetry y Go global serial PASS. Vet focal PASS; vet global conserva
   tres warnings Win32 heredados. Race no disponible con `CGO_ENABLED=0`.
   Contrato: `docs/engineer/presentation-contract.md`.
@@ -248,6 +251,15 @@ P0/P1/P2/P3 razonable en la misma rama antes de cerrar técnicamente el corte;
 no promover esta cadena.
 
 ## Última actualización
+
+2026-08-02, corrección de review ISA-177 / ENG-07: el locale tipado de la
+presentación gobierna ambos lookups de audio. La voz configurada solo puede
+usarse si coincide exactamente; `es`, `it` y `pt-BR` no leen assets ingleses
+ni de otro locale, y los cuatro idiomas sí leen sus assets coincidentes. Un
+mismatch queda visual-only. El resolver inyectable recibe locale, texto de voz,
+canal e intent legacy; nunca recibe el intent como voz. `all_clear` español es
+«Todo libre». Focal x20, Engineer/Server/Telemetry/global, fuzz, benchmarks y
+vet focal pasan; race sigue indisponible con `CGO_ENABLED=0`.
 
 2026-08-02, ISA-177 / ENG-07 añade un resolver puro y versionado con los 20
 intents aprobados en español, inglés, italiano y portugués brasileño. La misma

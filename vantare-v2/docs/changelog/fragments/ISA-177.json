@@ -6,7 +6,8 @@
   "technicalNotes": [
     "Los 20 avisos aprobados utilizan un catálogo cerrado y versionado con el mismo contenido observable en Wails y SSE.",
     "Los mensajes inválidos se rechazan antes de mostrarse o iniciar audio y nunca exponen claves internas como texto.",
-    "Spotter y Engineer conservan roles, canales, prioridad y caducidad independientes del idioma seleccionado."
+    "Spotter y Engineer conservan roles, canales, prioridad y caducidad independientes del idioma seleccionado.",
+    "La caché de audio nunca utiliza una voz o un archivo de otro idioma: si no existe coincidencia exacta, el aviso permanece únicamente visual."
   ],
   "testing": [
     "Cambiar el locale antes de iniciar Engineer y comprobar mensajes en los cuatro idiomas.",

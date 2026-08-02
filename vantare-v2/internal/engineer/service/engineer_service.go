@@ -111,7 +111,7 @@ type AudioPlayer interface {
 	PlayContext(ctx context.Context, path string) error
 }
 
-// AudioResolver resuelve un textKey a un path de audio ya cacheado. Debe
+// AudioResolver resuelve una presentación canónica a un path de audio ya cacheado. Debe
 // respetar el contexto, no sintetizar ni descargar y devolver "" si no hay
 // audio disponible (en cuyo caso se mantiene la notificación visual).
 //
@@ -119,7 +119,7 @@ type AudioPlayer interface {
 // Este contrato solo puede consultar rutas ya preparadas; sintetizar o descargar
 // audio pertenece al futuro transporte TTS y no puede bloquear el camino crítico.
 type AudioResolver interface {
-	ResolveCached(ctx context.Context, textKey string, channel audio.Channel) (string, error)
+	ResolvePresentationCached(ctx context.Context, request audio.PresentationRequest) (string, error)
 }
 
 // NoopAudioResolver es el resolver por defecto: nunca encuentra audio.
@@ -127,8 +127,8 @@ type AudioResolver interface {
 // inyectar el resolver real vía SetAudioResolver.
 type NoopAudioResolver struct{}
 
-// ResolveCached devuelve "" (sin audio). Implementa AudioResolver.
-func (NoopAudioResolver) ResolveCached(context.Context, string, audio.Channel) (string, error) {
+// ResolvePresentationCached devuelve "" (sin audio). Implementa AudioResolver.
+func (NoopAudioResolver) ResolvePresentationCached(context.Context, audio.PresentationRequest) (string, error) {
 	return "", nil
 }
 

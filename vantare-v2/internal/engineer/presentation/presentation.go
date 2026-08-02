@@ -317,7 +317,7 @@ func catalogs() map[Locale]map[string]phrase {
 		LocaleSpanish: {
 			messagepolicy.IntentSpotterCarLeft: same("Coche a la izquierda"), messagepolicy.IntentSpotterCarRight: same("Coche a la derecha"),
 			messagepolicy.IntentSpotterStillThere: same("Sigue ahí"), messagepolicy.IntentSpotterClearLeft: same("Libre por la izquierda"),
-			messagepolicy.IntentSpotterClearRight: same("Libre por la derecha"), messagepolicy.IntentSpotterAllClear: same("Pista libre"),
+			messagepolicy.IntentSpotterClearRight: same("Libre por la derecha"), messagepolicy.IntentSpotterAllClear: same("Todo libre"),
 			messagepolicy.IntentSpotterThreeWide: same("Tres coches en paralelo"), messagepolicy.IntentFuelHalfTank: same("Queda medio depósito"),
 			messagepolicy.IntentFuelOneLitre: same("Queda un litro"), messagepolicy.IntentFuelTwoLitres: same("Quedan dos litros"),
 			messagepolicy.IntentFuelLapsFour: same("Queda combustible para cuatro vueltas"), messagepolicy.IntentFuelLapsThree: same("Queda combustible para tres vueltas"),

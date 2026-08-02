@@ -126,6 +126,20 @@ func TestPenaltyPresentationIsNeutralInEveryLocale(t *testing.T) {
 	}
 }
 
+func TestSpanishAllClearDoesNotClaimTheWholeTrackIsFree(t *testing.T) {
+	resolver, err := NewResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolver.Resolve(decisionFor(messagepolicy.IntentSpotterAllClear, messagepolicy.FamilySpotter, messagepolicy.PrioritySpotter), LocaleSpanish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(got.VisualText), "pista") || strings.Contains(strings.ToLower(got.VoiceText), "pista") {
+		t.Fatalf("all_clear must describe proximity, not global track state: %+v", got)
+	}
+}
+
 func TestChangingLocaleCannotChangeDecisionSemantics(t *testing.T) {
 	resolver, err := NewResolver()
 	if err != nil {

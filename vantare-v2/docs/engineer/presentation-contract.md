@@ -75,11 +75,20 @@ un fallback de lectura al archivo histórico nombrado por intent; no sintetiza,
 descarga ni convierte contenido. El traductor español antiguo queda reservado
 al harness legacy y no participa en producto.
 
+El request de audio transporta el `Locale` tipado de esta presentación. La
+configuración del canal solo puede seleccionar una voz si declara exactamente
+el mismo locale. Tanto la caché hash como el fallback legacy se consultan bajo
+ese locale; nunca se busca en otro idioma. Ante mismatch, voz ausente o asset
+ausente, la entrega continúa únicamente como visual. `AudioConfig` no puede
+cambiar la semántica ni el idioma de una presentación ya resuelta.
+
 ## Verificación
 
 - tabla 20 intents × 4 locales;
 - paridad exacta de catálogo y metadatos;
 - penalty neutral y roles/canales correctos;
+- aislamiento de locale en caché canónica y legacy para los cuatro idiomas;
+- mismatch de audio produce visual-only y nunca audio en otro idioma;
 - unknown/NUL/límites fail-closed;
 - fallo antes de `started`;
 - paridad byte a byte Wails/SSE;

@@ -136,8 +136,8 @@ func (player *blockingAudioPlayer) PlayContext(ctx context.Context, path string)
 
 type deliveryResolver map[string]string
 
-func (resolver deliveryResolver) ResolveCached(_ context.Context, textKey string, _ audio.Channel) (string, error) {
-	return resolver[textKey], nil
+func (resolver deliveryResolver) ResolvePresentationCached(_ context.Context, request audio.PresentationRequest) (string, error) {
+	return resolver[request.VoiceText], nil
 }
 
 type firstCallBlockingResolver struct {
@@ -163,7 +163,7 @@ func (player *benchmarkAudioPlayer) PlayContext(ctx context.Context, path string
 	return context.Cause(ctx)
 }
 
-func (resolver *firstCallBlockingResolver) ResolveCached(ctx context.Context, _ string, _ audio.Channel) (string, error) {
+func (resolver *firstCallBlockingResolver) ResolvePresentationCached(ctx context.Context, _ audio.PresentationRequest) (string, error) {
 	if resolver.calls.Add(1) != 1 {
 		return resolver.fallback, nil
 	}

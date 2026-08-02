@@ -20,10 +20,13 @@ Nota ISA-177 / ENG-07 (2026-08-02, In Review):
 - Español es el locale productivo predeterminado y la configuración queda
   validada e inmutable mientras el servicio está activo.
 - Wails y SSE reciben exactamente el mismo objeto observable. El lookup de
-  audio cache-only usa texto de voz y conserva únicamente lectura legacy por
-  intent durante la migración; no sintetiza en hot path.
-- Contrato: `docs/engineer/presentation-contract.md`. Focal x20, fuzz,
-  benchmarks, Engineer, Server, Telemetry y Go global serial pasan. Vet focal
+  audio cache-only usa texto de voz y el locale tipado de Presentation. Caché
+  canónica y fallback legacy solo consultan ese idioma; un `AudioConfig`
+  divergente produce visual-only y nunca audio cruzado. `all_clear` español es
+  «Todo libre», sin afirmar que toda la pista está libre.
+- Contrato: `docs/engineer/presentation-contract.md`. Corrección de review:
+  focal x20, fuzz 2,24 M, benchmarks, Engineer, Server, Telemetry y Go global
+  serial pasan. Vet focal
   pasa; vet global conserva tres warnings Win32 heredados. Race no está
   disponible con `CGO_ENABLED=0`. Sin frontend, TTS/STT, nuevos intents,
   Telemetry Core, merge o promoción.

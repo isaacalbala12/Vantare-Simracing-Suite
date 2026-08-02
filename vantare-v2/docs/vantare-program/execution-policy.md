@@ -1,6 +1,7 @@
 # Política de ejecución, ramas y promoción
 
-Estado: decisión confirmada por Isaac el 2026-07-27.
+Estado: decisión confirmada por Isaac el 2026-07-27 y materializada por ISA-121;
+reconciliación documental 2026-08-02.
 
 ## Flujo
 
@@ -18,18 +19,19 @@ aprobación final explícita de Isaac
 master
 ```
 
-Este es el flujo objetivo, no el estado físico actual. A 2026-07-27 existen
-`develop` y `master`; `nightly` y `testers` aún no existen y los workflows de
-Discord siguen ligados a `develop`.
+ISA-121 materializó `nightly` y `testers`, adaptó los gates de promoción y dejó
+`develop` congelada como referencia histórica. El estado físico vigente es:
 
-Hasta ejecutar la migración:
-
-- todo trabajo continúa apilado en ramas de issue;
-- los PR quedan draft/sin merge;
-- no se inventa un destino Nightly/Testers;
-- `develop` solo describe integraciones históricas ya autorizadas;
-- ISA-121 / REL-00 creará ramas, adaptará CI/webhooks/updater y probará rollback
-  antes de habilitar promociones.
+- todo trabajo nace en una rama de issue y permanece draft/sin merge hasta su
+  gate humano;
+- los PR de issue apuntan a `nightly`;
+- `nightly -> testers` y `testers -> master` se ejecutan mediante issues/PR de
+  promoción separados;
+- CI rechaza rutas distintas y los anuncios de beta amplia solo salen desde
+  `testers`;
+- las builds internas no equivalen a una release pública y el acceso efectivo
+  continúa dependiendo del entitlement firmado;
+- `develop` no recibe nuevas integraciones.
 
 ## Contrato por issue
 

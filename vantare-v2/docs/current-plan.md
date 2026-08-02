@@ -1,12 +1,12 @@
 Nota ISA-171 / TC-09G (2026-08-02):
-- Promoción controlada en curso desde `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c` hasta el stack aprobado de Telemetry Core `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
-- El primer gate del PR #65 detectó en Windows CI que una ruta 8.3 (`RUNNER~1`) y su ruta larga equivalente eran rechazadas como distintas por comparación textual en raw capture. El segundo gate confirmó ese paquete verde y reveló la misma comparación en la frontera del catálogo Wails. Ambas rutas comparan ahora identidad real con `os.SameFile`, conservan el rechazo de junctions/symlinks y tienen regresiones Windows 8.3. El timeout del spy permanece en 2 s: no se oculta el fallo funcional. Pendiente review y nuevo CI.
+- Promoción controlada completada desde `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c` hasta `nightly@c5eb3c906bc0f93a747adac13f3efcc9f731f8b9`, con procedencia en el stack aprobado de Telemetry Core `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
+- El primer gate del PR #65 detectó en Windows CI que una ruta 8.3 (`RUNNER~1`) y su ruta larga equivalente eran rechazadas como distintas por comparación textual en raw capture. El segundo gate confirmó ese paquete verde y reveló la misma comparación en la frontera del catálogo Wails. Ambas rutas comparan ahora identidad real con `os.SameFile`, conservan el rechazo de junctions/symlinks y tienen regresiones Windows 8.3. El timeout del spy permanece en 2 s: no se oculta el fallo funcional. Review independiente y reruns posteriores: PASS, P0/P1/P2/P3 = 0.
 - La simulación previa encontró únicamente conflictos documentales en `AGENTS.md`, `docs/agent-workflow.md` y este archivo; no existen conflictos de código.
 - La resolución conserva la gobernanza vigente de ISA-120/121 y todo el handoff/evidencia de Telemetry Core. `testers` y `master` permanecen fuera del alcance.
 - Árbol integrado: todos los archivos fuera de REL-00, OS-07 y los documentos reconciliados coinciden byte a byte con `170eaeb`; la auditoría confirma un único owner productivo de LMU y cero referencias legacy productivas.
-- Gates frescos: Go bloqueante completo PASS; ISA-118 focal PASS; frontend bloqueante 295 archivos/1.978 tests PASS; build PASS; cutover y shadow Playwright PASS; 7/7 fuzzers PASS; soak/lifecycle x3, replays x3, benchmark combinado, branch policy y design-system 2/2 PASS.
+- Gates frescos pre y post-promoción: Go bloqueante completo PASS; ISA-118 focal PASS; frontend bloqueante 295 archivos/1.978 tests PASS; build PASS; cutover y shadow Playwright PASS; 7/7 fuzzers PASS; soak/lifecycle x3, replays x3, benchmark combinado, branch policy y design-system 2/2 PASS. El gate post-promoción es el run `30729804412`.
 - Deuda externa visible: `useCanvasInteraction.test.tsx` reproduce ISA-172 tanto bajo suite completa como focalmente. No se modifica ni se amplía la allowlist en ISA-171.
-- Estado: preparado para review independiente antes de commit, PR y promoción exclusiva a `nightly`.
+- Estado: ISA-171 completada en `nightly` y lista para validación Nightly/Pro Plus. `testers` y `master` no se modificaron. Rollback: revertir el commit lineal `c5eb3c906bc0f93a747adac13f3efcc9f731f8b9`.
 
 Nota REL-00 / ISA-121 (2026-08-02):
 - El flujo canónico de entrega pasa a ser `rama de issue -> nightly -> testers -> master`.

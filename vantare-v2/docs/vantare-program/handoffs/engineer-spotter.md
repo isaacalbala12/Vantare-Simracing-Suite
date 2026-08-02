@@ -50,6 +50,10 @@ simétrico de 20 intents en cuatro locales, con slots tipados, precondiciones,
 respuestas y confirmación obligatoria para cada acción. Su harness es solo texto,
 no ejecuta acciones ni conecta voz. El protocolo humano conserva command
 readiness, FAR/FRR y wake word en NO-GO hasta evidencia consentida real.
+ISA-185 / ENG-14 añade `engineer.ptt.v1`, máquina de estados y readers Windows
+reales para teclado, XInput y joystick-compatible. El polling es cancelable,
+hotplug-safe y no abre micrófono. Raw HID genérico permanece `unsupported` y
+el host STT sigue bloqueado; UI y persistencia pertenecen a ENG-24.
 El roadmap restante queda fijado en
 `docs/engineer/engineer-beta-roadmap.md`: ENG-12 a ENG-29 forman un DAG de 18
 microcortes. Los contratos y runtimes objetivos pueden avanzar en paralelo;
@@ -72,11 +76,17 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-183-eng-12-catalogo-de-comandos-intents-y-protocolo-de-corpus`.
-- Base: `ddfb80248bc1a430ad6530e030617f0b8bf59967` (roadmap ENG-12+ aceptado).
-- Composición: ENG-02 a ENG-11 y el roadmap aceptado están en la base exacta.
-  La rama activa añade únicamente ENG-12; no conecta STT, PTT, audio ni runtime.
+  `vantareapp/isa-185-eng-14-ptt-teclado-volante-gamepad-y-hid`.
+- Base: `ba04846f8ac38fc4fa0110a51dd1bffd63ca8943` (ISA-183 / ENG-12 aceptada).
+- Composición: ENG-02 a ENG-12 y el roadmap aceptado están en la base exacta.
+  La rama activa añade únicamente ENG-14; no conecta micrófono, STT, wake word,
+  audio, UI, persistencia ni acciones.
 - Promoción: ninguna.
+- Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
+  polling de 8 ms cancelable, hotplug y errores explícitos. Win32 keyboard y
+  WinMM `joy-0` respondieron realmente; XInput 0..3 y `joy-1` reportaron ausencia
+  sin fingir conexión. Raw HID genérico está disabled. Contrato:
+  `docs/engineer/ptt-input-isa-185.md`.
 - Evidencia ENG-11: manifest cerrado bajo Git; descargas con hash/tamaño,
   límites, cancelación y promoción segura; rutas y delete reparse-safe;
   controller con PID/protocolo/nonce/loopback, timeouts acotados y teardown
@@ -301,7 +311,8 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | En revisión | ISA-182 / ENG-11, package manager y voice-host test-only; lifecycle demostrado, command readiness NO-GO |
 | En revisión | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; voz real continúa NO-GO |
 | Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
-| Backlog | ISA-185..190 / ENG-14..19, PTT, diálogo, audio, personalidades, Spotter y monitores |
+| En revisión | ISA-185 / ENG-14, PTT y readers Windows; hardware físico pendiente de ENG-29 |
+| Backlog/en curso | ISA-186..190 / ENG-15..19, diálogo, audio, personalidades, Spotter y monitores |
 | Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |
 | Backlog | ISA-195..198 / ENG-24..27, UI, Pit, Strategy/Overlays y diagnóstico |
 | Gate final | ISA-199..200 / ENG-28..29, soak LMU y Engineer Beta |
@@ -310,13 +321,27 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar y aceptar técnicamente ISA-183 / ENG-12 sin promoverla. Después, la
-orquestación puede iniciar los cortes objetivos no bloqueados enumerados en
-`docs/engineer/engineer-beta-roadmap.md`. ISA-184 / ENG-13 sigue siendo un gate
-humano: ENG-20/21 no empiezan productivamente hasta disponer de corpus consentido
-y métricas reales de intent, slots, FAR/FRR y wake word.
+Mantener ISA-185 / ENG-14 en revisión sin promoción hasta la aprobación inicial
+de Isaac. La orquestación puede continuar con ENG-15..19 y ENG-22 según su DAG.
+ISA-184 / ENG-13 sigue siendo un gate humano: ENG-20/21 no empiezan
+productivamente hasta disponer de corpus consentido y métricas reales de
+intent, slots, FAR/FRR y wake word.
 
 ## Última actualización
+
+2026-08-02, ISA-185 / ENG-14 implementa `engineer.ptt.v1` y readers Windows
+reales para teclado, XInput y dispositivos joystick-compatible. El controller
+mantiene ownership único durante captura y processing, cancela ambos estados y
+conserva el capture ID si el puerto no confirma la liberación. El poller no
+emite releases iniciales fantasma, confirma la muestra solo tras aplicar el
+handler y reintenta release/disconnect/device-error tras un fallo transitorio.
+Al terminar, `Run` solicita cancelación acotada de capturing/processing; si
+falla devuelve error y conserva ownership para shutdown externo. No esconde
+goroutines y supera 1.000 ciclos start/stop unidos. Focal x20, fuzz, benchmark,
+Engineer, vet y build frontend pasan. La suite global conserva fallos ajenos de
+discovery Launcher y budget Telemetry Core. El probe no pulsó hardware: teclado
+y `joy-0` respondieron, XInput 0..3 y `joy-1` estaban ausentes. Raw HID genérico
+continúa unsupported; sin micrófono, STT, UI, persistencia, acciones o promoción.
 
 2026-08-02, ISA-183 / ENG-12 implementa `engineer.commands.v1` con 14 consultas,
 6 acciones y paridad `es/en/it/pt-BR`. Cada acción requiere confirmación y el

@@ -47,6 +47,37 @@ Nota ISA-183 / ENG-12 (2026-08-02, In Review):
   entorno usa `CGO_ENABLED=0`.
 - Re-review independiente final: `APPROVED`, P0/P1/P2/P3 = 0.
 
+Nota ISA-185 / ENG-14 (2026-08-02, In Review):
+- Contrato `engineer.ptt.v1` para bindings globales/locales, conflictos físicos,
+  estados visibles y un único owner de captura. No contiene micrófono, STT,
+  wake word, persistencia, UI ni acciones.
+- Adaptadores Windows sin dependencias nuevas: teclado Win32 con key down/up,
+  gamepad XInput y volante/button box joystick-compatible mediante WinMM.
+  Raw HID genérico queda `unsupported` de forma explícita.
+- Polling de 8 ms cancelable y sin goroutine oculta; hotplug, pérdida de foco,
+  permiso, cambio de configuración, errores y shutdown fallan cerrados.
+- La re-review corrigió dos bordes: el estado `processing` ahora se cancela
+  realmente aguas abajo, y un fallo de cancelación conserva ownership para
+  reintentar sin fingir liberación. La primera muestra unpressed ya no genera
+  un release fantasma.
+- La revisión independiente corrigió además el commit prematuro de muestras:
+  si el handler falla, release, disconnect y device-error se reintentan y no
+  pueden dejar una captura activa por una transición perdida.
+- Terminar `Poller.Run` cancela explícitamente capturing/processing con timeout.
+  Un fallo queda visible, conserva ownership y permite `Controller.Shutdown`
+  externo; no puede quedar un puerto poseído por la ausencia de futuros polls.
+- En el equipo de validación: teclado conectado, `joy-0` conectado, XInput 0..3
+  y `joy-1` ausentes. Esto demuestra las llamadas nativas y la ausencia honesta,
+  no una pulsación física de cada categoría.
+- Contrato y comandos: `docs/engineer/ptt-input-isa-185.md`. Evidencia:
+  `docs/evidence/isa-185/windows-input-probe.json`.
+- ENG-24 será dueño de UI/persistencia; ENG-20 solo podrá conectar el host STT
+  después del gate humano de ENG-13.
+- Focal x20, fuzz, benchmark, Engineer completo, vet y build frontend pasan.
+  La suite global queda no verde solo por discovery Launcher y un budget
+  temporal Telemetry Core ajenos a las rutas de ENG-14. Pulsación física sigue
+  pendiente del gate de hardware; no se declara como probada.
+
 Nota ISA-182 / ENG-11 (2026-08-02, In Review):
 - Package manager test-only con manifest v1 cerrado y versionado, descargas
   acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y

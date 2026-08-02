@@ -34,6 +34,7 @@ import (
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
@@ -783,6 +784,7 @@ func main() {
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var diagnosticsBridge *app.DiagnosticsBridge
+	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -844,6 +846,12 @@ func main() {
 				{name: "diagnostics", stop: func(context.Context) error {
 					if diagnosticsBridge != nil {
 						diagnosticsBridge.Close()
+					}
+					return nil
+				}},
+				{name: "testing-center-report-draft", stop: func(context.Context) error {
+					if testingCenterReportDraftBridge != nil {
+						testingCenterReportDraftBridge.Close()
 					}
 					return nil
 				}},
@@ -1367,6 +1375,20 @@ func main() {
 	}
 	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
 	diagnosticsBridge.RegisterHandlers(wailsApp)
+
+	// Testing Center report drafts persist only resumable form text. The path is
+	// selected here; frontend events can never provide filesystem locations.
+	var reportDraftStore *reportdraft.Store
+	if cfgDir != "" {
+		reportDraftPath := filepath.Clean(filepath.Join(cfgDir, reportdraft.DirectoryName, reportdraft.FileName))
+		if store, storeErr := reportdraft.NewStore(reportDraftPath); storeErr == nil {
+			reportDraftStore = store
+		} else {
+			log.Printf("warning: Testing Center report draft storage is unavailable")
+		}
+	}
+	testingCenterReportDraftBridge = app.NewTestingCenterReportDraftBridge(ctx, reportDraftStore, emitter)
+	testingCenterReportDraftBridge.RegisterHandlers(wailsApp)
 
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)

@@ -1,3 +1,18 @@
+Nota ISA-219 / TAU-04B (2026-08-02, draft local y bridge Wails):
+- Nuevo store local para reanudar exclusivamente acción, esperado, observado,
+  contexto y módulo; no persiste consentimiento, diagnóstico, logs, replay,
+  tokens, identidad remota ni rutas aportadas por frontend.
+- El backend genera y conserva una clave idempotente estable hasta descartar el
+  draft. Escritura temporal + sync + reemplazo atómico; corrupción, campos
+  desconocidos y tamaños fuera de contrato se eliminan cerradamente.
+- Bridge Wails con DTOs cerrados, request IDs, límites, timeout, cancelación y
+  códigos de error sin detalles locales. La ruta nace en composition root bajo
+  el directorio privado de configuración.
+- Gates focales x20 y race detector x5 PASS. Autoridad:
+  `docs/runbooks/testing-center-report-draft.md`.
+- Estado: implementación local en review; sin UI, red, Supabase remoto, merge,
+  promoción o build distribuida.
+
 Nota ISA-218 / TAU-04A (2026-08-02, envío idempotente de reportes):
 - Nueva RPC autenticada `testing_center_submit_report(...)`, apilada sobre
   TAU-03R, sin UI, bridge Wails, GitHub, Codex, Discord o deploy.
